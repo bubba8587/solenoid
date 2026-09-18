@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { FindPeaksNode as FindPeaksNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";

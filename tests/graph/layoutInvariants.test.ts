@@ -1,3 +1,4 @@
+// [[C85]] groupPushDeterministic, [[C52]], [[C89]] standoffsSolveLast
 import { describe, it, expect } from "vitest";
 import { separateOverlaps, computeExpandPush, type PushBox, type ExpandSpec, type Disp } from "../../src/graph/groupPushCore";
 import { distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";

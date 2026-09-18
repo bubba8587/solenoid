@@ -1,3 +1,4 @@
+// [[C92]] pinchUnvetoable
 import { describe, it, expect } from "vitest";
 import { scrollsInDirection } from "../../src/graph/flow/flowWheel";
 import { frameSize } from "../../src/graph/zoomAt";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents, [[C95]] commitOnEnter
 import type { TextInputNode as TextInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";

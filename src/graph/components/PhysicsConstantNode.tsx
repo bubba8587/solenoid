@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import {
   PhysicsConstantNode as PhysicsConstantNodeType,
   PHYS_CONSTANTS,

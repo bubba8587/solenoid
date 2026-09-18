@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { TEXTJOIN_IGNORE_EMPTY_META } from "../rete-nodes";
 import type { TextJoinNode as TextJoinNodeType, TextJoinIgnoreEmpty } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView
 import { describe, it, expect, vi } from "vitest";
 import { registerNodeForget, forgetNode, forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { collapseStore } from "../../src/graph/collapseStore";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 /** Shared close glyph as SVG, never a text "×"/"✕": a font glyph's ink isn't centered
  *  on its em, so a flex-centered button still renders it low. */
 export const CloseIcon = ({ size = 14 }: { size?: number }) => (

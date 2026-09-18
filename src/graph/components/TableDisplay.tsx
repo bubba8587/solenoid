@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import { ArrayChip, type ElemFamily } from "./ArrayChip";
 import { CategoryChip } from "./CategoryChip";

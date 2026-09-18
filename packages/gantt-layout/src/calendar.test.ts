@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 import { describe, it, expect } from "vitest";
 import { serialFromCivil, dayOfWeek } from "./serial";
 import { layoutCalendar } from "./calendar";

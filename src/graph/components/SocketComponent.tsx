@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useId, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { SOCKET_COLORS } from "../sockets";

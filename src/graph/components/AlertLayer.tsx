@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { IS_MOBILE } from "../coarse";
 import { alertStore, type AlertKind } from "../alertStore";

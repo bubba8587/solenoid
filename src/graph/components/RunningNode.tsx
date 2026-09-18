@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { RUNNING_OP_META } from "../rete-nodes";
 import type { RunningNode as RunningNodeType, RunningOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

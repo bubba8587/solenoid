@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The predecessor grammar `<row><type><±lag><unit>` (`3FS+2d, 5SS-1d`, Smartsheet /
 // Project) lives ONLY at the import border: row numbers resolve to names here and never
 // become an internal key. Also the inverse, for the grid's Predecessors column.

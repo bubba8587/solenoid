@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming
 import { describe, it, expect } from "vitest";
 import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall } from "../../src/graph/formulaSyntax";
 import { formulaFunctionNames } from "../../src/graph/excelFormula";

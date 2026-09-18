@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCablePath, Position } from "../cablePaths";

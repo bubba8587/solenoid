@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // A small XML reader for the MSPDI subset: elements, text, CDATA, comments, entities. No
 // attributes are needed (MSPDI carries everything as child elements) and no DOM is
 // available in the test environment, so this stays dependency-free.

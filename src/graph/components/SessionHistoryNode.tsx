@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useRef, useState } from "react";
 import { copyText } from "../clipboard";
 import type { SessionHistoryNode as SessionHistoryNodeType } from "../rete-nodes";

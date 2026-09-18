@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { DurationNode as DurationNodeType, DurationOp } from "../rete-nodes";
 import { DURATION_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

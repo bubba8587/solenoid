@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState } from "react";
 import type { RandArrayNode as RandArrayNodeType } from "../rete-nodes";
 import { processGraph } from "../process";

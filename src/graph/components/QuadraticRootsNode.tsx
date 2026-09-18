@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { QuadraticRootsNode as QuadraticRootsNodeType } from "../rete-nodes";
 import { NodeShell, InlineOutputRows, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";

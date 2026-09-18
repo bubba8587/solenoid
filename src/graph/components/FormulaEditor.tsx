@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { highlightFormula, tokenAtCaret, suggestFor, enclosingCall, type Suggestion } from "../formulaSyntax";
 import { signatureFor, signatureParams } from "../formulaSignatures";

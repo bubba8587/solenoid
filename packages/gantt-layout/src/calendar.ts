@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The calendar figure: the SAME GanttPayload drawn as a month grid (the sibling of the Gantt
 // timeline, § 6.3). One cell per day, multi-day tasks laid as chips across the days they span,
 // milestones as dots, weekends shaded, today outlined. Pure numbers, like the Gantt RenderFrame;

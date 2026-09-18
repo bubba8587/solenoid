@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface (.nokeys: the grid owns its keys)
 // The table popup grid's keyboard MOVEMENT, pure so it can be tested in the node env (the
 // component only wires focus). `vi` is the VISUAL row position (index into the sorted
 // visibleOrder), never the source row — movement follows what the user sees. Columns are

@@ -1,3 +1,4 @@
+// [[B14]] oneDesignSystem (DESIGN.md modal rules)
 import { useEffect, type RefObject } from "react";
 
 const FOCUSABLE_SELECTOR =

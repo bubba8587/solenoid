@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState } from "react";
 import type { ExpectNode as ExpectNodeType } from "../rete-nodes";
 import { EXPECT_CHECK_LABEL } from "../nodes/quality";

@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // The currently-open nested-data viewer, or null. Cubes are recursive, so it keeps a
 // DRILL STACK — one popup and one breadcrumb for every nesting kind, never two windows.
 import { createValueStore } from "./storeKit";

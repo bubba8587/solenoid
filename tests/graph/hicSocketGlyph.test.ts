@@ -1,3 +1,4 @@
+// [[C42]] htmlInCanvasRenderer
 import { describe, it, expect } from "vitest";
 import { socketGlyphKind, COMBO_PAIRS } from "../../src/graph/hicSocketGlyph";
 

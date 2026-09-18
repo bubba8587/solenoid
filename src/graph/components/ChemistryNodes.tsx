@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import {
   ElementNode as ElementNodeType,
   MolarMassNode as MolarMassNodeType,

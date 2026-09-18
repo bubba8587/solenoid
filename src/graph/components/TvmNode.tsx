@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useState } from "react";
 import { PAYMENT_TIMING_META } from "../rete-nodes";
 import type { TvmNode as TvmNodeType, PaymentTiming } from "../rete-nodes";

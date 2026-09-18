@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // Dependency arrows: orthogonal polylines with the endpoint conventions FS right→left,
 // SS left→left, FF right→right, SF left→right, an arrowhead, and (for the view) a wide
 // invisible hit path drawn from the same points. Geometry ported from DHTMLX/SVAR link

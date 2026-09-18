@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // Cards for the pack tool nodes — the domain logic lives in their node files.
 
 import {

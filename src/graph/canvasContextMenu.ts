@@ -1,3 +1,4 @@
+// [[C98]] paletteMirrorsMenubar (the one menu model)
 // Context-menu TARGET resolution for the flow surface: React Flow says which
 // layer was hit (node / edge / pane); these resolve the app's finer targets — a
 // socket dot (or the nearest one within reach), a cable + its ribbon lanes, a

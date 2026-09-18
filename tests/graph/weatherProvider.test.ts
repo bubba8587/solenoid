@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild
 import { describe, it, expect } from "vitest";
 import { weatherUrl, parseWeather, wmoText } from "../../src/graph/weatherProvider";
 

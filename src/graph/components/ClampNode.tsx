@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ClampNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

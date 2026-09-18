@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 

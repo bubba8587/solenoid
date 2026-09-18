@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 // Conveniences that are not single Excel functions: reclassified core nodes, the shared
 // HYPOTENUSE claim, formula presets, and nodes with no Excel answer at all.
 

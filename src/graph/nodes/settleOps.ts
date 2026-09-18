@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Group cost settlement (1.4 H3): people paid uneven amounts; who pays whom, in the fewest
 // transfers, so everyone ends up even. Net each person (paid − fair share), then greedily
 // match the biggest creditor to the biggest debtor. Linear, exact, no solver. Pure.

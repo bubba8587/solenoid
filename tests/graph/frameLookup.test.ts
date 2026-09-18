@@ -1,3 +1,4 @@
+// [[C45]], [[C16]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { lookupCell, lookupRowIndex, frameRowAt, cubeRowAt, type LookupMatchMode, type LookupSearchMode } from "../../src/graph/frameVerbs";
 import { xmatchIndex } from "../../src/graph/nodes/listOps";

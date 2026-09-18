@@ -1,3 +1,4 @@
+// [[C44]] dateSerials
 // Time-zone reinterpretation via Intl (zero deps, IANA names). PURE + fixture-tested.
 // Solenoid date serials are wall-clock-as-UTC, so converting a datetime between zones is:
 // read the serial's wall-clock components AS the FROM zone's local time, find the true UTC

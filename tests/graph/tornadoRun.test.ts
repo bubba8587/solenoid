@@ -1,3 +1,4 @@
+// [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C34]] classNameIsType
 import { describe, it, expect } from "vitest";
 import { findUpstreamLeaves, rankTornado } from "../../src/graph/tornadoRun";
 import { NumberInputNode, SliderInputNode } from "../../src/graph/nodes/input";

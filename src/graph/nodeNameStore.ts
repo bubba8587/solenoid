@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { NAME_RE, typePrefix, nextAvailableName, counterCheckpoint } from "./nodeNaming";

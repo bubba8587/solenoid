@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[D17]] relaysTransparent
 import { describe, it, expect } from "vitest";
 import { ConduitNode, conduitGhostSpecs, conduitLaneOf } from "../../../src/graph/nodes/conduit";
 

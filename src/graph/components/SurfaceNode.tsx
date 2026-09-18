@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents, [[D10]] onePrunePath
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { SURFACE_VIEW_OP_META } from "../rete-nodes";
 import type { SurfaceNode as SurfaceNodeType, SurfaceViewOp } from "../rete-nodes";

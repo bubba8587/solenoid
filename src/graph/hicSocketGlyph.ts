@@ -1,3 +1,4 @@
+// [[C42]] htmlInCanvasRenderer
 // Socket glyph classification for the Pixi renderer — mirrors SocketComponent's
 // dataType → shape rules (circle scalar / square list / split combo / grid 2-D /
 // hexagon cube), so GPU sockets read like the DOM ones. Pure (colors are

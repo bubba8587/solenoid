@@ -1,3 +1,4 @@
+// [[D46]] freezeVolatilePerCalc, [[C44]] dateSerials
 // Midnight rollover (Obsidian bundle R5): TODAY / NOW and a relative Date Input answer for
 // the calendar day, so at the next LOCAL midnight the document recomputes once (the F9
 // path) when it holds any of them. One timer, re-armed after each firing; no setting.

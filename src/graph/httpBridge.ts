@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild, [[C38]] sinkRunButtonOnly
 // HTTP fetch that bypasses the CORS wall on desktop via the Tauri http plugin
 // (Rust, no same-origin policy); the browser build stays CORS-limited.
 import { isDesktop } from "./fileBridge";

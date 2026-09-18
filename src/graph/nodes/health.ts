@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 // Training-zone table: Karvonen (heart-rate reserve) bands with a resting HR,
 // plain %-of-max without one.
 

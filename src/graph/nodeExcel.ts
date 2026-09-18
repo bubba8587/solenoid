@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming, [[C14]] currentExcelParity
 // The source of truth for each node's Excel equivalence, applied onto catalog leaves by
 // buildCatalog; pack nodes may instead declare `excel` inline on their entry.
 import type { ExcelEquiv } from "./AddNodeMenu";

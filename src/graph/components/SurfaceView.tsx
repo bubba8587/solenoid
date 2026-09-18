@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { heightRampColor } from "../palette";

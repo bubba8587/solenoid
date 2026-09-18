@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { IsTestNode as IsTestNodeType, IsTestOp } from "../rete-nodes";
 import { IS_TEST_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

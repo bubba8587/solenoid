@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // layoutGantt(payload, opts) → RenderFrame. The one entry point that composes the scale, the
 // rows, the bars and the links into a plain-number frame at a given width. Pure: no DOM, no
 // Date, no colors. (Full geometry lands incrementally in scale.ts / rows.ts / bars.ts /

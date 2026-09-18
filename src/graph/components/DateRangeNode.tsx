@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState } from "react";
 import type { DateRangeNode as DateRangeNodeType } from "../rete-nodes";
 import { serialToJsDate, jsDateToSerial } from "../nodes/date";

@@ -1,3 +1,4 @@
+// [[C16]], [[C24]], [[C44]] dateSerials
 // End-to-end: compose several verbs through the backend exactly as the future verb
 // NODES will (source → join → apply(groupBy) → apply(sort) → preview). Guards that
 // the verbs chain correctly through handles, not just in isolation — the realistic

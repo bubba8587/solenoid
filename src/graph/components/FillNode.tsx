@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { FillNode as FillNodeType, FillOp } from "../rete-nodes";
 import { FILL_OP_META } from "../rete-nodes";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";

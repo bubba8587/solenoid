@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Pure, synchronous digests for the Hash card and HASH(): hashlib / digest() on a
 // text cell — the join-key anonymiser. WebCrypto's SHA is async-only, so the
 // classic algorithms live here in full; verified against Python hashlib

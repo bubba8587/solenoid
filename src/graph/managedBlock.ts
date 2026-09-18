@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 // A managed block inside a note (bundle item C, `mode: block`): the writer owns the span
 // between `%% solenoid:begin <name> %%` and `%% solenoid:end %%` (Obsidian comments, hidden in
 // reading view). The addressable name keys the pair, so two writers own two blocks. Pure.

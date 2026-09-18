@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 import type { Pack } from "./packShared";
 import {
   SpectrumNode, SmoothNode, FindPeaksNode, ConvolveNode,

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PresentationNode as PresentationNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";

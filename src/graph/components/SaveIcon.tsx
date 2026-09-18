@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 /** Shared save glyph, the top bar's Save button mark: wherever a control writes the
  *  document to a file, it wears this. */
 export const SaveIcon = ({ size = 14 }: { size?: number }) => (

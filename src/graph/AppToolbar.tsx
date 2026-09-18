@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars
 import { useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "./appTheme";
 import { settingsPanel } from "./settingsStore";

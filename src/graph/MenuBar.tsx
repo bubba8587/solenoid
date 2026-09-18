@@ -1,3 +1,4 @@
+// [[C98]] paletteMirrorsMenubar, [[C99]] chromeEnvelopeVars
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "./appTheme";
 import { canvasLockStore } from "./canvasLock";

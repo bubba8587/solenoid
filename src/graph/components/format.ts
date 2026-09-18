@@ -1,3 +1,4 @@
+// [[C94]] formatFamilyGates
 // ONE scientific-notation rule for every display surface: |n| ≥ 1e12 (as Excel's
 // General does) or a nonzero |n| < 1e-4, where fixed decimals lie as "0.0000".
 export function extremeSci(n: number): string | null {

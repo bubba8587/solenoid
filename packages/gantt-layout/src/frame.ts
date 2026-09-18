@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The RenderFrame: what `layoutGantt` emits — plain numbers only, no DOM, no colors. The view
 // (gantt-react) and the SVG serializer (svg.ts) both draw from this. Every x/y/w/h is a pixel
 // in the timeline's own coordinate space (x grows with time from the window's left edge; y

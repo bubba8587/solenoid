@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 // Metric inputs throughout (kg, cm, years). Sex-specific equations ship as TWO presets
 // rather than one formula hiding a ±sign input.
 

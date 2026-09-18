@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Signal smoothing + peak finding, rete-free (the Smooth and Find Peaks cards and the
 // SAVGOL / LOWESS / GAUSSIANSMOOTH / FINDPEAKS formulas). References: scipy.signal
 // savgol_filter (mode = interp), scipy.ndimage gaussian_filter1d (reflect, truncate 4),

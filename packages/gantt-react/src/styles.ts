@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages, [[C71]] noBarEditing
 // The figure's stylesheet, injected once with the component. Every color is an app design
 // token (var(--…)), which resolves in inline SVG because the figure lives in the document —
 // so the on-screen figure needs no color resolution; only the headless ganttSvg serializer

@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // Flatten the WBS and build the name-keyed DAG. A parent is a node of its own that
 // depends on every child (so its roll-up is computed after them); a link whose
 // predecessor is a parent reads the parent's rolled-up dates; a link whose SUCCESSOR is a

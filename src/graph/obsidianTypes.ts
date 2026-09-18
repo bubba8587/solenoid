@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 // `.obsidian/types.json` — Obsidian's vault-wide property-type registry — parsed into
 // the shared TypeHint vocabulary (typing source #2, below mdbase, above the guesser).
 // Pure JSON; graph/DOM-free.

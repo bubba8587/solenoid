@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 // Lazy KaTeX loader: consumers get the renderer or null (raw text meanwhile). This
 // module must stay katex-free, or importing it drags katex into the main bundle.
 import { useSyncExternalStore } from "react";

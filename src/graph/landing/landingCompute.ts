@@ -1,3 +1,4 @@
+// [[C2]] realCanvasScenes
 import { getEditor, getEngine, getView, setEditorRefs, processGraph } from "../process";
 import type { SurfaceStack } from "../flow/FlowSurface";
 

@@ -1,3 +1,4 @@
+// [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
 import { externalLinkTarget } from "../../src/graph/externalLinks";
 

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { SetCellNode as SetCellNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";

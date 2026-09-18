@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ShuffleNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

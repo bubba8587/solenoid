@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";

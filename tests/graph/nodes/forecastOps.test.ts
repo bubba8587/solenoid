@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import { stlDecompose } from "../../../src/graph/nodes/forecastOps";
 

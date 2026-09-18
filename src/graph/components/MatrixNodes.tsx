@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type {
   MatDetNode as MatDetNodeType, MatDetOp,
   TableMultNode as TableMultNodeType,

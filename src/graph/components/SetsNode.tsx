@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SetsNode as SetNodeType, SetOpAll } from "../rete-nodes";
 import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";

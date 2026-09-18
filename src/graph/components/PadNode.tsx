@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { PadNode as PadNodeType, PadDir } from "../rete-nodes";
 import { PAD_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

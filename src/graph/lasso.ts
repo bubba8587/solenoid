@@ -1,3 +1,4 @@
+// [[C52]] visibleSelection
 // Lasso geometry — all in screen (container-relative) coords, Y-down.
 
 import { createToggleStore } from "./storeKit";

@@ -1,3 +1,4 @@
+// [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder
 // Disk save/open: native dialogs on desktop, download / file-input in the browser. The
 // documentStore library stays the working store; a doc bound to a path saves through to it.
 

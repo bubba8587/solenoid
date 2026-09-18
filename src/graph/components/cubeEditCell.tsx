@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState, type ReactNode } from "react";
 import { cubePopup, type CubeEditBinding, type DrillView } from "../cubePopupStore";
 import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth, type CubeCell } from "../frame";

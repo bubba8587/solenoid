@@ -1,3 +1,4 @@
+// [[C97]] rechartsLazyChunk (a stale lazy chunk after a deploy)
 // Loop-guard behind main.tsx's `vite:preloadError` handler: reload AT MOST once per
 // window, and if the timestamp can't be persisted don't auto-reload at all.
 

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { DISCOUNT_SECURITY_META, type DiscountSecurityNode, type DiscountSecurityOp } from "../rete-nodes";
 import { makeSpecOpComponent } from "./specOpNode";
 

@@ -1,3 +1,4 @@
+// [[C103]] untrustedContentSeams
 // SVG markup a user pastes, uploads or fetches is inlined into the live DOM by the SVG
 // Picker (hit-testing needs real elements), and it persists in the document, so a shared
 // .solenoid file could carry a handler or a beacon. The scrub runs ONCE at intake, on the

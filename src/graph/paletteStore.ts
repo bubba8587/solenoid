@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 import { createToggleStore } from "./storeKit";
 
 // A module store (not Canvas useState) so surfaces outside Canvas's React tree can drive

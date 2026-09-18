@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { PAYMENT_TIMING_META } from "../rete-nodes";
 import type { AmortizationNode as AmortizationNodeType, PaymentTiming } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

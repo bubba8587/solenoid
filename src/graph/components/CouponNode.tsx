@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { CouponNode as CouponNodeType, CouponOp } from "../rete-nodes";
 import { COUPON_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

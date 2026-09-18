@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The resource histogram band (§ 12): sum assignment units per day per resource across the drawn
 // window, as stacked columns aligned to the day scale. A per-resource legend, a 1-unit capacity
 // line, and an over-allocation flag (a resource with > 1 unit on a day) drive the renderers'

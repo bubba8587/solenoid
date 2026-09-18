@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // Grid-cell text for a task under a column key. Dates format as the app default DD-MMM-YYYY
 // via serial math (this package never touches Date). Duration is inclusive whole days.
 

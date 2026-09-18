@@ -1,3 +1,4 @@
+// [[C42]] htmlInCanvasRenderer
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";

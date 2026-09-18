@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { BuildCubeNode as BuildCubeNodeType, NestJoinNode as NestJoinNodeType, CubeColumnsNode as CubeColumnsNodeType, CubeRollupNode as CubeRollupNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";

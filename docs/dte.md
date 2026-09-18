@@ -101,12 +101,15 @@ reversed independently.
 `python tools/dte.py coverage` is the adoption gauge, and 100% is the target. It is reachable
 only because an artifact that cites nothing BECAUSE no decision governs it is listed in
 `.dtecoverage` under the reason it needs none: a `why:` line opens a group, the globs under it
-(`.dteignore` syntax) belong to it. Six groups today: toolchain and CI configuration; licences
+(`.dteignore` syntax) belong to it. Seven groups today: toolchain and CI configuration; licences
 and the pitch (reader on-ramps); queues, proposals, history and the index; fixtures and sample
-data; dev tooling; stylesheets (a stylesheet implements DESIGN.md). An excluded file is still
+data; dev tooling; stylesheets (a stylesheet implements DESIGN.md); seed documents (JSON cannot
+cite). An excluded file is still
 scanned, so one that cites anyway counts as cited; a glob matching nothing is reported as stale;
-`coverage --excluded` lists the files under each reason. Everything not listed is expected to
-cite, so the uncited list IS the sweep's remaining work, not noise. Adding a group is a claim
+`coverage --excluded` lists the files under each reason; `coverage --check` exits 1 below 100%
+or with a stale exclusion, and `rules.test.ts` runs it (with `validate`) so a push cannot regress
+it. Coverage reached 100% on 2026-09-18 (1230 artifacts, 301 excluded). Everything not listed is
+expected to cite, so a new file either cites or is a claim in the store. Adding a group is a claim
 that a whole class of files needs no decision: say why in the `why:` line, and if the reason is
 "not swept yet", that is not a reason.
 
@@ -116,8 +119,8 @@ that a whole class of files needs no decision: say why in the `why:` line, and i
   block's reason differs from the file's).
 - `python tools/dte.py trace <path>` — why does this file exist, up to the core?
 - `python tools/dte.py blast <ID>` — what does changing this decision touch?
-- `python tools/dte.py tree` — the index; `show <ID>` for one node; `coverage` — the gauge (100% is
-  the target; `.dtecoverage` above holds what needs no citation).
+- `python tools/dte.py tree` — the index; `show <ID>` for one node; `coverage --check` — the gauge
+  (100%, pinned by `rules.test.ts`; `.dtecoverage` above holds what needs no citation).
 - Before you finish: `python tools/dte.py validate --as <ring>` must print `OK`.
 
 ## Feedback

@@ -1,3 +1,4 @@
+<!-- [[B14]] oneDesignSystem (DESIGN.md § Voice) -->
 Two rules govern every cable, and neither one shows on the canvas.
 
 **Families stay separate.** A value reaches only sockets of its own family, or a gray family-agnostic one. Crossing families takes a **Cast**, element-wise on a list. There is exactly one built-in bridge: **Boolean ⟷ number**, both directions, at every shape. TRUE or FALSE arrives as 1 or 0, and a number arrives as TRUE (non-zero), FALSE (zero) or unknown (NaN).

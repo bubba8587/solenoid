@@ -1,3 +1,4 @@
+// [[C24]]
 import { describe, it, expect } from "vitest";
 import { toSolError, ipcInvoke, enginePing } from "../../src/graph/ipcBridge";
 import { solError, isSolError } from "../../src/graph/errorValue";

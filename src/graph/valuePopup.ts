@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics
 // The ONE home for opening a value's data pop-up — the read-only affordance shared by
 // the collapsed chips (ArrayChip/FrameChip/CubeChip) and the Display's corner expand
 // button. Lives beside the popup stores, not in a chip file, so a new opener (or the

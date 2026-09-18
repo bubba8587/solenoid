@@ -1,3 +1,4 @@
+// [[C24]]
 import { describe, it, expect } from "vitest";
 import { collectFinite, extendSafeRange, boundsFromSafeRange } from "../../src/graph/modelFuzz";
 import { solError } from "../../src/graph/errorValue";

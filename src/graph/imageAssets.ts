@@ -1,3 +1,4 @@
+// [[B12]] losslessSaves, [[C30]] saveViaTextForm
 // A node's session `dataUrl` is written as a PLAIN file into `images/` beside the
 // doc and persisted as a doc-relative `assetPath`, so the save JSON never carries
 // base64. Desktop only — on web both hooks no-op and attach stays session-only.

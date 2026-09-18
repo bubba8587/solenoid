@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useState } from "react";
 import { colord } from "colord";
 import type { ColorPickerNode as ColorPickerNodeType, ColorMode, ColorFormat } from "../rete-nodes";

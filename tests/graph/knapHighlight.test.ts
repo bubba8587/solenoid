@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 import { describe, it, expect } from "vitest";
 import { highlightKnap } from "../../src/graph/knapHighlight";
 

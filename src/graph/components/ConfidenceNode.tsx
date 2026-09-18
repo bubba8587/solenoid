@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { CONFIDENCE_OP_META } from "../rete-nodes";
 import type { ConfidenceNode as ConfidenceNodeType, ConfidenceOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

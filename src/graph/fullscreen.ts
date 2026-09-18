@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars
 import { isDesktop } from "./fileBridge";
 
 /** iOS Safari exposes no Fullscreen API for arbitrary elements, so callers must hide

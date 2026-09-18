@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (the snapshot history)
 // Human-readable session history: one line per labeled record under a date
 // header. Labels come from the snapshot diff (flow/flowHistoryDigest.ts); the
 // rete-history action describer died with the rete surface (git has it).

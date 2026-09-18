@@ -1,3 +1,4 @@
+// [[B13]] aiInScope
 // The AI account's API key, stored through the same `apiKeyStore` as data connections:
 // this device's localStorage only, never bundled and never written into a saved graph.
 import { apiKeyStore } from "./apiKeyStore";

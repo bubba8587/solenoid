@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // Cast — universal data-type conversion (number / text / date / complex).
 import { useEffect, useState } from "react";
 import type { CastNode as CastNodeType } from "../rete-nodes";

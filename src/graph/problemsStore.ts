@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // Log of tagged SolErrors + fuzz findings. Module-level so both React roots read it;
 // the error sink fires per relay node, so entries are origin-filtered and edge-detected.
 

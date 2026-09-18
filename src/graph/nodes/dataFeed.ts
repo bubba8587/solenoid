@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 import { ClassicPreset } from "rete";
 import { frameOut } from "./shared";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";

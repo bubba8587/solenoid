@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { TextTransformNode as TextTransformNodeType, TextTransformOp } from "../rete-nodes";
 import { TEXT_TRANSFORM_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

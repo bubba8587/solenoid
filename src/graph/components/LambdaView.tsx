@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // Every view derives from the value's own `expr`/`params`; the Report's inline embed
 // has a separate KaTeX-first variant honoring the same annotation.
 import { useKatexRender } from "./katexLoader";

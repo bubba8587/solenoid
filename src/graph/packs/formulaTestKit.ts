@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 // Test-only: instantiate a pack's pre-set Expression entry exactly the way the Add
 // menu would, so a typo'd formula string can't ship silently.
 

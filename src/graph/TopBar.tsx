@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars
 import { useSyncExternalStore, useState, useEffect, useRef } from "react";
 import wordmark from "../logo/solenoidwordmark.svg";
 import { TidyOptionsPopover } from "./TidyOptionsPopover";

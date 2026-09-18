@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // Per-node manual size, persisted with the graph. Only `nodeResizable` nodes expose a
 // handle; everything else auto-sizes and truncates.
 

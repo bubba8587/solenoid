@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // The one place mapping a Cube cell's kind to how it renders and what drilling it
 // pushes onto the breadcrumb stack — a nested container drills IN PLACE.
 import type { ReactNode } from "react";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { BooleanInputNode as BooleanInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";

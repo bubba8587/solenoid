@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
 // A minimal NON-INTERACTIVE flow surface for the side pages (landing demo,
 // ?showcase audit stage): real components, real values, no pan/zoom/drag.
 // Callers build their graph through the stack's editor + view verbs exactly

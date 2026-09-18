@@ -10,7 +10,7 @@ One file, standard library only, Python 3.8+. Copy it into any project.
     python dte.py blast <ID>             what would changing this touch?
     python dte.py trace <path>           why does this artifact exist?
     python dte.py conflicts              declared contradictions and who wins
-    python dte.py coverage [--excluded]  artifacts with no citation; .dtecoverage names the ones that need none
+    python dte.py coverage [--excluded] [--check]  artifacts with no citation; .dtecoverage names the ones that need none; --check exits 1 below 100%
     python dte.py scope                  advisory: no reach, too broad, skipped rings
     python dte.py retired                the ledger
     python dte.py authority [ring]       who holds each ring (whom to ask)
@@ -1335,6 +1335,9 @@ def cmd_coverage(tree, args):
         print("No citation:")
         for f in missing:
             print("  " + f)
+    if getattr(args, "check", False) and (missing or stale):
+        print("\ncoverage --check: %d uncited, %d stale exclusion%s" % (len(missing), len(stale), "" if len(stale) == 1 else "s"))
+        return 1
     enforced = {r for rel, _, _, r in tree.citations if r and tree.layer_of(rel) == "tests"}
     unenforced = [n for n in tree.ordered_nodes() if n.in_effect and n.ring != "A" and n.id not in enforced]
     if unenforced:
@@ -2973,8 +2976,9 @@ def main(argv=None):
     sub.add_parser("blast").add_argument("id")
     sub.add_parser("trace").add_argument("path")
     sub.add_parser("conflicts")
-    sub.add_parser("coverage").add_argument("--excluded", action="store_true",
-                                            help="list the excluded files under each reason")
+    cv = sub.add_parser("coverage")
+    cv.add_argument("--excluded", action="store_true", help="list the excluded files under each reason")
+    cv.add_argument("--check", action="store_true", help="exit 1 unless every artifact cites or is excluded, with no stale exclusion")
     sub.add_parser("next").add_argument("ring")
     vd = sub.add_parser("vendor")
     vd.add_argument("--from", dest="src", required=True, metavar="DIR", help="a DTE checkout")

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { DiffNode, DiffMode } from "../rete-nodes";
 import { makeToggleNodeComponent } from "./standardNode";
 

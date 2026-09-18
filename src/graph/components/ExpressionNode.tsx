@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useState, useEffect } from "react";
 import type { ExpressionNode as ExpressionNodeType } from "../rete-nodes";
 import type { SolError } from "../errorValue";

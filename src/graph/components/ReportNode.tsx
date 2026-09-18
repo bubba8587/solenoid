@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import type { ReportNode as ReportNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";

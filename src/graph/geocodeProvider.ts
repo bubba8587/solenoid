@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild
 // Open-Meteo geocoding (keyless, CORS-open): a place name → coordinate matches. The
 // PARSE is pure + fixture-tested (widget rule 5); the node does the fetch/cache.
 

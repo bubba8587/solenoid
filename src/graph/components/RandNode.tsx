@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { RandBetweenNode as RandNodeType } from "../rete-nodes";
 import { RecalcButton } from "./RecalcButton";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { BesselNode as BesselNodeType, BesselOp } from "../rete-nodes";
 import { BESSEL_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

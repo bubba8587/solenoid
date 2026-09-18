@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
 import { flyToNodeAndFlash } from "../flyToNode";

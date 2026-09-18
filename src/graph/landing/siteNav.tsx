@@ -1,3 +1,4 @@
+// [[C2]] realCanvasScenes
 // Shared chrome for the marketing site (the /?landing, /obsidian, /download and
 // /examples routes). Every page renders the same header, nav and footer from here, so
 // the site reads as one place and a new page is a route entry plus a page file. Each

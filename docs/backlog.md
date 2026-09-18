@@ -109,12 +109,12 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` ([[C7]] authorRuled).
 - [ ] **Author places `decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
-- [ ] **Coverage to 100%** (`dte coverage`; `.dtecoverage` holds what needs none, `docs/dte.md`): 500/1258 at
-  2026-09-18. The uncited list is the work: `src/graph` (~500 files: pure helpers, node classes and components
-  whose leaf is one of the socket/value/naming nodes), `tests/graph` (~216: a test cites the leaf it pins, or the
-  behaviour it pins earns one), the three `packages/` ([[C69]] ganttPackages at least). Per file: header cites
-  the leaf, WHY → node, HOW → spec, WHAT stays ([[C57]] commentMinimalism). A file with genuinely no decision
-  behind it goes in the store under a stated reason, never a "not yet" one.
+- [ ] **Coverage is 100% and pinned** (`rules.test.ts` runs `coverage --check` + `validate`). The bulk pass cited
+  whole classes by blast radius (every component cites [[C27]] noDataInComponents, every node class [[C34]]
+  classNameIsType + [[D50]] everyFieldClassified, every store [[B10]], every op module [[D19]] + [[C17]], tests the
+  leaves of the sources they import, MUSTs only where another test already enforces them). Those are true but
+  thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
+  exists; `dte scope --comments` lists the comment-heavy ones.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
   declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]

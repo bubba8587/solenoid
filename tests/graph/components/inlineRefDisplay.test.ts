@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 import { describe, it, expect } from "vitest";
 import { refPreview } from "../../../src/graph/components/inlineRefDisplay";
 import type { LambdaValue } from "../../../src/graph/nodes/lambda";

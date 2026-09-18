@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents, [[C95]] commitOnEnter
 import { useEffect, useRef, useState } from "react";
 import type { ImageNode as ImageNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";

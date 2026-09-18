@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface (the surface installs the keyboard once)
 // One question every canvas-level key handler asks first: does an overlay own the
 // keyboard? While a modal dialog or a pop-up is open, the canvas shortcuts (bare
 // Enter → palette, A → Add menu, T → Tidy, Delete, …) stand down; the overlay's own

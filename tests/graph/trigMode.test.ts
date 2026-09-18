@@ -1,3 +1,4 @@
+// [[C46]], [[C25]]
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { resolveTrigModes } from "../../src/graph/trigMode";

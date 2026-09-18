@@ -1,3 +1,4 @@
+// [[D46]] freezeVolatilePerCalc
 // The graph-aware half of the Tornado node: node classes stay decoupled from the live
 // editor, which walking upstream connections and driving processGraph both need.
 import { getEditor, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";

@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // Open state for the node Inspector — the docked right panel behind the top
 // bar's (i) button. Mirrors reportStore's dock mechanics: the root class
 // `html.sol-inspector-docked` drives the canvas squeeze in plain CSS, and the

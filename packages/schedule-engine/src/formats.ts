@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The other interchange formats (§ 3.3): GanttProject `.gan` (XML) and Primavera XER
 // (tab-delimited `%T/%F/%R` tables), both read into the engine's task tree. MSPDI write is
 // the codec's other direction. Store two-letter link types; map at each border.

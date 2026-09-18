@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents, [[C95]] commitOnEnter
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";

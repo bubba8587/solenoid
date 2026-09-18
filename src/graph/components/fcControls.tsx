@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // The FC's format/unit dropdowns, shared with other surfaces so the option data can't drift.
 // Plain controlled selects — none of the FC node's value-mutating behavior lives here.
 

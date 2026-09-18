@@ -1,3 +1,4 @@
+// [[C68]], [[B1]] obsidianBet, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { toggleTaskMarker } from "../../../src/graph/noteFrontmatter";

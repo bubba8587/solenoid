@@ -42,7 +42,10 @@ On `develop`, pushed.
   source sweeps now; the four sanctioned size reads carry their reason in place.
 - **`.dtecoverage` makes 100% coverage reachable** (author's ask): a store of artifacts that need no citation,
   each group under its `why:`; `tools/dte.py` is patched one step ahead of upstream (feedback 14, with DTE's own
-  tests). 500/1258 with 273 excluded under six reasons; the uncited list is now exactly the remaining sweep. Every spec-named source file and every
+  tests). Then the bulk pass by blast radius (a MUST over a class of files is cited by every file it constrains; tests
+  cite the leaves of the sources they import, MUSTs only where already enforced) took it to 100% (1230 artifacts,
+  301 excluded under seven reasons), pinned by `rules.test.ts` running `coverage --check` and `validate`. New
+  leaf on the way: [[C103]] untrustedContentSeams (CSV escaping, SVG sanitizing, external links at one seam each). Every spec-named source file and every
   value-semantics leaf's implementing file now cites its leaf; 428 bare leaf-name mentions in comments and test
   titles became wikilinks; the 43 `*Where:*` pointers are gone bar the two author-held nodes (B7, C80).
   `subsystem-invariants.md` and the README routing table point at spec + leaf and no longer restate a spec's

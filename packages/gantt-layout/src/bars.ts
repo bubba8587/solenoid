@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // Bar geometry: a rectangle per task (finish + 1 exclusive, so an inclusive one-day task
 // fills its day), a diamond for milestones, a bracket for summaries, a progress fill, a
 // baseline ghost, and a label with ellipsis. Pure numbers; colors are the view's.

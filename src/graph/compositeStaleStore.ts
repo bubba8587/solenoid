@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // A held composite's OUTPUT doesn't change when it goes stale, so processGraph's
 // changed-output re-render pruning would skip the card — the card subscribes here
 // instead, and the dot appears the moment data() flags it.

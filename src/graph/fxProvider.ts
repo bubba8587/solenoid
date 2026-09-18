@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming
 // Frankfurter (ECB reference rates, keyless + CORS-open, ~30 currencies, updated once
 // per business day). The URL build + PARSE are pure and fixture-tested (widget rule 5);
 // the node owns the fetch/cache and authors the target-currency unit on its output.

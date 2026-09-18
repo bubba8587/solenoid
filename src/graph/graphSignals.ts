@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store)
 // Tiny version/flag stores the canvas raises and cards subscribe to.
 // Bumped by Canvas's editor pipe on connectioncreated / connectionremoved.
 let _connVersion = 0;

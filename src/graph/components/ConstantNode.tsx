@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { ConstantNode as ConstantNodeType, ConstantOp, CONSTANTS } from "../rete-nodes";
 import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
 

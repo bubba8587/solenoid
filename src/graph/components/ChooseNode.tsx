@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ChooseNode } from "../rete-nodes";
 import type { NodeProps } from "./nodeKit";
 import { NodeShell, ValueDisplay } from "./nodeKit";

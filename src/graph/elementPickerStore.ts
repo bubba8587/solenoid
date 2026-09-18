@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // A module store like tablePopup: opened from inside an Element node (a separate React
 // root), mounted once in App.
 import { createValueStore } from "./storeKit";

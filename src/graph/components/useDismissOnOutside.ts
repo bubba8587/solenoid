@@ -1,3 +1,4 @@
+// [[B14]] oneDesignSystem (DESIGN.md modal rules)
 import { useEffect, useRef } from "react";
 
 /** Close a popover when a pointerdown lands outside it. The OPENING element must be

@@ -1,3 +1,4 @@
+// [[C2]] realCanvasScenes
 import { useEffect } from "react";
 import { GITHUB_URL, SiteHeader, SiteFooter } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";

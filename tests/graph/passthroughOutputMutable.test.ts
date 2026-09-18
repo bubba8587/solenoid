@@ -1,3 +1,4 @@
+// [[C79]], [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { getPassthrough } from "../../src/graph/nodes/passthrough";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import type { PointerEvent, WheelEvent, MouseEvent } from "react";
 import { computeOverlayStore } from "../computeOverlayStore";

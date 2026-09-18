@@ -1,3 +1,4 @@
+// [[C93]] gestureByPointerType
 // One definition of each keyboard-less edit action, shared by the mobile bottom bar
 // and the tablet top bar; the bars differ only in placement and sizing.
 

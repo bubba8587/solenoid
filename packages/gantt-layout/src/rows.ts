@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // Visible rows after collapse level and group_by section bands. Depth-first order is already
 // in the payload (tasks arrive in WBS order); we drop rows deeper than the collapse level and
 // insert a section band before each run of a new `group` value.

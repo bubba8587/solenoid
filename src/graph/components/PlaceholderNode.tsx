@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { NodeShell, PortSockets, type NodeProps } from "./nodeKit";
 import type { PlaceholderNode } from "../rete-nodes";
 import "./placeholderNode.css";

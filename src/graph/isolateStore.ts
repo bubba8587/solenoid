@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // A focus set of node ids; non-members recede but are NOT removed. Pure VIEW state —
 // not persisted, not in undo. `null` = not isolating.
 

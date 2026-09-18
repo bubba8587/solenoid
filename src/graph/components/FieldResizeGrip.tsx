@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { getActiveView } from "../activeGraph";
 

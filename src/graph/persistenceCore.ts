@@ -1,3 +1,4 @@
+// [[C30]] saveViaTextForm, [[B12]] losslessSaves
 // The load path's risky decisions as pure functions; keep it rete/DOM/storage-free.
 
 // Bump in lockstep with SavedGraph.v. Exactly ONE format exists at a time: the loader

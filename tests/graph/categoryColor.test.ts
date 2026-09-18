@@ -1,3 +1,4 @@
+// [[C62]] paletteAllOrNone
 import { describe, it, expect } from "vitest";
 import { categoryColorIndex } from "../../src/graph/categoryColor";
 

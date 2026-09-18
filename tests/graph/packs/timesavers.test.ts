@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C44]]
 import { describe, it, expect } from "vitest";
 import { TIMESAVER_FORMULAS } from "../../../src/graph/packs/timesavers";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";

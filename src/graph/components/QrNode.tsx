@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type React from "react";
 import { useEffect, useState } from "react";
 import type { QrCodeNode as QrCodeNodeType } from "../rete-nodes";

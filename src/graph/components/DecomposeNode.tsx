@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { DECOMPOSE_MODEL_META } from "../rete-nodes";
 import type { DecomposeNode as DecomposeNodeType, DecomposeModel } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { EPOCH_UNIT_OPTIONS } from "../rete-nodes";
 import type { EpochNode as EpochNodeType } from "../rete-nodes";
 import { makeToggleNodeComponent } from "./standardNode";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useState } from "react";
 import type { LinestNode as LinestNodeType, FitOp } from "../rete-nodes";
 import { FIT_OP_OPTIONS } from "../rete-nodes";

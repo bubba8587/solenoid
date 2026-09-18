@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useSeriesColors } from "./chartCore";
 import "./CategoryChip.css";
 

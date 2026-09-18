@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // Mirrors FrameDisplay so the collapse-to-chip CSS applies unchanged.
 import { CubeChip } from "./CubeChip";
 import { cubeRowCount, isCubeValue, type CubeValue } from "../frame";

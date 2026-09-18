@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 // The worked example of the formula-data pack shape; trig is in RADIANS, per the core
 // Trigonometry convention.
 

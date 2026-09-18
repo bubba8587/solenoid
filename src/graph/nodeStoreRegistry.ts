@@ -1,3 +1,4 @@
+// [[C40]] storesRegisterForget
 // Cleanup for node-keyed module stores: a new store adds ONE module-scope
 // `registerNodeForget(...)` call and never threads cleanup into Canvas.tsx.
 

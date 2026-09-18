@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // A working calendar over whole-day serials. Index space: k ↔ the k-th counted UNIT at or
 // after the anchor (k < 0 counts backwards), so every pass does integer arithmetic on
 // indices and looks a date up once. A unit is a working day (Days mode) or a working

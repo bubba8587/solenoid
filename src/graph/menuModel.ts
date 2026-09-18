@@ -1,3 +1,4 @@
+// [[C98]] paletteMirrorsMenubar (the one menu model)
 // ONE source of truth for the MenuBar dropdowns AND the Command Palette, so every menubar
 // action is a palette command by construction. `buildMenus()` re-reads store state per call.
 import { appThemeStore } from "./appTheme";

@@ -1,3 +1,4 @@
+// [[C24]]
 import { describe, it, expect } from "vitest";
 import { escapeMd, freezeInlineRefs, buildExportCss, reportReferencedNodeIds } from "../../src/graph/reportExport";
 import { solError } from "../../src/graph/errorValue";

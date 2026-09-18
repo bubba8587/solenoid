@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { IfNode as IfNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

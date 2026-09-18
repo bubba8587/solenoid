@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // Per-provider API keys. Device-local by rule: never bundled, never written into a
 // saved graph, never sent anywhere but the provider's own API.
 import { createNotifier } from "./storeKit";

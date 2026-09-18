@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 import { ClassicPreset } from "rete";
 
 // Sockets-free readout of the undo/redo stack; holds no state of its own —

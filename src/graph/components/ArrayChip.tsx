@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";

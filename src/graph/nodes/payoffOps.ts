@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Debt payoff plan (1.4 H1): pay every minimum, throw the extra plus each freed minimum at
 // the head debt, roll month by month. Head = highest APR (avalanche) or smallest balance
 // (snowball). Closed-form monthly amortization, no solver. Pure.

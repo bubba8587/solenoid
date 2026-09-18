@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 // The custom nodes implement the NOAA solar formulation. Angles are in DEGREES at every
 // socket here (the formulas bake their own radian conversion), distances in meters.
 

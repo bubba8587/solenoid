@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ScheduleNode as ScheduleNodeType } from "../rete-nodes";
 import { SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS, SCHEDULE_PROGRESS_OPTIONS } from "../nodes/schedule";
 import { NodeShell, InlineOutputRows, useNodeField, type NodeProps, type OutputRowValue } from "./nodeKit";

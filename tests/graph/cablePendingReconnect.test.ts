@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface, [[C10]] socketLattice
 import { describe, it, expect, beforeEach } from "vitest";
 import { cablePendingStore } from "../../src/graph/cableState";
 import { reattachPending } from "../../src/graph/cablePendingReconnect";

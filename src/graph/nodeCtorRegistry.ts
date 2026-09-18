@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType
 import { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "./catalogUtils";
 

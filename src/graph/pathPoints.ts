@@ -1,3 +1,4 @@
+// [[C91]] cableWalkRouter
 // Pure geometry — no DOM/React/store. Cable paths are absolute M/L/C/Q `d` strings,
 // comma- or space-separated, flattened once to a polyline.
 

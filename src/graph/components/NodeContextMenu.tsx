@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import React, { useEffect } from "react";
 import { useMenuClamp } from "./menuClamp";
 import { inspectorStore } from "../inspectorStore";

@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // The two Help-menu dialogs share one modal slot — only one shows at a time.
 import { createValueStore } from "./storeKit";
 

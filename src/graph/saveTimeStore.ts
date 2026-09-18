@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // The save-clock read seam. The clocks live per-document on SolDoc (updatedAt = last
 // autosave, fileSavedAt = last write to a file), but documentStore reaches rete through
 // persistence, so a node class can't import it — documentStore injects the provider

@@ -1,3 +1,4 @@
+// [[B2]] webTryDesktopFull
 import { useState } from "react";
 import { isDesktop } from "./fileBridge";
 import "./WebDemoBanner.css";

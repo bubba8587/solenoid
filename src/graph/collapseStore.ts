@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // Per-node collapsed state, a module-level store so it is readable from Rete's
 // separate React root. A collapsed node keeps its result box and socket dots.
 

@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // The "Computing…" curtain BLOCKS interaction, so a multi-second pass can't interleave
 // with a pan/drag/add. Deferred past REVEAL_DELAY, then held for MIN_VISIBLE.
 

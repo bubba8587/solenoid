@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { RoundNNode as RoundNNodeType, RoundNOp } from "../rete-nodes";
 import { ROUNDN_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

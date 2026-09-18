@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 import { ClassicPreset, type NodeEditor } from "rete";
 import { broadcastUnit, numListIn, numListOut, type UnitOperand } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";

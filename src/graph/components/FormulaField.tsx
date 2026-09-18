@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { highlightFormula } from "../formulaSyntax";
 import "./ExpressionNode.css";

@@ -1,3 +1,4 @@
+// [[C16]], [[C24]], [[C25]]
 // The IPC cost of a verb CHAIN driven through real node data() calls (editor +
 // DataflowEngine + input coercion), not raw runners — polarsBackend.test.ts proves
 // fusion for runFrameUnary in isolation; this pins what a graph actually pays.

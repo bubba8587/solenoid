@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { spawnSync } from "node:child_process";
 
-// [[C9]] labelUnenforced, [[C7]] authorRuled, [[B8]], [[C81]] wikilinkCitations, [[C82]] vaultOutbox
+// [[C9]] labelUnenforced, [[C7]] authorRuled, [[B8]] treeIsTheHome, [[C81]] wikilinkCitations, [[C82]] vaultOutbox
 // The decision tree keeps its own claims honest: a MUST that no test cites is folklore, and
 // a node never lists its tests (the list is derived from citations). The structural checks
 // (parents, citations resolve) are `python tools/dte.py validate`; this suite pins what
@@ -137,5 +138,25 @@ describe("the decision tree (decisions/)", () => {
     }
     for (const f of ["CLAUDE.md", "DESIGN.md", "README.md"]) scan(path.join(ROOT, f));
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("[[B8]] treeIsTheHome — the tool's own gauges hold", () => {
+  // `validate` is the structural check and `coverage --check` the completeness one (every
+  // artifact cites a decision or is listed in .dtecoverage with the reason it needs none,
+  // and no exclusion is stale). Both run here so a push cannot regress them; skipped only
+  // where no python3 is on the PATH.
+  const dte = (...args: string[]) => spawnSync("python3", [path.join(ROOT, "tools", "dte.py"), ...args], {
+    cwd: ROOT, encoding: "utf8",
+  });
+  const probe = spawnSync("python3", ["--version"], { encoding: "utf8" });
+  const hasPython = !probe.error && probe.status === 0;
+  it.skipIf(!hasPython)("validate --as B is clean", () => {
+    const r = dte("validate", "--as", "B");
+    expect(r.status, r.stdout + r.stderr).toBe(0);
+  });
+  it.skipIf(!hasPython)("coverage --check: every artifact cites or is excluded with a reason", () => {
+    const r = dte("coverage", "--check");
+    expect(r.status, r.stdout + r.stderr).toBe(0);
   });
 });

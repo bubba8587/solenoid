@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { NaNode as NaNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 

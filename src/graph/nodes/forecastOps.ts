@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Holt–Winters exponential smoothing (additive level / trend / season — ETS AAN and AAA)
 // behind the Forecast (ETS) node AND the FORECAST.ETS family (capabilityParity). Must not
 // import rete. statsmodels ExponentialSmoothing(trend="add", seasonal="add"), R

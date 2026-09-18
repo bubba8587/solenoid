@@ -1,3 +1,4 @@
+// [[C97]] rechartsLazyChunk
 import { describe, it, expect } from "vitest";
 import { buildQrPayload, qrModulesToSvg, svgDataUrl } from "../../src/graph/qrCode";
 

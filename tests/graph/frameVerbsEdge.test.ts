@@ -1,3 +1,4 @@
+// [[C45]], [[C16]], [[C24]]
 // Degenerate-input hardening for the verb engine: empty frames, ragged columns,
 // all-null keys, zero-take. The nodes will lean on these never throwing on edge
 // shapes (an empty upstream frame is common mid-build), so pin the behavior.

@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // The two unsupervised staples, rete-free: k-means (sklearn KMeans / R kmeans) and PCA
 // (sklearn PCA / R prcomp). Both take rows × features numbers; the frame cards pick the
 // numeric columns and drop rows with a blank.

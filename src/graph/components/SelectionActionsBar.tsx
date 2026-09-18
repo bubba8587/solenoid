@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "../activeGraph";
 import { canvasLockStore } from "../canvasLock";

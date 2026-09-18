@@ -1,3 +1,4 @@
+// [[C97]] rechartsLazyChunk
 import { describe, it, expect } from "vitest";
 import { shouldReloadForChunkError, type ReloadStore } from "../../src/graph/chunkReloadGuard";
 

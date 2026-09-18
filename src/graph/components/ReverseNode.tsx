@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ReverseNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

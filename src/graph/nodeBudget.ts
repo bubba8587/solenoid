@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface (specs/graph-load-teardown-performance.md)
 // A SOFT web-demo cap: adding nodes is never blocked. The warning is edge-detected and
 // suppressed during the load reveal, so loading over-budget never pops it.
 

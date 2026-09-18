@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // The open Pivot-editor popup (Excel-style field pane), or null. The popup edits
 // the live node instance directly (mutate + processGraph).
 import { createValueStore } from "./storeKit";

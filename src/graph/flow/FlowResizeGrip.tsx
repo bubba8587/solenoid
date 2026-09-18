@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
 // The corner resize grip on the flow surface: RF's NodeResizeControl (pointer + touch
 // drag, zoom-aware, snapToGrid live) wearing the app's own grip mark. Sizes are
 // integers — a fractional size renders the inset:-2px selection ring 0.5px off. The

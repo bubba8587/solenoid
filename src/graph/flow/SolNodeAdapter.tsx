@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
 // React Flow port (C2) — render the REAL Solenoid node components inside RF
 // nodes. `emit` is only ever consumed by NodeSocket, which renders an RF Handle
 // on this surface (flowSurface.ts), so a stub satisfies the contract. The

@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType
 export * from "./nodes/shared";
 export * from "./nodes/input";
 export * from "./nodes/control";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { SIMILARITY_METHOD_META } from "../rete-nodes";
 import type { TextSimilarityNode as TextSimilarityNodeType, FuzzyMatchNode as FuzzyMatchNodeType, SimilarityMethod } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

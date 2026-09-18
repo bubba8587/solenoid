@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { RandBetweenNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

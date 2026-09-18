@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { helpDialogStore, WHATS_NEW_VERSION } from "../helpDialogStore";
 import { CloseIcon } from "./CloseIcon";

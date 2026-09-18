@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet, [[C101]] onePatchPath
 // The impure half of obsidianMarkdown.ts: charts rasterize from the source node's
 // LIVE svg, so this runs only from the Write node's Run click.
 

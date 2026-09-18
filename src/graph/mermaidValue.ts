@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 // A sibling of ChartValue riding the `chart` socket. Kept flat + JSON-safe so it
 // crosses cables and React roots; MermaidView renders the SVG lazily.
 

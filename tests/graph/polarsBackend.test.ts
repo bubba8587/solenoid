@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C45]]
 // PolarsBackend wiring: each method is one `invoke` with the right command name
 // and arg shape. We can't run the native engine in the node test env, so we mock
 // `@tauri-apps/api/core`'s `invoke` and assert the calls. `isDesktop()` is forced

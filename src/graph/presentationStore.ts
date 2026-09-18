@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 import { createNotifier } from "./storeKit";
 
 // Which Presentation node (if any) is RUNNING as a full-screen slideshow; the overlay

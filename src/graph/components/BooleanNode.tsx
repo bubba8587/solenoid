@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState } from "react";
 import {
   BooleanOpNode as BooleanOpNodeType,

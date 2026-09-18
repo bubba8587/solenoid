@@ -1,3 +1,4 @@
+// [[C10]] socketLattice, [[B14]] oneDesignSystem
 // Opt-in per-socket detail for the Inspector: a node class that wants one
 // declares a static `socketDocs` map (socket key → one plain-English sentence
 // beyond the type name) — the same declare-on-the-class shape as `frameHints`

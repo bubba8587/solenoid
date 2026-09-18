@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // Node-anchored comment threads, shaped like pinStore (module store + an additive optional
 // SavedGraph field). No identity/permissions infra — a local author-name string is all of it.
 

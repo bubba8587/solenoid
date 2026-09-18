@@ -1,3 +1,4 @@
+// [[C52]]
 import { describe, it, expect } from "vitest";
 import { alignDeltas, distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
 

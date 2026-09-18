@@ -1,3 +1,4 @@
+// [[B13]] aiInScope
 // The AI palette's DEMO transport. The fake sits at the TRANSPORT seam (a fetch answering
 // like the Messages API), so every production layer above it runs for real.
 

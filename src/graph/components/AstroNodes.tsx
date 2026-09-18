@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import {
   SolarPositionNode as SolarPositionNodeType,
   SunriseSunsetNode as SunriseSunsetNodeType,

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useState } from "react";
 
 // A view control, NOT a transform: it reorders RENDERED rows only. Because the

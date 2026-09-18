@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 // Earth & Sky pack: the NOAA Solar Calculator formulation (a published standard,
 // per the reference-pack licensing rule); serial dates, degrees at the sockets.
 

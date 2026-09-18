@@ -1,3 +1,4 @@
+// [[C10]] socketLattice, [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
 import { BuildCubeNode, CubeColumnsNode } from "../../src/graph/nodes/cube";
 import { cubeColumnFromValue } from "../../src/graph/frame";

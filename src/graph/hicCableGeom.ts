@@ -1,3 +1,4 @@
+// [[C42]] htmlInCanvasRenderer
 // Cable geometry for the Pixi renderer — reuses the app's REAL router
 // (`getCablePath` in cablePaths.ts) so GPU cables match the DOM cables exactly,
 // then flattens the SVG path to a polyline (`parsePathPoints`) for Pixi to draw.

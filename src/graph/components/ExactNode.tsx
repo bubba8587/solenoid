@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ExactNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

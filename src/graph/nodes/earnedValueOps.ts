@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Earned Value math — pure, rete-free and unit-free (magnitudes in, metrics out; the node
 // layer carries the Cost column's currency unit onto the money columns). Terms are the PM
 // standard: BCWS/PV planned value, BCWP/EV earned value, ACWP/AC actual cost.

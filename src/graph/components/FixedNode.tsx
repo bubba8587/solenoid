@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { FIXED_NO_COMMAS_META } from "../rete-nodes";
 import type { FixedNode as FixedNodeType, FixedNoCommas } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

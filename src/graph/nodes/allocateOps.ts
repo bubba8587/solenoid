@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Budget allocation across categories bounded by [min, max] price ranges, driven by
 // value weights. Three closed-form modes, NO general solver:
 //   • budget          — spend a fixed budget ∝ weight, clamped to each range, the residual

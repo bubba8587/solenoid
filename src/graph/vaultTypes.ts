@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet, [[C67]] mdbaseCeiling
 // The typing vocabulary the vault cores agree on. A `TypeHint` says how a frontmatter
 // key's scalars (or list items) PARSE; a cube column carries no declared type, so this
 // only steers parsing (Vault Folder / bundle 24 item A). Kept graph/DOM-free.

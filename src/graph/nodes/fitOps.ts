@@ -1,3 +1,4 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 // Distribution fitting (scipy.stats.<dist>.fit, R fitdistrplus::fitdist, @RISK / Crystal Ball
 // "fit distribution") behind the Fit Distribution node AND the FITDIST formula. Must not
 // import rete. Each family: a maximum-likelihood (or moment) estimate of its parameters on

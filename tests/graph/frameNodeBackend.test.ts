@@ -1,3 +1,4 @@
+// [[C16]], [[C24]], [[C23]]
 // The node-facing verb runners (runFrameUnary/Join/Append) + collect, on the JS
 // backend (the web path + the Polars oracle). Each runner must produce EXACTLY what
 // the pure verb produces — that's what guarantees the migrated frame nodes behave

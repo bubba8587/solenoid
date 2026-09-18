@@ -1,3 +1,4 @@
+// [[C25]] firstClassUnits
 import { describe, it, expect } from "vitest";
 import {
   dimMul, dimDiv, dimPow, dimEqual, isDimensionless,

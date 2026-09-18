@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 // Declared pack exceptions: implement the formulation, not the printed grid.
 
 import { ClassicPreset } from "rete";

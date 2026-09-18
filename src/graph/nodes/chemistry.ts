@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 // Chemistry Basics pack custom logic. The masses are IUPAC abridged/conventional
 // values, bracketed for elements with no stable isotope.
 

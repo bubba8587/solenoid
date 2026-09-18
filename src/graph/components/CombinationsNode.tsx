@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { CombinationsNode } from "../rete-nodes";
 import { makeToggleNodeComponent } from "./standardNode";
 

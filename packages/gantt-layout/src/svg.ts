@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // ganttSvg(payload, opts) → a standalone SVG string. This is the headless export (the popup's
 // "copy as SVG", the webpage export, a Report snapshot). It draws the tree grid AND the
 // timeline so the file stands alone. Colors are passed in (an SVG cannot read CSS variables);

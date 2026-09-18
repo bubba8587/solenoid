@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { EwmaNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

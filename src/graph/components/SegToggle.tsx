@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import "./SegToggle.css";
 import { stopDragStart } from "../coarse";
 

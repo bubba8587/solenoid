@@ -1,3 +1,4 @@
+// [[C47]], [[C25]], [[C24]]
 // The Equation node derives the unknown's UNIT from the relation (FC A4
 // consistency): knowns wired in with units run the numeric engine on base-SI
 // magnitudes, and the solved variable comes out tagged with the dimension the

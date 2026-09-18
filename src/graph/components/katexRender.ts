@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 // KaTeX + its stylesheet, isolated into one dynamic chunk — nothing may import this
 // statically; katexLoader.ts pulls it in on first formula render.
 import katex, { type KatexOptions } from "katex";

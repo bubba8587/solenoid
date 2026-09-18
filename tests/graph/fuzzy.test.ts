@@ -1,3 +1,4 @@
+// [[D5]] searchWiderThanLabel
 import { describe, it, expect } from "vitest";
 import { withinOneEdit, tokenWordScore } from "../../src/graph/fuzzy";
 

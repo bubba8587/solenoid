@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useLayoutEffect, useRef, useState } from "react";
 import { FieldResizeGrip } from "./FieldResizeGrip";
 

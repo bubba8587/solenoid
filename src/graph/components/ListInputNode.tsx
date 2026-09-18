@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";

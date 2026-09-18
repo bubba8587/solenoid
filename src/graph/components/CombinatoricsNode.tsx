@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { COMBINATORICS_OP_META } from "../rete-nodes";
 import type { CombinatoricsNode as CombinatoricsNodeType, CombinatoricsOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

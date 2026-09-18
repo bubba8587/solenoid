@@ -1,3 +1,4 @@
+// [[B3]] sameNodeEverywhere
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SolenoidNode } from "../schemes";
 import { makeStaticStack, StaticFlowStage } from "../flow/StaticFlowStage";

@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue (a sibling value on the chart socket)
 // A sibling of ChartValue: rides the `chart` object socket and renders wherever a
 // chart does. Flat + JSON-safe, so it crosses cables and React roots.
 

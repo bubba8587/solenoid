@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // A pin holds the VALUE, never the rete node view — re-parenting a live node element
 // would break socket measurement and drag handling. One pin per node.
 

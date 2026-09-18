@@ -1,3 +1,4 @@
+// [[C103]] untrustedContentSeams
 // "Which layer did you click?" for the SVG Picker node. Kept DOM-agnostic (the tiny
 // `SvgLike` surface) so it unit-tests with no jsdom.
 

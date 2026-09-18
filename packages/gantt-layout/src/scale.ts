@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The time scale: a drawn day-window, a pixels-per-day, and a two-tier header. Pure serial
 // math (see serial.ts) — no Date, so DST cannot shift a column. The design follows DHTMLX's
 // tier normalization (coarser tier snapped to the primary tier's pixels; month columns

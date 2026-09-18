@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { POP_OUT_KINDS, popOutKindFor, accentFallbackVar, type PopOutKind } from "../../src/graph/valuePopup";
 

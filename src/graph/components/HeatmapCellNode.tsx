@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { HeatmapCellNode as HeatmapCellNodeType } from "../rete-nodes";
 import { NodeShell, PortSockets, type NodeProps } from "./nodeKit";
 import { formatScalar } from "./format";

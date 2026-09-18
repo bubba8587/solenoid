@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface (specs/graph-load-teardown-performance.md)
 // Compute-pipeline perf probe, inert unless `window.__solenoidPerf = true`: times
 // every node data() + engine IPC call; `window.__solenoidStats()` dumps the tables.
 

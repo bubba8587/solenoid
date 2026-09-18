@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { FisherNode as FisherNodeType, FisherOp } from "../rete-nodes";
 import { FISHER_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

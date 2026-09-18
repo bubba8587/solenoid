@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { PAD_SIDE_META } from "../rete-nodes";
 import type { PadTextNode as PadTextNodeType, PadSide } from "../rete-nodes";
 import { makeToggleNodeComponent } from "./standardNode";

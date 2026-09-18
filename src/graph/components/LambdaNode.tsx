@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useState, useEffect } from "react";
 import type { LambdaNode as LambdaNodeType } from "../rete-nodes";
 import { formatLambda } from "../nodes/lambda";

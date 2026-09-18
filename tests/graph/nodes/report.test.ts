@@ -1,3 +1,4 @@
+// [[C68]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ReportNode } from "../../../src/graph/nodes/report";
 import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";

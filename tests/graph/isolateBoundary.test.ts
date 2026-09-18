@@ -1,3 +1,4 @@
+// [[C52]] visibleSelection
 import { describe, it, expect } from "vitest";
 import { boundaryCrossings } from "../../src/graph/isolateBoundary";
 

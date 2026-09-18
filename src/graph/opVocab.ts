@@ -1,3 +1,4 @@
+// [[C26]] opArgDistinct
 // The legal `op=` tokens per node class, derived from the catalog. It is a whitelist
 // of KNOWN vocabularies: an ABSENT class must be skipped by callers, never rejected.
 

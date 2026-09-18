@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 import { ClassicPreset } from "rete";
 
 // A real Rete node (selection, drag, persistence) with no sockets when expanded.

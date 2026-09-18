@@ -1,3 +1,4 @@
+// [[D46]] freezeVolatilePerCalc
 // Seeded, deterministic Monte Carlo sampling, SCOPED to the composite subsystem — the
 // app's only sampler.
 

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { processGraph } from "../process";

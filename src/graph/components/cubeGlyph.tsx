@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // Cube socket glyph, shared by the live socket, the legend, and the hover highlight;
 // paths are 240-unit space centered on (120,120), mapped to the 12x12 socket box.
 // Deliberately OVERSIZED past that box, so the socket SVG must paint overflow-visible.

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { ColebrookNode as ColebrookNodeType } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

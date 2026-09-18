@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { OUTLIER_METHOD_META } from "../rete-nodes";
 import type { OutliersNode as OutliersNodeType, OutlierMethod } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

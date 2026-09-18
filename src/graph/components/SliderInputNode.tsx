@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import type { SliderInputNode as SliderInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";

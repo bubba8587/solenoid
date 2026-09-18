@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 import { createNotifier } from "./storeKit";
 
 // A module singleton so the ReportNode's own React root and the main app root both reach

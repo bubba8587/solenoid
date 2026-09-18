@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // The most-recent value per node output, keyed `${nodeId}:${outputKey}`, so
 // ConnectionComponent can resolve a COMBO socket's cable color from the live value.
 

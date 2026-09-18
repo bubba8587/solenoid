@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { DollarNode as DollarNodeType, DollarOp } from "../rete-nodes";
 import { DOLLAR_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

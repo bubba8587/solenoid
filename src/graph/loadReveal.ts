@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface (specs/graph-load-teardown-performance.md)
 // The load CURTAIN's phase + progress; persistence.ts's rebuildGraph drives it
 // for big loads/switches so node-by-node construction is never seen. (The old
 // staged reveal animation died with the rete surface — git has it.)

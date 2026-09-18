@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ComplexUnaryNode as ComplexUnaryNodeType, ComplexUnaryOp } from "../rete-nodes";
 import { COMPLEX_UNARY_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

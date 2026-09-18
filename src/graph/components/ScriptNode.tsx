@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ScriptNode as ScriptNodeType } from "../rete-nodes";
 import type { SolError } from "../errorValue";

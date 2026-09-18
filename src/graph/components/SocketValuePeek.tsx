@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { ReactNode } from "react";
 import { NodeFormatContext } from "./nodeContext";
 import { peekKindFor } from "../valuePeekKind";

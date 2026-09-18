@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 import { ClassicPreset } from "rete";
 import { chartOut, strIn, readInput } from "./shared";
 import { type ImageValue } from "../imageValue";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { TruncateTextNode as TruncateTextNodeType } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

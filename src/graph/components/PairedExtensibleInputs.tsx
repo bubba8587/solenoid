@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";

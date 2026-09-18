@@ -64,6 +64,10 @@ src/devCopyEdit.ts
 src/graph/census.ts
 src/graph/devHarness.ts
 src/graph/modelFuzz.ts
+src/graph/devtoolsHotkey.ts
 
 why: a stylesheet implements DESIGN.md (B14 oneDesignSystem); one that carries a leaf's mechanism cites it
 *.css
+
+why: seed documents are JSON, which cannot carry a citation; seeds.test.ts and scripts/tune-seeds.mjs pin the rules they follow ([[C89]] standoffsSolveLast: groups liberally, standoffs sparingly)
+src/graph/seedGraphs

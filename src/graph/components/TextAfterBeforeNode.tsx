@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { TextAfterBeforeNode as TextAfterBeforeNodeType, TextAfterBeforeOp } from "../rete-nodes";
 import { TEXT_AFTER_BEFORE_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

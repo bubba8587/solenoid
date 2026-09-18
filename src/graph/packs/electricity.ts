@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 // Electricity & Circuits pack. SI units throughout: volts, amps, ohms, farads,
 // henries, hertz, seconds.
 

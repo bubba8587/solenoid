@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { ReverseTextNode as ReverseTextNodeType, SpellNumberNode as SpellNumberNodeType } from "../rete-nodes";
 import { makeNodeComponent, makeToggleNodeComponent } from "./standardNode";
 

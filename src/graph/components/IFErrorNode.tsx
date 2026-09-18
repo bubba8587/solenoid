@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { IFErrorNode as IFErrorNodeType, IFErrorMode } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";

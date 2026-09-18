@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified
 // CODATA 2018 values (several exact by the 2019 SI redefinition); SI units in every label.
 
 import { ClassicPreset } from "rete";

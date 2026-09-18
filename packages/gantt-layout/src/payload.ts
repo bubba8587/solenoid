@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The Gantt figure's INPUT contract: data, never geometry. Every number is an Excel date
 // serial (a whole day; the figure adds one day when it draws a bar so an inclusive Finish
 // fills its last day). The engine (`@solenoid/schedule-engine`) and the app's Gantt node

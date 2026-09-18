@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { TextSliceNode as TextSliceNodeType, TextSliceOp } from "../rete-nodes";
 import { TEXT_SLICE_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

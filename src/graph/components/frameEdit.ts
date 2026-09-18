@@ -1,3 +1,4 @@
+// [[C58]] tableInputRawText
 import type { GetColumnNode, AddColumnNode, SplitFrameNode } from "../rete-nodes";
 import { getColumnOutput, addColumnInput, splitMatrixOutput, type GetColumnReadAs, type AddColumnAddAs, type SplitColType } from "../rete-nodes";
 import { processGraph } from "../process";

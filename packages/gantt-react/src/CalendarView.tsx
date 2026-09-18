@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages, [[C71]] noBarEditing
 import { useMemo } from "react";
 import { layoutCalendar, type GanttPayload } from "@solenoid/gantt-layout";
 import { ganttStyles } from "./styles";

@@ -100,8 +100,8 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     `.dteignore`, `why:` lines opening groups of globs. Semantics that made it honest: excluded
     files are still scanned and a citing one still counts (the store says "needs none", not
     "ignore"); a glob matching nothing is stale and reported; a glob before any `why:` is an
-    error; `coverage --excluded` lists files per reason; `scope --comments` skips excluded
-    files; `init` scaffolds the file comment-only. With it Solenoid reads 500/1258 (39.7%)
+    error; `coverage --excluded` lists files per reason; `coverage --check` exits 1 below 100% or with a stale
+    exclusion (the CI hook); `scope --comments` skips excluded files; `init` scaffolds the file comment-only. With it Solenoid reads 500/1258 (39.7%)
     with 273 excluded under six reasons, and the uncited list is exactly the sweep's remaining
     work. Worth a B-ring node upstream: "every artifact cites a decision or is listed with the
     reason it needs none" is the completable form of A1's second consequence.

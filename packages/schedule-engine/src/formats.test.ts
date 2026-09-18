@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 import { describe, it, expect } from "vitest";
 import { readGan, isGanText, readXer, isXerText, writeMspdi, readMspdi, schedule, isoToSerial } from "./index";
 

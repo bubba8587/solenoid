@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 // The ONE result box, so components don't each re-do the isFrame/isCube branch.
 import type { ReactNode } from "react";
 import { isFrameValue, isCubeValue } from "../frame";

@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { getOwningEditor } from "../activeGraph";
 import { reportStore } from "../reportStore";
 import { NoteNode, ReportNode } from "../rete-nodes";

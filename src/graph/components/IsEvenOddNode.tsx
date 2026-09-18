@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import type { IsEvenOddNode as IsEvenOddNodeType, ParityOp } from "../rete-nodes";
 import { PARITY_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

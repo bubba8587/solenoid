@@ -1,3 +1,4 @@
+// [[C68]]
 import { describe, it, expect } from "vitest";
 import { renderKnap, embedBareVariables, renderKnapPages } from "../../src/graph/knapTemplate";
 

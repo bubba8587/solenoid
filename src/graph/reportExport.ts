@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 import DOMPurify from "dompurify";
 import { getEditor } from "./process";
 import { NoteNode, ReportNode } from "./rete-nodes";

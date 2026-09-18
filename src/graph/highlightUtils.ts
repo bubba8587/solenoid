@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface
 // The traversal is deliberately asymmetric and depth-limited:
 //   hover origin      → all its cables + their destinations.
 //   hover destination → that cable + the origin only.

@@ -1,3 +1,4 @@
+// [[C42]] htmlInCanvasRenderer
 // Feature-detect the WICG HTML-in-Canvas API (`ctx.drawElementImage`) — Chromium
 // only, behind a flag; synchronous and cheap, so it is safe at startup.
 export function supportsHtmlInCanvas(): boolean {

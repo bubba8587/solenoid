@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useEffect, useState, type ReactNode } from "react";
 import { NodeShell, type NodeProps, type ShellNode } from "./nodeKit";
 import { InlineInputs, type InlineNode } from "./inlineInput";

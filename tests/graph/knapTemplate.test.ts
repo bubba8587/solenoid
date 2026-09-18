@@ -1,3 +1,4 @@
+// [[C68]], [[D54]]
 import { describe, it, expect } from "vitest";
 import {
   hasKnapSyntax, extractKnapVariables, embedBareVariables, toTemplateValue, frameToTemplateRows, renderKnap, renderKnapPages, knapErrorText,

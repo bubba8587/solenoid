@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // MSPDI (Microsoft Project XML, pj14) read: the one format every desktop scheduler reads
 // and writes. Tasks nest by OutlineLevel, links come as PredecessorLink with the codec's
 // integer types (0 = FF, 1 = FS, 2 = SF, 3 = SS) and LinkLag in tenths of a minute, the

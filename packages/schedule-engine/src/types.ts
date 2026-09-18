@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // The engine's model. Names are keys. Every date is an Excel serial whole day; every
 // duration and lag is a count of working days on the project calendar. No Date objects
 // anywhere in this package (§ 6.5 of the plan: integer day arithmetic removes the DST bug

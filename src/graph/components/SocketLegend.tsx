@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { SOCKET_COLORS } from "../sockets";

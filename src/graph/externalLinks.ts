@@ -1,3 +1,4 @@
+// [[C103]] untrustedContentSeams
 import { openExternal } from "./fileBridge";
 
 // Rendered markdown (Notes, imported vault notes, Reports, help) carries arbitrary

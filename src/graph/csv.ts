@@ -1,3 +1,4 @@
+// [[C103]] untrustedContentSeams
 // Shared CSV parsing — delegates to Papa Parse (RFC 4180, synchronous) behind a
 // small `string[][]` interface, so the engine can be swapped at one site.
 

@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 // Pure serial-date arithmetic — no `Date`, ever (the whole reason this package is DST-proof).
 // A serial is an Excel day number: serial 1 = 1900-01-01, serial 25569 = 1970-01-01 (a
 // Thursday). The app's `serialToJsDate` maps `serial → (serial - 25569) * 86400000` ms UTC,

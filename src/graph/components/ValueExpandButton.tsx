@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import { openValuePopup, accentFallbackVar, type ElemFamily } from "../valuePopup";

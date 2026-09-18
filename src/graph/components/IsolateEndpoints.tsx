@@ -1,3 +1,4 @@
+// [[C27]] noDataInComponents
 import { measuredSize } from "../nodeSize";
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { CardFrame } from "./NodeCard";
