@@ -1,4 +1,4 @@
-// [[C24]]
+// [[C24]], [[D34]] oneErrorKind, [[E9]] errorsKeepOrigin, [[D37]] errorBeatsMissing
 // `SolError` is a tagged plain object, not a class: it survives structuredClone and
 // avoids cross-module instanceof pitfalls. The code set is more specific than Excel's
 // seven, tracking SQLSTATE class 22 and OpenFormula Err:5xx:

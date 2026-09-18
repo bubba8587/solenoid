@@ -1,4 +1,4 @@
-// [[C24]], [[D51]]
+// [[C24]], [[D51]], [[D45]] maxRankMatrix (the two-depth rank test), [[D48]] classifyNonFinite (guardFinite), [[D36]] nullSkippedNotZero
 import { isSolError, solError, type SolError } from "./errorValue";
 
 // Call sites use the predicate rather than `=== null` so a representation change

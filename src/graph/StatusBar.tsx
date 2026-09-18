@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars (registers with --chrome-bottom)
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { requestRecalc } from "./process";
 import { calcModeStore } from "./calcModeStore";

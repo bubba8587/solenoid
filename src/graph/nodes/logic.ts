@@ -1,3 +1,4 @@
+// [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero
 import { ClassicPreset } from "rete";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";

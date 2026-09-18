@@ -1,4 +1,4 @@
-// [[C14]], [[D4]], [[E12]], [[E14]], [[C22]]
+// [[C14]], [[D4]], [[E12]], [[E14]], [[C22]], [[D20]] declareContract (EXCEL_IMPL_META), [[D24]] prepByShape, [[D25]] blockedFailFast (LEGACY_ALIASES), [[E10]] pickVsAggregateErrors
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";

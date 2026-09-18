@@ -1,4 +1,4 @@
-// [[D4]], [[C22]], [[C80]]
+// [[D4]], [[C22]], [[C80]], [[D24]] prepByShape (RANGE_* policies), [[D25]] blockedFailFast
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";

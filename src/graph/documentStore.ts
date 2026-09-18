@@ -1,3 +1,4 @@
+// [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder. Mechanics: specs/per-doc-autosave-persistence.md.
 import { createNotifier } from "./storeKit";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
 import { isGraphRebuilding } from "./process";

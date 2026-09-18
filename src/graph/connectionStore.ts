@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild (refreshConnection). Mechanics: specs/live-connections.md.
 // A connection node holds only a *reference*, never the data. Its fetched Frame is
 // cached under key(), so an unrelated processGraph() re-hits neither network nor disk.
 import { createNotifier } from "./storeKit";

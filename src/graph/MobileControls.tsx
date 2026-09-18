@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars (registers with --chrome-bottom)
 import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { addMenuRequest } from "./addMenuStore";
