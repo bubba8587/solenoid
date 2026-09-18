@@ -45,7 +45,7 @@ const EMPTY: FrameValue = { __frame: true, columns: [] };
 
 /** Parse the forecast response into a Daily frame (date, rain, temps, ET₀, condition)
  *  plus the current temp + condition. Temps carry the chosen °C/°F unit on their columns
- *  (unitOnValue) so it flows downstream. A malformed body → an empty frame. */
+ *  ([[D40]] unitOnValue) so it flows downstream. A malformed body → an empty frame. */
 export function parseWeather(text: string, unit: TempUnit): WeatherResult {
   let data: unknown;
   try { data = JSON.parse(text); } catch { return { daily: EMPTY, nowTemp: null, nowCondition: "" }; }

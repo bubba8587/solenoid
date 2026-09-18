@@ -322,9 +322,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   /** The annotation this FC actually contributes: its own, or — when the style dropdown
    *  is set to `—` (inherit) and a format arrives at `in` — the upstream display format
-   *  re-clad in this FC's own unit. The unit is value-level (unitOnValue), so it is the
+   *  re-clad in this FC's own unit. The unit is value-level ([[D40]] unitOnValue), so it is the
    *  one axis the inherit pick keeps local; every display axis rides in from upstream
-   *  (formatFlowsDownstream). `makeAnnotationResolver` calls this in place of
+   *  ([[D41]] formatFlowsDownstream). `makeAnnotationResolver` calls this in place of
    *  `annotation()`. */
   resolveAnnotation(inherited: FormatAnnotation | undefined): FormatAnnotation {
     if (this.inheritFormat && inherited) {

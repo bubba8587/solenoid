@@ -473,7 +473,7 @@ export function OpSelect<T extends string>(props: PickProps<T>) {
 
 /** An ARGUMENT picker: a parameter of the node's one function (a sort order, an
  *  aggregator, a criterion comparator). Neutral, sits in its row, and its field is
- *  never named `op` (sourceInvariants opArgDistinct). */
+ *  never named `op` (sourceInvariants [[C26]] opArgDistinct). */
 export function ArgSelect<T extends string>(props: PickProps<T>) {
   return <PickSelect {...props} className="solenoid-node__select" />;
 }

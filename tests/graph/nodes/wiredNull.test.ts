@@ -143,7 +143,7 @@ describe("Logic — unwired-vs-wired-blank and blank conditions", () => {
 
 describe("Kleene logic — a wired blank is UNKNOWN, not FALSE", () => {
   // The Kleene truth tables themselves (AND/OR/NOT over null operands) are pinned
-  // in logic.test.ts and valueKinds.test.ts (kleeneLogic); this sweep keeps only
+  // in logic.test.ts and valueKinds.test.ts ([[D38]] kleeneLogic); this sweep keeps only
   // its own charter's half: unwired still falls back to the card literal.
   it("NOT unwired still uses the literal; only a WIRED blank is unknown", () => {
     const node = new NotNode();
@@ -582,7 +582,7 @@ describe("figure controls never clobber the typed literal", () => {
 });
 
 describe("Distribution — a wired blank parameter propagates", () => {
-  // The oneDistributionNode flagship: every param reads through readInput, so a wired
+  // The [[C61]] oneDistributionNode flagship: every param reads through readInput, so a wired
   // blank mean blanks the result while an unwired slot uses the seeded literal.
   it("NORM.DIST: a wired blank mean blanks the result; unwired uses the literals", () => {
     const node = new DistributionsNode({ op: "normal", form: "cdf" });

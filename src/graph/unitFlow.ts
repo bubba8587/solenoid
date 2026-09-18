@@ -77,7 +77,7 @@ export type AnnotationResolver = {
 
 /** An FC LOCKS its format+unit onto the value, a passthrough carries it across
  *  UNCHANGED, a transform carries the FORMAT alone and ONLY where it DECLARES a
- *  meaning-preserving op (formatCarry / formatFlowsDownstream), and Convert DROPS it. */
+ *  meaning-preserving op (formatCarry / [[D41]] formatFlowsDownstream), and Convert DROPS it. */
 export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   const memo = new Map<string, FormatAnnotation | null>();
   const visiting = new Set<string>();
@@ -128,12 +128,12 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     }
     return carriedFormat(n, nodeId, outKey);
   }
-  /** A TRANSFORM passes the display FORMAT on and NOTHING else (formatFlowsDownstream),
+  /** A TRANSFORM passes the display FORMAT on and NOTHING else ([[D41]] formatFlowsDownstream),
    *  but ONLY where the node DECLARES it (formatCarry) — a transform with no declaration
    *  for this output carries nothing, so the op that MEANS a new kind of value (mul, div,
    *  count, a rate, a z-score) shows plain. Among the declared inputs the first wired,
    *  annotated, same-element-family one wins; the unit is stripped — it is value-level
-   *  (unitOnValue), riding the `UnitCell` or breaking at the transform on its own. Two or
+   *  ([[D40]] unitOnValue), riding the `UnitCell` or breaking at the transform on its own. Two or
    *  more date-styled operands are a SPAN, not a date (date − date), so they carry nothing. */
   function carriedFormat(
     n: ClassicPreset.Node | undefined,

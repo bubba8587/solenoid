@@ -4,7 +4,7 @@ import { DateConstructNode, TimeConstructNode, DateTimeValueNode, WeekInfoNode, 
 import { parseDateToSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../../src/graph/errorValue";
 
-// capabilityParity / shareImpl for the DATE family (A1 backing flip): every formula here
+// capabilityParity / [[C17]] shareImpl for the DATE family (A1 backing flip): every formula here
 // runs the dateOps kernel its node runs — agreement is structural, this guards a re-fork.
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const d = (s: string) => parseDateToSerial(s);

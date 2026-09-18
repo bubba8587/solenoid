@@ -345,7 +345,7 @@ describe("error producers", () => {
     expect(new XMatchNode().data({ value: [20], array: [[10, 20, 30]] }).result).toBe(2);
   });
 
-  it("Filter (filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {
+  it("Filter ([[C49]] filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {
     // The 1-D Filter has no mask and takes no tables, so its old #SHAPE!
     // sources are gone; an error CELL fails the condition and exits Dropped.
     const n = new FilterNode({ condConfig: { "0": { op: "gt" } } });

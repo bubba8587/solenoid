@@ -1,6 +1,6 @@
 // The ONE implementation behind the statistics NODES (Aggregate, Rank & Percentile,
 // Correl, Covariance, Mode) AND their formula registrations (capabilityParity /
-// shareImpl). Must not import rete. Inputs are the already-prepared numbers — the
+// [[C17]] shareImpl). Must not import rete. Inputs are the already-prepared numbers — the
 // caller has applied the aggregator policy (an error propagates, a blank is skipped;
 // `forAggregate` / `pairPresent` on the node side, `prepRangeArgs` on the formula side).
 // `null` = undefined for this input (too few points, a flat list) — each surface shows

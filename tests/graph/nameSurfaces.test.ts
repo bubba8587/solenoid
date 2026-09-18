@@ -11,7 +11,7 @@ import { despace } from "../../src/graph/formulaNodeParity";
 // [[C19]] namingModel: the naming model. Two of its surfaces are pinned here; the card
 // title is cardTitle.test.ts, casing is nameCase.test.ts.
 
-describe("namingModel — an Excel name a node answers to is a search row that SHOWS the name", () => {
+describe("[[C19]] namingModel — an Excel name a node answers to is a search row that SHOWS the name", () => {
   const leaves = flattenLeaves(buildCatalog(false));
   const byType = new Map(leaves.map((l) => [l.leaf.type, l.leaf]));
 
@@ -30,7 +30,7 @@ describe("namingModel — an Excel name a node answers to is a search row that S
   });
 });
 
-describe("namingModel — a description's 'Excel: X.' sign-off agrees with NODE_EXCEL", () => {
+describe("[[C19]] namingModel — a description's 'Excel: X.' sign-off agrees with NODE_EXCEL", () => {
   // The sign-off is a SECOND copy of the node's Excel names, whose one home is
   // NODE_EXCEL[type] (or the op's fx). Every function name a sign-off states must
   // resolve to this leaf's own Excel/formula names — else the card claims an
@@ -73,7 +73,7 @@ describe("namingModel — a description's 'Excel: X.' sign-off agrees with NODE_
   });
 });
 
-describe("namingModel — no surface derives a node's name from its class name", () => {
+describe("[[C19]] namingModel — no surface derives a node's name from its class name", () => {
   // The class name is internal (the save type key); the ONE fallback that reads it is
   // nodeTypeName in catalogUtils.ts, and only for a node with no catalog entry.
   const SRC = path.join(__dirname, "../../src/graph");

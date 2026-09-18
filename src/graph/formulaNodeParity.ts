@@ -23,11 +23,11 @@ export interface ParityRow {
   excelCovered: boolean;
 }
 
-/** The formulaNaming 2(a) formula name for a node label: despaced and uppercased; the Tier 3
+/** The [[C51]] formulaNaming 2(a) formula name for a node label: despaced and uppercased; the Tier 3
  *  registrations derive their names the same way. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
-/** useEveryNotSome: a node claiming Excel names is covered only when EVERY one dispatches;
+/** [[D9]] useEveryNotSome: a node claiming Excel names is covered only when EVERY one dispatches;
  *  empty claims are never covered (vacuous ≠ complete). */
 export function excelCoverage(excel: string[], dispatches: (name: string) => boolean): boolean {
   return excel.length > 0 && excel.every(dispatches);
@@ -40,7 +40,7 @@ const LANGUAGE_LEAVES = new Set([
 ]);
 
 /** A PRESET-FORMULA leaf (a locked ExpressionNode): its formula equivalent is its
- *  own expr, so it counts as covered. Detected mechanically, never listed (noManualList). */
+ *  own expr, so it counts as covered. Detected mechanically, never listed ([[D4]] noManualList). */
 function isPresetFormula(leaf: NodeCatalogEntry): boolean {
   try {
     const inst = leaf.create() as { expr?: unknown; locked?: unknown };

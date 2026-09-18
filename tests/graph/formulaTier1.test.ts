@@ -7,7 +7,7 @@ import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "..
 import { CouponNode, BondPricingNode, DurationNode, DepreciationNode } from "../../src/graph/nodes/finance";
 import { ForecastNode } from "../../src/graph/nodes/stats";
 
-// ─── Tier 1 registrations (formulaNaming) ───────────────────────────────────────────────
+// ─── Tier 1 registrations ([[C51]] formulaNaming) ───────────────────────────────────────────────
 // The gap these close: a node carried an Excel name, and typing that same name in
 // an Expression returned #NAME?. Two things have to hold for each one, and the
 // second is the one that rots silently:
@@ -198,7 +198,7 @@ describe("FORECAST.LINEAR", () => {
   });
 });
 
-describe("the currentExcelParity gate covers the WHOLE blocklist, on every surface (blockedFailFast)", () => {
+describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on every surface ([[D25]] blockedFailFast)", () => {
   it("every blocked spelling answers #NAME? naming its replacement", () => {
     for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
       const r = ev(`${name}(1)`);

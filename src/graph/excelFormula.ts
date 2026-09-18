@@ -294,7 +294,7 @@ export function formulaFunctionNames(): string[] {
     ...FX_FUNCTION_NAMES, // flat AND namespaced-dotted (NORM.DIST, STDEV.S, …)
     ...Object.keys(EXCEL_IMPL_META),
     ...internalFunctionNames(),
-  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // currentExcelParity: eliminated stays eliminated on EVERY surface
+  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // [[C14]] currentExcelParity: eliminated stays eliminated on EVERY surface
   _namesGen = gen;
   return _names;
 }
@@ -390,8 +390,8 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "SUM", "SUMSQ", "SUMPRODUCT", "PRODUCT", "AVERAGE", "AVERAGEA", "AVEDEV", "DEVSQ",
   "MIN", "MINA", "MAX", "MAXA", "COUNT", "COUNTA", "COUNTBLANK",
   "MEDIAN", "MODE", "GEOMEAN", "HARMEAN", "TRIMMEAN",
-  // STDEVP/VARP are absent on purpose: they're currentExcelParity-blocked legacy spellings
-  // (LEGACY_ALIASES), so listing them here would only be deleted by the currentExcelParity gate.
+  // STDEVP/VARP are absent on purpose: they're [[C14]] currentExcelParity-blocked legacy spellings
+  // (LEGACY_ALIASES), so listing them here would only be deleted by the [[C14]] currentExcelParity gate.
   "STDEV", "STDEVA", "STDEVPA", "STDEV.S", "STDEV.P",
   "VAR", "VARA", "VARPA", "VAR.S", "VAR.P",
   "SKEW", "SKEW.P", "KURT", "LARGE", "SMALL",
@@ -451,7 +451,7 @@ const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LO
 // place (the same policy the NPV node applies via cashPrep).
 const RANGE_ZERO_FILL = new Set(["SERIESSUM", "NPV"]);
 
-// Whole-list natives (formulaNaming Tier 3) take their 1-D args RAW: they are
+// Whole-list natives ([[C51]] formulaNaming Tier 3) take their 1-D args RAW: they are
 // position-preserving, so a null-drop would change the answer
 // (`REVERSE([1,null,3])`) and an error hoist would erase which cell it came from.
 function takesWholeArgs(name: string): boolean {
@@ -462,7 +462,7 @@ function takesWholeArgs(name: string): boolean {
 // the exemptions to the blank-scalar-propagates rule at the call site.
 const NULLABLE_SCALARS_OK = new Set([
   "FILLVALUE", "COALESCE",
-  // The matricesInFormulas matrix tranche: optional args arrive as blanks and each registration
+  // The [[C15]] matricesInFormulas matrix tranche: optional args arrive as blanks and each registration
   // decides blank-by-blank, which the generic blank guard would pre-empt.
   "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
   // Tranche 2, same contract.
@@ -484,7 +484,7 @@ const NULLABLE_SCALARS_OK = new Set([
 // excluded, its (row, col) GENERATOR slot makes a bare scalar fn a real mistake.
 const ETA_HOSTS = new Set(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"]);
 
-// currentExcelParity gate: a BLOCKED spelling gets no range routing, derived from the blocklist
+// [[C14]] currentExcelParity gate: a BLOCKED spelling gets no range routing, derived from the blocklist
 // so the two can't drift apart.
 for (const blocked of ELIMINATED_FUNCTIONS) {
   RANGE_FUNCTIONS.delete(blocked);
@@ -573,8 +573,8 @@ const isErr = (v: unknown): boolean => isSolError(v) || v instanceof Error;
 const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
   isArr(v) ? v.map(f) : f(v);
 
-// ─── Rank-aware element-wise mapping (matricesInFormulas — the broadcast-rules table) ────────
-// The matricesInFormulas table implemented once for every element-wise surface;
+// ─── Rank-aware element-wise mapping ([[C15]] matricesInFormulas — the broadcast-rules table) ────────
+// The [[C15]] matricesInFormulas table implemented once for every element-wise surface;
 // `broadcastRules.test.ts` transcribes it row by row against THIS code.
 
 const isMatrix = (v: unknown): v is unknown[][] => isArr(v) && v.length > 0 && isArr(v[0]);
@@ -883,7 +883,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // identical #NAME?s.
       const redirect = LEGACY_ALIASES[name];
       if (redirect) return solError("#NAME?", `Use ${redirect}`);
-      // A frame verb is a real name whose type can't flow here (matricesInFormulas) — #TYPE!
+      // A frame verb is a real name whose type can't flow here ([[C15]] matricesInFormulas) — #TYPE!
       // naming the node, short-circuited for the same reason as the block above.
       const frameNode = FRAME_SURFACE_NAMES[name];
       if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node, or a Computed Column for row math`);
@@ -905,7 +905,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // A tagged error doesn't survive a trip through Formula.js, so surface it here.
       const sol = argv.find(isSolError);
       if (sol) return sol;
-      // matricesInFormulas containment: a matrix reaches a dispatch whole only through a declared
+      // [[C15]] matricesInFormulas containment: a matrix reaches a dispatch whole only through a declared
       // `matrixArgs`; otherwise a range aggregate flattens row-major, a positional
       // lookup or whole-list native answers #SHAPE!, and the rest broadcasts.
       if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
@@ -916,7 +916,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
           argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
         } else if (takesWholeArgs(name) || (EXCEL_IMPL_META[name] === undefined && !isInternalFunction(name))) {
           // A whole-list native, or an undeclared FX name that would otherwise broadcast
-          // the matrix into per-cell #VALUE!s (hideMatrixFromVendor): one #SHAPE!.
+          // the matrix into per-cell #VALUE!s ([[D26]] hideMatrixFromVendor): one #SHAPE!.
           return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
         }
       }

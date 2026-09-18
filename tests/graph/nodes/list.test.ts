@@ -249,8 +249,8 @@ describe("Set operations (two lists)", () => {
     expect(run("intersect", [e, 2], [e, 2])).toEqual([2]);
   });
 
-  it("complex numbers compare by VALUE, not object identity (Set-node fix, keyByValue)", () => {
-    // A complex is a tagged OBJECT (tagSpecialScalars); each 3+4i below is a SEPARATE instance,
+  it("complex numbers compare by VALUE, not object identity (Set-node fix, [[D39]] keyByValue)", () => {
+    // A complex is a tagged OBJECT ([[D44]] tagSpecialScalars); each 3+4i below is a SEPARATE instance,
     // so a reference-keyed Set would never match them. They must intersect/dedupe.
     expect(run("intersect", [cx(3, 4), cx(1, 2)], [cx(3, 4), cx(5, 6)])).toEqual([cx(3, 4)]);
     expect(run("union", [cx(3, 4), cx(1, 2)], [cx(3, 4)])).toEqual([cx(3, 4), cx(1, 2)]);
@@ -525,7 +525,7 @@ describe("Reduce — means and shape", () => {
   });
 });
 
-describe("Filter — condition rows over the list's own values (filterOneJob)", () => {
+describe("Filter — condition rows over the list's own values ([[C49]] filterOneJob)", () => {
   const mk = (
     conds: Array<{ op: import("../../../src/graph/frameVerbs").FilterOp; value: string; matchCase?: boolean }>,
     combine: "and" | "or" = "and",
@@ -561,7 +561,7 @@ describe("Filter — condition rows over the list's own values (filterOneJob)", 
     expect(mk([{ op: "contains", value: "berg" }]).data({ list: [cities] }).result).toEqual(["BERGEN"]);
   });
 
-  it("a text predicate on a number list is #TYPE! (textPredicateNeedsText)", () => {
+  it("a text predicate on a number list is #TYPE! ([[D49]] textPredicateNeedsText)", () => {
     expect(() => mk([{ op: "contains", value: "2" }]).data({ list: [[1, 12, 3]] }))
       .toThrowError(expect.objectContaining({ code: "#TYPE!" }));
   });
@@ -612,7 +612,7 @@ describe("Filter — condition rows over the list's own values (filterOneJob)", 
   });
 });
 
-describe("SUMIFS — conditional aggregation over one frame (filterOneJob, amended)", () => {
+describe("SUMIFS — conditional aggregation over one frame ([[C49]] filterOneJob, amended)", () => {
   const region = ["North", "South", "North", "East", "North", "South"];
   const sales = [120, 80, 200, 150, 90, 60];
   const frame = (vals: unknown[] = sales, regs: unknown[] = region) => ({

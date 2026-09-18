@@ -14,7 +14,7 @@ export function SmoothComponent({ data, emit }: NodeProps<SmoothNodeType>) {
   async function pickOp(next: SmoothOp) {
     if (next === data.op) return;
     const departing = SMOOTH_OP_META[data.op].params.map((p) => p.key).filter((k) => !SMOOTH_OP_META[next].params.some((p) => p.key === k));
-    if (departing.length) await dropInputCables(data.id, departing); // onePrunePath
+    if (departing.length) await dropInputCables(data.id, departing); // [[D10]] onePrunePath
     data.setOp(next);
     await getActiveView()?.rerenderNode(data.id);
     setOpField(next);

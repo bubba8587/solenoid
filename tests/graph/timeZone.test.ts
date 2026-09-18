@@ -88,7 +88,7 @@ describe("worldClockRows / worldClockFrame", () => {
   });
 });
 
-// shareImpl capability parity: the node and the formula surface share `convertZone`, and
+// [[C17]] shareImpl capability parity: the node and the formula surface share `convertZone`, and
 // the agreement is asserted, not assumed (the behavioural guard [[C17]] shareImpl names).
 describe("TIMEZONECONVERT ↔ Time Zone Convert node", () => {
   it("the formula computes what the node computes", async () => {

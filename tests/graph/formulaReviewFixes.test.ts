@@ -4,7 +4,7 @@ import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 import { tTestP, fTestP } from "../../src/graph/nodes/mathUtils";
 
-// ─── Pins from the 2026-07-28 adversarial review of the formulaNaming formula work ─────
+// ─── Pins from the 2026-07-28 adversarial review of the [[C51]] formulaNaming formula work ─────
 // Each block pins a defect the review confirmed live. The common theme: the
 // formula surface fabricating an answer (or corrupting its inputs) in cases
 // where the NODE under the same name behaves.

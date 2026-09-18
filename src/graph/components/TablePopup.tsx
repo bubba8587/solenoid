@@ -250,7 +250,7 @@ export function TablePopup() {
   if (!state) return null;
   const cellType: CellType = state.cellType ?? "number";
   const editable = (!!state.onSave && cellType === "number") || !!state.onSaveFrame || !!state.onSaveSource || !!state.onSaveRaw;
-  // Literal-source editor: the grid holds RAW text, never coerced (tableInputRawText).
+  // Literal-source editor: the grid holds RAW text, never coerced ([[C58]] tableInputRawText).
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
   const formattedPreview = literalSource && displayMode === "formatted";
   const editableHeaders = editable && !!state.editableHeaders;
@@ -1003,7 +1003,7 @@ export function TablePopup() {
                     // A tagged error renders as its #CODE!. Membership in ERROR_EXPLANATIONS
                     // (a total Record<SolErrorCode, string>) is the test, so a NEW code is
                     // covered the day it is declared — a hand-kept list or a `#\w+!` regex
-                    // would not be (per noManualList).
+                    // would not be (per [[D4]] noManualList).
                     const errCode = (row[c] ?? "").trim();
                     const isErrCell = errCode !== "" && Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, errCode);
                     // Formatted mode swaps the derived render for the RAW text on focus

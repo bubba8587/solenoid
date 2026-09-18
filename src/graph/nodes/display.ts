@@ -205,7 +205,7 @@ export class AlertNode extends ClassicPreset.Node {
 }
 
 // A CONNECTED cable wins even when blank — the status is then unknown and never
-// fires; only an UNWIRED slot falls back to the card's literal (unwiredNotBlank).
+// fires; only an UNWIRED slot falls back to the card's literal ([[D33]] unwiredNotBlank).
 function scalarish(got: (number | number[])[] | undefined, lit: number | undefined): number | number[] | null {
   return readInput(got, lit ?? null);
 }

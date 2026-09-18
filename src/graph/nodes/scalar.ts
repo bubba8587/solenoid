@@ -99,7 +99,7 @@ function _besselK(x: number, n: number): number {
 export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
 // `carry`: the op PRESERVES the kind of value, so a styled operand's format flows on
-// (formatFlowsDownstream). Only add/sub keep it — 5% + 3% is still a percent, a date +
+// ([[D41]] formatFlowsDownstream). Only add/sub keep it — 5% + 3% is still a percent, a date +
 // days is still a date; a product / quotient / power / remainder is a new kind of value.
 export const ARITHMETIC_OP_META = {
   add:      { label: "Add",        carry: true,  description: "`A + B`" },
@@ -132,7 +132,7 @@ export class ArithmeticNode extends ClassicPreset.Node {
   }
 
   /** add / sub keep the operands' kind of value, so a styled operand's format carries
-   *  (formatFlowsDownstream); the source of truth is the op table's `carry` flag. */
+   *  ([[D41]] formatFlowsDownstream); the source of truth is the op table's `carry` flag. */
   formatCarry(): FormatCarrySpec[] {
     return ARITHMETIC_OP_META[this.op].carry ? [{ output: "result", inputs: ["a", "b"] }] : [];
   }
@@ -302,7 +302,7 @@ export class MathFXNode extends ClassicPreset.Node {
 
   /** The DIMENSION-preserving ops (abs / trunc / int / even / odd) also preserve the
    *  MEANING, so a percent stays a percent; sqrt / log / trig / exp make a new value
-   *  (formatFlowsDownstream). Same set as MATHFN_PRESERVE, its one home. */
+   *  ([[D41]] formatFlowsDownstream). Same set as MATHFN_PRESERVE, its one home. */
   formatCarry(): FormatCarrySpec[] {
     return MATHFN_PRESERVE.has(this.op) ? [{ output: "result", inputs: ["in"] }] : [];
   }
@@ -500,7 +500,7 @@ export class ClampNode extends ClassicPreset.Node {
   }
 
   /** Clamping keeps the value's kind (a clamped percent is still a percent); the format
-   *  rides Value, never the bounds (formatFlowsDownstream). */
+   *  rides Value, never the bounds ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["value"] }];
   }
@@ -556,7 +556,7 @@ export class MRoundNode extends ClassicPreset.Node {
   }
 
   /** Rounding to a multiple keeps the value's kind; the format rides Value, not the
-   *  multiple (formatFlowsDownstream). */
+   *  multiple ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["value"] }];
   }
@@ -610,7 +610,7 @@ export class RoundNNode extends ClassicPreset.Node {
   }
 
   /** Rounding keeps the value's kind (a rounded percent is still a percent); the format
-   *  rides Value, not Digits (formatFlowsDownstream). */
+   *  rides Value, not Digits ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["value"] }];
   }

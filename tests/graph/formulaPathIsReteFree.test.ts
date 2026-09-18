@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── implReteFree: the formula path must not pull in rete or the socket lattice ──────
+// ─── [[D19]] implReteFree: the formula path must not pull in rete or the socket lattice ──────
 // The headless evaluator (run-graph, the Expression host) loads excelFormula →
 // excelFunctions → the shared op modules. None of that may reach rete or
 // sockets.ts: the shared-impl modules exist precisely so both surfaces call one
@@ -43,7 +43,7 @@ function resolveLocal(fromFile: string, spec: string): string | null {
   return null;
 }
 
-describe("implReteFree — the formula path is rete-free", () => {
+describe("[[D19]] implReteFree — the formula path is rete-free", () => {
   it("no module reachable from excelFormula/excelFunctions imports rete or sockets", () => {
     const offenders: string[] = [];
     const seen = new Set<string>();

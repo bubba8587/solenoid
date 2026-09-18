@@ -185,7 +185,7 @@ describe("validateLibrary", () => {
   });
 });
 
-// ─── immutableDocStore — transforms are structurally immutable ─────────────────────────
+// ─── [[C31]] immutableDocStore — transforms are structurally immutable ─────────────────────────
 // documentStore.persist() decides what to WRITE by object identity
 // (`_lastPersisted.get(id) === doc` skips the write), so a transform that
 // mutates a SolDoc in place still updates the screen but is silently NEVER
@@ -203,7 +203,7 @@ function deepFreeze<T>(o: T): T {
   return o;
 }
 
-describe("immutableDocStore — every transform returns new objects, never mutates (identity is the persist signal)", () => {
+describe("[[C31]] immutableDocStore — every transform returns new objects, never mutates (identity is the persist signal)", () => {
   const frozenLib = (): DocLibrary =>
     deepFreeze(addDocument(addDocument(emptyLibrary(), doc("a", "A")), doc("b", "B")));
 

@@ -122,7 +122,7 @@ describe("makeAnnotationResolver — FC locks a format that rides through passth
   });
 });
 
-describe("formatFlowsDownstream — the FORMAT crosses a transform, the unit stays locked", () => {
+describe("[[D41]] formatFlowsDownstream — the FORMAT crosses a transform, the unit stays locked", () => {
   it("the FORMAT carries through a transform, the unit does not", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const fc = node("FC", { annotation: () => km3 });          // decimal, 3 places, km

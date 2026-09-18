@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 
-// ─── shareImpl — a node must not offer LESS than the formula surface it dispatches to ──
+// ─── [[C17]] shareImpl — a node must not offer LESS than the formula surface it dispatches to ──
 //
 // The two surfaces (a NODE's data() and a formula name) share one impl. A node that
 // calls `resolveExcelFunction("X")` but hands it FEWER arguments than X accepts ships a
@@ -106,7 +106,7 @@ function scanSites(): Site[] {
   return sites;
 }
 
-describe("shareImpl — a node dispatching to a formula function must pass all its arguments", () => {
+describe("[[C17]] shareImpl — a node dispatching to a formula function must pass all its arguments", () => {
   // LITERAL-name dispatches that pass fewer args than the impl accepts ON PURPOSE, each
   // with the reason the shortfall is not a real capability gap. (Empty: none today.)
   const SANCTIONED: Record<string, string> = {};

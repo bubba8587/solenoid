@@ -76,7 +76,7 @@ export type ChartOp =
   | "pie" | "radar" | "radialbar" | "funnel" | "scatter"
   | "composed" | "bubble";
 
-// The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
+// The card dropdown DERIVES from this table ([[C8]] declareOnce) — never hand-write a second list.
 export const CHART_OP_META = {
   column:    { label: "Column",   group: "Cartesian" },
   bar:       { label: "Bar",      group: "Cartesian" },
@@ -349,7 +349,7 @@ export const HISTOGRAM_MODE_META = {
 const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>
   Array.isArray(raw) ? raw : raw == null ? [] : [raw];
 
-// One card, two modes (oneRunningNode-style combine): 1-D bins one list into columns;
+// One card, two modes ([[C60]] oneRunningNode-style combine): 1-D bins one list into columns;
 // 2-D pairs X/Y into a count grid drawn as a contour density plot. The `mode` selector
 // adds/removes the Y + Y-bins inputs; `bins` carries across as the X-bin count. The plain
 // count matrix is exposed via the WRAPTEXT-style HISTOGRAM2D formula, not a socket.
@@ -379,7 +379,7 @@ export class HistogramNode extends ClassicPreset.Node {
   }
 
   /** Keys a switch to `next` would drop — the component prunes their cables BEFORE
-   *  `setMode` (onePrunePath). */
+   *  `setMode` ([[D10]] onePrunePath). */
   keysDroppedByMode(next: HistogramMode): string[] {
     return next === "1d" ? ["y", "ybins"] : [];
   }
@@ -474,7 +474,7 @@ export class MermaidNode extends ClassicPreset.Node {
 export type GaugeStyle = "dial" | "bar";
 // Dial/Bar is an ARGUMENT (a view of the one "value on a scale" card), not an op:
 // nobody searches the Add menu for "dial" or "bar", and there is no formula surface.
-// So it is a `mode` selector picked with a SegToggle (opArgDistinct); `mode` is an
+// So it is a `mode` selector picked with a SegToggle ([[C26]] opArgDistinct); `mode` is an
 // already-whitelisted init key, so nothing is added to the save format.
 export const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
@@ -514,7 +514,7 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 
   /** The bar-only input keys a switch to `next` would remove — the component drops
-   *  their cables first (onePrunePath) before calling setOp. */
+   *  their cables first ([[D10]] onePrunePath) before calling setOp. */
   keysDropped(next: GaugeStyle): string[] {
     return next === "dial" && this.mode === "bar" ? ["target", "max", "options"] : [];
   }
@@ -838,7 +838,7 @@ export class SurfaceNode extends ClassicPreset.Node {
   }
 
   /** The op owns the Levels socket. Callers on a live graph prune its cables
-   *  BEFORE switching to the 3-D view (onePrunePath). */
+   *  BEFORE switching to the 3-D view ([[D10]] onePrunePath). */
   setOp(next: SurfaceViewOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -1214,7 +1214,7 @@ export function recordImageSrc(text: string): string | null {
 
 export type RecordOp = "card" | "gallery" | "board" | "list";
 
-// The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
+// The card dropdown DERIVES from this table ([[C8]] declareOnce) — never hand-write a second list.
 export const RECORD_OP_META = {
   card:    { label: "Card" },
   gallery: { label: "Gallery" },
@@ -1274,7 +1274,7 @@ export class RecordNode extends ClassicPreset.Node {
   }
 
   /** The op owns the Row and Group-by sockets. Callers on a live graph prune the
-   *  departing keys' cables BEFORE switching (onePrunePath). */
+   *  departing keys' cables BEFORE switching ([[D10]] onePrunePath). */
   setOp(next: RecordOp): void {
     if (next === this.op) return;
     this.op = next;

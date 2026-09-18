@@ -8,7 +8,7 @@ import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../uni
 import { dimOf } from "../unitValue";
 
 /** Shared socketDocs string for every finance/date node's day-count `basis` input,
- *  so the legend lives in ONE place (declareOnce) instead of a copy per node. */
+ *  so the legend lives in ONE place ([[C8]] declareOnce) instead of a copy per node. */
 export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
 
 export const numIn      = (label: string) => new ClassicPreset.Input(numberSocket, label);
@@ -57,7 +57,7 @@ export const anyListIn  = (label: string) => new ClassicPreset.Input(new Adoptiv
 // `anycombo` accepts what `anyListIn` does, but a scalar reaches data() as a SCALAR
 // instead of widening to a singleton — for a producer whose rank follows its input.
 export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
-/** The rank-≤2 element-agnostic input (anydataWildcard), adoptive like anyComboIn. */
+/** The rank-≤2 element-agnostic input ([[E5]] anydataWildcard), adoptive like anyComboIn. */
 export const anyDataIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anydata"), label);
 export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);

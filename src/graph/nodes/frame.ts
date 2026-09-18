@@ -605,7 +605,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const droppedF = filterRowsMulti(mat, this.combine, conditions, true);
       return { ...(await emitFrame(this, gen, keptF)), dropped: this.publishDropped(gen, droppedF) };
     }
-    // Null-predicate rows land in Dropped, not lost (appendLadder).
+    // Null-predicate rows land in Dropped, not lost ([[C48]] appendLadder).
     const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
     const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
     return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };
@@ -745,7 +745,7 @@ export class ColumnsNode extends ClassicPreset.Node {
 
 // ─── GROUP BY (FRAME) ──────────────────────────────────────────────────────────
 
-// The ONE AggOp table (declareOnce) every agg surface derives from; `pivotOnly` marks the op
+// The ONE AggOp table ([[C8]] declareOnce) every agg surface derives from; `pivotOnly` marks the op
 // only the pivot assembly can run, excluded from the card dropdowns and search rows.
 export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> = {
   sum: { label: "SUM" },
@@ -1663,7 +1663,7 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 
 // ─── BUDGET ALLOCATOR ───────────────────────────────────────────────────────────
 // `mode` is a parameter of the one verb (not an op family), picked with ArgSelect. The
-// table names each mode once (declareOnce): the card select reads it.
+// table names each mode once ([[C8]] declareOnce): the card select reads it.
 export const ALLOCATE_MODE_META = {
   budget:          { label: "Fit budget",       description: "Spend a fixed budget across the categories in proportion to their weights, held inside each range." },
   minTarget:       { label: "Min for target",   description: "The least spend that reaches a weighted-value target, buying the most-valued categories first." },
@@ -2626,7 +2626,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       void (async () => {
         // anydata (rank ≤ 2) so a side value can be a whole list, not just a scalar.
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
-        await dropInputCables(this.id, removed); // onePrunePath: prune before removeInput
+        await dropInputCables(this.id, removed); // [[D10]] onePrunePath: prune before removeInput
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
         await getActiveView()?.rerenderNode(this.id);
       })();

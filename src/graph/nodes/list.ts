@@ -217,7 +217,7 @@ export class SeriesNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (onePrunePath). */
+   *  these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: SeriesOp): string[] {
     const keep = new Set(SERIES_SPECS[next].map((i) => i.key));
     return SERIES_SPECS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -261,7 +261,7 @@ export class SeriesNode extends ClassicPreset.Node {
         else list = rangeList(start, stop, step);
       }
     } else if (this.op === "sequence") {
-      // ONE impl with the formula (shareImpl): dispatch straight to =SEQUENCE, so Rows ×
+      // ONE impl with the formula ([[C17]] shareImpl): dispatch straight to =SEQUENCE, so Rows ×
       // Columns, the 2-D wrap, and the overflow guard can never drift from the formula
       // surface. Columns default 1 → a flat list, exactly the formula's cols=1 return.
       const rows  = readInput(inputs.count, this.literals.count ?? 10);
@@ -431,8 +431,8 @@ export class ListIndexNode extends ClassicPreset.Node {
 type IndexResult = number | SolError | null | CubeCell | FrameValue | CubeValue;
 
 /** INDEX over a frame or cube. Only the NODE can reach this — a formula holds
- *  neither (hideMatrixFromVendor) — so it rides here rather than in the shared accessor, which the
- *  formula path loads and must keep clear of the socket lattice (implReteFree). */
+ *  neither ([[D26]] hideMatrixFromVendor) — so it rides here rather than in the shared accessor, which the
+ *  formula path loads and must keep clear of the socket lattice ([[D19]] implReteFree). */
 function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexResult {
   if (v === null || v === undefined) return null;
   if (!isFrameValue(v) && !isCubeValue(v)) {
@@ -523,7 +523,7 @@ export class SortNode extends ClassicPreset.Node {
   }
 }
 
-// Position-only utilities ride element-agnostic `anylist` sockets (appendLadder); ops needing
+// Position-only utilities ride element-agnostic `anylist` sockets ([[C48]] appendLadder); ops needing
 // comparison or arithmetic semantics (Sort, Cumulative) stay typed.
 export class ReverseNode extends ClassicPreset.Node {
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -605,7 +605,7 @@ export class BinNode extends ClassicPreset.Node {
   }
 
   /** The mode owns the second socket (Breaks ↔ Buckets). Callers on a live graph prune
-   *  the departing socket's cables BEFORE switching (onePrunePath). */
+   *  the departing socket's cables BEFORE switching ([[D10]] onePrunePath). */
   setMode(next: BinMode): void {
     if (next === this.mode) return;
     this.mode = next;
@@ -722,7 +722,7 @@ export class EwmaNode extends ClassicPreset.Node {
 
   /** An exponentially-weighted moving average is a mean, so it keeps the value's kind
    *  (a smoothed percent series is still percents); the format rides the List, not Alpha
-   *  (formatFlowsDownstream). */
+   *  ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["list"] }];
   }
@@ -887,7 +887,7 @@ export class SliceNode extends ClassicPreset.Node {
 }
 
 // ─── Filter ────────────────────────────────────────────────────────────────────
-// A list tested against ITS OWN values (filterOneJob) — deliberately no table input and no
+// A list tested against ITS OWN values ([[C49]] filterOneJob) — deliberately no table input and no
 // "Keep if" mask. Kept ∪ Dropped stays the exhaustive complement.
 
 /** Re-export so the barrel keeps one FilterCombine (the frame Filter's). */
@@ -1044,7 +1044,7 @@ export class FilterNode extends ClassicPreset.Node {
 
 // ─── SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS ─────────────────────────
 // Conditional aggregation over ONE FRAME, AND-only like Excel's *IFS: position-
-// aligned columns arrive as a frame, never as parallel list sockets (filterOneJob).
+// aligned columns arrive as a frame, never as parallel list sockets ([[C49]] filterOneJob).
 
 export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
 
@@ -1236,7 +1236,7 @@ export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 // label = the op's bare name (a card title / search row); the membership hint rides in
 // `description`, which the dropdown shows as the option tooltip. tex / plain = KaTeX
 // notation + Unicode fallback. `fx` is declared per op because a bare name doesn't
-// despace to the SET* function name (formulaNaming's "label despaced" rule).
+// despace to the SET* function name ([[C51]] formulaNaming's "label despaced" rule).
 export const SET_OP_META: Record<SetOp, { label: string; description: string; fx: string; tex: string; plain: string }> = {
   union:      { label: "Union",                fx: "SETUNION",      description: "In A or B",         tex: "A \\cup B",                plain: "A ∪ B" },
   intersect:  { label: "Intersection",         fx: "SETINTERSECT",  description: "In both",           tex: "A \\cap B",                plain: "A ∩ B" },
@@ -1411,7 +1411,7 @@ export class SetsNode extends ClassicPreset.Node {
 // TAKE / DROP moved to the one rank-preserving TakeDropNode (nodes/matrix.ts):
 // list, matrix or scalar in, same rank out; the sign of the count is the direction.
 
-// The 1-D rung of the append ladder (appendLadder): stays 1-D, VSTACK is the table stacker.
+// The 1-D rung of the append ladder ([[C48]] appendLadder): stays 1-D, VSTACK is the table stacker.
 // Rows are wire-only — a typed literal list belongs to List Input.
 export class ConcatListsNode extends ClassicPreset.Node {
   /** Element-preserving: the output adopts the agreed row type. */
@@ -1461,7 +1461,7 @@ export class ConcatListsNode extends ClassicPreset.Node {
 
 export type { RunningOp } from "./listOps";
 
-// No `fx`: the aggregator is an ARGUMENT of the windowed scan (aggregatorsAreArguments), so it claims no
+// No `fx`: the aggregator is an ARGUMENT of the windowed scan ([[C56]] aggregatorsAreArguments), so it claims no
 // formula name. The labels are the dropdown's own words.
 export const RUNNING_OP_META = {
   sum:     { label: "SUM",     description: "The running total: each element is the sum of its window." },
@@ -1495,7 +1495,7 @@ export class RunningNode extends ClassicPreset.Node {
   }
 
   /** A windowed sum/mean/min/max/median/stdev keeps the value's kind, like the Aggregate
-   *  it slides; product derives a new dimension. Same dimension test (formatFlowsDownstream). */
+   *  it slides; product derives a new dimension. Same dimension test ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     const probe: Dim = { length: 1 };
     return dimEqual(aggregateResultDim(this.agg, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];
@@ -1939,7 +1939,7 @@ export class AggregateNode extends ClassicPreset.Node {
 
   /** The format carries only where the op PRESERVES the value's dimension — the SAME
    *  test as the unit (a percent's mean/min/max/stdev is a percent; its variance, count
-   *  and product are a new kind of value). formatFlowsDownstream. */
+   *  and product are a new kind of value). [[D41]] formatFlowsDownstream. */
   formatCarry(): FormatCarrySpec[] {
     const probe: Dim = { length: 1 };
     return dimEqual(aggregateResultDim(this.op, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];

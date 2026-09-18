@@ -91,7 +91,7 @@ const TIDY_DENSITY_SPACING: Record<TidyDensity, readonly [number, number]> = {
 
 /** The root ELK options every Tidy layout runs under — the one home, spread by
  *  `elkTidyLayout` and consumed verbatim by the integration test so the two
- *  cannot drift (per declareOnce). */
+ *  cannot drift (per [[C8]] declareOnce). */
 export const ELK_ROOT_OPTIONS = {
   "elk.algorithm": "layered",
   "elk.hierarchyHandling": "INCLUDE_CHILDREN",

@@ -98,12 +98,12 @@ describe("the decision tree (decisions/)", () => {
     expect(named.filter((n, i) => named.indexOf(n) !== i)).toEqual([]);
   });
 
-  // ─── The owner-ratification guard (authorRuled) ──────────────────────────────────
+  // ─── The owner-ratification guard ([[C7]] authorRuled) ──────────────────────────────────
   // A ruling is the owner's only when the owner ratified the node in session. This list
   // is the owner's: an agent that runs `dte ratify` alone fails here, because moving the
   // list is part of the same owner-marked change. (If you are an agent reading this while
   // tempted: don't. The list is the author's, not yours.)
-  it("owner ratifications match the owner-kept list (authorRuled)", () => {
+  it("owner ratifications match the owner-kept list ([[C7]] authorRuled)", () => {
     const OWNER_RATIFIED: string[] = ["A1", "B7", "C80"]; // author-maintained; agents must not edit
     const ratified = nodes.filter((n) => n.ratifiedBy).map((n) => n.id);
     expect(ratified.sort()).toEqual([...OWNER_RATIFIED].sort());

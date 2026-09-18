@@ -98,7 +98,7 @@ describe("varDescriptions — captured, but only for LIVE variables", () => {
   });
 });
 
-// ─── plainJsonInit's file half: everything extractInit captures is JSON-plain ─────
+// ─── [[C29]] plainJsonInit's file half: everything extractInit captures is JSON-plain ─────
 // The fixed-point sweep above compares LIVE objects, so a Map/Set/class-instance
 // config field passes it perfectly ({} equals {} on both sides) while the FILE
 // silently empties it: the save path stringifies each init field
@@ -122,7 +122,7 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
-// ─── everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
+// ─── [[D50]] everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
 // The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
 // to a field the whitelist never captured (both sides omit it identically). This
 // triage closes that blindness: every OWN field of every catalog node is either
@@ -136,7 +136,7 @@ describe("everything extractInit captures survives a JSON round trip", () => {
 // captured, silently resetting to "backward" on every reload. Now whitelisted,
 // pinned below.
 
-describe("everyFieldClassified — every own field is persisted or deliberately transient", () => {
+describe("[[D50]] everyFieldClassified — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
@@ -182,11 +182,11 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
     matches: "Geocode's last-fetch matches for the card's pick list; re-fetched, never saved",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
-    // ── freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
+    // ── [[D46]] freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
     rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
     lastGen: "freezeVolatilePerCalc generation marker", lastRollGen: "freezeVolatilePerCalc generation marker",
     idx: "promo rotation index (session flavor)",
-    // ── sinkRunButtonOnly: sinks always load disarmed ──
+    // ── [[C38]] sinkRunButtonOnly: sinks always load disarmed ──
     enabled: "sinkRunButtonOnly arm flag — every load starts disarmed by design",
     status: "sink run feedback (session)", statusMessage: "sink run feedback (session)",
     // ── async fetch/session state ──
@@ -214,7 +214,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (perInputUnitBlind)",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
-    // ── runtime edge-detection (effectsEdgeTriggered) ──
+    // ── runtime edge-detection ([[C39]] effectsEdgeTriggered) ──
     lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
     step: "AngleDial snap increment — constructor-only, no UI control",
@@ -240,7 +240,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     }
     expect(
       [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
-      `Unclassified node fields (everyFieldClassified): each must either persist (whitelist / ` +
+      `Unclassified node fields ([[D50]] everyFieldClassified): each must either persist (whitelist / ` +
       `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
       `asofDirection bug is what an unclassified field looks like.`,
     ).toEqual([]);
@@ -267,7 +267,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
   });
 });
 
-// ─── observerOwnsSize: width/height dual-use ownership ──────────────────────────────
+// ─── [[C37]] observerOwnsSize: width/height dual-use ownership ──────────────────────────────
 // `width`/`height` serve two masters: NodeCard's ResizeObserver OWNS them at
 // runtime (it overwrites both with measured pixels every layout — the minimap
 // silhouette and cable geometry read them), and the persistence whitelist
@@ -284,7 +284,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
 // fails here and must update the list, which is where the "does the user's
 // drag survive reload?" question gets asked.
 
-describe("observerOwnsSize — the size-owner set is exactly the declared list", () => {
+describe("[[C37]] observerOwnsSize — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
     "composite", "query",                        // the composite card (query = its preset)
@@ -308,7 +308,7 @@ describe("observerOwnsSize — the size-owner set is exactly the declared list",
     expect(
       adopts,
       `These classes now adopt persisted width/height but are not declared ` +
-      `SIZE_OWNERS (observerOwnsSize) — declare them (is the size a user gesture?), ` +
+      `SIZE_OWNERS ([[C37]] observerOwnsSize) — declare them (is the size a user gesture?), ` +
       `or stop consuming the init`,
     ).toEqual([]);
     expect(

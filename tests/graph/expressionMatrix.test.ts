@@ -5,9 +5,9 @@ import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
 import { isSolError } from "../../src/graph/errorValue";
 
-// ─── matricesInFormulas: the Expression lift (anydataWildcard) ────────────────────────────────────────
+// ─── [[C15]] matricesInFormulas: the Expression lift ([[E5]] anydataWildcard) ────────────────────────────────────────
 // The connect-time half of the matrix decision: variables are `anydata`, matrices
-// flow in, the formula computes by the broadcast table (oneBroadcast — semantics pinned
+// flow in, the formula computes by the broadcast table ([[D27]] oneBroadcast — semantics pinned
 // in broadcastRules.test.ts; THIS file pins the node-boundary lift), and the
 // result socket reconciles its RANK to the value while keeping its FAMILY.
 
@@ -32,7 +32,7 @@ describe("matrices flow into a formula (the lift itself)", () => {
     expect(run("SUM(m)", { m: [M] })).toBe(10);
   });
 
-  it("per-cell null and error ride through a matrix formula (nullSkippedNotZero/errorBeatsMissing)", () => {
+  it("per-cell null and error ride through a matrix formula ([[D36]] nullSkippedNotZero/[[D37]] errorBeatsMissing)", () => {
     const out = run("a + 1", { a: [[[1, null], [3, 4]]] }) as unknown[][];
     expect(out[0]).toEqual([2, null]);
     expect(out[1]).toEqual([4, 5]);
@@ -44,7 +44,7 @@ describe("matrices flow into a formula (the lift itself)", () => {
   });
 });
 
-describe("the connect-time gate (anydataWildcard acceptance)", () => {
+describe("the connect-time gate ([[E5]] anydataWildcard acceptance)", () => {
   it("a fresh Expression declares anydata variables", () => {
     const n = new ExpressionNode({ expr: "a + b" });
     for (const v of n.varNames) {
@@ -63,7 +63,7 @@ describe("the connect-time gate (anydataWildcard acceptance)", () => {
   });
 });
 
-describe("the result socket reconciles RANK, keeps FAMILY (anydataWildcard + retypeReconciles)", () => {
+describe("the result socket reconciles RANK, keeps FAMILY ([[E5]] anydataWildcard + [[D16]] retypeReconciles)", () => {
   it("a matrix result marks the node rank-2; a scalar result marks it back", async () => {
     const node = new ExpressionNode({ expr: "a * 2" });
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);

@@ -11,7 +11,7 @@ import { isSolError } from "../../src/graph/errorValue";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
 // ─── FRAME_SURFACE_NAMES — recognized-but-refused frame verbs ─────────────────
-// matricesInFormulas keeps frames/cubes out of formulas, but the Add menu TEACHES their names
+// [[C15]] matricesInFormulas keeps frames/cubes out of formulas, but the Add menu TEACHES their names
 // (JOIN, PIVOTBY, GETCOLUMN…), so a typed one must read as "real name, wrong
 // surface", never as a typo: #TYPE! naming the node, the frame violet in the
 // editor, the redirect in the hint bar. This suite is the SSOT gate: the map is

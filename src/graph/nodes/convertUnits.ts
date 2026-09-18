@@ -1,5 +1,5 @@
 // [[C17]], [[D19]]
-// Rete-free by design (implReteFree), so the formula surface can convert without pulling rete,
+// Rete-free by design ([[D19]] implReteFree), so the formula surface can convert without pulling rete,
 // the socket lattice and the display stores into the headless evaluator.
 
 import { convert as dimConvert, type Dim, type Unit } from "../dimension";

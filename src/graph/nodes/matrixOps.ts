@@ -4,7 +4,7 @@ import { indexRefError } from "./indexAccess";
 import type { Cell } from "./coerce";
 
 // ONE implementation per matrix op, called by both the nodes' `data()` and the formula
-// registrations (shareImpl); RETE-FREE per implReteFree, so the formula path never loads the editor.
+// registrations ([[C17]] shareImpl); RETE-FREE per [[D19]] implReteFree, so the formula path never loads the editor.
 
 export type NumMat = number[][];
 
@@ -115,7 +115,7 @@ export function matInverse(m: NumMat): NumMat | null {
 }
 
 /** Wrap a 1-D list into a matrix; leftover cells take the caller's `pad()`, which defaults
- *  to #N/A per appendLadder so a pad_with argument overrides cleanly. */
+ *  to #N/A per [[C48]] appendLadder so a pad_with argument overrides cleanly. */
 export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols", pad: () => T): T[][] {
   if (dir === "rows") {
     const rows: T[][] = [];
@@ -132,9 +132,9 @@ export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols"
   return mat;
 }
 
-// ── The append-ladder + selection + grow shape ops (appendLadder). Shape CONSTRUCTION pads
+// ── The append-ladder + selection + grow shape ops ([[C48]] appendLadder). Shape CONSTRUCTION pads
 // #N/A (the exception is EXPAND's Fill, below). The nodes add unit tagging on top;
-// these are pure shape, so both surfaces share them (shareImpl). ──
+// these are pure shape, so both surfaces share them ([[C17]] shareImpl). ──
 
 /** HSTACK: glue matrices left-to-right, padding shorter ones DOWN with #N/A. */
 export function stackH(mats: readonly unknown[][][]): unknown[][] {

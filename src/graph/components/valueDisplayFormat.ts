@@ -101,7 +101,7 @@ export function formatListCell(
 }
 
 /** An annotation that names no unit of its own — a FORMAT carried across a transform
- *  arrives stripped this way (unit is value-level, formatFlowsDownstream). */
+ *  arrives stripped this way (unit is value-level, [[D41]] formatFlowsDownstream). */
 function annotationCarriesNoUnit(ann: FormatAnnotation): boolean {
   return ann.unit === "none" || (ann.unit === "custom" && !ann.customUnit);
 }

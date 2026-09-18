@@ -17,7 +17,7 @@ export function ArgMinMaxComponent({ data, emit }: NodeProps<ArgMinMaxNodeType>)
   async function pickOp(next: ArgMinMaxOp) {
     if (next === data.op) return;
     // WHICH swaps the input family (number ↔ logical list): prune BEFORE the in-place
-    // retype (onePrunePath); the output rank swap (number ↔ list) prunes after.
+    // retype ([[D10]] onePrunePath); the output rank swap (number ↔ list) prunes after.
     if ((next === "which") !== (data.op === "which")) await dropInputCables(data.id, ["list"]);
     const { outputChanged } = data.setOp(next);
     const editor = getActiveEditor();

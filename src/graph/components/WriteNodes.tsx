@@ -51,7 +51,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
   useEffect(() => { setPath(d.path); }, [d.path]);
 
   // Text uses a STRING input, CSV/JSON a FRAME input; crossing that boundary retypes the
-  // `in` socket, so prune its cable first (onePrunePath) before setFormat swaps it.
+  // `in` socket, so prune its cable first ([[D10]] onePrunePath) before setFormat swaps it.
   async function pickFormat(next: WriteFormat) {
     if (next === format) return;
     const willRetype = (format === "text") !== (next === "text");

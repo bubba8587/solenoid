@@ -26,7 +26,7 @@ export async function dropInputCables(
 
 /** Remove every cable wired OUT of the given output keys of `nodeId` — the output-side
  *  sibling of `dropInputCables`, for an op switch that REMOVES an output socket (a
- *  removed socket left with a live cable is the onePrunePath trap). */
+ *  removed socket left with a live cable is the [[D10]] onePrunePath trap). */
 export async function dropOutputCables(
   nodeId: string,
   gone: Iterable<string> | ((sourceOutput: string) => boolean),

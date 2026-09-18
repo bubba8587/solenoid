@@ -69,7 +69,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
   }
 
   /** The socket keys a switch to `next` would remove (inputs + outputs). Callers on a
-   *  live graph prune their cables BEFORE calling setProvider (onePrunePath). */
+   *  live graph prune their cables BEFORE calling setProvider ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: TaskNotesProvider): { inputs: string[]; outputs: string[] } {
     return {
       inputs: INPUTS[this.provider].filter((k) => !INPUTS[next].includes(k)),
@@ -188,7 +188,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
 }
 
 // ─── WRITE TASKS (F6): rows → POST /api/tasks, or PUT /api/tasks/:id when the row carries
-// `path`. Run-button only (sinkRunButtonOnly): data() caches and emits the `plan` frame;
+// `path`. Run-button only ([[C38]] sinkRunButtonOnly): data() caches and emits the `plan` frame;
 // Preview reads the current tasks to mark unchanged rows; Run sends the rest.
 
 export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
@@ -212,7 +212,7 @@ export class WriteTasksNode extends ClassicPreset.Node {
   statusMessage = "";
   width = 262; height = 250;
 
-  /** The plan frame's columns are fixed (declareOnce). */
+  /** The plan frame's columns are fixed ([[C8]] declareOnce). */
   frameShape(): Shape {
     return { columns: [
       { name: "path", type: "string" }, { name: "title", type: "string" },

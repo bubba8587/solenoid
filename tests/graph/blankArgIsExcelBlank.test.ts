@@ -6,7 +6,7 @@ import { isSolError } from "../../src/graph/errorValue";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
-describe("blankArgIsExcelBlank — a blank slot is Excel's typed blank, an omitted argument the default", () => {
+describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, an omitted argument the default", () => {
   it("every declared function exists and each declared index is a real parameter", () => {
     for (const [name, types] of Object.entries(BLANK_ARG_TYPES)) {
       expect(resolveExcelFunction(name), name).not.toBeNull();

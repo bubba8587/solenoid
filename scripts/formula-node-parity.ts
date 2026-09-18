@@ -2,7 +2,7 @@
 // Run with: npx tsx scripts/formula-node-parity.ts
 // Measures the NODE ↔ FORMULA parity gap in both directions (author direction
 // 2026-07-14: the node set and the expression/equation formula language should
-// converge — the parity ratchet is [[C51]] formulaNaming / uniqueNameMap).
+// converge — the parity ratchet is [[C51]] formulaNaming / [[C18]] uniqueNameMap).
 // Companion to scripts/parity.ts
 // (which measures the EXCEL → Solenoid gap); this one measures Solenoid
 // against itself:

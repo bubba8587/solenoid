@@ -14,7 +14,7 @@ import type { FrameHint } from "../frameHint";
 // The Earned Value node (Table verbs › Plan): a scheduled cube + its baseline + a status
 // date → an EVM summary. The math is the pure earnedValueOps; this class reads the cube
 // columns, joins the baseline by name, carries the Cost column's currency onto the money
-// columns (firstClassUnits), and returns the Summary frame plus SPI / CPI / EAC totals.
+// columns ([[C25]] firstClassUnits), and returns the Summary frame plus SPI / CPI / EAC totals.
 
 const norm = (s: string) => s.trim().toLowerCase();
 const isText = (v: unknown): v is string => typeof v === "string";
@@ -54,7 +54,7 @@ export class EarnedValueNode extends ClassicPreset.Node {
 
   label: string;
   // The Cost column arrives as UnitCells, so the per-input unit strip must be OFF or the
-  // currency the money columns carry would be gone before data() runs (perInputUnitBlind).
+  // currency the money columns carry would be gone before data() runs ([[D42]] perInputUnitBlind).
   unitAware = true;
   literals: Record<string, number> = { weekend_code: 1 };
   stringLiterals: Record<string, string> = { cost: "" };

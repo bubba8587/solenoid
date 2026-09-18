@@ -92,7 +92,7 @@ function rendersRows(name: string, bodies: Map<string, { file: string; body: str
   return false;
 }
 
-describe("socketRows — a side with more than one socket renders one row per socket", () => {
+describe("[[C12]] socketRows — a side with more than one socket renders one row per socket", () => {
   it("no catalog node stacks its sockets on a single point", () => {
     const bodies = componentBodies();
     const pairs = registryPairs();

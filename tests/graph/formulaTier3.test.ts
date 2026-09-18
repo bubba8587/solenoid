@@ -14,14 +14,14 @@ import { despace as parityDespace } from "../../src/graph/formulaNodeParity";
 import { NODE_OPS } from "../../src/graph/nodeOps";
 import type { CatalogEntry, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
-// ─── formulaNaming Tier 3: the node surface and the formula surface agree ───────────────
+// ─── [[C51]] formulaNaming Tier 3: the node surface and the formula surface agree ───────────────
 // Tier 3 makes the Solenoid-native list core callable from a formula. The whole point
 // is that the two surfaces STOP being separate implementations, so the test that
 // matters is not "does REVERSE work" but "does REVERSE answer what a REVERSE node
 // answers". Both sides call `nodes/listOps.ts`; this is what stops someone reverting
 // that by hand-inlining one of them again.
 //
-// Naming is formulaNaming decision 2(a): the formula name is the node's LABEL despaced, taken
+// Naming is [[C51]] formulaNaming decision 2(a): the formula name is the node's LABEL despaced, taken
 // from the family's OP_META table. The name assertions below read the table rather
 // than repeating the string, so renaming an op in one place fails here.
 
@@ -69,7 +69,7 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
   });
 
-  // The aggregatorsAreArguments contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
+  // The [[C56]] aggregatorsAreArguments contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
   // Both halves matter. The family gets exactly ONE name — RUNNING(op, list, [window]),
   // like SORT carrying its direction — and the per-op names stay dead. The 2026-08-10
   // relapse to guard: "argument" was first misread as "no formula surface at all" and
@@ -205,7 +205,7 @@ describe("the declarations stay honest", () => {
 });
 
 describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
-  // formulaNaming 2(a) despaces the label to the function name, but a bare op label
+  // [[C51]] formulaNaming 2(a) despaces the label to the function name, but a bare op label
   // ("Union", "Constant") despaces to UNION/CONSTANT, not the SET*/FILL* family name.
   // So each op carries an explicit `fx` in its OP_META — same one-table principle,
   // declared instead of derived, and the test reads the table so a rename fails here.
@@ -272,7 +272,7 @@ describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
 });
 
 describe("the formula namespace stays unambiguous", () => {
-  // formulaNaming 2(a) is not INJECTIVE, and nothing checked that until it bit: Fill's
+  // [[C51]] formulaNaming 2(a) is not INJECTIVE, and nothing checked that until it bit: Fill's
   // "Interpolate" op and the INTERPOLATE node in stats.ts both despace to the same
   // name. Fill's op now declares FILLINTERPOLATE instead. This is the guard — two
   // different things must never claim one formula name.
@@ -322,7 +322,7 @@ describe("the formula namespace stays unambiguous", () => {
     expect(r.message).toContain("List Filter node");
   });
 
-  it("uniqueNameMap full sweep — every operation-kind op name is unique across families and leaves", () => {
+  it("[[C18]] uniqueNameMap full sweep — every operation-kind op name is unique across families and leaves", () => {
     // The complete naming-side check ([[C18]] uniqueNameMap, its full sweep): every
     // OPERATION-kind op in NODE_OPS claims a formula name (`fx` ?? despaced
     // label). Those names must be injective — across families, and against the

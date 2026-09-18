@@ -219,7 +219,7 @@ export function computeExpandPush(
 
 // Backstop under the heuristic pushes. Moves are ALWAYS +x or +y, hence monotonic and
 // terminating; `baseline` pairs are left alone. `pinned` boxes never move ([[D63]]
-// lockedGroupIsObstacle): the partner yields, two pinned boxes are skipped. Returns
+// [[D63]] lockedGroupIsObstacle): the partner yields, two pinned boxes are skipped. Returns
 // extra displacements to add.
 export function separateOverlaps(
   boxes: PushBox[],

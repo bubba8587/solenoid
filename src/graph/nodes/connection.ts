@@ -485,7 +485,7 @@ export class GeocodeNode extends ClassicPreset.Node {
 // ─── WEATHER (Open-Meteo forecast: a Daily frame + Now scalars) ─────────────────
 // The anchor widget. One call returns past_days + a 16-day forecast. Lat/lon come from
 // Geocode (or typed literals). The °C/°F toggle sets the API unit AND tags the temps
-// with that unit so it flows downstream like Convert (firstClassUnits). Reuses the
+// with that unit so it flows downstream like Convert ([[C25]] firstClassUnits). Reuses the
 // WebSource sync-background fetch pattern, so it rides the C2 network gate.
 export class WeatherNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -520,7 +520,7 @@ export class WeatherNode extends ClassicPreset.Node {
     this.addOutput("condition", strOut("Condition"));
   }
 
-  // The daily frame's columns are FIXED (declareOnce), so downstream pickers know them
+  // The daily frame's columns are FIXED ([[C8]] declareOnce), so downstream pickers know them
   // before any fetch lands.
   frameShape(): Shape {
     return { columns: [
@@ -604,7 +604,7 @@ export class HolidaysNode extends ClassicPreset.Node {
     this.addOutput("next", numOut("Days to next"));
   }
 
-  // The frame's columns are FIXED (declareOnce), so downstream pickers know them
+  // The frame's columns are FIXED ([[C8]] declareOnce), so downstream pickers know them
   // before any fetch lands.
   frameShape(): Shape {
     return { columns: [
@@ -660,7 +660,7 @@ export class HolidaysNode extends ClassicPreset.Node {
 // ─── CURRENCY / FX (Frankfurter: convert an amount, forward the target currency) ──
 // The #1 googled conversion. Currency is a unit in the FC model, so the Converted output
 // is AUTHORED with the target currency via applyFcUnit — the same value-side path Convert
-// uses (firstClassUnits) — and every code is registered with the display bridge in
+// uses ([[C25]] firstClassUnits) — and every code is registered with the display bridge in
 // fxProvider. Amount applies per compute (no re-fetch); From/To key the fetch.
 export type FxMode = "spot" | "history";
 
@@ -741,14 +741,14 @@ export class FxNode extends ClassicPreset.Node {
     }
   }
 
-  /** History's frame columns are FIXED (declareOnce), so a Chart wired to it knows them
+  /** History's frame columns are FIXED ([[C8]] declareOnce), so a Chart wired to it knows them
    *  before any fetch lands. */
   frameShape(): Shape {
     return { columns: [{ name: "Date", type: "date" }, { name: "Rate", type: "number" }] };
   }
 
   /** The keys a switch to `next` removes. Callers on a live graph prune their cables
-   *  BEFORE calling setMode (onePrunePath). */
+   *  BEFORE calling setMode ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: FxMode): { inputs: string[]; outputs: string[] } {
     return {
       inputs: FX_INPUTS[this.mode].filter((k) => !FX_INPUTS[next].includes(k)),
@@ -797,7 +797,7 @@ export class FxNode extends ClassicPreset.Node {
     }
     const rate = this.cached?.rate ?? null;
     const converted = rate != null && typeof amount === "number" ? amount * rate : null;
-    // Author the target currency on the value, the same path Convert takes (firstClassUnits).
+    // Author the target currency on the value, the same path Convert takes ([[C25]] firstClassUnits).
     const tagged = converted != null ? applyFcUnit(converted, to.toLowerCase()) : null;
     const asof = this.cached && Number.isFinite(this.cached.serial) ? this.cached.serial : null;
     return { converted: tagged, rate, asof };

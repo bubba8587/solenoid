@@ -25,7 +25,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
 
   async function pickMode(next: GaugeStyle) {
     if (next === data.mode) return;
-    // onePrunePath: drop the departing bar-only cables BEFORE the socket removal.
+    // [[D10]] onePrunePath: drop the departing bar-only cables BEFORE the socket removal.
     await dropInputCables(data.id, data.keysDropped(next));
     data.setMode(next);
     setMode(next);

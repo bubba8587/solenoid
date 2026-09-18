@@ -337,7 +337,7 @@ export function settleCollapse(
 }
 
 /** Recompute; hiding rides RF node `className` off the store notify ([[C88]]
- *  collapseIsVisual: never the wrapper's inline visibility). */
+ *  [[C88]] collapseIsVisual: never the wrapper's inline visibility). */
 export function syncGroupCollapse(editor: Editor, _area: View): void {
   recomputeGroupCollapse(editor);
 }

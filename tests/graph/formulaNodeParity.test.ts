@@ -3,11 +3,11 @@ import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/graph/formulaNodeParity";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
 
-// ─── The parity RATCHET (formulaNaming) ─────────────────────────────────────────────────
+// ─── The parity RATCHET ([[C51]] formulaNaming) ─────────────────────────────────────────────────
 // The node set and the formula language drifted apart because NOTHING checked one
 // against the other — a node could ship with an Excel name that no formula could
 // call, and Formula.js could drag in a legacy name nobody decided to support. The
-// ratchet rules are [[C51]] formulaNaming / uniqueNameMap.
+// ratchet rules are [[C51]] formulaNaming / [[C18]] uniqueNameMap.
 //
 // This test pins today's gaps and makes them one-way. Both directions assert
 // live ⊆ pinned (a NEW gap fails) AND pinned ⊆ live (a CLOSED gap must be deleted
@@ -22,20 +22,20 @@ import { initPackFormulas } from "../../src/graph/formulaExtensions";
 // GAP A — a node carries an Excel name, but typing that name in an Expression
 // gives #NAME?. The sharpest gap: the node is right there in the Add menu.
 //
-// matricesInFormulas opened this list: the cap lifted, and the matrix tranche closed the
+// [[C15]] matricesInFormulas opened this list: the cap lifted, and the matrix tranche closed the
 // 2-D-shaped registrations (TOCOL/TOROW/WRAPROWS/WRAPCOLS/MDETERM/MINVERSE/
 // SEQUENCE — `formulaMatrix.test.ts`). What remains splits in two:
-// EMPTY — and keep it that way. The matricesInFormulas lambda tranche (2026-07-28) closed the
+// EMPTY — and keep it that way. The [[C15]] matricesInFormulas lambda tranche (2026-07-28) closed the
 // last eight: LAMBDA became the evaluator's one special form and the hosts
 // (MAP/BYROW/BYCOL/REDUCE/SCAN/MAKEARRAY/GROUPBY) registered against the same
 // LambdaValue currency the nodes use (formulaLambda.test.ts). Every Excel name a
 // node carries now dispatches. A name appearing here again is a NEW node shipped
-// without its registration — close it the shareImpl way before pinning it.
+// without its registration — close it the [[C17]] shareImpl way before pinning it.
 const EXCEL_NAMED_GAP: string[] = [];
 
 // GAP C — dispatchable in a formula, but no node, no EXCEL_GAP entry, and not a
 // deliberately registered native: names Formula.js drags in that nobody decided to
-// support. formulaNaming decision 1 blocks the legacy/superseded ones outright (see
+// support. [[C51]] formulaNaming decision 1 blocks the legacy/superseded ones outright (see
 // LEGACY_ALIASES in excelFunctions.ts), so what stays here is only what survived
 // curation. An empty list is the goal, not a bug.
 const UNTRACKED_DISPATCHABLE: string[] = [];
@@ -84,7 +84,7 @@ describe("formula ↔ node parity ratchet", () => {
         `These names dispatch in a formula with no node and no recorded decision:${fmt(added)}\n` +
           `Curate each one: block it (LEGACY_ALIASES in excelFunctions.ts) if it is a legacy or\n` +
           `superseded spelling, give it a node, or record it as a deliberate gap in EXCEL_GAP\n` +
-          `(nodeExcel.ts). currentExcelParity applies to the formula surface too — see [[C51]] formulaNaming.`,
+          `(nodeExcel.ts). [[C14]] currentExcelParity applies to the formula surface too — see [[C51]] formulaNaming.`,
       ).toEqual([]);
     });
 
@@ -125,7 +125,7 @@ describe("formula ↔ node parity ratchet", () => {
   // The live catalog can't pin this: gap A is empty, so every excel-named row is
   // FULLY covered and `some` vs `every` agree on all of them. The synthetic
   // partial case is the only input that distinguishes the quantifiers.
-  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node (useEveryNotSome)", () => {
+  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node ([[D9]] useEveryNotSome)", () => {
     const only = (avail: string[]) => (n: string) => avail.includes(n);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING", "CEILING.MATH"]))).toBe(true);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING"]))).toBe(false);

@@ -142,7 +142,7 @@ describe("formatListCell — the same annotation reaches every list cell", () =>
   });
 
   it("a CARRIED format (unit stripped) leaves the cell's own unit standing", () => {
-    // A format crossing a transform arrives with unit "none" (formatFlowsDownstream);
+    // A format crossing a transform arrives with unit "none" ([[D41]] formatFlowsDownstream);
     // the unit rides the VALUE, so the $ must survive — only the style is the ann's.
     const carried: FormatAnnotation = { format: "decimal", decimalDigits: 2, decimalMode: "places", unit: "none", customUnit: "" };
     const dollars = fromUnit(1000, UNITS["¤"], "usd");

@@ -1,6 +1,6 @@
 // Rete-free ODE integrator, shared by the node and (if wired) a formula. The caller
 // supplies the derivative as a plain function, so this stays free of the formula/rete
-// layers (implReteFree).
+// layers ([[D19]] implReteFree).
 
 /** Integrate dy/dt = f(t, y) from t0 to t1 with the classic fixed-step RK4, returning the
  *  `steps + 1` sample points (t0 included). `steps` clamps to 1..100000. Returns null when

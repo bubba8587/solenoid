@@ -96,7 +96,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   writeBase = false;
   /** Inline literals: `path` (the Note target) + `keys` (Properties: columns to write). */
   stringLiterals: Record<string, string> = { path: "", keys: "" };
-  /** Never persisted (sinkRunButtonOnly) — always false on a fresh construction. */
+  /** Never persisted ([[C38]] sinkRunButtonOnly) — always false on a fresh construction. */
   enabled = false;
   cachedDoc: DocumentValue | SolError | null = null;
   /** The path the last data() resolved (the wired `path`, else its literal). */

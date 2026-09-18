@@ -44,7 +44,7 @@ function tagResult(v: unknown): unknown {
 function stripUnits(v: unknown): unknown {
   if (isUnitCell(v)) return v.value;
   if (Array.isArray(v)) {
-    // A matrix carries ONE homogeneous unit (unitGranularity) but tags cells individually (matricesInFormulas).
+    // A matrix carries ONE homogeneous unit (unitGranularity) but tags cells individually ([[C15]] matricesInFormulas).
     return v.map((c) =>
       Array.isArray(c) ? c.map((e) => (isUnitCell(e) ? (e as UnitCell).value : e))
       : isUnitCell(c) ? (c as UnitCell).value : c);
@@ -53,7 +53,7 @@ function stripUnits(v: unknown): unknown {
 }
 
 /** The shared display id of a pure-currency input's cells — the currency's real unit
- *  identity (noMixCurrencies) — or undefined when uncoded, mixed, or not currency. */
+ *  identity ([[D47]] noMixCurrencies) — or undefined when uncoded, mixed, or not currency. */
 function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
   if (!dimEqual(dim, { currency: 1 })) return undefined;
   const cells = Array.isArray(v) ? v.flat() : [v];
@@ -88,7 +88,7 @@ export type ProducedFamily = ResultType | "frame" | "cube";
 
 type RankedProducer = ClassicPreset.Node & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
 
-/** Reconciles a producer's result socket to the computed VALUE (anydataWildcard):
+/** Reconciles a producer's result socket to the computed VALUE ([[E5]] anydataWildcard):
  *  always the RANK, and — when the caller votes one — the element FAMILY too (the
  *  Script node, which has no declared type; Expression passes none and keeps its
  *  toggle's). A "frame" vote swaps the whole socket to the frame socket. Value-driven,
@@ -232,7 +232,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         const codeEnv: CodeEnv = {};
         for (const v of this.varNames) {
           dimEnv[v] = envDim(rawEnv[v]);
-          // The currency code rides along so the dim pass can refuse `$a + €b` (noMixCurrencies).
+          // The currency code rides along so the dim pass can refuse `$a + €b` ([[D47]] noMixCurrencies).
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }

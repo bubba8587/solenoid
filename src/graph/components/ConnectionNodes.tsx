@@ -693,7 +693,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
 const FX_MODE_OPTIONS = (Object.keys(FX_MODE_META) as FxMode[]).map((k) => ({ value: k, label: FX_MODE_META[k].label }));
 
 // Spot ↔ History swaps sockets in place (the mode-card recipe): prune departing input AND
-// output cables first (onePrunePath), then setMode, then re-render + recompute.
+// output cables first ([[D10]] onePrunePath), then setMode, then re-render + recompute.
 async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => void) {
   if (next === data.mode) return;
   const departing = data.keysDroppedBySwitch(next);

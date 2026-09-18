@@ -8,7 +8,7 @@ export interface DocMeta {
   tags?: string[];
   /** This document was adopted from OUTSIDE the app (a file Open / import), so its
    *  connection nodes fetch nothing until the user allows it (C2 network permission,
-   *  the sinkRunButtonOnly mirror). Absent on the user's own documents — never gated. */
+   *  the [[C38]] sinkRunButtonOnly mirror). Absent on the user's own documents — never gated. */
   foreign?: boolean;
   /** The per-document network grant, remembered in the sidecar meta. Only consulted
    *  while `foreign`; `undefined` = not yet decided (still gated). */

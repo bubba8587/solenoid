@@ -27,7 +27,7 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
   await processGraph();
 }
 
-// A LITERAL source (tableInputRawText): the popup edits the RAW text cells, so a bad cell is
+// A LITERAL source ([[C58]] tableInputRawText): the popup edits the RAW text cells, so a bad cell is
 // never coerced away — it derives to NaN and Source still shows what was typed.
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {
   const [dt, setDt] = useState<TableElemType>(data.dataType);

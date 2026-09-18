@@ -16,7 +16,7 @@ import { reconcileResultRank, type ProducedFamily } from "./expression";
 export const DEFAULT_SCRIPT = "(x) => x";
 
 /** A per-cell error anywhere in an input outranks running the script at all
- *  (errorInErrorOut at cell grain: the guard only sees whole-value errors). Walks
+ *  ([[D35]] errorInErrorOut at cell grain: the guard only sees whole-value errors). Walks
  *  lists, rows, and converted `{name: value}` rows. */
 function firstCellError(v: unknown): SolError | null {
   if (isSolError(v)) return v;

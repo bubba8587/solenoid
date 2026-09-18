@@ -361,7 +361,7 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   it("zips ragged lists to the longest, padding with null (the settled P3 policy)", () => {
     expect(ev("a + b", { a: [1, 2, 3], b: [10, 20] })).toEqual([11, 22, null]);
     // A LENGTH-1 list broadcasts — the other half of the same P3 ruling
-    // ("length-1 still broadcasts"), unbuilt until matricesInFormulas's mapCells and formerly
+    // ("length-1 still broadcasts"), unbuilt until [[C15]] matricesInFormulas's mapCells and formerly
     // pinned here as [11, null, null], i.e. the test enforced the gap.
     expect(ev("a + b", { a: [1], b: [10, 20, 30] })).toEqual([11, 21, 31]);
   });
@@ -411,8 +411,8 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
-    // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — currentExcelParity blocks
-    // them, and blockedFailFast strips a blocked spelling from RANGE_FUNCTIONS so it
+    // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — [[C14]] currentExcelParity blocks
+    // them, and [[D25]] blockedFailFast strips a blocked spelling from RANGE_FUNCTIONS so it
     // answers before its args are shaped.
     for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS"]) {
@@ -569,7 +569,7 @@ describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
   });
 });
 
-describe("classic lookups redirect to their current-Excel replacements (currentExcelParity)", () => {
+describe("classic lookups redirect to their current-Excel replacements ([[C14]] currentExcelParity)", () => {
   const ev = (expr: string, env: Record<string, unknown> = {}) => {
     const fn = compileEvaluator(expr);
     if (!fn) throw new Error(`failed to compile: ${expr}`);

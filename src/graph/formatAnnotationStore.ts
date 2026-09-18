@@ -639,6 +639,6 @@ export function formatWithAnnotation(
   return formatNumberWithAnnotation(n, ann);
 }
 
-// Registered like every node-keyed store (nodeStoreRegistry / storesRegisterForget).
+// Registered like every node-keyed store (nodeStoreRegistry / [[C40]] storesRegisterForget).
 registerNodeForget((nodeId) => formatAnnotationStore.removeForNode(nodeId));
 registerNodeForgetAll(() => formatAnnotationStore.clearNodes());

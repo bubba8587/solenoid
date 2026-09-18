@@ -358,7 +358,7 @@ export class DateAddNode extends ClassicPreset.Node {
   }
 
   /** EDATE / EOMONTH shift a date but the result is still a date, so Start's date style
-   *  carries; Months is a plain count (different family, dropped) (formatFlowsDownstream). */
+   *  carries; Months is a plain count (different family, dropped) ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["start"] }];
   }
@@ -425,7 +425,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
 
   /** WORKDAY returns a date, so Start's date style carries; NETWORKDAYS returns a count
    *  (a number output, so the date family is dropped by the family gate). One declaration
-   *  covers both ops (formatFlowsDownstream). */
+   *  covers both ops ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["start"] }];
   }
@@ -436,7 +436,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
   }
 
   /** The key a switch to `next` would remove. Callers on a live graph prune its
-   *  cables BEFORE calling setOp (onePrunePath). */
+   *  cables BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: WorkdaysOp): string[] {
     if (next === this.op) return [];
     return next === "workday" ? ["end"] : ["days"];
@@ -647,7 +647,7 @@ export class WorldClockNode extends ClassicPreset.Node {
     this.addOutput("clock", frameOut("World Clock"));
   }
 
-  // Fixed columns (declareOnce) so downstream pickers know them before a compute.
+  // Fixed columns ([[C8]] declareOnce) so downstream pickers know them before a compute.
   frameShape(): Shape {
     return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
   }

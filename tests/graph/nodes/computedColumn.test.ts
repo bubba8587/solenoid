@@ -8,7 +8,7 @@ import { solError, isSolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/copyPaste";
 
 // ─── Computed Column — the row-wise formula verb ─────────────────────────────
-// The node that keeps frames OUT of formulas (matricesInFormulas): the row iteration lives
+// The node that keeps frames OUT of formulas ([[C15]] matricesInFormulas): the row iteration lives
 // here, the formula only ever sees scalars. Variables are column names; a
 // wired λ takes over with its params bound the same way.
 

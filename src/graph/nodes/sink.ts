@@ -88,7 +88,7 @@ export class WriteFileNode extends ClassicPreset.Node {
 
   /** Switch the serialization format. Text uses a STRING input; CSV/JSON a FRAME input, so
    *  crossing that boundary retypes the `in` socket. Returns true when it did, so a caller
-   *  on a live graph prunes the departing cable first (onePrunePath). */
+   *  on a live graph prunes the departing cable first ([[D10]] onePrunePath). */
   setFormat(next: WriteFormat): boolean {
     if (next === this.format) return false;
     const retype = (this.format === "text") !== (next === "text");

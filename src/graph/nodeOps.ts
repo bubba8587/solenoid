@@ -85,7 +85,7 @@ export type NodeOpsDecl = NodeOpsBase & (
   | { ops?: undefined; create?: undefined }
 );
 
-/** One op of a family; `fx` is the FORMULA name (formulaNaming Tier 3), declared where
+/** One op of a family; `fx` is the FORMULA name ([[C51]] formulaNaming Tier 3), declared where
  *  despacing the label would not yield it: a prose label (despacing a sentence
  *  collides — Coalesce/Fill's FILLINTERPOLATE) or a bare label whose family
  *  word lives in the card title (Running's SUM → RUNNINGSUM). */
@@ -155,7 +155,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new HeadNode({ op: op as never }) },
   // Both ops have their own bare Add-menu leaf ("Keep Columns" / "Drop Columns"), so
   // neither becomes a "Keep Columns: Drop" colon row; the decl still carries kind +
-  // op fx names for the accent and uniqueNameMap.
+  // op fx names for the accent and [[C18]] uniqueNameMap.
   { type: "xstack", ctor: StackNode, ops: fromMeta(STACK_OP_META),
     create: (op) => new StackNode({ op: op as never }) },
   { type: "by-axis", ctor: ByAxisNode, ops: fromMeta(BY_AXIS_OP_META),
@@ -179,7 +179,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // formula names they can't own ("Contains" despaces onto CONTAINS).
   // Contains / starts with / ends with are the predicate ARGUMENT, not four functions.
   // (`contains` despaced onto the real CONTAINS function by coincidence, which is
-  // exactly the collision aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
+  // exactly the collision [[C56]] aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
   { type: "sumifs", ctor: SumIfsNode, ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
@@ -252,7 +252,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
   // have no leaf of their own, so each family leaf declares its pair and the
   // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
-  // labels are family words, so the search names are declared here (overrideInPlace).
+  // labels are family words, so the search names are declared here ([[D3]] overrideInPlace).
   { type: "stat-percentile", ctor: RankPercentileNode,
     ops: [{ op: "percentile-inc", label: "PERCENTILE.INC" }, { op: "percentile-exc", label: "PERCENTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,

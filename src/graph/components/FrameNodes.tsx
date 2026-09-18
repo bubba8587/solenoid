@@ -108,7 +108,7 @@ const BUDGET_CABLE_ONLY_PROP = new Set(["amount"]);
 
 export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType>) {
   // The RAW source is stored verbatim and the typed frame derived in data(), so a "1"
-  // typed into a Boolean column stays "1" (tableInputRawText).
+  // typed into a Boolean column stays "1" ([[C58]] tableInputRawText).
   const source = useMemo(() => parseFrameSource(data.frameText), [data.frameText]);
   const onSaveSource = useCallback((columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
@@ -481,7 +481,7 @@ export function ColumnsComponent({ data, emit }: NodeProps<ColumnsNodeType>) {
 
 // ─── GROUP BY / PIVOT (shared aggregate-op selector) ─────────────────────────
 
-// Derived from AGG_OP_META (declareOnce); `pivotOnly` ops stay off these cards because only
+// Derived from AGG_OP_META ([[C8]] declareOnce); `pivotOnly` ops stay off these cards because only
 // the pivot assembly can run them.
 export const AGG_OP_OPTIONS: { value: AggOp; label: string }[] =
   (Object.keys(AGG_OP_META) as AggOp[])

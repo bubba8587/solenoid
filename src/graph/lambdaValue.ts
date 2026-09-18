@@ -1,4 +1,4 @@
-// Must stay RETE-FREE (implReteFree): the formula path constructs and consumes lambdas
+// Must stay RETE-FREE ([[D19]] implReteFree): the formula path constructs and consumes lambdas
 // without loading the editor.
 
 export interface LambdaValue {

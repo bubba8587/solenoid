@@ -188,7 +188,7 @@ export function registryGeneration(): number {
   return registryGen;
 }
 
-/** UPPERCASE-keyed. A DUPLICATE registration throws (uniqueNameMap's registry half); a REVOCABLE
+/** UPPERCASE-keyed. A DUPLICATE registration throws ([[C18]] uniqueNameMap's registry half); a REVOCABLE
  *  name (one that went through unregisterInternal) may return, a live one may not. */
 export function registerInternal(name: string, fn: (...a: unknown[]) => unknown): void {
   const key = name.toUpperCase();
@@ -250,7 +250,7 @@ export const FX_FUNCTION_NAMES: string[] = (() => {
   return names;
 })();
 
-// Verb names recognized but REFUSED on the formula surface (matricesInFormulas): each short-circuits
+// Verb names recognized but REFUSED on the formula surface ([[C15]] matricesInFormulas): each short-circuits
 // dispatch with a #TYPE! naming the node to use. Value = that node label.
 export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   // Frames (named columns)
@@ -287,7 +287,7 @@ export const NODE_SURFACE_NAMES: Readonly<Record<string, string>> = {
   TEXTFILTER: "List Filter",
 };
 
-// currentExcelParity on the formula surface: each key is BLOCKED — #NAME? naming the replacement, and
+// [[C14]] currentExcelParity on the formula surface: each key is BLOCKED — #NAME? naming the replacement, and
 // dropped from autocomplete. Block a name only once its replacement already dispatches.
 export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   VLOOKUP: "XLOOKUP", HLOOKUP: "XLOOKUP", LOOKUP: "XLOOKUP", MATCH: "XMATCH",
@@ -375,7 +375,7 @@ export function isInternalFunction(name: string): boolean {
  *  future result-type inference, not yet wired to the result socket. */
 // "any" = type-neutral: the function returns whichever type its arguments carry
 // (XLOOKUP/IF/INDEX pass values through) — a forced concrete type here would lie.
-// "complex" = a tagged Cx (tagSpecialScalars) — the IM* family's currency.
+// "complex" = a tagged Cx ([[D44]] tagSpecialScalars) — the IM* family's currency.
 export type ExcelReturn = "number" | "string" | "logical" | "date" | "complex" | "any";
 
 /** Output RANK, split from the element type the same way the socket lattice splits
@@ -390,7 +390,7 @@ export interface ExcelImplMeta {
    *  position-preserving and carry cell errors in place, so dropping nulls or hoisting
    *  an error would be wrong. */
   listArgs?: boolean;
-  /** The ONLY gate through which a rank-2 value reaches a dispatch whole (matricesInFormulas): an
+  /** The ONLY gate through which a rank-2 value reaches a dispatch whole ([[C15]] matricesInFormulas): an
    *  undeclared impl answers #SHAPE!, and Formula.js NEVER sees a matrix. */
   matrixArgs?: boolean;
   /** The only gate through which a tagged Cx reaches a dispatch; everywhere else a Cx
@@ -675,7 +675,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TOEPOCH:         { returns: "number", arity: [1, 2], native: true },
   DATETRUNC:       { returns: "date", arity: [2, 3], native: true },
   // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
-  // argument (aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
+  // argument ([[C56]] aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
@@ -739,7 +739,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   INTERPOLATE:     { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 3], family: "statistics", native: true },
   SHUFFLE:         { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 
-  // Matrix core: `matrixArgs` is hideMatrixFromVendor's gate; `listArgs` routes the rank-≤1 case
+  // Matrix core: `matrixArgs` is [[D26]] hideMatrixFromVendor's gate; `listArgs` routes the rank-≤1 case
   // whole too (TRANSPOSE of a list is a column, not an element-wise map).
   TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
@@ -749,7 +749,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   // COLUMNS/ROWS answer a shape COUNT (scalar), so they take their arg whole (matrix or
-  // list) rather than broadcasting; a list is a ROW here (widenNeverNarrow), so COLUMNS counts it.
+  // list) rather than broadcasting; a list is a ROW here ([[D13]] widenNeverNarrow), so COLUMNS counts it.
   COLUMNS:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   ROWS:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   // The append-ladder rungs + grid selection/grow, sharing their nodes' kernels. All
@@ -806,7 +806,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NOR:         { returns: "logical", arity: [1, 255], native: true },
   XNOR:        { returns: "logical", arity: [1, 255], native: true },
 
-  // The IM* family over tagged Cx (tagSpecialScalars): arguments accept a Cx, a real number,
+  // The IM* family over tagged Cx ([[D44]] tagSpecialScalars): arguments accept a Cx, a real number,
   // or Excel's "a+bi" text; results are tagged Cx, not Excel's text complexes.
   // `cxArgs` is the containment gate. COMPLEX and QUADRATICROOTS take REAL
   // arguments, deliberately no cxArgs.
@@ -929,7 +929,7 @@ export function excelPercentRank(
 
 /** QUARTILE.INC — the inclusive quartile is PERCENTILE.INC at q/4, so quart 0 = MIN and
  *  quart 4 = MAX (Excel). Matches RankPercentileNode's `percentileOf` interpolation so the
- *  node and formula agree (oneAnswerOneDivergence); Formula.js's QUARTILE.INC errors on 0 and 4. */
+ *  node and formula agree ([[D51]] oneAnswerOneDivergence); Formula.js's QUARTILE.INC errors on 0 and 4. */
 export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number | SolError {
   return quartile(nums, q, false) ?? solError("#DOMAIN!", "QUARTILE needs at least one number");
 }
@@ -1008,7 +1008,7 @@ registerInternal("SECOND", (x) => { const n = toNum(x); return Number.isNaN(n) ?
 
 // The statistics family runs the NODES' kernels (statsOps.ts — Aggregate, Rank &
 // Percentile, Correl, Covariance, Mode, Fisher call the same functions), so the two
-// surfaces cannot drift (capabilityParity / shareImpl). Range args arrive PREPPED
+// surfaces cannot drift (capabilityParity / [[C17]] shareImpl). Range args arrive PREPPED
 // (prepRangeArgs: an error already propagated, blanks dropped, paired ranges
 // row-aligned); a registration just gathers the numbers. The flat Excel names carry
 // Excel's flat-name default (STDEV/VAR = sample, PERCENTILE/QUARTILE = inclusive,
@@ -1111,7 +1111,7 @@ num1("ACOSH",  (x) => (x < 1 ? domErr() : Math.acosh(x)));
 num1("ATANH",  (x) => (x <= -1 || x >= 1 ? domErr() : Math.atanh(x)));
 
 // The distributions Formula.js lacks, on the SAME mathUtils kernels the Distribution
-// NODE uses (shareImpl — the two surfaces are pinned equal by distributionSurfaceParity
+// NODE uses ([[C17]] shareImpl — the two surfaces are pinned equal by distributionSurfaceParity
 // so they cannot drift). Invalid params return null (a blank), never a fabricated number.
 const isTrue = (v: unknown) => v === true || v === 1 || (typeof v === "string" && /^(true|1)$/i.test(v.trim()));
 const ok = (v: number) => (Number.isFinite(v) ? v : null);
@@ -1232,7 +1232,7 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
 // An ARRAY lookup value SPILLS in Excel — one result per element — and we match that:
 // the result is a rank-1 list (still within the formula rank cap), and RANGE_FUNCTIONS
 // return a non-number as-is, so the array flows back cleanly. This is the SCOPED spill
-// for the lookup family only; the general per-argument spill (backlog wholeArrayArgs)
+// for the lookup family only; the general per-argument spill (backlog [[C20]] wholeArrayArgs)
 // stays deferred. Do NOT read this as other RANGE functions spilling — a matrix reaching
 // any other RANGE function is still #SHAPE! upstream. `keys`/`values` are lists or scalars
 // here (a matrix arg errors before us). Excel's lookup_array / return_array are 1-D but
@@ -1324,7 +1324,7 @@ for (const fn of ["EDATE", "WORKDAY"]) {
   const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
   if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
 }
-// The date family runs the date NODES' kernels (dateOps.ts — capabilityParity / shareImpl):
+// The date family runs the date NODES' kernels (dateOps.ts — capabilityParity / [[C17]] shareImpl):
 // DATE with the literal-year rule (26 is the year 26, the documented Excel deviation),
 // TIME, DATEVALUE / TIMEVALUE on OUR shared parser (chrono-backed, #AMBIGUOUS-aware — one
 // date-parsing definition across DATEVALUE, Frame/Table columns, Date Input, Cast, read-as),
@@ -1678,7 +1678,7 @@ registerInternal("BETWEEN", (x, lo, hi) => {
 });
 
 // Delegates to the SAME `nodes/listOps.ts` function the node's `data()` calls. NAMING
-// (formulaNaming): the formula name is the node's LABEL despaced, read from its OP_META table.
+// ([[C51]] formulaNaming): the formula name is the node's LABEL despaced, read from its OP_META table.
 
 /** A bare scalar widens to a 1-element list — the same widening the socket lattice does
  *  on a cable, so `REVERSE(5)` behaves like wiring a Number into a list input. */
@@ -1726,7 +1726,7 @@ registerInternal("ISOUTLIER",  (list, method, threshold) => {
 });
 registerInternal("ISBOOLEAN",  (v) => v === true || v === false);
 registerInternal("ISCLOSE",    (a, b, tol) => (a == null || b == null ? null : Math.abs(Number(a) - Number(b)) <= (tol == null ? 1e-9 : Number(tol))));
-// ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
+// ONE Running function, aggregator as a string ARGUMENT ([[C56]] aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op
 // RUNNING* family is eliminated and must not come back). Same shape as SORT below
 // carrying its direction. Window omitted or 0 = cumulative; a BLANK window is unknown and
@@ -1862,7 +1862,7 @@ registerInternal("COUNTDISTINCT", (list) => {
   return seen.size;
 });
 
-// INTERPOLATE covers BOTH of the node's modes under ONE name (uniqueNameMap injectivity),
+// INTERPOLATE covers BOTH of the node's modes under ONE name ([[C18]] uniqueNameMap injectivity),
 // dispatched on the first argument's RANK:
 //   List mode:  INTERPOLATE(known_ys, known_xs, new_xs)          — 3 args, rank ≤ 1.
 //   Grid mode:  INTERPOLATE(table, xs?, ys?, forecast?)          — a MATRIX first arg;
@@ -1934,11 +1934,11 @@ registerInternal("SHUFFLE", (list) => {
   return shuffleList(arr, arr.map(() => Math.random()));
 });
 
-// Every registration below MUST declare `matrixArgs` (hideMatrixFromVendor). Shape CONSTRUCTION pads
-// #N/A per appendLadder — the element-wise broadcaster's null pad (P3) never applies here.
+// Every registration below MUST declare `matrixArgs` ([[D26]] hideMatrixFromVendor). Shape CONSTRUCTION pads
+// #N/A per [[C48]] appendLadder — the element-wise broadcaster's null pad (P3) never applies here.
 
 /** A formula argument as a MATRIX: a matrix stays itself, a list is a ROW
- *  (widenNeverNarrow's orientation convention), a scalar is 1×1, null stays null. */
+ *  ([[D13]] widenNeverNarrow's orientation convention), a scalar is 1×1, null stays null. */
 function toMatrix(v: unknown): unknown[][] | null {
   if (v == null) return null;
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];
@@ -1946,14 +1946,14 @@ function toMatrix(v: unknown): unknown[][] | null {
 }
 const numMatrix = (v: unknown): NumMat | SolError | null => {
   const m = toMatrix(v);
-  return m === null ? null : asNumericMatrix(m); // a wired blank stays unknown (unwiredNotBlank)
+  return m === null ? null : asNumericMatrix(m); // a wired blank stays unknown ([[D33]] unwiredNotBlank)
 };
 
 registerInternal("TRANSPOSE", (v) => {
   const m = toMatrix(v);
   return m === null ? null : matTranspose(m);
 });
-// COLUMNS/ROWS share the TableInfo node's shape math (matrixShape, shareImpl): a list is a
+// COLUMNS/ROWS share the TableInfo node's shape math (matrixShape, [[C17]] shareImpl): a list is a
 // ROW so COLUMNS counts it and ROWS is 1, a scalar is 1×1, a wired blank stays unknown.
 registerInternal("COLUMNS", (v) => matrixShape(v).cols);
 registerInternal("ROWS", (v) => matrixShape(v).rows);
@@ -1985,7 +1985,7 @@ registerInternal("CHOOSEROWS", (matrix, ...rows) => {
 });
 registerInternal("EXPAND", (matrix, rows, cols, fill) => {
   const m = toMatrix(matrix);
-  if (m === null || rows === null || cols === null) return null; // a wired-blank axis is unknown (unwiredNotBlank)
+  if (m === null || rows === null || cols === null) return null; // a wired-blank axis is unknown ([[D33]] unwiredNotBlank)
   return expandMat(m, Math.round(Number(rows ?? 0)), Math.round(Number(cols ?? 0)), fill ?? null);
 });
 registerInternal("MMULT", (a, b) => {
@@ -2048,13 +2048,13 @@ registerInternal("MINVERSE", (v) => {
   if (matRows(m) !== matCols(m)) return solError("#SHAPE!", "Matrix must be square");
   return matInverse(m) ?? solError("#DIV/0!", "Matrix is singular. It has no inverse");
 });
-// WRAPROWS/WRAPCOLS take Excel's optional pad_with; the default is the appendLadder #N/A.
+// WRAPROWS/WRAPCOLS take Excel's optional pad_with; the default is the [[C48]] appendLadder #N/A.
 const wrapPad = (padWith: unknown, what: string) => () =>
   padWith !== undefined && padWith !== null
     ? padWith
     : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
 registerInternal("WRAPROWS", (list, w, padWith) => {
-  if (list == null || w == null) return null; // a wired blank stays unknown (unwiredNotBlank; the node answers blank too)
+  if (list == null || w == null) return null; // a wired blank stays unknown ([[D33]] unwiredNotBlank; the node answers blank too)
   const width = Math.round(Number(w));
   if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPROWS needs a wrap count of 1 or more");
   return wrapCells(toList(list), width, "rows", wrapPad(padWith, "row"));
@@ -2180,7 +2180,7 @@ const needLambda = (v: unknown, host: string): LambdaValue | SolError =>
  *  MEANINGFUL arity only — never the trailing row/col indices. */
 const etaFn = (lam: LambdaValue, meaningful: number): ((...args: unknown[]) => unknown) =>
   lam.eta ? (...args: unknown[]) => lam.fn(...args.slice(0, meaningful)) : lam.fn;
-/** Rank-preserving cell walk: a list is one ROW (widenNeverNarrow's convention). */
+/** Rank-preserving cell walk: a list is one ROW ([[D13]] widenNeverNarrow's convention). */
 const asRows = (v: unknown): unknown[][] | null => {
   if (v == null) return null;
   if (Array.isArray(v)) return v.length > 0 && Array.isArray(v[0]) ? (v as unknown[][]) : [v as unknown[]];

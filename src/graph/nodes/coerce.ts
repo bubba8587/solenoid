@@ -70,7 +70,7 @@ export function toAnyMatrix(v: unknown): Cell[][] | null {
 
 /** The row/column COUNTS of a matrix/list/scalar, read identically by the TableInfo
  *  node (COLUMNS/ROWS outputs) and the COLUMNS/ROWS formulas — the one shape math both
- *  share (shareImpl). A list is one ROW (widenNeverNarrow), a scalar is 1×1, a wired blank is unknown.
+ *  share ([[C17]] shareImpl). A list is one ROW ([[D13]] widenNeverNarrow), a scalar is 1×1, a wired blank is unknown.
  *  A Frame carries its own real shape, so its caller (the node) special-cases it before
  *  reaching here; frames never flow through formulas. */
 export function matrixShape(v: unknown): { rows: number | null; cols: number | null } {
