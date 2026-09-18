@@ -129,19 +129,19 @@ results get retried and settled rulings relapse.
 |---|---|
 | `decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, CLAUDE, README, ADOPTING, DECISIONS) |
 | `groupCollapse.ts`, `flyToNode.ts` | [[C88]] collapseIsVisual; `../specs/group-collapse.md` |
-| `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost |
-| `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
+| `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `../specs/add-menu.md`; [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost |
+| `equationSolve.ts` | [[C47]] equationNode; `../specs/equation-solver.md` |
 | `semanticZoomStore.ts` | [[C74]] semanticZoomRawScale |
 | `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts` | [[C42]] htmlInCanvasRenderer and its policies (`python tools/dte.py tree --under C42`) |
 | `HtmlCanvasLayer.tsx` | [[C42]] htmlInCanvasRenderer and its policies; [[C75]] gpuTextureBudget |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../specs/pointer-gestures.md` |
-| `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | `subsystem-invariants.md` § React Flow surface contract; [[B10]] reactFlowView, [[C43]] oneFlowSurface |
-| `graphCompute.ts`, `process.ts` (the pass) | [[D30]] targetedEqualsFull, [[D31]] onlyCalcModeSkips; `subsystem-invariants.md` § Error values (`#CIRC!` is engine-level) |
-| `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | `subsystem-invariants.md` § React Flow surface contract; [[C11]] socketBox12; `../DESIGN.md` § Cards |
-| `connectionStore.ts`, `httpBridge.ts`, live-source fetch | `subsystem-invariants.md` § Live connections |
-| `flyToNode.ts`, any camera `zoomAt` caller | `subsystem-invariants.md` § Group collapse (camera targets) |
-| `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
-| `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
+| `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | [[C43]] oneFlowSurface; `../specs/react-flow-surface-contract.md`; [[B10]] reactFlowView, [[C43]] oneFlowSurface |
+| `graphCompute.ts`, `process.ts` (the pass) | [[D30]] targetedEqualsFull, [[D31]] onlyCalcModeSkips; [[C24]] arraySemantics; `../specs/error-values.md` (`#CIRC!` is engine-level) |
+| `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[C43]] oneFlowSurface; `../specs/react-flow-surface-contract.md`; [[C11]] socketBox12; `../DESIGN.md` § Cards |
+| `connectionStore.ts`, `httpBridge.ts`, live-source fetch | [[D32]] refreshOutsideRebuild; `../specs/live-connections.md` |
+| `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapseIsVisual; `../specs/group-collapse.md` (camera targets) |
+| `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../specs/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
+| `mathUtils.ts` `fillBorderedGrid` | [[A5]] excelParity; `../specs/bordered-grid-fill.md` |
 | `excelFunctions.ts` overrides / dispatch walk | `../specs/formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
 | `stringOrder.ts` | [[C59]] byteStringOrder (byte order, not locale) |
@@ -152,19 +152,19 @@ results get retried and settled rulings relapse.
 | `standoffSolver.ts`, `standoffs.ts` | [[C89]] standoffsSolveLast; `../specs/standoffs.md` |
 | `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | [[C90]] drawnCablesAnnotate; `../specs/drawn-cables.md` |
 | `tidyArrange.ts` (ELK), `nodeSize.ts` | [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead; `../specs/auto-arrange-tidy.md` |
-| `errorValue.ts`, `valueKinds.ts` | `value-semantics.md`; `subsystem-invariants.md` § Error values |
-| `fcReconcile.ts`, in-place socket retype | `subsystem-invariants.md` § Type propagation |
-| `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `subsystem-invariants.md` § Unit flow; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
+| `errorValue.ts`, `valueKinds.ts` | `value-semantics.md`; [[C24]] arraySemantics; `../specs/error-values.md` |
+| `fcReconcile.ts`, in-place socket retype | [[D16]] retypeReconciles; `../specs/type-propagation-on-in-place-socket-retype.md` |
+| `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `../specs/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
 | `formatModel.ts`, `formatController.ts`, FC controls | `format-model.md` |
-| `alertStore.ts` | `subsystem-invariants.md` § Alert node + HUD |
-| `nodeNameStore.ts`, `textForm.ts` | `subsystem-invariants.md` § Addressable model |
-| `documentStore.ts`, `documentStoreCore.ts` | `subsystem-invariants.md` § Per-doc autosave |
-| `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
-| `flow/FlowCompositeOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
+| `alertStore.ts` | [[C39]] effectsEdgeTriggered; `../specs/alert-node-alerts-hud.md` |
+| `nodeNameStore.ts`, `textForm.ts` | [[C19]] namingModel; `../specs/addressable-model.md` |
+| `documentStore.ts`, `documentStoreCore.ts` | [[C32]] autosaveSlotOrder; `../specs/per-doc-autosave-persistence.md` |
+| `persistence.ts` (load gate, literal maps) | [[C28]] literalsIffEditable; `../specs/inline-literal-maps.md` |
+| `flow/FlowCompositeOverlay.tsx`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../specs/composite-drill-in-mount-lifecycle.md` |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `../specs/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice, [[D15]] wildcardsKeepRank |
-| `nodes/cube.ts` | `subsystem-invariants.md` § Socket lattice (the Cube is the recursive lattice supremum) |
+| `nodes/cube.ts` | [[C10]] socketLattice; `../specs/socket-lattice.md` (the Cube is the recursive lattice supremum) |
 | `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts` | `node-coverage.md` § Annotation (Note and Report bodies are Knap templates: what mints an input, what a bare `{{ name }}` embeds); [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
-| `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `subsystem-invariants.md` § Script sandbox |
+| `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `../specs/script-sandbox.md` |
 | `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `../specs/formulajs-divergences.md`; the formula-surface nodes (`python tools/dte.py tree --under B5`); [[C22]] rowFormulaRefs |
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | [[C17]] shareImpl (one impl, two surfaces), [[D19]] implReteFree (rete-free; what not to extract) |
 | `computedColumnCore.ts` | [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas; [[C22]] rowFormulaRefs |
@@ -174,7 +174,7 @@ results get retried and settled rulings relapse.
 | `nodeCatalog.ts` | `node-coverage.md`; [[C14]] currentExcelParity (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `layout-chrome.md` |
-| `ConduitComponent.tsx`, conduit faces/lanes | `subsystem-invariants.md` § Conduit perpendicular-face sign |
+| `ConduitComponent.tsx`, conduit faces/lanes | [[D17]] relaysTransparent; `../specs/conduit-lane-faces.md` |
 
 ## Task → docs cheat-sheet
 
@@ -182,7 +182,7 @@ results get retried and settled rulings relapse.
   + `glossary.md`; `nodeCatalog.ts` is the source of truth (Add menu + Function
   Reference generate from it). Merging nodes: [[B11]] maximalMerge.
 - **Anything on the canvas surface (a gesture, a key, a menu, a layer, a cable or
-  socket change):** `subsystem-invariants.md` § React Flow surface contract first;
+  socket change):** [[C43]] oneFlowSurface; `../specs/react-flow-surface-contract.md` first;
   `touch-gestures.md` for gestures.
 - **Choosing a socket type for a port, or "why won't this cable connect?":**
   `socket-reference.md` (the per-variant tables) + subsystem-invariants "Socket
