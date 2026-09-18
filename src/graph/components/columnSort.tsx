@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C59]] byteStringOrder (a UI list keeps natural order)
 import { useState } from "react";
 
 // A view control, NOT a transform: it reorders RENDERED rows only. Because the
@@ -93,7 +93,7 @@ function compareKeys(a: SortKey, b: SortKey): number {
   const an = typeof a === "number";
   if (an !== (typeof b === "number")) return an ? -1 : 1;
   if (an) return (a as number) - (b as number);
-  // Textual: natural-ish text order, so "item2" precedes "item10".
+  // A UI list keeps natural order ([[C59]] byteStringOrder), so "item2" precedes "item10".
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }
 

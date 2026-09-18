@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[E9]] errorsKeepOrigin (an error chip flies to its origin)
 // Mirrors FrameDisplay so the collapse-to-chip CSS applies unchanged.
 import { CubeChip } from "./CubeChip";
 import { cubeRowCount, isCubeValue, type CubeValue } from "../frame";

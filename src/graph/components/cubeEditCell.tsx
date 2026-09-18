@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C28]] literalsIffEditable, [[C95]] commitOnEnter
 import { useEffect, useState, type ReactNode } from "react";
 import { cubePopup, type CubeEditBinding, type DrillView } from "../cubePopupStore";
 import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth, type CubeCell } from "../frame";
@@ -10,11 +10,8 @@ import { stopDragStart } from "../coarse";
 import { elemFamilyOfCells } from "../valuePopup";
 import { cubeCellToken } from "./cubeCell";
 
-// The Cube Input's editing cells (cubePopup edit mode). Every nested cell DRILLS on the
-// breadcrumb, one window: a list cell → an editable list level, a frame-shaped record list
-// → an editable table level, a cube-shaped one → a cube level with the same rules. A
-// scalar edits inline. Every commit patches the records at the cell's path and the popup
-// re-derives its stack from them.
+// The Cube Input's editing cells (specs/literal-input-editors.md): every commit patches the
+// records at the cell's path and the popup re-derives its stack from them.
 
 /** The view for the records list at `path` (a cube level). */
 export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {

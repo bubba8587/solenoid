@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter
+// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[B2]] webTryDesktopFull
 import { useEffect, useRef, useState } from "react";
 import type { FileLinkNode as FileLinkNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
@@ -31,16 +31,14 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
   const [webFile, setWebFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const desktop = isDesktop();
-  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
   const title = useEditableLabel(data);
 
   useEffect(() => { setPath(data.path); }, [data.path]);
   useEffect(() => { setFileName(data.fileName); }, [data.fileName]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
-  // Set the link + fill an empty/default title from the file name. Shared by both
-  // platforms; `name` is the display name, `p` the absolute path ("" on web). Writes
-  // data.label directly — the title hook resyncs its display off it when not editing.
+  // `name` is the display name, `p` the absolute path ("" on web). Writes data.label
+  // directly; the title hook resyncs its display off it when not editing.
   function setLink(name: string, p: string) {
     setPath(p); data.path = p;
     setFileName(name); data.fileName = name;

@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
 // The engine's model: names are keys, dates are whole-day serials, durations and lags are
 // working days; no Date object anywhere in this package (25-gantt.md § 6.5).
 

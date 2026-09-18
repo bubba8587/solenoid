@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed
 // MSPDI (Project XML, pj14) read into the engine's task tree; the file's own stored dates
 // ride along as `golden` so a fixture diffs against the engine (25-gantt.md § 3.2, § 3.3).
 

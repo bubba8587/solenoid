@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate
 // Serial-date arithmetic with no `Date` (Hinnant's integer days↔civil algorithms): a serial's
 // civil date and weekday are its UTC ones, as the app's `serialToJsDate` maps them.
 

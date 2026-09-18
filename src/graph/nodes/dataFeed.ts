@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[D32]] refreshOutsideRebuild, [[C28]] literalsIffEditable
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[D32]] refreshOutsideRebuild, [[C28]] literalsIffEditable, [[C104]] foreignDocNetworkGate
 import { ClassicPreset } from "rete";
 import { frameOut } from "./shared";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";

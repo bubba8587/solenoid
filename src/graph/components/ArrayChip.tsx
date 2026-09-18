@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C58]] tableInputRawText
 import { type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
@@ -6,8 +6,6 @@ import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, type ElemFamily 
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
-// The popup openers and value classification live beside the popup store (valuePopup.ts);
-// re-exported here so the chip's long-standing consumers keep their import path.
 export { isArrayValue, type ElemFamily };
 
 type ArrayValue = Cell[] | Cell[][];
@@ -38,14 +36,11 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   onSave?: (next: (number | null)[][]) => void;
   /** The node the popup's Pin action targets; defaults to the host node from context. */
   pinNodeId?: string;
-  /** The SOCKET-declared element family — every chip sits on a known output
-   *  socket, so derive it there (`nodeOutputElemFamily`); REQUIRED so a new host
-   *  can't silently fall back to cell-guessing (the recurring untinted-chip bug).
-   *  Pass the derived value even when it's `undefined` — that means the socket is
-   *  a genuinely unresolved wildcard rung, the one case cells are sniffed. */
+  /** The SOCKET-declared element family (`nodeOutputElemFamily`); REQUIRED so a host can't
+   *  fall back to cell-guessing. `undefined` = an unresolved wildcard rung, the one case
+   *  cells are sniffed. */
   elem: ElemFamily | undefined;
-  /** Merged into the popup open() — Table Input passes raw literal cells + onSaveRaw
-   *  so the grid edits source text, never derived values. */
+  /** Merged into the popup open() — Table Input passes raw cells + onSaveRaw ([[C58]] tableInputRawText). */
   popupOverrides?: Partial<TablePopupState>;
 }) {
   // The hook must run every render (Rules of Hooks), so read it, then prefer the prop.

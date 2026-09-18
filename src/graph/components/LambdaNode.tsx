@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C50]] lambdaBindsByName, [[C95]] commitOnEnter
 import { useState, useEffect } from "react";
 import type { LambdaNode as LambdaNodeType } from "../rete-nodes";
 import { formatLambda } from "../nodes/lambda";
@@ -10,8 +10,8 @@ import { formulaPopup } from "../formulaPopupStore";
 import "./ExpressionNode.css";
 import { stopDragStart } from "../coarse";
 
-// The λ(…) row declares the parameters, bound POSITIONALLY by MAP/REDUCE/…; any
-// formula variable that is not a parameter becomes a captured input row.
+// The λ(…) row declares the parameters, bound BY NAME at the consumer ([[C50]]
+// lambdaBindsByName); a formula variable that is not a parameter becomes a captured input row.
 
 export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>) {
   const [expr, setExpr] = useState(node.expr);
@@ -31,7 +31,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
     await applyLambdaChange(node, { expr: next });
   }
 
-  // Commit on blur/Enter — every keystroke would churn sockets.
+  // [[C95]] commitOnEnter: a per-keystroke commit would churn sockets.
   async function commitParams() {
     if (params === node.params) return;
     await applyLambdaChange(node, { params });
@@ -51,7 +51,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
-          title="Parameters, bound positionally where the lambda is used"
+          title="Parameters, bound by name where the lambda is used"
         />
         <span className="solenoid-node__io-label">)</span>
       </div>

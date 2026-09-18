@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
 // The time scale: a drawn day window, pixels per day and a two-tier header on serial math
 // (DHTMLX's tier normalization, the coarser tier snapped to the primary's pixels, rebuilt on serials).
 

@@ -1,9 +1,6 @@
-// [[C43]] oneFlowSurface (.nokeys: the grid owns its keys)
-// The table popup grid's keyboard MOVEMENT, pure so it can be tested in the node env (the
-// component only wires focus). `vi` is the VISUAL row position (index into the sorted
-// visibleOrder), never the source row — movement follows what the user sees. Columns are
-// plain indices. `skip(vi, c)` marks a cell Tab hops over (computed columns are read-only);
-// arrows and Home/End can still land on them.
+// [[C43]] oneFlowSurface (.nokeys: the grid owns its keys), [[C54]] noPerCellFormulas (computed cells are skipped)
+// Pure keyboard movement for the table popup grid. `vi` is the VISUAL row (index into the
+// sorted visibleOrder), never the source row; `skip(vi, c)` marks a cell Tab hops over.
 
 export type GridKey =
   | "Enter" | "ShiftEnter"

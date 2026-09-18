@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate
 // Grid-cell text for a task under a column key; dates as DD-MMM-YYYY via serial math.
 
 import type { GanttPayload, GanttTask } from "./payload";

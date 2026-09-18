@@ -1,13 +1,10 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[B14]] oneDesignSystem (DESIGN.md § Quiet Accent)
 import { useSeriesColors } from "./chartCore";
 import "./CategoryChip.css";
 
-/** A categorical color chip for a string value (the Chip text style, B2.2). The hue is
- *  the shared chart palette slot at `index` (first-appearance order — see categoryColor.ts),
- *  so the same value is the same color anywhere in a column and agrees with a chart's series
- *  colors. DESIGN Quiet Accent: the fill is a translucent wash (the sanctioned chip recipe,
- *  ~16% toward transparent) that composites over either theme; the ink is the hue pulled
- *  toward --text so it stays legible. Flat — no shadow. */
+/** A categorical color chip: the shared chart palette slot at `index` (first-appearance
+ *  order, categoryColor.ts), so a value is the same color in a column and in a chart's
+ *  series. Wash and ink per DESIGN.md § Quiet Accent. */
 export function CategoryChip({ value, index }: { value: string; index: number }) {
   const palette = useSeriesColors();
   const hue = palette[index % palette.length] ?? palette[0];

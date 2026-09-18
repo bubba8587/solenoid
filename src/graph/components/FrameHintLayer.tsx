@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[D18]] frameLabelHint
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { frameHintStore, type FrameHint } from "../frameHint";
 import { formatFrameCell } from "../frame";

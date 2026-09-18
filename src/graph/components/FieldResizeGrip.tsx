@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C93]] gestureByPointerType
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { getActiveView } from "../activeGraph";
 
@@ -34,7 +34,7 @@ function onUp() {
  *  Height is a live DOM size, not persisted, exactly as the native resizer left it. */
 export function FieldResizeGrip({ targetRef }: { targetRef: RefObject<HTMLElement | null> }) {
   function onPointerDown(e: ReactPointerEvent<HTMLDivElement>) {
-    // Keep rete's node-drag / area-pan from starting on the same press.
+    // The grip vetoes the card drag and the pan ([[C93]] gestureByPointerType).
     e.stopPropagation();
     e.preventDefault();
     const el = targetRef.current;

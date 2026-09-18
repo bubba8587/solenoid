@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[D28]] tripwireVendorDrift, [[C44]] dateSerials, [[C24]] arraySemantics
+// [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[D28]] tripwireVendorDrift, [[C44]] dateSerials, [[C24]] arraySemantics, [[D70]] nullNotEnoughData
 // Must not import `finance.ts` (cycle). Entry points take date serials; invalid input is `null`, never a throw or a fabricated number — each surface tags its own failure.
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { solError, isSolError, type SolError } from "../errorValue";

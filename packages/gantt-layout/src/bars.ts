@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[D66]] daysMinutesModes
 // Bar geometry (rect, diamond, bracket, progress fill, baseline ghost, ellipsized label); an
 // inclusive finish draws to finish + 1. Pure numbers; colors are the view's.
 

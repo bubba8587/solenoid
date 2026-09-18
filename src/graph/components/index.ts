@@ -200,10 +200,6 @@ export { ComplexPowerComponent } from "./ComplexPowerNode";
 // ─── Distributions — normal / t / chi-squared ─────────────────────────────────
 export { DistributionsComponent } from "./DistributionsNode";
 
-// ─── Distributions — continuous ───────────────────────────────────────────────
-
-// ─── Distributions — discrete ─────────────────────────────────────────────────
-
 // ─── Distributions — discrete (extra) ────────────────────────────────────────
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 

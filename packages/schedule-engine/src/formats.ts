@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed
 // GanttProject `.gan` and Primavera XER read into the engine's task tree, and MSPDI write
 // (25-gantt.md § 3.3). Link types are two-letter strings inside; each border maps its own codes.
 

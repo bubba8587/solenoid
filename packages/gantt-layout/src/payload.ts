@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[C44]] dateSerials
+// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[C44]] dateSerials, [[D66]] daysMinutesModes
 // The Gantt figure's input contract: data, never geometry; every date a whole-day serial with
 // an inclusive Finish (25-gantt.md § 6.3). `layoutGantt` turns it into pixels at a width.
 

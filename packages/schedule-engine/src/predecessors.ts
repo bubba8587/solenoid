@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages
+// [[C69]] ganttPackages, [[D67]] grammarOnlyAtBorder
 // The predecessor grammar `<row><type><±lag><unit>` (`3FS+2d`) lives ONLY at the import border:
 // a row number resolves to a name here and never becomes an internal key (25-gantt.md § 6.1).
 

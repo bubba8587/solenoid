@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials, [[D36]] nullSkippedNotZero
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D36]] nullSkippedNotZero, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
 // A working calendar over whole-day serials in unit-index space: unit k is the k-th counted
 // working day (Days mode) or working minute (Minutes mode) from the anchor, k < 0 backwards.
 

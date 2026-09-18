@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D36]] nullSkippedNotZero, [[D51]] oneAnswerOneDivergence, [[D48]] classifyNonFinite, [[C14]] currentExcelParity
+// [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D36]] nullSkippedNotZero, [[D51]] oneAnswerOneDivergence, [[D48]] classifyNonFinite, [[C14]] currentExcelParity, [[D70]] nullNotEnoughData
 // Inputs are already-prepared numbers (errors propagated, blanks skipped by the caller). `null` = undefined for this input (too few points, a flat list), shown as a blank; a SolError is a real domain failure.
 import { solError, type SolError } from "../errorValue";
 import { iterMin, iterMax, stdNormCDF, fCDF, chiSqCDF, lnCombin } from "./mathUtils";

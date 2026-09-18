@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter (useDraftCommit, useEditableTitle). Mechanics: specs/literal-input-editors.md.
+// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C27]] noDataInComponents, [[C28]] literalsIffEditable, [[D16]] retypeReconciles, [[C12]] socketRows, [[C11]] socketBox12. Mechanics: specs/literal-input-editors.md.
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
@@ -17,8 +17,7 @@ import { ColumnPickerField } from "./ColumnPickerField";
 import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 
-// Sizes nodes whose body grows by row count; socket PLACEMENT never uses it — each
-// dot centers on its own row via CSS, immune to header height.
+// Body-height estimate only; socket placement is measured per row ([[C11]] socketBox12).
 export const INPUT_ROW_PITCH = 28;
 
 /** Input-socket keys with an incoming cable, derived at render time (never cached in
@@ -46,7 +45,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
   for (const c of editor?.getConnections() ?? []) {
     if (c.target !== nodeId || typeof c.targetInput !== "string") continue;
     const src = editor?.getNode(c.source);
-    // An unlabeled source falls back to its catalog name, as its header placeholder does.
+    // Unlabeled → the catalog name ([[D22]] oneNamePerCard).
     const srcLabel = (src as { label?: string } | undefined)?.label?.trim();
     map.set(c.targetInput, {
       sourceId: c.source,
@@ -60,8 +59,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
 /** `parse` result for a draft that can't become a value (commit reverts). */
 export const INVALID_DRAFT = Symbol("invalid-draft");
 
-/** [[C95]] commitOnEnter: typing NEVER propagates into the graph, one undo entry per
- *  commit. `apply` owns the mirror + processGraph — never onChange. */
+/** [[C95]] commitOnEnter. `apply` owns the mirror + processGraph, never onChange. */
 export function useDraftCommit<T>(
   committed: T,
   toText: (v: T) => string,
@@ -89,18 +87,12 @@ export function useDraftCommit<T>(
   return { draft, setDraft, onBlur, onKeyDown };
 }
 
-// The header title-edit mechanic every custom-chrome node shares. Unconditional
-// stopPropagation on the title (matching Note / Import Obsidian): the caret needs
-// the pointer, and the rest of the fit-content header stays the drag handle.
+// The title swallows the pointer (the caret needs it); the rest of the header stays the drag handle.
 const stopTitle = (e: { stopPropagation: () => void }) => e.stopPropagation();
 
-/** THE editable node-title state machine: a click-to-edit header that drafts while
- *  typing and commits on Enter/blur, with Escape reverting — matching the standard
- *  NodeShell header. Typing NEVER writes `node.label`; only a commit does, then the
- *  optional `onCommit` runs the node's side effect (a rerender / processGraph).
- *  Spread `inputProps` onto the editing <input>, `displayProps` onto the click-to-
- *  edit display; read the committed value straight off `node.label`. Group drives
- *  `begin()` from its own double-press instead of the display click. */
+/** THE editable node-title state machine ([[C95]] commitOnEnter): only a commit writes
+ *  `node.label`, then `onCommit` runs the node's side effect. Spread `inputProps` onto the
+ *  editing <input>, `displayProps` onto the display; Group drives `begin()` itself. */
 export function useEditableLabel(node: { label: string }, onCommit?: () => void) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.label);
@@ -453,9 +445,8 @@ export interface AutoLiteralHost {
 }
 
 export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  // `anydata` earns the scalar literal field too (Set Cell's Value rung): a typed literal is
-  // a scalar, and a list/matrix only arrives by wire. A wildcard SINK/relay stays wire-only
-  // by leaving `autoLiterals` off, so widening the rung here can't affect it.
+  // `anydata` takes the scalar literal too (a list/matrix only arrives by wire); a wildcard
+  // sink/relay stays wire-only by leaving `autoLiterals` off.
   return !!node.autoLiterals && (dt === "any" || dt === "anydata" || dt === "trueany");
 }
 
@@ -565,8 +556,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
   // Column-name literals this node declares as frame-column pickers (B4): key → frame input.
   const pickerKeys = new Map(columnPickersOf(node).map((p) => [p.key, p.frameInput]));
 
-  // A literal can move a derived SOCKET type and no connection event fires on this
-  // path, so the wildcard types must be re-settled after a literal edit.
+  // A literal edit can move a derived socket type with no connection event ([[D16]] retypeReconciles).
   function settleTypes() {
     const ed = getOwningEditor(node.id);
     const ar = getOwningView(node.id);

@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D42]] perInputUnitBlind, [[C24]] arraySemantics, [[C8]] declareOnce
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D42]] perInputUnitBlind, [[C24]] arraySemantics, [[C8]] declareOnce, [[D69]] convertBadPickIsNA
 import { ClassicPreset, type NodeEditor } from "rete";
 import { broadcastUnit, numListIn, numListOut, type UnitOperand } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";

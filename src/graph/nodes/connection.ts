@@ -1,4 +1,4 @@
-// [[E11]]
+// [[E11]], [[C104]] foreignDocNetworkGate
 import { ClassicPreset } from "rete";
 import { frameOut, strListOut, strIn, numIn, numOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
@@ -147,7 +147,7 @@ async function fetchParsed<T>(
   size: (v: T) => { rows: number; cols: number },
 ): Promise<T | null> {
   if (url === "") { connectionStore.setState(nodeId, { status: "idle" }); return null; }
-  if (!requestNetwork(nodeId)) return null; // C2 gate: foreign doc not yet allowed
+  if (!requestNetwork(nodeId)) return null; // [[C104]] foreignDocNetworkGate: not yet allowed for this document
   connectionStore.setState(nodeId, { status: "loading" });
   try {
     const { text, contentType } = await fetchText(url);
@@ -571,7 +571,7 @@ export class WeatherNode extends ClassicPreset.Node {
 // A country + year → the year's public holidays. Nager.Date is keyless + CORS-open.
 // The Dates list feeds NETWORKDAYS / WORKDAY straight; the frame reads on a Report;
 // "days to next" drives a dashboard. An optional region keeps only the days that apply
-// in a subdivision. Reuses the WebSource sync-background fetch, so it rides the C2 gate.
+// in a subdivision. Reuses the WebSource sync-background fetch, so it rides [[C104]] foreignDocNetworkGate.
 export class HolidaysNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "One row per holiday: date, English name, local name.",

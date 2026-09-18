@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C25]] firstClassUnits, [[D40]] unitOnValue (Convert primacy), [[C11]] socketBox12
 import { useState, useRef, useLayoutEffect, useSyncExternalStore, type ChangeEvent } from "react";
 import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../rete-nodes";
 import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from "../rete-nodes";
@@ -85,7 +85,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const [outFormat, setOutFormat] = useState(node.outFormat);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
 
-  // Convert has unit primacy, so every adjacent FC must relock on a from/to change.
+  // Convert primacy ([[D40]] unitOnValue): adjacent FCs relock on a from/to change.
   function refreshFcs() {
     const editor = getOwningEditor(node.id); // relock FCs in this node's own graph (drill-in too)
     if (!editor) return;
@@ -136,8 +136,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const fromCode   = CONVERT_UNIT_DEFS[fromUnit]?.excelCode ?? "";
   const toCode     = CONVERT_UNIT_DEFS[toUnit]?.excelCode ?? "";
 
-  // Sockets align to the in/out boxes, measured from the DOM after layout so the
-  // dots track regardless of font/padding shifts.
+  // Socket tops are measured from the in/out boxes ([[C11]] socketBox12).
   const inBoxRef  = useRef<HTMLDivElement>(null);
   const outBoxRef = useRef<HTMLDivElement>(null);
   const [inTop, setInTop]   = useState<number | undefined>(undefined);

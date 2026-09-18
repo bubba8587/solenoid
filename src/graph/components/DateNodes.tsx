@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[D10]] onePrunePath
+// [[C27]] noDataInComponents, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct, [[C44]] dateSerials
 import type {
   TodayNowNode as TodayNowNodeType,
   DateConstructNode as DateConstructNodeType,
@@ -79,8 +79,7 @@ export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNo
   async function pickOp(next: DateTimeValueOp) {
     if (next === data.op) return;
     data.setOp(next);
-    // The output retyped in place (date ↔ number): drop cables the new type
-    // can't feed, and let docked FCs re-resolve — no connection event fires.
+    // In-place output retype ([[D16]] retypeReconciles).
     const editor = getActiveEditor();
     const view = getActiveView();
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
@@ -147,7 +146,7 @@ export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const [, setLabel] = useNodeField(data, "label");
   async function handleOp(next: DateDiffOp) {
-    // removeInput while a cable still references the socket is unsafe, so drop it first.
+    // [[D10]] onePrunePath: prune before removeInput.
     if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
       await dropInputCables(data.id, ["basis"]);
     }
@@ -196,8 +195,7 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    // The output retyped in place (date ↔ number): drop cables the new type
-    // can't feed, and let docked FCs re-resolve — no connection event fires.
+    // In-place output retype ([[D16]] retypeReconciles).
     const editor = getActiveEditor();
     const view = getActiveView();
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");

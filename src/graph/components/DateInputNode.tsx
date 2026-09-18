@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C44]] dateSerials, [[D54]] relativeDatesOptIn
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DateInputNode as DateInputNodeType } from "../rete-nodes";
 import { jsDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
@@ -12,14 +12,12 @@ import { processGraph } from "../process";
 const FORMAT_EXAMPLES = ["today", "tomorrow", "yesterday", "next friday", "last monday", "in 3 days", "2 weeks ago", "15-Mar-2026", "2026-03-15"];
 const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOString().slice(0, 10);
 
-// The raw source text is the truth (the Frame/Table date model). We render the app's
-// DD-MMM-YYYY convention when idle but show exactly what was typed while editing, and never
-// discard an entry: an ambiguous date (3/4/2026) or unparseable text stays put and flags red.
-// Parsing is the shared parseDate (chrono-backed, #AMBIGUOUS-aware). The calendar button opens
-// the browser's native picker; its ISO value flows in underneath.
+// The raw text is the stored truth: idle shows DD-MMM-YYYY ([[C44]] dateSerials), editing
+// shows what was typed, an ambiguous or unparseable entry stays put and flags red. The
+// calendar button drives the native picker; its ISO value flows in underneath.
 export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>) {
   const nativeRef = useRef<HTMLInputElement>(null);
-  // Mirror the node: a relative phrase is valid ONLY under the Relative dates opt-in.
+  // Mirrors the node ([[D54]] relativeDatesOptIn).
   const relativeAllowed = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("relativeDates"));
   const raw = data.stringLiterals.date ?? "";
   const t = raw.trim();

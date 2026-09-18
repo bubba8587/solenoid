@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C94]] formatFamilyGates, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
 // The FC's format/unit dropdowns, shared with other surfaces so the option data can't drift.
 // Plain controlled selects — none of the FC node's value-mutating behavior lives here.
 
@@ -11,10 +11,7 @@ import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { LazySelect } from "./LazySelect";
 
-// The FC's three flow states, shared so the popup dropdowns speak the same language:
-//   ← →  authored HERE — applies to this box, travels ahead with the value
-//   → →  inherited     — the value's unit arrived from upstream (read-only / locked)
-//   ← ←  dictated from ahead (Convert primacy) — FC-only, not used in the popup
+// The FC's flow states (authored ← →, inherited → →, dictated ← ←): docs/format-model.md.
 
 export type FcDir = "back" | "fwd" | null;
 export interface FcFlowState { left: FcDir; right: FcDir }
@@ -162,10 +159,9 @@ export function unitOptions(opts: FcFormatOptions) {
 
 // ─── Standalone selects (for non-FC surfaces — the table popup) ───────────────
 
-/** The blank first option: no pick of its own, so an upstream format applies. A caller
- *  passing `inherit` must handle `""` in `onChange` by dropping its stored pick. Returns
- *  the <option> ELEMENT, not a component — LazySelect's collapsed render walks for
- *  `type === "option"` and would otherwise miss it and show the wrong label. */
+/** The inherit pick ([[D41]] formatFlowsDownstream): a caller passing `inherit` must handle
+ *  `""` in `onChange` by dropping its stored pick. Returns the <option> ELEMENT, not a
+ *  component — LazySelect's collapsed render walks for `type === "option"`. */
 function inheritOption(show?: boolean) {
   return show ? <option value="" title="Inherit the upstream format">—</option> : null;
 }
@@ -241,9 +237,8 @@ export function LogicalStyleSelect({ value, onChange, className, title, inherit 
   );
 }
 
-/** A letter-case <select> matching the FC's text socket — display-only, non-destructive.
- *  `"chip"` is the categorical color-chip style (B2.2), sharing this one dropdown with the
- *  cases (exclusive with them this tranche). */
+/** A letter-case <select> matching the FC's text socket — display-only; `"chip"` is the
+ *  categorical color-chip style, exclusive with the cases. */
 export function TextCaseSelect({ value, onChange, className, title, inherit }: {
   value: string | undefined;
   onChange: (v: TextCase | "" | "chip") => void;
@@ -267,8 +262,7 @@ export function TextCaseSelect({ value, onChange, className, title, inherit }: {
   );
 }
 
-/** A unit <select> matching the FC's; `disabled` is the LOCKED state (an inherited unit
- *  the value already carries). */
+/** A unit <select> matching the FC's; `disabled` is the LOCKED state ([[C25]] firstClassUnits). */
 export function UnitSelect({ value, onChange, className, title, disabled }: {
   value: string;
   onChange: (v: string) => void;
