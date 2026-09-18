@@ -33,7 +33,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
 7. **Empty sections after a migration go unnoticed.** Removing the pointer blocks left 67
    nodes with an empty `## Consequences`; `validate` did not mention it. A warning for an
    empty section would catch half-done edits.
-8. **The vendored `CLAUDE.md` carries DTE-repo-local sections.** "Rings in this repo" (A core
+8. **The vendored `dte-rules/CLAUDE.md` carries DTE-repo-local sections.** "Rings in this repo" (A core
    goals, B format of DTE, C the reference tool) and "Conventions" (Python 3.8, one file) are
    about the DTE repo, yet an adopter's agents read the vendored copy as their own protocol
    and would take DTE's ring definitions for theirs. Split the portable protocol from the
@@ -41,3 +41,22 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
 9. **The walkthrough is not vendored.** DTE's README lists it beside SPEC / ADOPTING / CLAUDE
    as a core doc, but `VENDOR_FILES` leaves it out, so the adopter's agents get the pointer
    and not the file.
+10. **The core change does not tell an adopter what to DO.** A8 threeLayers and B38
+    commentsMigrate describe the end state (why in the tree, what in specs, how in code).
+    Nothing in `vendor`'s output, `dte-rules/CLAUDE.md` or `dte-rules/ADOPTING.md` says that vendoring a
+    version with a new A-ring node means a migration: generate specs from the tree for the
+    subsystems that exist, move HOW comments into them, widen citations. `dte-rules/CLAUDE.md` is a
+    per-session protocol (cite what you touch, migrate comments as you go); `dte-rules/ADOPTING.md`'s
+    "Growing the tree" reads as day-one advice. An agent that re-vendors sees new commands
+    and absorbs the rules that *fail validate* (names, pointers) and stops there. Needed: a
+    "when the rules change" section, or `vendor` printing the A/B nodes added since the
+    last stamp with the action each one implies; and `dte-rules/ADOPTING.md` naming the sweep for an
+    existing tree ("`dte spec` each ring-C root, fill Requirements from your mechanics docs,
+    then `scope --comments` file by file") as an explicit step, not something to infer.
+    Five things compound here: the rules describe an end state, not a transition; `vendor`
+    knows both stamp commits but prints no delta; `dte-rules/ADOPTING.md` is written for an empty tree;
+    the session protocol says migrate comments "while you work", which reads as "do not
+    sweep"; and nothing says which nodes get a `dte spec` (the ring-C roots is an adopter's
+    inference) or whether an existing mechanics doc IS the spec layer (declare it in the
+    `specs` glob) or gets replaced by generated specs. A `dte status` that groups uncited
+    source files by the node their directory traces to would turn the sweep into a checklist.

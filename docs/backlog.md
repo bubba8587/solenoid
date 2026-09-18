@@ -111,6 +111,11 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
 - [ ] **Author places `decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
 - [ ] **Apply the WHY-comment→citation practice** ([[C57]] commentMinimalism): migrate rationale
   comments into the node's `## Why`, leave a `[[<ID>]] name` citation. `dte scope --comments` lists the start.
+- [ ] **Three-layer sweep, one ring-C root at a time** (pattern: `specs/socket-lattice.md`, 2026-09-18): `dte spec <C-root>
+  --out specs/<name>.md`, fill Requirements from the matching `subsystem-invariants.md` section and shrink the section to
+  a pointer; cite the subsystem's files (`dte coverage` lists the uncited ones); `scope --comments` per file: WHY → the
+  node's Why + a citation, HOW → the spec, WHAT stays. Next: arraySemantics (C24), firstClassUnits (C25), calcModes (C23),
+  shareImpl (C17), the save-path rules (C29-C37).
 - [ ] **`*Where:*` lines are the last downward pointers** (A8 threeLayers upstream: a node stores nothing from below).
   Delete each only after the named file cites the node back, so `dte show` still derives "implemented by";
   the Enforced-by column went this way 2026-09-18.

@@ -163,7 +163,7 @@ results get retried and settled rulings relapse.
 | `documentStore.ts`, `documentStoreCore.ts` | `subsystem-invariants.md` § Per-doc autosave |
 | `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
 | `flow/FlowCompositeOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
-| `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; [[D15]] wildcardsKeepRank |
+| `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `../specs/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice, [[D15]] wildcardsKeepRank |
 | `nodes/cube.ts` | `subsystem-invariants.md` § Socket lattice (the Cube is the recursive lattice supremum) |
 | `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts` | `node-coverage.md` § Annotation (Note and Report bodies are Knap templates: what mints an input, what a bare `{{ name }}` embeds); [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
 | `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `subsystem-invariants.md` § Script sandbox |

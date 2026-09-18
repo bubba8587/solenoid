@@ -1,5 +1,5 @@
-// Unit lattice — dimensional separation is enforced at COMPUTE time as `#UNIT!`
-// (socket `accepts()` stays unit-blind); these predicates are its single source of truth.
+// [[C25]] firstClassUnits. Unit separation is enforced at COMPUTE time as `#UNIT!`;
+// socket `accepts()` stays unit-blind. These predicates are its single source of truth.
 
 import { type Dim, dimEqual, isDimensionless } from "./dimension";
 
