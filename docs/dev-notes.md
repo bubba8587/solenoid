@@ -37,7 +37,8 @@ On `develop`, pushed.
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
   UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers ([[C94]]
   formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk,
-  [[C98]] paletteMirrorsMenubar, [[C99]] chromeEnvelopeVars, [[C100]] chartIsAValue). D64 / C95 / C97 are enforced by
+  [[C98]] paletteMirrorsMenubar, [[C99]] chromeEnvelopeVars, [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
+  replaced a plan-doc 'candidate' and a core-only A5 citation). D64 / C95 / C97 are enforced by
   source sweeps now; the four sanctioned size reads carry their reason in place. Every spec-named source file and every
   value-semantics leaf's implementing file now cites its leaf; 428 bare leaf-name mentions in comments and test
   titles became wikilinks; the 43 `*Where:*` pointers are gone bar the two author-held nodes (B7, C80).

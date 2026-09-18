@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet
 // The PURE half of writing a Report/Note to an Obsidian vault: markdown Obsidian renders
 // NATIVELY, never HTML. The chart-render + file-write half lives with the Write node's Run
 // handler, which has the DOM and the vault path.

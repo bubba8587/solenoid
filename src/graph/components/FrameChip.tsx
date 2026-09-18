@@ -1,3 +1,4 @@
+// [[C16]] polarsEngine (a lazy frame ref, head-N preview)
 import { useEffect, useState } from "react";
 import { tablePopup, type FramePopupColumn, type SourceCommitRefresh } from "../tablePopupStore";
 import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";

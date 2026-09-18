@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import DOMPurify from "dompurify";

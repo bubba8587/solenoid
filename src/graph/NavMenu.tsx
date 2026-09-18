@@ -1,3 +1,4 @@
+// [[C88]] collapseIsVisual (collapsedAwareNodesRect)
 import { floorZoom } from "./viewPresets";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getActiveView, getActiveEditor } from "./activeGraph";

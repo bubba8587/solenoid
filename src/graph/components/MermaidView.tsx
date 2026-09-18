@@ -1,3 +1,4 @@
+// [[C97]] rechartsLazyChunk (mermaid follows the same rule), [[C100]] chartIsAValue (the shared slot order)
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, themeAccent } from "../palette";

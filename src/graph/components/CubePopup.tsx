@@ -1,3 +1,4 @@
+// [[C10]] socketLattice
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, type DrillView } from "../cubePopupStore";
 import { CubeEditCell, ListEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";

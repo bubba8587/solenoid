@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet
 // The markdown renderer for NOTE-shaped text (Note, Import Obsidian Note, Report, a
 // wired document embed, the webpage export): GFM plus Obsidian's own forms —
 // `[[wikilinks]]`, `#tags`, `==highlights==`, `> [!kind]` callouts, `$math$` /

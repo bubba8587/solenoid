@@ -918,4 +918,10 @@ describe("[[C97]] rechartsLazyChunk — recharts is imported statically by exact
       .map(rel);
     expect(importers).toEqual(["components/chartRender.tsx"]);
   });
+  it("mermaid and elkjs are never imported statically", () => {
+    const importers = walk(SRC)
+      .filter((f) => /from\s+["'](mermaid|elkjs)/.test(fs.readFileSync(f, "utf8")))
+      .map(rel);
+    expect(importers).toEqual([]);
+  });
 });
