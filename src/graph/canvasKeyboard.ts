@@ -1,4 +1,5 @@
-// Canvas keyboard shortcuts, skipped while focus is in an editable form element.
+// [[C43]] oneFlowSurface (installed by the surface, once). Canvas keyboard shortcuts,
+// skipped while focus is in an editable form element.
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
@@ -156,10 +157,8 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     // also open the palette, A under a Frame Input pop-up must not open the Add menu.
     if (keyUnderModal(e) && e.key !== "F9") return;
 
-    // A focused cell inside a figure that owns its own keyboard (the Gantt tree grid)
-    // marks itself `.nokeys`, so its arrow / letter keys aren't stolen to nudge nodes
-    // or open the Add menu — the keyboard mirror of `.nowheel` (subsystem-invariants,
-    // React Flow surface contract). F9 still recomputes.
+    // `.nokeys`: a figure that owns its own keyboard opts out, the keyboard mirror of
+    // `.nowheel` (specs/pointer-gestures.md). F9 still recomputes.
     if (target?.closest?.(".nokeys") && e.key !== "F9") return;
 
     // F9 stays live while typing, presenting, drilled in and under a modal — there it

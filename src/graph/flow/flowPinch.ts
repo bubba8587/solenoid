@@ -1,9 +1,5 @@
-// React Flow port (C8) — THE PINCH-PRIORITY RULE on the flow surface. Two
-// FINGERS zoom, no matter what's under them: RF's node drag / pane handlers
-// bind in bubble, so wrapper CAPTURE listeners that consume multi-touch moves
-// out-prioritize them — the capture-vs-bubble split rete's CappedZoom fought
-// for. TOUCH events, not pointer events: multi-finger input is only reliably
-// enumerable there (d3 and rete's stock Zoom listen the same way).
+// [[C92]] pinchUnvetoable: two fingers zoom no matter what is under them. Wrapper
+// CAPTURE, TOUCH events. Mechanics: specs/pointer-gestures.md.
 import { boundZoom } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
@@ -16,9 +12,7 @@ export function installFlowPinch(
   },
 ): () => void {
   let start: { dist: number; cx: number; cy: number; vp: Viewport } | null = null;
-  // Finger 1 landed on a card before the pinch was classifiable — the click
-  // after its pointerup must not select that card (rete's "pinch also
-  // SELECTED whatever finger 1 landed on" bug).
+  // A pinch never selects ([[C92]]): swallow finger 1's click.
   let suppressClickUntil = 0;
 
   const measure = (e: TouchEvent) => {

@@ -1,3 +1,4 @@
+<!-- [[C93]] gestureByPointerType, [[C92]] pinchUnvetoable -->
 # Touch & pointer gestures — the input inventory
 
 **THE normative list of what every pointer gesture means, per device config.** Born
@@ -7,7 +8,7 @@ went unrecorded because it rides the browser's native long-press → `contextmen
 synthesis with no greppable "longpress" anywhere. A gesture that exists only as an
 event-plumbing side effect is invisible to search; this file is where every gesture
 is written down. **Adding, removing, or regating a gesture updates this file in the
-same change.** Deep mechanics stay in `subsystem-invariants.md` § Pointer gestures;
+same change.** The model is [[C93]] gestureByPointerType and [[C92]] pinchUnvetoable; deep mechanics stay in `../specs/pointer-gestures.md`;
 this is the WHAT/WHERE map.
 
 ## Device configs (`coarse.ts` — derive, never duplicate)

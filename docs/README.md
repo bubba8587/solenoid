@@ -128,13 +128,13 @@ results get retried and settled rulings relapse.
 | Code | Governing docs |
 |---|---|
 | `decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, CLAUDE, README, ADOPTING, DECISIONS) |
-| `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
+| `groupCollapse.ts`, `flyToNode.ts` | [[C88]] collapseIsVisual; `../specs/group-collapse.md` |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
 | `semanticZoomStore.ts` | [[C74]] semanticZoomRawScale |
 | `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts` | [[C42]] htmlInCanvasRenderer and its policies (`python tools/dte.py tree --under C42`) |
 | `HtmlCanvasLayer.tsx` | [[C42]] htmlInCanvasRenderer and its policies; [[C75]] gpuTextureBudget |
-| `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | `subsystem-invariants.md` § Pointer gestures |
+| `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../specs/pointer-gestures.md` |
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | `subsystem-invariants.md` § React Flow surface contract; [[B10]] reactFlowView, [[C43]] oneFlowSurface |
 | `graphCompute.ts`, `process.ts` (the pass) | [[D30]] targetedEqualsFull, [[D31]] onlyCalcModeSkips; `subsystem-invariants.md` § Error values (`#CIRC!` is engine-level) |
 | `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | `subsystem-invariants.md` § React Flow surface contract; [[C11]] socketBox12; `../DESIGN.md` § Cards |
@@ -147,11 +147,11 @@ results get retried and settled rulings relapse.
 | `stringOrder.ts` | [[C59]] byteStringOrder (byte order, not locale) |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | [[C58]] tableInputRawText (raw text is the stored truth) |
 | `palette.ts` socket-color siblings | `../DESIGN.md` § Tertiary (Typed Socket Palette) |
-| `cablePaths.ts`, `ribbonCable.ts` | `subsystem-invariants.md` § Cable routing |
-| `groupPushCore.ts`, group expand/collapse | `subsystem-invariants.md` § Group expand push |
-| `standoffSolver.ts`, `standoffs.ts` | `subsystem-invariants.md` § Standoffs |
-| `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | `subsystem-invariants.md` § Drawn cables |
-| `tidyArrange.ts` (ELK) | `subsystem-invariants.md` § Auto-arrange |
+| `cablePaths.ts`, `ribbonCable.ts` | [[C91]] cableWalkRouter, [[D17]] relaysTransparent; `../specs/cable-rendering-knobs.md` |
+| `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts` | [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows; `../specs/group-expand-push.md` |
+| `standoffSolver.ts`, `standoffs.ts` | [[C89]] standoffsSolveLast; `../specs/standoffs.md` |
+| `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | [[C90]] drawnCablesAnnotate; `../specs/drawn-cables.md` |
+| `tidyArrange.ts` (ELK), `nodeSize.ts` | [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead; `../specs/auto-arrange-tidy.md` |
 | `errorValue.ts`, `valueKinds.ts` | `value-semantics.md`; `subsystem-invariants.md` § Error values |
 | `fcReconcile.ts`, in-place socket retype | `subsystem-invariants.md` § Type propagation |
 | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `subsystem-invariants.md` § Unit flow; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
