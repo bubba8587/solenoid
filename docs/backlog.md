@@ -127,7 +127,7 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   formula path through `rete-nodes.ts`, so pack formulas pull rete: either [[D19]] implReteFree names the exception
   or the kernels move to rete-free siblings.
 - [ ] **`docs/v2.0/25-gantt.md` § 6 is the schedule/Gantt spec** (the packages' headers point into it) but lives in
-  the proposals folder, excluded from coverage. Lift § 6.1–6.5 into `specs/schedule-and-gantt.md` serving [[C70]]
+  the proposals folder, excluded from coverage. Lift § 6.1–6.5 into a spec under `../specs/` (schedule-and-gantt) serving [[C70]]
   oneScheduleRule / [[C69]] ganttPackages and leave the survey (§ 1–5, 7–8) where it is.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
