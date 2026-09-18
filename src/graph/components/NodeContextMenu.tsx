@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C73]] inspectorIsStatic, [[C77]] compositeIsSubgraph, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast
 import React, { useEffect } from "react";
 import { useMenuClamp } from "./menuClamp";
 import { inspectorStore } from "../inspectorStore";
@@ -150,8 +150,7 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       className="solenoid-socket-ctx"
       style={{ left: target.screenX + 6, top: target.screenY - 4 }}
     >
-      {/* The description moved to the Inspector; this (i) is its door — and the
-          touch-reachable one, since mobile has no top-bar button. */}
+      {/* The Inspector's touch-reachable door: mobile has no top-bar button. */}
       <button
         className="solenoid-socket-ctx__info"
         title="Inspector"

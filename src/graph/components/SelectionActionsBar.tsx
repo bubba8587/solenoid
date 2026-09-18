@@ -1,13 +1,12 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C52]] visibleSelection
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "../activeGraph";
 import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
 
-// TOP-center so it never collides with the bottom-docked palette, and FIXED (not
-// anchored to the selection bbox) so it never fights the view transform. Selection
-// has no push store, so a light interval counts the selected nodes with a view.
+// Placement: docs/layout-chrome.md (Align pill). Selection has no push store, so a
+// light interval counts the selected nodes with a view.
 
 const POLL_MS = 150;
 
@@ -23,7 +22,7 @@ function selectedVisibleCount(): number {
   return n;
 }
 
-// 16×16 (even) glyphs so they center on a whole pixel in the 26px button box.
+// Even-sized glyphs (DESIGN.md: icon-only buttons use even-sized icons).
 const AlignLeftIcon = () => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style={{ display: "block" }}>
     <rect x="2" y="2" width="1.4" height="12" rx="0.5" />

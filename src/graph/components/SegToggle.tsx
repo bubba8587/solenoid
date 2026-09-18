@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C26]] opArgDistinct
 import "./SegToggle.css";
 import { stopDragStart } from "../coarse";
 
@@ -30,16 +30,14 @@ function Seg<T extends string>({ value, onChange, options, className }: SegProps
   );
 }
 
-/** An ARGUMENT toggle: a parameter of the node's one function (a direction, a
- *  read-as, a match mode). Neutral, sits in its row, never bound to a field named
- *  `op`. Stops pointer/mouse-down so pressing a segment doesn't start a node drag. */
+/** An ARGUMENT toggle, never bound to a field named `op` ([[C26]] opArgDistinct;
+ *  DESIGN.md § Op pickers). Stops pointer/mouse-down so a press doesn't start a node drag. */
 export function SegToggle<T extends string>(props: SegProps<T>) {
   return <Seg {...props} />;
 }
 
-/** The family's OP picker in segmented shape (Sparkline's chart type, Surface's
- *  view): binds `op`, hoists to the top of the body and takes the accent exactly
- *  like OpSelect (nodeCard.css). */
+/** The family's OP picker in segmented shape: binds `op`, hoists and takes the accent
+ *  like OpSelect ([[C26]] opArgDistinct; nodeCard.css). */
 export function OpToggle<T extends string>(props: SegProps<T>) {
   return <Seg {...props} className={`solenoid-seg--op${props.className ? ` ${props.className}` : ""}`} />;
 }

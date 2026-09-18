@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath
+// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath, [[C12]] socketRows, [[C28]] literalsIffEditable
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
@@ -43,7 +43,7 @@ export interface PairedExtensibleNode {
 }
 
 /** `leadingKeys`/`trailingKeys` are fixed inputs before/after the pairs; each
- *  socket dot centers on its OWN row, so rows can sit anywhere in the body. */
+ *  socket centers on its own row ([[C12]] socketRows). */
 export function PairedExtensibleInputs({
   node, emit, leadingKeys, trailingKeys, rowNoun = "pair",
 }: {
@@ -92,7 +92,7 @@ export function PairedExtensibleInputs({
 
   async function removePair(keys: string[]) {
     await dropInputCables(node.id, keys);
-    // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
+    // Prune first, then remove the tuple (specs/input-cable-pruning.md).
     node.removeValuePair(keys[0]);
     await getActiveView()?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up

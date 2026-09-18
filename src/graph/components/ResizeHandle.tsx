@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C37]] observerOwnsSize
 import { useRef } from "react";
 // Owning accessors, not getEditor/getView — a node inside a composite drill-in isn't
 // in the MAIN editor, so the grip wouldn't render.
@@ -15,7 +15,8 @@ const MIN_BOX_H = 40;
 
 /** Width is applied to the card, height to the value box alone — card height stays
  *  content-driven so the header / rows are never covered. The grip reports the CARD's
- *  size, so the box follows the height delta from the drag's start. */
+ *  size, so the box follows the height delta from the drag's start. The size rides
+ *  `nodeSizeStore`, the grip's own persisted channel ([[C37]] observerOwnsSize). */
 export function ResizeHandle({ nodeId }: { nodeId: string }) {
   const Grip = useFlowResizeGrip();
   const start = useRef<{ cardH: number; boxH: number } | null>(null);

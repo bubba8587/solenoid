@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter
+// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
@@ -54,13 +54,11 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   const [rasterUrl, setRasterUrl] = useState<string | null>(null);
   const rasterUrlRef = useRef<string | null>(null);
 
-  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
   const title = useEditableLabel(data, () => { void processGraph(data.id); });
 
   // Mirror external changes (undo / paste / load replace the node instance).
   useEffect(() => { setUrl(data.url); }, [data.url]);
-  // A loaded document's markup is scrubbed once here too (an older file, or one shared
-  // in), so every later innerHTML reads clean text; the clean form is written back.
+  // Loaded markup is scrubbed too and the clean form written back ([[C103]] untrustedContentSeams).
   useEffect(() => {
     const raw = data.stringLiterals.source ?? "";
     const clean = sanitizeSvg(raw);
@@ -76,7 +74,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   const hoverElRef = useRef<Element | null>(null);
   const paintedRef = useRef<Element[]>([]);
 
-  // Restore an element's inline filter we previously overrode.
   function restore(el: Element) {
     const s = (el as SVGElement).style;
     if (!s) return;
@@ -95,7 +92,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     for (const el of paintedRef.current) restore(el);
     paintedRef.current = [];
   }
-  // Find the element whose resolved layer name matches `name` (for the selection).
   function findNamed(name: string): Element | null {
     const root = svgRootRef.current;
     if (!root) return null;
@@ -150,10 +146,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     }, 80);
     return () => window.clearTimeout(t);
   }, [source, selectedLayer, hoverColor]);
-  // Revoke the live blob URL on unmount.
   useEffect(() => () => { if (rasterUrlRef.current) URL.revokeObjectURL(rasterUrlRef.current); }, []);
 
-  // Re-apply highlights when the selection or color changes (source untouched).
   useLayoutEffect(() => {
     paint(selectedLayer, hoverElRef.current, hoverColor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -167,22 +161,21 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     return resolveLayer(target, root);
   }
 
-  // Entering mounts the live SVG so the next move can hit-test; leaving unmounts it.
   function onPointerEnterWell() { setHovering(true); }
   function onPointerMove(e: React.PointerEvent) {
     if (!svgRootRef.current) return;
     const hit = hitLayer(e.target);
     const el = hit?.el ?? null;
-    if (el === hoverElRef.current) return; // only repaint when the target changes
+    if (el === hoverElRef.current) return;
     hoverElRef.current = el;
     paint(selectedLayer, el, hoverColor);
   }
   function onPointerLeaveWell() {
     hoverElRef.current = null;
-    setHovering(false); // unmount the live SVG; the idle <img> takes over
+    setHovering(false);
   }
 
-  // A pick is a discrete action → commit immediately; re-clicking it clears it.
+  // A pick applies immediately ([[C95]] commitOnEnter); re-clicking it clears it.
   function onClickWell(e: React.MouseEvent) {
     if (!svgRootRef.current) return;
     const name = hitLayer(e.target)?.name ?? "";
@@ -198,7 +191,7 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   // block the fetch (CORS), so the local-file path is the primary route.
   async function loadFromUrl(u: string) {
     if (!u) { setLoadError(null); return; }
-    if (!requestNetwork(data.id)) return; // C2 gate: a foreign document fetches nothing until allowed
+    if (!requestNetwork(data.id)) return; // a foreign document fetches nothing until the user allows it
     try {
       const res = await fetch(u);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

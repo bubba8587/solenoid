@@ -1,12 +1,12 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C63]] oneRecordNode, [[C95]] commitOnEnter
 import { useLayoutEffect, useRef, useState } from "react";
 import { FieldResizeGrip } from "./FieldResizeGrip";
 
-/** The record-layout textarea shared by the Record card and the Frame Input
- *  card (the popup Form view authors the SAME syntax): local draft, commit on
- *  blur — Enter must insert a newline, so this cannot use the Enter-commits
- *  helper. A wired layout renders the inert pill instead. Commit semantics
- *  stay with the caller (Record reprocesses; Frame Input only autosaves). */
+/** The record-layout textarea shared by the Record card and the Frame Input card
+ *  ([[C63]] oneRecordNode): local draft, commit on blur — Enter must insert a newline,
+ *  so not the Enter-commits helper ([[C95]] commitOnEnter). A wired layout renders the
+ *  inert pill instead. Commit semantics stay with the caller (Record reprocesses; Frame
+ *  Input only autosaves). */
 export function RecordLayoutField({ value, wired, onCommit }: {
   value: string;
   wired?: boolean;

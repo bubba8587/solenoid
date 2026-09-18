@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[E11]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SetsNode as SetNodeType, SetOpAll } from "../rete-nodes";
 import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";
@@ -19,9 +19,8 @@ const OPS: ReadonlyArray<OpOption<SetOpAll>> = (Object.keys(SET_META) as SetOpAl
   group: SET_META[op].group,
 }));
 
-// Switching between an operation (list) and a relation (logical) swaps the result socket
-// in place, then retypes downstream cables — the Split Frame precedent (mutate, don't
-// remove+add, which churns the socket set). Within one family the socket is unchanged.
+// An operation (list) ↔ relation (logical) switch swaps the result socket in place and
+// retypes downstream cables ([[E11]] controlDrivenRetype, [[D16]] retypeReconciles).
 export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
   if (node.op === op) return;
   const crossed = isSetRelationOp(node.op) !== isSetRelationOp(op);

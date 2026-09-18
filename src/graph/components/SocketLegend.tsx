@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C10]] socketLattice, [[D13]] widenNeverNarrow
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { SOCKET_COLORS } from "../sockets";
@@ -250,7 +250,6 @@ function readPersistedCollapsed(): boolean | null {
 }
 
 export function SocketLegend() {
-  // Starts collapsed in mobile mode; a desktop user's choice persists (localStorage).
   const [collapsed, setCollapsed] = useState(() => readPersistedCollapsed() ?? IS_MOBILE);
   useEffect(() => {
     try { localStorage.setItem(LEGEND_LS_KEY, collapsed ? "1" : "0"); }
@@ -278,7 +277,7 @@ export function SocketLegend() {
   );
 }
 
-/** canConnect()'s rule in plain language, for the Reference overlay. */
+/** [[D13]] widenNeverNarrow in plain language, for the Reference overlay. */
 export function DimensionalityFlow() {
   return (
     <div className="solenoid-dimflow">

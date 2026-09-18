@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[C24]] arraySemantics, [[C94]] formatFamilyGates, [[C44]] dateSerials, [[C58]] tableInputRawText
 import { useSyncExternalStore } from "react";
 import { ArrayChip, type ElemFamily } from "./ArrayChip";
 import { CategoryChip } from "./CategoryChip";
@@ -24,7 +24,7 @@ type Mat = Cell[][];
 function fmtNum(v: number): string {
   if (Number.isNaN(v)) return "NaN"; // dirty data, not the #N/A error — tinted at the cell
   if (!Number.isFinite(v)) return v > 0 ? "∞" : "-∞";
-  const sci = extremeSci(v); // shared forced-scientific rule (format.ts)
+  const sci = extremeSci(v);
   if (sci !== null) return sci;
   return Number.isInteger(v) ? String(v) : v.toFixed(3).replace(/\.?0+$/, "");
 }
@@ -34,12 +34,12 @@ function isNanCell(v: Cell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-/** Render one cell. A resolved FC annotation formats it (per cell, one annotation —
- *  the array-semantics model), and owns dates itself once present; without one, text
- *  passes through, a logical shows TRUE/FALSE, a date matrix formats its serials. */
+/** Render one cell. A resolved FC annotation formats it and owns dates once present
+ *  ([[C94]] formatFamilyGates); without one, text passes through, a logical shows
+ *  TRUE/FALSE, a date matrix formats its serials. */
 export function formatTableCell(v: Cell, dateLike: boolean, ann?: FormatAnnotation): string {
-  if (v === null) return ""; // a missing cell renders blank
-  if (isSolError(v)) return v.code; // a per-cell error shows its #CODE!
+  if (v === null) return "";
+  if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
   if (ann) return formatNumberWithAnnotation(v, ann);
@@ -72,7 +72,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
   const hostAnn = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveDisplayAnnotation(hostId));
   const ann = annProp ?? hostAnn;
 
-  // A SolError in cachedResult renders the same red #CODE! badge a scalar box shows.
+  // Every result display tolerates a SolError (specs/error-values.md).
   if (isSolError(table)) {
     return (
       <div
@@ -104,8 +104,8 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
   const rows = table.length, cols = table[0]?.length ?? 0;
   const maxR = full ? rows : Math.min(rows, peek ? 5 : 4), maxC = full ? cols : Math.min(cols, 4);
   const dateLike = kind === "date" || elem === "date";
-  // A string matrix set to the Chip style: one categorical map over the whole matrix, so a
-  // value is the same color in any cell (B2.2). One annotation for the whole matrix here.
+  // Chip style: one categorical map over the whole matrix, so a value is the same color
+  // in any cell (docs/format-model.md).
   const chipMap = ann?.chip ? categoryColorIndex(table.flat().map((v) => (typeof v === "string" ? v : null))) : null;
 
   return (

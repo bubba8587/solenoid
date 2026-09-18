@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[B14]] oneDesignSystem
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
@@ -8,8 +8,7 @@ import { contrastInk, darkenAccent } from "../palette";
 import { PopupResizeGrip, type PopupSize } from "./PopupResizeGrip";
 import { useHeaderHeightVar } from "./NodeCard";
 
-/** Derives `--node-accent-ink` per node: the app-wide `--accent-ink` is computed for the
- *  APP accent, so accent-filled popup chrome would otherwise wear ink for the wrong hue. */
+/** The popup's per-surface accent vars (DESIGN.md, the Nearest-Accent Rule). */
 export function popupCardVars(v: {
   accent?: string;
   groupColor?: string;
@@ -68,8 +67,7 @@ export function PopupShell({
 }) {
   useEscapeToClose(onEscape ?? onClose, true, { capture: true });
   const cardRef = useRef<HTMLDivElement>(null);
-  // Publish the header's border-box height as --header-h so the ::after body border
-  // starts exactly at the header's bottom (the frame-alignment fix, § popupChrome.css).
+  // --header-h: the ::after body border starts at the header's bottom (popupChrome.css).
   const headerRef = useRef<HTMLDivElement>(null);
   useHeaderHeightVar(headerRef);
   const [size, setSize] = useState<PopupSize | null>(resizable?.initial ?? null);

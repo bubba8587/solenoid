@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents
+// [[C27]] noDataInComponents, [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
 import type { ReactNode } from "react";
 import { NodeFormatContext } from "./nodeContext";
 import { peekKindFor } from "../valuePeekKind";
@@ -17,11 +17,11 @@ import type { MermaidValue } from "../mermaidValue";
 import type { SvgValue } from "../svgValue";
 import type { LambdaValue } from "../nodes/lambda";
 
-/** The body of a socket hover-peek: the socket's live value rendered by the Display's
- *  OWN value views, so the peek reads as a small Display, not a bespoke widget. Wrapped
- *  in the value's producing node's format context (`nodeId`), so units and per-column
- *  formats resolve exactly as they do on that node. Read-only: frames/tables show a
- *  head-5 preview with no chip; the whole box is scaled down by frameHint.css. */
+/** The body of a socket hover-peek (docs/touch-gestures.md): the socket's live value
+ *  rendered by the Display's OWN value views ([[B3]] sameNodeEverywhere), inside the
+ *  producing node's format context so units and per-column formats resolve as they do
+ *  on that node. Read-only: frames/tables show a head-5 preview with no chip; the whole
+ *  box is scaled down by frameHint.css. */
 export function SocketValuePeek({ value, nodeId }: { value: unknown; nodeId: string }) {
   const kind = peekKindFor(value);
   let body: ReactNode;
