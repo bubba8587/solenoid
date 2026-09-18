@@ -10,7 +10,7 @@ Element families never auto-cross (Cast required; sole bridge `logical↔number`
 
 ## Constraints
 
-- [[A6]] divergeByDesign: a value's type is part of its meaning, so a connection that would silently coerce is refused.
+- [[D11]] noAutoCross: a value's type is part of its meaning, so a connection that would silently coerce is refused.
 - Reopen if: a new family or a second bridge. Re-derive the lattice and the sweep; never ad-hoc edit a pair.
 
 ## Requirements

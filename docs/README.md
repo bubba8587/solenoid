@@ -141,7 +141,7 @@ results get retried and settled rulings relapse.
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | [[D32]] refreshOutsideRebuild; `../specs/live-connections.md` |
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapseIsVisual; `../specs/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../specs/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
-| `mathUtils.ts` `fillBorderedGrid` | [[A5]] excelParity; `../specs/bordered-grid-fill.md` |
+| `mathUtils.ts` `fillBorderedGrid` | [[C102]] gridFillThenForecast; `../specs/bordered-grid-fill.md` |
 | `excelFunctions.ts` overrides / dispatch walk | `../specs/formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
 | `stringOrder.ts` | [[C59]] byteStringOrder (byte order, not locale) |
