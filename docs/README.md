@@ -127,7 +127,7 @@ results get retried and settled rulings relapse.
 
 | Code | Governing docs |
 |---|---|
-| `decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, PROTOCOL, README, ADOPTING) |
+| `decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, CLAUDE, README, ADOPTING, DECISIONS) |
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |

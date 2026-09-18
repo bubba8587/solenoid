@@ -77,7 +77,7 @@ describe("the ops list is derived, not transcribed", () => {
   // surfaces cannot disagree. They did: `islogical` shipped as ISBOOLEAN on the card
   // and ISLOGICAL in search, because the list here was hand-transcribed. The Set
   // families were the last hand-written exception — their labels were dropdown prose
-  // ("Union: in A or B") that a search row can't compose. NAME-3 (2026-08-25) made the
+  // ("Union: in A or B") that a search row can't compose. [[D22]] oneNamePerCard (2026-08-25) made the
   // labels bare names with the membership hint in `description` (the option tooltip),
   // so they use fromMeta too: the meta is the one home.
   it("the derived ops list covers its meta exactly (the Set families included)", () => {

@@ -28,7 +28,7 @@ export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = [])
     // hiddenOps is only ever populated for a declaration that lists ops, so `create`
     // is present — the guard keeps that guarantee visible to the type checker.
     if (decl?.create) for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
-    // An Excel name the leaf answers to that is not its own name or one of its ops (NAME-1).
+    // An Excel name the leaf answers to that is not its own name or one of its ops ([[C19]] namingModel).
     // A hidden op has a row of its own; the host's PRIMARY op does not, so an Excel
     // name that is the primary op (Type Check's ISNUMBER) still gets its alias row.
     const own = new Set([leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)].map(bareName));

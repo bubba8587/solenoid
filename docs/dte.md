@@ -7,13 +7,15 @@ decisions.md retire". The tool is vendored at `tools/dte.py`
 (one file, stdlib Python 3.8+); run `python tools/dte.py --help`.
 
 **DTE's own rules are vendored, not duplicated here.** The canonical DTE spec, agent
-protocol, overview and adoption guide live in `dte-rules/SPEC.md`,
-`dte-rules/PROTOCOL.md`, `dte-rules/README.md` and `dte-rules/ADOPTING.md` — verbatim
-copies so an agent can load the real rule text into context. Read ALL FOUR before
-creating or changing decisions, and check them before filing DTE feedback. Do NOT re-create DTE's
-own format/protocol/usage decisions as nodes in this tree; this tree holds only
-Solenoid's own decisions. (`dte-rules/` is `.dteignore`d — its `dte:` tokens belong to
-DTE's tree; note it describes DTE's OWN rings A/B/C, which are not Solenoid's rings below.)
+protocol, overview, adoption guide and a render of DTE's own tree live in `dte-rules/SPEC.md`,
+`dte-rules/CLAUDE.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md` and
+`dte-rules/DECISIONS.md`, written by
+`python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
+`tools/dte.py` itself. Read them before creating or changing decisions, and check them
+before filing DTE feedback. Do NOT re-create DTE's own format/protocol/usage decisions as
+nodes in this tree; this tree holds only Solenoid's own decisions. (`dte-rules/` is
+`.dteignore`d — its `dte:` tokens belong to DTE's tree; note it describes DTE's OWN rings
+A/B/C, which are not Solenoid's rings below.)
 
 **The tree is the one home.** Every rule that lived in the old rules.md and every decision
 in the old decisions.md is a node now; both documents are deleted (git has them). B8

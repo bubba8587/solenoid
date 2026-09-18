@@ -438,7 +438,7 @@ function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) =
 export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | "islogical" | "istext" | "isnontext";
 
 // ISBOOLEAN is Solenoid's name for Excel's ISLOGICAL ([[E12]] isBooleanName); it is
-// registered as a callable alias so NAME-4 holds. The `islogical`
+// registered as a callable alias so [[D23]] capsClaimsFunction holds. The `islogical`
 // op value stays: saves are keyed on it.
 export const IS_TEST_OP_META = {
   isnumber:  { label: "ISNUMBER",  description: "`TRUE` when the value is a number. Excel: `ISNUMBER`." },

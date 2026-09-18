@@ -131,10 +131,10 @@ FEEDBACK file.
   upstream walk go. Analysis + scope in `archive/1.4-plan.md` Track I. Gate: the author's go after the
   downstream-flow work has been lived with, plus the source-node control design.
 
-## Family-name polish (NAME-3 revised 2026-09-13 — card shows the class-derived family name)
+## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
 
 A few families still read awkwardly as `nodeTypeName` output. Fix = rename the class
-(no override map, NAME-3), verifying seeds + the generator (type = class name):
+(no override map, [[D22]] oneNamePerCard), verifying seeds + the generator (type = class name):
 - [ ] `IFErrorNode` → "If Error"; `MatDetNode` → a real family name (covers MDETERM /
   MINVERSE / TRACE / NORM / MATRIXRANK — "Matrix"?); `MRoundNode` → a name for the
   MROUND / CEILING / FLOOR family. Author picks the two names.

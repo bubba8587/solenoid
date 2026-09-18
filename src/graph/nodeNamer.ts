@@ -2,7 +2,7 @@
 // The ONE home of a node's display name for modules that cannot import catalogUtils
 // (errorValue, groupCollapse sit below it in the import graph). catalogUtils binds the
 // real derivation (nodeDisplayName) at load; until then the class-derived fallback stands.
-// NAME-1 ([[C19]]).
+// [[C19]] namingModel.
 
 type Named = { label?: string; constructor: { name: string } };
 
