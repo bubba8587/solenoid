@@ -112,3 +112,16 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     the absolute source path is absent. Related to item 2 (the stamp forgets `--dir`): the stamp
     should print the vendored copy's own path (`python tools/dte.py vendor --from <checkout>
     --dir dte-rules`) and nothing about where the source was.
+16. **A rule that governs a class of files needs a scope declaration, not a citation per member.**
+    "Components never call `node.data()`" ([[C27]]) is a real decision with a sweep behind it, and
+    its blast radius is every component; today the only way `blast`, `coverage` and `show` know that
+    is 265 identical header lines, which drown the citation that says what each file is FOR. A leaf
+    could declare `governs: src/graph/components/*` (the `.dteignore` syntax); `coverage` then counts
+    the class as cited, `blast` lists it, and headers carry only the specific leaf. The owner's
+    question that prompted this (2026-09-18): "if everything cites C27, is C27 really a decision?"
+    It is; the citation model just has no way to say "all of these".
+17. **`move` refuses a same-ring re-parent.** Giving a C leaf a new B parent (`move C10 C --parents
+    B17`) answers "already at ring C" and changes nothing; the only path is editing `parents:` by
+    hand and writing the History line oneself, which is exactly the kind of edit the tool exists to
+    make uniform. Either `move` accepts a same-ring call with `--parents`, or a `set <ID> parents`
+    field write exists. Hit while fleshing out the B ring (B16, B17: 21 leaves re-parented by hand).

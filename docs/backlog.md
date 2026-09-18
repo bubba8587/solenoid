@@ -137,6 +137,8 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   **Blocked on the author:** `out-of-scope.md` is the draft of `inbox/scope-boundary` (the four tests + the mirror
   test) and its 13 categories are that node's children; nothing can hang off an unplaced node, so
   `dte place scope-boundary A --by <name>` first, then the categories become B nodes and the doc goes.
+- [ ] **C80 blankArgIsExcelBlank still hangs off A5** (author-ratified, so not re-parented by an agent); its family
+  parent is now [[B16]] oneFormulaSurface. One `parents:` edit by the author closes the last ring-skip finding.
 - [ ] **Two author-held `*Where:*` lines remain** (B7, C80; the other 41 went 2026-09-18 once their files cited
   back). The author deletes them or rules they stay.
 - [ ] **20 SKIPPED RING findings under A5 / A6** are the owner's placement (`dte scope`); either B nodes are
