@@ -1,18 +1,5 @@
 // [[D19]] implReteFree, [[C17]] shareImpl
-// Group cost settlement (1.4 H3): people paid uneven amounts; who pays whom, in the fewest
-// transfers, so everyone ends up even. Net each person (paid − fair share), then greedily
-// match the biggest creditor to the biggest debtor. Linear, exact, no solver. Pure.
-//
-// Two entry points share the greedy transfer core (`minTransfers`):
-//   • `settleGroup` — TOTALS: one row per person with a Paid total and an optional Share weight.
-//   • `settleLedger` — TRANSACTIONS: a ledger of expenses, each with payer(s) and beneficiaries,
-//     split equally on both sides.
-//
-// Both report each person's `paid` (fronted, external) and `shares` (their fair cost). The node's
-// Net table then reads: Paid + Owes (still owed to the group) + Owed (coming back, negative) =
-// Net, which equals the fair share — a person's TRUE cost. In equal-split totals every Net is the
-// same. `balance = paid − share` decides the settlement: a creditor's balance comes back (Owed),
-// a debtor's is paid out (Owes).
+// Who pays whom in the fewest transfers: totals mode (`settleGroup`) and ledger mode (`settleLedger`) share the greedy `minTransfers` core. Linear, exact, no solver.
 
 export interface SettleRow {
   name: string;
@@ -106,8 +93,8 @@ export interface LedgerSettlement {
 
 /** Settle a ledger of expenses. Each expense credits its payers an equal split of the amount
  *  and debits its beneficiaries an equal split; sums land as per-person Paid and fair share,
- *  and the balance (paid − share) feeds the same greedy `minTransfers`. Equal-split only — no
- *  weights (author 2026-09-08). */
+ *  and the balance (paid − share) feeds the same greedy `minTransfers`. Equal-split only, no
+ *  weights. */
 export function settleLedger(expenses: readonly Expense[]): LedgerSettlement {
   const order: string[] = [];
   const idx = new Map<string, number>();

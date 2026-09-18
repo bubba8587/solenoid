@@ -1,7 +1,4 @@
-// [[C17]], [[D19]]
-// Rete-free by design ([[D19]] implReteFree), so the formula surface can convert without pulling rete,
-// the socket lattice and the display stores into the headless evaluator.
-
+// [[C17]] shareImpl, [[D19]] implReteFree, [[C25]] firstClassUnits, [[D40]] unitOnValue
 import { convert as dimConvert, type Dim, type Unit } from "../dimension";
 
 export type ConvertCategory =
@@ -145,6 +142,5 @@ export function convertValue(x: number, fromKey: string, toKey: string): number 
   const from = CONVERT_UNIT_DEFS[fromKey];
   const to   = CONVERT_UNIT_DEFS[toKey];
   if (!from || !to) return null;
-  // Commensurability and the affine temperature case live in the dimensional-algebra core.
   return dimConvert(x, from.dim, to.dim);
 }

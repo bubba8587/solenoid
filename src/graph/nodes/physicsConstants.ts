@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[D40]] unitOnValue
 // CODATA 2018 values (several exact by the 2019 SI redefinition); SI units in every label.
 
 import { ClassicPreset } from "rete";
@@ -65,8 +65,8 @@ export class PhysicsConstantNode extends ClassicPreset.Node {
     return { value: PHYS_CONSTANTS[this.op].value };
   }
 
-  /** A constant CARRIES its unit the way an FC lock does — unitFlow.ts is duck-typed on
-   *  this method. A CUSTOM unit suffix, since units like J·s aren't FC-pickable ids. */
+  /** Authors the unit at the origin ([[D40]] unitOnValue; unitFlow duck-types `annotation()`).
+   *  A custom suffix, since units like J·s aren't FC-pickable ids. */
   annotation(): FormatAnnotation {
     return { format: "auto", unit: "custom", customUnit: ` ${PHYS_CONSTANTS[this.op].unit}` };
   }

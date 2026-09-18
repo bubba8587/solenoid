@@ -1,8 +1,5 @@
-// [[C17]], [[D19]]
-// The ONE implementation behind both the visual node and the formula registration;
-// it must not import rete or `finance.ts` (that would cycle).
-// Entry points take Solenoid DATE SERIALS; INVALID INPUT is `null`, never a throw
-// or a fabricated number — each surface tags its own failure from that.
+// [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[D28]] tripwireVendorDrift, [[C44]] dateSerials, [[C24]] arraySemantics
+// Must not import `finance.ts` (cycle). Entry points take date serials; invalid input is `null`, never a throw or a fabricated number — each surface tags its own failure.
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { solError, isSolError, type SolError } from "../errorValue";
 
@@ -117,9 +114,8 @@ export function oddfPrice(
   if (settle >= firstCoupon) return bondPrice(settle, maturity, couponRate, yld, redemption, freq);
   const step = 12 / freq;
   const E = 360 / freq;
-  // Excel's documented quasi-coupon formula (the odd-long form; a short odd first
-  // period is its NC=1 case). The first coupon accrues from ISSUE, per quasi period
-  // (real-Excel golden 98.5737779, 2026-08-31). 30/360 only, like the rest of the family.
+  // Excel's quasi-coupon form (odd-long; a short odd first period is its NC=1 case): the
+  // first coupon accrues from ISSUE per quasi period. 30/360 only, like the rest of the family.
   const periods: [Date, Date][] = [];
   let d0 = new Date(firstCoupon.getTime());
   while (d0 > issue) { const prev = coupAddMonths(d0, -step); periods.unshift([prev, d0]); d0 = prev; }
@@ -152,8 +148,7 @@ export function oddlPrice(
   const finalCF = redemption + couponRate / freq * 100 * Nc;
   if (settle >= lastInterest) {
     // Excel's odd-last convention discounts the whole odd period with SIMPLE
-    // interest (1 + (DSC/E)·y), like PRICEMAT — never compounded (real-Excel
-    // golden 99.87828601, 2026-08-31).
+    // interest (1 + (DSC/E)·y), like PRICEMAT — never compounded.
     const DSC = days30_360(settle, maturity);
     const A = days30_360(lastInterest, settle);
     const price = finalCF / (1 + (DSC / E) * (yld / freq));
@@ -235,8 +230,8 @@ export function couponValue(
 
 /** ACCRINT — accrued interest for a security paying periodic coupons, over the
  *  issue→settlement span. Period length E per basis: only actual/actual (1) measures the
- *  real period; 2 is actual/360 and 3 actual/365 (real-Excel goldens, 2026-08-31). Excel's
- *  first_interest and calc_method arguments aren't modeled. */
+ *  real period; 2 is actual/360 and 3 actual/365. Excel's first_interest and calc_method
+ *  arguments aren't modeled. */
 export function accrint(
   issueSerial: number, settleSerial: number, rate: number, par = 1000, frequency = 2, basis = 0,
 ): number | null {
@@ -265,22 +260,19 @@ export function accrintM(
 export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
 
 /** TBILLEQ / TBILLPRICE / TBILLYIELD on actual days over 360. `x` is the discount rate
- *  (TBILLEQ / TBILLPRICE) or the price per $100 (TBILLYIELD). Real-Excel goldens sit in
- *  finance.test.ts. */
+ *  (TBILLEQ / TBILLPRICE) or the price per $100 (TBILLYIELD). */
 export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | null {
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
   if (maturitySerial <= settleSerial) return null;
   const dsm = Math.round(maturitySerial - settleSerial);
   switch (op) {
     case "tbillprice": return 100 * (1 - x * dsm / 360);
-    // A money-market yield on a 360-day basis (=TBILLYIELD(2024-01-15, 2024-07-15, 97.5) = 0.050718512);
-    // the 365 belongs to TBILLEQ's bond-equivalent basis.
+    // A money-market yield on a 360-day basis; the 365 belongs to TBILLEQ's bond-equivalent basis.
     case "tbillyield": return ((100 - x) / x) * (360 / dsm);
     case "tbilleq": {
       if (dsm <= 182) return (365 * x) / (360 - x * dsm);
       // Past 182 days Excel switches to the bond-equivalent (coupon-equivalent) yield: the
       // semiannual-compounding price equation in closed form (SIA).
-      // =TBILLEQ(2024-01-15, 2024-12-15, 0.05) = 0.052539935.
       const t = dsm / 365;
       const price = 1 - x * dsm / 360;
       return (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
@@ -299,8 +291,6 @@ export function securityDisc(
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
   if (maturitySerial <= settleSerial) return null;
   const basisCode = Math.round(basis);
-  // DSM counts days per the basis — 30/360 for basis 0/4, actual otherwise. Using raw
-  // actual days ignored the DEFAULT basis 0, mispricing every call that didn't pass a basis.
   const dsm = dayCount(basisCode, serialToJsDate(settleSerial), serialToJsDate(maturitySerial));
   const bd = basisDays(basisCode);
   switch (op) {
@@ -346,8 +336,7 @@ export function priceMat(
   const issue = serialToJsDate(issueSerial);
   // Excel's PRICEMAT/YIELDMAT span THREE periods: DIM (issue→maturity) for the total
   // interest, DSM (settle→maturity) for discounting, A (issue→settle) for the accrued
-  // interest deducted from the price. The old code used DSM for all of it and dropped
-  // the accrual, so PRICEMAT/YIELDMAT weren't even inverses of each other.
+  // interest deducted from the price.
   const dim = dayCount(b, issue, maturity);
   const dsm = dayCount(b, settle, maturity);
   const a = dayCount(b, issue, settle);
@@ -439,16 +428,15 @@ export function oddCoupon(
 
 // ─── Cash-flow prep + the IRR / XIRR solver ──────────────────────────────────
 
-// Propagates the first SolError, and coerces a null cell to 0 — skipping it would
-// misalign every later period's exponent in a position-discounted sum.
+/** Error first; then a null cash flow is 0, never dropped (RANGE_ZERO_FILL, [[D24]] prepByShape). */
 export function cashPrep(raw: (number | null | SolError)[] | null): { error?: SolError; nums: number[] } {
   if (!raw) return { nums: [] };
   for (const v of raw) if (isSolError(v)) return { error: v, nums: [] };
   return { nums: raw.map((v) => (typeof v === "number" ? v : 0)) };
 }
 
-/** Shared prep for the dated schedules: error first, null cash → 0 (cashPrep),
- *  null DATE → unknown (value-semantics.md, "an error outranks an unknown"). */
+/** Shared prep for the dated schedules: error first ([[D37]] errorBeatsMissing), null
+ *  cash → 0 (cashPrep), null DATE → unknown. */
 export function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesRaw: (number | null | SolError)[]):
   { error?: SolError; blank?: boolean; values: number[]; dates: number[] } {
   const { error, nums: values } = cashPrep(valuesRaw);
@@ -465,21 +453,12 @@ export function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesR
  *  stalled (a flat derivative, or an overshoot it can't walk back) — NOT a verdict of
  *  no root, which only the bracket scan can pronounce.
  *
- *  The floor is load-bearing rather than defensive. Below r = −1 a fractional exponent
- *  makes `Math.pow(negative, e)` NaN outright, and an integer one flips the discount's
- *  sign every period, so an overshoot past it never walks back. Measured over 2,930
- *  randomised single-root series against a bisection oracle: 217 that the unfloored
- *  solve missed and this one finds, none the other way.
- *
- *  A step that HITS the floor never counts as convergence — without that guard a solve
- *  pinned at the floor reads as a settled root and returns −0.9999 as an answer.
- *
- *  Convergence is RELATIVE because the root is not a bounded quantity: a rate of 0.05
- *  and a runaway 31,000 are both real answers here, and one absolute epsilon cannot
- *  serve both — tight enough for the first refuses the second, loose enough for the
- *  second is imprecise on the first. Measured against the old absolute-ε dated solve
- *  over 30,000 series: same answer bit for bit on 24,647, 63 it newly solves, none
- *  lost. */
+ *  The floor is load-bearing: below r = −1 a fractional exponent makes `Math.pow(negative, e)`
+ *  NaN and an integer one flips the discount's sign every period, so an overshoot past it
+ *  never walks back. A step that HITS the floor never counts as convergence, or a solve
+ *  pinned there reads as a settled root of −0.9999. Convergence is RELATIVE because the
+ *  root is unbounded: 0.05 and a runaway 31,000 are both real answers, and no one absolute
+ *  epsilon serves both. */
 const RATE_FLOOR = -0.9999;
 function newtonDiscountRate(values: readonly number[], exponents: readonly number[]): number | null {
   let r = 0.1;
@@ -540,7 +519,7 @@ function bracketDiscountRate(values: readonly number[], exponents: readonly numb
 }
 
 /** The rate where Σ vᵢ/(1+r)^eᵢ = 0 — ONE kernel behind the IRR node (both modes) AND the
- *  IRR / XIRR formulas (capabilityParity): Newton first, bracket-and-bisect when it stalls;
+ *  IRR / XIRR formulas ([[C17]] shareImpl): Newton first, bracket-and-bisect when it stalls;
  *  `null` means no root above the floor (each surface tags its own #CONV!). */
 export function solveDiscountRate(values: readonly number[], exponents: readonly number[]): number | null {
   const newton = newtonDiscountRate(values, exponents);

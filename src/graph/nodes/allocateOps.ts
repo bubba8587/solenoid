@@ -1,16 +1,5 @@
 // [[D19]] implReteFree, [[C17]] shareImpl
-// Budget allocation across categories bounded by [min, max] price ranges, driven by
-// value weights. Three closed-form modes, NO general solver:
-//   • budget          — spend a fixed budget ∝ weight, clamped to each range, the residual
-//                        from a clamp redistributed among the still-free categories (a
-//                        deterministic water-filling fixed point).
-//   • minTarget       — the least spend that reaches a weighted-value target Σwᵢaᵢ ≥ target:
-//                        floor everything, then buy value cheapest-per-dollar (highest
-//                        weight) first (fractional knapsack — greedy is exact here).
-//   • minProportional — the least spend that keeps aᵢ ∝ wᵢ above the floors: scale up from
-//                        the binding floor, k = maxᵢ(minᵢ/wᵢ), then clamp to max.
-// Weights are read non-negative (a negative weight is treated as 0); an all-zero weight set
-// falls back to equal weights so a mode still has something to divide by.
+// Three closed-form allocation modes, no general solver (each is exact: water-filling fixed point, fractional knapsack, proportional scale-up).
 
 export type AllocateMode = "budget" | "minTarget" | "minProportional";
 
@@ -67,7 +56,7 @@ export function allocateMinTarget(
   const alloc = mins.slice();
   let need = target - sum(alloc.map((a, i) => w[i] * a));
   if (need <= 0) return alloc;
-  const order = [...Array(n).keys()].sort((a, b) => w[b] - w[a]); // highest weight first
+  const order = [...Array(n).keys()].sort((a, b) => w[b] - w[a]);
   for (const i of order) {
     if (w[i] <= 0) continue;
     const headroom = maxs[i] - alloc[i];

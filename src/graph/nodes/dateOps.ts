@@ -1,8 +1,5 @@
-// The ONE implementation behind the date NODES (DATE / TIME builders, DATEVALUE /
-// TIMEVALUE, the week-info and date-difference families) AND their formula
-// registrations (capabilityParity / [[C17]] shareImpl). Must not import rete. Every entry
-// point takes Solenoid DATE SERIALS; a per-cell domain failure is a SolError, an
-// undefined answer (DATEDIF over a reversed range) is `null`.
+// [[C17]] shareImpl, [[D19]] implReteFree, [[C44]] dateSerials, [[D48]] classifyNonFinite
+// Entry points take date serials; a per-cell domain failure is a SolError, an undefined answer (DATEDIF over a reversed range) is `null`.
 import { solError, isSolError, type SolError } from "../errorValue";
 import { serialToJsDate, jsDateToSerial, parseDate, parseDateToSerial } from "./dateSerial";
 

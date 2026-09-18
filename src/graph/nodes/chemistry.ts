@@ -1,6 +1,5 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified
-// Chemistry Basics pack custom logic. The masses are IUPAC abridged/conventional
-// values, bracketed for elements with no stable isotope.
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[D40]] unitOnValue
+// Masses are IUPAC abridged/conventional values; an element with no stable isotope carries its bracketed mass number.
 
 import { ClassicPreset } from "rete";
 import { numOut, strIn, readInput } from "./shared";
@@ -188,7 +187,7 @@ function parseGroup(s: string, i: number, close: string): [number, number] | Sol
 
 export class ElementNode extends ClassicPreset.Node {
   label: string;
-  symbol: string; // element symbol
+  symbol: string;
   width = 220;
   height = 170;
 
@@ -205,8 +204,8 @@ export class ElementNode extends ClassicPreset.Node {
     return { mass: el.mass, number: el.n };
   }
 
-  /** The mass output carries g/mol (per-output, unitFlow `annotationFor`);
-   *  the atomic number stays unitless. */
+  /** The mass output authors g/mol ([[D40]] unitOnValue, per-output `annotationFor`); the
+   *  atomic number stays unitless. */
   annotationFor(outKey: string): FormatAnnotation | undefined {
     return outKey === "mass" ? { format: "auto", unit: "custom", customUnit: " g/mol" } : undefined;
   }

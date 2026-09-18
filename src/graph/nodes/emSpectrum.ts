@@ -1,6 +1,5 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified
-// Classifier half of the Electromagnetism pack — the Wavelength ↔ Frequency
-// equation node does the conversion.
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[C17]] shareImpl
+// The classifier half of the Electromagnetism pack; the Wavelength ↔ Frequency equation node does the conversion.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, strOut, readInput } from "./shared";

@@ -1,6 +1,5 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified
-// Earth & Sky pack: the NOAA Solar Calculator formulation (a published standard,
-// per the reference-pack licensing rule); serial dates, degrees at the sockets.
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[C44]] dateSerials, [[D12]] dateValuedPortIsDateTyped
+// The NOAA Solar Calculator formulation; date serials and degrees at the sockets.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, dateIn, dateOut, readInput } from "./shared";

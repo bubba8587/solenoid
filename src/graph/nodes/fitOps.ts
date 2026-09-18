@@ -1,10 +1,5 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
-// Distribution fitting (scipy.stats.<dist>.fit, R fitdistrplus::fitdist, @RISK / Crystal Ball
-// "fit distribution") behind the Fit Distribution node AND the FITDIST formula. Must not
-// import rete. Each family: a maximum-likelihood (or moment) estimate of its parameters on
-// the Distribution node's own parameterization (distributionOps.DIST_SPECS — so a fitted
-// family plugs straight back into that card), the log-likelihood, AIC, and the one-sample
-// Kolmogorov–Smirnov D against the fitted CDF for the goodness-of-fit ranking.
+// [[D19]] implReteFree, [[C17]] shareImpl, [[C61]] oneDistributionNode
+// scipy.stats.<dist>.fit / R fitdistrplus / @RISK "fit distribution": per family, MLE (or moment) parameters on the Distribution node's own parameterization (DIST_SPECS, so a fit plugs back into that card), log-likelihood, AIC, and the one-sample KS D for the ranking.
 import { lnGamma, regularizedBeta, regularizedGamma, stdNormCDF } from "./mathUtils";
 
 export type FitFamily = "normal" | "lognorm" | "expon" | "gamma" | "weibull" | "uniform" | "beta" | "poisson";

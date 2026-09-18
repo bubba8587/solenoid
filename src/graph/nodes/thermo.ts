@@ -1,13 +1,12 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified
-// Declared pack exceptions: implement the formulation, not the printed grid.
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C8]] declareOnce
+// Declared custom logic ([[C76]] formulaPackDefault): the formulation, never a transcribed table.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// US Standard Atmosphere 1976, 0–86 km. Base pressures are DERIVED from the layer
-// table at init, so no transcribed pressure constant can be typo'd. ISA's own
-// constants: g₀ = 9.80665, M = 0.0289644 kg/mol, R* = 8.31432 J/(mol·K).
+// US Standard Atmosphere 1976, 0–86 km; base pressures derive from the layer table ([[C8]] declareOnce).
+// ISA's own constants: g₀ = 9.80665, M = 0.0289644 kg/mol, R* = 8.31432 J/(mol·K).
 
 const ISA_R_SPEC = 287.0531; // R*/M, J/(kg·K)
 const GM_OVER_R = 0.034163195; // g₀·M/R*, K/m
@@ -37,7 +36,7 @@ const ISA_BASES: Array<{ h: number; L: number; T: number; p: number }> = (() => 
 
 export interface IsaPoint { T: number; p: number; rho: number; a: number }
 
-/** Standard atmosphere at a GEOPOTENTIAL altitude (m). Exported for tests. */
+/** Standard atmosphere at a GEOPOTENTIAL altitude (m). */
 export function isaAtGeopotential(h: number): IsaPoint {
   let layer = ISA_BASES[0];
   for (const b of ISA_BASES) { if (h >= b.h) layer = b; else break; }
@@ -106,8 +105,7 @@ export class IsaAtmosphereNode extends ClassicPreset.Node {
   }
 }
 
-// log₁₀(p/mmHg) = A − B/(C + T°C), Lange's-handbook coefficient form. Each triple is
-// validated in tests by reproducing its normal boiling point, so a typo can't ship.
+// log₁₀(p/mmHg) = A − B/(C + T°C), Lange's-handbook coefficient form; `bp` is the normal boiling point each triple must reproduce.
 
 export type AntoineOp =
   | "water" | "ethanol" | "methanol" | "isopropanol"
@@ -129,7 +127,7 @@ export const ANTOINE: Record<AntoineOp, AntoineMeta> = {
 
 const MMHG_TO_PA = 133.322387415;
 
-/** Vapor pressure in Pa at t °C. Exported for tests. */
+/** Vapor pressure in Pa at t °C. */
 export function antoinePressure(op: AntoineOp, t: number): number {
   const { A, B, C } = ANTOINE[op];
   return MMHG_TO_PA * 10 ** (A - B / (C + t));

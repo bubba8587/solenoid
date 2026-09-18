@@ -1,9 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
-// Signal smoothing + peak finding, rete-free (the Smooth and Find Peaks cards and the
-// SAVGOL / LOWESS / GAUSSIANSMOOTH / FINDPEAKS formulas). References: scipy.signal
-// savgol_filter (mode = interp), scipy.ndimage gaussian_filter1d (reflect, truncate 4),
-// Cleveland's LOWESS (tricube, local linear, 3 bisquare iterations — statsmodels / R),
-// scipy.signal.find_peaks (height / distance / prominence).
+// [[D19]] implReteFree, [[C17]] shareImpl, [[C24]] arraySemantics, [[D36]] nullSkippedNotZero
 import { isSolError, type SolError } from "../errorValue";
 import { matSolve } from "./matrixOps";
 
@@ -30,10 +25,6 @@ function polyFitW(xs: readonly number[], ys: readonly number[], ws: readonly num
   return matSolve(A, b);
 }
 
-/** Savitzky–Golay: at each position, a degree-`order` polynomial least-squares fit over a
- *  `window` (odd) of neighbours, evaluated there. Edges use the nearest full window
- *  evaluated off-centre (scipy's mode = "interp"). Blank / error cells are left out of the
- *  fits and stay blank in the output. */
 /** Why a Savitzky–Golay call cannot run, or null when it can (the callers make it loud). */
 export function savgolProblem(n: number, window: number, order: number): string | null {
   const m = Math.max(1, Math.floor(window));
@@ -43,6 +34,10 @@ export function savgolProblem(n: number, window: number, order: number): string 
   return null;
 }
 
+/** Savitzky–Golay: at each position, a degree-`order` polynomial least-squares fit over a
+ *  `window` (odd) of neighbours, evaluated there. Edges use the nearest full window
+ *  evaluated off-centre (scipy's mode = "interp"). Blank / error cells are left out of the
+ *  fits and stay blank in the output. */
 export function savgol(values: readonly Cell[], window: number, order: number): Cell[] {
   const n = values.length;
   const m = Math.max(1, Math.floor(window));
@@ -110,7 +105,6 @@ export function lowess(values: readonly Cell[], frac = 2 / 3, iterations = 3): C
   for (let it = 0; it <= iterations; it++) {
     for (let k = 0; k < n; k++) {
       const x0 = xs[k];
-      // the r nearest neighbours by |x - x0|
       const dist = xs.map((x) => Math.abs(x - x0)).sort((a, b) => a - b);
       const hmax = dist[r - 1] || 1e-12;
       const ws = xs.map((x, j) => {

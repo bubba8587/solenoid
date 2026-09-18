@@ -1,8 +1,5 @@
+// [[D19]] implReteFree, [[C17]] shareImpl
 import { clamp, iterMin, iterMax } from "./mathUtils";
-
-// Rete-free kernels shared by the visual NODES (visual.ts) and their FORMULA
-// registrations ([[D19]] implReteFree): the formula path loads these without pulling in rete
-// or the socket lattice, exactly like textOps.ts / statsOps.ts.
 
 /** 2-D histogram of paired (x, y) samples over kx×ky equal-width bins (numpy
  *  histogram2d): pairs are taken by index and a pair is skipped when either side is

@@ -1,3 +1,4 @@
+// [[C38]] sinkRunButtonOnly, [[C103]] untrustedContentSeams, [[E11]] controlDrivenRetype, [[D10]] onePrunePath, [[C26]] opArgDistinct, [[B2]] webTryDesktopFull
 import { ClassicPreset } from "rete";
 import Papa from "papaparse";
 import { neutralizeFormulaCell } from "../csvSafety";
@@ -8,10 +9,6 @@ import { isSolError, type SolError } from "../errorValue";
 import { isFrameRef, readFrame, collectPreview, type FrameInput } from "../frameBackend";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
-// A sink must NEVER act on its own: data() only caches, and the write happens in
-// `run()`, called only from the Run button. `enabled` is deliberately absent from
-// copyPaste's extractInit whitelist, so EVERY construction starts disarmed.
-
 export type SinkStatus = "idle" | "writing" | "ok" | "error";
 
 /** A frame as CSV text (RFC 4180 via Papa Parse, the engine csv.ts reads back).
@@ -19,8 +16,7 @@ export type SinkStatus = "idle" | "writing" | "ok" | "error";
 export function frameToCsvText(f: FrameValue): string {
   const rows = frameRowCount(f);
   const fields = f.columns.map((c) => c.name);
-  // A file handed to someone else: a text cell a spreadsheet would evaluate is neutralized
-  // (csvSafety, the same rule as the popup's export).
+  // [[C103]] untrustedContentSeams
   const data = Array.from({ length: rows }, (_, i) =>
     f.columns.map((c) => {
       const shown = formatFrameCell(c.type, c.values[i] ?? null) ?? "";
@@ -54,9 +50,7 @@ export function frameToJsonText(f: FrameValue): string {
   return JSON.stringify(records, null, 2);
 }
 
-/** csv/json/text is a serialization-FORMAT config, not the family's op selector: the card
- *  is one "write to a file" sink and the format is a parameter of it — so the component's
- *  toggle is a SegToggle (an argument) and the node stays a util accent. Text writes a
+/** The format is an ARGUMENT of the one sink, not an op ([[C26]] opArgDistinct). Text writes a
  *  wired string verbatim (e.g. Schedule's `mspdi` Project XML), so the `in` socket is
  *  string-typed in that mode and frame-typed otherwise. */
 export type WriteFormat = "csv" | "json" | "text";
@@ -68,7 +62,7 @@ export class WriteFileNode extends ClassicPreset.Node {
   label: string;
   path: string;
   format: WriteFormat;
-  /** Never persisted (see file header) — always false on a fresh construction. */
+  /** Never persisted ([[C38]] sinkRunButtonOnly): false on every construction. */
   enabled = false;
   cachedFrame: FrameValue | SolError | null = null;
   /** The lazy upstream (a frame ref), or, in Text mode, the string to write. Read in
@@ -100,7 +94,6 @@ export class WriteFileNode extends ClassicPreset.Node {
     return retype;
   }
 
-  // Caches only — never touches disk.
   data(inputs: { in?: (FrameInput | string | SolError | null)[] }): Record<string, never> {
     const raw = inputs.in?.[0] ?? null;
     this.cachedInput = raw;
@@ -117,9 +110,8 @@ export class WriteFileNode extends ClassicPreset.Node {
     return this.format === "json" ? "json" : this.format === "text" ? "txt" : "csv";
   }
 
-  /** Explicit write — call ONLY from the Run button, desktop only. The
-   *  re-entrancy guard is required: the component's disabled state updates only
-   *  after the await, so two rapid clicks would race writes to the same file. */
+  /** The re-entrancy guard stays: the component's disabled state updates only after the
+   *  await, so two rapid clicks would race writes to the same file. */
   async run(): Promise<void> {
     if (this.status === "writing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
@@ -128,8 +120,6 @@ export class WriteFileNode extends ClassicPreset.Node {
     if (path === "") { this.status = "error"; this.statusMessage = "Choose a file path"; return; }
     if (isSolError(this.cachedInput)) { this.status = "error"; this.statusMessage = this.cachedInput.code; return; }
 
-    // Text mode: write the wired string verbatim, the path's own extension honored
-    // (so plan.xml writes XML). Frame modes serialize to CSV / JSON.
     if (this.format === "text") {
       const text = typeof this.cachedInput === "string" ? this.cachedInput : null;
       if (text == null) { this.status = "error"; this.statusMessage = "Nothing to write. Connect text."; return; }

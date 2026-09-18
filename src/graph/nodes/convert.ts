@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified
+// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D42]] perInputUnitBlind, [[C24]] arraySemantics, [[C8]] declareOnce
 import { ClassicPreset, type NodeEditor } from "rete";
 import { broadcastUnit, numListIn, numListOut, type UnitOperand } from "./shared";
 import { isFcUnit, type FormatStyle } from "../formatAnnotationStore";
@@ -9,8 +9,7 @@ import { CONVERT_UNIT_DEFS, convertValue } from "./convertUnits";
 export { CONVERT_UNIT_DEFS, convertValue, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
 import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../unitValue";
 
-// The conversion MATH belongs to dimension.ts — the single source of truth for unit
-// magnitudes; `category` survives only for the dropdown's grouping.
+// The conversion math lives in dimension.ts ([[C8]] declareOnce); `category` only groups the dropdown.
 
 registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
 
@@ -20,7 +19,7 @@ export class ConvertNode extends ClassicPreset.Node {
     in: "From applies only to plain numbers. A value with a unit keeps its magnitude and is relabeled when the dimensions match, #UNIT! when they differ.",
   };
 
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Runs the dimension algebra itself ([[D42]] perInputUnitBlind). */
   unitAware = true;
   label: string;
   fromUnit: string;
@@ -29,8 +28,7 @@ export class ConvertNode extends ClassicPreset.Node {
   outFormat: FormatStyle = "auto";
   cachedInput: number | number[] | UnitCell | (number | UnitCell)[] | null = null;
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
-  // In an FC→Convert→FC chain Convert's dropdowns are the authority; these flags
-  // drive the imposing-arrow markers.
+  // Drive the imposing-arrow markers (Convert dictates in an FC→Convert→FC chain, [[D40]] unitOnValue).
   imposesUp = false;
   imposesDown = false;
   width = 200;
@@ -53,8 +51,8 @@ export class ConvertNode extends ClassicPreset.Node {
     return isFcUnit(this.toUnit) ? this.toUnit : "none";
   }
 
-  /** The unit push is a property of the VALUE, so the arrows track whether each
-   *  socket is connected at all, not whether an FC sits next to it. */
+  /** The arrows track whether each socket is wired, not whether an FC sits beside it
+   *  ([[D40]] unitOnValue). */
   syncUnitArrows(
     editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
   ): void {
@@ -82,12 +80,10 @@ export class ConvertNode extends ClassicPreset.Node {
       this.cachedResult = err;
       return { out: err };
     }
-    // An overflowing conversion tags per-cell in a list, as array semantics require.
+    // Per-cell in a list ([[C24]] arraySemantics).
     const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
-    // Convert AUTHORS the value's unit: a bare input runs fromUnit → toUnit, while an
-    // already-dimensioned (base-SI) input is only re-labelled when commensurable.
+    // Convert authors the unit and its display ([[D40]] unitOnValue; specs/unit-flow.md).
     const toDim: Unit | undefined = to?.dim;
-    // Convert's toUnit ALWAYS wins on the outgoing value's rendering.
     const display = fcUnitToUnit(this.toUnit) ? this.toUnit : undefined;
     const convertCell = (v: UnitOperand): number | UnitCell | SolError => {
       if (isUnitCell(v)) {

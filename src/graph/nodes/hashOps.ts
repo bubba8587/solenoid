@@ -1,8 +1,5 @@
 // [[D19]] implReteFree, [[C17]] shareImpl
-// Pure, synchronous digests for the Hash card and HASH(): hashlib / digest() on a
-// text cell — the join-key anonymiser. WebCrypto's SHA is async-only, so the
-// classic algorithms live here in full; verified against Python hashlib
-// (hashOps.test.ts). UTF-8 in, lowercase hex out.
+// WebCrypto's SHA is async-only, so the digests live here in full. UTF-8 in, lowercase hex out.
 
 export type HashAlgorithm = "sha256" | "sha1" | "md5" | "crc32" | "fnv1a32" | "fnv1a64";
 export const HASH_ALGORITHM_META: Record<HashAlgorithm, { label: string; description: string }> = {
@@ -161,7 +158,7 @@ export function hashText(text: string, algorithm: HashAlgorithm = "sha256"): str
   }
 }
 
-// ─── Base64 (UTF-8 text ↔ standard alphabet with padding) ───
+// Base64: UTF-8 text ↔ the standard alphabet with padding.
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 export function base64Encode(text: string): string {
   const bytes = utf8.encode(text);

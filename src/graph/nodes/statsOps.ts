@@ -1,10 +1,5 @@
-// The ONE implementation behind the statistics NODES (Aggregate, Rank & Percentile,
-// Correl, Covariance, Mode) AND their formula registrations (capabilityParity /
-// [[C17]] shareImpl). Must not import rete. Inputs are the already-prepared numbers — the
-// caller has applied the aggregator policy (an error propagates, a blank is skipped;
-// `forAggregate` / `pairPresent` on the node side, `prepRangeArgs` on the formula side).
-// `null` = undefined for this input (too few points, a flat list) — each surface shows
-// that as a blank; a SolError is a real domain failure both surfaces display as-is.
+// [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D36]] nullSkippedNotZero, [[D51]] oneAnswerOneDivergence, [[D48]] classifyNonFinite, [[C14]] currentExcelParity
+// Inputs are already-prepared numbers (errors propagated, blanks skipped by the caller). `null` = undefined for this input (too few points, a flat list), shown as a blank; a SolError is a real domain failure.
 import { solError, type SolError } from "../errorValue";
 import { iterMin, iterMax, stdNormCDF, fCDF, chiSqCDF, lnCombin } from "./mathUtils";
 
@@ -68,7 +63,6 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
       const sum4 = arr.reduce((a, b) => a + ((b - m) / s) ** 4, 0);
       return ((n * (n + 1)) / ((n - 1) * (n - 2) * (n - 3))) * sum4 - (3 * (n - 1) ** 2) / ((n - 2) * (n - 3));
     }
-    // The numpy / pandas / R one-liners (python-r-gap.md Tier 1 #5).
     case "ptp":  return iterMax(arr) - iterMin(arr);                                   // numpy ptp, R diff(range(x))
     case "iqr": {                                                                       // scipy iqr, R IQR — PERCENTILE.INC quartiles
       const s = [...arr].sort((a, b) => a - b);
@@ -195,8 +189,8 @@ export function covariance(xs: readonly number[], ys: readonly number[], sample:
   return sample ? cov / (n - 1) : cov / n;
 }
 
-/** The mode(s): one mode → that number; a tie → every tied value, ascending (the combo
- *  answer that supersedes Excel's MODE.SNGL / MODE.MULT split). Empty → `null`. */
+/** The mode(s): one mode → that number; a tie → every tied value, ascending (one answer
+ *  for MODE.SNGL / MODE.MULT, [[C14]] currentExcelParity). Empty → `null`. */
 export function modes(arr: readonly number[]): number | number[] | null {
   if (arr.length === 0) return null;
   const counts = new Map<number, number>();
@@ -242,7 +236,7 @@ export function regression(xs: readonly number[], ys: readonly number[], op: "sl
   return n >= 3 ? Math.sqrt(Math.max(0, SSyy - slope * SSxy) / (n - 2)) : null;
 }
 
-// ─── Hypothesis tests beyond Excel's four (python-r-gap Tier 1 #16) ──────────
+// ─── Hypothesis tests beyond Excel's four ──────────
 // Every kernel answers a two-sided p-value (ANOVA / Kruskal: the upper tail of F / χ²),
 // `null` when the data can't support the test (too few points, no variance, an empty
 // group). Conventions follow R / scipy where they agree; where they differ the
