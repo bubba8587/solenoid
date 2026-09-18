@@ -60,3 +60,14 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     inference) or whether an existing mechanics doc IS the spec layer (declare it in the
     `specs` glob) or gets replaced by generated specs. A `dte status` that groups uncited
     source files by the node their directory traces to would turn the sweep into a checklist.
+11. **"Every system-describing doc is a node or a spec" is the owner's rule and the package
+    never states it.** A8 says specs hold what; it does not say an adopter's existing
+    mechanics docs ARE that layer and should be declared in the `specs` glob and split one
+    spec per subsystem, nor that rationale docs (out-of-scope lists, deferrals, divergence
+    notes) are unlifted nodes. It also needs to say what is exempt: proposals (the inbox),
+    history (git), and reader on-ramps (a glossary, a mental model), which are neither why
+    nor what. Without that sentence an adopter keeps a docs/ folder that duplicates the tree
+    and generates parallel specs beside the docs that already were specs (this repo did
+    both on the same day). Related: B28 oneContest makes a conversion sweep owe a contest
+    to every unratified root before the first spec is written under it; re-homing text
+    that already governs built code should not count as "new work under the node".

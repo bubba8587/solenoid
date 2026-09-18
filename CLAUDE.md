@@ -57,8 +57,8 @@ invented vocabulary + the author's names for the on-screen chrome).
   `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate` before you finish.
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
   author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
-- **`docs/subsystem-invariants.md` — the mechanics.** Read the section IN FULL before touching
-  its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
+- **`specs/` — the mechanics, one spec per subsystem** (`docs/subsystem-invariants.md` is the index).
+  Read the spec IN FULL before touching its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
   `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
   collapse, Standoffs, Tidy, Conduit faces / resizable-content nodes, Input-cable pruning, Add

@@ -1,0 +1,7 @@
+<!-- [[D32]] refreshOutsideRebuild -->
+
+# Spec: Live connections
+
+Serves [[D32]] refreshOutsideRebuild. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Live connections; a WHY that is not in a node belongs in one.
+
+A connection node caches its fetched Frame keyed by the composite token `<globalGen>:<nodeToken>:<reference>`. An ordinary `processGraph()` (editing an unrelated node) leaves all three parts unchanged → the cache answers and no network/disk hit. A refresh bumps exactly one part: `refreshConnection(id)` bumps that node's token (one node re-fetches); `refreshAllConnections()` bumps the global gen (all re-fetch). Source nodes fetch in the BACKGROUND so `data()` stays synchronous and off the engine's async critical path — an async `data()` would put every processGraph (each tick of a slider drag) behind the network, and `engine.reset()` would cancel the in-flight fetch on every overlapping recompute. When a background fetch lands, `scheduleConnectionRecalc()` recomputes, debounced to the next tick so several sources resolving together coalesce into one processGraph. **Desktop data-fetch User-Agent (`DATA_FETCH_UA`) must be a RECOGNIZED tool UA:** FRED's `fredgraph.csv` sits behind a WAF that allowlists known clients — it serves `curl`/`python-requests`/`wget` but DROPS the connection for a browser UA or an unknown custom one (reqwest's default is also rejected), so the app sends a plain curl identifier.

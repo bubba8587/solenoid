@@ -18,9 +18,10 @@ On `develop`, pushed.
   `specs` / `tests` / `agents` layers. `*Where:*` lines remain (backlog).
 - **A5 idPlusName absorbed**: every node has a camelCase `name` (17 were unnamed, four carried `NAME-n`
   placeholders the new validator rejects); A1 / B7 renamed under the author's instruction (`authorized_by`).
-- **Pilot of the three layers on the socket lattice** ([[C10]] socketLattice): `specs/socket-lattice.md` is the first
-  generated-then-filled spec (12 numbered requirements, each naming its node); `subsystem-invariants.md` § Socket
-  lattice shrank to a pointer; `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
+- **The mechanics docs ARE the spec layer** (author's rule: every system-describing doc is a node or a spec; on-ramps,
+  proposals and history stay). `subsystem-invariants.md` is split into `specs/` (27 files, each serving a named node)
+  and is the index now; the other mechanics docs are declared in the `specs` glob. `specs/socket-lattice.md` was the
+  pilot (12 numbered requirements, each naming its node); `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
   into the node / the spec; `fcReconcile.ts`, `conduitTrace.ts`, `unitLattice.ts` cite. The pattern for the other
   ring-C roots is in the backlog.
 - **`docs/dte-feedback.md`** is the feedback channel now (ten items from this session; item 10 is the one that
