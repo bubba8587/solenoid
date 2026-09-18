@@ -91,3 +91,24 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     opposite had been chosen belongs in the spec. A `validate` heuristic could flag a
     Decision whose first sentence has no modal or contrast word (never / only / must /
     not / instead) as "reads as a description".
+14. **`coverage` cannot reach 100%, so it stops being a gauge.** Every repo holds artifacts no
+    decision governs (package manifests, CI config, licences, fixtures, archived docs,
+    stylesheets under one design system), so the number plateaus and nobody knows whether the
+    remainder is debt or noise. Patched locally (`tools/dte.py`, one file ahead of upstream
+    3050da4; DTE's own suite passes with six new tests in the checkout at
+    `/home/user/bubba8587/decision-tree-engineering`): a `.dtecoverage` store beside
+    `.dteignore`, `why:` lines opening groups of globs. Semantics that made it honest: excluded
+    files are still scanned and a citing one still counts (the store says "needs none", not
+    "ignore"); a glob matching nothing is stale and reported; a glob before any `why:` is an
+    error; `coverage --excluded` lists files per reason; `scope --comments` skips excluded
+    files; `init` scaffolds the file comment-only. With it Solenoid reads 500/1258 (39.7%)
+    with 273 excluded under six reasons, and the uncited list is exactly the sweep's remaining
+    work. Worth a B-ring node upstream: "every artifact cites a decision or is listed with the
+    reason it needs none" is the completable form of A1's second consequence.
+15. **`test_vendor_copies_rules_renders_decisions_and_ignores_them` fails on a plain checkout**
+    (upstream 3050da4, unpatched): the vendored DECISIONS.md stamp embeds the refresh command
+    with the source checkout's path relativised from the destination (`python
+    ../../home/user/.../tools/dte.py vendor --from <your DTE checkout>`), and the test asserts
+    the absolute source path is absent. Related to item 2 (the stamp forgets `--dir`): the stamp
+    should print the vendored copy's own path (`python tools/dte.py vendor --from <checkout>
+    --dir dte-rules`) and nothing about where the source was.

@@ -109,9 +109,12 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` ([[C7]] authorRuled).
 - [ ] **Author places `decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
-- [ ] **Cite-and-prune sweep, remaining files** ([[C57]] commentMinimalism): the layout, input, unit, error and
-  format clusters are done; `dte scope --comments` lists what is left (chart renderers, Note/Report internals,
-  the mobile/theme CSS, `scripts/`). Per file: header cites the leaf, WHY → node, HOW → spec, WHAT stays.
+- [ ] **Coverage to 100%** (`dte coverage`; `.dtecoverage` holds what needs none, `docs/dte.md`): 500/1258 at
+  2026-09-18. The uncited list is the work: `src/graph` (~500 files: pure helpers, node classes and components
+  whose leaf is one of the socket/value/naming nodes), `tests/graph` (~216: a test cites the leaf it pins, or the
+  behaviour it pins earns one), the three `packages/` ([[C69]] ganttPackages at least). Per file: header cites
+  the leaf, WHY → node, HOW → spec, WHAT stays ([[C57]] commentMinimalism). A file with genuinely no decision
+  behind it goes in the store under a stated reason, never a "not yet" one.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
   declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]

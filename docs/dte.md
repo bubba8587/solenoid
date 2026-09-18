@@ -11,8 +11,9 @@ protocol, overview, adoption guide and a render of DTE's own tree live in `dte-r
 `dte-rules/CLAUDE.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md` and
 `dte-rules/DECISIONS.md`, written by
 `python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
-`tools/dte.py` itself. Read them before creating or changing decisions, and check them
-before filing DTE feedback. Do NOT re-create DTE's own format/protocol/usage decisions as
+`tools/dte.py` itself (the local copy carries one patch ahead of upstream, the `.dtecoverage`
+store below, until the author lands it; feedback 14 holds the patch). Read them before
+creating or changing decisions, and check them before filing DTE feedback. Do NOT re-create DTE's own format/protocol/usage decisions as
 nodes in this tree; this tree holds only Solenoid's own decisions. (`dte-rules/` is
 `.dteignore`d — its `dte:` tokens belong to DTE's tree; note it describes DTE's OWN rings
 A/B/C, which are not Solenoid's rings below.)
@@ -95,13 +96,28 @@ example: nobody decided "do not diverge from Formula.js"; the decision is Excel 
 for one would break the others; do not split those, and do not merge things that were ever
 reversed independently.
 
+## Coverage and the exclusion store (`.dtecoverage`)
+
+`python tools/dte.py coverage` is the adoption gauge, and 100% is the target. It is reachable
+only because an artifact that cites nothing BECAUSE no decision governs it is listed in
+`.dtecoverage` under the reason it needs none: a `why:` line opens a group, the globs under it
+(`.dteignore` syntax) belong to it. Six groups today: toolchain and CI configuration; licences
+and the pitch (reader on-ramps); queues, proposals, history and the index; fixtures and sample
+data; dev tooling; stylesheets (a stylesheet implements DESIGN.md). An excluded file is still
+scanned, so one that cites anyway counts as cited; a glob matching nothing is reported as stale;
+`coverage --excluded` lists the files under each reason. Everything not listed is expected to
+cite, so the uncited list IS the sweep's remaining work, not noise. Adding a group is a claim
+that a whole class of files needs no decision: say why in the `why:` line, and if the reason is
+"not swept yet", that is not a reason.
+
 ## Everyday use
 
 - Cite what you build: `python tools/dte.py cite <file> <ID>` (line-level by hand when a
   block's reason differs from the file's).
 - `python tools/dte.py trace <path>` — why does this file exist, up to the core?
 - `python tools/dte.py blast <ID>` — what does changing this decision touch?
-- `python tools/dte.py tree` — the index; `show <ID>` for one node; `coverage` — the gauge.
+- `python tools/dte.py tree` — the index; `show <ID>` for one node; `coverage` — the gauge (100% is
+  the target; `.dtecoverage` above holds what needs no citation).
 - Before you finish: `python tools/dte.py validate --as <ring>` must print `OK`.
 
 ## Feedback

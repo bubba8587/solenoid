@@ -1,0 +1,69 @@
+# Coverage exclusions (dte coverage). An artifact that cites no decision BECAUSE no decision
+# governs it goes here, under the reason it needs none, so 100% coverage is reachable and
+# means something. A "why:" line opens a group; the globs under it (.dteignore syntax) belong
+# to it. Excluded files are still scanned: a citation inside one still counts, and a glob
+# that matches nothing is reported as stale. Everything not listed here is expected to cite.
+
+why: package manifests, toolchain and CI configuration serve the build, not a product decision
+package.json
+package-lock.json
+tsconfig.json
+tsconfig.node.json
+vercel.json
+index.html
+.gitattributes
+.gitignore
+.mcp.json
+.dteignore
+.vscode
+.github
+.impeccable
+src/vite-env.d.ts
+src-tauri/Cargo.toml
+src-tauri/build.rs
+src-tauri/tauri.conf.json
+src-tauri/tauri.live.conf.json
+src-tauri/.gitignore
+src-tauri/.cargo
+src-tauri/capabilities
+packages/*/package.json
+public/robots.txt
+public/sitemap.xml
+
+why: licences and the product pitch are reader on-ramps, not system descriptions (author's rule 2026-09-18)
+LICENSE
+THIRD-PARTY-NOTICES.md
+README.md
+PRODUCT.md
+
+why: queues, proposals and history keep their homes; an index points, it does not govern
+docs/deferrals.md
+docs/grid-system.md
+docs/pack-composite-plans.md
+docs/python-r-gap.md
+docs/release-notes-features.md
+docs/upstream-formulajs.md
+docs/subsystem-invariants.md
+docs/archive
+docs/v2.0
+docs/review
+docs/google-style
+docs/assets
+
+why: fixtures and sample data are inputs to tests and demos, not artifacts that serve a decision
+fixtures
+assets
+public/data
+public/fonts
+tests/fixtures
+
+why: dev tooling serves the workflow; the decision, if any, is cited by the file it generates or drives
+scripts
+tools/string-editor
+src/devCopyEdit.ts
+src/graph/census.ts
+src/graph/devHarness.ts
+src/graph/modelFuzz.ts
+
+why: a stylesheet implements DESIGN.md (B14 oneDesignSystem); one that carries a leaf's mechanism cites it
+*.css

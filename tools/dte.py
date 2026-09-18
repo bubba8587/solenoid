@@ -10,7 +10,7 @@ One file, standard library only, Python 3.8+. Copy it into any project.
     python dte.py blast <ID>             what would changing this touch?
     python dte.py trace <path>           why does this artifact exist?
     python dte.py conflicts              declared contradictions and who wins
-    python dte.py coverage               artifacts with no citation
+    python dte.py coverage [--excluded]  artifacts with no citation; .dtecoverage names the ones that need none
     python dte.py scope                  advisory: no reach, too broad, skipped rings
     python dte.py retired                the ledger
     python dte.py authority [ring]       who holds each ring (whom to ask)
@@ -30,7 +30,7 @@ One file, standard library only, Python 3.8+. Copy it into any project.
   check and integrate
     python dte.py validate [--as RING]   consistency; exit 1 on errors ($DTE_RING is the default ring)
     python dte.py export [--out FILE]    JSON of nodes, citations, ledger, inbox
-    python dte.py init                   scaffold decisions/, dte.cfg, .dteignore in a new project
+    python dte.py init                   scaffold decisions/, dte.cfg, .dteignore, .dtecoverage in a new project
     python dte.py hook                   install a pre-commit hook that runs validate
 
 Options: --root DIR (default: cwd)  --decisions DIR (default: ROOT/decisions)
@@ -859,6 +859,49 @@ class Tree:
                 return True
         return False
 
+    def coverage_exclusions(self):
+        """[(why, [globs])] from ROOT/.dtecoverage; a glob before any why: line is an error.  dte:B22"""
+        p = os.path.join(self.root, COVERAGE_FILE)
+        groups = []
+        if not os.path.exists(p):
+            return groups
+        cur = None
+        with open(p, encoding="utf-8") as fh:
+            for ln, line in enumerate(fh, 1):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("why:"):
+                    why = line[4:].strip()
+                    if not why:
+                        raise ValueError("%s:%d: empty why:" % (COVERAGE_FILE, ln))
+                    cur = (why, [])
+                    groups.append(cur)
+                    continue
+                if cur is None:
+                    raise ValueError("%s:%d: a glob before any 'why:' line" % (COVERAGE_FILE, ln))
+                cur[1].append(line)
+        return groups
+
+    def excluded_from_coverage(self):
+        """({rel: why} for every UNCITED scanned file an exclusion matches, [stale globs]).
+        A citing file is never excluded: the store says which files need no citation, and
+        one that cites anyway simply counts. A glob matching no scanned file at all is stale.  dte:B22"""
+        self.scan()
+        cited = {r for r, _, _, _ in self.citations}
+        out, stale = {}, []
+        for why, globs in self.coverage_exclusions():
+            for g in globs:
+                hit = False
+                for rel in self.scanned_files:
+                    if self._ignored(rel, [g]):
+                        hit = True
+                        if rel not in cited:
+                            out.setdefault(rel, why)
+                if not hit:
+                    stale.append(g)
+        return out, stale
+
     def scan(self):
         if self.scanned_files:
             return
@@ -872,6 +915,8 @@ class Tree:
                 path = os.path.join(dirpath, fn)
                 rel = self.rel(path)
                 if rel == dec_rel or rel.startswith(dec_rel + "/") or self._ignored(rel, pats):
+                    continue
+                if rel == COVERAGE_FILE:   # the coverage store is metadata about artifacts, not one
                     continue
                 if os.path.abspath(path) == me and not CONFIG.get("scan_self"):
                     continue
@@ -1039,7 +1084,13 @@ COMMENT_HEAVY = 5
 def cmd_scope(tree, args):
     """dte:B21, dte:B38"""
     if getattr(args, "comments", False):
-        rows = [(rel, n, c) for rel, n, c in comment_census(tree) if n >= COMMENT_HEAVY and c == 0]
+        try:
+            excluded, _ = tree.excluded_from_coverage()
+        except ValueError as e:
+            print(e)
+            return 2
+        rows = [(rel, n, c) for rel, n, c in comment_census(tree)
+                if n >= COMMENT_HEAVY and c == 0 and rel not in excluded]
         rows.sort(key=lambda r: -r[1])
         if not rows:
             print("No migration candidates: every file with %d+ comment lines carries a citation." % COMMENT_HEAVY)
@@ -1241,10 +1292,45 @@ def cmd_coverage(tree, args):
     """dte:B22"""
     tree.scan()
     cited = {r for r, _, _, _ in tree.citations}
-    missing = [f for f in tree.scanned_files if f not in cited]
-    total = len(tree.scanned_files)
+    try:
+        excluded, stale = tree.excluded_from_coverage()
+    except ValueError as e:
+        print(e)
+        return 2
+    scoped = [f for f in tree.scanned_files if f not in excluded]
+    missing = [f for f in scoped if f not in cited]
+    total = len(scoped)
     pct = 100.0 * (total - len(missing)) / total if total else 0.0
-    print("Coverage: %d/%d artifacts cite a decision (%.1f%%)\n" % (total - len(missing), total, pct))
+    line = "Coverage: %d/%d artifacts cite a decision (%.1f%%)" % (total - len(missing), total, pct)
+    if excluded:
+        reasons = {}
+        for why in excluded.values():
+            reasons[why] = reasons.get(why, 0) + 1
+        line += "; %d excluded under %d reason%s (%s)" % (
+            len(excluded), len(reasons), "" if len(reasons) == 1 else "s", COVERAGE_FILE)
+    print(line + "\n")
+    if stale:
+        print("Stale exclusions in %s (match nothing; delete them):" % COVERAGE_FILE)
+        for g in stale:
+            print("  " + g)
+        print()
+    if excluded and getattr(args, "excluded", False):
+        by_why = {}
+        for rel, why in excluded.items():
+            by_why.setdefault(why, []).append(rel)
+        for why, rels in by_why.items():
+            print("Excluded (%d): %s" % (len(rels), why))
+            for rel in sorted(rels):
+                print("  " + rel)
+            print()
+    elif excluded:
+        by_why = {}
+        for why in excluded.values():
+            by_why[why] = by_why.get(why, 0) + 1
+        print("Excluded:")
+        for why, n in by_why.items():
+            print("  %4d  %s" % (n, why))
+        print("  (--excluded lists the files)\n")
     if missing:
         print("No citation:")
         for f in missing:
@@ -1710,6 +1796,19 @@ broad_fraction = 0.3
 broad_min = 5
 """
 
+COVERAGE_FILE = ".dtecoverage"
+COVERAGE_TEMPLATE = """# Coverage exclusions (dte coverage). An artifact that cites no decision BECAUSE no decision
+# governs it goes here, under the reason it needs none, so 100%% coverage is reachable and
+# means something. A "why:" line opens a group; the globs under it (the .dteignore syntax)
+# belong to that group. Excluded files are still scanned: a citation inside one still
+# counts, and a glob that matches nothing is reported as stale. Everything not listed
+# here is expected to cite.
+#
+# why: package manifests and toolchain configuration serve the build, not a product decision
+# package.json
+# tsconfig*.json
+"""
+
 IGNORE_TEMPLATE = """# Globs the dte scanner skips (in addition to .git and the decisions dir).
 node_modules
 vendor
@@ -2125,7 +2224,7 @@ def ratify_one(tree, i, by):
 COMMENT_STYLES = (
     ("#", {".py", ".rb", ".sh", ".bash", ".zsh", ".fish", ".yml", ".yaml", ".toml", ".cfg", ".ini",
            ".ps1", ".pl", ".r", ".txt", ".env", ".mk", ".cmake", ".dockerfile", ".gitignore",
-           ".dteignore", ""}),
+           ".dteignore", ".dtecoverage", ""}),
     ("//", {".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", ".go", ".rs", ".java", ".c", ".h", ".cpp",
             ".hpp", ".cc", ".cs", ".swift", ".kt", ".kts", ".scala", ".dart", ".php", ".m", ".zig"}),
     ("<!--", {".md", ".markdown", ".html", ".htm", ".xml", ".svg", ".vue", ".svelte"}),
@@ -2831,7 +2930,7 @@ def cmd_init(tree, args):
     made, kept = [], []
     me = os.path.basename(__file__)
     ignore = IGNORE_TEMPLATE + "# The dte tool itself: its dte: tokens belong to DTE's own tree, not this one.\n%s\n" % me
-    for rel, content in (("dte.cfg", CFG_TEMPLATE), (".dteignore", ignore)):
+    for rel, content in (("dte.cfg", CFG_TEMPLATE), (".dteignore", ignore), (COVERAGE_FILE, COVERAGE_TEMPLATE)):
         p = os.path.join(root, rel)
         if os.path.exists(p):
             kept.append(rel)
@@ -2874,7 +2973,8 @@ def main(argv=None):
     sub.add_parser("blast").add_argument("id")
     sub.add_parser("trace").add_argument("path")
     sub.add_parser("conflicts")
-    sub.add_parser("coverage")
+    sub.add_parser("coverage").add_argument("--excluded", action="store_true",
+                                            help="list the excluded files under each reason")
     sub.add_parser("next").add_argument("ring")
     vd = sub.add_parser("vendor")
     vd.add_argument("--from", dest="src", required=True, metavar="DIR", help="a DTE checkout")

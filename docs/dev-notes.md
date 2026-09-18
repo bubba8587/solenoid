@@ -39,7 +39,10 @@ On `develop`, pushed.
   formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk,
   [[C98]] paletteMirrorsMenubar, [[C99]] chromeEnvelopeVars, [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
   replaced a plan-doc 'candidate' and a core-only A5 citation). D64 / C95 / C97 are enforced by
-  source sweeps now; the four sanctioned size reads carry their reason in place. Every spec-named source file and every
+  source sweeps now; the four sanctioned size reads carry their reason in place.
+- **`.dtecoverage` makes 100% coverage reachable** (author's ask): a store of artifacts that need no citation,
+  each group under its `why:`; `tools/dte.py` is patched one step ahead of upstream (feedback 14, with DTE's own
+  tests). 500/1258 with 273 excluded under six reasons; the uncited list is now exactly the remaining sweep. Every spec-named source file and every
   value-semantics leaf's implementing file now cites its leaf; 428 bare leaf-name mentions in comments and test
   titles became wikilinks; the 43 `*Where:*` pointers are gone bar the two author-held nodes (B7, C80).
   `subsystem-invariants.md` and the README routing table point at spec + leaf and no longer restate a spec's
