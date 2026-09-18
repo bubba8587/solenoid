@@ -84,6 +84,17 @@ sets `authorized_by` to the author.
 Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. Assume ring B unless told
 otherwise. The map binds agents, not the author.
 
+## What is a node and what is a spec (the author's test)
+
+A node is a decision someone could reverse, and something would break. The many small,
+similar technical choices that fall out of a node are spec content: fluid, edited freely, with
+git history as their governance record, like code. Formula.js divergences are the worked
+example: nobody decided "do not diverge from Formula.js"; the decision is Excel parity
+([[A5]] excelParity, [[D28]] tripwireVendorDrift), and the per-name evidence is
+`specs/formulajs-divergences.md`. One decision may govern several things when turning it off
+for one would break the others; do not split those, and do not merge things that were ever
+reversed independently.
+
 ## Everyday use
 
 - Cite what you build: `python tools/dte.py cite <file> <ID>` (line-level by hand when a

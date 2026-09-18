@@ -71,3 +71,13 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     both on the same day). Related: B28 oneContest makes a conversion sweep owe a contest
     to every unratified root before the first spec is written under it; re-homing text
     that already governs built code should not count as "new work under the node".
+12. **The spec / node boundary needs one sentence in A8 or B37.** Every line of a spec can be
+    framed as a decision, so an agent asked to "lift docs into nodes" will over-split. The
+    owner's test (2026-09-18): a node earns its place when it is a decision someone could
+    reverse and something would break; the many small, similar technical choices that *fall
+    out* of a node are spec content, kept fluid, with git history as their governance
+    record, like code. Worked example: "formulas must not diverge from Formula.js" is not a
+    decision anyone made; the decision is Excel parity, and each Formula.js divergence is a
+    consequence of it, so the per-name evidence is a spec serving that node, not twelve
+    nodes. State the test and the example where `dte spec` and B38 commentsMigrate are
+    introduced; it is the difference between a tree of 200 nodes and one of 2000.
