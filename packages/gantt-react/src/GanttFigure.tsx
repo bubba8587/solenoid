@@ -1,4 +1,4 @@
-// [[C71]]
+// [[C69]] ganttPackages, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C100]] chartIsAValue, [[C94]] formatFamilyGates, [[C70]] oneScheduleRule
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, UIEvent, PointerEvent as ReactPointerEvent, ReactElement } from "react";
 import {
@@ -33,7 +33,7 @@ export interface GanttFigureProps {
   colors?: Partial<GanttColors>;
 }
 
-/** Canvas snapshot row cap, mirroring Record's 60-card cap (TablePopup precedent). */
+/** Canvas snapshot row cap, the Record precedent ([[C63]] oneRecordNode); the popup virtualizes instead. */
 const CANVAS_CAP = 60;
 const MIN_GRID_W = 96;
 const MIN_TIMELINE_W = 80;
@@ -482,8 +482,8 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
   );
 }
 
-/** A small pushpin at the bar start marking a manually pinned task (Manual = TRUE): its dates
- *  are held by hand and ignore predecessors. Its own cue, distinct from the violated dash. */
+/** A pushpin at the bar start marking a Manual task ([[C70]] oneScheduleRule); its own cue,
+ *  distinct from the violated dash. */
 function PinGlyph({ x, y }: { x: number; y: number }) {
   return (
     <g className="solenoid-gantt__pin">
@@ -493,9 +493,8 @@ function PinGlyph({ x, y }: { x: number; y: number }) {
   );
 }
 
-/** A small down-pointing flag at the deadline day — a marker, not a moved date. A late task
- *  (finish past the deadline) turns the flag into the error color (the non-color cue is its
- *  distinct pennant shape, present regardless of color). */
+/** A pennant at the deadline day ([[C70]] oneScheduleRule: a flag, never a move); a late task
+ *  turns it the error color, the pennant shape itself being the non-color cue. */
 function DeadlineFlag({ x, rowY, rowH, late }: { x: number; rowY: number; rowH: number; late: boolean }) {
   const top = rowY - 2;
   const h = rowH + 4;

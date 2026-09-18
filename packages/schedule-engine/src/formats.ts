@@ -1,7 +1,6 @@
-// [[C69]] ganttPackages
-// The other interchange formats (§ 3.3): GanttProject `.gan` (XML) and Primavera XER
-// (tab-delimited `%T/%F/%R` tables), both read into the engine's task tree. MSPDI write is
-// the codec's other direction. Store two-letter link types; map at each border.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials
+// GanttProject `.gan` and Primavera XER read into the engine's task tree, and MSPDI write
+// (25-gantt.md § 3.3). Link types are two-letter strings inside; each border maps its own codes.
 
 import { child, children, text, type XmlNode } from "./xml";
 import { isoToSerial } from "./mspdi";
@@ -15,9 +14,8 @@ export interface ImportedPlanFile {
   unsupported: string[];
 }
 
-// ── GanttProject .gan ───────────────────────────────────────────────────────────
-// <task id name start duration complete> nested by element nesting; <depend id type difference>
-// under the PREDECESSOR (type 1=SS 2=FS 3=FF 4=SF; difference = lag in days).
+// GanttProject .gan: <task id name start duration complete> nested by element nesting;
+// <depend id type difference> under the PREDECESSOR (type 1=SS 2=FS 3=FF 4=SF; difference = lag in days).
 
 const GAN_LINK: Record<string, LinkType> = { "1": "SS", "2": "FS", "3": "FF", "4": "SF" };
 
@@ -117,8 +115,7 @@ export function readGan(xml: string): ImportedPlanFile {
   return { title: attr(root, "name") ?? "", start: projectStart, calendar: cal, tasks, unsupported: [...new Set(unsupported)] };
 }
 
-// ── Primavera XER ───────────────────────────────────────────────────────────────
-// Lines: %T table, %F fields, %R row (tab-separated). Tables: PROJECT, PROJWBS (the
+// Primavera XER: %T table, %F fields, %R row (tab-separated). Tables: PROJECT, PROJWBS (the
 // hierarchy), TASK (task_code, task_name, wbs_id, target_drtn_hr_cnt, task_type, phys_complete_pct,
 // clndr_id), TASKPRED (pred_task_id, task_id, pred_type PR_FS…, lag_hr_cnt), CALENDAR.
 
@@ -202,10 +199,6 @@ export function readXer(text: string): ImportedPlanFile {
   return { title: project?.proj_short_name ?? "", start: xerDate(project?.plan_start_date) ?? null, calendar: cal, tasks, unsupported: [...new Set(unsupported)] };
 }
 
-/** P6's `clndr_data` blob: `(0||CalendarData()( (0||DaysOfWeek()( (0||1()()) (0||2()( (0||0(s|08:00|f|17:00)()) )) … ))
- *  (0||Exceptions()( (0||0(d|46023)()) … )) ))`. A weekday with no work times is off; an
- *  exception with no work times is a holiday (`d|` is the day serial, P6's epoch being Excel's).
- *  Work times become the intervals. Anything unparsable leaves the standard week. */
 /** The balanced `(…)` body whose opening paren sits at `open`, without the outer parens. */
 function parenBody(s: string, open: number): string {
   let depth = 0;
@@ -216,6 +209,10 @@ function parenBody(s: string, open: number): string {
   return s.slice(open + 1);
 }
 
+/** P6's `clndr_data` blob: `(0||CalendarData()( (0||DaysOfWeek()( (0||1()()) (0||2()( (0||0(s|08:00|f|17:00)()) )) … ))
+ *  (0||Exceptions()( (0||0(d|46023)()) … )) ))`. A weekday with no work times is off; an
+ *  exception with no work times is a holiday (`d|` is the day serial, P6's epoch being Excel's).
+ *  Work times become the intervals. Anything unparsable leaves the standard week. */
 function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
   const cal: CalendarSpec = { workingDays: true, weekendCode: 1 };
   // The blob nests parens (each day holds its own `(0||0(s|..|f|..)())` groups), so a lazy
@@ -256,10 +253,8 @@ function xerDate(s: string | undefined): number | null {
   return isoToSerial(s.replace(" ", "T"));
 }
 
-// ── MSPDI write ────────────────────────────────────────────────────────────────
-// The engine's output as a Project XML file Project and MPXJ read: tasks by outline level,
-// links as PredecessorLink with the codec's integer types, durations in hours, dates at
-// 08:00 / 17:00, the computed fields alongside so a reader sees the same schedule.
+// MSPDI write: tasks by outline level, links as PredecessorLink with the codec's integer types,
+// durations in hours, dates at 08:00 / 17:00, the computed fields alongside so a reader sees the same schedule.
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const LINK_CODE: Record<LinkType, number> = { FF: 0, FS: 1, SF: 2, SS: 3 };

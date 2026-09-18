@@ -1,7 +1,6 @@
 // [[C69]] ganttPackages
-// The predecessor grammar `<row><type><±lag><unit>` (`3FS+2d, 5SS-1d`, Smartsheet /
-// Project) lives ONLY at the import border: row numbers resolve to names here and never
-// become an internal key. Also the inverse, for the grid's Predecessors column.
+// The predecessor grammar `<row><type><±lag><unit>` (`3FS+2d`) lives ONLY at the import border:
+// a row number resolves to a name here and never becomes an internal key (25-gantt.md § 6.1).
 
 import type { LinkType, PlanDependency } from "./types";
 import { LINK_TYPES } from "./graph";

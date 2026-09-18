@@ -1,8 +1,6 @@
-// [[C69]] ganttPackages
-// The engine's model. Names are keys. Every date is an Excel serial whole day; every
-// duration and lag is a count of working days on the project calendar. No Date objects
-// anywhere in this package (§ 6.5 of the plan: integer day arithmetic removes the DST bug
-// class every surveyed library carries).
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors
+// The engine's model: names are keys, dates are whole-day serials, durations and lags are
+// working days; no Date object anywhere in this package (25-gantt.md § 6.5).
 
 export type LinkType = "FS" | "SS" | "FF" | "SF";
 
@@ -160,8 +158,8 @@ export interface ScheduleOutput {
   holidays: number[];
 }
 
-/** A whole-graph failure (a cycle, an unknown name, a duplicate): nothing has a defined
- *  start, so the engine throws one error naming a member. */
+/** A whole-graph failure (a cycle, an unknown name, a duplicate): one error naming a member
+ *  ([[E10]] pickVsAggregateErrors). */
 export class ScheduleError extends Error {
   constructor(message: string, public readonly task?: string) {
     super(message);

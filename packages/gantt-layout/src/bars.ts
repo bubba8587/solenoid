@@ -1,7 +1,6 @@
-// [[C69]] ganttPackages
-// Bar geometry: a rectangle per task (finish + 1 exclusive, so an inclusive one-day task
-// fills its day), a diamond for milestones, a bracket for summaries, a progress fill, a
-// baseline ghost, and a label with ellipsis. Pure numbers; colors are the view's.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule
+// Bar geometry (rect, diamond, bracket, progress fill, baseline ghost, ellipsized label); an
+// inclusive finish draws to finish + 1. Pure numbers; colors are the view's.
 
 import type { GanttPayload, GanttTask } from "./payload";
 import type { FrameRow, FrameBar, FrameScale } from "./frame";
@@ -91,7 +90,7 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
     base.baseline = { x: bx, w: Math.max(bEnd - bx, 1) };
   }
 
-  // Deadline flag at the end of the deadline day (a marker, never a moved date).
+  // Deadline flag at the end of the deadline day ([[C70]] oneScheduleRule: a flag, never a move).
   if (t.deadline != null) {
     base.deadlineX = xOf(t.deadline + 1, scale);
   }

@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C71]] noBarEditing
+// [[C69]] ganttPackages, [[C71]] noBarEditing, [[B11]] maximalMerge, [[C100]] chartIsAValue
 import { useMemo } from "react";
 import { layoutCalendar, type GanttPayload } from "@solenoid/gantt-layout";
 import { ganttStyles } from "./styles";
@@ -10,9 +10,8 @@ export interface CalendarViewProps {
   fontScale?: number;
 }
 
-/** The calendar sibling of the Gantt figure: the same payload as a month grid. Read-only,
- *  scrolls vertically when the span runs to several months. Styled by the app's design tokens
- *  (they resolve in inline SVG), like the Gantt figure. */
+/** The Gantt figure's calendar sibling: the same payload as a month grid, read-only, scrolling
+ *  vertically when the span runs to several months. */
 export function CalendarView({ payload, width, height, fontScale = 1 }: CalendarViewProps) {
   const frame = useMemo(() => layoutCalendar(payload, { width }), [payload, width]);
   const cellW = width / 7;
