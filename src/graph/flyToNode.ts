@@ -1,3 +1,4 @@
+// [[C88]] collapseIsVisual.
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
 
@@ -7,8 +8,7 @@ import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 
-// A node hidden inside a COLLAPSED group has no visible element, so zoomAt would
-// target a stale (~0,0) position — fly to the nearest VISIBLE ancestor instead.
+// Camera targets resolve the nearest VISIBLE ancestor ([[C88]] collapseIsVisual).
 function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): string {
   let targetId = nodeId;
   const seen = new Set<string>();

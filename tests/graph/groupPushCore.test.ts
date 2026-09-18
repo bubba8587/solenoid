@@ -1,3 +1,4 @@
+// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle
 import { describe, it, expect } from "vitest";
 import { computeExpandPush, separateOverlaps, PushBox, Satellite, ExpandSpec, PUSH_GAP, Pt } from "../../src/graph/groupPushCore";
 

@@ -1,8 +1,8 @@
-<!-- [[C65]] domOrderStacking -->
+<!-- [[C89]] standoffsSolveLast, [[C65]] domOrderStacking -->
 
 # Spec: Standoffs
 
-Serves [[C65]] domOrderStacking. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Standoffs; a WHY that is not in a node belongs in one.
+Serves [[C89]] standoffsSolveLast; the layer's stacking is [[C65]] domOrderStacking. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Standoffs; a WHY that is not in a node belongs in one.
 
 User-declared arrangement constraints: a pale thick bar UNDER everything (`StandoffLayer` inside RF's `<ViewportPortal>` at z -3 — the area-plane stacking order is standoffs -3 < expanded groups -2 < conduits -1 < nodes 0, stamped per node by `nodeZIndex`; a Conduit inside a group was unselectable until groups dropped from -1 to -2) linking two top-level items (nodes/groups; no conduits/FCs/group-members) side↔side (cardinal) or corner↔corner (diagonal).
 

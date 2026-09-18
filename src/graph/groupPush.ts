@@ -1,3 +1,4 @@
+// [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast. Mechanics: specs/group-expand-push.md.
 import { measuredSize } from "./nodeSize";
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
@@ -152,9 +153,8 @@ function satellitesFor(editor: Editor, view: View, g: GroupNode, world: World): 
   return out;
 }
 
-// A displaced box clears TOWARD its anchors so cables stay short; each anchor
-// resolves to its push entity (a member counts as its group, a docked FC as its
-// host). Satellites of the expanding group are excluded — the rails pull them.
+// Anchors resolve to push entities (member → group, docked FC → host); satellites of
+// the expanding group are excluded because the rails pull them.
 function buildAnchors(
   editor: Editor,
   world: World,
@@ -360,9 +360,8 @@ function runExpandPushes(
     // `record` off ⇒ the displacement is PERMANENT, no restore record.
     if (record) {
       const existing = _records.get(id);
-      // Merge only into a record whose node is STILL where our last push left it —
-      // Tidy/align translate without firing drag invalidation, so merging into a
-      // stale record would re-arm an obsolete restore target.
+      // Merge only into a record whose node is still where the last push left it
+      // ([[C85]]): Tidy/align translate without firing drag invalidation.
       const stale = existing &&
         (Math.abs(p.x - existing.expX) > EPS || Math.abs(p.y - existing.expY) > EPS);
       if (existing && !stale) {
@@ -423,8 +422,8 @@ export function restoreSettledPushes(editor: Editor, view: View): void {
 
 // ─── The one toggle entry point ────────────────────────────────────────────────
 
-/** THE toggle entry point (chevron and outline panel route through here) so the
- *  flip → sync → re-render → settle → push/restore order is identical everywhere. */
+/** THE toggle entry point ([[C85]] groupPushDeterministic): every caller gets the same
+ *  flip → sync → re-render → settle → push/restore order. */
 export async function setGroupsCollapsed(
   editor: Editor,
   view: View,

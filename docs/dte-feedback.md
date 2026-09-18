@@ -81,3 +81,13 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     consequence of it, so the per-name evidence is a spec serving that node, not twelve
     nodes. State the test and the example where `dte spec` and B38 commentsMigrate are
     introduced; it is the difference between a tree of 200 nodes and one of 2000.
+13. **The Decision section needs a "feature description" tripwire.** When an agent lifts a
+    mechanics doc into nodes, the easiest Decision to write opens by describing what the
+    thing IS (a standoff's band formula, what a readout row shows, what fields a drawn
+    cable has) and only then states the call. The owner caught three of eight such nodes
+    on one pass (2026-09-18: "I trust these contain actual decisions which aren't just
+    'these features exist'?"). The fix is one sentence in the node template or B37: a
+    Decision names the call and its opposite; a sentence that would still be true if the
+    opposite had been chosen belongs in the spec. A `validate` heuristic could flag a
+    Decision whose first sentence has no modal or contrast word (never / only / must /
+    not / instead) as "reads as a description".

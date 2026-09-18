@@ -1,3 +1,5 @@
+// [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[D64]] oneSizeRead.
+// Mechanics: specs/auto-arrange-tidy.md (and specs/standoffs.md for the cluster super-node).
 import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
@@ -36,14 +38,9 @@ export interface TidyDeps {
 
 export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
-// Ports placed SYMMETRICALLY (same offset for in/out) so two connected nodes line
-// up — do NOT fall back to the plugin's `classic` preset. A factory over the layout
-// DIRECTION: RIGHT puts inputs WEST / outputs EAST and spaces them down the card's
-// height; DOWN transposes to NORTH / SOUTH, spaced across the card's width.
-// A width cap wraps a fat layer into sublayers via ELK's per-node layerUnzipping.
-// `layerSplit` is the sublayer COUNT and lives per-node; the arrange fn stamps it here
-// from the layout's node count just before `layout()` (the preset factory re-runs per
-// layout, so this closure reads the fresh value). 0 = uncapped.
+// Symmetric ports ([[C84]] tidyTranslatesOnly), a factory over the layout direction.
+// `layerSplit` is per-node: the arrange fn stamps the sublayer count here just before
+// `layout()` (the factory re-runs per layout, so this closure reads the fresh value).
 let tidyLayerSplit = 0;
 
 export function symmetricPortPreset(direction: TidyDirection) {
@@ -144,8 +141,7 @@ export function tidyLayerSplitFor(nodeCount: number, widthCap: TidyWidthCap): nu
   return widthCap > 0 ? Math.max(1, Math.ceil(nodeCount / widthCap)) : 0;
 }
 
-// The layout engine, called DIRECTLY (rete-auto-arrange died with the rete
-// surface; its ELK graph construction lives on in elkTidyLayout below).
+// The layout engine, called directly.
 export type Elk = { layout(graph: unknown): Promise<ElkResult> };
 type ElkResult = { children?: Array<{ id?: string; x?: number; y?: number }> };
 
@@ -169,9 +165,8 @@ export function makeEnsureElk(isDestroyed: () => boolean): () => Promise<Elk | n
   };
 }
 
-/** The exact ELK graph rete-auto-arrange built (root layered/INCLUDE_CHILDREN/
- *  POLYLINE defaults, sorted FIXED_POS ports from symmetricPortPreset, port-id
- *  edges), run directly and applied through the given translate. */
+/** The ELK graph (root layered / INCLUDE_CHILDREN / POLYLINE, sorted FIXED_POS ports
+ *  from symmetricPortPreset, port-id edges), applied through the given translate. */
 export async function elkTidyLayout(
   elk: Elk,
   args: {
@@ -304,17 +299,15 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // Global tidy keeps GROUPS as rigid units and excludes their members;
     // within-group tidy keeps exactly that group's members.
     const memberIds = new Set(memberOf.keys());
-    // A position-locked group (and its members) sits out global tidy entirely — it
-    // stays exactly where the user pinned it. Within-group tidy is that group's own
-    // Tidy button, which still arranges its members.
+    // A locked group sits out global tidy ([[D63]] lockedGroupIsObstacle).
     const layoutTargets = tidyNodes.filter(
       (n) =>
         !dockedFcIds.has(n.id) &&
         (withinGroup ? true : !memberIds.has(n.id) && !(n instanceof GroupNode && n.lockedPosition)),
     );
 
-    // Standoff clusters lay out as ONE rigid block: collapse each fully-loose
-    // cluster into a bbox-sized leader, re-placing members at stored offsets after.
+    // A standoff cluster is one rigid block ([[C89]] standoffsSolveLast): a bbox-sized
+    // leader stands in for it; members re-place at stored offsets after.
     const looseTargetIds = new Set(layoutTargets.map((n) => n.id));
     const clusterLeaderOf = new Map<string, string>();    // member -> leader
     const clusterMembersOf = new Map<string, string[]>(); // leader -> members
@@ -392,12 +385,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const s = elkId(c.source);
       const t = elkId(c.target);
       if (s === t || !elkVisible.has(s) || !elkVisible.has(t)) return [];
-      // A flipped node reads from its right and emits to its left, so for the layout
-      // it "acts as a predecessor" — its neighbor should sit one layer the other way.
-      // Reverse the ELK edge direction when either end is flipped, and drop the ports
-      // (node-level edge) so the mirrored side never fights the symmetric port preset.
-      // (Grouped members remap to their group, which is never flipped — so this reads
-      // the ELK-visible id, not the raw endpoint.)
+      // A flipped node lays out as a predecessor (spec): reverse the edge, drop the ports.
+      // Reads the ELK-visible id: a grouped member remaps to its group, never flipped.
       const flipEdge = socketFlipStore.get(s) || socketFlipStore.get(t);
       if (flipEdge) {
         return [{
@@ -509,9 +498,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         },
       });
     });
-    // ELK lays out from origin; shift the result back keeping the flow's LEADING EDGE and
-    // the CROSS-AXIS CENTER, so a tidy→autofit cycle stays a fixed point. RIGHT keeps the
-    // LEFT edge + vertical center; DOWN transposes to the TOP edge + horizontal center.
+    // ELK lays out from origin; shift back to the flow's leading edge + cross-axis
+    // centre ([[C84]] tidyTranslatesOnly).
     const down = settingsStore.get("tidyDirection") === "down";
     let origMinX = Infinity, origMinY = Infinity;
     let targetCx = 0, targetCy = 0;
@@ -633,11 +621,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // Position-locked groups sat OUT of the layout (fixed), so the fresh arrangement
-    // can land on top of one. Treat each as a pinned obstacle and separate any node
-    // that overlaps it (monotonic +x/+y, so it terminates and — once clear — stays a
-    // fixed point on re-run). A pushed group carries its members. Global tidy only:
-    // a within-group tidy never touches external groups.
+    // Locked groups are pinned obstacles to the fresh arrangement ([[D63]]); global
+    // tidy only, since a within-group tidy never touches external groups.
     if (!withinGroup) {
       const lockedBoxes: PushBox[] = [];
       for (const n of editor.getNodes()) {
@@ -694,8 +679,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
       rebuildGroupMembership(editor);
       syncGroupCollapse(editor, view);
-      // An autogrown box pushes its neighbours off the grown edges; Cleanup skips
-      // this, managing its own collapse/restore + re-tidy.
+      // A grown box pushes neighbours permanently ([[C85]] groupPushDeterministic);
+      // Cleanup skips it and manages its own collapse/restore + re-tidy.
       if (!opts?.skipPush && (withinGroup.width > preW + 0.5 || withinGroup.height > preH + 0.5)) {
         pushForGrownGroups(editor, view, [withinGroup], new Map([[withinGroup.id, { w: preW, h: preH }]]));
       }

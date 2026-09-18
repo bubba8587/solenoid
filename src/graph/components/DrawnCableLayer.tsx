@@ -1,5 +1,5 @@
-// World-space layer for drawn cables (inside RF's <ViewportPortal>, the standoffs'
-// mirror, but ABOVE the cards). Spec: docs/subsystem-invariants.md § Drawn cables.
+// [[C90]] drawnCablesAnnotate. World-space layer inside RF's <ViewportPortal> (the
+// standoffs' mirror, but ABOVE the cards). Spec: specs/drawn-cables.md.
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import {

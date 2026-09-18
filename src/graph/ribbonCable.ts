@@ -1,3 +1,5 @@
+// [[D17]] relaysTransparent: a Conduit is wiring, so its lanes to one entity render as one
+// ribbon. Mechanics: specs/cable-rendering-knobs.md.
 import { ConduitNode, conduitLaneOf } from "./rete-nodes";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";

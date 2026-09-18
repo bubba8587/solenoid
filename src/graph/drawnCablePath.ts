@@ -1,3 +1,4 @@
+// [[C90]] drawnCablesAnnotate.
 // Free-drawn cable geometry: one `getCablePath` span per pair of points, chained. Pure.
 import { getCablePath, Position } from "./cablePaths";
 import type { CableShape } from "./cableShape";
@@ -41,9 +42,8 @@ export function hasAngleOverride(p: DrawnPoint): boolean {
   return typeof p.angle === "number" && Number.isFinite(p.angle);
 }
 
-/** Drawn headings live on a 45° grid — the dial's step AND the snap the DERIVED chord
- *  heading rounds to, so a freshly drawn (auto) heading already sits where the dial would
- *  pin it (author, 2026-09-05). One home; drawnCables re-exports it. */
+/** The 45° heading grid ([[C90]]): the dial's step AND the snap the derived chord rounds
+ *  to, so an auto heading already sits where the dial would pin it. One home. */
 export const DRAWN_ANGLE_STEP = 45;
 
 const snapHeading = (deg: number) => Math.round(deg / DRAWN_ANGLE_STEP) * DRAWN_ANGLE_STEP;

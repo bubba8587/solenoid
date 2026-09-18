@@ -1,8 +1,8 @@
-<!-- [[B10]] reactFlowView -->
+<!-- [[C90]] drawnCablesAnnotate -->
 
 # Spec: Drawn cables
 
-Serves [[B10]] reactFlowView. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Drawn cables; a WHY that is not in a node belongs in one.
+Serves [[C90]] drawnCablesAnnotate. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Drawn cables; a WHY that is not in a node belongs in one.
 
 Free-drawn annotation curves: user-placed points rendered through the wired cables' three drawers. A world-coordinate layer inside RF's `<ViewportPortal>` (the standoffs' pattern), gated on the main-graph hook `hooks.drawnCables`, with its own store, exclusive selection and docked panel. Pinned by `drawnCablePath.test.ts`, `textForm.test.ts`, `flowHistoryDigest.test.ts`.
 

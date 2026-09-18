@@ -111,6 +111,8 @@ superseded, or restating what a test already pins.
 - Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names. Default date
   format is `DD-MMM-YYYY` ([[C44]] dateSerials). Units are authored only by the FC / Convert
   ([[C25]] firstClassUnits). Frames/cubes never enter formulas ([[C15]] matricesInFormulas).
+- Several agents on this repo at once: one test run at a time, a one-line claim in
+  `docs/agent-coordination.md`, the Lead merges ([[C83]] parallelAgents). Solo session: claim nothing.
 - A black screen: every render is boundaried — ask for the copied error text first, don't hunt
   blind (subsystem-invariants § React Flow surface contract).
 

@@ -1,7 +1,6 @@
-// The ONE size read for layout math — never read offsetWidth directly: a DOM read
-// forces a synchronous reflow after any pending write, and a zero-size unpainted
-// node collapses the bounding box. The first tier is React Flow's own post-layout
-// measure (`area.measured`), which costs nothing.
+// [[D64]] oneSizeRead: the ONE size read for layout math. The first tier is React
+// Flow's own post-layout measure (`area.measured`), which costs nothing; a DOM read
+// forces a synchronous reflow after any pending write.
 
 import type { View } from "./view";
 import { collapseStore } from "./collapseStore";

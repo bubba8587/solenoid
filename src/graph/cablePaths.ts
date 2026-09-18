@@ -1,3 +1,4 @@
+// [[C91]] cableWalkRouter. Mechanics: specs/cable-rendering-knobs.md.
 import type { CableShape } from "./cableShape";
 
 export enum Position {
@@ -203,8 +204,7 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   // Halving the minimum only enlarges each walk's solvable set, so the retry terminates
   // with the constraints intact.
   for (let m = minLeg; m >= 0.25; m /= 2) {
-    // LENGTH must stay the primary criterion — gating by turn count first turns seamless
-    // handoffs into visible jumps; the sort order only settles exact ties.
+    // Length first ([[C91]] cableWalkRouter); the sort order only settles exact ties.
     let best: { heads: number[]; lens: number[]; total: number } | null = null;
     for (const c of cands) {
       const heads = buildHeads(kS, c.sigma, c.b, c.r, c.e);

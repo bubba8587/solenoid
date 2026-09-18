@@ -1,8 +1,8 @@
-<!-- [[B10]] reactFlowView -->
+<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows -->
 
 # Spec: Group expand push
 
-Serves [[B10]] reactFlowView. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Group expand push; a WHY that is not in a node belongs in one.
+Serves [[C85]] groupPushDeterministic (the push and its records), [[C87]] groupsAreSubflows (the RF projection) and [[C86]] membershipByGesture (who joins a group). The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Group expand push; a WHY that is not in a node belongs in one.
 
 Expanding a collapsed group displaces its neighbourhood via the pure, unit-tested core in `groupPushCore.ts` (plain boxes, no rete/DOM — see `groupPushCore.test.ts`).
 
