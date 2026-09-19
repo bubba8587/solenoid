@@ -188,6 +188,43 @@
   pointer-events: none;
 }
 
+/* The cell being edited, in a Date / Boolean column: the Form view's calendar or
+   checkbox on its right edge (CellEditAffix.tsx). The text keeps clear of it. */
+.table-popup__cell--affix { position: relative; }
+.table-popup__cell--affix .table-popup__input { padding-right: 26px; }
+.table-popup__affix {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+}
+.table-popup__affix .table-popup__form-box-check { margin: 0; cursor: pointer; }
+.table-popup__affix-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.table-popup__affix-btn:hover { color: var(--node-accent, var(--accent)); }
+.table-popup__affix-native {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Editable column-name inputs in the header row (frame editor) — sized to the
    header cell and accent-tinted/bold to match the static .colhead--name look. */
 .table-popup__colhead-input {
@@ -699,7 +736,10 @@
   margin: 2px 0;
   accent-color: var(--node-accent, var(--accent));
 }
-.table-popup__form-box-input[type="date"] { padding: 0; }
+/* A date field: the text input with the calendar on its right edge (CellEditAffix). */
+.table-popup__form-box-date { position: relative; display: block; }
+.table-popup__form-box-date .table-popup__form-box-input { padding-right: 22px; }
+.table-popup__form-box-date .table-popup__affix { right: 0; }
 
 /* ── Summary footer (frame popups): one stat per column ───────────────────────
    A sticky one-row tfoot pinned to the bottom, mirroring the format row's chrome

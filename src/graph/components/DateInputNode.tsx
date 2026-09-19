@@ -6,6 +6,7 @@ import { isSolError } from "../errorValue";
 import { settingsStore } from "../settingsStore";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { CalendarIcon } from "./CalendarIcon";
 import { processGraph } from "../process";
 
 /** Examples for the (i) popup — valid inputs across the relative + absolute forms. No prose. */
@@ -109,10 +110,7 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
           }}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 2, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-            <rect x="1.5" y="2.5" width="11" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-            <path d="M1.5 5.5h11M4.5 1v2.5M9.5 1v2.5" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-          </svg>
+          <CalendarIcon />
         </button>
         <input
           ref={nativeRef}

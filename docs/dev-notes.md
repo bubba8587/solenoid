@@ -21,6 +21,11 @@ On `develop`, NOT pushed (author verifies over HMR).
   stays for what the formula can't show. Typed cells still refuse relative phrases ([[D54]] relativeDatesOptIn).
 - **Only the sort button sorts** (author): the header cell is no longer a click target in the table or cube popups;
   `SortButton` (columnSort.tsx) is drawn on every sortable column and `stopSortTrigger` is deleted.
+- **Editing a Date / Boolean cell** shows the calendar / checkbox on the right edge of the ONE cell being edited
+  (`CellEditAffix.tsx`; the press keeps the text input focused). **The Form view edits in both modes** (it was a
+  read-only Record figure with Source off) and its Date field is a text draft + calendar: the native date input,
+  controlled per keystroke, wiped a half-typed year. `CalendarIcon` is shared with the Date Input node.
+  Unverified by an agent: that opening the native picker from the grid leaves the cell's text input focused.
 - `.dteignore` skips `src-tauri/gen` and `sample-data`: git-ignored local output had `coverage --check` red on a dev machine.
 - Open: the Expression highlighter paints a called `λ1(` as an unknown function (no surface shows it today: the popup
   field is a plain input).

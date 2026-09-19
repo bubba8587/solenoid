@@ -27,9 +27,9 @@ import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
 import { ColumnFormatButton, ColumnExprField } from "./columnHeadControls";
+import { CellEditAffix } from "./CellEditAffix";
 import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
-import { RecordGrid } from "./chartCards";
-import type { RecordField } from "../chartValue";
+import "./chartCards.css"; // .sol-record__img: the Form shows an image cell as the Record figure does
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, defaultFooterStat, footerStatValue, formatFooterStat } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
@@ -969,6 +969,8 @@ export function TablePopup() {
                     // (pointer-events none), so editing/keyboard-nav/commit stay untouched.
                     const chipHere = fmtEdit && chipCols.has(c) && (row[c] ?? "") !== "";
                     const chipShown = chipHere && !editingHere;
+                    // The Form view's picker / checkbox, on the ONE cell being edited.
+                    const affixType = canEdit && editingHere && !vertical && (type === "date" || type === "logical") ? type : null;
                     if (computedHere) {
                       // Derived values render through the same controlledCell path as
                       // literal ones, so the format row applies here too.
@@ -989,7 +991,7 @@ export function TablePopup() {
                     return (
                     <td
                       key={c}
-                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}`}
+                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}${affixType ? " table-popup__cell--affix" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                       title={nan ? "Not a number: an undefined value in the data"
                         : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
@@ -1042,6 +1044,17 @@ export function TablePopup() {
                           focusGridCell(target);
                         } : undefined}
                       />
+                      {affixType && (() => {
+                        const draft = editDraft.current.trim().toLowerCase();
+                        return (
+                          <CellEditAffix
+                            type={affixType}
+                            iso={affixType === "date" ? dateCellToISO(editDraft.current) : undefined}
+                            checked={draft === "true" || draft === "1" ? true : draft === "false" || draft === "0" ? false : null}
+                            onPick={(raw) => { editDraft.current = raw; setCell(r, c, raw); bumpDraft((x) => x + 1); }}
+                          />
+                        );
+                      })()}
                       </>
                       )}
                     </td>
@@ -1099,41 +1112,18 @@ export function TablePopup() {
               <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
             </div>
             {rows > 0 && (() => {
-              // Source OFF renders the row through the SAME RecordGrid the Record chart
-              // type uses — one look for the figure and the form, images included. Source
-              // ON is the editable version below.
-              if (formattedPreview) {
-                const shownAt = (c: number): string | null => {
-                  if (c === -1) return null;
-                  if (isComputedCol(c)) {
-                    const s = controlledCell((liveComputed ?? state.computedCells)?.[fRow]?.[c] ?? null, c);
-                    return s === "" ? null : s;
-                  }
-                  const raw = grid[fRow]?.[c] ?? "";
-                  if (raw.trim() === "") return null;
-                  const f = formatFrameCell(colTypeAt(c), coerceFrameCell(colTypeAt(c), raw));
-                  return f == null ? null : String(f);
-                };
-                const toField = (c: number, name: string, at: { row: number; col: number; rowSpan: number; colSpan: number }, hint?: string): RecordField => {
-                  const label = c === -1 ? name : (headerNames[c] ?? "").trim() || colLabel(c);
-                  const shown = shownAt(c);
-                  const image = shown != null ? recordImageSrc(shown) : null;
-                  const f: RecordField = { label, value: shown, ...(image ? { image } : {}), ...at };
-                  if (shown == null && hint) f.hint = hint;
-                  return f;
-                };
-                const fields = formPlaced.length > 0
-                  ? formPlaced.map((pl) => toField(formColIndex(pl.name), pl.name, { row: pl.row, col: pl.col, rowSpan: pl.rowSpan, colSpan: pl.colSpan }, pl.hint))
-                  : Array.from({ length: cols }, (_, c) => toField(c, "", { row: c + 1, col: 1, rowSpan: 1, colSpan: 1 }));
-                return <RecordGrid fields={fields} cols={formPlaced.length > 0 ? formCols : 1} />;
-              }
-              // Record-look boxes: touching, square, label-in-box; the input is
-              // the box's value line (the figure look, made editable).
+              // Record-look boxes: touching, square, label-in-box; the input is the box's
+              // value line (the figure look, made editable). The Form edits in BOTH modes,
+              // like the grid: Source off shows the formatted value (and an image cell's
+              // picture) until the field is focused, then the raw text.
               const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
                 const type = c === -1 ? "string" : colTypeAt(c);
                 const computedHere = c !== -1 && colExprs[c] !== undefined;
                 const label = c === -1 ? name : (headerNames[c] ?? "").trim() || colLabel(c);
                 const editingHere = c !== -1 && !!editCell && editCell.r === fRow && editCell.c === c;
+                const raw = c === -1 ? "" : grid[fRow]?.[c] ?? "";
+                const shown = formattedPreview ? controlledCell(raw, c) : raw;
+                const image = formattedPreview && !editingHere && shown !== "" ? recordImageSrc(shown) : null;
                 return (
                   <label className="table-popup__form-box" key={key} style={at}>
                     <span className="table-popup__form-box-label">{label}</span>
@@ -1163,19 +1153,14 @@ export function TablePopup() {
                           />
                         );
                       })()
-                    ) : type === "date" ? (
-                      // The native picker (the Date Input node's control); clearing
-                      // writes a blank cell (missing), never a fabricated date.
-                      <input
-                        type="date"
-                        className="table-popup__form-box-input"
-                        value={dateCellToISO(grid[fRow]?.[c] ?? "")}
-                        onChange={(e) => setCell(fRow, c, e.target.value)}
-                      />
                     ) : (
+                      // A date types like any cell (a draft, committed on Enter / blur — a
+                      // native date input controlled per keystroke wipes a half-typed year)
+                      // and carries the calendar beside it.
+                      <span className={type === "date" ? "table-popup__form-box-date" : undefined} style={type === "date" ? undefined : { display: "contents" }}>
                       <input
                         className="table-popup__form-box-input"
-                        value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
+                        value={editingHere ? editDraft.current : shown}
                         placeholder={hint}
                         inputMode={isTextType(type) ? "text" : "decimal"}
                         list={type === "string" ? dlId(c) : undefined}
@@ -1192,7 +1177,19 @@ export function TablePopup() {
                           if (e.key === "Enter") e.currentTarget.blur();
                         }}
                       />
+                      {type === "date" && (
+                        <CellEditAffix
+                          type="date"
+                          iso={dateCellToISO(editingHere ? editDraft.current : raw)}
+                          onPick={(picked) => {
+                            if (editingHere) { editDraft.current = picked; bumpDraft((x) => x + 1); }
+                            setCell(fRow, c, picked);
+                          }}
+                        />
+                      )}
+                      </span>
                     )}
+                    {image && <img className="sol-record__img" src={image} alt={label} draggable={false} />}
                   </label>
                 );
               };
