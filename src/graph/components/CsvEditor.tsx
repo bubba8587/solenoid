@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import { csvFieldSpans } from "../csv";
 
 /** The table popup's CSV text block. COMPUTED columns' values are marked in place: a
@@ -20,7 +20,26 @@ export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCo
   error?: string | null;
 }) {
   const innerRef = useRef<HTMLDivElement>(null);
+  const mirrorRef = useRef<HTMLDivElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
   const marked = markedCols.size > 0;
+
+  // The mirror carries the block's background, so it takes the TEXTAREA's box, not the
+  // wrapper's: the textarea's own resize grip can make it shorter than the wrapper.
+  useLayoutEffect(() => {
+    const ta = taRef.current;
+    if (!marked || !ta) return;
+    const fit = () => {
+      const m = mirrorRef.current;
+      if (!m) return;
+      m.style.width = `${ta.offsetWidth}px`;
+      m.style.height = `${ta.offsetHeight}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(ta);
+    return () => ro.disconnect();
+  }, [marked]);
 
   const mirror = useMemo<ReactNode[]>(() => {
     if (!marked) return [];
@@ -38,6 +57,7 @@ export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCo
 
   const textarea = (
     <textarea
+      ref={taRef}
       className={`table-popup__csv sol-popup__scroll${marked ? " table-popup__csv--over" : ""}`}
       value={value}
       readOnly={readOnly}
@@ -59,7 +79,7 @@ export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCo
     <>
       {marked ? (
         <div className="table-popup__csvwrap">
-          <div className="table-popup__csvmirror" aria-hidden="true">
+          <div ref={mirrorRef} className="table-popup__csvmirror" aria-hidden="true">
             <div ref={innerRef} className="table-popup__csvmirror-inner">{mirror}</div>
           </div>
           {textarea}

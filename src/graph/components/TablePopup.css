@@ -542,7 +542,10 @@
 }
 .table-popup__csvmirror {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  /* width / height: the textarea's box, written by CsvEditor's ResizeObserver. */
+  box-sizing: border-box;
   overflow: hidden;
   padding: 8px 10px;
   background: var(--surface-sunken);
