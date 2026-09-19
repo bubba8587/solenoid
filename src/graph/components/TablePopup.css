@@ -213,6 +213,38 @@
   cursor: pointer;
 }
 .table-popup__affix-btn:hover { color: var(--node-accent, var(--accent)); }
+/* A Text cell's existing values (CellSuggest.tsx): portalled to <body>, fixed under
+   the cell and above the popup layer, like the header's format panel. */
+.table-popup__suggest {
+  position: fixed;
+  z-index: 9600;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 3px;
+  max-height: 208px;
+  overflow-y: auto;
+  list-style: none;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-pop);
+}
+.table-popup__suggest-item {
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+  cursor: pointer;
+}
+.table-popup__suggest-item:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.table-popup__suggest-item--on,
+.table-popup__suggest-item--on:hover { background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, transparent); }
+
 .table-popup__affix-native {
   position: absolute;
   right: 0;

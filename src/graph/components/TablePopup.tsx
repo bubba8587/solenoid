@@ -29,6 +29,7 @@ import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./
 import { ColumnFormatButton, ColumnExprField } from "./columnHeadControls";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
+import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
 import "./chartCards.css"; // .sol-record__img: the Form shows an image cell as the Record figure does
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
@@ -192,6 +193,8 @@ export function TablePopup() {
   // expr (Fx on). The draft is local per keystroke; blur/Enter commits, Escape reverts.
   const [colExprs, setColExprs] = useState<(string | undefined)[]>([]);
   const committedExprs = useRef<(string | undefined)[]>([]);
+  // The edited Text cell's suggestion list; its input's keydown asks it first.
+  const suggestRef = useRef<CellSuggestHandle>(null);
   // Overrides the snapshot the popup opened with, so a live commit shows its result
   // without a Save/close round trip.
   const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
@@ -488,8 +491,8 @@ export function TablePopup() {
   const viewCols = vertical ? 1 : cols;
   const viewRows = vertical ? listLen : rows;
 
-  // Constrained entry (B2.1): a TEXT column's distinct existing values, offered as a
-  // datalist while a cell is edited — anything new still types. Plain computation, not a
+  // Constrained entry (B2.1): a TEXT column's distinct existing values, offered by
+  // CellSuggest while a cell is edited — anything new still types. Plain computation, not a
   // hook (below the guard); the distinct list is pure (frameVerbs), blanks + error codes
   // excluded, first-seen order. TEXT only (logical/date/number have their own entry).
   const isErrCode = (s: string): boolean => Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, s.trim());
@@ -500,12 +503,6 @@ export function TablePopup() {
       textColDistinct.set(c, distinctColumnValues(grid.map((r) => r[c]), isErrCode));
     }
   }
-  const dlId = (c: number) => `tp-dl-${c}`;
-  const datalists = (
-    <>{[...textColDistinct].map(([c, vals]) => (
-      <datalist key={c} id={dlId(c)}>{vals.map((v) => <option key={v} value={v} />)}</datalist>
-    ))}</>
-  );
 
   // `sortOrder` holds SOURCE row indices over the WHOLE dataset, so every index it hands
   // on stays the source row and `grid` is never touched; the render shows the first
@@ -901,7 +898,6 @@ export function TablePopup() {
       )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
-          {datalists}
           <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
               <tr>
@@ -997,6 +993,8 @@ export function TablePopup() {
                     const chipShown = chipHere && !editingHere;
                     // The Form view's picker / checkbox, on the ONE cell being edited.
                     const affixType = canEdit && editingHere && !vertical && (type === "date" || type === "logical") ? type : null;
+                    // A Text cell's existing values, on the same right edge (CellSuggest).
+                    const suggestHere = canEdit && editingHere && type === "string" && (textColDistinct.get(c)?.length ?? 0) > 0;
                     if (computedHere) {
                       // Derived values render through the same controlledCell path as
                       // literal ones, so the format row applies here too.
@@ -1017,7 +1015,7 @@ export function TablePopup() {
                     return (
                     <td
                       key={c}
-                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}${affixType ? " table-popup__cell--affix" : ""}`}
+                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}${affixType || suggestHere ? " table-popup__cell--affix" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                       title={nan ? "Not a number: an undefined value in the data"
                         : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
@@ -1051,10 +1049,10 @@ export function TablePopup() {
                           else setEditCell({ r, c });
                         }}
                         onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
-                        list={canEdit && type === "string" ? dlId(c) : undefined}
                         data-vi={vi}
                         data-c={c}
                         onKeyDown={canEdit ? (e) => {
+                          if (suggestRef.current?.onKey(e)) return; // the open list took ↑ ↓ Enter Tab
                           const k = gridKeyOf(e);
                           if (!k) return; // Escape is handled by the shell's onEscape (capture)
                           // Mid-edit, arrows/Home/End move the CARET (Excel edit-mode); Enter/Tab
@@ -1070,6 +1068,14 @@ export function TablePopup() {
                           focusGridCell(target);
                         } : undefined}
                       />
+                      {suggestHere && (
+                        <CellSuggest
+                          handle={suggestRef}
+                          options={textColDistinct.get(c)!}
+                          draft={editDraft.current}
+                          onPick={(v) => { editDraft.current = v; setCell(r, c, v); bumpDraft((x) => x + 1); }}
+                        />
+                      )}
                       {affixType && (() => {
                         const draft = editDraft.current.trim().toLowerCase();
                         return (
@@ -1123,7 +1129,6 @@ export function TablePopup() {
         </div>
       ) : view === "form" ? (
         <div className="table-popup__form-scroll sol-popup__scroll">
-          {datalists}
           <div className="table-popup__form">
             <div className="table-popup__form-nav">
               <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
@@ -1150,6 +1155,7 @@ export function TablePopup() {
                 const raw = c === -1 ? "" : grid[fRow]?.[c] ?? "";
                 const shown = formattedPreview ? controlledCell(raw, c) : raw;
                 const image = formattedPreview && !editingHere && shown !== "" ? recordImageSrc(shown) : null;
+                const suggestHere = editingHere && !computedHere && type === "string" && (textColDistinct.get(c)?.length ?? 0) > 0;
                 return (
                   <label className="table-popup__form-box" key={key} style={at}>
                     <span className="table-popup__form-box-label">
@@ -1193,13 +1199,12 @@ export function TablePopup() {
                       // A date types like any cell (a draft, committed on Enter / blur — a
                       // native date input controlled per keystroke wipes a half-typed year)
                       // and carries the calendar beside it.
-                      <span className={type === "date" ? "table-popup__form-box-date" : undefined} style={type === "date" ? undefined : { display: "contents" }}>
+                      <span className={type === "date" || suggestHere ? "table-popup__form-box-date" : undefined} style={type === "date" || suggestHere ? undefined : { display: "contents" }}>
                       <input
                         className="table-popup__form-box-input"
                         value={editingHere ? editDraft.current : shown}
                         placeholder={hint}
                         inputMode={isTextType(type) ? "text" : "decimal"}
-                        list={type === "string" ? dlId(c) : undefined}
                         spellCheck={false}
                         onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
                         onChange={(e) => {
@@ -1209,10 +1214,19 @@ export function TablePopup() {
                         }}
                         onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
                         onKeyDown={(e) => {
+                          if (suggestRef.current?.onKey(e)) return; // the open list took ↑ ↓ Enter Tab
                           // Escape is handled by the shell's onEscape (editCell is set here too).
                           if (e.key === "Enter") e.currentTarget.blur();
                         }}
                       />
+                      {suggestHere && (
+                        <CellSuggest
+                          handle={suggestRef}
+                          options={textColDistinct.get(c)!}
+                          draft={editDraft.current}
+                          onPick={(v) => { editDraft.current = v; setCell(fRow, c, v); bumpDraft((x) => x + 1); }}
+                        />
+                      )}
                       {type === "date" && (
                         <CellEditAffix
                           type="date"

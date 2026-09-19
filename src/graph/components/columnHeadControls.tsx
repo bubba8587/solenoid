@@ -11,11 +11,15 @@ import { PaintbrushIcon } from "./PaintbrushIcon";
 /** Hang `panel` under `anchor` while open, clamped into the viewport, re-placed on any
  *  scroll or resize. Returns the style the panel carries: hidden until first placed,
  *  plus the popup's accent, which a portal would otherwise lose. */
-function useHangUnder(
+export function useHangUnder(
   open: boolean,
   anchor: RefObject<HTMLElement | null>,
   panel: RefObject<HTMLElement | null>,
   align: "left" | "right",
+  /** The panel is at least as wide as its anchor (a list under the cell it fills). */
+  matchWidth = false,
+  /** Re-place when this changes: a panel whose content (so its height) moves while open. */
+  rev: unknown = 0,
 ): CSSProperties {
   const [style, setStyle] = useState<CSSProperties>({ visibility: "hidden" });
   useLayoutEffect(() => {
@@ -33,6 +37,7 @@ function useHangUnder(
       const accent = getComputedStyle(anchor.current!).getPropertyValue("--node-accent").trim();
       setStyle({
         left: Math.round(left), top: Math.round(top),
+        ...(matchWidth ? { minWidth: Math.round(a.width) } : {}),
         ...(accent ? { ["--node-accent" as string]: accent } : {}),
       });
     };
@@ -43,7 +48,7 @@ function useHangUnder(
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
     };
-  }, [open, align, anchor, panel]);
+  }, [open, align, anchor, panel, matchWidth, rev]);
   return style;
 }
 

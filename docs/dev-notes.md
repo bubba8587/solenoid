@@ -30,6 +30,9 @@ On `develop`, NOT pushed (author verifies over HMR).
   in CSV a highlight mirror behind the textarea (`CsvEditor.tsx`, `csvFieldSpans` in csv.ts), typed-over values restored
   on blur, and ragged text refused with an error line while the table has a computed column.
   Unverified by an agent: the mirror's glyph alignment with the textarea (needs eyes, both themes + a long scroll).
+- **The CSV view** shows the grid's formatted text with Source off (FC picks included), edits in both modes (source text
+  while focused), and the one CSV writer quotes any field that needs it (a formatted number or date carries a comma).
+- **Text-cell suggestions are in-app** (`CellSuggest.tsx`): the native `<datalist>` is gone from the table popup.
 - `.dteignore` skips `src-tauri/gen` and `sample-data`: git-ignored local output had `coverage --check` red on a dev machine.
 - Open: the Expression highlighter paints a called `λ1(` as an unknown function (no surface shows it today: the popup
   field is a plain input).
