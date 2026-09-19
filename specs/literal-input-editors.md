@@ -14,7 +14,9 @@ literal source grows its own editor widget instead of binding the popup, or if a
 a derived value back.
 
 **The frame popup's column header is one row** (author, 2026-09-19): type button → name →
-paintbrush + chevron → sort. A read-only frame's header is name → paintbrush → sort. The
+paintbrush + chevron → sort. A read-only frame's header is name → paintbrush → sort. **Only
+the sort button sorts** (table and cube popups alike): it is drawn on every sortable column,
+quiet until it carries a direction, and a click anywhere else in the header does nothing. The
 paintbrush (the shared `PaintbrushIcon`, the Format Controller's icon) opens the column's
 Format Controller picks (style, the inherited-format hint, unit) in a dropdown panel, tinted
 once this node has made a pick; there is no format row under the header (a matrix keeps its

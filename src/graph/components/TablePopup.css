@@ -337,29 +337,18 @@
 }
 
 /* ── Visual-only column sort (columnSort.tsx) ─────────────────────────────────
-   The whole header cell is the click target, so the cursor is the affordance and
-   there is no resting glyph on any column — the chevron exists ONLY while that
-   column is sorted, as state.
+   The sort BUTTON is the only thing that sorts: the header cell around it is inert.
+   It is drawn on every sortable column, quiet while unsorted (an affordance, not
+   state) and at full strength once it carries a direction.
 
-   It is OVERLAID on the header's right edge, absolutely positioned, so it
-   contributes nothing to layout: the header cell is what sizes a column here, and an
-   in-flow marker would widen the column the moment you sorted it. Nothing is
-   reserved for it either, so an unsorted grid measures exactly as it did before the
-   feature existed. The header <th> is already `position: sticky` (a positioned
-   element), so it's the containing block; don't add `position: relative` — it would
-   lose the specificity fight with the sticky rule anyway.
-
-   The pad behind it is a scrim, not decoration: with nothing reserved it lands on
-   top of a long column name, and without it the glyphs tangle. Translucent black in
-   dark theme as authored; light theme flips it to translucent white, since a dark
-   chip carrying a dark glyph on a near-white header is the same collision. */
-.table-popup__colhead--sortable { cursor: pointer; }
-/* …except over the controls that opt out of the trigger (frame editor). */
-.table-popup__colhead--sortable .table-popup__colhead-input { cursor: text; }
-
+   It sits on the header's right edge, absolutely positioned in room the header
+   reserves (--sortpad), so sorting never changes a column's width. The header <th> is
+   already `position: sticky` (a positioned element), so it's the containing block;
+   don't add `position: relative` — it would lose the specificity fight with the
+   sticky rule anyway. */
 .table-popup__sort {
   position: absolute;
-  right: 1px;
+  right: 2px;
   top: 50%;
   transform: translateY(-50%);
   display: inline-flex;
@@ -367,34 +356,26 @@
   justify-content: center;
   width: 14px;
   height: 14px;
+  padding: 0;
+  border: none;
   border-radius: 3px;
-  background: rgba(0, 0, 0, 0.45);
+  background: none;
   /* An active sort is STATE, so it earns color (the Quiet Accent Rule) — the
      surface's own accent, like every other tinted thing in the popup. */
   color: var(--node-accent, var(--accent));
-  pointer-events: none; /* an indicator: clicks belong to the header underneath */
+  cursor: pointer;
   z-index: 1;
 }
-:root[data-theme="light"] .table-popup__sort { background: rgba(255, 255, 255, 0.72); }
-
-/* FRAME headers only: the name field fills the cell, so on a phone there's no reliable
-   margin left to tap. There the chevron is drawn even when unsorted and is itself the
-   control — quiet in that resting state (it's an affordance, not state), full strength
-   once it carries a direction. The header reserves room for it (--sortpad) so a
-   full-width name input can't slide under it while you type. */
-.table-popup__sort--btn {
-  pointer-events: auto;
-  padding: 0;
-  border: none;
-  cursor: pointer;
-}
 .table-popup__sort--off { color: var(--text-dim); opacity: 0.6; }
-.table-popup__sort--btn:hover { opacity: 1; color: var(--text); }
+.table-popup__sort:hover { opacity: 1; color: var(--text); background: var(--btn-hover); }
 .table-popup__colhead--sortpad { padding-right: 18px; }
+/* A formula row makes the header two rows tall; the button stays on the first. */
+.table-popup__colhead:has(.table-popup__exprrow) .table-popup__sort { top: 12px; }
 
 @media (pointer: coarse) {
   .table-popup__sort { width: 20px; height: 20px; }
   .table-popup__colhead--sortpad { padding-right: 24px; }
+  .table-popup__colhead:has(.table-popup__exprrow) .table-popup__sort { top: 16px; }
 }
 
 /* ── Format-Controller dropdowns ──────────────────────────────────────────────

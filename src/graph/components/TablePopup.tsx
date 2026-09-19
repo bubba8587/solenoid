@@ -25,7 +25,7 @@ import { applyTextCase, type TextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
-import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
 import { ColumnFormatButton, ColumnExprField } from "./columnHeadControls";
 import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
 import { RecordGrid } from "./chartCards";
@@ -883,18 +883,11 @@ export function TablePopup() {
                 {Array.from({ length: viewCols }, (_, c) => (
                   <th
                     key={c}
-                    // A text-selection drag starting in the name input dispatches its
-                    // click on the th (the common-ancestor rule), skipping stopSortTrigger
-                    // — so also ignore any click originating in a control.
                     title={vertical ? undefined : headers?.[c]}
-                    onClick={sortable ? (e) => {
-                      if ((e.target as Element).closest("input,button,select")) return;
-                      cycleSort(c);
-                    } : undefined}
-                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}${sortable && (editableHeaders || colFmtControls) ? " table-popup__colhead--sortpad" : ""}`}
+                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}`}
                   >
-                    {/* One row: type / Fx cycle, name, format, then the sort control
-                        (overlaid on the padded right edge). */}
+                    {/* One row: type / Fx cycle, name, format, then the sort button
+                        (on the padded right edge; the only thing that sorts). */}
                     {vertical ? colLabel(0) : editableHeaders ? (
                       <div className="table-popup__colhead-edit">
                         {/* Fx is the cycle's last stop (literal-source editors): a formula
@@ -912,7 +905,6 @@ export function TablePopup() {
                           value={headerNames[c] ?? ""}
                           placeholder={colLabel(c)}
                           spellCheck={false}
-                          {...stopSortTrigger}
                           onChange={(e) => setHeaderName(c, e.target.value)}
                         />
                         {colFmtControls && fmtButton(c)}
@@ -940,13 +932,7 @@ export function TablePopup() {
                       />
                     )}
                     {sortable && (
-                      <SortIndicator
-                        dir={sortDirOf(sort, c)}
-                        // The name field fills its header, leaving no dependable margin
-                        // to tap on a phone, so the chevron is itself the control there.
-                        onCycle={editableHeaders ? () => cycleSort(c) : undefined}
-                        label={headers?.[c] || colLabel(c)}
-                      />
+                      <SortButton dir={sortDirOf(sort, c)} onCycle={() => cycleSort(c)} label={headers?.[c] || colLabel(c)} />
                     )}
                   </th>
                 ))}

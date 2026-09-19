@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { tokenAtCaret } from "../formulaSyntax";
-import { stopSortTrigger } from "./columnSort";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
 
@@ -48,8 +47,7 @@ function useHangUnder(
   return style;
 }
 
-// A portal's React events still bubble to the header cell (the sort trigger) and the
-// popup card; the panel is its own surface.
+// A portal's React events still bubble to the popup card; the panel is its own surface.
 const stopAll = {
   onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
   onPointerDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
@@ -140,7 +138,6 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
         value={value}
         placeholder="@price * @qty"
         spellCheck={false}
-        {...stopSortTrigger}
         onChange={(e) => onDraft(e.target.value)}
         onFocus={() => setFocused(true)}
         onBlur={() => {

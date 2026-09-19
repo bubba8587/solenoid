@@ -7,7 +7,7 @@ import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame"
 import { CubeCellChip, frameCellNode, cubeCellToken } from "./cubeCell";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
-import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, type SortKey } from "./columnSort";
+import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton, type SortKey } from "./columnSort";
 import { copyText } from "../clipboard";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -236,13 +236,12 @@ export function CubePopup() {
                 <th
                   key={c}
                   title={headers?.[c]}
-                  onClick={sortable ? () => cycleSort(c) : undefined}
-                  className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}`}
+                  className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortpad" : ""}`}
                 >
                   {editView && state.edit && headers && editView.kind !== "list"
                     ? <CubeEditHeader edit={state.edit} path={editView.path!} column={headers[c]} />
                     : (headers ? headers[c] : c + 1)}
-                  {sortable && <SortIndicator dir={sortDirOf(sort, c)} />}
+                  {sortable && <SortButton dir={sortDirOf(sort, c)} onCycle={() => cycleSort(c)} label={headers?.[c]} />}
                 </th>
               ))}
             </tr>

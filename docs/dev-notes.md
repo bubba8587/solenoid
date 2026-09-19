@@ -19,6 +19,8 @@ On `develop`, NOT pushed (author verifies over HMR).
   reads the functions' declared `returns` and the [[D41]] carry ops; both surfaces type through `computedColumnType`
   (nodes/frame.ts), so `@start + 7` and `TODAY() + 7` are Date columns with no type pick. Computed Column's `addAs`
   stays for what the formula can't show. Typed cells still refuse relative phrases ([[D54]] relativeDatesOptIn).
+- **Only the sort button sorts** (author): the header cell is no longer a click target in the table or cube popups;
+  `SortButton` (columnSort.tsx) is drawn on every sortable column and `stopSortTrigger` is deleted.
 - `.dteignore` skips `src-tauri/gen` and `sample-data`: git-ignored local output had `coverage --check` red on a dev machine.
 - Open: the Expression highlighter paints a called `λ1(` as an unknown function (no surface shows it today: the popup
   field is a plain input).
