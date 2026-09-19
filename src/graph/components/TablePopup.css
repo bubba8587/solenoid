@@ -526,11 +526,19 @@
   background: transparent;
 }
 /* A sized popup is a flex column whose scroll region fills (popupChrome.css). The
-   wrapper stands where the textarea stood, so IT takes the fill and hands it on. */
+   wrapper stands where the textarea stood, so IT takes the fill; the textarea then
+   starts at the wrapper's full height as a plain block (never a flex item: a flexed
+   height ignores the inline one its own resize grip writes), capped at the fill so a
+   drag can't run it under the footer. */
 .sol-popup--sized .table-popup__csvwrap {
   flex: 1 1 auto;
   min-height: 0;
-  display: flex;
+}
+/* Three classes: it must out-specify popupChrome's `.sol-popup--sized .sol-popup__scroll`. */
+.sol-popup--sized .table-popup__csvwrap .table-popup__csv--over {
+  flex: none;
+  height: 100%;
+  max-height: 100%;
 }
 .table-popup__csvmirror {
   position: absolute;

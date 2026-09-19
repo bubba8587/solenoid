@@ -285,10 +285,18 @@ export function TablePopup() {
   const isFramePopup = !!state.columnTypes;
   const showFmtToggle = literalSource || (!editable && (isFramePopup || hasDateCols));
   // Display-only: `grid` (raw text) is ALWAYS the edit/save truth.
-  // `source` = the raw text even in Formatted mode (the CSV block while it is edited).
-  const displayRowAt = (r: number, source = false): string[] => {
+  // `as`: "auto" follows the Source toggle with the TYPE's default format (Copy / Export
+  // stay free of a column's FC picks); "shown" is the text the grid shows, FC picks
+  // included (the CSV view); "source" is the raw text whatever the toggle says (the CSV
+  // block while it is edited, and the toggle's own handler, where state is still stale).
+  const displayRowAt = (r: number, as: "auto" | "shown" | "source" = "auto"): string[] => {
     const row = rawRow(r);
-    if (formattedPreview && !source) {
+    const mode = as === "auto" ? displayMode : as === "source" ? "source" : "formatted";
+    if (as === "shown" && state.formatControls === "columns" && !state.list && (!editable || literalSource)) {
+      const typed = controlledRowAt(r);
+      return Array.from({ length: cols }, (_, c) => controlledCell(typed[c], c));
+    }
+    if (literalSource && mode === "formatted") {
       return row.map((raw, c) => {
         const type = colTypeAt(c);
         const f = formatFrameCell(type, coerceFrameCell(type, raw ?? ""));
@@ -298,7 +306,7 @@ export function TablePopup() {
     if (!editable && (isFramePopup || hasDateCols)) {
       return row.map((cell, c) => {
         const type = colTypeAt(c);
-        if (displayMode === "formatted") {
+        if (mode === "formatted") {
           if (type === "date") {
             // toGrid renders a blank as "", and `Number("")` is 0 — a REAL serial
             // (30-Dec-1899), so an unguarded parse prints a date for a missing cell.
@@ -676,20 +684,23 @@ export function TablePopup() {
   // view stays in source order because its text parses straight back into `grid`.
   // Read-only popups neutralize formula-injection prefixes on export; editable ones
   // must round-trip the typed text exactly.
-  function buildText(inSortOrder: boolean, source = false): string {
+  function buildText(inSortOrder: boolean, as: "auto" | "shown" | "source" = "auto"): string {
     const order = inSortOrder ? sortOrder : Array.from({ length: viewRows }, (_, i) => i);
     if (state!.list) {
       const line = displayRowAt(0);
       return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType);
     }
-    const body = toCSV(order.map((r) => displayRowAt(r, source)), cellType, columnTypes, !editable);
+    const body = toCSV(order.map((r) => displayRowAt(r, as)), cellType, columnTypes, !editable);
     return hasHeaderLine
       ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${body}`
       : body;
   }
 
+  // The CSV VIEW's text: what the grid shows, or the source under the Source toggle.
+  const csvViewText = (mode: "formatted" | "source" = displayMode) =>
+    buildText(!editable, mode === "source" ? "source" : "shown");
   function showCSV() {
-    setCsvText(buildText(!editable));
+    setCsvText(csvViewText());
     setCsvError(null);
     setView("csv");
   }
@@ -1237,10 +1248,10 @@ export function TablePopup() {
           error={csvError}
           // Formatted mode edits like a grid cell: the whole block shows its source text
           // while focused, the formatted text again on the way out.
-          onFocus={() => { if (editable && formattedPreview) setCsvText(buildText(false, true)); }}
+          onFocus={() => { if (editable && formattedPreview) setCsvText(buildText(false, "source")); }}
           // Leaving the block rebuilds it: formatted again, and the computed values back
           // over anything typed on them. Text that doesn't fit stays, under its error.
-          onBlur={() => { if (editable && !csvError && (formattedPreview || computedColSet.size > 0)) setCsvText(buildText(false)); }}
+          onBlur={() => { if (editable && !csvError && (formattedPreview || computedColSet.size > 0)) setCsvText(csvViewText()); }}
         />
       )}
 
@@ -1290,7 +1301,13 @@ export function TablePopup() {
             <input
               type="checkbox"
               checked={displayMode === "source"}
-              onChange={(e) => setDisplayMode(e.target.checked ? "source" : "formatted")}
+              onChange={(e) => {
+                const next = e.target.checked ? "source" : "formatted";
+                setDisplayMode(next);
+                // The CSV block is built text, so the toggle rebuilds it (unless it holds
+                // text that doesn't fit, which would be lost).
+                if (view === "csv" && !csvError) setCsvText(csvViewText(next));
+              }}
             />
             Source
           </label>
