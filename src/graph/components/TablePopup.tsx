@@ -83,13 +83,15 @@ function cell(c: string, cellType: CellType): string {
   if (cellType === "string") return c;
   return c.trim();
 }
-// Quoting follows RFC 4180. `escapeFormulas` (read-only export paths only) prefixes
+// Quoting follows RFC 4180 for EVERY type, not text alone: a formatted number
+// ("1,234.50") or date ("Mar 20, 2026") carries a comma too, and unquoted it splits
+// into two fields the moment the text is pasted or parsed back. `escapeFormulas` (read-only export paths only) prefixes
 // a formula-trigger text cell with an apostrophe so a paste into Excel can't execute
 // it; editable grids skip it because their CSV view must round-trip typed text exactly.
 function csvField(c: string, cellType: CellType, escapeFormulas = false): string {
   let out = cell(c, cellType);
   if (escapeFormulas && cellType === "string") out = neutralizeFormulaCell(out); // csvSafety, shared with Write File
-  if (cellType === "string" && /[",\n]/.test(out)) return `"${out.replace(/"/g, '""')}"`;
+  if (/[",\n\r]/.test(out)) return `"${out.replace(/"/g, '""')}"`;
   return out;
 }
 function toCSV(grid: string[][], cellType: CellType, columnTypes?: CellType[], escapeFormulas = false): string {
