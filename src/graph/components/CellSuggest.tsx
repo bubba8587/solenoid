@@ -23,14 +23,17 @@ export function CellSuggest({ options, draft, onPick, handle }: {
   // The opener shows every value; typing shows the matches. `settled` is the draft the
   // list last closed on (the cell's text at focus, then each pick), so it stays shut
   // until the text moves again.
-  const [showAll, setShowAll] = useState(false);
+  // `allAt` = the draft the opener was pressed on: every value shows only until the
+  // text moves, then typing filters like anywhere else.
+  const [allAt, setAllAt] = useState<string | null>(null);
   const [settled, setSettled] = useState(draft);
   const [sel, setSel] = useState(-1);
 
   const items = useMemo(() => {
-    if (showAll) return options.slice(0, MAX_ITEMS);
     const q = draft.trim().toLowerCase();
-    if (q === "" || draft === settled) return [];
+    const viaOpener = allAt !== null;
+    if (viaOpener && (draft === allAt || q === "")) return options.slice(0, MAX_ITEMS);
+    if (q === "" || (!viaOpener && draft === settled)) return [];
     const starts: string[] = [], holds: string[] = [];
     for (const o of options) {
       const t = o.toLowerCase();
@@ -39,7 +42,7 @@ export function CellSuggest({ options, draft, onPick, handle }: {
       else if (t.includes(q)) holds.push(o);
     }
     return [...starts, ...holds].slice(0, MAX_ITEMS);
-  }, [options, draft, settled, showAll]);
+  }, [options, draft, settled, allAt]);
   const open = items.length > 0;
   const style = useHangUnder(open, anchorRef, menuRef, "left", true, items.length);
 
@@ -48,7 +51,10 @@ export function CellSuggest({ options, draft, onPick, handle }: {
     if (sel >= 0) menuRef.current?.children[sel]?.scrollIntoView({ block: "nearest" });
   }, [sel]);
 
-  const close = (at: string) => { setShowAll(false); setSettled(at); setSel(-1); };
+  // The rows under a selection change with the text, so typing drops it.
+  useLayoutEffect(() => { setSel(-1); }, [draft]);
+
+  const close = (at: string) => { setAllAt(null); setSettled(at); setSel(-1); };
   const pick = (v: string) => { onPick(v); close(v); };
 
   useImperativeHandle(handle, () => ({
@@ -80,7 +86,7 @@ export function CellSuggest({ options, draft, onPick, handle }: {
         aria-label="Show this column's existing values"
         aria-expanded={open}
         tabIndex={-1}
-        onClick={() => { if (open) close(draft); else { setShowAll(true); setSel(-1); } }}
+        onClick={() => { if (open) close(draft); else { setAllAt(draft); setSel(-1); } }}
       >
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" aria-hidden="true">
           <path d="M5.5 3.5h6.5M5.5 7h6.5M5.5 10.5h6.5" />
