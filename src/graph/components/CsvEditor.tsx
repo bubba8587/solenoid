@@ -6,9 +6,10 @@ import { csvFieldSpans } from "../csv";
  *  marks and the transparent textarea types over them. Marked text stays editable; the
  *  table ignores it (a computed column has no cells of its own), so the next time the
  *  text is built it reads the computed values again. */
-export function CsvEditor({ value, onChange, onBlur, readOnly, markedCols, firstBodyRow, error }: {
+export function CsvEditor({ value, onChange, onFocus, onBlur, readOnly, markedCols, firstBodyRow, error }: {
   value: string;
   onChange: (next: string) => void;
+  onFocus?: () => void;
   onBlur?: () => void;
   readOnly: boolean;
   /** Column indices whose body fields are marked (empty = no mirror at all). */
@@ -43,6 +44,7 @@ export function CsvEditor({ value, onChange, onBlur, readOnly, markedCols, first
       spellCheck={false}
       wrap="off"
       onChange={(e) => onChange(e.target.value)}
+      onFocus={onFocus}
       onBlur={onBlur}
       onScroll={marked ? (e) => {
         // A translate, not scrollTop: the mirror has no scrollbars, so its own scroll

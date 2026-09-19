@@ -525,6 +525,13 @@
   margin: 0;
   background: transparent;
 }
+/* A sized popup is a flex column whose scroll region fills (popupChrome.css). The
+   wrapper stands where the textarea stood, so IT takes the fill and hands it on. */
+.sol-popup--sized .table-popup__csvwrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
 .table-popup__csvmirror {
   position: absolute;
   inset: 0;
@@ -557,13 +564,10 @@
 
 /* Form view: the dot beside a COMPUTED field's label (state, so the popup's accent). */
 .table-popup__form-box-fx {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
   margin-right: 4px;
-  border-radius: 50%;
-  background: var(--node-accent, var(--accent));
+  color: var(--node-accent, var(--accent));
   vertical-align: 1px;
+  overflow: visible;
 }
 
 /* Grid / CSV segmented toggle. */
@@ -645,6 +649,7 @@
   font-weight: 600;
 }
 .table-popup__btn--primary:hover { filter: brightness(1.08); }
+.table-popup__btn:disabled { opacity: 0.45; pointer-events: none; }
 
 /* Touch devices: larger tap targets for the footer controls (the grid editor is
    used on mobile too). Pairs with the wrapping footer above. */

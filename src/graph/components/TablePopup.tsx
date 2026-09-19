@@ -285,9 +285,10 @@ export function TablePopup() {
   const isFramePopup = !!state.columnTypes;
   const showFmtToggle = literalSource || (!editable && (isFramePopup || hasDateCols));
   // Display-only: `grid` (raw text) is ALWAYS the edit/save truth.
-  const displayRowAt = (r: number): string[] => {
+  // `source` = the raw text even in Formatted mode (the CSV block while it is edited).
+  const displayRowAt = (r: number, source = false): string[] => {
     const row = rawRow(r);
-    if (formattedPreview) {
+    if (formattedPreview && !source) {
       return row.map((raw, c) => {
         const type = colTypeAt(c);
         const f = formatFrameCell(type, coerceFrameCell(type, raw ?? ""));
@@ -675,13 +676,13 @@ export function TablePopup() {
   // view stays in source order because its text parses straight back into `grid`.
   // Read-only popups neutralize formula-injection prefixes on export; editable ones
   // must round-trip the typed text exactly.
-  function buildText(inSortOrder: boolean): string {
+  function buildText(inSortOrder: boolean, source = false): string {
     const order = inSortOrder ? sortOrder : Array.from({ length: viewRows }, (_, i) => i);
     if (state!.list) {
       const line = displayRowAt(0);
       return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType);
     }
-    const body = toCSV(order.map((r) => displayRowAt(r)), cellType, columnTypes, !editable);
+    const body = toCSV(order.map((r) => displayRowAt(r, source)), cellType, columnTypes, !editable);
     return hasHeaderLine
       ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${body}`
       : body;
@@ -694,13 +695,13 @@ export function TablePopup() {
   }
   function onCsvChange(v: string) {
     setCsvText(v);
-    if (!editable || formattedPreview) return;
+    if (!editable) return;
     const rows = parseCSV(v);
     // Computed columns are bound by INDEX, so text whose rows no longer hold one value
     // per column would slide a formula onto the wrong data. It is refused, loudly: the
     // table keeps its last valid state until the text fits again.
     if (computedColSet.size > 0 && rows.some((r) => r.length !== cols)) {
-      setCsvError(`Every row needs ${cols} values, one per column. The table keeps its last valid text until they do.`);
+      setCsvError("Current edit state will break the layout and cannot be saved. Please retain the same number of items per row.");
       return;
     }
     setCsvError(null);
@@ -1139,7 +1140,14 @@ export function TablePopup() {
                 return (
                   <label className="table-popup__form-box" key={key} style={at}>
                     <span className="table-popup__form-box-label">
-                      {computedHere && <span className="table-popup__form-box-fx" role="img" title="Computed column" aria-label="Computed column" />}
+                      {computedHere && (
+                        // An SVG circle, not a rounded CSS box: the card sits at a fractional
+                        // position when centered, and a box's edges snap per axis (an oval).
+                        <svg className="table-popup__form-box-fx" width="6" height="6" viewBox="0 0 6 6" role="img" aria-label="Computed column">
+                          <title>Computed column</title>
+                          <circle cx="3" cy="3" r="3" fill="currentColor" />
+                        </svg>
+                      )}
                       {label}
                     </span>
                     {c === -1 ? (
@@ -1223,12 +1231,16 @@ export function TablePopup() {
         <CsvEditor
           value={csvText}
           onChange={onCsvChange}
-          readOnly={!editable || formattedPreview}
+          readOnly={!editable}
           markedCols={computedColSet}
           firstBodyRow={hasHeaderLine ? 1 : 0}
           error={csvError}
-          // Leaving the block puts the computed values back over anything typed on them.
-          onBlur={() => { if (editable && !formattedPreview && computedColSet.size > 0 && !csvError) setCsvText(buildText(false)); }}
+          // Formatted mode edits like a grid cell: the whole block shows its source text
+          // while focused, the formatted text again on the way out.
+          onFocus={() => { if (editable && formattedPreview) setCsvText(buildText(false, true)); }}
+          // Leaving the block rebuilds it: formatted again, and the computed values back
+          // over anything typed on them. Text that doesn't fit stays, under its error.
+          onBlur={() => { if (editable && !csvError && (formattedPreview || computedColSet.size > 0)) setCsvText(buildText(false)); }}
         />
       )}
 
@@ -1295,7 +1307,7 @@ export function TablePopup() {
         {editable ? (
           <>
             <button className="table-popup__btn" onClick={() => tablePopup.close()}>Cancel</button>
-            <button className="table-popup__btn table-popup__btn--primary" onClick={save}>Save</button>
+            <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={view === "csv" && !!csvError}>Save</button>
           </>
         ) : (
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
