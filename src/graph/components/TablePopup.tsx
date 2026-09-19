@@ -26,6 +26,7 @@ import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
+import { ColumnFormatButton, ColumnExprField } from "./columnHeadControls";
 import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
 import { RecordGrid } from "./chartCards";
 import type { RecordField } from "../chartValue";
@@ -183,13 +184,10 @@ export function TablePopup() {
   // style), and what the column carried in when it didn't (the row's muted hint).
   const [colLocal, setColLocal] = useState<boolean[]>([]);
   const [colInherited, setColInherited] = useState<(FormatAnnotation | undefined)[]>([]);
-  // undefined = Data, else the host's λ input key defining the column.
-  const [colLambdas, setColLambdas] = useState<(string | undefined)[]>([]);
-  // undefined = not a Formula column; a string (possibly empty, mid-authoring) = the
-  // row-wise expr. The draft is local per keystroke; blur/Enter commits, Escape reverts.
+  // undefined = a Data column; a string (possibly empty, mid-authoring) = the row-wise
+  // expr (Fx on). The draft is local per keystroke; blur/Enter commits, Escape reverts.
   const [colExprs, setColExprs] = useState<(string | undefined)[]>([]);
   const committedExprs = useRef<(string | undefined)[]>([]);
-  const exprEscaped = useRef(false);
   // Overrides the snapshot the popup opened with, so a live commit shows its result
   // without a Save/close round trip.
   const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
@@ -206,7 +204,6 @@ export function TablePopup() {
     const ncols = g.reduce((m, r) => Math.max(m, r.length), 0);
     setHeaderNames(Array.from({ length: ncols }, (_, j) => state.headers?.[j] ?? ""));
     setColumnTypes(Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType));
-    setColLambdas(Array.from({ length: ncols }, (_, j) => state.sourceLambdas?.[j]));
     setColExprs(Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]));
     committedExprs.current = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
     setLiveComputed(null);
@@ -265,8 +262,8 @@ export function TablePopup() {
   // Computed columns have no raw text — substitute their derived values into the shown
   // window so the views, copy paths and the sort see real cells, not blanks.
   const computedVals = liveComputed ?? state.computedCells;
-  const isComputedCol = (c: number) => !!colLambdas[c] || colExprs[c] !== undefined;
-  const hasComputed = !!computedVals && (colLambdas.some(Boolean) || colExprs.some((e) => e !== undefined));
+  const isComputedCol = (c: number) => colExprs[c] !== undefined;
+  const hasComputed = !!computedVals && colExprs.some((e) => e !== undefined);
   const rawAt = (r: number, c: number): string => {
     if (!hasComputed || !isComputedCol(c)) return grid[r]?.[c] ?? "";
     const v = computedVals?.[r]?.[c];
@@ -389,6 +386,47 @@ export function TablePopup() {
     const { hint } = fmtRow(c);
     return hint ? <span className="table-popup__fmthint">{hint}</span> : null;
   };
+  // A frame's per-column FC picks live behind the header's paintbrush (a matrix keeps
+  // its one whole-sheet pair above the grid).
+  const colFmtControls = showFmtControls && state.formatControls === "columns";
+  const fmtButton = (c: number) => {
+    const type = colTypeAt(c);
+    return (
+      <ColumnFormatButton picked={!!colLocal[c]}>
+        {type === "date" ? (
+          <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
+        ) : type === "logical" ? (
+          <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(s) => (s ? persistColFmt(c, { logicalStyle: s }) : clearColFmt(c))} />
+        ) : type === "string" ? (
+          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => tc === "chip" ? persistColFmt(c, { chip: true, textCase: "none" }) : tc ? persistColFmt(c, { textCase: tc as TextCase, chip: false }) : clearColFmt(c)} />
+        ) : (
+          <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
+        )}
+        {fmtHint(c)}
+        {type !== "number" ? null : state.unitTaggable ? (
+          <UnitSelect
+            className="table-popup__fmtselect"
+            value={annFor(c).unit}
+            onChange={(u) => {
+              setColFmtAt(c, { unit: u });
+              // A computed column's unit rides the derived value, so commit now; a
+              // Data column keeps Save timing.
+              if (colExprs[c] !== undefined) void commitLive({ units: { [c]: u } });
+            }}
+          />
+        ) : state.columnUnits?.[c] ? (
+          // Derived column: unit inherited from the source, LOCKED (disabled picker).
+          <UnitSelect
+            className="table-popup__fmtselect"
+            value={state.columnUnits[c]!.display ?? "none"}
+            onChange={() => {}}
+            disabled
+            title={`Unit: ${columnUnitLabel(state.columnUnits[c]!)} (inherited from the source)`}
+          />
+        ) : null}
+      </ColumnFormatButton>
+    );
+  };
   // Takes either a read-only frame's typed value or an editable source's raw text.
   function controlledCell(raw: CellValue, c: number): string {
     if (raw === null || raw === undefined || raw === "") return "";
@@ -503,6 +541,22 @@ export function TablePopup() {
       return next;
     });
   }
+  // The header's type button: Number / Text / Date / Boolean, then (literal-source
+  // editors) Fx, the formula column, and back round to a Number Data column.
+  function cycleColumnKind(c: number) {
+    if (colExprs[c] !== undefined) {
+      const exprs = [...colExprs]; exprs[c] = undefined;
+      const types = [...columnTypes]; types[c] = "number";
+      setColExprs(exprs);
+      setColumnTypes(types);
+      void commitLive({ exprs, types });
+    } else if (state?.onSaveSource && colTypeAt(c) === COLTYPE_ORDER[COLTYPE_ORDER.length - 1]) {
+      // Fx waits for its formula to blur before anything commits.
+      setColExprs((xs) => { const next = [...xs]; next[c] = ""; return next; });
+    } else {
+      toggleColumnType(c);
+    }
+  }
   function addRow() {
     setGrid((g) => [...g, Array.from({ length: Math.max(1, cols) }, () => "")]);
   }
@@ -581,7 +635,7 @@ export function TablePopup() {
   // column reads its derived cells (B6). Skipped entirely for a plain list/table popup.
   // Cached on the identities it reads: a keystroke (bumpDraft) or a sort click re-renders
   // without rescanning the grid.
-  const summaryDeps = [state, grid, columnTypes, computedVals, colLambdas, colExprs, listVertical, editable, showSummary];
+  const summaryDeps = [state, grid, columnTypes, computedVals, colExprs, listVertical, editable, showSummary];
   const sameDeps = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
   if (!sameDeps(summaryCache.current.deps, summaryDeps)) {
     const value: ColSummary[] | null = showSummary && isFramePopup && !vertical ? (() => {
@@ -664,26 +718,24 @@ export function TablePopup() {
   }
   // Cells stay verbatim — coercion to typed values happens downstream in deriveFrame.
   function buildSourceColumns(overrides?: {
-    lambdas?: (string | undefined)[];
     exprs?: (string | undefined)[];
+    types?: CellType[];
     units?: Record<number, string>;
   }): FrameSourceColumn[] {
-    const lambdas = overrides?.lambdas ?? colLambdas;
     const exprs = overrides?.exprs ?? colExprs;
+    const types = overrides?.types ?? columnTypes;
     return Array.from({ length: cols }, (_, c) => {
       // The per-column unit choice rides the value downstream via deriveFrame.
-      const u = state?.unitTaggable && (columnTypes[c] ?? "number") === "number"
+      const u = state?.unitTaggable && (types[c] ?? "number") === "number"
         ? (overrides?.units?.[c] ?? annFor(c).unit)
         : undefined;
-      const lambda = lambdas[c];
-      const expr = lambda ? undefined : exprs[c]?.trim() || undefined;
+      const expr = exprs[c]?.trim() || undefined;
       return {
         name: (headerNames[c] ?? "").trim(),
-        type: columnTypes[c] ?? "number",
-        // A computed column has no raw text — its cells derive from the λ/formula.
-        cells: lambda || expr ? [] : grid.map((row) => row[c] ?? ""),
+        type: types[c] ?? "number",
+        // A computed column has no raw text — its cells derive from the formula.
+        cells: expr ? [] : grid.map((row) => row[c] ?? ""),
         ...(u && u !== "none" ? { unit: u } : {}),
-        ...(lambda ? { lambda } : {}),
         ...(expr ? { expr } : {}),
       };
     });
@@ -839,21 +891,22 @@ export function TablePopup() {
                       if ((e.target as Element).closest("input,button,select")) return;
                       cycleSort(c);
                     } : undefined}
-                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}${sortable && editableHeaders ? " table-popup__colhead--sortpad" : ""}`}
+                    className={`${headers && !vertical ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"}${sortable ? " table-popup__colhead--sortable" : ""}${sortable && (editableHeaders || colFmtControls) ? " table-popup__colhead--sortpad" : ""}`}
                   >
+                    {/* One row: type / Fx cycle, name, format, then the sort control
+                        (overlaid on the padded right edge). */}
                     {vertical ? colLabel(0) : editableHeaders ? (
                       <div className="table-popup__colhead-edit">
-                        {/* A computed column's type is inferred from its cells. */}
-                        {!colLambdas[c] && colExprs[c] === undefined && (
-                          <button
-                            type="button"
-                            className="table-popup__coltype"
-                            title={`Column type: ${COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean.`}
-                            onClick={(e) => { e.stopPropagation(); toggleColumnType(c); }}
-                          >
-                            {COLTYPE_GLYPH[colTypeAt(c)]}
-                          </button>
-                        )}
+                        {/* Fx is the cycle's last stop (literal-source editors): a formula
+                            column's type is inferred from its cells, so it has none to pick. */}
+                        <button
+                          type="button"
+                          className={`table-popup__coltype${colExprs[c] !== undefined ? " table-popup__coltype--fx" : ""}`}
+                          title={`Column type: ${colExprs[c] !== undefined ? "Formula" : COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean${state.onSaveSource ? " / Formula" : ""}.`}
+                          onClick={(e) => { e.stopPropagation(); cycleColumnKind(c); }}
+                        >
+                          {colExprs[c] !== undefined ? "Fx" : COLTYPE_GLYPH[colTypeAt(c)]}
+                        </button>
                         <input
                           className="table-popup__input table-popup__input--text table-popup__colhead-input"
                           value={headerNames[c] ?? ""}
@@ -862,69 +915,29 @@ export function TablePopup() {
                           {...stopSortTrigger}
                           onChange={(e) => setHeaderName(c, e.target.value)}
                         />
+                        {colFmtControls && fmtButton(c)}
+                      </div>
+                    ) : colFmtControls ? (
+                      <div className="table-popup__colhead-edit">
+                        <span className="table-popup__colhead-label">{colHeaderLabel(c)}</span>
+                        {fmtButton(c)}
                       </div>
                     ) : (
                       colHeaderLabel(c)
                     )}
-                    {editableHeaders && !vertical && !!state.onSaveSource && (
-                      // Column source: Data, an inline Formula, or a wired λ input.
-                      <>
-                        <select
-                          className="table-popup__srcselect"
-                          value={colLambdas[c] ?? (colExprs[c] !== undefined ? "=" : "")}
-                          {...stopSortTrigger}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            const nextLambdas = [...colLambdas]; nextLambdas[c] = v && v !== "=" ? v : undefined;
-                            const nextExprs = [...colExprs]; nextExprs[c] = v === "=" ? (nextExprs[c] ?? "") : undefined;
-                            setColLambdas(nextLambdas);
-                            setColExprs(nextExprs);
-                            // A complete pick applies now; Formula waits for its expr to blur.
-                            if (v !== "=") void commitLive({ lambdas: nextLambdas, exprs: nextExprs });
-                          }}
-                        >
-                          <option value="">Data</option>
-                          <option value="=">Formula</option>
-                          {(state.lambdaOptions ?? []).map((k) => (
-                            <option key={k} value={k}>{`λ${k.replace(/^fn/, "")}`}</option>
-                          ))}
-                        </select>
-                        {colExprs[c] !== undefined && !colLambdas[c] && (
-                          // One formula per column: @name reads this row, a bare name
-                          // the whole column (tableRefSemantics).
-                          <div className="table-popup__exprrow">
-                            <span className="table-popup__exprprefix">=</span>
-                            <input
-                              className="table-popup__input table-popup__input--text table-popup__exprinput"
-                              value={colExprs[c] ?? ""}
-                              placeholder="@price * @qty"
-                              spellCheck={false}
-                              {...stopSortTrigger}
-                              onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setColExprs((prev) => { const next = [...prev]; next[c] = v; return next; });
-                              }}
-                              onBlur={() => {
-                                if (exprEscaped.current) { exprEscaped.current = false; return; }
-                                if (colExprs[c] !== committedExprs.current[c]) void commitLive();
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") e.currentTarget.blur();
-                                else if (e.key === "Escape") {
-                                  // The flag stops the following blur from committing
-                                  // the stale closure text.
-                                  const prev = committedExprs.current[c];
-                                  setColExprs((xs) => { const next = [...xs]; next[c] = prev; return next; });
-                                  exprEscaped.current = true;
-                                  e.currentTarget.blur();
-                                }
-                              }}
-                            />
-                          </div>
-                        )}
-                      </>
+                    {editableHeaders && !vertical && colExprs[c] !== undefined && (
+                      // One formula per column: @name reads this row, a bare name the
+                      // whole column (tableRefSemantics); a λ socket's name calls it.
+                      <ColumnExprField
+                        value={colExprs[c] ?? ""}
+                        lambdaOptions={state.lambdaOptions ?? []}
+                        onDraft={(v) => setColExprs((prev) => { const next = [...prev]; next[c] = v; return next; })}
+                        onCommit={() => { if (colExprs[c] !== committedExprs.current[c]) void commitLive(); }}
+                        onRevert={() => {
+                          const prev = committedExprs.current[c];
+                          setColExprs((xs) => { const next = [...xs]; next[c] = prev; return next; });
+                        }}
+                      />
                     )}
                     {sortable && (
                       <SortIndicator
@@ -939,56 +952,6 @@ export function TablePopup() {
                 ))}
               </tr>
             </thead>
-            {showFmtControls && state.formatControls === "columns" && (
-              <tbody className="table-popup__fmtbody">
-                <tr>
-                  <th className="table-popup__corner" />
-                  {Array.from({ length: viewCols }, (_, c) => {
-                    const type = colTypeAt(c);
-                    return (
-                      <td key={c} className="table-popup__fmtcell">
-                        {type === "date" ? (<>
-                          <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
-                          {fmtHint(c)}
-                        </>) : type === "logical" ? (<>
-                          <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(s) => (s ? persistColFmt(c, { logicalStyle: s }) : clearColFmt(c))} />
-                          {fmtHint(c)}
-                        </>) : type === "string" ? (<>
-                          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => tc === "chip" ? persistColFmt(c, { chip: true, textCase: "none" }) : tc ? persistColFmt(c, { textCase: tc as TextCase, chip: false }) : clearColFmt(c)} />
-                          {fmtHint(c)}
-                        </>) : type === "number" ? (
-                          <div className="table-popup__fmtstack">
-                            <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
-                            {fmtHint(c)}
-                            {state.unitTaggable ? (
-                              <UnitSelect
-                                className="table-popup__fmtselect"
-                                value={annFor(c).unit}
-                                onChange={(u) => {
-                                  setColFmtAt(c, { unit: u });
-                                  // A computed column's unit rides the derived value, so
-                                  // commit now; a Data column keeps Save timing.
-                                  if (colLambdas[c] || colExprs[c] !== undefined) void commitLive({ units: { [c]: u } });
-                                }}
-                              />
-                            ) : state.columnUnits?.[c] ? (
-                              // Derived column: unit inherited from the source, LOCKED (disabled picker).
-                              <UnitSelect
-                                className="table-popup__fmtselect"
-                                value={state.columnUnits[c]!.display ?? "none"}
-                                onChange={() => {}}
-                                disabled
-                                title={`Unit: ${columnUnitLabel(state.columnUnits[c]!)} (inherited from the source)`}
-                              />
-                            ) : null}
-                          </div>
-                        ) : null}
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            )}
             <tbody>
               {/* Rows render in SORT order but carry their SOURCE index `r`, so the row
                   number and every edit below address the real row. */}
@@ -1011,7 +974,7 @@ export function TablePopup() {
                     const fmtEdit = formattedPreview && editable && !vertical;
                     const editingHere = !!editCell && editCell.r === r && editCell.c === c;
                     // A computed column is read-only — no raw text behind its cells.
-                    const computedHere = !vertical && (!!colLambdas[c] || colExprs[c] !== undefined);
+                    const computedHere = !vertical && colExprs[c] !== undefined;
                     const canEdit = !computedHere && editable && !(formattedPreview && !fmtEdit); // = !readOnly below
                     // A chipped string column (B2.2) shows its CategoryChip while unfocused in
                     // Formatted mode and swaps to the raw <input> on focus, exactly like a
@@ -1182,7 +1145,7 @@ export function TablePopup() {
               // the box's value line (the figure look, made editable).
               const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
                 const type = c === -1 ? "string" : colTypeAt(c);
-                const computedHere = c !== -1 && (!!colLambdas[c] || colExprs[c] !== undefined);
+                const computedHere = c !== -1 && colExprs[c] !== undefined;
                 const label = c === -1 ? name : (headerNames[c] ?? "").trim() || colLabel(c);
                 const editingHere = c !== -1 && !!editCell && editCell.r === fRow && editCell.c === c;
                 return (

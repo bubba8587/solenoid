@@ -123,7 +123,8 @@ area. When you coin a new load-bearing term, add it here.
 - **Computed column** — a frame column whose cells come from a per-row computation
   (an inline formula or a wired λ) instead of typed data. ONE definition per column,
   never per cell (noPerCellFormulas). Two surfaces, one core: the Frame Input popup's per-column
-  source picker (**Data | Formula | λ**) and the Computed Column verb node.
+  type button, whose cycle ends on **Fx** (a formula row under the header; a λ input is
+  reached by typing its socket name, `λ1` alone or `λ1(@a, @b)`) and the Computed Column verb node.
   (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; [[C22]] rowFormulaRefs/noPerCellFormulas)
 - **Side value** — a non-column value wired into a computed column's definition (a
   scalar or a row-aligned list); surfaces grow/prune side sockets from the expression's

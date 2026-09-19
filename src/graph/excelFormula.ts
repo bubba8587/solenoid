@@ -39,8 +39,9 @@ function tokenize(src: string): Tok[] | null {
   const toks: Tok[] = [];
   let i = 0;
   const digit = (c: string) => c >= "0" && c <= "9";
-  const idStart = (c: string) => /[A-Za-z_]/.test(c);
-  const idChar = (c: string) => /[A-Za-z0-9_]/.test(c);
+  // `λ` spells a wired LAMBDA socket's name (`λ1`), callable like any lambda binding.
+  const idStart = (c: string) => /[A-Za-z_λ]/.test(c);
+  const idChar = (c: string) => /[A-Za-z0-9_λ]/.test(c);
   while (i < src.length) {
     const c = src[i];
     if (c === " " || c === "\t" || c === "\n" || c === "\r") { i++; continue; }
@@ -317,6 +318,24 @@ export function extractVariables(expr: string): string[] {
   const out: string[] = [];
   collectNames(ast, out, new Set());
   return out;
+}
+
+/** The names in CALL position (`λ1(…)`, `SUM(…)`) — a surface that binds lambdas by
+ *  name reads this to know which of its bindings a formula calls. */
+export function calledNames(expr: string): string[] {
+  const ast = parseExpr(expr);
+  if (!ast) return [];
+  const out = new Set<string>();
+  const walk = (n: Ast): void => {
+    switch (n.t) {
+      case "call": out.add(n.name); n.args.forEach(walk); break;
+      case "apply": walk(n.fn); n.args.forEach(walk); break;
+      case "unary": case "percent": walk(n.arg); break;
+      case "bin": walk(n.l); walk(n.r); break;
+    }
+  };
+  walk(ast);
+  return [...out];
 }
 
 // The column names read through the row context — not variables; this is the

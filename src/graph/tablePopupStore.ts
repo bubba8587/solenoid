@@ -83,11 +83,10 @@ export interface TablePopupState {
    *  row, names split on |, a repeated name merges; authored on the HOST CARD,
    *  the Record pattern). Empty/absent = stacked. */
   formLayout?: string;
-  /** The host's λ input keys — non-empty grows the per-column SOURCE select (tableRefSemantics/[[C54]] noPerCellFormulas). */
+  /** The host's λ socket NAMES (`λ1`), offered under a column's formula field as it
+   *  is typed (tableRefSemantics/[[C54]] noPerCellFormulas). */
   lambdaOptions?: string[];
-  /** Per-column initial λ binding (aligned with columns; undefined = Data). */
-  sourceLambdas?: (string | undefined)[];
-  /** Per-column initial inline formula (undefined = not a Formula column). */
+  /** Per-column initial inline formula (undefined = a Data column). */
   sourceExprs?: (string | undefined)[];
   /** Derived VALUES for computed columns — read-only, since they have no raw text. */
   computedCells?: Cell[][];

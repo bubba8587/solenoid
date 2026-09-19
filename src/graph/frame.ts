@@ -238,11 +238,9 @@ export interface FrameSourceColumn {
   /** An FC unit id tagged on the column at the source; `deriveFrame` applies it to
    *  `FrameColumn.unit` so the unit rides the value downstream. */
   unit?: string;
-  /** COMPUTED column: the key of the λ input defining it — present ⇒ cells derive
-   *  per row and the raw `cells` are ignored. */
-  lambda?: string;
   /** COMPUTED column, inline row-wise formula — the CC node's expr rules verbatim
-   *  (tableRefSemantics); a `lambda` binding wins when both are set. */
+   *  (tableRefSemantics); present ⇒ cells derive per row and the raw `cells` are
+   *  ignored. A host λ input is reached by its socket name (`λ1`). */
   expr?: string;
 }
 export type FrameSource = FrameSourceColumn[];
@@ -280,7 +278,6 @@ export function frameSourceToText(source: FrameSource): string {
   return JSON.stringify(source.map((c) => ({
     name: c.name, type: c.type, cells: c.cells,
     ...(c.unit ? { unit: c.unit } : {}),
-    ...(c.lambda ? { lambda: c.lambda } : {}),
     ...(c.expr ? { expr: c.expr } : {}),
   })));
 }
@@ -316,9 +313,8 @@ export function parseFrameSource(text: string): FrameSource {
                   x == null ? "" : typeof x === "boolean" ? (x ? "TRUE" : "FALSE") : String(x))
               : [];
           const unit = typeof c?.unit === "string" && c.unit !== "" ? c.unit : undefined;
-          const lambda = typeof c?.lambda === "string" && c.lambda !== "" ? c.lambda : undefined;
           const expr = typeof c?.expr === "string" && c.expr.trim() !== "" ? c.expr : undefined;
-          return { name: names[i], type, cells, unit, ...(lambda ? { lambda } : {}), ...(expr ? { expr } : {}) };
+          return { name: names[i], type, cells, unit, ...(expr ? { expr } : {}) };
         });
       }
     } catch { /* malformed — fall through to the legacy CSV reader */ }

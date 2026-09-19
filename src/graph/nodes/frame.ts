@@ -3,7 +3,7 @@ import { ClassicPreset } from "rete";
 import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
+import { extractVariables, calledNames, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
@@ -160,6 +160,11 @@ export async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef 
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
 
+/** A λ input's socket name (`fn1` → `λ1`): what a column formula types to reach it. */
+export const lambdaSocketName = (key: string): string => `λ${key.replace(/^fn/, "")}`;
+
+type CompiledColumnExpr = { evaluator: ExprEvaluator; vars: string[]; refs: string[] };
+
 export class FrameInputNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | null = null;
@@ -170,8 +175,8 @@ export class FrameInputNode extends ClassicPreset.Node {
   /** Hiding the layout box KEEPS its text and only makes it inert; every reader
    *  takes `activeLayout`, never `stringLiterals.layout`. */
   layoutHidden: boolean;
-  /** The addable λ input keys (fn1, fn2, …); a source column with `lambda: "fn1"`
-   *  computes its cells per row from the λ wired there. */
+  /** The addable λ input keys (fn1, fn2, …); a column formula reaches the λ wired
+   *  there by its socket name (`λ1`). */
   lambdaKeys: string[] = [];
   // Return the SAME FrameValue object while the text is unchanged — a fresh one per
   // data() defeats the backend's identity source-cache (re-uploads the frame to Rust).
@@ -188,7 +193,7 @@ export class FrameInputNode extends ClassicPreset.Node {
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
     this.layoutHidden = init?.layoutHidden ?? false;
     if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
-    for (const k of this.lambdaKeys) this.addInput(k, lambdaIn(`λ${k.replace(/^fn/, "")}`));
+    for (const k of this.lambdaKeys) this.addInput(k, lambdaIn(lambdaSocketName(k)));
     this.addOutput("frame", frameOut("Frame"));
   }
 
@@ -202,23 +207,24 @@ export class FrameInputNode extends ClassicPreset.Node {
     const next = this.lambdaKeys.reduce((m, k) => Math.max(m, Number(k.replace(/^fn/, "")) || 0), 0) + 1;
     const key = `fn${next}`;
     this.lambdaKeys.push(key);
-    this.addInput(key, lambdaIn(`λ${next}`));
+    this.addInput(key, lambdaIn(lambdaSocketName(key)));
     return key;
   }
 
-  /** Remove one λ input row; columns bound to it fall back to Typed. */
+  /** Remove one λ input row; a column whose whole formula was that λ falls back to Data. */
   removeValueInput(key: string): void {
     this.lambdaKeys = this.lambdaKeys.filter((k) => k !== key);
     if (this.inputs[key]) this.removeInput(key);
+    const name = lambdaSocketName(key);
     const source = parseFrameSource(this.frameText);
-    if (source.some((c) => c.lambda === key)) {
-      this.frameText = frameSourceToText(source.map((c) => (c.lambda === key ? { ...c, lambda: undefined } : c)));
+    if (source.some((c) => c.expr?.trim() === name)) {
+      this.frameText = frameSourceToText(source.map((c) => (c.expr?.trim() === name ? { ...c, expr: undefined } : c)));
     }
   }
 
   /** Compiled Formula-source columns, keyed by expr text; a null value = the text
-   *  does not parse. */
-  private _exprCache = new Map<string, { evaluator: ExprEvaluator; vars: string[] } | null>();
+   *  does not parse. `refs` = every name the text reads or calls (the λ-socket feed). */
+  private _exprCache = new Map<string, CompiledColumnExpr | null>();
 
   /** What the last computed frame was built from — text plus each λ input's value
    *  identity, so an unchanged pass returns the SAME frame object. */
@@ -230,7 +236,7 @@ export class FrameInputNode extends ClassicPreset.Node {
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
     const source = parseFrameSource(this.frameText);
-    const isComputed = (c: FrameSourceColumn) => !!(c.lambda || c.expr);
+    const isComputed = (c: FrameSourceColumn) => !!c.expr;
     if (!source.some(isComputed)) {
       if (!this.cachedResult || this._builtFrom !== this.frameText) {
         this.cachedResult = frameFromInputText(this.frameText);
@@ -257,11 +263,11 @@ export class FrameInputNode extends ClassicPreset.Node {
     };
     const nameToIdx = new Map(source.map((c, i) => [c.name, i] as const));
     const remaining = new Set(source.map((c, i) => (isComputed(c) ? i : -1)).filter((i) => i >= 0));
-    const lamAt = (i: number) => {
-      const v = inputs[source[i].lambda!]?.[0];
-      return isLambdaValue(v) ? v : null;
-    };
-    const compiled = new Map<string, { evaluator: ExprEvaluator; vars: string[] } | null>();
+    // A λ input is reached by its socket name: a formula that is ONLY that name binds
+    // the λ's params to columns by name ([[C50]] lambdaBindsByName); anywhere else the
+    // name is an ordinary lambda binding (`λ1(@price, @qty)`, `MAP(price, λ1)`).
+    const lamByName = new Map(this.lambdaKeys.map((k, j) => [lambdaSocketName(k), lams[j]] as const));
+    const compiled = new Map<string, CompiledColumnExpr | null>();
     const exprAt = (i: number) => {
       const text = source[i].expr!;
       let entry = compiled.get(text);
@@ -269,7 +275,8 @@ export class FrameInputNode extends ClassicPreset.Node {
         entry = this._exprCache.get(text);
         if (entry === undefined) {
           const evaluator = compileEvaluator(text);
-          entry = evaluator ? { evaluator, vars: extractVariables(text) } : null;
+          const vars = evaluator ? extractVariables(text) : [];
+          entry = evaluator ? { evaluator, vars, refs: [...new Set([...vars, ...calledNames(text)])] } : null;
         }
         compiled.set(text, entry);
       }
@@ -284,33 +291,39 @@ export class FrameInputNode extends ClassicPreset.Node {
       progress = false;
       for (const i of [...remaining]) {
         const c = source[i];
-        const lam = c.lambda ? lamAt(i) : null;
-        const ex = !c.lambda && c.expr ? exprAt(i) : null;
+        const bare = lamByName.has(c.expr!.trim());
+        const ex = bare ? null : exprAt(i);
+        const used = bare ? [c.expr!.trim()] : (ex?.refs ?? []).filter((n) => lamByName.has(n) && !nameToIdx.has(n));
+        const usedLams = used.map((n) => lamByName.get(n)).filter(isLambdaValue);
+        const lam = bare ? (usedLams[0] ?? null) : null;
         // Deps are the definition's variables AND its row-context reads (`@name`,
         // `[Name]`), so a zero-param λ still orders after the column it reads.
-        const deps = lam
-          ? [...lam.params, ...(lam.expr ? rowRefNames(lam.expr) : [])]
-          : ex
-            ? [...ex.vars, ...rowRefNames(c.expr!)]
-            : [];
+        const deps = [
+          ...(lam ? lam.params : ex ? [...ex.vars, ...rowRefNames(c.expr!)] : []),
+          ...usedLams.flatMap((l) => (l.expr ? rowRefNames(l.expr) : [])),
+        ];
         if (deps.some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })) continue;
         remaining.delete(i);
         progress = true;
-        if (c.lambda && !lam) {
-          // No λ wired to the bound socket yet — the column is blank, not an error.
+        if (usedLams.length < used.length) {
+          // No λ wired to a socket the formula names yet — the column is blank, not an error.
           fill(i, null);
           continue;
         }
-        if (!c.lambda && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
+        if (!bare && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
         const r = computeColumnCells(
           frame,
-          lam ? { kind: "lambda", lam } : { kind: "expr", evaluator: ex!.evaluator, vars: ex!.vars },
+          lam
+            ? { kind: "lambda", lam }
+            : { kind: "expr", evaluator: ex!.evaluator, vars: [...ex!.vars, ...used.filter((n) => !ex!.vars.includes(n))] },
           {
-            // A variable naming no column is always a miss here — this node has no
-            // side ports; a λ's side values ride its OWN captures.
-            sideValue: (p, kind) => solError("#REF!", lam && kind === "var"
-              ? `No column "${p}" — a table λ's side values ride its captures`
-              : `No column "${p}"`),
+            // Beyond the λ sockets, a variable naming no column is always a miss here —
+            // this node has no side ports; a λ's side values ride its OWN captures.
+            sideValue: (p, kind) => (!lam && lamByName.has(p)
+              ? lamByName.get(p)
+              : solError("#REF!", lam && kind === "var"
+                ? `No column "${p}" — a table λ's side values ride its captures`
+                : `No column "${p}"`)),
           },
         );
         if (isSolError(r)) {

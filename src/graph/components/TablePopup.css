@@ -49,11 +49,9 @@
    summary footer keeps its own sticky behavior — it is a separate toggle. */
 .table-popup__grid--unfrozen thead th,
 .table-popup__grid--unfrozen .table-popup__rowhead,
-.table-popup__grid--unfrozen thead th.table-popup__corner,
-.table-popup__grid--unfrozen .table-popup__fmtbody th.table-popup__corner {
+.table-popup__grid--unfrozen thead th.table-popup__corner {
   position: static;
-}
-.table-popup__corner,
+}.table-popup__corner,
 .table-popup__colhead,
 .table-popup__rowhead {
   background: var(--surface-sunken);
@@ -95,16 +93,6 @@
   left: 0;
   z-index: 4;
 }
-/* The format-row's left corner (the cell directly BELOW the top-left corner, above
-   the row-number column) must pin left too — otherwise the scrolling format/unit
-   dropdowns slide over it on horizontal scroll. Same treatment as the header corner,
-   one rung lower in the z-stack so the true corner still wins where they'd overlap. */
-.table-popup__fmtbody th.table-popup__corner {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-}
-
 .table-popup__cell {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -237,22 +225,88 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
-/* The per-column SOURCE select (column-source model): Typed, an inline Formula,
-   or a wired λ. Literal-source frame editors only; sits under the name row. */
-.table-popup__srcselect {
-  display: block;
-  width: 100%;
-  margin-top: 3px;
-  font-size: 11px;
-  color: var(--text-dim);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 1px 3px;
+/* A read-only frame header's name, beside its format button. */
+.table-popup__colhead-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* The Formula source's inline formula, under the source select: an =-prefixed
-   one-liner (one definition per column, popup-local until Save). */
+/* Fx, the type cycle's last stop (literal-source frame editors): the column computes
+   from a formula. That is STATE, so it earns the popup's accent. */
+.table-popup__coltype--fx,
+.table-popup__coltype--fx:hover {
+  font-size: 10px;
+  color: var(--surface);
+  background: var(--node-accent, var(--accent));
+  border-color: var(--node-accent, var(--accent));
+}
+
+/* The header's format button: paintbrush + chevron. */
+.table-popup__fmtbtn {
+  flex: 0 0 auto;
+  height: 18px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.table-popup__fmtbtn:hover { color: var(--text); border-color: var(--node-accent, var(--accent)); }
+/* This node picked a format for the column: state, so the brush takes the accent. */
+.table-popup__fmtbtn--picked { color: var(--node-accent, var(--accent)); }
+
+/* The brush's panel and the formula field's λ list PORTAL to <body>, fixed under their
+   anchor and above the popup layer (.sol-popup-overlay, 9500), still under the
+   transient SocketContextMenu (9999); columnHeadControls.tsx supplies left/top and
+   carries the popup's --node-accent across the portal. */
+.table-popup__fmtpanel,
+.table-popup__lammenu {
+  position: fixed;
+  z-index: 9600;
+  margin: 0;
+  font-family: var(--font-sans);
+  padding: 6px;
+  background: var(--surface-raised, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-pop);
+  cursor: default;
+}
+.table-popup__fmtpanel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+}
+.table-popup__fmtpanel .sol-fcflow { display: flex; }
+.table-popup__fmtpanel .sol-fcflow .table-popup__fmtselect { flex: 1 1 auto; width: auto; min-width: 0; }
+.table-popup__lammenu {
+  list-style: none;
+  padding: 3px;
+  min-width: 72px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  color: var(--text);
+}
+.table-popup__lamitem { padding: 3px 7px; border-radius: 4px; cursor: pointer; }
+.table-popup__lamitem:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.table-popup__lamitem--on { background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, transparent); }
+
+/* An Fx column's formula on a second header row, an =-prefixed one-liner (one
+   definition per column, popup-local until Save). */
 .table-popup__exprrow {
   display: flex;
   align-items: center;
@@ -343,34 +397,16 @@
   .table-popup__colhead--sortpad { padding-right: 24px; }
 }
 
-/* ── Format-Controller controls row (read-only frames / matrices) ────────────
-   A row of Format Controller dropdowns between the header and the body: a frame
-   stacks format-over-unit per column; a matrix shows one pair side by side. The
-   cells read as chrome (sunken), distinct from the data below. */
-.table-popup__fmtcell {
-  background: var(--surface-sunken);
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border-strong);
-  padding: 4px;
-  vertical-align: top;
-}
-.table-popup__fmtstack {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.table-popup__fmtinline {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-/* Qualified under `.table-popup` (not the bare class) so this out-specifies the
+/* ── Format-Controller dropdowns ──────────────────────────────────────────────
+   A frame's per-column picks live in the header brush's panel (above); a matrix
+   shows one pair side by side above the grid.
+   Qualified under `.table-popup` (not the bare class) so this out-specifies the
    shared `.sol-popup select { font-family: inherit }` reset (popupChrome.css) —
    otherwise `inherit` wins on specificity and resolves to `.table-popup__grid`'s
-   mono (these selects sit inside the grid's `.table-popup__fmtcell`), rendering
-   the format/unit picker text in the mono face instead of sans. */
-.table-popup .table-popup__fmtselect {
+   mono, rendering the format/unit picker text in the mono face instead of sans. The
+   brush panel is portalled out of `.table-popup`, so it qualifies the rule itself. */
+.table-popup .table-popup__fmtselect,
+.table-popup__fmtpanel .table-popup__fmtselect {
   width: 100%;
   box-sizing: border-box;
   padding: 2px 4px;
@@ -397,7 +433,6 @@
   white-space: nowrap;
 }
 .table-popup__matrix-fmt .table-popup__fmthint { display: inline-block; padding: 0; }
-.table-popup__fmtinline .table-popup__fmtselect { width: auto; min-width: 92px; }
 .table-popup__fmtselect:hover { border-color: var(--node-accent, var(--accent)); }
 .table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 
@@ -413,15 +448,13 @@
 .table-popup__matrix-fmt .table-popup__fmtselect { width: auto; min-width: 110px; }
 
 /* Flow-arrow wrapper (the FC's ←/→ language): a control flanked by direction arrows.
-   Side-by-side in the matrix bar (natural width); fills its cell in a stacked column. */
+   Side-by-side in the matrix bar (natural width); fills the row in the brush panel. */
 .sol-fcflow {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
 }
-.table-popup__fmtstack .sol-fcflow { display: flex; }
-.table-popup__fmtstack .sol-fcflow .table-popup__fmtselect { flex: 1 1 auto; width: auto; min-width: 0; }
 /* A locked (inherited) unit picker reads as read-only — dimmed, no hover affordance. */
 .sol-fcflow .table-popup__fmtselect:disabled {
   opacity: 0.65;
@@ -565,6 +598,8 @@
     height: 26px;
     font-size: 13px;
   }
+  .table-popup__coltype--fx { font-size: 12px; }
+  .table-popup__fmtbtn { height: 26px; padding: 0 7px; }
   .table-popup__colhead-input { font-size: 13px; padding: 4px 6px; }
   .table-popup__csv { font-size: 14px; margin: 10px; width: calc(100% - 20px); }
 }

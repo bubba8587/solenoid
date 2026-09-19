@@ -53,7 +53,7 @@ import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNo
 import type { FilterCondConfig, SettleMode } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
 import { CloseIcon } from "./CloseIcon";
-import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META } from "../nodes/frame";
+import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META, lambdaSocketName } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn, type FrameValue, type CubeValue } from "../frame";
@@ -135,8 +135,8 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     const rows = frameRowCount(derived);
     return {
       computedCells: Array.from({ length: rows }, (_, r) =>
-        src.map((c, j) => ((c.lambda || c.expr) ? (derived.columns[j]?.values[r] ?? null) : null))),
-      columnTypes: src.map((c, j) => ((c.lambda || c.expr) ? (derived.columns[j]?.type ?? "number") : c.type)),
+        src.map((c, j) => (c.expr ? (derived.columns[j]?.values[r] ?? null) : null))),
+      columnTypes: src.map((c, j) => (c.expr ? (derived.columns[j]?.type ?? "number") : c.type)),
     };
   }, [data]);
   // The popup Form view's layout, authored HERE exactly like the Record card;
@@ -160,8 +160,8 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
 
   return (
     <NodeShell node={data} emit={emit}>
-      {/* Addable λ inputs (column-source model, slice 1): each wired λ can
-          define a column — pick it per column in the grid editor. */}
+      {/* Addable λ inputs: a column formula in the grid editor reaches each by its
+          socket name. */}
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
       {!layoutHidden && (hasLayout || showLayout) ? (
         <div className="solenoid-layout-field">
@@ -189,7 +189,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
       )}
       <FrameDisplay
         frame={data.cachedResult} label={nodeDisplayName(data)} source={source}
-        onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys}
+        onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys.map(lambdaSocketName)}
         formLayout={data.activeLayout}
       />
     </NodeShell>
