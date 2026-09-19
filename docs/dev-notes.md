@@ -8,7 +8,7 @@ specific item.
 
 ### SESSION DIGEST (2026-09-19 — frame popup column header; author present, local dev)
 
-On `develop`, NOT pushed (author verifies over HMR).
+On `develop`, pushed (the author verified over HMR through the session).
 - **The frame popup's column header is one row**: type button, name, paintbrush + chevron, sort. The per-column FC
   row is gone; its picks open from the paintbrush in a panel portalled above the popup layer. On a Frame Input the
   type cycle ends on **Fx**, which grows the formula row. Spec: `specs/literal-input-editors.md`.
@@ -24,18 +24,14 @@ On `develop`, NOT pushed (author verifies over HMR).
 - **Editing a Date / Boolean cell** shows the calendar / checkbox on the right edge of the ONE cell being edited
   (`CellEditAffix.tsx`; the press keeps the text input focused). **The Form view edits in both modes** (it was a
   read-only Record figure with Source off) and its Date field is a text draft + calendar: the native date input,
-  controlled per keystroke, wiped a half-typed year. `CalendarIcon` is shared with the Date Input node.
-  Unverified by an agent: that opening the native picker from the grid leaves the cell's text input focused.
-- **Computed columns are marked in the Form and CSV views** (spec: `specs/error-values.md`): a label dot in the Form;
+  controlled per keystroke, wiped a half-typed year. `CalendarIcon` is shared with the Date Input node.- **Computed columns are marked in the Form and CSV views** (spec: `specs/error-values.md`): a label dot in the Form;
   in CSV a highlight mirror behind the textarea (`CsvEditor.tsx`, `csvFieldSpans` in csv.ts), typed-over values restored
-  on blur, and ragged text refused with an error line while the table has a computed column.
-  Unverified by an agent: the mirror's glyph alignment with the textarea (needs eyes, both themes + a long scroll).
-- **The CSV view** shows the grid's formatted text with Source off (FC picks included), edits in both modes (source text
+  on blur, and ragged text refused with an error line while the table has a computed column.- **The CSV view** shows the grid's formatted text with Source off (FC picks included), edits in both modes (source text
   while focused), and the one CSV writer quotes any field that needs it (a formatted number or date carries a comma).
 - **Text-cell suggestions are in-app** (`CellSuggest.tsx`): the native `<datalist>` is gone from the table popup.
 - `.dteignore` skips `src-tauri/gen` and `sample-data`: git-ignored local output had `coverage --check` red on a dev machine.
-- Open: the Expression highlighter paints a called `λ1(` as an unknown function (no surface shows it today: the popup
-  field is a plain input).
+- Open follow-ups are in `backlog.md` § Frame popup. Dev-server gotcha met three times: two edits to one file landing
+  milliseconds apart can leave Vite serving the FIRST (a symbol used before its import); `touch` the file to re-serve.
 
 ### SESSION DIGEST (2026-09-18 — DTE re-vendored; core changes absorbed)
 

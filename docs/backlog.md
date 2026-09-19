@@ -160,6 +160,14 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   upstream walk go. Analysis + scope in `archive/1.4-plan.md` Track I. Gate: the author's go after the
   downstream-flow work has been lived with, plus the source-node control design.
 
+## Frame popup (follow-ups from the 2026-09-19 header session)
+
+- [ ] **The formula highlighter paints a called λ socket (`λ1(`) as an unknown function** (`identClass`,
+  formulaSyntax.ts). No surface shows it today (the popup's formula field is a plain input); fix it the day a
+  highlighted editor edits a Frame Input column formula.
+- [ ] **`exprYieldsDate` is conservative**: `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
+  Number (their `returns` is "any" / "number"). Extend the declarations if a date-valued lookup column shows up.
+
 ## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
 
 A few families still read awkwardly as `nodeTypeName` output. Fix = rename the class
