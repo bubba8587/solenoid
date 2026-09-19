@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-19 — frame popup column header; author present, local dev)
+
+On `develop`, NOT pushed (author verifies over HMR).
+- **The frame popup's column header is one row**: type button, name, paintbrush + chevron, sort. The per-column FC
+  row is gone; its picks open from the paintbrush in a panel portalled above the popup layer. On a Frame Input the
+  type cycle ends on **Fx**, which grows the formula row. Spec: `specs/literal-input-editors.md`.
+- **A Frame Input λ input is named in the column formula**: `λ1` alone binds by name, `λ1(@a, @b)` calls it; the
+  names list under the focused field. `FrameSourceColumn.lambda` is deleted (the column carries `expr` alone), the
+  tokenizer and highlighter accept `λ` in a name, `calledNames` (excelFormula.ts) feeds the socket lookup.
+- `.dteignore` skips `src-tauri/gen` and `sample-data`: git-ignored local output had `coverage --check` red on a dev machine.
+- Open: the Expression highlighter paints a called `λ1(` as an unknown function (no surface shows it today: the popup
+  field is a plain input).
+
 ### SESSION DIGEST (2026-09-18 — DTE re-vendored; core changes absorbed)
 
 On `develop`, pushed.
