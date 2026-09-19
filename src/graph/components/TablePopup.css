@@ -338,8 +338,9 @@
 
 /* ── Visual-only column sort (columnSort.tsx) ─────────────────────────────────
    The sort BUTTON is the only thing that sorts: the header cell around it is inert.
-   It is drawn on every sortable column, quiet while unsorted (an affordance, not
-   state) and at full strength once it carries a direction.
+   It is ALWAYS drawn on a sortable column, whatever the sort state: a double chevron
+   unsorted, an up chevron ascending, a down chevron descending. Neutral ink unsorted
+   (an affordance), the surface's accent once it carries a direction (state).
 
    It sits on the header's right edge, absolutely positioned in room the header
    reserves (--sortpad), so sorting never changes a column's width. The header <th> is
@@ -359,15 +360,19 @@
   padding: 0;
   border: none;
   border-radius: 3px;
-  background: none;
+  /* The chip behind the glyph is what makes it read as a button at rest. Translucent
+     black in dark theme; light theme flips it to translucent white, since a dark chip
+     carrying a dark glyph on a near-white header is a collision. */
+  background: rgba(0, 0, 0, 0.45);
   /* An active sort is STATE, so it earns color (the Quiet Accent Rule) — the
      surface's own accent, like every other tinted thing in the popup. */
   color: var(--node-accent, var(--accent));
   cursor: pointer;
   z-index: 1;
 }
-.table-popup__sort--off { color: var(--text-dim); opacity: 0.6; }
-.table-popup__sort:hover { opacity: 1; color: var(--text); background: var(--btn-hover); }
+:root[data-theme="light"] .table-popup__sort { background: rgba(255, 255, 255, 0.72); }
+.table-popup__sort--off { color: var(--text-dim); }
+.table-popup__sort:hover { color: var(--text); }
 .table-popup__colhead--sortpad { padding-right: 18px; }
 /* A formula row makes the header two rows tall; the button stays on the first. */
 .table-popup__colhead:has(.table-popup__exprrow) .table-popup__sort { top: 12px; }
