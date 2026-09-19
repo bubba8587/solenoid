@@ -15,6 +15,10 @@ On `develop`, NOT pushed (author verifies over HMR).
 - **A Frame Input λ input is named in the column formula**: `λ1` alone binds by name, `λ1(@a, @b)` calls it; the
   names list under the focused field. `FrameSourceColumn.lambda` is deleted (the column carries `expr` alone), the
   tokenizer and highlighter accept `λ` in a name, `calledNames` (excelFormula.ts) feeds the socket lookup.
+- **A computed column keeps a date a date** (author: the same idea as unit passthrough). `exprYieldsDate` (excelFormula.ts)
+  reads the functions' declared `returns` and the [[D41]] carry ops; both surfaces type through `computedColumnType`
+  (nodes/frame.ts), so `@start + 7` and `TODAY() + 7` are Date columns with no type pick. Computed Column's `addAs`
+  stays for what the formula can't show. Typed cells still refuse relative phrases ([[D54]] relativeDatesOptIn).
 - `.dteignore` skips `src-tauri/gen` and `sample-data`: git-ignored local output had `coverage --check` red on a dev machine.
 - Open: the Expression highlighter paints a called `λ1(` as an unknown function (no surface shows it today: the popup
   field is a plain input).

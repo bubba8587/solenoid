@@ -188,14 +188,16 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
     expect(isSolError(r) && r.code).toBe("#REF!");
   });
 
-  it("addAs declares the output type where inference can't (date serials)", () => {
+  it("auto keeps a date a date through date ± days; addAs declares what the formula can't show", () => {
     const due: FrameValue = {
       __frame: true,
       columns: [{ name: "start", type: "date", values: [46000, 46010] }],
     };
     const auto = run(named("@start + 7", "due"), due) as FrameValue;
-    expect(getColumn(auto, "due")!.type).toBe("number"); // inference can't see date-ness
-    const typedNode = named("@start + 7", "due");
+    expect(getColumn(auto, "due")!.type).toBe("date"); // [[D41]]: a date + days is a date
+    // A serial the formula can't see through (a product) stays a number until declared.
+    expect(getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.type).toBe("number");
+    const typedNode = named("@start * 1 + 7", "due");
     typedNode.addAs = "date";
     const typed = run(typedNode, due) as FrameValue;
     expect(getColumn(typed, "due")!.type).toBe("date");
@@ -471,6 +473,25 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     const out = n.data({ fn1: [lam] }).frame as FrameValue;
     expect(getColumn(out, "c")!.values).toEqual([21, 61]);
     expect(getColumn(out, "d")!.values).toEqual([null, null]);
+  });
+
+  it("a formula that keeps a date a date types the column Date; a span stays a number ([[D41]])", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "start", type: "date", cells: ["2026-03-01", "2026-03-10"] },
+        { name: "days", type: "number", cells: ["5", "7"] },
+        { name: "due", type: "number", cells: [], expr: "@start + @days" },
+        { name: "later", type: "number", cells: [], expr: "EDATE(@due, 1)" }, // reads a COMPUTED date
+        { name: "pick", type: "number", cells: [], expr: "IF(@days > 5, @due, @start)" },
+        { name: "span", type: "number", cells: [], expr: "@due - @start" },
+        { name: "scaled", type: "number", cells: [], expr: "@start * 2" },
+      ]),
+    });
+    const out = n.data({}).frame as FrameValue;
+    const type = (name: string) => getColumn(out, name)!.type;
+    expect([type("due"), type("later"), type("pick")]).toEqual(["date", "date", "date"]);
+    expect([type("span"), type("scaled")]).toEqual(["number", "number"]);
+    expect(getColumn(out, "span")!.values).toEqual([5, 7]);
   });
 
   it("a computed column's UNIT tag rides onto the derived column, like a Data column's", () => {

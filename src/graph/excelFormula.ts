@@ -320,6 +320,38 @@ export function extractVariables(expr: string): string[] {
   return out;
 }
 
+/** Is the formula's result still a DATE? Static, from what is already declared: a date
+ *  column read, a function whose `returns` is "date", and the ops that keep a date a
+ *  date ([[D41]] formatFlowsDownstream: date ± days is a date, date − date is a span).
+ *  Anything it cannot see through answers false, so the result stays a plain number. */
+export function exprYieldsDate(expr: string, isDateName: (name: string) => boolean): boolean {
+  const ast = parseExpr(expr);
+  if (!ast) return false;
+  const isDate = (n: Ast): boolean => {
+    switch (n.t) {
+      case "name": case "atcol": case "wholecol": return isDateName(n.name);
+      case "unary": return n.op === "+" && isDate(n.arg);
+      case "bin": {
+        if (n.op === "+") return isDate(n.l) !== isDate(n.r);
+        if (n.op === "-") return isDate(n.l) && !isDate(n.r);
+        return false;
+      }
+      case "call": {
+        const name = n.name.toUpperCase();
+        if (EXCEL_IMPL_META[name]?.returns === "date") return true;
+        // IF passes its branches through: a date when every branch it has is one.
+        if (name === "IF") {
+          const branches = n.args.slice(1).filter((a) => a.t !== "blank");
+          return branches.length > 0 && branches.every(isDate);
+        }
+        return false;
+      }
+      default: return false;
+    }
+  };
+  return isDate(ast);
+}
+
 /** The names in CALL position (`λ1(…)`, `SUM(…)`) — a surface that binds lambdas by
  *  name reads this to know which of its bindings a formula calls. */
 export function calledNames(expr: string): string[] {

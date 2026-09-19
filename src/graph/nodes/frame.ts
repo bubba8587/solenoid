@@ -3,7 +3,7 @@ import { ClassicPreset } from "rete";
 import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, calledNames, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
+import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
@@ -111,6 +111,19 @@ function cubeToExprFrame(cube: CubeValue): FrameValue {
     return { name: c.name, type: "string" as FrameColType, values: c.cells.map(() => err) };
   });
   return { __frame: true, columns };
+}
+
+/** A computed column's inferred type. Cells alone can't tell a date from a number (both
+ *  are serials), so a definition that keeps a date a date types the column Date
+ *  ([[D41]] formatFlowsDownstream); `alias` = the surface's variable → column picks. */
+function computedColumnType(
+  name: string, cells: FrameCell[], f: FrameValue, definition: string | undefined,
+  alias: Record<string, string | undefined> = {},
+): FrameColType {
+  const type = inferColumn(name, cells).type;
+  if (type !== "number" || !definition) return type;
+  const isDateName = (n: string) => f.columns.find((c) => c.name === (alias[n] ?? n))?.type === "date";
+  return exprYieldsDate(definition, isDateName) ? "date" : type;
 }
 
 /** Append (or replace by name) a scalar column on a cube, with the frame's `after`
@@ -331,7 +344,7 @@ export class FrameInputNode extends ClassicPreset.Node {
         } else {
           // Take inferColumn's .type but keep the values verbatim — its constructed
           // column coerces cells and would mangle per-row SolErrors.
-          const type = inferColumn(c.name, r.cells).type;
+          const type = computedColumnType(c.name, r.cells, frame, lam ? lam.expr : c.expr);
           frame.columns[i] = {
             name: c.name, type, values: r.cells,
             ...(type === "number" && c.unit ? { unit: columnUnitFromSpec(c.unit) ?? undefined } : {}),
@@ -2733,7 +2746,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     this._reconcileSideSockets(computed.sideVars);
     const values = computed.cells;
     const colType: FrameColType = this.addAs === "auto"
-      ? inferColumn(name, values).type
+      ? computedColumnType(name, values, f, wired ? wired.expr : this.expr, this.bindings)
       : colTypeForAddAs(this.addAs);
 
     // A cube: append (or replace) the computed column back onto the ORIGINAL cube, so its
