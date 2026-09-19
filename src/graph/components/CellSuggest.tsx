@@ -34,14 +34,16 @@ export function CellSuggest({ options, draft, onPick, handle }: {
     const viaOpener = allAt !== null;
     if (viaOpener && (draft === allAt || q === "")) return options.slice(0, MAX_ITEMS);
     if (q === "" || (!viaOpener && draft === settled)) return [];
-    const starts: string[] = [], holds: string[] = [];
+    // A fully typed value STAYS, first: it confirms the value already exists in a column
+    // the user may not have in view, and a short one ("A") is a prefix of others anyway.
+    const exact: string[] = [], starts: string[] = [], holds: string[] = [];
     for (const o of options) {
       const t = o.toLowerCase();
-      if (t === q) continue; // fully typed: nothing left to suggest
-      if (t.startsWith(q)) starts.push(o);
+      if (t === q) exact.push(o);
+      else if (t.startsWith(q)) starts.push(o);
       else if (t.includes(q)) holds.push(o);
     }
-    return [...starts, ...holds].slice(0, MAX_ITEMS);
+    return [...exact, ...starts, ...holds].slice(0, MAX_ITEMS);
   }, [options, draft, settled, allAt]);
   const open = items.length > 0;
   const style = useHangUnder(open, anchorRef, menuRef, "left", true, items.length);
