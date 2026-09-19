@@ -38,3 +38,30 @@ export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
 export function parseCsvLine(line: string, opts: CsvOptions = {}): string[] {
   return parseCsvRows(line, opts)[0] ?? [""];
 }
+
+/** Where each field sits in comma-delimited text: `[start, end)` offsets with the
+ *  field's row and column, quotes included. A quoted field may hold commas and
+ *  newlines (RFC 4180, `""` = a literal quote); `\r\n` and `\r` end a row like `\n`.
+ *  For an editor that marks fields in place — never a parser (see `parseCsvRows`). */
+export interface CsvFieldSpan { start: number; end: number; row: number; col: number }
+export function csvFieldSpans(text: string): CsvFieldSpan[] {
+  const spans: CsvFieldSpan[] = [];
+  let row = 0, col = 0, start = 0, quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (quoted) {
+      if (ch === '"') { if (text[i + 1] === '"') i++; else quoted = false; }
+      continue;
+    }
+    if (ch === '"' && i === start) { quoted = true; continue; }
+    if (ch === ",") { spans.push({ start, end: i, row, col }); col++; start = i + 1; continue; }
+    if (ch === "\n" || ch === "\r") {
+      spans.push({ start, end: i, row, col });
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      row++; col = 0; start = i + 1;
+    }
+  }
+  // A final newline is a terminator, not an empty last row.
+  if (start < text.length || col > 0) spans.push({ start, end: text.length, row, col });
+  return spans;
+}

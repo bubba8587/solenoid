@@ -1,6 +1,31 @@
 // [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
-import { parseCsvLine, parseCsvRows } from "../../src/graph/csv";
+import { parseCsvLine, parseCsvRows, csvFieldSpans } from "../../src/graph/csv";
+
+describe("csvFieldSpans", () => {
+  const cut = (text: string) => csvFieldSpans(text).map((s) => [s.row, s.col, text.slice(s.start, s.end)]);
+
+  it("locates every field by row and column, empty ones included", () => {
+    expect(cut("a,b\n1,,3")).toEqual([[0, 0, "a"], [0, 1, "b"], [1, 0, "1"], [1, 1, ""], [1, 2, "3"]]);
+  });
+
+  it("keeps a quoted field whole across commas, newlines and doubled quotes", () => {
+    expect(cut('x,"a,\n""b""",z')).toEqual([[0, 0, "x"], [0, 1, '"a,\n""b"""'], [0, 2, "z"]]);
+  });
+
+  it("a final newline ends the last row; a typed blank line is a row", () => {
+    expect(cut("a,b\r\n")).toEqual([[0, 0, "a"], [0, 1, "b"]]);
+    expect(cut("a\n\nb")).toEqual([[0, 0, "a"], [1, 0, ""], [2, 0, "b"]]);
+  });
+
+  it("agrees with the parser on the shape of what it marks", () => {
+    const text = 'name,n\n"Smith, J",2\nLee,';
+    const rows = parseCsvRows(text, { keepBlankLines: true });
+    const spans = csvFieldSpans(text);
+    expect(spans.length).toBe(rows.reduce((m, r) => m + r.length, 0));
+    expect(Math.max(...spans.map((s) => s.row)) + 1).toBe(rows.length);
+  });
+});
 
 describe("parseCsvLine", () => {
   it("splits a plain line on commas", () => {

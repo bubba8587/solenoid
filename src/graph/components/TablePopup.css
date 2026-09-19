@@ -511,6 +511,61 @@
 .table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 .table-popup__csv[readonly] { color: var(--text); }
 
+/* COMPUTED columns' values marked in place (CsvEditor.tsx): a mirror behind the
+   textarea paints the marks, the textarea sits over it transparent. The two must
+   share every metric that places a glyph — font, size, line-height, padding, border
+   width, white-space — or the marks drift off their text. */
+.table-popup__csvwrap {
+  position: relative;
+  margin: 12px 14px;
+}
+.table-popup__csv--over {
+  position: relative;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+}
+.table-popup__csvmirror {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  padding: 8px 10px;
+  background: var(--surface-sunken);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.table-popup__csvmirror-inner {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre;
+  color: transparent;
+}
+/* The same quiet frame-violet tint a computed column's grid cells wear. */
+.table-popup__csvmark {
+  color: transparent;
+  background: color-mix(in srgb, var(--sock-frame) 22%, transparent);
+  border-radius: 2px;
+}
+.table-popup__csverror {
+  margin: -6px 14px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--sol-error);
+}
+
+/* Form view: the dot beside a COMPUTED field's label (state, so the popup's accent). */
+.table-popup__form-box-fx {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: var(--node-accent, var(--accent));
+  vertical-align: 1px;
+}
+
 /* Grid / CSV segmented toggle. */
 .table-popup__view {
   display: inline-flex;
@@ -625,6 +680,11 @@
   .table-popup__fmtbtn { height: 26px; padding: 0 7px; }
   .table-popup__colhead-input { font-size: 13px; padding: 4px 6px; }
   .table-popup__csv { font-size: 14px; margin: 10px; width: calc(100% - 20px); }
+  /* The marked CSV block: the wrapper owns the margin, and the mirror keeps the
+     textarea's metrics or its marks drift. */
+  .table-popup__csvwrap { margin: 10px; }
+  .table-popup__csv--over { margin: 0; width: 100%; }
+  .table-popup__csvmirror-inner { font-size: 14px; }
 }
 
 /* Cube popup breadcrumb — drill path through nested cubes (CubePopup). */

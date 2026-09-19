@@ -28,6 +28,7 @@ import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
 import { ColumnFormatButton, ColumnExprField } from "./columnHeadControls";
 import { CellEditAffix } from "./CellEditAffix";
+import { CsvEditor } from "./CsvEditor";
 import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
 import "./chartCards.css"; // .sol-record__img: the Form shows an image cell as the Record figure does
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
@@ -156,6 +157,7 @@ export function TablePopup() {
   // CSV keeps its own text buffer so mid-typing isn't reshaped by cell coercion.
   const [view, setView] = useState<"grid" | "csv" | "form">("grid");
   const [csvText, setCsvText] = useState("");
+  const [csvError, setCsvError] = useState<string | null>(null);
   // SOURCE = raw text, FORMATTED = derived render; on a literal-source editor BOTH
   // modes edit the same raw truth (Formatted swaps to raw text while focused).
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
@@ -264,6 +266,7 @@ export function TablePopup() {
   const computedVals = liveComputed ?? state.computedCells;
   const isComputedCol = (c: number) => colExprs[c] !== undefined;
   const hasComputed = !!computedVals && colExprs.some((e) => e !== undefined);
+  const computedColSet = new Set(colExprs.flatMap((e, c) => (e !== undefined ? [c] : [])));
   const rawAt = (r: number, c: number): string => {
     if (!hasComputed || !isComputedCol(c)) return grid[r]?.[c] ?? "";
     const v = computedVals?.[r]?.[c];
@@ -686,12 +689,21 @@ export function TablePopup() {
 
   function showCSV() {
     setCsvText(buildText(!editable));
+    setCsvError(null);
     setView("csv");
   }
   function onCsvChange(v: string) {
     setCsvText(v);
     if (!editable || formattedPreview) return;
     const rows = parseCSV(v);
+    // Computed columns are bound by INDEX, so text whose rows no longer hold one value
+    // per column would slide a formula onto the wrong data. It is refused, loudly: the
+    // table keeps its last valid state until the text fits again.
+    if (computedColSet.size > 0 && rows.some((r) => r.length !== cols)) {
+      setCsvError(`Every row needs ${cols} values, one per column. The table keeps its last valid text until they do.`);
+      return;
+    }
+    setCsvError(null);
     // Symmetric with `asText`: a header line must be parsed back OUT into headerNames,
     // else it duplicates into row 0. A column-count change invalidates every sort key.
     const body = hasHeaderLine ? rows.slice(1) : rows;
@@ -1126,7 +1138,10 @@ export function TablePopup() {
                 const image = formattedPreview && !editingHere && shown !== "" ? recordImageSrc(shown) : null;
                 return (
                   <label className="table-popup__form-box" key={key} style={at}>
-                    <span className="table-popup__form-box-label">{label}</span>
+                    <span className="table-popup__form-box-label">
+                      {computedHere && <span className="table-popup__form-box-fx" role="img" title="Computed column" aria-label="Computed column" />}
+                      {label}
+                    </span>
                     {c === -1 ? (
                       <input className="table-popup__form-box-input" value="" placeholder={hint} readOnly tabIndex={-1} />
                     ) : computedHere ? (
@@ -1205,13 +1220,15 @@ export function TablePopup() {
           </div>
         </div>
       ) : (
-        <textarea
-          className="table-popup__csv sol-popup__scroll"
+        <CsvEditor
           value={csvText}
+          onChange={onCsvChange}
           readOnly={!editable || formattedPreview}
-          spellCheck={false}
-          wrap="off"
-          onChange={(e) => onCsvChange(e.target.value)}
+          markedCols={computedColSet}
+          firstBodyRow={hasHeaderLine ? 1 : 0}
+          error={csvError}
+          // Leaving the block puts the computed values back over anything typed on them.
+          onBlur={() => { if (editable && !formattedPreview && computedColSet.size > 0 && !csvError) setCsvText(buildText(false)); }}
         />
       )}
 
