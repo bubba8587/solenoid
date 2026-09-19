@@ -1,4 +1,4 @@
-import { useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
+import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { useHangUnder } from "./columnHeadControls";
 
@@ -42,6 +42,11 @@ export function CellSuggest({ options, draft, onPick, handle }: {
   }, [options, draft, settled, showAll]);
   const open = items.length > 0;
   const style = useHangUnder(open, anchorRef, menuRef, "left", true, items.length);
+
+  // A keyboard selection past the visible rows scrolls into view.
+  useLayoutEffect(() => {
+    if (sel >= 0) menuRef.current?.children[sel]?.scrollIntoView({ block: "nearest" });
+  }, [sel]);
 
   const close = (at: string) => { setShowAll(false); setSettled(at); setSel(-1); };
   const pick = (v: string) => { onPick(v); close(v); };
