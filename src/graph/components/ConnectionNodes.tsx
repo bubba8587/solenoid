@@ -809,7 +809,8 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
           <>
             {vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
             <div className="sol-conn__vault">
-              <div className="sol-conn__note" style={{ flex: 1 }}>Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
+              {/* Which vault is a STATE: the bundled demo is a snapshot in a built app, so a Refresh re-reads the same notes. */}
+              <div className="sol-conn__note" style={{ flex: 1 }}>{isDemoVaultPath(vault) ? "Demo vault" : "Obsidian vault"}{data.folder ? ` · ${data.folder}` : ""}</div>
               {openUrl && (
                 <button
                   type="button" className="sol-conn__refresh" title={desktop ? "Open the first note in Obsidian" : "Open in Obsidian works in the desktop app"}

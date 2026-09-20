@@ -39,6 +39,12 @@ every divergence from the app are `specs/obsidian-plugin.md`; this is what is in
 - **A type switch hands a widget the OLD value.** Property menu → a type over incompatible data → "Update" calls
   `renderProperty(entry, true, true)`, the chosen widget over a value its `validate` refused; `setType` alone never
   does. `coerceYaml` reshapes it for display and edit, and nothing is written until Save. Not verified: Bases.
+- **"Refresh All Connections does nothing in the release build" was settings, not refresh.** The two desktop apps
+  keep separate settings: the release app's origin is `tauri://localhost`, the debug app's `http://localhost:1420`
+  (`~/.local/share/com.solenoid.app/localstorage/` holds one store each). A vault folder set in one is unset in the
+  other, and an unset vault falls back to the demo vault ([[D62]] demoVaultResolution), which a BUILT app bakes in
+  as a snapshot while the dev server reads it live from disk. The Vault Folder card now says "Demo vault" when that
+  is what it reads.
 - **Author rulings this session**, all recorded in the spec: `sm` chips; a popup wears its TYPE's socket color
   (no launching node to inherit from); a popup sizes to the note's pane, not the window; the list editor the app
   does not have is a fine workaround; the settings page is the app's palette row with the real `SwatchGrid` and no
