@@ -16,7 +16,7 @@ import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
 import { PROPERTY_KINDS, validateYaml, type PropertyKind } from "./yamlValue";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, syncTheme, refreshTokens, openPopupsOver } from "./shadow";
-import { KIND_ICONS } from "./icons";
+import { CUSTOM_ICONS, SHAPE_ICON } from "./icons";
 
 /** What Obsidian hands a property widget (read from the 1.13 source; not in the public API). */
 interface WidgetContext {
@@ -49,7 +49,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     const data = ((await this.loadData()) ?? {}) as PluginData;
     if (data.palette) paletteStore.setActiveBase(data.palette as PaletteName);
 
-    for (const [id, svg] of Object.entries(KIND_ICONS)) addIcon(id, svg);
+    for (const [id, svg] of Object.entries(CUSTOM_ICONS)) addIcon(id, svg);
     const widgets = this.typeManager().registeredTypeWidgets;
     for (const kind of PROPERTY_KINDS) widgets[kind.id] = this.widgetFor(kind);
 
@@ -120,7 +120,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   private widgetFor(kind: PropertyKind): PropertyWidget {
     return {
       type: kind.id,
-      icon: `solenoid-${kind.shape}`,
+      icon: SHAPE_ICON[kind.shape],
       name: () => kind.name,
       validate: (value) => validateYaml(kind, value),
       render: (el, value, ctx) => {
