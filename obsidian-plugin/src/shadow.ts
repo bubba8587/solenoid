@@ -1,0 +1,94 @@
+// [[C107]] obsidianPlugin
+import { themeVars, type ThemeMode } from "../../src/graph/appTheme";
+
+/** The app's component CSS, `:root` rewritten to `:host`; filled in by the build. */
+declare const __SOLENOID_CSS__: string;
+
+const ACCENT_SLOT = "gold";
+
+const hosts = new Set<HTMLElement>();
+let sheets: CSSStyleSheet[] | null = null;
+let layer: HTMLElement | null = null;
+
+function tokenBlock(selector: string, mode: ThemeMode): string {
+  const lines = Object.entries(themeVars(ACCENT_SLOT, mode))
+    .filter((e): e is [string, string] => e[1] !== null)
+    .map(([name, value]) => `${name}:${value};`);
+  return `${selector}{${lines.join("")}}`;
+}
+
+function styleSheets(): CSSStyleSheet[] {
+  if (sheets) return sheets;
+  // Obsidian's inherited text styles stop at the host; the app's own follow.
+  const reset = new CSSStyleSheet();
+  reset.replaceSync(":host{all:initial}");
+  const app = new CSSStyleSheet();
+  app.replaceSync(__SOLENOID_CSS__);
+  sheets = [reset, app, new CSSStyleSheet()];
+  refreshTokens();
+  return sheets;
+}
+
+/** Rewrite the palette-derived tokens; the sheet is shared, so every host retints at once. */
+export function refreshTokens(): void {
+  if (!sheets) return;
+  sheets[2].replaceSync(
+    `${tokenBlock(":host", "dark")}${tokenBlock(':host([data-theme="light"])', "light")}` +
+    ":host{color:var(--text);color-scheme:dark}:host([data-theme=\"light\"]){color-scheme:light}",
+  );
+}
+
+function obsidianMode(): ThemeMode {
+  return document.body.classList.contains("theme-light") ? "light" : "dark";
+}
+
+/** A host element whose shadow root carries the app's styles and tokens. */
+export function createShadowHost(tag: "span" | "div", className: string): { host: HTMLElement; root: ShadowRoot } {
+  const host = document.createElement(tag);
+  host.className = className;
+  host.dataset.theme = obsidianMode();
+  const root = host.attachShadow({ mode: "open" });
+  root.adoptedStyleSheets = styleSheets();
+  hosts.add(host);
+  return { host, root };
+}
+
+export function releaseShadowHost(host: HTMLElement): void {
+  hosts.delete(host);
+}
+
+/** Obsidian fires `css-change` on a light/dark switch. */
+export function syncTheme(): void {
+  const mode = obsidianMode();
+  for (const host of hosts) {
+    if (!host.isConnected && host !== layer) hosts.delete(host);
+    else host.dataset.theme = mode;
+  }
+}
+
+function popupLayer(): ShadowRoot {
+  if (!layer) {
+    const made = createShadowHost("div", "solenoid-popup-layer");
+    layer = made.host;
+    made.root.append(document.createElement("div"), document.createElement("div"));
+    document.body.appendChild(layer);
+  }
+  return layer.shadowRoot!;
+}
+
+/** The one fixed layer the popups render into. */
+export function popupLayerRoot(): HTMLElement {
+  return popupLayer().children[0] as HTMLElement;
+}
+
+/** Where a body-aimed portal (a cell's suggestion list) lands: beside the popups, above them. */
+export function popupPortalRoot(): HTMLElement {
+  return popupLayer().children[1] as HTMLElement;
+}
+
+export function removePopupLayer(): void {
+  if (!layer) return;
+  releaseShadowHost(layer);
+  layer.remove();
+  layer = null;
+}

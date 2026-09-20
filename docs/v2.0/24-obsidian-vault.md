@@ -63,8 +63,9 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
 
 The vault is the author's database and TaskNotes is its tracker. Solenoid **computes over**
 the vault and writes results back as properties or blocks; it never stores, tracks, or renders
-a kanban (`../out-of-scope.md` §5, §8). No Obsidian plugin: every touchpoint is a file, a local
-HTTP port, or a URI. A reader emits **one `cube`** (a folder of notes IS records whose fields
+a kanban (`../out-of-scope.md` §5, §8). Every computing touchpoint is a file, a local HTTP port,
+or a URI; the one Obsidian plugin (author 2026-09-20, [[C107]] obsidianPlugin) only shows and edits
+Solenoid's container values as properties, and computes nothing. A reader emits **one `cube`** (a folder of notes IS records whose fields
 can be lists or sub-tables); the row verbs take cubes (A′), so filtering and sorting notes
 never needs a flattening step; writers take a cube; a sink's preview is a `plan` frame.
 

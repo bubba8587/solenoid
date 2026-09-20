@@ -50,6 +50,12 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
+- [ ] **Solenoid Properties plugin follow-ups** ([[C107]] obsidianPlugin): (1) the note reader types
+  no matrix yet: a sequence of sequences reads as a text list, so `noteFrontmatter.ts` and
+  `FIELD_SOCKETS` need the `table` family rungs ([[D16]] retypeReconciles applies); (2)
+  `obsidianTypes.ts` should map the `solenoid-*` ids in `types.json` to their `TypeHint`; (3) Bases
+  table cells still show raw YAML for these properties; (4) a complex scalar has no property type;
+  (5) publishing (a release zip, the community-plugin listing) is the author's call.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a

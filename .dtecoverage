@@ -27,6 +27,7 @@ src-tauri/.gitignore
 src-tauri/.cargo
 src-tauri/capabilities
 packages/*/package.json
+obsidian-plugin/manifest.json
 public/robots.txt
 public/sitemap.xml
 

@@ -6,6 +6,29 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-20b — Solenoid Properties, the Obsidian plugin; author present)
+
+On `develop`, not pushed. tsc + vitest green. The rule is [[C107]] obsidianPlugin; this is what is not in it.
+- **Build and try:** `npm run plugin:build` (or `plugin:dev` to watch) writes `main.js`, `styles.css` and
+  `manifest.json` into `demo-vault/.obsidian/plugins/solenoid-properties/`; reload Obsidian after a build. The test
+  note is `demo-vault/Solenoid/Property types.md`; its keys are typed in `.obsidian/types.json`.
+- **Obsidian's property-widget API is undocumented.** Read from the 1.13.7 `app.js`: a widget is
+  `{type, icon, name(), validate(value), render(el, value, ctx)}` in `app.metadataTypeManager.registeredTypeWidgets`,
+  `ctx` is `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. Obsidian never
+  calls `render` when `validate` fails (it warns and shows the inferred type), skips re-rendering a focused property
+  (the chip keeps its own state for that), and turns an empty list into null on save.
+- **What Shadow DOM cost:** a click-outside handler must read `composedPath()[0]` (the target is the host), a portal
+  aimed at `document.body` is redirected into the popup layer (`shims/reactDom.ts`, app code only: react-dom/client
+  needs the real module), and `@font-face` has to live in the document, so the fonts ride `styles.css` as data URIs.
+- **Cutting the bundle** (693 modules to about 190, `main.js` 450 KB): the shims, plus three app-side import fixes
+  that stand on their own. `useHeaderHeightVar` and the Record layout helpers (`recordLayout.ts`) moved out of files
+  that import every node class, and date formatting imports `nodes/dateSerial`, not `nodes/date`.
+- **Found on the way:** the note reader dropped a cube row whose value is a table (it read the key as a text list);
+  `readRow` now nests. A YAML boolean column infers as Number through `frameFromRecords`, so the plugin types a
+  frame from the cell text instead.
+- Verified headless against a fake `obsidian` module (load, 12 chips, each popup, Save round trip, palette switch,
+  unload), with hostile page CSS to prove nothing leaks in. Not verified by me: the real Obsidian property row, Bases.
+
 ### SESSION DIGEST (2026-09-20 — the dev machine is Linux; author present, local dev)
 
 On `develop`, not pushed. tsc + vitest + `cargo check` are green on Linux as they stood.

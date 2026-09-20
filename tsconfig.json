@@ -25,6 +25,6 @@
       "@solenoid/gantt-react": ["./packages/gantt-react/src/index.ts"]
     }
   },
-  "include": ["src", "tests", "packages"],
+  "include": ["src", "tests", "packages", "obsidian-plugin/src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -25,6 +25,10 @@ This file is the map.
 │                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
 ├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
 │                             #     schedule-engine, gantt-layout, gantt-react (packages/README.md)
+├── obsidian-plugin/          # Solenoid Properties, the Obsidian plugin ([[C107]] obsidianPlugin): the real
+│                             #     chips + popups behind the shims in src/shims/, in Shadow DOM. `npm run
+│                             #     plugin:build` writes it into demo-vault/.obsidian/plugins/solenoid-properties/
+│                             #     (ignored); src/yamlValue.ts is the pure YAML ⇄ value mapping
 ├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
 │                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
 │                             #     dev server: undo position fidelity, socketBox12's rendering half, a

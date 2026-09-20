@@ -1,0 +1,13 @@
+/* The shadow hosts, as Obsidian's document sees them; everything inside is the app's own CSS. */
+.solenoid-property-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--size-4-1);
+}
+
+.solenoid-settings-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--size-4-2);
+  padding: var(--size-4-3) 0;
+}

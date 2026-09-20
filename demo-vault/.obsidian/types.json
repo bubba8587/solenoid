@@ -9,6 +9,18 @@
     "author": "text",
     "started": "date",
     "finished": "date",
-    "aliases": "aliases"
+    "aliases": "aliases",
+    "cssclasses": "multitext",
+    "tags": "tags",
+    "sessions": "solenoid-cube",
+    "readings": "solenoid-list",
+    "crew": "solenoid-strlist",
+    "milestones": "solenoid-datelist",
+    "signed_off": "solenoid-logicallist",
+    "impedance": "solenoid-complexlist",
+    "grid": "solenoid-table",
+    "budget": "solenoid-frame",
+    "phases": "solenoid-cube",
+    "table": "solenoid-frame"
   }
 }
