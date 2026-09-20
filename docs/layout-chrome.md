@@ -139,12 +139,17 @@ platform; who draws minimize / maximize / close differs:
   within 5px of an edge but never changes the cursor, so `WindowControls.tsx` portals eight `.solenoid-wingrip`
   strips to `body` (5px edges, 10px corners, z-index 10000, resize cursors) that call `startResizeDragging`; they
   unmount while the window is maximized or fullscreen. They claim the same 5px the native handler already takes.
-- **Linux runs WebKitGTK with compositing mode off** (`lib.rs` sets `WEBKIT_DISABLE_COMPOSITING_MODE=1` before GTK
-  starts, unless the variable is already set; `=0` opts back in). With compositing on, WebKitGTK rasterizes a GPU
-  layer at 1x and stretches the bitmap by the viewport's `scale()`, and its overlap rule pulls every node, cable and
-  grid dot onto such a layer, so zooming in pixelates the whole canvas. Off, the page paints in one pass at the
-  real scale. The cost is CPU painting on pan and zoom. **Reopen if** WebKitGTK rasterizes layers at their
-  transformed scale, or pan / zoom on a large graph gets too slow on Linux.
+- **On Linux nothing inside a node may become a GPU layer** (`src-tauri/src/linux_webview.rs`, called from
+  `lib.rs`). WebKitGTK rasterizes a compositor layer at 1x and stretches the bitmap by the viewport's `scale()`,
+  and a transformed element with ANY composited descendant must itself become a layer, so one promoted box inside
+  one node puts the whole React Flow viewport on a stretched layer and zooming in pixelates the canvas. The two
+  things that promoted node content are switched off: the `AsyncOverflowScrolling` feature (every scrollable box
+  in a node) and 2D canvas acceleration (the canvas-drawn charts). GPU compositing itself stays on, so the canvas
+  paints into the root layer's tiles at the real scale. The blunt alternative, `WEBKIT_DISABLE_COMPOSITING_MODE=1`,
+  also fixes it but moves all painting to the CPU. **A new trigger reintroduces the blur**: `will-change`,
+  `translateZ` / 3D transforms, `<video>`, WebGL, or `position: fixed` inside a node; check with
+  `WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS=1` (a green box around the graph is the viewport layer). **Reopen if**
+  WebKitGTK rasterizes layers at their transformed scale.
 - **A debug build is marked on the window itself:** `lib.rs` sets the bug-badged icon under
   `cfg(debug_assertions)`, from `src-tauri/icons/debug/icon.rgba` (raw RGBA, so no PNG decoder ships; `scripts/debug-icon.mjs` regenerates it from
   `icons/icon.png`). Release builds never carry it. The two pin to the panel as separate apps

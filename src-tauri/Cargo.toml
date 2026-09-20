@@ -56,6 +56,10 @@ polars = { version = "0.46", default-features = false, features = ["lazy", "stri
 # `polars`/`polars-lazy`, so this doesn't add a second copy of the dependency.
 polars-plan = { version = "0.46", default-features = false }
 
+# linux_webview.rs; already in the dep tree via wry.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"
+
 # Windows 11 DWM: set the window's border color (DWMWA_BORDER_COLOR) to the app
 # accent so the focused-window frame matches the theme. Already in the dep tree via
 # tauri; the Dwm + Foundation features expose the one call we need.

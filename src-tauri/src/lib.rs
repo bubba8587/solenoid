@@ -5,6 +5,8 @@ use tauri_plugin_decorum::WebviewWindowExt;
 
 mod engine;
 mod ipc;
+#[cfg(target_os = "linux")]
+mod linux_webview;
 
 /// Open the webview devtools for the calling window. Reachable from the F12 /
 /// Ctrl+Shift+I hotkey in the web layer. Available because the `tauri` crate is
@@ -53,11 +55,6 @@ fn toggle_fullscreen(window: tauri::WebviewWindow) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // linux shim for crisp canvas zoom (docs/layout-chrome.md)
-    #[cfg(target_os = "linux")]
-    if std::env::var_os("WEBKIT_DISABLE_COMPOSITING_MODE").is_none() {
-        std::env::set_var("WEBKIT_DISABLE_COMPOSITING_MODE", "1");
-    }
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_fs::init())
@@ -74,6 +71,8 @@ pub fn run() {
             // linux shim for window controls (docs/layout-chrome.md)
             #[cfg(target_os = "linux")]
             main_window.set_decorations(false)?;
+            #[cfg(target_os = "linux")]
+            main_window.with_webview(|wv| linux_webview::keep_nodes_off_gpu_layers(&wv.inner()))?;
             // debug builds wear the bug icon
             #[cfg(debug_assertions)]
             main_window.set_icon(tauri::image::Image::new(
