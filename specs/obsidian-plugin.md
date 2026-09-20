@@ -26,8 +26,11 @@ frame and the cube. The type id is `solenoid-` plus the socket variant, so
 | `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
-**A settings page** with the app's Color palette choice (the built-in palettes) over a live row
-of one chip per type. The choice persists in the plugin's `data.json`.
+**A settings page** with the app's Color palette choice (the built-in palettes), persisted in
+the plugin's `data.json`, then a Property types list: each type's name as Obsidian's type menu
+shows it, beside a live chip. Its only sentence is "Values stay plain YAML in the note." The
+manifest description is one sentence naming the four shapes. Both follow DESIGN.md § 7: the list
+and the chips carry the information, so no string explains how to use them.
 
 **Everything the popups do without a graph:** cell and header editing, add and remove rows and
 columns, the column type cycle, visual sort, the CSV view, Copy, Copy as Markdown, Export CSV,
@@ -96,7 +99,8 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 | A column's format pick persists on the node and flows downstream ([[D41]] formatFlowsDownstream) | The pick restyles the open popup and is gone on close | There is no node to hold it and no downstream to flow to | A per-property place to store it that Solenoid also reads |
 | The popup header pins the node to the HUD and flies to its card | Neither button | No node, no canvas | Nothing planned |
 | Frame Input's Form view follows a Record layout authored on the card | The Form view is always the stacked default | There is no card to author the layout on | A layout key beside the property |
-| A list has no popup editor: List Input's rows on the card are the only editor, and its chip opens view-only (`specs/literal-input-editors.md`) | A list property opens as a one-column raw grid with Save | There is no card to type rows on, and a chip that cannot edit would make the type read-only. The grid is Table Input's, with the column count fixed (`fixedCols`) | A list editor in the app, which the plugin would then adopt |
+| A value popup wears its launching node's accent, and its type's socket color only when no node hosts it (DESIGN.md, the Nearest-Accent Rule) | Every popup wears its value TYPE's socket color: `--sock-list` … `--sock-logicaltable`, `--sock-frame`, `--sock-cube` (author 2026-09-20) | There is no launching node. The chip passes the color as a resolved hex for the current palette and mode (`tokenHex`), because the filled Save button's ink and the light-mode border derive from a hex, and re-renders when either moves. A numeric chip itself stays `--sock-number`, as the app's chip CSS has it | Nothing planned |
+| A list has no popup editor: List Input's rows on the card are the only editor, and its chip opens view-only (`specs/literal-input-editors.md`) | A list property opens as a one-column raw grid with Save (author 2026-09-20: a fine workaround) | There is no card to type rows on, and a chip that cannot edit would make the type read-only. The grid is Table Input's, with the column count fixed (`fixedCols`) | A list editor in the app, which the plugin would then adopt |
 | A frame's column types are declared by its source | Column types are inferred from the cell text each time the editor opens (`frameSourceFromYaml`) | YAML rows carry no column types. A YAML `true` column types as Boolean here; the app's `frameFromRecords` would make it Number | A schema beside the property (mdbase is the likely one, [[C67]] mdbaseCeiling) |
 | A cell can hold a `SolError` that flows on | A cell the family cannot read saves as missing (`null`) | An error is a computed result, and nothing computes here | Nothing planned |
 | A frame may be a lazy engine handle with a head-N preview (Polars on desktop) | Always an eager value | A property is small and already parsed | Nothing planned |

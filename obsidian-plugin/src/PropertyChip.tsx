@@ -1,6 +1,7 @@
 // [[C107]] obsidianPlugin
-import { useRef, useState } from "react";
-import { ArrayChip } from "../../src/graph/components/ArrayChip";
+import { useRef, useState, useSyncExternalStore } from "react";
+import { ArrayChip, arrayAccentFor } from "../../src/graph/components/ArrayChip";
+import { themeVersion, tokenHex } from "./shadow";
 import { FrameChip } from "../../src/graph/components/FrameChip";
 import { CubeChip } from "../../src/graph/components/CubeChip";
 import { deriveFrame, recordsToCube } from "../../src/graph/frame";
@@ -11,6 +12,15 @@ import {
 } from "./yamlValue";
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
+
+/** A popup here wears its value TYPE's socket color: there is no launching node to inherit from. */
+function typeAccent(kind: PropertyKind): string | undefined {
+  const token =
+    kind.shape === "frame" ? "--sock-frame"
+    : kind.shape === "cube" ? "--sock-cube"
+    : arrayAccentFor(kind.family, kind.shape === "matrix").replace(/^var\(|\)$/g, "");
+  return tokenHex(token);
+}
 
 export function PropertyChip({ kind, label, initial, onChange }: {
   kind: PropertyKind;
@@ -27,6 +37,8 @@ export function PropertyChip({ kind, label, initial, onChange }: {
     onChange(next);
   };
   const items = Array.isArray(yaml) ? yaml : [];
+  useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
+  const accent = typeAccent(kind);
 
   if (kind.shape === "list") {
     const family = kind.family!;
@@ -35,6 +47,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
         value={listFromYaml(items, family)}
         label={label}
         size="sm"
+        accent={accent}
         elem={family}
         popupOverrides={{
           data: items.length ? items.map((v) => [rawCell(v)]) : [[""]],
@@ -56,6 +69,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
         value={rows.length ? rows : [[null]]}
         label={label}
         size="sm"
+        accent={accent}
         elem={family}
         popupOverrides={{
           data: raw.length ? raw : [[""]],
@@ -73,6 +87,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
         value={deriveFrame(source)}
         label={label}
         size="sm"
+        accent={accent}
         source={source}
         onSaveSource={(columns) => commit(frameSourceToYaml(columns))}
         popupOverrides={{ unitTaggable: false, noFormulaColumns: true }}
@@ -85,6 +100,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
       value={recordsToCube(items as YamlRecord[])}
       label={label}
       size="sm"
+      accent={accent}
       edit={{
         records: () => (Array.isArray(latest.current) ? (latest.current as CubeRecord[]) : []),
         save: (records) => commit(records),

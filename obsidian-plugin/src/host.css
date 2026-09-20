@@ -5,9 +5,18 @@
   padding: 0 var(--size-4-1);
 }
 
-.solenoid-settings-preview {
+/* The settings page's type list: Obsidian's chrome, so Obsidian's tokens. */
+.solenoid-settings-types {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--size-4-1) var(--size-4-6);
+  padding: var(--size-4-2) 0;
+}
+
+.solenoid-settings-type {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--size-4-2);
-  padding: var(--size-4-3) 0;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
 }

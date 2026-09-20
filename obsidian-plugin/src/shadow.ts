@@ -36,6 +36,28 @@ export function refreshTokens(): void {
     `${tokenBlock(":host", "dark")}${tokenBlock(':host([data-theme="light"])', "light")}` +
     ":host{color:var(--text);color-scheme:dark}:host([data-theme=\"light\"]){color-scheme:light}",
   );
+  bumpTheme();
+}
+
+// A popup's ink and light-mode border derive from a HEX, so a chip resolves its type color
+// here and re-renders when the palette or Obsidian's mode moves.
+let themeTick = 0;
+const themeListeners = new Set<() => void>();
+function bumpTheme(): void {
+  themeTick++;
+  for (const listener of themeListeners) listener();
+}
+export const themeVersion = {
+  subscribe(listener: () => void): () => void {
+    themeListeners.add(listener);
+    return () => themeListeners.delete(listener);
+  },
+  get: (): number => themeTick,
+};
+
+/** A token's value (`--sock-strlist`) under the current palette and Obsidian mode. */
+export function tokenHex(name: string): string | undefined {
+  return themeVars(ACCENT_SLOT, obsidianMode())[name] ?? undefined;
 }
 
 function obsidianMode(): ThemeMode {
@@ -64,6 +86,7 @@ export function syncTheme(): void {
     if (!host.isConnected && host !== layer) hosts.delete(host);
     else host.dataset.theme = mode;
   }
+  bumpTheme();
 }
 
 function popupLayer(): ShadowRoot {

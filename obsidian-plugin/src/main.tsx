@@ -137,13 +137,20 @@ class SolenoidSettingTab extends PluginSettingTab {
     containerEl.empty();
     new Setting(containerEl)
       .setName("Color palette")
-      .setDesc("Colors the chips and their editors, as the same setting does in Solenoid.")
       .addDropdown((dropdown) => {
         for (const name of paletteStore.names()) dropdown.addOption(name, name);
         dropdown.setValue(paletteStore.activeBase());
         dropdown.onChange((name) => void this.plugin.setPalette(name as PaletteName));
       });
-    const preview = containerEl.createDiv({ cls: "solenoid-settings-preview" });
-    for (const kind of PROPERTY_KINDS) this.plugin.mountChip(preview, kind, kind.name, previewValue(kind), () => {});
+    new Setting(containerEl)
+      .setName("Property types")
+      .setDesc("Values stay plain YAML in the note.")
+      .setHeading();
+    const types = containerEl.createDiv({ cls: "solenoid-settings-types" });
+    for (const kind of PROPERTY_KINDS) {
+      const row = types.createDiv({ cls: "solenoid-settings-type" });
+      row.createSpan({ text: kind.name });
+      this.plugin.mountChip(row, kind, kind.name, previewValue(kind), () => {});
+    }
   }
 }
