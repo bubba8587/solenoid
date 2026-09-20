@@ -1,5 +1,6 @@
 // [[C16]] polarsEngine
 use tauri::Manager;
+#[cfg(not(target_os = "linux"))]
 use tauri_plugin_decorum::WebviewWindowExt;
 
 mod engine;
@@ -63,7 +64,21 @@ pub fn run() {
             // controls + Windows Snap retained). The bar is styled in the web layer
             // (themed to the accent); see TopBar / decorum CSS.
             let main_window = app.get_webview_window("main").unwrap();
+            #[cfg(not(target_os = "linux"))]
             main_window.create_overlay_titlebar().unwrap();
+            // Linux: decorum keeps the native bar, can inject its controls twice and
+            // builds a dead minimize from GNOME's button-layout, so the window goes
+            // undecorated and the web layer draws the controls (WindowControls.tsx).
+            #[cfg(target_os = "linux")]
+            main_window.set_decorations(false)?;
+            // A debug build wears the bug-badged icon (scripts/debug-icon.mjs, raw RGBA
+            // so no PNG decoder ships) so it can't be mistaken for the release app.
+            #[cfg(debug_assertions)]
+            main_window.set_icon(tauri::image::Image::new(
+                include_bytes!("../icons/debug/icon.rgba"),
+                256,
+                256,
+            ))?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

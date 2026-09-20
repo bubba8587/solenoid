@@ -12,6 +12,7 @@ import { CableShapeSelector } from "./CableShapeSelector";
 import { useGridSnap } from "./gridSnapStore";
 import { buildMenus, type MenuItem } from "./menuModel";
 import { commandRecents } from "./commandRecents";
+import { OWN_WINDOW_CONTROLS, WindowControls } from "./WindowControls";
 import "./MenuBar.css";
 
 /** Renders only — the MODEL lives in `menuModel.ts`, shared with the Command Palette
@@ -101,6 +102,7 @@ export function MenuBar() {
       <div className="solenoid-menubar__center">
         <DocumentTitle />
       </div>
+      {OWN_WINDOW_CONTROLS && <WindowControls />}
 
       {mobileOpen && (
         <div className="solenoid-menubar__sheet">
