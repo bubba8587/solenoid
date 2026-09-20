@@ -1,0 +1,121 @@
+<!-- [[C107]] obsidianPlugin, [[B3]] sameNodeEverywhere, [[B1]] obsidianBet; covers: obsidian-plugin/vite.config.ts, obsidian-plugin/src/*.ts, obsidian-plugin/src/*.tsx, obsidian-plugin/src/shims/*.ts -->
+
+# Spec: Solenoid Properties (the Obsidian plugin)
+
+Serves [[C107]] obsidianPlugin. The plugin adds every Solenoid object type that YAML can hold to
+Obsidian's properties: each one shows as the app's chip and opens the app's popup editor, and the
+note keeps plain YAML. This spec is what the plugin has, how it is built, and every place it
+differs from the full app. A divergence lives here under the rule it bends, with what would remove
+it ([[C5]] exceptionsUnderRule).
+
+## What it has
+
+**Twelve property types.** One per container rung of the socket lattice
+(`specs/socket-lattice.md`): the list and the matrix of each of the five element families, the
+frame and the cube. The type id is `solenoid-` plus the socket variant, so
+`.obsidian/types.json` names a socket by identity; the name is the socket legend's.
+
+| Type id | Name in Obsidian | YAML in the note | Chip | Editor |
+|---|---|---|---|---|
+| `solenoid-list` | Numeric List | sequence of numbers | `[N× List]` | one-column raw grid |
+| `solenoid-strlist` | String List | sequence of text | same, string tint | same |
+| `solenoid-datelist` | Date List | sequence of ISO dates | same, date tint | same |
+| `solenoid-complexlist` | Complex List | sequence of `a+bi` text | same, complex tint | same |
+| `solenoid-logicallist` | Boolean List | sequence of `true` / `false` | same, logical tint | same |
+| `solenoid-table`, `-strtable`, `-datetable`, `-complextable`, `-logicaltable` | Numeric / String / Date / Complex / Boolean Matrix | sequence of sequences | `[R×C Table]` in the family's matrix shade | Table Input's raw grid |
+| `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
+| `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
+
+**A settings page** with the app's Color palette choice (the built-in palettes) over a live row
+of one chip per type. The choice persists in the plugin's `data.json`.
+
+**Everything the popups do without a graph:** cell and header editing, add and remove rows and
+columns, the column type cycle, visual sort, the CSV view, Copy, Copy as Markdown, Export CSV,
+the summary footer and its per-column stat, freeze header, the resize grip, the cube breadcrumb
+and drill levels, Escape semantics.
+
+## Requirements
+
+1. **The chips and popups are the app's components, never redrawn** ([[B3]] sameNodeEverywhere).
+   `PropertyChip.tsx` renders `ArrayChip`, `FrameChip` and `CubeChip`; `main.tsx` mounts
+   `TablePopup` and `CubePopup` once. A look or behaviour the plugin needs that the component
+   lacks becomes a prop or a popup-state field on the component (`FrameChip`'s `popupOverrides`,
+   `TablePopupState.noFormulaColumns`), never a fork.
+2. **The seam to the graph is a list of module swaps.** The `SHIMMED` map in
+   `obsidian-plugin/vite.config.ts` replaces, at build time, each app module that reaches the
+   graph with a file in `src/shims/`: `persistence`, `process`, `fileBridge`, `frameBackend`,
+   `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`. A shim may only stand in for something
+   that cannot happen in a note (no node to fly to, no editor to ask, no formula to tokenize); a
+   shim that would change what a bundled component draws is refused, and the component gets a
+   real seam under requirement 1. `PLUGIN_REPORT=1 npm run plugin:build` writes what the bundle
+   pulled in; `PLUGIN_TRACE=<path,…>` adds the import chain to each named module.
+3. **Every chip and the one popup layer render in Shadow DOM** (`shadow.ts`), because Obsidian
+   and its themes style bare `button`, `input`, `select` and checkboxes. The build moves
+   `@font-face` rules into `styles.css` (a font registers only from the document) and hands the
+   rest of the bundled CSS to the shadow roots as a string with `:root` rewritten to `:host`. The
+   plugin never writes to `<html>`, to `document.body`'s styles, or to an Obsidian variable.
+4. **Tokens come from the app's own theme code.** `themeVars()` in `appTheme.ts` yields the
+   socket colors, accent, error red and chrome ramp for a mode; `shadow.ts` writes both modes into
+   one shared sheet, and each host's `data-theme` follows Obsidian's `theme-light` / `theme-dark`
+   on `css-change`. A palette change rewrites that one sheet, so every open chip retints.
+5. **A portal aimed at `document.body` lands in the popup layer** (`shims/reactDom.ts`, applied
+   to app source only; `react-dom/client` keeps the real module). A click-outside test in a
+   bundled component reads `composedPath()[0]`, since a shadow root retargets `event.target`.
+6. **A property is plain YAML, and the mapping is pure** (`yamlValue.ts`, no DOM, no Obsidian;
+   `tests/obsidianPlugin/yamlValue.test.ts`). Dates are ISO text in the note and serials inside
+   the components. Opening and saving an untouched value writes back the same YAML. Every row of
+   a saved frame carries every key, a missing cell as `null`. What the plugin writes, Solenoid's
+   note reader (`noteFrontmatter.ts`) reads as the same type; the one open gap is listed below.
+7. **`validate` checks shape, and family inside a list or matrix.** Obsidian never calls a
+   widget's `render` on a value its `validate` refuses; it shows its own mismatch warning and
+   the inferred type. So `render` may assume the shape, and a wrong shape is Obsidian's to report.
+8. **The chip owns its value between Obsidian's renders.** Obsidian skips re-rendering a focused
+   property, so `PropertyChip` keeps the edited YAML in state and the cube editor's records seam
+   reads the latest commit. A chip whose host left the document is unmounted at the next mount.
+9. **The plugin leaves nothing behind.** `onunload` removes the twelve widgets, closes both
+   popups, unmounts every root and removes the popup layer.
+10. **Obsidian's widget API is undocumented and read from its source** (1.13.7): a widget is
+    `{type, icon, name(), validate(value), render(el, value, ctx)}` in
+    `app.metadataTypeManager.registeredTypeWidgets`, `ctx` is
+    `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. The
+    plugin touches nothing else private.
+
+## Divergences from the full app
+
+Each row is a deliberate difference. "Removes it" is what would have to exist for the row to go.
+
+| In the app | In Obsidian | Why | Removes it |
+|---|---|---|---|
+| The Special sockets `lambda`, `chart`, `document` are values with chips | No property type | They are identity-only values with no data form: a function, a rendered figure, a whole note. YAML cannot hold one | A text form for the value that Solenoid reads back as the same object |
+| The Any ladder (`any` … `trueany`) types a port that takes whatever arrives | No property type | A wildcard carries no element family, and a property type is a declaration of family. An untyped key is already Obsidian's default | Nothing planned |
+| Scalars (`number`, `string`, `date`, `logical`) are socket variants | Obsidian's native Number, Text, Date and Checkbox hold them | A second Number type would only compete with the native one | Nothing planned |
+| `complex` scalar | No property type; it reads as Text | The app has no chip or popup for a scalar, so there is nothing to bring | A complex-scalar control in the app (`docs/backlog.md`) |
+| Combo rungs (`numlist`, `strcombo` …) describe a port whose rank follows its input | No property type | A stored value has one rank; a property is a list or it is not | Nothing planned |
+| A frame column can be computed (Fx) from a row formula, and can call a wired λ by socket name | The type cycle stops at Boolean; no Fx, no λ list (`noFormulaColumns`) | No formula engine, no sockets and no wired functions in a note. Bundling the engine would roughly double `main.js` for a column that would still have nothing to reference | A reason to compute inside a note that Solenoid's write-back does not already cover |
+| A numeric column or matrix can be tagged with a unit that rides the value | No unit control | YAML holds the number alone; a unit would be a second key or a text convention, and the reader knows neither | A unit spelling in frontmatter that `noteFrontmatter.ts` reads |
+| A column's format pick persists on the node and flows downstream ([[D41]] formatFlowsDownstream) | The pick restyles the open popup and is gone on close | There is no node to hold it and no downstream to flow to | A per-property place to store it that Solenoid also reads |
+| The popup header pins the node to the HUD and flies to its card | Neither button | No node, no canvas | Nothing planned |
+| Frame Input's Form view follows a Record layout authored on the card | The Form view is always the stacked default | There is no card to author the layout on | A layout key beside the property |
+| A list has no popup editor: List Input's rows on the card are the only editor, and its chip opens view-only (`specs/literal-input-editors.md`) | A list property opens as a one-column raw grid with Save | There is no card to type rows on, and a chip that cannot edit would make the type read-only. The grid is Table Input's, with the column count fixed (`fixedCols`) | A list editor in the app, which the plugin would then adopt |
+| A frame's column types are declared by its source | Column types are inferred from the cell text each time the editor opens (`frameSourceFromYaml`) | YAML rows carry no column types. A YAML `true` column types as Boolean here; the app's `frameFromRecords` would make it Number | A schema beside the property (mdbase is the likely one, [[C67]] mdbaseCeiling) |
+| A cell can hold a `SolError` that flows on | A cell the family cannot read saves as missing (`null`) | An error is a computed result, and nothing computes here | Nothing planned |
+| A frame may be a lazy engine handle with a head-N preview (Polars on desktop) | Always an eager value | A property is small and already parsed | Nothing planned |
+| A chip is `md` in a value box and `sm` in a result box | Always `sm` | Author's ruling 2026-09-20: `md` overpowers a property row | The author's word |
+| Accent and palette follow the app setting and the open document's palette pin | Accent is the brand gold; palette is the plugin's own setting | No document, and Obsidian's accent is not a palette slot | A setting for the accent |
+| Light or dark follows the app's own toggle | Follows Obsidian's | The note is Obsidian's surface | Nothing planned |
+| Export CSV opens the desktop save dialog | The web build's download path | No Tauri bridge in Obsidian | Nothing planned |
+
+## Out of scope
+
+Computing anything. Reading or writing a note's body. Bases table cells (they show raw YAML for
+these keys). Publishing to the community-plugin list. Mobile is untested: `isDesktopOnly` is
+false because nothing in the bundle needs Electron, and that is all it claims.
+
+## Gaps
+
+- **Solenoid's reader types no matrix.** A sequence of sequences reads as a text list, so a
+  matrix the plugin writes does not yet arrive in Solenoid as a `table` rung (`docs/backlog.md`).
+- `obsidianTypes.ts` does not yet map the `solenoid-*` ids in `types.json` to a `TypeHint`.
+
+A builder that finds this spec silent stops that part and runs
+`python tools/dte.py gap specs/obsidian-plugin.md --title "..." --by <name>`; it never improvises.

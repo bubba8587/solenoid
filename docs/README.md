@@ -175,7 +175,7 @@ results get retried and settled rulings relapse.
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `layout-chrome.md` |
 | `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `layout-chrome.md` § Desktop window frame |
-| `obsidian-plugin/**` | [[C107]] obsidianPlugin (`python tools/dte.py show C107`) |
+| `obsidian-plugin/**` | `../specs/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[C107]] obsidianPlugin |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[D17]] relaysTransparent; `../specs/conduit-lane-faces.md` |
 
 ## Task → docs cheat-sheet

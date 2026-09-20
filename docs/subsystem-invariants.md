@@ -118,3 +118,7 @@ glob; a file the glob matches is built to that spec and cites nothing class-wide
 
 `../specs/script-sandbox.md`.
 
+## Solenoid Properties, the Obsidian plugin (`obsidian-plugin/`, 2026-09-20)
+
+`../specs/obsidian-plugin.md`.
+
