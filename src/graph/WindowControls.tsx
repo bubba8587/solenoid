@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { isDesktop } from "./fileBridge";
 import "./WindowControls.css";
 
@@ -14,14 +15,19 @@ const Glyph = ({ d }: { d: string }) => (
   </svg>
 );
 
+const GRIPS = ["North", "South", "East", "West", "NorthEast", "NorthWest", "SouthEast", "SouthWest"] as const;
+
 export function WindowControls() {
   const [maximized, setMaximized] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     let off: (() => void) | undefined;
     let gone = false;
     void appWindow().then(async (w) => {
-      const sync = () => void w.isMaximized().then((m) => { if (!gone) setMaximized(m); });
+      const sync = () => void Promise.all([w.isMaximized(), w.isFullscreen()]).then(([m, f]) => {
+        if (!gone) { setMaximized(m); setFullscreen(f); }
+      });
       sync();
       const un = await w.onResized(sync);
       if (gone) un(); else off = un;
@@ -46,6 +52,21 @@ export function WindowControls() {
       <button type="button" className="solenoid-wincontrols__btn solenoid-wincontrols__btn--close" title="Close" aria-label="Close" onClick={() => void appWindow().then((w) => w.close())}>
         <Glyph d="M0.5 0.5 L9.5 9.5 M9.5 0.5 L0.5 9.5" />
       </button>
+      {!maximized && !fullscreen && createPortal(
+        GRIPS.map((dir) => (
+          <div
+            key={dir}
+            className={`solenoid-wingrip solenoid-wingrip--${dir}`}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              e.preventDefault();
+              e.stopPropagation();
+              void appWindow().then((w) => w.startResizeDragging(dir));
+            }}
+          />
+        )),
+        document.body,
+      )}
     </div>
   );
 }

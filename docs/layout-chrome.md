@@ -135,6 +135,16 @@ platform; who draws minimize / maximize / close differs:
   guard, so two groups appear), and takes its button list from GNOME's `button-layout`, where `:minimize` becomes
   a button with no click handler. **Reopen if** decorum fixes all three, or if the app moves Windows onto
   `WindowControls` too (that gives up the Snap Layouts hover).
+- **Linux resize:** the undecorated window has no frame to grab. Tauri's own handler starts a resize from a press
+  within 5px of an edge but never changes the cursor, so `WindowControls.tsx` portals eight `.solenoid-wingrip`
+  strips to `body` (5px edges, 10px corners, z-index 10000, resize cursors) that call `startResizeDragging`; they
+  unmount while the window is maximized or fullscreen. They claim the same 5px the native handler already takes.
+- **Linux runs WebKitGTK with compositing mode off** (`lib.rs` sets `WEBKIT_DISABLE_COMPOSITING_MODE=1` before GTK
+  starts, unless the variable is already set; `=0` opts back in). With compositing on, WebKitGTK rasterizes a GPU
+  layer at 1x and stretches the bitmap by the viewport's `scale()`, and its overlap rule pulls every node, cable and
+  grid dot onto such a layer, so zooming in pixelates the whole canvas. Off, the page paints in one pass at the
+  real scale. The cost is CPU painting on pan and zoom. **Reopen if** WebKitGTK rasterizes layers at their
+  transformed scale, or pan / zoom on a large graph gets too slow on Linux.
 - **A debug build is marked on the window itself:** `lib.rs` sets the bug-badged icon under
   `cfg(debug_assertions)`, from `src-tauri/icons/debug/icon.rgba` (raw RGBA, so no PNG decoder ships; `scripts/debug-icon.mjs` regenerates it from
   `icons/icon.png`). Release builds never carry it. The two pin to the panel as separate apps
