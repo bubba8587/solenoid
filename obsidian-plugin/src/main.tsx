@@ -11,9 +11,11 @@ import { CubePopup } from "../../src/graph/components/CubePopup";
 import { tablePopup } from "../../src/graph/tablePopupStore";
 import { cubePopup } from "../../src/graph/cubePopupStore";
 import { paletteStore, type PaletteName } from "../../src/graph/palette";
+import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
+import { PaletteSwatches } from "./PaletteSwatches";
 import { PROPERTY_KINDS, validateYaml, type PropertyKind } from "./yamlValue";
-import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, syncTheme, refreshTokens } from "./shadow";
+import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, syncTheme, refreshTokens, openPopupsOver } from "./shadow";
 import { KIND_ICONS } from "./icons";
 
 /** What Obsidian hands a property widget (read from the 1.13 source; not in the public API). */
@@ -38,22 +40,6 @@ interface MetadataTypeManager {
 interface Mount { host: HTMLElement; root: Root }
 
 interface PluginData { palette?: string }
-
-/** One value per kind, for the settings page's preview row. */
-const PREVIEW: Record<string, unknown> = {
-  list: [1, 2, 3, 4],
-  matrix: [[1, 2, 3], [4, 5, 6]],
-  frame: [{ item: "Cabinets", cost: 4200 }, { item: "Tile", cost: 880 }],
-  cube: [{ phase: "Install", crew: ["Ana", "Ben"] }],
-};
-const previewValue = (kind: PropertyKind): unknown => {
-  const v = PREVIEW[kind.shape];
-  if (kind.family === "string") return kind.shape === "list" ? ["a", "b", "c"] : [["a", "b"], ["c", "d"]];
-  if (kind.family === "date") return kind.shape === "list" ? ["2026-01-01", "2026-06-01"] : [["2026-01-01", "2026-06-01"]];
-  if (kind.family === "logical") return kind.shape === "list" ? [true, false, true] : [[true, false]];
-  if (kind.family === "complex") return kind.shape === "list" ? ["3+4i", "1-2i"] : [["3+4i", "1-2i"]];
-  return v;
-};
 
 export default class SolenoidPropertiesPlugin extends Plugin {
   private mounts = new Set<Mount>();
@@ -91,16 +77,24 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     await this.saveData({ palette: name } satisfies PluginData);
   }
 
-  /** Mount one chip in its own shadow host; the caller owns where the host goes. */
-  mountChip(el: HTMLElement, kind: PropertyKind, label: string, value: unknown, onChange: (next: unknown) => void): ShadowRoot {
-    // Obsidian empties a value cell to re-render; the chips it dropped unmount here.
+  /** Mount app UI in its own shadow host under `el`. */
+  mount(el: HTMLElement, className: string, node: ReactNode): ShadowRoot {
+    // Obsidian empties a container to re-render; what it dropped unmounts here.
     for (const m of this.mounts) if (!m.host.isConnected) this.unmount(m);
-    const { host, root: shadow } = createShadowHost("span", "solenoid-property-chip");
+    const { host, root: shadow } = createShadowHost("span", className);
     el.appendChild(host);
     const root = createRoot(shadow);
-    root.render(<PropertyChip kind={kind} label={label} initial={value} onChange={onChange} />);
+    root.render(node);
     this.mounts.add({ host, root });
     return shadow;
+  }
+
+  /** The note's own pane when it sits in the center area; else the center area (a property
+   *  shown in a sidebar would otherwise size its editor to the sidebar). */
+  private paneOf(host: Element): HTMLElement | null {
+    const center = this.app.workspace.containerEl.querySelector<HTMLElement>(".mod-root");
+    const leaf = host.closest<HTMLElement>(".workspace-leaf");
+    return leaf && center?.contains(leaf) ? leaf : center;
   }
 
   private typeManager(): MetadataTypeManager {
@@ -120,7 +114,9 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       name: () => kind.name,
       validate: (value) => validateYaml(kind, value),
       render: (el, value, ctx) => {
-        const shadow = this.mountChip(el, kind, ctx.key, value, (next) => ctx.onChange(next));
+        const shadow = this.mount(el, "solenoid-property-chip",
+          <PropertyChip kind={kind} label={ctx.key} initial={value} onChange={(next) => ctx.onChange(next)} />);
+        shadow.host.addEventListener("pointerdown", () => openPopupsOver(this.paneOf(shadow.host)), true);
         return { focus: () => shadow.querySelector("button")?.focus() };
       },
     };
@@ -135,22 +131,18 @@ class SolenoidSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    new Setting(containerEl)
+    // The app's Settings row: the dropdown with the swatch legend stacked under it.
+    const palette = new Setting(containerEl)
       .setName("Color palette")
       .addDropdown((dropdown) => {
         for (const name of paletteStore.names()) dropdown.addOption(name, name);
         dropdown.setValue(paletteStore.activeBase());
         dropdown.onChange((name) => void this.plugin.setPalette(name as PaletteName));
       });
+    palette.controlEl.addClass("solenoid-settings-palette");
+    this.plugin.mount(palette.controlEl, "solenoid-settings-swatches", <PaletteSwatches />);
     new Setting(containerEl)
       .setName("Property types")
-      .setDesc("Values stay plain YAML in the note.")
-      .setHeading();
-    const types = containerEl.createDiv({ cls: "solenoid-settings-types" });
-    for (const kind of PROPERTY_KINDS) {
-      const row = types.createDiv({ cls: "solenoid-settings-type" });
-      row.createSpan({ text: kind.name });
-      this.plugin.mountChip(row, kind, kind.name, previewValue(kind), () => {});
-    }
+      .setDesc("Lists and Matrices of numbers, text, dates, complex numbers and Booleans, plus Frames and Cubes. Values stay plain YAML in the note.");
   }
 }

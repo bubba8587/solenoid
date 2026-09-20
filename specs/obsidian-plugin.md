@@ -26,11 +26,12 @@ frame and the cube. The type id is `solenoid-` plus the socket variant, so
 | `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
-**A settings page** with the app's Color palette choice (the built-in palettes), persisted in
-the plugin's `data.json`, then a Property types list: each type's name as Obsidian's type menu
-shows it, beside a live chip. Its only sentence is "Values stay plain YAML in the note." The
-manifest description is one sentence naming the four shapes. Both follow DESIGN.md § 7: the list
-and the chips carry the information, so no string explains how to use them.
+**A settings page** laid out as the app's own palette row: the Color palette choice (the
+built-in palettes, persisted in the plugin's `data.json`) with the app's read-only `SwatchGrid`
+stacked under it, following the choice. One more item names the types in a sentence and says
+"Values stay plain YAML in the note." The manifest description is one sentence naming the four
+shapes. Both follow DESIGN.md § 7: nothing explains how to use a control. The page shows no
+sample chips (author 2026-09-20: a chip over made-up data is bogus).
 
 **Everything the popups do without a graph:** cell and header editing, add and remove rows and
 columns, the column type cycle, visual sort, the CSV view, Copy, Copy as Markdown, Export CSV,
@@ -100,6 +101,7 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 | The popup header pins the node to the HUD and flies to its card | Neither button | No node, no canvas | Nothing planned |
 | Frame Input's Form view follows a Record layout authored on the card | The Form view is always the stacked default | There is no card to author the layout on | A layout key beside the property |
 | A value popup wears its launching node's accent, and its type's socket color only when no node hosts it (DESIGN.md, the Nearest-Accent Rule) | Every popup wears its value TYPE's socket color: `--sock-list` … `--sock-logicaltable`, `--sock-frame`, `--sock-cube` (author 2026-09-20) | There is no launching node. The chip passes the color as a resolved hex for the current palette and mode (`tokenHex`), because the filled Save button's ink and the light-mode border derive from a hex, and re-renders when either moves. A numeric chip itself stays `--sock-number`, as the app's chip CSS has it | Nothing planned |
+| A table or cube popup is `min(1100px, 94vw)` wide and centers in the window | It is `min(1100px, 94%)` of the note's pane and centers over that pane; the dimmed overlay still covers the whole window, so a click on a sidebar closes the popup instead of changing the file under an open editor (author 2026-09-20) | Obsidian's sidebars make the window a poor measure of the room a note has. The pane is the chip's `.workspace-leaf` when it sits in the center area, else the center area (a property shown in a sidebar view). A layer-only stylesheet in `shadow.ts` does it; the app's CSS is untouched | Nothing planned |
 | A list has no popup editor: List Input's rows on the card are the only editor, and its chip opens view-only (`specs/literal-input-editors.md`) | A list property opens as a one-column raw grid with Save (author 2026-09-20: a fine workaround) | There is no card to type rows on, and a chip that cannot edit would make the type read-only. The grid is Table Input's, with the column count fixed (`fixedCols`) | A list editor in the app, which the plugin would then adopt |
 | A frame's column types are declared by its source | Column types are inferred from the cell text each time the editor opens (`frameSourceFromYaml`) | YAML rows carry no column types. A YAML `true` column types as Boolean here; the app's `frameFromRecords` would make it Number | A schema beside the property (mdbase is the likely one, [[C67]] mdbaseCeiling) |
 | A cell can hold a `SolError` that flows on | A cell the family cannot read saves as missing (`null`) | An error is a computed result, and nothing computes here | Nothing planned |

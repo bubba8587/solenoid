@@ -89,14 +89,42 @@ export function syncTheme(): void {
   bumpTheme();
 }
 
+// The overlay still dims the whole window, but the card centers over the note's pane and takes
+// its default width from it, where the app measures the viewport.
+const PANE_CSS =
+  ".sol-popup-overlay{padding-left:calc(10px + var(--sol-pane-left,0px));padding-right:calc(10px + var(--sol-pane-right,0px))}" +
+  ".table-popup{width:min(1100px,calc(var(--sol-pane-width,100vw)*0.94))}";
+
 function popupLayer(): ShadowRoot {
   if (!layer) {
     const made = createShadowHost("div", "solenoid-popup-layer");
     layer = made.host;
+    const paneSheet = new CSSStyleSheet();
+    paneSheet.replaceSync(PANE_CSS);
+    made.root.adoptedStyleSheets = [...made.root.adoptedStyleSheets, paneSheet];
     made.root.append(document.createElement("div"), document.createElement("div"));
     document.body.appendChild(layer);
+    window.addEventListener("resize", placeOverPane);
   }
   return layer.shadowRoot!;
+}
+
+let pane: HTMLElement | null = null;
+function placeOverPane(): void {
+  if (!layer) return;
+  const rect = pane?.isConnected ? pane.getBoundingClientRect() : null;
+  for (const [name, px] of [
+    ["--sol-pane-left", rect ? rect.left : 0],
+    ["--sol-pane-right", rect ? window.innerWidth - rect.right : 0],
+    ["--sol-pane-width", rect ? rect.width : window.innerWidth],
+  ] as const) layer.style.setProperty(name, `${px}px`);
+}
+
+/** The pane the next popup opens over; null measures the window. */
+export function openPopupsOver(el: HTMLElement | null): void {
+  pane = el;
+  popupLayer();
+  placeOverPane();
 }
 
 /** The one fixed layer the popups render into. */
@@ -111,6 +139,8 @@ export function popupPortalRoot(): HTMLElement {
 
 export function removePopupLayer(): void {
   if (!layer) return;
+  window.removeEventListener("resize", placeOverPane);
+  pane = null;
   releaseShadowHost(layer);
   layer.remove();
   layer = null;
