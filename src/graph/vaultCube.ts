@@ -273,12 +273,13 @@ function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[]): 
   // A hint decides the shape outright; otherwise the guesser looks across the rows.
   const shape: TypeHint = hint ?? guessShape(key, parsed);
   const cells: CubeCell[] = parsed.map((p) => cellFor(p.fields.get(key)?.value, shape));
+  // A list column carries its ELEMENT type, which a list cell tints and prints by (cubeCell.tsx).
+  const kind = shape.kind === "list" ? shape.elem : shape.kind;
   const type: FrameColType | undefined =
-    shape.kind === "frame" ? undefined
-    : shape.kind === "list" ? undefined
-    : shape.kind === "logical" ? "logical"
-    : shape.kind === "date" ? "date"
-    : shape.kind === "number" ? "number"
+    kind === "frame" ? undefined
+    : kind === "logical" ? "logical"
+    : kind === "date" ? "date"
+    : kind === "number" ? "number"
     : "string";
   return { name: key, cells, type };
 }
@@ -299,7 +300,8 @@ function guessShape(key: string, parsed: ParsedNote[]): TypeHint {
       anyList = true;
       for (const item of v as FrontmatterScalar[]) {
         if (item === null) continue;
-        listElemKinds.push(cellKind(item, scalarKindOfValue(item)));
+        // A date item is a serial by now; the parser's `datelist` is what still says so.
+        listElemKinds.push(cellKind(item, field.guessed === "datelist" ? "date" : scalarKindOfValue(item)));
       }
     } else {
       scalarKinds.push(cellKind(v, field.guessed === "date" ? "date" : scalarKindOfValue(v)));

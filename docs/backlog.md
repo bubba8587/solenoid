@@ -52,12 +52,12 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 - [ ] **Solenoid Properties plugin follow-ups** ([[C107]] obsidianPlugin): (1) the note reader types
   no matrix yet: a sequence of sequences reads as a text list, so `noteFrontmatter.ts` and
-  `FIELD_SOCKETS` need the `table` family rungs ([[D16]] retypeReconciles applies); (2)
-  `obsidianTypes.ts` should map the `solenoid-*` ids in `types.json` to their `TypeHint`; (3) Bases
-  table cells still show raw YAML for these properties (unverified); (4) a complex scalar has no
-  property type; (5) a chip in a popped-out note opens its editor in the main window (one popup
-  layer); (6) the real-Obsidian rig lives only in the digest and spec, a `scripts/` version would
-  make it one command; (7) publishing (a release zip, the community-plugin listing) is the
+  `FIELD_SOCKETS` need the `table` family rungs ([[D16]] retypeReconciles applies), and
+  `TypeHint` has no matrix or cube shape for `obsidianTypes.ts` to map those two ids to; (2) Bases
+  table cells still show raw YAML for these properties (unverified); (3) a complex scalar has no
+  property type; (4) a chip in a popped-out note opens its editor in the main window (one popup
+  layer); (5) the real-Obsidian rig lives only in the digest and spec, a `scripts/` version would
+  make it one command; (6) publishing (a release zip, the community-plugin listing) is the
   author's call.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the

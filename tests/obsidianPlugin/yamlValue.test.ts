@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
+import { parseObsidianTypes } from "../../src/graph/obsidianTypes";
 import {
   PROPERTY_KINDS, validateYaml, coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml,
   frameSourceFromYaml, frameSourceToYaml, type PropertyKind,
@@ -118,7 +119,21 @@ describe("the demo note", () => {
 
   it("reads in Solenoid as the types the plugin shows", () => {
     expect(fields).toMatchObject({
-      readings: "list", crew: "strlist", signed_off: "logicallist", budget: "frame", phases: "cube",
+      readings: "list", crew: "strlist", milestones: "datelist", signed_off: "logicallist", budget: "frame", phases: "cube",
     });
+  });
+
+  it("types.json names a plugin type Solenoid's vault reader understands", () => {
+    const hints = parseObsidianTypes(readFileSync("demo-vault/.obsidian/types.json", "utf8"));
+    expect(hints).toMatchObject({
+      readings: { kind: "list", elem: "number" },
+      crew: { kind: "list", elem: "string" },
+      milestones: { kind: "list", elem: "date" },
+      signed_off: { kind: "list", elem: "logical" },
+      budget: { kind: "frame" },
+    });
+    // A matrix and a cube have no hint shape: the guesser types them.
+    expect(hints.grid).toBeUndefined();
+    expect(hints.phases).toBeUndefined();
   });
 });

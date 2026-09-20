@@ -116,12 +116,15 @@ function readRow(node: Node | null | undefined): FrontmatterRow | null {
   return row;
 }
 
-/** Type a (possibly mixed) array from its first non-null element. */
-function listType(values: FrontmatterScalar[]): FrontmatterFieldType {
+/** Type a (possibly mixed) array from its first non-null element. A date is a serial by now, so
+ *  the items' parsed KINDS say it: a list whose every non-null item read as a date is a date list. */
+function listType(values: FrontmatterScalar[], kinds: ScalarKind[]): FrontmatterFieldType {
+  const present = kinds.filter((_, i) => values[i] !== null);
+  if (present.length > 0 && present.every((k) => k === "date")) return "datelist";
   for (const v of values) {
     if (v === null) continue;
     if (typeof v === "boolean") return "logicallist";
-    if (typeof v === "number") return "list"; // dates already collapsed to numbers
+    if (typeof v === "number") return "list";
     return "strlist";
   }
   return "list"; // empty / all-null → default numeric list (overridable)
@@ -139,8 +142,9 @@ function fieldFromRows(key: string, rows: FrontmatterRow[]): FrontmatterField {
 function fieldFromSeq(key: string, items: (Node | null)[]): FrontmatterField {
   const rows = items.map(readRow);
   if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[]);
-  const values = items.map((x) => (x == null || isScalar(x) ? readScalar(x).value : String(x).trim()));
-  return { key, value: values, guessed: listType(values) };
+  const read = items.map((x) => (x == null || isScalar(x) ? readScalar(x) : { value: String(x).trim(), kind: "string" as const }));
+  const values = read.map((r) => r.value);
+  return { key, value: values, guessed: listType(values, read.map((r) => r.kind)) };
 }
 
 function fieldOf(key: string, node: Node | null, src: string): FrontmatterField {

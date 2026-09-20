@@ -146,7 +146,8 @@ false because nothing in the bundle needs Electron, and that is all it claims.
 
 - **Solenoid's reader types no matrix.** A sequence of sequences reads as a text list, so a
   matrix the plugin writes does not yet arrive in Solenoid as a `table` rung (`docs/backlog.md`).
-- `obsidianTypes.ts` does not yet map the `solenoid-*` ids in `types.json` to a `TypeHint`.
+- `obsidianTypes.ts` maps the list ids and `solenoid-frame` to a `TypeHint`; `TypeHint` has no
+  matrix or cube shape, so those ids fall through to the guesser.
 - A chip in a popped-out note opens its editor in the main window (one popup layer).
 
 ## Verifying against real Obsidian

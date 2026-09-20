@@ -38,6 +38,15 @@ describe("parseNoteFrontmatter", () => {
     expect(r.fields[0].value).toBe(Math.round(parseDateToSerial("2026-03-01")));
   });
 
+  it("types a list of ISO dates as a date list, never a numeric one", () => {
+    const r = parseNoteFrontmatter("---\nmilestones:\n  - 2026-09-01\n  - \n  - 2026-10-15\nmixed: [2026-09-01, 7]\nquoted: [\"2026-09-01\"]\n---\n");
+    const serial = (s: string) => Math.round(parseDateToSerial(s));
+    expect(r.fields[0]).toEqual({ key: "milestones", value: [serial("2026-09-01"), null, serial("2026-10-15")], guessed: "datelist" });
+    // A date beside a plain number is numbers; a quoted date is text.
+    expect(r.fields[1].guessed).toBe("list");
+    expect(r.fields[2].guessed).toBe("strlist");
+  });
+
   it("treats quoted numbers/dates/bools as strings", () => {
     const r = parseNoteFrontmatter(`---\nid: "42"\nlabel: 'true'\nwhen: "2026-01-01"\n---`);
     expect(r.fields.map((f) => [f.guessed, f.value])).toEqual([

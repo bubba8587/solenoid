@@ -21,9 +21,10 @@ const LIST_PREVIEW = 3;
 const HOVER_PREVIEW = 8;
 /** A list cell in brackets with its first `max` items (`[a, b, c…]`); a 2-D cell by
  *  its shape (`[3×4 Table]`), like the chips. */
-function listToken(cell: unknown[], max = LIST_PREVIEW): string {
+function listToken(cell: unknown[], max = LIST_PREVIEW, type?: FrameColType): string {
   if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length} Table]`;
-  const items = cell.slice(0, max).map((x) => cubeCellToken(x as CubeCell));
+  // The column's element type prints each item (a date list's serials as dates).
+  const items = cell.slice(0, max).map((x) => cubeCellToken(x as CubeCell, type));
   return `[${items.join(", ")}${cell.length > max ? "…" : ""}]`;
 }
 
@@ -41,7 +42,7 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: Form
   if (isCubeValue(cell)) return `[${cubeRowCount(cell)}×${cell.columns.length}×${cubeDepth(cell)} Cube]`;
   if (isFrameValue(cell)) return `[${frameRowCount(cell)}×${cell.columns.length} Frame]`;
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
-  if (Array.isArray(cell)) return listToken(cell);
+  if (Array.isArray(cell)) return listToken(cell, LIST_PREVIEW, type);
   if (isSolError(cell)) return cell.code;
   if (type) { const f = formatFrameCell(type, cell as FrameCell, format); return f === null ? "" : String(f); }
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
@@ -122,7 +123,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
       <button
         type="button"
         className={chip("array") + famClass}
-        title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} table. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW)}. Drill in.`}
+        title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} table. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW, type)}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb }, at); }}
