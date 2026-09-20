@@ -7,7 +7,7 @@ import { getOwningEditor } from "../activeGraph";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from "../sockets";
 import type { ElemFamily } from "./ArrayChip";
-import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
+import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/dateSerial";
 import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";

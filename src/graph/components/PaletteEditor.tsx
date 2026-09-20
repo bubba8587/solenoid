@@ -1,6 +1,7 @@
 // [[C62]]
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { CardFrame, useHeaderHeightVar } from "./NodeCard";
+import { CardFrame } from "./NodeCard";
+import { useHeaderHeightVar } from "./useHeaderHeightVar";
 import { useFocusTrap } from "./useFocusTrap";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { CloseIcon } from "./CloseIcon";

@@ -238,7 +238,7 @@ export default defineConfig(async () => ({
   },
 
   build: {
-    minify: "esbuild",
+    minify: "esbuild" as const,
     rollupOptions: {
       // Emit a complete third-party license file alongside the bundle, listing
       // every dependency actually shipped (React, Rete, KaTeX, …) with its

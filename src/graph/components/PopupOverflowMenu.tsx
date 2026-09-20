@@ -12,7 +12,8 @@ export function PopupOverflowMenu({ items, label = "More actions" }: { items: Po
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      // composedPath: inside a shadow root (the Obsidian plugin) `target` is the host.
+      if (ref.current && !ref.current.contains((e.composedPath()[0] ?? e.target) as Node)) setOpen(false);
     };
     document.addEventListener("pointerdown", onDown, true);
     return () => document.removeEventListener("pointerdown", onDown, true);

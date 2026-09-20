@@ -1,6 +1,6 @@
 // [[C16]] polarsEngine (a lazy frame ref, head-N preview)
 import { useEffect, useState } from "react";
-import { tablePopup, type FramePopupColumn, type SourceCommitRefresh } from "../tablePopupStore";
+import { tablePopup, type FramePopupColumn, type SourceCommitRefresh, type TablePopupState } from "../tablePopupStore";
 import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
 import { collectPreview, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
@@ -27,7 +27,7 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
 
 /** A clickable `[R×C Frame]` chip opening the full grid in the popup; read-only
  *  unless `onSave` is given, but column types are passed either way. */
-export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout }: {
+export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, popupOverrides }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
@@ -47,6 +47,8 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   lambdaOptions?: string[];
   /** Form-view field placement (the Record layout text, authored on the card). */
   formLayout?: string;
+  /** Merged into the literal-source popup open(), as ArrayChip's does. */
+  popupOverrides?: Partial<TablePopupState>;
 }) {
   // Hook runs every render (Rules of Hooks); the explicit prop wins when given.
   const ctxHostId = useHostNodeId();
@@ -114,6 +116,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
             (_, r) => source!.map((c, j) =>
               c.expr ? (value.columns[j]?.values[r] ?? null) : null),
           ),
+          ...popupOverrides,
         });
       }}
       onPointerDown={stopDragStart}

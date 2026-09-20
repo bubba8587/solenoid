@@ -5,7 +5,7 @@
 // (frameVerbs describeColumn) plus the two logical counts the summary pass collects.
 import type { ColumnProfile } from "../frameVerbs";
 import { formatScalar } from "./format";
-import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
 export type FooterColType = "number" | "string" | "date" | "logical";
 export type FooterStat =

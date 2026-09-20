@@ -90,8 +90,13 @@ function rowsToFrame(rows: FrontmatterRow[]): FrameValue {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
   const columns: FrameColumn[] = names.map((name) => {
-    // A frame cell is scalar; a list that slipped in keeps its first element.
-    const cells = rows.map((r) => { const v = name in r ? r[name] : null; return Array.isArray(v) ? (v[0] ?? null) : v; });
+    // A frame cell is scalar; a list that slipped in keeps its first element, a table nothing.
+    const cells = rows.map((r): FrontmatterScalar => {
+      const v = name in r ? r[name] : null;
+      if (!Array.isArray(v)) return v;
+      const first = v[0] ?? null;
+      return typeof first === "object" ? null : first;
+    });
     return { name, type: frameColType(cells), values: cells as FrameCell[] };
   });
   return { __frame: true, columns };

@@ -86,6 +86,9 @@ export interface TablePopupState {
   /** The host's λ socket NAMES (`λ1`), offered under a column's formula field as it
    *  is typed (tableRefSemantics/[[C54]] noPerCellFormulas). */
   lambdaOptions?: string[];
+  /** A literal source with no formula engine behind it (the Obsidian plugin, [[C107]]):
+   *  the column-kind cycle stops at Boolean, never offering Fx. */
+  noFormulaColumns?: boolean;
   /** Per-column initial inline formula (undefined = a Data column). */
   sourceExprs?: (string | undefined)[];
   /** Derived VALUES for computed columns — read-only, since they have no raw text. */

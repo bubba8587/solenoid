@@ -24,8 +24,8 @@ export type FrontmatterFieldType =
 
 // Dates emit as serials, like the rest of Solenoid.
 export type FrontmatterScalar = number | string | boolean | null;
-/** A row's value may itself be a list (`after: [A, B]` inside a row); such rows make a cube. */
-export type FrontmatterRow = Record<string, FrontmatterScalar | FrontmatterScalar[]>;
+/** A row's value may itself be a list (`after: [A, B]`) or a table (rows of its own); such rows make a cube. */
+export type FrontmatterRow = { [key: string]: FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[] };
 export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[];
 
 export interface FrontmatterField {
@@ -90,7 +90,7 @@ function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; 
 
 const keyOf = (p: Pair): string => (isScalar(p.key) ? String(p.key.value ?? "") : String(p.key ?? "")).trim();
 
-/** A map whose values are all scalars or scalar lists → a row; else null. */
+/** A map whose values are all scalars, scalar lists or nested row lists → a row; else null. */
 function readRow(node: Node | null | undefined): FrontmatterRow | null {
   if (!isMap(node)) return null;
   const row: FrontmatterRow = {};
@@ -100,8 +100,13 @@ function readRow(node: Node | null | undefined): FrontmatterRow | null {
     if (k === "") continue;
     const val = item.value as Node | null;
     if (isSeq(val)) {
-      if (!val.items.every((x) => x == null || isScalar(x))) return null;
-      row[k] = val.items.map((x) => readScalar(x as Node | null).value);
+      if (val.items.every((x) => x == null || isScalar(x))) {
+        row[k] = val.items.map((x) => readScalar(x as Node | null).value);
+      } else {
+        const nested = val.items.map((x) => readRow(x as Node | null));
+        if (!nested.every((r) => r !== null)) return null;
+        row[k] = nested as FrontmatterRow[];
+      }
     } else if (val == null || isScalar(val)) {
       row[k] = readScalar(val).value;
     } else {

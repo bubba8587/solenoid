@@ -6,7 +6,7 @@ import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { contrastInk, darkenAccent } from "../palette";
 import { PopupResizeGrip, type PopupSize } from "./PopupResizeGrip";
-import { useHeaderHeightVar } from "./NodeCard";
+import { useHeaderHeightVar } from "./useHeaderHeightVar";
 
 /** The popup's per-surface accent vars (DESIGN.md, the Nearest-Accent Rule). */
 export function popupCardVars(v: {

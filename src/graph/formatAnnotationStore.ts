@@ -1,7 +1,7 @@
 // [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation, [[C40]] storesRegisterForget
 // Format Controller annotations: nodeId::socketKey → { format, unit } (docs/format-model.md).
 
-import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { extremeSci } from "./components/format";
 import { groupingApplies, scaleApplies, negativeApplies, COMPLEX_FORMAT_STYLES } from "./formatModel";
 import { assembleCx, type Cx } from "./cxValue";

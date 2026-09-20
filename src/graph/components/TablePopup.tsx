@@ -7,7 +7,7 @@ import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
-import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
 import { describeColumn, distinctColumnValues } from "../frameVerbs";
 import { aggregate } from "../nodes/statsOps";
@@ -30,7 +30,7 @@ import { ColumnFormatButton, ColumnExprField } from "./columnHeadControls";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
-import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
+import { parseRecordLayout, recordImageSrc } from "../recordLayout";
 import "./chartCards.css"; // .sol-record__img: the Form shows an image cell as the Record figure does
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, defaultFooterStat, footerStatValue, formatFooterStat } from "./tableFooterStats";
@@ -257,6 +257,7 @@ export function TablePopup() {
   // Literal-source editor: the grid holds RAW text, never coerced ([[C58]] tableInputRawText).
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
   const formattedPreview = literalSource && displayMode === "formatted";
+  const fxColumns = !!state.onSaveSource && !state.noFormulaColumns;
   const editableHeaders = editable && !!state.editableHeaders;
   const colTypeAt = (c: number): CellType => columnTypes[c] ?? cellType;
   const rows = grid.length;
@@ -561,7 +562,7 @@ export function TablePopup() {
       setColExprs(exprs);
       setColumnTypes(types);
       void commitLive({ exprs, types });
-    } else if (state?.onSaveSource && colTypeAt(c) === COLTYPE_ORDER[COLTYPE_ORDER.length - 1]) {
+    } else if (fxColumns && colTypeAt(c) === COLTYPE_ORDER[COLTYPE_ORDER.length - 1]) {
       // Fx waits for its formula to blur before anything commits.
       setColExprs((xs) => { const next = [...xs]; next[c] = ""; return next; });
     } else {
@@ -917,7 +918,7 @@ export function TablePopup() {
                         <button
                           type="button"
                           className={`table-popup__coltype${colExprs[c] !== undefined ? " table-popup__coltype--fx" : ""}`}
-                          title={`Column type: ${colExprs[c] !== undefined ? "Formula" : COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean${state.onSaveSource ? " / Formula" : ""}.`}
+                          title={`Column type: ${colExprs[c] !== undefined ? "Formula" : COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean${fxColumns ? " / Formula" : ""}.`}
                           onClick={(e) => { e.stopPropagation(); cycleColumnKind(c); }}
                         >
                           {colExprs[c] !== undefined ? "Fx" : COLTYPE_GLYPH[colTypeAt(c)]}
