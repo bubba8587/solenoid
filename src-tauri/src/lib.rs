@@ -66,13 +66,10 @@ pub fn run() {
             let main_window = app.get_webview_window("main").unwrap();
             #[cfg(not(target_os = "linux"))]
             main_window.create_overlay_titlebar().unwrap();
-            // Linux: decorum keeps the native bar, can inject its controls twice and
-            // builds a dead minimize from GNOME's button-layout, so the window goes
-            // undecorated and the web layer draws the controls (WindowControls.tsx).
+            // linux shim for window controls (docs/layout-chrome.md)
             #[cfg(target_os = "linux")]
             main_window.set_decorations(false)?;
-            // A debug build wears the bug-badged icon (scripts/debug-icon.mjs, raw RGBA
-            // so no PNG decoder ships) so it can't be mistaken for the release app.
+            // debug builds wear the bug icon
             #[cfg(debug_assertions)]
             main_window.set_icon(tauri::image::Image::new(
                 include_bytes!("../icons/debug/icon.rgba"),

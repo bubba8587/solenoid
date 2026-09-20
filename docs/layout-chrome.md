@@ -112,6 +112,35 @@ stopped being a number anyone could write down at all. Pinned by `touchActions.t
 **Mobile keeps its own explicit overrides** (they carry `safe-area` insets and win later in
 the cascade) — the table below is still the mobile truth.
 
+## Desktop window frame (the Tauri shell)
+
+The menu bar IS the title bar: `.solenoid-menubar` carries `data-tauri-drag-region` (`MenuBar.tsx`)
+and no separate title strip exists. Everything here is scoped to `html[data-shell="desktop"]`
+(`main.tsx`), so the browser build is untouched. The window has no native decorations on either
+platform; who draws minimize / maximize / close differs:
+
+| | Windows | Linux |
+| --- | --- | --- |
+| Native bar removed by | decorum's `create_overlay_titlebar` (`lib.rs`) | `set_decorations(false)` (`lib.rs`); decorum's overlay is not created |
+| Controls | decorum's injected buttons in `[data-tauri-decorum-tb]`, a fixed click-through overlay at the top right, restyled to the bar (22px tall, 37px wide, accent ink) by `desktopFrame.css` | `WindowControls.tsx` (`.solenoid-wincontrols`), IN FLOW at the menu bar's right end, 3 × 38px, gated by `OWN_WINDOW_CONTROLS` |
+| Bar reserve | `.solenoid-menubar { padding-right: 120px }` keeps menus out from under the overlay | none: `:has(.solenoid-wincontrols)` zeroes the reserve (`WindowControls.css`) |
+| Maximize hover | decorum's Snap Layouts overlay | plain toggle |
+
+- **Linux control styling:** hover is the menu items' ink wash (`--accent-ink` 14%); close hovers to the error
+  red (`--sol-error`) with white ink; glyphs are 10px SVGs at a 1px stroke (even-sized, never a text glyph). The
+  maximize glyph follows `isMaximized()` on every resize. The window calls are allowed by the
+  `core:window:allow-*` lines in `src-tauri/capabilities/default.json`.
+- **Why Linux does not use decorum's controls** (decorum 1.1.1): it leaves the native bar in place, injects its
+  control group once per page-load event (the event fires at load start and finish, and the Linux script has no
+  guard, so two groups appear), and takes its button list from GNOME's `button-layout`, where `:minimize` becomes
+  a button with no click handler. **Reopen if** decorum fixes all three, or if the app moves Windows onto
+  `WindowControls` too (that gives up the Snap Layouts hover).
+- **A debug build is marked on the window itself:** `lib.rs` sets the bug-badged icon under
+  `cfg(debug_assertions)`, from `src-tauri/icons/debug/icon.rgba` (raw RGBA, so no PNG decoder ships; `scripts/debug-icon.mjs` regenerates it from
+  `icons/icon.png`). Release builds never carry it. The two pin to the panel as separate apps
+  (`scripts/install-linux-launchers.mjs`): the debug launcher runs through a `solenoid-debug` symlink because GTK
+  takes WM_CLASS from the program name, and a distinct class is what the panel matches a launcher by.
+
 ## Tablets — the DESKTOP stack inside a mobile browser (2026-07-22)
 
 A tablet gets the full desktop UI: `IS_MOBILE` requires a mobile UA, and tablet Chrome

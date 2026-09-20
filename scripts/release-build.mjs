@@ -1,16 +1,6 @@
-// Clean release build for the desktop app (`npm run release:desktop`), any platform.
-//
-// Rust bakes absolute source paths into panic locations, and for registry deps those sit
-// under the builder's home (`~/.cargo/registry/...`), which leaks the build machine's
-// username into the SHIPPED binary. `--remap-path-prefix` rewrites the home prefix (where
-// both the cargo registry and the workspace live) to a neutral path.
-//
-//  - CARGO_ENCODED_RUSTFLAGS (not RUSTFLAGS) because a home path can contain a space,
-//    which RUSTFLAGS' whitespace-splitting breaks. It REPLACES any rustflags from a cargo
-//    config, so the remap never depends on the machine's own config.
-//  - `[profile.release] trim-paths` would be the idiomatic fix but is not stable in the
-//    pinned Cargo, so we remap explicitly.
-//  - The build fails if the home path or username still appears in the binary.
+// Release build with the builder's home path stripped (why: the NOTE in src-tauri/Cargo.toml).
+//   npm run release:desktop [-- <tauri build args>]
+// ENCODED flags because a home path can hold a space.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -28,7 +18,6 @@ const run = (cmd, args, opts) => {
   return r;
 };
 
-// Extra args pass through to `tauri build` (`npm run release:desktop -- --no-bundle`).
 run(process.execPath, [path.join(root, "node_modules", "@tauri-apps", "cli", "tauri.js"), "build", ...process.argv.slice(2)], { stdio: "inherit" });
 
 const meta = run("cargo", ["metadata", "--format-version", "1", "--no-deps", "--manifest-path", path.join("src-tauri", "Cargo.toml")], { encoding: "utf8", maxBuffer: 1 << 26 });

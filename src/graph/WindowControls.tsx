@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { isDesktop } from "./fileBridge";
 import "./WindowControls.css";
 
-/** Linux desktop draws its own minimize / maximize / close in the menu bar, on an
- *  undecorated window (lib.rs). Windows keeps decorum's overlay controls. */
+// linux shim for window controls (docs/layout-chrome.md)
 export const OWN_WINDOW_CONTROLS =
   isDesktop() && /Linux/.test(navigator.userAgent) && !/Android/.test(navigator.userAgent);
 

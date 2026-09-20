@@ -4,7 +4,7 @@
   margin-left: auto;
 }
 
-/* The controls sit in flow, so the bar needs no strip reserved for overlay buttons. */
+/* in flow, so no overlay reserve */
 html[data-shell="desktop"] .solenoid-menubar:has(.solenoid-wincontrols) {
   padding-right: 0;
 }

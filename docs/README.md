@@ -174,6 +174,7 @@ results get retried and settled rulings relapse.
 | `nodeCatalog.ts` | `node-coverage.md`; [[C14]] currentExcelParity (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `layout-chrome.md` |
+| `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `layout-chrome.md` § Desktop window frame |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[D17]] relaysTransparent; `../specs/conduit-lane-faces.md` |
 
 ## Task → docs cheat-sheet

@@ -1,9 +1,5 @@
-// Installs per-user launchers for the locally built desktop apps, so both can be pinned
-// to the panel (`npm run desktop:launchers`). They point at the cargo target dir, so a
-// rebuild updates the pinned app in place.
-//
-// The debug app runs through a `solenoid-debug` symlink: GTK derives WM_CLASS from the
-// program name, and a distinct class is what lets the panel tell the two apps apart.
+// Pinnable launchers for the local release + debug apps (docs/layout-chrome.md).
+//   npm run desktop:launchers
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";

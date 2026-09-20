@@ -1,6 +1,4 @@
-// Regenerates src-tauri/icons/debug/icon.png: the app icon with a bug badge, which debug
-// builds set as their window icon (lib.rs) so they can't be mistaken for the release app.
-//
+// Regenerates the debug build's bug-badged icon (docs/layout-chrome.md).
 //   node scripts/debug-icon.mjs
 import fs from "node:fs";
 import path from "node:path";
@@ -34,7 +32,7 @@ try {
   fs.mkdirSync(path.join(icons, "debug"), { recursive: true });
   const out = path.join(icons, "debug", "icon.png");
   await page.screenshot({ path: out, omitBackground: true });
-  // lib.rs embeds the raw RGBA (no PNG decoder in the binary); the PNG is the reviewable copy.
+  // raw RGBA for lib.rs; the PNG is the reviewable copy
   const rgba = await page.evaluate(async (size) => {
     const img = new Image();
     img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(new XMLSerializer().serializeToString(document.querySelector("svg")));
