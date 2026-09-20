@@ -1,8 +1,8 @@
 // [[C107]] obsidianPlugin
-// A list or matrix wears Obsidian's own icon (its List property's, its table view's). A frame and
-// a cube have no Obsidian counterpart, so they keep their socket glyph's outline
-// (SocketLegend.tsx, cubeGlyph.tsx), in currentColor on the icon slot's 100-unit box.
-import type { Shape } from "./yamlValue";
+// A list or matrix wears its element FAMILY's icon, Obsidian's own: the chip already says list
+// or table. A frame and a cube have no Obsidian counterpart, so they keep their socket glyph's
+// outline (SocketLegend.tsx, cubeGlyph.tsx), in currentColor on the icon slot's 100-unit box.
+import type { Family, PropertyKind } from "./yamlValue";
 
 const BOX = (inner: string) =>
   `<g transform="translate(14 14) scale(6)" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">` +
@@ -19,9 +19,16 @@ export const CUSTOM_ICONS: Record<string, string> = {
     `<path d="${CUBE_SEAMS}"/><path d="${CUBE_RING}"/></g>`,
 };
 
-export const SHAPE_ICON: Record<Shape, string> = {
-  list: "lucide-list",
-  matrix: "lucide-table",
-  frame: "solenoid-frame",
-  cube: "solenoid-cube",
+/** Obsidian's own property icon for the family (Number, Text, Date, Checkbox). Complex has no
+ *  Obsidian counterpart: the radical, as in the root of minus one. */
+const FAMILY_ICON: Record<Family, string> = {
+  number: "lucide-binary",
+  string: "lucide-text",
+  date: "lucide-calendar",
+  logical: "lucide-check-square",
+  complex: "lucide-radical",
 };
+
+export function kindIcon(kind: PropertyKind): string {
+  return kind.family ? FAMILY_ICON[kind.family] : `solenoid-${kind.shape}`;
+}

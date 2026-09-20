@@ -26,10 +26,11 @@ frame and the cube. The type id is `solenoid-` plus the socket variant, so
 | `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
-**Type icons.** A list wears Obsidian's List property icon (`lucide-list`) and a matrix its
-table icon (`lucide-table`), so they read as Obsidian's own in the type menu (author
-2026-09-20). A frame and a cube have no Obsidian counterpart and keep their socket glyph's
-outline, registered with `addIcon` (`icons.ts`).
+**Type icons.** A list or matrix wears its element FAMILY's icon, Obsidian's own: Number's
+`lucide-binary`, Text's `lucide-text`, Date's `lucide-calendar`, Checkbox's
+`lucide-check-square`. The chip already says list or table, so the icon says what is in it
+(author 2026-09-20). Complex has no Obsidian counterpart and takes `lucide-radical`. A frame and
+a cube keep their socket glyph's outline, registered with `addIcon` (`icons.ts`).
 
 **A settings page** laid out as the app's own palette row: the Color palette choice (the
 built-in palettes, persisted in the plugin's `data.json`) with the app's read-only `SwatchGrid`
