@@ -20,7 +20,20 @@ On `develop`, not pushed. tsc + vitest + `cargo check` are green on Linux as the
   `solenoid-debug` symlink because GTK takes WM_CLASS from the program name.
 - **Linux draws its own window controls** (`WindowControls.tsx` in the menu bar, undecorated window). decorum on Linux
   keeps the native bar, can inject its controls twice and builds a dead minimize from GNOME's `button-layout`;
-  Windows still uses decorum's overlay.
+  Windows still uses decorum's overlay. Resize comes from eight edge / corner grips that call `startResizeDragging`.
+- **Crisp zoom on WebKitGTK with GPU compositing ON.** One promoted element inside a node puts the whole scaled
+  viewport on a 1x layer that gets stretched. Three promoters are off on Linux: async overflow scrolling and 2D canvas
+  acceleration (`src-tauri/src/linux_webview.rs`), and CSS transitions inside the viewport (`desktopFrame.css`,
+  keyed on `html[data-webview="webkitgtk"]`); the last one was also the hover squish and the far-zoom blackout.
+  Spec, triggers to avoid and the debug env var: `layout-chrome.md` § Desktop window frame. Chromium was measured
+  for the same effect: 14 layers at 34 and at 154 nodes, nothing to gain there.
+- **The fs scope names `.obsidian` literally**: on Unix a `**` never matches a dot-directory, so `.obsidian/*.json`
+  reads and the `types.json` write failed silently (`capabilities/default.json`; note in `architecture.md`).
+- **Testing rig that leaves the author's session alone:** `Xephyr :7` + `metacity`, the debug binary or WebKit's
+  `MiniBrowser` on that display, python-xlib XTest for input, `xwd` for captures. It renders in software, so GPU-only
+  artifacts (the blackout) do not reproduce there. The author accepted the zoom result "for now"; a blackout with the
+  pointer over EMPTY canvas would point at GPU tile painting (`WEBKIT_SKIA_ENABLE_CPU_RENDERING=1` is the experiment).
+- `git config core.ignorecase` was `true` from Windows; now `false`. No bare `python` here: `python3 tools/dte.py`.
 - Not done, the author's call: product copy still says desktop is Windows-only (README, landing pages), and CI
   publishes only the Windows exe. `release:desktop` here also emits a .deb, .rpm and AppImage.
 
