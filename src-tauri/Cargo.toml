@@ -63,10 +63,10 @@ polars-plan = { version = "0.46", default-features = false }
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Graphics_Dwm"] }
 
 # NOTE — stripping build paths from the shipped binary: Rust bakes source paths into
-# panic locations, and for registry deps those look like
-# `C:\Users\<username>\.cargo\registry\src\...`, leaking the build machine's username.
+# panic locations, and for registry deps those sit under the builder's home
+# (`~/.cargo/registry/src/...`), leaking the build machine's username.
 # `[profile.release] trim-paths` would be the clean fix but is NOT stable in this
-# toolchain's Cargo, so release builds must pass a remap instead (the `release:desktop`
-# npm script sets CARGO_ENCODED_RUSTFLAGS=--remap-path-prefix=$USERPROFILE=C:\build).
-# Verify a cut with: `grep -a -c "$USERNAME" target/release/solenoid.exe` → must be 0.
+# toolchain's Cargo, so release builds must pass a remap instead: the `release:desktop`
+# npm script (`scripts/release-build.mjs`) sets it and fails the build if the binary
+# still carries the home path or username.
 

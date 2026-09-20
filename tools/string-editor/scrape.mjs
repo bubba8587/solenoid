@@ -1,11 +1,10 @@
 // Scrape the RUNNING Solenoid dev server for visible, human-readable text runs.
-// Launches the preinstalled Chromium via playwright-core (never starts the dev server).
+// Launches the system browser via playwright-core (never starts the dev server).
 
 import { chromium } from 'playwright-core';
-import { homedir } from 'node:os';
+import { browserPath } from '../../scripts/browser.mjs';
 
-const CHROME_EXEC = process.env.SOLENOID_CHROME
-  || `${homedir().replace(/\\/g, '/')}/AppData/Local/ms-playwright/chromium-1223/chrome-win64/chrome.exe`;
+const CHROME_EXEC = process.env.SOLENOID_CHROME || browserPath();
 const APP_URL = process.env.SOLENOID_APP_URL || 'http://localhost:1420';
 // The author's OWN browser, if launched with --remote-debugging-port. Attaching to it
 // reads the REAL tab (their live document from autosave); a fresh launch below only

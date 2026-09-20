@@ -18,12 +18,24 @@ const APP_URL = process.env.SOLENOID_APP_URL ?? "http://localhost:1420";
 const RESEED = process.argv.includes("--reseed");
 const ORIGIN_KEY = "localhost_1420";
 
-const BROWSERS = [
-  { name: "Chrome", exe: "C:/Program Files/Google/Chrome/Application/chrome.exe", data: "Google/Chrome/User Data" },
-  { name: "Chrome", exe: "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe", data: "Google/Chrome/User Data" },
-  { name: "Edge", exe: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", data: "Microsoft/Edge/User Data" },
-  { name: "Edge", exe: "C:/Program Files/Microsoft/Edge/Application/msedge.exe", data: "Microsoft/Edge/User Data" },
-];
+// exe + the real profile root (`data`, relative to `profileRoot`) per platform.
+const WIN = process.platform === "win32";
+const profileRoot = WIN
+  ? process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local")
+  : path.join(os.homedir(), ".config");
+const BROWSERS = WIN
+  ? [
+      { name: "Chrome", exe: "C:/Program Files/Google/Chrome/Application/chrome.exe", data: "Google/Chrome/User Data" },
+      { name: "Chrome", exe: "C:/Program Files (x86)/Google/Chrome/Application/chrome.exe", data: "Google/Chrome/User Data" },
+      { name: "Edge", exe: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", data: "Microsoft/Edge/User Data" },
+      { name: "Edge", exe: "C:/Program Files/Microsoft/Edge/Application/msedge.exe", data: "Microsoft/Edge/User Data" },
+    ]
+  : [
+      { name: "Chrome", exe: "/usr/bin/google-chrome", data: "google-chrome" },
+      { name: "Chromium", exe: "/usr/bin/chromium", data: "chromium" },
+      { name: "Chromium", exe: "/usr/bin/chromium-browser", data: "chromium" },
+      { name: "Edge", exe: "/usr/bin/microsoft-edge", data: "microsoft-edge" },
+    ];
 
 const die = (msg) => { console.error(msg); process.exit(1); };
 
@@ -41,12 +53,13 @@ if (already) {
   process.exit(0);
 }
 
-const local = process.env.LOCALAPPDATA ?? path.join(os.homedir(), "AppData", "Local");
 const browser = BROWSERS.find((b) => fs.existsSync(b.exe));
-if (!browser) die("no Chrome or Edge found; set SOLENOID_BROWSER to a chromium exe");
+if (!browser) die("no Chrome, Chromium or Edge found");
 
-const userData = path.join(local, ...browser.data.split("/"));
-const debugDir = path.join(local, "solenoid-cdp-profile");
+const userData = path.join(profileRoot, ...browser.data.split("/"));
+const debugDir = WIN
+  ? path.join(profileRoot, "solenoid-cdp-profile")
+  : path.join(os.homedir(), ".cache", "solenoid-cdp-profile");
 
 // Which of the real profiles has the app's localStorage? Prefer the one whose
 // leveldb actually mentions the app origin.

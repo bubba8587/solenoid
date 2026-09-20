@@ -37,8 +37,11 @@ This file is the map.
 │                             #     formula-node-parity.ts (oneMetricImpl gap report), op-exposure.ts,
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
 │                             #     copy-inventory.ts (shipped-string extract/apply),
-│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed Edge: every Gantt seed's
-│                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts, release-build.ps1
+│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
+│                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts,
+│                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
+│                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
+│                             #     (pinnable .desktop launchers for the local release + debug apps)
 ├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
@@ -304,7 +307,8 @@ the touch cluster (`touchActions.tsx` — one definition of the keyboard-less ed
 actions; `TabletActions.tsx` — the tablet top-bar row; `coarse.ts` — the
 touch-vs-mouse flags), window/boot plumbing (`chromeBottom.ts` measured bottom
 envelope, `chromeToggle.ts` the chrome-collapse hotkey registry, `fullscreen.ts`,
-`nativeAccent.ts` Windows 11 border sync, `devtoolsHotkey.ts` F12 in the Tauri
+`nativeAccent.ts` Windows 11 border sync, `WindowControls.tsx` the Linux desktop's
+own minimize / maximize / close in the menu bar, `devtoolsHotkey.ts` F12 in the Tauri
 shell, `chunkReloadGuard.ts` the once-per-window preload-error reload),
 `nodeBudget.ts` (the soft web-demo node cap), and the remaining popup/panel
 stores (`outlineStore`, `shortcutsStore`, `helpDialogStore`, `chartPopupStore`,

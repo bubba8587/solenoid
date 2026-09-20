@@ -1,5 +1,5 @@
 // Seed geometry tuner. Drives the running Vite dev server (port 1420) with
-// system Edge headless, calls the in-app hook window.__solenoidTuneSeed(id)
+// the system browser headless, calls the in-app hook window.__solenoidTuneSeed(id)
 // (seedTune.ts) for each seed — which loads it, runs the real per-group tidy →
 // autofit, then a whole-canvas Tidy (the same pass as pressing T), all with
 // painted DOM sizes — then patches the returned geometry (node x/y, group
@@ -13,10 +13,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-// Defaults hit the main checkout's dev server with system Edge; a worktree tunes its
+// Defaults hit the main checkout's dev server with the system browser; a worktree tunes its
 // OWN edited seeds by pointing URL at its own dev server (and CHROME at any Chromium).
-const EDGE = process.env.CHROME ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const URL = process.env.URL ?? "http://localhost:1420";
 // NO_SANDBOX=1 lets Chromium launch as root (a CI/container run); harmless on a normal desktop.
 const NO_SANDBOX = process.env.NO_SANDBOX === "1" || process.env.NO_SANDBOX === "true";

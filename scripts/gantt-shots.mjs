@@ -14,8 +14,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const EDGE = process.env.CHROME ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const URL = process.env.URL ?? "http://localhost:1420";
 const NO_SANDBOX = process.env.NO_SANDBOX === "1" || process.env.NO_SANDBOX === "true";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");

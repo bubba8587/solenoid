@@ -11,9 +11,9 @@
 //
 //   node scripts/socket-box-probe.mjs        (dev server on :1420)
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const CHROME = process.env.CHROME ??
-  `${process.env.LOCALAPPDATA}\\ms-playwright\\chromium-1223\\chrome-win64\\chrome.exe`;
+const CHROME = browserPath();
 const SEEDS = ["getting-started", "power-features", "unit-flow"];
 const ZOOMS = [1, 1.37];
 const TOL = 1.0; // screen px

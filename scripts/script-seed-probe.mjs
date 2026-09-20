@@ -1,10 +1,11 @@
 // Probe: load the script-tour seed on the running dev server, screenshot it,
 // dump Display readouts + Script errors, and measure the field grip geometry.
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const URL = "http://localhost:1420";
 const OUT = path.dirname(fileURLToPath(import.meta.url));
 

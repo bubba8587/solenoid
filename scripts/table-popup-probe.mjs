@@ -18,8 +18,9 @@
 //
 //   node scripts/table-popup-probe.mjs
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const URL = "http://localhost:1420";
 const ROWS = 1000;              // the popup's MAX_VISIBLE_ROWS cap
 const COLS = [3, 10, 30];       // the three column widths the decider asks for

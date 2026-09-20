@@ -7,11 +7,11 @@
 //   node scripts/chart-contact-sheet.mjs        (dev server on :1420)
 //   OUT=<dir> HEADLESS=1 node scripts/chart-contact-sheet.mjs
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const CHROME = process.env.CHROME ??
-  `${process.env.LOCALAPPDATA}\\ms-playwright\\chromium-1223\\chrome-win64\\chrome.exe`;
+const CHROME = browserPath();
 const OUT = process.env.OUT ?? path.resolve("chart-shots");
 const SEED = "chart-showcase";
 const ZOOM = 1.6;

@@ -35,6 +35,10 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 ## Environment constraints
 - **Tag pushes fail from a cloud/container session** (`send-pack: unexpected disconnect`);
   branch pushes are fine. Don't retry or hunt for a workaround: push the branch, then remind the author to go to Github and create a release manually. 
+- **The dev machine is Linux** (X11). There is no bare `python`: every `python tools/dte.py …` in
+  the docs runs as `python3 tools/dte.py …`. Cargo builds land in `~/.cargo-target`; puppeteer
+  scripts find the browser through `scripts/browser.mjs`. Debug desktop builds wear a bug-badged
+  icon (`scripts/debug-icon.mjs`).
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +

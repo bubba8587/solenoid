@@ -6,6 +6,24 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-20 — the dev machine is Linux; author present, local dev)
+
+On `develop`, not pushed. tsc + vitest + `cargo check` are green on Linux as they stood.
+- **No PowerShell left.** `release:desktop` is `scripts/release-build.mjs` (any platform): it sets the home-path remap
+  and FAILS the build if the binary still carries the home path or username. `dev-restart.ps1` is deleted.
+- **One browser resolver**, `scripts/browser.mjs` (`$CHROME`, else the platform's system browser): the 20 puppeteer
+  scripts and the string editor's scraper import it; `debug-browser.mjs` knows the Linux profile dirs.
+- **Two local desktop apps.** `npm run desktop:debug` is a plain `cargo build`, so it loads the dev server at :1420
+  (`tauri build --debug` would embed `dist/`); `release:desktop` is self-contained. Debug builds set a bug-badged window
+  icon (`scripts/debug-icon.mjs` writes `icons/debug/icon.rgba`, embedded raw so no PNG decoder ships).
+  `npm run desktop:launchers` installs pinnable `.desktop` entries for both; the debug one runs through a
+  `solenoid-debug` symlink because GTK takes WM_CLASS from the program name.
+- **Linux draws its own window controls** (`WindowControls.tsx` in the menu bar, undecorated window). decorum on Linux
+  keeps the native bar, can inject its controls twice and builds a dead minimize from GNOME's `button-layout`;
+  Windows still uses decorum's overlay.
+- Not done, the author's call: product copy still says desktop is Windows-only (README, landing pages), and CI
+  publishes only the Windows exe. `release:desktop` here also emits a .deb, .rpm and AppImage.
+
 ### SESSION DIGEST (2026-09-19 — frame popup column header; author present, local dev)
 
 On `develop`, pushed (the author verified over HMR through the session).
