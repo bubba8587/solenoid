@@ -144,8 +144,13 @@ platform; who draws minimize / maximize / close differs:
   and a transformed element with ANY composited descendant must itself become a layer, so one promoted box inside
   one node puts the whole React Flow viewport on a stretched layer and zooming in pixelates the canvas. The two
   things that promoted node content are switched off: the `AsyncOverflowScrolling` feature (every scrollable box
-  in a node) and 2D canvas acceleration (the canvas-drawn charts). GPU compositing itself stays on, so the canvas
-  paints into the root layer's tiles at the real scale. The blunt alternative, `WEBKIT_DISABLE_COMPOSITING_MODE=1`,
+  in a node) and 2D canvas acceleration (the canvas-drawn charts). The third promoter is CSS: WebKit runs an
+  `opacity` / `transform` / `filter` transition on the GPU by promoting the element, so a hover fade inside a node
+  flipped the whole canvas onto a layer and back (a 1px squish on hover; at far zoom-out a second of black while
+  the entire graph rasterized at 1x). `main.tsx` marks the engine (`html[data-webview="webkitgtk"]`) and
+  `desktopFrame.css` turns transitions off inside `.react-flow__viewport` and drops the load-time node reveal;
+  the cable flow animates `stroke-dashoffset`, which is never accelerated, and keeps running. GPU compositing
+  itself stays on, so the canvas paints into the root layer's tiles at the real scale. The blunt alternative, `WEBKIT_DISABLE_COMPOSITING_MODE=1`,
   also fixes it but moves all painting to the CPU. **A new trigger reintroduces the blur**: `will-change`,
   `translateZ` / 3D transforms, `<video>`, WebGL, or `position: fixed` inside a node; check with
   `WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS=1` (a green box around the graph is the viewport layer). **Reopen if**
