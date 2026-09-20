@@ -1339,10 +1339,10 @@ export function TablePopup() {
         )}
         <div className="table-popup__spacer" />
         {editable ? (
-          <>
+          <div className="table-popup__actions">
             <button className="table-popup__btn" onClick={() => tablePopup.close()}>Cancel</button>
             <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={view === "csv" && !!csvError}>Save</button>
-          </>
+          </div>
         ) : (
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
         )}

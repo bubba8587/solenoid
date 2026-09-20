@@ -64,6 +64,38 @@ export function validateYaml(kind: PropertyKind, value: unknown): boolean {
   }
 }
 
+const scalarOrNull = (v: unknown): Scalar => (isScalar(v) ? v : null);
+const named = (cells: unknown[]): YamlRecord =>
+  Object.fromEntries(cells.map((v, j) => [`Col${j + 1}`, scalarOrNull(v)]));
+
+/** A value reshaped to the kind's shape. Obsidian's "Update" on a type switch hands a widget the
+ *  OLD value, whatever it was, so every kind takes anything. A value that already fits comes back
+ *  untouched; the rest widens as the socket boundary does (a scalar is one element, a list one
+ *  row, a matrix gets `Col1…` names). Narrowing keeps what it can: a matrix or rows flatten into a
+ *  list row by row, and a cell the family cannot read becomes missing. Pure: nothing is written
+ *  until the editor's Save. */
+export function coerceYaml(kind: PropertyKind, value: unknown): unknown[] {
+  if (value === null || value === undefined || value === "") return [];
+  if (validateYaml(kind, value)) return value as unknown[];
+  const items = Array.isArray(value) ? value : [value];
+  const cell = (v: unknown): Scalar => (kind.family ? cellToYaml(rawCell(scalarOrNull(v)), kind.family) : scalarOrNull(v));
+  const rowOf = (item: unknown): unknown[] =>
+    Array.isArray(item) ? item : isPlainObject(item) ? Object.values(item) : [item];
+  const flat = items.every(isScalar);
+  switch (kind.shape) {
+    case "list": return items.flatMap(rowOf).map(cell);
+    case "matrix": return (flat ? [items] : items.map(rowOf)).map((row) => row.map(cell));
+    case "frame": {
+      if (flat) return [named(items)];
+      return items.map((item) =>
+        isPlainObject(item)
+          ? Object.fromEntries(Object.entries(item).map(([k, v]) => [k, scalarOrNull(v)]))
+          : named(rowOf(item)));
+    }
+    case "cube": return flat ? [named(items)] : items.map((item) => (isPlainObject(item) ? item : named(rowOf(item))));
+  }
+}
+
 function cellFromYaml(v: unknown, family: Family): Scalar {
   if (v === null || v === undefined) return null;
   if (family === "date") {
@@ -114,14 +146,23 @@ export function cellToYaml(raw: string, family: Family): Scalar {
   }
 }
 
+/** An editor on an empty value opens with one blank row to type into, and Add Row leaves more:
+ *  blank rows at the END are the editor's, never the note's. A blank row in the middle stays. */
+function dropTrailingBlank<T>(rows: T[], isBlank: (row: T) => boolean): T[] {
+  let end = rows.length;
+  while (end > 0 && isBlank(rows[end - 1])) end--;
+  return rows.slice(0, end);
+}
+
 /** The popup's edited raw grid → a matrix property. */
 export function matrixToYaml(cells: string[][], family: Family): Scalar[][] {
-  return cells.map((row) => row.map((c) => cellToYaml(c, family)));
+  const rows = cells.map((row) => row.map((c) => cellToYaml(c, family)));
+  return dropTrailingBlank(rows, (row) => row.every((v) => v === null));
 }
 
 /** The one-column list editor's raw grid → a list property. */
 export function listToYaml(cells: string[][], family: Family): Scalar[] {
-  return cells.map((row) => cellToYaml(row[0] ?? "", family));
+  return dropTrailingBlank(cells.map((row) => cellToYaml(row[0] ?? "", family)), (v) => v === null);
 }
 
 /** The text a cell is typed as: what the raw-text editors open on and hand back. */
@@ -147,7 +188,7 @@ export function frameSourceToYaml(columns: FrameSourceColumn[]): YamlRecord[] {
   const data = columns.filter((c) => !c.expr);
   const rows = data.reduce((m, c) => Math.max(m, c.cells.length), 0);
   const names = data.map((c, j) => c.name || `Col${j + 1}`);
-  return Array.from({ length: rows }, (_, r) => {
+  const records = Array.from({ length: rows }, (_, r) => {
     const rec: YamlRecord = {};
     data.forEach((col, j) => {
       const v = coerceFrameCell(col.type, col.cells[r] ?? "");
@@ -156,4 +197,5 @@ export function frameSourceToYaml(columns: FrameSourceColumn[]): YamlRecord[] {
     });
     return rec;
   });
+  return dropTrailingBlank(records, (rec) => Object.values(rec).every((v) => v === null));
 }

@@ -26,8 +26,17 @@ On `develop`, not pushed. tsc + vitest green. The rule is [[C107]] obsidianPlugi
 - **Found on the way:** the note reader dropped a cube row whose value is a table (it read the key as a text list);
   `readRow` now nests. A YAML boolean column infers as Number through `frameFromRecords`, so the plugin types a
   frame from the cell text instead.
-- Verified headless against a fake `obsidian` module (load, 12 chips, each popup, Save round trip, palette switch,
-  unload), with hostile page CSS to prove nothing leaks in. Not verified by me: the real Obsidian property row, Bases.
+- **Verify against REAL Obsidian, not a fake module.** The fake passed while the plugin was broken twice: the
+  settings page is a separate window (its own document, so shared constructed stylesheets adopt nowhere), and a
+  property row is built off-document and attached after `render` returns (so a "drop disconnected mounts" sweep
+  unmounted every chip but the last). The rig: `Xephyr :7`, then `/opt/Obsidian/obsidian --no-sandbox
+  --user-data-dir=<scratch> --remote-debugging-port=9333` with an `obsidian.json` naming a COPY of the vault;
+  puppeteer `connect` reaches `window.app` (`plugins.disablePlugin/enablePlugin` to reload a build,
+  `setting.openTabById`, `metadataTypeManager.setType`, a leaf's `view.metadataEditor.rendered`). The author's own
+  Obsidian is untouched. Spec § Verifying against real Obsidian.
+- **A type switch hands a widget the OLD value.** Property menu → a type over incompatible data → "Update" calls
+  `renderProperty(entry, true, true)`, the chosen widget over a value its `validate` refused; `setType` alone never
+  does. `coerceYaml` reshapes it for display and edit, and nothing is written until Save. Not verified: Bases.
 
 ### SESSION DIGEST (2026-09-20 — the dev machine is Linux; author present, local dev)
 

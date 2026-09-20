@@ -24,7 +24,7 @@ export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): s
 }
 
 /** A clickable chip that opens the full grid in the table popup; `label` titles it. */
-export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides }: {
+export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides, twoD }: {
   value: ArrayValue;
   label?: string;
   /** `"sm"` is the compact chip for node result boxes; `"md"` the default. */
@@ -42,13 +42,16 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   elem: ElemFamily | undefined;
   /** Merged into the popup open() — Table Input passes raw cells + onSaveRaw ([[C58]] tableInputRawText). */
   popupOverrides?: Partial<TablePopupState>;
+  /** The declared rank, for a host whose value may be EMPTY: `[]` cannot show whether it is a
+   *  list or a matrix. Absent = read it off the value. */
+  twoD?: boolean;
 }) {
   // The hook must run every render (Rules of Hooks), so read it, then prefer the prop.
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
-  const table = is2D(value);
+  const table = twoD ?? is2D(value);
   const rows = value.length;
-  const cols = table ? (value[0] as number[]).length : 1;
+  const cols = table ? ((value[0] as number[] | undefined)?.length ?? 0) : 1;
   // Explicit socket knowledge wins; numeric keeps the container default.
   const family = elem ?? elemFamilyOfCells(value);
   const famClass = family && family !== "number"
@@ -56,7 +59,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     : "";
 
   const chipLabel = table ? `${rows}×${cols} Table` : `${rows}× List`;
-  const verb = onSave ? "Edit" : "View";
+  const verb = onSave || popupOverrides?.onSaveRaw ? "Edit" : "View";
   const titleText = table ? `${rows}×${cols} table. ${verb}.` : `${rows}-item list. ${verb}.`;
 
   return (

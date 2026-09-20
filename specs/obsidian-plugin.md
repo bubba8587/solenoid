@@ -70,15 +70,34 @@ and drill levels, Escape semantics.
    the components. Opening and saving an untouched value writes back the same YAML. Every row of
    a saved frame carries every key, a missing cell as `null`. What the plugin writes, Solenoid's
    note reader (`noteFrontmatter.ts`) reads as the same type; the one open gap is listed below.
-7. **`validate` checks shape, and family inside a list or matrix.** Obsidian never calls a
-   widget's `render` on a value its `validate` refuses; it shows its own mismatch warning and
-   the inferred type. So `render` may assume the shape, and a wrong shape is Obsidian's to report.
-8. **The chip owns its value between Obsidian's renders.** Obsidian skips re-rendering a focused
+7. **`validate` checks shape, and family inside a list or matrix; `render` takes anything.** On a
+   value `validate` refuses, Obsidian shows its own mismatch warning and the inferred type. But
+   when the user picks a type from the property menu over incompatible data and confirms its
+   "Update" dialog, Obsidian force-renders the chosen widget over the OLD value. So every kind
+   reshapes whatever arrives (`coerceYaml`): a value that fits is untouched; the rest widens as
+   the socket boundary does (a scalar is one element, a list one row, a matrix gets `Col1…`
+   names); narrowing keeps what it can (a matrix or rows flatten into a list row by row) and a
+   cell the family cannot read becomes missing. The result always validates. **Nothing is
+   written on render**: the note keeps its old YAML until the editor's Save.
+8. **An empty value is usable.** `null`, `""` and the `[]` Obsidian leaves behind all read as
+   empty: the chip says `[0× List]`, `[0×0 Table]` (the `twoD` hint, since `[]` cannot show its
+   rank), `[0×0 Frame]` or `[0×0×1 Cube]`. A list or matrix opens on one blank row, and a frame
+   on one blank Text column and row (Text, so nothing typed is lost to a column type). Blank rows
+   at the END of a saved grid are the editor's and are never written; a blank row in the middle
+   stays.
+9. **The chip owns its value between Obsidian's renders.** Obsidian skips re-rendering a focused
    property, so `PropertyChip` keeps the edited YAML in state and the cube editor's records seam
-   reads the latest commit. A chip whose host left the document is unmounted at the next mount.
-9. **The plugin leaves nothing behind.** `onunload` removes the twelve widgets, closes both
-   popups, unmounts every root and removes the popup layer.
-10. **Obsidian's widget API is undocumented and read from its source** (1.13.7): a widget is
+   reads the latest commit. Obsidian builds a property row off-document and attaches it after
+   `render` returns, so a mount counts as dropped (and is unmounted) only once it has been seen
+   attached and then is not.
+10. **Stylesheets are per document.** Obsidian's settings, and a note popped out, are windows of
+    their own, and a constructed stylesheet can only be adopted in the document that made it. A
+    host is created in its container's `ownerDocument` with that document's sheets; a palette
+    change rewrites every live document's token sheet. The popup layer lives in the main window,
+    so a chip in a popped-out note opens its editor there (a gap, below).
+11. **The plugin leaves nothing behind.** `onunload` removes the twelve widgets, closes both
+    popups, unmounts every root and removes the popup layer.
+12. **Obsidian's widget API is undocumented and read from its source** (1.13.7): a widget is
     `{type, icon, name(), validate(value), render(el, value, ctx)}` in
     `app.metadataTypeManager.registeredTypeWidgets`, `ctx` is
     `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. The
@@ -122,6 +141,15 @@ false because nothing in the bundle needs Electron, and that is all it claims.
 - **Solenoid's reader types no matrix.** A sequence of sequences reads as a text list, so a
   matrix the plugin writes does not yet arrive in Solenoid as a `table` rung (`docs/backlog.md`).
 - `obsidianTypes.ts` does not yet map the `solenoid-*` ids in `types.json` to a `TypeHint`.
+- A chip in a popped-out note opens its editor in the main window (one popup layer).
+
+## Verifying against real Obsidian
+
+A fake `obsidian` module is not enough: it missed that the settings page is a separate document
+and that a property row is built off-document, and both broke the plugin. The check that counts
+is a second Obsidian on a private display (`Xephyr`), with its own `--user-data-dir`, a copy of
+the vault and `--remote-debugging-port`, driven over CDP; `window.app` is reachable there, and
+the author's own session is untouched.
 
 A builder that finds this spec silent stops that part and runs
 `python tools/dte.py gap specs/obsidian-plugin.md --title "..." --by <name>`; it never improvises.

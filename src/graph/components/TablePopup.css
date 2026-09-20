@@ -668,6 +668,8 @@
 /* Grows to push Cancel/Save to the right on one line; when the row wraps it just
    takes the slack on its line, so the action buttons stay together and reachable. */
 .table-popup__spacer { flex: 1 1 0; min-width: 0; }
+/* Cancel + Save wrap as ONE item, so a narrow card never strands Save on a line of its own. */
+.table-popup__actions { display: flex; gap: 8px; flex: 0 0 auto; margin-left: auto; }
 
 .table-popup__btn {
   font-size: 12px;

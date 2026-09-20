@@ -7,7 +7,7 @@ import { CubeChip } from "../../src/graph/components/CubeChip";
 import { deriveFrame, recordsToCube } from "../../src/graph/frame";
 import type { CubeRecord } from "../../src/graph/literalEditors";
 import {
-  listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, rawCell,
+  coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, rawCell,
   type PropertyKind, type Family, type YamlRecord,
 } from "./yamlValue";
 
@@ -36,7 +36,9 @@ export function PropertyChip({ kind, label, initial, onChange }: {
     setYaml(next);
     onChange(next);
   };
-  const items = Array.isArray(yaml) ? yaml : [];
+  // After a type switch the value may be anything: it shows and edits in this kind's shape, and
+  // only Save writes that shape to the note.
+  const items = coerceYaml(kind, yaml);
   useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
   const accent = typeAccent(kind);
 
@@ -66,7 +68,8 @@ export function PropertyChip({ kind, label, initial, onChange }: {
     const raw = (items as unknown[][]).map((row) => (Array.isArray(row) ? row.map(rawCell) : []));
     return (
       <ArrayChip
-        value={rows.length ? rows : [[null]]}
+        value={rows}
+        twoD
         label={label}
         size="sm"
         accent={accent}
@@ -74,6 +77,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
         popupOverrides={{
           data: raw.length ? raw : [[""]],
           cellType: popupCellType(family),
+          list: false,
           onSaveRaw: (cells) => commit(matrixToYaml(cells, family)),
         }}
       />
@@ -82,13 +86,16 @@ export function PropertyChip({ kind, label, initial, onChange }: {
 
   if (kind.shape === "frame") {
     const source = frameSourceFromYaml(items);
+    // An empty frame (what Obsidian leaves after a type switch) opens on one blank Text column
+    // and row: a 0×0 grid has nothing to type into. Text, so nothing typed is lost to a type.
+    const editorSource = source.length ? source : [{ name: "", type: "string" as const, cells: [""] }];
     return (
       <FrameChip
         value={deriveFrame(source)}
         label={label}
         size="sm"
         accent={accent}
-        source={source}
+        source={editorSource}
         onSaveSource={(columns) => commit(frameSourceToYaml(columns))}
         popupOverrides={{ unitTaggable: false, noFormulaColumns: true }}
       />
@@ -102,7 +109,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
       size="sm"
       accent={accent}
       edit={{
-        records: () => (Array.isArray(latest.current) ? (latest.current as CubeRecord[]) : []),
+        records: () => coerceYaml(kind, latest.current) as CubeRecord[],
         save: (records) => commit(records),
       }}
     />

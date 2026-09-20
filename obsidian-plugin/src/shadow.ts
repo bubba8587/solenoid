@@ -7,7 +7,9 @@ declare const __SOLENOID_CSS__: string;
 const ACCENT_SLOT = "gold";
 
 const hosts = new Set<HTMLElement>();
-let sheets: CSSStyleSheet[] | null = null;
+// One set of sheets PER DOCUMENT: Obsidian's settings and its popout notes are windows of their
+// own, and a constructed stylesheet can only be adopted in the document that made it.
+const sheetsByDoc = new Map<Document, CSSStyleSheet[]>();
 let layer: HTMLElement | null = null;
 
 function tokenBlock(selector: string, mode: ThemeMode): string {
@@ -17,25 +19,33 @@ function tokenBlock(selector: string, mode: ThemeMode): string {
   return `${selector}{${lines.join("")}}`;
 }
 
-function styleSheets(): CSSStyleSheet[] {
-  if (sheets) return sheets;
+const tokenCss = (): string =>
+  `${tokenBlock(":host", "dark")}${tokenBlock(':host([data-theme="light"])', "light")}` +
+  ":host{color:var(--text);color-scheme:dark}:host([data-theme=\"light\"]){color-scheme:light}";
+
+function styleSheets(doc: Document): CSSStyleSheet[] {
+  const made = sheetsByDoc.get(doc);
+  if (made) return made;
+  const Sheet = (doc.defaultView ?? window).CSSStyleSheet;
   // Obsidian's inherited text styles stop at the host; the app's own follow.
-  const reset = new CSSStyleSheet();
+  const reset = new Sheet();
   reset.replaceSync(":host{all:initial}");
-  const app = new CSSStyleSheet();
+  const app = new Sheet();
   app.replaceSync(__SOLENOID_CSS__);
-  sheets = [reset, app, new CSSStyleSheet()];
-  refreshTokens();
+  const tokens = new Sheet();
+  tokens.replaceSync(tokenCss());
+  const sheets = [reset, app, tokens];
+  sheetsByDoc.set(doc, sheets);
   return sheets;
 }
 
-/** Rewrite the palette-derived tokens; the sheet is shared, so every host retints at once. */
+/** Rewrite the palette-derived tokens; a document's sheet is shared, so every host retints at once. */
 export function refreshTokens(): void {
-  if (!sheets) return;
-  sheets[2].replaceSync(
-    `${tokenBlock(":host", "dark")}${tokenBlock(':host([data-theme="light"])', "light")}` +
-    ":host{color:var(--text);color-scheme:dark}:host([data-theme=\"light\"]){color-scheme:light}",
-  );
+  const css = tokenCss();
+  for (const [doc, sheets] of sheetsByDoc) {
+    if (!doc.defaultView) sheetsByDoc.delete(doc); // a closed window
+    else sheets[2].replaceSync(css);
+  }
   bumpTheme();
 }
 
@@ -64,13 +74,13 @@ function obsidianMode(): ThemeMode {
   return document.body.classList.contains("theme-light") ? "light" : "dark";
 }
 
-/** A host element whose shadow root carries the app's styles and tokens. */
-export function createShadowHost(tag: "span" | "div", className: string): { host: HTMLElement; root: ShadowRoot } {
-  const host = document.createElement(tag);
+/** A host element, made in `doc`, whose shadow root carries the app's styles and tokens. */
+export function createShadowHost(tag: "span" | "div", className: string, doc: Document = document): { host: HTMLElement; root: ShadowRoot } {
+  const host = doc.createElement(tag);
   host.className = className;
   host.dataset.theme = obsidianMode();
   const root = host.attachShadow({ mode: "open" });
-  root.adoptedStyleSheets = styleSheets();
+  root.adoptedStyleSheets = styleSheets(doc);
   hosts.add(host);
   return { host, root };
 }
@@ -141,6 +151,7 @@ export function removePopupLayer(): void {
   if (!layer) return;
   window.removeEventListener("resize", placeOverPane);
   pane = null;
+  sheetsByDoc.clear();
   releaseShadowHost(layer);
   layer.remove();
   layer = null;

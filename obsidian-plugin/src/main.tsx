@@ -37,7 +37,7 @@ interface MetadataTypeManager {
   registeredTypeWidgets: Record<string, PropertyWidget>;
 }
 
-interface Mount { host: HTMLElement; root: Root }
+interface Mount { host: HTMLElement; root: Root; attached: boolean }
 
 interface PluginData { palette?: string }
 
@@ -79,14 +79,24 @@ export default class SolenoidPropertiesPlugin extends Plugin {
 
   /** Mount app UI in its own shadow host under `el`. */
   mount(el: HTMLElement, className: string, node: ReactNode): ShadowRoot {
-    // Obsidian empties a container to re-render; what it dropped unmounts here.
-    for (const m of this.mounts) if (!m.host.isConnected) this.unmount(m);
-    const { host, root: shadow } = createShadowHost("span", className);
+    this.sweep();
+    const { host, root: shadow } = createShadowHost("span", className, el.ownerDocument);
     el.appendChild(host);
     const root = createRoot(shadow);
     root.render(node);
-    this.mounts.add({ host, root });
+    this.mounts.add({ host, root, attached: host.isConnected });
+    window.requestAnimationFrame(() => this.sweep());
     return shadow;
+  }
+
+  /** Obsidian empties a container to re-render; what it dropped unmounts here. It also builds a
+   *  property row off-document and attaches it after `render` returns, so a host only counts as
+   *  dropped once it has been seen attached. */
+  private sweep(): void {
+    for (const m of this.mounts) {
+      if (m.host.isConnected) m.attached = true;
+      else if (m.attached) this.unmount(m);
+    }
   }
 
   /** The note's own pane when it sits in the center area; else the center area (a property
