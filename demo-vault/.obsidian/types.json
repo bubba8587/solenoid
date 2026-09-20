@@ -20,7 +20,6 @@
     "impedance": "solenoid-complexlist",
     "grid": "solenoid-table",
     "budget": "solenoid-frame",
-    "phases": "solenoid-cube",
-    "table": "solenoid-frame"
+    "phases": "solenoid-cube"
   }
 }
