@@ -38,8 +38,10 @@ On `develop`, NOT pushed (the author's call). tsc + vitest green.
   colord set an EDID profile on the X root (`xprop -root _ICC_PROFILE`). Chromium reads it and maps the app's
   sRGB hexes into the panel's gamut, so it shows true sRGB; WebKitGTK ignores it and sends the values raw, so the
   same hexes stretch to P3 and read hotter. `chromium --force-color-profile=srgb` makes Chromium match the
-  desktop. Most users' sRGB displays show the Chromium look. Whether to author the palette in `display-p3` is a
-  design call (`backlog.md` § Canvas chrome).
+  desktop. Neither look is rare: sRGB panels and fully managed setups (an iPhone, Chromium with a profile) show
+  the muted one; unmanaged or boosted paths (WebKitGTK, Windows with no display profile, an Android phone in its
+  default Vivid / Adaptive mode, where the author also sees it) show the vivid one the palette was tuned on.
+  Whether to author the palette in `display-p3` is a design call (`backlog.md` § Canvas chrome).
 - **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
   the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
 

@@ -113,7 +113,8 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Palette on wide-gamut displays** (author 2026-09-21 noticed the Linux desktop reads more saturated than
   the dev server; cause in `dev-notes.md`). The hexes are sRGB, so a color-managed engine (Chromium, WebView2
   with a display profile) shows them accurately and an unmanaged one (WebKitGTK) stretches them to the panel.
-  The author tuned the palette by eye on an unmanaged P3 panel and prefers that look. Design call: leave it, or
+  The author tuned the palette by eye on an unmanaged P3 panel, sees the same vivid look on their phone, and
+  prefers it; managed Chromium on Linux is the outlier among their screens. Design call: leave it, or
   author the accents in `color(display-p3 …)` with sRGB fallbacks so managed engines on P3 panels get the vivid
   version too (DESIGN.md § 2; `palette.ts` derives siblings in HSV from hex, so this is not a token swap).
 
