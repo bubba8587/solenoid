@@ -46,8 +46,27 @@ body {
   --sol-header-tint: 22%;
   --sol-overlay-border: #474c54;
   --sol-btn-hover: #1f1f1f;
-  /* A hue used as TEXT: itself on the dark workbench, mixed toward the ink in light. */
+  /* A hue used as TEXT or as a line icon is itself on the dark workbench. */
   --sol-ink-pct: 100%;
+  --sol-wash: 14%;
+  --sol-ink-number: var(--sol-number);
+  --sol-ink-string: var(--sol-string);
+  --sol-ink-date: var(--sol-date);
+  --sol-ink-complex: var(--sol-complex);
+  --sol-ink-logical: var(--sol-logical);
+  --sol-ink-frame: var(--sol-frame);
+  --sol-ink-lambda: var(--sol-lambda);
+  --sol-ink-teal: var(--sol-teal);
+  --sol-ink-blue: var(--sol-blue);
+  --sol-ink-amber: var(--sol-amber);
+  --sol-ink-error: var(--sol-error);
+  --sol-code-number: var(--sol-number);
+  --sol-code-string: var(--sol-string);
+  --sol-hairline: color-mix(in srgb, var(--sol-accent) var(--sol-mix-hairline), var(--sol-border));
+  --sol-edge: color-mix(in srgb, var(--sol-accent) var(--sol-mix-edge), var(--sol-border));
+  --sol-emphasis: color-mix(in srgb, var(--sol-accent) var(--sol-mix-emphasis), var(--sol-border));
+  --sol-h1-rule: color-mix(in srgb, var(--sol-number) var(--sol-mix-edge), var(--sol-border));
+  --sol-h2-rule: color-mix(in srgb, var(--sol-string) var(--sol-mix-hairline), var(--sol-border));
 
   --sol-number: #f5b914;
   --sol-list: #d09d11;
@@ -96,8 +115,30 @@ body {
   --sol-header-tint: 52%;
   --sol-overlay-border: #aeb6c1;
   --sol-btn-hover: #e9ecf0;
-  /* No hue here reaches 4.5:1 on white as it stands (lime is 1.6:1); at 45% the weakest is 5.2:1. */
-  --sol-ink-pct: 45%;
+  /* On white a color is either NEUTRAL or the FULL accent, never a hue greyed toward the ink:
+     no hue here reaches 4.5:1 as text (lime is 1.6:1), and dark yellow is brown. So gold and
+     lime text is the ink and their color moves into fills, rules and badges; the other hues
+     darken along their own hue in OKLCH, which stays a color. */
+  --sol-ink-pct: 0%;
+  --sol-wash: 38%;
+  --sol-ink-number: var(--sol-text);
+  --sol-ink-string: var(--sol-text);
+  --sol-ink-date: oklch(from var(--sol-date) 0.45 c h);
+  --sol-ink-complex: oklch(from var(--sol-complex) 0.45 c h);
+  --sol-ink-logical: oklch(from var(--sol-logical) 0.42 c h);
+  --sol-ink-frame: oklch(from var(--sol-frame) 0.42 c h);
+  --sol-ink-lambda: oklch(from var(--sol-lambda) 0.45 c h);
+  --sol-ink-teal: oklch(from var(--sol-teal) 0.45 c h);
+  --sol-ink-blue: oklch(from var(--sol-blue) 0.42 c h);
+  --sol-ink-amber: oklch(from var(--sol-amber) 0.47 c h);
+  --sol-ink-error: oklch(from var(--sol-error) 0.47 c h);
+  --sol-code-number: oklch(from var(--sol-amber) 0.47 c h);
+  --sol-code-string: oklch(from var(--sol-lambda) 0.45 c h);
+  --sol-hairline: var(--sol-border);
+  --sol-edge: color-mix(in srgb, var(--sol-accent) 88%, #000);
+  --sol-emphasis: color-mix(in srgb, var(--sol-accent) 88%, #000);
+  --sol-h1-rule: var(--sol-number);
+  --sol-h2-rule: var(--sol-strlist);
 
   --sol-number: #eab013;
   --sol-list: #c79610;
@@ -130,21 +171,6 @@ body {
 
 .theme-dark,
 .theme-light {
-  --sol-ink-number: color-mix(in srgb, var(--sol-number) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-string: color-mix(in srgb, var(--sol-string) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-date: color-mix(in srgb, var(--sol-date) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-complex: color-mix(in srgb, var(--sol-complex) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-logical: color-mix(in srgb, var(--sol-logical) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-frame: color-mix(in srgb, var(--sol-frame) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-lambda: color-mix(in srgb, var(--sol-lambda) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-teal: color-mix(in srgb, var(--sol-teal) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-blue: color-mix(in srgb, var(--sol-blue) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-amber: color-mix(in srgb, var(--sol-amber) var(--sol-ink-pct), var(--sol-text));
-  --sol-ink-error: color-mix(in srgb, var(--sol-error) var(--sol-ink-pct), var(--sol-text));
-
-  --sol-hairline: color-mix(in srgb, var(--sol-accent) var(--sol-mix-hairline), var(--sol-border));
-  --sol-edge: color-mix(in srgb, var(--sol-accent) var(--sol-mix-edge), var(--sol-border));
-  --sol-emphasis: color-mix(in srgb, var(--sol-accent) var(--sol-mix-emphasis), var(--sol-border));
   --sol-header-band: color-mix(in srgb, var(--sol-accent) var(--sol-header-tint), var(--sol-surface));
 
   --background-primary: var(--sol-surface);
@@ -306,14 +332,14 @@ body {
 
   --tag-color: var(--sol-ink-string);
   --tag-color-hover: var(--sol-ink-string);
-  --tag-background: color-mix(in srgb, var(--sol-string) 14%, transparent);
-  --tag-background-hover: color-mix(in srgb, var(--sol-string) 22%, transparent);
+  --tag-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
+  --tag-background-hover: color-mix(in srgb, var(--sol-string) calc(var(--sol-wash) + 8%), transparent);
   --tag-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
   --tag-border-color-hover: color-mix(in srgb, var(--sol-string) var(--sol-mix-emphasis), var(--sol-border));
   --tag-border-width: 1px;
   --tag-radius: 999px;
   --pill-color: var(--sol-ink-string);
-  --pill-background: color-mix(in srgb, var(--sol-string) 14%, transparent);
+  --pill-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
   --pill-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
   --pill-border-width: 1px;
   --pill-radius: 999px;
@@ -325,8 +351,8 @@ body {
   --code-radius: 4px;
   --code-normal: var(--sol-text);
   --code-comment: var(--sol-text-muted);
-  --code-string: var(--sol-ink-string);
-  --code-value: var(--sol-ink-number);
+  --code-string: var(--sol-code-string);
+  --code-value: var(--sol-code-number);
   --code-keyword: var(--sol-ink-logical);
   --code-function: var(--sol-ink-blue);
   --code-property: var(--sol-ink-complex);
@@ -676,11 +702,11 @@ button.mod-cta {
 }
 .markdown-rendered h1,
 .cm-s-obsidian .HyperMD-header-1 {
-  border-bottom-color: color-mix(in srgb, var(--sol-number) var(--sol-mix-edge), var(--sol-border));
+  border-bottom-color: var(--sol-h1-rule);
 }
 .markdown-rendered h2,
 .cm-s-obsidian .HyperMD-header-2 {
-  border-bottom-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-hairline), var(--sol-border));
+  border-bottom-color: var(--sol-h2-rule);
 }
 .inline-title {
   padding-bottom: 0.2em;
@@ -836,6 +862,30 @@ button.mod-cta {
   transform: none;
 }
 
+/* In light a link is ink over a rule in the full color: the cable carries the hue. */
+.theme-light .markdown-rendered a,
+.theme-light .cm-s-obsidian .cm-hmd-internal-link .cm-underline,
+.theme-light .cm-s-obsidian .cm-link .cm-underline,
+.theme-light .cm-s-obsidian .cm-url .cm-underline {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--sol-number);
+}
+.theme-light .markdown-rendered a.external-link,
+.theme-light .cm-s-obsidian .cm-link .cm-underline,
+.theme-light .cm-s-obsidian .cm-url .cm-underline {
+  color: var(--sol-text);
+  text-decoration-color: var(--sol-complex);
+}
+.theme-light .markdown-rendered a.tag {
+  text-decoration-line: none;
+}
+.theme-light .markdown-rendered a.is-unresolved {
+  text-decoration-style: dashed;
+  text-decoration-color: var(--sol-border-strong);
+}
+
 /* ── Properties: a node card, and every type in its own color ───────────────── */
 
 .metadata-container {
@@ -874,6 +924,17 @@ button.mod-cta {
 .metadata-property { --sol-type: var(--sol-any); }
 .metadata-property .metadata-property-icon {
   color: color-mix(in srgb, var(--sol-type) var(--sol-ink-pct), var(--sol-text));
+}
+/* In light the icon is a socket: a badge filled with the full type color, inked on top. */
+.theme-light .metadata-property .metadata-property-icon {
+  color: var(--sol-type-ink, #1a1a1a);
+  background-color: var(--sol-type);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sol-type) 77%, #000);
+}
+.theme-light .metadata-property:has(> :is([data-property-type="checkbox"], [data-property-type^="solenoid-logical"],
+  [data-property-type="solenoid-frame"], [data-property-type="solenoid-cube"])) {
+  --sol-type-ink: #ffffff;
 }
 .metadata-property:focus-within {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--sol-type) var(--sol-mix-emphasis), var(--sol-border));
