@@ -33,6 +33,8 @@ enough that the seeds have real rows to compute over:
   backlinks answer "which graph wrote this" (item D).
 - **`Projects.base`** — one Bases table view, so a note can show a live table over what a
   Solenoid Write Properties run produces.
+- **`Planning board.canvas`** — one Canvas: a group, two colored cards, a note card for
+  `Projects/Kitchen remodel` and a labeled edge, so the look's canvas styling has something to show.
 - **`.obsidian/snippets/solenoid.css`** — Solenoid's Default palette as an Obsidian look, light
   and dark, switched on by `.obsidian/appearance.json`. A property's icon wears its type's
   color, and hues used as text are darkened in light mode to hold contrast. The Atkinson
