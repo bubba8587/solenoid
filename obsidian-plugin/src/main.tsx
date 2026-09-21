@@ -14,7 +14,7 @@ import { paletteStore, type PaletteName } from "../../src/graph/palette";
 import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
-import { PROPERTY_KINDS, validateYaml, type PropertyKind } from "./yamlValue";
+import { PROPERTY_KINDS, validateYaml, readColumnTypes, type PropertyKind, type ColumnTypes } from "./yamlValue";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, syncTheme, refreshTokens, openPopupsOver } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 
@@ -39,18 +39,20 @@ interface MetadataTypeManager {
 
 interface Mount { host: HTMLElement; root: Root; attached: boolean }
 
-interface PluginData { palette?: string }
+interface PluginData { palette?: string; columnTypes?: Record<string, ColumnTypes> }
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
 
 export default class SolenoidPropertiesPlugin extends Plugin {
   private mounts = new Set<Mount>();
   private popups: Root | null = null;
+  private data: PluginData = {};
 
   async onload(): Promise<void> {
-    const data = ((await this.loadData()) ?? {}) as PluginData;
+    const stored = ((await this.loadData()) ?? {}) as PluginData;
+    this.data = { palette: stored.palette, columnTypes: readColumnTypes(stored.columnTypes) };
     // The store also reads `localStorage`, which every vault shares; this vault's data decides.
-    paletteStore.setActiveBase((data.palette ?? "Default") as PaletteName);
+    paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
 
     for (const [id, svg] of Object.entries(CUSTOM_ICONS)) addIcon(id, svg);
     const widgets = this.typeManager().registeredTypeWidgets;
@@ -77,7 +79,14 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   async setPalette(name: PaletteName): Promise<void> {
     paletteStore.setActiveBase(name);
     refreshTokens();
-    await this.saveData({ palette: name } satisfies PluginData);
+    this.data.palette = name;
+    await this.saveData(this.data);
+  }
+
+  /** A frame property's picked column types: by property name, vault-wide, as Obsidian types a property. */
+  private async setColumnTypes(key: string, types: ColumnTypes): Promise<void> {
+    this.data.columnTypes = { ...this.data.columnTypes, [key]: { ...this.data.columnTypes?.[key], ...types } };
+    await this.saveData(this.data);
   }
 
   /** Mount app UI in its own shadow host under `el`. */
@@ -128,7 +137,14 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       validate: (value) => validateYaml(kind, value),
       render: (el, value, ctx) => {
         const shadow = this.mount(el, "solenoid-property-chip",
-          <PropertyChip kind={kind} label={ctx.key} initial={value} onChange={(next) => ctx.onChange(next)} />);
+          <PropertyChip
+            kind={kind}
+            label={ctx.key}
+            initial={value}
+            onChange={(next) => ctx.onChange(next)}
+            columnTypes={this.data.columnTypes?.[ctx.key]}
+            onColumnTypes={(types) => void this.setColumnTypes(ctx.key, types)}
+          />);
         shadow.host.addEventListener("pointerdown", () => openPopupsOver(this.paneOf(shadow.host)), true);
         return { focus: () => shadow.querySelector("button")?.focus() };
       },

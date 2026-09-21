@@ -2,7 +2,7 @@
 // A property's YAML value ⇄ the value a chip and its popup take. Pure: no DOM, no Obsidian.
 import { parseDateToSerial, serialToJsDate } from "../../src/graph/nodes/dateSerial";
 import { parseCx } from "../../src/graph/cxValue";
-import { coerceFrameCell, inferColumn, type FrameSourceColumn } from "../../src/graph/frame";
+import { coerceFrameCell, type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
 
 export type Family = "number" | "string" | "date" | "logical" | "complex";
 export type Shape = "list" | "matrix" | "frame" | "cube";
@@ -171,23 +171,63 @@ export function rawCell(v: unknown): string {
   return typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
 }
 
-/** A frame property → Frame Input's literal source: raw text per cell, a type per column
- *  inferred from that text (so a YAML `true` column is Boolean, an ISO column a Date). */
-export function frameSourceFromYaml(value: unknown): FrameSourceColumn[] {
+/** A frame's column types as the user picked them, by column name: the app's own type names.
+ *  Kept in the plugin's `data.json` under the property's name (a note's rows have no slot for it). */
+export type ColumnTypes = Record<string, FrameColType>;
+
+const COLUMN_TYPES: readonly FrameColType[] = ["number", "string", "date", "logical"];
+const isColumnType = (t: unknown): t is FrameColType => COLUMN_TYPES.includes(t as FrameColType);
+
+/** What `data.json` held → only the entries that are real column types. */
+export function readColumnTypes(raw: unknown): Record<string, ColumnTypes> {
+  const out: Record<string, ColumnTypes> = {};
+  if (!isPlainObject(raw)) return out;
+  for (const [key, cols] of Object.entries(raw)) {
+    if (!isPlainObject(cols)) continue;
+    const types: ColumnTypes = {};
+    for (const [name, t] of Object.entries(cols)) if (isColumnType(t)) types[name] = t;
+    out[key] = types;
+  }
+  return out;
+}
+
+/** The FIRST guess for a column nobody has typed, from the YAML values' own types and never
+ *  their text: a quoted `"0012"` is Text, so a Save cannot turn it into 12. */
+function guessColumnType(values: unknown[]): FrameColType {
+  const present = values.filter((v) => v !== null && v !== undefined && v !== "");
+  if (present.length === 0) return "string";
+  if (present.every((v) => typeof v === "boolean")) return "logical";
+  if (present.every((v) => typeof v === "number")) return "number";
+  if (present.every((v) => fitsFamily(v, "date"))) return "date";
+  return "string";
+}
+
+/** A frame property → Frame Input's literal source: raw text per cell, and per column the
+ *  type the user picked (`picked`), else the first guess. */
+export function frameSourceFromYaml(value: unknown, picked: ColumnTypes = {}): FrameSourceColumn[] {
   const records = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
   return keys.map((name) => {
-    const cells = records.map((rec) => rawCell(isScalar(rec[name]) ? rec[name] : null));
-    return { name, type: inferColumn(name, cells).type, cells };
+    const values = records.map((rec) => (isScalar(rec[name]) ? rec[name] : null));
+    return { name, type: picked[name] ?? guessColumnType(values), cells: values.map(rawCell) };
   });
+}
+
+const savedName = (col: FrameSourceColumn, j: number): string => col.name || `Col${j + 1}`;
+
+/** The types to remember after a Save: every written column's, under the name it was written as. */
+export function columnTypesOf(columns: FrameSourceColumn[]): ColumnTypes {
+  const types: ColumnTypes = {};
+  columns.filter((c) => !c.expr).forEach((col, j) => { types[savedName(col, j)] = col.type; });
+  return types;
 }
 
 /** The edited literal source → rows of `{name: value}`; every row keeps every key. */
 export function frameSourceToYaml(columns: FrameSourceColumn[]): YamlRecord[] {
   const data = columns.filter((c) => !c.expr);
   const rows = data.reduce((m, c) => Math.max(m, c.cells.length), 0);
-  const names = data.map((c, j) => c.name || `Col${j + 1}`);
+  const names = data.map(savedName);
   const records = Array.from({ length: rows }, (_, r) => {
     const rec: YamlRecord = {};
     data.forEach((col, j) => {

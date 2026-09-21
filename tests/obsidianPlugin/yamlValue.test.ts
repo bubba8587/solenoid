@@ -4,8 +4,7 @@ import { readFileSync } from "node:fs";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { parseObsidianTypes } from "../../src/graph/obsidianTypes";
 import {
-  PROPERTY_KINDS, validateYaml, coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml,
-  frameSourceFromYaml, frameSourceToYaml, type PropertyKind,
+  PROPERTY_KINDS, validateYaml, coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, type PropertyKind, columnTypesOf, readColumnTypes,
 } from "../../obsidian-plugin/src/yamlValue";
 import { SOCKET_COLORS } from "../../src/graph/sockets";
 
@@ -61,6 +60,33 @@ describe("a property's YAML survives the editor untouched", () => {
     const source = frameSourceFromYaml(rows);
     expect(source.map((c) => c.type)).toEqual(["string", "number", "date", "logical"]);
     expect(frameSourceToYaml(source)).toEqual(rows);
+  });
+
+  it("opens a column as the type the user picked, whatever its cells look like", () => {
+    const rows = [{ sku: "0012", due: "2026-10-01" }, { sku: "0450", due: "2026-10-04" }];
+    const source = frameSourceFromYaml(rows, { sku: "string", due: "string" });
+    expect(source.map((c) => c.type)).toEqual(["string", "string"]);
+    expect(frameSourceToYaml(source)).toEqual(rows);
+  });
+
+  it("guesses an untyped column from the YAML values' own types, never their text", () => {
+    // A quoted "0012" is Text: guessed as Number, a Save would write 12 and lose the zeros.
+    const rows = [{ sku: "0012", qty: 3, ok: true, due: "2026-10-01", blank: null }];
+    const source = frameSourceFromYaml(rows);
+    expect(source.map((c) => c.type)).toEqual(["string", "number", "logical", "date", "string"]);
+    expect(frameSourceToYaml(source)).toEqual(rows);
+    expect(frameSourceFromYaml([{ mixed: 1 }, { mixed: "two" }])[0].type).toBe("string");
+  });
+
+  it("reports every written column's type on Save, under the name it was written as", () => {
+    const source = frameSourceFromYaml([{ a: 1 }], { a: "string" });
+    source.push({ name: "", type: "date", cells: ["2026-10-01"] });
+    expect(columnTypesOf(source)).toEqual({ a: "string", Col2: "date" });
+  });
+
+  it("reads back only real column types from data.json", () => {
+    expect(readColumnTypes({ budget: { cost: "number", item: "chip", n: 3 }, junk: "x" })).toEqual({ budget: { cost: "number" } });
+    expect(readColumnTypes(undefined)).toEqual({});
   });
 
   it("keeps every key on every row, a missing cell as null", () => {
