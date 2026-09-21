@@ -381,18 +381,16 @@ body {
 .workspace-split.mod-root .workspace-tabs .workspace-leaf {
   border-radius: 8px 8px 0 0;
 }
-/* A tab is a node header: 6px top corners, a band tinted with its view type's color under
-   a 2px cap of the same, and the small uppercase title in that color's ink. */
+/* A tab is a node header: 6px top corners, a tinted band under a 2px cap, and the small
+   uppercase title in the same color's ink. Gold by default, so a note's tab belongs to the
+   accent line it stands on; a base, a canvas and media keep a color of their own. */
 .mod-root .workspace-tab-header {
-  --sol-tab: var(--sol-any);
+  --sol-tab: var(--sol-number);
   --sol-tab-ink: color-mix(in srgb, var(--sol-tab) var(--sol-ink-pct), var(--sol-text-bright));
   --tab-text-color-active: var(--sol-tab-ink);
   --tab-text-color-focused-active: var(--sol-tab-ink);
   --tab-text-color-focused-active-current: var(--sol-tab-ink);
 }
-.mod-root .workspace-tab-header[data-type="markdown"] { --sol-tab: var(--sol-string); }
-.mod-root .workspace-tab-header[data-type="graph"],
-.mod-root .workspace-tab-header[data-type="localgraph"] { --sol-tab: var(--sol-number); }
 .mod-root .workspace-tab-header[data-type="bases"],
 .mod-root .workspace-tab-header[data-type="table"] { --sol-tab: var(--sol-frame); }
 .mod-root .workspace-tab-header[data-type="canvas"] { --sol-tab: var(--sol-teal); }
@@ -574,7 +572,9 @@ button.mod-cta {
 }
 
 /* The Navigator's rows: 6px corners, the selected one washed in the accent, and a
-   9px square of color in front of each folder. Here the color is the folder's content type. */
+   9px square of color in front of each folder. Top-level folders take the palette in its own
+   order (gold, green, amber, blue, lime, purple, gray, vermilion, violet, pink, sky, teal) and
+   loop back to gold; a subfolder shares its top folder's color. */
 .tree-item-self {
   border-radius: 6px;
 }
@@ -587,14 +587,28 @@ button.mod-cta {
   border-radius: 2px;
   background-color: var(--sol-folder, var(--sol-any));
 }
-.nav-folder-title[data-path^="Daily"] { --sol-folder: var(--sol-date); }
-.nav-folder-title[data-path^="Data"] { --sol-folder: var(--sol-table); }
-.nav-folder-title[data-path^="Notes"] { --sol-folder: var(--sol-string); }
-.nav-folder-title[data-path^="People"] { --sol-folder: var(--sol-complex); }
-.nav-folder-title[data-path^="Projects"] { --sol-folder: var(--sol-frame); }
-.nav-folder-title[data-path^="Solenoid"] { --sol-folder: var(--sol-number); }
-.nav-folder-title[data-path^="Tasks"],
-.nav-folder-title[data-path^="TaskNotes"] { --sol-folder: var(--sol-logical); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 1 of .nav-folder) { --sol-folder: var(--sol-number); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 2 of .nav-folder) { --sol-folder: var(--sol-lambda); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 3 of .nav-folder) { --sol-folder: var(--sol-amber); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 4 of .nav-folder) { --sol-folder: var(--sol-blue); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 5 of .nav-folder) { --sol-folder: var(--sol-string); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 6 of .nav-folder) { --sol-folder: var(--sol-logical); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 7 of .nav-folder) { --sol-folder: var(--sol-any); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 8 of .nav-folder) { --sol-folder: var(--sol-error); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 9 of .nav-folder) { --sol-folder: var(--sol-frame); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 10 of .nav-folder) { --sol-folder: var(--sol-date); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 11 of .nav-folder) { --sol-folder: var(--sol-complex); }
+.nav-files-container > div > .nav-folder:nth-child(12n of .nav-folder) { --sol-folder: var(--sol-teal); }
+
+.search-result:not(.is-collapsed) .search-result-file-title {
+  color: var(--sol-text-bright);
+  font-weight: 600;
+}
+/* A row with its menu open gets the one-edge focus, not a 2px ring. */
+.tree-item-self.has-active-menu,
+.tree-item-self.has-focus {
+  box-shadow: inset 0 0 0 1px var(--sol-accent);
+}
 
 /* Section headings, as the Navigator and the socket legend set theirs. */
 .vertical-tab-header-group-title,
@@ -871,6 +885,49 @@ button.mod-cta {
 .metadata-property:has(> [data-property-type="solenoid-logicaltable"]) { --sol-type: var(--sol-logicaltable); }
 .metadata-property:has(> [data-property-type="solenoid-frame"]),
 .metadata-property:has(> [data-property-type="solenoid-cube"]) { --sol-type: var(--sol-frame); }
+
+/* ── Canvas ─────────────────────────────────────────────────────────────────── */
+
+.canvas-node-container {
+  border-radius: 8px;
+}
+.canvas-node-group .canvas-node-container {
+  border-style: dashed;
+  border-width: 2px;
+  border-radius: 0 8px 8px 8px;
+}
+.canvas-group-label {
+  padding: 4px 10px;
+  border-radius: 6px 6px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.canvas-control-group {
+  overflow: hidden;
+  padding: 2px;
+  background-color: var(--sol-surface);
+  border: 1px solid var(--sol-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-s);
+}
+.canvas-control-item {
+  border: none;
+  border-radius: 50%;
+  background: none;
+}
+.canvas-control-item:hover {
+  color: var(--sol-ink-number);
+  background-color: var(--sol-btn-hover);
+}
+.canvas-card-menu {
+  padding: 2px 10px;
+  background-color: var(--sol-surface);
+  border: 2px solid var(--sol-overlay-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-l);
+}
 
 /* ── Graph view ─────────────────────────────────────────────────────────────── */
 
