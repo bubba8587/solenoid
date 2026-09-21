@@ -9,6 +9,13 @@ specific item.
 ### SESSION DIGEST (2026-09-21b — plugin release readiness, the vault look; author present)
 
 On `develop`, NOT pushed (the author's call). tsc + vitest green.
+- **Plugin `0.1.1` is PUBLISHED** (2026-09-21): the directory's review REQUIRES the listed repository to hold
+  the source, and recommended attestations, no extra release files, no `localStorage` and a clipboard
+  disclosure. The plugin repo now carries a snapshot (`npm run plugin:export -- "<clone>"`: 87 app files + the
+  plugin folder, its own pinned `package.json` and lock) and builds from it; the three release files are
+  attested and verify (`gh attestation verify`), byte-identical to the build here. Vite takes any 1.2.x
+  rolldown and a patch bump minifies React differently, so the export pins it. The directory reviews RELEASES,
+  so a fix to a finding needs a new version.
 - **Plugin `0.1.0` is PUBLISHED** (2026-09-21, the author's go): `bubba8587/Solenoid-Properties` release `0.1.0`,
   built from `solenoid@635905d9`, with the author's README and screenshots. It is LISTED at
   community.obsidian.md/plugins/solenoid-properties (Health: Excellent, Review: Pending), and the 1.4.1 release
