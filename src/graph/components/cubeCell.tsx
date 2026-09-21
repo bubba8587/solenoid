@@ -4,7 +4,7 @@
 import type { ReactNode } from "react";
 import {
   isFrameValue, isCubeValue, cubeRowCount, cubeDepth, frameRowCount, formatFrameCell,
-  type CubeCell, type FrameValue, type CubeValue, type FrameColType, type FrameCell,
+  type CubeCell, type FrameColType, type FrameCell,
 } from "../frame";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
@@ -44,7 +44,7 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: Form
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
   if (Array.isArray(cell)) return listToken(cell, LIST_PREVIEW, type);
   if (isSolError(cell)) return cell.code;
-  if (type) { const f = formatFrameCell(type, cell as FrameCell, format); return f === null ? "" : String(f); }
+  if (type) { const f = formatFrameCell(type, cell, format); return f === null ? "" : String(f); }
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
   if (typeof cell === "number") return formatScalar(cell);
   return String(cell);
@@ -85,7 +85,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
 
   if (isCubeValue(cell)) {
-    const c = cell as CubeValue;
+    const c = cell;
     return (
       <button
         type="button"
@@ -100,7 +100,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
     );
   }
   if (isFrameValue(cell)) {
-    const f = cell as FrameValue;
+    const f = cell;
     return (
       <button
         type="button"
@@ -136,7 +136,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
     return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
   }
   if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>; // "5 km"
-  if (type) return frameCellNode(type, cell as FrameCell, format);
+  if (type) return frameCellNode(type, cell, format);
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;
   return <>{String(cell)}</>;

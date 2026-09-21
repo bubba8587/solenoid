@@ -73,7 +73,14 @@ and drill levels, Escape semantics.
 2. **The seam to the graph is a list of module swaps.** The `SHIMMED` map in
    `obsidian-plugin/vite.config.ts` replaces, at build time, each app module that reaches the
    graph with a file in `src/shims/`: `persistence`, `process`, `fileBridge`, `frameBackend`,
-   `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`, `perfProbe`, `nativeAccent`. A shim may only stand in for something
+   `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`, `perfProbe`, `nativeAccent`, `appTheme`
+   (the app's theme store writes its tokens onto `<html>` on every palette change, which
+   requirement 3 forbids; the stand-in follows the plugin's own theme tick, and the pure
+   `themeVars()` lives apart in `themeVars.ts`), `clipboard`
+   (Obsidian is always a secure context, so the `execCommand` fallback cannot be reached) and
+   `mobileUa` (Obsidian's `Platform` answers instead of the user agent, which the directory's
+   review refuses). A shim keeps the app module's SIGNATURES, parameters included: the plugin's
+   repository typechecks the app's calls against it (§ Publishing). A shim may only stand in for something
    that cannot happen in a note (no node to fly to, no editor to ask, no formula to tokenize); a
    shim that would change what a bundled component draws is refused, and the component gets a
    real seam under requirement 1. `PLUGIN_REPORT=1 npm run plugin:build` writes what the bundle
@@ -83,7 +90,7 @@ and drill levels, Escape semantics.
    `@font-face` rules into `styles.css` (a font registers only from the document) and hands the
    rest of the bundled CSS to the shadow roots as a string with `:root` rewritten to `:host`. The
    plugin never writes to `<html>`, to `document.body`'s styles, or to an Obsidian variable.
-4. **Tokens come from the app's own theme code.** `themeVars()` in `appTheme.ts` yields the
+4. **Tokens come from the app's own theme code.** `themeVars()` in `themeVars.ts` yields the
    socket colors, accent, error red and chrome ramp for a mode; `shadow.ts` writes both modes into
    one shared sheet, and each host's `data-theme` follows Obsidian's `theme-light` / `theme-dark`
    on `css-change`. A palette change rewrites that one sheet, so every open chip retints.
@@ -177,15 +184,20 @@ community.obsidian.md/plugins/solenoid-properties. The directory's automated rev
 release, and **it requires the repository to hold the source it is built from**, so that
 repository carries a SNAPSHOT: `npm run plugin:export -- <its clone>`
 (`scripts/export-plugin-source.mjs`) copies exactly the app files the build reads
-(`PLUGIN_MODULES`), the `obsidian-plugin/` folder, a `package.json` pinned to the versions
+(`PLUGIN_MODULES`) plus what those import for types alone, the `obsidian-plugin/` folder, a `package.json` pinned to the versions
 installed here, its own lock file, the manifest, `versions.json`, the third-party licenses and a
 `source.json` naming the commit. This repository stays the source of truth (the chips and editors
 ARE the app's components); nothing is edited there. Its release workflow runs
 `npm ci && npm run build` on the snapshot, checks the built manifest against the root one, attests
 the three files' build provenance, and attaches only those three (Obsidian downloads nothing else).
-The snapshot holds what the BUNDLE reads, so a type-only import of another app module does not
-resolve there: the build is its check, and the typecheck runs here. The shim swap matches by path,
-not by resolving, because the snapshot has the stand-ins and not the modules they replace. Its
+The shim swap matches by path,
+not by resolving, because the snapshot has the stand-ins and not the modules they replace.
+**The snapshot typechecks on its own.** The review lints WITH types, and a module that does not
+resolve there types everything through it `any` (0.1.1 drew some ninety "unsafe" findings that
+way). So the export follows type-only imports, and the snapshot's `tsconfig.json` lays
+`obsidian-plugin/src/shims` over `src/graph` with `rootDirs`, so `./packs` resolves to the
+stand-in for types as the build's swap resolves it for code. Its `npm run build` runs
+`tsc --noEmit` first, which is the guard on a shim's signatures. Its
 README is for users, so the release steps live here:
 
 1. Here, set the version in `obsidian-plugin/manifest.json`, commit and push `develop`.
@@ -201,7 +213,16 @@ import). The app's stores keep their picks in `localStorage`, which the review f
 Obsidian shares across vaults, so the build points every free `localStorage` /
 `sessionStorage` in app code at memory (`memoryStorage.ts`, `pluginGlobals`); the palette persists
 through `data.json`. The clipboard is only ever WRITTEN (the editors' Copy actions), and the
-plugin's README discloses it. `test.yml` builds the plugin on every push, so `develop` cannot break the build the
+plugin's README discloses it.
+
+**Review findings that stand** (warnings; each is the app's own code, read by the review because
+the snapshot carries whole files): `localStorage` in `palette.ts` and `settingsStore.ts`
+(rewritten to memory by the build, above); `throw solError(…)` in `frameVerbs.ts` and
+`frameShape.ts` (a thrown `SolError` is the engine's error model, `specs/error-values.md`); the
+normal-CDF coefficients in `mathUtils.ts`, printed as published (the footer's `aggregate` pulls
+the file in; 310 bytes of it ship); in CSS, the `vh` line before each `dvh` one (the fallback),
+`:has()`, and the browser-support notes. Reproduce the review before a release with
+`eslint-plugin-obsidianmd`'s recommended config, run in the exported snapshot. `test.yml` builds the plugin on every push, so `develop` cannot break the build the
 release workflow depends on.
 
 ## What Solenoid reads back

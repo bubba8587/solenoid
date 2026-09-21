@@ -67,7 +67,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--frame${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
       title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSave || onSaveSource ? "Edit" : "View"}.`}
-      onClick={async (e) => {
+      onClick={(e) => {
         e.stopPropagation();
         const st = readChipPopupStyle(e.currentTarget, "--sock-frame");
         // Seed from the RAW typed cells so editing never canonicalises "1" → "TRUE".
@@ -75,7 +75,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
         if (!isSource) {
           // A read-only / typed-grid frame uses the shared opener (valuePopup) — the
           // same path the Display's corner expand button takes.
-          await openFramePopup(value, {
+          void openFramePopup(value, {
             label, hostId, onSave,
             accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
           });
@@ -84,14 +84,14 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
         // Literal-source editing (Frame Input): the grid IS the raw typed text, with a
         // per-column source select and live-computed columns riding alongside — a shape
         // only this chip authors, so it stays inline.
-        const rowCount = source!.reduce((m, c) => Math.max(m, c.cells.length), 0);
+        const rowCount = source.reduce((m, c) => Math.max(m, c.cells.length), 0);
         tablePopup.open({
           title: label || "Frame",
-          data: Array.from({ length: rowCount }, (_, r) => source!.map((c) => c.cells[r] ?? "")),
-          headers: source!.map((c) => c.name),
+          data: Array.from({ length: rowCount }, (_, r) => source.map((c) => c.cells[r] ?? "")),
+          headers: source.map((c) => c.name),
           // A COMPUTED column's type is the DERIVED one, so the format row offers the
           // selector family matching what the cells actually are.
-          columnTypes: source!.map((c, j) => (c.expr ? (value.columns[j]?.type ?? "number") : c.type)),
+          columnTypes: source.map((c, j) => (c.expr ? (value.columns[j]?.type ?? "number") : c.type)),
           cellType: "number",
           // A unit-taggable source gets the unit dropdown (persisted on Save).
           formatControls: "columns",
@@ -110,10 +110,10 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           // always passed for a literal source, so the source select exists pre-λ.
           formLayout,
           lambdaOptions: lambdaOptions ?? [],
-          sourceExprs: source!.map((c) => c.expr),
+          sourceExprs: source.map((c) => c.expr),
           computedCells: Array.from(
             { length: Math.max(rowCount, frameRowCount(value)) },
-            (_, r) => source!.map((c, j) =>
+            (_, r) => source.map((c, j) =>
               c.expr ? (value.columns[j]?.values[r] ?? null) : null),
           ),
           ...popupOverrides,

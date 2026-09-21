@@ -55,7 +55,7 @@ function describe(view: DrillView, listVertical: boolean): {
         cols: items.length,
         depth: null,
         cell: (_r, c) => <CubeCellChip cell={(items[c] ?? null) as CubeCell} crumb="item" size="sm" at={{ r: 0, c }} />,
-        sortKey: (_r, c) => sortKeyOf((items[c] ?? null) as CubeCell),
+        sortKey: (_r, c) => sortKeyOf(items[c] ?? null),
       };
     }
     return {
@@ -64,7 +64,7 @@ function describe(view: DrillView, listVertical: boolean): {
       cols: 1,
       depth: null,
       cell: (r) => <CubeCellChip cell={(items[r] ?? null) as CubeCell} crumb="item" size="sm" at={{ r, c: 0 }} />,
-      sortKey: (r) => sortKeyOf((items[r] ?? null) as CubeCell),
+      sortKey: (r) => sortKeyOf(items[r] ?? null),
     };
   }
   const g = view.cells;
@@ -84,11 +84,11 @@ function describe(view: DrillView, listVertical: boolean): {
 function tokenAt(view: DrillView, r: number, c: number, listVertical: boolean): string {
   if (view.kind === "cube") {
     const col = view.cube.columns[c];
-    return cubeCellToken((col.cells[r] ?? null) as CubeCell, col.type);
+    return cubeCellToken(col.cells[r] ?? null, col.type);
   }
   if (view.kind === "frame") {
     const col = view.frame.columns[c];
-    return cubeCellToken((col.values[r] ?? null) as CubeCell, col.type);
+    return cubeCellToken(col.values[r] ?? null, col.type);
   }
   if (view.kind === "list") return cubeCellToken((view.items[listVertical ? r : c] ?? null) as CubeCell);
   return cubeCellToken(view.cells[r]?.[c] ?? null);
@@ -145,8 +145,8 @@ export function CubePopup() {
     if (!el) return;
     el.scrollIntoView({ block: "center", inline: "center" });
     el.classList.add("table-popup__cell--return");
-    const t = setTimeout(() => el.classList.remove("table-popup__cell--return"), 1200);
-    return () => clearTimeout(t);
+    const t = window.setTimeout(() => el.classList.remove("table-popup__cell--return"), 1200);
+    return () => window.clearTimeout(t);
   }, [focus]);
 
   if (!state) return null;

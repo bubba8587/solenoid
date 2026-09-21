@@ -1,4 +1,4 @@
 // [[C107]] obsidianPlugin
-export function processGraph(): Promise<void> {
+export function processGraph(_changedNodeId?: string): Promise<void> {
   return Promise.resolve();
 }

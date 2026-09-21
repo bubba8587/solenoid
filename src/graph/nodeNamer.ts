@@ -12,7 +12,7 @@ export function nodeTypeName(n: { constructor: { name: string } }): string {
   return n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-let namer: (n: object) => string = (n) => (n as Named).label?.trim() || nodeTypeName(n as Named);
+let namer: (n: object) => string = (n) => (n as Named).label?.trim() || nodeTypeName(n);
 
 export function setNodeNamer(fn: (n: object) => string): void { namer = fn; }
 

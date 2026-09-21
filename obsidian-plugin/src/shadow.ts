@@ -1,5 +1,5 @@
 // [[C107]] obsidianPlugin
-import { themeVars, type ThemeMode } from "../../src/graph/appTheme";
+import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
 
 /** The app's component CSS, `:root` rewritten to `:host`; filled in by the build. */
 declare const __SOLENOID_CSS__: string;
@@ -16,7 +16,7 @@ let layer: HTMLElement | null = null;
  *  note's. The build points every free `document` / `window` in the app's components here
  *  (`popupGlobals` in vite.config.ts), so a popup listens, measures and portals in its own window. */
 export let popupDocument: Document = document;
-export let popupWindow: Window = window;
+export let popupWindow: typeof window = window;
 
 function tokenBlock(selector: string, mode: ThemeMode): string {
   const lines = Object.entries(themeVars(ACCENT_SLOT, mode))
@@ -64,7 +64,7 @@ function bumpTheme(): void {
   for (const listener of themeListeners) listener();
 }
 export const themeVersion = {
-  subscribe(listener: () => void): () => void {
+  subscribe: (listener: () => void): (() => void) => {
     themeListeners.add(listener);
     return () => themeListeners.delete(listener);
   },
@@ -82,7 +82,8 @@ function obsidianMode(): ThemeMode {
 
 /** A host element, made in `doc`, whose shadow root carries the app's styles and tokens. */
 export function createShadowHost(tag: "span" | "div", className: string, doc: Document = document): { host: HTMLElement; root: ShadowRoot } {
-  const host = doc.createElement(tag);
+  // The window's own `createEl`: a host made in another document loses its sheets when it moves.
+  const host = (doc.win as typeof window).createEl(tag);
   host.className = className;
   host.dataset.theme = obsidianMode();
   const root = host.attachShadow({ mode: "open" });
@@ -126,10 +127,10 @@ function popupLayer(): ShadowRoot {
     const made = createShadowHost("div", "solenoid-popup-layer", popupDocument);
     layer = made.host;
     // A constructed sheet can only be adopted in the window that made it.
-    const paneSheet = new (popupWindow as Window & typeof globalThis).CSSStyleSheet();
+    const paneSheet = new popupWindow.CSSStyleSheet();
     paneSheet.replaceSync(PANE_CSS);
     made.root.adoptedStyleSheets = [...made.root.adoptedStyleSheets, paneSheet];
-    made.root.append(popupDocument.createElement("div"), popupDocument.createElement("div"));
+    made.root.append(popupWindow.createDiv(), popupWindow.createDiv());
     popupDocument.body.appendChild(layer);
     popupWindow.addEventListener("resize", placeOverPane);
   }

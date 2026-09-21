@@ -185,7 +185,7 @@ export type ElementFamily = keyof typeof FAMILIES;
  *  types outside the 5-family lattice. */
 export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
   for (const [fam, dims] of Object.entries(FAMILIES)) {
-    if (Object.values(dims).includes(dt)) return fam as ElementFamily;
+    if (Object.values(dims).includes(dt)) return fam;
   }
   return null;
 }

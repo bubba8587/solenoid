@@ -21,7 +21,7 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
-import { applyTextCase, type TextCase } from "../formatAnnotationStore";
+import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
@@ -416,7 +416,7 @@ export function TablePopup() {
         ) : type === "logical" ? (
           <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(s) => (s ? persistColFmt(c, { logicalStyle: s }) : clearColFmt(c))} />
         ) : type === "string" ? (
-          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => tc === "chip" ? persistColFmt(c, { chip: true, textCase: "none" }) : tc ? persistColFmt(c, { textCase: tc as TextCase, chip: false }) : clearColFmt(c)} />
+          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => tc === "chip" ? persistColFmt(c, { chip: true, textCase: "none" }) : tc ? persistColFmt(c, { textCase: tc, chip: false }) : clearColFmt(c)} />
         ) : (
           <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
         )}
@@ -436,10 +436,10 @@ export function TablePopup() {
           // Derived column: unit inherited from the source, LOCKED (disabled picker).
           <UnitSelect
             className="table-popup__fmtselect"
-            value={state.columnUnits[c]!.display ?? "none"}
+            value={state.columnUnits[c].display ?? "none"}
             onChange={() => {}}
             disabled
-            title={`Unit: ${columnUnitLabel(state.columnUnits[c]!)} (inherited from the source)`}
+            title={`Unit: ${columnUnitLabel(state.columnUnits[c])} (inherited from the source)`}
           />
         ) : null}
       </ColumnFormatButton>
@@ -458,7 +458,7 @@ export function TablePopup() {
     }
     // Editable source: the cell is raw text — coerce to its typed value first.
     const v: CellValue = typeof raw === "string" && (type === "number" || type === "date")
-      ? (coerceFrameCell(type, raw) as CellValue)
+      ? coerceFrameCell(type, raw)
       : raw;
     if (v === null) return "";
     if (typeof v === "number" && type === "date") {
@@ -692,7 +692,7 @@ export function TablePopup() {
     }
     const body = toCSV(order.map((r) => displayRowAt(r, as)), cellType, columnTypes, !editable);
     return hasHeaderLine
-      ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${body}`
+      ? `${headers.map((h) => csvField(h, "string", !editable)).join(",")}\n${body}`
       : body;
   }
 
@@ -791,7 +791,7 @@ export function TablePopup() {
     if (!target) return;
     // Read-only cells are a focusable <div> (tabIndex -1), not an <input> — match either.
     const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
-    if (el) { el.focus(); if (el instanceof HTMLInputElement) el.select(); }
+    if (el) { el.focus(); if (el.matches("input")) (el as HTMLInputElement).select(); }
   };
   // A read-only grid cell renders as plain TEXT, not an <input readOnly> — the <input> is
   // ~2.5× the per-cell DOM cost (the popup-virtualize Finding, dev-notes) and read-only
@@ -874,7 +874,7 @@ export function TablePopup() {
           ) : cellType === "date" ? (
             <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           ) : cellType === "string" ? (
-            <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(tc) => tc === "chip" ? persistColFmt(0, { chip: true, textCase: "none" }) : tc ? persistColFmt(0, { textCase: tc as TextCase, chip: false }) : clearColFmt(0)} />
+            <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(tc) => tc === "chip" ? persistColFmt(0, { chip: true, textCase: "none" }) : tc ? persistColFmt(0, { textCase: tc, chip: false }) : clearColFmt(0)} />
           ) : (
             <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           )}
@@ -889,10 +889,10 @@ export function TablePopup() {
             // Derived matrix: the unit is inherited from the source, so it's LOCKED here.
             <UnitSelect
               className="table-popup__fmtselect"
-              value={state.columnUnits[0]!.display ?? "none"}
+              value={state.columnUnits[0].display ?? "none"}
               onChange={() => {}}
               disabled
-              title={`Unit: ${columnUnitLabel(state.columnUnits[0]!)} (inherited from the source)`}
+              title={`Unit: ${columnUnitLabel(state.columnUnits[0])} (inherited from the source)`}
             />
           ) : null}
         </div>

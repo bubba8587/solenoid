@@ -67,8 +67,8 @@ export function fitSurface(points: FitPoint[]): ((x: number, y: number) => numbe
   if (n >= 3 && n <= TPS_MAX_POINTS) {
     // Thin-plate spline system: [K P; Pᵀ 0]·[w; a] = [z; 0].
     const m = n + 3;
-    const A = Array.from({ length: m }, () => new Array(m).fill(0));
-    const b = new Array(m).fill(0);
+    const A = Array.from({ length: m }, () => new Array<number>(m).fill(0));
+    const b = new Array<number>(m).fill(0);
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) { const dx = P[i][0] - P[j][0], dy = P[i][1] - P[j][1]; A[i][j] = phi(dx * dx + dy * dy); }
       A[i][n] = 1; A[i][n + 1] = P[i][0]; A[i][n + 2] = P[i][1];

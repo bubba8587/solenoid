@@ -100,7 +100,6 @@ export function useFcFormatOptions(): FcFormatOptions {
       packFormatGroups.get(g)!.push({ id: f.id, label: f.label });
     }
     return { unitGroups, unitGroupOrder, packFormatGroups };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packsVersion]);
 }
 
@@ -180,7 +179,7 @@ export function FormatStyleSelect({ value, onChange, className, title, inherit }
       className={className}
       value={value}
       title={title ?? "Number format"}
-      onChange={(e) => onChange(e.target.value as FormatStyleId | "")}
+      onChange={(e) => onChange(e.target.value)}
     >
       {inheritOption(inherit)}
       {numberFormatOptions(opts.packFormatGroups)}
@@ -201,7 +200,7 @@ export function DateStyleSelect({ value, onChange, className, title, inherit }: 
       className={className}
       value={value}
       title={title ?? "Date format"}
-      onChange={(e) => onChange(e.target.value as FormatStyleId | "")}
+      onChange={(e) => onChange(e.target.value)}
     >
       {inheritOption(inherit)}
       {DATE_FORMAT_STYLES.map((s) => (

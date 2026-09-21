@@ -1,5 +1,5 @@
 // [[C107]] obsidianPlugin
-import { Plugin, PluginSettingTab, Setting, addIcon, type App } from "obsidian";
+import { Plugin, PluginSettingTab, Setting, addIcon, type App, type SettingDefinitionItem } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
 import "@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css";
@@ -222,30 +222,51 @@ class SolenoidSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
+  /** The three rows, each drawn by hand: the palette row mounts the app's swatches. */
+  private rows(): { name: string; render: (setting: Setting) => void }[] {
+    return [
+      {
+        name: "Color palette",
+        render: (setting) => {
+          // Settings is a window of its own.
+          setting.settingEl.ownerDocument.body.toggleClass(LOOK_CLASS, this.plugin.look);
+          // The app's Settings row: the dropdown with the swatch legend stacked under it.
+          setting.addDropdown((dropdown) => {
+            for (const name of paletteStore.names()) dropdown.addOption(name, name);
+            dropdown.setValue(paletteStore.activeBase());
+            dropdown.onChange((name) => void this.plugin.setPalette(name as PaletteName));
+          });
+          setting.controlEl.addClass("solenoid-settings-palette");
+          this.plugin.mount(setting.controlEl, "solenoid-settings-swatches", <PaletteSwatches />);
+        },
+      },
+      {
+        name: "Solenoid look",
+        render: (setting) => {
+          setting.addToggle((toggle) => toggle.setValue(this.plugin.look).onChange(async (on) => {
+            await this.plugin.setLook(on);
+            setting.settingEl.ownerDocument.body.toggleClass(LOOK_CLASS, on);
+          }));
+        },
+      },
+      {
+        name: "Solenoid",
+        render: (setting) => {
+          for (const url of SOLENOID_LINKS) {
+            setting.controlEl.createEl("a", { text: url.replace("https://", ""), href: url, cls: "external-link", attr: { target: "_blank", rel: "noopener" } });
+          }
+        },
+      },
+    ];
+  }
+
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    return this.rows().map((row) => ({ name: row.name, render: (setting) => row.render(setting.setName(row.name)) }));
+  }
+
+  /** Obsidian before 1.13 draws the tab through this; 1.13 draws it from the definitions. */
   display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.ownerDocument.body.toggleClass(LOOK_CLASS, this.plugin.look);
-    // The app's Settings row: the dropdown with the swatch legend stacked under it.
-    const palette = new Setting(containerEl)
-      .setName("Color palette")
-      .addDropdown((dropdown) => {
-        for (const name of paletteStore.names()) dropdown.addOption(name, name);
-        dropdown.setValue(paletteStore.activeBase());
-        dropdown.onChange((name) => void this.plugin.setPalette(name as PaletteName));
-      });
-    palette.controlEl.addClass("solenoid-settings-palette");
-    this.plugin.mount(palette.controlEl, "solenoid-settings-swatches", <PaletteSwatches />);
-    new Setting(containerEl)
-      .setName("Solenoid look")
-      .addToggle((toggle) => toggle.setValue(this.plugin.look).onChange(async (on) => {
-        await this.plugin.setLook(on);
-        // Settings is a window of its own.
-        containerEl.ownerDocument.body.toggleClass(LOOK_CLASS, on);
-      }));
-    const links = new Setting(containerEl).setName("Solenoid");
-    for (const url of SOLENOID_LINKS) {
-      links.controlEl.createEl("a", { text: url.replace("https://", ""), href: url, cls: "external-link", attr: { target: "_blank", rel: "noopener" } });
-    }
+    this.containerEl.empty();
+    for (const row of this.rows()) row.render(new Setting(this.containerEl).setName(row.name));
   }
 }

@@ -1,7 +1,7 @@
 {
   "id": "solenoid-properties",
   "name": "Solenoid Properties",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "minAppVersion": "1.9.0",
   "description": "List, Matrix, Frame and Cube property types, with Solenoid's chips and table editors.",
   "author": "Solenoid",

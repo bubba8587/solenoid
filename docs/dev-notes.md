@@ -6,6 +6,26 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
+
+tsc + vitest green; the plugin was checked in the rig (Obsidian 1.13.7: settings tab, a popped-out note, a
+palette change under an open editor).
+- **Most of the review's warnings were one defect: the snapshot did not typecheck.** The review lints WITH
+  types, and the ten shimmed modules (plus one type-only import) did not resolve there, so everything through
+  them was `any`: about ninety "unsafe" findings and many "unnecessary assertion" ones. The export now follows
+  type-only imports, the snapshot's tsconfig lays the shims over `src/graph` with `rootDirs`, the shims carry
+  the app modules' signatures, and the snapshot's build runs `tsc --noEmit` first (the guard on a shim).
+- **The plugin was writing to Obsidian's `<html>`**, against its own requirement 3: `appTheme.ts` subscribes
+  `apply()` to the palette at module level, so a palette change wrote 63 variables, `data-theme`, a forced
+  `color-scheme` and a `theme-color` meta. `themeVars()` moved to `themeVars.ts` (pure) and `appTheme` is
+  shimmed; checked in the rig, nothing is written.
+- Two more shims for the review's Errors: `clipboard` (no `execCommand` fallback in a secure context) and
+  `mobileUa` (split out of `coarse.ts`; Obsidian's `Platform` answers). The settings tab serves 1.13's
+  `getSettingDefinitions()` and keeps `display()` for older Obsidian.
+- The review is reproducible: `eslint-plugin-obsidianmd`'s recommended config run in the exported snapshot
+  matched its counts. What stands, and why, is `specs/obsidian-plugin.md` § Publishing.
+- NEXT for the plugin: the Solenoid look follows every palette (`backlog.md`), once the review is quiet.
+
 ### SESSION DIGEST (2026-09-21b — plugin release readiness, the vault look; author present)
 
 On `develop`, NOT pushed (the author's call). tsc + vitest green.

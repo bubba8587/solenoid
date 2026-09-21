@@ -92,7 +92,7 @@ export function buildFrame(matrix: number[][], names?: ReadonlyArray<string>): F
     name,
     type: "number" as const,
     values: matrix.map((row) => (row[j] === undefined ? null : row[j])),
-    ...(parsed[j]?.unit ? { unit: parsed[j]!.unit } : {}),
+    ...(parsed[j]?.unit ? { unit: parsed[j].unit } : {}),
   }));
   return { __frame: true, columns };
 }
@@ -137,7 +137,7 @@ export function buildFrameTyped(
   const columns: FrameColumn[] = headers.map((name, j) => {
     const cells = matrix.map((row) => (j < row.length ? row[j] : null));
     const col = typedColumn(name, cells, matrix.length, colType ?? undefined);
-    return parsed[j]?.unit && col.type === "number" ? { ...col, unit: parsed[j]!.unit } : col;
+    return parsed[j]?.unit && col.type === "number" ? { ...col, unit: parsed[j].unit } : col;
   });
   return { __frame: true, columns };
 }
@@ -307,9 +307,9 @@ export function parseFrameSource(text: string): FrameSource {
           const type: FrameColType = c?.type === "string" ? "string" : c?.type === "date" ? "date"
             : c?.type === "logical" ? "logical" : "number";
           const cells = Array.isArray(c?.cells)
-            ? (c!.cells as unknown[]).map((x) => (x == null ? "" : String(x)))
+            ? (c.cells as unknown[]).map((x) => (x == null ? "" : String(x)))
             : Array.isArray(c?.values)
-              ? (c!.values as unknown[]).map((x) =>
+              ? c.values.map((x) =>
                   x == null ? "" : typeof x === "boolean" ? (x ? "TRUE" : "FALSE") : String(x))
               : [];
           const unit = typeof c?.unit === "string" && c.unit !== "" ? c.unit : undefined;
@@ -639,7 +639,7 @@ function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
  *  the socket doc's), and a nested frame/cube/list cell can't be a join key (→ null). */
 function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
   if (cell === null || isSolError(cell)) return null;
-  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell as FrameCell, unit);
+  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell, unit);
   if (isUnitCell(cell)) return keyId(cell);
   return null;
 }
@@ -744,7 +744,7 @@ export function relateCubeToFrame(parent: CubeValue, child: FrameValue | CubeVal
 export function cubeColumnFromValue(value: unknown): CubeCell[] {
   if (value == null) return [];
   if (isCubeValue(value)) return [...(value.columns[0]?.cells ?? [])];
-  if (isFrameValue(value)) return [value as CubeCell];
+  if (isFrameValue(value)) return [value];
   if (Array.isArray(value)) return value as CubeCell[];
   return [value as CubeCell];
 }

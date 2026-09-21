@@ -22,7 +22,7 @@ export function nextSort(sort: ColumnSort, col: number): ColumnSort {
   const i = sort.findIndex((k) => k.col === col);
   if (i < 0) return [...sort, { col, dir: "asc" }];
   if (sort[i].dir === "asc") {
-    return sort.map((k, j) => (j === i ? { col, dir: "desc" as SortDir } : k));
+    return sort.map((k, j) => (j === i ? { col, dir: "desc" } : k));
   }
   return sort.filter((_, j) => j !== i);
 }
@@ -92,7 +92,7 @@ function compareKeys(a: SortKey, b: SortKey): number {
   // comparator lets Array.sort emit cycles.
   const an = typeof a === "number";
   if (an !== (typeof b === "number")) return an ? -1 : 1;
-  if (an) return (a as number) - (b as number);
+  if (an) return a - (b as number);
   // A UI list keeps natural order ([[C59]] byteStringOrder), so "item2" precedes "item10".
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }

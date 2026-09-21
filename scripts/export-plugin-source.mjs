@@ -2,7 +2,8 @@
 // Export the Solenoid Properties plugin's source into its own repository, which the community
 // directory requires to hold the source it is built from (specs/obsidian-plugin.md § Publishing).
 // This repository stays the source of truth: the plugin is built from the app's own components.
-// The export is a SNAPSHOT of exactly what the build reads, laid out at the same paths, plus a
+// The export is a SNAPSHOT of what the build reads and what those files import for types, laid
+// out at the same paths, plus a
 // package.json pinned to the versions installed here, so `npm ci && npm run build` there makes
 // the same bundle with no checkout of this repository.
 //
@@ -41,8 +42,28 @@ const copy = (rel) => {
   fs.mkdirSync(path.dirname(path.join(target, rel)), { recursive: true });
   fs.copyFileSync(path.join(ROOT, rel), path.join(target, rel));
 };
-modules.filter((rel) => rel.startsWith("src/")).forEach(copy);
+const appFiles = new Set(modules.filter((rel) => rel.startsWith("src/")));
 const pluginFiles = run("git", ["ls-files", "obsidian-plugin"]).split("\n").filter(Boolean);
+// The bundle drops a type-only import, and the directory's review lints WITH types: a module
+// that does not resolve there types everything through it `any`. So the snapshot also takes
+// what its files import for types alone. A shimmed module is not one of them: its stand-in
+// answers for it (`rootDirs` below).
+const shimmed = new Set(fs.readdirSync(path.join(ROOT, "obsidian-plugin/src/shims")).map((f) => `src/graph/${f}`));
+const resolveApp = (from, spec) => {
+  const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), spec));
+  return [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((c) => /\.tsx?$/.test(c) && fs.existsSync(path.join(ROOT, c)));
+};
+for (const queue = [...appFiles, ...pluginFiles].filter((f) => /\.tsx?$/.test(f)); queue.length;) {
+  const file = queue.pop();
+  for (const [, spec] of fs.readFileSync(path.join(ROOT, file), "utf8").matchAll(/(?:\bfrom|\bimport)\s*\(?\s*["'](\.[^"']*)["']/g)) {
+    const hit = resolveApp(file, spec);
+    if (!hit || !hit.startsWith("src/") || appFiles.has(hit) || shimmed.has(hit)) continue;
+    appFiles.add(hit);
+    queue.push(hit);
+  }
+}
+appFiles.add("src/vite-env.d.ts");
+appFiles.forEach(copy);
 pluginFiles.forEach(copy);
 
 // 3. What the snapshot needs to build on its own.
@@ -55,7 +76,8 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   type: "module",
   description: manifest.description,
   license: "MIT",
-  scripts: { build: "PLUGIN_OUT=dist vite build --config obsidian-plugin/vite.config.ts" },
+  // The typecheck is the guard on the stand-ins: the app's calls must check against them.
+  scripts: { build: "tsc --noEmit && PLUGIN_OUT=dist vite build --config obsidian-plugin/vite.config.ts" },
   dependencies: pin([
     "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
     "chrono-node", "papaparse", "react", "react-dom", "rete",
@@ -73,10 +95,9 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
 const jsonc = (text) => JSON.parse(text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1"));
 const ts = jsonc(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
 fs.writeFileSync(path.join(target, "tsconfig.json"), JSON.stringify({
-  // For the build's JSX and module settings and for an editor. The snapshot holds what the
-  // BUNDLE reads, so type-only imports of other app modules do not resolve here: the build is
-  // the check, and the full typecheck runs in bubba8587/solenoid.
-  compilerOptions: { ...ts.compilerOptions, noEmit: true },
+  // `rootDirs` lays the stand-ins over the app modules they replace, so `./packs` resolves to
+  // `shims/packs.ts` for types as the build's swap resolves it for code.
+  compilerOptions: { ...ts.compilerOptions, paths: undefined, noEmit: true, rootDirs: ["src/graph", "obsidian-plugin/src/shims"] },
   include: ["obsidian-plugin/src", "src"],
 }, null, 2) + "\n");
 
@@ -101,5 +122,5 @@ console.log("export: resolving a package-lock.json in the target (npm install --
 run("npm", ["install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], { cwd: target });
 
 fs.rmSync(scratch, { recursive: true, force: true });
-console.log(`export: ${modules.filter((m) => m.startsWith("src/")).length} app files + ${pluginFiles.length} plugin files -> ${target}`);
+console.log(`export: ${appFiles.size} app files + ${pluginFiles.length} plugin files -> ${target}`);
 if (dirty) console.log("export: WARNING, this working tree has uncommitted source changes; source.json names HEAD, which may not match.");
