@@ -1,6 +1,7 @@
 // [[C107]] obsidianPlugin
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import license from "rollup-plugin-license";
 import postcss from "postcss";
 import path from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -19,6 +20,7 @@ const SHIMMED: Record<string, string> = {
   [path.join(REPO, "src/graph/flyToNode.ts")]: path.join(SHIMS, "flyToNode.ts"),
   [path.join(REPO, "src/graph/packs.ts")]: path.join(SHIMS, "packs.ts"),
   [path.join(REPO, "src/graph/formulaSyntax.ts")]: path.join(SHIMS, "formulaSyntax.ts"),
+  [path.join(REPO, "src/graph/perfProbe.ts")]: path.join(SHIMS, "perfProbe.ts"),
 };
 const REACT_DOM_SHIM = path.join(SHIMS, "reactDom.ts");
 
@@ -103,7 +105,13 @@ function shadowCss(): Plugin {
 export default defineConfig({
   root: REPO,
   publicDir: false,
-  plugins: [shims(), react(), shadowCss()],
+  plugins: [
+    shims(),
+    react(),
+    shadowCss(),
+    // Every bundled package's license, beside the release files (the fonts are OFL, the rest MIT).
+    license({ thirdParty: { includePrivate: false, multipleVersions: true, output: { file: path.join(OUT, "third-party-licenses.txt"), encoding: "utf-8" } } }),
+  ],
   define: { "process.env.NODE_ENV": JSON.stringify("production") },
   build: {
     outDir: OUT,

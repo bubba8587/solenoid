@@ -27,3 +27,8 @@ jobs:
 
       - name: Unit tests
         run: npx vitest run
+
+      # The Obsidian plugin's release workflow (bubba8587/Solenoid-Properties) builds a pinned
+      # commit of this repo with this command; keep it building here first.
+      - name: Build the Obsidian plugin
+        run: npm run plugin:build

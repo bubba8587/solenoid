@@ -54,7 +54,7 @@ and drill levels, Escape semantics.
 2. **The seam to the graph is a list of module swaps.** The `SHIMMED` map in
    `obsidian-plugin/vite.config.ts` replaces, at build time, each app module that reaches the
    graph with a file in `src/shims/`: `persistence`, `process`, `fileBridge`, `frameBackend`,
-   `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`. A shim may only stand in for something
+   `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`, `perfProbe`. A shim may only stand in for something
    that cannot happen in a note (no node to fly to, no editor to ask, no formula to tokenize); a
    shim that would change what a bundled component draws is refused, and the component gets a
    real seam under requirement 1. `PLUGIN_REPORT=1 npm run plugin:build` writes what the bundle
@@ -139,8 +139,25 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 ## Out of scope
 
 Computing anything. Reading or writing a note's body. Bases table cells (they show raw YAML for
-these keys). Publishing to the community-plugin list. Mobile is untested: `isDesktopOnly` is
-false because nothing in the bundle needs Electron, and that is all it claims.
+these keys). Mobile is untested: `isDesktopOnly` is false because nothing in the bundle needs
+Electron, and that is all it claims.
+
+## Publishing
+
+Obsidian's community list points at one GitHub repository, reads `manifest.json` from the root of
+its default branch and installs `main.js`, `manifest.json` and `styles.css` from a GitHub Release
+whose tag is the manifest's version. It cannot point at a branch or a folder, and this repository
+is the app's, so the plugin publishes from its own: `bubba8587/Solenoid-Properties`. That
+repository holds no source. Its `source.json` pins a commit of this one; its release workflow
+checks that commit out, runs `npm run plugin:build`, and attaches the three files plus
+`third-party-licenses.txt`. Its `manifest.json` must equal `obsidian-plugin/manifest.json` at the
+pinned commit, and the workflow refuses a release when they differ. The release steps and the
+community-list entry are that repository's README.
+
+The bundle is what a reviewer reads, so nothing in it logs, writes a global or touches the
+document; `perfProbe` is shimmed for that reason (its probe registers `__solenoidStats` on
+import). `test.yml` builds the plugin on every push, so `develop` cannot break the build the
+release workflow depends on.
 
 ## Gaps
 

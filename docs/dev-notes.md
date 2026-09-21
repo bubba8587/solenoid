@@ -6,6 +6,21 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-21 — publishing the Solenoid Properties plugin; author away)
+
+On `develop`, pushed. tsc + vitest green. The path is `specs/obsidian-plugin.md` § Publishing.
+- **Obsidian's list points at a repository, never a branch or folder**, and reads `manifest.json` from the default
+  branch's root, so the plugin publishes from `bubba8587/Solenoid-Properties` (release-only: manifest, versions,
+  README, LICENSE, a workflow). Its `source.json` pins a commit here; the workflow builds that commit and attaches
+  `main.js`, `manifest.json`, `styles.css` and `third-party-licenses.txt` to a release tagged with the bare version.
+- **The bundle is the reviewed artifact.** `perfProbe` is now shimmed (it registered two globals and logged on
+  import); the rest of the `console.log` strings left in `main.js` are chrono-node's debug branch. The plugin
+  build emits `third-party-licenses.txt` beside its files, and `test.yml` runs `npm run plugin:build`.
+- **Left for the author:** the release tag (create the release on GitHub, or run the workflow by hand with the
+  version), the `obsidian-releases` PR, and two open choices in the plugin repo's README: `minAppVersion` is
+  `1.9.0` while the widget API was read from 1.13.7, and the type names are Title Case where Obsidian's own are
+  sentence case.
+
 ### SESSION DIGEST (2026-09-20b — Solenoid Properties, the Obsidian plugin; author present)
 
 On `develop`, pushed. tsc + vitest green. The rule is [[C107]] obsidianPlugin and the mechanics, the type table and
