@@ -264,7 +264,7 @@ body {
   --hr-color: var(--sol-hairline);
   --hr-thickness: 1px;
 
-  --list-marker-color: var(--sol-edge);
+  --list-marker-color: var(--sol-list);
   --list-marker-color-hover: var(--sol-accent);
   --list-marker-color-collapsed: var(--sol-accent);
   --checkbox-color: var(--sol-accent);
@@ -287,8 +287,7 @@ body {
   --embed-padding: var(--size-4-3) var(--size-4-4);
 
   --callout-radius: 8px;
-  --callout-border-width: 1px;
-  --callout-border-opacity: 0.45;
+  --callout-border-width: 0px;
   --callout-title-weight: 600;
   --callout-default: var(--sol-blue);
   --callout-info: var(--sol-complex);
@@ -347,6 +346,16 @@ body {
   --table-selection: color-mix(in srgb, var(--sol-accent) 14%, transparent);
   --table-selection-border-color: var(--sol-accent);
 
+  --bases-table-header-background: color-mix(in srgb, var(--sol-frame) var(--sol-header-tint), var(--sol-surface));
+  --bases-table-header-background-hover: color-mix(in srgb, var(--sol-frame) calc(var(--sol-header-tint) + 8%), var(--sol-surface));
+  --bases-table-header-color: var(--sol-text-bright);
+  --bases-table-header-weight: 600;
+  --bases-table-border-color: color-mix(in srgb, var(--sol-frame) var(--sol-mix-hairline), var(--sol-border));
+  --bases-table-row-background-hover: color-mix(in srgb, var(--sol-frame) 8%, transparent);
+  --bases-cards-radius: 8px;
+  --bases-embed-border-radius: 8px;
+  --bases-embed-border-color: color-mix(in srgb, var(--sol-frame) var(--sol-mix-edge), var(--sol-border));
+
   --metadata-border-color: var(--sol-edge);
   --metadata-border-width: 1px;
   --metadata-border-radius: 8px;
@@ -372,14 +381,94 @@ body {
 .workspace-split.mod-root .workspace-tabs .workspace-leaf {
   border-radius: 8px 8px 0 0;
 }
-.workspace-tab-header.is-active {
-  box-shadow: inset 0 0 0 1px var(--sol-border);
+/* A tab is a node header: 6px top corners, a band tinted with its view type's color under
+   a 2px cap of the same, and the small uppercase title in that color's ink. */
+.mod-root .workspace-tab-header {
+  --sol-tab: var(--sol-any);
+  --sol-tab-ink: color-mix(in srgb, var(--sol-tab) var(--sol-ink-pct), var(--sol-text-bright));
+  --tab-text-color-active: var(--sol-tab-ink);
+  --tab-text-color-focused-active: var(--sol-tab-ink);
+  --tab-text-color-focused-active-current: var(--sol-tab-ink);
 }
-.workspace-tab-header.is-active .workspace-tab-header-inner-title {
-  color: var(--sol-text-bright);
+.mod-root .workspace-tab-header[data-type="markdown"] { --sol-tab: var(--sol-string); }
+.mod-root .workspace-tab-header[data-type="graph"],
+.mod-root .workspace-tab-header[data-type="localgraph"] { --sol-tab: var(--sol-number); }
+.mod-root .workspace-tab-header[data-type="bases"],
+.mod-root .workspace-tab-header[data-type="table"] { --sol-tab: var(--sol-frame); }
+.mod-root .workspace-tab-header[data-type="canvas"] { --sol-tab: var(--sol-teal); }
+.mod-root .workspace-tab-header[data-type="image"],
+.mod-root .workspace-tab-header[data-type="pdf"],
+.mod-root .workspace-tab-header[data-type="audio"],
+.mod-root .workspace-tab-header[data-type="video"] { --sol-tab: var(--sol-complex); }
+
+/* Every tab stands on the pane below it, active or not. */
+.mod-root .workspace-tabs .workspace-tab-header-container .workspace-tab-header,
+.mod-root .workspace-tabs .workspace-tab-header-container .workspace-tab-header.is-active {
+  padding: 0 2px;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
 }
-.mod-root .workspace-tabs.mod-active .workspace-tab-header.is-active {
-  box-shadow: inset 0 0 0 1px var(--sol-edge);
+.mod-root .workspace-tab-header::before,
+.mod-root .workspace-tab-header::after {
+  display: none;
+}
+.mod-root .workspace-tab-header .workspace-tab-header-inner {
+  padding: 0 6px 0 10px;
+  border: 2px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background-color: color-mix(in srgb, var(--sol-tab) 7%, var(--sol-app-bg));
+}
+.mod-root .workspace-tab-header .workspace-tab-header-inner::after {
+  display: none;
+}
+.mod-root .workspace-tab-header:not(.is-active):hover .workspace-tab-header-inner {
+  background-color: color-mix(in srgb, var(--sol-tab) 14%, var(--sol-app-bg));
+}
+.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner {
+  background-color: color-mix(in srgb, var(--sol-tab) var(--sol-header-tint), var(--sol-surface));
+  border-color: color-mix(in srgb, var(--sol-tab) var(--sol-mix-emphasis), var(--sol-border));
+}
+.mod-root .workspace-tab-header .workspace-tab-header-inner-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sol-text-dim);
+}
+.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-title,
+.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
+  color: var(--sol-tab-ink);
+}
+
+/* Sidebar tabs are bare icons; the active one wears the accent and nothing around it. */
+.mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner,
+.mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner {
+  background: none;
+  box-shadow: none;
+}
+.mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner-icon,
+.mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
+  color: var(--sol-ink-number);
+}
+
+/* Icon buttons: a circle that fills on hover and turns to the accent. */
+.side-dock-ribbon-action,
+.sidebar-toggle-button .clickable-icon,
+.view-header-nav-buttons .clickable-icon,
+.workspace-tab-header-new-tab .clickable-icon,
+.workspace-tab-header-tab-list .clickable-icon,
+.workspace-drawer-vault-actions .clickable-icon {
+  border-radius: 50%;
+}
+.clickable-icon:hover {
+  color: var(--sol-ink-number);
+  background-color: var(--sol-btn-hover);
+}
+.clickable-icon.is-active {
+  color: var(--sol-ink-number);
+  background: none;
 }
 
 /* Fields: sunken, one hairline, the accent on focus and nothing else. */
@@ -393,6 +482,11 @@ select.dropdown {
   background-color: var(--sol-sunken);
   border: 1px solid var(--sol-border);
   border-radius: 4px;
+}
+select.dropdown {
+  border-radius: 999px;
+  padding-inline-start: 14px;
+  box-shadow: none;
 }
 input[type="text"]:focus,
 input[type="search"]:focus,
@@ -460,6 +554,18 @@ button.mod-cta {
 .nav-buttons-container .clickable-icon,
 .view-actions .clickable-icon {
   border-radius: 50%;
+}
+/* The pane's bar clears the accent line by the same 6px the explorer's pill does: the line
+   paints over the bar's top 2px, so the bar takes them back as padding. */
+.view-header {
+  flex: 0 0 44px;
+  height: 44px;
+  min-height: 44px;
+  padding-top: 2px;
+}
+.view-actions {
+  align-self: center;
+  height: 30px;
 }
 .nav-buttons-container .clickable-icon:hover,
 .view-actions .clickable-icon:hover {
@@ -574,19 +680,114 @@ button.mod-cta {
   border-radius: 8px;
 }
 
+/* A callout is a group: a solid header in its color over a tinted body with a 2px dashed
+   outline. The header's ink is picked per color, as the app picks a header's. */
 .callout {
-  background-color: color-mix(in srgb, var(--callout-color) 9%, var(--sol-surface));
+  --callout-head: color-mix(in srgb, var(--callout-color) 86%, #000);
+  --callout-ink: #ffffff;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  overflow: visible;
+}
+.callout:is([data-callout="abstract"], [data-callout="summary"], [data-callout="tldr"], [data-callout="info"],
+  [data-callout="todo"], [data-callout="tip"], [data-callout="hint"], [data-callout="important"],
+  [data-callout="success"], [data-callout="check"], [data-callout="done"], [data-callout="question"],
+  [data-callout="help"], [data-callout="faq"], [data-callout="warning"], [data-callout="caution"],
+  [data-callout="attention"], [data-callout="failure"], [data-callout="fail"], [data-callout="missing"],
+  [data-callout="danger"], [data-callout="error"], [data-callout="bug"], [data-callout="quote"],
+  [data-callout="cite"]) {
+  --callout-head: var(--callout-color);
+  --callout-ink: #1a1a1a;
 }
 .callout-title {
-  padding-bottom: var(--size-2-2);
-  color: color-mix(in srgb, var(--callout-color) var(--sol-ink-pct), var(--sol-text));
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 8px 8px 0 0;
+  background-color: var(--callout-head);
+  color: var(--callout-ink);
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
 }
+.callout.is-collapsed .callout-title,
+.callout:not(:has(> .callout-content)) .callout-title {
+  border-radius: 8px;
+}
+.callout-title .callout-title-inner,
+.callout-title .callout-icon .svg-icon,
+.callout-title .callout-fold {
+  color: inherit;
+}
+.callout-content {
+  padding: 2px 12px;
+  border: 2px dashed var(--callout-color);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background-color: color-mix(in srgb, var(--callout-color) 9%, var(--sol-surface));
+}
+
+/* A rule is a cable in the default draw shape, diagonal: a socket out, a straight run, a
+   45 degree leg centered between the runs, a straight run, a socket in. */
+.markdown-rendered hr,
+.markdown-source-view.mod-cm6 .hr hr {
+  --sol-ring: color-mix(in srgb, var(--sol-number) 62%, #000);
+  --sol-cable:
+    radial-gradient(circle at 6px 18px, #000 0 5.6px, transparent 6px),
+    radial-gradient(circle at calc(100% - 6px) 6px, #000 0 5.6px, transparent 6px),
+    linear-gradient(#000, #000) 6px 17px / calc(50% - 12px) 2px no-repeat,
+    linear-gradient(#000, #000) right 6px top 5px / calc(50% - 12px) 2px no-repeat,
+    linear-gradient(to bottom right, transparent calc(50% - 1px), #000 calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 50% 5px / 14px 14px no-repeat;
+  height: 24px;
+  margin: 1.5em 0;
+  border: none;
+  background:
+    radial-gradient(circle at 6px 18px, transparent 0 3.6px, var(--sol-ring) 4.2px 6px, transparent 6px),
+    radial-gradient(circle at calc(100% - 6px) 6px, transparent 0 3.6px, var(--sol-ring) 4.2px 6px, transparent 6px),
+    var(--sol-number);
+  -webkit-mask: var(--sol-cable);
+  mask: var(--sol-cable);
+}
+
+/* Bullets are sockets: a circle for one thing, a square for a list under it. */
+.markdown-rendered ul ul > li > .list-bullet::after,
+.cm-s-obsidian .HyperMD-list-line:not(.HyperMD-list-line-1) .list-bullet::after {
+  border-radius: 1px;
+}
+
 .markdown-rendered pre {
   border: 1px solid var(--sol-border);
   border-radius: 8px;
 }
+.cm-s-obsidian .HyperMD-codeblock-bg {
+  border-inline: 1px solid var(--sol-border);
+}
+.cm-s-obsidian .HyperMD-codeblock-begin-bg {
+  border-top: 1px solid var(--sol-border);
+  border-radius: 8px 8px 0 0;
+}
+.cm-s-obsidian .HyperMD-codeblock-end-bg {
+  border-bottom: 1px solid var(--sol-border);
+  border-radius: 0 0 8px 8px;
+}
+/* A table is one rounded box: the outline is the table's, the cells keep inner rules only. */
 .markdown-rendered table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--sol-edge);
   border-radius: 8px;
+  overflow: hidden;
+}
+.markdown-rendered table th,
+.markdown-rendered table td {
+  border-width: 0 1px 1px 0;
+}
+.markdown-rendered table tr > :last-child {
+  border-right-width: 0;
+}
+.markdown-rendered table tbody tr:last-child > td {
+  border-bottom-width: 0;
 }
 .markdown-rendered th,
 .markdown-rendered td,
@@ -598,6 +799,14 @@ button.mod-cta {
 .cm-s-obsidian span.cm-highlight {
   border-radius: 3px;
   color: var(--sol-text-bright);
+}
+
+/* Obsidian nudges the panel 4px left so bare icons line up with the text; a bordered card
+   lines up by its edge. */
+.markdown-source-view.mod-cm6 .cm-sizer > .metadata-container,
+.markdown-preview-view .metadata-container,
+.markdown-rendered .metadata-container {
+  transform: none;
 }
 
 /* ── Properties: a node card, and every type in its own color ───────────────── */
