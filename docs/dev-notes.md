@@ -49,6 +49,17 @@ On `develop`, NOT pushed (the author's call). tsc + vitest green.
   device-make-profile-default`; the EDID profile stays listed), so `_ICC_PROFILE` is sRGB and every managed app
   (Chrome, Obsidian) shows the vivid look the desktop build does. Undo: System Settings → Color, or make the
   EDID profile default again.
+- **The plugin's follow-ups are closed** (author: nothing left in the backlog for it). A frame column keeps the
+  type the user PICKED (`data.json` by property then column; first guess from the YAML value's own type, never
+  its text: re-inferring made the selector a lie and a Save turned `"0012"` into 12). A popped-out note keeps its
+  editor: the popup layer follows the chip's window and the build rewrites the components' free `document` /
+  `window` to the layer's (`popupGlobals`). A Complex scalar type, the look behind a toggle from one source
+  (`look.css`), and the rig as `npm run plugin:rig`. Two backlog lines were simply WRONG when checked in real
+  Obsidian: Bases cells show the chip, and a cube level has no type selector to persist.
+- **Solenoid reads the plugin's types back as the same socket.** The Note node already read lists, frames and
+  cubes right (the author's hunch held); three things did not survive: a matrix (a text list of `"[1,2,3]"`), a
+  complex list (text) and a frame's date column (numbers). The Note node's three hand maps became lattice
+  lookups (`typeAtRank`). Left in the spec's § Gaps: a column type picked in the plugin is not read here.
 - **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
   the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
 
