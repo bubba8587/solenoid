@@ -28,6 +28,11 @@ On `develop`, NOT pushed (the author's call). tsc + vitest green.
   `::before`; rows stack with the gap ABOVE and the divider right under the content; the tab title color and the
   inactive tab's padding only yield to Obsidian's own long selectors or its `--tab-text-color-*` variables;
   settings is a second window (a second CDP page).
+- **1.4.1 is bumped on `develop`** and CI now builds Linux too: `desktop-build.yml` (was `windows-portable.yml`)
+  has a windows job, a linux job (ubuntu-22.04, AppImage + .deb) and a release job that needs both. The Linux
+  bundles build locally and the AppImage starts and computes on a scratch profile; neither job has run in CI
+  since, and Windows has not compiled since v1.4.0. Product copy says Windows and Linux; one `DownloadLink`
+  (siteNav.tsx) names the visitor's platform. Remaining steps: `backlog.md` § Release planning.
 - **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
   the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
 

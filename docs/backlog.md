@@ -25,8 +25,9 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Re-merge `develop` → `main`, then tag v1.4.0** (the 1.4.0 bump is on both; `main` lacks the
-  button-case sweep and the seed cuts); then walk `2.0-plan.md`.
+- [ ] **Release 1.4.1** (the bump is on `develop`): push `develop`, run `desktop-build.yml` by hand on it
+  (no tag, so it only builds) because Windows has not compiled since v1.4.0 and the Linux job has never run
+  in CI; then merge to `main` and the author tags `v1.4.1`. Then walk `2.0-plan.md`.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
