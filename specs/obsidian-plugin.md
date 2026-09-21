@@ -54,7 +54,7 @@ and drill levels, Escape semantics.
 2. **The seam to the graph is a list of module swaps.** The `SHIMMED` map in
    `obsidian-plugin/vite.config.ts` replaces, at build time, each app module that reaches the
    graph with a file in `src/shims/`: `persistence`, `process`, `fileBridge`, `frameBackend`,
-   `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`, `perfProbe`. A shim may only stand in for something
+   `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`, `perfProbe`, `nativeAccent`. A shim may only stand in for something
    that cannot happen in a note (no node to fly to, no editor to ask, no formula to tokenize); a
    shim that would change what a bundled component draws is refused, and the component gets a
    real seam under requirement 1. `PLUGIN_REPORT=1 npm run plugin:build` writes what the bundle

@@ -21,6 +21,7 @@ const SHIMMED: Record<string, string> = {
   [path.join(REPO, "src/graph/packs.ts")]: path.join(SHIMS, "packs.ts"),
   [path.join(REPO, "src/graph/formulaSyntax.ts")]: path.join(SHIMS, "formulaSyntax.ts"),
   [path.join(REPO, "src/graph/perfProbe.ts")]: path.join(SHIMS, "perfProbe.ts"),
+  [path.join(REPO, "src/graph/nativeAccent.ts")]: path.join(SHIMS, "nativeAccent.ts"),
 };
 const REACT_DOM_SHIM = path.join(SHIMS, "reactDom.ts");
 
