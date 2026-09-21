@@ -104,6 +104,12 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   every tooltip is a native `title` (469 of them, no tooltip component), and WebKitGTK hands those to GTK, so
   size and delay come from the system theme, not the app. Windows (WebView2) and the web draw the browser's own.
   Fixing it means the app drawing its own tooltip; that is a design call (DESIGN.md, `layout-chrome.md`).
+- [ ] **Linux desktop: the canvas dots are harsher / sharper than on Windows and Chromium** (author 2026-09-21,
+  not urgent). Lead: the grid is React Flow's `<Background variant=Dots>` (`FlowSurface.tsx`), an SVG pattern of
+  small circles, and WebKitGTK antialiases a sub-2px circle harder than Skia does. Candidates: a per-webview
+  `--canvas-dot` a step closer to the ground, or a slightly larger, softer dot, keyed on
+  `html[data-webview="webkitgtk"]` as the zoom fixes are (`layout-chrome.md` § Desktop window frame). DESIGN.md
+  § 2 holds the structure: dots legible without shouting.
 
 ## Landing pages
 
