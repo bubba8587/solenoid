@@ -58,13 +58,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   type" holds only for text, number and Boolean columns and typed lists. The plugin's picked column types
   live in its `data.json` (`columnTypes`, by property name then column); the app reading that file would close
   this, but the desktop fs scope stops at `.obsidian/*.json`.
-- [ ] **Ship the Solenoid look with the plugin** (author 2026-09-21: the plugin becomes the primary
-  way people get it; the demo vault's `.obsidian/snippets/solenoid.css` is the look today). Needs its
-  spec rule first ([[C6]] specFirst). Proposed shape: the CSS moves to `obsidian-plugin/src/` as the
-  one source, ships inside the plugin's `styles.css` scoped under a body class, and a settings toggle
-  adds that class, so nothing is written into the user's `.obsidian/`; the build emits the demo
-  vault's snippet from the same file. The snippet is already vault-agnostic (folder dots run in
-  palette order, no folder names) and targets Obsidian 1.13's callout and Bases variables.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a

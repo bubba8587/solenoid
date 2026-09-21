@@ -11,6 +11,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 const REPO = path.resolve(import.meta.dirname, "..");
 const SHIMS = path.join(import.meta.dirname, "src/shims");
 const OUT = path.join(REPO, "demo-vault/.obsidian/plugins/solenoid-properties");
+const LOOK = path.join(import.meta.dirname, "src/look.css");
+const SNIPPET = path.join(REPO, "demo-vault/.obsidian/snippets/solenoid.css");
+const LOOK_CLASS = "solenoid-look";
 
 /** App modules that reach the graph, and what stands in for each ([[C107]]: the whole seam). */
 const SHIMMED: Record<string, string> = {
@@ -72,6 +75,21 @@ function popupGlobals(): Plugin {
   };
 }
 
+/** The Solenoid look, every rule scoped under `body.solenoid-look` (the settings toggle adds
+ *  the class). `body`, `.theme-dark` and `.theme-light` ARE the body, so they join it; the rest
+ *  hang under it. */
+function scopedLook(): string {
+  const root = postcss.parse(readFileSync(LOOK, "utf8"));
+  root.walkRules((rule) => {
+    rule.selectors = rule.selectors.map((sel) => {
+      if (/^body(?![\w-])/.test(sel)) return sel.replace(/^body/, `body.${LOOK_CLASS}`);
+      if (/^\.theme-(dark|light)(?![\w-])/.test(sel)) return `body.${LOOK_CLASS}${sel}`;
+      return `body.${LOOK_CLASS} ${sel}`;
+    });
+  });
+  return root.toString();
+}
+
 /** The bundled CSS splits in two: `@font-face` must live in the document (`styles.css`); the
  *  rest goes into the shadow roots as a string, `:root` rewritten to `:host`. */
 function shadowCss(): Plugin {
@@ -95,12 +113,14 @@ function shadowCss(): Plugin {
         if (file.type === "chunk") file.code = file.code.replace(/__SOLENOID_CSS__/g, () => JSON.stringify(css));
       }
       const hostCss = readFileSync(path.join(import.meta.dirname, "src/host.css"), "utf8");
-      this.emitFile({ type: "asset", fileName: "styles.css", source: `${fonts.join("\n")}\n${hostCss}` });
+      this.emitFile({ type: "asset", fileName: "styles.css", source: `${fonts.join("\n")}\n${hostCss}\n${scopedLook()}` });
       this.emitFile({ type: "asset", fileName: "manifest.json", source: readFileSync(path.join(import.meta.dirname, "manifest.json")) });
     },
     // `PLUGIN_REPORT=1` lists what the bundle pulled in, largest first; with
     // `PLUGIN_TRACE=src/graph/x.ts,…` it also prints how the entry reaches each of those.
     writeBundle(_options, bundle) {
+      // The demo vault wears the look as a snippet: the same file, as it stands.
+      writeFileSync(SNIPPET, readFileSync(LOOK));
       if (!process.env.PLUGIN_REPORT) return;
       const rows: [number, string][] = [];
       for (const file of Object.values(bundle)) {

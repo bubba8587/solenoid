@@ -39,7 +39,9 @@ interface MetadataTypeManager {
 
 interface Mount { host: HTMLElement; root: Root; attached: boolean }
 
-interface PluginData { palette?: string; columnTypes?: Record<string, ColumnTypes> }
+interface PluginData { palette?: string; columnTypes?: Record<string, ColumnTypes>; look?: boolean }
+
+const LOOK_CLASS = "solenoid-look";
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
 
@@ -50,7 +52,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
 
   async onload(): Promise<void> {
     const stored = ((await this.loadData()) ?? {}) as PluginData;
-    this.data = { palette: stored.palette, columnTypes: readColumnTypes(stored.columnTypes) };
+    this.data = { palette: stored.palette, columnTypes: readColumnTypes(stored.columnTypes), look: stored.look === true };
     // The store also reads `localStorage`, which every vault shares; this vault's data decides.
     paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
 
@@ -64,10 +66,13 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     // A tab dragged out to a window of its own carries its chips with it.
     this.registerEvent(this.app.workspace.on("window-open", () => window.setTimeout(() => this.sweep(), 300)));
     this.registerEvent(this.app.workspace.on("layout-change", () => this.sweep()));
+    this.registerEvent(this.app.workspace.on("window-open", (win) => this.wearLook(win.doc)));
+    this.app.workspace.onLayoutReady(() => this.wearLook());
     this.addSettingTab(new SolenoidSettingTab(this.app, this));
   }
 
   onunload(): void {
+    for (const doc of this.windows()) doc.body.removeClass(LOOK_CLASS);
     const widgets = this.typeManager().registeredTypeWidgets;
     for (const kind of PROPERTY_KINDS) delete widgets[kind.id];
     tablePopup.close();
@@ -76,6 +81,26 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.popups?.unmount();
     this.popups = null;
     removePopupLayer();
+  }
+
+  /** Every Obsidian window's document: the main one and each popped-out note. */
+  private windows(): Set<Document> {
+    const docs = new Set<Document>([document]);
+    this.app.workspace.iterateAllLeaves((leaf) => docs.add(leaf.view.containerEl.ownerDocument));
+    return docs;
+  }
+
+  /** The Solenoid look is a class on the body: every rule of it hangs under that class. */
+  wearLook(doc?: Document): void {
+    for (const d of doc ? [doc] : this.windows()) d.body.toggleClass(LOOK_CLASS, this.data.look === true);
+  }
+
+  get look(): boolean { return this.data.look === true; }
+
+  async setLook(on: boolean): Promise<void> {
+    this.data.look = on;
+    this.wearLook();
+    await this.saveData(this.data);
   }
 
   /** The one popup layer, rendered in whichever window it currently lives in. */
@@ -199,6 +224,7 @@ class SolenoidSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
+    containerEl.ownerDocument.body.toggleClass(LOOK_CLASS, this.plugin.look);
     // The app's Settings row: the dropdown with the swatch legend stacked under it.
     const palette = new Setting(containerEl)
       .setName("Color palette")
@@ -209,6 +235,13 @@ class SolenoidSettingTab extends PluginSettingTab {
       });
     palette.controlEl.addClass("solenoid-settings-palette");
     this.plugin.mount(palette.controlEl, "solenoid-settings-swatches", <PaletteSwatches />);
+    new Setting(containerEl)
+      .setName("Solenoid look")
+      .addToggle((toggle) => toggle.setValue(this.plugin.look).onChange(async (on) => {
+        await this.plugin.setLook(on);
+        // Settings is a window of its own.
+        containerEl.ownerDocument.body.toggleClass(LOOK_CLASS, on);
+      }));
     const links = new Setting(containerEl).setName("Solenoid");
     for (const url of SOLENOID_LINKS) {
       links.controlEl.createEl("a", { text: url.replace("https://", ""), href: url, cls: "external-link", attr: { target: "_blank", rel: "noopener" } });

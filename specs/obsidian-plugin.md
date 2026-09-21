@@ -28,6 +28,18 @@ frame and the cube; and one scalar, Complex, the only element family Obsidian ha
 | `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
+**The Solenoid look.** One more setting, a toggle, off until the user turns it on: Obsidian
+wears Solenoid's Default palette (the workbench neutrals, the gold accent, tabs as node headers,
+callouts and canvas groups as groups, a property's icon in its type's color; light mode is
+neutral or the full accent, never a hue greyed toward the ink). The one source is
+`obsidian-plugin/src/look.css`. The build scopes every rule under `body.solenoid-look` into the
+plugin's `styles.css`, and the toggle adds that class to the body of every Obsidian window
+(the main one, a popped-out note, settings), so the plugin writes nothing into the user's
+`.obsidian/`; `onunload` takes the class away. The same build writes the file as it stands to
+`demo-vault/.obsidian/snippets/solenoid.css`, which the demo vault turns on, and
+`tests/obsidianPlugin/look.test.ts` fails when the two drift. It targets Obsidian 1.13's variables
+(`--callout-<type>`, `--bases-*`).
+
 **Bases.** A Bases table draws a typed property through the same widget, so a cell shows the chip
 and a press opens the same editor (checked in Obsidian 1.13.7; a narrow column clips the chip until it
 is widened).

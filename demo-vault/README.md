@@ -36,7 +36,8 @@ enough that the seeds have real rows to compute over:
 - **`Planning board.canvas`** — one Canvas: a group, two colored cards, a note card for
   `Projects/Kitchen remodel` and a labeled edge, so the look's canvas styling has something to show.
 - **`.obsidian/snippets/solenoid.css`** — Solenoid's Default palette as an Obsidian look, light
-  and dark, switched on by `.obsidian/appearance.json`. A property's icon wears its type's
+  and dark, switched on by `.obsidian/appearance.json`. Written by `npm run plugin:build` from
+  `obsidian-plugin/src/look.css`, the one source; the plugin ships the same look behind a toggle. A property's icon wears its type's
   color, and hues used as text are darkened in light mode to hold contrast. The Atkinson
   Hyperlegible faces come from the Solenoid Properties plugin's `styles.css`.
 
