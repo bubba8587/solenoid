@@ -64,9 +64,14 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
     "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
     "obsidian", "postcss", "rollup-plugin-license", "typescript", "vite",
   ]),
+  // Vite takes any 1.2.x bundler, and a patch bump minifies React differently: pin the one
+  // installed here so the snapshot makes the same bytes.
+  overrides: pin(["rolldown"]),
 }, null, 2) + "\n");
 
-const ts = JSON.parse(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8").replace(/^\s*\/\/.*$/gm, ""));
+// tsconfig.json is JSON with comments and trailing commas.
+const jsonc = (text) => JSON.parse(text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "").replace(/,(\s*[}\]])/g, "$1"));
+const ts = jsonc(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
 fs.writeFileSync(path.join(target, "tsconfig.json"), JSON.stringify({
   // For the build's JSX and module settings and for an editor. The snapshot holds what the
   // BUNDLE reads, so type-only imports of other app modules do not resolve here: the build is
