@@ -42,6 +42,8 @@ On `develop`, NOT pushed (the author's call). tsc + vitest green.
   the muted one; unmanaged or boosted paths (WebKitGTK, Windows with no display profile, an Android phone in its
   default Vivid / Adaptive mode, where the author also sees it) show the vivid one the palette was tuned on.
   Whether to author the palette in `display-p3` is a design call (`backlog.md` § Canvas chrome).
+  On the dev machine Chrome now launches with `--force-color-profile=srgb` (a per-user copy of its desktop entry
+  in `~/.local/share/applications/`), so the dev server shows the vivid look; Obsidian (Electron) still maps.
 - **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
   the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
 
