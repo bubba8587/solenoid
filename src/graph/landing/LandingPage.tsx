@@ -2,7 +2,7 @@
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
-import { GITHUB_URL, HOME_HREF, SiteHeader, SiteFooter, Feature } from "./siteNav";
+import { HOME_HREF, SiteHeader, SiteFooter, Feature, DownloadLink } from "./siteNav";
 import { SceneThread } from "./SceneThread";
 import {
   Reveal,
@@ -48,9 +48,7 @@ export default function LandingPage() {
                   <a className="sol-landing__cta sol-landing__cta--primary" href="./">
                     Open Solenoid
                   </a>
-                  <a className="sol-landing__cta" href={`${GITHUB_URL}/releases/latest`} target="_blank" rel="noreferrer">
-                    Download for Windows
-                  </a>
+                  <DownloadLink />
                 </div>
               </Reveal>
             </div>
@@ -148,13 +146,11 @@ export default function LandingPage() {
           <section className="sol-landing__strip">
             <Reveal className="sol-landing__strip-in">
               <p>
-                Free and open source. Runs in the browser, or as a Windows desktop app.
+                Free and open source. Runs in the browser, or as a desktop app on Windows and Linux.
               </p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="./">Open Solenoid</a>
-                <a className="sol-landing__cta" href={`${GITHUB_URL}/releases/latest`} target="_blank" rel="noreferrer">
-                  Download for Windows
-                </a>
+                <DownloadLink />
               </div>
             </Reveal>
           </section>

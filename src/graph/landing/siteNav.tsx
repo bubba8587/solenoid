@@ -10,6 +10,25 @@ import { Reveal } from "./LandingScenes";
 
 export const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 
+const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
+
+/** The desktop download's label for a user agent: the platform when a build exists for it. */
+export function downloadLabel(userAgent: string): string {
+  if (/Android/i.test(userAgent)) return "Download";
+  if (/Windows/i.test(userAgent)) return "Download for Windows";
+  if (/Linux/i.test(userAgent)) return "Download for Linux";
+  return "Download";
+}
+
+/** The one desktop download button: every page's copy of it links the latest release. */
+export function DownloadLink({ primary }: { primary?: boolean }) {
+  return (
+    <a className={`sol-landing__cta${primary ? " sol-landing__cta--primary" : ""}`} href={RELEASES_URL} target="_blank" rel="noreferrer">
+      {downloadLabel(navigator.userAgent)}
+    </a>
+  );
+}
+
 // The home page is the overview, served under ?landing (root is the app itself).
 export const HOME_HREF = "/?landing";
 
