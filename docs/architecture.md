@@ -47,7 +47,7 @@ This file is the map.
 │                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
 │                             #     (pinnable .desktop launchers for the local release + debug apps)
 ├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
-├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
+├── .github/workflows/        # CI: test.yml (tsc+vitest), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
 ├── package.json              # JS deps + scripts (dev, build, test, tauri)
 ├── vite.config.ts            # Vite config (keepNames: constructor.name is load-bearing)

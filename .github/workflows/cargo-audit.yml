@@ -1,5 +1,5 @@
 # Scans src-tauri/Cargo.lock for known security advisories on every push to
-# develop. Separate from test.yml (JS-only) and windows-portable.yml (full
+# develop. Separate from test.yml (JS-only) and desktop-build.yml (full
 # Tauri build) since this only needs the lockfile, not a compile.
 name: Cargo audit
 

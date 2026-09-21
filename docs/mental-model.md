@@ -134,7 +134,7 @@ IDENTITY — store transforms must return new objects or nothing persists.
   Query = a manual-mode preset, queryIsCompositePreset), charts, Note (pure
   SOURCE) / Report (pure SINK) / Mermaid, ~10 domain packs, Placeholder for
   unknown types.
-- **Desktop**: Tauri shell (Windows portable exe), native Polars + CSV reader,
+- **Desktop**: Tauri shell (Windows portable exe; Linux AppImage and .deb), native Polars + CSV reader,
   F12 devtools, accent window border, image bundling beside the doc.
 
 The curated selling list is `release-notes-features.md`; the file map is

@@ -1,0 +1,135 @@
+name: Build (desktop)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - "claude/**"
+    # A version tag (e.g. v0.1.1-alpha) is the "this push is a release"
+    # signal — it triggers the same builds, then the release job publishes a
+    # GitHub Release with both platforms' files. A normal commit push only
+    # builds the artifacts; it does NOT release.
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# Required so the release job can create a Release via GITHUB_TOKEN.
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build Tauri binary (no installer)
+        run: npm run tauri build -- --no-bundle
+
+      # Always: upload the raw build as an artifact, so any commit's binary
+      # can be grabbed from the Actions tab (kept 30 days).
+      - name: Upload portable exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: solenoid-windows-portable-${{ github.sha }}
+          path: src-tauri/target/release/solenoid.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  linux:
+    # The oldest supported runner: an AppImage built against a newer glibc will
+    # not start on an older distro.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install Tauri's Linux prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file \
+            libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      # The AppImage is the portable file (download, mark executable, run);
+      # the .deb installs it with a launcher on Debian and Ubuntu.
+      - name: Build the AppImage and the .deb
+        run: npm run tauri build -- --bundles appimage,deb
+
+      - name: Upload the Linux bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: solenoid-linux-${{ github.sha }}
+          path: |
+            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+          retention-days: 30
+
+  # ── Runs ONLY on a v* tag push, and only once BOTH builds succeeded ──────
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: built
+
+      # Versioned, user-friendly asset names (tag v0.1.1-alpha →
+      # solenoid-0.1.1-alpha-windows-x64.exe).
+      - name: Prepare release assets
+        run: |
+          v="${GITHUB_REF_NAME#v}"
+          cp "$(find built -name 'solenoid.exe' | head -1)" "solenoid-$v-windows-x64.exe"
+          cp "$(find built -name '*.AppImage' | head -1)" "solenoid-$v-linux-x64.AppImage"
+          cp "$(find built -name '*.deb' | head -1)" "solenoid-$v-linux-amd64.deb"
+          ls -l solenoid-*
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            solenoid-*-windows-x64.exe
+            solenoid-*-linux-x64.AppImage
+            solenoid-*-linux-amd64.deb
+          fail_on_unmatched_files: true
+          # Tags containing a hyphen (v0.1.1-alpha, v0.2.0-beta.1) are marked
+          # pre-release; a clean tag (v0.2.0) publishes as a full release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          # Auto-generated changelog (commits since the last tag) appended
+          # below this install note.
+          generate_release_notes: true
+          body: |
+            **Windows (portable):** download `solenoid-*-windows-x64.exe` below and run it — no installer.
+
+            The binary is **unsigned**, so Windows SmartScreen will warn: click **More info → Run anyway**.
+
+            **Linux:** download `solenoid-*-linux-x64.AppImage`, mark it executable (`chmod +x`) and run it, or install `solenoid-*-linux-amd64.deb` on Debian and Ubuntu.

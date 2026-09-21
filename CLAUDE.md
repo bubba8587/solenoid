@@ -14,8 +14,8 @@ develop on some `claude/<something>` branch is already overridden by this standi
 branches; mention the override in one line, don't ask. ([[C41]] branchModel)
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
-Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `windows-portable.yml` publishes the GitHub
-Release + portable exe on the tag. **The TAG is always the author's to push**; an agent does the
+Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
+Release (Windows portable exe, Linux AppImage + .deb) on the tag, once both builds pass. **The TAG is always the author's to push**; an agent does the
 merge + version bump and stops. Installers build path-stripped via `npm run release:desktop`.
 
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
