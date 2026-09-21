@@ -388,6 +388,7 @@ body {
   --metadata-background: var(--sol-surface);
   --metadata-divider-color: var(--sol-border-subtle);
   --metadata-divider-width: 1px;
+  --metadata-gap: 0px;
   --metadata-label-text-color: var(--sol-text-dim);
   --metadata-input-text-color: var(--sol-text);
   --metadata-property-background-active: color-mix(in srgb, var(--sol-accent) 8%, transparent);
@@ -906,6 +907,23 @@ button.mod-cta {
 .metadata-container .metadata-content {
   padding: 0 var(--size-4-2);
 }
+/* Obsidian stacks rows with a 3px gap ABOVE each and draws the divider right under the
+   content, so with dividers on nothing sits centered between its lines. The gap goes, and the
+   key and value take it back as 2px above and below. */
+.metadata-container .metadata-property-key,
+.metadata-container .metadata-property-value {
+  padding-block: 2px;
+}
+
+/* One-line rows are all 28px of content: a text value's 21px line and the tag pills' borders
+   made theirs 29 and 31, so the same badge sat differently from row to row. */
+.metadata-container .metadata-input-longtext {
+  line-height: 20px;
+}
+.metadata-container .metadata-property-value .multi-select-container {
+  padding-block: 2.5px;
+}
+
 /* A property row is a label and a value, not two boxed fields. */
 .metadata-container input.metadata-property-key-input,
 .metadata-container .metadata-property-value input:not([type="checkbox"]),
@@ -922,16 +940,24 @@ button.mod-cta {
 }
 
 .metadata-property { --sol-type: var(--sol-any); }
+/* Obsidian seats the icon behind a 4px zero-width spacer, which leaves it 12px from the card
+   and 8px from its label, and pushes a badge's glyph off center. The icon takes an 18px box
+   with 2px either side instead: 10px to the card, 10px to the label. */
 .metadata-property .metadata-property-icon {
-  color: color-mix(in srgb, var(--sol-type) var(--sol-ink-pct), var(--sol-text));
-}
-/* In light the icon is a socket: an 18px badge filled with the full type color, a 12px glyph
-   inked on top. It keeps the 22px column the bare icon had, centered in the 30px row. */
-.theme-light .metadata-property .metadata-property-icon {
+  flex: 0 0 18px;
   justify-content: center;
   width: 18px;
+  margin-inline: 2px;
+  color: color-mix(in srgb, var(--sol-type) var(--sol-ink-pct), var(--sol-text));
+}
+.metadata-property .metadata-property-icon::before {
+  content: none;
+}
+/* In light the icon is a socket: an 18px badge filled with the full type color, a 12px glyph
+   inked on top. It keeps the 22px column the bare icon had, centered on the 28px label. */
+.theme-light .metadata-property .metadata-property-icon {
   height: 18px;
-  margin: 6px 2px 0;
+  margin: 5px 2px 0;
   padding: 0;
   color: var(--sol-type-ink, #1a1a1a);
   background-color: var(--sol-type);
