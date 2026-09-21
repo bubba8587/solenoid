@@ -1,6 +1,6 @@
-// React Flow port — the generic FALLBACK card (C0's throwaway visuals): used
-// only when a node type has no registered component. Values come from
-// cableValueStore, which processGraph fills on every pass.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
+// The generic FALLBACK card, used only when a node type has no registered
+// component. Values come from cableValueStore, which processGraph fills every pass.
 import { memo, useSyncExternalStore } from "react";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";

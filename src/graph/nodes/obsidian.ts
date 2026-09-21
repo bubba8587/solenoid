@@ -1,3 +1,4 @@
+// [[C101]] onePatchPath
 import { ClassicPreset } from "rete";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readInput } from "./shared";
 import { formatDateSerial } from "./dateSerial";
@@ -96,7 +97,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   writeBase = false;
   /** Inline literals: `path` (the Note target) + `keys` (Properties: columns to write). */
   stringLiterals: Record<string, string> = { path: "", keys: "" };
-  /** Never persisted (sinkRunButtonOnly) — always false on a fresh construction. */
+  /** Never persisted ([[C38]] sinkRunButtonOnly) — always false on a fresh construction. */
   enabled = false;
   cachedDoc: DocumentValue | SolError | null = null;
   /** The path the last data() resolved (the wired `path`, else its literal). */
@@ -334,7 +335,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
           const { action, before } = resolveKey(text, r.key, r.value);
           r.before = before;
           r.action = action === "add" && !this.addMissing ? "unchanged" : action;
-          r.reason = action === "refused" ? "nested block" : undefined;
+          r.reason = undefined;
         }
         this.validateRows(rows, await this.schemaFor(vault, p));
       }
@@ -367,7 +368,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         for (const r of rows) {
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
           const { action } = resolveKey(text, r.key, r.value);
-          if (action === "refused") continue;
           if (action === "add" && !this.addMissing) continue;
           if (action === "unchanged") continue;
           if (sch) {

@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming, [[C14]] currentExcelParity
 // DERIVED from NODE_EXCEL — don't hand-edit; declare the equivalence on the node
 // and both maps update.
 

@@ -1,4 +1,4 @@
-// dte:C22,D43
+// [[C22]], [[D43]]
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode } from "../../../src/graph/nodes/lambda";
@@ -8,7 +8,7 @@ import { solError, isSolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/copyPaste";
 
 // ─── Computed Column — the row-wise formula verb ─────────────────────────────
-// The node that keeps frames OUT of formulas (matricesInFormulas): the row iteration lives
+// The node that keeps frames OUT of formulas ([[C15]] matricesInFormulas): the row iteration lives
 // here, the formula only ever sees scalars. Variables are column names; a
 // wired λ takes over with its params bound the same way.
 
@@ -188,14 +188,16 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
     expect(isSolError(r) && r.code).toBe("#REF!");
   });
 
-  it("addAs declares the output type where inference can't (date serials)", () => {
+  it("auto keeps a date a date through date ± days; addAs declares what the formula can't show", () => {
     const due: FrameValue = {
       __frame: true,
       columns: [{ name: "start", type: "date", values: [46000, 46010] }],
     };
     const auto = run(named("@start + 7", "due"), due) as FrameValue;
-    expect(getColumn(auto, "due")!.type).toBe("number"); // inference can't see date-ness
-    const typedNode = named("@start + 7", "due");
+    expect(getColumn(auto, "due")!.type).toBe("date"); // [[D41]]: a date + days is a date
+    // A serial the formula can't see through (a product) stays a number until declared.
+    expect(getColumn(run(named("@start * 1", "due"), due) as FrameValue, "due")!.type).toBe("number");
+    const typedNode = named("@start * 1 + 7", "due");
     typedNode.addAs = "date";
     const typed = run(typedNode, due) as FrameValue;
     expect(getColumn(typed, "due")!.type).toBe("date");
@@ -302,7 +304,7 @@ describe("Frame Input λ columns (surface slice 1)", () => {
       frameText: src([
         { name: "a", type: "number", cells: ["1", "2", "3"] },
         { name: "b", type: "number", cells: ["10", "20", "30"] },
-        { name: "sum", type: "number", cells: [], lambda: "fn1" },
+        { name: "sum", type: "number", cells: [], expr: "λ1" },
       ]),
       lambdaKeys: ["fn1"],
     });
@@ -317,8 +319,8 @@ describe("Frame Input λ columns (surface slice 1)", () => {
     const n = new FrameInputNode({
       frameText: src([
         { name: "qty", type: "number", cells: ["2", "4"] },
-        { name: "margin", type: "number", cells: [], lambda: "fn2" }, // declared FIRST, depends on revenue
-        { name: "revenue", type: "number", cells: [], lambda: "fn1" },
+        { name: "margin", type: "number", cells: [], expr: "λ2" }, // declared FIRST, depends on revenue
+        { name: "revenue", type: "number", cells: [], expr: "λ1" },
       ]),
       lambdaKeys: ["fn1", "fn2"],
     });
@@ -334,8 +336,8 @@ describe("Frame Input λ columns (surface slice 1)", () => {
     const n = new FrameInputNode({
       frameText: src([
         { name: "x", type: "number", cells: ["1"] },
-        { name: "p", type: "number", cells: [], lambda: "fn1" },
-        { name: "q", type: "number", cells: [], lambda: "fn2" },
+        { name: "p", type: "number", cells: [], expr: "λ1" },
+        { name: "q", type: "number", cells: [], expr: "λ2" },
       ]),
       lambdaKeys: ["fn1", "fn2"],
     });
@@ -354,8 +356,8 @@ describe("Frame Input λ columns (surface slice 1)", () => {
     const n = new FrameInputNode({
       frameText: src([
         { name: "a", type: "number", cells: ["1", "2"] },
-        { name: "c1", type: "number", cells: [], lambda: "fn1" },
-        { name: "c2", type: "number", cells: [], lambda: "fn2" },
+        { name: "c1", type: "number", cells: [], expr: "λ1" },
+        { name: "c2", type: "number", cells: [], expr: "λ2" },
       ]),
       lambdaKeys: ["fn1", "fn2"],
     });
@@ -365,11 +367,11 @@ describe("Frame Input λ columns (surface slice 1)", () => {
     expect(isSolError(c2) && c2.message).toContain("captures");
   });
 
-  it("removing a λ row unbinds its columns back to Typed; lambdaKeys round-trips extractInit", () => {
+  it("removing a λ row turns its columns back to Data; lambdaKeys round-trips extractInit", () => {
     const n = new FrameInputNode({
       frameText: src([
         { name: "a", type: "number", cells: ["1"] },
-        { name: "c", type: "number", cells: [], lambda: "fn1" },
+        { name: "c", type: "number", cells: [], expr: "λ1" },
       ]),
       lambdaKeys: ["fn1"],
     });
@@ -377,7 +379,7 @@ describe("Frame Input λ columns (surface slice 1)", () => {
     expect(init.lambdaKeys).toEqual(["fn1"]);
     n.removeValueInput("fn1");
     expect(n.lambdaKeys).toEqual([]);
-    expect(parseFrameSource(n.frameText).find((c) => c.name === "c")!.lambda).toBeUndefined();
+    expect(parseFrameSource(n.frameText).find((c) => c.name === "c")!.expr).toBeUndefined();
   });
 });
 
@@ -415,7 +417,7 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
       frameText: frameSourceToText([
         { name: "qty", type: "number", cells: ["2", "4"] },
         { name: "half", type: "number", cells: [], expr: "@revenue / 2" },
-        { name: "revenue", type: "number", cells: [], lambda: "fn1" },
+        { name: "revenue", type: "number", cells: [], expr: "λ1" },
       ]),
       lambdaKeys: ["fn1"],
     });
@@ -456,16 +458,40 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     expect(isSolError(v) && v.code).toBe("#VALUE!");
   });
 
-  it("a λ binding wins over a stale expr (the wired, reusable definition)", () => {
+  it("a λ socket's name is callable inside a formula, with positional arguments", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
-        { name: "a", type: "number", cells: ["3"] },
-        { name: "c", type: "number", cells: [], lambda: "fn1", expr: "a * 100" },
+        { name: "price", type: "number", cells: ["10", "20"] },
+        { name: "qty", type: "number", cells: ["2", "3"] },
+        { name: "c", type: "number", cells: [], expr: "λ1(@price, @qty) + 1" },
+        { name: "d", type: "number", cells: [], expr: "λ2(@c)" }, // λ2 is unwired
       ]),
-      lambdaKeys: ["fn1"],
+      lambdaKeys: ["fn1", "fn2"],
     });
-    const lam = (new LambdaNode({ expr: "a + 1", params: "a" }).data({}) as { result: unknown }).result;
-    expect(getColumn(n.data({ fn1: [lam] }).frame as FrameValue, "c")!.values).toEqual([4]);
+    // The params name no column: a call binds them by position, not by name.
+    const lam = (new LambdaNode({ expr: "x * y", params: "x, y" }).data({}) as { result: unknown }).result;
+    const out = n.data({ fn1: [lam] }).frame as FrameValue;
+    expect(getColumn(out, "c")!.values).toEqual([21, 61]);
+    expect(getColumn(out, "d")!.values).toEqual([null, null]);
+  });
+
+  it("a formula that keeps a date a date types the column Date; a span stays a number ([[D41]])", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "start", type: "date", cells: ["2026-03-01", "2026-03-10"] },
+        { name: "days", type: "number", cells: ["5", "7"] },
+        { name: "due", type: "number", cells: [], expr: "@start + @days" },
+        { name: "later", type: "number", cells: [], expr: "EDATE(@due, 1)" }, // reads a COMPUTED date
+        { name: "pick", type: "number", cells: [], expr: "IF(@days > 5, @due, @start)" },
+        { name: "span", type: "number", cells: [], expr: "@due - @start" },
+        { name: "scaled", type: "number", cells: [], expr: "@start * 2" },
+      ]),
+    });
+    const out = n.data({}).frame as FrameValue;
+    const type = (name: string) => getColumn(out, name)!.type;
+    expect([type("due"), type("later"), type("pick")]).toEqual(["date", "date", "date"]);
+    expect([type("span"), type("scaled")]).toEqual(["number", "number"]);
+    expect(getColumn(out, "span")!.values).toEqual([5, 7]);
   });
 
   it("a computed column's UNIT tag rides onto the derived column, like a Data column's", () => {
@@ -566,8 +592,8 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
         { name: "qty", type: "number", cells: ["2", "4"] },
-        { name: "margin", type: "number", cells: [], lambda: "fn2" }, // reads @revenue
-        { name: "revenue", type: "number", cells: [], lambda: "fn1" },
+        { name: "margin", type: "number", cells: [], expr: "λ2" }, // reads @revenue
+        { name: "revenue", type: "number", cells: [], expr: "λ1" },
       ]),
       lambdaKeys: ["fn1", "fn2"],
     });
@@ -746,7 +772,7 @@ describe("identity-stable outputs — the backend upload cache holds across pass
     const fi = new FrameInputNode({
       frameText: frameSourceToText([
         { name: "a", type: "number", cells: ["1", "2"] },
-        { name: "c", type: "number", cells: [], lambda: "fn1" },
+        { name: "c", type: "number", cells: [], expr: "λ1" },
       ]),
       lambdaKeys: ["fn1"],
     });

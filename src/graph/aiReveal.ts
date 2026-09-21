@@ -1,3 +1,4 @@
+// [[B13]] aiInScope
 // Entrance animation for nodes an AI apply ADDED. The class goes on rete's HOLDER
 // and the keyframes run on its CHILD, leaving rete's translate positioning intact.
 

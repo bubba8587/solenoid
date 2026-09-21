@@ -1,3 +1,4 @@
+/* [[C88]] collapseIsVisual (summary rows), [[C65]] domOrderStacking */
 /* Group: a translucent framing container drawn behind its member nodes. */
 .solenoid-group {
   box-sizing: border-box;

@@ -32,3 +32,13 @@ html[data-shell="desktop"] div[data-tauri-decorum-tb] button.decorum-tb-btn {
 html[data-shell="desktop"] .solenoid-menubar {
   padding-right: 120px;
 }
+
+/* linux shim for crisp canvas zoom (docs/layout-chrome.md) */
+html[data-webview="webkitgtk"] .react-flow__viewport *,
+html[data-webview="webkitgtk"] .react-flow__viewport *::before,
+html[data-webview="webkitgtk"] .react-flow__viewport *::after {
+  transition: none !important;
+}
+html[data-webview="webkitgtk"] .sol-flow-reveal .react-flow__node {
+  animation: none;
+}

@@ -1,3 +1,5 @@
+// [[D17]] relaysTransparent: a Conduit is wiring, so its lanes to one entity render as one
+// ribbon. Mechanics: specs/cable-rendering-knobs.md.
 import { ConduitNode, conduitLaneOf } from "./rete-nodes";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
@@ -80,7 +82,7 @@ export function conduitLaneOffset(
 }
 
 /** Where a cable plugs into ONE lane: the CENTRE of that lane's socket square, in
- *  canvas coords (authorRuled — the tip seats in the pin hole, not on its rim).
+ *  canvas coords ([[C7]] authorRuled — the tip seats in the pin hole, not on its rim).
  *  Null when the node is not a laid-out Conduit lane.
  *
  *  Computed, never measured. React Flow stores a handle's bounding box, which for

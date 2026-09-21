@@ -7,9 +7,9 @@
 //
 //   node scripts/socket-drag-probe.mjs [seed-id]     (dev server on :1420)
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const CHROME = process.env.CHROME ??
-  `${process.env.LOCALAPPDATA}\\ms-playwright\\chromium-1223\\chrome-win64\\chrome.exe`;
+const CHROME = browserPath();
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 const SEED = process.argv[2] ?? "getting-started";
 

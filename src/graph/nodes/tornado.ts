@@ -1,8 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numIn, numOut } from "./shared";
 
-// One-at-a-time sensitivity ranking; the sweep itself lives in tornadoRun.ts.
-// Pass-through, so the node can sit inline in a chain.
+// The sweep lives in tornadoRun.ts; the node is a pass-through so it sits inline in a chain.
 
 export interface TornadoResult {
   nodeId: string;

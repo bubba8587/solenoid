@@ -46,7 +46,7 @@ describe("Expression — value-polymorphic results", () => {
     expect(n.data({ x: [[1, 3, 4]] }).result).toEqual([0.125, 0.375, 0.5]);
   });
 
-  it("computes over a 2-D matrix input (matricesInFormulas — the old #SHAPE! cap is lifted)", () => {
+  it("computes over a 2-D matrix input ([[C15]] matricesInFormulas — the old #SHAPE! cap is lifted)", () => {
     const n = new ExpressionNode({ expr: "a * 2" });
     const r = n.data({ a: [[[1, 2], [3, 4]]] }).result;
     expect(r).toEqual([[2, 4], [6, 8]]);
@@ -118,7 +118,7 @@ describe("Expression — value-polymorphic results", () => {
 
   it("variable inputs are `anydata` so text/date arrays AND matrices connect, and a scalar stays scalar", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    // `anydata` (matricesInFormulas/anydataWildcard) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
+    // `anydata` ([[C15]] matricesInFormulas/[[E5]] anydataWildcard) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
     // same acceptance, but the SOCKET now says the evaluator takes either rank.
     expect(dt(n.inputs.name?.socket)).toBe("anydata");
   });

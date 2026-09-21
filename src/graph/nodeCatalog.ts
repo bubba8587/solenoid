@@ -1,4 +1,4 @@
-// dte:C19,C53,E13,C14
+// [[C19]], [[C53]], [[E13]], [[C14]]
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -11,7 +11,7 @@ import {
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GCDNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
+  UniqueNode, SetsNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
@@ -56,7 +56,7 @@ import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp,
   IsEvenOddNode, FormatDollarNode,
-  DistributionNode,
+  DistributionsNode,
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
   BesselNode,
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
@@ -238,7 +238,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         // General plotters stay top-level; specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
         children: [
-          { type: "chart",     label: "Chart",     description: "Plots a list or a frame as a column, bar, line, area, scatter, pie, radar, radial, or funnel chart; a frame's number columns become named series with a legend, or a composed (bars + lines) or bubble chart.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series legend" },
+          { type: "chart",     label: "Chart (Recharts)",     description: "Plots a list or a frame as a column, bar, line, area, scatter, pie, radar, radial, or funnel chart; a frame's number columns become named series with a legend, or a composed (bars + lines) or bubble chart.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series legend" },
           { type: "kpi",       label: "KPI",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
           { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list: line, column, or win/loss. Collapses to a headerless square. Excel puts these in cells via Insert ▸ Sparklines.", create: () => new SparklineNode(), parity: false, keywords: "sparkline spark line column win loss winloss" },
           { type: "record",    label: "Record",    description: "One frame row as labeled boxes, or every row as a gallery, a board of lanes, or an indented list. An image URL cell shows the picture.", create: () => new RecordNode(), parity: false, keywords: "record card form detail row browse fields layout boxes airtable gallery kanban board lanes list outline title size clamp" },
@@ -457,7 +457,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
         children: [
-          { type: "distribution", label: "Distribution", description: "Any distribution as CDF, PDF, PMF, tail, or inverse: normal, t, chi-squared, binomial, Poisson. Excel: the `NORM.DIST` / `T.INV` families.", create: () => new DistributionNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
+          { type: "distributions", label: "Distributions", description: "Any distribution as CDF, PDF, PMF, tail, or inverse: normal, t, chi-squared, binomial, Poisson. Excel: the `NORM.DIST` / `T.INV` families.", create: () => new DistributionsNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
           { type: "pair", children: [
             { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
             { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
@@ -571,7 +571,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-pad",   label: "Pad", description: "Extends a list to a target length by prepending or appending a fill value. Excel: `PADLEFT` / `PADRIGHT`.", create: () => new PadNode() },
           ]},
           { type: "list-unique",  label: "UNIQUE", description: "Removes duplicates, preserving first-occurrence order. Excel: `UNIQUE`.", create: () => new UniqueNode() },
-          { type: "list-set",  label: "Set", description: "Set operations on two lists: union, intersection, difference, symmetric difference; the relations equal, subset, superset, disjoint give `TRUE` or `FALSE`. Excel builds these from `COUNTIF`.", create: () => new SetNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric relation equal same identical subset superset disjoint overlap contains all within compare two lists distinct dedupe subtract exclude common membership issubset issuperset predicate test boolean" },
+          { type: "list-sets",  label: "Sets", description: "Set operations on two lists: union, intersection, difference, symmetric difference; the relations equal, subset, superset, disjoint give `TRUE` or `FALSE`. Excel builds these from `COUNTIF`.", create: () => new SetsNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric relation equal same identical subset superset disjoint overlap contains all within compare two lists distinct dedupe subtract exclude common membership issubset issuperset predicate test boolean" },
           { type: "pair", children: [
             { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorders the list, Fisher-Yates. With a weight per element, higher weights tend to land earlier: a weighted draw without replacement.", create: () => new ShuffleNode(), keywords: "shuffle random reorder permutation weighted weights sample without replacement np.random.choice pick draw lottery" },
             { type: "list-interleave", label: "Interleave", description: "Alternate elements of two lists: `A[0]`, `B[0]`, `A[1]`, `B[1]`, …", create: () => new InterleaveNode() },

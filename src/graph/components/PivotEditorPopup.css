@@ -169,7 +169,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.pivot-filter__caret { color: var(--text-dim); font-size: 9px; }
+.pivot-filter__caret { color: var(--text-dim); display: inline-flex; vertical-align: middle; }
 .pivot-filter__list {
   max-height: 168px;
   overflow: auto;

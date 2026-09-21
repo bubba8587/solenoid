@@ -1,4 +1,4 @@
-// dte:C16,C24
+// [[C16]], [[C24]]
 import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,

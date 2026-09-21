@@ -1,6 +1,7 @@
 import { useMenuClamp } from "./menuClamp";
 import { useEffect } from "react";
 import "./SocketContextMenu.css";
+import { TetherIcon } from "./Icons";
 
 // Shown only when exactly two linkable items are selected and one is right-clicked.
 
@@ -48,7 +49,7 @@ export function StandoffLinkMenu({ target, onLink, onClose }: Props) {
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => { onLink(target); onClose(); }}
       >
-        <span className="solenoid-socket-ctx__icon">⊷</span>
+        <span className="solenoid-socket-ctx__icon"><TetherIcon size={13} /></span>
         Link with Standoff
       </button>
     </div>

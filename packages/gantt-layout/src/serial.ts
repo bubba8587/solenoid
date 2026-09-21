@@ -1,8 +1,6 @@
-// Pure serial-date arithmetic — no `Date`, ever (the whole reason this package is DST-proof).
-// A serial is an Excel day number: serial 1 = 1900-01-01, serial 25569 = 1970-01-01 (a
-// Thursday). The app's `serialToJsDate` maps `serial → (serial - 25569) * 86400000` ms UTC,
-// so a serial's civil date and weekday are exactly the UTC ones; we reproduce them with
-// integer math (Howard Hinnant's days↔civil algorithms) so no timezone or DST can intrude.
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate
+// Serial-date arithmetic with no `Date` (Hinnant's integer days↔civil algorithms): a serial's
+// civil date and weekday are its UTC ones, as the app's `serialToJsDate` maps them.
 
 /** Excel serial of the Unix epoch, 1970-01-01. */
 export const UNIX_EPOCH_SERIAL = 25569;

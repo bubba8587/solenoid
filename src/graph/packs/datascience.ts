@@ -1,17 +1,16 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C8]] declareOnce
 import type { Pack, PackPlacement } from "./packShared";
 import {
   KMeansNode, PcaNode, LogisticNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
 } from "../rete-nodes";
 
-// The R/sklearn-shaped tools, out of the base Add menu: real placements under
-// Packs › Data Science, so enabling the pack shows exactly what it added. The
-// mainstream tests (z, t, F, chi-squared, ANOVA, proportion, binomial) stay core.
-// Catalog type strings are historical and must not change (saves + formula names).
+// The R/sklearn-shaped tools as real placements (not tags); the mainstream tests
+// (z, t, F, chi-squared, ANOVA, proportion, binomial) stay core. Catalog type
+// strings must not change (saves + formula names).
 const PATH = ["Packs", "Data Science"];
 
-// Test entries pull label + description from the node's own op meta so the card
-// and the menu can't drift; the type strings keep their historical spellings.
+// Label + description come from the node's own op meta ([[C8]] declareOnce).
 const testEntry = (op: HypothesisTestOp, type: string, keywords: string): PackPlacement => ({
   path: PATH,
   entry: {

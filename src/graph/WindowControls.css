@@ -1,0 +1,45 @@
+.solenoid-wincontrols {
+  display: flex;
+  align-items: stretch;
+  margin-left: auto;
+}
+
+/* in flow, so no overlay reserve */
+html[data-shell="desktop"] .solenoid-menubar:has(.solenoid-wincontrols) {
+  padding-right: 0;
+}
+
+.solenoid-wincontrols__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--accent-ink);
+  cursor: default;
+}
+
+.solenoid-wincontrols__btn:hover {
+  background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
+}
+
+.solenoid-wincontrols__btn--close:hover {
+  background: var(--sol-error, #e0473a);
+  color: #fff;
+}
+
+/* resize grips: 5px edges, 10px corners, above every overlay */
+.solenoid-wingrip {
+  position: fixed;
+  z-index: 10000;
+}
+.solenoid-wingrip--North { top: 0; left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
+.solenoid-wingrip--South { bottom: 0; left: 10px; right: 10px; height: 5px; cursor: ns-resize; }
+.solenoid-wingrip--East { right: 0; top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
+.solenoid-wingrip--West { left: 0; top: 10px; bottom: 10px; width: 5px; cursor: ew-resize; }
+.solenoid-wingrip--NorthEast { top: 0; right: 0; width: 10px; height: 10px; cursor: nesw-resize; }
+.solenoid-wingrip--SouthWest { bottom: 0; left: 0; width: 10px; height: 10px; cursor: nesw-resize; }
+.solenoid-wingrip--NorthWest { top: 0; left: 0; width: 10px; height: 10px; cursor: nwse-resize; }
+.solenoid-wingrip--SouthEast { bottom: 0; right: 0; width: 10px; height: 10px; cursor: nwse-resize; }

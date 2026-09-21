@@ -1,9 +1,9 @@
-// dte:D62,C2
+// [[D62]], [[C2]]
 import { useEffect, useMemo } from "react";
 import { Reveal, useRevealAnim, NoteImportScene, VaultTableScene, TaskNotesScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
-import { GITHUB_URL, SiteHeader, SiteFooter, Feature } from "./siteNav";
+import { SiteHeader, SiteFooter, Feature, DownloadLink } from "./siteNav";
 import { SceneThread } from "./SceneThread";
 import { forceDemoVault } from "../demoVault";
 import { forceDemoTaskNotes } from "../demoTaskNotes";
@@ -123,9 +123,7 @@ export default function ObsidianPage() {
               </Reveal>
               <Reveal delay={300}>
                 <div className="sol-landing__actions">
-                  <a className="sol-landing__cta sol-landing__cta--primary" href={`${GITHUB_URL}/releases/latest`} target="_blank" rel="noreferrer">
-                    Download for Windows
-                  </a>
+                  <DownloadLink primary />
                   <a className="sol-landing__cta" href="/?landing">
                     What is Solenoid?
                   </a>
@@ -305,9 +303,7 @@ export default function ObsidianPage() {
             <Reveal className="sol-landing__strip-in">
               <p>Free and open source. Point it at your vault and start computing.</p>
               <div className="sol-landing__actions">
-                <a className="sol-landing__cta sol-landing__cta--primary" href={`${GITHUB_URL}/releases/latest`} target="_blank" rel="noreferrer">
-                  Download for Windows
-                </a>
+                <DownloadLink primary />
                 <a className="sol-landing__cta" href="/">Open Solenoid</a>
               </div>
             </Reveal>

@@ -1,0 +1,16 @@
+---
+title: "Solenoid's scope boundary against spreadsheets, knowledge bases, documents, code and databases"
+proposed_ring: A
+ask: human
+made_by: joint
+by: the project owner (asked), Claude Fable 5.1 (drafted)
+date: 2026-09-17
+parents: []
+---
+## Decision
+
+Solenoid sits at the nexus of spreadsheet software, knowledge bases, documents, code and database tools, and its edges are stated: what it takes from each, what it leaves to them, and what it never becomes. (Draft the edges here; the owner places and words this one.)
+
+## Why
+
+The owner's note on [[A1]]: defining the edges of the scope boundary against other tools is a ring-A decision of its own. Without it every "should Solenoid do X" question is re-argued from [[A1]] alone.

@@ -1,3 +1,4 @@
+// [[C97]] rechartsLazyChunk, [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { bondPrice, bondYield } from "../../src/graph/nodes/financeOps";
 import { sanitizeChartLabel } from "../../src/graph/components/chartRender";

@@ -1,4 +1,4 @@
-// dte:D41
+// [[D41]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -51,7 +51,7 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
 beforeEach(() => { frameFormatStore.clear(); resetFrameBackendToJs(); clearCollectMemo(); });
 afterEach(() => { frameFormatStore.clear(); });
 
-// dte:D41 formatFlowsDownstream: a frame column's DISPLAY format rides the value like its
+// [[D41]] formatFlowsDownstream: a frame column's DISPLAY format rides the value like its
 // unit — stamped at the producer from that node's own picks, overridden by a nearer one.
 describe("a per-column format rides the frame downstream", () => {
   it("survives Sort → Columns and renders through fmtCell", async () => {

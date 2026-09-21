@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax, [[C12]] socketRows
 import { useSyncExternalStore } from "react";
 import type { ReportNode as ReportNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";
@@ -13,8 +14,7 @@ import { collapseStore } from "../collapseStore";
 import { cableValueStore } from "../cableValueStore";
 import "./ReportNode.css";
 
-/** One inline-ref INPUT row, laid out as a standard measured socket row so its dot
- *  straddles the card edge at the row's own vertical center. */
+/** One inline-ref INPUT row ([[C12]] socketRows). */
 function ReportRefRow({ data, emit, refKey, label, value }: {
   data: ReportNodeType;
   emit: Emit;

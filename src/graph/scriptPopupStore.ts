@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // Which Script node's editor popup is open. A module store for the same reason as
 // formulaPopupStore: the opener sits in the canvas React tree, the popup in App's.
 import { createValueStore } from "./storeKit";

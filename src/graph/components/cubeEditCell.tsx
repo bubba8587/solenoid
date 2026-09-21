@@ -1,17 +1,17 @@
+// [[C28]] literalsIffEditable, [[C95]] commitOnEnter
 import { useEffect, useState, type ReactNode } from "react";
 import { cubePopup, type CubeEditBinding, type DrillView } from "../cubePopupStore";
-import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth } from "../frame";
+import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth, type CubeCell } from "../frame";
 import {
   getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
   type CubePath, type CubeRecord,
 } from "../literalEditors";
 import { stopDragStart } from "../coarse";
+import { elemFamilyOfCells } from "../valuePopup";
+import { cubeCellToken } from "./cubeCell";
 
-// The Cube Input's editing cells (cubePopup edit mode). Every nested cell DRILLS on the
-// breadcrumb, one window: a list cell → an editable list level, a frame-shaped record list
-// → an editable table level, a cube-shaped one → a cube level with the same rules. A
-// scalar edits inline. Every commit patches the records at the cell's path and the popup
-// re-derives its stack from them.
+// The Cube Input's editing cells (specs/literal-input-editors.md): every commit patches the
+// records at the cell's path and the popup re-derives its stack from them.
 
 /** The view for the records list at `path` (a cube level). */
 export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
@@ -74,10 +74,12 @@ export function CubeEditCell({ edit, path, row, column }: {
   const shape = recordsShape(value);
   if (shape === "list" || shape === "empty") {
     const list = (value ?? []) as unknown[];
+    const family = list.length ? elemFamilyOfCells(list as Parameters<typeof elemFamilyOfCells>[0]) : undefined;
+    const famClass = family && family !== "number" ? ` solenoid-array-chip--elem-${family}` : "";
     return (
-      <button type="button" className={chipClass("array")} title={`${list.length}-item list. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(listViewAt(records, cellPath, column)); }}>
-        [List]
+      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell)}. Drill in and edit.`}
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(listViewAt(records, cellPath, column), { r: row }); }}>
+        [{list.length}× List]
       </button>
     );
   }
@@ -85,7 +87,7 @@ export function CubeEditCell({ edit, path, row, column }: {
     const rows = value as CubeRecord[];
     return (
       <button type="button" className={chipClass("frame")} title={`Frame ${rows.length}×${Object.keys(rows[0] ?? {}).length}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(frameViewAt(records, cellPath, column)); }}>
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(frameViewAt(records, cellPath, column), { r: row }); }}>
         [{rows.length}×{Object.keys(rows[0] ?? {}).length} Frame]
       </button>
     );
@@ -96,7 +98,7 @@ export function CubeEditCell({ edit, path, row, column }: {
     const dims = `${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)}`;
     return (
       <button type="button" className={chipClass("cube")} title={`Cube ${dims} (rows × cols × depth). Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(cubeViewAt(records, cellPath, column)); }}>
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(cubeViewAt(records, cellPath, column), { r: row }); }}>
         [{dims} Cube]
       </button>
     );
@@ -153,7 +155,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
 /** Footer controls for the current level: add / remove a row (a record, or a list item);
  *  a table or cube level also adds / removes a column (the last key on every row). New
  *  columns arrive as "Column N"; the header renames them. */
-export function CubeEditRows({ edit, view, rows }: { edit: CubeEditBinding; view: DrillView; rows: number }): ReactNode {
+export function CubeEditRows({ edit, view }: { edit: CubeEditBinding; view: DrillView }): ReactNode {
   const path = view.path ?? [];
   const records = edit.records();
   const level = (path.length ? getAtPath(records, path) : records) as unknown[] | undefined;
@@ -180,8 +182,8 @@ export function CubeEditRows({ edit, view, rows }: { edit: CubeEditBinding; view
   };
   return (
     <>
-      <button className="table-popup__btn" onClick={add} title={isList ? "Append an item" : "Append an empty record"}>Add Row</button>
-      <button className="table-popup__btn" onClick={remove} disabled={rows === 0} title="Remove the last row">− Row</button>
+      <button className="table-popup__btn" onClick={add} title={isList ? "Append an item" : "Append an empty record"}>{isList ? "Add Item" : "Add Row"}</button>
+      <button className="table-popup__btn" onClick={remove} disabled={list.length === 0} title={isList ? "Remove the last item" : "Remove the last row"}>{isList ? "− Item" : "− Row"}</button>
       {!isList && (
         <>
           <button className="table-popup__btn" onClick={addColumn} title="Add a column to every row">Add Column</button>

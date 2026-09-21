@@ -1,5 +1,5 @@
-// The DCMA 14-point checks that make sense for a table of tasks, under plain names, one
-// row per finding. No acronyms on the user's screen.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[B14]] oneDesignSystem
+// The DCMA 14-point checks that fit a table of tasks, one row per finding, under plain names (DESIGN.md § 7).
 
 import type { Diagnostic, ScheduleLink, ScheduledTask } from "./types";
 

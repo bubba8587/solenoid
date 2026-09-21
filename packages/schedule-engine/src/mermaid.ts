@@ -1,6 +1,6 @@
-// Mermaid `gantt` source: the interim figure and the Obsidian path (Obsidian renders it
-// natively). Exact dates per bar (never `after`, which cannot carry a lag or a type);
-// `excludes` lists weekends and the holidays inside the span; one `section` per group.
+// [[C69]] ganttPackages, [[B1]] obsidianBet
+// Mermaid `gantt` source (the Obsidian path): exact dates per bar, never `after`, which
+// cannot carry a lag or a type.
 
 import type { ScheduleOutput } from "./types";
 

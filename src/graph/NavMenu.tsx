@@ -1,3 +1,4 @@
+// [[C88]] collapseIsVisual (collapsedAwareNodesRect), [[D71]] zoomLatticeDiscreteOnly
 import { floorZoom } from "./viewPresets";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getActiveView, getActiveEditor } from "./activeGraph";

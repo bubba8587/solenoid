@@ -1,9 +1,7 @@
-// dte:C17,D19
+// [[C17]] shareImpl, [[D19]] implReteFree
+// Must not import `text.ts` (it imports `excelFunctions`; the cycle would drag rete into the formula path).
 import { base64Encode, base64Decode } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
-// The ONE implementation behind both the visual node and the formula registration.
-// Separate from `text.ts` because that imports `excelFunctions` — the other
-// direction would cycle and drag rete into the headless formula path.
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
@@ -117,7 +115,7 @@ export function ordinalText(n: number): string {
   return `${i}${suffix[(v - 20) % 10] || suffix[v] || suffix[0]}`;
 }
 
-/** English cardinal words for any |n| < 10^15. Exported for tests. */
+/** English cardinal words for any |n| < 10^15. */
 export function spellNumber(n: number): string | SolError {
   if (!Number.isFinite(n)) return solError("#DOMAIN!", "Not a finite number");
   if (Math.abs(n) >= 1e15) return solError("#DOMAIN!", "Spell Number goes up to the trillions");
@@ -129,7 +127,6 @@ export function spellNumber(n: number): string | SolError {
   if (int === 0) {
     words = "zero";
   } else {
-    // Split into 3-digit groups, spell each with its scale word.
     const groups: string[] = [];
     let rest = int, scale = 0;
     while (rest > 0) {
@@ -148,12 +145,10 @@ export function spellNumber(n: number): string | SolError {
   return neg ? `negative ${words}` : words;
 }
 
-/** Reverse a string — famously impossible in an Excel formula. */
 export function reverseText(t: string): string {
   return [...t].reverse().join("");
 }
 
-// ─── String distance / similarity (rapidfuzz, R stringdist, Excel's Fuzzy Lookup) ────
 export type SimilarityMethod = "ratio" | "levenshtein" | "damerau" | "jaro_winkler";
 
 /** Levenshtein edit distance (insert / delete / substitute), by code point. */
@@ -306,9 +301,9 @@ export function wrapText(t: string, width: number): string[] {
   return lines;
 }
 
-// ─── Template: "Hello {name}, total {total:0.00}" (str_glue, f-strings, str.format) ───
-// `{{` / `}}` are literal braces; a placeholder is `{name}` or `{name:spec}` where
-// spec is an Excel TEXT format code (or a date format) handed to the caller's `fmt`.
+/** Template grammar ("Hello {name}, total {total:0.00}" — str_glue, f-strings, str.format):
+ *  `{{` / `}}` are literal braces; a placeholder is `{name}` or `{name:spec}`, spec an Excel
+ *  TEXT format code (or a date format) handed to the caller's `fmt`. */
 const TEMPLATE_TOKEN = /\{\{|\}\}|\{\s*([A-Za-z_][\w .-]*?|\d+)\s*(?::([^{}]*))?\}/g;
 
 /** Distinct placeholder names, in first-appearance order. */

@@ -1,8 +1,6 @@
-// Flatten the WBS and build the name-keyed DAG. A parent is a node of its own that
-// depends on every child (so its roll-up is computed after them); a link whose
-// predecessor is a parent reads the parent's rolled-up dates; a link whose SUCCESSOR is a
-// parent bounds every leaf beneath it (rule 12). A cycle names a member and refuses the run.
-// A Manual task keeps its edges (they are drawn and checked) but the pass ignores them.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[E10]] pickVsAggregateErrors
+// Flatten the WBS into the name-keyed DAG in topological order: a parent depends on its
+// children (its roll-up), a link onto a summary lands on every leaf beneath it (25-gantt.md § 3.1 rule 12).
 
 import { ScheduleError, type CalendarSpec, type LinkType, type PlanDependency, type PlanTask } from "./types";
 
@@ -106,14 +104,12 @@ export function buildGraph(plan: PlanTask[]): Graph {
   const addEdge = (e: Edge) => { edges.push(e); succ[e.from].push(e.to); indeg[e.to]++; };
 
   for (const t of tasks) {
-    // A parent's dates roll up from its children, so it is computed after them.
     for (const c of t.children) { succ[c].push(t.index); indeg[t.index]++; }
     for (const p of t.predecessors) {
       if (!p.task) continue;
       const j = byKey.get(nameKey(p.task));
       if (j === undefined) throw new ScheduleError(`task "${t.name}" waits on "${p.task}", which is not a task`, t.name);
       const source = { from: tasks[j].name, to: t.name, type: p.type, lag: p.lag, elapsed: p.elapsed === true };
-      // Successor is a summary → every leaf beneath it takes the link (rule 12).
       for (const leaf of leavesUnder(tasks, t.index)) {
         if (leaf === j) throw new ScheduleError(`"${t.name}" is in a dependency loop`, t.name);
         addEdge({ from: j, to: leaf, type: p.type, lag: p.lag, elapsed: p.elapsed === true, source });

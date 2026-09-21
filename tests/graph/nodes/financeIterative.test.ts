@@ -111,7 +111,7 @@ describe("MIRR matches an independent build of Excel's documented formula", () =
   });
 });
 
-// capabilityParity / shareImpl: the IRR and XIRR FORMULAS run the node's solver
+// capabilityParity / [[C17]] shareImpl: the IRR and XIRR FORMULAS run the node's solver
 // (financeOps.solveDiscountRate) — they used to fall through to Formula.js, whose
 // Newton answered 1000 (!) on the near-floor series the node solves. And the cash-flow
 // blank policy must match across surfaces: a blank period is a ZERO flow (dropping it

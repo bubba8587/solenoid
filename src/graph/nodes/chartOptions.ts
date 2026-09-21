@@ -1,5 +1,5 @@
-// A flat `key=value;…` string in matplotlib's pyplot kwarg names, deliberately not a private
-// dialect. Unknown keys are ignored, so the string degrades gracefully.
+// [[C96]] chartOptionsAreMatplotlib: a flat `key=value;…` string in pyplot kwarg names;
+// unknown keys are ignored.
 
 export interface ChartOptions {
   title?: string;

@@ -1,4 +1,4 @@
-// dte:C58,C48,C72
+// [[C58]], [[C48]], [[C72]]
 import { ClassicPreset } from "rete";
 import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
@@ -340,7 +340,7 @@ export class TableTransposeNode extends ClassicPreset.Node {
   }
 }
 
-// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder (appendLadder) ───────────────
+// ─── HSTACK / VSTACK — the 2-D rungs of the append ladder ([[C48]] appendLadder) ───────────────
 // Ragged inputs pad with #N/A cells (recoverable via IFNA/Fill) rather than failing
 // the whole result with #SHAPE!.
 
@@ -574,7 +574,7 @@ export class TableSelectNode extends ClassicPreset.Node {
 // DIRECTION is the SIGN of the count (Excel's convention). 0 (the default) stands
 // in for Excel's omitted argument: "all" for TAKE, "none" for DROP. The result is
 // the SAME rank as the input, through the ONE takeSlice/dropSlice kernel the
-// TAKE/DROP formulas run (shareImpl) — those formulas are the oracle.
+// TAKE/DROP formulas run ([[C17]] shareImpl) — those formulas are the oracle.
 
 export type TakeDropOp = "take" | "drop";
 

@@ -1,4 +1,4 @@
-// dte:D52
+// [[D52]]
 import { cubeFromColumns, isCubeValue, type CubeValue } from "../../../src/graph/frame";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
@@ -245,7 +245,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
     await connect(c.internalEditor, num, "value", disp, "in");
     expect(sockOf("inputs")).toBe("number");
     expect(sockOf("outputs")).toBe("number");
-    // Unwiring reverts the rings (derived state, never persisted — adoptKeepsCables).
+    // Unwiring reverts the rings (derived state, never persisted — [[E3]] adoptKeepsCables).
     const conn = c.internalEditor.getConnections()[0]!;
     await c.internalEditor.removeConnection(conn.id);
     expect(sockOf("inputs")).toBe("trueany");
@@ -880,7 +880,7 @@ describe("CompositeNode Goal Seek run mode", () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
     // Never solved (create/load): reads blank and stale until the user clicks Solve —
-    // people expect to watch it compute on Solve (dte:D52 compositesHoldUntilSolve).
+    // people expect to watch it compute on Solve ([[D52]] compositesHoldUntilSolve).
     const held0 = await c.data({ [inBId]: [10] });
     expect(held0[outId]).toBeUndefined();
     expect(c.goalSeekResult).toBeNull();
@@ -1196,7 +1196,7 @@ describe("CompositeNode manual refresh mode", () => {
 
   it("a heavy composite loaded from JSON reads blank and stale until Solve", async () => {
     // extractInit → new → hydrate is the exact path persistence.ts and paste take, so a
-    // fresh load starts unsolved: no solve on load (dte:D52 compositesHoldUntilSolve).
+    // fresh load starts unsolved: no solve on load ([[D52]] compositesHoldUntilSolve).
     const src = (await makePassthrough()).c;
     const loaded = new CompositeNode(extractInit(src as unknown as ClassicPreset.Node) as ConstructorParameters<typeof CompositeNode>[0]);
     await loaded.hydrate(ctorRegistry());

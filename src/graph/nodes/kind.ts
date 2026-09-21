@@ -1,4 +1,4 @@
-// dte:D56
+// [[D56]]
 import { ClassicPreset } from "rete";
 import { type NodeKind, NODE_KIND_ACCENTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
@@ -20,7 +20,7 @@ import {
   ListInputNode, SeriesNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
   ReverseNode, SliceNode,
-  UniqueNode, SetNode, IsInNode, TallyNode,
+  UniqueNode, SetsNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
@@ -35,7 +35,7 @@ import {
 } from "./stats";
 import { BitwiseNode, DepreciationNode, TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode } from "./finance";
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
-import { DistributionNode } from "./distribution";
+import { DistributionsNode } from "./distribution";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
 import { ScheduleNode } from "./schedule";
@@ -112,7 +112,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof FilterNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode ||
-    node instanceof SetNode || node instanceof TallyNode ||
+    node instanceof SetsNode || node instanceof TallyNode ||
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
@@ -138,7 +138,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof AmortizationNode || node instanceof ReturnsNode
   ) return "math";
   if (
-    node instanceof DistributionNode
+    node instanceof DistributionsNode
   ) return "math";
   if (
     node instanceof IFErrorNode || node instanceof ConduitNode ||
@@ -244,7 +244,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
 const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
   node instanceof ListInputNode || node instanceof TableInputNode || node instanceof FormatControllerNode ||
   // Set's result socket swaps list↔logical per op, so the accent tracks it.
-  node instanceof SetNode;
+  node instanceof SetsNode;
 
 /** The final, theme-resolved accent hex for a node. Socket colors are CSS vars a
  *  `<canvas>` can't read, so this resolves them (via socketVarHex) to the same concrete

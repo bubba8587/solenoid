@@ -1,3 +1,4 @@
+// [[C63]] oneRecordNode
 // Record-card navigation from the surfaces that DRAW the card (Display, chart
 // popup) — the card itself moved off the node card, so the pager rides along.
 // Stepping drives the node's unwired Row literal, exactly like the on-node

@@ -1,7 +1,6 @@
-// The Gantt figure's INPUT contract: data, never geometry. Every number is an Excel date
-// serial (a whole day; the figure adds one day when it draws a bar so an inclusive Finish
-// fills its last day). The engine (`@solenoid/schedule-engine`) and the app's Gantt node
-// build this; `layoutGantt` in this package turns it into pixels at a given width.
+// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[C44]] dateSerials, [[D66]] daysMinutesModes
+// The Gantt figure's input contract: data, never geometry; every date a whole-day serial with
+// an inclusive Finish (25-gantt.md § 6.3). `layoutGantt` turns it into pixels at a width.
 
 export type LinkType = "FS" | "SS" | "FF" | "SF";
 

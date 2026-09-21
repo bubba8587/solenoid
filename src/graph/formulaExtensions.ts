@@ -1,5 +1,5 @@
-// dte:C76,C79
-// Packs → the formula language (formulaNaming decision 3): RESOLUTION is global, ADVERTISING
+// [[C76]], [[C79]]
+// Packs → the formula language ([[C51]] formulaNaming decision 3): RESOLUTION is global, ADVERTISING
 // is active-only. Must stay out of `excelFormula.ts` — a packs import there cycles.
 
 import { allPacks, packsStore } from "./packs";

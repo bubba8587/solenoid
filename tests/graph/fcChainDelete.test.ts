@@ -1,3 +1,4 @@
+// [[B10]], [[C43]], [[C25]]
 // Host → FC → FC, delete the MIDDLE FC: the graph must keep computing (a docked FC whose
 // host is deleted must not leave the engine fetching a node it no longer has).
 import type { View } from "../../src/graph/view";

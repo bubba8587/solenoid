@@ -1,3 +1,4 @@
+// [[C16]] polarsEngine
 // The web layer's door to the native Rust engine (`src-tauri/src/ipc.rs`); callers
 // must gate on `engineAvailable()`. Rust returns failures SolError-shaped.
 import { isDesktop } from "./fileBridge";

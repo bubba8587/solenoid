@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C106]] noNativeDialogs
 // Transient in-app notices, used instead of window.alert — unreliable in the Tauri WebView
 // — for things the user must not silently miss.
 

@@ -12,7 +12,7 @@ import { SEEDS } from "../../src/graph/seeds";
 // types construct, literals land on declaring classes, connections land on
 // compatible sockets — all of which a seed passes while still coming up red in the
 // app. That is exactly how power-features shipped a MAP whose wired lambda declared
-// `x`, a name MAP does not bind (lambdaBindsByName: its variables are
+// `x`, a name MAP does not bind ([[C50]] lambdaBindsByName: its variables are
 // value/value2/value3/row/col, and an unknown param is #VALUE!).
 //
 // Exemptions are per NODE and matched EXACTLY, never per seed: a blanket seed pass

@@ -1,3 +1,4 @@
+// [[C37]] observerOwnsSize (a definite size measures; a content-driven card never feeds back), [[D33]] unwiredNotBlank
 import { useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
 import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
 import { formatWithUnit } from "../unitFormat";

@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics
 import { isChartValue } from "./chartValue";
 import { isMermaidValue } from "./mermaidValue";
 import { isImageValue } from "./imageValue";

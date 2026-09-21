@@ -1,5 +1,5 @@
-// dte:B13,C55
-// The AI palette's service layer (aiInScope/aiWholeDocRewrite). The cage rule: nothing here touches the
+// [[B13]], [[C55]], [[C105]] apiKeysStayLocal
+// The AI palette's service layer ([[B13]] aiInScope/[[C55]] aiWholeDocRewrite). The cage rule: nothing here touches the
 // document — a validated rewrite only ever reaches the palette's approval diff.
 
 import Anthropic from "@anthropic-ai/sdk";

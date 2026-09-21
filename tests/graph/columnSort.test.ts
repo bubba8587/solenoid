@@ -1,3 +1,4 @@
+// [[C24]]
 import { describe, it, expect } from "vitest";
 import { sortKeyOf, sortedOrder, sortDirOf, nextSort, remapSort, type ColumnSort } from "../../src/graph/components/columnSort";
 import { solError } from "../../src/graph/errorValue";

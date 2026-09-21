@@ -25,6 +25,10 @@ This file is the map.
 │                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
 ├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
 │                             #     schedule-engine, gantt-layout, gantt-react (packages/README.md)
+├── obsidian-plugin/          # Solenoid Properties, the Obsidian plugin ([[C107]] obsidianPlugin): the real
+│                             #     chips + popups behind the shims in src/shims/, in Shadow DOM. `npm run
+│                             #     plugin:build` writes it into demo-vault/.obsidian/plugins/solenoid-properties/
+│                             #     (ignored); src/yamlValue.ts is the pure YAML ⇄ value mapping
 ├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
 │                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
 │                             #     dev server: undo position fidelity, socketBox12's rendering half, a
@@ -37,10 +41,13 @@ This file is the map.
 │                             #     formula-node-parity.ts (oneMetricImpl gap report), op-exposure.ts,
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
 │                             #     copy-inventory.ts (shipped-string extract/apply),
-│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed Edge: every Gantt seed's
-│                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts, release-build.ps1
+│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
+│                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts,
+│                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
+│                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
+│                             #     (pinnable .desktop launchers for the local release + debug apps)
 ├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
-├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
+├── .github/workflows/        # CI: test.yml (tsc+vitest), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
 ├── package.json              # JS deps + scripts (dev, build, test, tauri)
 ├── vite.config.ts            # Vite config (keepNames: constructor.name is load-bearing)
@@ -55,7 +62,7 @@ This file is the map.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
   + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
   plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
-  (dte:B10 reactFlowView — author-ratified 2026-08-27).
+  ([[B10]] reactFlowView — author-ratified 2026-08-27).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`
@@ -82,7 +89,7 @@ src/
 | Module | Role |
 |---|---|
 | `process.ts` | The app's recompute ONLY: the MAIN `_editor/_engine/_area` refs, the graph-rebuild guard, `processGraph()` (the `graphCompute` pass + targeted re-render, cable values, perf, the compute overlay, calc mode), recalc generation (volatile nodes), `bulkSettle`. **STAYS MAIN-ONLY** (persistence/serialize read it) |
-| `graphCompute.ts` | THE model-level pass, one definition for every caller (dte:D30 targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
+| `graphCompute.ts` | THE model-level pass, one definition for every caller ([[D30]] targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
 | `canvasCommands.ts` | The chrome → surface command slots (select/unselect, Tidy/Cleanup, delete, dock reposition, clear history) the mounted FlowSurface registers and the drill-in swaps (`swapSelectionSlots`/`swapArrangeSlots`) |
 | `seedStore.ts`, `graphSignals.ts`, `ctorProvider.ts` | Seed selection (`custom` once edited) + the load slot; the tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
 | `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore). Also an OWNERSHIP-only registry (`registerOwnedGraph`, distinct from the action-target override) so locked landing scene canvases resolve their OWN nodes for render-time cross-node resolvers (output-socket type → date/unit rendering); scenes are never the action target |
@@ -167,7 +174,7 @@ src/
 | `conduitTrace.ts` | Conduit lane type adoption: `resolveTypedSource` traces an output lane back through chained Conduits to the real source socket (cable colors); `reconcileConduitTypes` makes lanes adopt the feeding type (fixpoint). Also `conduitPath` — the whole RUN a cable belongs to (origin producer, every terminal consumer, Conduits crossed), used by the Cable inspector and double-click cable selection |
 | `trigMode.ts` | `resolveTrigModes(editor)` — the ONE compute-time unit read: an Auto-mode trig `Math` node computes degrees when its input resolves to the `deg` unit, else radians (Excel parity). Run from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`. Main-editor only |
 | `noteFrontmatter.ts` | Pure parser: a Note body's YAML frontmatter → typed fields (→ NoteNode output sockets) + the markdown below the block |
-| `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube`; `FrameSourceColumn` carries the column-source model (Data / Formula `expr?` / λ) |
+| `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube`; `FrameSourceColumn` carries the column-source model (Data, or a formula `expr?` that may name a λ socket) |
 | `computedColumnCore.ts` | THE shared computed-column row-eval core (tableRefSemantics/noPerCellFormulas): binding resolution (bare name = whole column, `@` = this row), `readRowCell`/`readWholeColumn`, side values, `tagComputedCell` — one home so the Frame Input popup and the Computed Column verb cannot disagree |
 | `nodes/cube.ts` | Cube nodes: Build Cube (extensible any-cell constructor), Nest Join, Cube Columns, Cube Rollup |
 | `nodes/equation.ts` + `equationSolve.ts` | The ACAUSAL Equation node (equationNode): every variable is an input AND an output + a logical Check; one unknown → solved. `equationSolve.ts` = the pure solver (symbolic AST isolation, quadratic multi-root, numeric log-grid + bisection fallback returning the smallest-magnitude root, `#SOLVE!`). `nodes/finance.ts` TvmNode/Compound Growth/Effective Rate + the pack presets subclass/lock it |
@@ -181,7 +188,7 @@ src/
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
 | `cxValue.ts` | Tagged complex values (tagSpecialScalars), rete-free (implReteFree) — kernels shared with the IM* formulas |
 | `lambdaValue.ts` | Lambda values, rete-free (implReteFree) so the formula path runs editor-less |
-| `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox (dte:C66 scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
+| `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox ([[C66]] scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
 | `documentValue.ts` / `imageValue.ts` / `svgValue.ts` | The other first-class content values: a Note/Report's renderable content on a cable, images (a chart-socket sibling), inline SVG markup (never a URL — the picker hovers inner elements) |
 | `valueKindLabel.ts` | value → display-kind label, one classifier for chips and popups |
 | `stringOrder.ts` | The ONE string comparator (sorts and dedups share it) |
@@ -304,7 +311,8 @@ the touch cluster (`touchActions.tsx` — one definition of the keyboard-less ed
 actions; `TabletActions.tsx` — the tablet top-bar row; `coarse.ts` — the
 touch-vs-mouse flags), window/boot plumbing (`chromeBottom.ts` measured bottom
 envelope, `chromeToggle.ts` the chrome-collapse hotkey registry, `fullscreen.ts`,
-`nativeAccent.ts` Windows 11 border sync, `devtoolsHotkey.ts` F12 in the Tauri
+`nativeAccent.ts` Windows 11 border sync, `WindowControls.tsx` the Linux desktop's
+own minimize / maximize / close in the menu bar, `devtoolsHotkey.ts` F12 in the Tauri
 shell, `chunkReloadGuard.ts` the once-per-window preload-error reload),
 `nodeBudget.ts` (the soft web-demo node cap), and the remaining popup/panel
 stores (`outlineStore`, `shortcutsStore`, `helpDialogStore`, `chartPopupStore`,
@@ -393,13 +401,13 @@ One file per pack on `packs/packShared.ts` (authoring types,
 packShared, `../rete-nodes`, and type-only app seams — never core internals),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
-`fcExtensions.ts` above); the settled calls are dte:B15 leanCore and its children, the
+`fcExtensions.ts` above); the settled calls are [[B15]] leanCore and its children, the
 authoring guide `docs/pack-architecture.md`.
 
 ### Packages (`packages/`)
 
 Three separately publishable MIT packages the app consumes by alias, extracted only on a
-second consumer (dte:C69 ganttPackages): `schedule-engine` (calendar in unit index space,
+second consumer ([[C69]] ganttPackages): `schedule-engine` (calendar in unit index space,
 WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
 `gantt-layout` (payload → render frame at a width; the headless SVG serializer),
 `gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
@@ -430,7 +438,7 @@ gallery is `showcase/NodeShowcase.tsx`.
 src-tauri/
 ├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps)
 ├── tauri.conf.json           # Window, identifier, build hooks
-├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope also lists `http://localhost:*` / `http://127.0.0.1:*`: a URL pattern with no port matches only the scheme's default port, and TaskNotes serves on 8080
+├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope also lists `http://localhost:*` / `http://127.0.0.1:*`: a URL pattern with no port matches only the scheme's default port, and TaskNotes serves on 8080. The text read / write / rename scopes name `$HOME/**/.obsidian/*.json` literally: on Unix a `**` never matches a dot-directory (the fs plugin's `requireLiteralLeadingDot` defaults true there, false on Windows), so without the entry `.obsidian/types.json` and `daily-notes.json` fail silently on Linux. The plugin default stays, which keeps every other hidden directory closed to the webview
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
 ├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity vs the frameVerbs JS oracle runs from the shared corpus (`fixtures/frame-verbs/`, oneVerbCorpus): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set
@@ -462,7 +470,6 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
-| `code-comments.md` | living | the commentMinimalism comment policy — cut rules, blast-radius test |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |
 | `deferrals.md` | living | the deferred/parked/author-gated set, incl. Pushed-to-1.4/2.0 |
@@ -473,11 +480,11 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
-| `pack-architecture.md` | authoring guide | building a pack node, input coercion, per-port promotion, restrictions (settled calls: dte:B15 leanCore) |
+| `pack-architecture.md` | authoring guide | building a pack node, input coercion, per-port promotion, restrictions (settled calls: [[B15]] leanCore) |
 | `pack-composite-plans.md` | plans (parked) | queued composite-shaped pack nodes |
 | `out-of-scope.md` | policy | the standing NO list |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |
-| `agent-coordination.md` | parallel-session board | claim/coordinate when several agents work in parallel |
+| `agent-coordination.md` | parallel-session board | the live claim list; the protocol is its node |
 | `archive/` | index | everything finished/inactive — see `archive/README.md` |
 
 ---

@@ -1,3 +1,4 @@
+// [[B13]] aiInScope
 import { describe, it, expect } from "vitest";
 import { diffLines, hasChanges } from "../../src/graph/textDiff";
 

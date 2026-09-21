@@ -1,8 +1,7 @@
-// dte:B10,C43
-// The chrome → surface command slots. Menus, the palette, keyboard and touch bars
-// call these verbs; whichever FlowSurface is mounted registers the implementation,
-// and the composite drill-in swaps the selection / arrange slots while it is open
-// (dte:C43 oneFlowSurface). Compute lives in process.ts; this is only routing.
+// [[B10]] reactFlowView, [[C43]] oneFlowSurface
+// The chrome → surface command slots (specs/react-flow-surface-contract.md): the
+// mounted FlowSurface registers the implementation, the composite drill-in swaps
+// slots while it is open. Compute lives in process.ts; this is only routing.
 
 // Node and cable selections are mutually exclusive.
 let _unselectAllNodes: () => void = () => {};
@@ -83,19 +82,16 @@ export function swapArrangeSlots(fns: { autoArrange: (opts?: { groupId?: string 
 }
 
 /** Point the docked-FC reposition at a substitute surface (the composite drill-in) while
- *  it is open, so a Format Controller docked inside the drill-in follows its host on resize
- *  / format change / Tidy instead of hitting the MAIN no-op. The returned restorer hands it
- *  back to the main canvas. */
+ *  it is open; the returned restorer hands it back. */
 export function swapRepositionDockedSlot(fn: (hostId: string) => void): () => void {
   const prev = _repositionDocked;
   _repositionDocked = fn;
   return () => { _repositionDocked = prev; };
 }
 
-/** Point the delete verb (the keyboard-less mobile / tablet delete button) at a substitute
- *  surface (the composite drill-in) while it is open; the returned restorer hands it back.
- *  The Delete KEY is already per-surface through RF's onBeforeDelete — this covers the chrome
- *  button that goes through the slot instead. */
+/** Point the delete verb (the keyboard-less chrome button; the Delete KEY is already
+ *  per-surface through RF's onBeforeDelete) at a substitute surface while it is open;
+ *  the returned restorer hands it back. */
 export function swapDeleteSlot(fn: () => Promise<void>): () => void {
   const prev = _deleteSelected;
   _deleteSelected = fn;

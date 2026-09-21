@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import type { ChartValue } from "../chartValue";
 import { chartPopup } from "../chartPopupStore";
 import { useHostNodeId } from "./nodeContext";

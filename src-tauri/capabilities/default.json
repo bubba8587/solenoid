@@ -23,7 +23,8 @@
         { "path": "$HOME/**/*.csv" },
         { "path": "$HOME/**/*.md" },
         { "path": "$HOME/**/*.yaml" },
-        { "path": "$HOME/**/*.yml" }
+        { "path": "$HOME/**/*.yml" },
+        { "path": "$HOME/**/.obsidian/*.json" }
       ]
     },
     {
@@ -38,7 +39,9 @@
         { "path": "$HOME/**/*.csv" },
         { "path": "$HOME/**/*.csv.tmp" },
         { "path": "$HOME/**/*.md" },
-        { "path": "$HOME/**/*.md.tmp" }
+        { "path": "$HOME/**/*.md.tmp" },
+        { "path": "$HOME/**/.obsidian/*.json" },
+        { "path": "$HOME/**/.obsidian/*.json.tmp" }
       ]
     },
     {
@@ -49,14 +52,11 @@
         { "path": "$HOME/**/*.csv" },
         { "path": "$HOME/**/*.csv.tmp" },
         { "path": "$HOME/**/*.md" },
-        { "path": "$HOME/**/*.md.tmp" }
+        { "path": "$HOME/**/*.md.tmp" },
+        { "path": "$HOME/**/.obsidian/*.json" },
+        { "path": "$HOME/**/.obsidian/*.json.tmp" }
       ]
     },
-    {
-      "identifier": "fs:allow-watch",
-      "allow": [{ "path": "$HOME/**" }]
-    },
-    "fs:allow-unwatch",
     {
       "identifier": "fs:allow-read-dir",
       "allow": [{ "path": "$HOME/**" }]
@@ -99,6 +99,8 @@
     "core:window:allow-set-focus",
     "core:window:allow-is-maximized",
     "core:window:allow-start-dragging",
+    "core:window:allow-start-resize-dragging",
+    "core:window:allow-is-fullscreen",
     "core:window:allow-toggle-maximize",
     "decorum:allow-show-snap-overlay"
   ]

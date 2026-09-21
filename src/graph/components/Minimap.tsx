@@ -1,3 +1,4 @@
+// [[C88]] collapseIsVisual, [[C37]] observerOwnsSize
 import { getActiveView, getActiveEditor } from "../activeGraph";
 import type { SolenoidNode } from "../schemes";
 import { GroupNode, NoteNode, nodeAccent } from "../rete-nodes";
@@ -5,10 +6,9 @@ import { groupCollapseStore } from "../groupCollapse";
 import { themeAccent, resolveColor } from "../palette";
 import "./Minimap.css";
 
-// The minimap accent policy + collapse-aware geometry, shared by the RF
-// minimaps (FlowCanvas, the drill-in) and NavMenu's fit-all math. The rete
-// minimap component died with the rete surface; .solenoid-minimap in
-// Minimap.css is the WINDOW both RF minimaps wear.
+// The minimap accent policy + collapse-aware geometry, shared by the RF minimaps
+// (FlowCanvas, the drill-in) and NavMenu's fit-all math; .solenoid-minimap
+// (Minimap.css) is the window both wear.
 
 function hexToRgba(hex: string, a: number): string {
   const h = hex.replace("#", "");

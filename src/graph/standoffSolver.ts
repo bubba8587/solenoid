@@ -1,3 +1,4 @@
+// [[C89]] standoffsSolveLast: the pure solver, the last word after every layout pass.
 import { Standoff, Box, anchorPoint, ANCHOR_DIR } from "./standoffs";
 
 export interface Disp {

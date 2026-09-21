@@ -1,3 +1,4 @@
+// [[D41]] formatFlowsDownstream (a docked FC formats display only), [[C25]] firstClassUnits.
 // Format Controller docking — snap detection, dock positioning, and the inline
 // splice/unsplice into the host's data path; all pure over (editor, view, container, fc).
 import type { View } from "./view";
@@ -62,6 +63,7 @@ export function dockedRenderedDims(
   fallbackH: number,
 ): { w: number; h: number } {
   const el = view.nodeElement(nodeId);
+  // [[D64]] exception: the caller supplies the fallback (the FC's declared size).
   return { w: el?.offsetWidth || fallbackW, h: el?.offsetHeight || fallbackH };
 }
 

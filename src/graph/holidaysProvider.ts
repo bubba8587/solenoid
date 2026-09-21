@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild
 // Nager.Date public-holiday API (keyless, CORS-open): a country + year → that year's
 // public holidays. The URL build + PARSE are pure and fixture-tested (widget rule 5);
 // the node owns the fetch/cache. Dates arrive as machine ISO (YYYY-MM-DD).

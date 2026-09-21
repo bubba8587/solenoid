@@ -1,6 +1,6 @@
-// React Flow port (C5) — labels for snapshot undo. rete-history-plugin carried
-// typed actions to describe; a snapshot stack has only the documents, so the
-// label is DERIVED by diffing consecutive snapshots.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView (the snapshot history)
+// Labels for snapshot undo: a snapshot stack has only the documents, so the label
+// is DERIVED by diffing consecutive snapshots.
 import type { SavedGraph, SavedNode, SavedConnection } from "../persistence";
 
 const nodeName = (n: SavedNode | undefined): string => n?.name || n?.type || "a node";

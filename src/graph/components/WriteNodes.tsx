@@ -1,3 +1,4 @@
+// [[C38]] sinkRunButtonOnly, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../rete-nodes";
 import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
@@ -24,9 +25,6 @@ import "./WriteNodes.css";
 import "./ImportObsidianNode.css";
 import { stopDragStart } from "../coarse";
 
-// `data.run()` touches disk, so it must fire ONLY from the explicit Run click below —
-// never from a graph recompute.
-
 type WriteNodeData = WriteFileNodeType & {
   path: string; format: WriteFormat; enabled: boolean; status: string; statusMessage: string;
   browse(): Promise<void>; run(): Promise<void>;
@@ -50,8 +48,8 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
 
   useEffect(() => { setPath(d.path); }, [d.path]);
 
-  // Text uses a STRING input, CSV/JSON a FRAME input; crossing that boundary retypes the
-  // `in` socket, so prune its cable first (onePrunePath) before setFormat swaps it.
+  // Text uses a STRING input, CSV/JSON a FRAME input; crossing that boundary swaps the
+  // `in` socket in place ([[E11]] controlDrivenRetype), cables pruned first ([[D10]] onePrunePath).
   async function pickFormat(next: WriteFormat) {
     if (next === format) return;
     const willRetype = (format === "text") !== (next === "text");
@@ -154,8 +152,6 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
   );
 }
 
-// Same arm/disarm discipline as the file sinks: Run is the only thing that writes.
-
 type WriteObsidianData = WriteObsidianNodeType & {
   subfolder: string; mode: ObsidianWriteMode; stamp: boolean; target: WriteObsidianTarget;
   addMissing: boolean; writeBase: boolean; enabled: boolean; status: string; statusMessage: string; lastWritten: string;
@@ -191,7 +187,6 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const activeMode = d.resolveMode(); // "note" | "properties"
   const inputKeys = activeMode === "properties" ? ["in", "rows"] : ["in", "path", "rows"];
 
-  // Re-lists the vault's subfolders whenever the vault path changes.
   useEffect(() => {
     let live = true;
     void listVaultFolders(vault).then((f) => { if (live) setFolders(f); });
@@ -386,7 +381,8 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
         )}
         {activeMode === "note" && d.lastWritten && obsidianOpenUrl(vault, d.lastWritten) && (
           <button
-            type="button" className="sol-write__run" title="Open the note in Obsidian"
+            type="button" className="sol-write__run" title={desktop ? "Open the note in Obsidian" : "Open in Obsidian works in the desktop app"}
+            disabled={!desktop}
             onClick={(e) => { e.stopPropagation(); void openExternal(obsidianOpenUrl(vault, d.lastWritten)!); }}
             {...stopPtr}
           >
@@ -401,7 +397,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
 }
 
 // ─── WRITE TASKS ────────────────────────────────────────────────────────────────
-// Same arm/disarm discipline; Preview reads, Run writes through the TaskNotes API.
+// Preview reads, Run writes through the TaskNotes API.
 export function WriteTasksComponent({ data, emit }: NodeProps<WriteTasksNodeType>) {
   const [keys, setKeys] = useState(data.stringLiterals.keys ?? "");
   const [armed, setArmed] = useState(data.enabled);

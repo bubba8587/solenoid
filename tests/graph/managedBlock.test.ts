@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 import { describe, it, expect } from "vitest";
 import { spliceBlock, readBlock, beginMarker, END_MARKER } from "../../src/graph/managedBlock";
 

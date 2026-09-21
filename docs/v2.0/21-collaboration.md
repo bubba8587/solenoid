@@ -10,7 +10,7 @@ complexity · Structural blast radius.
 
 `out-of-scope.md` test 3, §3 and §11 argued: a service is a company, not a feature; real-time
 co-editing is free next door and contradicts local-first; hosted anything converts "your
-file" into "our servers." That doc is a DRAFT and carries no ARR (dte:C7 authorRuled:
+file" into "our servers." That doc is a DRAFT and carries no ARR ([[C7]] authorRuled:
 only an owner ratification is author-ruled), so those were the agent's inferences, not
 rulings — the author's order is the first word on this ground, and the three sections plus
 decisions R5 were rewritten to it on 2026-09-01. The arguments were not wrong; they were
@@ -164,7 +164,7 @@ warned: "multiplayer before Bet 2 exists is misery; on a clean addressable model
 tractable" — Bet 2 shipped). The shared document is a CRDT (Yjs-class; Automerge is the
 alternative) shaped like the text form's semantics, not its bytes:
 - `nodes`: a map keyed by NAME → { type, init fields, literals, stringLiterals } (each field
-  a last-writer-wins register; `init` is JSON-plain by dte:C29 plainJsonInit, so it serializes).
+  a last-writer-wins register; `init` is JSON-plain by [[C29]] plainJsonInit, so it serializes).
 - `connections`: a map keyed by `target/targetInput` (one cable per input — the key IS the
   invariant) → { source, sourceOutput }.
 - `visual`: positions / sizes / collapsed / page per node (LWW registers; positions are the
@@ -201,7 +201,7 @@ Source, Data Feed, CSV, the 1.4 widget nodes — with the desktop's CORS-free cu
 Script runs on compute in a worker whose sandbox is **containment, not a security boundary**
 (the I/O globals are deleted but `import()` is syntax and stays: a dynamic import of a URL
 from the worker is a network door), and Write sinks already load disarmed
-(dte:C38 sinkRunButtonOnly — the precedent).
+([[C38]] sinkRunButtonOnly — the precedent).
 **Do.** (1) A document you did not author opens **restricted**: sources quiet (1.4's C2),
 Script nodes inert (they show their source and an "allow scripts" control; their outputs are
 a `#RESTRICTED!`-class SolError so nothing downstream is silently right), sinks disarmed as

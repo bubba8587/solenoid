@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild (refreshConnection). Mechanics: specs/live-connections.md., [[C104]] foreignDocNetworkGate
 // A connection node holds only a *reference*, never the data. Its fetched Frame is
 // cached under key(), so an unrelated processGraph() re-hits neither network nor disk.
 import { createNotifier } from "./storeKit";
@@ -8,7 +9,7 @@ import { settingsStore } from "./settingsStore";
 import { pushNotice } from "./noticeStore";
 
 // "gated" = the per-document network permission (C2) has not been granted, so this
-// node fetched nothing (the sinkRunButtonOnly mirror: armed, not fired).
+// node fetched nothing (the [[C38]] sinkRunButtonOnly mirror: armed, not fired).
 export type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
 
 export interface ConnectionState {
@@ -52,7 +53,7 @@ export const connectionStore = {
   version,
 };
 
-// ─── Per-document network permission (C2 — the sinkRunButtonOnly mirror) ─────────
+// ─── Per-document network permission (C2 — the [[C38]] sinkRunButtonOnly mirror) ─────────
 // A FOREIGN document (opened / imported) fetches nothing until the user allows it.
 // Own documents and the global "always allow" bypass the gate. State lives on the
 // document's meta (docMetaStore, persisted in the sidecar); this reads it.
@@ -152,7 +153,10 @@ export async function refreshConnection(id: string): Promise<void> {
   await processGraph();
 }
 
+/** "Refresh all connections": bumps the generation every connection node keys on, and
+ *  notifies subscribers that re-read outside the engine (an Import Obsidian Note). */
 export async function refreshAllConnections(): Promise<void> {
   _gen++;
+  notify();
   await processGraph();
 }

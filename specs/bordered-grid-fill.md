@@ -1,0 +1,11 @@
+<!-- [[C102]] gridFillThenForecast -->
+
+# Spec: Bordered-grid fill
+
+Serves [[C102]] gridFillThenForecast. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Bordered-grid fill; a WHY that is not in a node belongs in one.
+
+**The two-pass algorithm.** The first row holds each column's X coordinate, the first column each row's Y (top-left corner ignored). The KNOWN cells define a coarse grid. Pass 1 fills a blank by true BILINEAR interpolation (MATLAB `interp2` / SciPy `RegularGridInterpolator` "linear") of the four surrounding known corners; the bracket WIDENS past any line whose corner is blank — the closest all-known-corner box wins. A query past the data on an axis is NOT enclosable and pass 1 leaves it blank for the forecast pass (forecast OFF → it stays null; a lookup table doesn't extrapolate — pinned in `stats.test.ts`). Pass 2 (`forecast`, default true): every still-blank cell fills from a smooth surface through ALL known points — thin-plate spline, or a plane for degenerate data (`surfaceFit.ts`) — which covers scattered gaps and extrapolates with a linear edge trend. Forecast OFF: only bilinear-enclosed cells fill.
+
+**The widening cap `WIDEN = 4` is load-bearing, not a tidy constant:** un-capped, scattered data (a diagonal) rejects every candidate box and the four nested loops exhaust O(lines⁴) combinations per cell — seconds on a modest grid. 4 still crosses runs of several consecutive holes; anything wider is scattered data, which the spline handles anyway.
+
+**The contested-box rule** (edges defer to the spline; author ruling 2026-07-16): a box is CONTESTED when data sits between its samples — edge-INCLUSIVE in the general 2-D case (a known point exactly on a box edge contests); the DEGENERATE (1-D) span uses strict bounds, with data between its two samples in the cross direction at ANY off-axis distance. Otherwise the outer edges clamp to a corner-to-corner line while the interior curves. The sine-diagonal case is the concrete failure prevented: the only all-known-corner box was the grid's four 0-corners, so every blank filled flat-0 while the whole diagonal sat inside it.

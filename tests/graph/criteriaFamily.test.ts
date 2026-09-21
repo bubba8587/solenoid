@@ -1,3 +1,4 @@
+// [[C45]] excelComparisons, [[C24]], [[C60]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { criteriaAggregate, parseCriterion, criterionMatches } from "../../src/graph/excelCriteria";

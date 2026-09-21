@@ -1,4 +1,4 @@
-// dte:C25
+// [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[C94]] formatFamilyGates
 import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
@@ -79,7 +79,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
   advancedOpen: boolean;
   // The style dropdown's `—` pick: the FC carries the upstream display format through
   // and authors its unit alone, so a second FC docked only for a unit no longer resets
-  // the style to Auto (dte:D41 formatFlowsDownstream).
+  // the style to Auto ([[D41]] formatFlowsDownstream).
   inheritFormat: boolean;
   // The format arriving at `in` while inheriting — the muted hint the popup shows and the
   // source of the carried style. Recomputed in refreshAnnotation; never serialized.
@@ -322,9 +322,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   /** The annotation this FC actually contributes: its own, or — when the style dropdown
    *  is set to `—` (inherit) and a format arrives at `in` — the upstream display format
-   *  re-clad in this FC's own unit. The unit is value-level (unitOnValue), so it is the
+   *  re-clad in this FC's own unit. The unit is value-level ([[D40]] unitOnValue), so it is the
    *  one axis the inherit pick keeps local; every display axis rides in from upstream
-   *  (formatFlowsDownstream). `makeAnnotationResolver` calls this in place of
+   *  ([[D41]] formatFlowsDownstream). `makeAnnotationResolver` calls this in place of
    *  `annotation()`. */
   resolveAnnotation(inherited: FormatAnnotation | undefined): FormatAnnotation {
     if (this.inheritFormat && inherited) {

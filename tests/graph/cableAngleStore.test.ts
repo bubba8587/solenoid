@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cableAngleStore } from "../../src/graph/cableAngleStore";
 import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";

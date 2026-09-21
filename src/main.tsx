@@ -1,3 +1,4 @@
+// [[C93]] gestureByPointerType (IS_MOBILE is the one mobile gate), [[C99]] chromeEnvelopeVars
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { initAppTheme } from "./graph/appTheme";
@@ -15,6 +16,7 @@ import { initDevtoolsHotkey } from "./graph/devtoolsHotkey";
 import { initFullscreenHotkey } from "./graph/fullscreen";
 import { pushNotice } from "./graph/noticeStore";
 import { isDesktop } from "./graph/fileBridge";
+import { OWN_WINDOW_CONTROLS } from "./graph/WindowControls";
 import { IS_MOBILE, IS_TABLET } from "./graph/coarse";
 import { ErrorBoundary } from "./graph/components/ErrorBoundary";
 import "./graph/components/errorBoundary.css";
@@ -28,6 +30,8 @@ import "./desktopFrame.css";
 
 // Marks the shell so the custom title bar's CSS applies and reserves its strip.
 if (isDesktop()) document.documentElement.dataset.shell = "desktop";
+// linux shim for crisp canvas zoom (docs/layout-chrome.md)
+if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 
 // All mobile styling keys off THIS flag, never a `pointer: coarse` query — that is
 // what lets a phone's "Request desktop site" get the desktop layout.

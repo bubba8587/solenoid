@@ -1,3 +1,4 @@
+/* [[C89]] standoffsSolveLast, [[C65]] domOrderStacking */
 /* Standoff bars — pale arrangement constraints living under everything. */
 
 .solenoid-standoff-svg {
@@ -74,7 +75,10 @@
 }
 
 .solenoid-standoff-toolbar__delete {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   width: 100%;
   margin-top: 6px;
   padding: 5px 8px;

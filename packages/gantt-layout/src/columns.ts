@@ -1,6 +1,6 @@
-// The tree-grid columns for the left pane, derived from view.columns (default: name, start,
-// finish, duration). Widths are suggestions the view may override; the name column is the
-// flexible one.
+// [[C69]] ganttPackages, [[B14]] oneDesignSystem
+// The tree-grid columns for the left pane from view.columns (default name, start, finish,
+// duration); widths are suggestions the view may override, the name column is the flexible one.
 
 import type { GanttPayload } from "./payload";
 import type { GridColumn } from "./frame";

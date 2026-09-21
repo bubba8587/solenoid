@@ -1,9 +1,6 @@
-// MSPDI (Microsoft Project XML, pj14) read: the one format every desktop scheduler reads
-// and writes. Tasks nest by OutlineLevel, links come as PredecessorLink with the codec's
-// integer types (0 = FF, 1 = FS, 2 = SF, 3 = SS) and LinkLag in tenths of a minute, the
-// eight constraint types map onto Start / Finish / Manual (the one rule), and the base
-// calendar's WeekDays + Exceptions become a weekend code and a holiday list. The file's
-// own stored dates ride along as `golden` so a fixture can be diffed against the engine.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed
+// MSPDI (Project XML, pj14) read into the engine's task tree; the file's own stored dates
+// ride along as `golden` so a fixture diffs against the engine (25-gantt.md § 3.2, § 3.3).
 
 import { parseXml, child, children, text, type XmlNode } from "./xml";
 import type { CalendarSpec, LinkType, PlanTask } from "./types";
@@ -35,11 +32,11 @@ export interface MspdiPlan {
 
 const LINK_CODES: Record<string, LinkType> = { "0": "FF", "1": "FS", "2": "SF", "3": "SS" };
 
-/** `2026-01-05T08:00:00` → a whole-day serial (Project's day is what the cell shows). */
 /** Project's elapsed DurationFormat / LagFormat codes (em, eh, ed, ew, emo, e% and their
  *  estimated twins): the even codes. */
 const ELAPSED_FORMATS = [4, 6, 8, 10, 12, 14, 16, 18, 20, 36, 38, 40, 42, 44, 46, 48, 50, 52];
 
+/** `2026-01-05T08:00:00` → a whole-day serial (Project's day is what the cell shows). */
 export function isoToSerial(s: string | undefined): number | null {
   if (!s) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
@@ -148,8 +145,8 @@ export function readMspdi(xml: string): MspdiPlan {
     const ct = num(text(el, "ConstraintType"));
     const cd = isoToSerial(text(el, "ConstraintDate"));
     const task: PlanTask = { name, duration: durationDays, predecessors: [], row: recs.length + 1 };
-    // Project's eight constraints onto the one rule (§ 4.1). 0 ASAP · 1 ALAP · 2 MSO ·
-    // 3 MFO · 4 SNET · 5 SNLT · 6 FNET · 7 FNLT.
+    // Project's eight constraints onto the one rule ([[C70]] oneScheduleRule). 0 ASAP · 1 ALAP ·
+    // 2 MSO · 3 MFO · 4 SNET · 5 SNLT · 6 FNET · 7 FNLT.
     if (cd != null) {
       if (ct === 4) task.start = cd;
       else if (ct === 2) { task.start = cd; task.manual = true; }

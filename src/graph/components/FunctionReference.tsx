@@ -1,3 +1,4 @@
+// [[C8]] declareOnce (generated from nodeCatalog, never hand-kept), [[C51]] formulaNaming
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
 import { buildFunctionReference, fnRefGroups, type FnRefRow , libraryTags, LIBRARY_TAGS, type LibraryTag } from "../functionReference";
@@ -15,6 +16,7 @@ import "./FunctionReference.css";
 import { descriptionHtml } from "../descriptionMd";
 import { CloseIcon } from "./CloseIcon";
 import { useEscapeToClose } from "./useEscapeToClose";
+import { TriangleAlertIcon } from "./Icons";
 
 export function FunctionReference() {
   const open = useSyncExternalStore(frStore.subscribe, frStore.get);
@@ -234,7 +236,7 @@ export function FunctionReference() {
                               ? <span className="fr-parity-miss">—</span>
                               : r.parity
                                 ? <span className="fr-parity-yes">✓</span>
-                                : <span className="fr-parity-warn">⚠</span>}
+                                : <span className="fr-parity-warn"><TriangleAlertIcon size={13} /></span>}
                           </td>
                           <td className="fr-td-note">{r.note ?? ""}</td>
                         </tr>,

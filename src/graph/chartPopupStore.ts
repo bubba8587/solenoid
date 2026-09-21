@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 // The currently-open chart popup. Must stay a module store: it is opened from
 // inside a node (rete's separate React root) but mounted once in App.
 import { createValueStore } from "./storeKit";

@@ -1,7 +1,6 @@
+// [[C69]] ganttPackages
 // Dependency arrows: orthogonal polylines with the endpoint conventions FS right→left,
-// SS left→left, FF right→right, SF left→right, an arrowhead, and (for the view) a wide
-// invisible hit path drawn from the same points. Geometry ported from DHTMLX/SVAR link
-// routers, rebuilt on serial-derived pixel anchors — no code copied.
+// SS left→left, FF right→right, SF left→right, plus an arrowhead; the view adds a hit path from the same points.
 
 import type { GanttPayload, GanttLink, LinkType } from "./payload";
 import type { FrameRow, FrameBar, FrameScale, FrameLink } from "./frame";

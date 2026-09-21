@@ -1,5 +1,6 @@
-// Tiny version/flag stores the canvas raises and cards subscribe to.
-// Bumped by Canvas's editor pipe on connectioncreated / connectionremoved.
+// [[B10]] reactFlowView (module-singleton store)
+// Version/flag stores the surface raises and cards subscribe to.
+// Bumped by the surface's editor pipe on connectioncreated / connectionremoved.
 let _connVersion = 0;
 const _connListeners = new Set<() => void>();
 

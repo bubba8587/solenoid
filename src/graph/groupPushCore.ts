@@ -1,3 +1,5 @@
+// [[C85]] groupPushDeterministic: the pure push over plain boxes (no rete, no DOM).
+// Mechanics: specs/group-expand-push.md.
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {
@@ -216,9 +218,9 @@ export function computeExpandPush(
 }
 
 // Backstop under the heuristic pushes. Moves are ALWAYS +x or +y, hence monotonic and
-// terminating; `baseline` pairs are left alone. `pinned` boxes never move (a locked
-// group is a fixed obstacle) — its partner is always the one that yields, and a pair
-// of two pinned boxes is skipped. Returns extra displacements to add.
+// terminating; `baseline` pairs are left alone. `pinned` boxes never move ([[D63]]
+// [[D63]] lockedGroupIsObstacle): the partner yields, two pinned boxes are skipped. Returns
+// extra displacements to add.
 export function separateOverlaps(
   boxes: PushBox[],
   baseline: Set<string> = new Set(),

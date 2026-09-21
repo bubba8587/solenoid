@@ -1,9 +1,12 @@
+// [[B1]] obsidianBet (any spelling Obsidian emits parses)
+import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type Pair } from "yaml";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
-// The PURE frontmatter parser + type guesser, over a deliberately small YAML subset:
-// scalar `key: value`, inline flow arrays, block lists, and rows of inline objects
-// (`- {k: v}` block or `[{k: v}, …]` flow) → a `frame`. Keep it graph/DOM-free. The frame
-// row shape mirrors the Script node's `{name: value}` rows, so what one emits the other reads.
+// The PURE frontmatter parser + type guesser. YAML is read by the `yaml` package (any
+// spelling Obsidian emits or a person types), then shaped: scalars, scalar lists, and
+// rows of maps → a `frame` (a `cube` when a row value is a list). Keep it graph/DOM-free.
+// The frame row shape mirrors the Script node's `{name: value}` rows, so what one emits
+// the other reads.
 
 // A SUBSET of SocketDataType with IDENTICAL names, so the node maps field type → socket
 // by identity (FIELD_SOCKETS in annotation.ts).
@@ -21,8 +24,8 @@ export type FrontmatterFieldType =
 
 // Dates emit as serials, like the rest of Solenoid.
 export type FrontmatterScalar = number | string | boolean | null;
-/** A row's value may itself be a list (`after: [A, B]` inside `- {…}`); such rows make a cube. */
-export type FrontmatterRow = Record<string, FrontmatterScalar | FrontmatterScalar[]>;
+/** A row's value may itself be a list (`after: [A, B]`) or a table (rows of its own); such rows make a cube. */
+export type FrontmatterRow = { [key: string]: FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[] };
 export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[];
 
 export interface FrontmatterField {
@@ -30,6 +33,9 @@ export interface FrontmatterField {
   value: FrontmatterValue;
   /** Type inferred from the value (before any per-key user override). */
   guessed: FrontmatterFieldType;
+  /** The value was a bare `{{ … }}` / `{% … %}`, which YAML reads as a flow map: the
+   *  tag must be quoted to be a value. */
+  knapUnquoted?: true;
 }
 
 export interface ParsedFrontmatter {
@@ -47,17 +53,12 @@ const NUMERIC = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
 type ScalarKind = "number" | "string" | "logical" | "date";
 
-/** Parse one scalar token to its value + guessed scalar kind. */
-function parseScalar(raw: string): { value: FrontmatterScalar; kind: ScalarKind } {
-  const t = raw.trim();
+/** Text read as an UNQUOTED YAML scalar would be: a number, true/false, an ISO date
+ *  (as a serial), blank/null → null, else the text. What a rendered Knap field
+ *  re-guesses by, since its render comes back inside the quotes it was written in. */
+export function guessScalarText(text: string): { value: FrontmatterScalar; kind: ScalarKind } {
+  const t = text.trim();
   if (t === "" || t === "~" || t === "null") return { value: null, kind: "string" };
-  // Quoted → ALWAYS a string; no escape handling needed for a constants source.
-  if (
-    (t.startsWith('"') && t.endsWith('"') && t.length >= 2) ||
-    (t.startsWith("'") && t.endsWith("'") && t.length >= 2)
-  ) {
-    return { value: t.slice(1, -1), kind: "string" };
-  }
   const lower = t.toLowerCase();
   if (lower === "true") return { value: true, kind: "logical" };
   if (lower === "false") return { value: false, kind: "logical" };
@@ -69,96 +70,94 @@ function parseScalar(raw: string): { value: FrontmatterScalar; kind: ScalarKind 
   return { value: t, kind: "string" };
 }
 
-/** Split a flow body (`a, b, "c, d"`, or `{k: v}, {k: v}`) on TOP-LEVEL commas, honoring
- *  quotes AND `{…}` object nesting so a comma inside a row object doesn't split it. */
-function splitFlow(inner: string): string[] {
-  const out: string[] = [];
-  let buf = "";
-  let quote: '"' | "'" | null = null;
-  let depth = 0;
-  for (const ch of inner) {
-    if (quote) {
-      buf += ch;
-      if (ch === quote) quote = null;
-    } else if (ch === '"' || ch === "'") {
-      quote = ch;
-      buf += ch;
-    } else if (ch === "{" || ch === "[") {
-      depth++;
-      buf += ch;
-    } else if (ch === "}" || ch === "]") {
-      depth = Math.max(0, depth - 1);
-      buf += ch;
-    } else if (ch === "," && depth === 0) {
-      out.push(buf);
-      buf = "";
-    } else {
-      buf += ch;
-    }
+/** One YAML scalar node → its value + guessed kind. A quoted scalar is ALWAYS a string
+ *  (`"42"`, `'true'`, `"2026-01-01"` stay text); a plain ISO date becomes a serial. */
+function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; kind: ScalarKind } {
+  if (!isScalar(node)) return { value: node == null ? null : String(node), kind: "string" };
+  const v = node.value;
+  const quoted = node.type === Scalar.QUOTE_DOUBLE || node.type === Scalar.QUOTE_SINGLE;
+  if (v === null || v === undefined) return { value: null, kind: "string" };
+  if (typeof v === "boolean") return { value: v, kind: "logical" };
+  if (typeof v === "number") return { value: Number.isFinite(v) ? v : null, kind: "number" };
+  if (typeof v === "bigint") return { value: Number(v), kind: "number" };
+  const s = String(v);
+  if (!quoted && DATE_ONLY.test(s)) {
+    const serial = parseDateToSerial(s);
+    if (Number.isFinite(serial)) return { value: Math.round(serial), kind: "date" };
   }
-  if (buf.trim() !== "" || out.length > 0) out.push(buf);
-  return out;
+  return { value: s, kind: "string" };
 }
 
-/** `{k: v, k: v}` → a row object; null when the token isn't a brace-wrapped inline map.
- *  Keys split on the FIRST colon; values run through the same scalar parser as everything. */
-function parseInlineObject(raw: string): FrontmatterRow | null {
-  const t = raw.trim();
-  if (!(t.startsWith("{") && t.endsWith("}"))) return null;
-  const inner = t.slice(1, -1).trim();
+const keyOf = (p: Pair): string => (isScalar(p.key) ? String(p.key.value ?? "") : String(p.key ?? "")).trim();
+
+/** A map whose values are all scalars, scalar lists or nested row lists → a row; else null. */
+function readRow(node: Node | null | undefined): FrontmatterRow | null {
+  if (!isMap(node)) return null;
   const row: FrontmatterRow = {};
-  if (inner === "") return row;
-  for (const part of splitFlow(inner)) {
-    const c = part.indexOf(":");
-    if (c < 0) continue;
-    const k = part.slice(0, c).trim();
+  for (const item of node.items) {
+    if (!isPair(item)) continue;
+    const k = keyOf(item);
     if (k === "") continue;
-    const v = part.slice(c + 1).trim();
-    // A flow list inside a row (`after: [A, B]`) stays a list — the row then makes a CUBE.
-    if (v.startsWith("[") && v.endsWith("]")) {
-      const inner = v.slice(1, -1);
-      row[k] = inner.trim() === "" ? [] : splitFlow(inner).map((x) => parseScalar(x).value);
+    const val = item.value as Node | null;
+    if (isSeq(val)) {
+      if (val.items.every((x) => x == null || isScalar(x))) {
+        row[k] = val.items.map((x) => readScalar(x as Node | null).value);
+      } else {
+        const nested = val.items.map((x) => readRow(x as Node | null));
+        if (!nested.every((r) => r !== null)) return null;
+        row[k] = nested as FrontmatterRow[];
+      }
+    } else if (val == null || isScalar(val)) {
+      row[k] = readScalar(val).value;
     } else {
-      row[k] = parseScalar(v).value;
+      return null;
     }
   }
   return row;
 }
 
-/** Type a (possibly mixed) array from its first non-null element. */
-function listType(values: FrontmatterScalar[]): FrontmatterFieldType {
+/** Type a (possibly mixed) array from its first non-null element. A date is a serial by now, so
+ *  the items' parsed KINDS say it: a list whose every non-null item read as a date is a date list. */
+function listType(values: FrontmatterScalar[], kinds: ScalarKind[]): FrontmatterFieldType {
+  const present = kinds.filter((_, i) => values[i] !== null);
+  if (present.length > 0 && present.every((k) => k === "date")) return "datelist";
   for (const v of values) {
     if (v === null) continue;
     if (typeof v === "boolean") return "logicallist";
-    if (typeof v === "number") return "list"; // dates already collapsed to numbers
+    if (typeof v === "number") return "list";
     return "strlist";
   }
   return "list"; // empty / all-null → default numeric list (overridable)
 }
 
-function fieldFromScalar(key: string, raw: string): FrontmatterField {
-  const { value, kind } = parseScalar(raw);
-  return { key, value, guessed: kind === "string" ? "string" : kind };
-}
-
-function fieldFromArray(key: string, values: FrontmatterScalar[]): FrontmatterField {
-  // A date inside an array stays a serial number, so the list types as `list`.
-  return { key, value: values, guessed: listType(values) };
-}
-
-/** Rows of inline objects → a `frame` field, or a `cube` when any row value is a list
- *  (a frame cell is scalar; a list belongs in a cube cell). */
+/** Rows → a `frame` field, or a `cube` when any row value is a list (a frame cell is
+ *  scalar; a list belongs in a cube cell). */
 function fieldFromRows(key: string, rows: FrontmatterRow[]): FrontmatterField {
   const hasList = rows.some((r) => Object.values(r).some((v) => Array.isArray(v)));
-    return { key, value: rows, guessed: hasList ? "cube" : "frame" };
+  return { key, value: rows, guessed: hasList ? "cube" : "frame" };
 }
 
-/** Items (flow or block) → a frame field iff EVERY item is an inline object; else a scalar
- *  array. Empty → a scalar array (an empty frame would have no columns). */
-function fieldFromItems(key: string, items: string[]): FrontmatterField {
-  const rows = items.map(parseInlineObject);
+/** A sequence → a frame field iff EVERY item is a row; else a scalar list (a non-scalar
+ *  item in a mixed list is kept as its YAML text). Empty → a scalar list. */
+function fieldFromSeq(key: string, items: (Node | null)[]): FrontmatterField {
+  const rows = items.map(readRow);
   if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[]);
-  return fieldFromArray(key, items.map((s) => parseScalar(s).value));
+  const read = items.map((x) => (x == null || isScalar(x) ? readScalar(x) : { value: String(x).trim(), kind: "string" as const }));
+  const values = read.map((r) => r.value);
+  return { key, value: values, guessed: listType(values, read.map((r) => r.kind)) };
+}
+
+function fieldOf(key: string, node: Node | null, src: string): FrontmatterField {
+  if (isSeq(node)) return fieldFromSeq(key, node.items as (Node | null)[]);
+  if (isMap(node)) {
+    // A bare Knap tag parses as a map whose key is a map; flag it so the node can say so.
+    const text = node.range ? src.slice(node.range[0], node.range[1]).trim() : "";
+    if (/^\{[{%]/.test(text)) return { key, value: null, guessed: "string", knapUnquoted: true };
+    // A nested map that isn't a row list has no socket shape: the key surfaces as an empty string.
+    return { key, value: null, guessed: "string" };
+  }
+  const { value, kind } = readScalar(node);
+  return { key, value, guessed: kind };
 }
 
 /** With no valid top-of-file `---…---` block: no fields, `body` unchanged, `hasBlock` false. */
@@ -175,50 +174,25 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
   }
   if (close === -1) return { fields: [], body: text, hasBlock: false };
 
-  const yamlLines = lines.slice(1, close);
   const body = lines.slice(close + 1).join("\n").replace(/^\n+/, "");
-
   const fields: FrontmatterField[] = [];
   const seen = new Set<string>();
-  for (let i = 0; i < yamlLines.length; i++) {
-    const line = yamlLines[i];
-    if (line.trim() === "") continue;
-    // A stray `- item` with no owning key is ignored — owned ones are consumed below.
-    const m = /^([A-Za-z0-9_][\w .-]*?)\s*:\s*(.*)$/.exec(line);
-    if (!m) continue;
-    const key = m[1].trim();
-    const rest = m[2];
-    if (key === "" || seen.has(key)) continue; // first wins on a dup key
-    seen.add(key);
-
-    if (rest.trim() === "") {
-      // A bare `key:` may introduce a block list, so look ahead for `- item` lines.
-      const items: string[] = [];
-      let j = i + 1;
-      for (; j < yamlLines.length; j++) {
-        const lm = /^\s*-\s+(.*)$/.exec(yamlLines[j]);
-        if (!lm) break;
-        items.push(lm[1]);
-      }
-      if (items.length > 0) {
-        fields.push(fieldFromItems(key, items));
-        i = j - 1;
-      } else {
-        fields.push({ key, value: null, guessed: "string" });
-      }
-      continue;
-    }
-
-    const trimmed = rest.trim();
-    if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-      const inner = trimmed.slice(1, -1);
-      const items = inner.trim() === "" ? [] : splitFlow(inner);
-      fields.push(fieldFromItems(key, items));
-    } else {
-      fields.push(fieldFromScalar(key, rest));
+  const src = lines.slice(1, close).join("\n");
+  let doc;
+  try {
+    doc = parseDocument(src, { uniqueKeys: false, schema: "core" });
+  } catch {
+    return { fields, body, hasBlock: true };
+  }
+  if (isMap(doc.contents)) {
+    for (const item of doc.contents.items) {
+      if (!isPair(item)) continue;
+      const key = keyOf(item);
+      if (key === "" || seen.has(key)) continue; // first wins on a dup key
+      seen.add(key);
+      fields.push(fieldOf(key, item.value as Node | null, src));
     }
   }
-
   return { fields, body, hasBlock: true };
 }
 

@@ -1,3 +1,4 @@
+// [[C28]] literalsIffEditable
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import type { SliderInputNode as SliderInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";
@@ -59,7 +60,7 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
   const step = data.effectiveStep;
 
   const [playing, setPlaying] = useState(false);
-  // Speed % is an inline-only parameter (no socket): persisted via literals.
+  // Speed % is an inline-only parameter (no socket), persisted via literals ([[C28]] literalsIffEditable).
   const [speed, setSpeed] = useState(() => data.literals.speed ?? 100);
   const busy = useRef(false); // skip ticks while the previous recompute runs
 

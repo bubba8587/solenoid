@@ -1,4 +1,4 @@
-// dte:D26
+// [[D26]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { cx, isCx, parseCx, formatCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
@@ -10,13 +10,13 @@ import {
 } from "../../src/graph/nodes/complex";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
-// ─── matricesInFormulas amendment tranche: complex numbers in formulas (2026-07-28) ──────────
-// The IM* family owned over tagged Cx (tagSpecialScalars) — before this, complex ALREADY
+// ─── [[C15]] matricesInFormulas amendment tranche: complex numbers in formulas (2026-07-28) ──────────
+// The IM* family owned over tagged Cx ([[D44]] tagSpecialScalars) — before this, complex ALREADY
 // flowed into formulas (complexcombo → anydata connects) and every surface
 // handled it as garbage: operators concatenated "[object Object]", the IM* names
 // worked on Formula.js text complexes while refusing the graph's own tagged
 // values. Three contracts pinned here:
-//   1. shareImpl — each IM* registration runs the node family's kernel, so identical
+//   1. [[C17]] shareImpl — each IM* registration runs the node family's kernel, so identical
 //      inputs give identical outputs on both surfaces;
 //   2. operators on a Cx answer typed errors / structural equality / formatted
 //      text — never coercion garbage;
@@ -70,7 +70,7 @@ describe("formatCxDisplay — always both parts (the display form)", () => {
   });
 });
 
-describe("shareImpl — each registration computes what its node computes", () => {
+describe("[[C17]] shareImpl — each registration computes what its node computes", () => {
   it("every unary op, tagged in → tagged out", () => {
     for (const op of Object.keys(COMPLEX_UNARY_OP_META) as ComplexUnaryOp[]) {
       const name = COMPLEX_UNARY_OP_META[op].label;

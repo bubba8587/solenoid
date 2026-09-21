@@ -1,3 +1,4 @@
+// [[C8]] declareOnce, [[D17]] relaysTransparent. Mechanics: specs/type-propagation-on-in-place-socket-retype.md.
 import type { NodeEditor, ClassicPreset } from "rete";
 import type { Shape } from "./frameShape";
 import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";

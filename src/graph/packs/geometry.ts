@@ -1,5 +1,5 @@
-// The worked example of the formula-data pack shape; trig is in RADIANS, per the core
-// Trigonometry convention.
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
+// Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
 import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, solveGivenParts, type TriangleGiven } from "../rete-nodes";
@@ -98,7 +98,7 @@ const CIRCLE_IDS = new Set(["geo-circle-area", "geo-circle-circum", "geo-ellipse
 const SOLID_IDS = new Set(["geo-sphere-vol", "geo-sphere-area", "geo-cylinder-vol", "geo-cone-vol"]);
 const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
 
-// Shares the node's own `solveGivenParts`, so the typed function and the card can't disagree.
+// The formula delegates to the node's own `solveGivenParts` ([[C17]] shareImpl).
 const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "TRIANGLESOLVER",

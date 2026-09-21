@@ -1,5 +1,5 @@
-// dte:C72,E11
-﻿import { ClassicPreset } from "rete";
+// [[C72]], [[E11]]
+import { ClassicPreset } from "rete";
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
@@ -133,7 +133,7 @@ export class DepreciationNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (onePrunePath). */
+   *  these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: DepreciationOp): string[] {
     const keep = new Set(DEPRECIATION_INPUTS[next].map((i) => i.key));
     return DEPRECIATION_INPUTS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -309,7 +309,7 @@ export class NPVNode extends ClassicPreset.Node {
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
-   *  BEFORE switching to Periodic (onePrunePath). */
+   *  BEFORE switching to Periodic ([[D10]] onePrunePath). */
   setOp(next: CashflowOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -373,7 +373,7 @@ export class IRRNode extends ClassicPreset.Node {
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
-   *  BEFORE switching to Periodic (onePrunePath). */
+   *  BEFORE switching to Periodic ([[D10]] onePrunePath). */
   setOp(next: CashflowOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -611,7 +611,7 @@ export class DollarNode extends ClassicPreset.Node {
 // literals ride along), drops the rest, and orders the sockets per the new op.
 
 /** The keys a switch from `before` to `after` removes — pruned by the caller first
- *  (onePrunePath). */
+ *  ([[D10]] onePrunePath). */
 function keysDroppedBy(before: string[], after: string[]): string[] {
   const keep = new Set(after);
   return before.filter((k) => !keep.has(k));
@@ -683,7 +683,7 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune these
-   *  BEFORE calling setOp (onePrunePath). */
+   *  BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: DiscountSecurityOp): string[] {
     return keysDroppedBy(discountSecurityKeys(this.op), discountSecurityKeys(next));
   }
@@ -842,7 +842,7 @@ export class AccruedInterestNode extends ClassicPreset.Node {
     }
   }
 
-  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  /** Callers on a live graph prune these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: AccruedInterestOp): string[] {
     return keysDroppedBy(accruedInterestKeys(this.op), accruedInterestKeys(next));
   }
@@ -931,7 +931,7 @@ export class PaymentBreakdownNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  /** Callers on a live graph prune these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: PaymentBreakdownOp): string[] {
     return keysDroppedBy(paymentBreakdownKeys(this.op), paymentBreakdownKeys(next));
   }
@@ -1132,7 +1132,7 @@ export class BondPricingNode extends ClassicPreset.Node {
     this.height = 149 + 27 * bondPricingKeys(this.op).length;
   }
 
-  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  /** Callers on a live graph prune these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: BondPricingOp): string[] {
     return keysDroppedBy(bondPricingKeys(this.op), bondPricingKeys(next));
   }
@@ -1253,7 +1253,7 @@ export class ReturnsNode extends ClassicPreset.Node {
   static outputFor(op: ReturnsOp) { return RETURNS_OP_META[op].scalar ? numOut(RETURNS_OP_META[op].label) : listOut(RETURNS_OP_META[op].label); }
 
   /** The op owns the extra sockets (rf / periods) and the output rank. In-place: callers on a
-   *  live graph prune the departing extras' cables BEFORE (onePrunePath) and
+   *  live graph prune the departing extras' cables BEFORE ([[D10]] onePrunePath) and
    *  retypeOutputCables AFTER when `outputChanged`. */
   setOp(next: ReturnsOp): { removed: string[]; outputChanged: boolean } {
     if (next === this.op) return { removed: [], outputChanged: false };

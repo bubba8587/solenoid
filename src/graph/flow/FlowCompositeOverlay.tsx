@@ -1,9 +1,8 @@
-// dte:C43
-// The composite drill-in: a full-viewport FlowSurface over the composite's
-// INTERNAL editor (the same surface as the main canvas), plus the one piece of
-// drill-in-specific chrome (breadcrumb strip, port promotion, run controls) and
-// a per-composite snapshot history. The level registers as the ACTIVE graph and
-// takes over the selection / arrange verbs while open.
+// [[C43]] oneFlowSurface, [[C77]] compositeIsSubgraph (specs/composite-drill-in-mount-lifecycle.md), [[C33]] saveBindsMain
+// The composite drill-in: a full-viewport FlowSurface over the composite's INTERNAL
+// editor, plus the drill-in-specific chrome (breadcrumb strip, port promotion, run
+// controls) and a per-composite snapshot history. The level registers as the ACTIVE
+// graph and takes over the selection / arrange verbs while open.
 import type { View } from "../view";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
@@ -37,8 +36,8 @@ type DrillStack = {
   engine: CompositeNode["internalEngine"];
   view: FlowView;
   handlers: SurfaceHandlers;
-  /** True through hydrate/restore — the topology pipe waits it out (the same
-   *  O(n²) trap the main canvas hit on loads). */
+  /** True through hydrate/restore; the topology pipe waits it out (the drill-in's
+   *  local rebuild gate, specs/graph-load-teardown-performance.md). */
   rebuilding: boolean;
   isRebuilding: () => boolean;
   history: { stack: string[]; index: number; timer: ReturnType<typeof setTimeout> | null };
@@ -46,8 +45,7 @@ type DrillStack = {
 
 type DrillHolder = { __flowDrill?: DrillStack };
 
-/** One stack per composite, cached on the node: the editor pipe can only
- *  install once, and the undo stack survives close/reopen. */
+/** One stack per composite, cached on the node (the spec's DrillStack rule). */
 function getDrillStack(comp: CompositeNode): DrillStack {
   const holder = comp as unknown as DrillHolder;
   if (holder.__flowDrill) return holder.__flowDrill;
@@ -221,10 +219,9 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comp, s]);
 
-  // A completed pass that RAN this composite re-renders every internal card —
-  // and records for undo: component-driven edits (an op pick, a label blur)
-  // fire no editor event, but they all end in a retargeted pass. The restore
-  // path's own pass records a no-op (JSON dedupe).
+  // A pass that RAN this composite (`runSeq` advanced) re-renders every internal
+  // card and records for undo (the spec's runSeq gate); the restore path's own pass
+  // records a no-op (JSON dedupe).
   useEffect(() => {
     let lastRunSeq = -1;
     return compositePassStore.subscribe(() => {
@@ -334,9 +331,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   /** Undo/redo over the per-composite snapshot stack. */
   const historyStep = useCallback(
     async (redo: boolean) => {
-      // One restore at a time: a second Ctrl+Z / Ctrl+Y during the awaited re-hydrate
-      // would interleave two restores on the same internal editor (flowHistory's
-      // _restoring rule).
+      // One restore at a time (flowHistory's _restoring rule).
       if (s.rebuilding) return;
       const h = s.history;
       if (h.timer) recordNow(comp, s);
@@ -360,15 +355,14 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     [comp, s, recomputeTarget],
   );
 
-  // Docked FCs at THIS level follow their host, over the drill-in's own editor/view — the
-  // same reposition the main canvas uses, bound to this surface (fixes the drill-in no-op).
+  // Docked FCs at THIS level follow their host: the main canvas's reposition, bound
+  // to this surface.
   const repositionDockedTo = useCallback(
     (hostId: string) => repositionDockedFor(comp.internalEditor, s.view as unknown as View, s.handlers.getContainer(), hostId),
     [comp, s],
   );
-  // The SAME arrange factory as the main canvas (groups as blocks, members re-placed,
-  // docked FCs re-homed) over this level; a bare ELK pass moved group bodies without
-  // their members.
+  // The SAME arrange factory as the main canvas over this level (a bare ELK pass
+  // would move group bodies without their members).
   const arrange = useMemo(() => {
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({

@@ -5,7 +5,7 @@ import { AggregateNode } from "../../../src/graph/nodes/list";
 import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, ModeNode, FisherNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
-// capabilityParity / shareImpl for the STATISTICS family (the A1 backing flip): every
+// capabilityParity / [[C17]] shareImpl for the STATISTICS family (the A1 backing flip): every
 // formula below runs the statsOps kernel its node runs, so the two surfaces must agree
 // on value, blank and error alike. A new divergence fails here, not in a user's sheet.
 

@@ -1,3 +1,4 @@
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import * as Nodes from "../../src/graph/rete-nodes";

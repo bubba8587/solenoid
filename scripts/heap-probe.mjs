@@ -11,9 +11,9 @@
 //   npm run dev -- --port 5199 --strictPort false
 //   node scripts/heap-probe.mjs            # PORT=5199 by default
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const CHROME = process.env.CHROME ??
-  `${process.env.LOCALAPPDATA}\\ms-playwright\\chromium-1223\\chrome-win64\\chrome.exe`;
+const CHROME = browserPath();
 const PORT = process.env.PORT ?? "5199";
 const URL = process.env.URL ?? `http://localhost:${PORT}`;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));

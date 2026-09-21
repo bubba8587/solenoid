@@ -1,3 +1,4 @@
+// [[C11]] socketBox12, [[B14]] oneDesignSystem
 import { useId, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { SOCKET_COLORS } from "../sockets";
@@ -7,7 +8,8 @@ import "./socket.css";
 
 /** Socket dot as an SVG <circle>, never a `border-radius` div — a div this small
  *  renders as a faint oval on a non-integer pixel. The outer size comes from
- *  `--socket-size`; the viewBox stays 0 0 12 12 so proportions hold at any size. */
+ *  `--socket-size`; the viewBox stays 0 0 12 12 so proportions hold at any size.
+ *  Shape encodes type: DESIGN.md § Sockets, docs/socket-reference.md. */
 export const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist", "anylist"]);
 // Typed 2-D grids — all drawn as a rounded square (the grid-cross glyph). Exported so
 // NodeSocket's hover/lit shape can't drift from what's rendered here.
@@ -64,9 +66,8 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
         </>
       ) : isAnyData ? (
         <>
-          {/* anydata (any rank ≤ 2): HOLLOW SQUARE — the trueany treatment on the
-              container shape (author pick 2026-08-25; split fills and cross marks
-              were tried and rejected). Border only, in the type color. */}
+          {/* anydata (any rank ≤ 2): a HOLLOW square, the trueany treatment on the
+              container shape. Border only, in the type color. */}
           <rect x="1.5" y="1.5" width="9" height="9" rx="0.75" fill="none" stroke={color} strokeWidth="2.5" />
         </>
       ) : isList ? (

@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild
 // Provider presets for the Data connection node. Must stay pure + side-effect-free
 // so they unit-test without the network.
 import { frameFromColumnar, type FrameValue } from "./frame";

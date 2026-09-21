@@ -1,3 +1,4 @@
+// [[C102]] gridFillThenForecast: the forecast surface. Mechanics: specs/bordered-grid-fill.md.
 // A THIN-PLATE SPLINE fit through scattered (x, y, z) points: exact through every
 // point, extrapolating a LINEAR trend at the edges (the "forecast"). Degenerate
 // inputs fall back to a ridge-regularised least-squares plane.

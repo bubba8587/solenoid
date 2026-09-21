@@ -1,3 +1,4 @@
+// [[C58]] tableInputRawText
 import { type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
@@ -5,8 +6,6 @@ import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, type ElemFamily 
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
-// The popup openers and value classification live beside the popup store (valuePopup.ts);
-// re-exported here so the chip's long-standing consumers keep their import path.
 export { isArrayValue, type ElemFamily };
 
 type ArrayValue = Cell[] | Cell[][];
@@ -25,7 +24,7 @@ export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): s
 }
 
 /** A clickable chip that opens the full grid in the table popup; `label` titles it. */
-export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides }: {
+export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides, twoD }: {
   value: ArrayValue;
   label?: string;
   /** `"sm"` is the compact chip for node result boxes; `"md"` the default. */
@@ -37,30 +36,30 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   onSave?: (next: (number | null)[][]) => void;
   /** The node the popup's Pin action targets; defaults to the host node from context. */
   pinNodeId?: string;
-  /** The SOCKET-declared element family — every chip sits on a known output
-   *  socket, so derive it there (`nodeOutputElemFamily`); REQUIRED so a new host
-   *  can't silently fall back to cell-guessing (the recurring untinted-chip bug).
-   *  Pass the derived value even when it's `undefined` — that means the socket is
-   *  a genuinely unresolved wildcard rung, the one case cells are sniffed. */
+  /** The SOCKET-declared element family (`nodeOutputElemFamily`); REQUIRED so a host can't
+   *  fall back to cell-guessing. `undefined` = an unresolved wildcard rung, the one case
+   *  cells are sniffed. */
   elem: ElemFamily | undefined;
-  /** Merged into the popup open() — Table Input passes raw literal cells + onSaveRaw
-   *  so the grid edits source text, never derived values. */
+  /** Merged into the popup open() — Table Input passes raw cells + onSaveRaw ([[C58]] tableInputRawText). */
   popupOverrides?: Partial<TablePopupState>;
+  /** The declared rank, for a host whose value may be EMPTY: `[]` cannot show whether it is a
+   *  list or a matrix. Absent = read it off the value. */
+  twoD?: boolean;
 }) {
   // The hook must run every render (Rules of Hooks), so read it, then prefer the prop.
   const ctxHostId = useHostNodeId();
   const hostId = pinNodeId ?? ctxHostId;
-  const table = is2D(value);
+  const table = twoD ?? is2D(value);
   const rows = value.length;
-  const cols = table ? (value[0] as number[]).length : 1;
+  const cols = table ? ((value[0] as number[] | undefined)?.length ?? 0) : 1;
   // Explicit socket knowledge wins; numeric keeps the container default.
   const family = elem ?? elemFamilyOfCells(value);
   const famClass = family && family !== "number"
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
-  const chipLabel = table ? `${rows}×${cols} Table` : "List";
-  const verb = onSave ? "Edit" : "View";
+  const chipLabel = table ? `${rows}×${cols} Table` : `${rows}× List`;
+  const verb = onSave || popupOverrides?.onSaveRaw ? "Edit" : "View";
   const titleText = table ? `${rows}×${cols} table. ${verb}.` : `${rows}-item list. ${verb}.`;
 
   return (

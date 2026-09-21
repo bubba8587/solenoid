@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType.
 // Barrel re-export — mirrors rete-nodes.ts for node classes.
 
 // ─── Canvas infrastructure ────────────────────────────────────────────────────
@@ -59,7 +60,7 @@ export { SortComponent } from "./SortNode";
 export { ReverseComponent } from "./ReverseNode";
 export { SliceComponent } from "./SliceNode";
 export { UniqueComponent } from "./UniqueNode";
-export { SetComponent } from "./SetNode";
+export { SetsComponent } from "./SetsNode";
 export { FilterComponent } from "./FilterNode";
 export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
@@ -197,11 +198,7 @@ export { ComplexBinaryComponent } from "./ComplexBinaryNode";
 export { ComplexPowerComponent } from "./ComplexPowerNode";
 
 // ─── Distributions — normal / t / chi-squared ─────────────────────────────────
-export { DistributionComponent } from "./DistributionNode";
-
-// ─── Distributions — continuous ───────────────────────────────────────────────
-
-// ─── Distributions — discrete ─────────────────────────────────────────────────
+export { DistributionsComponent } from "./DistributionsNode";
 
 // ─── Distributions — discrete (extra) ────────────────────────────────────────
 export { BinomDistRangeComponent } from "./BinomDistRangeNode";

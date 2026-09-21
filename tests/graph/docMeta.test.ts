@@ -1,4 +1,4 @@
-// dte:C30
+// [[C30]]
 import { describe, it, expect, afterEach } from "vitest";
 import { docMetaStore } from "../../src/graph/docMetaStore";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";

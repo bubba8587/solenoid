@@ -1,3 +1,4 @@
+// [[C64]], [[C48]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { PivotNode } from "../../src/graph/nodes/frame";
 import { isFrameValue, type FrameValue } from "../../src/graph/frame";

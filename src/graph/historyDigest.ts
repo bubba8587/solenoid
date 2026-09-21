@@ -1,6 +1,6 @@
+// [[B10]] reactFlowView (the snapshot history)
 // Human-readable session history: one line per labeled record under a date
-// header. Labels come from the snapshot diff (flow/flowHistoryDigest.ts); the
-// rete-history action describer died with the rete surface (git has it).
+// header. Labels come from the snapshot diff (flow/flowHistoryDigest.ts).
 
 function fmtTime(t: number): string {
   return new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });

@@ -1,9 +1,10 @@
 // Probe: load the report-showcase seed, open the Report overlay, screenshot it.
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const OUT = path.dirname(fileURLToPath(import.meta.url));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

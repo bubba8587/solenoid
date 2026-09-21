@@ -1,10 +1,11 @@
+// [[D17]] relaysTransparent
 import { useSyncExternalStore } from "react";
 import { pinStore, pinNodeValue } from "../pinStore";
 import { flyToNodeAndFlash } from "../flyToNode";
 import { getOwningEditor } from "../activeGraph";
 import { resolveValueOrigin } from "../unitFlow";
 
-// Lucide "pin". EVEN size in an even (24px) button so it centers on a whole pixel.
+// Lucide "pin"; even-sized (DESIGN.md: icon-only buttons use even-sized icons).
 const PinGlyph = () => (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-hidden="true">
     <path d="M12 17v5" />
@@ -31,7 +32,7 @@ export function PopupPinButton({ nodeId }: { nodeId: string }) {
   );
 }
 
-// Lucide "crosshair" — even 16px, per the icon-parity rule.
+// Lucide "crosshair"; even-sized.
 const LocateGlyph = () => (
   <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }} aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
@@ -43,7 +44,7 @@ const LocateGlyph = () => (
 );
 
 /** "Go to source" — flies the camera to the node that PRODUCED the shown value, resolved
- *  upstream through passthroughs/FCs/selectors; a producer resolves to itself. */
+ *  upstream through relays ([[D17]] relaysTransparent); a producer resolves to itself. */
 export function PopupGoToButton({ nodeId, onClose }: { nodeId: string; onClose: () => void }) {
   return (
     <button

@@ -1,3 +1,4 @@
+// [[C68]]
 import { describe, it, expect } from "vitest";
 import { scrubSvgText, sanitizeSvg } from "../../src/graph/svgSanitize";
 import { sourceHasLayer } from "../../src/graph/svgLayer";

@@ -11,7 +11,7 @@ import { isCubeValue, type CubeValue } from "../src/graph/frame";
 // Bundle 24 J — the headless seam: `run-graph --vault <path>` installs a Node file
 // provider behind fileBridge so the Obsidian nodes read a vault with no window, and
 // `--run <name>` arms and runs ONE named sink (the Run button's headless equivalent,
-// sinkRunButtonOnly). The demo vault is the fixture; a sink writes into a temp COPY.
+// [[C38]] sinkRunButtonOnly). The demo vault is the fixture; a sink writes into a temp COPY.
 
 const DEMO = path.resolve(__dirname, "..", "demo-vault");
 let tmp: string | null = null;

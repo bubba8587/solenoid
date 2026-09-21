@@ -1,5 +1,5 @@
-// dte:C76
-// The declared Fluid Mechanics pack exception (dte:C76 formulaPackDefault): the
+// [[C76]]
+// The declared Fluid Mechanics pack exception ([[C76]] formulaPackDefault): the
 // Colebrook–White factor is implicit, so it root-finds where a formula can't.
 
 import { ClassicPreset } from "rete";

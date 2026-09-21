@@ -1,3 +1,4 @@
+// [[C42]] htmlInCanvasRenderer, [[D60]] domSyncPresentedCamera
 import { describe, it, expect } from "vitest";
 import { Camera } from "../../src/graph/hicCamera";
 

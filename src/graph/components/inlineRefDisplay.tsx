@@ -1,6 +1,6 @@
+// [[C68]] knapIsTheDocumentSyntax
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 
 import { cableValueStore } from "../cableValueStore";
@@ -11,7 +11,7 @@ import { isCx, formatCxDisplay } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { unwrapUnitCells, annotationForValue } from "./valueDisplayFormat";
 import { formatScalar } from "./format";
-import { useKatexRender } from "./katexLoader";
+import { useKatexRender, useKatexReady } from "./katexLoader";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
@@ -29,6 +29,7 @@ import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
+import { renderNoteMarkdown } from "../noteMarkdown";
 
 // The ONE rendering path for a `` `=name` `` inline ref: Note cards and the Report
 // overlay both go through InlineRefBody so a ref renders identically everywhere.
@@ -204,11 +205,13 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
  *  `` `=x` `` spans substitute from the CARRIED refs map, and a name the map lacks
  *  (a Note's — Notes carry none) stays a literal span. */
 function DocumentEmbedBody({ value }: { value: DocumentValue }) {
+  const tex = useKatexReady();
   const html = useMemo(() => {
     const substituted = parseNoteFrontmatter(value.body).body.replace(/`=([A-Za-z_][A-Za-z0-9_]*)!?`/g, (m, name: string) =>
       name in value.refs ? refPreview(value.refs[name], undefined) : m);
-    return DOMPurify.sanitize(marked.parse(substituted, { async: false, gfm: true, breaks: true }) as string);
-  }, [value]);
+    return DOMPurify.sanitize(renderNoteMarkdown(substituted));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, tex]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 

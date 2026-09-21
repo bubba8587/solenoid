@@ -1,6 +1,5 @@
-// The camera constants + wheel curve shared by every flow surface (main canvas,
-// drill-in, pinch, wheel). The rete render presets that used to live here died
-// with the rete surface (react-port cutover; git has them).
+// [[C43]] oneFlowSurface, [[C92]] pinchUnvetoable, [[D71]] zoomLatticeDiscreteOnly
+// The camera constants + wheel curve shared by every flow surface (specs/pointer-gestures.md).
 
 const ZOOM_SCALE = 0.0028;
 const ZOOM_STEP_CAP = 0.24;
@@ -26,10 +25,9 @@ export function wheelZoomDelta(e: WheelEvent): number {
 // are specks; past the ceiling a card fills the viewport.
 export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 2.5;
-// DISCRETE zoom rests on a multiple of this (author 2026-08-26) — wheel notches, the
-// zoom pill, keys, fits. A CONTINUOUS gesture does not: a pinch that snapped mid-drag
-// would move the canvas in 10% jumps under the fingers (author 2026-08-27), so it rests
-// where it lands and the next discrete step rounds it back onto the lattice.
+// DISCRETE zoom (wheel notches, the zoom pill, keys, fits) rests on a multiple of this;
+// a CONTINUOUS gesture (pinch) never snaps mid-drag, and the next discrete step rounds
+// it back onto the lattice.
 export const ZOOM_SNAP = 0.1;
 const snap = (k: number, round: (v: number) => number): number => round(k / ZOOM_SNAP + 1e-9) * ZOOM_SNAP;
 /** Clamp to [MIN_ZOOM, MAX_ZOOM], no snapping — for continuous gestures. */

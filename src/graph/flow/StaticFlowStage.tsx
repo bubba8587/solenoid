@@ -1,7 +1,8 @@
-// A minimal NON-INTERACTIVE flow surface for the side pages (landing demo,
-// ?showcase audit stage): real components, real values, no pan/zoom/drag.
-// Callers build their graph through the stack's editor + view verbs exactly
-// like any other surface; the stage mirrors topology into RF state.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[B3]] sameNodeEverywhere
+// A minimal NON-INTERACTIVE flow surface (the ?showcase audit stage): real
+// components, real values, no pan/zoom/drag. Callers build their graph through the
+// stack's editor + view verbs like any other surface; the stage mirrors topology
+// into RF state.
 import { useCallback, useEffect, useState } from "react";
 import {
   ReactFlow,

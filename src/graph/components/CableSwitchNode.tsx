@@ -1,3 +1,4 @@
+// [[D16]] retypeReconciles, [[E11]] controlDrivenRetype, [[D10]] onePrunePath
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";

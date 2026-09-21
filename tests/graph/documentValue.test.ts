@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 import { describe, it, expect } from "vitest";
 import { isDocumentValue, makeDocument } from "../../src/graph/documentValue";
 import { describeValueKind } from "../../src/graph/valueKindLabel";

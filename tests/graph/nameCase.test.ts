@@ -1,4 +1,4 @@
-// dte:C19,D23,E12
+// [[C19]], [[D23]], [[E12]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { formulaFunctionNames } from "../../src/graph/excelFormula";
@@ -8,8 +8,8 @@ import { NODE_OPS } from "../../src/graph/nodeOps";
 import { despace } from "../../src/graph/formulaNodeParity";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
-// NAME-4 (dte:D23): an ALL-CAPS (incl. dotted) leaf/op label claims a formula-callable
-// name; anything else is Title Case. The label is a card title (NAME-3), so the case IS the
+// [[D23]] capsClaimsFunction: an ALL-CAPS (incl. dotted) leaf/op label claims a formula-callable
+// name; anything else is Title Case. The label is a card title ([[D22]] oneNamePerCard), so the case IS the
 // signal — an all-caps name a user can't call, or a Title-Case name that shadows a real Excel
 // function, both misreport what the node does.
 
@@ -28,7 +28,7 @@ const strip = (s: string) => s.replace(/\s+/g, "");
 // An "X / Y" (or "X, Y") label enumerates several names — split and check each (case preserved).
 const tokens = (label: string) => label.split(/[/,]/).map((t) => strip(t)).filter(Boolean);
 
-describe("NAME-4 — ALL CAPS ⟺ callable function name", () => {
+describe("[[D23]] capsClaimsFunction — ALL CAPS ⟺ callable function name", () => {
   initPackFormulas();
   // Excel + Solenoid dispatch, plus the refused frame verbs: a FRAME_SURFACE_NAMES key IS a real
   // Excel function, and typing it redirects to the node that carries the name (GROUPBY, PIVOTBY).

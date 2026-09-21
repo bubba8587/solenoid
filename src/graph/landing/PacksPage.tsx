@@ -1,14 +1,14 @@
+// [[C2]] realCanvasScenes, [[B15]] leanCore, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { useEffect } from "react";
 import { SiteHeader, SiteFooter } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 
-// The /packs route: the domain node/function packs, which otherwise surface only as
-// Settings toggles. Names, group heads, descriptions and the on-by-default flag mirror
-// the pack definitions (src/graph/packs); keep them in step. Static DOM; chrome from siteNav.
+// The /packs route. Static DOM; chrome from siteNav.
 
-// Grouped by the Settings ▸ Packs accordion. Descriptions are the packs' own text.
+// Names, group heads, descriptions and the on-by-default flag must match the pack
+// definitions (src/graph/packs); grouped by the Settings ▸ Packs accordion.
 const PACKS: { head: string; items: { name: string; description: string; on?: boolean }[] }[] = [
   {
     head: "Everyday",
@@ -107,7 +107,6 @@ export default function PacksPage() {
                 <h1>Packs</h1>
               </Reveal>
               <Reveal delay={110}>
-                {/* NEW COPY. "Settings ▸ Packs" is the in-app location. */}
                 <p>
                   Packs add nodes and functions for a domain. Geometry and the Excel timesavers
                   are on out of the box; turn the rest on under Settings ▸ Packs. Every pack keeps
@@ -140,7 +139,6 @@ export default function PacksPage() {
 
           <section className="sol-landing__strip">
             <Reveal className="sol-landing__strip-in">
-              {/* NEW COPY. */}
               <p>Turn on the packs you need under Settings ▸ Packs. The rest stay out of your way.</p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="/">Open Solenoid</a>

@@ -1,3 +1,4 @@
+// [[C42]] htmlInCanvasRenderer
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderModeStore } from "../../src/graph/renderMode";
 

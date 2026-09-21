@@ -1,8 +1,7 @@
-// The corner resize grip on the flow surface: RF's NodeResizeControl (pointer + touch
-// drag, zoom-aware, snapToGrid live) wearing the app's own grip mark. Sizes are
-// integers — a fractional size renders the inset:-2px selection ring 0.5px off. The
-// resizer's own dimension changes never reach RF state (FlowSurface drops them): the
-// MODEL owns a card's size, and RF re-measures the card like any other render.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C37]] observerOwnsSize (specs/resizable-content-nodes.md)
+// The corner resize grip: RF's NodeResizeControl wearing the app's grip mark. Sizes are
+// integers (a fractional size renders the selection ring 0.5px off). The resizer's own
+// dimension changes never reach RF state (FlowSurface drops them); the MODEL owns size.
 import { useCallback, useRef } from "react";
 import { NodeResizeControl, type ResizeParams } from "@xyflow/react";
 import type { FlowResizeGripProps } from "../flowSurface";

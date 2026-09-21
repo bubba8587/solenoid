@@ -1,4 +1,4 @@
-// dte:D52,C77
+// [[D52]], [[C77]]
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
@@ -21,7 +21,7 @@ import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
-// Composite node — a subgraph container (dte:C77 compositeIsSubgraph). Members run in a
+// Composite node — a subgraph container ([[C77]] compositeIsSubgraph). Members run in a
 // private NodeEditor/DataflowEngine; internals never leak into the outer engine or cache.
 
 export type PortTier = "basic" | "advanced";
@@ -277,7 +277,7 @@ export class CompositeNode extends ClassicPreset.Node {
 
   // Arm-and-run state for the HEAVY modes: a heavy composite holds UNSOLVED until the user
   // clicks Solve/Refresh — no solve on load, paste, create, or a switch into a heavy mode
-  // (dte:D52 compositesHoldUntilSolve). All session-transient (never persisted), so a fresh
+  // ([[D52]] compositesHoldUntilSolve). All session-transient (never persisted), so a fresh
   // load starts unsolved by construction.
   /** Set by the Solve button; consumed by the next data() to force one solve. */
   solveRequested = false;
@@ -296,7 +296,7 @@ export class CompositeNode extends ClassicPreset.Node {
    *  advances, instead of on every pass the surrounding document happens to run. */
   runSeq = 0;
   /** The runMode `data()` last ran under; a change into a heavy mode forgets the prior
-   *  solve so the card reads unsolved (dte:D52 compositesHoldUntilSolve). Transient. */
+   *  solve so the card reads unsolved ([[D52]] compositesHoldUntilSolve). Transient. */
   private _lastRunMode: CompositeRunMode | null = null;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
@@ -391,7 +391,7 @@ export class CompositeNode extends ClassicPreset.Node {
       if (!Ctor) continue; // unknown internal type (pack off / renamed) — dropped, not placeholdered
       const node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
-      // literalsIffEditable: restore ONLY onto declaring classes — same gate as the main load
+      // [[C28]] literalsIffEditable: restore ONLY onto declaring classes — same gate as the main load
       // path, so a composite's internal graph can't plant an invisible literal.
       if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
       if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
@@ -869,7 +869,7 @@ export class CompositeNode extends ClassicPreset.Node {
       if (this.lastSolveKey === null) {
         // Never solved since becoming heavy (load, paste, create, mode switch): read
         // genuinely blank — not a stale light-mode pass — and stale, so the user sees it
-        // compute on the first Solve (dte:D52 compositesHoldUntilSolve). The goal-seek
+        // compute on the first Solve ([[D52]] compositesHoldUntilSolve). The goal-seek
         // readouts read unsolved too.
         this.cachedOutputs = {};
         this.goalSeekResult = null;

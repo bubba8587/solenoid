@@ -1,3 +1,4 @@
+// [[C88]] collapseIsVisual
 import { describe, it, expect, afterEach } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { GroupNode, FormatControllerNode, DisplayNode, NumberInputNode } from "../../src/graph/rete-nodes";

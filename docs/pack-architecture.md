@@ -3,16 +3,16 @@
 > **Status: the framework is BUILT** — `packsStore` + pack registration, FC unit/format
 > extensions (`fcExtensions.ts`), dormant-pack persistence, the **Geometry** pack as the worked
 > example, and the **Composite** subgraph container (`nodes/composite.ts`). The settled calls
-> live in the decision tree: dte:B15 leanCore (a lean core plus optional packs; the toolkit is
-> never an add-on) and its children dte:C76 formulaPackDefault, dte:C77 compositeIsSubgraph,
-> dte:C78 packLegibility and dte:C79 packActivationIsPresentation
+> live in the decision tree: [[B15]] leanCore (a lean core plus optional packs; the toolkit is
+> never an add-on) and its children [[C76]] formulaPackDefault, [[C77]] compositeIsSubgraph,
+> [[C78]] packLegibility and [[C79]] packActivationIsPresentation
 > (`python tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
 > pack work (more packs, distribution/deps, variant-switch reconcile, port aliasing) lives in
 > `backlog.md`.
 
 ## Building a pack node
 
-Default to a pre-set formula (dte:C76 formulaPackDefault): author the formula text and its
+Default to a pre-set formula ([[C76]] formulaPackDefault): author the formula text and its
 metadata (name, description, socket names and units, Excel mapping if any) as pack data, and
 reach for real node code only when the node needs a native library, root-finding or
 iteration, an embedded dataset to interpolate, or a custom widget. State, per node, which of
@@ -20,7 +20,7 @@ the two it is; the custom-logic nodes are the short list that gets the scrutiny 
 [reference-packs.md](archive/reference-packs.md) and
 [archive/compute-architecture.md](archive/compute-architecture.md) for the library-bound
 cases). A simple node that grows into several internal nodes becomes a composite
-(dte:C77 compositeIsSubgraph), never a Group.
+([[C77]] compositeIsSubgraph), never a Group.
 
 ### Input coercion — the default widens, opting out is one line
 A custom-logic node's `data()` receives every input already coerced to its socket's
@@ -64,7 +64,7 @@ already satisfied by an internal wire, the author sets:
   fallback for an unwired `exposed` port. It lives next to that variable's restriction
   metadata, so restriction and promotion share one per-variable spec.
 
-How promoted ports and locked internals read on screen is dte:C78 packLegibility. Aliasing
+How promoted ports and locked internals read on screen is [[C78]] packLegibility. Aliasing
 (many internal ports collapsing to one shell parameter, e.g. a single "confidence level"
 feeding several internal nodes rather than N identical ports) is an open follow-up, tracked
 in the backlog.
@@ -90,9 +90,9 @@ locally) is still open, tracked in the backlog.
 
 ## Saved files that use a pack you do not have on
 
-Activation is a presentation filter and every pack stays registered (dte:C79
+Activation is a presentation filter and every pack stays registered ([[C79]]
 packActivationIsPresentation), so a document using an inactive pack still loads and computes;
-a type no build registers at all loads through Placeholder, lossless (dte:C35
+a type no build registers at all loads through Placeholder, lossless ([[C35]]
 unknownViaPlaceholder). `SavedGraph.packs` rides the sidecar as an activation breadcrumb. NOT
 built: a required-packs/versions record with an offer-to-enable flow on open, parked with the
 pack-distribution system (`deferrals.md` "Pushed to 1.4/2.0"); it must land before the first

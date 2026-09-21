@@ -1,15 +1,15 @@
-// dte:C56,C63,C26,D5,D6
+// [[C56]], [[C63]], [[C26]], [[D5]], [[D6]]
 // Per OP family (a node class with an `op` field): what ops it has and how they
 // surface. The `{ }` marker is DERIVED, never declared. An ARGUMENT family is not
 // declared here at all (DESIGN.md § Op pickers; nodeOps.test.ts pins both directions).
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
-import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution";
+import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
 
 import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META } from "./nodes/visual";
 import {
-  FillNode, SetNode, SumIfsNode,
+  FillNode, SetsNode, SumIfsNode,
   FILL_OP_META, COND_AGG_OP_META,
   SET_META, PAD_OP_META, PadNode,
   SeriesNode,
@@ -85,7 +85,7 @@ export type NodeOpsDecl = NodeOpsBase & (
   | { ops?: undefined; create?: undefined }
 );
 
-/** One op of a family; `fx` is the FORMULA name (formulaNaming Tier 3), declared where
+/** One op of a family; `fx` is the FORMULA name ([[C51]] formulaNaming Tier 3), declared where
  *  despacing the label would not yield it: a prose label (despacing a sentence
  *  collides — Coalesce/Fill's FILLINTERPOLATE) or a bare label whose family
  *  word lives in the card title (Running's SUM → RUNNINGSUM). */
@@ -137,8 +137,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "surface", ctor: SurfaceNode },
   // A distribution is likewise a thing you search for by name; its ops' formula
   // names are the real Excel spellings (fx in DIST_OPS).
-  { type: "distribution", ctor: DistributionNode, ops: DIST_OPS,
-    create: (op) => new DistributionNode({ op: op as never }) },
+  { type: "distributions", ctor: DistributionsNode, ops: DIST_OPS,
+    create: (op) => new DistributionsNode({ op: op as never }) },
 
   // TAKE/DROP are one rank-preserving class (list, matrix or scalar); both ops have
   // their own bare leaf, so neither becomes a "TAKE: Drop" colon row. The sign of the
@@ -155,7 +155,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new HeadNode({ op: op as never }) },
   // Both ops have their own bare Add-menu leaf ("Keep Columns" / "Drop Columns"), so
   // neither becomes a "Keep Columns: Drop" colon row; the decl still carries kind +
-  // op fx names for the accent and uniqueNameMap.
+  // op fx names for the accent and [[C18]] uniqueNameMap.
   { type: "xstack", ctor: StackNode, ops: fromMeta(STACK_OP_META),
     create: (op) => new StackNode({ op: op as never }) },
   { type: "by-axis", ctor: ByAxisNode, ops: fromMeta(BY_AXIS_OP_META),
@@ -168,8 +168,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
-  { type: "list-set", ctor: SetNode, ops: fromMeta(SET_META),
-    create: (op) => new SetNode({ op: op as never }) },
+  { type: "list-sets", ctor: SetsNode, ops: fromMeta(SET_META),
+    create: (op) => new SetsNode({ op: op as never }) },
   { type: "iferror", ctor: IFErrorNode,
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },
@@ -179,7 +179,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // formula names they can't own ("Contains" despaces onto CONTAINS).
   // Contains / starts with / ends with are the predicate ARGUMENT, not four functions.
   // (`contains` despaced onto the real CONTAINS function by coincidence, which is
-  // exactly the collision aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
+  // exactly the collision [[C56]] aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
   { type: "sumifs", ctor: SumIfsNode, ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
@@ -252,7 +252,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
   // have no leaf of their own, so each family leaf declares its pair and the
   // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
-  // labels are family words, so the search names are declared here (overrideInPlace).
+  // labels are family words, so the search names are declared here ([[D3]] overrideInPlace).
   { type: "stat-percentile", ctor: RankPercentileNode,
     ops: [{ op: "percentile-inc", label: "PERCENTILE.INC" }, { op: "percentile-exc", label: "PERCENTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,

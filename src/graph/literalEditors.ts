@@ -1,3 +1,4 @@
+// [[C28]] literalsIffEditable
 // The literal inputs' shared editing helpers (Table / Frame / List / Cube Input all edit
 // through the table popup; the Cube Input drills into the others). Pure: text ↔ records.
 

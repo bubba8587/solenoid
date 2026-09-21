@@ -1,3 +1,4 @@
+// [[B14]] oneDesignSystem (DESIGN.md modal rules)
 import { useEffect, useRef } from "react";
 
 /** Close an overlay on window-level Escape; `onClose` is read through a ref so an inline

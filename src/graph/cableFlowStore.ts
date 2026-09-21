@@ -1,8 +1,8 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
-// "Animated mode" — when on, every live cable carries a stream of beads flowing
-// from output to input, so you can watch data travel through the graph.
+// "Animated mode": every live cable carries a stream of beads flowing output → input.
 
 const LS_KEY = "solenoid.cableFlow";
 

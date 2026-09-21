@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // Which seed the live document came from ("custom" once edited), plus the load slot
 // the surface registers.
 import { isGraphRebuilding } from "./process";

@@ -1,3 +1,4 @@
+// [[C63]] oneRecordNode
 // Gallery tiling: the masonry placement rule from the CSSWG masonry explainer
 // (`definite-first pack` — each item goes into the track with the smallest
 // running position; ties take the leftmost), i.e. the Pinterest algorithm.

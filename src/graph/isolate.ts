@@ -1,3 +1,4 @@
+// [[C52]] visibleSelection
 import { getEditor } from "./process";
 import { downstreamClosure } from "./graphCompute";
 import { getActiveEditor } from "./activeGraph";

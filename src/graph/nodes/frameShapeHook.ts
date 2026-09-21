@@ -1,3 +1,4 @@
+// [[C8]] declareOnce, [[D17]] relaysTransparent.
 import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 

@@ -1,3 +1,4 @@
+// [[C94]] formatFamilyGates (the popup lights controls off the model), [[C25]] firstClassUnits.
 import { useState, useEffect, useSyncExternalStore } from "react";
 import { FormatControllerNode } from "../rete-nodes";
 import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";

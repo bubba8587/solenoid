@@ -1,3 +1,4 @@
+// [[C93]] gestureByPointerType, [[C99]] chromeEnvelopeVars
 import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { touchSelectStore } from "./touchSelectStore";

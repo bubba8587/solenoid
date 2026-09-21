@@ -1,3 +1,4 @@
+// [[C62]] paletteAllOrNone
 // A canvas can't evaluate `color-mix()` or `var(--…)`, so the renderer computes them here.
 // Keep this DOM-free — var() resolution needs getComputedStyle and stays the caller's job.
 

@@ -1,0 +1,14 @@
+{
+	"nodes":[
+		{"id":"home","type":"group","x":-40,"y":-60,"width":760,"height":380,"label":"Home","color":"6"},
+		{"id":"scope","type":"text","text":"# Scope\nWhat the quarter commits to at home: the kitchen first, the office after.","x":0,"y":0,"width":260,"height":160,"color":"3"},
+		{"id":"budget","type":"text","text":"**Budget**\n\n- Kitchen remodel 18500\n- Home office setup 2400","x":400,"y":0,"width":280,"height":160,"color":"4"},
+		{"id":"kitchen","type":"file","file":"Projects/Kitchen remodel.md","x":0,"y":380,"width":420,"height":320},
+		{"id":"crew","type":"text","text":"Book the demolition crew before the cabinets ship.","x":500,"y":420,"width":240,"height":100}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"scope","fromSide":"right","toNode":"budget","toSide":"left","color":"3"},
+		{"id":"e2","fromNode":"scope","fromSide":"bottom","toNode":"kitchen","toSide":"top"},
+		{"id":"e3","fromNode":"budget","fromSide":"bottom","toNode":"crew","toSide":"top","label":"pays for"}
+	]
+}

@@ -1,5 +1,6 @@
 import { useMenuClamp } from "./menuClamp";
 import { useEffect } from "react";
+import { PaintbrushIcon } from "./PaintbrushIcon";
 import "./SocketContextMenu.css";
 
 export type SocketContextTarget = {
@@ -45,7 +46,9 @@ export function SocketContextMenu({ target, onAttachFormat, onClose }: Props) {
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => { onAttachFormat(target); onClose(); }}
       >
-        <span className="solenoid-socket-ctx__icon">⊞</span>
+        <span className="solenoid-socket-ctx__icon">
+          <PaintbrushIcon size={13} />
+        </span>
         Attach Format Controller
       </button>
     </div>

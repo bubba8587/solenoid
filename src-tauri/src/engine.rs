@@ -1,4 +1,4 @@
-// dte:C45
+// [[C45]]
 // ─── The Polars relational engine (WS2) ────────────────────────────────────────
 // The native side of the `FrameBackend` seam (`src/graph/frameBackend.ts`). Data
 // lives HERE: a frame is stored in a Polars `DataFrame` behind an opaque string
@@ -1362,7 +1362,7 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
     Ok(Some(e))
 }
 
-/// dte:D49 textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
+/// [[D49]] textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
 /// non-text column is `#TYPE!`, mirroring the oracle's `requireTextColumn` — never a
 /// stringified comparison. The old `String(cell)` fallback is what forced this engine
 /// to mirror JS number printing digit-for-digit (`js_number_string`, deleted).

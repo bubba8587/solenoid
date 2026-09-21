@@ -1,4 +1,4 @@
-// dte:C25,D43
+// [[C25]], [[D43]], [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";
@@ -170,7 +170,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "complexcombo":
     // `anycombo`/`anydata`: no element coercion and no rank widening — a scalar STAYS
     // a scalar (contrast `anylist` below, which widens one in); for `anydata` a matrix
-    // flows whole, the formula evaluator owning the rank semantics (oneBroadcast).
+    // flows whole, the formula evaluator owning the rank semantics ([[D27]] oneBroadcast).
     case "anydata":
     case "anycombo":
       return collapseSingleton(v);
@@ -215,7 +215,7 @@ function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
 }
 
 /** Stamp THIS node's per-column format picks onto the frame it emits, so the format
- *  rides the value downstream (dte:D41 formatFlowsDownstream). A column with no local
+ *  rides the value downstream ([[D41]] formatFlowsDownstream). A column with no local
  *  pick keeps whatever arrived on the input frame. Shallow-copies rather than
  *  mutating — a cached frame is shared with every other consumer. */
 function stampFrameFormats(nodeId: string, f: FrameValue): FrameValue {

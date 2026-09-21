@@ -13,6 +13,7 @@ import type { NodeProps } from "./nodeKit";
 import { stopDragStart } from "../coarse";
 import "./PresentationNode.css";
 import { getActiveEditor } from "../activeGraph";
+import { PlayIcon } from "./Icons";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -159,7 +160,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
           disabled={data.steps.length === 0}
           title="Present full screen. Space or → advances. Esc exits."
         >
-          ▶ Present
+          <PlayIcon size={11} strokeWidth={2} /> Present
         </button>
       </div>
     </div>

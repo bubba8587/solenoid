@@ -41,10 +41,14 @@ copy-inventory.md.orig.json
 
 # Third-party plugin binaries installed locally into the demo vault (TaskNotes); not ours to ship
 demo-vault/.obsidian/plugins/
-# Obsidian writes these when the demo vault is opened; only daily-notes.json, types.json and community-plugins.json are fixture
+# Obsidian writes these when the demo vault is opened; only daily-notes.json, types.json, community-plugins.json,
+# appearance.json (it turns the Solenoid snippet on) and snippets/ are fixture
 demo-vault/.obsidian/workspace.json
 demo-vault/.obsidian/app.json
-demo-vault/.obsidian/appearance.json
 demo-vault/.obsidian/core-plugins.json
+demo-vault/.obsidian/graph.json
 # TaskNotes generates its view bases here
 demo-vault/TaskNotes/
+# The decision tree opened as an Obsidian vault: personal workspace state.
+decisions/.obsidian/
+__pycache__/

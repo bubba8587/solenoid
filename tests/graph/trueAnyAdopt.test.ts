@@ -1,4 +1,4 @@
-// dte:E3
+// [[E3]]
 import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import { reconcileTrueAnyTypes, type AdoptEditor } from "../../src/graph/trueAnyAdopt";
@@ -6,7 +6,7 @@ import { extractInit } from "../../src/graph/copyPaste";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { IfNode, NaNode } from "../../src/graph/nodes/logic";
 import { CableSwitchNode } from "../../src/graph/nodes/control";
-import { ListIndexNode, ReverseNode, SortNode, SetNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/rete-nodes";
+import { ListIndexNode, ReverseNode, SortNode, SetsNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "../../src/graph/rete-nodes";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "../../src/graph/sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
@@ -50,11 +50,11 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     expect(dt(disp.outputs.out?.socket)).toBe("trueany");
   });
 
-  it("adoption never PERSISTS: a save/paste init carries no adopted type (adoptKeepsCables)", () => {
+  it("adoption never PERSISTS: a save/paste init carries no adopted type ([[E3]] adoptKeepsCables)", () => {
     // The save records a node's init fields (extractInit — persistence and paste
     // share it), never its sockets, so an adopted type must not appear there and
     // a reconstructed node must start hollow. This is the "never persists" half
-    // of adoptKeepsCables, previously unpinned: if Display ever grows a whitelisted field
+    // of [[E3]] adoptKeepsCables, previously unpinned: if Display ever grows a whitelisted field
     // holding the adopted type, this fails.
     const src = numSource();
     const disp = new DisplayNode();
@@ -306,7 +306,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     // (Group Lists no longer has an adoptive `keys` output — it emits one frame now (C5);
     // its Key column carries the type internally, not a trueany output socket.)
 
-    const set = new SetNode();
+    const set = new SetsNode();
     reconcileTrueAnyTypes(makeEditor([s1, s2, set], [
       { source: s1.id, sourceOutput: "out", target: set.id, targetInput: "a" },
       { source: s2.id, sourceOutput: "out", target: set.id, targetInput: "b" },

@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 // TaskNotes (the Obsidian plugin) over its local HTTP API. URL builders + PARSERS are pure
 // and fixture-tested; the node owns the fetch, the paging loop and the cache. One fixture
 // per endpoint in taskNotesApi.test.ts. Field shapes follow the plugin's TaskInfo type.

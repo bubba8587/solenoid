@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars
 // Registry of collapsible canvas chrome so one hotkey toggles them as a group; a
 // module singleton, so Canvas's keydown and the panels stay decoupled.
 

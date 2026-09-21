@@ -1,4 +1,4 @@
-// dte:D15,E3
+// [[D15]] wildcardsKeepRank, [[E3]] adoptKeepsCables, [[E7]] trueanyNeedsPassthrough. The mechanics: specs/socket-lattice.md req. 8-9.
 import type { ClassicPreset } from "rete";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
 import { getPassthrough, resolvePassthroughType, agreeTypes, type ProjectContext } from "./nodes/passthrough";
@@ -69,8 +69,6 @@ function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<str
       const resolved = resolvePassthroughType(spec, voteOf, agreeTypes, contextFor(node));
       const outSock = node.outputs?.[spec.output]?.socket;
       if (!(outSock instanceof MutableSocket)) continue;
-      // A rank-crossing reshape adopts the element FAMILY at its OWN declared rank rather
-      // than parroting the input's.
       const want = outSock instanceof AdoptiveSocket ? projectTypeToBase(outSock.base, resolved) : resolved;
       if (outSock.dataType !== want) {
         outSock.setType(want);
@@ -85,10 +83,9 @@ function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<str
  *  never touches connections. */
 export function reconcileTrueAnyTypes(editor: AdoptEditor): Set<string> {
   const all = new Set<string>();
-  // ONE shape walk for the whole fixpoint — frame shape depends only on topology + literal
-  // config, which no adoption pass mutates, so the memo stays valid across passes.
+  // One shape walk serves the whole fixpoint (spec req. 9).
   const shapes = makeFrameShapeResolver(editor as never);
-  // A chain of N passthroughs settles in ≤ N passes; the cap guards a #CIRC! loop.
+  // The cap guards a #CIRC! loop (spec req. 9).
   for (let pass = 0; pass < 32; pass++) {
     const changed = reconcileOnce(editor, shapes);
     if (changed.size === 0) break;

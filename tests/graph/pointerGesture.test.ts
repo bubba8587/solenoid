@@ -1,3 +1,4 @@
+// [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   installPointerCensus, resetPointerCensus, isPinching, touchCount,

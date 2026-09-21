@@ -1,3 +1,4 @@
+// [[C25]] firstClassUnits, [[D47]] noMixCurrencies. Mechanics: specs/unit-flow.md.
 // A second interpretation over the numeric evaluator's `Ast`: the DIMENSION a
 // formula's result carries. Never evaluates a value. Returns one of:
 //   • a `Dim`      — the determined result dimension (`{}` = dimensionless);
@@ -155,7 +156,7 @@ function constNum(node: Ast): number | null {
   }
 }
 
-// Currency's IDENTITY is the display CODE (noMixCurrencies), so dims can agree while values
+// Currency's IDENTITY is the display CODE ([[D47]] noMixCurrencies), so dims can agree while values
 // are incommensurable; the numeric evaluator can't see codes, so they ride here.
 export type CodeEnv = Record<string, string>;
 

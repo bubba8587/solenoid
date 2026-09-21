@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars
 import { createNotifier } from "./storeKit";
 
 // Marketing/website pages (/?landing, /obsidian, and future pages) mount the app's live

@@ -1,3 +1,4 @@
+// [[C101]] onePatchPath, [[C86]] membershipByGesture
 import { describe, it, expect } from "vitest";
 import { mergeNoteText } from "../../src/graph/obsidianWrite";
 import { WriteObsidianNode } from "../../src/graph/nodes/obsidian";

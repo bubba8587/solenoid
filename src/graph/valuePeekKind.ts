@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics
 // The value kinds a socket hover-peek can render (the peek arms only for the chip-summary
 // kinds — isChipSummaryPeek below — but the switch stays total over all kinds). Mirrors
 // DisplayComponent's own branch order so the peek shows a value exactly as the Display

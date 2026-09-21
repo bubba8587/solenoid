@@ -11,7 +11,7 @@ import { ganttSvg } from "@solenoid/gantt-layout";
 const GANTT_EXPORT_W = 1000;
 
 // The card never draws the timeline — squished at card width it reads as noise
-// (oneRecordNode). The hero box holds the [Chart] chip; the figure draws where the
+// ([[C63]] oneRecordNode). The hero box holds the [Chart] chip; the figure draws where the
 // chart output lands: a resizable Display, the popup, a Report embed.
 export function GanttComponent({ data, emit }: NodeProps<GanttNodeType>) {
   const cv = data.cachedChart;

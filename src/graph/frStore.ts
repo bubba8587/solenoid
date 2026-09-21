@@ -1,3 +1,4 @@
+// [[C8]] declareOnce (the Reference generates from nodeCatalog)
 // Open/close + active-tab state for the Reference overlay.
 import { createNotifier } from "./storeKit";
 

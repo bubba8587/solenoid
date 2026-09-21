@@ -1,4 +1,4 @@
-// Touch-vs-mouse helpers shared across node chrome.
+// [[C93]] gestureByPointerType. Touch-vs-mouse helpers shared across node chrome.
 
 /** True when the primary pointer is touch (phone/tablet). Evaluated once. */
 export const IS_COARSE =
@@ -34,10 +34,8 @@ export const IS_TABLET = IS_COARSE && !IS_MOBILE;
 
 /** pointerdown for a node's read-only chrome and single-line fields: swallowed on
  *  desktop so the click can't begin a node drag, left to bubble on mobile so a pan
- *  starting over the element still works. Decides the ONE-finger question only.
- *  NOT for drag-interactive controls (sliders, dials, Conduit, group bodies, resize
- *  handles), `<textarea>`/contenteditable, or native-popup controls — those keep a
- *  hard stopPropagation. */
+ *  starting over the element still works. Decides the ONE-finger question only; the
+ *  controls that keep a hard stopPropagation are listed in specs/pointer-gestures.md. */
 export const stopDragStart = (e: { stopPropagation: () => void }) => {
   if (!IS_MOBILE) e.stopPropagation();
 };

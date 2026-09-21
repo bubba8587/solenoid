@@ -1,4 +1,4 @@
-// dte:C45,C16,C24
+// [[C45]], [[C16]], [[C24]]
 // ─── Relational verbs — the pure engine ───────────────────────────────────────
 // Also the reference oracle the Polars backend is parity-tested against. Verbs never
 // mutate their input; a structural failure THROWS a tagged SolError (#REF!).
@@ -268,7 +268,7 @@ const TEXT_OP_LABEL: Record<string, string> = {
 };
 
 /** A text predicate on a non-text column is a CONFIGURATION error, `#TYPE!` — never a
- *  stringified comparison (dte:D49 textPredicateNeedsText, author verdict 2026-08-30).
+ *  stringified comparison ([[D49]] textPredicateNeedsText, author verdict 2026-08-30).
  *  The old `String(cell)` fallback forced the Rust engine to mirror JS number printing
  *  digit-for-digit forever (`js_number_string`, deleted with this rule). */
 export function requireTextColumn(op: FilterOp, type: FrameColType, column: string): void {

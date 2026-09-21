@@ -1,4 +1,4 @@
-// dte:D54
+// [[D54]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { parseDate, parseDateToSerial, isRelativeDateText } from "../../../src/graph/nodes/dateSerial";
 import { DateInputNode } from "../../../src/graph/nodes/control";

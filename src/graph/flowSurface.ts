@@ -1,9 +1,8 @@
-// The socket / resize-grip injection seam. Node components render sockets as RF
-// Handles and grips as RF NodeResizeControls, both of which only work INSIDE a
-// ReactFlow tree; the context gates that (a bare card render falls back to the plain
-// SocketComponent and no grip). The components are registered rather than imported
-// because FlowSocketHandle draws NodeSocket's own glyphs — a direct import would be
-// a NodeSocket ↔ FlowSocketHandle cycle.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
+// The socket / resize-grip injection seam: RF Handles and NodeResizeControls work only
+// INSIDE a ReactFlow tree, so the context gates them (a bare card render falls back to
+// the plain SocketComponent and no grip). Registered, not imported: a direct import
+// would be a NodeSocket ↔ FlowSocketHandle cycle.
 import { createContext, useContext, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 

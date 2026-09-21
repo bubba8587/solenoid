@@ -1,3 +1,4 @@
+// [[C98]] paletteMirrorsMenubar
 import { createNotifier } from "./storeKit";
 
 // MRU command labels, shared by the Command Palette AND the menu bar — an action run

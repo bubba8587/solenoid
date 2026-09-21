@@ -1,3 +1,4 @@
+// [[C19]] namingModel
 // Node names + connectable endpoints for the connection dialog. Names are derived live,
 // never stored: header title + a 1-based index when shared; untitled falls back to type.
 import type { ClassicPreset } from "rete";

@@ -1,3 +1,4 @@
+// [[C56]] aggregatorsAreArguments, [[C44]] dateSerials
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { pivotEditor } from "../pivotEditorStore";
 import { processGraph } from "../process";
@@ -7,6 +8,7 @@ import { AGG_OP_META, type PivotNode } from "../rete-nodes";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import "./PivotEditorPopup.css";
+import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 
 // The per-value function list derives from AGG_OP_META; the pivot is the one surface
 // that also offers the pivotOnly ops.
@@ -258,7 +260,7 @@ export function PivotEditorPopup() {
               <span className="pivot-chip pivot-filter__chip" draggable onDragStart={() => { drag.current = { from: "fields", field }; }}>
                 <span className="pivot-chip__glyph">{TYPE_GLYPH[typeOf(field)] ?? "?"}</span>
                 <button className="pivot-filter__name" onClick={() => setOpenFilter(open ? null : field)} title="Choose which values to keep">
-                  {field}{hidden ? ` · ${hidden} hidden` : ""} <span className="pivot-filter__caret">{open ? "▾" : "▸"}</span>
+                  {field}{hidden ? ` · ${hidden} hidden` : ""} <span className="pivot-filter__caret">{open ? <ChevronDownIcon size={10} strokeWidth={2} /> : <ChevronRightIcon size={10} strokeWidth={2} />}</span>
                 </button>
                 <button className="pivot-chip__x" onClick={() => removeFilter(field)} aria-label="Remove" title="Remove">×</button>
               </span>

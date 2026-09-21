@@ -1,4 +1,4 @@
-// dte:D29,D49
+// [[D29]], [[D49]]
 import { describe, it, expect } from "vitest";
 import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, type LookupMatchMode, type LookupSearchMode } from "../../src/graph/frameVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -86,7 +86,7 @@ describe("filter — error cells (oracle-only)", () => {
     expect(blank.columns[1].values).toEqual(["Oslo"]);
     const present = filterRows(t, "qty", "notblank", null);
     expect(present.columns[1].values).toEqual(["Oslo", "Bergen", "Tromso", "Oslo"]);
-    // Kept + Dropped stays an exhaustive complement (filterOneJob).
+    // Kept + Dropped stays an exhaustive complement ([[C49]] filterOneJob).
     expect(blank.columns[0].values.length + present.columns[0].values.length).toBe(5);
   });
   it("an error cell in a NON-filtered column rides along untouched", () => {
@@ -627,12 +627,12 @@ describe("timesaver verbs", () => {
 
 });
 
-describe("textPredicateNeedsText — a text predicate reads a TEXT column, or errors", () => {
+describe("[[D49]] textPredicateNeedsText — a text predicate reads a TEXT column, or errors", () => {
   const grab = (fn: () => unknown) => {
     try { fn(); } catch (e) { return e as { code?: string; message?: string }; }
     return null;
   };
-  it("textPredicateNeedsText: a text predicate on a non-string column is #TYPE!", () => {
+  it("[[D49]] textPredicateNeedsText: a text predicate on a non-string column is #TYPE!", () => {
     for (const op of ["contains", "startsWith", "endsWith"] as const) {
       const err = grab(() => filterRows(f, "qty", op, "0"));
       expect(isSolError(err)).toBe(true);

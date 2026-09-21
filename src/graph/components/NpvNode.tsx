@@ -1,3 +1,4 @@
+// [[D10]] onePrunePath
 import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
 import type { NPVNode as NPVNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";

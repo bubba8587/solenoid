@@ -1,9 +1,9 @@
 // The per-node declaration of which display styles survive a TRANSFORM
-// (formatFlowsDownstream). A transform carries NOTHING unless it declares — per
+// ([[D41]] formatFlowsDownstream). A transform carries NOTHING unless it declares — per
 // output — which inputs' style may flow to it, and it declares that only for the ops
 // that PRESERVE the meaning of the value: add keeps a percent a percent, multiply
 // does not; a mean keeps it, a count does not. The unit is never carried here (it is
-// value-level, unitOnValue) — unitFlow strips it off the carried copy.
+// value-level, [[D40]] unitOnValue) — unitFlow strips it off the carried copy.
 //
 // Duck-typed like passthrough(): this module imports no node classes, so the resolver
 // and the nodes share one contract without a cycle.

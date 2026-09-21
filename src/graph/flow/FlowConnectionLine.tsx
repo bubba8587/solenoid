@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C91]] cableWalkRouter
 // The cable being DRAGGED from a socket: the same router and type color as a
 // live cable (RF's default connection line is a plain bezier in a fixed color).
 import type { ConnectionLineComponentProps } from "@xyflow/react";

@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming
 import { describe, it, expect } from "vitest";
 import { FORMULA_SIGNATURES, signatureFor, signatureParams, genericSignature } from "../../src/graph/formulaSignatures";
 import { formulaFunctionNames, formulaSyntaxHint } from "../../src/graph/excelFormula";

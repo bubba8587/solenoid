@@ -1,12 +1,12 @@
-// dte:C17,D19
+// [[C17]], [[D19]]
 // The INDEX accessor, shared by the INDEX node (nodes/list.ts) and the INDEX
 // formula (excelFunctions.ts) so the two surfaces cannot answer differently.
 // Pure — no React/Rete.
 //
 // SCOPE: scalar / list / matrix — everything both surfaces can hold. Frame and
-// cube slicing stays in the node (hideMatrixFromVendor: neither reaches a formula), because
+// cube slicing stays in the node ([[D26]] hideMatrixFromVendor: neither reaches a formula), because
 // `frame.ts` imports the socket lattice and the formula path must not load it
-// (implReteFree, formulaPathIsReteFree.test.ts). Same reason `tagFrameCellUnit` arrives
+// ([[D19]] implReteFree, formulaPathIsReteFree.test.ts). Same reason `tagFrameCellUnit` arrives
 // as an argument instead of an import — `unitColumn.ts` reaches rete through
 // unitBridge.
 

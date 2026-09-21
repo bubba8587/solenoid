@@ -1,4 +1,4 @@
-// dte:C34,C69
+// [[C34]], [[C69]]
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";
@@ -172,9 +172,54 @@ function devGraphMirror(): Plugin {
   };
 }
 
+/** Dev-only live demo vault: the browser app reads `demo-vault/` from DISK through this
+ *  endpoint instead of the eagerly imported snapshot, so an edit made in Obsidian shows
+ *  on the next refresh without Vite reloading the app (the folder is unwatched below).
+ *  `GET /__demo-vault` lists the vault-relative paths; `?p=<rel>` returns one file. */
+function devDemoVault(): Plugin {
+  const ROOT = path.resolve("demo-vault");
+  const EXT = /\.(md|base|yaml|csv)$/;
+  async function list(dir: string, rel: string, out: string[]): Promise<void> {
+    let entries: import("node:fs").Dirent[];
+    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith(".")) continue;
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) await list(path.join(dir, e.name), r, out);
+      else if (EXT.test(e.name)) out.push(r);
+    }
+  }
+  return {
+    name: "solenoid-dev-demo-vault",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__demo-vault", (req, res) => {
+        void (async () => {
+          const url = new URL(req.url ?? "/", "http://x");
+          const rel = url.searchParams.get("p");
+          if (rel === null) {
+            const out: string[] = [];
+            await list(ROOT, "", out);
+            res.setHeader("content-type", "application/json");
+            res.end(JSON.stringify(out));
+            return;
+          }
+          const abs = path.resolve(ROOT, rel);
+          if (!abs.startsWith(ROOT + path.sep) || !EXT.test(abs)) { res.statusCode = 404; res.end(); return; }
+          try {
+            const text = await readFile(abs, "utf8");
+            res.setHeader("content-type", "text/plain; charset=utf-8");
+            res.end(text);
+          } catch { res.statusCode = 404; res.end(); }
+        })().catch(() => { res.statusCode = 500; res.end(); });
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), copyEditEndpoint(), devGraphMirror()],
+  plugins: [react(), copyEditEndpoint(), devGraphMirror(), devDemoVault()],
 
   // Preserve class / function names through minification. Node components
   // derive their human-readable type hint from `constructor.name` (see
@@ -193,7 +238,7 @@ export default defineConfig(async () => ({
   },
 
   build: {
-    minify: "esbuild",
+    minify: "esbuild" as const,
     rollupOptions: {
       // Emit a complete third-party license file alongside the bundle, listing
       // every dependency actually shipped (React, Rete, KaTeX, …) with its
@@ -234,8 +279,11 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching `src-tauri`, and the demo vault: it is imported
+      // eagerly as raw text (demoVaultData.ts), so an Obsidian save inside it would
+      // otherwise invalidate the module and reload the whole app. A dev server restart
+      // picks up vault edits.
+      ignored: ["**/src-tauri/**", "**/demo-vault/**"],
     },
   },
 }));

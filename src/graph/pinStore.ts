@@ -1,5 +1,5 @@
-// A pin holds the VALUE, never the rete node view — re-parenting a live node element
-// would break socket measurement and drag handling. One pin per node.
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C30]] saveViaTextForm, [[C34]] classNameIsType
+// A pin holds the VALUE, never the node element. One pin per node.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -49,8 +49,7 @@ export const pinStore = {
 };
 
 /** The ONE place resolving a node id → (nodeId, outputKey); a group has no single
- *  output and pins with an empty key. Tests the constructor NAME, not `instanceof`,
- *  so a Vite hot-swap can't silently stop matching live instances. */
+ *  output and pins with an empty key. Matches the constructor NAME ([[C34]] classNameIsType). */
 export function pinNodeValue(nodeId: string): void {
   const node = getOwningEditor(nodeId)?.getNode(nodeId);
   if (!node) return;

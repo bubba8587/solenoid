@@ -1,5 +1,5 @@
-// Training-zone table: Karvonen (heart-rate reserve) bands with a resting HR,
-// plain %-of-max without one.
+// [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
+// Training-zone table: Karvonen (heart-rate reserve) bands with a resting HR, plain %-of-max without one.
 
 import { ClassicPreset } from "rete";
 import { numIn, frameOut, readInput } from "./shared";
@@ -21,8 +21,8 @@ export function hrZonesDomainOk(maxHr: number, restingHr: number | null): boolea
   return maxHr > 0 && (restingHr === null || (restingHr > 0 && restingHr < maxHr));
 }
 
-/** The formula surface's matrix form of the frame — five [low, high] rows, since
- *  frames stay out of formulas. */
+/** The formula surface's matrix form of the frame — five [low, high] rows
+ *  ([[C15]] matricesInFormulas). */
 export function hrZonesMatrix(maxHr: number, restingHr: number | null): number[][] | SolError {
   if (!hrZonesDomainOk(maxHr, restingHr)) {
     return solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");

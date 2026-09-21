@@ -1,3 +1,4 @@
+// [[B14]] oneDesignSystem (DESIGN.md § Voice)
 // Catalog descriptions are inline MARKDOWN (`code`, **bold**, *italic*) with two
 // projections: HTML for the rich surfaces (Inspector, Function Reference) and plain
 // text for title-attribute tooltips, which render no markup.

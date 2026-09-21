@@ -1,3 +1,4 @@
+// [[C102]] gridFillThenForecast
 import { describe, it, expect } from "vitest";
 import { fitSurface, solveLinear, type FitPoint } from "../../../src/graph/nodes/surfaceFit";
 

@@ -1,3 +1,4 @@
+// [[D10]] onePrunePath
 import { useSyncExternalStore } from "react";
 import { HISTOGRAM_MODE_META } from "../rete-nodes";
 import type { HistogramNode as HistogramNodeType, HistogramMode } from "../rete-nodes";

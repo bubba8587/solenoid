@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView, [[D54]]
 import { describe, it, expect, afterEach } from "vitest";
 import { modalOwnsKeyboard, markIfUnderModal, keyUnderModal, MODAL_SELECTOR } from "../../src/graph/modalGuard";
 import { paletteStore } from "../../src/graph/paletteStore";

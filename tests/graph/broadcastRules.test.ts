@@ -1,17 +1,17 @@
-// dte:C15,D26,D27,D45
+// [[C15]], [[D26]], [[D27]], [[D45]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 import { isSolError } from "../../src/graph/errorValue";
 
-// ─── matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
-// The table IS this test (oneMetricImpl):
+// ─── [[C15]] matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
+// The table IS this test ([[D7]] oneMetricImpl):
 // a change to either without the other fails here. PAD follows the standing
 // rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
 // CONSTRUCTION functions own their #N/A padding inside their registered impls
-// (appendLadder) and never route through the broadcaster.
+// ([[C48]] appendLadder) and never route through the broadcaster.
 //
-// Rank grammar (post-tagSpecialScalars): no scalar is an array, so Array.isArray at two
+// Rank grammar (post-[[D44]] tagSpecialScalars): no scalar is an array, so Array.isArray at two
 // depths is the complete test — a matrix is an array of ROW arrays.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
@@ -75,7 +75,7 @@ describe("the eleven rows", () => {
 });
 
 describe("the per-cell value model rides through rank 2 unchanged", () => {
-  it("a cell error propagates in place (errorBeatsMissing)", () => {
+  it("a cell error propagates in place ([[D37]] errorBeatsMissing)", () => {
     const err = { __solError: true, code: "#DIV/0!", message: "x" };
     const out = ev("x + 1", { x: [[1, err], [3, 4]] }) as unknown[][];
     expect(out[0][0]).toBe(2);
@@ -83,7 +83,7 @@ describe("the per-cell value model rides through rank 2 unchanged", () => {
     expect(out[1]).toEqual([4, 5]);
   });
 
-  it("a cell null propagates as null, not 0 (nullSkippedNotZero)", () => {
+  it("a cell null propagates as null, not 0 ([[D36]] nullSkippedNotZero)", () => {
     expect(ev("x + 1", { x: [[1, null], [3, 4]] })).toEqual([[2, null], [4, 5]]);
   });
 
@@ -110,7 +110,7 @@ describe("aggregates flatten row-major; their 1-D prep applies unchanged", () =>
   });
 });
 
-describe("the matricesInFormulas containment rule", () => {
+describe("the [[C15]] matricesInFormulas containment rule", () => {
   it("a 1-D whole-list native refuses a matrix honestly (#SHAPE!)", () => {
     const r = ev("REVERSE(x)", { x: M22 });
     expect((r as { code: string }).code).toBe("#SHAPE!");

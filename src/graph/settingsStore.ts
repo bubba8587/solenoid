@@ -1,4 +1,4 @@
-// dte:D54
+// [[D54]]
 // Persisted app-wide settings, a module singleton so any React root can read them.
 // A new toggle = `Settings` + `DEFAULTS` + a SETTINGS_SCHEMA entry.
 
@@ -31,7 +31,7 @@ export interface Settings {
   /** Obsidian vault root the Obsidian nodes read/write `.md` under; desktop only. */
   obsidianVault: string;
   /** With no vault folder (and no TaskNotes URL) configured, the Obsidian nodes read the
-   *  bundled, read-only demo instead of failing; the web app relies on it (dte:D62). */
+   *  bundled, read-only demo instead of failing; the web app relies on it ([[D62]]). */
   useDemoVault: boolean;
   /** Vault-relative subfolder for written image assets; empty = beside the note. */
   obsidianAssetSubfolder: string;

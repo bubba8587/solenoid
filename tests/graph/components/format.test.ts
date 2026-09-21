@@ -1,3 +1,4 @@
+// [[C94]] formatFamilyGates
 import { describe, it, expect } from "vitest";
 import { formatScalar, listPreview, extremeSci } from "../../../src/graph/components/format";
 

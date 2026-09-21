@@ -1,3 +1,4 @@
+// [[C59]] byteStringOrder (a UI list keeps natural order)
 import { useState } from "react";
 
 // A view control, NOT a transform: it reorders RENDERED rows only. Because the
@@ -92,7 +93,7 @@ function compareKeys(a: SortKey, b: SortKey): number {
   const an = typeof a === "number";
   if (an !== (typeof b === "number")) return an ? -1 : 1;
   if (an) return (a as number) - (b as number);
-  // Textual: natural-ish text order, so "item2" precedes "item10".
+  // A UI list keeps natural order ([[C59]] byteStringOrder), so "item2" precedes "item10".
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }
 
@@ -121,43 +122,32 @@ export function sortedOrder(
   });
 }
 
-/** The sort STATE — an indicator, not a control: the header cell itself is the
- *  click target, and this is absolutely positioned so it adds no column width. */
-export function SortIndicator({ dir, onCycle, label }: {
+/** The column's ONE sort control, always drawn: the button cycles the sort and nothing
+ *  else in the header does (author, 2026-09-19). Quiet while unsorted, the surface's
+ *  accent once it carries a direction; the header reserves its room (`--sortpad`). */
+export function SortButton({ dir, onCycle, label }: {
   dir: SortDir | null;
-  /** Set on a header whose own content fills the cell (the frame editor, with no
-   *  reliable margin to tap): the chevron becomes a real control, always drawn. */
-  onCycle?: () => void;
+  onCycle: () => void;
   label?: string;
 }) {
-  if (!dir && !onCycle) return null;
-  const glyph = (
-    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
-         strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {dir === null ? (
-        <>
-          <polyline points="2,4 5,1.5 8,4" />
-          <polyline points="2,6 5,8.5 8,6" />
-        </>
-      ) : (
-        <polyline points={dir === "asc" ? "2,6.5 5,3 8,6.5" : "2,3.5 5,7 8,3.5"} />
-      )}
-    </svg>
-  );
-  const cls = `table-popup__sort${dir ? "" : " table-popup__sort--off"}`;
-  if (!onCycle) return <span className={cls} aria-hidden="true">{glyph}</span>;
   return (
     <button
       type="button"
-      className={`${cls} table-popup__sort--btn`}
+      className={`table-popup__sort${dir ? "" : " table-popup__sort--off"}`}
       aria-label={`Sort ${label ?? "column"}`}
       onClick={(e) => { e.stopPropagation(); onCycle(); }}
     >
-      {glyph}
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor"
+           strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {dir === null ? (
+          <>
+            <polyline points="2,4 5,1.5 8,4" />
+            <polyline points="2,6 5,8.5 8,6" />
+          </>
+        ) : (
+          <polyline points={dir === "asc" ? "2,6.5 5,3 8,6.5" : "2,3.5 5,7 8,3.5"} />
+        )}
+      </svg>
     </button>
   );
 }
-
-/** Spread onto ANY interactive control inside a sortable header — the header cell
- *  is the click target, so without it the control also re-sorts the table. */
-export const stopSortTrigger = { onClick: (e: { stopPropagation: () => void }) => e.stopPropagation() };

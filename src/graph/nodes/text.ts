@@ -676,7 +676,7 @@ export class TextJoinNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; ignoreEmpty?: TextJoinIgnoreEmpty }) {
     super("TextJoin");
     this.label       = init?.label       ?? "TEXTJOIN";
-    // Default matches the formula surface's ignore_empty=TRUE fallback (oneAnswerOneDivergence: one
+    // Default matches the formula surface's ignore_empty=TRUE fallback ([[D51]] oneAnswerOneDivergence: one
     // computation, one answer — a bare TEXTJOIN must not differ node vs formula), and
     // skipping empties is TEXTJOIN's whole point over CONCAT.
     this.ignoreEmpty = init?.ignoreEmpty ?? "ignore";
@@ -909,7 +909,7 @@ export class TemplateNode extends ClassicPreset.Node {
   }
 
   /** Grow/shrink the placeholder sockets to match the template text — driven by data(), so it
-   *  reconciles via a microtask; cables on a removed socket drop first (onePrunePath). */
+   *  reconciles via a microtask; cables on a removed socket drop first ([[D10]] onePrunePath). */
   private _reconcile(needed: string[]): void {
     const added = needed.filter((v) => !this.sideVars.includes(v));
     const removed = this.sideVars.filter((v) => !needed.includes(v));

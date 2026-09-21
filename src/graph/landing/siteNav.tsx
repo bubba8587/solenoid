@@ -1,8 +1,7 @@
-// Shared chrome for the marketing site (the /?landing, /obsidian, /download and
-// /examples routes). Every page renders the same header, nav and footer from here, so
-// the site reads as one place and a new page is a route entry plus a page file. Each
-// route is a plain pathname; navigation is ordinary anchors (a full reload, the way the
-// pages already cross-link), which Vercel rewrites back to index.html.
+// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere (the marketing chrome)
+// Shared header, nav and footer for the marketing routes; a new page is a route entry
+// plus a page file. Routes are plain pathnames and navigation is ordinary anchors (a
+// full reload), which Vercel rewrites back to index.html.
 import { useSyncExternalStore, type ReactNode } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
@@ -10,6 +9,25 @@ import pkg from "../../../package.json";
 import { Reveal } from "./LandingScenes";
 
 export const GITHUB_URL = "https://github.com/bubba8587/solenoid";
+
+const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
+
+/** The desktop download's label for a user agent: the platform when a build exists for it. */
+export function downloadLabel(userAgent: string): string {
+  if (/Android/i.test(userAgent)) return "Download";
+  if (/Windows/i.test(userAgent)) return "Download for Windows";
+  if (/Linux/i.test(userAgent)) return "Download for Linux";
+  return "Download";
+}
+
+/** The one desktop download button: every page's copy of it links the latest release. */
+export function DownloadLink({ primary }: { primary?: boolean }) {
+  return (
+    <a className={`sol-landing__cta${primary ? " sol-landing__cta--primary" : ""}`} href={RELEASES_URL} target="_blank" rel="noreferrer">
+      {downloadLabel(navigator.userAgent)}
+    </a>
+  );
+}
 
 // The home page is the overview, served under ?landing (root is the app itself).
 export const HOME_HREF = "/?landing";

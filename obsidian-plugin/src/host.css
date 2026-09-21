@@ -1,0 +1,17 @@
+/* The shadow hosts, as Obsidian's document sees them; everything inside is the app's own CSS. */
+.solenoid-property-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--size-4-1);
+}
+
+/* The app's Settings palette row: the dropdown with the swatch legend stacked under it. */
+.setting-item-control.solenoid-settings-palette {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.solenoid-settings-swatches {
+  display: block;
+}

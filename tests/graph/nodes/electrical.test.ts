@@ -1,3 +1,4 @@
+// [[C76]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ParallelCombineNode, ESeriesNode, AwgNode, nearestESeries, E_SERIES } from "../../../src/graph/nodes/electrical";
 import { solError, isSolError } from "../../../src/graph/errorValue";

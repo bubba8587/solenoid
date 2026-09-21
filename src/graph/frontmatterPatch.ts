@@ -1,19 +1,19 @@
-// Write Properties' pure core (bundle 24 item B): patch a note's YAML frontmatter
-// LINE-LEVEL over the raw text — never parse-and-reserialize, so every untouched byte
-// stays identical (the write-safety story: onePatchPath, the ONE writer of a note's YAML).
-// Graph/DOM-free.
+// Write Properties' pure core: patch a note's YAML frontmatter LINE-LEVEL over the raw
+// text — never parse-and-reserialize, so every untouched byte stays identical (the
+// write-safety story: [[C101]] onePatchPath, the ONE writer of a note's YAML). Everything renders
+// in Obsidian's own block style, so a note Solenoid wrote and one Obsidian's Properties
+// editor rewrote look the same. Graph/DOM-free.
 import { yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
 import { formatDateSerial } from "./nodes/dateSerial";
 
 /** A value ready to render as YAML: a scalar, a scalar list, or rows of scalar objects. */
 export type YamlScalarV = string | number | boolean | null;
-/** A row's field: a scalar, or a list of scalars (written as a flow sequence `[a, b]`). */
+/** A row's field: a scalar, or a list of scalars (written as a nested `- ` block). */
 export type YamlRowV = YamlScalarV | YamlScalarV[];
 export type YamlValue = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
 
-export interface Refusal { key: string; reason: string; }
-export interface PatchResult { text: string; refused: Refusal[]; }
+export interface PatchResult { text: string; }
 
 const FENCE = "---";
 // A top-level key line (indent 0): `key:` or `key: value`.
@@ -73,14 +73,25 @@ function isRows(v: YamlValue): v is Record<string, YamlRowV>[] {
   return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null;
 }
 
-const renderRowValue = (val: YamlRowV): string =>
-  Array.isArray(val) ? `[${val.map(renderScalar).join(", ")}]` : renderScalar(val);
+/** One row as block lines: the first field rides the `- `, the rest indent under it, and
+ *  a list field is its own nested `- ` block. */
+function renderRow(row: Record<string, YamlRowV>): string[] {
+  const out: string[] = [];
+  for (const [k, val] of Object.entries(row)) {
+    const lead = out.length === 0 ? "  - " : "    ";
+    if (Array.isArray(val)) {
+      if (val.length === 0) { out.push(`${lead}${k}: []`); continue; }
+      out.push(`${lead}${k}:`, ...val.map((x) => `      - ${renderScalar(x)}`));
+    } else {
+      out.push(`${lead}${k}: ${renderScalar(val)}`);
+    }
+  }
+  return out;
+}
 
 /** The line(s) a key + value render to (no trailing newline; caller joins). */
 export function renderKey(key: string, v: YamlValue): string[] {
-  if (isRows(v)) {
-    return [`${key}:`, ...v.map((row) => `  - {${Object.entries(row).map(([k, val]) => `${k}: ${renderRowValue(val)}`).join(", ")}}`)];
-  }
+  if (isRows(v)) return [`${key}:`, ...v.flatMap(renderRow)];
   if (Array.isArray(v)) {
     if (v.length === 0) return [`${key}: []`];
     return [`${key}:`, ...(v as YamlScalarV[]).map((x) => `  - ${renderScalar(x)}`)];
@@ -88,9 +99,9 @@ export function renderKey(key: string, v: YamlValue): string[] {
   return [`${key}: ${renderScalar(v)}`];
 }
 
-// ─── The block scan: each top-level key's line range + shape ─────────────────────
-type Shape = "scalar" | "list" | "block";
-interface KeySpan { start: number; end: number; shape: Shape; } // indices into `interior`
+// ─── The block scan: each top-level key's line range ─────────────────────────────
+// A key's span is its line plus every indented line below it, whatever their shape.
+interface KeySpan { start: number; end: number; scalar: boolean; } // indices into `interior`
 
 function scanKeys(interior: string[]): Map<string, KeySpan> {
   const spans = new Map<string, KeySpan>();
@@ -103,31 +114,26 @@ function scanKeys(interior: string[]): Map<string, KeySpan> {
   for (let s = 0; s < starts.length; s++) {
     const { key, line, rest } = starts[s];
     const end = (s + 1 < starts.length ? starts[s + 1].line : interior.length) - 1;
-    let shape: Shape = "scalar";
-    if (rest.trim() === "") {
-      const body = interior.slice(line + 1, end + 1).filter((l) => l.trim() !== "");
-      if (body.length > 0) shape = body.every((l) => /^\s*-\s/.test(l)) ? "list" : "block";
-    }
-    if (!spans.has(key)) spans.set(key, { start: line, end, shape });
+    const scalar = rest.trim() !== "" || interior.slice(line + 1, end + 1).every((l) => l.trim() === "");
+    if (!spans.has(key)) spans.set(key, { start: line, end, scalar });
   }
   return spans;
 }
 
-/** Patch `text`'s frontmatter with `patch` (key → YamlValue), LINE-LEVEL. A key whose
- *  current value is an unparsed nested block is REFUSED (never corrupted); a missing key
- *  is appended before the closing fence; a note with no block gets one. */
+/** Patch `text`'s frontmatter with `patch` (key → YamlValue), LINE-LEVEL: a present key's
+ *  whole span (its line + indented block) is replaced; a missing key is appended before
+ *  the closing fence; a note with no block gets one. */
 export function patchFrontmatter(text: string, patch: Record<string, YamlValue>): PatchResult {
   const keys = Object.keys(patch);
-  if (keys.length === 0) return { text, refused: [] };
+  if (keys.length === 0) return { text };
 
   const lines = text.split("\n");
-  const refused: Refusal[] = [];
 
   // No top-of-file block → create one before the body.
   if (lines[0]?.trim() !== FENCE) {
     const rendered = keys.flatMap((k) => renderKey(k, patch[k]));
     const block = [FENCE, ...rendered, FENCE, ""].join("\n");
-    return { text: block + text, refused };
+    return { text: block + text };
   }
   let close = -1;
   for (let i = 1; i < lines.length; i++) {
@@ -136,7 +142,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   if (close === -1) {
     // Unterminated fence — treat as no block (don't touch the body); render a fresh one.
     const rendered = keys.flatMap((k) => renderKey(k, patch[k]));
-    return { text: [FENCE, ...rendered, FENCE, "", ...lines].join("\n"), refused };
+    return { text: [FENCE, ...rendered, FENCE, "", ...lines].join("\n") };
   }
 
   const interior = lines.slice(1, close);
@@ -148,7 +154,6 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   for (const key of keys) {
     const span = spans.get(key);
     if (span) {
-      if (span.shape === "block") { refused.push({ key, reason: "the note's value is a nested block the line patcher won't rewrite" }); continue; }
       replacements.set(span.start, { end: span.end, lines: renderKey(key, patch[key]) });
     } else {
       appends.push(...renderKey(key, patch[key]));
@@ -165,7 +170,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   out.push(...appends);
 
   const rebuilt = [lines[0], ...out, ...lines.slice(close)];
-  return { text: rebuilt.join("\n"), refused };
+  return { text: rebuilt.join("\n") };
 }
 
 // ─── The write PLAN (path · key · before · after · action) ───────────────────────
@@ -289,8 +294,8 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
 
 /** Resolve what writing `value` to `key` would do to `text`, and the note's CURRENT value
  *  (a display string) — Preview + Run read this without writing. `add` (key absent),
- *  `unchanged` (the rendered lines already match), `update`, or `refused` (nested block). */
-export function resolveKey(text: string, key: string, value: YamlValue): { action: "add" | "unchanged" | "update" | "refused"; before: string } {
+ *  `unchanged` (the rendered lines already match), or `update`. */
+export function resolveKey(text: string, key: string, value: YamlValue): { action: "add" | "unchanged" | "update"; before: string } {
   const lines = text.split("\n");
   if (lines[0]?.trim() !== FENCE) return { action: "add", before: "" };
   let close = -1;
@@ -300,10 +305,9 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
   const span = scanKeys(interior).get(key);
   if (!span) return { action: "add", before: "" };
   const existing = interior.slice(span.start, span.end + 1);
-  const before = span.shape === "scalar"
+  const before = span.scalar
     ? (TOP_KEY.exec(existing[0])?.[2] ?? "").trim()
     : existing.slice(1).map((l) => l.trim()).filter(Boolean).join(", ");
-  if (span.shape === "block") return { action: "refused", before };
   const rendered = renderKey(key, value);
   const same = existing.length === rendered.length && existing.every((l, i) => l === rendered[i]);
   return { action: same ? "unchanged" : "update", before };

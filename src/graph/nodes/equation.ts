@@ -1,4 +1,4 @@
-// dte:C47
+// [[C47]]
 // ACAUSAL: every variable is both an input and an output, and the one UNWIRED
 // variable is solved for. Wire-driven by design — a variable is known ONLY through
 // its cable, so a save/seed can't carry an invisible hardcoded known.
@@ -25,7 +25,7 @@ function dimOfVal(v: unknown): Dim {
   return DIMENSIONLESS;
 }
 
-/** A currency's real identity (noMixCurrencies), threaded through dimEval so `$P = €C`
+/** A currency's real identity ([[D47]] noMixCurrencies), threaded through dimEval so `$P = €C`
  *  refuses instead of holding by magnitude. */
 function codeOfVal(v: unknown, dim: Dim): string | undefined {
   if (!dimEqual(dim, { currency: 1 })) return undefined;
@@ -237,7 +237,7 @@ export class EquationNode extends ClassicPreset.Node {
           this.cachedHolds = unitError("The two sides carry different units.");
           return finish(null);
         }
-        // Different CURRENCIES share the dimension but can't be equated (noMixCurrencies):
+        // Different CURRENCIES share the dimension but can't be equated ([[D47]] noMixCurrencies):
         // `$5 = €5` must refuse, not "hold" by base magnitude.
         if (dl !== null && dr !== null && dl.code !== undefined && dr.code !== undefined && dl.code !== dr.code) {
           this.cachedHolds = unitError(`Can't equate ${dl.code} and ${dr.code} — different currencies, no exchange rate.`);

@@ -1,7 +1,6 @@
-// The RenderFrame: what `layoutGantt` emits — plain numbers only, no DOM, no colors. The view
-// (gantt-react) and the SVG serializer (svg.ts) both draw from this. Every x/y/w/h is a pixel
-// in the timeline's own coordinate space (x grows with time from the window's left edge; y
-// grows downward from row 0). The grid pane and the header live outside this box.
+// [[C69]] ganttPackages, [[C100]] chartIsAValue
+// The RenderFrame `layoutGantt` emits: plain pixels in the timeline's own space (x from the
+// window's left edge, y from row 0), no DOM, no colors; the view and the SVG serializer both draw from it.
 
 import type { LinkType } from "./payload";
 

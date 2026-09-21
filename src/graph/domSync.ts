@@ -1,4 +1,4 @@
-// dte:C42,D60
+// [[C42]], [[D60]]
 // DOM↔canvas transform sync: during a gesture the viewport is steered to the camera
 // the canvas actually PRESENTED, or DOM-only content skews a frame behind the paint.
 

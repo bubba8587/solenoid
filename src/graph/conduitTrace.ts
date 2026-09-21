@@ -1,3 +1,4 @@
+// [[D17]] relaysTransparent
 import type { ClassicPreset, NodeEditor } from "rete";
 import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey, CONDUIT_MAX_LANES } from "./rete-nodes";
 import { SolenoidSocket, MutableSocket, type SocketDataType } from "./sockets";

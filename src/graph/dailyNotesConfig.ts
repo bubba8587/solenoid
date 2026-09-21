@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 // `.obsidian/daily-notes.json` — the core Daily notes plugin's config. Gives the Vault
 // Folder its default `nameFormat` (R3) when its folder IS the daily-notes folder, so a
 // daily note's file name parses into the `date` column. Pure JSON; graph/DOM-free.

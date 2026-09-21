@@ -4,8 +4,12 @@ status: open
 priority: low
 due: 2026-09-13
 scheduled: 2026-09-13
-tags: [task, learning, spanish]
-contexts: [personal]
+tags:
+  - task
+  - learning
+  - spanish
+contexts:
+  - personal
 projects: []
 timeEstimate: 25
 timeEntries: []

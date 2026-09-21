@@ -1,3 +1,4 @@
+// [[B14]] oneDesignSystem (DESIGN.md § Voice is the rule the corpus is linted against)
 // The one collector for every shipped UI string — help pages, catalog labels
 // and descriptions, tsx tooltip/aria/placeholder attributes, seed prose.
 // Two consumers, one walk: `uiCopy.test.ts` lints sentence units from it, and
@@ -41,9 +42,8 @@ export type CopyRecord = {
 /** One linted string, tagged with where it came from. */
 export type Unit = { src: string; text: string; opener: boolean };
 
-/** Sentence-ish split: the unit a copy rule judges. A rule keyed to a sentence's
- *  START needs the sentence, not the paragraph — the string the lint exists for
- *  ("Hover any dot for its name.") sat at the tail of a five-sentence line. */
+/** Sentence-ish split: the unit a copy rule judges (a rule keyed to a sentence's
+ *  START needs the sentence, not the paragraph). */
 export function sentences(src: string, text: string): Unit[] {
   return text
     .split(/(?<=[.!?;])\s+/)
@@ -55,12 +55,10 @@ export function sentences(src: string, text: string): Unit[] {
 /** Copy carried by a title / aria-label / placeholder attribute on one line of
  *  TSX. Three shapes:
  *    - attr="…" — the plain literal;
- *    - attr={`… ${hole} …`} — a template: its STATIC segments are fixed copy
- *      ("…. Click to change the type." hid between two holes), so the prose
- *      between the ${…} holes is judged segment by segment;
+ *    - attr={`… ${hole} …`} — a template: its STATIC segments are fixed copy,
+ *      judged segment by segment;
  *    - attr={cond ? "…" : `…`} — a braced expression: EVERY double-quoted and
- *      backtick literal inside the braces is possible shipped copy. Ternary
- *      arms were how "Document. Click to open the report." evaded the lint.
+ *      backtick literal inside the braces is possible shipped copy.
  *  A segment shorter than 4 chars is punctuation glue and is skipped. A string
  *  assigned to a variable ABOVE the JSX (title={titleText}) is still invisible
  *  here — that one shape stays a human call. */
@@ -178,9 +176,7 @@ export function collectCopyRecords(root = "."): CopyRecord[] {
     }
   }
 
-  // Chrome strings: tooltips, accessible names, field placeholders. Tooltips are
-  // the WORST surface for a narrated affordance — the tooltip fires while the
-  // pointer is already on the control.
+  // Chrome strings: tooltips, accessible names, field placeholders.
   for (const p of walkTsx(at("src/graph"))) {
     const rel = p.startsWith(`${root}/`) ? p.slice(root.length + 1) : p;
     const src = readFileSync(p, "utf8");
@@ -277,7 +273,7 @@ export function unitsFromRecords(records: CopyRecord[]): Unit[] {
   return out;
 }
 
-/** The full lint corpus (what `uiStrings()` in uiCopy.test.ts used to build). */
+/** The full lint corpus. */
 export function uiStrings(): Unit[] {
   return unitsFromRecords(collectCopyRecords());
 }

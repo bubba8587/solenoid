@@ -1,3 +1,4 @@
+/* [[C93]] gestureByPointerType, [[C99]] chromeEnvelopeVars */
 /* ─── Mobile pass (second iteration) ───────────────────────────────────────
    Mobile-mode overrides. The desktop layout is the source of truth; this file
    enlarges tap targets to a finger-friendly size and keeps the floating chrome

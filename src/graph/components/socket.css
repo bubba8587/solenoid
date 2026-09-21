@@ -1,3 +1,4 @@
+/* [[C11]] socketBox12 */
 /* All socket sizing flows from --socket-size. The default applies
    everywhere; a node-scoped rule can shrink/grow sockets just by
    setting it. */

@@ -1,4 +1,4 @@
-// dte:C25,D43
+// [[C25]], [[D43]]
 // Canonical storage: a tagged value is ALWAYS its magnitude in BASE SI.
 
 import {

@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { chartValueOps, isChartValue, type ChartValue } from "../../src/graph/chartValue";
 import { valueChipFor } from "../../src/graph/components/ValueChip";
@@ -7,7 +8,7 @@ import { valueChipFor } from "../../src/graph/components/ValueChip";
 // shared choke point — EVERY chart op is a recognized chart value AND yields the chip
 // (valueChipFor → ChartChip → chartPopup.open with the value). The popup then renders
 // through the SAME ChartFigure path as the card, so covering the affordance covers the
-// figure. `chartValueOps()` derives from the op union (declareOnce), so a newly added
+// figure. `chartValueOps()` derives from the op union ([[C8]] declareOnce), so a newly added
 // op automatically joins this sweep and must satisfy it.
 
 const sampleValue = (op: string): ChartValue =>

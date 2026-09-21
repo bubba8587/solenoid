@@ -1,15 +1,15 @@
-// dte:D18
+// [[D18]]
 import { describe, it, expect } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { frameHintStore, type FrameHint } from "../../src/graph/frameHint";
 
-// frameLabelHint (dte:D18): a role-chain-labeled frame input and its example hint are
+// [[D18]] frameLabelHint ([[D18]]): a role-chain-labeled frame input and its example hint are
 // ONE contract — the hint must exist, its column names must match the label's
 // roles, and every hint (role-labeled or not) must stay well-formed: real input
 // key, 3–5 rectangular rows, cells matching the declared types. A drifted hint
 // renders a confidently wrong example, which is worse than none.
 
-// Standard column-group initialisms a role may compact to (frameLabelGrammar).
+// Standard column-group initialisms a role may compact to ([[C13]] frameLabelGrammar).
 const INITIALISMS: Record<string, string[]> = {
   OHLC: ["Open", "High", "Low", "Close"],
 };
@@ -51,7 +51,7 @@ function collect(): { hinted: Hinted[]; roleLabeled: RoleLabeled[] } {
 describe("frame-input example hints", () => {
   const { hinted, roleLabeled } = collect();
 
-  it("every role-chain-labeled frame input declares a hint whose columns match the label (frameLabelHint)", () => {
+  it("every role-chain-labeled frame input declares a hint whose columns match the label ([[D18]] frameLabelHint)", () => {
     expect(roleLabeled.length, "role-chain-labeled inputs in the catalog").toBeGreaterThanOrEqual(5);
     for (const { ctor, key, label, hint } of roleLabeled) {
       expect(hint, `${ctor}.${key} ("${label}"): role-labeled input with no frameHints entry`).toBeDefined();

@@ -1,4 +1,4 @@
-// dte:C2
+// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -17,13 +17,9 @@ import { InterpolateNode } from "../nodes/stats";
 import { SurfaceNode, ChartNode } from "../nodes/visual";
 import { FrameInputNode, GroupByFrameNode, JoinNode } from "../nodes/frame";
 
-// The landing page's live canvas: a REAL interactive FlowSurface over a LOCAL
-// stack, built like the composite drill-in (FlowCompositeOverlay's getDrillStack)
-// rather than the inert StaticFlowStage. setEditorRefs points process.ts +
-// activeGraph at this stack, so drag, selection, pan/zoom, the Surface node's
-// rotate pad and the table popup all drive it. Standalone route (App.tsx early-
-// returns to LandingPage), so it never contends with the main canvas for the
-// process globals.
+// The landing page's live canvas: an interactive FlowSurface over a LOCAL stack that
+// claims the process.ts globals ([[C2]] realCanvasScenes). A standalone route, so it
+// never contends with the main canvas for them.
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
 
@@ -239,10 +235,7 @@ function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: 
   return <FlowSurface stack={stack} hooks={LANDING_HOOKS} />;
 }
 
-// The page's ONE live canvas. `build` (stable, module-level) lays out the graph; it
-// claims the process.ts + activeGraph globals so drag, selection, the table popup and
-// the report overlay all drive it — the locked SceneStage cards only borrow the
-// globals for a compute. A page mounts at most one (only one global slot to hold).
+// The page's ONE live canvas ([[C2]] realCanvasScenes); `build` is stable and module-level.
 export type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<void> };
 
 export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Promise<void>; scenes?: LiveScene[] }) {

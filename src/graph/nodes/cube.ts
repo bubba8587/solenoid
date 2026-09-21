@@ -1,3 +1,4 @@
+// [[C10]] socketLattice (the Cube is the lattice supremum), [[C28]] literalsIffEditable
 import { ClassicPreset } from "rete";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } from "./shared";
 import { parseCubeRecords, DEFAULT_CUBE_TEXT } from "../literalEditors";

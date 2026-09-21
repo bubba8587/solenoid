@@ -5,12 +5,12 @@ import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNo
 import { GroupByNode, RunningNode } from "../../src/graph/nodes/list";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
-// ─── matricesInFormulas lambda tranche: the language feature, node-equals-formula ────────────
+// ─── [[C15]] matricesInFormulas lambda tranche: the language feature, node-equals-formula ────────────
 // LAMBDA is the evaluator's one SPECIAL FORM; the hosts are registrations that
 // receive the SAME tagged LambdaValue the LAMBDA node emits. The parity target:
 // a host NODE with an inline formula and the formula host with an inline
 // LAMBDA(...) run the identical evaluation core, so identical inputs must give
-// identical outputs — the shareImpl discipline, closing gap A to ZERO.
+// identical outputs — the [[C17]] shareImpl discipline, closing gap A to ZERO.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const M = [[1, 2], [3, 4]];
@@ -43,7 +43,7 @@ describe("LAMBDA — the special form", () => {
   });
 });
 
-describe("each host computes what its node computes (shareImpl)", () => {
+describe("each host computes what its node computes ([[C17]] shareImpl)", () => {
   it("MAP — per cell, with the node's (value, value2, value3, row, col) binding", () => {
     const node = new MapTableNode({ expr: "value * 2" });
     expect(ev("MAP(m, LAMBDA(value, value * 2))", { m: M }))

@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 import { describe, it, expect } from "vitest";
 import { vaultName, obsidianFileParam, obsidianOpenUrl } from "../../src/graph/obsidianLinks";
 

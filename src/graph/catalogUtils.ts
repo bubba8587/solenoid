@@ -1,4 +1,4 @@
-// dte:D22,C79
+// [[D22]], [[C79]]
 import { NODE_CATALOG } from "./nodeCatalog";
 import { nodeTypeName, setNodeNamer } from "./nodeNamer";
 import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";
@@ -287,7 +287,7 @@ export function nodeName(node: object): string | null {
 
 /** The name a placed node shows everywhere (card title, Navigator, Inspector, cable
  *  inspector, popups): the user's own label if typed, else the catalog name of its
- *  current op — so an op family's card is named by its op (NAME-3). The op-agnostic
+ *  current op — so an op family's card is named by its op ([[D22]] oneNamePerCard). The op-agnostic
  *  FAMILY name (nodeTypeName) is shown only on the card's hover type-hint. */
 export function nodeDisplayName(node: object): string {
   const label = ((node as { label?: string }).label ?? "").trim();

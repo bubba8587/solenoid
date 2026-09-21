@@ -52,7 +52,7 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
 
   if (lambdaSrc) {
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Params bind BY NAME (lambdaBindsByName), so a body variable that is one of this node's variables
+    // Params bind BY NAME ([[C50]] lambdaBindsByName), so a body variable that is one of this node's variables
     // but isn't declared a param silently reads as a captured constant rather than binding.
     const undeclared = node.lambdaSig && isLambdaValue(live) ? undeclaredConsumerVars(live.captured, node.lambdaSig) : [];
     return (

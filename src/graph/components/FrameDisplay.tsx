@@ -71,7 +71,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   const ctxNodeId = useHostNodeId();
   const hostNodeId = formatNodeId ?? ctxNodeId;
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
-  // A local pick overrides the format the column carried in (dte:D41 formatFlowsDownstream).
+  // A local pick overrides the format the column carried in ([[D41]] formatFlowsDownstream).
   const annFor = (col: { name: string; format?: FormatAnnotation }): FormatAnnotation | undefined =>
     (hostNodeId ? frameFormatStore.get(hostNodeId, col.name) : undefined) ?? col.format;
 

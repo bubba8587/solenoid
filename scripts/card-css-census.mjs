@@ -8,8 +8,9 @@
 //
 //   node scripts/card-css-census.mjs
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const URL = "http://localhost:1420";
 
 const main = async () => {

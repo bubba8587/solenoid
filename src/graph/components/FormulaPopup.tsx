@@ -1,3 +1,4 @@
+// [[C15]] matricesInFormulas, [[C51]] formulaNaming
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useKatexRender, getKatexRenderer } from "./katexLoader";
 import type { ClassicPreset } from "rete";

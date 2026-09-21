@@ -1,3 +1,4 @@
+// [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";

@@ -1,3 +1,4 @@
+// [[C8]] declareOnce
 // Dev-only catalog/Excel-mapping check: WARNS, never throws, so a stale entry can't break
 // the app. Every declared Excel equivalence must resolve to a real catalog node.
 

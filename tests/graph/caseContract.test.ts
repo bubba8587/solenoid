@@ -5,7 +5,7 @@ import {
 } from "../../src/graph/frameVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
-// excelComparisons pinned in ONE place: every COMPARISON is case-INsensitive (Excel's `=`;
+// [[C45]] excelComparisons pinned in ONE place: every COMPARISON is case-INsensitive (Excel's `=`;
 // "Match case" / EXACT is the escape hatch), every IDENTITY op (join, group,
 // distinct keys) is case-SENSITIVE. These semantics previously lived only in
 // catalog description strings, where nothing failed if a surface drifted off the line.

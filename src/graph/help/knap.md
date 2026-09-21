@@ -1,3 +1,4 @@
+<!-- [[B14]] oneDesignSystem (DESIGN.md § Voice), [[C68]] knapIsTheDocumentSyntax -->
 # Knap
 
 Knap is the template language for a **Report** and a **Note** body. Plain text is markdown, and a tag fills in a value: `{{ name }}` prints a value, `{% if %}` gates a section, `{% for %}` repeats one. It is Obsidian's own template syntax, so a Report round-trips to the vault as a normal note.

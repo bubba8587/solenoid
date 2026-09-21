@@ -1,0 +1,10 @@
+{
+  "id": "solenoid-properties",
+  "name": "Solenoid Properties",
+  "version": "0.1.0",
+  "minAppVersion": "1.9.0",
+  "description": "List, Matrix, Frame and Cube property types, with Solenoid's chips and table editors.",
+  "author": "Solenoid",
+  "authorUrl": "https://solenoid-ngc.vercel.app",
+  "isDesktopOnly": false
+}

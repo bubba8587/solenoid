@@ -1,4 +1,4 @@
-// dte:C32
+// [[C32]]
 import { describe, it, expect } from "vitest";
 
 // Per-doc autosave keys (2026-07-05): each document persists under its own
@@ -122,7 +122,7 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
   });
 });
 
-// ─── autosaveSlotOrder — slot freshness is a PREFIX read, so `seq` must come first ────
+// ─── [[C32]] autosaveSlotOrder — slot freshness is a PREFIX read, so `seq` must come first ────
 // readSlotSeq decides which slot is newer with /^\{"seq":(\d+)/ — a prefix
 // regex, deliberately not a parse (the doc blob is large). A payload whose
 // stringify puts any other key first reads as seq null: chooseWriteSlot(null,…)
@@ -130,7 +130,7 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
 // the OLDER write — silent loss of the newest edit, with perfectly valid JSON
 // in both slots. This pins the coupling the writers currently honor by literal
 // key order alone.
-describe("autosaveSlotOrder — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
+describe("[[C32]] autosaveSlotOrder — every written slot payload starts {\"seq\":N and seq strictly increases", () => {
   const slotKeys = () => [..._mem.keys()].filter((k) => /^solenoid\.docs\.(index|doc\.[^.]+)\.(a|b)$/.test(k));
 
   it("every slot payload the STORE wrote is prefix-readable", () => {

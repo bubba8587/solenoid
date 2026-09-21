@@ -68,7 +68,7 @@ export interface TablePopupState {
   formatControls?: "columns" | "matrix";
   /** Per-column unit driving the base-SI → display conversion; aligned with `headers`. */
   columnUnits?: (ColumnUnit | undefined)[];
-  /** Per-column format INHERITED on the value (dte:D41 formatFlowsDownstream); the row
+  /** Per-column format INHERITED on the value ([[D41]] formatFlowsDownstream); the row
    *  shows it as its current value until this node makes its own pick. */
   columnFormats?: (FormatAnnotation | undefined)[];
   /** A unit-TAGGABLE source: the unit choice is written back on Save and rides the
@@ -83,11 +83,13 @@ export interface TablePopupState {
    *  row, names split on |, a repeated name merges; authored on the HOST CARD,
    *  the Record pattern). Empty/absent = stacked. */
   formLayout?: string;
-  /** The host's λ input keys — non-empty grows the per-column SOURCE select (tableRefSemantics/noPerCellFormulas). */
+  /** The host's λ socket NAMES (`λ1`), offered under a column's formula field as it
+   *  is typed (tableRefSemantics/[[C54]] noPerCellFormulas). */
   lambdaOptions?: string[];
-  /** Per-column initial λ binding (aligned with columns; undefined = Data). */
-  sourceLambdas?: (string | undefined)[];
-  /** Per-column initial inline formula (undefined = not a Formula column). */
+  /** A literal source with no formula engine behind it (the Obsidian plugin, [[C107]]):
+   *  the column-kind cycle stops at Boolean, never offering Fx. */
+  noFormulaColumns?: boolean;
+  /** Per-column initial inline formula (undefined = a Data column). */
   sourceExprs?: (string | undefined)[];
   /** Derived VALUES for computed columns — read-only, since they have no raw text. */
   computedCells?: Cell[][];

@@ -1,3 +1,4 @@
+// [[C8]] declareOnce.
 // A node whose string literal names a COLUMN of an incoming frame declares it once via
 // `columnPickers()` — which literal key holds the name, and which frame INPUT socket the
 // name is a column of. The shared card control (components/ColumnPickerField) reads this to

@@ -1,3 +1,4 @@
+// [[C95]] commitOnEnter, [[D32]] refreshOutsideRebuild, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: specs/live-connections.md.
 import type React from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
@@ -35,7 +36,6 @@ import { pickGeocodeMatch } from "../geocodeProvider";
 import { NAGER_COUNTRIES, filterHolidays, daysToNextHoliday } from "../holidaysProvider";
 import { FX_CURRENCIES } from "../fxProvider";
 import { frameRowCount, cubeRowCount } from "../frame";
-import { useVaultWatch } from "./useVaultWatch";
 import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
 import { dropInputCables, dropOutputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
@@ -52,8 +52,7 @@ function statusText(s: ConnectionState): string {
   }
 }
 
-// The timer calls the SAME refreshConnection(id) a manual click does, so an interval-
-// backed source is indistinguishable downstream from a clicked one.
+// The timer takes the same refreshConnection path as the button ([[D32]] refreshOutsideRebuild).
 function useAutoRefresh(nodeId: string, minutes: number) {
   useEffect(() => {
     if (minutes <= 0) return;
@@ -116,7 +115,6 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
 }
 
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
-// The URL field commits on blur/Enter, never per keystroke, so typing can't fire a fetch.
 
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
@@ -262,8 +260,8 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 }
 
 // ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
-// Desktop only (no filesystem in the browser). The native <LazySelect> needs
-// pointerdown/mousedown stopPropagation or the node-drag re-render closes it mid-pick.
+// The native <LazySelect> needs pointerdown/mousedown stopPropagation or the node-drag
+// re-render closes it mid-pick.
 
 // One node for the data folder's files — the file EXTENSION picks the reader (.parquet
 // through the native engine, everything else CSV), so there is no format control.
@@ -338,8 +336,6 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
 }
 
 // ─── DATA FEED (Finance / economic data) ────────────────────────────────────────
-// FRED is KEYLESS (public fredgraph.csv); Alpha Vantage is keyed. Same fetch/cache
-// shape as the other connection nodes — data() stays sync, one background fetch per key.
 
 const stopDrag = {
   onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
@@ -373,7 +369,6 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
     setInput(v);
     if (v !== (data.stringLiterals.input ?? "")) { data.stringLiterals.input = v; void processGraph(); }
   }
-  // Discrete refinements (frequency select, date pickers) apply immediately.
   function setParam(key: "freq" | "start" | "end", v: string) {
     data.stringLiterals[key] = v;
     if (key === "freq") setFreq(v); else if (key === "start") setStart(v); else setEnd(v);
@@ -429,8 +424,8 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
 
 
 // ─── GEOCODE ─────────────────────────────────────────────────────────────────────
-// Place name → lat / lon / timezone. The Place field commits on blur/Enter (never per
-// keystroke); when several places match, a pick chooses which (stored by label).
+// Place name → lat / lon / timezone; when several places match, a pick chooses which
+// (stored by label).
 export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // re-read matches when a fetch lands
   // The SAME pick the node computes, so the rows never disagree with the cables.
@@ -471,7 +466,7 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
 
 // ─── WEATHER ─────────────────────────────────────────────────────────────────────
 // Lat/lon come from Geocode's sockets or the typed fallbacks; the °C/°F toggle sets the
-// API unit and tags the temps downstream. Numeric fields commit on blur/Enter.
+// API unit and tags the temps downstream.
 const WEATHER_UNIT_OPTIONS: { value: "C" | "F"; label: string }[] = [
   { value: "C", label: "°C" },
   { value: "F", label: "°F" },
@@ -543,8 +538,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
 }
 
 // ─── HOLIDAYS ──────────────────────────────────────────────────────────────────────
-// A country + year → the year's public holidays. Country is a card dropdown; the year
-// and optional region commit on blur/Enter. The Dates output feeds NETWORKDAYS / WORKDAY.
+// A country + year → the year's public holidays. The Dates output feeds NETWORKDAYS / WORKDAY.
 function todaySerial(): number {
   const d = new Date();
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
@@ -659,8 +653,7 @@ function CurrencyRow({ data, emit, socketKey, label }: {
   );
 }
 
-// A typeable date range row: the native date field commits on blur/Enter; a cable
-// overrides it (↩ wired), mirroring CurrencyRow.
+// A typeable date range row; a cable overrides it (↩ wired), mirroring CurrencyRow.
 function FxDateRow({ data, emit, socketKey, label }: {
   data: FxNodeType; emit: NodeProps<FxNodeType>["emit"]; socketKey: "from_date" | "to_date"; label: string;
 }) {
@@ -693,8 +686,8 @@ function FxDateRow({ data, emit, socketKey, label }: {
 
 const FX_MODE_OPTIONS = (Object.keys(FX_MODE_META) as FxMode[]).map((k) => ({ value: k, label: FX_MODE_META[k].label }));
 
-// Spot ↔ History swaps sockets in place (the mode-card recipe): prune departing input AND
-// output cables first (onePrunePath), then setMode, then re-render + recompute.
+// Spot ↔ History swaps sockets in place ([[E11]] controlDrivenRetype): prune departing
+// input AND output cables first ([[D10]] onePrunePath).
 async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => void) {
   if (next === data.mode) return;
   const departing = data.keysDroppedBySwitch(next);
@@ -759,8 +752,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 }
 
 // ─── VAULT FOLDER ────────────────────────────────────────────────────────────────
-// An Obsidian folder → one cube. The vault is a per-node path (a chip, defaulting from
-// Settings ▸ Obsidian); folder / glob / name-format / include-body commit on blur/Enter.
+// An Obsidian folder → one cube; the vault resolves per [[D62]] demoVaultResolution.
 const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
 // A labelled text field: the label carries the name, the box only the example.
 const FIELD_INPUT = { flex: 1, width: "auto", minWidth: 0 } as const;
@@ -777,8 +769,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const desktop = isDesktop();
   const canRead = desktop || isDemoVaultPath(vault); // the demo vault reads with no filesystem
   useAutoRefresh(data.id, minutes);
-  // Obsidian saved under this folder → re-read (bundle E; the cadence stays the stopgap).
-  useVaultWatch(vault, folder, () => { void refreshConnection(data.id); }, desktop);
   useEffect(() => { setFolder(data.folder); }, [data.folder]);
   // The subfolder dropdown lists the vault's folders (same control as Write to Obsidian).
   useEffect(() => {
@@ -819,10 +809,12 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
           <>
             {vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
             <div className="sol-conn__vault">
-              <div className="sol-conn__note" style={{ flex: 1 }}>Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
+              {/* Which vault is a STATE: the bundled demo is a snapshot in a built app, so a Refresh re-reads the same notes. */}
+              <div className="sol-conn__note" style={{ flex: 1 }}>{isDemoVaultPath(vault) ? "Demo vault" : "Obsidian vault"}{data.folder ? ` · ${data.folder}` : ""}</div>
               {openUrl && (
                 <button
-                  type="button" className="sol-conn__refresh" title="Open the first note in Obsidian"
+                  type="button" className="sol-conn__refresh" title={desktop ? "Open the first note in Obsidian" : "Open in Obsidian works in the desktop app"}
+                  disabled={!desktop}
                   onClick={(e) => { e.stopPropagation(); void openExternal(openUrl); }}
                   onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
                 >

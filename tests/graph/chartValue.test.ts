@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { isChartValue, type ChartValue } from "../../src/graph/chartValue";
 import { ChartNode } from "../../src/graph/nodes/visual";

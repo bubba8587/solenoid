@@ -1,4 +1,4 @@
-// dte:D14
+// [[D14]]
 import { describe, it, expect } from "vitest";
 import { cx } from "../../src/graph/cxValue";
 import { readFileSync } from "node:fs";
@@ -76,7 +76,7 @@ describe("every element family is complete at the five sites the compiler can't 
   // them — which is what section 5 documents as "the value passes as-is".)
   it("every strict-list rung widens a lone value, and every combo rung collapses a singleton", () => {
     // One probe per family, chosen so the family's own element coercion is a
-    // no-op — a boolean for logical, a tagged cx for complex (tagSpecialScalars) — leaving the
+    // no-op — a boolean for logical, a tagged cx for complex ([[D44]] tagSpecialScalars) — leaving the
     // RANK change as the only thing the assertion can be measuring.
     // `ElementFamily` is `keyof typeof FAMILIES` over a string-indexed record, so
     // it widens to `string` — this map gets NO exhaustiveness check from tsc. Fall

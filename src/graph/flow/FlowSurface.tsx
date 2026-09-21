@@ -1,4 +1,4 @@
-// dte:C43,B10
+// [[C43]], [[B10]]
 // THE React Flow surface, shared by the main canvas (FlowCanvas) and the composite
 // drill-in (FlowCompositeOverlay): one RF element, one set of handlers, gestures,
 // lasso, context menus, keyboard, add menu, HTML-in-Canvas layer and inspector over a
@@ -192,7 +192,7 @@ export type SurfaceHooks = {
   /** Render the standoff layer (a main-graph feature). */
   standoffs?: boolean;
   /** Render the free-drawn cable layer + its tool (a main-graph feature: drawn
-   *  cables persist into SavedGraph, which is main-only — dte:C33 saveBindsMain). */
+   *  cables persist into SavedGraph, which is main-only — [[C33]] saveBindsMain). */
   drawnCables?: boolean;
   /** The main canvas stands down while the drill-in owns the keyboard. */
   standsDownWhenDrilled?: boolean;

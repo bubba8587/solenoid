@@ -1,4 +1,4 @@
-// dte:C28,C34,C38,D12,E6,E7
+// [[C28]], [[C34]], [[C38]], [[D12]], [[E6]], [[E7]]
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -44,7 +44,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(dead).toEqual([]);
   });
 
-  // classNameIsType, the uniqueness half. The save format stores
+  // [[C34]] classNameIsType, the uniqueness half. The save format stores
   // `type: n.constructor.name` and the ctor registry maps name → class
   // FIRST-WINS (nodeCtorRegistry) — so two classes sharing a name means every
   // saved instance of the loser reconstructs as the WRONG class: the init
@@ -52,7 +52,7 @@ describe("catalog ↔ registry consistency", () => {
   // still fit re-attach, and the graph opens looking mostly right while
   // computing something else. No placeholder fires — that path needs an ABSENT
   // type, and a collision is indistinguishable from a hit.
-  it("no two catalog classes share a constructor name (classNameIsType)", () => {
+  it("no two catalog classes share a constructor name ([[C34]] classNameIsType)", () => {
     const byName = new Map<string, Set<unknown>>();
     for (const entry of FLAT_CATALOG.values()) {
       let inst: object;
@@ -65,12 +65,12 @@ describe("catalog ↔ registry consistency", () => {
     expect(collisions, `class-name collisions — saves of the losing class reload as the winner: ${collisions.join(", ")}`).toEqual([]);
   });
 
-  // classNameIsType, the SHAPE half. A persisted `type` must be a real class name
+  // [[C34]] classNameIsType, the SHAPE half. A persisted `type` must be a real class name
   // — a Capitalized identifier of some length — never a minifier's single letter.
   // This runs UNMINIFIED so it can't see a bad production build directly (that is
   // scripts/check-dist-classnames.mjs on postbuild); it pins the source invariant
   // so a class deliberately named `A`, or an accidental non-identifier, fails here.
-  it("every catalog class name is a real identifier, >= 4 chars (classNameIsType)", () => {
+  it("every catalog class name is a real identifier, >= 4 chars ([[C34]] classNameIsType)", () => {
     const bad: string[] = [];
     for (const entry of FLAT_CATALOG.values()) {
       let name: string;
@@ -80,13 +80,13 @@ describe("catalog ↔ registry consistency", () => {
     expect([...new Set(bad)], `class names that look mangled or malformed: ${[...new Set(bad)].join(", ")}`).toEqual([]);
   });
 
-  // sinkRunButtonOnly's persistence half: an external-effect arm flag must never
+  // [[C38]] sinkRunButtonOnly's persistence half: an external-effect arm flag must never
   // round-trip — every load (save reopen, paste, placeholder restore) starts
   // disarmed, so opening a shared file can never write to YOUR disk. The two
   // sink families pin this per-class (sink.test.ts / obsidian.test.ts); this is
   // the catalog-wide quantifier, so a FUTURE sink whose author whitelists the
   // flag (or names it `enabled` on a new node) fails here by name.
-  it("no catalog class persists an `enabled` arm flag, and none constructs armed (sinkRunButtonOnly)", () => {
+  it("no catalog class persists an `enabled` arm flag, and none constructs armed ([[C38]] sinkRunButtonOnly)", () => {
     const offenders: string[] = [];
     for (const entry of FLAT_CATALOG.values()) {
       let inst: Record<string, unknown> & object;
@@ -98,14 +98,14 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, offenders.join("\n  ")).toEqual([]);
   });
 
-  // portOwnsSocket: an adopting port OWNS its socket instance — the class doc says it
+  // [[E6]] portOwnsSocket: an adopting port OWNS its socket instance — the class doc says it
   // outright ("One instance per port, never shared — a retype must not leak
   // across cards"). A module-level shared MutableSocket means wiring a date into
   // one card retypes ANOTHER card's port; that card then coerces under the wrong
   // type and answers a plausible number (the Input Switch's old shared
   // valueSocket). Two instances of every class: no MutableSocket may appear in
   // both.
-  it("no two instances of a class share a mutable socket (portOwnsSocket)", () => {
+  it("no two instances of a class share a mutable socket ([[E6]] portOwnsSocket)", () => {
     const offenders: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
       let a: object, b: object;
@@ -120,7 +120,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, `classes sharing a MutableSocket across instances — adoption leaks between cards:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
 
-  // trueanyNeedsPassthrough: a class with a `trueany` OUTPUT either declares passthrough() (so
+  // [[E7]] trueanyNeedsPassthrough: a class with a `trueany` OUTPUT either declares passthrough() (so
   // the four derived-type consumers — adoption, unit flow, the display walk,
   // coerceInputs' keep-tags boundary — can resolve it) or is sanctioned with the
   // reason its type resolves another way. An undeclared forwarder's output stays
@@ -136,7 +136,7 @@ describe("catalog ↔ registry consistency", () => {
     XLookupNode: "a genuinely unknowable producer — the result type depends on the looked-up data",
     UnnestNode: "result rank depends on the input's nesting depth (a Frame at depth 1, a Cube at depth >=2)",
   };
-  it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) (trueanyNeedsPassthrough)", () => {
+  it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) ([[E7]] trueanyNeedsPassthrough)", () => {
     const offenders: string[] = [];
     const sanctionedSeen = new Set<string>();
     for (const [type, entry] of FLAT_CATALOG.entries()) {
@@ -151,7 +151,7 @@ describe("catalog ↔ registry consistency", () => {
     }
     expect(
       offenders,
-      `trueany outputs with no passthrough() declaration (trueanyNeedsPassthrough) — the port stays ` +
+      `trueany outputs with no passthrough() declaration ([[E7]] trueanyNeedsPassthrough) — the port stays ` +
       `untyped forever and downstream FCs silently format wrong. Declare the spec, or ` +
       `add the class to TRUEANY_OUT_SANCTIONED with the reason:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -161,7 +161,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(stale, `sanctioned classes that no longer have an undeclared trueany output — drop:\n  ${stale.join("\n  ")}`).toEqual([]);
   });
 
-  // literalsIffEditable, the ONLY-IF direction. Declaring `literals` / `stringLiterals` is
+  // [[C28]] literalsIffEditable, the ONLY-IF direction. Declaring `literals` / `stringLiterals` is
   // the class's statement that its card edits those values inline, and the
   // persistence load gate trusts it: a save's maps are restored onto any
   // declaring class. A class that declares a map its card never edits therefore
@@ -174,7 +174,7 @@ describe("catalog ↔ registry consistency", () => {
   // (`data.literals[...]` / `data.stringLiterals[...]` — the bespoke draw-your-
   // data and toggle cards). Crude, but exactly as crude as the failure mode: an
   // editing surface is a reference to the map or the editor by name.
-  it("no class declares a literal map its component never edits (literalsIffEditable only-if)", () => {
+  it("no class declares a literal map its component never edits ([[C28]] literalsIffEditable only-if)", () => {
     const offenders: string[] = [];
     const seen = new Set<unknown>();
     for (const entry of FLAT_CATALOG.values()) {
@@ -194,7 +194,7 @@ describe("catalog ↔ registry consistency", () => {
     }
     expect(
       offenders,
-      `These classes declare a literal map their component never edits (literalsIffEditable): ` +
+      `These classes declare a literal map their component never edits ([[C28]] literalsIffEditable): ` +
       `the load gate will restore saved values onto them that the card cannot show. ` +
       `Drop the declaration, or give the card an editing surface:\n  ` +
       offenders.join("\n  "),
@@ -225,7 +225,7 @@ describe("catalog ↔ registry consistency", () => {
   });
 });
 
-// A port that HOLDS a date is typed as one — per dateValuedPortIsDateTyped. Swept over
+// A port that HOLDS a date is typed as one — per [[D12]] dateValuedPortIsDateTyped. Swept over
 // the whole catalog because the convention is only worth anything if it is total: it
 // already held on all 60-odd date ports in the finance and date families, and the two
 // that broke it (XIRR/XNPV `dates`, typed numlist and labelled "Date serials") were

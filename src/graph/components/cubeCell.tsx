@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity
 // The one place mapping a Cube cell's kind to how it renders and what drilling it
 // pushes onto the breadcrumb stack — a nested container drills IN PLACE.
 import type { ReactNode } from "react";
@@ -8,20 +9,40 @@ import {
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { isUnitCell } from "../unitValue";
-import { cubePopup } from "../cubePopupStore";
+import { cubePopup, type CellRef } from "../cubePopupStore";
 import { formatScalar } from "./format";
 import { formatListCell } from "./valueDisplayFormat";
+import { elemFamilyOfCells, type ElemFamily } from "../valuePopup";
 import { errorTip } from "./ErrorChip";
 import "./ArrayChip.css";
 
-/** A short, drill-free token for the compact preview; `type` renders a flat scalar
- *  cell by its source column's element type. */
+const LIST_PREVIEW = 3;
+/** The hover title shows more of a list than the compact token does. */
+const HOVER_PREVIEW = 8;
+/** A list cell in brackets with its first `max` items (`[a, b, c…]`); a 2-D cell by
+ *  its shape (`[3×4 Table]`), like the chips. */
+function listToken(cell: unknown[], max = LIST_PREVIEW, type?: FrameColType): string {
+  if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length} Table]`;
+  // The column's element type prints each item (a date list's serials as dates).
+  const items = cell.slice(0, max).map((x) => cubeCellToken(x as CubeCell, type));
+  return `[${items.join(", ")}${cell.length > max ? "…" : ""}]`;
+}
+
+/** The element family a nested list chip tints by: the column's declared type when the
+ *  cube carries one, else the cells (a mixed list stays untinted, like a wildcard). */
+function listFamily(cell: unknown[], type?: FrameColType): ElemFamily | undefined {
+  return type ?? elemFamilyOfCells(cell as Parameters<typeof elemFamilyOfCells>[0]);
+}
+
+/** A short, drill-free token for the compact preview, spelled like the chips
+ *  (`[3×2×1 Cube]`, `[5×2 Frame]`, `[a, b, c…]`); `type` renders a flat scalar cell by
+ *  its source column's element type. */
 export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
   if (cell === null || cell === undefined) return "";
-  if (isCubeValue(cell)) return `Cube ${cubeRowCount(cell)}x${cell.columns.length}x${cubeDepth(cell)}`;
-  if (isFrameValue(cell)) return `Frame ${frameRowCount(cell)}x${cell.columns.length}`;
+  if (isCubeValue(cell)) return `[${cubeRowCount(cell)}×${cell.columns.length}×${cubeDepth(cell)} Cube]`;
+  if (isFrameValue(cell)) return `[${frameRowCount(cell)}×${cell.columns.length} Frame]`;
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
-  if (Array.isArray(cell)) return Array.isArray(cell[0]) ? `${cell.length}x${(cell[0] as unknown[]).length}` : "List";
+  if (Array.isArray(cell)) return listToken(cell, LIST_PREVIEW, type);
   if (isSolError(cell)) return cell.code;
   if (type) { const f = formatFrameCell(type, cell as FrameCell, format); return f === null ? "" : String(f); }
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
@@ -44,10 +65,12 @@ export function frameCellNode(type: FrameColType, cell: FrameCell, format?: Form
 
 /** A drillable cell for the viewer grid (cube + grid views). A nested container
  *  drills IN PLACE via the breadcrumb stack; a scalar renders as inline text. */
-export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
+export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   cell: CubeCell;
   /** Breadcrumb label a drilled-into view should carry (the column name). */
   crumb: string;
+  /** This chip's cell in the popup grid, so a return from the drilled level lands on it. */
+  at?: CellRef;
   size?: "sm" | "md";
   /** The source frame column's element type (a flat scalar cell renders by it). */
   type?: FrameColType;
@@ -70,7 +93,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
         title={`Cube ${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)} (rows × cols × depth). Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill({ kind: "cube", cube: c, label: crumb }); }}
+        onClick={(e) => { stop(e); cubePopup.drill({ kind: "cube", cube: c, label: crumb }, at); }}
       >
         [{cubeRowCount(c)}×{c.columns.length}×{cubeDepth(c)} Cube]
       </button>
@@ -85,7 +108,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
         title={`Frame ${frameRowCount(f)}×${f.columns.length}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill({ kind: "frame", frame: f, label: crumb }); }}
+        onClick={(e) => { stop(e); cubePopup.drill({ kind: "frame", frame: f, label: crumb }, at); }}
       >
         [{frameRowCount(f)}×{f.columns.length} Frame]
       </button>
@@ -93,16 +116,19 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
   }
   if (Array.isArray(cell)) {
     const is2D = Array.isArray(cell[0]);
+    // Tinted by element family like the node-level chip (numeric keeps the default).
+    const family = listFamily(cell, type);
+    const famClass = family && family !== "number" ? ` solenoid-array-chip--elem-${family}${is2D ? "-table" : ""}` : "";
     return (
       <button
         type="button"
-        className={chip("array")}
-        title={is2D ? "Drill in" : `${cell.length}-item list. Drill in.`}
+        className={chip("array") + famClass}
+        title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} table. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW, type)}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill({ kind: "grid", cells: (is2D ? cell : [cell]) as CubeCell[][], label: crumb }); }}
+        onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb }, at); }}
       >
-        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length}` : "List"}]
+        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length} Table` : `${cell.length}× List`}]
       </button>
     );
   }

@@ -1,3 +1,4 @@
+// [[C68]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ReportNode } from "../../../src/graph/nodes/report";
 import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";
@@ -119,6 +120,13 @@ describe("ReportNode — a wired template Note", () => {
     expect(n.refKeys()).toEqual(["title", "n", "person"]);
     expect(n.refValue("title")).toBe("Weekly");
     expect(body(out)).toBe("---\ntitle: Weekly\nn: 3\n---\n# `=title` x3 `=person`");
+  });
+
+  it("a template note's quoted Knap field defaults an unwired input by its RENDERED value", async () => {
+    const n = new ReportNode();
+    const out = await n.data({ template: [tpl('---\nprice: 12.5\ntotal: "{{ price | round }}"\n---\nOwes {{ total }}')] });
+    expect(n.refValue("total")).toBe(13);
+    expect(body(out)).toContain("Owes `=total`");
   });
 
   it("`template` is itself a name: bare embeds the note, filtered reads its source", async () => {

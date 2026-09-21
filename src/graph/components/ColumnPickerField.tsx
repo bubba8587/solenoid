@@ -1,3 +1,4 @@
+// [[C95]] commitOnEnter, [[D17]] relaysTransparent (the static shape resolver)
 import { useMemo, useSyncExternalStore } from "react";
 import { useDraftCommit } from "./inlineInput";
 import { connectionVersionStore } from "../graphSignals";
@@ -6,13 +7,9 @@ import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { columnNamesOf } from "../frameShape";
 import { stopDragStart } from "../coarse";
 
-/** The shared column-name field (B4): a plain quoted text input (commits on Enter/blur like
- *  any typed name) with a native `<datalist>` of the columns the incoming frame will carry,
- *  read from the STATIC frame-shape resolver so it lists before data flows. Typing a name not
- *  in the list still works; an unknown shape gives an empty list (pure free text). The picker
- *  writes the SAME string literal the plain field does — `onChange` is InlineInputs' `setStr`.
- *  It renders only for an UNWIRED socket (InlineInputs shows the cable indicator when wired),
- *  so a wired column socket behaves exactly as before. */
+/** The shared column-name field: specs/type-propagation-on-in-place-socket-retype.md
+ *  (column pickers). Writes the SAME string literal the plain field does; renders only for
+ *  an UNWIRED socket. */
 export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeholder }: {
   nodeId: string;
   frameInput: string;

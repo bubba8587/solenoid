@@ -1,3 +1,4 @@
+// [[C97]] rechartsLazyChunk (the qrcode package is a lazy import too)
 // QR payload assembly + SVG rendering — PURE + fixture-tested (widget rule 5). The
 // encoding itself is the `qrcode` package, imported lazily in the node's compute path
 // so it stays out of the initial bundle; this module never imports it.

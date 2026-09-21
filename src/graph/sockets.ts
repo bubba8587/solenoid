@@ -1,4 +1,5 @@
-// dte:D15
+// [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow, [[D14]] derivedSocketTypes,, [[E6]] portOwnsSocket
+// [[D15]] wildcardsKeepRank. The mechanics: specs/socket-lattice.md.
 import { ClassicPreset } from "rete";
 
 export type SocketDataType =
@@ -118,8 +119,7 @@ const FAMILIES: Record<string, Record<Dim, SocketDataType>> = {
 const DIM_RANK: Record<Dim, number> = { scalar: 0, list: 1, combo: 1, matrix: 2 };
 const DIMS: Dim[] = ["scalar", "list", "combo", "matrix"];
 
-/** May dim `dOut` flow into dim `dIn`? Shared by the within-family accept-sets
- *  and the logical↔number bridge so the combo→scalar exception can't drift. */
+/** May dim `dOut` flow into dim `dIn`? The one predicate under every accept-set (spec req. 2). */
 function dimFlows(dOut: Dim, dIn: Dim): boolean {
   return DIM_RANK[dOut] <= DIM_RANK[dIn] || (dOut === "combo" && dIn === "scalar");
 }
@@ -156,7 +156,7 @@ const SOCKET_ACCEPTS: Partial<Record<SocketDataType, SocketDataType[]>> = (() =>
         .map((dof) => fam[dof]);
     }
   }
-  // The ONE cross-family bridge — coerceInputs does the runtime conversion.
+  // The logical↔number bridge ([[D11]] noAutoCross; spec req. 3).
   const NUM = FAMILIES.number, LOG = FAMILIES.logical;
   for (const di of DIMS) {
     for (const dof of DIMS) {
@@ -174,8 +174,7 @@ export function is2DType(dt: SocketDataType): boolean {
   return MATRIX_TYPES.has(dt) || dt === "frame" || dt === "cube";
 }
 
-/** A date serial is just a number, so the SOCKET TYPE is the only date signal —
- * every "is this a date?" check must route through here. */
+/** The only date signal ([[D12]] dateValuedPortIsDateTyped): every "is this a date?" check routes here. */
 export function isDateType(dt: SocketDataType): boolean {
   return dt === "date" || dt === "datelist" || dt === "datecombo" || dt === "datetable";
 }
@@ -227,13 +226,11 @@ export function adoptTypeForBase(base: SocketDataType, wired: SocketDataType): S
   if (base === "anylist" || base === "anytable") {
     const baseRank = latticeRank(base);
     const wiredRank = latticeRank(wired);
-    // A FAMILY-LESS wire carries nothing to adopt, so the port KEEPS ITS BASE —
-    // must match `projectTypeToBase`'s family-less branch (socketConnect.test.ts).
+    // Family-less wire: keep the base (spec req. 8; mirrored in projectTypeToBase).
     if (fam === null || baseRank === null || wiredRank === null) return base;
     if (wiredRank >= baseRank) return wired;
     return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
   }
-  // The rank-0/combo wildcard bases keep the SAME family-less rule.
   if ((base === "any" || base === "anycombo" || base === "anydata") && fam === null) return base;
   return wired;
 }
@@ -251,14 +248,12 @@ export function projectTypeToBase(base: SocketDataType, t: SocketDataType): Sock
   return FAMILIES[fam][baseRank === 2 ? "matrix" : "list"];
 }
 
-/** DIRECTIONAL: may an OUTPUT of type `out` flow into an INPUT of type `in`? The
- *  one primitive under areCompatible/canConnect; narrowing is blocked by its
- *  absence from every accept-set, not by a separate rule. */
+/** DIRECTIONAL: may an OUTPUT of type `outT` flow into an INPUT of type `inT`? The one
+ *  primitive under areCompatible/canConnect. The explicit cross-type edges below are
+ *  spec req. 5; everything else is the derived accept-set. */
 function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === outT) return true;
   if (inT === "trueany" || outT === "trueany") return true;
-  // `anycombo` may be a scalar at runtime, so it reaches an `any` input exactly as
-  // every family combo reaches its own scalar (the combo→scalar exception).
   if (inT === "any") return SCALAR_COMBO_TYPES.has(outT) || outT === "anycombo";
   if (outT === "any") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   if (inT === "anytable" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
@@ -267,15 +262,11 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (outT === "anylist" && LIST_COMBO_TYPES.has(inT)) return true;
   if (inT === "anycombo" && (RANK1_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
   if (outT === "anycombo") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // `anydata` (anydataWildcard, matricesInFormulas): only `anylist`/`anytable` outputs need naming —
-  // `anycombo`/`any` outputs already reached every non-object input above.
+  // [[E5]] anydataWildcard
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // A 1-D list widens into a `frame` as a single ROW (CSV-consistent — transpose for
-  // a column); coerceInputs builds the frame.
   if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
-  // A cube OUTPUT does NOT flow into any narrower container — the nesting would be
-  // silently dropped — so it reaches only another cube (identity) or `any`.
+  // [[E2]] cubeNeverNarrowsToFrame
   if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "frame")) return true;
   return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
 }
@@ -356,8 +347,7 @@ export const documentSocket = new SolenoidSocket("document");
 export const anySocket     = new SolenoidSocket("any");
 export const trueAnySocket = new SolenoidSocket("trueany");
 
-/** The two RANKLESS wildcard rungs — deliberately narrower than `isWildcardRung`:
- *  a rank-bearing wildcard is a real dimensional constraint, not "untyped". */
+/** The two RANKLESS wildcard rungs ([[E4]] oneResolvePredicate; spec req. 10). */
 export function isWildcardType(dt: SocketDataType): boolean {
   return dt === "any" || dt === "trueany";
 }

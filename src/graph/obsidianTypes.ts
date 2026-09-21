@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 // `.obsidian/types.json` — Obsidian's vault-wide property-type registry — parsed into
 // the shared TypeHint vocabulary (typing source #2, below mdbase, above the guesser).
 // Pure JSON; graph/DOM-free.
@@ -16,6 +17,14 @@ function hintFor(t: string): TypeHint | null {
     case "list":     return { kind: "list", elem: "string" };
     case "tags":
     case "aliases":  return { kind: "list", elem: "string" };
+    // Solenoid Properties' types ([[C107]] obsidianPlugin): `solenoid-` + the socket variant.
+    // A matrix and a cube have no hint shape yet, so they fall through to the guesser.
+    case "solenoid-list":        return { kind: "list", elem: "number" };
+    case "solenoid-strlist":
+    case "solenoid-complexlist": return { kind: "list", elem: "string" };
+    case "solenoid-datelist":    return { kind: "list", elem: "date" };
+    case "solenoid-logicallist": return { kind: "list", elem: "logical" };
+    case "solenoid-frame":       return { kind: "frame" };
     default:         return null;
   }
 }

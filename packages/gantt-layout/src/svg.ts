@@ -1,7 +1,6 @@
-// ganttSvg(payload, opts) → a standalone SVG string. This is the headless export (the popup's
-// "copy as SVG", the webpage export, a Report snapshot). It draws the tree grid AND the
-// timeline so the file stands alone. Colors are passed in (an SVG cannot read CSS variables);
-// omitted, a light-legible default is used so text is never invisible.
+// [[C69]] ganttPackages, [[C100]] chartIsAValue, [[B14]] oneDesignSystem
+// ganttSvg(payload, opts) → a standalone SVG string, the headless export: tree grid and timeline
+// together; colors are passed in (an SVG cannot read CSS variables), a light-legible default when omitted.
 
 import type { GanttPayload } from "./payload";
 import type { GanttColors, GridColumn } from "./frame";
@@ -334,7 +333,6 @@ function colsFor(keys: GanttPayload["view"]["columns"] & {}): GridColumn[] {
   return out;
 }
 
-// Rounding + escaping helpers.
 function r(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -355,6 +353,6 @@ function clip(s: string, px: number, fontPx = 11): string {
   return s.length <= max ? s : s.slice(0, Math.max(0, max - 1)).trimEnd() + "…";
 }
 
-// Keep MONTH_NAMES/civilFromSerial imported for potential future header polish without churn.
+// `void` keeps the header-label imports referenced.
 void MONTH_NAMES;
 void civilFromSerial;

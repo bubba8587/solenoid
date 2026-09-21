@@ -1,4 +1,4 @@
-// dte:D21
+// [[D21]]
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";
@@ -11,7 +11,7 @@ import { isSolError } from "../../src/graph/errorValue";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
 // ─── FRAME_SURFACE_NAMES — recognized-but-refused frame verbs ─────────────────
-// matricesInFormulas keeps frames/cubes out of formulas, but the Add menu TEACHES their names
+// [[C15]] matricesInFormulas keeps frames/cubes out of formulas, but the Add menu TEACHES their names
 // (JOIN, PIVOTBY, GETCOLUMN…), so a typed one must read as "real name, wrong
 // surface", never as a typo: #TYPE! naming the node, the frame violet in the
 // editor, the redirect in the hint bar. This suite is the SSOT gate: the map is
@@ -80,7 +80,7 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
     expect(ghosts.map(([n, l]) => `${n} → "${l}"`), "redirects must point at real catalog leaves").toEqual([]);
   });
 
-  // NAME-2 (dte:D21): a node NAME must never coincide with a core Excel function name —
+  // [[D21]] noExcelNameClash: a node NAME must never coincide with a core Excel function name —
   // a bare "Columns" reads as COLUMNS() (the count), so the relational leaves are named for the
   // op: "Keep Columns" / "Drop Columns". A general "dispatches?" check can't run here — some node
   // labels ARE the node-form of the like-named function (Group By ↔ GROUPBY) and legitimately

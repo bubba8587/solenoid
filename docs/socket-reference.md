@@ -1,10 +1,13 @@
+<!-- [[C10]] socketLattice, [[D14]] derivedSocketTypes -->
 # Socket reference
 
 Every socket variant in Solenoid, in plain English: what it carries, what it looks
 like, what may connect to it, what is blocked, and what happens to a value the
 moment it arrives.
 
-There are **31 socket variants**. This document has one section for each. It
+There are **31 socket variants**, the family × rank product of [[C10]] socketLattice with the
+wildcard rungs and the structural types beside it; a new one is a derived edit ([[D14]]
+derivedSocketTypes). This document has one section for each. It
 describes only what the system **does** and what it **blocks** — a rule that is
 absent is simply not listed.
 

@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet, [[C44]], [[C72]]
 import { describe, it, expect } from "vitest";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
@@ -37,6 +38,15 @@ describe("parseNoteFrontmatter", () => {
     expect(r.fields[0].value).toBe(Math.round(parseDateToSerial("2026-03-01")));
   });
 
+  it("types a list of ISO dates as a date list, never a numeric one", () => {
+    const r = parseNoteFrontmatter("---\nmilestones:\n  - 2026-09-01\n  - \n  - 2026-10-15\nmixed: [2026-09-01, 7]\nquoted: [\"2026-09-01\"]\n---\n");
+    const serial = (s: string) => Math.round(parseDateToSerial(s));
+    expect(r.fields[0]).toEqual({ key: "milestones", value: [serial("2026-09-01"), null, serial("2026-10-15")], guessed: "datelist" });
+    // A date beside a plain number is numbers; a quoted date is text.
+    expect(r.fields[1].guessed).toBe("list");
+    expect(r.fields[2].guessed).toBe("strlist");
+  });
+
   it("treats quoted numbers/dates/bools as strings", () => {
     const r = parseNoteFrontmatter(`---\nid: "42"\nlabel: 'true'\nwhen: "2026-01-01"\n---`);
     expect(r.fields.map((f) => [f.guessed, f.value])).toEqual([
@@ -70,6 +80,49 @@ describe("parseNoteFrontmatter", () => {
         { Laptop: "ProBook", Screen: 8 },
         { Laptop: "UltraSlim", Screen: 9 },
       ] },
+    ]);
+  });
+
+  it("reads Obsidian's block spelling of rows: the same frame, and a cube when a row holds a list", () => {
+    // What Obsidian's Properties editor writes back for the inline rows above.
+    const r = parseNoteFrontmatter([
+      "---", "screen:", "  - Laptop: ProBook", "    Screen: 8", "  - Laptop: UltraSlim", "    Screen: 9",
+      "sessions:", "  - topic: Greetings", "    minutes: 30", "    tags:", "      - basics", "      - speaking",
+      "  - topic: Past tense", "    minutes: 45", "    tags:", "      - grammar",
+      "next: 2026-10-01", "---",
+    ].join("\n"));
+    expect(r.fields).toEqual([
+      { key: "screen", guessed: "frame", value: [{ Laptop: "ProBook", Screen: 8 }, { Laptop: "UltraSlim", Screen: 9 }] },
+      { key: "sessions", guessed: "cube", value: [
+        { topic: "Greetings", minutes: 30, tags: ["basics", "speaking"] },
+        { topic: "Past tense", minutes: 45, tags: ["grammar"] },
+      ] },
+      { key: "next", guessed: "date", value: Math.round(parseDateToSerial("2026-10-01")) },
+    ]);
+  });
+
+  it("a bare Knap tag (YAML reads it as a flow map) is flagged; a quoted one is a string", () => {
+    const r = parseNoteFrontmatter('---\ntotal: {{ price * qty }}\nwhen: {% if x %}y{% endif %}\nok: "{{ price * qty }}"\n---');
+    expect(r.fields).toEqual([
+      { key: "total", value: null, guessed: "string", knapUnquoted: true },
+      { key: "when", value: null, guessed: "string", knapUnquoted: true },
+      { key: "ok", value: "{{ price * qty }}", guessed: "string" },
+    ]);
+  });
+
+  it("a nested map that is not a row list surfaces as a blank string key", () => {
+    const r = parseNoteFrontmatter("---\nmeta:\n  a: 1\n  b: 2\nafter: x\n---");
+    expect(r.fields).toEqual([
+      { key: "meta", value: null, guessed: "string" },
+      { key: "after", value: "x", guessed: "string" },
+    ]);
+  });
+
+  it("a block scalar and a quoted string with a colon read as plain text", () => {
+    const r = parseNoteFrontmatter('---\nnote: |\n  two\n  lines\ntime: "10:30"\n---');
+    expect(r.fields).toEqual([
+      { key: "note", value: "two\nlines\n", guessed: "string" },
+      { key: "time", value: "10:30", guessed: "string" },
     ]);
   });
 

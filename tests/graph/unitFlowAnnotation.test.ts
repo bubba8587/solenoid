@@ -1,4 +1,4 @@
-// dte:D17,D40,D41
+// [[D17]], [[D40]], [[D41]]
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { makeAnnotationResolver, resolveValueOrigin } from "../../src/graph/unitFlow";
@@ -122,7 +122,7 @@ describe("makeAnnotationResolver — FC locks a format that rides through passth
   });
 });
 
-describe("formatFlowsDownstream — the FORMAT crosses a transform, the unit stays locked", () => {
+describe("[[D41]] formatFlowsDownstream — the FORMAT crosses a transform, the unit stays locked", () => {
   it("the FORMAT carries through a transform, the unit does not", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const fc = node("FC", { annotation: () => km3 });          // decimal, 3 places, km

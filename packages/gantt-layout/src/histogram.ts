@@ -1,7 +1,6 @@
-// The resource histogram band (§ 12): sum assignment units per day per resource across the drawn
-// window, as stacked columns aligned to the day scale. A per-resource legend, a 1-unit capacity
-// line, and an over-allocation flag (a resource with > 1 unit on a day) drive the renderers'
-// error color + non-color cue. Pure numbers; colors are the view's.
+// [[C69]] ganttPackages
+// The resource histogram band: assignment units summed per day per resource across the window as
+// stacked columns, with a legend, a 1-unit capacity line and an over-allocation flag. Pure numbers.
 
 import type { GanttPayload } from "./payload";
 import type { FrameHistogram, HistoSegment } from "./frame";

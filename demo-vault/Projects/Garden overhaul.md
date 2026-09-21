@@ -4,9 +4,13 @@ priority: 2
 budget: 1200
 due: 2027-04-01
 lead: "[[People/Sam]]"
-tags: [home, outdoors]
+tags:
+  - home
+  - outdoors
 milestones:
-  - {name: Soil test, due: 2026-09-30, done: false}
+  - name: Soil test
+    due: 2026-09-30
+    done: false
 ---
 # Garden overhaul
 

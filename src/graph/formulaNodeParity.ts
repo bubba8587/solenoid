@@ -1,4 +1,4 @@
-// dte:D7,D8
+// [[D7]], [[D8]]
 // Node ↔ formula parity measurement, shared by the report script and the ratchet
 // test — keep it here, or the two compute the gap differently and stop ratcheting.
 
@@ -23,11 +23,11 @@ export interface ParityRow {
   excelCovered: boolean;
 }
 
-/** The formulaNaming 2(a) formula name for a node label: despaced and uppercased; the Tier 3
+/** The [[C51]] formulaNaming 2(a) formula name for a node label: despaced and uppercased; the Tier 3
  *  registrations derive their names the same way. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
-/** useEveryNotSome: a node claiming Excel names is covered only when EVERY one dispatches;
+/** [[D9]] useEveryNotSome: a node claiming Excel names is covered only when EVERY one dispatches;
  *  empty claims are never covered (vacuous ≠ complete). */
 export function excelCoverage(excel: string[], dispatches: (name: string) => boolean): boolean {
   return excel.length > 0 && excel.every(dispatches);
@@ -40,7 +40,7 @@ const LANGUAGE_LEAVES = new Set([
 ]);
 
 /** A PRESET-FORMULA leaf (a locked ExpressionNode): its formula equivalent is its
- *  own expr, so it counts as covered. Detected mechanically, never listed (noManualList). */
+ *  own expr, so it counts as covered. Detected mechanically, never listed ([[D4]] noManualList). */
 function isPresetFormula(leaf: NodeCatalogEntry): boolean {
   try {
     const inst = leaf.create() as { expr?: unknown; locked?: unknown };
@@ -61,7 +61,7 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     if (leaf.hidden) continue;
     const excel = (leaf.excel ?? NODE_EXCEL[leaf.type] ?? []).map((x) => x.excel.toUpperCase());
     // An op family's leaf label names the family, so it is covered when every OP is
-    // callable. Argument families are not in NODE_OPS (dte:C26 opArgDistinct), so an
+    // callable. Argument families are not in NODE_OPS ([[C26]] opArgDistinct), so an
     // aggregator VALUE like Group By's SUM never counts GROUPBY as callable.
     const decl = opsFor(leaf.type);
     const ops = decl?.ops;

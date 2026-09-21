@@ -1,6 +1,6 @@
-// dte:C17,D19,D54
+// [[C17]], [[D19]], [[D54]]
 // Nothing here may import a module that reaches rete — the formula path stays
-// headless (dte:D19 implReteFree, enforced by formulaPathIsReteFree.test.ts). chrono-node and
+// headless ([[D19]] implReteFree, enforced by formulaPathIsReteFree.test.ts). chrono-node and
 // errorValue are both headless, so they're allowed.
 import * as chrono from "chrono-node";
 import { solError, isSolError, type SolError } from "../errorValue";

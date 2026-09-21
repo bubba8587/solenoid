@@ -1,3 +1,4 @@
+// [[C77]] compositeIsSubgraph
 import { createContext, useContext } from "react";
 
 // Null outside a NodeShell — the intended "no Pin button there" behavior. Kept out of

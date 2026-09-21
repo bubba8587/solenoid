@@ -1,15 +1,14 @@
+// [[C87]] groupsAreSubflows, [[C86]] membershipByGesture, [[C88]] collapseIsVisual, [[D63]] lockedGroupIsObstacle, [[C37]] observerOwnsSize
 import { ClassicPreset } from "rete";
-
-// A real Rete node (selection, drag, persistence) with no sockets when expanded.
 
 export class GroupNode extends ClassicPreset.Node {
   label: string;
-  members: string[];      // member node ids (authoritative set)
+  members: string[];      // the authoritative set ([[C86]] membershipByGesture)
   color: string;          // palette SLOT id (resolved to a hex at render); header / outline color
   collapsed: boolean;
   width: number;
   height: number;
-  lockedPosition: boolean; // pins the top-left corner: no drag, and Tidy/Cleanup skip it
+  lockedPosition: boolean; // [[D63]] lockedGroupIsObstacle
 
   constructor(init?: {
     label?: string;

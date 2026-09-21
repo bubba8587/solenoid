@@ -1,3 +1,4 @@
+// [[C16]] polarsEngine
 // IPC surface — the error contract + health check for the Rust engine boundary.
 //
 // This module defines `IpcError` (the tagged-error convention every engine

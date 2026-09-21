@@ -1,12 +1,12 @@
-// Grid-cell text for a task under a column key. Dates format as the app default DD-MMM-YYYY
-// via serial math (this package never touches Date). Duration is inclusive whole days.
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate
+// Grid-cell text for a task under a column key; dates as DD-MMM-YYYY via serial math.
 
 import type { GanttPayload, GanttTask } from "./payload";
 import type { GridColumn } from "./frame";
 import { civilFromSerial, MONTH_NAMES } from "./serial";
 import { drawnLastDay } from "./scale";
 
-/** Format a whole-day serial as DD-MMM-YYYY (the app's DEFAULT_DATE_FORMAT). */
+/** Format a whole-day serial as DD-MMM-YYYY ([[C44]] dateSerials). */
 export function formatDate(serial: number): string {
   if (!Number.isFinite(serial)) return "";
   const c = civilFromSerial(serial);

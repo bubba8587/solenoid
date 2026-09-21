@@ -1,7 +1,5 @@
-// dte:B15,C79
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 // Pack registry + activation store (definitions live under src/graph/packs/).
-// Activation filters the Add menu ONLY — every pack's constructors stay registered,
-// so a saved graph using a deactivated pack's node still loads.
 
 import { createNotifier } from "./storeKit";
 import { GEOMETRY_PACK } from "./packs/geometry";

@@ -1,6 +1,4 @@
-// Free-drawn cables: annotation curves with their own shape, ends, width, head size and
-// color. Never wiring — no sockets, no value, no part in `cableShapeStore`.
-// Spec: docs/subsystem-invariants.md § Drawn cables.
+// [[C90]] drawnCablesAnnotate. Mechanics: specs/drawn-cables.md.
 import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 import { unselectAllNodes } from "./canvasCommands";
@@ -48,8 +46,7 @@ export const DRAWN_HEAD_SCALES: { value: number; label: string }[] = [
   { value: 2.2, label: "Huge" },
 ];
 
-/** The dial step. 45° only (author ruling, see the spec); pinned by test. Defined in
- *  drawnCablePath (where the derived heading snaps to the same grid); re-exported here. */
+/** The dial step, 45° only ([[C90]]); defined in drawnCablePath, re-exported here. */
 export { DRAWN_ANGLE_STEP };
 
 const WIDTH_MIN = 0.2;
@@ -130,8 +127,7 @@ export const drawnCableStore = {
     notify();
   },
 
-  /** Select, and drop every node, wired-cable and standoff selection: drawn-cable
-   *  selection is exclusive both ways (the spec's rule). */
+  /** Select; selection is exclusive with nodes, wired cables and standoffs ([[C90]]). */
   selectOnly(id: string | null) {
     drawnCableStore.select(id);
     if (id === null) return;

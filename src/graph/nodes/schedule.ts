@@ -1,4 +1,4 @@
-// dte:C69,C70,C71
+// [[C69]], [[C70]], [[C71]]
 import { ClassicPreset } from "rete";
 import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut, readInput } from "./shared";
 import { isSolError, type SolError } from "../errorValue";

@@ -1,7 +1,6 @@
-// The time scale: a drawn day-window, a pixels-per-day, and a two-tier header. Pure serial
-// math (see serial.ts) — no Date, so DST cannot shift a column. The design follows DHTMLX's
-// tier normalization (coarser tier snapped to the primary tier's pixels; month columns
-// proportional to their day count) rebuilt on serials.
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
+// The time scale: a drawn day window, pixels per day and a two-tier header on serial math
+// (DHTMLX's tier normalization, the coarser tier snapped to the primary's pixels, rebuilt on serials).
 
 import type { GanttPayload, GanttViewOptions } from "./payload";
 import type { FrameScale, ScaleCell, ScaleTier } from "./frame";
@@ -52,13 +51,13 @@ export function resolveWindow(payload: GanttPayload): { from: number; to: number
   return { from: lo - 7, to: hi + 1 + 7 };
 }
 
-/** The effective zoom: an explicit preset, or the coarsest preset whose whole span fits the
- *  width when `fit`/absent. */
 /** Approx days per cell for each tier, for the fit=page granularity choice. */
 const DAYS_PER_CELL: Record<Zoom, number> = { day: 1, week: 7, month: 30.4, quarter: 91.3, year: 365 };
 /** Minimum cell width (px) for a tier label to read at the export. */
 const MIN_FIT_CELL = 24;
 
+/** The effective zoom: an explicit preset, or the finest preset whose density the width
+ *  affords when `fit`/absent. */
 export function resolveZoom(payload: GanttPayload, width: number): Zoom {
   const z = payload.view.zoom;
   const fitPage = payload.view.fit === "page";
@@ -178,8 +177,7 @@ function upperTier(zoom: Zoom, scale: Band, view: GanttViewOptions): ScaleTier |
   const { from, to } = scale;
   switch (zoom) {
     case "day": {
-      // Month over days, with the weekday initial when a day is wide enough is handled by the
-      // primary; the coarser band names the month + year.
+      // The coarser band over days names the month + year.
       let s = startOfMonth(from);
       while (s < to) {
         const c = civilFromSerial(s);
@@ -252,5 +250,4 @@ export function drawnLastDay(finish: number, minutes?: boolean): number {
   return minutes ? Math.floor(finish - ONE_MINUTE) : Math.floor(finish);
 }
 
-// Re-exported so callers building day-tier labels can add a weekday initial if they want it.
 export { dayOfWeek, daysInMonth, DAY_NAMES };

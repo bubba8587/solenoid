@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
 import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";

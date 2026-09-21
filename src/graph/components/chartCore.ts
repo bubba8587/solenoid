@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk (stays recharts-free)
 // Must stay recharts-FREE: importing a helper here must not drag recharts out of
 // its lazily-loaded chunk into the main bundle.
 import { useSyncExternalStore } from "react";

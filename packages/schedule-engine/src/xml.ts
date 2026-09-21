@@ -1,6 +1,6 @@
-// A small XML reader for the MSPDI subset: elements, text, CDATA, comments, entities. No
-// attributes are needed (MSPDI carries everything as child elements) and no DOM is
-// available in the test environment, so this stays dependency-free.
+// [[C69]] ganttPackages
+// A dependency-free XML reader for the MSPDI subset (elements, text, CDATA, comments,
+// entities; no attributes, MSPDI carries everything as child elements): the vitest env has no DOM.
 
 export interface XmlNode {
   name: string;

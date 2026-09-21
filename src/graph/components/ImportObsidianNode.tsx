@@ -1,23 +1,21 @@
+// [[B1]] obsidianBet, [[C1]] demoVault
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { ImportObsidianNode as ImportObsidianNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { settingsStore } from "../settingsStore";
+import { connectionStore } from "../connectionStore";
 import { SwatchGrid } from "./SwatchGrid";
 import { NodeSocket } from "./NodeSocket";
 import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
-import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
-import { useVaultWatch } from "./useVaultWatch";
-import { touches } from "../vaultWatch";
 import { getActiveView, getActiveEditor } from "../activeGraph";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
@@ -29,6 +27,8 @@ import type { NodeProps } from "./nodeKit";
 import type { FrontmatterFieldType } from "../noteFrontmatter";
 import "./NoteNode.css";
 import "./ImportObsidianNode.css";
+import { renderNoteMarkdown } from "../noteMarkdown";
+import { useKatexReady } from "./katexLoader";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -63,8 +63,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
   const canRead = desktop || isDemoVaultPath(vault);
 
-  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
-  const title = useEditableLabel(data, () => { void getActiveView()?.rerenderNode(data.id); });
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
@@ -87,7 +85,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     data.body = content;
     data.fileName = sourcePath;
     if (sourcePath && (data.label === "Import Obsidian Note" || data.label.trim() === "")) {
-      data.label = baseName(sourcePath); // title hook resyncs its display off data.label
+      data.label = baseName(sourcePath); // the card's name elsewhere (stubs, the Inspector)
     }
     const { removed, retyped } = data.syncFields();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
@@ -121,9 +119,15 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minutes, desktop, data.fileName, vault]);
-  // Obsidian saved this note → reload (bundle E). Watches the note's folder, filters to the file.
-  const noteFolder = data.fileName.includes("/") ? data.fileName.slice(0, data.fileName.lastIndexOf("/")) : "";
-  useVaultWatch(vault, noteFolder, (paths) => { if (touches(paths, vault, data.fileName)) void reload(); }, desktop && !!data.fileName);
+  // "Refresh all connections" re-reads this note too (the file is read here, not in data()).
+  const gen = useSyncExternalStore(connectionStore.subscribe, connectionStore.gen);
+  const seenGen = useRef(gen);
+  useEffect(() => {
+    if (gen === seenGen.current) return;
+    seenGen.current = gen;
+    void reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gen]);
 
   function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
@@ -149,9 +153,11 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   // frontmatter field stays literal on the card rather than rendering empty.
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
+  const tex = useKatexReady(); // math re-renders once KaTeX lands
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
-    [renderBody],
+    () => DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [renderBody, tex],
   );
 
   const mode = appThemeStore.getMode();
@@ -184,17 +190,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {title.editing ? (
-          <input className="solenoid-note__name" placeholder="Import Obsidian Note" {...title.inputProps} />
-        ) : (
-          <div
-            className={`solenoid-note__name-display${data.label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={data.label || "Import Obsidian Note"}
-            {...title.displayProps}
-          >
-            {data.label.trim() || "Import Obsidian Note"}
-          </div>
-        )}
+        {/* No header name: the note's body carries its own heading. */}
+        <span className="sol-import__bar-spacer" />
         <button
           type="button"
           className="solenoid-note__swatch"
@@ -212,7 +209,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
           <button
             type="button"
             className="solenoid-note__swatch"
-            title="Open in Obsidian"
+            title={desktop ? "Open in Obsidian" : "Open in Obsidian works in the desktop app"}
+            disabled={!desktop}
             onClick={(e) => { e.stopPropagation(); void openExternal(obsidianOpenUrl(vault, data.fileName)!); }}
             onPointerDown={stopDragStart}
             onMouseDown={stopDragStart}
@@ -337,9 +335,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
       {!collapsed && !pickerOpen && (
         <div ref={bodyRef} className="solenoid-note__content">
-          {/* The imported note's own title (its file name) in the body — Obsidian titles
-              a note by its file. Its socket identity is the `path` row above. */}
-          {data.fileName && <div className="sol-import__doc-title" title={data.fileName}>{baseName(data.fileName)}</div>}
           {templateErrors ? (
             <pre className="solenoid-note__rendered solenoid-note__template-error" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
           ) : renderBody.trim() ? (

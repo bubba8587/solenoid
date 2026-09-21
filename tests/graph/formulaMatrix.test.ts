@@ -10,7 +10,7 @@ import { InterpolateNode } from "../../src/graph/nodes/stats";
 import { setCells } from "../../src/graph/nodes/matrixOps";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
-// ─── matricesInFormulas tranche 1: the matrix core, node-equals-formula (shareImpl) ───────────────
+// ─── [[C15]] matricesInFormulas tranche 1: the matrix core, node-equals-formula ([[C17]] shareImpl) ───────────────
 // Every matrix registration delegates to the same kernels the nodes run, so the
 // test that matters is equality against the NODE, not correctness in isolation —
 // the Tier 1/Tier 3 discipline at rank 2. Error CODES are part of the contract
@@ -82,7 +82,7 @@ describe("each matrix name computes what its node computes", () => {
     expect(ev("OUTER(a, b)", { a: [1, 2], b: [3, 4, 5] })).toEqual([[3, 4, 5], [6, 8, 10]]);
   });
 
-  it("WRAPROWS / WRAPCOLS — #N/A pads (appendLadder), pad_with overrides", () => {
+  it("WRAPROWS / WRAPCOLS — #N/A pads ([[C48]] appendLadder), pad_with overrides", () => {
     const x = [1, 2, 3, 4, 5];
     const nodeRows = new TableReshapeNode({ op: "wraprows" }).data({ list: [x], wrapCount: [3] }).result as unknown[][];
     const fxRows = ev("WRAPROWS(x, 3)", { x }) as unknown[][];
@@ -110,7 +110,7 @@ describe("each matrix name computes what its node computes", () => {
   });
 });
 
-describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's point)", () => {
+describe("ownership displaced the broadcast garbage ([[D26]] hideMatrixFromVendor's point)", () => {
   it("MMULT is a matrix product, not the element-wise Hadamard the fallthrough gave", () => {
     // Pre-tranche this answered [[{},{}],[{},{}]] — Formula.js MMULT mapped
     // cell-wise. If this test ever sees a 2×2 of objects again, the meta lost
@@ -126,7 +126,7 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
     expect(ev("TRANSPOSE(TRANSPOSE(m))", { m: M })).toEqual(M);
   });
 
-  it("COLUMNS / ROWS count the shape, sharing the TableInfo node's math (shareImpl)", () => {
+  it("COLUMNS / ROWS count the shape, sharing the TableInfo node's math ([[C17]] shareImpl)", () => {
     // Pre-ownership these fell through to Formula.js element-wise, answering a
     // same-shape array of #VALUE! even on a 1-D list. Now both surfaces call
     // matrixShape: a list is a ROW here, so COLUMNS counts it and ROWS is 1; a
@@ -140,7 +140,7 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
     expect(ev("COLUMNS(m) * ROWS(m)", { m: [[1, 2, 3], [4, 5, 6]] })).toBe(6);
   });
 
-  it("HSTACK / VSTACK / CHOOSECOLS / CHOOSEROWS / EXPAND compute what their nodes do (shareImpl)", () => {
+  it("HSTACK / VSTACK / CHOOSECOLS / CHOOSEROWS / EXPAND compute what their nodes do ([[C17]] shareImpl)", () => {
     const a = [[1, 2], [3, 4]], b = [[5, 6], [7, 8]];
     expect(ev("HSTACK(a, b)", { a, b })).toEqual(new StackNode({ op: "hstack" }).data({ t0: [a], t1: [b] }).result);
     expect(ev("VSTACK(a, b)", { a, b })).toEqual(new StackNode({ op: "vstack" }).data({ t0: [a], t1: [b] }).result);
@@ -150,7 +150,7 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
     expect(isSolError(ev('XSTACK("x", a, b)', { a, b }))).toBe(true);
     // A bare list is one ROW on both surfaces.
     expect(ev("VSTACK(u, u)", { u: [1, 2, 3] })).toEqual(new StackNode({ op: "vstack" }).data({ t0: [[1, 2, 3]], t1: [[1, 2, 3]] }).result);
-    // Ragged inputs pad with #N/A (shape construction, appendLadder) — identical to the node.
+    // Ragged inputs pad with #N/A (shape construction, [[C48]] appendLadder) — identical to the node.
     expect(ev("HSTACK(a, w)", { a, w: [[9], [8], [7]] })).toEqual(new StackNode({ op: "hstack" }).data({ t0: [a], t1: [[[9], [8], [7]]] }).result);
 
     expect(ev("CHOOSECOLS(a, 2)", { a })).toEqual(new TableSelectNode({ op: "choosecols" }).data({ matrix: [a], indices: [[2]] }).result);
@@ -171,7 +171,7 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
     }
   });
 
-  it("every tranche registration declares the hideMatrixFromVendor gate", () => {
+  it("every tranche registration declares the [[D26]] hideMatrixFromVendor gate", () => {
     for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS", "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND"]) {
       expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
       expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);
@@ -179,7 +179,7 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
   });
 });
 
-describe("matricesInFormulas tranche 2 — the array-returning core, node-equals-formula", () => {
+describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, node-equals-formula", () => {
   it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
     const { UniqueNode, SortNode } = await import("../../src/graph/nodes/list");
     const x = [3, 1, 3, null, 2];
@@ -233,7 +233,7 @@ describe("matricesInFormulas tranche 2 — the array-returning core, node-equals
   it("FILTER by mask — Excel's include-array form", () => {
     // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
     // with wired comparison values) — a different mechanism from Excel's computed
-    // boolean mask, so shareImpl's node-equality doesn't apply term-for-term here; the
+    // boolean mask, so [[C17]] shareImpl's node-equality doesn't apply term-for-term here; the
     // shared ground is filterByMask (listOps), which this pins directly.
     const x = [1, 5, 2, 9];
     expect(ev("FILTER(x, x > 2)", { x })).toEqual([5, 9]);
@@ -260,10 +260,10 @@ describe("matricesInFormulas tranche 2 — the array-returning core, node-equals
   });
 });
 
-// ─── INTERPOLATE grid mode: the last name matricesInFormulas unblocked (shareImpl) ────────────────
+// ─── INTERPOLATE grid mode: the last name [[C15]] matricesInFormulas unblocked ([[C17]] shareImpl) ────────────────
 // The node is ONE node with a List/Grid mode toggle, so it is ONE formula name —
 // the arm is chosen by the first argument's RANK, not by a second registration
-// (uniqueNameMap injectivity). Grid mode was parked behind the noFramesInFormulas cap; matricesInFormulas lifted it.
+// ([[C18]] uniqueNameMap injectivity). Grid mode was parked behind the noFramesInFormulas cap; [[C15]] matricesInFormulas lifted it.
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   // Grid mode is now INTERPOLATE(table, xs?, ys?, forecast?) — coordinates ride beside Z.
   const z = [[0, 10], [null, null], [20, 30]];

@@ -1,3 +1,4 @@
+// [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast. Mechanics: specs/group-expand-push.md.
 import { measuredSize } from "./nodeSize";
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
@@ -87,6 +88,7 @@ function buildWorld(editor: Editor, view: View, expandedIds: Set<string>): World
     if (n instanceof GroupNode) {
       const m = expandedIds.has(n.id) ? null : measuredSize(view, n.id);
       const el = view.nodeElement(n.id);
+      // [[D64]] exception: an expanding group is read at its STORED size mid-render.
       const w = expandedIds.has(n.id) ? n.width : m?.w ?? (el?.offsetWidth || n.width);
       const h = expandedIds.has(n.id) ? n.height : m?.h ?? (el?.offsetHeight || n.height);
       boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
@@ -152,9 +154,8 @@ function satellitesFor(editor: Editor, view: View, g: GroupNode, world: World): 
   return out;
 }
 
-// A displaced box clears TOWARD its anchors so cables stay short; each anchor
-// resolves to its push entity (a member counts as its group, a docked FC as its
-// host). Satellites of the expanding group are excluded — the rails pull them.
+// Anchors resolve to push entities (member → group, docked FC → host); satellites of
+// the expanding group are excluded because the rails pull them.
 function buildAnchors(
   editor: Editor,
   world: World,
@@ -199,6 +200,7 @@ function collapsedCardSize(view: View, g: GroupNode): { w: number; h: number } {
   const m = measuredSize(view, g.id);
   if (m) return m;
   const el = view.nodeElement(g.id);
+  // [[D64]] exception: the last tier is the collapsed-card layout formula, not a default.
   if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
   const rows = Math.max(
     groupCollapseStore.retainedFor(g.id).length,
@@ -360,9 +362,8 @@ function runExpandPushes(
     // `record` off ⇒ the displacement is PERMANENT, no restore record.
     if (record) {
       const existing = _records.get(id);
-      // Merge only into a record whose node is STILL where our last push left it —
-      // Tidy/align translate without firing drag invalidation, so merging into a
-      // stale record would re-arm an obsolete restore target.
+      // Merge only into a record whose node is still where the last push left it
+      // ([[C85]]): Tidy/align translate without firing drag invalidation.
       const stale = existing &&
         (Math.abs(p.x - existing.expX) > EPS || Math.abs(p.y - existing.expY) > EPS);
       if (existing && !stale) {
@@ -423,8 +424,8 @@ export function restoreSettledPushes(editor: Editor, view: View): void {
 
 // ─── The one toggle entry point ────────────────────────────────────────────────
 
-/** THE toggle entry point (chevron and outline panel route through here) so the
- *  flip → sync → re-render → settle → push/restore order is identical everywhere. */
+/** THE toggle entry point ([[C85]] groupPushDeterministic): every caller gets the same
+ *  flip → sync → re-render → settle → push/restore order. */
 export async function setGroupsCollapsed(
   editor: Editor,
   view: View,

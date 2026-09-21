@@ -1,4 +1,4 @@
-// dte:D29
+// [[D29]]
 // Parity tests for the Polars engine against the JS oracle (`frameVerbs.ts`).
 // Each test mirrors a verb's documented behavior on a small fixture. Verb fns are
 // exercised directly on `SolFrame`; source/preview/column/drop go through the store.

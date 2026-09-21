@@ -1,3 +1,4 @@
+// [[C8]] declareOnce, [[D17]] relaysTransparent
 // The static sibling of frameVerbs.ts: a Shape's columns must be exactly what a real
 // preview() reports. Nest/Unnest and Frame Lookup are out — not frame shapes at all.
 import { makeHeaders, type FrameColType, type FrameValue } from "./frame";

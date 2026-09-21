@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 // THE one place that drops cables stranded by a frontmatter re-sync, shared by
 // NoteComponent's on-blur commit and the Import node's file-load.
 

@@ -1,8 +1,8 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
 // The snap step IS the background dot spacing, so snap points land exactly on visible dots.
-// A module singleton so the canvas layer can read it without the main React tree.
 
 /** Background dot spacing in world units; `syncSurfaceBackground` scales the tile from it. */
 export const DOT_SPACING = 24;

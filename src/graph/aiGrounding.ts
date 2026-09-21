@@ -1,3 +1,4 @@
+// [[B13]] aiInScope, [[C8]] declareOnce
 // The model-facing grounding spec for authoring graphs in the text form, GENERATED from
 // `nodeCatalog.ts` and the live classes — never hand-authored.
 

@@ -1,3 +1,4 @@
+// [[C66]] scriptNode, [[C95]] commitOnEnter
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ScriptNode as ScriptNodeType } from "../rete-nodes";
 import type { SolError } from "../errorValue";
@@ -20,8 +21,8 @@ const FIELD_CHROME = 10; // padding + borders around the text box
 const FIELD_MAX_H = 360;
 
 export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>) {
-  // The source drafts locally and commits on blur (Ctrl+Enter blurs; Escape reverts):
-  // a commit re-derives the parameter sockets, which must never happen per keystroke.
+  // The source drafts locally and commits on blur (Ctrl+Enter blurs; Escape reverts): a
+  // commit re-derives the parameter sockets ([[C95]] commitOnEnter, [[C66]] scriptNode).
   const [draft, setDraft] = useState(node.expr);
   const [, forceUpdate] = useState(0);
   const canceled = useRef(false);
@@ -81,7 +82,7 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}
       <InlineInputs node={node} emit={emit} />
-      {/* No result-type toggle: the value types itself and the socket follows it. */}
+      {/* No result-type toggle: the value types itself ([[C66]] scriptNode). */}
       <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
       {scriptIsVolatile(node.expr) && <RecalcButton title="Run the script again" />}
     </NodeShell>

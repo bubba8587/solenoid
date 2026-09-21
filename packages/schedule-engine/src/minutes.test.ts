@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 import { describe, it, expect } from "vitest";
 import { schedule, Calendar, intervalsForHours, type PlanTask } from "./index";
 

@@ -1,6 +1,6 @@
-// Cube socket glyph, shared by the live socket, the legend, and the hover highlight;
-// paths are 240-unit space centered on (120,120), mapped to the 12x12 socket box.
-// Deliberately OVERSIZED past that box, so the socket SVG must paint overflow-visible.
+// [[C11]] socketBox12
+// Cube socket glyph shared by the socket, the legend and the hover highlight: 240-unit paths
+// mapped onto the 12×12 box, deliberately OVERSIZED, so the socket SVG must paint overflow-visible.
 
 export const CUBE_FILL_PATH = "M223.007,60.529l0.038,119.008l-103.007,59.471l-103.045,-59.537l-0.038,-119.008l103.007,-59.471l103.045,59.537Z";
 const CUBE_SEAMS_PATH = "M120,120l87.206,-50.349m-87.206,50.349l-87.205,-50.346m87.205,50.346l-0.001,100.695";

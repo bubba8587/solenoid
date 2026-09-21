@@ -1,3 +1,4 @@
+// [[C47]] equationNode, [[C12]] socketRows, [[C11]] socketBox12
 import { useRef, useState, useLayoutEffect, type ReactNode } from "react";
 import type { EquationNode as EquationNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps, type Emit } from "./nodeKit";
@@ -7,9 +8,8 @@ import { formulaPopup } from "../formulaPopupStore";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ExpressionNode.css";
 
-// A local MeasuredSocketRow because this row carries TWO sockets, and it centers on
-// the HERO VALUE BOX, not the row — the label stacks above the box, so the row's own
-// center would land between them. The row must NOT become a positioning context.
+// A local measured row ([[C12]] socketRows): two sockets, centered on the HERO VALUE BOX
+// rather than the row. The row must NOT become a positioning context.
 function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
@@ -30,8 +30,8 @@ export interface AcausalRowNode {
   outputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
 }
 
-// One variable = one hero row with sockets on BOTH edges. Shared by every acausal
-// card — don't rebuild it per node. `--output` keeps rows visible when collapsed.
+// One variable = one hero row with sockets on BOTH edges, shared by every acausal card.
+// `--output` keeps rows visible when collapsed.
 export function EquationVarRow({
   node, emit, varKey, value, solved, label, desc,
 }: {

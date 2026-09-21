@@ -9,36 +9,24 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "Obsidian integration",
-    body: "Import individual Obsidian markdown notes, vault-wide frontmatter properties, and sync with Tasknotes data. The newly created Knap language and the Report Node's template socket work together to put your spreadsheet values directly into your note contents.",
+    title: "Linux desktop",
+    body: "Solenoid now runs as a desktop app on Linux as well as Windows. Get the AppImage or the .deb from the Download page.",
   },
   {
-    title: "TaskNotes",
-    body: "The TaskNotes node reads advanced task, calendar and stats data from the HTTP API. Check out the \"Tasks from TaskNotes\" and \"Kitchen remodel\" example graphs, as well as the Calendar layout of the new Gantt chart node.",
+    title: "Formula columns",
+    body: "Pick Fx on a Frame Input column to write a formula over the row, such as @qty * @price. A formula that returns a date stays a date.",
   },
   {
-    title: "Reports Templates and Form-filling",
-    body: "Note and Report bodies now use Knap, Obsidian's new template language. The Report's Record socket generates documents with one page per input row.",
+    title: "Obsidian markdown in notes",
+    body: "Note, Import Obsidian Note and the Report preview now render wikilinks, tags, callouts, highlights and math the way Obsidian does.",
   },
   {
-    title: "Schedules and Gantt charts",
-    body: "The Schedule node runs a critical-path pass over a task table for advanced Gantt chart generation. Local File imports Microsoft Project XML, GanttProject or Primavera XER plans.",
+    title: "Solenoid Properties for Obsidian",
+    body: "A companion Obsidian plugin adds List, Matrix, Frame and Cube property types, shown as Solenoid's chips and edited in its table editor. Values stay plain YAML in the note.",
   },
   {
-    title: "Everyday sources",
-    body: "Check out the Weather, Geocode, Holidays, Currency, Time Zone Convert, World Clock and QR Code nodes. See the Garden Dashboard example.",
-  },
-  {
-    title: "Planners",
-    body: "Payoff Planner helps you plan an efficient payoff schedule for various debts. Group Cost Settle helps you calculate who owes whom, by totals or by transaction.",
-  },
-  {
-    title: "Categorical columns",
-    body: "Pick Chip on a text column in a data frame for per-category color formatting.",
-  },
-  {
-    title: "Peek any socket",
-    body: "Hover over an output socket for a preview of its contents.",
+    title: "Table editing",
+    body: "The table popup's Form and CSV views now edit in place. A date cell gets a calendar, a Boolean cell a checkbox, and a text cell suggests the values already in its column.",
   },
 ];
 

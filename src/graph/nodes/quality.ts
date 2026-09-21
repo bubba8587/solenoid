@@ -1,3 +1,4 @@
+// [[C39]] effectsEdgeTriggered, [[D17]] relaysTransparent (Expect is a pure passthrough)
 import { ClassicPreset } from "rete";
 import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";

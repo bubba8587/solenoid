@@ -1,6 +1,5 @@
-// The two unsupervised staples, rete-free: k-means (sklearn KMeans / R kmeans) and PCA
-// (sklearn PCA / R prcomp). Both take rows × features numbers; the frame cards pick the
-// numeric columns and drop rows with a blank.
+// [[D19]] implReteFree, [[C17]] shareImpl, [[D46]] freezeVolatilePerCalc
+// Rows × features numbers in; the frame cards pick the numeric columns and drop rows with a blank.
 import { matEigh, matSolve } from "./matrixOps";
 import { mulberry32 } from "../monteCarlo";
 import { stdNormCDF } from "./mathUtils";
@@ -9,8 +8,9 @@ export interface KMeansResult { labels: number[]; centers: number[][]; inertia: 
 
 const sqDist = (a: readonly number[], b: readonly number[]) => { let s = 0; for (let i = 0; i < a.length; i++) s += (a[i] - b[i]) ** 2; return s; };
 
-/** Lloyd's algorithm with k-means++ seeding, `nInit` restarts (seeded, so a recalculation
- *  repeats itself), the lowest-inertia run kept. Labels are 1-based cluster ids. */
+/** Lloyd's algorithm with k-means++ seeding, `nInit` restarts (a fixed seed, so a
+ *  recalculation repeats itself — [[D46]] freezeVolatilePerCalc), the lowest-inertia run
+ *  kept. Labels are 1-based cluster ids. */
 export function kmeans(points: readonly (readonly number[])[], k: number, opts: { seed?: number; nInit?: number; maxIter?: number } = {}): KMeansResult | null {
   const n = points.length;
   const kk = Math.round(k);

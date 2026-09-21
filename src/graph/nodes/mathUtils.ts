@@ -1,4 +1,4 @@
-// dte:C17
+// [[C17]], [[C102]] gridFillThenForecast (fillBorderedGrid)
 // Numerical analysis helpers shared across statistical distribution nodes.
 // All functions are pure and domain-checked — return NaN for invalid inputs.
 
@@ -305,7 +305,7 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 }
 
 // ─── Shared statistical-test implementations (ONE impl, two surfaces) ─────────
-// Node and formula both call these (shareImpl): Formula.js's T.TEST ignores
+// Node and formula both call these ([[C17]] shareImpl): Formula.js's T.TEST ignores
 // `tails`/`type` and its F.TEST returns the variance RATIO, not the p-value.
 import { solError, isSolError, type SolError } from "../errorValue";
 
@@ -320,7 +320,7 @@ export function arrSampleVar(arr: readonly number[]): number {
   return arr.reduce((s, v) => s + (v - m) ** 2, 0) / (arr.length - 1);
 }
 
-// ─── Continuous-distribution kernels (shareImpl) ──────────────────────────────
+// ─── Continuous-distribution kernels ([[C17]] shareImpl) ──────────────────────────────
 // ONE home for the t / chi-squared / F / gamma CDFs and PDFs that Formula.js lacks.
 // The in-formula registrations (excelFunctions.ts) AND the Distribution node
 // (distribution.ts) both call these, so the two surfaces cannot drift — the CDFs also
@@ -446,7 +446,7 @@ export function probBetween(
 
 
 // ─── Bilinear lookup-table fill (INTERPOLATE grid mode) ──────────────────────
-// Lives here, not nodes/stats.ts, because the formula path must stay rete-free (implReteFree).
+// Lives here, not nodes/stats.ts, because the formula path must stay rete-free ([[D19]] implReteFree).
 import { fitSurface, type FitPoint } from "./surfaceFit";
 
 /** Normalize a grid's inputs to the ONE convention (coordinates ride beside the Z matrix,

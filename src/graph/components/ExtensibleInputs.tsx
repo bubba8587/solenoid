@@ -1,3 +1,4 @@
+// [[C28]] literalsIffEditable, [[D10]] onePrunePath
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";

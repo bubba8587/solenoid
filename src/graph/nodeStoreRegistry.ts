@@ -1,5 +1,4 @@
-// Cleanup for node-keyed module stores: a new store adds ONE module-scope
-// `registerNodeForget(...)` call and never threads cleanup into Canvas.tsx.
+// [[C40]] storesRegisterForget
 
 type Forgetter = (nodeId: string) => void;
 

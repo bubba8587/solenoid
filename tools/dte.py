@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""dte: Decision Tree Engineering reference tool.  dte:B6
+"""dte: Decision Tree Engineering reference tool.  dte:B6,C19
 
 One file, standard library only, Python 3.8+. Copy it into any project.
 
@@ -10,7 +10,7 @@ One file, standard library only, Python 3.8+. Copy it into any project.
     python dte.py blast <ID>             what would changing this touch?
     python dte.py trace <path>           why does this artifact exist?
     python dte.py conflicts              declared contradictions and who wins
-    python dte.py coverage               artifacts with no citation
+    python dte.py coverage [--excluded] [--check]  artifacts with no citation; .dtecoverage names the ones that need none; --check exits 1 below 100%
     python dte.py scope                  advisory: no reach, too broad, skipped rings
     python dte.py retired                the ledger
     python dte.py authority [ring]       who holds each ring (whom to ask)
@@ -30,7 +30,7 @@ One file, standard library only, Python 3.8+. Copy it into any project.
   check and integrate
     python dte.py validate [--as RING]   consistency; exit 1 on errors ($DTE_RING is the default ring)
     python dte.py export [--out FILE]    JSON of nodes, citations, ledger, inbox
-    python dte.py init                   scaffold decisions/, dte.cfg, .dteignore in a new project
+    python dte.py init                   scaffold decisions/, dte.cfg, .dteignore, .dtecoverage in a new project
     python dte.py hook                   install a pre-commit hook that runs validate
 
 Options: --root DIR (default: cwd)  --decisions DIR (default: ROOT/decisions)
@@ -47,17 +47,80 @@ import subprocess
 import sys
 from collections import defaultdict
 
-ID_RE = re.compile(r"^([A-Z])(\d+)$")   # dte:B23
+ID_RE = re.compile(r"^([A-Z])(\d+)$")   # dte:B32
+# Two citation forms, read everywhere: the dte: token and the [[ID]] wikilink
+# (optionally [[ID|alias]]) that Obsidian follows. `links` in dte.cfg picks the written one.
 CITE_RE = re.compile(r"\bdte:([A-Z]\d+(?:\s*,\s*[A-Z]\d+)*)")
+LINK_RE = re.compile(r"\[\[([A-Z]\d+)(?:\|[^\]]*)?\]\]")
+
+
+COVERS_RE = re.compile(r"^\s*(?:<!--|//|/\*).*?\bcovers:\s*([^>\n]+)")   # only in a comment line (a markdown heading starts with #)
+
+def cited_ids(line):
+    """Every id cited on a line, in order, from both forms."""
+    found = []
+    for m in CITE_RE.finditer(line):
+        found.extend(re.split(r"\s*,\s*", m.group(1)))
+    found.extend(m.group(1) for m in LINK_RE.finditer(line))
+    return found
+
+
+def summary_of(name, title):
+    """How a node is printed: `name: title` when it has a handle, else the title (dte:B32)."""
+    return "%s: %s" % (name, title) if name else title
+
+
+def wikilinks():
+    return CONFIG.get("links") == "wikilink"
+
+
+def fm_id(i):
+    """One id as written in a frontmatter link field."""
+    return '"[[%s]]"' % i if wikilinks() else i
+
+
+def fm_ids(ids):
+    return "[%s]" % ", ".join(fm_id(i) for i in ids)
+
+
+def cite_text(ids):
+    """The citation as written into an artifact."""
+    if wikilinks():
+        return ", ".join("[[%s]]" % i for i in ids)
+    return "dte:" + ",".join(ids)
+
+
+def sub_citations(text, old_id, new_id):
+    """old_id -> new_id in every citation of either form."""
+    def swap(m):
+        ids = [new_id if x == old_id else x for x in re.split(r"\s*,\s*", m.group(1))]
+        return "dte:" + ",".join(ids)
+    text = CITE_RE.sub(swap, text)
+    return LINK_RE.sub(lambda m: m.group(0).replace("[[" + old_id, "[[" + new_id, 1)
+                       if m.group(1) == old_id else m.group(0), text)
 STATUSES = {"proposed", "active", "superseded", "reverted"}
 MADE_BY = {"human", "ai", "joint"}
 LIST_FIELDS = {"parents", "supersedes", "conflicts_with"}
 # No depends_on or structural fields: that axis belongs to the graph.  dte:B9
-KNOWN_FIELDS = LIST_FIELDS | {
-    "id", "title", "status", "superseded_by", "made_by", "by", "date",
+OBSIDIAN_FIELDS = {"aliases", "tags", "cssclasses"}   # Obsidian's own keys. aliases is written from name and must equal it (dte:B32)
+KNOWN_FIELDS = LIST_FIELDS | OBSIDIAN_FIELDS | {
+    "id", "name", "title", "status", "superseded_by", "made_by", "by", "date",
     "ratified_by", "confidence", "authorized_by", "contested_by",
 }
-INBOX_FIELDS = {"title", "proposed_ring", "ask", "made_by", "by", "date", "parents", "confidence"}
+INBOX_FIELDS = {"name", "title", "proposed_ring", "ask", "made_by", "by", "date", "parents", "confidence", "kind", "spec"} | OBSIDIAN_FIELDS
+# The outbox: what a human changes in the vault and an agent must process. A note dropped in
+# decisions/outbox, an action tag on a node (a tags property or an inline #ratify, #retire, #contest, #ask),
+# or a ratified_by typed into the properties pane. Never a bare diff: an anonymous edit cannot
+# be told from an agent's own unfinished work, and validate already lists changed nodes (B17).
+OUTBOX_DIR = "outbox"
+NAME_RE = re.compile(r"^[a-z][A-Za-z0-9]*$")   # the readable handle: camelCase, unique across the tree (dte:B32)
+ACTION_TAG_RE = re.compile(r"(?<![\w/#])#(ratify|retire|contest|ask)\b")
+ACTIONS = {
+    "ratify": "the human ratifies it: dte ratify <ID> --by <human>",
+    "retire": "the human reverts it: dte blast <ID>, then dte retire <ID> --by <human> --authorized-by <human>, fix the orphans",
+    "contest": "the human disputes it: dte contest <ID> --again, build the alternatives, record the verdict, report",
+    "ask": "the human left a question or comment in the body: answer it in chat; if it changes the node, make the change and add a History line",
+}
 IN_EFFECT = {"proposed", "active"}
 TITLE_MAX = 100          # dte:B16
 INBOX_DIR = "inbox"      # dte:B14
@@ -65,7 +128,13 @@ LEDGER = "RETIRED"       # dte:C11
 
 DEFAULTS = {"summaries": True, "protect_human": True, "authority": (),
             "docs": ("*.md", "docs/*"), "broad_fraction": 0.3, "broad_min": 5,   # dte:C8
-            "retire": "delete"}   # dte:B24
+            # Layers below the tree, told apart by glob so a node never stores what is below it.  dte:B37,C24
+            "specs": ("specs/*", "spec/*", "*.spec.md"),
+            "tests": ("tests/*", "test/*", "test_*", "*_test.*", "*.test.*", "*.spec.ts", "*.spec.js"),
+            "agents": ("CLAUDE.md", "AGENTS.md", ".claude/*", ".cursorrules", ".github/copilot-instructions.md"),
+            "retire": "delete",   # dte:B24
+            "links": "token",     # token writes dte:ID; wikilink writes [[ID]] (Obsidian-browsable)
+            "scan_self": False}   # the tool's own file is skipped unless the tree is DTE's own (dte:C3)
 CONFIG = dict(DEFAULTS)
 
 
@@ -84,16 +153,18 @@ def load_config(root):
                 continue
             key, _, val = line.partition("=")
             key, val = key.strip(), val.strip()
-            if key in ("summaries", "protect_human"):
+            if key in ("summaries", "protect_human", "scan_self"):
                 cfg[key] = val.lower() in ("on", "true", "yes", "1")
-            elif key == "docs":
-                cfg["docs"] = tuple(x.strip() for x in val.split(",") if x.strip())
+            elif key in ("docs", "specs", "tests", "agents"):
+                cfg[key] = tuple(x.strip() for x in val.split(",") if x.strip())
             elif key == "broad_fraction":
                 cfg["broad_fraction"] = float(val)
             elif key == "broad_min":
                 cfg["broad_min"] = int(val)
             elif key == "retire":
                 cfg["retire"] = "keep" if val.lower() == "keep" else "delete"
+            elif key == "links":
+                cfg["links"] = "wikilink" if val.lower() in ("wikilink", "wiki", "obsidian") else "token"
             elif key == "authority":
                 for item in val.split(","):
                     if ":" in item:
@@ -162,8 +233,17 @@ def _strip_comment(raw):
 def _scalar(raw):
     raw = _strip_comment(raw.strip())
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "'\"":
-        return raw[1:-1]
-    return raw
+        q, raw = raw[0], raw[1:-1]
+        raw = raw.replace("''", "'") if q == "'" else raw.replace('\\"', '"').replace("\\\\", "\\")
+    elif raw in ("null", "~", "Null", "NULL"):   # Obsidian writes an emptied property as null
+        return ""
+    m = LINK_RE.fullmatch(raw)   # "[[B7]]" in a link field reads as B7
+    return m.group(1) if m else raw
+
+
+def fm_str(s):
+    """A free-text field, double-quoted so a colon or hash inside it stays valid YAML."""
+    return '"%s"' % s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _normalise(data):
@@ -182,6 +262,8 @@ class Node:
         data = self.raw
         self.id = str(data.get("id") or "")
         self.title = str(data.get("title") or "")
+        self.name = str(data.get("name") or "")
+        self.summary = summary_of(self.name, self.title)
         self.status = str(data.get("status") or "")
         self.made_by = str(data.get("made_by") or "")
         self.by = str(data.get("by") or "")
@@ -190,6 +272,10 @@ class Node:
         self.authorized_by = data.get("authorized_by") or None
         self.contested_by = data.get("contested_by") or None   # dte:B28
         self.confidence = data.get("confidence") or None
+        tags = data.get("tags") or []
+        tags = [str(t).lstrip("#") for t in (tags if isinstance(tags, list) else [tags]) if str(t)]
+        self.actions = sorted({t for t in tags if t in ACTIONS}
+                              | {m.group(1) for m in ACTION_TAG_RE.finditer(body)})
         for f in LIST_FIELDS:
             v = data.get(f)
             if v is None:
@@ -213,6 +299,11 @@ class Node:
         return self.status in IN_EFFECT
 
     @property
+    def imported(self):
+        """Re-homed existing content: the import wrote a History line saying so.  dte:B33"""
+        return bool(re.search(r"^- \S+ imported from ", _section(self.body, "## History"), re.M))
+
+    @property
     def human_held(self):
         """dte:B11"""
         return self.made_by == "human" or bool(self.ratified_by)
@@ -228,7 +319,7 @@ class Node:
             if not self.ratified_by and self.contested_by:
                 state += ", contested"   # dte:B28
             tag += " (%s%s)" % (self.made_by, state)
-        return "%s %s%s" % (self.id, self.title, tag)
+        return "%s %s%s" % (self.id, self.summary, tag)
 
 
 class InboxItem:
@@ -240,10 +331,13 @@ class InboxItem:
         self.raw = _normalise(data)
         self.slug = os.path.splitext(os.path.basename(path))[0]
         self.title = str(self.raw.get("title") or "")
+        self.name = str(self.raw.get("name") or "")
         self.proposed_ring = str(self.raw.get("proposed_ring") or "").upper()
         self.ask = str(self.raw.get("ask") or "")
         self.made_by = str(self.raw.get("made_by") or "")
         self.by = str(self.raw.get("by") or "")
+        self.kind = str(self.raw.get("kind") or "decision")   # decision | gap  dte:C27
+        self.spec = str(self.raw.get("spec") or "")
         p = self.raw.get("parents") or []
         self.parents = [str(x) for x in (p if isinstance(p, list) else [p]) if str(x)]
 
@@ -264,14 +358,17 @@ class Tree:
         self.root = os.path.abspath(root)
         self.decisions_dir = os.path.abspath(decisions_dir)
         self.inbox_dir = os.path.join(self.decisions_dir, INBOX_DIR)
+        self.outbox_dir = os.path.join(self.decisions_dir, OUTBOX_DIR)
         self.nodes = {}
         self.inbox = []
+        self.outbox = []           # (slug, title, path) notes the human dropped for an agent
         self.retired = {}          # id -> ledger row  dte:C11
         self.errors = []
         self.warnings = []
         self.children = defaultdict(list)
         self.citations = []
         self.scanned_files = []
+        self.spec_covers = {}   # spec rel -> covers: globs (a spec is the scope of the files built to it)
         self._leaf_ids = set()
         self._validated = False
         self._load()
@@ -282,10 +379,17 @@ class Tree:
             self.errors.append("decisions dir not found: %s" % self.decisions_dir)
             return
         for dirpath, dirs, files in os.walk(self.decisions_dir):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]   # .obsidian and friends
             if os.path.abspath(dirpath) == os.path.abspath(self.inbox_dir):
                 for fn in sorted(files):
                     if fn.endswith(".md"):
                         self._load_inbox(os.path.join(dirpath, fn))
+                dirs[:] = []
+                continue
+            if os.path.abspath(dirpath) == os.path.abspath(self.outbox_dir):
+                for fn in sorted(files):
+                    if fn.endswith(".md"):
+                        self._load_outbox(os.path.join(dirpath, fn))
                 dirs[:] = []
                 continue
             for fn in sorted(files):
@@ -298,6 +402,42 @@ class Tree:
                 r = self.resolve(p)
                 if r:
                     self.children[r].append(node.id)
+
+    def _load_outbox(self, path):
+        """A human's note: frontmatter optional, title from it, the first heading, or the file name."""
+        text = read_text(path).replace("\r\n", "\n")
+        slug = os.path.splitext(os.path.basename(path))[0]
+        title = None
+        if text.startswith("---"):
+            try:
+                data, body = parse_frontmatter(text)
+                title = str(data.get("title") or "") or None
+            except ValueError:
+                body = text
+        else:
+            body = text
+        if not title:
+            m = re.search(r"^#+\s+(.+)$", body, re.M)
+            title = m.group(1).strip() if m else slug
+        self.outbox.append((slug, title, path))
+
+    def outbox_items(self):
+        """[(kind, ref, label, todo)] everything a human designated in the vault for an agent to process."""
+        items = []
+        for slug, title, path in self.outbox:
+            items.append(("note", slug, '"%s"  (%s)' % (title, self.rel(path)),
+                          "read it and act: a decision becomes dte new or an inbox item, a correction becomes an edit, "
+                          "a question gets an answer in chat; then dte outbox --done %s" % slug))
+        for node in self.ordered_nodes():
+            for act in node.actions:
+                items.append(("tag", node.id, "%s  #%s" % (node.label(), act),
+                              ACTIONS[act]
+                              + "; then dte outbox --done %s" % node.id))
+            if node.ratified_by and not re.search(r"ratified by", node.body):
+                items.append(("ratified", node.id, "%s  ratified_by: %s typed in, no History line" % (node.label(), node.ratified_by),
+                              "run dte ratify %s --by \"%s\" so History records it"
+                              % (node.id, node.ratified_by)))
+        return items
 
     # -- ledger  dte:C11
     def ledger_path(self):
@@ -379,13 +519,17 @@ class Tree:
             self.errors.append("%s: inbox item needs a title" % rel)
         if item.made_by not in MADE_BY:
             self.errors.append("%s: made_by must be one of %s" % (rel, sorted(MADE_BY)))
+        if item.kind not in ("decision", "gap"):
+            self.errors.append("%s: kind must be decision or gap" % rel)
+        if item.kind == "gap" and not os.path.isfile(os.path.join(self.root, item.spec)):
+            self.errors.append("%s: gap names a spec that does not exist: %s" % (rel, item.spec or "(none)"))
         self.inbox.append(item)
 
     def rel(self, path):
         return os.path.relpath(path, self.root).replace(os.sep, "/")
 
     def resolve(self, i):
-        """No aliases: an id resolves to itself or to nothing.  dte:B23"""
+        """No aliases: an id resolves to itself or to nothing.  dte:B32"""
         return i if i in self.nodes else None
 
     def ordered(self, ids=None):
@@ -400,6 +544,7 @@ class Tree:
             return not self.errors
         self._validated = True
         E, W = self.errors, self.warnings
+        names = {}   # handle -> id
         for node in self.ordered_nodes():
             i = node.id
             expected = os.path.join(self.decisions_dir, node.ring, i + ".md")
@@ -408,6 +553,15 @@ class Tree:
             for f in node.raw:
                 if f not in KNOWN_FIELDS:
                     E.append("%s: unknown frontmatter field %r" % (i, f))
+            if node.name and not NAME_RE.match(node.name):
+                E.append("%s: name %r is not a camelCase identifier" % (i, node.name))
+            if node.name and node.in_effect and names.get(node.name, i) != i:
+                E.append("%s: name %r is already %s's" % (i, node.name, names[node.name]))
+            if node.in_effect:
+                names.setdefault(node.name, i)
+            aliases = node.raw.get("aliases")
+            if aliases is not None and [str(a) for a in (aliases if isinstance(aliases, list) else [aliases]) if str(a)] != ([node.name] if node.name else []):
+                E.append("%s: aliases must be exactly the name (no second identity, B32); set name instead" % i)
             if node.status not in STATUSES:
                 E.append("%s: status must be one of %s" % (i, sorted(STATUSES)))
             if node.made_by not in MADE_BY:
@@ -422,6 +576,8 @@ class Tree:
                 E.append("%s: body needs '## Decision' and '## Why' sections" % i)
             if re.search(r"^TODO$", node.body, re.M):
                 W.append("%s: body still has a TODO placeholder; finish it" % i)
+            if node.ratified_by and "## Contest" in node.body.split("\n"):   # dte:B41
+                W.append("%s: ratified but still carries '## Contest'; a ratified node is present governance, drop it" % i)
             # R1 parents  dte:B10
             if node.ring == "A" and node.parents:
                 E.append("%s: core (A) nodes cannot have parents" % i)
@@ -469,6 +625,7 @@ class Tree:
                     E.append("%s: conflicts_with %s %s" % (i, c, self.retired_hint(c)))
                 elif self.nodes[cid].in_effect and node.in_effect \
                         and self.nodes[cid].ring == node.ring:
+            # a same-ring contradiction is a refinement filed as a sibling: dte:B35
                     E.append("%s: same-ring contradiction with %s; supersede or move one" % (i, cid))
             # R7 human-held protection  dte:B11
             if CONFIG["protect_human"] and node.human_held and not node.authorized_by:
@@ -487,10 +644,9 @@ class Tree:
                     E.append("%s:%d: citation to unknown id %s" % (rel, ln, cid))
             elif not self.nodes[resolved].in_effect:
                 W.append("%s:%d: cites %s which is %s" % (rel, ln, cid, self.nodes[resolved].status))
-        cited = {r for _, _, _, r in self.citations if r}
-        for i in sorted(self._leaf_ids, key=id_key):
-            if i not in cited:
-                W.append("%s: in effect but has no children and no citing artifacts" % i)
+        for node, logged in self.body_changes():   # dte:B36
+            if not logged:
+                W.append("%s: body changed in this working tree with no new History line; add one" % node.id)
         for code, rel in self.retired_paths():   # dte:C11
             gone_id = os.path.splitext(os.path.basename(rel))[0]
             if code == "R":
@@ -521,6 +677,9 @@ class Tree:
                 E.append("%s: changed by an agent at ring %s but lives at ring %s; escalate to %s"
                          % (node.id, as_ring, node.ring, holder_of(node.ring, CONFIG)))
             if CONFIG["protect_human"] and node.human_held and not node.authorized_by:
+                old = self.node_at_head(rel)
+                if old is not None and not old.human_held:
+                    continue   # this change IS the ratification; the report lists it for the human
                 E.append("%s: human-held node changed without authorized_by (agent at ring %s)"
                          % (node.id, as_ring))
         for code, rel in self.retired_paths():   # deleted this working tree  dte:C11
@@ -592,12 +751,11 @@ class Tree:
     def scope_findings(self):
         """Advisory scope checks.  dte:B21,C8"""
         self.validate()
-        docs = list(CONFIG["docs"])
         frac, minimum = CONFIG["broad_fraction"], CONFIG["broad_min"]
         impl = defaultdict(set)
         core_lines = []
         for rel, ln, cid, r in self.citations:
-            if not r or self._ignored(rel, docs):
+            if not r or self.layer_of(rel) == "docs":   # dte:B37 docs describe; specs, tests, agents, code reach
                 continue
             impl[r].add(rel)
             if self.nodes[r].ring == "A":
@@ -623,7 +781,7 @@ class Tree:
                 files |= impl.get(d, set())
             if not desc and not files:
                 F.append(("no reach", n.id,
-                          "nothing exists because of it: no descendants, no implementing artifact; retire it, or cite it from what it governs"))
+                          "nothing exists because of it: no descendants, no citing spec, code, test or agent instruction; retire it, or cite it from what it governs"))
                 continue
             d_share = len(desc) / n_noncore if n_noncore else 0.0
             f_share = len(files) / n_art if n_art else 0.0
@@ -639,6 +797,62 @@ class Tree:
     def unratified(self):
         return [n for n in self.ordered_nodes()
                 if n.made_by in ("ai", "joint") and not n.ratified_by and n.in_effect]
+
+    LAYERS = ("tests", "specs", "agents", "docs")
+    LAYER_LABEL = {"tests": "enforced by", "specs": "specified by", "agents": "instructs",
+                   "docs": "described by", "code": "implemented by"}
+
+    def covered_by(self, rel):
+        """The spec files whose `covers:` globs match this artifact.  dte:B22"""
+        return [spec for spec, globs in self.spec_covers.items() if self._ignored(rel, globs)]
+
+    def covered_files(self, spec):
+        """Every scanned artifact a spec's `covers:` globs match, the spec itself excepted."""
+        globs = self.spec_covers.get(spec, [])
+        return [f for f in self.scanned_files if f != spec and self._ignored(f, globs)] if globs else []
+
+    def layer_of(self, rel):
+        """Which layer below the tree a citing artifact belongs to, by the dte.cfg globs.  dte:B37,C24"""
+        for layer in self.LAYERS:
+            if self._ignored(rel, list(CONFIG[layer])):
+                return layer
+        return "code"
+
+    def cited_by(self, i):
+        """{layer: {rel: [lines]}} every artifact citing i, grouped by layer. A file a citing spec
+        `covers:` counts as implementing i through that spec (its "line" names the spec)."""
+        out = defaultdict(lambda: defaultdict(list))
+        for rel, ln, cid, r in self.citations:
+            if r == i:
+                out[self.layer_of(rel)][rel].append(ln)
+        for spec in list(out.get("specs", {})):
+            for f in self.covered_files(spec):
+                if f not in out.get(self.layer_of(f), {}):
+                    out[self.layer_of(f)][f].append("via " + spec)
+        return out
+
+    def body_changes(self):
+        """[(node, has_new_history)] nodes whose body differs from HEAD.  dte:B36,C7"""
+        changed, exact = self.changed_files()
+        if not exact:
+            return []
+        by_path = {self.rel(n.path): n for n in self.nodes.values()}
+        out = []
+        for rel in sorted(changed):
+            node = by_path.get(rel)
+            if node is None:
+                continue
+            old = self.node_at_head(rel)
+            if old is None:
+                continue
+            # whitespace-insensitive: a reflow for the reading surface is not a body edit (B36)
+            strip = lambda b: re.sub(r"\s+", " ", re.sub(r"\n## History\n.*", "", b.replace("\r\n", "\n"), flags=re.S)).strip()
+            if strip(old.body) != strip(node.body):
+                hist = lambda b: [l for l in b.replace("\r\n", "\n").split("\n") if l.startswith("- ")]
+                old_h = _section(old.body, "## History")
+                new_h = _section(node.body, "## History")
+                out.append((node, len(hist(new_h)) > len(hist(old_h))))
+        return out
 
     # -- scanning  dte:C3
     def _ignores(self):
@@ -662,11 +876,58 @@ class Tree:
                 return True
         return False
 
+    def coverage_exclusions(self):
+        """[(why, [globs])] from ROOT/.dtecoverage; a glob before any why: line is an error.  dte:B22"""
+        p = os.path.join(self.root, COVERAGE_FILE)
+        groups = []
+        if not os.path.exists(p):
+            return groups
+        cur = None
+        with open(p, encoding="utf-8") as fh:
+            for ln, line in enumerate(fh, 1):
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if line.startswith("why:"):
+                    why = line[4:].strip()
+                    if not why:
+                        raise ValueError("%s:%d: empty why:" % (COVERAGE_FILE, ln))
+                    cur = (why, [])
+                    groups.append(cur)
+                    continue
+                if cur is None:
+                    raise ValueError("%s:%d: a glob before any 'why:' line" % (COVERAGE_FILE, ln))
+                cur[1].append(line)
+        return groups
+
+    def excluded_from_coverage(self):
+        """({rel: why} for every UNCITED scanned file an exclusion matches, [stale globs]).
+        A citing file is never excluded: the store says which files need no citation, and
+        one that cites anyway simply counts. A glob matching no scanned file at all is stale.  dte:B22"""
+        self.scan()
+        cited = {r for r, _, _, _ in self.citations}
+        for spec in self.spec_covers:
+            if spec in cited:
+                cited |= set(self.covered_files(spec))
+        out, stale = {}, []
+        for why, globs in self.coverage_exclusions():
+            for g in globs:
+                hit = False
+                for rel in self.scanned_files:
+                    if self._ignored(rel, [g]):
+                        hit = True
+                        if rel not in cited:
+                            out.setdefault(rel, why)
+                if not hit:
+                    stale.append(g)
+        return out, stale
+
     def scan(self):
         if self.scanned_files:
             return
         pats = self._ignores()
         dec_rel = self.rel(self.decisions_dir)
+        me = os.path.abspath(__file__)   # the tool's own citations belong to DTE's tree, not the adopter's
         for dirpath, dirs, files in os.walk(self.root):
             dirs[:] = sorted(d for d in dirs if d != ".git"
                              and not self._ignored(self.rel(os.path.join(dirpath, d)), pats))
@@ -674,6 +935,10 @@ class Tree:
                 path = os.path.join(dirpath, fn)
                 rel = self.rel(path)
                 if rel == dec_rel or rel.startswith(dec_rel + "/") or self._ignored(rel, pats):
+                    continue
+                if rel == COVERAGE_FILE:   # the coverage store is metadata about artifacts, not one
+                    continue
+                if os.path.abspath(path) == me and not CONFIG.get("scan_self"):
                     continue
                 try:
                     with open(path, "rb") as fh:
@@ -686,9 +951,14 @@ class Tree:
                     continue
                 self.scanned_files.append(rel)
                 for ln, line in enumerate(lines, 1):
-                    for m in CITE_RE.finditer(line):
-                        for cid in re.split(r"\s*,\s*", m.group(1)):
-                            self.citations.append((rel, ln, cid, self.resolve(cid)))
+                    for cid in cited_ids(line):
+                        self.citations.append((rel, ln, cid, self.resolve(cid)))
+                if self.layer_of(rel) == "specs":
+                    for line in lines[:30]:
+                        m = COVERS_RE.search(line)
+                        if m:
+                            self.spec_covers[rel] = [g.strip(" -") for g in m.group(1).split(",") if g.strip(" -")]
+                            break
 
     # -- queries
     def descendants(self, i):
@@ -732,7 +1002,7 @@ class Tree:
 
 # ---------------------------------------------------------------- commands
 
-def report(tree, show_unratified=True):
+def report(tree, show_unratified=True, full=False):
     for e in tree.errors:
         print("ERROR   " + e)
     for w in tree.warnings:
@@ -741,18 +1011,47 @@ def report(tree, show_unratified=True):
         print_inbox(tree)
     if show_unratified:
         un = tree.unratified()
-        if un:
+        if un and full:
+            print_unratified(tree, un)
+        elif un:
             contested = sum(1 for n in un if n.contested_by)
-            print("\nUnratified AI/joint decisions (%d, %d contested):  dte:B7, dte:B28" % (len(un), contested))
-            for n in un:
-                who = ("  contested by %s" % n.contested_by) if n.contested_by else ""
-                print("  %s  [%s: %s]%s" % (n.label(), n.made_by, n.by, who))
+            imported = sum(1 for n in un if n.imported)
+            print("\nUnratified AI/joint decisions: %d (%d contested, %d imported); list: dte unratified  dte:B7, dte:B28"
+                  % (len(un), contested, imported))
+
+
+def print_unratified(tree, un=None):
+    """dte:C23 the full list lives behind its own command so validate stays short"""
+    un = tree.unratified() if un is None else un
+    if not un:
+        print("No unratified AI/joint decisions.")
+        return
+    contested = sum(1 for n in un if n.contested_by)
+    print("Unratified AI/joint decisions (%d, %d contested):  dte:B7, dte:B28" % (len(un), contested))
+    for n in un:
+        who = ("  contested by %s" % n.contested_by) if n.contested_by else ""
+        imp = "  imported" if n.imported else ""
+        print("  %s  [%s: %s]%s%s" % (n.label(), n.made_by, n.by, who, imp))
+
+
+def cmd_unratified(tree, args):
+    tree.validate()
+    print_unratified(tree)
+    return 0
 
 
 def print_inbox(tree):
-    """dte:B14"""
-    print("\nPENDING PLACEMENT (%d), no ID until placed:" % len(tree.inbox))
-    for it in tree.inbox:
+    """dte:B14, dte:C27"""
+    gaps = [it for it in tree.inbox if it.kind == "gap"]
+    decisions = [it for it in tree.inbox if it.kind != "gap"]
+    if gaps:
+        print("\nSPEC GAPS (%d), the spec is silent; whoever holds the spec answers in the spec, then removes the file:" % len(gaps))
+        for it in gaps:
+            print('  %s  "%s"  in %s  (%s by %s)' % (it.slug, it.title, it.spec, it.made_by, it.by))
+    if not decisions:
+        return
+    print("\nPENDING PLACEMENT (%d), no ID until placed:" % len(decisions))
+    for it in decisions:
         who = it.ask or (holder_of(it.proposed_ring, CONFIG) if it.proposed_ring else "the human")
         ring = ("proposed ring %s" % it.proposed_ring) if it.proposed_ring else "ring unknown"
         print('  %s  "%s"  (%s, %s by %s)' % (it.slug, it.title, ring, it.made_by, it.by))
@@ -768,13 +1067,65 @@ def print_changed_nodes(tree):
     hits = [by_path[r] for r in sorted(changed) if r in by_path]
     if not hits:
         return
-    print("\nNodes changed in this working tree (report these, ID plus title):  dte:B17")
+    bodies = {n.id: logged for n, logged in tree.body_changes()}
+    print("\nNodes changed in this working tree (report these, ID plus name):  dte:B17")
     for n in sorted(hits, key=lambda n: id_key(n.id)):
-        print("  %s" % n.label())
+        note = ""
+        if n.id in bodies:
+            note = "  [body changed%s]" % ("" if bodies[n.id] else ", no History line")
+        print("  %s%s" % (n.label(), note))
+
+
+def comment_census(tree):
+    """Per code-layer file: (comment lines, citation lines).  A heuristic for B38: files
+    heavy in prose comments and light in citations are where WHY still lives in the code."""
+    tree.scan()
+    cited = defaultdict(int)
+    for rel, _, _, _ in tree.citations:
+        cited[rel] += 1
+    out = []
+    for rel in tree.scanned_files:
+        if tree.layer_of(rel) != "code":
+            continue
+        ext = os.path.splitext(rel)[1].lower()
+        if ext in NO_COMMENTS:
+            continue
+        marker = next((m for m, exts in COMMENT_STYLES if ext in exts), "#")
+        n = 0
+        try:
+            with open(os.path.join(tree.root, rel), encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    s = line.strip()
+                    if s.startswith(marker) or (marker == "/*" and s.startswith("*")):
+                        n += 1
+        except OSError:
+            continue
+        out.append((rel, n, cited[rel]))
+    return out
+
+
+COMMENT_HEAVY = 5
 
 
 def cmd_scope(tree, args):
-    """dte:B21"""
+    """dte:B21, dte:B38"""
+    if getattr(args, "comments", False):
+        try:
+            excluded, _ = tree.excluded_from_coverage()
+        except ValueError as e:
+            print(e)
+            return 2
+        rows = [(rel, n, c) for rel, n, c in comment_census(tree)
+                if n >= COMMENT_HEAVY and c == 0 and rel not in excluded]
+        rows.sort(key=lambda r: -r[1])
+        if not rows:
+            print("No migration candidates: every file with %d+ comment lines carries a citation." % COMMENT_HEAVY)
+            return 0
+        print("MIGRATION CANDIDATES (%d): comment-heavy files with no citation (B38)" % len(rows))
+        for rel, n, _ in rows:
+            print("  %-50s %4d comment lines" % (rel, n))
+        print("\nWHY comments move into a node's Why; HOW into a spec; WHAT stays. A heuristic, not a finding.")
+        return 0
     F = tree.scope_findings()
     if not F:
         print("No scope findings.")
@@ -796,8 +1147,11 @@ def cmd_scope(tree, args):
 
 def cmd_validate(tree, args):
     ok = tree.validate(as_ring=args.as_ring)
-    report(tree)
+    report(tree, full=args.full)
     print_changed_nodes(tree)
+    n_out = len(tree.outbox_items())
+    if n_out:
+        print("\nOUTBOX (%d): the human designated things in the vault for an agent; run dte outbox" % n_out)
     F = tree.scope_findings()
     if F:
         print("\n%d scope findings (advisory): run dte scope" % len(F))
@@ -886,6 +1240,12 @@ def cmd_blast(tree, args):
         print("  none")
     for rel in sorted(hits):
         print("  %s  %s" % (rel, ", ".join("%s@%d" % (c, ln) for ln, c in sorted(hits[rel]))))
+    for spec in sorted(hits):
+        covered = tree.covered_files(spec) if spec in tree.spec_covers else []
+        if covered:
+            print("\nBuilt to %s (covers: %s), %d files:" % (spec, ", ".join(tree.spec_covers[spec]), len(covered)))
+            for f in covered:
+                print("  " + f)
     if node.supersedes:
         print("\nCurrently superseded by %s (candidates to return if %s is reverted):" % (target, target))
         for s in node.supersedes:
@@ -964,14 +1324,66 @@ def cmd_coverage(tree, args):
     """dte:B22"""
     tree.scan()
     cited = {r for r, _, _, _ in tree.citations}
-    missing = [f for f in tree.scanned_files if f not in cited]
-    total = len(tree.scanned_files)
+    for spec in tree.spec_covers:
+        if spec in cited:
+            cited |= set(tree.covered_files(spec))
+    try:
+        excluded, stale = tree.excluded_from_coverage()
+    except ValueError as e:
+        print(e)
+        return 2
+    stale += ["%s covers: %s" % (spec, g) for spec, globs in tree.spec_covers.items()
+              for g in globs if not any(tree._ignored(f, [g]) for f in tree.scanned_files if f != spec)]
+    scoped = [f for f in tree.scanned_files if f not in excluded]
+    missing = [f for f in scoped if f not in cited]
+    total = len(scoped)
     pct = 100.0 * (total - len(missing)) / total if total else 0.0
-    print("Coverage: %d/%d artifacts cite a decision (%.1f%%)\n" % (total - len(missing), total, pct))
+    line = "Coverage: %d/%d artifacts cite a decision (%.1f%%)" % (total - len(missing), total, pct)
+    if excluded:
+        reasons = {}
+        for why in excluded.values():
+            reasons[why] = reasons.get(why, 0) + 1
+        line += "; %d excluded under %d reason%s (%s)" % (
+            len(excluded), len(reasons), "" if len(reasons) == 1 else "s", COVERAGE_FILE)
+    print(line + "\n")
+    if tree.spec_covers:
+        n_cov = len({f for spec in tree.spec_covers if spec in cited for f in tree.covered_files(spec)})
+        print("Covered through a spec's `covers:` glob: %d files (%s)\n" % (n_cov, ", ".join(sorted(tree.spec_covers))))
+    if stale:
+        print("Stale exclusions in %s or spec covers: globs (match nothing; delete them):" % COVERAGE_FILE)
+        for g in stale:
+            print("  " + g)
+        print()
+    if excluded and getattr(args, "excluded", False):
+        by_why = {}
+        for rel, why in excluded.items():
+            by_why.setdefault(why, []).append(rel)
+        for why, rels in by_why.items():
+            print("Excluded (%d): %s" % (len(rels), why))
+            for rel in sorted(rels):
+                print("  " + rel)
+            print()
+    elif excluded:
+        by_why = {}
+        for why in excluded.values():
+            by_why[why] = by_why.get(why, 0) + 1
+        print("Excluded:")
+        for why, n in by_why.items():
+            print("  %4d  %s" % (n, why))
+        print("  (--excluded lists the files)\n")
     if missing:
         print("No citation:")
         for f in missing:
             print("  " + f)
+    if getattr(args, "check", False) and (missing or stale):
+        print("\ncoverage --check: %d uncited, %d stale exclusion%s" % (len(missing), len(stale), "" if len(stale) == 1 else "s"))
+        return 1
+    enforced = {r for rel, _, _, r in tree.citations if r and tree.layer_of(rel) == "tests"}
+    unenforced = [n for n in tree.ordered_nodes() if n.in_effect and n.ring != "A" and n.id not in enforced]
+    if unenforced:
+        print("\nIn effect, no citing test (%d); a rule nothing checks can be violated silently (B37):" % len(unenforced))
+        for n in unenforced:
+            print("  " + n.label())
     return 0
 
 
@@ -1006,7 +1418,7 @@ def branch_ids(tree):
 
 
 def next_id(tree, ring):
-    """Numbers are never reused: not from the tree, the ledger, or any branch.  dte:B23,C15"""
+    """Numbers are never reused: not from the tree, the ledger, or any branch.  dte:B32,C15"""
     used = [n.number for n in tree.nodes.values() if n.ring == ring]
     used += [int(ID_RE.match(i).group(2)) for i in tree.retired if i.startswith(ring)]
     used += [int(ID_RE.match(i).group(2)) for i in branch_ids(tree) if i.startswith(ring)]
@@ -1020,6 +1432,69 @@ def cmd_next(tree, args):
         return 2
     print(next_id(tree, ring))
     return 0
+
+
+def cmd_outbox(tree, args):
+    """The human's edits in the vault, as a work list; --done clears one item once processed."""
+    if args.done:
+        return outbox_done(tree, args.done)
+    items = tree.outbox_items()
+    if not items:
+        print("Outbox empty. The human has designated nothing for an agent.")
+        return 0
+    print("OUTBOX (%d): process each, then clear it. The author's word is the authorization." % len(items))
+    for kind, ref, label, todo in items:
+        print("  [%s] %s" % (kind, label))
+        print("      %s" % todo)
+    return 0
+
+
+def outbox_done(tree, ref):
+    for slug, title, path in tree.outbox:
+        if slug == ref:
+            os.remove(path)
+            print('removed outbox note "%s" (%s)' % (title, tree.rel(path)))
+            return 0
+    node = tree.nodes.get(ref)
+    if node is None:
+        print("no outbox note or node called %s" % ref)
+        return 2
+    text = read_text(node.path)
+    nl = "\r\n" if "\r\n" in text else "\n"
+    text = text.replace("\r\n", "\n")
+    text = drop_list_items(text, "tags", lambda t: t.lstrip("#") in ACTIONS)
+    # a paragraph that opens with the tag is a message to the agent and goes whole;
+    # a tag inside a sentence marks the author's own text, so only the tag goes
+    text = re.sub(r"(?m)^[ \t]*#(?:ratify|retire|contest|ask)\b[^\n]*\n?(?:(?![ \t]*(?:[-#|>*]|\d+\.|$))[^\n]+\n?)*", "", text)
+    text = ACTION_TAG_RE.sub("", text)
+    text = re.sub(r"[ \t]+$", "", text, flags=re.M).rstrip("\n") + "\n"
+    write_text(node.path, text.replace("\n", nl))
+    print("cleared the action tags on %s" % node.label())
+    return 0
+
+
+def drop_list_items(text, key, pred):
+    """Remove items matching pred from a frontmatter list, inline or block form; drop the key when empty."""
+    lines = text.split("\n")
+    end = lines.index("---", 1)
+    for k in range(1, end):
+        name, _, raw = lines[k].partition(":")
+        if name.strip() != key:
+            continue
+        raw = raw.strip()
+        if raw.startswith("["):
+            items = [x for x in (_scalar(i) for i in raw[1:-1].split(",")) if x]
+            span = (k, k + 1)
+        else:
+            j = k + 1
+            while j < end and lines[j].strip().startswith("- "):
+                j += 1
+            items = [_scalar(lines[x].strip()[2:]) for x in range(k + 1, j)]
+            span = (k, j)
+        keep = [x for x in items if not pred(x)]
+        new = ["%s: [%s]" % (key, ", ".join(keep))] if keep else []
+        return "\n".join(lines[:span[0]] + new + lines[span[1]:])
+    return text
 
 
 def cmd_inbox(tree, args):
@@ -1041,6 +1516,9 @@ def cmd_place(tree, args):
     if item is None:
         print("no inbox item named %r; run: dte inbox" % args.slug)
         return 2
+    if item.kind == "gap":
+        print("%s is a spec gap, not a decision: answer it in %s, then remove the file (C27)" % (args.slug, item.spec))
+        return 2
     parents = [p.strip() for p in (args.parents or "").split(",") if p.strip()] or item.parents
     if ring == "A" and parents:
         print("ring A nodes cannot have parents")
@@ -1061,9 +1539,9 @@ def cmd_place(tree, args):
     fm = [
         "---",
         "id: %s" % new_id,
-        "title: %s" % item.title,
+        "title: %s" % fm_str(item.title),
         "status: active",
-        "parents: [%s]" % ", ".join(parents),
+        "parents: %s" % fm_ids(parents),
         "supersedes: []",
         "superseded_by:",
         "conflicts_with: []",
@@ -1074,6 +1552,9 @@ def cmd_place(tree, args):
     ]
     if item.raw.get("confidence"):
         fm.append("confidence: %s" % item.raw["confidence"])
+    if item.name:
+        fm.insert(2, "name: %s" % item.name)
+        fm.append("aliases: [%s]" % item.name)
     fm.append("---")
     body = item.body.rstrip("\n")
     history = "\n\n## History\n\n" if "## History" not in body else "\n"
@@ -1086,7 +1567,7 @@ def cmd_place(tree, args):
         fh.write("\n".join(fm) + "\n" + body)
     os.remove(item.path)
     print('placed %s "%s" at %s' % (new_id, item.title, tree.rel(dest)))
-    print("cite it as dte:%s and re-run validate" % new_id)
+    print("cite it as %s and re-run validate" % cite_text([new_id]))
     return 0
 
 
@@ -1114,14 +1595,14 @@ def write_text(path, text):
 
 
 def append_history(text, note):
-    if "## History" in text:
+    if re.search(r"^## History\s*$", text, re.M):
         return text.rstrip("\n") + "\n" + note + "\n"
     return text.rstrip("\n") + "\n\n## History\n\n" + note + "\n"
 
 
 def retire_node(tree, node, action, successor, by, authorized_by, what):
     """Ledger line, then delete the file (delete mode) or set status (keep mode).  dte:B24,C11"""
-    tree.append_ledger(node.id, action, successor, by, authorized_by, node.title)
+    tree.append_ledger(node.id, action, successor, by, authorized_by, node.summary)
     mode = CONFIG["retire"]
     if mode == "delete" and tree.git_status() is None:
         print("  WARNING: retire = delete needs git for history; keeping the file instead")
@@ -1133,7 +1614,7 @@ def retire_node(tree, node, action, successor, by, authorized_by, what):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     text = set_field(text, "status", "superseded" if successor else "reverted")
-    text = set_field(text, "superseded_by", successor or "")
+    text = set_field(text, "superseded_by", fm_id(successor) if successor else "")
     if authorized_by:
         text = set_field(text, "authorized_by", authorized_by)
     text = append_history(text, "- %s %s by %s." % (datetime.date.today().isoformat(), what, by))
@@ -1144,15 +1625,9 @@ def retire_node(tree, node, action, successor, by, authorized_by, what):
 def rewrite_references(tree, old_id, new_id):
     """dte:OLD -> dte:NEW in artifacts, OLD -> NEW in children's parents.  dte:C9"""
     files = sorted({rel for rel, _, cid, _ in tree.citations if cid == old_id})
-    tok = re.compile(r"\bdte:([A-Z]\d+(?:\s*,\s*[A-Z]\d+)*)")
-
-    def swap(m):
-        ids = [new_id if x == old_id else x for x in re.split(r"\s*,\s*", m.group(1))]
-        return "dte:" + ",".join(ids)
-
     for rel in files:
         path = os.path.join(tree.root, rel)
-        write_text(path, tok.sub(swap, read_text(path)))
+        write_text(path, sub_citations(read_text(path), old_id, new_id))
     children = list(tree.children.get(old_id, []))
     for c in children:
         cpath = tree.nodes[c].path
@@ -1160,7 +1635,7 @@ def rewrite_references(tree, old_id, new_id):
         cnl = "\r\n" if "\r\n" in ctext else "\n"
         ctext = ctext.replace("\r\n", "\n")
         ps = [new_id if p == old_id else p for p in tree.nodes[c].parents]
-        ctext = set_field(ctext, "parents", "[%s]" % ", ".join(ps))
+        ctext = set_field(ctext, "parents", fm_ids(ps))
         write_text(cpath, ctext.replace("\n", cnl))
     return files, children
 
@@ -1197,16 +1672,20 @@ def cmd_retire(tree, args):
         nl = "\r\n" if "\r\n" in t else "\n"
         t = t.replace("\r\n", "\n")
         if old_id not in new.supersedes:
-            t = set_field(t, "supersedes", "[%s]" % ", ".join(new.supersedes + [old_id]))
-        carried = _section(node.body, "## Alternatives considered") if node.contested_by else ""
-        if carried:   # dte:C17 the contest that produced the successor travels with it
-            t = _insert_section(t, "## Alternatives considered",
+            t = set_field(t, "supersedes", fm_ids(new.supersedes + [old_id]))
+        carried = _section(node.body, "## Contest") if node.contested_by else ""
+        if carried:   # dte:C17,C22 the contest that produced the successor travels with it, and settles it
+            t = _insert_section(t, "## Contest",
                                 "Carried from %s, which this node supersedes.\n\n%s" % (old_id, carried))
+            if not new.contested_by:
+                t = set_field(t, "contested_by", node.contested_by)
+                t = append_history(t, "- %s settled by the contest of %s, which it supersedes (contested by %s)."
+                                   % (datetime.date.today().isoformat(), old_id, node.contested_by))
         write_text(new.path, t.replace("\n", nl))
         rewrite_references(tree, old_id, new_id)
     fate = retire_node(tree, node, action, new_id, args.by, args.authorized_by,
                        ("superseded by %s" % new_id) if new_id else "reverted")
-    print('retired %s "%s"' % (old_id, node.title))
+    print('retired %s "%s"' % (old_id, node.summary))
     print("  " + fate)
     if new_id:
         print("  rewrote %d citing file(s) and %d child(ren) to %s. REVIEW each: they were built under %s."
@@ -1280,8 +1759,8 @@ def cmd_move(tree, args):
     text = text.replace("\r\n", "\n")
     text = set_field(text, "id", new_id)
     text = set_field(text, "status", "active")
-    text = set_field(text, "parents", "[%s]" % ", ".join(parents))
-    text = set_field(text, "supersedes", "[%s]" % old_id)
+    text = set_field(text, "parents", fm_ids(parents))
+    text = set_field(text, "supersedes", fm_ids([old_id]))
     text = set_field(text, "superseded_by", "")
     text = set_field(text, "ratified_by", "")
     text = set_field(text, "authorized_by", args.authorized_by or "")  # the human authorised this file too
@@ -1301,7 +1780,7 @@ def cmd_move(tree, args):
     fate = retire_node(tree, node, "moved", new_id, args.by, args.authorized_by,
                        "moved to ring %s as %s" % (ring, new_id))
     files, children = rewrite_references(tree, old_id, new_id)
-    print('moved %s -> %s "%s" at %s' % (old_id, new_id, node.title, tree.rel(dest)))
+    print('moved %s -> %s "%s" at %s' % (old_id, new_id, node.summary, tree.rel(dest)))
     print("  %s %s" % (old_id, fate))
     print("  parents: %s" % ", ".join(parents))
     if dropped:
@@ -1346,11 +1825,31 @@ authority = A:human, B:orchestrator, C+:subagent
 # decisions/RETIRED burns the number); keep sets a status instead.
 retire = delete
 #
-# scope checks (advisory). docs: artifacts that describe decisions rather than
-# implement them; they do not count as reach.
+# Layers below the tree (B37): globs that say what kind of artifact cites a node.
+# The tree holds why; specs hold what; code holds how; tests enforce; agent
+# instructions carry process rules. show prints each as a derived list and a
+# node never stores any of it. docs describe and do not count as reach.
 docs = *.md, docs/*
+specs = specs/*, spec/*, *.spec.md
+tests = tests/*, test/*, test_*, *_test.*, *.test.*
+agents = CLAUDE.md, AGENTS.md, .claude/*
+#
+# scope checks (advisory).
 broad_fraction = 0.3
 broad_min = 5
+"""
+
+COVERAGE_FILE = ".dtecoverage"
+COVERAGE_TEMPLATE = """# Coverage exclusions (dte coverage). An artifact that cites no decision BECAUSE no decision
+# governs it goes here, under the reason it needs none, so 100%% coverage is reachable and
+# means something. A "why:" line opens a group; the globs under it (the .dteignore syntax)
+# belong to that group. Excluded files are still scanned: a citation inside one still
+# counts, and a glob that matches nothing is reported as stale. Everything not listed
+# here is expected to cite.
+#
+# why: package manifests and toolchain configuration serve the build, not a product decision
+# package.json
+# tsconfig*.json
 """
 
 IGNORE_TEMPLATE = """# Globs the dte scanner skips (in addition to .git and the decisions dir).
@@ -1373,7 +1872,7 @@ def build_frontmatter(fields):
     lines = ["---"]
     for k, v in fields:
         if isinstance(v, list):
-            lines.append("%s: [%s]" % (k, ", ".join(v)))
+            lines.append("%s: %s" % (k, fm_ids(v)))
         elif v is None or v == "":
             lines.append("%s:" % k)
         else:
@@ -1399,6 +1898,28 @@ def split_ids(s):
     return [p.strip() for p in (s or "").split(",") if p.strip()]
 
 
+def node_body(args):
+    """The body from --body-file (verbatim, frontmatter stripped) or from the section flags.  dte:C20"""
+    if getattr(args, "body_file", None):
+        if not os.path.exists(args.body_file):
+            print("no such file: %s" % args.body_file)
+            return None
+        text = read_text(args.body_file).replace("\r\n", "\n")
+        if text.startswith("---"):
+            try:
+                _, text = parse_frontmatter(text)
+            except ValueError:
+                pass
+        if "## Decision" not in text or "## Why" not in text:
+            print("%s needs '## Decision' and '## Why' sections" % args.body_file)
+            return None
+        return "\n" + text.strip("\n") + "\n"
+    body = "\n## Decision\n\n%s\n\n## Why\n\n%s\n" % (args.decision or "TODO", args.why or "TODO")
+    if args.consequences:
+        body += "\n## Consequences\n\n%s\n" % args.consequences
+    return body
+
+
 def cmd_new(tree, args):
     """dte:B29"""
     ring = args.ring.upper()
@@ -1418,7 +1939,7 @@ def cmd_new(tree, args):
         return 2
     new_id = next_id(tree, ring)
     fields = [
-        ("id", new_id), ("title", args.title), ("status", args.status), ("parents", parents),
+        ("id", new_id), ("title", fm_str(args.title)), ("status", args.status), ("parents", parents),
         ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
         ("made_by", args.made_by), ("by", args.by),
         ("date", datetime.date.today().isoformat()), ("ratified_by", ""),
@@ -1427,16 +1948,166 @@ def cmd_new(tree, args):
         fields.append(("authorized_by", args.authorized_by))
     if args.confidence:
         fields.append(("confidence", args.confidence))
-    body = "\n## Decision\n\n%s\n\n## Why\n\n%s\n" % (args.decision or "TODO", args.why or "TODO")
-    if args.consequences:
-        body += "\n## Consequences\n\n%s\n" % args.consequences
+    if args.name:
+        if not NAME_RE.match(args.name):
+            print("a name is a camelCase identifier like shareImpl")
+            return 2
+        fields.insert(1, ("name", args.name))
+        fields.append(("aliases", "[%s]" % args.name))   # so [[name]] resolves in Obsidian
+    body = node_body(args)
+    if body is None:
+        return 2
     dest_dir = os.path.join(tree.decisions_dir, ring)
     os.makedirs(dest_dir, exist_ok=True)
     dest = os.path.join(dest_dir, new_id + ".md")
     write_text(dest, build_frontmatter(fields) + body)
     print('created %s "%s" at %s' % (new_id, args.title, tree.rel(dest)))
     todo = [] if (args.decision and args.why) else ["fill in the TODO sections"]
-    print("  " + "; ".join(todo + ["cite it as dte:%s from what it governs" % new_id]))
+    print("  " + "; ".join(todo + ["cite it as %s from what it governs" % cite_text([new_id])]))
+    return 0
+
+
+IMPORT_FIELDS = KNOWN_FIELDS - {"id", "superseded_by", "supersedes", "conflicts_with"} | {"ring"}
+
+
+def cmd_import(tree, args):
+    """Re-home an existing corpus: one markdown file per node, every property carried
+    through, parents by name or id, ids allocated parent-first.  dte:B33,C20"""
+    tree.validate()
+    src = os.path.abspath(args.dir)
+    if not os.path.isdir(src):
+        print("no such directory: %s" % args.dir)
+        return 2
+    items = []
+    for fn in sorted(os.listdir(src)):
+        if not fn.endswith(".md"):
+            continue
+        path = os.path.join(src, fn)
+        try:
+            data, body = parse_frontmatter(read_text(path).replace("\r\n", "\n"))
+        except ValueError as e:
+            print("%s: %s" % (fn, e))
+            return 2
+        data = _normalise(data)
+        key = os.path.splitext(fn)[0]
+        items.append((key, data, body, path))
+    errors = []
+    names = {n.name: n.id for n in tree.nodes.values() if n.name and n.in_effect}
+    keys = {}
+    for key, data, body, path in items:
+        ring = str(data.get("ring") or "").upper()
+        if not re.match(r"^[A-Z]$", ring):
+            errors.append("%s: needs ring: <letter>" % key)
+        for f in data:
+            if f not in IMPORT_FIELDS:
+                errors.append("%s: unknown property %r; import carries only node properties (B33)" % (key, f))
+        if not data.get("title"):
+            errors.append("%s: title is required" % key)
+        if "## Decision" not in body or "## Why" not in body:
+            errors.append("%s: body needs '## Decision' and '## Why'" % key)
+        name = str(data.get("name") or "")
+        if name and not NAME_RE.match(name):
+            errors.append("%s: name %r is not a camelCase identifier" % (key, name))
+        if name and (name in names or name in keys):
+            errors.append("%s: name %r is already taken" % (key, name))
+        for handle in (key, name):
+            if handle:
+                keys[handle] = key
+    if errors:
+        print("\n".join(errors))
+        return 2
+    # parents: an existing id, an existing name, or another file in the batch (by file name or name)
+    by_key = {k: (d, b, p) for k, d, b, p in items}
+    def parent_ref(ref):
+        if ref in tree.nodes:
+            return ("id", ref)
+        if ref in names:
+            return ("id", names[ref])
+        if ref in keys:
+            return ("batch", keys[ref])
+        return None
+    order, seen, visiting = [], set(), set()
+    def visit(key):
+        if key in seen:
+            return True
+        if key in visiting:
+            errors.append("%s: parents form a cycle" % key); return False
+        visiting.add(key)
+        data = by_key[key][0]
+        ps = data.get("parents") or []
+        for ref in (ps if isinstance(ps, list) else [ps]):
+            ref = _scalar(str(ref))
+            got = parent_ref(ref)
+            if got is None:
+                errors.append("%s: parent %r is not an existing node or a file in the batch" % (key, ref)); return False
+            if got[0] == "batch" and not visit(got[1]):
+                return False
+        visiting.discard(key); seen.add(key); order.append(key)
+        return True
+    for key, _, _, _ in items:
+        visit(key)
+    if errors:
+        print("\n".join(errors))
+        return 2
+    today = datetime.date.today().isoformat()
+    source = args.source or os.path.relpath(src, tree.root).replace(os.sep, "/")
+    counters = {}
+    assigned = {}
+    written = []
+    for key in order:
+        data, body, path = by_key[key]
+        ring = str(data["ring"]).upper()
+        ps = data.get("parents") or []
+        parents = []
+        for ref in (ps if isinstance(ps, list) else [ps]):
+            kind, val = parent_ref(_scalar(str(ref)))
+            parents.append(val if kind == "id" else assigned[val])
+        err = check_parents(tree, ring, [p for p in parents if p in tree.nodes]) if all(p in tree.nodes for p in parents) else None
+        for pid in parents:
+            pring = tree.nodes[pid].ring if pid in tree.nodes else pid[0]
+            if ring_depth(pring) >= ring_depth(ring):
+                err = "parent %s is not shallower than ring %s" % (pid, ring)
+        if ring != "A" and not parents:
+            err = "a ring %s node needs parents" % ring
+        if ring == "A" and parents:
+            err = "ring A nodes cannot have parents"
+        if err:
+            print("%s: %s" % (key, err))
+            for w in written:
+                os.remove(w)
+            return 2
+        if ring not in counters:
+            counters[ring] = next_id(tree, ring)
+        new_id = counters[ring]
+        counters[ring] = ring + str(int(new_id[1:]) + 1)
+        assigned[key] = new_id
+        fields = [("id", new_id)]
+        if data.get("name"):
+            fields.append(("name", str(data["name"])))
+        fields += [("title", fm_str(str(data["title"]))), ("status", str(data.get("status") or "active")),
+                   ("parents", parents), ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
+                   ("made_by", str(data.get("made_by") or "ai")), ("by", str(data.get("by") or args.by)),
+                   ("date", str(data.get("date") or today)), ("ratified_by", str(data.get("ratified_by") or ""))]
+        for f in ("authorized_by", "contested_by", "confidence", "tags", "cssclasses"):
+            if data.get(f):
+                v = data[f]
+                fields.append((f, "[%s]" % ", ".join(str(x) for x in v) if isinstance(v, list) else str(v)))
+        if data.get("name"):
+            fields.append(("aliases", "[%s]" % data["name"]))
+        text = build_frontmatter(fields) + "\n" + body.strip("\n") + "\n"
+        text = append_history(text, "- %s imported from %s (%s) by %s." % (today, source, key, args.by))
+        if data.get("ratified_by"):
+            text = append_history(text, "- %s ratified by %s, carried by the import." % (today, data["ratified_by"]))
+        dest_dir = os.path.join(tree.decisions_dir, ring)
+        os.makedirs(dest_dir, exist_ok=True)
+        dest = os.path.join(dest_dir, new_id + ".md")
+        write_text(dest, text)
+        written.append(dest)
+        tree.nodes[new_id] = Node(dest, dict((k, v) for k, v in fields), body)
+        print("  %s  <-  %s  %s" % (new_id, key, str(data["title"])[:70]))
+    print("imported %d nodes from %s. They are re-homed content: no contest is owed at import (B28, B33)."
+          % (len(written), source))
+    print("  next: dte validate; cite each from what it governs; remove %s when done." % args.dir)
     return 0
 
 
@@ -1480,13 +2151,16 @@ def cmd_show(tree, args):
     print("  children (%d):" % len(kids))
     for c in kids:
         print("    " + tree.nodes[c].label())
-    hits = defaultdict(list)
-    for rel, ln, cid, r in tree.citations:
-        if r == i:
-            hits[rel].append(ln)
-    print("  citing artifacts (%d):" % len(hits))
-    for rel in sorted(hits):
-        print("    %s  lines %s" % (rel, ", ".join(str(x) for x in sorted(hits[rel]))))
+    by_layer = tree.cited_by(i)
+    n_hits = sum(len(v) for v in by_layer.values())
+    print("  citing artifacts (%d), derived from citations, never stored here:" % n_hits)
+    for layer in ("specs", "code", "tests", "agents", "docs"):
+        hits = by_layer.get(layer)
+        if not hits:
+            continue
+        print("    %s:" % tree.LAYER_LABEL[layer])
+        for rel in sorted(hits):
+            print("      %s  lines %s" % (rel, ", ".join(str(x) for x in sorted(hits[rel]))))
     if node.supersedes:
         print("  supersedes: " + ", ".join(node.supersedes))
     if node.superseded_by:
@@ -1504,11 +2178,11 @@ def cmd_find(tree, args):
     q = args.text.lower()
     n = 0
     for node in tree.ordered_nodes():
-        hay = (node.id + " " + node.title + " " + node.body).lower()
+        hay = (node.id + " " + node.summary + " " + node.body).lower()
         if q in hay:
             n += 1
             print(node.label())
-            if q not in (node.id + " " + node.title).lower():
+            if q not in (node.id + " " + node.summary).lower():
                 for line in node.body.splitlines():
                     if q in line.lower():
                         print("    " + line.strip()[:110])
@@ -1524,6 +2198,27 @@ def cmd_find(tree, args):
     if not n:
         print("no matches for %r" % args.text)
     return 0
+
+
+def cmd_authorize(tree, args):
+    """Record a human's go-ahead on an existing node: authorized_by plus a History line.  dte:C21,B11"""
+    tree.validate()
+    code = 0
+    for i in args.ids:
+        node = tree.nodes.get(i)
+        if node is None:
+            print("unknown id: %s (%s)" % (i, tree.retired_hint(i)))
+            code = 2
+            continue
+        text = read_text(node.path)
+        nl = "\r\n" if "\r\n" in text else "\n"
+        text = text.replace("\r\n", "\n")
+        text = set_field(text, "authorized_by", args.by)
+        text = append_history(text, "- %s authorized by %s%s." % (
+            datetime.date.today().isoformat(), args.by, (": " + args.note) if args.note else ""))
+        write_text(node.path, text.replace("\n", nl))
+        print('authorized %s "%s" by %s' % (i, node.summary, args.by))
+    return code
 
 
 def cmd_ratify(tree, args):
@@ -1552,12 +2247,18 @@ def ratify_one(tree, i, by):
     flipped = node.status == "proposed"
     if flipped:
         text = set_field(text, "status", "active")
-    text = append_history(text, "- %s ratified by %s%s." % (
-        datetime.date.today().isoformat(), by, " (proposed -> active)" if flipped else ""))
+    dropped = "## Contest" in text.split("\n")
+    if dropped:   # dte:B41: the contest informed the ruling; git keeps it
+        text = _drop_section(text, "## Contest")
+    text = append_history(text, "- %s ratified by %s%s%s." % (
+        datetime.date.today().isoformat(), by, " (proposed -> active)" if flipped else "",
+        "; contest section dropped, see git" if dropped else ""))
     write_text(node.path, text.replace("\n", nl))
-    print('ratified %s "%s" by %s%s' % (i, node.title, by,
+    print('ratified %s "%s" by %s%s' % (i, node.summary, by,
                                         "; status proposed -> active" if flipped else ""))
     print("  it is now human-held (B11)")
+    if dropped:
+        print("  contest section dropped (B41); the commit before this one keeps it")
     return 0
 
 
@@ -1566,7 +2267,7 @@ def ratify_one(tree, i, by):
 COMMENT_STYLES = (
     ("#", {".py", ".rb", ".sh", ".bash", ".zsh", ".fish", ".yml", ".yaml", ".toml", ".cfg", ".ini",
            ".ps1", ".pl", ".r", ".txt", ".env", ".mk", ".cmake", ".dockerfile", ".gitignore",
-           ".dteignore", ""}),
+           ".dteignore", ".dtecoverage", ""}),
     ("//", {".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", ".go", ".rs", ".java", ".c", ".h", ".cpp",
             ".hpp", ".cc", ".cs", ".swift", ".kt", ".kts", ".scala", ".dart", ".php", ".m", ".zig"}),
     ("<!--", {".md", ".markdown", ".html", ".htm", ".xml", ".svg", ".vue", ".svelte"}),
@@ -1588,6 +2289,12 @@ def comment_line(ext, text):
                 return "/* %s */" % text
             return "%s %s" % (marker, text)
     return "# " + text
+
+
+def _citation_only(line):
+    rest = LINK_RE.sub("", CITE_RE.sub("", line))
+    rest = re.sub(r"[\s,]", "", rest)
+    return all(c in "#/*<!->;%'\"-{}()" for c in rest)
 
 
 def cmd_cite(tree, args):
@@ -1618,20 +2325,26 @@ def cmd_cite(tree, args):
             if lines[k].strip() == "---":
                 at = k + 1
                 break
-    # an existing top-of-file citation line: append to it
+    # an existing top-of-file citation line: append to it, but only when the line holds
+    # nothing but the comment marker and the citation; a line-level citation inside a
+    # sentence is about one block and is left alone
     for k in range(at, min(at + 3, len(lines))):
-        m = CITE_RE.search(lines[k])
-        if m:
-            have = re.split(r"\s*,\s*", m.group(1))
+        have = cited_ids(lines[k])
+        if have and _citation_only(lines[k]):
             new = [x for x in ids if x not in have]
             if not new:
                 print("%s already cites %s" % (rel, ", ".join(ids)))
                 return 0
-            lines[k] = lines[k][:m.start(1)] + ",".join(have + new) + lines[k][m.end(1):]
+            m = CITE_RE.search(lines[k])
+            if m:
+                lines[k] = lines[k][:m.start(1)] + ",".join(have + new) + lines[k][m.end(1):]
+            else:
+                last = list(LINK_RE.finditer(lines[k]))[-1]
+                lines[k] = lines[k][:last.end()] + ", " + ", ".join("[[%s]]" % x for x in new) + lines[k][last.end():]
             write_text(path, nl.join(lines))
             print("%s: added %s to the existing citation on line %d" % (rel, ",".join(new), k + 1))
             return 0
-    comment = comment_line(ext, "dte:" + ",".join(ids))
+    comment = comment_line(ext, cite_text(ids))
     if comment is None:
         print("%s: %s files have no comments; cite from a sibling file or a README" % (rel, ext))
         return 2
@@ -1643,6 +2356,14 @@ def cmd_cite(tree, args):
 
 def cmd_brief(tree, args):
     """dte:B27"""
+    if args.builder:
+        if not os.path.isfile(args.builder):
+            print("no such spec: %s" % args.builder)
+            return 2
+        return builder_brief(tree, args.builder)
+    if not args.ring:
+        print("brief needs a ring, or --builder <spec>")
+        return 2
     tree.validate()
     ring = args.ring.upper()
     if not re.match(r"^[A-Z]$", ring):
@@ -1672,12 +2393,13 @@ def cmd_brief(tree, args):
         print("     write decisions/inbox/<slug>.md and ask %s." % holder_of(prev, CONFIG))
     else:
         print("  2. You hold the core. Nothing is above you.")
-    print("  3. Cite what your work serves: `python %s cite <file> <ID>`. Refer to every decision as ID plus its title." % tool)
+    print("  3. Cite what your work serves: `python %s cite <file> <ID>`. Refer to every decision as ID plus its name." % tool)
     print("  4. Never change a decision made or ratified by a human. Before you finish, run")
     print("     `DTE_RING=%s python %s validate`; it must print OK." % (ring, tool))
     print("  5. Before acting under a node marked unratified and not contested, run `python %s contest <ID>`" % tool)
     print("     and follow it: build the alternatives, scope their cost, judge by the parents, record the verdict.")
     print("     A contested or ratified node is settled: act on it and never re-ask (A7, B28).")
+    print("     A node marked imported was re-homed, not decided; its contest is owed before the first new work under it.")
     print()
     print("Decisions above your ring that bind you%s (%d):" % (scope_note, len(above)))
     cur = None
@@ -1691,6 +2413,103 @@ def cmd_brief(tree, args):
         print()
         print("Your subtree: `python %s tree --under %s`; read any node with `python %s show <ID>`."
               % (tool, args.under, tool))
+    return 0
+
+
+def spec_skeleton(tree, node):
+    """dte:C26, dte:B37"""
+    tool = os.path.relpath(os.path.abspath(__file__), tree.root).replace(os.sep, "/")
+    out = [comment_line(".md", cite_text([node.id])), "", "# Spec: %s" % (node.name or node.id), "",
+           "Serves %s %s (ring %s). Filled by an agent that holds a ring; built by an agent that never reads the tree (B42)."
+           % (node.id, ("%s: %s" % (node.name, node.title)) if node.name else node.title, node.ring), "",
+           "## Purpose", "", _section(node.body, "## Decision").strip() or "TODO", "",
+           "## Constraints", ""]
+    for p in node.parents:
+        pn = tree.nodes.get(p)
+        if pn:
+            out.append("- %s %s: %s" % (pn.id, pn.name or pn.title, " ".join(_section(pn.body, "## Decision").split())))
+    cons = _section(node.body, "## Consequences").strip()
+    if cons:
+        out += [l for l in cons.split("\n") if l.strip()]
+    if not node.parents and not cons:
+        out.append("- TODO")
+    out += ["", "## Covered decisions", ""]
+    desc = tree.descendants(node.id)
+    for i in tree.ordered(desc):
+        c = tree.nodes[i]
+        if c.in_effect:
+            out.append("- %s %s: %s" % (c.id, c.name or c.title, " ".join(_section(c.body, "## Decision").split())))
+    if not desc:
+        out.append("- none yet; requirements below are decided here and may become child nodes")
+    out += ["", "## Requirements", "", "TODO one numbered requirement per behaviour, each naming the decision it serves.", "",
+            "## Out of scope", "", "TODO", "",
+            "## Gaps", "",
+            "A builder that finds this spec silent stops that part and runs `python %s gap <this file> --title \"...\" --by <name>`; it never improvises." % tool, ""]
+    return "\n".join(out)
+
+
+def cmd_spec(tree, args):
+    """dte:C26"""
+    node = tree.nodes.get(args.id)
+    if node is None:
+        print("unknown id: %s (%s)" % (args.id, tree.retired_hint(args.id)))
+        return 2
+    text = spec_skeleton(tree, node)
+    if args.out:
+        if os.path.exists(args.out):
+            print("refusing to overwrite %s" % args.out)
+            return 2
+        os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
+        write_text(args.out, text)
+        rel = tree.rel(os.path.abspath(args.out))
+        layer = tree.layer_of(rel)
+        print("wrote %s, citing %s" % (rel, node.id))
+        if layer != "specs":
+            print("  note: %s is outside the specs glob in dte.cfg, so show will list it as %s" % (rel, LAYER_LABEL[layer]))
+        return 0
+    print(text)
+    return 0
+
+
+def cmd_gap(tree, args):
+    """dte:C27"""
+    spec = tree.rel(os.path.abspath(args.spec))
+    if not os.path.isfile(os.path.join(tree.root, spec)):
+        print("no such spec: %s" % spec)
+        return 2
+    slug = "gap-" + re.sub(r"[^a-z0-9]+", "-", args.title.lower()).strip("-")[:60]
+    path = os.path.join(tree.inbox_dir, slug + ".md")
+    if os.path.exists(path):
+        print("a gap with that title is already filed: %s" % tree.rel(path))
+        return 2
+    os.makedirs(tree.inbox_dir, exist_ok=True)
+    body = (args.note or "TODO what the spec does not say, and what the builder needs to know").strip()
+    write_text(path, "---\nkind: gap\nspec: %s\ntitle: %s\nmade_by: ai\nby: %s\ndate: %s\n---\n\n## Gap\n\n%s\n"
+               % (spec, fm_str(args.title), args.by, datetime.date.today().isoformat(), body))
+    print("filed %s: the spec %s is silent on %r; whoever holds the spec answers there, then removes the file" % (tree.rel(path), spec, args.title))
+    return 0
+
+
+def builder_brief(tree, spec):
+    """dte:C27, dte:B42"""
+    tool = os.path.relpath(os.path.abspath(__file__), tree.root).replace(os.sep, "/")
+    rel = tree.rel(os.path.abspath(spec))
+    text = read_text(spec).replace("\r\n", "\n")
+    ids = sorted({i for line in text.split("\n") for i in cited_ids(line)}, key=id_key)
+    print("DTE BUILDER BRIEF: you build to the spec below and to nothing else (B42 builderAutonomy).")
+    print()
+    print("Rules:")
+    print("  1. Build exactly what the spec says. You decide nothing: never run new, contest, place, retire or move,")
+    print("     and never read decisions/. Unratified nodes are not your concern; you have no ring.")
+    print("  2. Every file you create or substantially change carries the spec's citation at the top:")
+    print("     `python %s cite <file> %s`." % (tool, ",".join(ids) if ids else "<IDs the spec names>"))
+    print("  3. When the spec is silent, ambiguous or contradicts itself, stop that part and file the gap:")
+    print("     `python %s gap %s --title \"...\" --by <you> --note \"...\"`. Never improvise." % (tool, rel))
+    print("  4. Before you finish, `python %s validate` must print OK. Do not set DTE_RING." % tool)
+    print()
+    print("Spec: %s" % rel)
+    print("-" * 72)
+    print(text.rstrip("\n"))
     return 0
 
 
@@ -1743,15 +2562,15 @@ def cmd_reparent(tree, args):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     old = ", ".join(node.parents) or "none"
-    text = set_field(text, "parents", "[%s]" % ", ".join(parents))
+    text = set_field(text, "parents", fm_ids(parents))
     text = append_history(text, "- %s re-parented from [%s] to [%s] by %s." % (
         datetime.date.today().isoformat(), old, ", ".join(parents), args.by))
     write_text(node.path, text.replace("\n", nl))
-    print('re-parented %s "%s": [%s] -> [%s]' % (args.id, node.title, old, ", ".join(parents)))
+    print('re-parented %s "%s": [%s] -> [%s]' % (args.id, node.summary, old, ", ".join(parents)))
     return 0
 
 
-SETTABLE = ("title", "confidence")       # dte:B29 the fields with no invariant
+SETTABLE = ("title", "name", "confidence")       # dte:B29 the fields with no invariant
 CONFIDENCES = ("low", "medium", "high")
 FIELD_OWNER = {                            # where a refused field is actually changed
     "status": "retire, ratify, or move", "parents": "reparent", "supersedes": "retire --superseded-by",
@@ -1783,10 +2602,16 @@ def cmd_set(tree, args):
     if not new:
         print("the new value is empty")
         return 2
-    old = node.title if field == "title" else (node.confidence or "")
+    old = {"title": node.title, "name": node.name}.get(field, node.confidence or "")
     if new == old:
         print("%s already has %s = %s" % (args.id, field, new))
         return 0
+    if field == "name" and not NAME_RE.match(new):
+        print("a name is a camelCase identifier like shareImpl")
+        return 2
+    if field == "name" and any(n.name == new and n.in_effect for n in tree.nodes.values()):
+        print("name %s is already taken" % new)
+        return 2
     if field == "confidence" and new not in CONFIDENCES:
         print("confidence is one of: %s" % ", ".join(CONFIDENCES))
         return 2
@@ -1798,7 +2623,9 @@ def cmd_set(tree, args):
     text = read_text(node.path)
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
-    text = set_field(text, field, new)
+    text = set_field(text, field, fm_str(new) if field == "title" else new)
+    if field == "name":
+        text = set_field(text, "aliases", "[%s]" % new)
     if args.authorized_by:
         text = set_field(text, "authorized_by", args.authorized_by)
     text = append_history(text, '- %s %s changed from "%s" by %s%s.' % (
@@ -1817,6 +2644,21 @@ def _section(body, heading):
     i = lines.index(heading) + 1
     j = next((k for k in range(i, len(lines)) if lines[k].startswith("## ")), len(lines))
     return "\n".join(lines[i:j]).strip("\n")
+
+
+def _drop_section(text, heading):
+    """Remove heading and its lines up to the next ## heading; text unchanged if absent."""
+    lines = text.rstrip("\n").split("\n")
+    if heading not in lines:
+        return text
+    i = lines.index(heading)
+    j = next((k for k in range(i + 1, len(lines)) if lines[k].startswith("## ")), len(lines))
+    while i > 0 and not lines[i - 1].strip():
+        i -= 1
+    del lines[i:j]
+    if lines and lines[-1].strip():
+        pass
+    return "\n".join(lines).rstrip("\n") + "\n"
 
 
 def _insert_section(text, heading, block):
@@ -1877,6 +2719,9 @@ def cmd_contest(tree, args):
     print("Children of %s (%d) and artifacts citing it (%d) count for nothing: a better node may need none of them."
           % (node.id, len(kids), len(cites)))
     print("Do not reopen parents, siblings, or children in this contest.")
+    # dte:B40
+    print("A Why that names the incident that forced the node is load-bearing; one that names none is")
+    print("preventive judgment and the thinner claim (B40 originInWhy). Weigh it so.")
     print()
     print("  keep      %s as written" % node.id)
     print("  opposite  the decision reversed")
@@ -1915,12 +2760,14 @@ def record_contest(tree, node, args):
     text = read_text(node.path)
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
-    text = _insert_section(text, "## Alternatives considered", block)
+    text = _insert_section(text, "## Contest", block)
     text = set_field(text, "contested_by", args.by)
     text = append_history(text, "- %s contested by %s; %s won." % (today, args.by, args.chosen))
     write_text(node.path, text.replace("\n", nl))
     tool = os.path.relpath(os.path.abspath(__file__), tree.root).replace(os.sep, "/")
-    print('recorded contest on %s "%s": %s wins' % (node.id, node.title, args.chosen))
+    print('recorded contest on %s "%s": %s wins' % (node.id, node.summary, args.chosen))
+    if args.chosen != "keep" and (args.title or args.retire):   # dte:C22 one step from verdict to tree
+        return settle_contest(tree, node, args)
     if args.chosen == "keep":
         print("  %s is settled; act on it without re-asking until a human ratifies or supersedes it (A7, B28)" % node.id)
     elif args.chosen == "deletion":
@@ -1929,6 +2776,43 @@ def record_contest(tree, node, args):
         print("  next: python %s new %s --title ... --parents %s   then   python %s retire %s --by <you> --superseded-by NEW"
               % (tool, node.ring, ",".join(node.parents), tool, node.id))
     return 0
+
+
+def settle_contest(tree, node, args):
+    """Write the winner (opposite or variant, from --title and a body) at the same ring with the
+    same parents, then retire the loser superseded by it; or revert it for deletion.  dte:C22"""
+    if args.chosen == "deletion":
+        if not args.retire:
+            return 0
+        new_id = None
+    else:
+        if not args.title:
+            return 0
+        body = node_body(args)
+        if body is None:
+            return 2
+        new_id = next_id(tree, node.ring)
+        fields = [("id", new_id)]
+        if args.name:
+            if not NAME_RE.match(args.name):
+                print("a name is a camelCase identifier like shareImpl")
+                return 2
+            fields.append(("name", args.name))
+        fields += [("title", fm_str(args.title)), ("status", "active"), ("parents", list(node.parents)),
+                   ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
+                   ("made_by", "ai"), ("by", args.by), ("date", datetime.date.today().isoformat()),
+                   ("ratified_by", ""), ("contested_by", args.by)]
+        if args.name:
+            fields.append(("aliases", "[%s]" % args.name))
+        text = build_frontmatter(fields) + body
+        text = append_history(text, "- %s created as the %s that won the contest of %s; by %s."
+                              % (datetime.date.today().isoformat(), args.chosen, node.id, args.by))
+        dest = os.path.join(tree.decisions_dir, node.ring, new_id + ".md")
+        write_text(dest, text)
+        print('created %s "%s" at %s' % (new_id, args.title, tree.rel(dest)))
+    fresh = Tree(tree.root, tree.decisions_dir)
+    ns = argparse.Namespace(id=node.id, superseded_by=new_id, by=args.by, authorized_by=args.authorized_by)
+    return cmd_retire(fresh, ns)
 
 
 def cmd_conflict(tree, args):
@@ -1950,7 +2834,7 @@ def cmd_conflict(tree, args):
             text = read_text(n.path)
             nl = "\r\n" if "\r\n" in text else "\n"
             text = text.replace("\r\n", "\n")
-            text = set_field(text, "conflicts_with", "[%s]" % ", ".join(n.conflicts_with + [y]))
+            text = set_field(text, "conflicts_with", fm_ids(n.conflicts_with + [y]))
             write_text(n.path, text.replace("\n", nl))
     na, nb = tree.nodes[a], tree.nodes[b]
     print("declared: %s  vs  %s" % (na.label(), nb.label()))
@@ -2004,11 +2888,92 @@ def cmd_export(tree, args):
     return 0
 
 
+VENDOR_FILES = ("CLAUDE.md", "SPEC.md", "ADOPTING.md", "README.md")
+VENDOR_DIR = "vendor/dte"
+
+
+def _source_commit(src):
+    try:
+        out = subprocess.run(["git", "-C", src, "rev-parse", "--short", "HEAD"],
+                             capture_output=True, text=True)
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
+    except OSError:
+        pass
+    return "unknown commit"
+
+
+def render_decisions(src_tree):
+    """One markdown file of a tree's in-effect nodes, by ring, for readers who must know
+    the decisions without hosting them as nodes.  dte:B39"""
+    out = ["# DTE decisions", "",
+           "Every in-effect decision of DTE itself, rendered. These are DTE's, not this",
+           "project's: read them, cite nothing here, and never re-create them as nodes.", ""]
+    cur = None
+    for n in src_tree.ordered_nodes():
+        if not n.in_effect:
+            continue
+        if n.ring != cur:
+            cur = n.ring
+            out += ["## Ring %s" % cur, ""]
+        held = " (human-held)" if n.human_held else ""
+        out += ["### %s%s" % (n.label(), held), ""]
+        for heading, label in (("## Decision", "Decision"), ("## Why", "Why"), ("## Consequences", "Consequences")):
+            sec = _section(n.body, heading)
+            if sec:
+                out += ["**%s.** %s" % (label, sec.strip()), ""]
+    return "\n".join(out).rstrip("\n") + "\n"
+
+
+def cmd_vendor(tree, args):
+    """dte:C25, dte:B39"""
+    src = os.path.abspath(args.src)
+    src_dec = os.path.join(src, "decisions")
+    missing = [f for f in VENDOR_FILES if not os.path.isfile(os.path.join(src, f))]
+    if missing or not os.path.isdir(src_dec):
+        print("not a DTE checkout: %s (missing %s)" % (src, ", ".join(missing + ([] if os.path.isdir(src_dec) else ["decisions/"]))))
+        return 2
+    dest = os.path.join(tree.root, args.dir)
+    os.makedirs(dest, exist_ok=True)
+    tool = os.path.relpath(os.path.abspath(__file__), tree.root).replace(os.sep, "/")
+    # no source path in the stamp: an absolute path would carry the user's home directory into the adopter's repo
+    stamp = "<!-- vendored from DTE %s on %s. Do not edit; refresh with: python %s vendor --from <your DTE checkout> -->\n\n" % (
+        _source_commit(src), datetime.date.today().isoformat(), tool)
+    written = []
+    for f in VENDOR_FILES:
+        write_text(os.path.join(dest, f), stamp + read_text(os.path.join(src, f)))
+        written.append(f)
+    src_tree = Tree(src, src_dec)
+    write_text(os.path.join(dest, "DECISIONS.md"), stamp + render_decisions(src_tree))
+    written.append("DECISIONS.md")
+    rel_dest = args.dir.replace(os.sep, "/").rstrip("/")
+    print("vendored into %s/: %s" % (rel_dest, ", ".join(written)))
+    src_tool = os.path.join(src, "tools", "dte.py")
+    me = os.path.abspath(__file__)
+    if os.path.isfile(src_tool) and os.path.abspath(src_tool) != me:
+        if read_text(src_tool) != read_text(me):
+            write_text(me, read_text(src_tool))
+            print("refreshed %s from the source" % tool)
+        else:
+            print("%s already matches the source" % tool)
+    ign = os.path.join(tree.root, ".dteignore")
+    entry = rel_dest + "/*"
+    existing = read_text(ign) if os.path.isfile(ign) else ""
+    if entry not in existing.replace("\r\n", "\n").split("\n"):
+        head = existing if existing else IGNORE_TEMPLATE
+        write_text(ign, head.rstrip("\n") + "\n# Vendored DTE rule text: its citations are DTE's tree, not this one.\n%s\n" % entry)
+        print("added %s to .dteignore" % entry)
+    print("next: have your agent harness load %s/CLAUDE.md, SPEC.md, ADOPTING.md and DECISIONS.md at session start" % rel_dest)
+    return 0
+
+
 def cmd_init(tree, args):
     """dte:C13"""
     root = os.path.abspath(args.root)
     made, kept = [], []
-    for rel, content in (("dte.cfg", CFG_TEMPLATE), (".dteignore", IGNORE_TEMPLATE)):
+    me = os.path.basename(__file__)
+    ignore = IGNORE_TEMPLATE + "# The dte tool itself: its dte: tokens belong to DTE's own tree, not this one.\n%s\n" % me
+    for rel, content in (("dte.cfg", CFG_TEMPLATE), (".dteignore", ignore), (COVERAGE_FILE, COVERAGE_TEMPLATE)):
         p = os.path.join(root, rel)
         if os.path.exists(p):
             kept.append(rel)
@@ -2029,7 +2994,8 @@ def cmd_init(tree, args):
     print("next:")
     print("  1. write the core: dte new A --title \"<goal>\" --by <owner> --made-by human   (three to six of these)")
     print("  2. edit dte.cfg: authority map, docs globs, retire mode")
-    print("  3. put the agent protocol (CLAUDE.md from the DTE repo) into your agent instructions")
+    print("  3. dte vendor --from <path to a DTE checkout>: copies DTE's rule text and a render of its")
+    print("     decisions into vendor/dte/, ignored by the scanner; have your agent harness load them at session start")
     print("  4. dte validate, then dte coverage: that number is the adoption gauge")
     return 0
 
@@ -2041,6 +3007,7 @@ def main(argv=None):
     ap.add_argument("--decisions", default=None)
     sub = ap.add_subparsers(dest="cmd", required=True)
     v = sub.add_parser("validate")
+    v.add_argument("--full", action="store_true", help="list every unratified node instead of the count (C23)")
     v.add_argument("--as", dest="as_ring", default=os.environ.get("DTE_RING") or None, metavar="RING",
                    help="check changed nodes against an agent's ring (B15); default $DTE_RING")
     t = sub.add_parser("tree")
@@ -2049,10 +3016,18 @@ def main(argv=None):
     sub.add_parser("blast").add_argument("id")
     sub.add_parser("trace").add_argument("path")
     sub.add_parser("conflicts")
-    sub.add_parser("coverage")
+    cv = sub.add_parser("coverage")
+    cv.add_argument("--excluded", action="store_true", help="list the excluded files under each reason")
+    cv.add_argument("--check", action="store_true", help="exit 1 unless every artifact cites or is excluded, with no stale exclusion")
     sub.add_parser("next").add_argument("ring")
-    sub.add_parser("scope")
+    vd = sub.add_parser("vendor")
+    vd.add_argument("--from", dest="src", required=True, metavar="DIR", help="a DTE checkout")
+    vd.add_argument("--dir", default=VENDOR_DIR, help="where the copies go (default %s)" % VENDOR_DIR)
+    sub.add_parser("scope").add_argument("--comments", action="store_true",
+                                          help="list comment-heavy files with no citation (B38)")
     sub.add_parser("inbox")
+    ob = sub.add_parser("outbox")
+    ob.add_argument("--done", default=None, metavar="ID|slug", help="clear one processed item")
     p = sub.add_parser("place")
     p.add_argument("slug")
     p.add_argument("ring")
@@ -2076,6 +3051,9 @@ def main(argv=None):
     n = sub.add_parser("new")
     n.add_argument("ring")
     n.add_argument("--title", required=True)
+    n.add_argument("--name", default=None, help="readable camelCase handle, unique; becomes the Obsidian alias")
+    n.add_argument("--body-file", dest="body_file", default=None,
+                   help="markdown file whose sections become the body verbatim (C20); beats --decision/--why")
     n.add_argument("--by", required=True)
     n.add_argument("--parents", default=None, help="comma-separated parent ids")
     n.add_argument("--made-by", dest="made_by", default="ai", help="ai | human | joint")
@@ -2087,6 +3065,15 @@ def main(argv=None):
     n.add_argument("--authorized-by", dest="authorized_by", default=None,
                    help="human authorising an agent to write this node above its ring")
     sub.add_parser("show").add_argument("id")
+    sub.add_parser("unratified")
+    im = sub.add_parser("import")
+    im.add_argument("dir", help="folder of markdown files: frontmatter ring, title, parents (by name, id or file), body")
+    im.add_argument("--by", required=True, help="who ran the import")
+    im.add_argument("--source", default=None, help="label for the History line; defaults to the folder")
+    au = sub.add_parser("authorize")
+    au.add_argument("ids", nargs="+")
+    au.add_argument("--by", required=True, help="the human authorising")
+    au.add_argument("--note", default=None)
     sub.add_parser("find").add_argument("text")
     ra = sub.add_parser("ratify")
     ra.add_argument("ids", nargs="+")
@@ -2110,6 +3097,14 @@ def main(argv=None):
     ct.add_argument("--note", default=None, help="the alternatives, their scoped costs, and the verdict")
     ct.add_argument("--file", default=None, help="markdown file holding the same, appended before --note")
     ct.add_argument("--again", action="store_true", help="contest a node that was already contested")
+    ct.add_argument("--title", default=None, help="with --record and a non-keep verdict: write the winner with this title (C22)")
+    ct.add_argument("--name", default=None, help="the winner's camelCase name")
+    ct.add_argument("--body-file", dest="body_file", default=None, help="the winner's body; or use --decision/--why")
+    ct.add_argument("--decision", default=None)
+    ct.add_argument("--why", default=None)
+    ct.add_argument("--consequences", default=None)
+    ct.add_argument("--retire", action="store_true", help="with --chosen deletion: revert the node now")
+    ct.add_argument("--authorized-by", dest="authorized_by", default=None)
     cf = sub.add_parser("conflict")
     cf.add_argument("a")
     cf.add_argument("b")
@@ -2121,8 +3116,17 @@ def main(argv=None):
     ci.add_argument("file")
     ci.add_argument("ids", help="comma-separated ids")
     br = sub.add_parser("brief")
-    br.add_argument("ring")
+    br.add_argument("ring", nargs="?", default=None)
     br.add_argument("--under", default=None, metavar="ID", help="restrict binding nodes to one subtree")
+    br.add_argument("--builder", default=None, metavar="SPEC", help="brief an agent that builds to this spec and holds no ring (C27)")
+    sp = sub.add_parser("spec")
+    sp.add_argument("id")
+    sp.add_argument("--out", default=None, metavar="FILE", help="write the skeleton here instead of stdout")
+    gp = sub.add_parser("gap")
+    gp.add_argument("spec")
+    gp.add_argument("--title", required=True)
+    gp.add_argument("--by", required=True)
+    gp.add_argument("--note", default=None)
     sub.add_parser("hook")
     args = ap.parse_args(argv)
     CONFIG.clear()
@@ -2132,13 +3136,18 @@ def main(argv=None):
     return {
         "validate": cmd_validate, "tree": cmd_tree, "blast": cmd_blast,
         "trace": cmd_trace, "conflicts": cmd_conflicts, "coverage": cmd_coverage,
-        "next": cmd_next, "scope": cmd_scope, "inbox": cmd_inbox, "place": cmd_place,
+        "next": cmd_next, "scope": cmd_scope, "inbox": cmd_inbox, "outbox": cmd_outbox, "place": cmd_place,
         "authority": cmd_authority, "move": cmd_move, "retire": cmd_retire,
         "new": cmd_new, "show": cmd_show, "find": cmd_find, "ratify": cmd_ratify,
+        "unratified": cmd_unratified, "import": cmd_import, "authorize": cmd_authorize,
         "conflict": cmd_conflict, "reparent": cmd_reparent, "set": cmd_set, "contest": cmd_contest, "retired": cmd_retired, "export": cmd_export,
-        "init": cmd_init, "cite": cmd_cite, "brief": cmd_brief, "hook": cmd_hook,
+        "init": cmd_init, "vendor": cmd_vendor, "spec": cmd_spec, "gap": cmd_gap, "cite": cmd_cite, "brief": cmd_brief, "hook": cmd_hook,
     }[args.cmd](tree, args)
 
 
 if __name__ == "__main__":
+    # Windows consoles default to cp1252; a node body with an arrow must not crash show.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main())

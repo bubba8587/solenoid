@@ -1,3 +1,4 @@
+// [[B12]] losslessSaves
 // The strict validating reader (graphValidate.ts): every silently-repaired
 // load condition must surface as a repair-grade issue, and — just as load-
 // bearing — nothing a real save contains may false-positive. The seed sweep at

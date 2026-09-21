@@ -1,4 +1,4 @@
-// dte:C67
+// [[C67]]
 // mdbase collections (mdbase-dev/mdbase-spec v0.3): a folder with `mdbase.yaml` and a
 // `_types/` folder of markdown type files (`kind: mdbase.type`, `match.path_glob`, a JSON
 // Schema `schema.value`). This maps those schemas into the shared TypeHint vocabulary

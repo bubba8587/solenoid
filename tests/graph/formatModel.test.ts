@@ -1,3 +1,4 @@
+// [[C94]] formatFamilyGates
 import { describe, it, expect } from "vitest";
 import { familyOf, controlsFor, precisionApplies, COMPLEX_FORMAT_STYLES } from "../../src/graph/formatModel";
 import { applyLogicalStyle } from "../../src/graph/formatAnnotationStore";
@@ -21,7 +22,7 @@ describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly 
     frame: "none", cube: "none",  // per-column formats are the A4 units milestone
     anylist: "none",              // element-agnostic wildcard — no format family until a concrete type flows in
     anycombo: "none",             // its scalar-or-list sibling — same reason
-    anydata: "none",              // the rank-≤2 sibling (anydataWildcard) — same reason
+    anydata: "none",              // the rank-≤2 sibling ([[E5]] anydataWildcard) — same reason
     chart: "chart",               // text-scale control (display only)
     lambda: "lambda",             // view-as control (signature/KaTeX/highlighted/mono)
     document: "none",             // a whole-document value — no FC format controls

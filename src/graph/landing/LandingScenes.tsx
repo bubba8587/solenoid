@@ -1,4 +1,4 @@
-// dte:C2
+// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere, [[D62]] demoVaultResolution
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
@@ -43,15 +43,12 @@ function wire(s: SurfaceStack, src: ClassicPreset.Node, out: string, tgt: Classi
 }
 
 // ─── Landing scene primitives ───────────────────────────────────────────────────
-// STATIC vignettes rebuilding the app's design recipes in plain DOM+SVG — the page
-// allows only ONE live rete stage (LandingGraph), so scenes must never mount one.
+// STATIC vignettes in plain DOM+SVG; a page hosts ONE live stage ([[C2]] realCanvasScenes).
 
 // ── Reveal animation gate ──
-// Entrance/loop motion lives only under `.sol-landing--anim`, and only when the OS
-// isn't asking for reduced motion. Applied in a LAYOUT effect (before paint), so the
-// hidden reveal state paints once and the IntersectionObserver's reveal a frame later
-// has a committed frame to transition FROM — a passive effect flips it after paint, so
-// above-the-fold reveals collapse straight to visible with no animation on reload.
+// Motion lives only under `.sol-landing--anim`, and only without reduced motion. A
+// LAYOUT effect (before paint), so the hidden state paints once and the reveal a frame
+// later has a committed frame to transition FROM.
 export function useRevealAnim(): boolean {
   const [anim, setAnim] = useState(false);
   useLayoutEffect(() => {
@@ -415,9 +412,8 @@ export function NoteImportScene() {
 }
 
 // ─── Scene: the vault as a table (real nodes reading the demo vault) ─────────────
-// A real Vault Folder reads the bundled demo vault's Notes folder as one cube, Filter
-// keeps the notes tagged `book`, Sort orders by rating, Display shows the table. The
-// Obsidian page forces the demo-vault root, so this reads real notes on the web too.
+// Vault Folder → Filter (tagged `book`) → Sort by rating → Display. The Obsidian page
+// forces the demo vault ([[D62]] demoVaultResolution), so this reads real notes on the web.
 export function VaultTableScene() {
   return (
     <SceneStage
@@ -447,11 +443,9 @@ export function VaultTableScene() {
   );
 }
 
-// ─── Scene: TaskNotes (the real connection node on a live canvas) ────────────────
-// The real TaskNotes node in its "tasks" mode, feeding a Display. The /obsidian page
-// fakes the TaskNotes HTTP API behind the demo flag (demoTaskNotes.ts), so this shows a
-// real Tasks cube on the web with no server. The Display is collapsed to its compact
-// preview — the full cube is very wide and would zoom the scene out.
+// ─── Scene: TaskNotes (the real connection node) ─────────────────────────────────
+// TaskNotes in "tasks" mode feeding a collapsed Display; the /obsidian page fakes the
+// TaskNotes API behind the demo flag ([[D62]] demoVaultResolution).
 export function TaskNotesScene() {
   return (
     <SceneStage
@@ -469,9 +463,7 @@ export function TaskNotesScene() {
 }
 
 // ─── Scene: Excel over CSV (a real Local File reading a bundled CSV) ─────────────
-// A real Local File node reads the demo vault's bundled expenses.csv as a typed
-// frame, shown in a Display. The Obsidian page forces the Local File data folder to
-// the demo vault, so this reads a real CSV on the web too (desktop reads real disk).
+// Local File reads the demo vault's expenses.csv into a Display ([[D62]] demoVaultResolution).
 export function LocalFileScene() {
   return (
     <SceneStage
@@ -486,12 +478,9 @@ export function LocalFileScene() {
   );
 }
 
-// ─── The Obsidian page's live hero graph (interactive, not a locked scene) ───────
-// Two plain values flow into a Report — a markdown note whose `{{ }}` tags embed them
-// (Knap) — and Write to Obsidian. Driven by LiveGraph, so it claims the page globals:
-// edit an input and the Report re-renders, open its Document chip to read the note.
-// The reports surface, no formula to parse — values in, a note out. Clears first so
-// LiveGraph's Reset rebuilds it.
+// ─── The Obsidian page's live hero graph (driven by LiveGraph, not a locked scene) ──
+// Two values → a Report whose `{{ }}` tags embed them → Write to Obsidian. Clears
+// first so LiveGraph's Reset rebuilds it.
 export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
   await s.editor.clear();
   const focus = new NumberInputNode({ label: "Focus hours", value: 18.5 });

@@ -1,3 +1,4 @@
+// [[B13]] aiInScope
 // Line diff for the AI apply-approval view. The quadratic LCS table is affordable at
 // text-form size, and exactness matters: every add/del row shown is a REAL change.
 

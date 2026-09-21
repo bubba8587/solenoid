@@ -1,17 +1,14 @@
+// [[C2]] realCanvasScenes
 import { useLayoutEffect, useRef, useState } from "react";
 import { getCablePath, Position } from "../cablePaths";
 
-// A decorative thread down the marketing page: a soft, socketless bezier from the
-// bottom-center of each live flow-canvas viewport to the top-center of the next, so the
-// scenes read as one continuous flow. Pure overlay — measured from the DOM, no sockets,
-// no interaction. It reuses the app's cable spline (getCablePath), entering/leaving each
-// point VERTICALLY (Bottom -> Top). Mounts as the first child of `.sol-landing__inner`
-// (made position:relative) and spans its full scroll height; the SVG is sized in px with
-// no viewBox, so 1 unit = 1 px and the coordinates never scale. Recomputes as the scenes
-// lay out (async) and on resize.
+// A decorative thread down the marketing page: the app's cable spline (getCablePath)
+// from the bottom-center of each scene to the top-center of the next, entering and
+// leaving VERTICALLY. Pure overlay, measured from the DOM. Mounts as the first child of
+// `.sol-landing__inner` (position:relative); the SVG is sized in px with no viewBox, so
+// 1 unit = 1 px.
 
-// Live canvas viewports plus the static diagram scenes (e.g. the presenter slideshow),
-// so the thread runs through every scene, not only the real flow canvases.
+// Live canvas viewports plus the static diagram scenes.
 const STAGE_SELECTOR = ".sol-scene-stage, .sol-landing__stage, .sol-diagram";
 
 export function SceneThread() {
@@ -64,9 +61,8 @@ export function SceneThread() {
     ro.observe(inner);
     for (const el of inner.querySelectorAll(STAGE_SELECTOR)) ro.observe(el);
     window.addEventListener("resize", schedule);
-    // The scroll container: scrolling means the page has settled, so recompute then too —
-    // this is what self-heals a thread measured before fonts/reveals landed (the same fix
-    // a browser zoom was doing by hand).
+    // Scrolling means the page has settled: recompute then too, which self-heals a
+    // thread measured before fonts/reveals landed.
     const scroller = inner.parentElement;
     scroller?.addEventListener("scroll", schedule, { passive: true });
     // Web fonts reflow the prose (and move the scenes) after first paint.

@@ -1,7 +1,7 @@
-// Write Properties' optional `<node>.base` companion (bundle 24 item B, writeBase): a
-// Bases view over the folder Write Properties wrote to, so a managed block can embed
-// `![[<node>.base#View]]` and Obsidian renders a live table of what B produced. Pure YAML
-// building; graph/DOM-free.
+// [[B1]] obsidianBet, [[C67]] mdbaseCeiling (the one sanctioned `.base` writer)
+// Write Properties' optional `<node>.base` companion: a Bases view over the folder it
+// wrote to, so a managed block can embed `![[<node>.base#View]]`. Pure YAML building;
+// graph/DOM-free.
 
 import { yamlScalar } from "./obsidianMarkdown";
 

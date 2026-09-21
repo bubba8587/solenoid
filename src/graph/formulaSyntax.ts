@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming
 import { FORMULA_CONSTANTS } from "./excelFormula";
 import { FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { advertisedFunctionNames } from "./formulaExtensions";
@@ -22,8 +23,8 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 const isDigit = (c: string) => c >= "0" && c <= "9";
-const isIdStart = (c: string) => /[A-Za-z_]/.test(c);
-const isIdChar = (c: string) => /[A-Za-z0-9_]/.test(c);
+const isIdStart = (c: string) => /[A-Za-z_λ]/.test(c);
+const isIdChar = (c: string) => /[A-Za-z0-9_λ]/.test(c);
 
 /** The CSS class for an identifier: in CALL position `fx-fn` / `fx-frame` (a real
  *  name whose type can't flow through formulas, so never a typo) / `fx-unknown`;

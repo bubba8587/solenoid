@@ -1,4 +1,4 @@
-// dte:E11
+// [[E11]]
 import { ClassicPreset } from "rete";
 import { dateIn, cubeOut, frameOut } from "./shared";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
@@ -69,7 +69,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
   }
 
   /** The socket keys a switch to `next` would remove (inputs + outputs). Callers on a
-   *  live graph prune their cables BEFORE calling setProvider (onePrunePath). */
+   *  live graph prune their cables BEFORE calling setProvider ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: TaskNotesProvider): { inputs: string[]; outputs: string[] } {
     return {
       inputs: INPUTS[this.provider].filter((k) => !INPUTS[next].includes(k)),
@@ -120,7 +120,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (isDemoTaskNotes()) {
         // The demo fake needs no network and no wait: the canned reply parses in this pass,
-        // so a seed computes on its first fetch (dte:D62 demoVaultResolution).
+        // so a seed computes on its first fetch ([[D62]] demoVaultResolution).
         this._lastKey = key;
         this.loadDemo();
       } else if (requestNetwork(this.id)) {
@@ -188,7 +188,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
 }
 
 // ─── WRITE TASKS (F6): rows → POST /api/tasks, or PUT /api/tasks/:id when the row carries
-// `path`. Run-button only (sinkRunButtonOnly): data() caches and emits the `plan` frame;
+// `path`. Run-button only ([[C38]] sinkRunButtonOnly): data() caches and emits the `plan` frame;
 // Preview reads the current tasks to mark unchanged rows; Run sends the rest.
 
 export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
@@ -212,7 +212,7 @@ export class WriteTasksNode extends ClassicPreset.Node {
   statusMessage = "";
   width = 262; height = 250;
 
-  /** The plan frame's columns are fixed (declareOnce). */
+  /** The plan frame's columns are fixed ([[C8]] declareOnce). */
   frameShape(): Shape {
     return { columns: [
       { name: "path", type: "string" }, { name: "title", type: "string" },

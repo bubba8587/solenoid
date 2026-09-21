@@ -1,3 +1,4 @@
+// [[C24]] arraySemantics, [[C44]] dateSerials, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import {
   buildFrame, isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount,

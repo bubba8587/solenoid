@@ -1,21 +1,13 @@
-// AUTHOR RULING (2026-08-26): on TOUCH, a one-finger drag on an UNSELECTED
-// card or group PANS the canvas — a busy graph leaves no blank pixels to pan
-// from otherwise. Selected nodes drag (tap-then-drag), matching the rete
-// surface's touch guard. Mouse and pen keep select-and-drag in one motion.
-//
-// Owned in CAPTURE on the wrapper: the qualifying pointerdown is stopped so
-// RF's node drag never starts, and the moves drive the camera directly. A
-// second finger hands the gesture to flowPinch (touchCount governs).
+// [[C93]] gestureByPointerType: on touch a one-finger drag on an UNSELECTED card or
+// group pans. Owned in CAPTURE on the wrapper; a second finger hands the gesture to
+// flowPinch ([[C92]]). Mechanics: specs/pointer-gestures.md.
 import { touchCount } from "../pointerGesture";
 import { touchSelectStore } from "../touchSelectStore";
 
 type Viewport = { x: number; y: number; zoom: number };
 
-/** Only DISCRETE controls keep their touch meaning (a tap fires them), sockets
- *  keep the cable pick, and the corner resize grip keeps its drag (it is always
- *  live, selected or not — socket.css). Text fields deliberately do NOT veto: a
- *  tap still focuses them, but a DRAG from one pans — on an unselected card every
- *  non-actionable pixel is pan surface (the ruling's whole point). */
+/** The vetoing controls ([[C93]]): discrete controls, sockets, the always-live resize
+ *  grip. Text fields deliberately do NOT veto: a tap focuses, a drag pans. */
 const CONTROL_SELECTOR = "button, select, .react-flow__handle, [data-socket-key], .sol-rf-grip";
 
 export function installTouchCardPan(

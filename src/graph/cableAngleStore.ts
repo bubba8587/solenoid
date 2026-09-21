@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // Per-socket cable exit angles for non-cardinal sockets (a rotated Conduit).
 // Degrees CW from +X (0 = right, 90 = down); absent = cardinal Right/Left.
 

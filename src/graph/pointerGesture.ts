@@ -1,21 +1,18 @@
-// The ONE definition of the two-finger gesture. It listens on `window` in CAPTURE so
-// no component's `stopPropagation()` can hide a contact — the pinch-priority rule
-// (pinch in capture, un-vetoable; pan/drag in bubble, vetoable) depends on it.
+// [[C92]] pinchUnvetoable: the ONE finger census, on `window` in CAPTURE so no
+// component's `stopPropagation()` can hide a contact.
 
 /** Contacts down by pointerId, keeping only whether each is a FINGER; a device
  *  reporting no `pointerType` is treated as touch (only digitizers omit it). */
 const down = new Map<number, boolean>();
 
-/** Mouse and pen are excluded: neither can pinch, and counting them would let a
- *  resting stylus become the second "contact" of a zoom. */
+/** Mouse and pen are excluded ([[C93]] gestureByPointerType: a pen is precise). */
 export function touchCount(): number {
   let n = 0;
   for (const isTouch of down.values()) if (isTouch) n++;
   return n;
 }
 
-/** The single definition, so no caller counts raw pointers for itself; deliberately
- *  blind to a stylus in contact — a node graph has no palm to reject. */
+/** The single definition, so no caller counts raw pointers for itself. */
 export function isPinching(): boolean {
   return touchCount() >= 2;
 }

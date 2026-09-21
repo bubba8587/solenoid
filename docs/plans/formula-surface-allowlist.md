@@ -16,7 +16,7 @@ owns. Written by A2 2026-08-25, plan-only, no code touched. Line numbers verifie
 `excelFormula.ts` / `excelFunctions.ts` on 2026-08-25 — grep the symbol if they drift.
 
 ## Read first
-`CLAUDE.md`; the formula-surface rule nodes (dte:C17 shareImpl and its siblings, dte:D26 hideMatrixFromVendor); `docs/formulajs-divergences.md`
+`CLAUDE.md`; the formula-surface rule nodes ([[C17]] shareImpl and its siblings, [[D26]] hideMatrixFromVendor); `docs/formulajs-divergences.md`
 (why each `registerInternal` override exists — read before deleting a fallthrough);
 `docs/subsystem-invariants.md` § error values.
 
@@ -69,7 +69,7 @@ broadcast fallthrough for them; drop the ~68 undeclared names from `FX_FUNCTION_
 autocomplete stops advertising them. **The bulk of the work is the AUDIT**, which needs the
 author's per-name calls: each of the ~68 is either (a) a real Excel function we WANT →
 declare its `EXCEL_IMPL_META` (and any `registerInternal` divergence per
-`formulajs-divergences.md`), or (b) unwanted → let it fall to `#NAME?`. This cannot be done
+`../../specs/formulajs-divergences.md`), or (b) unwanted → let it fall to `#NAME?`. This cannot be done
 mechanically — declaring a name is a product decision about the surface.
 
 **Recommendation (A2):** do **Option A now** (it removes the user-visible footgun and is
@@ -93,7 +93,7 @@ block B — B later replaces A's guard with the top-level `#NAME?` gate.
    it flips this test, signalling A's guard is now dead and can go).
 3. `npx tsc --noEmit`; `npx vitest run excelFunctions broadcastRules formulaMatrix`; full
    `npx vitest run` before commit.
-4. Rule: add a MUST node under dte:D26 hideMatrixFromVendor ("an undeclared FX name refuses array args")
+4. Rule: add a MUST node under [[D26]] hideMatrixFromVendor ("an undeclared FX name refuses array args")
    citing the test. Dev-notes digest line. This is a containment, not the allowlist — leave the
    backlog "open-by-default" item OPEN, noting A landed and B (the audit) remains.
 

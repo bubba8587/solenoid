@@ -1,14 +1,8 @@
-// One question every canvas-level key handler asks first: does an overlay own the
-// keyboard? While a modal dialog or a pop-up is open, the canvas shortcuts (bare
-// Enter → palette, A → Add menu, T → Tidy, Delete, …) stand down; the overlay's own
-// handlers are the only ones live. Detected from the DOM — an overlay declares itself
-// by rendering `aria-modal="true"` or one of the overlay roots below — plus the
-// store-backed surfaces that render no dialog role.
-//
-// The answer is taken at CAPTURE time and pinned on the event: an overlay answers its
-// key in the capture phase and may close on it (the confirm's Enter), and React removes
-// it from the DOM before the canvas's bubble-phase handler runs — a bubble-time DOM
-// check would see no modal and open the palette on the same keystroke.
+// [[C43]] oneFlowSurface (the surface installs the keyboard once)
+// Does an overlay own the keyboard? Detected from the DOM (`aria-modal="true"` or an
+// overlay root below) plus the store-backed surfaces that render no dialog role.
+// The answer is pinned on the event at CAPTURE time: an overlay may close on the key it
+// answers, so a bubble-time DOM check would see no modal on the same keystroke.
 import { paletteStore } from "./paletteStore";
 import { frStore } from "./frStore";
 import { settingsPanel } from "./settingsStore";

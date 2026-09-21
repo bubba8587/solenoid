@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet, [[C101]] onePatchPath
 // Links both ways (bundle 24 item D): the graph stub note `Solenoid/<doc>.md` that a
 // Write to Obsidian records itself in, plus the `solenoid:` wikilink value patched onto
 // each note it writes. Pure string building; the node does the disk IO. Graph/DOM-free.
@@ -29,7 +30,7 @@ export function buildStub(doc: string, writes: readonly StubWrite[], updated: st
     "type: solenoid",
     writes.length ? `nodes: [${writes.map((w) => yamlScalar(w.node)).join(", ")}]` : "nodes: []",
     "writes:",
-    ...writes.map((w) => `  - {node: ${yamlScalar(w.node)}, target: ${yamlScalar(w.target)}}`),
+    ...writes.flatMap((w) => [`  - node: ${yamlScalar(w.node)}`, `    target: ${yamlScalar(w.target)}`]),
     `updated: ${updated}`,
     "---",
   ].join("\n");

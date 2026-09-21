@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming, [[C14]] currentExcelParity
 // The source of truth for each node's Excel equivalence, applied onto catalog leaves by
 // buildCatalog; pack nodes may instead declare `excel` inline on their entry.
 import type { ExcelEquiv } from "./AddNodeMenu";
@@ -147,7 +148,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "depr-ddb": [{ excel: "DDB", syntax: "=DDB(cost, salv, life, per)", parity: true }],
   "depr-sln": [{ excel: "SLN", syntax: "=SLN(cost, salv, life)", parity: true }],
   "depr-syd": [{ excel: "SYD", syntax: "=SYD(cost, salv, life, per)", parity: true }],
-  "distribution": [
+  "distributions": [
     { excel: "BETA.DIST", syntax: "=BETA.DIST(x, α, β, cum)", parity: true },
     { excel: "BETA.INV", syntax: "=BETA.INV(p, α, β)", parity: false, note: "A probability at or outside 0 to 1 gives a blank; Excel gives #NUM!." },
     { excel: "BINOM.DIST", syntax: "=BINOM.DIST(k, n, p, cum)", parity: true },

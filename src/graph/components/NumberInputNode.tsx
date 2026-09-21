@@ -1,3 +1,4 @@
+// [[C95]] commitOnEnter
 import type { ChangeEvent } from "react";
 import type { NumberInputNode as NumberInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";

@@ -1,8 +1,7 @@
+// [[D17]] relaysTransparent, [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind, [[E6]] portOwnsSocket, [[D15]] wildcardsKeepRank, [[C27]] noDataInComponents
+// Mechanics: specs/conduit-lane-faces.md. All CONDUIT_MAX_LANES lanes are declared up front (the engine and validator address any lane); the component renders the ones in use.
 import { ClassicPreset } from "rete";
 import { trueAnySocket, MutableSocket } from "../sockets";
-
-// A cable bundler routing lane in_i → out_i. All MAX lanes are declared up-front so the
-// engine + validator can address any lane; the component renders only the ones in use.
 
 export const CONDUIT_MAX_LANES = 8;
 
@@ -62,7 +61,7 @@ function claimSeq(n?: number): number {
 }
 
 export class ConduitNode extends ClassicPreset.Node {
-  /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
+  /** Lanes forward tags untouched ([[D42]] perInputUnitBlind). */
   unitAware = true;
   label: string;
   seq: number;
@@ -70,18 +69,18 @@ export class ConduitNode extends ClassicPreset.Node {
   // Fixed hit-area box — keep in sync with CONDUIT_BODY_SIZE (ribbonCable.ts).
   width = 92;
   height = 92;
-  // Per-lane mirror so the component reads latest values without re-running the engine.
+  // Per-lane mirror the component reads ([[C27]] noDataInComponents).
   cachedLane: Array<unknown> = new Array(CONDUIT_MAX_LANES).fill(null);
 
   constructor(init?: { label?: string; angle?: number; seq?: number }) {
     super("Conduit");
     this.seq = claimSeq(init?.seq);
-    // The bare "Conduit" default from older saves upgrades to the numbered form.
+    // A bare "Conduit" label takes the numbered form.
     this.label = init?.label && init.label !== "Conduit" ? init.label : `Conduit ${this.seq}`;
     this.angle = init?.angle ?? 0;
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
-      // Input must be `trueany` (the SUPREMUM) — a plain `any` is scalar-only and would
-      // reject an `anylist`. The output is MUTABLE so the lane carries its adopted type on.
+      // `trueany` in, the supremum ([[D15]] wildcardsKeepRank); a fresh MutableSocket out per
+      // lane ([[E6]] portOwnsSocket) so the lane carries its adopted type on.
       this.addInput(conduitInKey(i), new ClassicPreset.Input(trueAnySocket));
       this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("trueany")));
     }

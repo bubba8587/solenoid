@@ -1,3 +1,4 @@
+// [[C52]] visibleSelection
 // Isolate-overlay boundary analysis: entry = an outside output feeding a focused
 // input (rendered LEFT); exit = a focused output feeding an outside input (RIGHT).
 

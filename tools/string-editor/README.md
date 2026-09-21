@@ -46,7 +46,7 @@ browser's autosave. When this happens the page shows a warning banner and the he
 
 To edit what you *actually* see, let the editor attach to a real browser over the Chrome
 DevTools Protocol. Chrome/Edge 136+ **ignore `--remote-debugging-port` on the default
-profile**, so a bare `chrome.exe --remote-debugging-port=9222` silently does nothing.
+profile**, so a bare `google-chrome --remote-debugging-port=9222` silently does nothing.
 Use the launcher instead:
 
 ```
@@ -69,7 +69,7 @@ each scan, leaving your browser running.
 
 1. **Scrape** — first tries to **attach to your own browser** over CDP (see above) and read
    the app tab as-is (`source: live`); if no debug browser is reachable it falls back to
-   launching the preinstalled Playwright Chromium (`chromium-1223`) and loading the app fresh
+   launching the system browser (`scripts/browser.mjs`; override with `SOLENOID_CHROME`) and loading the app fresh
    (`source: fresh`, the default state). Either way it collects every visible, human-readable
    text run (plus `title` / `placeholder` / `aria-label` attribute strings); pure numbers,
    single glyphs, whitespace and icons are dropped. Each string keeps a light context
@@ -119,6 +119,3 @@ are never logged, and a logging failure never blocks the source rewrite.
   literal).
 - `.md` matches are plain substring matches; a very common phrase may report several `.md`
   locations.
-- The Chromium path is Windows-specific
-  (`chromium-1223/chrome-win64/chrome.exe`) and `playwright-core` is pinned to the version
-  that ships that revision. `npm install` pulls it from the local npm cache when offline.

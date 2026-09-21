@@ -1,5 +1,5 @@
 // The pure distribution table behind the ONE Distribution node AND the distribution
-// formulas (shareImpl / capabilityParity): every CDF / PDF / PMF / tail / inverse lives
+// formulas ([[C17]] shareImpl / capabilityParity): every CDF / PDF / PMF / tail / inverse lives
 // here once, on the mathUtils kernels. Must not import rete — excelFunctions.ts registers
 // NORM.DIST, BINOM.DIST, … straight on `DIST_SPECS[key].compute`.
 import {
@@ -20,7 +20,7 @@ import {
 
 const { PI, exp, log, sqrt, abs } = Math;
 
-// Every probability distribution behind ONE card (oneDistributionNode): the `op` selector picks
+// Every probability distribution behind ONE card ([[C61]] oneDistributionNode): the `op` selector picks
 // the distribution, the `form` selector picks the curve (CDF / PDF / PMF / the
 // tails) or the inverse (quantile). An inverse form trades the x-style first
 // input for a probability; the parameter inputs are the distribution's own.

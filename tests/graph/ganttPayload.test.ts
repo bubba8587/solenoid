@@ -1,3 +1,4 @@
+// [[C69]], [[C70]], [[C71]]
 import { describe, it, expect } from "vitest";
 import { ganttPayloadFromSchedule } from "../../src/graph/ganttPayload";
 import { scheduleTasks } from "../../src/graph/scheduleCpm";

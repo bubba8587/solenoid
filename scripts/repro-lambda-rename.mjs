@@ -3,8 +3,9 @@
 // Drives the running Vite dev server (port 1420) with system Edge, headless.
 //   node scripts/repro-lambda-rename.mjs
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const URL = "http://localhost:1420";
 
 const graph = {

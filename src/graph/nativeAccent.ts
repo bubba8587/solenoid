@@ -1,3 +1,4 @@
+// [[C62]] paletteAllOrNone
 // Sync the app accent to the native Windows 11 window border (DWMWA_BORDER_COLOR).
 // No-op on web (no Tauri) and off Windows 11 (the Rust command is a no-op there).
 import { isDesktop } from "./fileBridge";

@@ -1,3 +1,5 @@
+// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[C87]] groupsAreSubflows.
+// Mechanics: specs/group-expand-push.md.
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
@@ -41,10 +43,8 @@ export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
 export const GROUP_MIN_W = 140;
 export const GROUP_MIN_H = 90;
 
-/** A locked group must sit out the standoff solve as well — the position lock wins
- *  over the band, so the correction falls entirely on the other endpoint. Returns a
- *  pinned set that includes every locked group; `solveStandoffs` ignores ids that
- *  aren't standoff endpoints, so passing them all is harmless. */
+/** The pinned set for a standoff solve: every locked group ([[D63]]) and its members.
+ *  `solveStandoffs` ignores ids that aren't endpoints, so passing them all is harmless. */
 export function withLockedGroupsPinned(editor: Editor, pinned: Set<string> = new Set()): Set<string> {
   const set = new Set(pinned);
   for (const g of editor.getNodes()) {
@@ -57,10 +57,9 @@ export function withLockedGroupsPinned(editor: Editor, pinned: Set<string> = new
   return set;
 }
 
-/** Pin / unpin a group's top-left corner. A locked group can't be dragged
- *  (per-node `draggable: false` in `toFlowNodes`) and is skipped by global Tidy
- *  and Cleanup; it still resizes. rebuildGroupMembership fires the topology
- *  re-projection that repaints `draggable`; the rerender refreshes the header lock. */
+/** Pin / unpin a group's corner ([[D63]] lockedGroupIsObstacle). rebuildGroupMembership
+ *  fires the topology re-projection that repaints `draggable`; the rerender refreshes
+ *  the header lock. */
 export function setGroupLocked(editor: Editor, view: View, node: GroupNode, locked: boolean): void {
   if (node.lockedPosition === locked) return;
   node.lockedPosition = locked;
@@ -75,7 +74,7 @@ function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: 
   return measuredBox(view, id, getOwningEditor(id) ?? undefined);
 }
 
-/** Pin a group's view element behind its members (simpleNodesOrder stacks by DOM order). */
+/** Pin a group's view element behind its members ([[C65]] domOrderStacking). */
 export function sendGroupToBack(view: View, groupId: string): void {
   const el = view.nodeElement(groupId);
   // Behind members and behind member Conduits (-1) so a Conduit inside a group
@@ -163,8 +162,8 @@ export async function autofitGroupBox(
 export async function autofitGroupWithHistory(editor: Editor, view: View, group: GroupNode): Promise<void> {
   const res = await autofitGroupBox(editor, view, group);
   if (!res) return;
-  // Autofit must NOT re-derive membership from the new geometry (no reconcileGroupBox);
-  // rebuildGroupMembership only refreshes color markers from the unchanged list.
+  // No reconcileGroupBox ([[C86]] membershipByGesture); rebuildGroupMembership only
+  // refreshes color markers from the unchanged list.
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, view);
   // Autofit moved the box edges; re-settle any standoffs anchored to this group
@@ -194,6 +193,7 @@ export function moveGroupMembers(
 // so its stored width/height would absorb nodes dropped where the box merely would be.
 function groupRenderedSize(view: View, g: GroupNode): { w: number; h: number } {
   const el = view.nodeElement(g.id);
+  // [[D64]] exception: containment wants the RENDERED box, falling back to the stored one.
   return { w: el?.offsetWidth || g.width, h: el?.offsetHeight || g.height };
 }
 
@@ -222,8 +222,7 @@ export function reconcileGroupMembership(editor: Editor, view: View, draggedId: 
     host = undefined;
   }
   if (!host) {
-    // Never join a COLLAPSED group — the next syncGroupCollapse would hide the new
-    // member, so the node visibly vanishes.
+    // Never join a collapsed group ([[C86]]).
     const target = groups.find((g) => g !== current && !g.collapsed && centerInside(view, g, b));
     if (target) { target.members = [...target.members, draggedId]; host = target; }
   }
@@ -240,8 +239,8 @@ export function reconcileGroupMembership(editor: Editor, view: View, draggedId: 
 
 /** Re-evaluate a single group's membership against all nodes — after its box is resized. */
 export function reconcileGroupBox(editor: Editor, view: View, group: GroupNode): void {
-  // Membership only reconciles while EXPANDED — against the collapsed card every
-  // member would fall outside and every bystander under it would be absorbed.
+  // Only while expanded ([[C86]]): against the collapsed card every member would fall
+  // outside and every bystander under it would be absorbed.
   if (group.collapsed) return;
   const gv = view.position(group.id);
   if (!gv) return;
@@ -275,8 +274,7 @@ export function absorbIntoContainingGroup(editor: Editor, view: View, nodeId: st
   const b = nodeBox(view, nodeId);
   if (!b) return false;
   for (const g of editor.getNodes()) {
-    // Skip collapsed groups — absorbing a fresh node would immediately hide it, so it
-    // looks like the new node never appeared.
+    // Skip collapsed groups ([[C86]]).
     if (!(g instanceof GroupNode) || g.collapsed) continue;
     const gv = view.position(g.id);
     if (!gv) continue;

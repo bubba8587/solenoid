@@ -1,3 +1,4 @@
+// [[C69]] ganttPackages
 export * from "./types";
 export { schedule } from "./cpm";
 export { Calendar, calendarKey, dayKey, dayOfWeek, weekendDays, intervalsForHours, DEFAULT_INTERVALS } from "./calendar";

@@ -1,5 +1,5 @@
-// This module must stay recharts-FREE, or its many import sites drag recharts into
-// the main bundle.
+// [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk (this module stays recharts-FREE)., [[C100]] chartIsAValue
+// Mechanics: specs/react-flow-surface-contract.md.
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries } from "./chartCore";

@@ -1,9 +1,6 @@
+// [[C43]] oneFlowSurface (specs/graph-load-teardown-performance.md)
 // The load CURTAIN's phase + progress; persistence.ts's rebuildGraph drives it
-// for big loads/switches so node-by-node construction is never seen. (The old
-// staged reveal animation died with the rete surface — git has it.)
-//
-//   idle      → nothing loading; components render normally.
-//   building  → graph being constructed behind the progress overlay.
+// for big loads/switches so node-by-node construction is never seen.
 
 import { createNotifier } from "./storeKit";
 import { clamp } from "./nodes/mathUtils";
@@ -16,8 +13,7 @@ let _progress = 0; // 0..1, accurate during `building`
 
 export const loadRevealStore = {
   subscribe,
-  /** True whenever a reveal is in progress (building OR revealing) — components
-   *  hide not-yet-revealed elements while this holds. */
+  /** True while a load is building; components hide their elements while this holds. */
   isActive: (): boolean => _phase !== "idle",
   phase: (): RevealPhase => _phase,
   progress: (): number => _progress,
@@ -32,7 +28,6 @@ export const loadRevealStore = {
     _progress = clamp(p, 0, 1);
     notify();
   },
-  /** Build done — overlay fades, the staged reveal begins. */
   /** Back to idle; always call from a finally so a failed load can't leave the
    *  canvas stuck hidden. */
   finish(): void {

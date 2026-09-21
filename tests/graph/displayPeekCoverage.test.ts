@@ -1,3 +1,4 @@
+// [[C24]]
 import { describe, it, expect } from "vitest";
 import { PEEK_KINDS, peekKindFor, isChipSummaryPeek, type PeekKind } from "../../src/graph/valuePeekKind";
 import { solError } from "../../src/graph/errorValue";

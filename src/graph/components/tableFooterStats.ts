@@ -1,10 +1,11 @@
+// [[C24]] arraySemantics (nulls and errors in a column profile)
 // The Table popup's summary-footer statistics: one pure module so the picker's
 // choices, the value it shows and its formatting are testable in a node env (the
 // component only wires them to a <select>). Values come from the shared ColumnProfile
 // (frameVerbs describeColumn) plus the two logical counts the summary pass collects.
 import type { ColumnProfile } from "../frameVerbs";
 import { formatScalar } from "./format";
-import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 
 export type FooterColType = "number" | "string" | "date" | "logical";
 export type FooterStat =

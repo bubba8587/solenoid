@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars (publishes --chrome-bottom)
 import { useEffect, useRef, type RefObject } from "react";
 
 // The BOTTOM chrome envelope, measured — the mirror of Header.tsx's

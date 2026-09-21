@@ -1,3 +1,4 @@
+<!-- [[C99]] chromeEnvelopeVars -->
 # Layout & chrome geometry (desktop + mobile)
 
 Notes for future-me. The recurring bug class here is **a floating overlay that overlaps a
@@ -8,7 +9,7 @@ what sits where, what each offset is measured from, and what to check before you
 piece. Citations are FILE + SELECTOR only — never line numbers, which rot on every edit;
 grep the selector.
 
-**BOTH envelopes are now vars.** `--chrome-top` is MEASURED by `Header.tsx` (2026-08-01);
+**BOTH envelopes are vars ([[C99]] chromeEnvelopeVars).** `--chrome-top` is MEASURED by `Header.tsx` (2026-08-01);
 `--chrome-bottom` by `chromeBottom.ts` (2026-08-05) — the status bar and the mobile action
 bar each register with it and the var is the max of the visible bars' heights (a
 display:none bar measures 0, so whichever bar owns the bottom edge wins; the mobile bar's
@@ -110,6 +111,55 @@ two rows in portrait, one in landscape, the wrap point depending on the viewport
 stopped being a number anyone could write down at all. Pinned by `touchActions.test.ts`.
 **Mobile keeps its own explicit overrides** (they carry `safe-area` insets and win later in
 the cascade) — the table below is still the mobile truth.
+
+## Desktop window frame (the Tauri shell)
+
+The menu bar IS the title bar: `.solenoid-menubar` carries `data-tauri-drag-region` (`MenuBar.tsx`)
+and no separate title strip exists. Everything here is scoped to `html[data-shell="desktop"]`
+(`main.tsx`), so the browser build is untouched. The window has no native decorations on either
+platform; who draws minimize / maximize / close differs:
+
+| | Windows | Linux |
+| --- | --- | --- |
+| Native bar removed by | decorum's `create_overlay_titlebar` (`lib.rs`) | `set_decorations(false)` (`lib.rs`); decorum's overlay is not created |
+| Controls | decorum's injected buttons in `[data-tauri-decorum-tb]`, a fixed click-through overlay at the top right, restyled to the bar (22px tall, 37px wide, accent ink) by `desktopFrame.css` | `WindowControls.tsx` (`.solenoid-wincontrols`), IN FLOW at the menu bar's right end, 3 × 38px, gated by `OWN_WINDOW_CONTROLS` |
+| Bar reserve | `.solenoid-menubar { padding-right: 120px }` keeps menus out from under the overlay | none: `:has(.solenoid-wincontrols)` zeroes the reserve (`WindowControls.css`) |
+| Maximize hover | decorum's Snap Layouts overlay | plain toggle |
+
+- **Linux control styling:** hover is the menu items' ink wash (`--accent-ink` 14%); close hovers to the error
+  red (`--sol-error`) with white ink; glyphs are 10px SVGs at a 1px stroke (even-sized, never a text glyph). The
+  maximize glyph follows `isMaximized()` on every resize. The window calls are allowed by the
+  `core:window:allow-*` lines in `src-tauri/capabilities/default.json`.
+- **Why Linux does not use decorum's controls** (decorum 1.1.1): it leaves the native bar in place, injects its
+  control group once per page-load event (the event fires at load start and finish, and the Linux script has no
+  guard, so two groups appear), and takes its button list from GNOME's `button-layout`, where `:minimize` becomes
+  a button with no click handler. **Reopen if** decorum fixes all three, or if the app moves Windows onto
+  `WindowControls` too (that gives up the Snap Layouts hover).
+- **Linux resize:** the undecorated window has no frame to grab. Tauri's own handler starts a resize from a press
+  within 5px of an edge but never changes the cursor, so `WindowControls.tsx` portals eight `.solenoid-wingrip`
+  strips to `body` (5px edges, 10px corners, z-index 10000, resize cursors) that call `startResizeDragging`; they
+  unmount while the window is maximized or fullscreen. They claim the same 5px the native handler already takes.
+- **On Linux nothing inside a node may become a GPU layer** (`src-tauri/src/linux_webview.rs`, called from
+  `lib.rs`). WebKitGTK rasterizes a compositor layer at 1x and stretches the bitmap by the viewport's `scale()`,
+  and a transformed element with ANY composited descendant must itself become a layer, so one promoted box inside
+  one node puts the whole React Flow viewport on a stretched layer and zooming in pixelates the canvas. The two
+  things that promoted node content are switched off: the `AsyncOverflowScrolling` feature (every scrollable box
+  in a node) and 2D canvas acceleration (the canvas-drawn charts). The third promoter is CSS: WebKit runs an
+  `opacity` / `transform` / `filter` transition on the GPU by promoting the element, so a hover fade inside a node
+  flipped the whole canvas onto a layer and back (a 1px squish on hover; at far zoom-out a second of black while
+  the entire graph rasterized at 1x). `main.tsx` marks the engine (`html[data-webview="webkitgtk"]`) and
+  `desktopFrame.css` turns transitions off inside `.react-flow__viewport` and drops the load-time node reveal;
+  the cable flow animates `stroke-dashoffset`, which is never accelerated, and keeps running. GPU compositing
+  itself stays on, so the canvas paints into the root layer's tiles at the real scale. The blunt alternative, `WEBKIT_DISABLE_COMPOSITING_MODE=1`,
+  also fixes it but moves all painting to the CPU. **A new trigger reintroduces the blur**: `will-change`,
+  `translateZ` / 3D transforms, `<video>`, WebGL, or `position: fixed` inside a node; check with
+  `WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS=1` (a green box around the graph is the viewport layer). **Reopen if**
+  WebKitGTK rasterizes layers at their transformed scale.
+- **A debug build is marked on the window itself:** `lib.rs` sets the bug-badged icon under
+  `cfg(debug_assertions)`, from `src-tauri/icons/debug/icon.rgba` (raw RGBA, so no PNG decoder ships; `scripts/debug-icon.mjs` regenerates it from
+  `icons/icon.png`). Release builds never carry it. The two pin to the panel as separate apps
+  (`scripts/install-linux-launchers.mjs`): the debug launcher runs through a `solenoid-debug` symlink because GTK
+  takes WM_CLASS from the program name, and a distinct class is what the panel matches a launcher by.
 
 ## Tablets — the DESKTOP stack inside a mobile browser (2026-07-22)
 

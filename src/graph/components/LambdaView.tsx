@@ -1,5 +1,5 @@
-// Every view derives from the value's own `expr`/`params`; the Report's inline embed
-// has a separate KaTeX-first variant honoring the same annotation.
+// [[C94]] formatFamilyGates (the lambda view-as: docs/format-model.md)
+// The Report's inline embed has a separate KaTeX-first variant honoring the same annotation.
 import { useKatexRender } from "./katexLoader";
 import { formulaToLatex } from "../excelFormula";
 import { highlightFormula } from "../formulaSyntax";

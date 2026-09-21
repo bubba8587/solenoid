@@ -1,4 +1,4 @@
-// dte:C65
+// [[C65]]
 import { useFlowResizeGrip } from "../flowSurface";
 import { Fragment, useState, useRef, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
 import type { GroupNode as GroupNodeType } from "../rete-nodes";

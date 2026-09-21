@@ -1,3 +1,4 @@
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 import type { Pack } from "./packShared";
 import {
   SpectrumNode, SmoothNode, FindPeaksNode, ConvolveNode,
@@ -5,10 +6,8 @@ import {
   FitDistributionNode, DecomposeNode,
 } from "../rete-nodes";
 
-// The scipy-shaped toolkit, out of the base Add menu: these nodes live under
-// Packs › Scientific Computing while the pack is on and nowhere while it is off.
-// Real placements (not tags), so enabling the pack shows exactly what it added.
-// Catalog type strings are historical and must not change (saves + formula names).
+// The scipy-shaped toolkit as real placements (not tags). Catalog type strings must
+// not change (saves + formula names).
 const PATH = ["Packs", "Scientific Computing"];
 
 export const SCIENTIFIC_PACK: Pack = {

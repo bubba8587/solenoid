@@ -1,3 +1,4 @@
+// [[C45]] excelComparisons
 // Excel's criteria grammar for the *IF / *IFS family, in one place: a comparison prefix
 // (=, <>, >, >=, <, <=), `?` / `*` wildcards with `~` as the escape (text only, folded
 // case), a date-shaped text against a serial column, a bare number or boolean, and a blank

@@ -28,7 +28,7 @@ the vault watcher, **F** TaskNotes feed + **F6** Write Tasks (+ the `tasks-from-
 **H6 Schedule** cube-in/cube-out with the **Cube Input** literal source; D's stub note +
 `solenoid:` link (opt-in), mdbase validation on write, `writeBase`, and the F1 seed
 (`kitchen-remodel-tasknotes`, Computed Column over a cube). G/K on hold; H is ruled out below
-mdbase 1.0 (dte:C67 mdbaseCeiling).
+mdbase 1.0 ([[C67]] mdbaseCeiling).
 
 - **Import Obsidian Note** (`nodes/obsidian.ts`, a `NoteNode` subclass): one `.md` → its
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
@@ -43,7 +43,7 @@ mdbase 1.0 (dte:C67 mdbaseCeiling).
 - **Decision Matrix** is the author's Bases-view plugin, math only (`../node-coverage.md`
   § Decision support). **H6 Schedule** is specced in `../1.4-plan.md` § Scheduling slice,
   gated on the Track H pick (`../backlog.md`).
-- **dte:D54 relativeDatesOptIn**: a stored date is a fixed calendar day; relative
+- **[[D54]] relativeDatesOptIn**: a stored date is a fixed calendar day; relative
   phrases resolve only on a Date Input under a setting, re-resolving each pass with an Alert
   when the day moves.
 - Constraints a vault feature meets: (1) the desktop fs allowlist
@@ -63,8 +63,9 @@ mdbase 1.0 (dte:C67 mdbaseCeiling).
 
 The vault is the author's database and TaskNotes is its tracker. Solenoid **computes over**
 the vault and writes results back as properties or blocks; it never stores, tracks, or renders
-a kanban (`../out-of-scope.md` §5, §8). No Obsidian plugin: every touchpoint is a file, a local
-HTTP port, or a URI. A reader emits **one `cube`** (a folder of notes IS records whose fields
+a kanban (`../out-of-scope.md` §5, §8). Every computing touchpoint is a file, a local HTTP port,
+or a URI; the one Obsidian plugin (author 2026-09-20, [[C107]] obsidianPlugin) only shows and edits
+Solenoid's container values as properties, and computes nothing. A reader emits **one `cube`** (a folder of notes IS records whose fields
 can be lists or sub-tables); the row verbs take cubes (A′), so filtering and sorting notes
 never needs a flattening step; writers take a cube; a sink's preview is a `plan` frame.
 
@@ -187,7 +188,7 @@ name>.base` beside the notes — `filters: file.inFolder("<folder>")`, one table
 `file.name` + the written keys — so a managed block (C) can embed `![[<node name>.base#View]]`
 and the note shows a **live** table over what B wrote. Pure core `frontmatterPatch.ts`
 (`patchFrontmatter(text, patch): {text, refused[]}`), the ONE writer of a note's YAML
-(`onePatchPath` candidate); tests prove untouched bytes identical and cube → vault → cube equal.
+([[C101]] onePatchPath); tests prove untouched bytes identical and cube → vault → cube equal.
 
 **C. Write to Obsidian: modes + templates.** `mode: overwrite | append | block`. `block`
 splices the assembled markdown between `%% solenoid:begin <node name> %%` and `%%
@@ -270,7 +271,7 @@ reads; revisit if F's API reads need push.
 
 **H. mdbase query passthrough — HOLD.** Shelling out to the native `mdbase … query` binary:
 beta, undocumented JSON shape, no `tauri-plugin-shell`, and Filter/Sort cover the `where`.
-Revisit at mdbase 1.0 (dte:C67 mdbaseCeiling — the ceiling covers type-file writing too).
+Revisit at mdbase 1.0 ([[C67]] mdbaseCeiling — the ceiling covers type-file writing too).
 
 **I. Import Obsidian Note stays a Note.** Its value is the per-key sockets + `document` output
 + rendered body (a connection node emits one table). It gains: `refreshMinutes` (the
@@ -359,7 +360,7 @@ step.
 `sinkRunButtonOnly` (every writer; J adds "or the CLI's explicit `--run <name>`"),
 `noDataInComponents` (Preview is a pure plan over the cached cube + reads), `retypeReconciles`
 avoided (one `cube` output; A′'s adoption is derived state, never persisted), `onePrunePath`
-untouched, `relativeDatesOptIn` untouched (R), a new **`onePatchPath`** candidate
+untouched, `relativeDatesOptIn` untouched (R), a new **[[C101]] onePatchPath**
 (`frontmatterPatch.ts` is the only writer of a note's YAML; `obsidianWrite.ts` writes whole
 documents). The fs allowlist gains `.yaml`/`.yml` read (one capability line, noted in
 `../architecture.md`'s desktop section).

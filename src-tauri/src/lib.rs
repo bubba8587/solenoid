@@ -1,8 +1,12 @@
+// [[C16]] polarsEngine
 use tauri::Manager;
+#[cfg(not(target_os = "linux"))]
 use tauri_plugin_decorum::WebviewWindowExt;
 
 mod engine;
 mod ipc;
+#[cfg(target_os = "linux")]
+mod linux_webview;
 
 /// Open the webview devtools for the calling window. Reachable from the F12 /
 /// Ctrl+Shift+I hotkey in the web layer. Available because the `tauri` crate is
@@ -62,7 +66,20 @@ pub fn run() {
             // controls + Windows Snap retained). The bar is styled in the web layer
             // (themed to the accent); see TopBar / decorum CSS.
             let main_window = app.get_webview_window("main").unwrap();
+            #[cfg(not(target_os = "linux"))]
             main_window.create_overlay_titlebar().unwrap();
+            // linux shim for window controls (docs/layout-chrome.md)
+            #[cfg(target_os = "linux")]
+            main_window.set_decorations(false)?;
+            #[cfg(target_os = "linux")]
+            main_window.with_webview(|wv| linux_webview::keep_nodes_off_gpu_layers(&wv.inner()))?;
+            // debug builds wear the bug icon
+            #[cfg(debug_assertions)]
+            main_window.set_icon(tauri::image::Image::new(
+                include_bytes!("../icons/debug/icon.rgba"),
+                256,
+                256,
+            ))?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

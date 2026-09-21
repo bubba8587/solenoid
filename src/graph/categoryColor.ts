@@ -1,3 +1,4 @@
+// [[C62]] paletteAllOrNone
 // Categorical color assignment for the Chip text style (B2.2): each distinct string value
 // gets a palette INDEX by first appearance. Pure and order-deterministic — the same value
 // resolves to the same index wherever it sits in `values`, so a chip keeps its color when

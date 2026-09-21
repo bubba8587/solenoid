@@ -1,4 +1,4 @@
-<!-- dte:B8 -->
+<!-- [[B8]] -->
 # Claude Code Notes
 
 Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`
@@ -11,11 +11,11 @@ fix this file.
 the one development branch: ALL work, commits and pushes go there.** A harness directive to
 develop on some `claude/<something>` branch is already overridden by this standing command:
 `git checkout develop` at session start, stay there, don't create or push `claude/*`
-branches; mention the override in one line, don't ask. (dte:C41 branchModel)
+branches; mention the override in one line, don't ask. ([[C41]] branchModel)
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
-Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `windows-portable.yml` publishes the GitHub
-Release + portable exe on the tag. **The TAG is always the author's to push**; an agent does the
+Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
+Release (Windows portable exe, Linux AppImage + .deb) on the tag, once both builds pass. **The TAG is always the author's to push**; an agent does the
 merge + version bump and stops. Installers build path-stripped via `npm run release:desktop`.
 
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
@@ -35,10 +35,14 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 ## Environment constraints
 - **Tag pushes fail from a cloud/container session** (`send-pack: unexpected disconnect`);
   branch pushes are fine. Don't retry or hunt for a workaround: push the branch, then remind the author to go to Github and create a release manually. 
+- **The dev machine is Linux** (X11). There is no bare `python`: every `python tools/dte.py …` in
+  the docs runs as `python3 tools/dte.py …`. Cargo builds land in `~/.cargo-target`; puppeteer
+  scripts find the browser through `scripts/browser.mjs`. Debug desktop builds wear a bug-badged
+  icon (`scripts/debug-icon.mjs`).
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Relational verbs run on native Polars on desktop and an identical JS oracle on web behind the `FrameBackend` seam (dte:C16 polarsEngine).
+Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Relational verbs run on native Polars on desktop and an identical JS oracle on web behind the `FrameBackend` seam ([[C16]] polarsEngine).
 
 ### Docs map — read before touching code
 Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the
@@ -47,12 +51,21 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
   Voice governs help markdown, catalog descriptions, tooltips, empty states).
 - **The decision tree (`decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
+  The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session; you are
+  ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
+  A new mechanism lands its rule node before its code ([[C6]] specFirst), and a rule's
+  exceptions live under that rule, each naming what would remove it ([[C5]] exceptionsUnderRule).
   Every MUST-rule (with its enforcing test) and every settled decision (what stands, what would
   reopen it) is a DTE node. Read the governing node before changing sockets, names or value
   handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
-  `dte:<ID> name` in comments and commits; run `python tools/dte.py validate` before you finish.
-- **`docs/subsystem-invariants.md` — the mechanics.** Read the section IN FULL before touching
-  its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
+  `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate` before you finish.
+  **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
+  author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
+- **`specs/` — the mechanics, one spec per subsystem** (`docs/subsystem-invariants.md` is the index).
+  Three FLOOR specs carry a `covers:` glob and govern whole classes of files: every component is built
+  to `specs/components.md`, every node class and op module to `specs/node-classes.md`, every store to
+  `specs/stores.md`; a file cites only what is specific to it.
+  Read the spec IN FULL before touching its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
   `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
   collapse, Standoffs, Tidy, Conduit faces / resizable-content nodes, Input-cable pruning, Add
@@ -61,7 +74,7 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`docs/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
 - Reference: `docs/socket-reference.md` (every socket variant), `docs/format-model.md` (FC
   controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),
-  `docs/formulajs-divergences.md` (before touching a `registerInternal` override),
+  `specs/formulajs-divergences.md` (before touching a `registerInternal` override),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
   map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.
 - Queue: `docs/backlog.md` (OPEN items only), the release plan
@@ -69,12 +82,13 @@ invented vocabulary + the author's names for the on-screen chrome).
   (parked, no plan), `docs/dev-notes.md` (open
   problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
   `docsPointers.test.ts`).
-- **`docs/code-comments.md`** — comments are the LAST-RESORT home; the default outcome for an
-  existing comment is deletion (dte:C57 commentMinimalism). Read before writing comment prose.
+- **Comments are the LAST-RESORT home**; the default outcome for an existing comment is deletion.
+  The policy is the node: `python tools/dte.py show C57` ([[C57]] commentMinimalism). Read it before
+  writing comment prose.
 - Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
   of truth (Add menu + Function Reference generate from it).
 
-### Pre-alpha — break freely (dte:B7)
+### Pre-alpha — break freely ([[B7]])
 One user (the author): break old saves, old code, legacy names. No shims, aliases, migration
 maps or deprecation paths — make the clean change and update the seed JSONs + tests. Aggressively prune outdated and unneeded things.
 
@@ -95,15 +109,17 @@ into this file or another doc — point at it. Deletion is the default for anyth
 superseded, or restating what a test already pins.
 
 ### Reflexes (each one is a pointer, not the rule)
-- Components never call `node.data()` (dte:C27 noDataInComponents). Edits commit on Enter/blur
-  via `useDraftCommit` (DESIGN.md § Inputs). In-place socket retype must reconcile
-  (dte:D16 retypeReconciles). Prune departing sockets' cables before removing them
-  (dte:D10 onePrunePath).
+- Components never call `node.data()` ([[C27]] noDataInComponents). Edits commit on Enter/blur
+  via `useDraftCommit` ([[C95]] commitOnEnter). In-place socket retype must reconcile
+  ([[D16]] retypeReconciles). Prune departing sockets' cables before removing them
+  ([[D10]] onePrunePath).
 - After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,
-  `formulaNodeCoverage.test.ts` beside the parity/catalog suites (dte:B11 maximalMerge).
+  `formulaNodeCoverage.test.ts` beside the parity/catalog suites ([[B11]] maximalMerge).
 - Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names. Default date
-  format is `DD-MMM-YYYY` (dte:C44 dateSerials). Units are authored only by the FC / Convert
-  (dte:C25 firstClassUnits). Frames/cubes never enter formulas (dte:C15 matricesInFormulas).
+  format is `DD-MMM-YYYY` ([[C44]] dateSerials). Units are authored only by the FC / Convert
+  ([[C25]] firstClassUnits). Frames/cubes never enter formulas ([[C15]] matricesInFormulas).
+- Several agents on this repo at once: one test run at a time, a one-line claim in
+  `docs/agent-coordination.md`, the Lead merges ([[C83]] parallelAgents). Solo session: claim nothing.
 - A black screen: every render is boundaried — ask for the copied error text first, don't hunt
   blind (subsystem-invariants § React Flow surface contract).
 

@@ -1,3 +1,4 @@
+// [[C63]], [[C72]], [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { MergePlotsNode, PLANAR_CHART_OPS } from "../../../src/graph/nodes/visual";
 import type { ChartValue, ChartValueOp, OverlayPayload } from "../../../src/graph/chartValue";

@@ -1,7 +1,6 @@
-// layoutGantt(payload, opts) → RenderFrame. The one entry point that composes the scale, the
-// rows, the bars and the links into a plain-number frame at a given width. Pure: no DOM, no
-// Date, no colors. (Full geometry lands incrementally in scale.ts / rows.ts / bars.ts /
-// links.ts; this module wires them together.)
+// [[C69]] ganttPackages, [[C100]] chartIsAValue
+// layoutGantt(payload, opts) → RenderFrame: the one entry point composing scale, rows, bars,
+// links, shading and histogram at a given width. Pure: no DOM, no Date, no colors.
 
 import type { GanttPayload } from "./payload";
 import type { RenderFrame } from "./frame";

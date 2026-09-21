@@ -1,9 +1,8 @@
-// dte:B10
-// React Flow port (C5) — snapshot undo/redo for the flow surface, replacing
-// rete-history-plugin. Every settled mutation records the canonical document
-// (serializeGraph — the textForm round-trip), so undo needs no per-action
-// inverse: restore = loadGraph with the camera held. The stack clears on a
-// document load (the setClearHistory slot), never on its own restores.
+// [[B10]] reactFlowView (the snapshot history), [[C30]] saveViaTextForm
+// Snapshot undo/redo: every settled mutation records the canonical document
+// (serializeGraph), so undo needs no per-action inverse: restore = loadGraph with
+// the camera held. The stack clears on a document load (the setClearHistory slot),
+// never on its own restores.
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding } from "../process";
@@ -34,10 +33,8 @@ async function restore(json: string): Promise<void> {
   try {
     const view = getView();
     const t = view ? { ...view.transform } : null;
-    // An undo/redo is a reload under the hood, but must feel like an edit — never
-    // flash the "Loading graph" curtain, whatever the doc size.
+    // An undo must feel like an edit: no load curtain, and the camera stays put.
     await loadGraph(JSON.parse(json) as SavedGraph, { curtain: false });
-    // loadGraph frames the graph (zoomAt); an undo must NOT move the camera.
     if (view && t) {
       await view.pan(t.x, t.y);
       await view.zoom(t.k);

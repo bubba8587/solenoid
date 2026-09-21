@@ -1,3 +1,4 @@
+// [[D40]] unitOnValue, [[D41]] formatFlowsDownstream. Mechanics: specs/unit-flow.md.
 // The one annotation resolution every value surface asks through, plus cell/date/unit
 // rendering. A value is a DATE when its node's OUTPUT SOCKET says so, never by cell shape.
 
@@ -6,7 +7,7 @@ import { getOwningEditor } from "../activeGraph";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from "../sockets";
 import type { ElemFamily } from "./ArrayChip";
-import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
+import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/dateSerial";
 import { isSolError, type SolError } from "../errorValue";
 import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
@@ -101,7 +102,7 @@ export function formatListCell(
 }
 
 /** An annotation that names no unit of its own — a FORMAT carried across a transform
- *  arrives stripped this way (unit is value-level, formatFlowsDownstream). */
+ *  arrives stripped this way (unit is value-level, [[D41]] formatFlowsDownstream). */
 function annotationCarriesNoUnit(ann: FormatAnnotation): boolean {
   return ann.unit === "none" || (ann.unit === "custom" && !ann.customUnit);
 }

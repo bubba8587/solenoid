@@ -1,6 +1,6 @@
+// [[C68]] knapIsTheDocumentSyntax, [[D10]] onePrunePath.
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { NoteNode as NoteNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
@@ -24,14 +24,18 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
-import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, cubeDepth, type FrameValue, type CubeValue } from "../frame";
+import { isSolError, type SolError } from "../errorValue";
+import { errorTip } from "./ErrorChip";
 import type { NodeProps, Emit } from "./nodeKit";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
+import { renderNoteMarkdown } from "../noteMarkdown";
+import { useKatexReady } from "./katexLoader";
 
-type FieldValue = FrontmatterValue | FrameValue | CubeValue;
+type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
 // Grouped by dimensionality — the override picker offers the four element families at
 // the field's CURRENT dimension; glyphs reuse the Socket Legend vocabulary.
@@ -50,15 +54,15 @@ function glyphFor(t: FrontmatterFieldType): SocketGlyph {
 
 /** A short, human-readable preview of a field's value for the row. */
 function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
+  if (isSolError(value)) return value.code;
+  // Containers spell their shape the way the chips do: rows × cols (× depth) Name.
   if (t === "frame") {
-    if (!isFrameValue(value)) return "table";
-    const rows = value.columns[0]?.values.length ?? 0;
-    return `⊞ ${rows}×${value.columns.length}`;
+    if (!isFrameValue(value)) return "Frame";
+    return `${value.columns[0]?.values.length ?? 0}×${value.columns.length} Frame`;
   }
   if (t === "cube") {
-    if (!isCubeValue(value)) return "cube";
-    const rows = value.columns[0]?.cells.length ?? 0;
-    return `⧈ ${rows}×${value.columns.length}`;
+    if (!isCubeValue(value)) return "Cube";
+    return `${cubeRowCount(value)}×${value.columns.length}×${cubeDepth(value)} Cube`;
   }
   const one = (v: number | string | boolean | null): string => {
     if (v === null) return "null";
@@ -201,9 +205,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
+  const tex = useKatexReady(); // math re-renders once KaTeX lands
   const bodyHtml = useMemo(
-    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string), rendered === body),
-    [renderBody, rendered, body],
+    () => enableTaskCheckboxes(DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")), rendered === body),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [renderBody, rendered, body, tex],
   );
   // The read body's task-list checkboxes index into it in document order (= source
   // order, since a nested item's box still comes after its parent's).
@@ -429,7 +435,9 @@ export function FieldRow({
         <SocketDot entry={glyphFor(type)} />
       </button>
       <span className="solenoid-note__field-key" title={fieldKey}>{fieldKey}</span>
-      <span className="solenoid-note__field-val" title={preview}>{preview}</span>
+      {isSolError(value)
+        ? <span className="solenoid-note__field-val solenoid-note__field-val--error" title={errorTip(value)}>{value.code}</span>
+        : <span className="solenoid-note__field-val" title={preview}>{preview}</span>}
       {open && canRetype && (
         <div ref={popRef} className="solenoid-note__field-picker" onPointerDown={stop} onMouseDown={stop}>
           {options.map((opt) => (

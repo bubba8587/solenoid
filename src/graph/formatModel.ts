@@ -1,3 +1,4 @@
+// [[C94]] formatFamilyGates. Spec: docs/format-model.md.
 import { type SocketDataType, elementFamilyOf, isWildcardType } from "./sockets";
 import { type FormatStyleId, type FormatStyle } from "./formatAnnotationStore";
 

@@ -1,3 +1,4 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 /** Bridge to the Add-node menu, which is local Canvas state; coords are SCREEN. */
 type Opener = (screenX: number, screenY: number) => void;
 

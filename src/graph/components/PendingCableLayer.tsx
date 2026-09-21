@@ -1,4 +1,4 @@
-// dte:E11
+// [[E11]]
 // World-space layer for the Input Switch's pending-reconnect ghosts (cablePendingStore):
 // a cable the One↔Many retype dropped, drawn dashed from the source `out` socket to the
 // input it will reattach to, until the output type fits that socket again. No rete

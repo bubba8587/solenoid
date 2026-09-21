@@ -1,6 +1,4 @@
-// dte:B10
-// Rete renders node components in a SEPARATE React root, so any state both roots
-// touch must live in these module singletons rather than React context.
+// [[B10]] reactFlowView (the module-singleton stores are app-wide state)
 
 export interface Notifier {
   /** Call after mutating state to re-render subscribers (also bumps version). */

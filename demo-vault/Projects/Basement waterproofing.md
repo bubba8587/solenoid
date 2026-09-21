@@ -4,10 +4,15 @@ priority: 2
 budget: 5400
 due: 2027-03-01
 lead: "[[People/Sam]]"
-tags: [home]
+tags:
+  - home
 milestones:
-  - {name: Get quotes, due: 2026-11-30, done: false}
-  - {name: Pick a contractor, due: 2026-12-20, done: false}
+  - name: Get quotes
+    due: 2026-11-30
+    done: false
+  - name: Pick a contractor
+    due: 2026-12-20
+    done: false
 ---
 # Basement waterproofing
 

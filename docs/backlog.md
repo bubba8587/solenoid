@@ -25,14 +25,15 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Re-merge `develop` → `main`, then tag v1.4.0** (the 1.4.0 bump is on both; `main` lacks the
-  button-case sweep and the seed cuts); then walk `2.0-plan.md`.
+- [ ] **Release 1.4.1** (the bump is on `develop`): push `develop`, run `desktop-build.yml` by hand on it
+  (no tag, so it only builds) because Windows has not compiled since v1.4.0 and the Linux job has never run
+  in CI; then merge to `main` and the author tags `v1.4.1`. Then walk `2.0-plan.md`.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
 - [ ] **The ARR pass over the tree** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
-  node (dte:C7 authorRuled; `archive/1.4-plan.md` D3).
+  node ([[C7]] authorRuled; `archive/1.4-plan.md` D3).
 
 ## Composites
 
@@ -50,6 +51,22 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
+- [ ] **Solenoid Properties plugin follow-ups** ([[C107]] obsidianPlugin): (1) the note reader types
+  no matrix yet: a sequence of sequences reads as a text list, so `noteFrontmatter.ts` and
+  `FIELD_SOCKETS` need the `table` family rungs ([[D16]] retypeReconciles applies), and
+  `TypeHint` has no matrix or cube shape for `obsidianTypes.ts` to map those two ids to; (2) Bases
+  table cells still show raw YAML for these properties (unverified); (3) a complex scalar has no
+  property type; (4) a chip in a popped-out note opens its editor in the main window (one popup
+  layer); (5) the real-Obsidian rig lives only in the digest and spec, a `scripts/` version would
+  make it one command; (6) the community-list submission itself (spec § Publishing has the
+  release path; the author submits through community.obsidian.md).
+- [ ] **Ship the Solenoid look with the plugin** (author 2026-09-21: the plugin becomes the primary
+  way people get it; the demo vault's `.obsidian/snippets/solenoid.css` is the look today). Needs its
+  spec rule first ([[C6]] specFirst). Proposed shape: the CSS moves to `obsidian-plugin/src/` as the
+  one source, ships inside the plugin's `styles.css` scoped under a body class, and a settings toggle
+  adds that class, so nothing is written into the user's `.obsidian/`; the build emits the demo
+  vault's snippet from the same file. The snippet is already vault-agnostic (folder dots run in
+  palette order, no folder names) and targets Obsidian 1.13's callout and Bases variables.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a
@@ -83,6 +100,23 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   consider with it: a special Conduit → bundled cable → Cube node (the bundle's lanes land as one
   cube). Design first (DESIGN.md, `subsystem-invariants.md` § Conduit faces); stage after the
   Obsidian track.
+- [ ] **Linux desktop: tooltips are very large and appear very fast** (author 2026-09-21, not urgent). Lead:
+  every tooltip is a native `title` (469 of them, no tooltip component), and WebKitGTK hands those to GTK, so
+  size and delay come from the system theme, not the app. Windows (WebView2) and the web draw the browser's own.
+  Fixing it means the app drawing its own tooltip; that is a design call (DESIGN.md, `layout-chrome.md`).
+- [ ] **Linux desktop: the canvas dots are harsher / sharper than on Windows and Chromium** (author 2026-09-21,
+  not urgent). Lead: the grid is React Flow's `<Background variant=Dots>` (`FlowSurface.tsx`), an SVG pattern of
+  small circles, and WebKitGTK antialiases a sub-2px circle harder than Skia does. Candidates: a per-webview
+  `--canvas-dot` a step closer to the ground, or a slightly larger, softer dot, keyed on
+  `html[data-webview="webkitgtk"]` as the zoom fixes are (`layout-chrome.md` § Desktop window frame). DESIGN.md
+  § 2 holds the structure: dots legible without shouting.
+- [ ] **Palette on wide-gamut displays** (author 2026-09-21 noticed the Linux desktop reads more saturated than
+  the dev server; cause in `dev-notes.md`). The hexes are sRGB, so a color-managed engine (Chromium, WebView2
+  with a display profile) shows them accurately and an unmanaged one (WebKitGTK) stretches them to the panel.
+  The author tuned the palette by eye on an unmanaged P3 panel, sees the same vivid look on their phone, and
+  prefers it; managed Chromium on Linux is the outlier among their screens. Design call: leave it, or
+  author the accents in `color(display-p3 …)` with sRGB fallbacks so managed engines on P3 panels get the vivid
+  version too (DESIGN.md § 2; `palette.ts` derives siblings in HSV from hex, so this is not a token swap).
 
 ## Landing pages
 
@@ -101,19 +135,48 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
   demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's
   bridge + Plan vignettes — none maps to a single locked pass.
 
-## DTE — decision provenance (`docs/dte.md`, dte:B8)
+## DTE — decision provenance (`docs/dte.md`, [[B8]] treeIsTheHome)
 
-Every rule and settled decision is a node (2026-09-15). DTE-tool findings live in the DTE repo's
-FEEDBACK file.
-- [ ] **Author ratifies the tree** — A1 and C80 are ratified; D62 is the author's to reword first (two agent
+Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feedback.md`.
+- [ ] **Author ratifies the tree** — A1, B7 and C80 are ratified; D62 is the author's to reword first (two agent
   drafts rejected 2026-09-16), then D42 / E11 (contested, kept), then the B ring. `python tools/dte.py validate` prints the
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
-  `rules.test.ts` (dte:C7 authorRuled).
-- [ ] **Apply the WHY-comment→citation practice** (dte:C57 commentMinimalism): migrate rationale
-  comments into the node's `## Why`, leave a `dte:<ID> name` citation.
-- [ ] **Citation coverage is mixed** — bare test-suite citations in node Consequences (21 across 20
-  rules at the 2026-08-09 count) are reading-verified only; quoting the describe/it names buys the
-  `rules.test.ts` check. oneMetricImpl and oneThingPerMetric cite a module, not a suite.
+  `rules.test.ts` ([[C7]] authorRuled).
+- [ ] **Author places `decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
+- [ ] **Coverage is 100% and pinned** (`rules.test.ts` runs `coverage --check` + `validate`). The bulk pass cited
+  whole classes by blast radius (every component cites [[C27]] noDataInComponents, every node class [[C34]]
+  classNameIsType + [[D50]] everyFieldClassified, every store [[B10]], every op module [[D19]] + [[C17]], tests the
+  leaves of the sources they import, MUSTs only where another test already enforces them). Those are true but
+  thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
+  exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest
+  (components, nodes, packages, core modules); what is left is line-granular.
+- [ ] **Relapses the sweep found, each a code change the author should rule on first:** (a) `nodes/conduit.ts`
+  upgrades a saved bare "Conduit" label to "Conduit N" on load, a migration shim [[B7]] preAlphaBreakFreely forbids;
+  (b) `DateNodes.tsx` (and any op handler calling `setLabel(OP_META[next].label)`) syncs a label on op change against
+  [[D22]] oneNamePerCard's "the ONE derivation is nodeDisplayName"; (c) `ConnectionNodes.tsx` LocalFile says
+  "desktop only" off-desktop while [[D2]] demoCsvSeam says it reads a demo CSV on web; (d) `PacksPage.tsx` /
+  `ExamplesPage.tsx` hand-copy pack descriptions and seed labels ("keep in step") against [[C8]] declareOnce;
+  (e) `SliderInputNode.tsx` writes `literals.speed` per keystroke (no recompute, so the [[C95]] sweep passes, but
+  it is the pattern); (f) pack kernels (`hrZonesMatrix`, `standardAtmosphere`, `emSpectrum`) are consumed by the
+  formula path through `rete-nodes.ts`, so pack formulas pull rete: either [[D19]] implReteFree names the exception
+  or the kernels move to rete-free siblings.
+- [ ] **`docs/v2.0/25-gantt.md` § 6 is the schedule/Gantt spec** (the packages' headers point into it) but lives in
+  the proposals folder, excluded from coverage. Lift § 6.1–6.5 into a spec under `../specs/` (schedule-and-gantt) serving [[C70]]
+  oneScheduleRule / [[C69]] ganttPackages and leave the survey (§ 1–5, 7–8) where it is.
+- [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
+  proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
+  declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]
+  parallelAgents (the file is the live claim board); the Formula.js divergences → `../specs/formulajs-divergences.md`. Exempt as queues:
+  `deferrals.md`, `upstream-formulajs.md` (a few rulings inside deferrals are node candidates when touched).
+  **Blocked on the author:** `out-of-scope.md` is the draft of `inbox/scope-boundary` (the four tests + the mirror
+  test) and its 13 categories are that node's children; nothing can hang off an unplaced node, so
+  `dte place scope-boundary A --by <name>` first, then the categories become B nodes and the doc goes.
+- [ ] **C80 blankArgIsExcelBlank still hangs off A5** (author-ratified, so not re-parented by an agent); its family
+  parent is now [[B16]] oneFormulaSurface. One `parents:` edit by the author closes the last ring-skip finding.
+- [ ] **Two author-held `*Where:*` lines remain** (B7, C80; the other 41 went 2026-09-18 once their files cited
+  back). The author deletes them or rules they stay.
+- [ ] **20 SKIPPED RING findings under A5 / A6** are the owner's placement (`dte scope`); either B nodes are
+  missing under Excel parity / divergence, or the finding is noise (feedback 4). The author decides.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
   commit flow); `validate` is not in CI either.
 
@@ -131,10 +194,18 @@ FEEDBACK file.
   upstream walk go. Analysis + scope in `archive/1.4-plan.md` Track I. Gate: the author's go after the
   downstream-flow work has been lived with, plus the source-node control design.
 
-## Family-name polish (NAME-3 revised 2026-09-13 — card shows the class-derived family name)
+## Frame popup (follow-ups from the 2026-09-19 header session)
+
+- [ ] **The formula highlighter paints a called λ socket (`λ1(`) as an unknown function** (`identClass`,
+  formulaSyntax.ts). No surface shows it today (the popup's formula field is a plain input); fix it the day a
+  highlighted editor edits a Frame Input column formula.
+- [ ] **`exprYieldsDate` is conservative**: `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
+  Number (their `returns` is "any" / "number"). Extend the declarations if a date-valued lookup column shows up.
+
+## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
 
 A few families still read awkwardly as `nodeTypeName` output. Fix = rename the class
-(no override map, NAME-3), verifying seeds + the generator (type = class name):
+(no override map, [[D22]] oneNamePerCard), verifying seeds + the generator (type = class name):
 - [ ] `IFErrorNode` → "If Error"; `MatDetNode` → a real family name (covers MDETERM /
   MINVERSE / TRACE / NORM / MATRIXRANK — "Matrix"?); `MRoundNode` → a name for the
   MROUND / CEILING / FLOOR family. Author picks the two names.

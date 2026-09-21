@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface (locking is CSS plus RF props)
 // When true the canvas is view-only: no node drag, cable or socket interaction
 // (FlowSurface's RF flags), and the keyboard mutators stand down too — Delete,
 // nudge, paste, Tidy / Cleanup, group create / autofit / expand (canvasKeyboard,

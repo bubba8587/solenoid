@@ -1,4 +1,4 @@
-// dte:C63,C72
+// [[C63]], [[C72]]
 import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
@@ -18,6 +18,7 @@ import { readFrame, type FrameInput } from "../frameBackend";
 import type { FrameHint } from "../frameHint";
 import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type FrameColumn } from "../frame";
 import { isSolError } from "../errorValue";
+import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
 
 // Terminal figures: each node emits a chart VALUE and is never a pass-through.
 
@@ -76,7 +77,7 @@ export type ChartOp =
   | "pie" | "radar" | "radialbar" | "funnel" | "scatter"
   | "composed" | "bubble";
 
-// The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
+// The card dropdown DERIVES from this table ([[C8]] declareOnce) — never hand-write a second list.
 export const CHART_OP_META = {
   column:    { label: "Column",   group: "Cartesian" },
   bar:       { label: "Bar",      group: "Cartesian" },
@@ -122,7 +123,7 @@ export class ChartNode extends ClassicPreset.Node {
   };
 
   constructor(init?: { label?: string; op?: ChartOp }) {
-    super("Chart");
+    super("Chart (Recharts)");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
     // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
@@ -349,7 +350,7 @@ export const HISTOGRAM_MODE_META = {
 const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>
   Array.isArray(raw) ? raw : raw == null ? [] : [raw];
 
-// One card, two modes (oneRunningNode-style combine): 1-D bins one list into columns;
+// One card, two modes ([[C60]] oneRunningNode-style combine): 1-D bins one list into columns;
 // 2-D pairs X/Y into a count grid drawn as a contour density plot. The `mode` selector
 // adds/removes the Y + Y-bins inputs; `bins` carries across as the X-bin count. The plain
 // count matrix is exposed via the WRAPTEXT-style HISTOGRAM2D formula, not a socket.
@@ -379,7 +380,7 @@ export class HistogramNode extends ClassicPreset.Node {
   }
 
   /** Keys a switch to `next` would drop — the component prunes their cables BEFORE
-   *  `setMode` (onePrunePath). */
+   *  `setMode` ([[D10]] onePrunePath). */
   keysDroppedByMode(next: HistogramMode): string[] {
     return next === "1d" ? ["y", "ybins"] : [];
   }
@@ -474,7 +475,7 @@ export class MermaidNode extends ClassicPreset.Node {
 export type GaugeStyle = "dial" | "bar";
 // Dial/Bar is an ARGUMENT (a view of the one "value on a scale" card), not an op:
 // nobody searches the Add menu for "dial" or "bar", and there is no formula surface.
-// So it is a `mode` selector picked with a SegToggle (opArgDistinct); `mode` is an
+// So it is a `mode` selector picked with a SegToggle ([[C26]] opArgDistinct); `mode` is an
 // already-whitelisted init key, so nothing is added to the save format.
 export const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
@@ -514,7 +515,7 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 
   /** The bar-only input keys a switch to `next` would remove — the component drops
-   *  their cables first (onePrunePath) before calling setOp. */
+   *  their cables first ([[D10]] onePrunePath) before calling setOp. */
   keysDropped(next: GaugeStyle): string[] {
     return next === "dial" && this.mode === "bar" ? ["target", "max", "options"] : [];
   }
@@ -838,7 +839,7 @@ export class SurfaceNode extends ClassicPreset.Node {
   }
 
   /** The op owns the Levels socket. Callers on a live graph prune its cables
-   *  BEFORE switching to the 3-D view (onePrunePath). */
+   *  BEFORE switching to the 3-D view ([[D10]] onePrunePath). */
   setOp(next: SurfaceViewOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -1122,99 +1123,11 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
 
 // ─── Record card ──────────────────────────────────────────────────────────────
 
-export interface RecordPlacement {
-  name: string;
-  row: number;
-  col: number;
-  rowSpan: number;
-  colSpan: number;
-  /** Muted text an EMPTY box shows in place of the value dash. */
-  hint?: string;
-  /** The title field (a `#name` marker): drawn big and label-less in every view. */
-  title?: boolean;
-}
-
-/** A layout cell: one line per grid row, cells split on "|", "." or an empty
- *  cell is a gap. Repeating a name claims its bounding rectangle (a lenient
- *  grid-template-areas: a non-rectangular repeat degrades to its bounds instead
- *  of invalidating the grid). Names keep first-occurrence spelling. Two cell
- *  suffixes: `Name*3` widens the cell three columns (expanded before the walk,
- *  so it composes with repetition and shifts later cells right), and a first
- *  colon splits off placeholder text — `Qty: e.g. 40` — kept as the box's
- *  `hint` (first authored hint wins on a repeat). */
-export function parseRecordLayout(text: string): RecordPlacement[] {
-  const rows = text
-    .split("\n")
-    .map((line) =>
-      line.split("|").flatMap((raw) => {
-        const cell = raw.trim();
-        const ci = cell.indexOf(":");
-        const hint = ci >= 0 ? cell.slice(ci + 1).trim() : "";
-        const head = (ci >= 0 ? cell.slice(0, ci) : cell).trim();
-        const m = /^(.*?)\s*\*\s*(\d+)$/.exec(head);
-        const named = m ? m[1].trim() : head;
-        // A leading `#` marks the title field (drawn big, label-less); the rest is the name.
-        const title = named.startsWith("#");
-        const name = title ? named.slice(1).trim() : named;
-        const span = m ? Math.min(12, Math.max(1, Number(m[2]))) : 1;
-        return Array.from({ length: span }, (_, i) => ({ name, hint: i === 0 ? hint : "", title }));
-      }),
-    )
-    .filter((cells) => cells.some((c) => c.name !== "" && c.name !== "."));
-  const rects = new Map<string, { name: string; hint: string; title: boolean; r0: number; c0: number; r1: number; c1: number }>();
-  const order: string[] = [];
-  rows.forEach((cells, r) =>
-    cells.forEach(({ name, hint, title }, c) => {
-      if (name === "" || name === ".") return;
-      const key = name.toLowerCase();
-      const rect = rects.get(key);
-      if (!rect) {
-        rects.set(key, { name, hint, title, r0: r, c0: c, r1: r, c1: c });
-        order.push(key);
-      } else {
-        rect.r0 = Math.min(rect.r0, r); rect.c0 = Math.min(rect.c0, c);
-        rect.r1 = Math.max(rect.r1, r); rect.c1 = Math.max(rect.c1, c);
-        if (!rect.hint) rect.hint = hint;
-        if (title) rect.title = true;
-      }
-    }),
-  );
-  // A crossed repeat ("A | B" over "B | A") bounds two names onto one area; the later one
-  // shrinks to the cell it first appeared in, so no box ever hides another.
-  const placed: Array<{ r0: number; c0: number; r1: number; c1: number }> = [];
-  const firstCell = new Map<string, { r: number; c: number }>();
-  rows.forEach((cells, r) => cells.forEach(({ name }, c) => {
-    const key = name.toLowerCase();
-    if (name !== "" && name !== "." && !firstCell.has(key)) firstCell.set(key, { r, c });
-  }));
-  for (const key of order) {
-    const t = rects.get(key)!;
-    const hits = (a: typeof t) => placed.some((p) => a.r0 <= p.r1 && p.r0 <= a.r1 && a.c0 <= p.c1 && p.c0 <= a.c1);
-    if (hits(t)) { const f = firstCell.get(key)!; t.r0 = t.r1 = f.r; t.c0 = t.c1 = f.c; }
-    placed.push({ r0: t.r0, c0: t.c0, r1: t.r1, c1: t.c1 });
-  }
-  return order.map((key) => {
-    const t = rects.get(key)!;
-    return {
-      name: t.name, row: t.r0 + 1, col: t.c0 + 1, rowSpan: t.r1 - t.r0 + 1, colSpan: t.c1 - t.c0 + 1,
-      ...(t.hint ? { hint: t.hint } : {}),
-      ...(t.title ? { title: true } : {}),
-    };
-  });
-}
-
-/** A string cell that points at an image: a data:image URL, or an http(s) URL
- *  with an image extension. Anything else stays text. */
-export function recordImageSrc(text: string): string | null {
-  const t = text.trim();
-  if (/^data:image\//i.test(t)) return t;
-  if (/^https?:\/\/\S+\.(png|jpe?g|gif|webp|svg|avif|bmp)(\?\S*)?$/i.test(t)) return t;
-  return null;
-}
+export { parseRecordLayout, recordImageSrc, type RecordPlacement };
 
 export type RecordOp = "card" | "gallery" | "board" | "list";
 
-// The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
+// The card dropdown DERIVES from this table ([[C8]] declareOnce) — never hand-write a second list.
 export const RECORD_OP_META = {
   card:    { label: "Card" },
   gallery: { label: "Gallery" },
@@ -1274,7 +1187,7 @@ export class RecordNode extends ClassicPreset.Node {
   }
 
   /** The op owns the Row and Group-by sockets. Callers on a live graph prune the
-   *  departing keys' cables BEFORE switching (onePrunePath). */
+   *  departing keys' cables BEFORE switching ([[D10]] onePrunePath). */
   setOp(next: RecordOp): void {
     if (next === this.op) return;
     this.op = next;

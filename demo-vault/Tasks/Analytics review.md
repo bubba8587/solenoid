@@ -4,9 +4,13 @@ status: open
 priority: normal
 due: 2026-09-11
 scheduled: 2026-09-11
-tags: [task, work]
-contexts: [work]
-projects: ["[[Projects/Client onboarding revamp]]"]
+tags:
+  - task
+  - work
+contexts:
+  - work
+projects:
+  - "[[Projects/Client onboarding revamp]]"
 timeEstimate: 30
 timeEntries: []
 recurrence: FREQ=WEEKLY;BYDAY=FR

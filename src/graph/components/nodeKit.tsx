@@ -9,7 +9,8 @@ import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { formatCxDisplay, isCx, type Cx } from "../cxValue";
-import { NodeCard, HEADER_TAP_SLOP, useHeaderHeightVar } from "./NodeCard";
+import { NodeCard, HEADER_TAP_SLOP } from "./NodeCard";
+import { useHeaderHeightVar } from "./useHeaderHeightVar";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
@@ -473,7 +474,7 @@ export function OpSelect<T extends string>(props: PickProps<T>) {
 
 /** An ARGUMENT picker: a parameter of the node's one function (a sort order, an
  *  aggregator, a criterion comparator). Neutral, sits in its row, and its field is
- *  never named `op` (sourceInvariants opArgDistinct). */
+ *  never named `op` (sourceInvariants [[C26]] opArgDistinct). */
 export function ArgSelect<T extends string>(props: PickProps<T>) {
   return <PickSelect {...props} className="solenoid-node__select" />;
 }

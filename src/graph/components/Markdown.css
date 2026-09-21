@@ -25,6 +25,58 @@
 .sol-md a { color: var(--accent); text-decoration: none; }
 .sol-md a:hover { text-decoration: underline; }
 .sol-md strong { color: var(--text-bright); font-weight: 600; }
+/* Obsidian inline forms (noteMarkdown.ts): a wikilink reads as a link with a dotted
+   underline to tell it from a URL; a tag is a chip — a wash at chip radius. Both take
+   the NOTE's colour (`--note-color`, set by the Note / Import cards; the Report overlay
+   falls back to the app accent) at the `--mix-ink` rung, like the card's own labels. */
+.sol-md .sol-md__wikilink { color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text)); text-decoration: underline dotted; text-underline-offset: 3px; cursor: default; }
+.sol-md .sol-md__wikilink--embed::before { content: "⤵ "; opacity: 0.6; }
+.sol-md .sol-md__hl {
+  background: color-mix(in srgb, var(--note-color, var(--accent)) 24%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 3px;
+}
+/* A callout is a tinted box (Quiet Accent: tint the element, never a stripe) with a
+   titled first row carrying the kind's icon; the danger kinds take the error ink. */
+.sol-md .sol-md__callout {
+  --callout-ink: var(--note-color, var(--accent));
+  margin: 10px 0;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--callout-ink) var(--mix-hairline), var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--callout-ink) 12%, transparent);
+}
+.sol-md .sol-md__callout--danger { --callout-ink: var(--sol-error, #e0473a); }
+.sol-md .sol-md__callout-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--callout-ink) var(--mix-ink), var(--text));
+}
+.sol-md .sol-md__callout-icon { flex: 0 0 auto; }
+.sol-md .sol-md__callout-body > :first-child { margin-top: 6px; }
+.sol-md .sol-md__callout-body > :last-child { margin-bottom: 0; }
+/* Math: KaTeX output inline; a block formula centred on its own row. Before the chunk
+   lands (and on a TeX error) the source shows verbatim in mono. */
+.sol-md .sol-md__math-row { text-align: center; margin: 10px 0; overflow-x: auto; }
+.sol-md .sol-md__math--pending, .sol-md .sol-md__math--error { font-family: var(--font-mono); color: var(--text-dim); }
+.sol-md .sol-md__math--error { color: var(--sol-error, #e0473a); }
+.sol-md .sol-md__tag {
+  display: inline-block;
+  border-radius: 5px;
+  font-size: 0.85em;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text));
+  /* An OPAQUE sunken fill (the code-span surface): the note's own background is a
+     wash of the same hue, so a tinted wash would vanish into it. The edge is the
+     object chips' 40% hairline in the note's colour. */
+  background: var(--surface-sunken);
+  border: 1px solid color-mix(in srgb, var(--note-color, var(--accent)) 40%, transparent);
+  padding: 0 6px;
+  white-space: nowrap;
+}
 .sol-md code {
   font-family: var(--font-mono); font-size: 12px;
   padding: 1px 5px; border-radius: 4px;

@@ -1,6 +1,6 @@
-// React Flow port (C0) — crude value previews for the generic card. THROWAWAY:
-// real node components (C2) bring the real display pipeline; this only proves
-// the compute spine feeds the view.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[D45]] maxRankMatrix
+// Crude value previews for the generic fallback card (SolFlowNode); the real
+// display pipeline lives in the node components.
 import { isSolError } from "../errorValue";
 import { isFrameRef } from "../frameBackend";
 
@@ -20,15 +20,20 @@ export function previewValue(v: unknown): string {
   if (typeof v === "string") return v.length > 40 ? `${v.slice(0, 40)}…` : v;
   if (isFrameRef(v)) return "Frame (lazy)";
   if (Array.isArray(v)) {
-    if (v.length > 0 && Array.isArray(v[0])) return `Matrix ${v.length}×${(v[0] as unknown[]).length}`;
+    if (v.length > 0 && Array.isArray(v[0])) return `${v.length}×${(v[0] as unknown[]).length} Table`;
     const head = v.slice(0, 4).map(previewValue).join(", ");
     return v.length > 4 ? `[${head}, … ${v.length}]` : `[${head}]`;
   }
   if (typeof v === "object") {
     const o = v as Record<string, unknown>;
+    // Containers spell their shape the way the chips do: rows × cols (× depth) Name.
     if (o.__frame && Array.isArray(o.columns)) {
       const cols = o.columns as { values?: unknown[] }[];
-      return `Frame ${cols.length}×${cols[0]?.values?.length ?? 0}`;
+      return `${cols[0]?.values?.length ?? 0}×${cols.length} Frame`;
+    }
+    if (o.__cube && Array.isArray(o.columns)) {
+      const cols = o.columns as { cells?: unknown[] }[];
+      return `${cols[0]?.cells?.length ?? 0}×${cols.length}×${(o.depth as number) ?? 1} Cube`;
     }
     if (o.__cx) return `${num(o.re as number)}${(o.im as number) < 0 ? "" : "+"}${num(o.im as number)}i`;
     return `{${Object.keys(o).slice(0, 3).join(", ")}}`;

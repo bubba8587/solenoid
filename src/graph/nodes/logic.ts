@@ -1,3 +1,4 @@
+// [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero
 import { ClassicPreset } from "rete";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
@@ -437,8 +438,8 @@ function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) =
 
 export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | "islogical" | "istext" | "isnontext";
 
-// ISBOOLEAN is Solenoid's name for Excel's ISLOGICAL (dte:E12 isBooleanName); it is
-// registered as a callable alias so NAME-4 holds. The `islogical`
+// ISBOOLEAN is Solenoid's name for Excel's ISLOGICAL ([[E12]] isBooleanName); it is
+// registered as a callable alias so [[D23]] capsClaimsFunction holds. The `islogical`
 // op value stays: saves are keyed on it.
 export const IS_TEST_OP_META = {
   isnumber:  { label: "ISNUMBER",  description: "`TRUE` when the value is a number. Excel: `ISNUMBER`." },

@@ -1,3 +1,4 @@
+// [[D10]] onePrunePath
 import { useState } from "react";
 import { BIN_MODE_OPTIONS } from "../rete-nodes";
 import type { BinNode as BinNodeType, BinMode } from "../rete-nodes";

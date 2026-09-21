@@ -1,3 +1,4 @@
+// [[C89]] standoffsSolveLast (the seed rule), [[C84]] tidyTranslatesOnly
 // Console-only tooling: true group fit AND a faithful whole-canvas Tidy need the LIVE
 // app, since tidy/autofit measure painted DOM. Per group it lays out members + autofits
 // the box, then it runs a whole-canvas Tidy (the same pass as pressing T) so the shipped

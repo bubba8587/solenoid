@@ -1,7 +1,8 @@
-// React Flow port (C2) — render the REAL Solenoid node components inside RF
-// nodes. `emit` is only ever consumed by NodeSocket, which renders an RF Handle
-// on this surface (flowSurface.ts), so a stub satisfies the contract. The
-// generic C0 card stays as the fallback for anything unregistered.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
+// Renders the real node components inside RF nodes, each boundaried
+// (specs/react-flow-surface-contract.md). `emit` is only ever consumed by
+// NodeSocket, which renders an RF Handle on this surface (flowSurface.ts), so a
+// stub satisfies the contract. SolFlowNode is the fallback for anything unregistered.
 import { memo, useEffect } from "react";
 import { useUpdateNodeInternals } from "@xyflow/react";
 import type { NodeProps, Node } from "@xyflow/react";

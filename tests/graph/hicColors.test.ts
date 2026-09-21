@@ -1,3 +1,4 @@
+// [[C62]] paletteAllOrNone, [[C42]] htmlInCanvasRenderer
 import { describe, it, expect } from "vitest";
 import { isLight, pickTextColor } from "../../src/graph/hicColors";
 

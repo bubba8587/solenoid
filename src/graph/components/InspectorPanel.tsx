@@ -1,4 +1,4 @@
-// dte:C73
+// [[C73]]
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 import { inspectorStore } from "../inspectorStore";
@@ -18,7 +18,7 @@ import "./InspectorPanel.css";
 // The node Inspector: a right-docked panel (the pinned Report's chrome pattern
 // — fixed column between the measured chrome envelopes, canvas squeezed by
 // `html.sol-inspector-docked`) reading the ACTIVE surface's selected node; what it
-// shows is dte:C73 inspectorIsStatic. Selection has no push store (same as
+// shows is [[C73]] inspectorIsStatic. Selection has no push store (same as
 // SelectionActionsBar), so a light poll tracks it.
 
 const POLL_MS = 150;

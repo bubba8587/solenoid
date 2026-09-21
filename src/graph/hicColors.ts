@@ -1,3 +1,4 @@
+// [[C62]] paletteAllOrNone, [[C42]] htmlInCanvasRenderer
 // Color pick for the HTML-in-Canvas snapshot — a readable-text choice so card
 // text contrasts its background in BOTH themes (the hardcoded white text
 // vanished on the light theme's white card body). Pure → unit-testable.

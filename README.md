@@ -49,7 +49,7 @@ The Frame Input node allows you to define a custom Form Input layout for inputti
 
 ## Desktop
 
-The desktop app (Windows) runs the relational verbs on a native Rust (Polars) engine for memory-heavy tables. The web build uses an identical in-process JS engine.
+The desktop app (Windows and Linux) runs the relational verbs on a native Rust (Polars) engine for memory-heavy tables. The web build uses an identical in-process JS engine.
 
 ## From source
 
@@ -61,18 +61,19 @@ npm run dev          # http://localhost:1420, hot reload
 ```
 
 The **desktop build** additionally needs the [Rust toolchain](https://rustup.rs) and
-Tauri's platform prerequisites. On Windows: the WebView2 runtime (preinstalled on
-Windows 11) and the MSVC C++ build tools, see
-[tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/). Desktop is
-**Windows-only** for now.
+Tauri's platform prerequisites, see
+[tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/). On Windows: the
+WebView2 runtime (preinstalled on Windows 11) and the MSVC C++ build tools. On Linux:
+WebKitGTK 4.1 and the build packages that page lists for your distro.
 
 ```
 npm run tauri dev    # runs the desktop window live (starts the frontend itself)
 npm run tauri build  # production build → src-tauri/target/release/
 ```
 
-`tauri build` emits the portable `solenoid.exe` plus an installer under
-`target/release/`; add `-- --no-bundle` to skip the installer and build just the exe.
+On Windows `tauri build` emits the portable `solenoid.exe` plus an installer under
+`target/release/`; on Linux, the `solenoid` binary plus an AppImage, a `.deb` and an `.rpm`.
+Add `-- --no-bundle` to build just the binary.
 
 ## License
 

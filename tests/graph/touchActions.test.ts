@@ -1,3 +1,4 @@
+// [[C93]] gestureByPointerType
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 

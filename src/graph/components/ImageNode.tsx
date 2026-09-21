@@ -1,3 +1,4 @@
+// [[C95]] commitOnEnter, [[C37]] observerOwnsSize (a size-owner: re-consumes width), [[D50]] everyFieldClassified
 import { useEffect, useRef, useState } from "react";
 import type { ImageNode as ImageNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
@@ -21,8 +22,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
   const [height, setHeight] = useState(data.height);
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const fileRef = useRef<HTMLInputElement>(null);
-  // The shared title-edit mechanic; the label becomes ImageValue.title, so a commit
-  // recomputes the downstream cone.
+  // The label becomes ImageValue.title, so a commit recomputes the downstream cone.
   const title = useEditableLabel(data, () => { void processGraph(data.id); });
 
   useEffect(() => { setUrl(data.url); }, [data.url]);
@@ -57,8 +57,8 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
     (h) => { setHeight(h); data.height = h; scheduleAutosave(); void processGraph(data.id); },
   );
 
-  // The data URL is session-only and never written into the save JSON; assetPath
-  // resets so the new attachment gets its own bundle slot.
+  // dataUrl is transient ([[D50]] everyFieldClassified); assetPath resets so the new
+  // attachment gets its own bundle slot.
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-attaching the same file

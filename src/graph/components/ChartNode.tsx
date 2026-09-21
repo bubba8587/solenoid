@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
 import { CHART_OP_META } from "../rete-nodes";
@@ -21,7 +22,7 @@ async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> 
 
 // A two-level pick: the FAMILY (Cartesian / Categorical / Multi-series) is the primary
 // op-select, and a neutral second select refines it to a specific type. Both derive from
-// CHART_OP_META so they can't drift from the Add-menu rows (declareOnce). Picking a family
+// CHART_OP_META so they can't drift from the Add-menu rows ([[C8]] declareOnce). Picking a family
 // jumps to its first type.
 const CHART_OPS = Object.keys(CHART_OP_META) as ChartOp[];
 const FAMILIES = [...new Set(CHART_OPS.map((op) => CHART_OP_META[op].group))];

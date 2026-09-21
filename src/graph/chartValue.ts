@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";
@@ -190,7 +191,7 @@ export type ChartPayload =
   | GanttPayload;
 
 /** The payload / special-figure ops beyond the ChartNode's own selectable ChartOps.
- *  The single source of truth (declareOnce) — the union below derives from it, and
+ *  The single source of truth ([[C8]] declareOnce) — the union below derives from it, and
  *  `CHART_VALUE_OPS` + `chartPopupCoverage.test.ts` enumerate it, so a new figure op
  *  can't ship without going through the shared popup path. */
 export const CHART_SPECIAL_OPS = [

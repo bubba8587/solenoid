@@ -1,3 +1,4 @@
+// [[C90]] drawnCablesAnnotate (the dial convention)
 import { useCallback, useRef, useState, type PointerEvent } from "react";
 
 import "./AngleDial.css";

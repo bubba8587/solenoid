@@ -1,10 +1,5 @@
-// dte:D10
+// [[D10]] onePrunePath. Mechanics: specs/input-cable-pruning.md.
 import { getActiveEditor } from "../activeGraph";
-
-// THE input-cable pruning SSOT (`sourceInvariants.test.ts` pins that components don't
-// hand-roll it): prune BEFORE the socket is hidden or removed, go through the ACTIVE
-// editor (a drill-in node edits its own graph), snapshot before removing, and await
-// each removal (each is its own undo entry).
 
 /** Remove every cable wired INTO the given input keys of `nodeId`. `gone` is the
  *  set of departing keys, or a predicate over the target-input key for the
@@ -26,7 +21,7 @@ export async function dropInputCables(
 
 /** Remove every cable wired OUT of the given output keys of `nodeId` — the output-side
  *  sibling of `dropInputCables`, for an op switch that REMOVES an output socket (a
- *  removed socket left with a live cable is the onePrunePath trap). */
+ *  removed socket left with a live cable is the [[D10]] onePrunePath trap). */
 export async function dropOutputCables(
   nodeId: string,
   gone: Iterable<string> | ((sourceOutput: string) => boolean),

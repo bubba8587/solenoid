@@ -7,7 +7,7 @@ import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { isFrameValue } from "../../src/graph/frame";
 
 // Bundle 24 item B — the pure frontmatter line-patcher: untouched bytes stay identical,
-// and a cube round-trips through a note unchanged. onePatchPath: the ONE writer of a note's YAML.
+// and a cube round-trips through a note unchanged. [[C101]] onePatchPath: the ONE writer of a note's YAML.
 
 const NO_NAMES = new Set<string>();
 
@@ -40,7 +40,8 @@ describe("renderKey", () => {
     expect(renderKey("a", 5)).toEqual(["a: 5"]);
     expect(renderKey("a", [])).toEqual(["a: []"]);
     expect(renderKey("t", ["x", "y"])).toEqual(["t:", "  - x", "  - y"]);
-    expect(renderKey("m", [{ k: 1, v: "z" }])).toEqual(["m:", "  - {k: 1, v: z}"]);
+    expect(renderKey("m", [{ k: 1, v: "z" }])).toEqual(["m:", "  - k: 1", "    v: z"]);
+    expect(renderKey("m", [{ k: 1, after: ["a", "b"], none: [] }])).toEqual(["m:", "  - k: 1", "    after:", "      - a", "      - b", "    none: []"]);
   });
   it("quotes an ambiguous scalar", () => {
     expect(renderKey("a", "1:2")).toEqual(['a: "1:2"']);
@@ -51,8 +52,7 @@ describe("patchFrontmatter — line level, untouched bytes identical", () => {
   const note = "---\nstatus: active\npriority: 5\ntags:\n  - home\n  - renovation\n---\n# Body\n\nUntouched.\n";
 
   it("replaces one scalar, leaves every other line byte-identical", () => {
-    const { text, refused } = patchFrontmatter(note, { priority: 3 });
-    expect(refused).toEqual([]);
+    const { text } = patchFrontmatter(note, { priority: 3 });
     expect(text).toBe("---\nstatus: active\npriority: 3\ntags:\n  - home\n  - renovation\n---\n# Body\n\nUntouched.\n");
   });
 
@@ -72,12 +72,10 @@ describe("patchFrontmatter — line level, untouched bytes identical", () => {
     expect(text).toBe("---\nstatus: done\n---\n# Just a body\n");
   });
 
-  it("refuses a key whose current value is an unparsed nested block", () => {
-    const nested = "---\nname: x\nmeta:\n  a: 1\n  b: 2\n---\nbody\n";
-    const { text, refused } = patchFrontmatter(nested, { meta: "flat", name: "y" });
-    expect(refused.map((r) => r.key)).toEqual(["meta"]);
-    expect(text).toContain("name: y");      // the patchable key still applied
-    expect(text).toContain("meta:\n  a: 1"); // the refused block untouched
+  it("replaces a nested block's whole span (Obsidian's own row spelling included)", () => {
+    const nested = "---\nname: x\nmeta:\n  a: 1\n  b: 2\nrows:\n  - k: 1\n    v: z\nlast: q\n---\nbody\n";
+    const { text } = patchFrontmatter(nested, { meta: "flat", rows: [{ k: 2, v: "w" }] });
+    expect(text).toBe("---\nname: x\nmeta: flat\nrows:\n  - k: 2\n    v: w\nlast: q\n---\nbody\n");
   });
 });
 
@@ -85,23 +83,26 @@ describe("round trip — a demo-vault note re-patched with its own values is unc
   const VAULT = path.resolve(__dirname, "../../demo-vault");
   it("Kitchen remodel: re-writing scalar/date keys with their own values is byte-identical", () => {
     const text = fs.readFileSync(path.join(VAULT, "Projects/Kitchen remodel.md"), "utf8");
-    // Scalars + a date reproduce byte-for-byte (a date renders unquoted). The list `tags`
-    // and the nested `milestones` are left out of the patch, so they stay verbatim — the
-    // untouched-bytes guarantee, not a promise to reproduce a list's inline vs block style.
+    // Scalars, a date (unquoted), a list and the nested `milestones` rows all reproduce
+    // byte-for-byte: the vault is spelled the way the writer spells.
+    const milestones = { __frame: true as const, columns: [
+      { name: "name", type: "string" as const, values: ["Demolition", "Cabinets in", "Countertops"] },
+      { name: "due", type: "date" as const, values: [parseDateToSerial("2026-09-20"), parseDateToSerial("2026-10-18"), parseDateToSerial("2026-11-01")] },
+      { name: "done", type: "logical" as const, values: [true, false, false] },
+    ] };
     const patch = {
       status: "active",
       priority: 5,
       due: cellToYaml(parseDateToSerial("2026-11-15"), "date", NO_NAMES),
+      tags: ["home", "renovation"],
+      milestones: cellToYaml(milestones, undefined, NO_NAMES),
     };
-    const { text: out, refused } = patchFrontmatter(text, patch);
-    expect(refused).toEqual([]);
-    expect(out).toContain("tags: [home, renovation]"); // untouched inline list
-    expect(out).toContain("milestones:\n  - {name: Demolition, due: 2026-09-20, done: true}"); // untouched nested block
+    const { text: out } = patchFrontmatter(text, patch);
     expect(out).toBe(text);
   });
 });
 
-describe("nested frame from a cube cell writes as a - {k: v} block", () => {
+describe("nested frame from a cube cell writes as a block of rows", () => {
   it("milestones round-trips as rows-of-objects", () => {
     const frame = { __frame: true as const, columns: [
       { name: "name", type: "string" as const, values: ["Demo", "Cabinets"] },
@@ -110,7 +111,7 @@ describe("nested frame from a cube cell writes as a - {k: v} block", () => {
     const val = cellToYaml(frame, undefined, NO_NAMES);
     expect(isFrameValue(frame)).toBe(true);
     const { text } = patchFrontmatter("---\nx: 1\n---\nb\n", { plan: val });
-    expect(text).toContain("plan:\n  - {name: Demo, done: true}\n  - {name: Cabinets, done: false}");
+    expect(text).toContain("plan:\n  - name: Demo\n    done: true\n  - name: Cabinets\n    done: false");
   });
 });
 
@@ -186,9 +187,9 @@ describe("resolveKey — what a write would do + the current value", () => {
   it("a list's current value is shown; a matching list is unchanged", () => {
     expect(resolveKey(note, "tags", ["home"])).toEqual({ action: "unchanged", before: "- home" });
   });
-  it("refused for an unparsed nested block", () => {
+  it("a nested block is an update, its lines shown as the current value", () => {
     const nested = "---\nmeta:\n  a: 1\n---\nb\n";
-    expect(resolveKey(nested, "meta", "x").action).toBe("refused");
+    expect(resolveKey(nested, "meta", "x")).toEqual({ action: "update", before: "a: 1" });
   });
 })
 
@@ -208,13 +209,13 @@ describe("setBody round trips", () => {
 });
 
 describe("review pins: a list inside a row", () => {
-  it("renders as a flow sequence and reads back as a list, never a comma string", async () => {
+  it("renders as a nested block and reads back as a list, never a comma string", async () => {
     const steps: CubeValue = { __cube: true, columns: [
       { name: "name", cells: ["a", "b"], type: "string" },
       { name: "tags", cells: [["x", "y"], []] },
     ] } as unknown as CubeValue;
     const v = cellToYaml(steps, undefined, NO_NAMES);
-    expect(renderKey("steps", v)).toEqual(["steps:", "  - {name: a, tags: [x, y]}", "  - {name: b, tags: []}"]);
+    expect(renderKey("steps", v)).toEqual(["steps:", "  - name: a", "    tags:", "      - x", "      - y", "  - name: b", "    tags: []"]);
     const { parse } = await import("yaml");
     const back = parse(renderKey("steps", v).join("\n")) as { steps: { tags: unknown }[] };
     expect(back.steps.map((r) => r.tags)).toEqual([["x", "y"], []]);

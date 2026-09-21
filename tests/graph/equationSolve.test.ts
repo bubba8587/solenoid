@@ -1,3 +1,4 @@
+// [[C47]]
 import { describe, it, expect } from "vitest";
 import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, astToFormula, isolate, equalsWithin, type ParsedEquation } from "../../src/graph/equationSolve";
 import { parseFormula } from "../../src/graph/excelFormula";

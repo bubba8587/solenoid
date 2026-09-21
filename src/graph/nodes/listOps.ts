@@ -1,4 +1,4 @@
-// dte:C17,C60,D19
+// [[C17]], [[C60]], [[D19]], [[C21]] matchNodeLimits (MAX_GENERATED)
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";
@@ -475,7 +475,7 @@ export function xmatchIndex(
 }
 
 /** 1 / 0 rather than a logical, matching the node's numeric output socket. Membership keys
-*  by VALUE (setKey, keyByValue); blank and error cells are not members. */
+*  by VALUE (setKey, [[D39]] keyByValue); blank and error cells are not members. */
 export function containsValue(arr: readonly unknown[], v: unknown): boolean {
   const k = setKey(v);
   return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k);
@@ -556,8 +556,8 @@ export function fibonacci(count: number): number[] {
 }
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
-// Membership is by VALUE (keyByValue), but JS Sets key OBJECTS by reference, so only a tagged
-// complex (tagSpecialScalars) canonicalizes to a string; primitives stay themselves.
+// Membership is by VALUE ([[D39]] keyByValue), but JS Sets key OBJECTS by reference, so only a tagged
+// complex ([[D44]] tagSpecialScalars) canonicalizes to a string; primitives stay themselves.
 export function setKey(v: unknown): unknown {
   return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
 }
@@ -779,9 +779,9 @@ export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] 
     .map((p) => p.v);
 }
 
-// ─── matricesInFormulas tranche 2: the array-returning core ──────────────────────────────────
+// ─── [[C15]] matricesInFormulas tranche 2: the array-returning core ──────────────────────────────────
 
-/** UNIQUE: first-seen dedupe by VALUE (setKey, keyByValue); every ERROR cell survives, so the
+/** UNIQUE: first-seen dedupe by VALUE (setKey, [[D39]] keyByValue); every ERROR cell survives, so the
  *  count of errors to fix is deterministic. */
 export function uniqueList(arr: readonly unknown[]): unknown[] {
   const seen = new Set<unknown>();

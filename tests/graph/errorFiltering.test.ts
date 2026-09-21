@@ -1,4 +1,4 @@
-// dte:E10
+// [[E10]]
 import { describe, it, expect } from "vitest";
 import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { MakeArrayNode } from "../../src/graph/nodes/tableLambda";

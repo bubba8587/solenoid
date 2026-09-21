@@ -82,7 +82,7 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.pill}"
 ---
-<!-- dte:B14 -->
+<!-- [[B14]] -->
 
 # Design System: Solenoid
 
@@ -233,10 +233,10 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 ### Inputs / Fields
 - **Style:** Sunken background (`--surface-sunken`), 1px border (`--border`), 4px radius. Value text in the mono face. Reads as a familiar input box, especially in light theme where the field is the brightest (white) layer.
 - **Focus:** Border shifts to the accent (`--accent`). No glow, no ring; a single colored border edge.
-- **Edits commit on Enter / clickaway, never per keystroke** (like an Excel cell). Drafts stay local while typing; Escape reverts. `useDraftCommit` (`inlineInput.tsx`) is the mechanism; never call `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes, sliders) apply immediately.
+- **Edits commit on Enter / clickaway, never per keystroke** ([[C95]] commitOnEnter; like an Excel cell). Drafts stay local while typing; Escape reverts. `useDraftCommit` (`inlineInput.tsx`) is the mechanism; never call `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes, sliders) apply immediately.
 
 ### Op pickers (the accent's one home on a card body)
-A card body holds two kinds of pick, and they are different things all the way down (dte:C26 opArgDistinct):
+A card body holds two kinds of pick, and they are different things all the way down ([[C26]] opArgDistinct):
 
 | | **OP** | **ARG** |
 |---|---|---|

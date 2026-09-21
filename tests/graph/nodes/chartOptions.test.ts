@@ -1,3 +1,4 @@
+// [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
 import { parseChartOptions, serializeChartOptions } from "../../../src/graph/nodes/chartOptions";
 

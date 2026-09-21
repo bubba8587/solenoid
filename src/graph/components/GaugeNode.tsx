@@ -1,3 +1,4 @@
+// [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct (`mode` is an argument), [[C100]] chartIsAValue
 import { useState, useSyncExternalStore } from "react";
 import type { GaugeNode as GaugeNodeType, GaugeStyle } from "../rete-nodes";
 import { GAUGE_STYLE_OPTIONS } from "../rete-nodes";
@@ -25,7 +26,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
 
   async function pickMode(next: GaugeStyle) {
     if (next === data.mode) return;
-    // onePrunePath: drop the departing bar-only cables BEFORE the socket removal.
+    // [[D10]] onePrunePath: drop the departing bar-only cables BEFORE the socket removal.
     await dropInputCables(data.id, data.keysDropped(next));
     data.setMode(next);
     setMode(next);
@@ -37,8 +38,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
   const v = payload?.value;
   const frac = typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
   const empty = <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
-  // The collapsed bar shows the [Chart] chip (opens the popup, which renders the bar
-  // via ChartFigure's scale branch) — the same hero-box chip Chart/Histogram collapse to.
+  // The collapsed bar's [Chart] chip carries a ChartValue ([[C100]] chartIsAValue), like Chart/Histogram.
   const cv: ChartValue = {
     __chart: true, op: "scale", values: v ?? null,
     payload: payload ?? undefined, options: data.chartOptions,

@@ -1,4 +1,4 @@
-// dte:C66
+// [[C66]]
 // JS highlighting for the Script node's source. The tokenizer is lezer's real
 // JavaScript grammar (@lezer/javascript, the one CodeMirror ships); this module only
 // maps its tags onto the formula surface's `.fx-tokens` classes and re-emits every

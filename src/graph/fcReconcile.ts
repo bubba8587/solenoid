@@ -1,3 +1,4 @@
+// [[D16]] retypeReconciles
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -20,7 +21,7 @@ export async function retypeOutputCables(
     const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
     // An adoptive input is judged by its DECLARED rung, not the type it adopted from this
     // very cable: a rank-2 result reconciling onto a Display that adopted the rank-1 type
-    // must keep the cable and re-adopt (adoptKeepsCables).
+    // must keep the cable and re-adopt ([[E3]] adoptKeepsCables).
     const inType = inSock instanceof AdoptiveSocket ? inSock.base : inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
     if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);
   }

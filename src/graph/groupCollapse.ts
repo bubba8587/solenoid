@@ -1,3 +1,4 @@
+// [[C88]] collapseIsVisual. Mechanics: specs/group-collapse.md.
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -335,11 +336,8 @@ export function settleCollapse(
   });
 }
 
-/** Recompute; hiding rides RF node `className` off the store notify (flowModel
- *  `nodeClassName` + FlowCanvas's subscription). Never stamp the wrapper's
- *  inline visibility — RF owns it and overwrites with `visible` post-measure,
- *  which is how the old imperative element sweep silently lost the load-time
- *  hide. */
+/** Recompute; hiding rides RF node `className` off the store notify ([[C88]]
+ *  [[C88]] collapseIsVisual: never the wrapper's inline visibility). */
 export function syncGroupCollapse(editor: Editor, _area: View): void {
   recomputeGroupCollapse(editor);
 }

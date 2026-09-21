@@ -1,12 +1,6 @@
-// The figure's stylesheet, injected once with the component. Every color is an app design
-// token (var(--…)), which resolves in inline SVG because the figure lives in the document —
-// so the on-screen figure needs no color resolution; only the headless ganttSvg serializer
-// takes concrete colors. Critical/violated/late carry a non-color cue (dash, outline) for
-// WCAG 1.4.1. Reduced motion is honored (there is no motion to begin with; guarded anyway).
-//
-// Type sits on DESIGN.md's rungs — Body/Value 12px (1em of the root, which the figure sets
-// to 12px × fontScale) and Label 11px (0.9167em) — so the `fontsize` option scales every
-// label along with the rows instead of only the row height.
+// [[C69]] ganttPackages, [[C71]] noBarEditing, [[B14]] oneDesignSystem, [[C62]] paletteAllOrNone, [[C94]] formatFamilyGates
+// The figure's stylesheet: every color a design token (var(--…) resolves in inline SVG); type on
+// DESIGN.md's rungs in em of the root (12px × fontScale), so the text scale moves labels with the rows.
 
 export const ganttStyles = `
 .solenoid-gantt {

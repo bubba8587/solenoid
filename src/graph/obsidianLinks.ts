@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet
 // Obsidian URI links (bundle item D): `obsidian://open?vault=<vault name>&file=<path>` opens
 // a note in the running Obsidian. The vault name is the vault folder's base name; the file
 // is vault-relative, forward slashes, no `.md`. Pure; `openExternal` (fileBridge) launches it.

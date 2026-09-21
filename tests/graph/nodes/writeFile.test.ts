@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType, [[C38]] sinkRunButtonOnly
 import { describe, it, expect } from "vitest";
 import { WriteFileNode } from "../../../src/graph/rete-nodes";
 

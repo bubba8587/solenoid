@@ -1,8 +1,8 @@
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 import { createNotifier } from "./storeKit";
 
-// A module singleton so the ReportNode's own React root and the main app root both reach
-// it; it tracks WHICH report is open, since a document may hold more than one. Docking is
-// driven by the root class `html.sol-report-docked` so plain CSS does the layout shift.
+// WHICH report is open (a document may hold several) and whether it is docked; the root
+// class `html.sol-report-docked` drives the layout shift (docs/layout-chrome.md).
 
 let _openNodeId: string | null = null;
 let _docked = false;

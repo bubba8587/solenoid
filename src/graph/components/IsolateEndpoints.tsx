@@ -1,3 +1,4 @@
+// [[C52]] visibleSelection (one selection system), [[C91]] cableWalkRouter
 import { measuredSize } from "../nodeSize";
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { CardFrame } from "./NodeCard";
@@ -68,7 +69,7 @@ export function IsolateEndpoints() {
 
   const startDrag = (which: "entry" | "exit") => (e: React.PointerEvent) => {
     e.stopPropagation();
-    // One selection system: selecting a terminal clears node / cable / standoff selection.
+    // One selection system ([[C52]] visibleSelection).
     isoEndpointSelect.set(which);
     unselectAllNodes();
     cableSelectionStore.set(null);

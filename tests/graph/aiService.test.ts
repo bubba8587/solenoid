@@ -1,3 +1,4 @@
+// [[B13]], [[C55]], [[B10]] reactFlowView
 // The palette's service layer, exercised against a FAKE transport: the
 // injected fetch returns hand-built Messages-API responses, so every branch —
 // answer, validated edit, repair round, exhausted repairs, refusal — runs

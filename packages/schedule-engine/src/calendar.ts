@@ -1,9 +1,6 @@
-// A working calendar over whole-day serials. Index space: k ↔ the k-th counted UNIT at or
-// after the anchor (k < 0 counts backwards), so every pass does integer arithmetic on
-// indices and looks a date up once. A unit is a working day (Days mode) or a working
-// minute inside the day's working intervals (Minutes mode, Project's 08:00–17:00 model).
-// Weekends come from Excel's WORKDAY.INTL code (the app's one shared working-day
-// vocabulary); holidays are a set of day keys.
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D36]] nullSkippedNotZero, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
+// A working calendar over whole-day serials in unit-index space: unit k is the k-th counted
+// working day (Days mode) or working minute (Minutes mode) from the anchor, k < 0 backwards.
 
 import type { CalendarSpec } from "./types";
 
@@ -93,8 +90,6 @@ export class Calendar {
     return !this.weekend.has(dayOfWeek(k)) && !this.holidays.has(k);
   }
 
-  // ── Day layer ───────────────────────────────────────────────────────────────
-
   /** The serial of DAY index k. */
   dayDate(k: number): number {
     if (k >= 0) {
@@ -137,8 +132,6 @@ export class Calendar {
     const k = this.dayIndexCeil(serial);
     return this.dayDate(k) === dayKey(serial) ? k : k - 1;
   }
-
-  // ── Unit layer (what the passes use) ────────────────────────────────────────
 
   /** The serial of unit index k: a whole day in Days mode; in Minutes mode the START of
    *  that working minute (day + clock fraction). */

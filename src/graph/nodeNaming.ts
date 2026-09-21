@@ -1,3 +1,4 @@
+// [[C19]] namingModel
 // Shared by the live nodeNameStore and the pure textForm writer so both name nodes
 // by ONE algorithm.
 

@@ -1,6 +1,6 @@
-// dte:C76
+// [[C76]]
 // The Electricity pack's declared exceptions to the formula-preset default
-// (dte:C76 formulaPackDefault); registered always (dte:C79 packActivationIsPresentation).
+// ([[C76]] formulaPackDefault); registered always ([[C79]] packActivationIsPresentation).
 
 import { ClassicPreset } from "rete";
 import { listIn, numIn, numOut, readInput } from "./shared";

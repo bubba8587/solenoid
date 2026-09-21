@@ -1,3 +1,4 @@
+// [[D16]] retypeReconciles, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct (the type toggle is an argument)
 import { useEffect, useState } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";
@@ -16,8 +17,7 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: s
   { value: "logical", label: "Bool", title: "TRUE or FALSE list" },
 ];
 
-/** Switch the list's element type in place — an in-place retype fires no connection
- *  event, so the cable drops and downstream FC re-adaptation must happen here. */
+/** Switch the list's element type in place ([[D16]] retypeReconciles). */
 export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   // Active graph: a List Input inside a Composite drill-in retypes its own graph's cables.

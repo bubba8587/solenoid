@@ -1,5 +1,6 @@
+// [[C16]] polarsEngine (a lazy frame ref, head-N preview)
 import { useEffect, useState } from "react";
-import { tablePopup, type FramePopupColumn, type SourceCommitRefresh } from "../tablePopupStore";
+import { tablePopup, type FramePopupColumn, type SourceCommitRefresh, type TablePopupState } from "../tablePopupStore";
 import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
 import { collectPreview, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
@@ -26,7 +27,7 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
 
 /** A clickable `[R×C Frame]` chip opening the full grid in the popup; read-only
  *  unless `onSave` is given, but column types are passed either way. */
-export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout }: {
+export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, popupOverrides }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
@@ -42,10 +43,12 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
   /** The node the popup's Pin action pins; defaults to the host node from context. */
   pinNodeId?: string;
-  /** The host's λ input keys — enables the popup's per-column source select. */
+  /** The host's λ socket names, offered under the popup's column formula fields. */
   lambdaOptions?: string[];
   /** Form-view field placement (the Record layout text, authored on the card). */
   formLayout?: string;
+  /** Merged into the literal-source popup open(), as ArrayChip's does. */
+  popupOverrides?: Partial<TablePopupState>;
 }) {
   // Hook runs every render (Rules of Hooks); the explicit prop wins when given.
   const ctxHostId = useHostNodeId();
@@ -57,7 +60,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
   // A sketch-mode aggregate carries `__approx` — never show it as an exact total.
   const approx = value.__approx != null;
   // Computed columns mark the chip with a quiet ƒ: part of this table is DEFINED.
-  const computedCols = source?.filter((c) => c.lambda || c.expr).length ?? 0;
+  const computedCols = source?.filter((c) => c.expr).length ?? 0;
 
   return (
     <button
@@ -88,7 +91,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           headers: source!.map((c) => c.name),
           // A COMPUTED column's type is the DERIVED one, so the format row offers the
           // selector family matching what the cells actually are.
-          columnTypes: source!.map((c, j) => ((c.lambda || c.expr) ? (value.columns[j]?.type ?? "number") : c.type)),
+          columnTypes: source!.map((c, j) => (c.expr ? (value.columns[j]?.type ?? "number") : c.type)),
           cellType: "number",
           // A unit-taggable source gets the unit dropdown (persisted on Save).
           formatControls: "columns",
@@ -107,13 +110,13 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           // always passed for a literal source, so the source select exists pre-λ.
           formLayout,
           lambdaOptions: lambdaOptions ?? [],
-          sourceLambdas: source!.map((c) => c.lambda),
           sourceExprs: source!.map((c) => c.expr),
           computedCells: Array.from(
             { length: Math.max(rowCount, frameRowCount(value)) },
             (_, r) => source!.map((c, j) =>
-              (c.lambda || c.expr) ? (value.columns[j]?.values[r] ?? null) : null),
+              c.expr ? (value.columns[j]?.values[r] ?? null) : null),
           ),
+          ...popupOverrides,
         });
       }}
       onPointerDown={stopDragStart}

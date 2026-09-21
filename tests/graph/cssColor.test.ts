@@ -1,3 +1,4 @@
+// [[C62]] paletteAllOrNone
 import { describe, it, expect } from "vitest";
 import { parseColor, toCss, mixSrgb, flowTint, type RGBA } from "../../src/graph/cssColor";
 

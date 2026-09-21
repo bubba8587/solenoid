@@ -1,11 +1,11 @@
-// dte:D18
+// [[D18]]
 // Frame-input EXAMPLE hints: a node class declares, per frame input, a tiny
 // example frame (columns + a few sample rows) and hovering that input's socket
 // shows it as a floating mini-table (FrameHintLayer). The declaration lives on
 // the CLASS (static `frameHints`, keyed by input key) — the same
 // declare-on-the-class shape as `literals`/`stringLiterals` — so the sample sits
 // next to the socket it documents and survives minification (no name lookups).
-// frameLabelGrammar gives the input its terse role LABEL; the hint is the worked example.
+// [[C13]] frameLabelGrammar gives the input its terse role LABEL; the hint is the worked example.
 
 import type { FrameColType } from "./frame";
 import { createValueStore } from "./storeKit";

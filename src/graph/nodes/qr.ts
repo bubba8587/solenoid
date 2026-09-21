@@ -1,13 +1,12 @@
+// [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
 import { ClassicPreset } from "rete";
 import { chartOut, strIn, readInput } from "./shared";
 import { type ImageValue } from "../imageValue";
 import { buildQrPayload, qrModulesToSvg, svgDataUrl, type QrTemplate, type QrFields } from "../qrCode";
 
-// ─── QR CODE ──────────────────────────────────────────────────────────────────
-// Text → a QR image out the green `chart` socket, so it embeds in a Report and prints.
-// A template shapes the payload (plain text/URL, Wi-Fi join, vCard). The `qrcode`
-// encoder is imported lazily in data() so it stays out of the initial bundle; the SVG
-// build itself is the pure qrCode.ts. Async data() re-uses the encoder's cached module.
+// Text → a QR image on the `chart` socket ([[C100]] chartIsAValue); a template shapes the
+// payload (text/URL, Wi-Fi join, vCard). The `qrcode` encoder is a lazy import
+// ([[C97]] rechartsLazyChunk); the SVG build is the pure qrCode.ts.
 
 export class QrCodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -54,8 +53,6 @@ export class QrCodeNode extends ClassicPreset.Node {
       this.cachedResult = null;
       return { chart: null };
     }
-    // Lazy import keeps the encoder out of the initial bundle; the module caches after
-    // first use, so later passes only re-run the (fast) matrix build.
     const mod = await import("qrcode");
     const QRCode: typeof import("qrcode") = (mod as { default?: typeof import("qrcode") }).default ?? mod;
     const qr = QRCode.create(payload, { errorCorrectionLevel: "M" });

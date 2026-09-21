@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue (a sibling value on the chart socket)
 // Carries SVG *markup*, never a URL — the picker hovers/clicks inner elements, so
 // the source must be inlined (and persists as plain text, no bundling).
 

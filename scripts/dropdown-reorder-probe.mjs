@@ -20,8 +20,9 @@
 //       (not the <select>, which would only open the control) → tapSelect selects on
 //       pointerup → the SAME nodepicked → simpleNodesOrder re-append the desktop path takes.
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const EDGE = browserPath();
 const URL = "http://localhost:1420";
 const SEEDS = ["table-verbs", "chart-showcase", "zz-scratch-new-nodes"];
 const MOBILE = process.argv.includes("--mobile");

@@ -1,4 +1,4 @@
-// dte:D34,D35,E9
+// [[D34]], [[D35]], [[E9]]
 import { describe, it, expect } from "vitest";
 import { solError, isSolError, firstInputError, installErrorGuards, type SolError } from "../../src/graph/errorValue";
 import { ArithmeticNode, MathFXNode, CombinatoricsNode } from "../../src/graph/nodes/scalar";
@@ -345,7 +345,7 @@ describe("error producers", () => {
     expect(new XMatchNode().data({ value: [20], array: [[10, 20, 30]] }).result).toBe(2);
   });
 
-  it("Filter (filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {
+  it("Filter ([[C49]] filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {
     // The 1-D Filter has no mask and takes no tables, so its old #SHAPE!
     // sources are gone; an error CELL fails the condition and exits Dropped.
     const n = new FilterNode({ condConfig: { "0": { op: "gt" } } });

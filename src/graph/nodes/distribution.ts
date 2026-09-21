@@ -1,4 +1,4 @@
-// dte:C61,E11
+// [[C61]], [[E11]], [[D46]] freezeVolatilePerCalc
 import { ClassicPreset } from "rete";
 import { numIn, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
 import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantile, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
@@ -17,7 +17,7 @@ function inputKeysFor(op: DistKey, form: DistForm): string[] {
   return [firstKeyFor(op, form), ...spec.params.map((p) => p.key)];
 }
 
-export class DistributionNode extends ClassicPreset.Node {
+export class DistributionsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     k: "The count rounds down to a whole number.",
     result: "A value or parameter outside the distribution's domain gives a blank, not an error.",
@@ -32,7 +32,7 @@ export class DistributionNode extends ClassicPreset.Node {
   height = 200;
 
   constructor(init?: { label?: string; op?: DistKey; form?: DistForm }) {
-    super("Distribution");
+    super("Distributions");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "normal";
     const spec = DIST_SPECS[this.op];
@@ -65,7 +65,7 @@ export class DistributionNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (onePrunePath). */
+   *  these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: DistKey): string[] {
     const keep = new Set(inputKeysFor(next, formAfterSwitch(this.form, next)));
     return inputKeysFor(this.op, this.form).filter((k) => !keep.has(k));

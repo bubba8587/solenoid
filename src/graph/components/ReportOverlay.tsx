@@ -1,5 +1,5 @@
+// [[C68]] knapIsTheDocumentSyntax.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";
 import { reportStore } from "../reportStore";
@@ -26,6 +26,8 @@ const FILTERS = Object.entries(standardFilterMetadata)
 import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
+import { renderNoteMarkdown } from "../noteMarkdown";
+import { useKatexReady } from "./katexLoader";
 
 const NO_VARS: Record<string, unknown> = {};
 
@@ -113,11 +115,11 @@ export function ReportOverlay() {
   }
   useEscapeToClose(closeReport, !!nodeId);
 
+  const tex = useKatexReady(); // math in the preview re-renders once KaTeX lands
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(
-      marked.parse(previewText || "", { async: false, gfm: true, breaks: true }) as string,
-    ),
-    [previewText],
+    () => DOMPurify.sanitize(renderNoteMarkdown(previewText || "")),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [previewText, tex],
   );
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -125,8 +127,9 @@ export function ReportOverlay() {
   // A Note's body is rendered exactly as its card renders it: frontmatter stripped,
   // sanitized on every render (a body arrives in shared .solenoid files).
   const noteHtml = useMemo(
-    () => note ? DOMPurify.sanitize(marked.parse(parseNoteFrontmatter(note.body).body || "", { async: false, gfm: true, breaks: true }) as string) : "",
-    [note, note?.body],
+    () => note ? DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [note, note?.body, tex],
   );
 
   if (!nodeId) return null;
@@ -439,7 +442,7 @@ export function ReportOverlay() {
             )}
             {templateErrors ? (
               <pre className="report-preview__error">{templateErrors}</pre>
-            ) : (pages ? pageCount > 0 : previewBody.trim()) ? (
+            ) : (pages ? pageCount > 0 : previewSource.trim()) ? (
               <InlineRefBody
                 nodeId={node.id}
                 bodyHtml={bodyHtml}

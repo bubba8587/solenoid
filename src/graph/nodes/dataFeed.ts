@@ -1,3 +1,4 @@
+// [[D32]] refreshOutsideRebuild, [[C28]] literalsIffEditable, [[C104]] foreignDocNetworkGate
 import { ClassicPreset } from "rete";
 import { frameOut } from "./shared";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";
@@ -6,9 +7,8 @@ import { frameRowCount, type FrameValue } from "../frame";
 import { apiKeyStore } from "../apiKeyStore";
 import { getProvider, type ProviderId, type ProviderPreset } from "../dataProviders";
 
-// One node for every market/economic data provider. Like WebSourceNode, data() must
-// stay SYNCHRONOUS — a Promise-returning source sits on the engine's critical path
-// forever — so it serves the cached frame and fires one background fetch per key.
+// One node for every market/economic data provider. data() stays synchronous: the cached
+// frame out, one background fetch per key (specs/live-connections.md).
 
 export class DataFeedNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -16,14 +16,14 @@ export class DataFeedNode extends ClassicPreset.Node {
   };
   label: string;
   provider: ProviderId;
-  // The series id / ticker, in stringLiterals so it round-trips + renders a field.
+  // The series id / ticker ([[C28]] literalsIffEditable).
   stringLiterals: Record<string, string> = { input: "" };
   /** Auto-refresh interval in minutes (0 = off) — the component runs the timer. */
   refreshMinutes: number;
   cachedResult: FrameValue | null = null;
   width = 260; height = 190;
 
-  // Transient (never persisted): last-fetched + in-flight cache keys.
+  // Transient ([[D50]] everyFieldClassified): last-fetched + in-flight cache keys.
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
 
@@ -70,7 +70,7 @@ export class DataFeedNode extends ClassicPreset.Node {
     }
     // These ride in the URL, hence the cache key, so changing any of them re-fetches.
     const url = p.buildUrl(input, key, { start, end, freq: this.stringLiterals.freq?.trim() || undefined });
-    if (!requestNetwork(this.id)) return { frame: this.cachedResult }; // C2 gate: foreign doc not yet allowed
+    if (!requestNetwork(this.id)) return { frame: this.cachedResult }; // the per-doc network prompt has not allowed it yet
     // The key folds in the provider so switching provider re-fetches.
     const cacheKey = connectionStore.key(this.id, `${this.provider}:${url}`);
     if (cacheKey === this.lastKey) return { frame: this.cachedResult };

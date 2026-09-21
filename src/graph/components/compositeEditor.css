@@ -1,4 +1,4 @@
-/* dte:C75,C78 */
+/* [[C75]], [[C78]] */
 /* The subgraph canvas fills the SAME region the main canvas occupies, sitting
    ABOVE the main canvas (z-index 0) but BELOW the app chrome (Header/StatusBar z6,
    NavMenu/OutlinePanel z5) — so drilling in swaps only the canvas surface and the
@@ -212,7 +212,7 @@ html.sol-drilled-in .solenoid-composite-editor__host .solenoid-minimap { display
 html.sol-drilled-in .solenoid-outline,
 html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
 
-/* Stop painting the covered main canvas (dte:C75 gpuTextureBudget). The drill-in host
+/* Stop painting the covered main canvas ([[C75]] gpuTextureBudget). The drill-in host
    also carries .sol-rf-appcanvas, hence the :not(). */
 html.sol-drilled-in .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { visibility: hidden; }
 

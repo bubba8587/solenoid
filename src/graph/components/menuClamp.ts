@@ -1,3 +1,4 @@
+// [[C99]] chromeEnvelopeVars
 import { useLayoutEffect, useRef, type RefObject } from "react";
 
 /** Clamp a fixed-position context menu into the viewport: 8px side margins,

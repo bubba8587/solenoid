@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface. Static export, deliberately separate from [[C42]] htmlInCanvasRenderer.
 import { getView, getEditor } from "./process";
 // Capture for STATIC EXPORT, deliberately separate from the live HTML-in-Canvas
 // renderer, whose `drawElementImage` needs a Chrome flag a recipient won't have.

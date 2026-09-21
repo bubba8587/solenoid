@@ -5,9 +5,9 @@
 //
 //   node scripts/layout-probe.mjs        (dev server on :1420)
 import puppeteer from "puppeteer-core";
+import { browserPath } from "./browser.mjs";
 
-const CHROME = process.env.CHROME ??
-  `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1223/chrome-win64/chrome.exe`;
+const CHROME = browserPath();
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 let bad = 0;
 const check = (ok, msg) => { console.log((ok ? "ok  " : "FAIL") + " " + msg); if (!ok) bad++; };

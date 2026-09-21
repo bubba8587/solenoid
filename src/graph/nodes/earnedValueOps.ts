@@ -1,6 +1,5 @@
-// Earned Value math — pure, rete-free and unit-free (magnitudes in, metrics out; the node
-// layer carries the Cost column's currency unit onto the money columns). Terms are the PM
-// standard: BCWS/PV planned value, BCWP/EV earned value, ACWP/AC actual cost.
+// [[D19]] implReteFree, [[C17]] shareImpl
+// Unit-free: magnitudes in, metrics out (the node carries the Cost column's currency onto the money columns). BCWS/PV planned value, BCWP/EV earned value, ACWP/AC actual cost.
 
 /** Working days from `from` to `to` inclusive of both ends. The node injects the engine's
  *  `Calendar.countBetween`, so the count honors the same weekend + holidays as the schedule. */
