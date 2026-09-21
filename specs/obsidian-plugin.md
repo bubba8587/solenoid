@@ -151,8 +151,9 @@ is the app's, so the plugin publishes from its own: `bubba8587/Solenoid-Properti
 repository holds no source. Its `source.json` pins a commit of this one; its release workflow
 checks that commit out, runs `npm run plugin:build`, and attaches the three files plus
 `third-party-licenses.txt`. Its `manifest.json` must equal `obsidian-plugin/manifest.json` at the
-pinned commit, and the workflow refuses a release when they differ. The release steps and the
-community-list entry are that repository's README.
+pinned commit, and the workflow refuses a release when they differ. The release steps are that
+repository's README. The listing is submitted through community.obsidian.md (the author's), whose
+automated review rescans every published release.
 
 The bundle is what a reviewer reads, so nothing in it logs, writes a global or touches the
 document; `perfProbe` is shimmed for that reason (its probe registers `__solenoidStats` on

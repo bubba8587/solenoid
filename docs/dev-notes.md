@@ -16,10 +16,13 @@ On `develop`, pushed. tsc + vitest green. The path is `specs/obsidian-plugin.md`
 - **The bundle is the reviewed artifact.** `perfProbe` is now shimmed (it registered two globals and logged on
   import); the rest of the `console.log` strings left in `main.js` are chrono-node's debug branch. The plugin
   build emits `third-party-licenses.txt` beside its files, and `test.yml` runs `npm run plugin:build`.
-- **Left for the author:** the release tag (create the release on GitHub, or run the workflow by hand with the
-  version), the `obsidian-releases` PR, and two open choices in the plugin repo's README: `minAppVersion` is
-  `1.9.0` while the widget API was read from 1.13.7, and the type names are Title Case where Obsidian's own are
-  sentence case.
+- **Bundle hygiene since:** `nativeAccent` is shimmed (it carried the Tauri API into `main.js`), and `onload`
+  always sets the palette from the vault's `data.json`, because the store also reads `localStorage` and Obsidian
+  shares that across vaults. The release workflow's build-only run passes against the pin.
+- **Left for the author:** the go to publish release `0.1.0`, the submission through community.obsidian.md (the
+  `obsidian-releases` PR path is retired), and three open choices: `minAppVersion` is `1.9.0` while the widget API
+  was read from 1.13.7, the type names are Title Case where Obsidian's own are sentence case, and `isDesktopOnly`
+  is false with mobile untested.
 
 ### SESSION DIGEST (2026-09-20b — Solenoid Properties, the Obsidian plugin; author present)
 

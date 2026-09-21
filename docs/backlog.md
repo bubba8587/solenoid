@@ -58,7 +58,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   property type; (4) a chip in a popped-out note opens its editor in the main window (one popup
   layer); (5) the real-Obsidian rig lives only in the digest and spec, a `scripts/` version would
   make it one command; (6) the community-list submission itself (spec § Publishing has the
-  release path; the PR to `obsidianmd/obsidian-releases` is the author's).
+  release path; the author submits through community.obsidian.md).
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a
