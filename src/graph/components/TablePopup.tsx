@@ -791,7 +791,7 @@ export function TablePopup() {
     if (!target) return;
     // Read-only cells are a focusable <div> (tabIndex -1), not an <input> — match either.
     const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
-    if (el) { el.focus(); if (el.matches("input")) (el as HTMLInputElement).select(); }
+    if (el) { el.focus(); if (el.matches("input")) el.select(); }
   };
   // A read-only grid cell renders as plain TEXT, not an <input readOnly> — the <input> is
   // ~2.5× the per-cell DOM cost (the popup-virtualize Finding, dev-notes) and read-only
