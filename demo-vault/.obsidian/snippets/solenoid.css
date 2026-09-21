@@ -1,0 +1,583 @@
+/* Solenoid's Default palette on Obsidian: the neutral workbench, the gold accent and the
+   typed socket hues (DESIGN.md § 2). Color means type here too: a property's icon wears the
+   color Solenoid gives that type, strings in code are lime, numbers are gold.
+   The faces are Atkinson Hyperlegible, registered by the Solenoid Properties plugin. */
+
+/* ── Tokens ─────────────────────────────────────────────────────────────────── */
+
+body {
+  --sol-mix-hairline: 30%;
+  --sol-mix-edge: 45%;
+  --sol-mix-emphasis: 60%;
+  --sol-mix-glow: 28%;
+
+  --font-interface-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
+  --font-text-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
+  --font-monospace-theme: "Atkinson Hyperlegible Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --radius-xl: 12px;
+
+  /* #f5b914 */
+  --accent-h: 44;
+  --accent-s: 92%;
+  --accent-l: 52%;
+}
+
+.theme-dark {
+  --sol-app-bg: #141414;
+  --sol-canvas: #0b0b0b;
+  --sol-canvas-dot: #2a2a2a;
+  --sol-surface: #1e1e1e;
+  --sol-sunken: #141414;
+  --sol-raised: #262626;
+  --sol-border: #2d2d2d;
+  --sol-border-strong: #3a3a3a;
+  --sol-border-subtle: #2a2a2a;
+  --sol-text: #e8e8e8;
+  --sol-text-bright: #f3f4f5;
+  --sol-text-dim: #9aa0a6;
+  --sol-text-muted: #80868e;
+
+  --sol-accent: #f5b914;
+  --sol-accent-ink: #1a1a1a;
+  --sol-header-tint: 22%;
+  /* A hue used as TEXT: itself on the dark workbench, mixed toward the ink in light. */
+  --sol-ink-pct: 100%;
+
+  --sol-number: #f5b914;
+  --sol-list: #d09d11;
+  --sol-table: #e17c00;
+  --sol-string: #c8e040;
+  --sol-strlist: #aabe36;
+  --sol-strtable: #cec820;
+  --sol-date: #de7cb0;
+  --sol-datelist: #bd6996;
+  --sol-datetable: #cc62ae;
+  --sol-complex: #56b4e9;
+  --sol-complexlist: #4999c6;
+  --sol-complextable: #37bad6;
+  --sol-logical: #c05dd1;
+  --sol-logicallist: #a34fb2;
+  --sol-logicaltable: #9742c0;
+  --sol-frame: #7b64ed;
+  --sol-lambda: #00b862;
+  --sol-any: #8a8f98;
+  --sol-amber: #d9742b;
+  --sol-blue: #3173e0;
+  --sol-teal: #4fc89a;
+  --sol-error: #e0473a;
+
+  --shadow-s: 0 4px 14px rgba(0, 0, 0, 0.2);
+  --shadow-l: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.theme-light {
+  --sol-app-bg: #f4f5f7;
+  --sol-canvas: #eef1f5;
+  --sol-canvas-dot: #d3d9e1;
+  --sol-surface: #fbfcfd;
+  --sol-sunken: #ffffff;
+  --sol-raised: #eef1f5;
+  --sol-border: #ccd2da;
+  --sol-border-strong: #b2bac4;
+  --sol-border-subtle: #dfe3e9;
+  --sol-text: #1b1e23;
+  --sol-text-bright: #0d0f12;
+  --sol-text-dim: #5b636b;
+  --sol-text-muted: #6a717b;
+
+  --sol-accent: #eab013;
+  --sol-accent-ink: #1a1a1a;
+  --sol-header-tint: 52%;
+  /* No hue here reaches 4.5:1 on white as it stands (lime is 1.6:1); at 45% the weakest is 5.2:1. */
+  --sol-ink-pct: 45%;
+
+  --sol-number: #eab013;
+  --sol-list: #c79610;
+  --sol-table: #d77600;
+  --sol-string: #bed53d;
+  --sol-strlist: #a2b534;
+  --sol-strtable: #c4bf1f;
+  --sol-date: #d376a7;
+  --sol-datelist: #b3648e;
+  --sol-datetable: #c25da5;
+  --sol-complex: #52abde;
+  --sol-complexlist: #4691bd;
+  --sol-complextable: #34b1cc;
+  --sol-logical: #b558c6;
+  --sol-logicallist: #9a4ba8;
+  --sol-logicaltable: #8e3fb6;
+  --sol-frame: #755fe2;
+  --sol-lambda: #00ad5c;
+  --sol-any: #80848d;
+  --sol-amber: #d9742b;
+  --sol-blue: #3173e0;
+  --sol-teal: #3fae84;
+  --sol-error: #e0473a;
+
+  --shadow-s: 0 4px 14px rgba(20, 30, 50, 0.06);
+  --shadow-l: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
+}
+
+/* ── The workbench: Obsidian's neutrals, remapped ───────────────────────────── */
+
+.theme-dark,
+.theme-light {
+  --sol-ink-number: color-mix(in srgb, var(--sol-number) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-string: color-mix(in srgb, var(--sol-string) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-date: color-mix(in srgb, var(--sol-date) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-complex: color-mix(in srgb, var(--sol-complex) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-logical: color-mix(in srgb, var(--sol-logical) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-frame: color-mix(in srgb, var(--sol-frame) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-lambda: color-mix(in srgb, var(--sol-lambda) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-teal: color-mix(in srgb, var(--sol-teal) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-blue: color-mix(in srgb, var(--sol-blue) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-amber: color-mix(in srgb, var(--sol-amber) var(--sol-ink-pct), var(--sol-text));
+  --sol-ink-error: color-mix(in srgb, var(--sol-error) var(--sol-ink-pct), var(--sol-text));
+
+  --sol-hairline: color-mix(in srgb, var(--sol-accent) var(--sol-mix-hairline), var(--sol-border));
+  --sol-edge: color-mix(in srgb, var(--sol-accent) var(--sol-mix-edge), var(--sol-border));
+  --sol-emphasis: color-mix(in srgb, var(--sol-accent) var(--sol-mix-emphasis), var(--sol-border));
+  --sol-header-band: color-mix(in srgb, var(--sol-accent) var(--sol-header-tint), var(--sol-surface));
+
+  --background-primary: var(--sol-surface);
+  --background-primary-alt: var(--sol-raised);
+  --background-secondary: var(--sol-app-bg);
+  --background-secondary-alt: var(--sol-canvas);
+  --background-modifier-border: var(--sol-border);
+  --background-modifier-border-hover: var(--sol-border-strong);
+  --background-modifier-border-focus: var(--sol-accent);
+  --background-modifier-form-field: var(--sol-sunken);
+  --background-modifier-hover: color-mix(in srgb, var(--sol-text) 7%, transparent);
+  --background-modifier-active-hover: color-mix(in srgb, var(--sol-accent) 16%, transparent);
+  --background-modifier-error: var(--sol-error);
+  --background-modifier-success: var(--sol-lambda);
+
+  --text-normal: var(--sol-text);
+  --text-muted: var(--sol-text-dim);
+  --text-faint: var(--sol-text-muted);
+  --text-accent: var(--sol-ink-number);
+  --text-accent-hover: color-mix(in srgb, var(--sol-ink-number) 80%, var(--sol-text-bright));
+  --text-on-accent: var(--sol-accent-ink);
+  --text-on-accent-inverted: var(--sol-text-bright);
+  --text-error: var(--sol-ink-error);
+  --text-success: var(--sol-ink-lambda);
+  --text-warning: var(--sol-ink-amber);
+  --text-selection: color-mix(in srgb, var(--sol-accent) var(--sol-mix-glow), transparent);
+  --text-highlight-bg: color-mix(in srgb, var(--sol-string) 30%, transparent);
+
+  --interactive-normal: var(--sol-sunken);
+  --interactive-hover: var(--sol-raised);
+  --interactive-accent: var(--sol-accent);
+  --interactive-accent-hover: color-mix(in srgb, var(--sol-accent) 88%, var(--sol-text-bright));
+
+  /* Obsidian's named colors, so callouts, canvas cards and graph groups pull from the palette. */
+  --color-red: var(--sol-error);
+  --color-red-rgb: 224, 71, 58;
+  --color-orange: var(--sol-amber);
+  --color-orange-rgb: 217, 116, 43;
+  --color-yellow: var(--sol-number);
+  --color-yellow-rgb: 245, 185, 20;
+  --color-green: var(--sol-lambda);
+  --color-green-rgb: 0, 184, 98;
+  --color-cyan: var(--sol-complex);
+  --color-cyan-rgb: 86, 180, 233;
+  --color-blue: var(--sol-blue);
+  --color-blue-rgb: 49, 115, 224;
+  --color-purple: var(--sol-frame);
+  --color-purple-rgb: 123, 100, 237;
+  --color-pink: var(--sol-date);
+  --color-pink-rgb: 222, 124, 176;
+
+  /* Chrome */
+  --titlebar-background: var(--sol-canvas);
+  --titlebar-background-focused: var(--sol-canvas);
+  --ribbon-background: var(--sol-app-bg);
+  --ribbon-background-collapsed: var(--sol-app-bg);
+  --tab-container-background: var(--sol-canvas);
+  --tab-background-active: var(--sol-surface);
+  --tab-text-color-focused-active: var(--sol-text-bright);
+  --tab-outline-color: var(--sol-border);
+  --tab-divider-color: var(--sol-border-subtle);
+  --divider-color: var(--sol-border);
+  --divider-color-hover: var(--sol-accent);
+  --status-bar-background: var(--sol-app-bg);
+  --status-bar-border-color: var(--sol-border);
+  --modal-background: var(--sol-surface);
+  --modal-border-color: var(--sol-edge);
+  --prompt-border-color: var(--sol-edge);
+  --menu-background: var(--sol-surface);
+  --menu-border-color: var(--sol-border-strong);
+  --nav-item-color-active: var(--sol-text-bright);
+  --nav-item-background-active: color-mix(in srgb, var(--sol-accent) 16%, transparent);
+  --nav-item-background-hover: var(--background-modifier-hover);
+  --nav-indentation-guide-color: var(--sol-border-subtle);
+  --icon-color-active: var(--sol-ink-number);
+  --icon-color-focused: var(--sol-text-bright);
+  --scrollbar-thumb-bg: color-mix(in srgb, var(--sol-text) 14%, transparent);
+  --scrollbar-active-thumb-bg: color-mix(in srgb, var(--sol-accent) 50%, transparent);
+
+  /* Canvas and graph sit on the void, dot grid and all. */
+  --canvas-background: var(--sol-canvas);
+  --canvas-dot-pattern: var(--sol-canvas-dot);
+  --graph-line: var(--sol-border-strong);
+  --graph-node: var(--sol-any);
+  --graph-node-unresolved: var(--sol-text-muted);
+  --graph-node-focused: var(--sol-accent);
+  --graph-node-tag: var(--sol-string);
+  --graph-node-attachment: var(--sol-complex);
+  --graph-text: var(--sol-text-dim);
+
+  /* Writing */
+  --h1-color: var(--sol-ink-number);
+  --h2-color: var(--sol-ink-string);
+  --h3-color: var(--sol-ink-date);
+  --h4-color: var(--sol-ink-complex);
+  --h5-color: var(--sol-ink-frame);
+  --h6-color: var(--sol-ink-teal);
+  --h1-weight: 600;
+  --h2-weight: 600;
+  --h3-weight: 600;
+  --h4-weight: 600;
+  --h5-weight: 600;
+  --h6-weight: 600;
+  --inline-title-color: var(--sol-text-bright);
+  --inline-title-weight: 600;
+  --bold-color: var(--sol-text-bright);
+  --italic-color: inherit;
+
+  --link-color: var(--sol-ink-number);
+  --link-color-hover: var(--text-accent-hover);
+  --link-unresolved-color: var(--sol-text-dim);
+  --link-unresolved-opacity: 1;
+  --link-unresolved-decoration-color: var(--sol-hairline);
+  --link-external-color: var(--sol-ink-complex);
+  --link-external-color-hover: color-mix(in srgb, var(--sol-ink-complex) 80%, var(--sol-text-bright));
+
+  --hr-color: var(--sol-hairline);
+  --hr-thickness: 1px;
+
+  --list-marker-color: var(--sol-edge);
+  --list-marker-color-hover: var(--sol-accent);
+  --list-marker-color-collapsed: var(--sol-accent);
+  --checkbox-color: var(--sol-accent);
+  --checkbox-color-hover: var(--interactive-accent-hover);
+  --checkbox-marker-color: var(--sol-accent-ink);
+  --checkbox-border-color: var(--sol-border-strong);
+  --checkbox-border-color-hover: var(--sol-accent);
+  --checkbox-radius: 3px;
+  --checklist-done-color: var(--sol-text-muted);
+
+  /* A quote is a tinted block, never a side stripe. */
+  --blockquote-border-thickness: 0px;
+  --blockquote-background-color: color-mix(in srgb, var(--sol-accent) 7%, var(--sol-raised));
+  --blockquote-color: var(--sol-text);
+  --embed-background: var(--sol-sunken);
+  --embed-border-start: 1px solid var(--sol-hairline);
+  --embed-border-end: 1px solid var(--sol-hairline);
+  --embed-border-top: 1px solid var(--sol-hairline);
+  --embed-border-bottom: 1px solid var(--sol-hairline);
+  --embed-padding: var(--size-4-3) var(--size-4-4);
+
+  --callout-radius: 8px;
+  --callout-border-width: 1px;
+  --callout-border-opacity: 0.45;
+  --callout-title-weight: 600;
+  --callout-default: var(--sol-blue);
+  --callout-info: var(--sol-complex);
+  --callout-todo: var(--sol-complex);
+  --callout-summary: var(--sol-complex);
+  --callout-tip: var(--sol-teal);
+  --callout-important: var(--sol-teal);
+  --callout-success: var(--sol-lambda);
+  --callout-question: var(--sol-number);
+  --callout-warning: var(--sol-amber);
+  --callout-fail: var(--sol-error);
+  --callout-error: var(--sol-error);
+  --callout-bug: var(--sol-error);
+  --callout-example: var(--sol-frame);
+  --callout-quote: var(--sol-any);
+
+  --tag-color: var(--sol-ink-string);
+  --tag-color-hover: var(--sol-ink-string);
+  --tag-background: color-mix(in srgb, var(--sol-string) 14%, transparent);
+  --tag-background-hover: color-mix(in srgb, var(--sol-string) 22%, transparent);
+  --tag-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
+  --tag-border-color-hover: color-mix(in srgb, var(--sol-string) var(--sol-mix-emphasis), var(--sol-border));
+  --tag-border-width: 1px;
+  --tag-radius: 999px;
+  --pill-color: var(--sol-ink-string);
+  --pill-background: color-mix(in srgb, var(--sol-string) 14%, transparent);
+  --pill-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
+  --pill-border-width: 1px;
+  --pill-radius: 999px;
+
+  /* Code wears the type colors: a string is lime, a number is gold. */
+  --code-background: var(--sol-sunken);
+  --code-border-color: var(--sol-border);
+  --code-border-width: 1px;
+  --code-radius: 4px;
+  --code-normal: var(--sol-text);
+  --code-comment: var(--sol-text-muted);
+  --code-string: var(--sol-ink-string);
+  --code-value: var(--sol-ink-number);
+  --code-keyword: var(--sol-ink-logical);
+  --code-function: var(--sol-ink-blue);
+  --code-property: var(--sol-ink-complex);
+  --code-operator: var(--sol-ink-teal);
+  --code-tag: var(--sol-ink-error);
+  --code-important: var(--sol-ink-amber);
+  --code-punctuation: var(--sol-text-dim);
+
+  --table-border-color: var(--sol-hairline);
+  --table-header-border-color: var(--sol-edge);
+  --table-header-background: var(--sol-header-band);
+  --table-header-background-hover: var(--sol-header-band);
+  --table-header-color: var(--sol-text-bright);
+  --table-header-weight: 600;
+  --table-row-alt-background: color-mix(in srgb, var(--sol-text) 3%, transparent);
+  --table-row-background-hover: color-mix(in srgb, var(--sol-accent) 8%, transparent);
+  --table-selection: color-mix(in srgb, var(--sol-accent) 14%, transparent);
+  --table-selection-border-color: var(--sol-accent);
+
+  --metadata-border-color: var(--sol-edge);
+  --metadata-border-width: 1px;
+  --metadata-border-radius: 8px;
+  --metadata-background: var(--sol-surface);
+  --metadata-divider-color: var(--sol-border-subtle);
+  --metadata-divider-width: 1px;
+  --metadata-label-text-color: var(--sol-text-dim);
+  --metadata-input-text-color: var(--sol-text);
+  --metadata-property-background-active: color-mix(in srgb, var(--sol-accent) 8%, transparent);
+  --metadata-property-box-shadow-focus: 0 0 0 1px var(--sol-accent);
+  --metadata-property-radius: 4px;
+
+  --input-shadow: none;
+  --input-shadow-hover: none;
+}
+
+/* ── Surfaces ───────────────────────────────────────────────────────────────── */
+
+/* The note sits on the void like a node card: a lit surface, a hairline, 8px corners. */
+.workspace-split.mod-root {
+  background-color: var(--sol-canvas);
+}
+.workspace-split.mod-root .workspace-tabs .workspace-leaf {
+  border-radius: 8px 8px 0 0;
+}
+.workspace-tab-header.is-active {
+  box-shadow: inset 0 0 0 1px var(--sol-border);
+}
+.workspace-tab-header.is-active .workspace-tab-header-inner-title {
+  color: var(--sol-text-bright);
+}
+.mod-root .workspace-tabs.mod-active .workspace-tab-header.is-active {
+  box-shadow: inset 0 0 0 1px var(--sol-edge);
+}
+
+/* Fields: sunken, one hairline, the accent on focus and nothing else. */
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea,
+select.dropdown {
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border);
+  border-radius: 4px;
+}
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select.dropdown:focus {
+  border-color: var(--sol-accent);
+  box-shadow: none;
+}
+
+button:not(.clickable-icon):not(.mod-cta):not(.mod-warning) {
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border);
+  box-shadow: none;
+  border-radius: 999px;
+}
+button:not(.clickable-icon):not(.mod-cta):not(.mod-warning):hover {
+  background-color: var(--sol-raised);
+  border-color: var(--sol-border-strong);
+}
+button.mod-cta {
+  border-radius: 999px;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.menu,
+.suggestion-container,
+.popover,
+.prompt,
+.modal {
+  box-shadow: var(--shadow-l);
+}
+.suggestion-item.is-selected,
+.menu-item.selected:not(.is-disabled) {
+  background-color: color-mix(in srgb, var(--sol-accent) 16%, transparent);
+  color: var(--sol-text-bright);
+}
+
+/* ── Writing ────────────────────────────────────────────────────────────────── */
+
+/* A heading's rule is its own hue at the hairline rung. */
+.markdown-rendered h1,
+.markdown-rendered h2,
+.cm-s-obsidian .HyperMD-header-1,
+.cm-s-obsidian .HyperMD-header-2 {
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid;
+}
+.markdown-rendered h1,
+.cm-s-obsidian .HyperMD-header-1 {
+  border-bottom-color: color-mix(in srgb, var(--sol-number) var(--sol-mix-edge), var(--sol-border));
+}
+.markdown-rendered h2,
+.cm-s-obsidian .HyperMD-header-2 {
+  border-bottom-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-hairline), var(--sol-border));
+}
+.inline-title {
+  padding-bottom: 0.2em;
+  border-bottom: 2px solid var(--sol-emphasis);
+  text-wrap-style: balance;
+}
+.markdown-rendered h1,
+.markdown-rendered h2,
+.markdown-rendered h3 {
+  text-wrap-style: balance;
+}
+.markdown-rendered p,
+.markdown-rendered li {
+  text-wrap-style: pretty;
+}
+
+.markdown-rendered blockquote {
+  border: 1px solid var(--sol-hairline);
+  border-radius: 8px;
+  padding: var(--size-4-2) var(--size-4-4);
+}
+.markdown-rendered .markdown-embed,
+.markdown-rendered .file-embed {
+  border-radius: 8px;
+}
+
+.callout {
+  background-color: color-mix(in srgb, var(--callout-color) 9%, var(--sol-surface));
+}
+.callout-title {
+  padding-bottom: var(--size-2-2);
+  color: color-mix(in srgb, var(--callout-color) var(--sol-ink-pct), var(--sol-text));
+}
+.markdown-rendered pre {
+  border: 1px solid var(--sol-border);
+  border-radius: 8px;
+}
+.markdown-rendered table {
+  border-radius: 8px;
+}
+.markdown-rendered th,
+.markdown-rendered td,
+.cm-s-obsidian .cm-table-widget td,
+.cm-s-obsidian .cm-table-widget th {
+  font-variant-numeric: tabular-nums;
+}
+.markdown-rendered mark,
+.cm-s-obsidian span.cm-highlight {
+  border-radius: 3px;
+  color: var(--sol-text-bright);
+}
+
+/* ── Properties: a node card, and every type in its own color ───────────────── */
+
+.metadata-container {
+  overflow: hidden;
+  padding: 0 0 var(--size-4-2);
+}
+.metadata-container .metadata-properties-heading {
+  display: flex;
+  margin: 0 0 var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  background-color: var(--sol-header-band);
+  border-bottom: 1px solid var(--sol-edge);
+}
+.metadata-container .metadata-properties-title {
+  color: var(--sol-text-bright);
+  font-weight: 600;
+}
+.metadata-container .metadata-content {
+  padding: 0 var(--size-4-2);
+}
+/* A property row is a label and a value, not two boxed fields. */
+.metadata-container input.metadata-property-key-input,
+.metadata-container .metadata-property-value input:not([type="checkbox"]),
+.metadata-container .metadata-property-value textarea {
+  background-color: transparent;
+  border-color: transparent;
+}
+.metadata-property-key-input {
+  font-size: var(--font-ui-small);
+}
+.metadata-property-value input,
+.metadata-input-longtext {
+  font-family: var(--font-monospace);
+}
+
+.metadata-property { --sol-type: var(--sol-any); }
+.metadata-property .metadata-property-icon {
+  color: color-mix(in srgb, var(--sol-type) var(--sol-ink-pct), var(--sol-text));
+}
+.metadata-property:focus-within {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sol-type) var(--sol-mix-emphasis), var(--sol-border));
+}
+.metadata-property:has(> [data-property-type="number"]) { --sol-type: var(--sol-number); }
+.metadata-property:has(> [data-property-type="text"]) { --sol-type: var(--sol-string); }
+.metadata-property:has(> [data-property-type="multitext"]),
+.metadata-property:has(> [data-property-type="tags"]),
+.metadata-property:has(> [data-property-type="aliases"]) { --sol-type: var(--sol-strlist); }
+.metadata-property:has(> [data-property-type="date"]),
+.metadata-property:has(> [data-property-type="datetime"]) { --sol-type: var(--sol-date); }
+.metadata-property:has(> [data-property-type="checkbox"]) { --sol-type: var(--sol-logical); }
+.metadata-property:has(> [data-property-type="solenoid-list"]) { --sol-type: var(--sol-list); }
+.metadata-property:has(> [data-property-type="solenoid-table"]) { --sol-type: var(--sol-table); }
+.metadata-property:has(> [data-property-type="solenoid-strlist"]) { --sol-type: var(--sol-strlist); }
+.metadata-property:has(> [data-property-type="solenoid-strtable"]) { --sol-type: var(--sol-strtable); }
+.metadata-property:has(> [data-property-type="solenoid-datelist"]) { --sol-type: var(--sol-datelist); }
+.metadata-property:has(> [data-property-type="solenoid-datetable"]) { --sol-type: var(--sol-datetable); }
+.metadata-property:has(> [data-property-type="solenoid-complexlist"]) { --sol-type: var(--sol-complexlist); }
+.metadata-property:has(> [data-property-type="solenoid-complextable"]) { --sol-type: var(--sol-complextable); }
+.metadata-property:has(> [data-property-type="solenoid-logicallist"]) { --sol-type: var(--sol-logicallist); }
+.metadata-property:has(> [data-property-type="solenoid-logicaltable"]) { --sol-type: var(--sol-logicaltable); }
+.metadata-property:has(> [data-property-type="solenoid-frame"]),
+.metadata-property:has(> [data-property-type="solenoid-cube"]) { --sol-type: var(--sol-frame); }
+
+/* ── Graph view ─────────────────────────────────────────────────────────────── */
+
+/* The graph sits on Solenoid's canvas: the void and its dot grid. */
+.workspace-leaf-content[data-type="graph"] .view-content,
+.workspace-leaf-content[data-type="localgraph"] .view-content {
+  background-color: var(--sol-canvas);
+  background-image: radial-gradient(var(--sol-canvas-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.graph-view.color-fill { color: var(--sol-list); }
+.graph-view.color-fill-focused { color: var(--sol-accent); }
+.graph-view.color-fill-tag { color: var(--sol-string); }
+.graph-view.color-fill-attachment { color: var(--sol-complex); }
+.graph-view.color-fill-unresolved { color: var(--sol-text-muted); opacity: 1; }
+.graph-view.color-fill-highlight { color: var(--sol-accent); }
+.graph-view.color-line { color: var(--sol-border-strong); }
+.graph-view.color-line-highlight { color: var(--sol-accent); }
+.graph-view.color-circle { color: var(--sol-accent); }
+.graph-view.color-text { color: var(--sol-text-dim); }

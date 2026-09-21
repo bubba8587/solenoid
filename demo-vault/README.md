@@ -33,6 +33,10 @@ enough that the seeds have real rows to compute over:
   backlinks answer "which graph wrote this" (item D).
 - **`Projects.base`** — one Bases table view, so a note can show a live table over what a
   Solenoid Write Properties run produces.
+- **`.obsidian/snippets/solenoid.css`** — Solenoid's Default palette as an Obsidian look, light
+  and dark, switched on by `.obsidian/appearance.json`. A property's icon wears its type's
+  color, and hues used as text are darkened in light mode to hold contrast. The Atkinson
+  Hyperlegible faces come from the Solenoid Properties plugin's `styles.css`.
 
 ## What the seeds do to it
 
