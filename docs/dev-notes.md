@@ -10,6 +10,9 @@ specific item.
 
 tsc + vitest green; the plugin was checked in the rig (Obsidian 1.13.7: settings tab, a popped-out note, a
 palette change under an open editor).
+- **Plugin `0.1.2` is PUBLISHED** (2026-09-21, the author's go): built from `solenoid@b233cee2`, the three
+  release files byte-identical to the build checked in the rig, attested (`refs/tags/0.1.2`). The directory
+  rescans each release; its next report is the check on what is left.
 - **Most of the review's warnings were one defect: the snapshot did not typecheck.** The review lints WITH
   types, and the ten shimmed modules (plus one type-only import) did not resolve there, so everything through
   them was `any`: about ninety "unsafe" findings and many "unnecessary assertion" ones. The export now follows
