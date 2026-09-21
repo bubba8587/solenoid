@@ -156,7 +156,8 @@ describe("the demo note", () => {
 
   it("reads in Solenoid as the types the plugin shows", () => {
     expect(fields).toMatchObject({
-      readings: "list", crew: "strlist", milestones: "datelist", signed_off: "logicallist", budget: "frame", phases: "cube",
+      readings: "list", crew: "strlist", milestones: "datelist", signed_off: "logicallist", impedance: "complexlist",
+      grid: "table", budget: "frame", phases: "cube",
     });
   });
 
@@ -167,10 +168,10 @@ describe("the demo note", () => {
       crew: { kind: "list", elem: "string" },
       milestones: { kind: "list", elem: "date" },
       signed_off: { kind: "list", elem: "logical" },
+      grid: { kind: "matrix", elem: "number" },
       budget: { kind: "frame" },
+      // Rows of records either way; a list cell is what makes it a cube.
+      phases: { kind: "frame" },
     });
-    // A matrix and a cube have no hint shape: the guesser types them.
-    expect(hints.grid).toBeUndefined();
-    expect(hints.phases).toBeUndefined();
   });
 });

@@ -49,15 +49,9 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Solenoid Properties plugin follow-ups** ([[C107]] obsidianPlugin): (1) the note reader types
-  no matrix yet: a sequence of sequences reads as a text list, so `noteFrontmatter.ts` and
-  `FIELD_SOCKETS` need the `table` family rungs ([[D16]] retypeReconciles applies), and
-  `TypeHint` has no matrix or cube shape for `obsidianTypes.ts` to map those two ids to; (6) the community-list submission itself (spec § Publishing has the
-  release path; the author submits through community.obsidian.md). (7) the app reads a plugin frame's DATE column as a number column (serials; `rowsToFrame` in
-  `nodes/annotation.ts` says "no per-column date pick") and a complex list as text, so "reads back as the same
-  type" holds only for text, number and Boolean columns and typed lists. The plugin's picked column types
-  live in its `data.json` (`columnTypes`, by property name then column); the app reading that file would close
-  this, but the desktop fs scope stops at `.obsidian/*.json`.
+- [ ] **Solenoid Properties: the community-list submission** ([[C107]] obsidianPlugin; the author submits
+  through community.obsidian.md, spec § Publishing has the release path). The one reader gap left is in the
+  spec's § Gaps: a column type picked in the plugin lives in its `data.json`, outside the desktop file scope.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a

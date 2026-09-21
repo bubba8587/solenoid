@@ -198,6 +198,13 @@ export function comboOfType(dt: SocketDataType): SocketDataType | null {
   return fam ? FAMILIES[fam].combo : null;
 }
 
+/** A type's element family at another rank (0 scalar, 1 list, 2 matrix): `strlist` at rank 2
+ *  is `strtable`. Null for a type outside the 5-family lattice. */
+export function typeAtRank(dt: SocketDataType, rank: 0 | 1 | 2): SocketDataType | null {
+  const fam = elementFamilyOf(dt);
+  return fam ? FAMILIES[fam][rank === 0 ? "scalar" : rank === 1 ? "list" : "matrix"] : null;
+}
+
 /** `comboOfType` for a caller holding a family name instead of a socket type — a
  *  frame column's `type` IS a family name, so an extraction out of a named column
  *  resolves through here. */

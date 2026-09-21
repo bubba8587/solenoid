@@ -25,6 +25,22 @@ const rowOf = (cube: CubeValue, nameValue: string) =>
 
 const NO_TYPES: VaultTypeSources = { mdbaseFor: () => ({}), obsidian: {} };
 
+describe("a matrix property", () => {
+  const notes: VaultNote[] = [{ path: "a.md", text: "---\ngrid:\n  - - 1\n    - 2\n  - - 3\n    - 4\n---\n" } as VaultNote];
+
+  it("sits in a cube cell as its rows, and is never mistaken for a frame's records", () => {
+    const cube = notesToCube(notes, NO_TYPES);
+    expect(cellAt(cube, "grid", 0)).toEqual([[1, 2], [3, 4]]);
+    expect(col(cube, "grid").type).toBe("number");
+  });
+
+  it("follows a types.json matrix hint", () => {
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { grid: "solenoid-strtable" } }));
+    expect(obsidian.grid).toEqual({ kind: "matrix", elem: "string" });
+    expect(cellAt(notesToCube(notes, { ...NO_TYPES, obsidian }), "grid", 0)).toEqual([["1", "2"], ["3", "4"]]);
+  });
+});
+
 describe("dateFromName (R3)", () => {
   it("parses the daily-notes format", () => {
     expect(dateFromName("2026-09-01", "YYYY-MM-DD")).toBe(parseDateToSerial("2026-09-01"));

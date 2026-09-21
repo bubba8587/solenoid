@@ -1,6 +1,8 @@
 // [[B1]] obsidianBet (any spelling Obsidian emits parses)
-import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type Pair } from "yaml";
+import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type Pair, type YAMLSeq } from "yaml";
 import { parseDateToSerial } from "./nodes/dateSerial";
+import { typeAtRank } from "./sockets";
+import { parseCx } from "./cxValue";
 
 // The PURE frontmatter parser + type guesser. YAML is read by the `yaml` package (any
 // spelling Obsidian emits or a person types), then shaped: scalars, scalar lists, and
@@ -15,10 +17,17 @@ export type FrontmatterFieldType =
   | "string"
   | "logical"
   | "date"
+  | "complex"
   | "list"
   | "strlist"
   | "logicallist"
   | "datelist"
+  | "complexlist"
+  | "table"
+  | "strtable"
+  | "logicaltable"
+  | "datetable"
+  | "complextable"
   | "frame"
   | "cube";
 
@@ -26,13 +35,16 @@ export type FrontmatterFieldType =
 export type FrontmatterScalar = number | string | boolean | null;
 /** A row's value may itself be a list (`after: [A, B]`) or a table (rows of its own); such rows make a cube. */
 export type FrontmatterRow = { [key: string]: FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[] };
-export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[];
+export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | FrontmatterScalar[][] | FrontmatterRow[];
 
 export interface FrontmatterField {
   key: string;
   value: FrontmatterValue;
   /** Type inferred from the value (before any per-key user override). */
   guessed: FrontmatterFieldType;
+  /** A frame's columns whose every present cell read as a DATE. A date is a serial by the time
+   *  it is a cell, so the reader's parsed kinds are the only place this is known. */
+  dateColumns?: string[];
   /** The value was a bare `{{ … }}` / `{% … %}`, which YAML reads as a flow map: the
    *  tag must be quoted to be a value. */
   knapUnquoted?: true;
@@ -51,7 +63,10 @@ const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 // A plain (unquoted) numeric token: optional sign, digits, optional fraction, exp.
 const NUMERIC = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
-type ScalarKind = "number" | "string" | "logical" | "date";
+type ScalarKind = "number" | "string" | "logical" | "date" | "complex";
+
+/** Text that is a complex number WITH an imaginary part (`3+4i`, `-2i`); a bare `5` is a number. */
+const isComplexText = (t: string): boolean => /[ij]$/.test(t) && parseCx(t) !== null;
 
 /** Text read as an UNQUOTED YAML scalar would be: a number, true/false, an ISO date
  *  (as a serial), blank/null → null, else the text. What a rendered Knap field
@@ -67,6 +82,7 @@ export function guessScalarText(text: string): { value: FrontmatterScalar; kind:
     const serial = parseDateToSerial(t);
     if (Number.isFinite(serial)) return { value: Math.round(serial), kind: "date" };
   }
+  if (isComplexText(t)) return { value: t, kind: "complex" };
   return { value: t, kind: "string" };
 }
 
@@ -85,6 +101,7 @@ function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; 
     const serial = parseDateToSerial(s);
     if (Number.isFinite(serial)) return { value: Math.round(serial), kind: "date" };
   }
+  if (!quoted && isComplexText(s.trim())) return { value: s.trim(), kind: "complex" };
   return { value: s, kind: "string" };
 }
 
@@ -121,6 +138,8 @@ function readRow(node: Node | null | undefined): FrontmatterRow | null {
 function listType(values: FrontmatterScalar[], kinds: ScalarKind[]): FrontmatterFieldType {
   const present = kinds.filter((_, i) => values[i] !== null);
   if (present.length > 0 && present.every((k) => k === "date")) return "datelist";
+  // Complex cells, with plain numbers among them: a real number is a complex number too.
+  if (present.some((k) => k === "complex") && present.every((k) => k === "complex" || k === "number")) return "complexlist";
   for (const v of values) {
     if (v === null) continue;
     if (typeof v === "boolean") return "logicallist";
@@ -130,18 +149,52 @@ function listType(values: FrontmatterScalar[], kinds: ScalarKind[]): Frontmatter
   return "list"; // empty / all-null → default numeric list (overridable)
 }
 
+/** The scalar columns of a row list whose every present cell read as a date. */
+function dateColumnsOf(items: (Node | null)[]): string[] {
+  const seen = new Map<string, boolean>();
+  for (const item of items) {
+    if (!isMap(item)) continue;
+    for (const pair of item.items) {
+      if (!isPair(pair)) continue;
+      const k = keyOf(pair);
+      const val = pair.value as Node | null;
+      if (k === "" || (val != null && !isScalar(val))) { if (k !== "") seen.set(k, false); continue; }
+      const { value, kind } = readScalar(val);
+      if (value === null) continue;
+      seen.set(k, (seen.get(k) ?? true) && kind === "date");
+    }
+  }
+  return [...seen].filter(([, isDate]) => isDate).map(([k]) => k);
+}
+
 /** Rows → a `frame` field, or a `cube` when any row value is a list (a frame cell is
  *  scalar; a list belongs in a cube cell). */
-function fieldFromRows(key: string, rows: FrontmatterRow[]): FrontmatterField {
+function fieldFromRows(key: string, rows: FrontmatterRow[], items: (Node | null)[]): FrontmatterField {
   const hasList = rows.some((r) => Object.values(r).some((v) => Array.isArray(v)));
-  return { key, value: rows, guessed: hasList ? "cube" : "frame" };
+  if (hasList) return { key, value: rows, guessed: "cube" };
+  const dateColumns = dateColumnsOf(items);
+  return dateColumns.length ? { key, value: rows, guessed: "frame", dateColumns } : { key, value: rows, guessed: "frame" };
+}
+
+/** A sequence whose every item is a sequence of scalars → a matrix, rectangular (a short row
+ *  pads with missing cells), typed like a list from all its cells; else null. */
+function fieldFromMatrix(key: string, items: (Node | null)[]): FrontmatterField | null {
+  if (items.length === 0 || !items.every((x) => isSeq(x) && x.items.every((c) => c == null || isScalar(c)))) return null;
+  const read = items.map((row) => (row as YAMLSeq).items.map((c) => readScalar(c as Node | null)));
+  const width = read.reduce((m, r) => Math.max(m, r.length), 0);
+  const value = read.map((r) => Array.from({ length: width }, (_, j) => r[j]?.value ?? null));
+  const flat = read.flat();
+  const asList = listType(flat.map((c) => c.value), flat.map((c) => c.kind));
+  return { key, value, guessed: (typeAtRank(asList, 2) ?? "strtable") as FrontmatterFieldType };
 }
 
 /** A sequence → a frame field iff EVERY item is a row; else a scalar list (a non-scalar
  *  item in a mixed list is kept as its YAML text). Empty → a scalar list. */
 function fieldFromSeq(key: string, items: (Node | null)[]): FrontmatterField {
   const rows = items.map(readRow);
-  if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[]);
+  if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[], items);
+  const matrix = fieldFromMatrix(key, items);
+  if (matrix) return matrix;
   const read = items.map((x) => (x == null || isScalar(x) ? readScalar(x) : { value: String(x).trim(), kind: "string" as const }));
   const values = read.map((r) => r.value);
   return { key, value: values, guessed: listType(values, read.map((r) => r.kind)) };

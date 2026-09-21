@@ -185,12 +185,24 @@ document; `perfProbe` is shimmed for that reason (its probe registers `__solenoi
 import). `test.yml` builds the plugin on every push, so `develop` cannot break the build the
 release workflow depends on.
 
+## What Solenoid reads back
+
+A Note or Import Obsidian Note reads each type the plugin writes as the same socket: a list or a
+matrix of numbers, text, dates, Booleans or complex numbers (`noteFrontmatter.ts` guesses the
+rank and the family, `FIELD_SOCKETS` in `nodes/annotation.ts` mints the socket, and the lattice's
+`typeAtRank` reshapes a pinned family onto the value's rank), a frame, a cube and a complex
+scalar. A frame's text, number and Boolean columns keep their type, and a column whose every
+cell is an ISO date is a Date column (`dateColumns`). The Vault Folder reader holds a matrix in
+a cube cell as its rows, and `obsidianTypes.ts` maps every plugin type id to a `TypeHint`
+(a cube takes the frame hint: rows of records either way). Complex cells are text in a cube,
+as Excel's complex numbers are.
+
 ## Gaps
 
-- **Solenoid's reader types no matrix.** A sequence of sequences reads as a text list, so a
-  matrix the plugin writes does not yet arrive in Solenoid as a `table` rung (`docs/backlog.md`).
-- `obsidianTypes.ts` maps the list ids and `solenoid-frame` to a `TypeHint`; `TypeHint` has no
-  matrix or cube shape, so those ids fall through to the guesser.
+- **A column type PICKED in the plugin is not read by Solenoid.** It lives in the plugin's
+  `data.json`, which the desktop file scope does not reach (`.obsidian/*.json` only), so a Date
+  column the user set to Text in Obsidian still reads as Date here. It only shows when a pick
+  disagrees with the values.
 
 ## Verifying against real Obsidian
 
