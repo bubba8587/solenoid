@@ -175,7 +175,9 @@ A fake `obsidian` module is not enough: it missed that the settings page is a se
 and that a property row is built off-document, and both broke the plugin. The check that counts
 is a second Obsidian on a private display (`Xephyr`), with its own `--user-data-dir`, a copy of
 the vault and `--remote-debugging-port`, driven over CDP; `window.app` is reachable there, and
-the author's own session is untouched.
+the author's own session is untouched. It is one command: `npm run plugin:rig -- up | sync | shot | eval |
+down` (`scripts/obsidian-rig.mjs`). A plugin reload unmounts every chip and Obsidian does not redraw an
+open note, so `sync` rebuilds the open views.
 
 A builder that finds this spec silent stops that part and runs
 `python tools/dte.py gap specs/obsidian-plugin.md --title "..." --by <name>`; it never improvises.
