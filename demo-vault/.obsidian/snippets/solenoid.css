@@ -528,12 +528,25 @@ button.mod-cta {
 
 /* ── Instrument chrome, after the app's own bars and floating windows ───────── */
 
-/* The top bar: a hairline with the 2px accent line under it. */
-.workspace-tabs.mod-top > .workspace-tab-header-container {
+/* The top bar: a hairline with the 2px accent line under it. A pane's line takes its active
+   tab's color, so the header and the line it stands on read as one piece; every pane in the
+   center gets one, split or not. */
+.workspace-tabs.mod-top > .workspace-tab-header-container,
+.mod-root .workspace-tabs > .workspace-tab-header-container {
+  --sol-line: var(--sol-number);
   position: relative;
   z-index: 1;
   border-bottom: 1px solid var(--sol-border);
-  box-shadow: 0 2px 0 0 var(--sol-accent);
+  box-shadow: 0 2px 0 0 var(--sol-line);
+}
+.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="bases"], [data-type="table"])) {
+  --sol-line: var(--sol-frame);
+}
+.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active[data-type="canvas"]) {
+  --sol-line: var(--sol-teal);
+}
+.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="image"], [data-type="pdf"], [data-type="audio"], [data-type="video"])) {
+  --sol-line: var(--sol-complex);
 }
 
 /* Icon buttons group into one pill, as the top bar's clusters do. */
