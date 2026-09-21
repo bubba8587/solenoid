@@ -62,8 +62,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `nodes/annotation.ts` says "no per-column date pick") and a complex list as text, so "reads back as the same
   type" holds only for text, number and Boolean columns and typed lists. The plugin's picked column types
   live in its `data.json` (`columnTypes`, by property name then column); the app reading that file would close
-  this, but the desktop fs scope stops at `.obsidian/*.json`. (8) a frame drilled out of a CUBE still guesses
-  its column types on every open (`recordsToCube`), so its type selector does not persist yet.
+  this, but the desktop fs scope stops at `.obsidian/*.json`.
 - [ ] **Ship the Solenoid look with the plugin** (author 2026-09-21: the plugin becomes the primary
   way people get it; the demo vault's `.obsidian/snippets/solenoid.css` is the look today). Needs its
   spec rule first ([[C6]] specFirst). Proposed shape: the CSS moves to `obsidian-plugin/src/` as the
