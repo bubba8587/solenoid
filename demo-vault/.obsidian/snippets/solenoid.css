@@ -44,6 +44,8 @@ body {
   --sol-accent: #f5b914;
   --sol-accent-ink: #1a1a1a;
   --sol-header-tint: 22%;
+  --sol-overlay-border: #474c54;
+  --sol-btn-hover: #1f1f1f;
   /* A hue used as TEXT: itself on the dark workbench, mixed toward the ink in light. */
   --sol-ink-pct: 100%;
 
@@ -92,6 +94,8 @@ body {
   --sol-accent: #eab013;
   --sol-accent-ink: #1a1a1a;
   --sol-header-tint: 52%;
+  --sol-overlay-border: #aeb6c1;
+  --sol-btn-hover: #e9ecf0;
   /* No hue here reaches 4.5:1 on white as it stands (lime is 1.6:1); at 45% the weakest is 5.2:1. */
   --sol-ink-pct: 45%;
 
@@ -211,7 +215,7 @@ body {
   --prompt-border-color: var(--sol-edge);
   --menu-background: var(--sol-surface);
   --menu-border-color: var(--sol-border-strong);
-  --nav-item-color-active: var(--sol-text-bright);
+  --nav-item-color-active: var(--sol-ink-number);
   --nav-item-background-active: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   --nav-item-background-hover: var(--background-modifier-hover);
   --nav-indentation-guide-color: var(--sol-border-subtle);
@@ -428,6 +432,103 @@ button.mod-cta {
 .menu-item.selected:not(.is-disabled) {
   background-color: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   color: var(--sol-text-bright);
+}
+
+/* ── Instrument chrome, after the app's own bars and floating windows ───────── */
+
+/* The top bar: a hairline with the 2px accent line under it. */
+.workspace-tabs.mod-top > .workspace-tab-header-container {
+  position: relative;
+  z-index: 1;
+  border-bottom: 1px solid var(--sol-border);
+  box-shadow: 0 2px 0 0 var(--sol-accent);
+}
+
+/* Icon buttons group into one pill, as the top bar's clusters do. */
+.nav-header {
+  display: flex;
+  justify-content: center;
+}
+.nav-buttons-container,
+.view-actions {
+  gap: 2px;
+  padding: 1px 3px;
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border);
+  border-radius: 999px;
+}
+.nav-buttons-container .clickable-icon,
+.view-actions .clickable-icon {
+  border-radius: 50%;
+}
+.nav-buttons-container .clickable-icon:hover,
+.view-actions .clickable-icon:hover {
+  color: var(--sol-ink-number);
+  background-color: color-mix(in srgb, var(--sol-accent) 12%, transparent);
+}
+
+/* The Navigator's rows: 6px corners, the selected one washed in the accent, and a
+   9px square of color in front of each folder. Here the color is the folder's content type. */
+.tree-item-self {
+  border-radius: 6px;
+}
+.nav-folder-title-content::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background-color: var(--sol-folder, var(--sol-any));
+}
+.nav-folder-title[data-path^="Daily"] { --sol-folder: var(--sol-date); }
+.nav-folder-title[data-path^="Data"] { --sol-folder: var(--sol-table); }
+.nav-folder-title[data-path^="Notes"] { --sol-folder: var(--sol-string); }
+.nav-folder-title[data-path^="People"] { --sol-folder: var(--sol-complex); }
+.nav-folder-title[data-path^="Projects"] { --sol-folder: var(--sol-frame); }
+.nav-folder-title[data-path^="Solenoid"] { --sol-folder: var(--sol-number); }
+.nav-folder-title[data-path^="Tasks"],
+.nav-folder-title[data-path^="TaskNotes"] { --sol-folder: var(--sol-logical); }
+
+/* Section headings, as the Navigator and the socket legend set theirs. */
+.vertical-tab-header-group-title,
+.backlink-pane > .tree-item-self,
+.search-results-info,
+.graph-control-section-header {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sol-text-dim);
+}
+
+/* The vault's name is the one brand mark. */
+.workspace-drawer-vault-name {
+  color: var(--sol-ink-number);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Floating windows wear the overlay border the minimap and the legend do. */
+.menu,
+.suggestion-container,
+.popover.hover-popover,
+.prompt,
+.modal,
+.graph-controls,
+.notice {
+  border: 2px solid var(--sol-overlay-border);
+  box-shadow: var(--shadow-l);
+}
+.menu,
+.suggestion-container,
+.graph-controls {
+  border-radius: 6px;
+}
+.status-bar {
+  border-color: var(--sol-overlay-border);
+  border-width: 2px 0 0 2px;
+  border-style: solid;
 }
 
 /* ── Writing ────────────────────────────────────────────────────────────────── */
