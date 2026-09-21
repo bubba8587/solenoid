@@ -46,6 +46,7 @@ demo-vault/.obsidian/plugins/
 demo-vault/.obsidian/workspace.json
 demo-vault/.obsidian/app.json
 demo-vault/.obsidian/core-plugins.json
+demo-vault/.obsidian/graph.json
 # TaskNotes generates its view bases here
 demo-vault/TaskNotes/
 # The decision tree opened as an Obsidian vault: personal workspace state.
