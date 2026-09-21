@@ -202,7 +202,8 @@ as Excel's complex numbers are.
 - **A column type PICKED in the plugin is not read by Solenoid.** It lives in the plugin's
   `data.json`, which the desktop file scope does not reach (`.obsidian/*.json` only), so a Date
   column the user set to Text in Obsidian still reads as Date here. It only shows when a pick
-  disagrees with the values.
+  disagrees with the values, or when a column mixes a date with something else (the date cell
+  is a bare serial by then). Queued for 1.4.2 (`docs/backlog.md`): the pick is what ends the guessing.
 
 ## Verifying against real Obsidian
 
