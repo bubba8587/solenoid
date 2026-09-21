@@ -59,6 +59,15 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `["later", 46267]` as Text), and only an all-ISO column is Date; a serial written as a number is always
   Number. With a pick, coerce by the pick (Date: serials; Text: the ISO text as written). Verify in the
   desktop app against the demo vault. Spec: `specs/obsidian-plugin.md` § Gaps.
+- [ ] **Next app + plugin release: the Solenoid look follows every palette** (author 2026-09-21). Today
+  `obsidian-plugin/src/look.css` hardcodes the Default palette's hexes (its two token blocks), and the
+  plugin's README says "Default palette only". The plugin already generates the palette's tokens for its
+  shadow hosts from `palette.ts` (`tokenCss()` in `shadow.ts`, via `themeVars`: socket colors, the chrome ramp,
+  light and dark, the adaptive ramps that follow the accent). Shape: write those same tokens on the body
+  when the look is on, have `look.css` read them in place of its own hexes, and retint on a palette change
+  (`refreshTokens`). Light mode's "neutral or the full accent" inks must be re-derived per palette, not
+  assumed (a palette whose gold is not yellow may carry text). The demo vault's snippet is static CSS and
+  cannot follow a setting: it stays Default, or the build writes one per palette. Spec first ([[C6]]).
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a
