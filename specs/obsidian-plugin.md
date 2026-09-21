@@ -176,7 +176,9 @@ is the app's, so the plugin publishes from its own: `bubba8587/Solenoid-Properti
 repository holds no source. Its `source.json` pins a commit of this one; its release workflow
 checks that commit out, runs `npm run plugin:build`, and attaches the three files plus
 `third-party-licenses.txt`. Its `manifest.json` must equal `obsidian-plugin/manifest.json` at the
-pinned commit, and the workflow refuses a release when they differ. Its README is for users (what
+pinned commit, and the workflow refuses a release when they differ. It is listed at
+community.obsidian.md/plugins/solenoid-properties (0.1.0, 2026-09-21; the site's automated review
+rescans every release, and a repository that holds no source passed it). Its README is for users (what
 the plugin is, the types, the look), so the release steps live here:
 
 1. Here, set the version in `obsidian-plugin/manifest.json` and push `develop`.

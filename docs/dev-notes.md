@@ -10,8 +10,9 @@ specific item.
 
 On `develop`, NOT pushed (the author's call). tsc + vitest green.
 - **Plugin `0.1.0` is PUBLISHED** (2026-09-21, the author's go): `bubba8587/Solenoid-Properties` release `0.1.0`,
-  built from `solenoid@635905d9`, with the author's README and screenshots. Left for the author: the
-  submission through community.obsidian.md, and the plugin URL in the 1.4.1 release notes. The plugin repo clone
+  built from `solenoid@635905d9`, with the author's README and screenshots. It is LISTED at
+  community.obsidian.md/plugins/solenoid-properties (Health: Excellent, Review: Pending), and the 1.4.1 release
+  notes link it. The plugin repo clone
   is `~/projects/solenoid properties`; the release steps moved from its README to the spec's § Publishing.
 - **Plugin settings** end with one "Solenoid" row carrying the deploy and the repository as bare URLs; the Property
   types sentence is gone (spec § settings page).

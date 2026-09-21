@@ -49,9 +49,6 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Solenoid Properties: the community-list submission** ([[C107]] obsidianPlugin; the author submits
-  through community.obsidian.md, spec § Publishing has the release path). The one reader gap left is in the
-  spec's § Gaps: a column type picked in the plugin lives in its `data.json`, outside the desktop file scope.
 - [ ] **1.4.2: Solenoid reads the plugin's picked column types** (author 2026-09-21: "that column type selector
   is what stops the guessing games"). The picks are in `.obsidian/plugins/solenoid-properties/data.json`
   (`columnTypes`, property then column, the app's own type names). Needs: the desktop file scope widened to
