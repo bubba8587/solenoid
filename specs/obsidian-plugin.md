@@ -34,8 +34,9 @@ a cube keep their socket glyph's outline, registered with `addIcon` (`icons.ts`)
 
 **A settings page** laid out as the app's own palette row: the Color palette choice (the
 built-in palettes, persisted in the plugin's `data.json`) with the app's read-only `SwatchGrid`
-stacked under it, following the choice. One more item names the types in a sentence and says
-"Values stay plain YAML in the note." The manifest description is one sentence naming the four
+stacked under it, following the choice. One more item, "Solenoid", carries two links and no
+prose: the app's deploy and its GitHub repository, each shown as its URL (author 2026-09-21).
+The manifest description is one sentence naming the four
 shapes. Both follow DESIGN.md § 7: nothing explains how to use a control. The page shows no
 sample chips (author 2026-09-20: a chip over made-up data is bogus).
 

@@ -41,6 +41,8 @@ interface Mount { host: HTMLElement; root: Root; attached: boolean }
 
 interface PluginData { palette?: string }
 
+const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
+
 export default class SolenoidPropertiesPlugin extends Plugin {
   private mounts = new Set<Mount>();
   private popups: Root | null = null;
@@ -152,8 +154,9 @@ class SolenoidSettingTab extends PluginSettingTab {
       });
     palette.controlEl.addClass("solenoid-settings-palette");
     this.plugin.mount(palette.controlEl, "solenoid-settings-swatches", <PaletteSwatches />);
-    new Setting(containerEl)
-      .setName("Property types")
-      .setDesc("Lists and Matrices of numbers, text, dates, complex numbers and Booleans, plus Frames and Cubes. Values stay plain YAML in the note.");
+    const links = new Setting(containerEl).setName("Solenoid");
+    for (const url of SOLENOID_LINKS) {
+      links.controlEl.createEl("a", { text: url.replace("https://", ""), href: url, cls: "external-link", attr: { target: "_blank", rel: "noopener" } });
+    }
   }
 }
