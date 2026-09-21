@@ -176,8 +176,15 @@ is the app's, so the plugin publishes from its own: `bubba8587/Solenoid-Properti
 repository holds no source. Its `source.json` pins a commit of this one; its release workflow
 checks that commit out, runs `npm run plugin:build`, and attaches the three files plus
 `third-party-licenses.txt`. Its `manifest.json` must equal `obsidian-plugin/manifest.json` at the
-pinned commit, and the workflow refuses a release when they differ. The release steps are that
-repository's README. The listing is submitted through community.obsidian.md (the author's), whose
+pinned commit, and the workflow refuses a release when they differ. Its README is for users (what
+the plugin is, the types, the look), so the release steps live here:
+
+1. Here, set the version in `obsidian-plugin/manifest.json` and push `develop`.
+2. There, set `source.json`'s `ref` to that commit, copy the manifest over, add the version to
+   `versions.json` with its `minAppVersion`, and push.
+3. Run Actions → Release → Run workflow with the version and "publish" OFF: it only builds, and
+   keeps the files as a run artifact. Then create the release: push a tag equal to the version
+   (`0.1.0`, no `v`), or run the workflow again with "publish" on. The listing is submitted through community.obsidian.md (the author's), whose
 automated review rescans every published release.
 
 The bundle is what a reviewer reads, so nothing in it logs, writes a global or touches the
