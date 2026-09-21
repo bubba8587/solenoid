@@ -14,7 +14,7 @@ import { paletteStore, type PaletteName } from "../../src/graph/palette";
 import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
-import { PROPERTY_KINDS, validateYaml, readColumnTypes, type PropertyKind, type ColumnTypes } from "./yamlValue";
+import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, type PropertyKind, type ColumnTypes } from "./yamlValue";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 
@@ -146,6 +146,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       name: () => kind.name,
       validate: (value) => validateYaml(kind, value),
       render: (el, value, ctx) => {
+        if (kind.shape === "scalar") return scalarField(el, kind, value, ctx);
         const shadow = this.mount(el, "solenoid-property-chip",
           <PropertyChip
             kind={kind}
@@ -164,6 +165,30 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       },
     };
   }
+}
+
+/** A scalar property is a plain field in Obsidian's own style: Enter or blur commits, Escape
+ *  reverts, and text the family cannot read is marked and never written ([[C95]] commitOnEnter). */
+function scalarField(el: HTMLElement, kind: PropertyKind, value: unknown, ctx: WidgetContext): { focus(): void } {
+  const input = el.createEl("input", { cls: "metadata-input metadata-input-text solenoid-scalar", type: "text" });
+  let settled = scalarText(kind, value);
+  input.value = settled;
+  input.spellcheck = false;
+  const commit = () => {
+    const text = input.value.trim();
+    const next = cellToYaml(text, kind.family!);
+    const refused = text !== "" && next === null;
+    input.toggleClass("is-invalid", refused);
+    if (refused || text === settled) return;
+    settled = text;
+    ctx.onChange(next);
+  };
+  input.addEventListener("blur", commit);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") input.blur();
+    if (e.key === "Escape") { input.value = settled; input.removeClass("is-invalid"); input.blur(); }
+  });
+  return { focus: () => input.focus() };
 }
 
 class SolenoidSettingTab extends PluginSettingTab {

@@ -5,6 +5,11 @@
   padding: 0 var(--size-4-1);
 }
 
+/* A scalar property's field: text the family cannot read is marked, and is never written. */
+.solenoid-scalar.is-invalid {
+  color: var(--text-error);
+}
+
 /* The app's Settings palette row: the dropdown with the swatch legend stacked under it. */
 .setting-item-control.solenoid-settings-palette {
   flex-direction: column;

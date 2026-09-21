@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { parseObsidianTypes } from "../../src/graph/obsidianTypes";
 import {
-  PROPERTY_KINDS, validateYaml, coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, type PropertyKind, columnTypesOf, readColumnTypes,
+  PROPERTY_KINDS, validateYaml, coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, type PropertyKind, columnTypesOf, readColumnTypes, scalarText,
 } from "../../obsidian-plugin/src/yamlValue";
 import { SOCKET_COLORS } from "../../src/graph/sockets";
 
@@ -12,10 +12,20 @@ const kind = (id: string): PropertyKind => PROPERTY_KINDS.find((k) => k.id === i
 
 describe("the plugin's property kinds", () => {
   it("names each kind after the socket variant it holds", () => {
-    expect(PROPERTY_KINDS).toHaveLength(12);
+    expect(PROPERTY_KINDS).toHaveLength(13);
     for (const k of PROPERTY_KINDS) {
       expect(Object.keys(SOCKET_COLORS)).toContain(k.id.replace(/^solenoid-/, ""));
     }
+  });
+
+  it("takes a complex scalar as text or a number, and refuses the rest", () => {
+    const complex = kind("solenoid-complex");
+    for (const ok of ["3+4i", "-2i", 5, null, ""]) expect(validateYaml(complex, ok), String(ok)).toBe(true);
+    for (const bad of ["three", true, [1, 2], { re: 1 }]) expect(validateYaml(complex, bad), JSON.stringify(bad)).toBe(false);
+    // After a type switch the field opens on the first cell that reads.
+    expect(scalarText(complex, ["1-2i", "3+4i"])).toBe("1-2i");
+    expect(scalarText(complex, "3+4i")).toBe("3+4i");
+    expect(scalarText(complex, { a: "nope" })).toBe("");
   });
 
   it("validates by shape, and by family inside a list or matrix", () => {
@@ -103,7 +113,8 @@ describe("a value left behind by a type switch", () => {
   });
 
   it("is empty for null, an empty string and Obsidian's []", () => {
-    for (const k of PROPERTY_KINDS) for (const v of [null, undefined, "", []]) expect(coerceYaml(k, v)).toEqual([]);
+    // A container is an empty list; the one scalar is missing.
+    for (const k of PROPERTY_KINDS) for (const v of [null, undefined, "", []]) expect(coerceYaml(k, v)).toEqual(k.shape === "scalar" ? null : []);
   });
 
   it("widens as the socket boundary does", () => {

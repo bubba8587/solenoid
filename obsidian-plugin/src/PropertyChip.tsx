@@ -42,7 +42,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   };
   // After a type switch the value may be anything: it shows and edits in this kind's shape, and
   // only Save writes that shape to the note.
-  const items = coerceYaml(kind, yaml);
+  const items = coerceYaml(kind, yaml) as unknown[];
   useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
   const accent = typeAccent(kind);
 

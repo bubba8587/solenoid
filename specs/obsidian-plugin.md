@@ -10,13 +10,15 @@ it ([[C5]] exceptionsUnderRule).
 
 ## What it has
 
-**Twelve property types.** One per container rung of the socket lattice
+**Thirteen property types.** One per container rung of the socket lattice
 (`specs/socket-lattice.md`): the list and the matrix of each of the five element families, the
-frame and the cube. The type id is `solenoid-` plus the socket variant, so
+frame and the cube; and one scalar, Complex, the only element family Obsidian has no type for
+(Number, Text, Date and Checkbox are its own). The type id is `solenoid-` plus the socket variant, so
 `.obsidian/types.json` names a socket by identity; the name is the socket legend's.
 
 | Type id | Name in Obsidian | YAML in the note | Chip | Editor |
 |---|---|---|---|---|
+| `solenoid-complex` | Complex | `a+bi` text, or a number | none: a plain text field, in Obsidian's own style | typed in place; Enter or blur commits, Escape reverts, and text that is not a complex number is refused (marked, never written) |
 | `solenoid-list` | Numeric List | sequence of numbers | `[N× List]` | one-column raw grid |
 | `solenoid-strlist` | String List | sequence of text | same, string tint | same |
 | `solenoid-datelist` | Date List | sequence of ISO dates | same, date tint | same |
@@ -113,7 +115,7 @@ and drill levels, Escape semantics.
     press, the resize grip, measuring), which in a popped-out note are still the main window's,
     so the build rewrites every free use in `src/graph/components/` to the layer's own
     (`popupGlobals` in `vite.config.ts` → `popupDocument` / `popupWindow` in `shadow.ts`).
-11. **The plugin leaves nothing behind.** `onunload` removes the twelve widgets, closes both
+11. **The plugin leaves nothing behind.** `onunload` removes the thirteen widgets, closes both
     popups, unmounts every root and removes the popup layer.
 12. **Obsidian's widget API is undocumented and read from its source** (1.13.7): a widget is
     `{type, icon, name(), validate(value), render(el, value, ctx)}` in

@@ -983,6 +983,7 @@ button.mod-cta {
 .metadata-property:has(> [data-property-type="date"]),
 .metadata-property:has(> [data-property-type="datetime"]) { --sol-type: var(--sol-date); }
 .metadata-property:has(> [data-property-type="checkbox"]) { --sol-type: var(--sol-logical); }
+.metadata-property:has(> [data-property-type="solenoid-complex"]) { --sol-type: var(--sol-complex); }
 .metadata-property:has(> [data-property-type="solenoid-list"]) { --sol-type: var(--sol-list); }
 .metadata-property:has(> [data-property-type="solenoid-table"]) { --sol-type: var(--sol-table); }
 .metadata-property:has(> [data-property-type="solenoid-strlist"]) { --sol-type: var(--sol-strlist); }

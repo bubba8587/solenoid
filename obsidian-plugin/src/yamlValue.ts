@@ -5,7 +5,7 @@ import { parseCx } from "../../src/graph/cxValue";
 import { coerceFrameCell, type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
 
 export type Family = "number" | "string" | "date" | "logical" | "complex";
-export type Shape = "list" | "matrix" | "frame" | "cube";
+export type Shape = "scalar" | "list" | "matrix" | "frame" | "cube";
 
 export interface PropertyKind {
   /** Obsidian's type id, written to `.obsidian/types.json`: `solenoid-` + the socket variant. */
@@ -24,6 +24,8 @@ const FAMILIES: { family: Family; label: string; list: string; table: string }[]
 ];
 
 export const PROPERTY_KINDS: PropertyKind[] = [
+  // The one scalar: Obsidian types a number, text, a date and a checkbox itself.
+  { id: "solenoid-complex", name: "Complex", shape: "scalar", family: "complex" },
   ...FAMILIES.flatMap((f): PropertyKind[] => [
     { id: `solenoid-${f.list}`, name: `${f.label} List`, shape: "list", family: f.family },
     { id: `solenoid-${f.table}`, name: `${f.label} Matrix`, shape: "matrix", family: f.family },
@@ -54,6 +56,7 @@ function fitsFamily(v: unknown, family: Family): boolean {
 
 /** Does this YAML value have the kind's shape? Obsidian warns on a mismatch and never calls render. */
 export function validateYaml(kind: PropertyKind, value: unknown): boolean {
+  if (kind.shape === "scalar") return value === "" || (isScalar(value) && fitsFamily(value, kind.family!));
   if (!Array.isArray(value)) return false;
   switch (kind.shape) {
     case "list": return value.every((v) => isScalar(v) && fitsFamily(v, kind.family!));
@@ -74,9 +77,9 @@ const named = (cells: unknown[]): YamlRecord =>
  *  row, a matrix gets `Col1…` names). Narrowing keeps what it can: a matrix or rows flatten into a
  *  list row by row, and a cell the family cannot read becomes missing. Pure: nothing is written
  *  until the editor's Save. */
-export function coerceYaml(kind: PropertyKind, value: unknown): unknown[] {
-  if (value === null || value === undefined || value === "") return [];
-  if (validateYaml(kind, value)) return value as unknown[];
+export function coerceYaml(kind: PropertyKind, value: unknown): unknown {
+  if (value === null || value === undefined || value === "") return kind.shape === "scalar" ? null : [];
+  if (validateYaml(kind, value)) return value;
   const items = Array.isArray(value) ? value : [value];
   const cell = (v: unknown): Scalar => (kind.family ? cellToYaml(rawCell(scalarOrNull(v)), kind.family) : scalarOrNull(v));
   const rowOf = (item: unknown): unknown[] =>
@@ -93,7 +96,13 @@ export function coerceYaml(kind: PropertyKind, value: unknown): unknown[] {
           : named(rowOf(item)));
     }
     case "cube": return flat ? [named(items)] : items.map((item) => (isPlainObject(item) ? item : named(rowOf(item))));
+    case "scalar": return items.flatMap(rowOf).map(cell)[0] ?? null;
   }
+}
+
+/** A scalar property's text: the value itself, or after a type switch the first cell that reads. */
+export function scalarText(kind: PropertyKind, value: unknown): string {
+  return rawCell(coerceYaml(kind, value));
 }
 
 function cellFromYaml(v: unknown, family: Family): Scalar {
