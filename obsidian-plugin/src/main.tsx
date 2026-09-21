@@ -47,7 +47,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
 
   async onload(): Promise<void> {
     const data = ((await this.loadData()) ?? {}) as PluginData;
-    if (data.palette) paletteStore.setActiveBase(data.palette as PaletteName);
+    // The store also reads `localStorage`, which every vault shares; this vault's data decides.
+    paletteStore.setActiveBase((data.palette ?? "Default") as PaletteName);
 
     for (const [id, svg] of Object.entries(CUSTOM_ICONS)) addIcon(id, svg);
     const widgets = this.typeManager().registeredTypeWidgets;
