@@ -26,6 +26,10 @@ frame and the cube. The type id is `solenoid-` plus the socket variant, so
 | `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
+**Bases.** A Bases table draws a typed property through the same widget, so a cell shows the chip
+and a press opens the same editor (checked in Obsidian 1.13.7; a narrow column clips the chip until it
+is widened).
+
 **Type icons.** A list or matrix wears its element FAMILY's icon, Obsidian's own: Number's
 `lucide-binary`, Text's `lucide-text`, Date's `lucide-calendar`, Checkbox's
 `lucide-check-square`. The chip already says list or table, so the icon says what is in it
@@ -146,8 +150,7 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 
 ## Out of scope
 
-Computing anything. Reading or writing a note's body. Bases table cells (they show raw YAML for
-these keys). Mobile is untested: `isDesktopOnly` is false because nothing in the bundle needs
+Computing anything. Reading or writing a note's body. Mobile is untested: `isDesktopOnly` is false because nothing in the bundle needs
 Electron, and that is all it claims.
 
 ## Publishing
