@@ -39,7 +39,9 @@ enough that the seeds have real rows to compute over:
   and dark, switched on by `.obsidian/appearance.json`. Written by `npm run plugin:build` from
   `obsidian-plugin/src/look.css`, the one source; the plugin ships the same look behind a toggle. A property's icon wears its type's
   color, and hues used as text are darkened in light mode to hold contrast. The Atkinson
-  Hyperlegible faces come from the Solenoid Properties plugin's `styles.css`.
+  Hyperlegible faces come from the Solenoid Properties plugin's `styles.css`. The plugin itself is
+  not in the repository: `community-plugins.json` names it, and it installs from Obsidian's
+  community store (Solenoid Properties).
 
 ## What the seeds do to it
 

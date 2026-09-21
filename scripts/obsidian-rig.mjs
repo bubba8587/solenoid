@@ -24,6 +24,9 @@ const DISPLAY = process.env.RIG_DISPLAY ?? ":7";
 const PORT = Number(process.env.RIG_PORT ?? 9333);
 const OBSIDIAN = process.env.OBSIDIAN ?? "/opt/Obsidian/obsidian";
 // `pkill -f` matches its own shell on a plain pattern; the bracket keeps it off itself.
+// The build under test is always this repository's (`npm run plugin:build`), laid over whatever
+// copy of the plugin the demo vault has installed from the community store.
+const BUILD = path.join(ROOT, "obsidian-plugin", "dist");
 const bracket = (s) => `[${s[0]}]${s.slice(1)}`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -39,6 +42,12 @@ function copyVault() {
   fs.cpSync(path.join(ROOT, "demo-vault"), VAULT, { recursive: true });
   // The author's own pane layout is theirs; the rig opens one clean pane.
   fs.rmSync(path.join(VAULT, ".obsidian", "workspace.json"), { force: true });
+  copyBuild();
+}
+
+function copyBuild() {
+  if (!fs.existsSync(path.join(BUILD, "main.js"))) throw new Error("rig: no build in obsidian-plugin/dist; run `npm run plugin:build` first");
+  fs.cpSync(BUILD, path.join(VAULT, ".obsidian", "plugins", "solenoid-properties"), { recursive: true, force: true });
 }
 
 async function up() {
@@ -82,10 +91,11 @@ async function withApp(fn) {
 
 async function sync() {
   const from = path.join(ROOT, "demo-vault", ".obsidian");
-  for (const rel of ["snippets", "appearance.json", "types.json", path.join("plugins", "solenoid-properties")]) {
+  for (const rel of ["snippets", "appearance.json", "types.json"]) {
     const src = path.join(from, rel);
     if (fs.existsSync(src)) fs.cpSync(src, path.join(VAULT, ".obsidian", rel), { recursive: true, force: true });
   }
+  copyBuild();
   await withApp((page) => page.evaluate(async () => {
     const { plugins, customCss } = window.app;
     await plugins.disablePlugin("solenoid-properties");

@@ -252,7 +252,10 @@ and that a property row is built off-document, and both broke the plugin. The ch
 is a second Obsidian on a private display (`Xephyr`), with its own `--user-data-dir`, a copy of
 the vault and `--remote-debugging-port`, driven over CDP; `window.app` is reachable there, and
 the author's own session is untouched. It is one command: `npm run plugin:rig -- up | sync | shot | eval |
-down` (`scripts/obsidian-rig.mjs`). A plugin reload unmounts every chip and Obsidian does not redraw an
+down` (`scripts/obsidian-rig.mjs`). `npm run plugin:build` lands in `obsidian-plugin/dist/` (ignored), never
+in a vault: the demo vault installs the plugin from the community store, as a user does, and the rig
+lays the build under test over that copy in its own vault (`PLUGIN_OUT=<a vault's plugin folder>`
+builds straight into one). A plugin reload unmounts every chip and Obsidian does not redraw an
 open note, so `sync` rebuilds the open views.
 
 A builder that finds this spec silent stops that part and runs

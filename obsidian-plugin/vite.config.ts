@@ -10,9 +10,10 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const REPO = path.resolve(import.meta.dirname, "..");
 const SHIMS = path.join(import.meta.dirname, "src/shims");
-// Where the build lands: the demo vault's plugin folder, or `PLUGIN_OUT` (the plugin's own
-// repository builds a snapshot of this source into `dist/`).
-const OUT = process.env.PLUGIN_OUT ? path.resolve(process.env.PLUGIN_OUT) : path.join(REPO, "demo-vault/.obsidian/plugins/solenoid-properties");
+// Where the build lands: `obsidian-plugin/dist/` (ignored), or `PLUGIN_OUT`. Never a vault by
+// default: the demo vault installs the plugin from the community store, and the rig copies this
+// build into its own private vault.
+const OUT = process.env.PLUGIN_OUT ? path.resolve(process.env.PLUGIN_OUT) : path.join(import.meta.dirname, "dist");
 const LOOK = path.join(import.meta.dirname, "src/look.css");
 const SNIPPET = path.join(REPO, "demo-vault/.obsidian/snippets/solenoid.css");
 const LOOK_CLASS = "solenoid-look";
@@ -191,7 +192,7 @@ export default defineConfig({
   define: { "process.env.NODE_ENV": JSON.stringify("production") },
   build: {
     outDir: OUT,
-    // The folder also holds the plugin's own `data.json`.
+    // `PLUGIN_OUT` may be a vault's plugin folder, which also holds the plugin's `data.json`.
     emptyOutDir: false,
     cssCodeSplit: false,
     minify: !process.env.PLUGIN_DEBUG,
