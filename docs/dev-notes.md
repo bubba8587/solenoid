@@ -33,6 +33,13 @@ On `develop`, NOT pushed (the author's call). tsc + vitest green.
   bundles build locally and the AppImage starts and computes on a scratch profile; neither job has run in CI
   since, and Windows has not compiled since v1.4.0. Product copy says Windows and Linux; one `DownloadLink`
   (siteNav.tsx) names the visitor's platform. Remaining steps: `backlog.md` § Release planning.
+- **Desktop looks more saturated than the dev server on this machine, and that is color management, not the
+  app.** The monitor is a P3-gamut panel (LG UltraGear; EDID primaries red 0.686/0.309, green 0.264/0.669) and
+  colord set an EDID profile on the X root (`xprop -root _ICC_PROFILE`). Chromium reads it and maps the app's
+  sRGB hexes into the panel's gamut, so it shows true sRGB; WebKitGTK ignores it and sends the values raw, so the
+  same hexes stretch to P3 and read hotter. `chromium --force-color-profile=srgb` makes Chromium match the
+  desktop. Most users' sRGB displays show the Chromium look. Whether to author the palette in `display-p3` is a
+  design call (`backlog.md` § Canvas chrome).
 - **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
   the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
 
