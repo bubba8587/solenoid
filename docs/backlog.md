@@ -56,8 +56,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `FIELD_SOCKETS` need the `table` family rungs ([[D16]] retypeReconciles applies), and
   `TypeHint` has no matrix or cube shape for `obsidianTypes.ts` to map those two ids to; (2) Bases
   table cells still show raw YAML for these properties (unverified); (3) a complex scalar has no
-  property type; (4) a chip in a popped-out note opens its editor in the main window (one popup
-  layer); (6) the community-list submission itself (spec § Publishing has the
+  property type; (6) the community-list submission itself (spec § Publishing has the
   release path; the author submits through community.obsidian.md). (7) the app reads a plugin frame's DATE column as a number column (serials; `rowsToFrame` in
   `nodes/annotation.ts` says "no per-column date pick") and a complex list as text, so "reads back as the same
   type" holds only for text, number and Boolean columns and typed lists. The plugin's picked column types

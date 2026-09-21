@@ -3,6 +3,8 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";
 import postcss from "postcss";
+import MagicString from "magic-string";
+import { walk } from "estree-walker";
 import path from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -35,6 +37,37 @@ function shims(): Plugin {
       if (!importer || !source.startsWith(".")) return null;
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
       return resolved && SHIMMED[resolved.id] ? SHIMMED[resolved.id] : null;
+    },
+  };
+}
+
+/** The app's components reach for the global `document` and `window` (Escape, an outside
+ *  press, the resize grip, measuring). In a popped-out note those are still the MAIN window's,
+ *  so every free use in a component becomes the popup layer's own (`shadow.ts`). */
+function popupGlobals(): Plugin {
+  const components = path.join(REPO, "src/graph/components") + path.sep;
+  const shadow = path.join(import.meta.dirname, "src/shadow.ts");
+  const local = { document: "__popupDocument", window: "__popupWindow" } as const;
+  return {
+    name: "solenoid-plugin-popup-globals",
+    enforce: "post",
+    transform(code, id) {
+      if (!id.split("?")[0].startsWith(components) || !/\b(document|window)\b/.test(code)) return null;
+      const out = new MagicString(code);
+      let touched = false;
+      walk(this.parse(code) as never, {
+        enter(node: any, parent: any) {
+          if (node.type !== "Identifier" || !(node.name in local) || !parent) return;
+          if (parent.type === "MemberExpression" && parent.property === node && !parent.computed) return;
+          if (/^(Property|PropertyDefinition|MethodDefinition)$/.test(parent.type) && parent.key === node && !parent.computed) return;
+          if (parent.type === "UnaryExpression" && parent.operator === "typeof") return;
+          out.overwrite(node.start, node.end, local[node.name as keyof typeof local]);
+          touched = true;
+        },
+      });
+      if (!touched) return null;
+      out.prepend(`import { popupDocument as ${local.document}, popupWindow as ${local.window} } from ${JSON.stringify(shadow)};\n`);
+      return { code: out.toString(), map: out.generateMap({ hires: true }) };
     },
   };
 }
@@ -109,6 +142,7 @@ export default defineConfig({
   plugins: [
     shims(),
     react(),
+    popupGlobals(),
     shadowCss(),
     // Every bundled package's license, beside the release files (the fonts are OFL, the rest MIT).
     license({ thirdParty: { includePrivate: false, multipleVersions: true, output: { file: path.join(OUT, "third-party-licenses.txt"), encoding: "utf-8" } } }),

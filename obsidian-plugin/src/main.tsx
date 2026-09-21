@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
 import { PROPERTY_KINDS, validateYaml, readColumnTypes, type PropertyKind, type ColumnTypes } from "./yamlValue";
-import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, syncTheme, refreshTokens, openPopupsOver } from "./shadow";
+import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 
 /** What Obsidian hands a property widget (read from the 1.13 source; not in the public API). */
@@ -58,10 +58,12 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     const widgets = this.typeManager().registeredTypeWidgets;
     for (const kind of PROPERTY_KINDS) widgets[kind.id] = this.widgetFor(kind);
 
-    this.popups = createRoot(popupLayerRoot());
-    this.popups.render(<><TablePopup /><CubePopup /></>);
+    this.renderPopups();
 
     this.registerEvent(this.app.workspace.on("css-change", syncTheme));
+    // A tab dragged out to a window of its own carries its chips with it.
+    this.registerEvent(this.app.workspace.on("window-open", () => window.setTimeout(() => this.sweep(), 300)));
+    this.registerEvent(this.app.workspace.on("layout-change", () => this.sweep()));
     this.addSettingTab(new SolenoidSettingTab(this.app, this));
   }
 
@@ -74,6 +76,13 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.popups?.unmount();
     this.popups = null;
     removePopupLayer();
+  }
+
+  /** The one popup layer, rendered in whichever window it currently lives in. */
+  private renderPopups(): void {
+    this.popups?.unmount();
+    this.popups = createRoot(popupLayerRoot());
+    this.popups.render(<><TablePopup /><CubePopup /></>);
   }
 
   async setPalette(name: PaletteName): Promise<void> {
@@ -106,7 +115,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
    *  dropped once it has been seen attached. */
   private sweep(): void {
     for (const m of this.mounts) {
-      if (m.host.isConnected) m.attached = true;
+      if (m.host.isConnected) { m.attached = true; adoptSheets(m.host); }
       else if (m.attached) this.unmount(m);
     }
   }
@@ -114,7 +123,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   /** The note's own pane when it sits in the center area; else the center area (a property
    *  shown in a sidebar would otherwise size its editor to the sidebar). */
   private paneOf(host: Element): HTMLElement | null {
-    const center = this.app.workspace.containerEl.querySelector<HTMLElement>(".mod-root");
+    // A popped-out note has a center area of its own, in its own document.
+    const center = host.ownerDocument.querySelector<HTMLElement>(".mod-root");
     const leaf = host.closest<HTMLElement>(".workspace-leaf");
     return leaf && center?.contains(leaf) ? leaf : center;
   }
@@ -145,7 +155,11 @@ export default class SolenoidPropertiesPlugin extends Plugin {
             columnTypes={this.data.columnTypes?.[ctx.key]}
             onColumnTypes={(types) => void this.setColumnTypes(ctx.key, types)}
           />);
-        shadow.host.addEventListener("pointerdown", () => openPopupsOver(this.paneOf(shadow.host)), true);
+        shadow.host.addEventListener("pointerdown", () => {
+          // The editor opens in the chip's own window: a popped-out note keeps its popup.
+          if (homePopupLayer(shadow.host.ownerDocument)) this.renderPopups();
+          openPopupsOver(this.paneOf(shadow.host));
+        }, true);
         return { focus: () => shadow.querySelector("button")?.focus() };
       },
     };

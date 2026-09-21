@@ -100,8 +100,15 @@ and drill levels, Escape semantics.
 10. **Stylesheets are per document.** Obsidian's settings, and a note popped out, are windows of
     their own, and a constructed stylesheet can only be adopted in the document that made it. A
     host is created in its container's `ownerDocument` with that document's sheets; a palette
-    change rewrites every live document's token sheet. The popup layer lives in the main window,
-    so a chip in a popped-out note opens its editor there (a gap, below).
+    change rewrites every live document's token sheet. Obsidian builds a property row in the main
+    window and may move it into a popped-out one, and the sheets do not survive the move, so the
+    sweep re-adopts the sheets of the document a host is in (`adoptSheets`; also on `window-open`
+    and `layout-change`). **The one popup layer follows the chip's window**: a press on a chip
+    moves the layer into that chip's document (`homePopupLayer`) and the popups render again
+    there. The app's components reach for the global `document` and `window` (Escape, an outside
+    press, the resize grip, measuring), which in a popped-out note are still the main window's,
+    so the build rewrites every free use in `src/graph/components/` to the layer's own
+    (`popupGlobals` in `vite.config.ts` → `popupDocument` / `popupWindow` in `shadow.ts`).
 11. **The plugin leaves nothing behind.** `onunload` removes the twelve widgets, closes both
     popups, unmounts every root and removes the popup layer.
 12. **Obsidian's widget API is undocumented and read from its source** (1.13.7): a widget is
@@ -167,7 +174,6 @@ release workflow depends on.
   matrix the plugin writes does not yet arrive in Solenoid as a `table` rung (`docs/backlog.md`).
 - `obsidianTypes.ts` maps the list ids and `solenoid-frame` to a `TypeHint`; `TypeHint` has no
   matrix or cube shape, so those ids fall through to the guesser.
-- A chip in a popped-out note opens its editor in the main window (one popup layer).
 
 ## Verifying against real Obsidian
 
