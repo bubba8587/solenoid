@@ -126,7 +126,7 @@ and drill levels, Escape semantics.
     there. The app's components reach for the global `document` and `window` (Escape, an outside
     press, the resize grip, measuring), which in a popped-out note are still the main window's,
     so the build rewrites every free use in `src/graph/components/` to the layer's own
-    (`popupGlobals` in `vite.config.ts` → `popupDocument` / `popupWindow` in `shadow.ts`).
+    (`pluginGlobals` in `vite.config.ts` → `popupDocument` / `popupWindow` in `shadow.ts`).
 11. **The plugin leaves nothing behind.** `onunload` removes the thirteen widgets, closes both
     popups, unmounts every root and removes the popup layer.
 12. **Obsidian's widget API is undocumented and read from its source** (1.13.7): a widget is
@@ -172,26 +172,36 @@ Electron, and that is all it claims.
 Obsidian's community list points at one GitHub repository, reads `manifest.json` from the root of
 its default branch and installs `main.js`, `manifest.json` and `styles.css` from a GitHub Release
 whose tag is the manifest's version. It cannot point at a branch or a folder, and this repository
-is the app's, so the plugin publishes from its own: `bubba8587/Solenoid-Properties`. That
-repository holds no source. Its `source.json` pins a commit of this one; its release workflow
-checks that commit out, runs `npm run plugin:build`, and attaches the three files plus
-`third-party-licenses.txt`. Its `manifest.json` must equal `obsidian-plugin/manifest.json` at the
-pinned commit, and the workflow refuses a release when they differ. It is listed at
-community.obsidian.md/plugins/solenoid-properties (0.1.0, 2026-09-21; the site's automated review
-rescans every release, and a repository that holds no source passed it). Its README is for users (what
-the plugin is, the types, the look), so the release steps live here:
+is the app's, so the plugin publishes from its own: `bubba8587/Solenoid-Properties`, listed at
+community.obsidian.md/plugins/solenoid-properties. The directory's automated review rescans every
+release, and **it requires the repository to hold the source it is built from**, so that
+repository carries a SNAPSHOT: `npm run plugin:export -- <its clone>`
+(`scripts/export-plugin-source.mjs`) copies exactly the app files the build reads
+(`PLUGIN_MODULES`), the `obsidian-plugin/` folder, a `package.json` pinned to the versions
+installed here, its own lock file, the manifest, `versions.json`, the third-party licenses and a
+`source.json` naming the commit. This repository stays the source of truth (the chips and editors
+ARE the app's components); nothing is edited there. Its release workflow runs
+`npm ci && npm run build` on the snapshot, checks the built manifest against the root one, attests
+the three files' build provenance, and attaches only those three (Obsidian downloads nothing else).
+The snapshot holds what the BUNDLE reads, so a type-only import of another app module does not
+resolve there: the build is its check, and the typecheck runs here. The shim swap matches by path,
+not by resolving, because the snapshot has the stand-ins and not the modules they replace. Its
+README is for users, so the release steps live here:
 
-1. Here, set the version in `obsidian-plugin/manifest.json` and push `develop`.
-2. There, set `source.json`'s `ref` to that commit, copy the manifest over, add the version to
-   `versions.json` with its `minAppVersion`, and push.
-3. Run Actions → Release → Run workflow with the version and "publish" OFF: it only builds, and
-   keeps the files as a run artifact. Then create the release: push a tag equal to the version
-   (`0.1.0`, no `v`), or run the workflow again with "publish" on. The listing is submitted through community.obsidian.md (the author's), whose
-automated review rescans every published release.
+1. Here, set the version in `obsidian-plugin/manifest.json`, commit and push `develop`.
+2. `npm run plugin:export -- "<clone>"`, then commit and push there.
+3. There, run Actions → Release → Run workflow with the version and "publish" OFF: it only builds.
+   Then create the release: push a tag equal to the version (`0.1.1`, no `v`), or run the workflow
+   again with "publish" on. A fix to a review finding needs a NEW version: the directory reviews
+   releases, not commits.
 
 The bundle is what a reviewer reads, so nothing in it logs, writes a global or touches the
 document; `perfProbe` is shimmed for that reason (its probe registers `__solenoidStats` on
-import). `test.yml` builds the plugin on every push, so `develop` cannot break the build the
+import). The app's stores keep their picks in `localStorage`, which the review flags and which
+Obsidian shares across vaults, so the build points every free `localStorage` /
+`sessionStorage` in app code at memory (`memoryStorage.ts`, `pluginGlobals`); the palette persists
+through `data.json`. The clipboard is only ever WRITTEN (the editors' Copy actions), and the
+plugin's README discloses it. `test.yml` builds the plugin on every push, so `develop` cannot break the build the
 release workflow depends on.
 
 ## What Solenoid reads back

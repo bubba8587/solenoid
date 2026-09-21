@@ -6,11 +6,13 @@ import postcss from "postcss";
 import MagicString from "magic-string";
 import { walk } from "estree-walker";
 import path from "node:path";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const REPO = path.resolve(import.meta.dirname, "..");
 const SHIMS = path.join(import.meta.dirname, "src/shims");
-const OUT = path.join(REPO, "demo-vault/.obsidian/plugins/solenoid-properties");
+// Where the build lands: the demo vault's plugin folder, or `PLUGIN_OUT` (the plugin's own
+// repository builds a snapshot of this source into `dist/`).
+const OUT = process.env.PLUGIN_OUT ? path.resolve(process.env.PLUGIN_OUT) : path.join(REPO, "demo-vault/.obsidian/plugins/solenoid-properties");
 const LOOK = path.join(import.meta.dirname, "src/look.css");
 const SNIPPET = path.join(REPO, "demo-vault/.obsidian/snippets/solenoid.css");
 const LOOK_CLASS = "solenoid-look";
@@ -34,42 +36,53 @@ function shims(): Plugin {
   return {
     name: "solenoid-plugin-shims",
     enforce: "pre",
-    async resolveId(source, importer, options) {
+    resolveId(source, importer) {
       // App code only: react-dom/client reads its own internals off the real module.
       if (source === "react-dom") return importer?.startsWith(path.join(REPO, "src") + path.sep) ? REACT_DOM_SHIM : null;
       if (!importer || !source.startsWith(".")) return null;
-      const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
-      return resolved && SHIMMED[resolved.id] ? SHIMMED[resolved.id] : null;
+      // By path, not by resolving: the plugin's own repository holds a snapshot of this source
+      // with the stand-ins and WITHOUT the app modules they replace.
+      const target = path.resolve(path.dirname(importer.split("?")[0]), source);
+      return SHIMMED[`${target}.ts`] ?? SHIMMED[`${target}.tsx`] ?? SHIMMED[target] ?? null;
     },
   };
 }
 
-/** The app's components reach for the global `document` and `window` (Escape, an outside
- *  press, the resize grip, measuring). In a popped-out note those are still the MAIN window's,
- *  so every free use in a component becomes the popup layer's own (`shadow.ts`). */
-function popupGlobals(): Plugin {
+/** Globals the app's code reaches for, pointed at the plugin's own. In `src/graph/components/`
+ *  a free `document` / `window` becomes the popup layer's (`shadow.ts`): in a popped-out note the
+ *  globals are still the MAIN window's, and Escape, an outside press, the resize grip and
+ *  measuring all use them. Anywhere in app code a free `localStorage` / `sessionStorage` becomes
+ *  memory (`memoryStorage.ts`): a plugin keeps its data in Obsidian's plugin data. */
+function pluginGlobals(): Plugin {
+  const app = path.join(REPO, "src") + path.sep;
   const components = path.join(REPO, "src/graph/components") + path.sep;
-  const shadow = path.join(import.meta.dirname, "src/shadow.ts");
-  const local = { document: "__popupDocument", window: "__popupWindow" } as const;
+  const from = { shadow: path.join(import.meta.dirname, "src/shadow.ts"), memory: path.join(import.meta.dirname, "src/memoryStorage.ts") };
+  const WINDOW = { document: "__popupDocument", window: "__popupWindow" } as Record<string, string>;
+  const STORAGE = { localStorage: "__memoryStorage", sessionStorage: "__memoryStorage" } as Record<string, string>;
   return {
-    name: "solenoid-plugin-popup-globals",
+    name: "solenoid-plugin-globals",
     enforce: "post",
     transform(code, id) {
-      if (!id.split("?")[0].startsWith(components) || !/\b(document|window)\b/.test(code)) return null;
+      const file = id.split("?")[0];
+      if (!file.startsWith(app) || !/\b(document|window|localStorage|sessionStorage)\b/.test(code)) return null;
+      const names = { ...STORAGE, ...(file.startsWith(components) ? WINDOW : {}) };
       const out = new MagicString(code);
-      let touched = false;
+      const used = new Set<string>();
       walk(this.parse(code) as never, {
         enter(node: any, parent: any) {
-          if (node.type !== "Identifier" || !(node.name in local) || !parent) return;
+          if (node.type !== "Identifier" || !(node.name in names) || !parent) return;
           if (parent.type === "MemberExpression" && parent.property === node && !parent.computed) return;
           if (/^(Property|PropertyDefinition|MethodDefinition)$/.test(parent.type) && parent.key === node && !parent.computed) return;
           if (parent.type === "UnaryExpression" && parent.operator === "typeof") return;
-          out.overwrite(node.start, node.end, local[node.name as keyof typeof local]);
-          touched = true;
+          out.overwrite(node.start, node.end, names[node.name]);
+          used.add(names[node.name]);
         },
       });
-      if (!touched) return null;
-      out.prepend(`import { popupDocument as ${local.document}, popupWindow as ${local.window} } from ${JSON.stringify(shadow)};\n`);
+      if (used.size === 0) return null;
+      const imports: string[] = [];
+      if (used.has("__popupDocument") || used.has("__popupWindow")) imports.push(`import { popupDocument as __popupDocument, popupWindow as __popupWindow } from ${JSON.stringify(from.shadow)};`);
+      if (used.has("__memoryStorage")) imports.push(`import { memoryStorage as __memoryStorage } from ${JSON.stringify(from.memory)};`);
+      out.prepend(imports.join("\n") + "\n");
       return { code: out.toString(), map: out.generateMap({ hires: true }) };
     },
   };
@@ -120,7 +133,12 @@ function shadowCss(): Plugin {
     // `PLUGIN_TRACE=src/graph/x.ts,…` it also prints how the entry reaches each of those.
     writeBundle(_options, bundle) {
       // The demo vault wears the look as a snippet: the same file, as it stands.
-      writeFileSync(SNIPPET, readFileSync(LOOK));
+      if (existsSync(path.dirname(SNIPPET))) writeFileSync(SNIPPET, readFileSync(LOOK));
+      // `PLUGIN_MODULES=<file>`: every source file this build read, for the snapshot export.
+      if (process.env.PLUGIN_MODULES) {
+        const ids = [...this.getModuleIds()].map((id) => id.split("?")[0]).filter((id) => path.isAbsolute(id) && !id.includes("node_modules"));
+        writeFileSync(process.env.PLUGIN_MODULES, JSON.stringify([...new Set(ids)].map((id) => path.relative(REPO, id)).sort(), null, 1));
+      }
       if (!process.env.PLUGIN_REPORT) return;
       const rows: [number, string][] = [];
       for (const file of Object.values(bundle)) {
@@ -162,7 +180,7 @@ export default defineConfig({
   plugins: [
     shims(),
     react(),
-    popupGlobals(),
+    pluginGlobals(),
     shadowCss(),
     // Every bundled package's license, beside the release files (the fonts are OFL, the rest MIT).
     license({ thirdParty: { includePrivate: false, multipleVersions: true, output: { file: path.join(OUT, "third-party-licenses.txt"), encoding: "utf-8" } } }),

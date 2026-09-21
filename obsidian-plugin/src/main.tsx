@@ -53,7 +53,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   async onload(): Promise<void> {
     const stored = ((await this.loadData()) ?? {}) as PluginData;
     this.data = { palette: stored.palette, columnTypes: readColumnTypes(stored.columnTypes), look: stored.look === true };
-    // The store also reads `localStorage`, which every vault shares; this vault's data decides.
+    // The app's stores keep nothing here (their `localStorage` is memory in this build): the
+    // vault's own data decides the palette.
     paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
 
     for (const [id, svg] of Object.entries(CUSTOM_ICONS)) addIcon(id, svg);
