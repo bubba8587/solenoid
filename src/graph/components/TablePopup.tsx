@@ -335,7 +335,9 @@ export function TablePopup() {
   // The format+unit row re-renders the ON-SCREEN grid only — Copy/CSV stay raw.
   const showFmtControls = !!state.formatControls && view === "grid" && !state.list;
   // Never in-cell for the unit — that stays a tag / dropdown.
-  const formatRenderActive = showFmtControls && (!editable || formattedPreview);
+  // The Source toggle wins over the column format controls in a read-only grid too (a frame
+  // shown from a Note or a value): Source shows what came in, Formatted the controls' render.
+  const formatRenderActive = showFmtControls && (editable ? formattedPreview : displayMode === "formatted");
   function annFor(c: number): FormatAnnotation {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     return colFmt[idx] ?? { format: "auto", unit: "none" };
