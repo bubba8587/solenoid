@@ -47,9 +47,8 @@ as in the app (`CHROME_HOME`). The toggle adds the look class, the palette's cla
 accent's to the body of every Obsidian window (the main one, a popped-out note, settings), a
 palette or accent change swaps its class, and `onunload` takes all three away; the plugin writes nothing into the user's `.obsidian/` and no style or variable
 onto the body. The same build writes `look.css` plus the Default palette's two blocks to
-`demo-vault/.obsidian/snippets/solenoid.css` (a snippet cannot follow a setting), and
-`tests/obsidianPlugin/look.test.ts` fails when they drift, when `look.css` authors a token the
-generator owns, or when a palette yields anything but a color value. It targets Obsidian 1.13's
+`demo-vault/.obsidian/snippets/solenoid.css` (a snippet cannot follow a setting). The plugin
+has no automated tests; keeping the snippet in step with the build is a manual check. It targets Obsidian 1.13's
 variables (`--callout-<type>`, `--bases-*`).
 
 **Bases.** A Bases table draws a typed property through the same widget, so a cell shows the chip
@@ -111,8 +110,7 @@ and drill levels, Escape semantics.
 5. **A portal aimed at `document.body` lands in the popup layer** (`shims/reactDom.ts`, applied
    to app source only; `react-dom/client` keeps the real module). A click-outside test in a
    bundled component reads `composedPath()[0]`, since a shadow root retargets `event.target`.
-6. **A property is plain YAML, and the mapping is pure** (`yamlValue.ts`, no DOM, no Obsidian;
-   `tests/obsidianPlugin/yamlValue.test.ts`). Dates are ISO text in the note and serials inside
+6. **A property is plain YAML, and the mapping is pure** (`yamlValue.ts`, no DOM, no Obsidian). Dates are ISO text in the note and serials inside
    the components. Opening and saving an untouched value writes back the same YAML. Every row of
    a saved frame carries every key, a missing cell as `null`. **Every editor's Save writes each
    cell's SOURCE TEXT** ([[D72]] pluginSaveWritesSourceText; list, matrix, frame; the cube already did): an unchanged cell keeps the
