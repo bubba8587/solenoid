@@ -121,7 +121,14 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   async setLook(on: boolean): Promise<void> {
     this.data.look = on;
     this.wearLook();
+    this.announceCss();
     await this.saveData(this.data);
+  }
+
+  /** A class swap on the body changes what the CSS says, and the graph view (a canvas) reads
+   *  its colors only when Obsidian says the CSS changed. */
+  private announceCss(): void {
+    this.app.workspace.trigger("css-change");
   }
 
   /** The one popup layer, rendered in whichever window it currently lives in. */
@@ -135,6 +142,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     paletteStore.setActiveBase(name);
     refreshTokens();
     this.wearLook();
+    this.announceCss();
     this.data.palette = name;
     await this.saveData(this.data);
   }
@@ -145,6 +153,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     setAccentSlot(slot);
     refreshTokens();
     this.wearLook();
+    this.announceCss();
     await this.saveData(this.data);
   }
 
