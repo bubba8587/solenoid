@@ -4,12 +4,14 @@
 
 What every node class and op module under `src/graph/nodes/` is built to. A file that implements a specific mechanism (units, dates, errors, a family's merge) cites that leaf in its own header; this spec is the floor, and its `covers:` line is what `dte blast` and `dte coverage` read instead of a citation per file.
 
-1. **The class name is the persisted type**, kept and unique; a rename is a save-format change ([[C34]] classNameIsType). An unknown type loads as a Placeholder and re-saves as itself ([[C35]] unknownViaPlaceholder).
-2. **Every field is persisted or deliberately transient**, declared in the persistence sweep ([[D50]] everyFieldClassified); `extractInit` is a fixed point and JSON-plain ([[C29]] plainJsonInit).
-3. **A registration declares its full contract** (`EXCEL_IMPL_META`: returns, arity, rank, list args) and routing derives from it ([[D20]] declareContract, [[D4]] noManualList).
-4. **`data()` reads inputs the value-semantics way** (`docs/value-semantics.md` § Reading an input): null is skipped not zeroed ([[D36]]), an error beats a missing cell ([[D37]]), a producer classifies a non-finite ([[D48]] classifyNonFinite), and an input is unit-blind only per declared input ([[D42]] perInputUnitBlind).
-5. **A socket that is about to disappear loses its cables first** ([[D10]] onePrunePath), and an in-place retype reconciles downstream ([[D16]] retypeReconciles).
-6. **A literal exists iff the socket is editable** ([[C28]] literalsIffEditable); a wildcard row's typed cell lives in exactly one literal map.
-7. **A volatile `data()` freezes its draw on the recalc generation** ([[D46]] freezeVolatilePerCalc): no bare `Math.random()`.
-8. **An op module is rete-free and shared by both surfaces** ([[D19]] implReteFree, [[C17]] shareImpl): the node's `data()` and the formula registration call the same kernel.
-9. **A variant is a selector on the existing card, never a sibling node** ([[B11]] maximalMerge); an op is a function, an arg is a parameter ([[C26]] opArgDistinct).
+A **node class** is the headless model of one card: its sockets, its saved fields and its `data()`, which computes outputs from inputs. An **op module** (`*Ops.ts`) holds the pure calculations a class and its formula functions share.
+
+1. **The class name is the persisted type.** It is kept and unique, so renaming a class changes the save format ([[C34]] classNameIsType). A saved type the app does not know loads as a Placeholder card and saves back out as itself, losing nothing ([[C35]] unknownViaPlaceholder).
+2. **Every field is either persisted or deliberately transient**, and the persistence sweep (`persistenceSweep.test.ts`) knows which ([[D50]] everyFieldClassified). `extractInit` is a fixed point, so saving a freshly loaded node yields the same init, and its output is plain JSON ([[C29]] plainJsonInit).
+3. **A formula registration declares its full contract** in `EXCEL_IMPL_META`: return type, arity, rank and list arguments. Routing is derived from that declaration, never from a hand-kept list ([[D20]] declareContract, [[D4]] noManualList).
+4. **`data()` reads inputs the value-semantics way** (`docs/value-semantics.md`, "Reading an input"): a null is skipped, not treated as zero ([[D36]] nullSkippedNotZero); an error beats a missing value in the same cell ([[D37]] errorBeatsMissing); a producer turns a non-finite result into a classified error rather than emitting it bare ([[D48]] classifyNonFinite); and an input ignores units only where that input is declared unit-blind ([[D42]] perInputUnitBlind).
+5. **A socket that is about to disappear loses its cables first**: a method that removes sockets returns the departing keys so the caller runs `dropInputCables` before `removeInput` ([[D10]] onePrunePath). A socket retyped in place reconciles everything downstream ([[D16]] retypeReconciles).
+6. **A literal map exists if and only if the card edits it inline** ([[C28]] literalsIffEditable; `specs/inline-literal-maps.md`). A wildcard input row keeps its typed cell in exactly one of `literals` and `stringLiterals`.
+7. **A volatile `data()` freezes its random draw per recalc**: it keys the draw on the recalc generation (`getRecalcGen` in `process.ts`), so every read within one recalc sees the same value, and never calls a bare `Math.random()` ([[D46]] freezeVolatilePerCalc).
+8. **An op module imports nothing from rete and serves both surfaces** ([[D19]] implReteFree, [[C17]] shareImpl): the node's `data()` and the formula registration call the same function.
+9. **A variant is a selector on the existing card, never a sibling node** ([[B11]] maximalMerge). An op is a different function; an argument is a parameter of the same function ([[C26]] opArgDistinct).

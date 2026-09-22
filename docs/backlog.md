@@ -54,6 +54,7 @@ Each was found reading the code to write `../specs/{compute-pass,formula-languag
 - [ ] **Standoff bars have no z-index.** [[C65]] and `StandoffLayer.tsx` say −3, but nothing sets it; the viewport portal follows the node layer, so bars may paint over cards. Check visually, then set it.
 - [ ] **Expand push's final overlap pass separates overlaps that already existed** (it runs with no list of pre-existing overlaps to leave alone).
 - [ ] **`resetPointerCensus` is only called in tests.**
+- [ ] **Quick-wire dims every row.** `FlowSurface` builds `compatibleTypes` from the socket's data type (`number`), but `AddNodeMenu`'s `isDim` checks each row's catalog `type` (`list-running`) against it, so nothing matches; `filterByCompatibleSocket` is only called from its test.
 - [ ] **Stale comments**: `process.ts` ("every topology change runs a full pass"), `engine.rs` header (outer-join order), `runFrameBindColumns` ("union by name"; it binds by position), `tableLambda.ts` `resolveFn` (only SCAN/REDUCE bind by name), `tidyArrange.ts` near the FC footprint "restore".
 
 ## Composites
