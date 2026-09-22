@@ -6,9 +6,8 @@
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
-import { Cancelled } from "rete-engine";
 import { cableValueStore } from "./cableValueStore";
-import { downstreamClosure, loopMembers, seedLoopErrors } from "./graphCompute";
+import { loopMembers, seedLoopErrors, invalidate, fetchAll } from "./graphCompute";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
@@ -209,12 +208,8 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   if (perf) beginPass();
   const ipc0 = perf ? ipcSnapshot() : null;
   const t0 = perf ? performance.now() : 0;
-  const affected = changedNodeId ? downstreamClosure(_editor, changedNodeId) : null;
-  // Targeted invalidation walks the BFS cone by hand, NOT `_engine.reset(nodeId)`:
-  // rete-engine recurses over outgoing connections with no visited set, so a cable cycle
-  // blows the stack before the #CIRC! seeding below runs.
-  if (affected) for (const id of affected) _engine.cache.delete(id);
-  else if (!renderOnly) _engine.reset(); // additive bulk add keeps existing caches
+  // An additive bulk add (renderOnly) keeps existing caches.
+  const affected = invalidate(_editor, _engine, changedNodeId, !!renderOnly);
 
   // A dependency loop must be seeded BEFORE fetching: the pull engine resolves inputs
   // recursively before calling data(), so it would deadlock. A TOPOLOGY-targeted pass must
@@ -228,24 +223,16 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   // which are display sinks. Compared against the stored value BEFORE it is overwritten.
   const changedOut = affected ? new Set<string>() : null;
   const sinks = affected ? new Set<string>() : null;
-  try {
-    for (const node of _editor.getNodes()) {
-      // The list is a snapshot; a node removed while an earlier fetch awaited is gone
-      // from the engine (rete-engine throws "node is not initialized") — skip it.
-      if (!_editor.getNode(node.id)) continue;
-      const outputs = await _engine.fetch(node.id) as Record<string, unknown>;
-      if (changedOut) {
-        const keys = Object.keys(outputs);
-        if (keys.length === 0) sinks!.add(node.id);
-        else if (keys.some((k) => cableValueStore.get(node.id, k) !== outputs[k])) changedOut.add(node.id);
-      }
-      cableValueStore.setNodeOutputs(node.id, outputs);
+  const values = await fetchAll(_editor, _engine, (id, outputs) => {
+    if (changedOut) {
+      const keys = Object.keys(outputs);
+      if (keys.length === 0) sinks!.add(id);
+      else if (keys.some((k) => cableValueStore.get(id, k) !== outputs[k])) changedOut.add(id);
     }
-  } catch (e) {
-    // A newer processGraph() canceled this in-flight fetch — swallow only cancellation.
-    if (e instanceof Cancelled) return;
-    throw e;
-  }
+    cableValueStore.setNodeOutputs(id, outputs);
+  }, { stopOnCancel: true });
+  // A newer processGraph() cancelled this pass mid-fetch.
+  if (!values) return;
   const t1 = perf ? performance.now() : 0;
   cableValueStore.bump();
   // Node updates are independent (each its own React root), so fire them concurrently.

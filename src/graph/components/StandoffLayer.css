@@ -3,6 +3,8 @@
 
 .solenoid-standoff-svg {
   position: absolute;
+  /* Under every card: groups sit at -2 and Conduits at -1 in the same viewport context. */
+  z-index: -3;
   left: 0;
   top: 0;
   width: 9999px;

@@ -1,7 +1,7 @@
 // [[D30]], [[D31]]
-// The model-level compute pass — ONE definition, no view. processGraph (the app),
-// the composite's internal engine, the headless runner and the seed tests all run
-// the same steps: invalidate, seed loops, fetch every node ([[D30]] targetedEqualsFull).
+// The model-level compute pass: ONE definition, no view. processGraph (the app), the
+// headless runner and the seed tests run the same steps: invalidate, seed loops, fetch
+// every node ([[D30]] targetedEqualsFull). A composite's private engine seeds loops here too.
 import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
@@ -93,11 +93,11 @@ export function downstreamClosure(editor: Editor, startId: string): Set<string> 
 }
 
 /** Drop the caches a pass must recompute: the downstream cone of `changedId`, or
- *  everything. Walks the cone by hand — `engine.reset(id)` recurses over outgoing
+ *  everything (nothing under `keepCaches`, an additive pass over newly added nodes). Walks the cone by hand — `engine.reset(id)` recurses over outgoing
  *  connections with no visited set, so a cable cycle blows the stack before the
  *  #CIRC! seeding runs. Returns the cone, or null for a full reset. */
-export function invalidate(editor: Editor, engine: Engine, changedId?: string): Set<string> | null {
-  if (!changedId) { engine.reset(); return null; }
+export function invalidate(editor: Editor, engine: Engine, changedId?: string, keepCaches = false): Set<string> | null {
+  if (!changedId) { if (!keepCaches) engine.reset(); return null; }
   const cone = downstreamClosure(editor, changedId);
   for (const id of cone) engine.cache.delete(id);
   return cone;
@@ -124,23 +124,27 @@ export function seedLoopErrors(editor: Editor, engine: Engine, loop: Set<string>
   }
 }
 
-/** Fetch every node's outputs in editor order. A fetch a newer pass cancelled lands as
- *  null; any other failure propagates (the guards already turned real compute errors
- *  into SolError values). */
+/** Fetch every node's outputs in editor order, skipping a node removed while an earlier
+ *  fetch awaited. A fetch a newer pass cancelled lands as null, or under `stopOnCancel`
+ *  ends the pass and answers null; any other failure propagates (the guards already
+ *  turned real compute errors into SolError values). */
 export async function fetchAll(
   editor: Editor,
   engine: Engine,
   onNode?: (id: string, outputs: NodeOutputs) => void,
-): Promise<PassValues> {
+  opts: { stopOnCancel?: boolean } = {},
+): Promise<PassValues | null> {
   const out: PassValues = new Map();
   for (const node of editor.getNodes()) {
+    if (!editor.getNode(node.id)) continue;
     try {
       const outputs = (await engine.fetch(node.id)) as NodeOutputs;
       out.set(node.id, outputs);
       onNode?.(node.id, outputs);
     } catch (e) {
-      if (e instanceof Cancelled) out.set(node.id, null);
-      else throw e;
+      if (!(e instanceof Cancelled)) throw e;
+      if (opts.stopOnCancel) return null;
+      out.set(node.id, null);
     }
   }
   return out;
@@ -151,5 +155,5 @@ export async function computeAll(editor: Editor, engine: Engine, changedId?: str
   resolveTrigModes(editor);
   invalidate(editor, engine, changedId);
   seedLoopErrors(editor, engine, loopMembers(editor));
-  return fetchAll(editor, engine);
+  return (await fetchAll(editor, engine))!;
 }

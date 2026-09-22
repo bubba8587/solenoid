@@ -774,3 +774,21 @@ describe("omitted arguments — IF(x,,y) is a BLANK (author 2026-07-16)", () => 
     expect(extractVariables("IF(x=0,,x)")).toEqual(["x"]);
   });
 });
+
+describe("type-honest operators and well-formed numbers", () => {
+  const run = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)?.(env);
+  it("text in arithmetic is #VALUE!, never JavaScript's concatenation ([[D11]] noAutoCross)", () => {
+    for (const expr of ['"2" + 3', '"3" * 2', '"a" - 1', '2 ^ "x"']) {
+      const r = run(expr) as { code?: string };
+      expect(r?.code, expr).toBe("#VALUE!");
+    }
+    expect(run('"2" & 3')).toBe("23");  // & is the join
+    expect(run("TRUE + 1")).toBe(2);   // the logical bridge still holds
+  });
+
+  it("a malformed number is a syntax error, not NaN", () => {
+    expect(compileEvaluator("1.2.3")).toBeNull();
+    expect(compileEvaluator("2e")).toBeNull();
+    expect(compileEvaluator("2e3 + .5")!({})).toBe(2000.5);
+  });
+});

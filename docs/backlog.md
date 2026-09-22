@@ -38,13 +38,9 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 Each was found reading the code to write the compute-pass, formula-language and frame-verbs specs (`../tree/specs/`). The spec describes today's behavior; these are the places it breaks a node or looks unintended.
 
 - [ ] **Join ignores units on keys.** [[C25]] says unit-tagged keys compare by dimension and base-SI magnitude; `joinFrames` ignores units (only Nest Join's `relateFramesToCube` does it).
-- [ ] **[[D30]] targetedEqualsFull has second copies.** Only `scripts/run-graph.ts` calls `computeAll`; `process.ts` and `composite.ts` run their own invalidate and fetch loops, and `invalidate` / `fetchAll` have no production caller.
-- [ ] **Scalar blanks reach functions unpropagated** outside the list path: `NOT(null)` is TRUE, `ABS(null)` 0, `ROUND(null,1)` `#VALUE!`.
-- [ ] **Operators coerce strings JavaScript's way**: `"2"+3` is `"23"`, `"a"*2` is `#DOMAIN!` (Excel: `#VALUE!`); `1.2.3` and `2e` parse and give NaN.
 - [ ] **Window verb: oracle and engine disagree** on logical and ±Infinity values, on `share` over a blank group and `pct_change` from 0 (`#DIV/0!` vs blank), and on unknown `how` / function names (engine errors, oracle runs). No corpus case covers these ([[D29]] oneVerbCorpus).
 - [ ] **Sketch-mode preview scaling** looks up the ref's base handle, not the flushed one, so a truncated Group By preview is probably unscaled.
 - [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row; a wired blank into `logicallist` arrives as `[null]` but into `strlist` as `null`; `stripUnitCells` doesn't reach inside a Cube; `computeAll` never clears the collect memo.
-- [ ] **Standoff bars have no z-index.** [[C65]] and `StandoffLayer.tsx` say −3, but nothing sets it; the viewport portal follows the node layer, so bars may paint over cards. Check visually, then set it.
 - [ ] **Expand push's final overlap pass separates overlaps that already existed** (it runs with no list of pre-existing overlaps to leave alone).
 - [ ] **`resetPointerCensus` is only called in tests.**
 

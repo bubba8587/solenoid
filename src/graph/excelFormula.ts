@@ -53,7 +53,9 @@ function tokenize(src: string): Tok[] | null {
         if (src[j] === "+" || src[j] === "-") j++;
         while (j < src.length && digit(src[j])) j++;
       }
-      toks.push({ k: "num", v: src.slice(i, j) });
+      const v = src.slice(i, j);
+      if (!/^(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v)) return null; // 1.2.3, 2e: not a number
+      toks.push({ k: "num", v });
       i = j;
       continue;
     }
@@ -739,9 +741,13 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   // The logical↔number bridge: booleans compute as 1/0 in numeric contexts.
   const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
   const na = num(a), nb = num(b);
-  // Classify a non-finite result only when it is genuinely a number, so string
-  // `+` concat stays untouched.
-  const fin = (r: number | string): unknown => (typeof r === "number" ? guardFinite(r, na, nb) : r);
+  const fin = (r: number): unknown => guardFinite(r, na, nb);
+  // Text never crosses into arithmetic on its own ([[D11]] noAutoCross): `"2"+3` is an
+  // error that names the fix, not JavaScript's "23".
+  if ((op === "+" || op === "-" || op === "*" || op === "/" || op === "^")
+      && (typeof na === "string" || typeof nb === "string")) {
+    return solError("#VALUE!", "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE");
+  }
   switch (op) {
     case "+": return fin((na as number) + (nb as number));
     case "-": return fin((na as number) - (nb as number));
@@ -829,16 +835,21 @@ const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "
 /** Broadcast a non-range function element-wise (scalars repeat, ragged args zip to
  *  the LONGEST and pad with `null`): per cell an error propagates first, else a
  *  missing propagates, except for the NULL_INSPECTING predicates. */
-function broadcastCall(name: string, argv: unknown[]): unknown {
+function broadcastCall(name: string, argv: unknown[], blankSlots: readonly boolean[] = []): unknown {
   // Overflow to ±Inf → #OVERFLOW!, NaN → #DOMAIN!; an ∞ from an ∞ INPUT passes.
   const call = (...args: unknown[]): unknown => {
     const r = dispatch(name, ...args);
     return typeof r === "number" ? guardFinite(r, ...args) : r;
   };
-  if (!argv.some(isArr)) return call(...argv);
+  const inspectsNull = NULL_INSPECTING.has(name);
+  // A scalar call keeps the per-cell contract: a blank VALUE is a blank answer
+  // ([[D36]] nullSkippedNotZero), unless the function inspects blanks. An empty argument
+  // slot is not a value: the function reads it ([[C80]] blankArgIsExcelBlank).
+  if (!argv.some(isArr)) {
+    return !inspectsNull && argv.some((v, i) => isMissing(v) && !blankSlots[i]) ? null : call(...argv);
+  }
   const len = argv.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
   if (len === 0) return [];
-  const inspectsNull = NULL_INSPECTING.has(name);
   return mapCells(argv, (...ops: unknown[]) => {
     const err = ops.find(isSolError);
     if (err) return err;
@@ -1025,7 +1036,7 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
           ? guardFinite(r, ...prep.args.flatMap((a) => (isArr(a) ? a : [a])))
           : r;
       }
-      return broadcastCall(name, argv);
+      return broadcastCall(name, argv, n.args.map((a) => a.t === "blank"));
     }
   }
 }

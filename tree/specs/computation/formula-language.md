@@ -33,7 +33,7 @@ Every module the formula path imports is rete-free ([[D19]] implReteFree). `form
 
 | Token | Form | Notes |
 |---|---|---|
-| number | a digit, or `.` followed by a digit; then any run of digits and dots; then optionally `e` or `E`, an optional sign, and digits | The run is greedy and unvalidated: `1.2.3` and `2e` are single number tokens whose value is `Number(text)`, which is NaN. No thousands separators, hex or leading sign (a sign is the unary operator). |
+| number | a digit, or `.` followed by a digit; then any run of digits and dots; then optionally `e` or `E`, an optional sign, and digits | The run must be one well-formed number (digits with at most one decimal point, and digits after any exponent), or the formula is a syntax error: `1.2.3` and `2e` do not parse. No thousands separators, hex or leading sign (a sign is the unary operator). |
 | string | `"` up to the next `"` | No escapes. A doubled quote is not an embedded quote: `"a""b"` is two adjacent strings, which is a syntax error. An unterminated string is a syntax error. Single quotes are not string delimiters. |
 | name | starts with `A`-`Z`, `a`-`z`, `_` or `λ`; continues with those or digits; a `.` is consumed only when an identifier character follows it | So `NORM.S.DIST` and `STDEV.S` are one name, and a trailing dot is not part of the name. Only ASCII letters and `λ` are letters; `é` is an unknown character. `λ` exists so a wired LAMBDA socket's name (`λ1`) can be typed. |
 | operator | `<>`, `<=`, `>=` (two characters, matched first), then any of `+ - * / ^ % & = < > @` | |
@@ -213,7 +213,7 @@ So `AND(x)` over `[TRUE, null, TRUE]` is TRUE: a reduction skips nulls, while th
 
 ### Broadcast
 
-Every other function is element-wise. With no list or matrix argument it is called once with the scalars as they are; a scalar `null` reaches the implementation, which decides (`ABS(null)` is 0, `ROUND(null, 1)` is `#VALUE!`). With at least one list argument, `mapCells` aligns the arguments (see *Broadcasting*) and calls the function per cell with this per-cell contract:
+Every other function is element-wise. With no list or matrix argument it is called once with the scalars, under the same null rule as a cell: a blank value makes the answer blank unless the function is in `NULL_INSPECTING`. An empty argument slot is not a value, so the function still reads it (`ROUND(2.5, )` is 3). With at least one list argument, `mapCells` aligns the arguments (see *Broadcasting*) and calls the function per cell with this per-cell contract:
 
 1. a `SolError` among the cell's operands is the cell's answer;
 2. otherwise a `null` among them makes the cell `null`, unless the function is in `NULL_INSPECTING` (`ISBLANK`, `ISNUMBER`, `ISTEXT`, `ISNONTEXT`, `ISLOGICAL`, `ISBOOLEAN`, `ISREF`, `N`, `T`, `TYPE`, `IF`, `CHOOSE`), which sees the null;
@@ -240,7 +240,7 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 
 | Operator | Result |
 |---|---|
-| `+` `-` `*` `^` | JavaScript arithmetic on the operands, then `guardFinite`. Strings are not validated: `"2"+3` concatenates to `"23"`, `"3"*2` coerces to 6, and `"a"*2` is NaN, so `#DOMAIN!`. |
+| `+` `-` `*` `^` | Arithmetic on the operands, then `guardFinite`. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[D11]] noAutoCross). |
 | `/` | `#DIV/0!` when the divisor is 0 and the dividend is a number; otherwise divide, then `guardFinite`. |
 | `&` | Both sides as text: numbers through `numberToText`, logicals as `TRUE` and `FALSE`, strings as they are. `null & "a"` is `null`. |
 | `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE. |
