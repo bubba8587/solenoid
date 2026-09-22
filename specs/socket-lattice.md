@@ -1,6 +1,6 @@
 <!-- [[C10]] socketLattice -->
 
-# Spec: socketLattice
+# Spec: Socket lattice
 
 Serves [[C10]] socketLattice: type separation and dimensional flow, derived from the family × rank product. A builder implements this file without reading the tree. `docs/socket-reference.md` is the per-variant reference for readers.
 

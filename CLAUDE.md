@@ -67,12 +67,13 @@ invented vocabulary + the author's names for the on-screen chrome).
   Three FLOOR specs carry a `covers:` glob and govern whole classes of files: every component is built
   to `specs/components.md`, every node class and op module to `specs/node-classes.md`, every store to
   `specs/stores.md`; a file cites only what is specific to it.
-  Read the spec IN FULL before touching its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
+  Read the spec IN FULL before touching its subsystem: **Compute pass**, **Formula language**, **Computed columns**, **Frame verbs**, **Save format**, **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
   `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
   collapse, Standoffs, Tidy, Conduit faces / resizable-content nodes, Input-cable pruning, Add
   menu, Socket lattice, Type propagation, Unit flow, Error values, Alerts, Addressable model,
-  Live connections, Load performance, Per-doc autosave, Inline literal maps, Composite drill-in.
+  Live connections, Load performance, Per-doc autosave, Inline literal maps, Composite drill-in,
+  HTML-in-Canvas.
 - **`docs/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
 - Reference: `docs/socket-reference.md` (every socket variant), `docs/format-model.md` (FC
   controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),

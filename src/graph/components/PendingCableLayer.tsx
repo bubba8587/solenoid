@@ -3,7 +3,7 @@
 // a cable the One↔Many retype dropped, drawn dashed from the source `out` socket to the
 // input it will reattach to, until the output type fits that socket again. No rete
 // connection exists behind it, so it cannot be an RF edge; the endpoints come from RF's
-// measured handle bounds. Spec: docs/subsystem-invariants.md § Live connections.
+// measured handle bounds. Spec: specs/react-flow-surface-contract.md § Ghost cables.
 import { useSyncExternalStore } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { cablePendingStore, type PendingReconnect } from "../cableState";

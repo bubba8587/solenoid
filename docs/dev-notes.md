@@ -6,6 +6,26 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-22c: DTE and specs, merged and made rebuildable; author present)
+
+- **What stands:** the tree has one node per decision. Merged into survivors: D8→D7, D44→D45, E3→D15,
+  C56→C26, D2→C1, C12→C11, and the seven HTML-in-Canvas tuning nodes D55–D61→C42 (their knobs now live in
+  `../specs/html-in-canvas.md`). C52's audit half became C108 auditDefaultsToFix. Every unratified node below
+  ring A was rewritten for plain reading; the Why no longer restates the Decision.
+- **The rebuild test:** five new specs cover the computational core, written from the code: `compute-pass`,
+  `formula-language`, `computed-columns`, `frame-verbs`, `save-format`. Every other spec was rewritten, and
+  the thin ones (conduit faces, input-cable pruning, live connections, stores) now state behavior.
+  `subsystem-invariants.md` is one table; the docs that held pieces of these specs point at them.
+- **Nodes corrected against code:** C60 (Running has no mode toggle), C63 (Record's views are ops), C62,
+  C65 (the standoff depth isn't set anywhere; labeled), C95, C1, C45 (ordering is case-sensitive), C48,
+  C51, C61, C72, D10, D20, D22, B16.
+- **Open:** the backlog section "Found writing the rebuild specs" lists the code that breaks its own nodes:
+  desktop drops units after native verbs, joins ignore key units, D30's second pass copies, composites drop
+  unknown internal types, quick-wire dims every row, and about fifteen smaller ones. Node candidates the
+  spec writers flagged (sections of `../specs/literal-input-editors.md`, the drawn-cable rulings) are unmoved. Still
+  without a spec: composites, charts and figures, Reports and Knap, the Table popup, the node families
+  (`node-coverage.md` stands in); `format-model.md` is a spec living in docs/.
+
 ### SESSION DIGEST (2026-09-22b: the connective-core copy pass; author present, reviewing samples)
 
 - **What stands:** the shipped copy is free of em dashes and `uiCopy.test.ts` enforces it over every genre,

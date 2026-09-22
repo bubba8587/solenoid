@@ -4,7 +4,7 @@ import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
 
 // Round-trip losslessness for the text projection (Bet 2 — the addressable model,
-// docs/subsystem-invariants.md "Addressable model"). Mirrors seeds.test.ts's
+// specs/save-format.md § The text form). Mirrors seeds.test.ts's
 // load-every-seed structure (import.meta.glob, lines 24+): for every seed, write
 // text, re-read into a graph, re-write, and assert the SECOND write is
 // byte-identical to the first — the idempotence guarantee the design session

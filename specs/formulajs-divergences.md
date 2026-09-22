@@ -1,6 +1,6 @@
 <!-- [[D28]] tripwireVendorDrift -->
 
-# Spec: Formula.js divergences — the evidence behind each overridden name
+# Spec: Formula.js divergences
 
 Serves [[D28]] tripwireVendorDrift. Routed from `excelFunctions.ts` (docs/README.md). Read before
 deleting an override, widening the Formula.js fallthrough, or "simplifying" a
