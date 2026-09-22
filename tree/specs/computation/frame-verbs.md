@@ -223,7 +223,7 @@ Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColum
 | `groupBy` | GROUPBY | lazy | `#REF!`, `#NAME?` |
 | `unpivot` | Unpivot | row scan | `#REF!`, `#TYPE!` |
 | `pivot` | PIVOTBY, GROUPBY with totals | oracle only, on both platforms | `#REF!`, `#VALUE!` |
-| `window` | Window | lazy | `#REF!`, `#VALUE!` (engine, unknown function) |
+| `window` | Window | lazy | `#REF!`, `#VALUE!` (unknown function) |
 | `fillBlanks` | Fill Down | lazy | `#REF!` |
 | `replaceValues` | Replace Values | lazy | `#REF!` |
 | `join` | Join | command | `#REF!`, `#TYPE!`, `#VALUE!` |
@@ -339,7 +339,7 @@ The PIVOTBY card forwards its input unchanged when it has no value fields, and d
 
 `{ kind: "window", partitionBy, orderBy?, orderDir?, fn, column?, as, n? }`. Adds one column computed per partition and writes it back in the original row order; every other column is unchanged. Partitions are distinct `partitionBy` tuples by `encodeCell` (empty means the whole frame). Within a partition, rows are ordered by `orderBy` (blank and error keys last, stable, `desc` reversing present keys) or kept in input order. `N = max(1, round(n ?? 1))`. An unknown partition, order or value column is `#REF!`. An existing column named `as` (or `fn` when `as` is blank) is removed and the new one appended last.
 
-Values: the arithmetic functions read a numeric view of `column` in which only finite numbers are present (a logical, `±Infinity` or text cell counts as blank); `lag`, `lead`, `first` and `last` read the raw cells. An error anywhere in the partition's value column makes every row's result that error for the cumulative, difference, rolling, group, share, first and last functions.
+Values: the arithmetic functions read a numeric view of `column`: a number is present (an infinity included), a logical is 1 or 0, and NaN or text counts as blank; `lag`, `lead`, `first` and `last` read the raw cells. An error anywhere in the partition's value column makes every row's result that error for the cumulative, difference, rolling, group, share, first and last functions.
 
 | Function | Result per row (p is the 1-based position in the ordered partition, m its size) |
 |---|---|
@@ -351,14 +351,14 @@ Values: the arithmetic functions read a numeric view of `column` in which only f
 | `cumsum`, `cumavg`, `cummin`, `cummax` | Over the present values up to this row; blank when this row's value is blank |
 | `lag`, `lead` | The value N rows before or after, raw (a blank included); blank past the edge |
 | `diff` | This value minus the previous row's; blank when either is blank |
-| `pct_change` | `(cur − prev) / prev`; blank when either is blank; `#DIV/0!` when prev is 0 |
+| `pct_change` | `(cur − prev) / prev`; blank when either is blank (checked first); `#DIV/0!` when prev is 0 |
 | `rolling_sum`, `rolling_avg`, `rolling_min`, `rolling_max` | Over the present values among the last N rows; blank until p ≥ N and when this row's value is blank |
 | `group_sum`, `group_avg`, `group_min`, `group_max` | The partition aggregate on every row; blank when the partition has no present value |
 | `group_count` | Count of present values (0 when none) |
-| `share` | This value over the partition's sum; blank when this value is blank; `#DIV/0!` when the sum is 0 |
+| `share` | This value over the partition's sum; blank when this value is blank (checked first, so an all-blank partition is all blank); `#DIV/0!` when the sum is 0 |
 | `first`, `last` | The partition's first or last value in order, on every row |
 
-Output type: `lag`, `lead`, `first` and `last` take the value column's type; everything else is number. The unit is kept for the cumulative, lag, lead, diff, rolling, group sum/avg/min/max, first and last functions. The engine evaluates each function with Polars `.over()` after sorting by the order key with a row-index tiebreak, then sorts back by the index; its two `#DIV/0!` cells travel as a reserved NaN payload. An unknown function name is `#VALUE!` on the engine.
+Output type: `lag`, `lead`, `first` and `last` take the value column's type; everything else is number. The unit is kept for the cumulative, lag, lead, diff, rolling, group sum/avg/min/max, first and last functions. The engine evaluates each function with Polars `.over()` after sorting by the order key with a row-index tiebreak, then sorts back by the index; its two `#DIV/0!` cells travel as a reserved NaN payload. An unknown function name is `#VALUE!` on both engines.
 
 The Window card always sends `orderDir: "asc"`, derives `as` from the function label and Value column when the name is blank, sends `n` only for the functions that read it, and passes through when a value-reading function has no Value column. A Cube input is flattened with `flatCubeToFrame`.
 
@@ -396,7 +396,7 @@ Output layout for the equality and as-of joins: every left column, then every ri
 
 As-of: both keys must be number or date (`#VALUE!`, `As-of join requires a numeric or date key`). Right rows with a finite key are sorted ascending (ties by row order). `backward` (the default) takes the last right key ≤ the left key; `forward` the first right key ≥ it; `nearest` whichever is closer, with a tie going backward. An exact key tie matches. When `asofTolerance` is set, a pick farther than it is no match. A left row with a blank or non-finite key has no match.
 
-The engine joins on masked temporary key columns (non-finite masked to null), adds a row index to each side and sorts the result into the oracle's order, builds `outer` as a left join followed by an anti-join tail, and runs as-of as a hand-written binary search that mirrors the oracle. An unknown `how` is `#VALUE!` on the engine.
+The engine joins on masked temporary key columns (non-finite masked to null), adds a row index to each side and sorts the result into the oracle's order, builds `outer` as a left join followed by an anti-join tail, and runs as-of as a hand-written binary search that mirrors the oracle. An unknown `how` is `#VALUE!` on both engines.
 
 The Join card: a blank Right key reuses the Left key; a blank Left key yields nothing unless the join is Cross; Tolerance is read only for as-of, and a wired blank there (or a wired blank key) makes the output blank.
 

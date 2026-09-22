@@ -40,7 +40,7 @@ describe("the lattice stays narrow; the nodes widen", () => {
   });
 
   it("Window over a flat cube runs; over a nested cube it is the loud #SHAPE!", async () => {
-    const w = new WindowNode({ agg: "rolling" } as never);
+    const w = new WindowNode({ agg: "rolling_avg" });
     w.stringLiterals.column = "Steps"; w.stringLiterals.name = "Avg"; w.literals.n = 2;
     const ok = await w.data({ frame: [flat] });
     const out = await collectPreview(ok.frame as never);
@@ -70,7 +70,7 @@ describe("the cube-adoptive input still widens a bare list / matrix (the old fra
     expect(isFrameValue(f) && f.columns.map((c) => c.values)).toEqual([["x"], [3]]);
   });
   it("Window over a wired list runs on the one-row frame", async () => {
-    const w = new WindowNode({ agg: "rolling" } as never);
+    const w = new WindowNode({ agg: "rolling_avg" });
     w.stringLiterals.column = "Col1"; w.stringLiterals.name = "Avg"; w.literals.n = 1;
     const out = await drive(w, { frame: [[1, 2, 3]] });
     const f = await collectPreview(out.frame as never);

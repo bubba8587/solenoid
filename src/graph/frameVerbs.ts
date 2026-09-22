@@ -795,6 +795,10 @@ export function crossJoinFrames(left: FrameValue, right: FrameValue): FrameValue
 }
 
 export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
+  // An unknown mode is an error on both engines, never a silent inner join.
+  if (!(["inner", "left", "right", "outer", "cross", "semi", "anti", "asof"] as string[]).includes(opts.how)) {
+    throw solError("#VALUE!", `unknown join how "${opts.how}"`);
+  }
   if (opts.how === "cross") return crossJoinFrames(left, right);
   const lk = requireColumn(left, opts.leftKey);
   const rk = requireColumn(right, opts.rightKey);
@@ -2292,7 +2296,17 @@ export const WINDOW_FN_NEEDS_N: ReadonlySet<WindowFn> = new Set(["lag", "lead", 
  *  frame keeps its shape). Blanks: a blank value cell contributes nothing to sums/means
  *  and answers blank for its own row; ranks skip blank order keys (blank rank). Errors in
  *  the value column poison their partition's aggregate cells (#ERROR propagates). */
+const WINDOW_FNS: ReadonlySet<string> = new Set<WindowFn>([
+  "row_number", "rank", "dense_rank", "percent_rank", "ntile",
+  "cumsum", "cumavg", "cummin", "cummax", "cumcount",
+  "lag", "lead", "diff", "pct_change",
+  "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
+  "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
+]);
+
 export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
+  // An unknown function is an error on both engines, never a silent blank column.
+  if (!WINDOW_FNS.has(spec.fn)) throw solError("#VALUE!", `unknown window function "${spec.fn}"`);
   const n = frameRowCount(f);
   const keyCols = spec.partitionBy.map((k) => requireColumn(f, k));
   const orderCol = spec.orderBy ? requireColumn(f, spec.orderBy) : null;
@@ -2326,7 +2340,9 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
     }
     const vals = valCol ? ordered.map((i) => cellAt(valCol, i)) : [];
     const err = vals.find(isSolError);
-    const nums = vals.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
+    // Numbers the way the engine reads them: a logical is 1/0 (the one bridge, [[D11]]
+    // noAutoCross) and an infinity is a real value; only NaN and non-numbers are blank.
+    const nums = vals.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : typeof v === "number" && !Number.isNaN(v) ? v : null));
     const present = nums.filter((v): v is number => v !== null);
     const orderVals = orderCol ? ordered.map((i) => cellAt(orderCol, i)) : [];
     const m = ordered.length;

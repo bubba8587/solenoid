@@ -1266,7 +1266,7 @@
    "expectError": "#TYPE!"
   },
   {
-   "name": "non-finite keys never match — not even inf to inf",
+   "name": "non-finite keys never match \u2014 not even inf to inf",
    "frames": {
     "left": {
      "columns": [
@@ -1831,6 +1831,40 @@
      }
     ]
    }
+  },
+  {
+   "name": "an unknown join mode is #VALUE! on both engines",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "k",
+    "rightKey": "k",
+    "how": "sideways"
+   },
+   "expectError": "#VALUE!"
   }
  ]
 }

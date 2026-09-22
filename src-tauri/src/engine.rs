@@ -1066,7 +1066,10 @@ fn lazy_window(
             let prev = over(vnum().shift(lit(1)));
             let cur = vnum();
             // The oracle's #DIV/0! cell: "Percent change from zero is undefined".
-            when(prev.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS))).otherwise((cur - prev.clone()) / prev)
+            // A blank row stays blank before the zero check, as in the oracle.
+            when(cur.clone().is_null()).then(lit(NULL))
+                .when(prev.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS)))
+                .otherwise((cur - prev.clone()) / prev)
         }
         "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max" => {
             let opts = RollingOptionsFixedWindow { window_size: nn as usize, min_periods: 1, ..Default::default() };
@@ -1087,7 +1090,10 @@ fn lazy_window(
         "share" => {
             let total = over(vnum().sum());
             // The oracle's #DIV/0! cell: "The group total is 0".
-            when(total.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS))).otherwise(vnum() / total)
+            // A blank row (and so every row of an all-blank group) stays blank before the zero check.
+            when(vnum().is_null()).then(lit(NULL))
+                .when(total.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS)))
+                .otherwise(vnum() / total)
         }
         "first" => over(vraw().first()),
         "last" => over(vraw().last()),

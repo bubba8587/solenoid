@@ -38,7 +38,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 Each was found reading the code to write the compute-pass, formula-language and frame-verbs specs (`../tree/specs/`). The spec describes today's behavior; these are the places it breaks a node or looks unintended.
 
 - [ ] **Join ignores units on keys.** [[C25]] says unit-tagged keys compare by dimension and base-SI magnitude; `joinFrames` ignores units (only Nest Join's `relateFramesToCube` does it).
-- [ ] **Window verb: oracle and engine disagree** on logical and ±Infinity values, on `share` over a blank group and `pct_change` from 0 (`#DIV/0!` vs blank), and on unknown `how` / function names (engine errors, oracle runs). No corpus case covers these ([[D29]] oneVerbCorpus).
+- [ ] **NaN in a Window value column**: the oracle reads it as blank, the engine computes with it (NaN sums). No corpus case yet.
 - [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row (reachable only through a wildcard); `stripUnitCells` doesn't reach inside a Cube.
 - [ ] **Expand push's final overlap pass separates overlaps that already existed** (it runs with no list of pre-existing overlaps to leave alone).
 - [ ] **`resetPointerCensus` is only called in tests.**
