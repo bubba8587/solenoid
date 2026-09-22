@@ -1,10 +1,15 @@
 // [[C107]] obsidianPlugin
 import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
+import { DEFAULT_ACCENT } from "./lookTokens";
 
 /** The app's component CSS, `:root` rewritten to `:host`; filled in by the build. */
 declare const __SOLENOID_CSS__: string;
 
-const ACCENT_SLOT = "gold";
+/** The accent slot the chips and popups wear; the plugin's setting (main.tsx) sets it. */
+let accentSlot: string = DEFAULT_ACCENT;
+export function setAccentSlot(slot: string): void {
+  accentSlot = slot;
+}
 
 const hosts = new Set<HTMLElement>();
 // One set of sheets PER DOCUMENT: Obsidian's settings and its popout notes are windows of their
@@ -19,7 +24,7 @@ export let popupDocument: Document = document;
 export let popupWindow: typeof window = window;
 
 function tokenBlock(selector: string, mode: ThemeMode): string {
-  const lines = Object.entries(themeVars(ACCENT_SLOT, mode))
+  const lines = Object.entries(themeVars(accentSlot, mode))
     .filter((e): e is [string, string] => e[1] !== null)
     .map(([name, value]) => `${name}:${value};`);
   return `${selector}{${lines.join("")}}`;
@@ -73,7 +78,7 @@ export const themeVersion = {
 
 /** A token's value (`--sock-strlist`) under the current palette and Obsidian mode. */
 export function tokenHex(name: string): string | undefined {
-  return themeVars(ACCENT_SLOT, obsidianMode())[name] ?? undefined;
+  return themeVars(accentSlot, obsidianMode())[name] ?? undefined;
 }
 
 function obsidianMode(): ThemeMode {

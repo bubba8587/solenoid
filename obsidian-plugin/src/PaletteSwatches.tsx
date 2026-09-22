@@ -2,9 +2,12 @@
 import { useSyncExternalStore } from "react";
 import { SwatchGrid } from "../../src/graph/components/SwatchGrid";
 import { paletteStore } from "../../src/graph/palette";
+import { themeVersion } from "./shadow";
 
-/** The app's Settings palette legend: the read-only swatch grid, following the active palette. */
-export function PaletteSwatches() {
+/** The app's accent picker (the toolbar's swatch grid), following the active palette and the
+ *  plugin's accent; the gray swatch cycles the neutrals as it does there. */
+export function PaletteSwatches({ accent, onPick }: { accent: () => string; onPick: (slot: string) => void }) {
   useSyncExternalStore(paletteStore.subscribe, paletteStore.version);
-  return <SwatchGrid readOnly />;
+  useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
+  return <SwatchGrid value={accent()} onPick={onPick} />;
 }

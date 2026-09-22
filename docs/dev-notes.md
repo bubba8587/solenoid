@@ -28,8 +28,13 @@ specific item.
   unchecked (spec § Out of scope). The author looked at the captures and caught the icon inset I had passed.
   Footer buttons on a phone go SMALLER under the coarse pointer (11px text at 412, 10px under 380), measured
   until the row/column buttons and Cancel/Save share one row; the author saw both tiers and ruled them fine.
-- Blueprint under the look: its chrome ramp is adaptive and the plugin's accent is fixed gold, so its workbench
-  comes out warm, as its chips already did (spec divergence table). A plugin accent setting would reopen it.
+- **An accent picker too** (author's ask): the settings swatch grid is now the toolbar's picker, not a legend, and
+  the accent (a slot id, the gray swatch cycling the neutrals) persists in `data.json`. The chips' sheet takes
+  it, and the look wears it as a third body class: `lookTokens.ts` splits each palette's tokens into the
+  palette's block and one block per accent (its color, ink, HSL, and for Orchard and Blueprint the chrome ramp,
+  which follows the accent's hue as in the app). So Blueprint under a blue accent is the authored cyanotype;
+  under gold it is the sepia print the app shows at its default accent, which is what I had misread as a plugin
+  divergence.
 
 ### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
 
