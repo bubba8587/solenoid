@@ -2,18 +2,122 @@
 
 # Spec: Unit flow
 
-Serves [[C25]] firstClassUnits and its policies [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Unit flow; a WHY that is not in a node belongs in one.
+Serves [[C25]] firstClassUnits and its policies [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Two layers since FC A4 (2026-07-13). **The UNIT is a property of the VALUE.** A value carries its dimension + display unit AS DATA — a base-SI `UnitCell` (`unitValue.ts`) with an optional `display` id. It is AUTHORED at the value's origin by an FC (`applyFcUnit` in `FormatControllerNode.data()`), Convert (`data()`), or the column-unit surfaces (a `Name (unit)` header spec / the popup's per-column unit dropdown → `ColumnUnit`, riding onto computed columns — `unitColumn.ts`); Table Input is the one other author (its own unit picker — the `author` policy in `matrixUnitPolicy.test.ts`); the Number node stays a plain literal source. The tag rides the value through anything that passes it along; a TRANSFORM re-derives the dimension through the algebra (`tagDim`), which since noMixCurrencies CARRIES an operand's display when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`) — a result whose dimension fits neither operand reverts to its derived-symbol form. **There is no graph unit-walk** (`makeUnitResolver` was deleted 2026-07-13). **The number FORMAT** (style / precision / negatives / K-M-B) is a separate DISPLAY annotation an FC locks onto its own segment and sends down the stream; `makeAnnotationResolver` (pure, duck-typed, memoized + cycle-guarded) resolves THAT forward/back. The one-line "don't break this":
+There are two layers. **The unit is a property of the value**: it travels as data on the value itself. **The number format** (style, precision, negatives, K/M/B) is a separate display annotation that an FC locks onto its own segment and sends down the stream. Nothing walks the graph to propagate units; `makeAnnotationResolver` (pure, duck-typed, memoized, cycle-guarded) resolves the format, forward and back.
 
-- **`applyFcUnit(value, fcUnitId, customUnit?)`** (`unitBridge.ts` — the third arg is the custom-name path; a 2-arg call silently drops custom units) is the value-side author: a dimensionless number + a real unit → base-SI `UnitCell` (interpret the magnitude AS that unit — `5` + km ⇒ 5000 m, display km); an already-dimensioned cell + a COMMENSURABLE unit → re-display (base kept, `display` swapped); dimensioned + INcommensurable → `#UNIT!` (a true dimension clash is honest-wrong, not silently re-asserted); a PURE RATIO → `#UNIT!` (its units canceled — it can't be re-labeled); a non-blank **custom** name AUTHORS an opaque `customDim` tag (only `none` / a blank custom passes); a numeric **matrix** is AUTHORED via `withMatrixUnit` on a freshly `slice()`d outer array (never tag the shared cached array); text/frame → pass through (any existing tag rides on). Convert authors likewise (base-SI + toUnit display; a clash between an already-dimensioned input and the target is `#UNIT!`). **Every Convert unit id must be registered with the display bridge** (`unitBridge.ts`), so a `UnitCell.display` authored by Convert (yd, psi, km_h, …) resolves at render time even when the id has no FC-registry twin — unregistered, the downstream value box renders the base-SI derived symbol and Convert loses primacy over the value's unit. `guardCell` (`shared.ts`) preserves `display` through the broadcaster.
-- **The FORMAT annotation resolver — per-node rule** (`makeAnnotationResolver.compute`): **Convert** → drops the inherited format (it authors a new unit AND rescales the magnitude, so the old precision no longer describes the number — the one transform that drops); **per-output producer** (`hasAnnotationFor` — `annotationFor(outKey)`) → each output carries its OWN produced lock; when it returns none for an output it FALLS THROUGH to the transform carry below (so a Triangle side / Element Z stays bare via no `formatCarry`, but MathFn's abs/round still carry — the fall-through is the abs(−5%) fix); **FC / node-level producer** (`hasAnnotation`) → locks its own format; **passthrough** (`isPassthroughNode`, driven by the ONE `passthrough()` declaration — Display and friends) → carries its input's (`passInputKeys` = the value branches; the DATA-AWARE `selectedPassInput` = the branch it actually computed, so `IF(true,km,mi)` follows `then`; indeterminate pick → COMBINE, conflict → none); **Conduit lanes** → `out_i` inherits `in_i` (duck-typed on `cachedLane`, deliberately without a `passthrough()` decl); **anything else — a TRANSFORM** → the FORMAT alone and ONLY where the node DECLARES the op preserves the value's meaning (`carriedFormat` reads `formatCarry()`, whose per-op map lives in the node's op table; an UNDECLARED transform carries NOTHING — mul/div/pow, count/variance/product, a rate/z-score/finance output show plain): among the declared inputs the first wired, annotated, same-element-family one wins, `unit: "none"` on the copy, and two date-styled operands are a SPAN (date − date, NETWORKDAYS) that carries nothing ([[D41]] formatFlowsDownstream, formatCarryPerOp). (The old `passesUnitThrough`/`unitPassInputs`/`selectedUnitInput` duck markers are deleted — the passthrough declaration is the one source.)
-- **The FORMAT reaches a box in BOTH directions, and only the UPSTREAM one is bounded by transforms:** DOWNSTREAM — a box AFTER the FC inherits via `inAnnotation` walking back through passthroughs AND through the DECLARED meaning-preserving transforms (formatCarryPerOp), unbounded until a nearer FC overrides (formatFlowsDownstream); UPSTREAM — a box BEFORE a trailing FC (even multi-hop) inherits via `downstreamAnnotation` walking FORWARD through pure passthroughs only, stopping at the first transform, since a format chosen after a transform says nothing about the value before it. Read-side derivation, so a box's OWN direct FC (`getForNode`) always wins → two FCs in one segment don't clobber.
-- **Who writes vs. who derives:** an FC `refreshAnnotation` WRITES its format annotation onto its immediate input-source box (single hop) into `formatAnnotationStore` — keyed `nodeId::socketKey`, `findDockTarget` snaps to the NEAREST socket. The unit LOCK states are live, derived from the VALUE in `data()` (plus `refreshAnnotation`'s do-I-feed-a-Convert walk): `lockedByConvert` (← ← the Convert ahead dictates its fromUnit) and `forwarding` (→ → the incoming value already carries a unit — the dropdown MIRRORS it and LOCKS; author ruling 2026-07-31: an inherited unit is the value's, set elsewhere in the chain, and the FC never re-authors over it — Convert is the re-display tool). Only an FC on an unit-less value authors freely (← →). The READ side: a hero row's `ValueDisplay` names its `socketKey` and reads only that socket's annotation; `DisplayNode` reads `getForNode ?? inAnnotation("in") ?? downstreamAnnotation("out")`. An UNannotated `UnitCell` renders in its own `display` unit (`formatCellWithDisplay` in `valueDisplayFormat.ts`); an annotated one unwraps to the annotation's unit (kept in sync with `display` by the FC).
-- **The one compute-time unit read (`trigMode.ts`):** a `Math` node's trig op in **Auto** angle mode computes in degrees when the value feeding it carries a `deg` FORMAT annotation (a bare-degree producer — Triangle Solver, inverse-trig-in-degrees), read via `makeAnnotationResolver.inAnnotation`. A genuinely dimensioned angle is already stored base-RADIANS, so `MathFnNode`'s unit-aware path computes on its magnitude directly and never needs this. `resolveTrigModes(editor)` runs from `processGraph` before the engine pull, stamping a transient `_resolvedAngleMode`. Machine-checked: `trigMode.test.ts`.
-- **Currency has no FX — the display CODE is the unit identity (`unitValue.ts` `currencyMismatch`).** Every currency collapses onto the single `currency` base axis at scale 1 (unitBridge's DIRECT — exchange rates are out of scope), so `$5` and `5€` store the SAME base magnitude. A plain magnitude compare/add/aggregate would therefore call them equal, which is wrong. So two currency cells with DIFFERENT, explicit `display` codes are **incommensurable**: `compareUnits` (drives `ComparisonNode`, which is `unitAware`) returns `#UNIT!` → equality answers FALSE (`=`)/TRUE (`≠`), ordering (`<`/`>`) propagates the `#UNIT!`; `arithmeticCell` (the guard sits up front, so EVERY op errs — ×/÷ would fabricate an exchange rate) and `forAggregateUnits` return `#UNIT!`. A currency cell with NO code (a computed `currency` result) is lenient (adopts). Every OTHER dimension is fine on plain magnitudes — km vs m carry differing SCALES, so base magnitudes already encode the relationship. `ComparisonNode` being `unitAware` also fixes `5 km = 5000 m` (base-SI compare, not the display magnitude the unit-blind boundary used to hand it). A dimensionless operand ADOPTS the other's unit in a compare (`$5 > 1000` compares 5 vs 1000), matching the additive rule. Machine-checked: `unitValue.test.ts` (currency block), `logic.test.ts` ("ComparisonNode is unit-aware").
-- **LAMBDA hosts carry units over a 1-D list:** REDUCE / BYROW / BYCOL strip tagged cells to base-SI magnitudes for the numeric fold, run `dimEval` (`unitDimExpr.ts`) with the fold/aggregate vars bound to the element dim to get the result dim, and re-tag (preserving `display` when the dim is unchanged); mixed units / a formula clash → `#UNIT!`; a dimensionless-yielding formula (COUNT) strips to a plain number. MAP/MAKEARRAY/SCAN stay matrix-agnostic (`tableLambda.ts`).
-- **ONE concept, a carrier per RANK — and the matrix-op guard (unitGranularity).** "This value has unit X" is carried differently at each rank because units attach at the granularity of homogeneity: **scalar** = a value-level `UnitCell` (base-SI); **list** = per-cell `UnitCell`s (base-SI, mixed allowed); **frame** = a `ColumnUnit` on `FrameColumn.unit` over AS-TYPED cells; **matrix** = ONE `ColumnUnit` for the whole grid as a non-enumerable Symbol tag over AS-TYPED cells (`unitValue.ts`); **cube** = PER-CELL like a list (heterogeneous per cell) — a dimensioned cell is a base-SI `UnitCell` (`CubeCell` includes it); `cubeCellsFromColumn` tags a frame column into the cube, `inferColumn` recovers a uniform column unit on the way back (`cellToNumber`/`cellKeyId` read the display magnitude). NOTE the storage split: scalar/list `UnitCell.value` is BASE-SI, but frame/matrix CELLS are AS-TYPED — so crossing between them CONVERTS (`tagFrameCellUnit` as-typed→base `UnitCell`; `displayMagnitudeOf`/`matrixCellsFromList` base→as-typed). The matrix Symbol is LOSSY (any array rebuild drops it), so every matrix op declares a POLICY — **carry** (structural reshape) / **carry-if-uniform** (VSTACK/HSTACK, `sharedMatrixUnit`) / **convert** (rank change crosses carriers: TOCOL/TOROW→list `taggedListFromMatrix`, WRAPROWS/WRAPCOLS←list `matrixCellsFromList`) / **strip** (MMULT/MDETERM/MINVERSE) / **na** / **author** (Table Input). A new algebra op = add `unitAware = true`; a new numeric-matrix INPUT is re-carried across `toMatrix` in `coerceValue`'s `table` case (the trueany-adopts-`table` fix). **`matrixUnitPolicy.test.ts` is the anti-recurrence guard:** it tests each policy AND runs a completeness sweep that fails the build if a `matrix.ts` node takes a matrix without a declared policy — so "did you carry the unit?" is a red test, not a silent drop. A `MatrixValue` wrapper was rejected (unitGranularity): the fragility is localized to rebuild sites, so the discipline+guard is the right fix, not churning the universal `toMatrix`/`toScalar` coercers.
-- **A FRAME's per-column format flows on the VALUE, not through the annotation resolver.** `FrameColumn.format` rides downstream exactly like `FrameColumn.unit`: the coercion wrapper's OUTPUT step (`coerceInputs.ts` `wrapNodeData`, the one seam every node's `data()` result passes — the composite's internal editor included) stamps each emitted frame with that node's own `frameFormatStore` picks, memoized on the frame's identity so the backend's upload cache still hits. Verbs that spread columns carry it; a verb-BUILT column takes a source column's format only where it already takes the unit (nest, the Allocator's Allocation). `frameFormatStore` stays the one PERSISTED home (keyed by the node that picked) — `format` is derived per compute and never serialized. Readers take the local pick first, the carried one second (`FrameDisplay.annFor`, the popup's format row). Machine-checked: `frameColumnFormat.test.ts`.
-- **Machine-checked:** `unitFlowAnnotation.test.ts` (format directional rules + `applyFcUnit` value-mutating cases), `unitFlowSeed.test.ts` (one `it` per captioned behavior in the **Unit Flow** seed, A–J), `convert.test.ts` (Convert tags its output), `tableLambda.test.ts` (LAMBDA-host unit carry).
-- **What the annotation RENDERS is a separate model** (v1.1 A1, 2026-07-05): `docs/format-model.md` + `formatModel.ts` — the per-family control truth table (which FC controls exist per socket type; hidden-and-inert, never disabled-but-visible), the ONE precision×style rule, and the advanced tier (grouping / negative styles / K/M/B scale). `formatModel.test.ts` machine-checks the whole SocketDataType union against it. `resolveValueOrigin` (same file as the resolvers) is the popup "Go to source" upstream walk — same duck-typed per-node rule, different payload.
+## The unit on the value
+
+- **What it is.** A base-SI `UnitCell` (`unitValue.ts`) with an optional `display` id.
+- **Who sets it.** Only the value's origin:
+  - an FC, through `applyFcUnit` in `FormatControllerNode.data()`;
+  - Convert, in its `data()`;
+  - the column-unit surfaces, a `Name (unit)` header spec or the popup's per-column unit dropdown, stored as a `ColumnUnit` that computed columns carry too (`unitColumn.ts`);
+  - Table Input's own unit picker (the `author` policy in `matrixUnitPolicy.test.ts`).
+  The Number node is a plain literal source and sets nothing.
+- **How it travels.** The tag rides through anything that passes the value along. A transform works the dimension out again through the algebra (`tagDim`) and keeps an operand's `display` when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`). A result whose dimension fits neither operand falls back to its derived-symbol form.
+
+### `applyFcUnit(value, fcUnitId, customUnit?)`
+
+The value-side author, in `unitBridge.ts`. The third argument is the custom-name path; a two-argument call silently drops custom units.
+
+| Input | Result |
+|---|---|
+| a dimensionless number + a real unit | a base-SI `UnitCell` that reads the magnitude as that unit: `5` + km is 5000 m, displayed as km |
+| a dimensioned cell + a commensurable unit | re-display: the base stays, `display` changes |
+| a dimensioned cell + an incommensurable unit | `#UNIT!`. A real dimension clash is reported, never silently overwritten |
+| a pure ratio | `#UNIT!`. Its units canceled, so it can't be relabeled |
+| a non-blank **custom** name | an opaque `customDim` tag. Only `none` or a blank custom name passes through |
+| a numeric **matrix** | tagged through `withMatrixUnit` on a freshly `slice()`d outer array; never tag the shared cached array |
+| text or a Frame | passes through, and any existing tag rides on |
+
+Convert authors the same way: base-SI plus the target unit's display, and `#UNIT!` when an input that already has a dimension clashes with the target.
+
+**Every Convert unit id must be registered with the display bridge** (`unitBridge.ts`). Then a `UnitCell.display` that Convert set (yd, psi, km_h…) resolves at render time even with no FC-registry twin. Unregistered, the downstream value box shows the base-SI derived symbol and Convert loses control of the value's unit. `guardCell` (`shared.ts`) keeps `display` through the broadcaster.
+
+## The format annotation
+
+### Per-node rule (`makeAnnotationResolver.compute`)
+
+- **Convert** drops the inherited format. It sets a new unit and rescales the number, so the old precision no longer fits. It is the one transform that drops.
+- **Per-output producer** (`hasAnnotationFor`, `annotationFor(outKey)`): each output carries its own lock. When it returns none for an output, it falls through to the transform carry below. So a Triangle side or Element Z stays bare (no `formatCarry`), while MathFn's abs and round still carry, which is how abs(−5%) stays a percent.
+- **FC or node-level producer** (`hasAnnotation`) locks its own format.
+- **Passthrough** (`isPassthroughNode`, driven by the one `passthrough()` declaration; Display and similar) carries its input's format. `passInputKeys` names the value branches, and the data-aware `selectedPassInput` picks the branch it actually computed, so `IF(true, km, mi)` follows `then`. An undetermined pick combines, and a conflict gives none.
+- **Conduit lanes:** `out_i` inherits `in_i`, duck-typed on `cachedLane`, on purpose with no `passthrough()` declaration.
+- **Anything else is a transform** and carries the format only where the node declares the op keeps the value's meaning. `carriedFormat` reads `formatCarry()`, whose per-op map lives in the node's op table. An undeclared transform carries nothing, so multiply, divide, power, count, variance, product, rates, z-scores and finance outputs show plain. Among the declared inputs, the first wired, annotated input of the same element family wins, and the copy has `unit: "none"`. Two date-styled operands make a span (date − date, NETWORKDAYS) and carry nothing ([[D41]] formatFlowsDownstream).
+
+### Both directions, bounded only upstream
+
+- **Downstream:** a box after the FC inherits through `inAnnotation`, walking back through passthroughs and through declared meaning-preserving transforms, with no limit until a nearer FC overrides.
+- **Upstream:** a box before a trailing FC, even several hops back, inherits through `downstreamAnnotation`, walking forward through pure passthroughs only and stopping at the first transform. A format chosen after a transform says nothing about the value before it.
+- Both are derived on read, so a box's own direct FC (`getForNode`) always wins, and two FCs in one segment don't overwrite each other.
+
+### Who writes and who derives
+
+- An FC's `refreshAnnotation` writes its format annotation onto its immediate input-source box, one hop, into `formatAnnotationStore`, keyed `nodeId::socketKey`. `findDockTarget` snaps to the nearest socket.
+- The unit lock states are live, derived from the value in `data()` plus `refreshAnnotation`'s check for a Convert ahead:
+  - `lockedByConvert`: the Convert ahead dictates the FC's from-unit.
+  - `forwarding`: the incoming value already carries a unit, so the dropdown mirrors it and locks. An inherited unit belongs to the value and was set elsewhere in the chain; Convert is the tool for changing it.
+  - Only an FC on a value with no unit sets one freely.
+- **Reading:** a hero row's `ValueDisplay` names its `socketKey` and reads only that socket's annotation. `DisplayNode` reads `getForNode ?? inAnnotation("in") ?? downstreamAnnotation("out")`. A `UnitCell` with no annotation renders in its own `display` unit (`formatCellWithDisplay` in `valueDisplayFormat.ts`); an annotated one unwraps to the annotation's unit, which the FC keeps in sync with `display`.
+
+## The one compute-time unit read (`trigMode.ts`)
+
+A Math node's trig op in **Auto** angle mode computes in degrees when the value feeding it carries a `deg` format annotation, from a producer that emits bare degrees (Triangle Solver, inverse trig in degrees), read through `makeAnnotationResolver.inAnnotation`. An angle with a real dimension is already stored in base radians, so `MathFnNode`'s unit-aware path computes on its magnitude directly. `resolveTrigModes(editor)` runs from `processGraph` before the engine pull and stamps a transient `_resolvedAngleMode`. Machine-checked by `trigMode.test.ts`.
+
+## Currency: the display code is the identity
+
+There are no exchange rates (`unitValue.ts` `currencyMismatch`). Every currency sits on the single `currency` base axis at scale 1 (unitBridge's DIRECT), so `$5` and `5€` store the same base magnitude, and a plain magnitude compare, add or aggregate would call them equal. So two currency cells with different explicit `display` codes are incommensurable:
+
+- `compareUnits` (behind `ComparisonNode`, which is `unitAware`) returns `#UNIT!`. Equality then answers FALSE for `=` and TRUE for `≠`, and ordering (`<`, `>`) passes the `#UNIT!` on.
+- `arithmeticCell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `forAggregateUnits` returns `#UNIT!` too.
+- A currency cell with no code, such as a computed `currency` result, adopts the other side's code.
+
+Every other dimension works on plain magnitudes, since km and m already differ in scale. `ComparisonNode` being `unitAware` is also what makes `5 km = 5000 m` compare in base SI. A dimensionless operand adopts the other side's unit in a compare (`$5 > 1000` compares 5 with 1000), matching the additive rule. Machine-checked by `unitValue.test.ts` (the currency block) and `logic.test.ts` ("ComparisonNode is unit-aware").
+
+## LAMBDA hosts over a 1-D list
+
+REDUCE, BYROW and BYCOL strip tagged cells to base-SI magnitudes for the numeric fold, run `dimEval` (`unitDimExpr.ts`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. MAP, MAKEARRAY and SCAN ignore units on matrices (`tableLambda.ts`).
+
+## One idea, a carrier per rank
+
+A unit attaches where values are guaranteed to match ([[D43]] unitByGranularity):
+
+| Rank | Carrier | Cells |
+|---|---|---|
+| scalar | a value-level `UnitCell` | base SI |
+| list | a `UnitCell` per cell, mixed allowed | base SI |
+| frame | a `ColumnUnit` on `FrameColumn.unit` | as typed |
+| matrix | one `ColumnUnit` for the whole grid, as a non-enumerable Symbol tag (`unitValue.ts`) | as typed |
+| cube | per cell, like a list; a dimensioned cell is a base-SI `UnitCell` (`CubeCell` includes it) | base SI |
+
+`cubeCellsFromColumn` tags a Frame column into the Cube, and `inferColumn` recovers a uniform column unit on the way back (`cellToNumber` and `cellKeyId` read the display magnitude).
+
+**Watch the storage split.** Scalar and list `UnitCell.value` is base SI, but frame and matrix cells are as typed, so crossing between them converts: `tagFrameCellUnit` goes from as-typed to a base `UnitCell`, and `displayMagnitudeOf` and `matrixCellsFromList` go from base to as-typed.
+
+**The matrix tag is lossy**, since any array rebuild drops the Symbol. So every matrix op declares a policy:
+
+- **carry**: structural reshapes.
+- **carry-if-uniform**: VSTACK and HSTACK (`sharedMatrixUnit`).
+- **convert**: rank changes cross carriers. TOCOL and TOROW go to a list (`taggedListFromMatrix`); WRAPROWS and WRAPCOLS come from a list (`matrixCellsFromList`).
+- **strip**: MMULT, MDETERM, MINVERSE.
+- **na**, and **author** (Table Input).
+
+A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carried across `toMatrix` in `coerceValue`'s `table` case. `matrixUnitPolicy.test.ts` tests each policy and fails the build when a `matrix.ts` node takes a matrix without a declared policy. A `MatrixValue` wrapper was rejected ([[D43]]): the fragility is confined to rebuild sites, so a declared policy plus the guard beats churning the universal `toMatrix` and `toScalar` coercers.
+
+## A Frame's per-column format rides the value
+
+`FrameColumn.format` flows downstream like `FrameColumn.unit`, not through the annotation resolver. The coercion wrapper's output step (`coerceInputs.ts` `wrapNodeData`, the one seam every node's `data()` result passes, a composite's inner editor included) stamps each emitted Frame with that node's own `frameFormatStore` picks, memoized on the Frame's identity so the backend's upload cache still hits.
+
+- Verbs that spread columns carry it. A column a verb builds takes a source column's format only where it already takes the unit (nest, the Allocator's Allocation).
+- `frameFormatStore` is the one saved home, keyed by the node that picked. `format` is worked out on every compute and never saved.
+- Readers take the local pick first and the carried one second (`FrameDisplay.annFor`, the popup's format row).
+- Machine-checked by `frameColumnFormat.test.ts`.
+
+## Enforcement
+
+`unitFlowAnnotation.test.ts` (the format direction rules and `applyFcUnit`'s value-changing cases), `unitFlowSeed.test.ts` (one `it` per captioned behavior in the **Unit Flow** seed, A to J), `convert.test.ts` (Convert tags its output) and `tableLambda.test.ts` (units through LAMBDA hosts).
+
+## Related
+
+What an annotation renders is a separate model: `docs/format-model.md` and `formatModel.ts`. That covers the per-family control truth table (which FC controls exist for each socket type, hidden and inert rather than disabled and visible), the one precision × style rule, and the advanced tier (grouping, negative styles, K/M/B scale). `formatModel.test.ts` checks the whole `SocketDataType` union against it. `resolveValueOrigin`, in the same file as the resolvers, is the popup's "Go to source" upstream walk: the same per-node rule with a different payload.

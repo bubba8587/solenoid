@@ -233,7 +233,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Output", description: "Display, convert, and visualize values at the end of a chain.",
     children: [
       { type: "display",   label: "Display",  description: "Shows a value. Pass-through, so wiring continues after it.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
-      { type: "format-controller", label: "Format Controller", description: "Sets a docked socket's number format (decimal, fraction, %, currency…) and a unit label like `°C`, `m`, or `kg`. Units must match on connected cables.", create: () => new FormatControllerNode() },
+      { type: "format-controller", label: "Format Controller", description: "Sets how a docked socket's value reads (decimals, fractions, percent, currency, a date style) and its unit, like `°C`, `m` or `kg`. A value that already has a unit locks it; Convert changes it.", create: () => new FormatControllerNode() },
       {
         // General plotters stay top-level; specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
@@ -281,7 +281,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       { type: "pair", children: [
-        { type: "convert", label: "Convert", description: "Converts between measurement units: degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure. Excel: `CONVERT`.", create: () => new ConvertNode() },
+        { type: "convert", label: "Convert", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
         { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean `TRUE` or `FALSE`, or complex. Works element-wise on lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
       { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },

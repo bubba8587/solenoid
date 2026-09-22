@@ -28,7 +28,7 @@ Deleting a simple pass-through node leaves a dashed **ghost cable** that offers 
 
 ## Units and formatting
 
-A **Format Controller** docks beside a socket and sets how a value reads: decimals or significant figures, percent, a date style, and a **unit** label (currency is a unit, not a number style; `$1,234.50` is "two decimals" plus "US dollars"). The format belongs to the value, so it rides downstream through anything that merely passes the value along, and resets at the first node that *transforms* it. **Convert** changes the unit itself, °C to °F or miles to km, and hands the new unit forward. Load the **Unit Flow** example to see it in one graph.
+A **Format Controller** docks beside a socket and sets how a value reads: decimals or significant figures, percent, a date style, and a **unit**. Currency is a unit, not a number style, so `$1,234.50` is "two decimals" plus "US dollars". The format rides downstream through anything that passes the value along, and through calculations that keep its meaning, like adding two percents. It resets at one that doesn't, like multiplying. The unit belongs to the value itself, and **Convert** is how you change it, °C to °F or miles to km. Load the **Unit Flow** example to see it in one graph.
 
 ## Formulas
 

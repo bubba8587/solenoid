@@ -346,7 +346,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
 
       {/* Mismatch indicator — corner badge (no header to host it). */}
       {mismatch && (
-        <span className="solenoid-fc__mismatch" title="Unit mismatch on connected cable">!</span>
+        <span className="solenoid-fc__mismatch" title="The connected cable's unit doesn't match">!</span>
       )}
       {c.text ? (
         /* Text: display-only case + bold / italic / size (non-destructive). */
@@ -587,11 +587,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
       ) : !c.numberStyle && !c.complexStyle ? (
-        /* Structural socket (frame/cube): nothing formattable here —
-           per-column frame formats are the v1.1 units milestone. */
+        /* Structural socket (frame/cube): nothing formattable here. */
         <div
           className="solenoid-fc__row solenoid-fc__row--none"
-          title="No formattable value on this socket. Table columns get formats with the units milestone."
+          title="Nothing to format here. A table's columns are formatted in its popup."
         >—</div>
       ) : (
         /* Number-ish socket: number format and unit, stacked for a narrow chip.
@@ -774,7 +773,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           {unitLeft ? <FcArrow dir={unitLeft} title={
             node.lockedByConvert ? "Unit dictated by the Convert downstream"
             : node.forwarding    ? "Unit arrives with the value from upstream"
-            : "Unit labels this box and travels downstream"
+            : "Sets this value's unit, which travels downstream"
           } /> : <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />}
           <LazySelect
             className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
@@ -783,7 +782,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             onChange={(e) => onUnitChange(e.target.value)}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title={node.unitLocked ? "Unit locked. Set elsewhere in the chain." : "Unit label or cable constraint"}
+            title={node.unitLocked ? "Unit locked. Set elsewhere in the chain." : "This value's unit"}
           >
             {unitGroupOrder.map((group) => {
               const items = unitGroups.get(group);
