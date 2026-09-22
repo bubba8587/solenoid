@@ -887,7 +887,7 @@ const TEMPLATE_FORMATTERS: TemplateFormatters = {
 
 export class TemplateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    template: "{name} inserts an input of that name, {name:0.00} formats it with an Excel TEXT code; {{ and }} print braces. Each new name grows a socket.",
+    template: "{name} inserts the input of that name, and {name:0.00} formats it with an Excel TEXT code. {{ and }} print braces. Each new name adds an input.",
     result: "One string, or a list when any placeholder is fed a list, with the rest repeating.",
   };
   label: string;

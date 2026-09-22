@@ -1150,7 +1150,7 @@ export class FitDistributionNode extends ClassicPreset.Node {
     list: "A sample of values. Families whose support the data leaves (a negative value for Lognormal, a non-integer for Poisson) are skipped, not errors.",
     ranking: "Every family the data supports, best AIC first: family, parameters (the Distribution node's own), log-likelihood, AIC, KS distance.",
     best: "The family with the lowest AIC.",
-    params: "That family's parameters, in the Distribution node's order; wire them straight into it.",
+    params: "That distribution's parameters, in the Distribution node's order, ready to connect to it.",
   };
   label: string;
   cachedRanking: FrameValue | SolError | null = null;

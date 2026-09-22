@@ -479,7 +479,7 @@ export type SortDir = "asc" | "desc";
 
 export class SortNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    by: "Optional. Unwired, the list sorts by its own values. Wired, it sorts by this parallel numeric key list (sort names by their scores); position-only, so any element type reorders. A blank or error key sends its element to the end; a length mismatch errors the result.",
+    by: "Optional. Left empty, the List sorts by its own values. Otherwise it sorts by this parallel List of numbers, like names by their scores, and the List being sorted can be any type. A blank or error key sends its item to the end, and a length mismatch is an error.",
     result: "Blank and error cells sort to the end in either direction.",
   };
 

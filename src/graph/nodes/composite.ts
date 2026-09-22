@@ -162,7 +162,7 @@ export type CompositeDataTableValues = Record<string, unknown[]>;
 
 export class CompositeInputNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    value: "When the composite's outer port is wired, the outside value flows here and the editable seed is ignored.",
+    value: "When the composite's outer input is connected, the outside value is used and the seed value here is ignored.",
   };
 
   label: string;

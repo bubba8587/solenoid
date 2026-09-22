@@ -225,7 +225,7 @@ export const PLANAR_CHART_OPS = new Set<ChartValue["op"]>(["line", "area", "colu
 
 export class MergePlotsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    options: "Accepts key=value pairs separated by semicolons, or wire a Chart Builder. Styles the merged plot's axes and title; each series keeps the color and marker size it arrived with.",
+    options: "key=value pairs separated by semicolons, or a Chart Builder. Styles the merged plot's axes and title; each series keeps its own color and marker size.",
   };
 
   label: string;

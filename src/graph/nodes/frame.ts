@@ -2882,7 +2882,7 @@ export class XLookupNode extends ClassicPreset.Node {
     // rejected, not silently widened to a useless 1-row frame.
     const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
     if (!tabular) {
-      this.cachedResult = solError("#VALUE!", "XLOOKUP needs a table or cube. Build Frame two aligned lists first.");
+      this.cachedResult = solError("#VALUE!", "XLOOKUP needs a table or Cube. Combine two Lists with Frame from Lists first.");
       return { value: this.cachedResult };
     }
     const src = asLookupSource(raw)!;

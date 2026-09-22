@@ -133,7 +133,7 @@ function displayList(out: (CastScalar | SolError)[], target: CastTarget): (numbe
 
 export class CastNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    value: "The source socket's type tells a date serial from a plain number, so dates cast to text format as dates.",
+    value: "A date keeps its date type, so casting it to text formats it as a date.",
     result: "A blank input stays blank rather than failing. A value that will not parse becomes #VALUE!, per cell in a list.",
   };
 
