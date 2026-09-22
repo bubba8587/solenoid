@@ -32,7 +32,8 @@ boundary) is `../specs/react-flow-surface-contract.md`.
 
 ## One edit, one recompute
 
-The compute path, in order:
+The compute path, in order (the full mechanics, including every coercion rung, are
+`../specs/compute-pass.md`):
 
 1. **Commit.** Text edits commit on Enter or blur (`useDraftCommit`), never per keystroke;
    discrete picks apply immediately (DESIGN.md § Inputs). The committed value lands in the
@@ -81,6 +82,8 @@ never saved; they're worked out again on load. A node that retypes a socket in p
 `../specs/type-propagation-on-in-place-socket-retype.md` ([[D16]] retypeReconciles).
 
 ## Frames are different
+
+(The Frame value, laziness, the backend seam and every verb's contract are `../specs/frame-verbs.md`.)
 
 Scalars, lists and matrices are plain JS values on cables. A Frame on a cable is usually a
 lazy `FrameRef`, a handle to a verb chain living in the engine behind the `FrameBackend`

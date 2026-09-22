@@ -4,4 +4,45 @@
 
 Serves [[D10]] onePrunePath. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Every "these input sockets are going away" moment — a mode/op switch hiding inputs, a variadic row deleted, a formula variable or side socket disappearing — drops the affected cables through `dropInputCables` BEFORE the socket is hidden or removed. The three rules the twelve hand-rolled copies each half-remembered, now carried by the helper: prune **before** hide/`removeInput` (a cable referencing a removed socket is unsafe; a hidden socket with a live cable is an invisible wire), go through the **ACTIVE** editor (a drill-in edits its own graph), snapshot-then-**await** each removal (removals mutate the list; each is its own undo entry). Binds node classes as much as components — Computed Column's side-socket reconcile was the copy the components-only sweep missed. Sanctioned direct `removeConnection` callers (cross-graph port sync, both-direction prunes like Equation's, type-compat filters, single user-picked cable) each carry their reason in `sourceInvariants.test.ts`'s list.
+Many nodes change their own sockets: a mode or op switch hides some inputs, a variadic row is deleted, a formula variable or a side socket disappears. Whenever input sockets are about to go away, the cables wired into them are removed first, through one helper. This spec says what that helper does and when code may bypass it.
+
+## The helper
+
+`dropInputCables(nodeId, gone)` in `components/cablePrune.ts` removes every cable wired into the given input sockets of one node.
+
+- `gone` is either the set of departing socket keys, or a predicate over the input key. The predicate form covers the complement case, "every input the next mode does not show".
+- It works on the **active editor** (`getActiveEditor()`), so inside a composite drill-in it edits the drill-in's own graph, not the main one. With no active editor it does nothing.
+- It takes a snapshot of the matching cables first, then removes them one at a time, awaiting each `removeConnection`. Removal is async and changes the connection list, so iterating the live list would skip cables.
+- It is async. Callers await it before they change the sockets.
+
+Undo is snapshot-based and debounced (`flowHistory.schedule`, 400 ms), so the pruned cables normally land in the same undo entry as the edit that removed the sockets.
+
+`dropOutputCables(nodeId, gone)` is the same helper for the output side, for an op switch that removes an output socket. It matches cables by `sourceOutput` instead of `targetInput`.
+
+## The ordering rule
+
+Prune **before** the socket is hidden or removed:
+
+1. Work out which input keys are going away.
+2. `await dropInputCables(node.id, keys)`.
+3. Then hide the sockets or call `removeInput`, and re-render.
+
+A cable that references a removed socket is unsafe, and a hidden socket with a live cable is an invisible wire.
+
+## Who must use it
+
+The rule binds node classes and pack code as much as components. `tests/graph/sourceInvariants.test.ts` scans every file under `src/graph/components`, `src/graph/nodes` and `src/graph/packs`, and fails on any direct `.removeConnection(` call outside its sanctioned list. A second test fails when a sanctioned file no longer exists or no longer calls `removeConnection`, so the list cannot go stale.
+
+The sanctioned direct callers, each with a genuinely different shape:
+
+| File | Why it calls `removeConnection` directly |
+|---|---|
+| `components/cablePrune.ts` | The helper itself. |
+| `nodes/composite.ts` | `restoreInternal` tears down the whole internal graph before rebuilding it on an undo restore. That is a full clear, not a prune by input key. |
+| `components/ConnectionDialog.tsx` | Deletes one user-selected cable (and, on an edit, the cable it replaces). |
+| `components/InterpolateNode.tsx` | The List / Grid variant switch swaps the entire socket set, so it prunes inputs and outputs together. |
+| `components/ListInputNode.tsx` | A type-compatibility filter: it keeps the cables the new element type still accepts (`canConnect`) and drops the rest. |
+| `components/ReportOverlay.tsx` | Targets the main editor explicitly (`getEditor`), because a Report edits main-graph references even while a drill-in is active. |
+| `components/expressionEdit.ts` | The Equation prune covers both directions, because a variable owns an output socket too. Expression and LAMBDA already use the helper. |
+
+A new direct caller needs its reason added to that list in the test.

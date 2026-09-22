@@ -78,25 +78,9 @@ The sanctioned divergence ([[D51]] oneAnswerOneDivergence): formula `AND(x)` is 
 skipped → Excel behavior); the BooleanOp node is *element-wise* (Kleene). Same word,
 two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 
-### Scalar operators: the operator-parity table
+### Scalar operators
 
-`applyOp` (`excelFormula.ts`). Type-honest: match Excel where sane, diverge where
-Excel is incoherent.
-
-- A per-cell error propagates UNMORPHED (broadcast elements reach the operator raw).
-- `null` propagates through arithmetic, comparison and `&` (the SQL/pandas/Polars
-  model — `null+5` is null, not 5).
-- Logicals ride the number bridge in numeric contexts (TRUE = 1).
-- `=` / `<>` are TYPE-STRICT with case-INSENSITIVE text (EXACT is the case-sensitive
-  escape hatch): `"a" = "A"` is TRUE, `5 = "5"` is FALSE.
-- Ordering (`<` `>` `<=` `>=`): numbers numerically, text by dictionary collation,
-  CROSS-TYPE → `#TYPE!` (no invented number<text<logical order, no NaN-false).
-- `&` renders logicals TRUE/FALSE (not JS "true").
-
-**IF honors a BLANK branch** (the parser's omitted-argument form `IF(x,,y)`): the
-blank arrives as null and stays null, Solenoid's first-class missing. That is a deliberate
-departure from Excel, whose omitted argument is 0; the author chose null. Arg-count
-defaults keep Excel's shape: `IF(test, then)` with a false test → FALSE.
+The operator table (`applyOp`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `BLANK_ARG_TYPES` types it, so `IF(x,,y)` answers `null`, not 0) are `../specs/formula-language.md`.
 
 ## Reading an input: a wired blank vs the typed literal
 
@@ -272,24 +256,8 @@ guarded once, up top.
 
 - **Logical ↔ number bridge** (`coerceInputs.ts`): 0/1 ↔ FALSE/TRUE, and **NaN → null**
   (an unknown truth value, as in R and pandas); aligned with `coerceLogical`.
-- **The unit-blind boundary** (`unitBridge.ts` `stripUnitCells`, applied per-input in
-  `coerceInputs`): the dimension algebra runs only in
-  `unitAware = true` nodes; every OTHER node receives plain numbers in the display
-  magnitude the user sees (a `passthrough()` node keeps tags only on its spec-named
-  inputs). Without the strip, a `UnitCell` reaches `coerceNumber` as NaN and a
-  comparison, threshold or chart silently breaks. See also `../specs/unit-flow.md`.
-- **Wired null vs unwired input** (`readInput`, shared.ts): `undefined` (unwired) falls
-  back to the node's literal; a WIRED `null` propagates as missing. The `?? literal`
-  read idiom must not swallow wired nulls.
-- **IPC / frame boundary:** non-finite crosses BOTH directions as the tagged
-  `{"__nf":"inf"|"-inf"|"nan"}` sentinel; a per-cell SolError uploads as
-  `{"__err":code}` (engine degrades it to null — Polars-typed columns can't hold
-  errors — but the contract is explicit). Frame cells hold real ±Inf; NaN is
-  present-but-dirty: counted, tail-sorted, failing predicates, poisoning
-  aggregates to `#DOMAIN!`. Aggregates apply the scalar guard in both backends
-  (SUM of ∞ is ∞; ±Inf from all-finite → `#OVERFLOW!` — engine-side classified
-  at the materialization boundary via a base-column scan; JS oracle inside
-  `aggregateGroup`, covering pivot totals too).
+- **The unit-blind boundary and wired null vs unwired** are arrival coercion and `readInput`: `../specs/compute-pass.md` § Arrival coercion, with the unit rules in `../specs/unit-flow.md`.
+- **IPC / frame boundary:** non-finite numbers and per-cell errors cross the wire as tagged sentinels, and aggregates apply the scalar non-finite guard in both backends: `../specs/frame-verbs.md` § The FrameBackend seam.
 - **List ops vs relational verbs** ([[C45]] excelComparisons): list UNIQUE never
   dedupes error cells, since each is an independent problem, while frame Distinct dedupes
   by error code (errors as values, SQL identity semantics). List and Frame Sort both put

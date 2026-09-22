@@ -33,6 +33,26 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node ([[C7]] authorRuled; `archive/1.4-plan.md` D3).
 
+## Found writing the rebuild specs (code vs its own nodes; verify, then fix or rule)
+
+Each was found reading the code to write `../specs/{compute-pass,formula-language,frame-verbs}.md`. The spec describes today's behavior; these are the places it breaks a node or looks unintended.
+
+- [ ] **Desktop loses units and formats after any native verb.** The Polars wire carries name, type and values only, so `unit`, `format` and `raw` drop, while the JS oracle keeps them: the same graph shows different units on web and desktop ([[C25]] firstClassUnits, [[B2]] webTryDesktopFull).
+- [ ] **Join ignores units on keys.** [[C25]] says unit-tagged keys compare by dimension and base-SI magnitude; `joinFrames` ignores units (only Nest Join's `relateFramesToCube` does it).
+- [ ] **[[D30]] targetedEqualsFull has second copies.** Only `scripts/run-graph.ts` calls `computeAll`; `process.ts` and `composite.ts` run their own invalidate and fetch loops, and `invalidate` / `fetchAll` have no production caller.
+- [ ] **A lazy Frame that fails to collect reaches `data()` as a `SolError`**, past the error guard, which checked the raw inputs first ([[D35]] errorInErrorOut).
+- [ ] **Expression blanks a complex result** (`COMPLEX(1,2)` shows blank), against [[C15]] matricesInFormulas.
+- [ ] **`extractVariables` grows sockets for LAMBDA parameters and eta names**: `MAP(x, LAMBDA(v, v*2))` grows `v`, and `MAP(x, SQRT)` grows `SQRT`, which then blocks the eta call (`#VALUE!`).
+- [ ] **Scalar blanks reach functions unpropagated** outside the list path: `NOT(null)` is TRUE, `ABS(null)` 0, `ROUND(null,1)` `#VALUE!`.
+- [ ] **Operators coerce strings JavaScript's way**: `"2"+3` is `"23"`, `"a"*2` is `#DOMAIN!` (Excel: `#VALUE!`); `1.2.3` and `2e` parse and give NaN.
+- [ ] **Constants shadow LAMBDA parameters**: `LAMBDA(e, e+1)(5)` uses Euler's number.
+- [ ] **`inferColumn` types JS booleans as number**, so JSON records with booleans import as a Number column.
+- [ ] **`sliceRows` keeps `raw`**, which no longer lines up with the rows, so the popup's Source view can show the wrong text (also `fillBlanks`, `replaceValues`, `dropBlankRows` keep it).
+- [ ] **Window verb: oracle and engine disagree** on logical and ±Infinity values, on `share` over a blank group and `pct_change` from 0 (`#DIV/0!` vs blank), and on unknown `how` / function names (engine errors, oracle runs). No corpus case covers these ([[D29]] oneVerbCorpus).
+- [ ] **Sketch-mode preview scaling** looks up the ref's base handle, not the flushed one, so a truncated Group By preview is probably unscaled.
+- [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row; a wired blank into `logicallist` arrives as `[null]` but into `strlist` as `null`; `stripUnitCells` doesn't reach inside a Cube; `computeAll` never clears the collect memo.
+- [ ] **Stale comments**: `process.ts` ("every topology change runs a full pass"), `engine.rs` header (outer-join order), `runFrameBindColumns` ("union by name"; it binds by position), `tableLambda.ts` `resolveFn` (only SCAN/REDUCE bind by name), `tidyArrange.ts` near the FC footprint "restore".
+
 ## Composites
 
 - [ ] **Composite internals drop unknown types.** `CompositeNode.hydrate` skips an internal node whose type isn't registered (a pack off, a rename) instead of loading it as a Placeholder, so the next save loses it: a [[C35]] unknownViaPlaceholder breach. Its `init.internal` also stores live internal ids, which hydrate regenerates, so a composite's bytes can change on save → load → save. Found writing `../specs/save-format.md`.

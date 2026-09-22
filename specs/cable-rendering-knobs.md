@@ -4,10 +4,88 @@
 
 Serves [[C91]] cableWalkRouter (the router and the spline) and [[D17]] relaysTransparent (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-- Per-socket cable exit-angle overrides live in `cableAngleStore` (keyed by `${nodeId}::${socketKey}`). The Conduit registers a per-lane exit angle from its rotation (perpendicular to the socket's face). The cable edge (`flow/FlowCableEdge.tsx`) reads from the store and passes `sourceAngleDeg` / `targetAngleDeg` to `getCablePath`.
-- **NAMING**: **Conduit** = the block bundler node (`ConduitNode`, formerly "Ribbon"). **Ribbon** = the bundled cable entity (formerly "bundle"). The old two-arm bundler **Manifold** (briefly "Conduit" before that) was removed 2026-06-19; old saves referencing `ManifoldNode` load it as a Placeholder (wiring kept, re-saves as the original type; no backward migration — pre-alpha).
-- **Ribbons** (`ribbonCable.ts`): 2+ cables from one visible Conduit's outputs to the same entity (another visible Conduit, or one collapsed group) render as ONE wide neutral trunk with flat caps that fans into per-lane slots near each Conduit face (or lands whole on the group's combined pill). The lowest-lane connection draws the trunk; every member draws its own fan branches to its own measured sockets (slots spread across the trunk width, ranked by lane order per side ⇒ fans can't cross; no cross-lane position lookups). The flow-bead overlay must keep `strokeLinecap="round"` — the beads are 0.01-length dashes that butt caps flatten into slivers. Hover/selection/delete treat the ribbon as one entity (`ribbonHoverStore`, select = repId, canvas delete removes all members). Membership is derived fresh per render — never stored. **Bead-phase continuity:** beads travel `FLOW_PERIOD` px per `FLOW_DURATION` s on every cable (kept in sync with `.solenoid-cable-flow` in canvas.css); a negative `animation-delay` shifts each segment's phase by its upstream length within the assembly so beads flow continuously socket → fan → trunk → fan (the canonical source-fan length is `RIBBON_SPLIT`; per-lane fans differ by a few px, approximation by design). Non-representative lanes still compute the trunk to get its LENGTH for their fan's bead phase; the trunk runs from a merge point just past the source Conduit's output face to a split point just before the target's input face. Selecting a Conduit separates its ribbons; selecting a separated lane PINS the separation open (`pinRibbonSeparation`, keyed by the selected cable id so it self-expires). See `archive/dev-notes-history.md` "Ribbon output bundles". **Inverse case (`kind: "groupSource"`):** a Conduit *hidden* inside a collapsed group whose 2+ outputs leave the group bundle out of the group's combined OUTPUT pill — the mirror of the combined-input pill. `recomputeGroupCollapse` collapses all of a hidden Conduit's crossing `out_*` sockets into one combined readout row + pill (`RetainedTerminal.lanes`); `groupSourceRibbon` detects it; `FlowCableEdge` renders a short trunk leaving the pill toward ONE shared destination entity (members are filtered to a single dest — `ribbonCable.ts` — and a collapsed-group destination lands whole on its pill with no fan; no source fan either — the pill IS the bundling point). Flow beads render phase-chained across trunk and fan; there is no wide output stadium.
-- **Conduit RUNS — a cable is a segment, not the whole wire** ([[D17]] relaysTransparent) (`conduitPath` in `conduitTrace.ts`, unit-tested). A Conduit is wiring, not computation, so the user-meaningful entity is the RUN: walk upstream along lanes (a chain — an input lane takes one cable) to the node that really produces the value, then downstream FROM THAT ORIGIN (a tree — one output lane can feed many cables) to every input that really consumes it. **The downstream walk MUST start at the origin, not at the clicked cable** — otherwise clicking one branch of a fan-out hides its siblings and two segments of the same run resolve to different runs, which breaks the inspector's "is this selection exactly one run?" test. Cycles are broken by a `seen` set plus a hop cap (a `#CIRC!` conduit loop). Two consumers: the **Cable inspector** reports the run's ends (From = origin, one To row per terminal, a quiet Via row naming the Conduits crossed) and reads the value/annotation/frame-shape from the ORIGIN, and **double-click on a cable** selects every segment of the run (`selectRun` in `FlowCableEdge`), so the whole path highlights and Delete takes all of it.
-- **Double-click on a cable is detected via `e.detail >= 2` in `onClick`, NOT `onDoubleClick`** — the surface disables zoom-on-double-click (`zoomOnDoubleClick={false}`), and the `detail` guard must come BEFORE the single-click select/deselect branches or the second click toggles the selection off first.
-- **Diagonal and straight modes share one walk-enumeration router** (`routeWalk` in `cablePaths.ts`, parametrised by compass division: `div=8` → 45° segments/turns, `div=4` → 90° segments/turns rendered with rounded `Q` corners). ALL cables in those modes route through it, plain and angle-hinted; the old `getDiagonalPath`/`getSmoothStepPath`/`withAngleLeads` heuristics are gone. Constraints hold **by construction**, there is no sharper-turn fallback: rigid exit/entry stubs along the exact socket direction, every other segment on a compass heading, every turn exactly one compass step. A route is a *walk* of compass headings (±1 step between legs); the canonical family is back `b` / forward `b+r+e` / back `e` steps over both rotation directions. Selection = **globally shortest solvable walk** (sort order — fewest turns, preferred rotation — only settles exact ties). Length MUST stay the primary criterion: a walk entering feasibility does so at exactly the length of its own wider extension, which was already competing, so handoffs are seamless; gating by turn count first turns those handoffs into visible jumps (a bug we hit). Leg lengths are a closed-form solve (`solveWalk`): legs between same-direction turns keep a minimum (collapsing one would fuse two turns into a sharper corner), legs between opposite turns may collapse to zero (merges same-heading neighbors into a straight run), legs adjoining an **off-grid stub** (rotated arm between compass headings) stay pinned open — collapsing one would merge the snap offset into the next turn (up to 135° in straight mode). Residual displacement decomposes on the unique adjacent fan-heading pair bracketing it, spread evenly per heading (centers Z diagonals). Stub scales `min(14, dist/4)`, staircase minimum `min(14, dist/8)` — the minimum must shrink faster at close range or every walk becomes unsolvable; a halve-and-retry loop guarantees termination. Renderer dedup epsilon must stay well under a pixel (0.01): a coarser one deletes real tiny vertices and skews neighboring headings off-grid. Remaining discontinuities, all inherent: straight-line collapse for near-touching sockets (Euclidean `dist < 15`, deliberately NOT per-axis), and equal-length route swaps (incl. the head-on mirror flip). Property tests in `cablePaths.test.ts` machine-check the invariants AND continuity under simulated 0.5px drags (large jumps allowed only between equal-length routes) — keep them passing when touching the router.
-- **Spline is a single tangent-exact cubic** (`getAngleBezierPath`): control arms (`max(40, dist·0.4)`) sit along the exit/entry directions (angle hint or cardinal side), so the curve leaves the socket exactly along its direction and may bend immediately after — no rigid straight lead. Its collapse test is the same Euclidean `dist < 15`: a target merely *axis-aligned* with the source (e.g. directly below an east-facing Conduit) must NOT fall back to a point-to-point line.
+This spec covers how a wired cable is drawn: the three cable shapes (spline, diagonal and straight), per-socket exit angles, ribbons (several Conduit lanes drawn as one wide cable), and Conduit runs (the whole wire through a chain of Conduits). The drawing lives in `flow/FlowCableEdge.tsx`, the paths in `cablePaths.ts`, the ribbon logic in `ribbonCable.ts`, and the run walk in `conduitTrace.ts`.
+
+## Names
+
+- **Conduit** is the block bundler node (`ConduitNode`). It has up to `CONDUIT_MAX_LANES` (8) lanes; lane `i` passes input `in_i` straight through to output `out_i`.
+- **Ribbon** is the bundled cable entity: 2 or more Conduit lanes drawn as one.
+- There is no Manifold node type. A save that names one loads it as a Placeholder, like any unknown type.
+
+## Exit angles
+
+Per-socket exit-angle overrides live in `cableAngleStore`, keyed by `${nodeId}::${socketKey}`. The Conduit writes one for every lane, both inputs and outputs, set to its snapped rotation angle, so cables leave and arrive perpendicular to its faces (see `conduit-lane-faces.md`). `FlowCableEdge` reads the store and passes `sourceAngleDeg` / `targetAngleDeg` to `getCablePath`. A socket with no override uses its cardinal side.
+
+## Ribbons
+
+A ribbon forms when 2 or more cables leave one visible Conduit's outputs for the same entity: another visible Conduit's inputs, or one collapsed group's combined input pill. `ribbonForConnection` derives membership fresh on every render and never stores it. Ghost cables (`cableGhostStore`) never join a ribbon. Members are sorted by lane index, and the lowest lane is the representative (`repId`).
+
+Drawing:
+
+- The ribbon renders as one wide, neutral trunk with flat (butt) caps. Near each Conduit face it fans out into per-lane branches, or it lands whole on a group's combined pill.
+- The representative draws the trunk. Every member draws its own fan branches to its own sockets. Branch slots spread across the trunk width, ranked by lane order on each side, so fans cannot cross, and no member looks up another lane's position.
+- The trunk runs from a merge point `RIBBON_SPLIT` (24) past the source Conduit's output face to a split point `RIBBON_SPLIT` before the target Conduit's input face.
+- Hover, selection and delete treat the ribbon as one entity. Hover is shared through `ribbonHoverStore`, selecting selects the `repId`, and a canvas delete removes all members.
+
+Separation. A ribbon splits back into ordinary cables while either of its Conduits is selected. Selecting one of those separated lanes pins the separation open (`pinRibbonSeparation`, keyed by the selected cable id), so the ribbon stays apart while that cable is selected. The pin expires by itself once the cable is no longer selected.
+
+Flow beads. Every cable animates beads that travel `FLOW_PERIOD` (72) px per `FLOW_DURATION` (2.25) s; these must match `.solenoid-cable-flow` in `canvas.css`. The bead overlay must keep `strokeLinecap="round"`, because each bead is a 0.01-long dash that a butt cap would flatten into a sliver. Within a ribbon, each segment gets a negative `animation-delay` equal to its upstream length, so beads flow continuously from socket to fan to trunk to fan. The source fan's length is taken as `RIBBON_SPLIT`; real per-lane fans differ by a few pixels, which is accepted. Lanes that do not draw the trunk still compute it, to learn its length for their own fan's delay.
+
+### Ribbons out of a collapsed group
+
+The inverse case (`kind: "groupSource"`) is a Conduit hidden inside a collapsed group whose 2 or more outputs leave the group. It mirrors the combined input pill:
+
+- `recomputeGroupCollapse` folds all of the hidden Conduit's crossing `out_*` sockets into one combined readout row and pill on the group (`RetainedTerminal.lanes`).
+- `groupSourceRibbon` detects the case. Members are filtered to one shared destination: a visible Conduit or a collapsed group.
+- `FlowCableEdge` draws a short trunk leaving the pill toward that destination. The pill is the bundling point, so there is no source fan. A visible Conduit destination gets a target fan; a collapsed-group destination takes the trunk whole on its pill.
+- Beads are phase-chained across trunk and fan as usual. There is no wide output stadium.
+
+## Conduit runs
+
+A cable is one segment of a wire, not the whole wire ([[D17]] relaysTransparent). A Conduit is wiring, not computation, so the entity the user means is the **run**. `conduitPath` in `conduitTrace.ts` (unit-tested in `conduitTrace.test.ts`) finds it in two walks:
+
+1. **Upstream, a chain.** From the clicked cable, while its source is a Conduit, step to the one cable feeding the matching input lane (an input lane takes at most one cable). Stop at a node that is not a Conduit, or at a Conduit whose input lane is unwired; that Conduit is then the origin.
+2. **Downstream, a tree, from the origin.** From the origin cable, follow every cable out of each Conduit's matching output lane (one output lane can feed many cables). A cable into a non-Conduit is a terminal. A Conduit lane with nothing wired out is also a terminal, where the run dies.
+
+The downstream walk must start at the origin, not at the clicked cable. Otherwise clicking one branch of a fan-out hides its siblings, and two segments of the same run resolve to different runs, which breaks the inspector's "is this selection exactly one run?" test. Cycles (a `#CIRC!` Conduit loop) are broken by a `seen` set, and `MAX_HOPS` (512) caps pathological fan-out.
+
+The run has two consumers:
+
+- The **Cable inspector** reports the run's ends: From is the origin, there is one To row per terminal, and a quiet Via row names the Conduits crossed. It reads the value, annotation and Frame shape from the origin.
+- **Double-clicking a cable** selects every segment of the run (`selectRun`), so the whole path highlights and Delete removes all of it. It does nothing for a run of one segment. Ctrl, Cmd, or the touch multi-select toggle adds the run to the current selection instead of replacing it.
+
+Double-click is detected as `e.detail >= 2` inside `onClick`, not through `onDoubleClick`, because the surface sets `zoomOnDoubleClick={false}`. The `detail` check must come before the single-click select and deselect branches, or the second click toggles the selection off first.
+
+## Diagonal and straight: the walk router
+
+Both modes route through one router, `routeWalk` in `cablePaths.ts`, parametrized by the number of compass headings: `div = 8` gives 45° segments and turns (diagonal), and `div = 4` gives 90° segments and turns (straight), drawn with rounded `Q` corners of radius `CORNER_RADIUS` (8, capped at half the shorter adjacent leg). Every cable in these modes uses it, with or without an angle hint. Its constraints hold by construction, with no fallback to a sharper turn:
+
+- A rigid stub leaves and enters each socket along its exact direction.
+- Every other segment runs on a compass heading.
+- Every turn is exactly one compass step.
+
+A route is a **walk**: a sequence of compass headings where each leg differs from the last by one step. The candidates are the family "turn back `b` steps, forward `b + r + e` steps, back `e` steps", where `r` is the net rotation from the exit heading to the entry heading, tried in both rotation directions.
+
+Selection picks the **shortest solvable walk overall**. The sort order (fewest turns, then the preferred rotation direction) only settles exact ties. Length must stay the primary criterion: a walk becomes feasible at exactly the length of its own wider extension, which was already competing, so the handoff between walks is seamless. Ranking by turn count first turns those handoffs into visible jumps.
+
+Leg lengths come from a closed-form solve (`solveWalk`):
+
+- A leg between two turns in the same direction keeps a minimum length. Collapsing it would fuse two turns into a sharper corner.
+- A leg between two opposite turns may collapse to zero, merging its neighbors into one straight run.
+- A leg next to an **off-grid stub** (a rotated socket direction that falls between compass headings) is held open at the minimum. Collapsing it would fold the snap offset into the next turn, which could make a turn of up to 135° in straight mode.
+- The remaining displacement is split between the unique pair of adjacent headings in the walk that bracket it, spread evenly over the legs on each heading. This is what centers the diagonal of a Z between its two straight runs.
+
+Sizes scale with the socket distance `dist`. The stub is `min(14, dist / 4)` and the staircase minimum is `min(14, dist / 8)`. The minimum must shrink faster than the stub at close range, or every walk becomes unsolvable. If no walk solves, the minimum halves and the search retries, down to 0.25, so the router always terminates with its constraints intact.
+
+The renderer drops a vertex only when it is within 0.01 of the previous one (`DEDUP_EPS`). This must stay well under a pixel: a coarser value deletes real tiny vertices and skews the neighboring headings off-grid.
+
+The remaining discontinuities are inherent:
+
+- Sockets closer than 15 (`STRAIGHT_THRESHOLD`, Euclidean distance, deliberately not per axis) draw as a straight line.
+- Two routes of equal length can swap, including the mirror flip when sockets face each other head-on.
+
+Property tests in `cablePaths.test.ts` check the invariants by machine, plus continuity under simulated 0.5 px drags: a large jump is allowed only between routes of equal length. Keep them passing when touching the router.
+
+## Spline
+
+The spline is one cubic curve (`getAngleBezierPath`) whose control arms, of length `max(40, dist × 0.4)`, lie along the exit and entry directions (the angle hint, or the socket's cardinal side). The curve leaves each socket exactly along its direction and may bend right away; there is no rigid straight lead. It collapses to a straight line under the same Euclidean `dist < 15` test, so a target that merely lines up on one axis with the source (for example, directly below an east-facing Conduit) still gets a curve.
