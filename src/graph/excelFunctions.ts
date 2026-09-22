@@ -375,7 +375,7 @@ export function isInternalFunction(name: string): boolean {
  *  future result-type inference, not yet wired to the result socket. */
 // "any" = type-neutral: the function returns whichever type its arguments carry
 // (XLOOKUP/IF/INDEX pass values through) — a forced concrete type here would lie.
-// "complex" = a tagged Cx ([[D44]] tagSpecialScalars) — the IM* family's currency.
+// "complex" = a tagged Cx ([[D45]] maxRankMatrix) — the IM* family's currency.
 export type ExcelReturn = "number" | "string" | "logical" | "date" | "complex" | "any";
 
 /** Output RANK, split from the element type the same way the socket lattice splits
@@ -675,7 +675,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TOEPOCH:         { returns: "number", arity: [1, 2], native: true },
   DATETRUNC:       { returns: "date", arity: [2, 3], native: true },
   // The family's ONE name — RUNNING(op, list, [window]); the aggregator is a string
-  // argument ([[C56]] aggregatorsAreArguments), like SORT's direction. The per-op RUNNING* family stays eliminated.
+  // argument ([[C26]] opArgDistinct), like SORT's direction. The per-op RUNNING* family stays eliminated.
   RUNNING:         { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   LENGTH:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
   ARGMAX:          { returns: "number", listArgs: true, arity: [1, 1], native: true },
@@ -806,7 +806,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   NOR:         { returns: "logical", arity: [1, 255], native: true },
   XNOR:        { returns: "logical", arity: [1, 255], native: true },
 
-  // The IM* family over tagged Cx ([[D44]] tagSpecialScalars): arguments accept a Cx, a real number,
+  // The IM* family over tagged Cx ([[D45]] maxRankMatrix): arguments accept a Cx, a real number,
   // or Excel's "a+bi" text; results are tagged Cx, not Excel's text complexes.
   // `cxArgs` is the containment gate. COMPLEX and QUADRATICROOTS take REAL
   // arguments, deliberately no cxArgs.
@@ -1726,7 +1726,7 @@ registerInternal("ISOUTLIER",  (list, method, threshold) => {
 });
 registerInternal("ISBOOLEAN",  (v) => v === true || v === false);
 registerInternal("ISCLOSE",    (a, b, tol) => (a == null || b == null ? null : Math.abs(Number(a) - Number(b)) <= (tol == null ? 1e-9 : Number(tol))));
-// ONE Running function, aggregator as a string ARGUMENT ([[C56]] aggregatorsAreArguments): a parameter inside a
+// ONE Running function, aggregator as a string ARGUMENT ([[C26]] opArgDistinct): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op
 // RUNNING* family is eliminated and must not come back). Same shape as SORT below
 // carrying its direction. Window omitted or 0 = cumulative; a BLANK window is unknown and

@@ -283,7 +283,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 // Desktop only (no filesystem in the browser). The cache key folds in folder + file
 // name, so re-pointing either re-reads.
 
-// [[D2]]
+// [[C1]]
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",

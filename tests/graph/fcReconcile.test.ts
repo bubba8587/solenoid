@@ -73,7 +73,7 @@ describe("FC family resolution ignores every family-less wildcard rung", () => {
   });
 });
 
-// ─── [[E3]] adoptKeepsCables at the retype seam ─────────────────────────────────────
+// ─── [[D15]] wildcardsKeepRank at the retype seam ─────────────────────────────────────
 // A Display's `in` is an adoptive trueany; once it has adopted a producer's rank-1
 // type (datecombo), the producer's rank-2 reconcile (datetable) must judge the cable
 // against the DECLARED rung, or the very adoption it caused prunes it. This is how

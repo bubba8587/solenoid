@@ -1,4 +1,4 @@
-// [[D7]], [[D8]] oneThingPerMetric, [[D9]], [[D25]]
+// [[D7]], [[D9]], [[D25]]
 import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/graph/formulaNodeParity";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";

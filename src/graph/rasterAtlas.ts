@@ -1,4 +1,4 @@
-// [[C42]], [[D57]], [[D59]]
+// [[C42]]
 export interface AtlasItem {
   id: string;
   /** Natural (padded) capture size in raster px. */

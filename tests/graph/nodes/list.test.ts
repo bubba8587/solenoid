@@ -250,7 +250,7 @@ describe("Set operations (two lists)", () => {
   });
 
   it("complex numbers compare by VALUE, not object identity (Set-node fix, [[D39]] keyByValue)", () => {
-    // A complex is a tagged OBJECT ([[D44]] tagSpecialScalars); each 3+4i below is a SEPARATE instance,
+    // A complex is a tagged OBJECT ([[D45]] maxRankMatrix); each 3+4i below is a SEPARATE instance,
     // so a reference-keyed Set would never match them. They must intersect/dedupe.
     expect(run("intersect", [cx(3, 4), cx(1, 2)], [cx(3, 4), cx(5, 6)])).toEqual([cx(3, 4)]);
     expect(run("union", [cx(3, 4), cx(1, 2)], [cx(3, 4)])).toEqual([cx(3, 4), cx(1, 2)]);

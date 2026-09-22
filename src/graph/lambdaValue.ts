@@ -1,4 +1,4 @@
-// [[D19]] implReteFree (rete-free: the formula path constructs and consumes lambdas), [[C50]] lambdaBindsByName, [[D44]] tagSpecialScalars
+// [[D19]] implReteFree (rete-free: the formula path constructs and consumes lambdas), [[C50]] lambdaBindsByName, [[D45]] maxRankMatrix
 
 export interface LambdaValue {
   __lambda: true;

@@ -1,4 +1,4 @@
-// [[D7]], [[D8]]
+// [[D7]]
 // Node ↔ formula parity measurement, shared by the report script and the ratchet
 // test — keep it here, or the two compute the gap differently and stop ratcheting.
 

@@ -11,7 +11,7 @@ import {
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas amendment tranche: complex numbers in formulas (2026-07-28) ──────────
-// The IM* family owned over tagged Cx ([[D44]] tagSpecialScalars) — before this, complex ALREADY
+// The IM* family owned over tagged Cx ([[D45]] maxRankMatrix) — before this, complex ALREADY
 // flowed into formulas (complexcombo → anydata connects) and every surface
 // handled it as garbage: operators concatenated "[object Object]", the IM* names
 // worked on Formula.js text complexes while refusing the graph's own tagged

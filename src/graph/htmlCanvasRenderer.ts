@@ -1,4 +1,4 @@
-// [[C42]], [[D57]], [[D58]], [[D61]]
+// [[C42]]
 // Requires the WICG HTML-in-Canvas API — gate construction on supportsHtmlInCanvas().
 // A drawElementImage OUTSIDE the paint event draws the PREVIOUS snapshot, so every frame
 // that calls it routes through requestPaint.

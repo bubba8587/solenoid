@@ -38,7 +38,7 @@ describe("numberToText — 15 significant digits, trailing zeros stripped", () =
 describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   it("keeps the families a difference-that-matters dictates internal", () => {
     // "complex" flipped verify → internal with the [[C15]] matricesInFormulas-amendment tranche: the
-    // tagged Cx ([[D44]] tagSpecialScalars) IS the difference that matters — Formula.js's IM* speak
+    // tagged Cx ([[D45]] maxRankMatrix) IS the difference that matters — Formula.js's IM* speak
     // text complexes, a different currency.
     for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative", "complex"] as const) {
       expect(FAMILY_BACKING[fam].backing).toBe("internal");

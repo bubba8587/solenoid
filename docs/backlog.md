@@ -139,7 +139,7 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   upgrades a saved bare "Conduit" label to "Conduit N" on load, a migration shim [[B7]] preAlphaBreakFreely forbids;
   (b) `DateNodes.tsx` (and any op handler calling `setLabel(OP_META[next].label)`) syncs a label on op change against
   [[D22]] oneNamePerCard's "the ONE derivation is nodeDisplayName"; (c) `ConnectionNodes.tsx` LocalFile says
-  "desktop only" off-desktop while [[D2]] demoCsvSeam says it reads a demo CSV on web; (d) `PacksPage.tsx` /
+  "desktop only" off-desktop while [[C1]] demoVault says it reads a demo CSV on web; (d) `PacksPage.tsx` /
   `ExamplesPage.tsx` hand-copy pack descriptions and seed labels ("keep in step") against [[C8]] declareOnce;
   (e) `SliderInputNode.tsx` writes `literals.speed` per keystroke (no recompute, so the [[C95]] sweep passes, but
   it is the pattern); (f) pack kernels (`hrZonesMatrix`, `standardAtmosphere`, `emSpectrum`) are consumed by the

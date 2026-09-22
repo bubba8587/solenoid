@@ -1,4 +1,4 @@
-// [[C56]], [[C63]], [[C26]], [[D5]], [[D6]]
+// [[C26]], [[C63]], [[D5]], [[D6]]
 // Per OP family (a node class with an `op` field): what ops it has and how they
 // surface. The `{ }` marker is DERIVED, never declared. An ARGUMENT family is not
 // declared here at all (DESIGN.md § Op pickers; nodeOps.test.ts pins both directions).
@@ -179,7 +179,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // formula names they can't own ("Contains" despaces onto CONTAINS).
   // Contains / starts with / ends with are the predicate ARGUMENT, not four functions.
   // (`contains` despaced onto the real CONTAINS function by coincidence, which is
-  // exactly the collision [[C56]] aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
+  // exactly the collision [[C26]] opArgDistinct warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
   { type: "sumifs", ctor: SumIfsNode, ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },

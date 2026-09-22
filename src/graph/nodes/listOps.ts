@@ -557,7 +557,7 @@ export function fibonacci(count: number): number[] {
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
 // Membership is by VALUE ([[D39]] keyByValue), but JS Sets key OBJECTS by reference, so only a tagged
-// complex ([[D44]] tagSpecialScalars) canonicalizes to a string; primitives stay themselves.
+// complex ([[D45]] maxRankMatrix) canonicalizes to a string; primitives stay themselves.
 export function setKey(v: unknown): unknown {
   return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
 }

@@ -250,7 +250,7 @@ describe("coerceInputs — a one-element list collapses at a combo / scalar sock
   });
 
   // A complex value is ITSELF a `[re, im]` array, so the collapse tests the OUTER
-  // A tagged complex ([[D44]] tagSpecialScalars) is not an array, so the singleton collapse treats it
+  // A tagged complex ([[D45]] maxRankMatrix) is not an array, so the singleton collapse treats it
   // like any other scalar — no outer-length special case left to protect.
   it("does NOT tear a complex scalar apart", () => {
     expect(run(new ComplexUnaryNode({ op: "conj" }), { z: [cx(1, 2)] })).toEqual(cx(1, -2));      // one complex

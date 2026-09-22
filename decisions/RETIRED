@@ -9,3 +9,15 @@ D53	2026-09-15	moved	C72	Claude Opus 5	-	nodeCombiningRound1: the eight approved
 D1	2026-09-16	superseded	D62	Claude Fable 5.1	-	forceDemoVault(on): a non-persisted switch pinning readers and Local File to the demo vault
 B5	2026-09-17	moved	A5	Claude Fable 5.1	the author	Excel parity is the on-ramp: every Excel function keeps its name and returns Excel's answer
 B6	2026-09-17	moved	A6	Claude Fable 5.1	the author	Where Excel falls short, Solenoid diverges by design: typed values and first-class units
+D8	2026-09-22	superseded	D7	Claude	-	oneThingPerMetric: A metric measures one thing
+D44	2026-09-22	superseded	D45	Claude	-	tagSpecialScalars: A special scalar is a TAGGED OBJECT, never a bare array
+E3	2026-09-22	superseded	D15	Claude	-	adoptKeepsCables: Adoption never drops cables and never persists
+C56	2026-09-22	superseded	C26	Claude	-	aggregatorsAreArguments: aggregators are arguments of their host verb, not searchable ops
+D2	2026-09-22	superseded	C1	Claude	-	demoCsvSeam: Local File reads a bundled CSV through the demo seam, so the Excel-over-CSV scene works on web
+D55	2026-09-22	superseded	C42	Claude	-	zoomSettleWindow: HTML-canvas holds gesture state 420 ms past the last zoom before restoring the DOM
+D56	2026-09-22	superseded	C42	Claude	-	hicEngageGate: the HTML-canvas layer engages only past 100 kind-weighted DOM units
+D57	2026-09-22	superseded	C42	Claude	-	hicPaintModel: HIC is built to the WICG API as shipped (in-paint raster, requestPaint)
+D58	2026-09-22	superseded	C42	Claude	-	hicCaptureRef1: HIC captures at REF = 1, trading zoom-in crispness for faithful text
+D59	2026-09-22	superseded	C42	Claude	-	oneReadbackPerPaint: the atlas packer takes one GPU read-back per paint, never one per node
+D60	2026-09-22	superseded	C42	Claude	-	domSyncPresentedCamera: mid-gesture the DOM viewport follows the camera the canvas presented
+D61	2026-09-22	superseded	C42	Claude	-	cloneKeepsOwnPosition: the HIC clone never sets position; each root's own CSS class governs it

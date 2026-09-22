@@ -69,7 +69,7 @@ describe("every Tier 3 name computes what its node computes", () => {
     expect(ev("NORMALIZE(x)", { x: LIST })).toEqual(new NormalizeNode().data({ list: [LIST] }).result);
   });
 
-  // The [[C56]] aggregatorsAreArguments contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
+  // The [[C26]] opArgDistinct contract in full: an ARGUMENT is a parameter INSIDE a top-level function.
   // Both halves matter. The family gets exactly ONE name — RUNNING(op, list, [window]),
   // like SORT carrying its direction — and the per-op names stay dead. The 2026-08-10
   // relapse to guard: "argument" was first misread as "no formula surface at all" and

@@ -11,7 +11,7 @@ import { isSolError } from "../../src/graph/errorValue";
 // CONSTRUCTION functions own their #N/A padding inside their registered impls
 // ([[C48]] appendLadder) and never route through the broadcaster.
 //
-// Rank grammar (post-[[D44]] tagSpecialScalars): no scalar is an array, so Array.isArray at two
+// Rank grammar (post-[[D45]] maxRankMatrix): no scalar is an array, so Array.isArray at two
 // depths is the complete test — a matrix is an array of ROW arrays.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);

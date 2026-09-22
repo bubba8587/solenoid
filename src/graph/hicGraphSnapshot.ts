@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[D57]] hicPaintModel.
+// [[C42]] htmlInCanvasRenderer.
 // Snapshot the LIVE graph into a plain drawable model — node cards
 // (world rect + kind color + scraped title/value + socket world positions) and
 // cables (socket-to-socket ends + angle hints). Reads the editor/view singletons

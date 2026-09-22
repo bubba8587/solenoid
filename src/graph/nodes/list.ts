@@ -1461,7 +1461,7 @@ export class ConcatListsNode extends ClassicPreset.Node {
 
 export type { RunningOp } from "./listOps";
 
-// No `fx`: the aggregator is an ARGUMENT of the windowed scan ([[C56]] aggregatorsAreArguments), so it claims no
+// No `fx`: the aggregator is an ARGUMENT of the windowed scan ([[C26]] opArgDistinct), so it claims no
 // formula name. The labels are the dropdown's own words.
 export const RUNNING_OP_META = {
   sum:     { label: "SUM",     description: "The running total: each element is the sum of its window." },

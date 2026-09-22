@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[D60]] domSyncPresentedCamera
+// [[C42]] htmlInCanvasRenderer
 // Pure 2-D camera for the HTML-in-Canvas renderer — the world↔screen transform
 // htmlCanvasRenderer reads (`scale`/`tx`/`ty`) and drives directly each frame.
 // No DOM dependency so it is fully unit-testable.

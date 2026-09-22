@@ -1,4 +1,4 @@
-// [[C42]], [[D55]]
+// [[C42]]
 export const DEFAULT_ZOOM_SETTLE_MS = 420;
 
 export function zoomSettleMs(): number {
