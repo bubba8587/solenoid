@@ -773,6 +773,8 @@ export function ComposedView({ series, labels, width, height, opts, fscale = 1 }
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
+  const [focus, setFocus] = useState<number | null>(null);
+  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
   const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
@@ -793,22 +795,38 @@ export function ComposedView({ series, labels, width, height, opts, fscale = 1 }
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fscale, fill: axis } : undefined;
   const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fscale, fill: axis } : undefined;
   const title = opts?.title;
-  const chartH = height - (title ? titleHeight(fscale) : 0);
+  // The legend is its own row under the plot, as on every multi-series chart.
+  const legendH = series.length > 1 ? MULTI_LEGEND_H : 0;
+  const chartH = height - (title ? titleHeight(fscale) : 0) - legendH;
+  const yAxisW = yLabel ? 40 : 26;
+  const margin = { top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 };
   const chart = (
-    <ComposedChart width={width} height={chartH} data={data} margin={{ top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 }}>
+    <ComposedChart width={width} height={chartH} data={data} margin={margin}>
       {(opts?.grid ?? true) && <CartesianGrid stroke={grid} vertical={false} />}
       <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={n <= ALL_TICKS_UPTO ? 0 : undefined} label={xLabel} height={xLabel ? 28 : undefined} />
-      <YAxis tick={AXIS} tickLine={false} width={yLabel ? 40 : 26} domain={yDomainOf(opts)} label={yLabel} />
+      <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomainOf(opts)} label={yLabel} />
       <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />
-      {/* Below the axis there is room for the legend or the x label, not both. */}
-      {series.length > 1 && <Legend verticalAlign={xLabel ? "top" : "bottom"} height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fscale, color: axis }} />}
       {series.map((s, j) => j === 0
-        ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} fillOpacity={opts?.alpha ?? 1} isAnimationActive={false} />
-        : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
+        ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} fillOpacity={(opts?.alpha ?? 1) * dim(j)} isAnimationActive={false} />
+        : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
     </ComposedChart>
   );
-  if (!title) return chart;
-  return <div style={{ width }}><ChartTitle text={title} fs={fscale} />{chart}</div>;
+  const legendPress = (e: SyntheticEvent) => {
+    if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
+  };
+  return (
+    <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>
+      {title && <ChartTitle text={title} fs={fscale} />}
+      {chart}
+      {legendH > 0 && (
+        <SeriesLegend
+          series={series} paint={(j) => colors[j % colors.length]} dim={dim} fs={fscale} color={axis}
+          insetLeft={yAxisW} insetRight={margin.right} lines={false}
+          onPick={(j) => setFocus((f) => (f === j ? null : j))}
+        />
+      )}
+    </div>
+  );
 }
 
 // Nothing else on a bubble plot says which column is which: the tooltip names all three.

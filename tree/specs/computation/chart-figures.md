@@ -289,7 +289,7 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 - **Radial.** Rings from 18% to 92% radius, starting at 12 o'clock; a bottom legend names the rings only when `labels` exist.
 - **Funnel.** Palette-colored stages with the value labeled on the right.
 - **Multi-series.** The legend is a fixed 18 pixel DOM row under the plot, inset to center on the plot area. Clicking an entry spotlights that series (the others drop to 0.18 opacity); clicking it again clears. A pointer press on the legend is stopped so the card does not start a drag.
-- **Composed.** Series 0 as bars, the rest as lines, gridded unless `grid=off`, with a legend when there are two or more series. The legend sits below the axis, or above the plot when there is an x label, since below the axis there is room for only one of them.
+- **Composed.** Series 0 as bars, the rest as lines, gridded unless `grid=off`, with a legend when there are two or more series: the same DOM row under the plot as every multi-series chart (`SeriesLegend`), whose click spotlights a series.
 - **Bubble.** One dot per row at `(x, y)` sized by the third column (area range 40 to 420, a missing size counts 1) at 0.55 opacity; a row with no y is dropped; with a single column the dot plots at `(x, x)`. The tooltip names all three columns.
 - **Overlay.** One shared cartesian plane (a recharts `ComposedChart`) with each series in its own mark: line, area, scatter, and both `column` and `bar` as vertical bars. A series without an inherited color takes the palette. Legend clicks spotlight by series index.
 - **Treemap.** Cells sized by value (non-positive values dropped, blank names shown as `#n`); a name is drawn in white only in a cell wider than `46 · fs` and taller than `20 · fs`.
