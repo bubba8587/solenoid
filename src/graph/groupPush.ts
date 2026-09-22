@@ -6,7 +6,7 @@ import type { Schemes } from "./schemes";
 import { GroupNode } from "./rete-nodes";
 import { moveGroupMembers, withLockedGroupsPinned } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
-import { computeExpandPush, separateOverlaps, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
+import { computeExpandPush, separateOverlaps, overlappingPairs, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
 import { standoffStore, standoffClusters, Box as StandoffBox } from "./standoffs";
 import { solveStandoffs } from "./standoffSolver";
 import { scheduleAutosave } from "./persistence";
@@ -225,6 +225,13 @@ function runExpandPushes(
 ): void {
   const expandedIds = new Set(changed.map((g) => g.id));
   const world = buildWorld(editor, view, expandedIds);
+  // The layout before this push, groups still collapsed: what overlapped here is the
+  // user's, and the backstop leaves it alone.
+  const before = new Map<string, PushBox>();
+  for (const [id, b] of world.boxes) {
+    const pre = preSizes.get(id);
+    before.set(id, { id, x: b.x, y: b.y, w: pre?.w ?? b.w, h: pre?.h ?? b.h });
+  }
 
   const order = [...changed].sort((a, b) => {
     const pa = world.boxes.get(a.id);
@@ -325,20 +332,23 @@ function runExpandPushes(
         unitMembers.set(uid, ids);
       }
     }
-    const units: PushBox[] = [];
-    for (const [uid, ids] of unitMembers) {
-      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      for (const id of ids) {
-        const b = world.boxes.get(id)!;
-        minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
-        maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+    const unitsOf = (boxes: Map<string, PushBox>): PushBox[] => {
+      const units: PushBox[] = [];
+      for (const [uid, ids] of unitMembers) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const id of ids) {
+          const b = boxes.get(id)!;
+          minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+          maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+        }
+        units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
       }
-      units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
-    }
-    for (const b of world.boxes.values()) {
-      if (!unitOf.has(b.id)) units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
-    }
-    for (const [uid, d] of separateOverlaps(units)) {
+      for (const b of boxes.values()) {
+        if (!unitOf.has(b.id)) units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
+      }
+      return units;
+    };
+    for (const [uid, d] of separateOverlaps(unitsOf(world.boxes), overlappingPairs(unitsOf(before)))) {
       for (const id of unitMembers.get(uid) ?? [uid]) {
         const b = world.boxes.get(id);
         if (!b) continue;

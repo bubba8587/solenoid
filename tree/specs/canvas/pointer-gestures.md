@@ -72,7 +72,7 @@ Nothing calls `preventDefault`, so the tap's click still arrives and tap-to-sele
 - A contact counts as a finger when its `pointerType` is neither `mouse` nor `pen`. An unknown or missing `pointerType` counts as touch. `pointerGesture.test.ts` pins this.
 - `touchCount()` is the number of fingers down, and `isPinching()` is true at two or more.
 - Everything that yields to a pinch reads from here. Never count raw pointers: a resting stylus or a pressed mouse is not half a pinch.
-- `resetPointerCensus()` clears the census, as a backstop for a `pointerup` the browser never delivers (a long-press context menu, a pointer that leaves the window). Today only the tests call it.
+- A `pointerup` the browser never delivers must not strand a finger, or the next one-finger gesture reads as a pinch. Two backstops: a primary touch (`isPrimary`, the first finger of a new touch sequence) drops every other finger still listed, leaving mice and pens alone; and a window `blur` empties the census (`resetPointerCensus`).
 
 ## Pens and palms
 

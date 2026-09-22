@@ -218,11 +218,11 @@ A key a renderer does not read is inert on that figure. This is what the rendere
 | Column, Line, Area, Scatter, single series | `title`, `xlabel`, `ylabel`, `color`, `grid`, `ymin`/`ymax`, `alpha`, `fontsize`; Line and Area also `marker`, `linewidth`, `markersize`; Scatter also `markersize` |
 | Bar (horizontal), single series | as Column; the value axis is horizontal |
 | Pie | `title`, `fontsize`, `pielabels` |
-| Radar, single series | `title`, `ymin`/`ymax`, `alpha`, `linewidth`, `marker`, `markersize`, `fontsize` (radius is shared; `radarscale` and `color` are not read) |
+| Radar, single series | `title`, `grid`, `ymin`/`ymax`, `alpha`, `linewidth`, `marker`, `markersize`, `fontsize` (radius is shared; `radarscale` and `color` are not read, though the Radar builder target offers `radarscale` since it can't know the series count) |
 | Radial, Funnel | `title`, `fontsize` |
 | Any multi-series cartesian or radar | `title`, `xlabel`, `ylabel`, `grid`, `marker`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha`, `fontsize`, `radarscale` (radar); never `color` (the palette wins) |
-| Composed | `title`, `linewidth`, `marker`, `markersize`, `fontsize` |
-| Bubble | `title`, `xlabel`, `ylabel` (default the x and y column names), `fontsize` |
+| Composed | `title`, `xlabel`, `ylabel`, `grid`, `ymin`/`ymax`, `alpha` (the bars), `linewidth`, `marker`, `markersize`, `fontsize` |
+| Bubble | `title`, `xlabel`, `ylabel` (default the x and y column names), `grid`, `ymin`/`ymax`, `fontsize` |
 | Merge Plots (overlay) | its own `title`, `grid`, `ymin`/`ymax`, `fontsize`, and `linewidth` as a fallback; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
 | Histogram 1-D | as Column |
 | KPI, Gauge Bar, Treemap, Sankey | `fontsize` (title via the value only) |
@@ -285,11 +285,11 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 - **Bar.** Horizontal bars; the category axis is sized to the widest label (about `5.2 · fs` pixels per character plus 8, at least 18, at most a third of the width).
 - **Scatter.** When every label of the plotted points is a number, each dot sits at that real x; otherwise x is the row index, pinned to `[0, n-1]` with 8 pixels padding and integer ticks.
 - **Pie.** Radius `max(18, min(width, height) / 2 - pad)`, where pad is 6 with no labels, `min(16, 7% of width)` inside, `min(30, 12% of width)` outside. Labels draw only when `labels` exist and `pielabels` is not `off`. Label text goes through `sanitizeChartLabel` (control characters to spaces, whitespace collapsed, capped at 10 code points when the width is under 260, else 16, with an ellipsis). A slice under 3% gets no label. Outside labels ride a two-segment leader (a 7 pixel radial stub, then a horizontal run to a shared column per side). Inside labels sit at 62% of the radius on a translucent plate, for slices of 6% or more; smaller slices keep the outside leader.
-- **Radar.** Polar grid, spoke names from `labels`, no radial tick text. Multi-series with `radarscale=axis` normalizes each spoke to `[0, 1]` by the largest value on that spoke (a negative plots at the center, all-zero spokes at 0) and the tooltip shows the raw value.
+- **Radar.** Polar grid (none with `grid=off`), spoke names from `labels`, no radial tick text. Multi-series with `radarscale=axis` normalizes each spoke to `[0, 1]` by the largest value on that spoke (a negative plots at the center, all-zero spokes at 0) and the tooltip shows the raw value.
 - **Radial.** Rings from 18% to 92% radius, starting at 12 o'clock; a bottom legend names the rings only when `labels` exist.
 - **Funnel.** Palette-colored stages with the value labeled on the right.
 - **Multi-series.** The legend is a fixed 18 pixel DOM row under the plot, inset to center on the plot area. Clicking an entry spotlights that series (the others drop to 0.18 opacity); clicking it again clears. A pointer press on the legend is stopped so the card does not start a drag.
-- **Composed.** Series 0 as bars, the rest as lines, always gridded, with a legend when there are two or more series.
+- **Composed.** Series 0 as bars, the rest as lines, gridded unless `grid=off`, with a legend when there are two or more series. The legend sits below the axis, or above the plot when there is an x label, since below the axis there is room for only one of them.
 - **Bubble.** One dot per row at `(x, y)` sized by the third column (area range 40 to 420, a missing size counts 1) at 0.55 opacity; a row with no y is dropped; with a single column the dot plots at `(x, x)`. The tooltip names all three columns.
 - **Overlay.** One shared cartesian plane (a recharts `ComposedChart`) with each series in its own mark: line, area, scatter, and both `column` and `bar` as vertical bars. A series without an inherited color takes the palette. Legend clicks spotlight by series index.
 - **Treemap.** Cells sized by value (non-positive values dropped, blank names shown as `#n`); a name is drawn in white only in a cell wider than `46 · fs` and taller than `20 · fs`.

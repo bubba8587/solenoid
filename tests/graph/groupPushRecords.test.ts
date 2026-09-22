@@ -149,3 +149,22 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
     expect(nView.position.y).toBe(140);
   });
 });
+
+describe("the overlap backstop leaves the user's own overlaps alone", () => {
+  it("two stacked nodes far from the group stay stacked", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
+    const a = new DisplayNode();
+    const b = new DisplayNode();
+    for (const node of [g, a, b]) await editor.addNode(node as never);
+    addView(g.id, 100, 100, groupView(g));
+    const aView = addView(a.id, 3000, 3000, () => ({ w: 180, h: 80 }));
+    const bView = addView(b.id, 3040, 3020, () => ({ w: 180, h: 80 }));
+
+    await setGroupsCollapsed(editor, view, [g], false);
+    await flushRafs();
+    expect(aView.position).toEqual({ x: 3000, y: 3000 });
+    expect(bView.position).toEqual({ x: 3040, y: 3020 });
+  });
+});

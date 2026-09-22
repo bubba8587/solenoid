@@ -49,7 +49,7 @@ Three more passes run over the same boxes, after every expanding group has had i
 
 1. **Standoff clusters move as one block** ([[C89]] standoffsSolveLast). For each cluster of boxes joined by standoffs, every member takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
 2. **Standoff solve.** `solveStandoffs` runs with `forceLock` over the moved boxes, with the expanding groups and any position-locked group pinned. Its corrections are added to the same totals, credited to every expanding group.
-3. **Overlap backstop.** `separateOverlaps` removes every overlap left among the boxes, treating each standoff cluster as one unit so it can't tear. It repeatedly takes the largest overlapping pair and moves the one further from the top-left (by `x + y`) right or down, whichever is cheaper, to clear by `PUSH_GAP`. Moves only ever go right or down, so it always finishes. This pass is called without baseline pairs, so it also separates overlaps that existed before the expansion. Its moves are credited to every expanding group.
+3. **Overlap backstop.** `separateOverlaps` removes every overlap left among the boxes, treating each standoff cluster as one unit so it can't tear. It repeatedly takes the largest overlapping pair and moves the one further from the top-left (by `x + y`) right or down, whichever is cheaper, to clear by `PUSH_GAP`. Moves only ever go right or down, so it always finishes. Its baseline is every pair of units that overlapped before the push, with the expanding groups at their collapsed size (`overlappingPairs`), so an overlap the user made stays. Its moves are credited to every expanding group.
 
 ## Records and restore
 

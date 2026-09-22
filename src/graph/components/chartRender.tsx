@@ -118,6 +118,11 @@ function ChartTitle({ text, fs }: { text: string; fs: number }) {
 
 /** One renderer for both the inline node charts and the expand popup; without
  *  `axes` it is a clean Sparkline. */
+/** recharts wants "auto" for an open bound. */
+function yDomainOf(opts: ChartOptions | undefined): [number | string, number | string] | undefined {
+  return opts?.ymin !== undefined || opts?.ymax !== undefined ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] : undefined;
+}
+
 export function ChartView({
   op, series, width, height, axes, opts, signColors, labels, fontScale,
 }: {
@@ -161,10 +166,7 @@ export function ChartView({
   const dotR = opts?.markersize ?? LINE_DOT_R;
   const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
   const fillAlpha = opts?.alpha ?? 0.25;
-  // recharts wants "auto" for an open bound.
-  const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
-    ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
-    : undefined;
+  const yDomain = yDomainOf(opts);
   const xLabel = axes && opts?.xlabel
     ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis }
     : undefined;
@@ -274,7 +276,7 @@ export function ChartView({
   } else if (op === "radar") {
     chart = (
       <RadarChart width={width} height={chartH} data={series} cx="50%" cy="50%" outerRadius="72%">
-        <PolarGrid stroke={grid} />
+        {(opts?.grid ?? true) && <PolarGrid stroke={grid} />}
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
         {/* Radial ticks print rotated ON the polygon; the tooltip carries the raw value. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={yDomain} />
@@ -457,9 +459,7 @@ export function MultiSeriesView({
   // Overlaid area fills stack, so a shared default would paint the pair into one mass;
   // thinner fills keep both readable and let the overlap read as a blend.
   const fillAlpha = opts?.alpha ?? (op === "area" && series.length >= 2 ? 0.18 : 0.25);
-  const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
-    ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
-    : undefined;
+  const yDomain = yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   const chartH = height - titleH - MULTI_LEGEND_H; // the legend row below takes the rest
@@ -520,7 +520,7 @@ export function MultiSeriesView({
     const radarTip = <Tooltip isAnimationActive={false} content={<MultiTooltip tickFmt={tickFmt} rawFromNorm={radarNorm} />} />;
     chart = (
       <RadarChart width={width} height={chartH} data={rData} cx="50%" cy="50%" outerRadius="68%">
-        <PolarGrid stroke={grid} />
+        {(opts?.grid ?? true) && <PolarGrid stroke={grid} />}
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
         {/* Radial ticks print rotated ON the polygons; the tooltip carries the raw value. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} />
@@ -790,17 +790,20 @@ export function ComposedView({ series, labels, width, height, opts, fscale = 1 }
   const lw = opts?.linewidth ?? 1.5;
   const showMarkers = opts?.marker ?? false;
   const dotR = opts?.markersize ?? LINE_DOT_R;
+  const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fscale, fill: axis } : undefined;
+  const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fscale, fill: axis } : undefined;
   const title = opts?.title;
   const chartH = height - (title ? titleHeight(fscale) : 0);
   const chart = (
-    <ComposedChart width={width} height={chartH} data={data} margin={{ top: PLOT_TOP, right: 8, bottom: 4, left: 0 }}>
-      <CartesianGrid stroke={grid} vertical={false} />
-      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={n <= ALL_TICKS_UPTO ? 0 : undefined} />
-      <YAxis tick={AXIS} tickLine={false} width={26} />
+    <ComposedChart width={width} height={chartH} data={data} margin={{ top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 }}>
+      {(opts?.grid ?? true) && <CartesianGrid stroke={grid} vertical={false} />}
+      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={n <= ALL_TICKS_UPTO ? 0 : undefined} label={xLabel} height={xLabel ? 28 : undefined} />
+      <YAxis tick={AXIS} tickLine={false} width={yLabel ? 40 : 26} domain={yDomainOf(opts)} label={yLabel} />
       <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />
-      {series.length > 1 && <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fscale, color: axis }} />}
+      {/* Below the axis there is room for the legend or the x label, not both. */}
+      {series.length > 1 && <Legend verticalAlign={xLabel ? "top" : "bottom"} height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fscale, color: axis }} />}
       {series.map((s, j) => j === 0
-        ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} isAnimationActive={false} />
+        ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} fillOpacity={opts?.alpha ?? 1} isAnimationActive={false} />
         : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
     </ComposedChart>
   );
@@ -855,9 +858,9 @@ export function BubbleView({ series, width, height, opts, fscale = 1 }: {
   const chartH = height - (title ? titleHeight(fscale) : 0);
   const chart = (
     <ScatterChart width={width} height={chartH} margin={{ top: PLOT_TOP, right: 12, bottom: xLabel ? 18 : 4, left: 0 }}>
-      <CartesianGrid stroke={grid} />
+      {(opts?.grid ?? true) && <CartesianGrid stroke={grid} />}
       <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} label={xLabel} height={xLabel ? 28 : undefined} />
-      <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yLabel ? 40 : 26} label={yLabel} />
+      <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yLabel ? 40 : 26} domain={yDomainOf(opts)} label={yLabel} />
       <ZAxis type="number" dataKey="z" range={[40, 420]} />
       <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} content={<BubbleTooltip names={names} />} />
       <Scatter data={data} fill={colors[0]} fillOpacity={0.55} isAnimationActive={false} />

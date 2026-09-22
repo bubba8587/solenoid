@@ -39,9 +39,6 @@ Each was found reading the code to write the compute-pass, formula-language and 
 
 - [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row (reachable only through a wildcard); `stripUnitCells` doesn't reach inside a Cube.
 - [ ] **Vault write edges**: a merge with zero usable rows writes one empty note; an empty page name writes a note named `image`; a plain value writes without the Report's format picks (the writer has no annotation for it).
-- [ ] **Chart Builder offers keys the figure ignores** (Composed: `xlabel`, `ylabel`, `grid`, `ymin`/`ymax`, `alpha`; Bubble: `grid`, `ymin`/`ymax`; single-series Radar: `radarscale`), and canvas figures are offered `title` but draw none inside the figure.
-- [ ] **Expand push's final overlap pass separates overlaps that already existed** (it runs with no list of pre-existing overlaps to leave alone).
-- [ ] **`resetPointerCensus` is only called in tests.**
 
 ## Composites
 

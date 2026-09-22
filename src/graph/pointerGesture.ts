@@ -18,7 +18,13 @@ export function isPinching(): boolean {
 }
 
 function add(e: PointerEvent): void {
-  down.set(e.pointerId, e.pointerType !== "mouse" && e.pointerType !== "pen");
+  const isTouch = e.pointerType !== "mouse" && e.pointerType !== "pen";
+  // A primary touch starts a new touch sequence, so no other finger is really down:
+  // any finger still listed lost its `pointerup` and would fake a pinch.
+  if (isTouch && e.isPrimary === true) {
+    for (const [id, t] of down) if (t) down.delete(id);
+  }
+  down.set(e.pointerId, isTouch);
 }
 
 function remove(e: PointerEvent): void {
@@ -31,15 +37,17 @@ export function installPointerCensus(target: Pick<Window, "addEventListener" | "
   target.addEventListener("pointerdown", add as EventListener, true);
   target.addEventListener("pointerup", remove as EventListener, true);
   target.addEventListener("pointercancel", remove as EventListener, true);
+  // Bubble phase: in capture, `window` would also hear every element's blur.
+  target.addEventListener("blur", resetPointerCensus);
   return () => {
     target.removeEventListener("pointerdown", add as EventListener, true);
     target.removeEventListener("pointerup", remove as EventListener, true);
     target.removeEventListener("pointercancel", remove as EventListener, true);
+    target.removeEventListener("blur", resetPointerCensus);
   };
 }
 
-/** A pointer strands when the browser never delivers its `pointerup`, and a stranded
- *  finger makes the NEXT gesture read as multi-touch — Canvas resets once all are up. */
+/** A window that loses focus gets no `pointerup` for what was down. */
 export function resetPointerCensus(): void {
   down.clear();
 }

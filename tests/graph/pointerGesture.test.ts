@@ -21,7 +21,7 @@ function fakeTarget() {
     removeEventListener(type: string, fn: EventListener) {
       listeners.get(type)?.delete(fn);
     },
-    fire(type: string, e: { pointerId: number; pointerType?: string }) {
+    fire(type: string, e: { pointerId?: number; pointerType?: string; isPrimary?: boolean }) {
       for (const fn of listeners.get(type) ?? []) fn(e as unknown as Event);
     },
   };
@@ -88,9 +88,25 @@ describe("pointer census — what gesture is in flight", () => {
     expect(isPinching()).toBe(false);
   });
 
-  it("resets to empty — the backstop for a pointerup the browser never delivers", () => {
+  it("a primary touch drops fingers whose pointerup never arrived", () => {
+    down(1, "touch"); // stranded: no pointerup
+    t.fire("pointerdown", { pointerId: 2, pointerType: "touch", isPrimary: true });
+    expect(touchCount()).toBe(1);
+    t.fire("pointerdown", { pointerId: 3, pointerType: "touch", isPrimary: false });
+    expect(isPinching()).toBe(true);
+  });
+
+  it("a primary touch leaves a held mouse or pen alone", () => {
+    down(1, "pen");
+    t.fire("pointerdown", { pointerId: 2, pointerType: "touch", isPrimary: true });
+    expect(touchCount()).toBe(1);
+    t.fire("pointerdown", { pointerId: 3, pointerType: "touch", isPrimary: false });
+    expect(isPinching()).toBe(true);
+  });
+
+  it("empties when the window loses focus", () => {
     down(1, "touch"); down(2, "touch");
-    resetPointerCensus();
+    t.fire("blur", {});
     expect(touchCount()).toBe(0);
     expect(isPinching()).toBe(false);
   });

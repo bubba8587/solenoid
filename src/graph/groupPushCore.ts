@@ -52,6 +52,17 @@ const rectsOverlap = (a: Rect, b: Rect) => xOverlap(a, b) > 0 && yOverlap(a, b) 
 
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
+/** The pairs that overlap now, as the `baseline` a push leaves alone. */
+export function overlappingPairs(boxes: readonly PushBox[]): Set<string> {
+  const out = new Set<string>();
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = i + 1; j < boxes.length; j++) {
+      if (rectsOverlap(boxes[i], boxes[j])) out.add(pairKey(boxes[i].id, boxes[j].id));
+    }
+  }
+  return out;
+}
+
 export function computeExpandPush(
   spec: ExpandSpec,
   obstacles: PushBox[],
@@ -77,14 +88,7 @@ export function computeExpandPush(
 
   // Pre-existing user overlaps: baseline pairs the cascade must not try to separate.
   const exempt = new Set(obstacles.filter((b) => rectsOverlap(b, C)).map((b) => b.id));
-  const baseline = new Set<string>();
-  for (let i = 0; i < obstacles.length; i++) {
-    for (let j = i + 1; j < obstacles.length; j++) {
-      if (rectsOverlap(obstacles[i], obstacles[j])) {
-        baseline.add(pairKey(obstacles[i].id, obstacles[j].id));
-      }
-    }
-  }
+  const baseline = overlappingPairs(obstacles);
 
   const clearShift = (b: PushBox): Disp => {
     if (!rectsOverlap(b, A)) return { dx: 0, dy: 0 };
