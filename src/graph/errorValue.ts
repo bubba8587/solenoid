@@ -67,19 +67,19 @@ export interface SolError {
 export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#DIV/0!": "Divided by zero. Check the divisor; the usual cause is an empty or zeroed field upstream.",
   "#N/A":    "A lookup or match found nothing. Check the search value, or wire an If-not-found fallback.",
-  "#DOMAIN!": "An input was outside the function's domain, e.g. √ or log of a negative, or ASIN beyond ±1.",
+  "#DOMAIN!": "An input was outside what the function accepts, such as the square root or log of a negative number, or ASIN beyond ±1.",
   "#CONV!":  "An iterative solver didn't converge. Try a different starting guess, or check the inputs are solvable.",
   "#OVERFLOW!": "The result is too large or small to represent. Reduce the input magnitudes.",
   "#SYNTAX!": "A formula couldn't be parsed. Check for unbalanced parentheses, doubled operators, or a missing argument.",
   "#VALUE!": "A value had the wrong type, or a formula failed while evaluating. Check each input is the kind of data the node expects.",
-  "#TYPE!":  "The element type is wrong: text where a number is expected, or a number where a date is. Narrower than #VALUE!. Cast or reshape the input.",
-  "#SHAPE!": "List or matrix dimensions don't line up. Check the connected lists/tables have compatible lengths.",
+  "#TYPE!":  "The element type is wrong, like text where a number belongs or a number where a date does. Use a Cast node, or reshape the input.",
+  "#SHAPE!": "The sizes of Lists or matrices don't line up. Check that the connected Lists and tables have matching lengths.",
   "#UNIT!":  "The units don't match dimensionally, like adding meters to seconds. Convert one side first, or check the unit an upstream Format Controller assigned.",
   "#NAME?":  "A name wasn't recognized as a function or variable. Check the spelling in the formula.",
   "#REF!":   "A reference points at something that no longer exists, usually a deleted node or column.",
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",
   "#SOLVE!": "The Equation node found no value that satisfies the equation. Check the known values, or rearrange the equation.",
-  "#AMBIGUOUS!": "A date like 3/4/2026 could mean 3 April or March 4. Write the month as a name (3-Apr-2026) or use the ISO form (2026-04-03).",
+  "#AMBIGUOUS!": "A date like 3/4/2026 could mean April 3 or March 4. Write the month as a name (3-Apr-2026) or use the ISO form (2026-04-03).",
   "#ERROR!": "The node failed unexpectedly. If it persists, it's likely a Solenoid bug worth reporting.",
 };
 
