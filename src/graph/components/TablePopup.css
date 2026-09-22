@@ -698,14 +698,32 @@
 .table-popup__btn--primary:hover { filter: brightness(1.08); }
 .table-popup__btn:disabled { opacity: 0.45; pointer-events: none; }
 
-/* Touch devices: a step up from the desktop's footer controls, not a finger-sized block
-   (author 2026-09-22: scaled down; a phone's footer wraps to four rows). Pairs with the
-   wrapping footer above. */
+/* Touch devices: the footer's controls get SMALLER, so the row/column buttons and
+   Cancel/Save share one row under the view toggle (author 2026-09-22; measured in the
+   Obsidian rig's phone emulation: 24px buttons fit a 412px phone, a 360px one takes 10px
+   text and 4px gaps). Pairs with the wrapping footer above. */
 @media (pointer: coarse) {
   .table-popup__btn,
   .table-popup__view button {
-    padding: 6px 11px;
-    font-size: 12px;
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+  .table-popup__footer,
+  .table-popup__dim-controls,
+  .table-popup__actions {
+    gap: 6px;
+  }
+}
+@media (pointer: coarse) and (max-width: 380px) {
+  .table-popup__btn,
+  .table-popup__view button {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  .table-popup__footer,
+  .table-popup__dim-controls,
+  .table-popup__actions {
+    gap: 4px;
   }
 }
 
