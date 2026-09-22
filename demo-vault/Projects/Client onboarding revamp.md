@@ -20,7 +20,6 @@ milestones:
 ---
 # Client onboarding revamp
 
-Cutting the setup steps from nine to four. Ada owns the design; [[People/Priya]] wants it
-live before the [[Projects/Website launch]] so new signups land on the new flow.
+Cutting the setup steps from nine to four. Ada owns the design; [[People/Priya]] wants it live before the [[Projects/Website launch]] so new signups land on the new flow.
 
 #work #product

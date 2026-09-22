@@ -20,8 +20,7 @@ milestones:
 ---
 # Kitchen remodel
 
-The big one. Tracking against [[Projects/Website launch]] for the quarter's budget.
-Weekly check-ins in [[Notes/Q3 planning]].
+The big one. Tracking against [[Projects/Website launch]] for the quarter's budget. Weekly check-ins in [[Notes/Q3 planning]].
 
 #home #renovation
 

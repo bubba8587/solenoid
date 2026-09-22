@@ -10,8 +10,6 @@ tags:
 ---
 # Deep Work
 
-Cal Newport on focus. The argument: long, distraction-free blocks beat scattered hours,
-and the ability to do that kind of work is getting rarer and more valuable. Re-read the
-rules chapter before starting the next big project.
+Cal Newport on focus. The argument: long, distraction-free blocks beat scattered hours, and the ability to do that kind of work is getting rarer and more valuable. Re-read the rules chapter before starting the next big project.
 
 #book #productivity

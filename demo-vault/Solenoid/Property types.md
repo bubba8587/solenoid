@@ -38,7 +38,4 @@ phases:
 ---
 # Property types
 
-With the Solenoid plugin on, each property above shows as the chip Solenoid shows for that
-value, and clicking one opens the same editor. The note keeps plain YAML: a list is a
-sequence, a matrix a sequence of rows, a frame rows of `key: value`, and a cube rows whose
-values may themselves be lists or rows.
+With the Solenoid plugin on, each property above shows as the chip Solenoid shows for that value, and clicking one opens the same editor. The note keeps plain YAML: a list is a sequence, a matrix a sequence of rows, a frame rows of `key: value`, and a cube rows whose values may themselves be lists or rows.
