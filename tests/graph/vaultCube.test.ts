@@ -106,6 +106,39 @@ describe("Projects — mdbase typing (source #1)", () => {
   });
 });
 
+describe("a frame property's picked column types (the Solenoid Properties plugin's data)", () => {
+  const notes: VaultNote[] = [{ path: "a.md", text: "---\nbudget:\n  - item: \"0012\"\n    cost: 12\n    ordered: 2026-09-01\n    paid: true\n  - item: Tile\n    cost: later\n    ordered: later\n    paid: false\n---\n" } as VaultNote];
+  const nested = (cube: CubeValue) => { const c = cellAt(cube, "budget", 0); if (!isCubeValue(c)) throw new Error("not a cube"); return c; };
+  const column = (cube: CubeValue, name: string) => nested(cube).columns.find((c) => c.name === name)!;
+
+  it("without picks, a column mixing a date with text is text, the date as written", () => {
+    const cube = notesToCube(notes, NO_TYPES);
+    expect(column(cube, "ordered").type).toBe("string");
+    expect(column(cube, "ordered").cells).toEqual(["2026-09-01", "later"]);
+    expect(column(cube, "cost").type).toBe("string");
+  });
+
+  it("a pick types the column, and what the type cannot read is missing", () => {
+    const cube = notesToCube(notes, { ...NO_TYPES, columns: { budget: { item: "string", cost: "number", ordered: "date", paid: "logical" } } });
+    expect(column(cube, "item").type).toBe("string");
+    expect(column(cube, "item").cells).toEqual(["0012", "Tile"]);
+    expect(column(cube, "cost").type).toBe("number");
+    expect(column(cube, "cost").cells).toEqual([12, null]);
+    expect(column(cube, "ordered").type).toBe("date");
+    expect(column(cube, "ordered").cells).toEqual([Math.round(parseDateToSerial("2026-09-01")), null]);
+    expect(column(cube, "paid").type).toBe("logical");
+    expect(column(cube, "paid").cells).toEqual([true, false]);
+  });
+
+  it("a Text pick over an all-date column keeps the dates as written", () => {
+    const dated: VaultNote[] = [{ path: "b.md", text: "---\nbudget:\n  - ordered: 2026-09-01\n  - ordered: 2026-09-12\n---\n" } as VaultNote];
+    expect(column(notesToCube(dated, NO_TYPES), "ordered").type).toBe("date");
+    const picked = notesToCube(dated, { ...NO_TYPES, columns: { budget: { ordered: "string" } } });
+    expect(column(picked, "ordered").type).toBe("string");
+    expect(column(picked, "ordered").cells).toEqual(["2026-09-01", "2026-09-12"]);
+  });
+});
+
 describe("Notes — .obsidian/types.json typing (source #2) + guesser", () => {
   const obsidian = parseObsidianTypes(read(".obsidian/types.json"));
   const notes: VaultNote[] = mdFilesFlat("Notes").map((f) => ({ path: `Notes/${f}`, text: read(`Notes/${f}`) }));

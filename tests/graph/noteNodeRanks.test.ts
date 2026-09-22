@@ -27,3 +27,29 @@ describe("a Note's frontmatter at every rank", () => {
     if (isFrameValue(frame)) expect(frame.columns.map((c) => c.type)).toEqual(["string", "date"]);
   });
 });
+
+describe("a Note's frame columns follow the plugin's picks", () => {
+  const yaml = "budget:\n  - item: \"0012\"\n    ordered: 2026-09-02\n  - item: Tile\n    ordered: later";
+  const frameOf = async (n: NoteNode) => { const out = await n.data(); const v = (out as Record<string, unknown>).budget; if (!isFrameValue(v)) throw new Error("not a frame"); return v; };
+
+  it("a bare Note has no picks: a mixed column is text with its date as written", async () => {
+    const fr = await frameOf(note(yaml));
+    const ordered = fr.columns.find((c) => c.name === "ordered")!;
+    expect(ordered.type).toBe("string");
+    expect(ordered.values).toEqual(["2026-09-02", "later"]);
+  });
+
+  it("with picks, the column is the picked type and what it cannot read is missing", async () => {
+    const n = note(yaml);
+    n.columnPicks = { budget: { ordered: "date", item: "number" } };
+    n.syncFields();
+    const fr = await frameOf(n);
+    const ordered = fr.columns.find((c) => c.name === "ordered")!;
+    expect(ordered.type).toBe("date");
+    expect(ordered.values[1]).toBeNull();
+    expect(typeof ordered.values[0]).toBe("number");
+    const item = fr.columns.find((c) => c.name === "item")!;
+    expect(item.type).toBe("number");
+    expect(item.values).toEqual([12, null]);
+  });
+});

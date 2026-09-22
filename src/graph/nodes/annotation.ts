@@ -17,6 +17,7 @@ import { getActiveView, getOwningEditor } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { isFrameValue, recordsToCube, type FrameValue, type FrameColumn, type FrameColType, type FrameCell, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
+import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
@@ -73,8 +74,8 @@ function reshapePin(
   return (typeAtRank(pinned, rank as 0 | 1 | 2) ?? undefined) as FrontmatterFieldType | undefined;
 }
 
-/** A frame column's type from its cells, first non-null wins. A date is a serial by now, so
- *  the reader's `dateColumns` says which columns are dates. */
+/** A frame column's type from its cells, first non-null wins; a plain ISO date is still text
+ *  here, so the reader's `dateColumns` says which columns are dates. */
 function frameColType(cells: FrontmatterScalar[], isDate: boolean): FrameColType {
   if (isDate) return "date";
   for (const v of cells) {
@@ -87,8 +88,11 @@ function frameColType(cells: FrontmatterScalar[], isDate: boolean): FrameColType
 }
 
 /** Rows of `{name: value}` → a FrameValue: columns are the keys in first-appearance order
- *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. */
-function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = []): FrameValue {
+ *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. A
+ *  column's type is the user's pick (the Solenoid Properties plugin's `columnTypes`) when there
+ *  is one, else the cells'; a date column's ISO text becomes serials, and a picked column's
+ *  cells cross the type's boundary (what it cannot read is missing). */
+function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
   const columns: FrameColumn[] = names.map((name) => {
@@ -99,7 +103,9 @@ function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = []
       const first = v[0] ?? null;
       return typeof first === "object" ? null : first;
     });
-    return { name, type: frameColType(cells, dateColumns.includes(name)), values: cells as FrameCell[] };
+    const type = picks[name] ?? frameColType(cells, dateColumns.includes(name));
+    const values = picks[name] || type === "date" ? cells.map((c) => coerceScalar(c, type)) : cells;
+    return { name, type, values: values as FrameCell[] };
   });
   return { __frame: true, columns };
 }
@@ -124,10 +130,10 @@ function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar 
   }
 }
 
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[]): EmittedValue {
-  if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : [], dateColumns);
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks): EmittedValue {
+  if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : [], dateColumns, picks);
   // A row list with a list value is a cube (recordsToCube keeps the list as a list cell).
-  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : []);
+  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks);
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
   const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
@@ -152,6 +158,10 @@ export class NoteNode extends ClassicPreset.Node {
   // A user's per-key type pick, persisted. The pin holds the ELEMENT family only; the
   // value's dimensionality (scalar / list / frame) always comes from the body.
   fieldTypes: Record<string, FrontmatterFieldType>;
+  /** A frame property's picked column types, by key: what the Solenoid Properties plugin
+   *  recorded in the vault. A bare Note has no vault and keeps none; Import Obsidian Note
+   *  reads them with the note. Not saved: the vault is the source. */
+  columnPicks: PluginColumnTypes = {};
 
   // Derived from `body` on every sync (NOT persisted — the body is the source).
   private _renderBody = "";                              // markdown below the block
@@ -230,7 +240,7 @@ export class NoteNode extends ClassicPreset.Node {
         else this.fieldTypes[f.key] = pin;
       }
       const type = pin ?? guessed;
-      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns), type });
+      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key]), type });
     }
     for (const k of [...this._knapRendered.keys()]) if (!this._knapRaw.has(k)) this._knapRendered.delete(k);
     // Prune overrides for keys no longer present (keep the save lean).

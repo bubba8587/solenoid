@@ -42,8 +42,9 @@ export interface FrontmatterField {
   value: FrontmatterValue;
   /** Type inferred from the value (before any per-key user override). */
   guessed: FrontmatterFieldType;
-  /** A frame's columns whose every present cell read as a DATE. A date is a serial by the time
-   *  it is a cell, so the reader's parsed kinds are the only place this is known. */
+  /** A frame's columns whose every present cell is a plain ISO date. A row keeps such a cell
+   *  as the text written, so the column's type decides what it becomes: a pick from the
+   *  Solenoid Properties plugin, else this (all dates → serials), else text stays text. */
   dateColumns?: string[];
   /** The value was a bare `{{ … }}` / `{% … %}`, which YAML reads as a flow map: the
    *  tag must be quoted to be a value. */
@@ -125,7 +126,10 @@ function readRow(node: Node | null | undefined): FrontmatterRow | null {
         row[k] = nested as FrontmatterRow[];
       }
     } else if (val == null || isScalar(val)) {
-      row[k] = readScalar(val).value;
+      // A plain ISO date stays the text written: the column's type turns it into a serial
+      // (`dateColumns`, or a picked type), and a Text column keeps it as it was.
+      const { value, kind } = readScalar(val);
+      row[k] = kind === "date" && isScalar(val) ? String(val.value) : value;
     } else {
       return null;
     }

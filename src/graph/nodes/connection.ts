@@ -9,6 +9,7 @@ import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, type FxRate, type 
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, type MdbaseCollection } from "../mdbaseTypes";
 import { parseObsidianTypes } from "../obsidianTypes";
+import { parsePluginColumnTypes, PLUGIN_DATA_PATH, type PluginColumnTypes } from "../pluginColumnTypes";
 import { parseDailyNotesConfig } from "../dailyNotesConfig";
 import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
@@ -991,7 +992,8 @@ export class VaultFolderNode extends ClassicPreset.Node {
 
       const collections = await this.discoverMdbase(readRoot, files);
       const obsidian = await this.readObsidianTypes(vault);
-      const sources: VaultTypeSources = { mdbaseFor: (p) => mdbaseHintFor(collections, folder, p), obsidian };
+      const columns = await this.readColumnPicks(vault);
+      const sources: VaultTypeSources = { mdbaseFor: (p) => mdbaseHintFor(collections, folder, p), obsidian, columns };
       const nameFormat = this.nameFormat.trim() || (await this.defaultNameFormat(vault, folder));
       const cube = notesToCube(notes, sources, { nameFormat, includeBody: this.includeBody });
 
@@ -1032,6 +1034,15 @@ export class VaultFolderNode extends ClassicPreset.Node {
       out.set(folder, parseMdbaseCollection(yamlText, typeTexts));
     }
     return out;
+  }
+
+  /** A frame property's picked column types, from the Solenoid Properties plugin's data. */
+  private async readColumnPicks(vault: string): Promise<PluginColumnTypes> {
+    try {
+      return parsePluginColumnTypes(await readVaultFile(vault, PLUGIN_DATA_PATH));
+    } catch {
+      return {};
+    }
   }
 
   private async readObsidianTypes(vault: string): Promise<TypeMap> {

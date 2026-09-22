@@ -449,7 +449,17 @@ export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>
  *  type hint, a list value is a LIST cell (never joined into text), a nested record list a
  *  nested frame/cube via the same rule. The rows-of-objects shape frontmatter and the vault
  *  readers share. */
-export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>): CubeValue {
+/** A picked column's cell: the type's value boundary, and what it cannot read is missing
+ *  (the plugin's own rule for a frame property's cell). */
+function pickedCell(type: FrameColType, v: unknown): CubeCell {
+  if (v == null) return null;
+  const c = coerceFrameCell(type, String(v));
+  return typeof c === "number" && Number.isNaN(c) ? null : isSolError(c) ? null : c;
+}
+
+/** `picks`: a column's type as the user picked it (the Solenoid Properties plugin's
+ *  `columnTypes`), which beats inference for that column. */
+export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>, picks: Readonly<Record<string, FrameColType>> = {}): CubeValue {
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
   const names = makeHeaders(keys, keys.length);
@@ -469,6 +479,8 @@ export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>): 
     const cells = records.map((r) => toCell(r[key]));
     const scalarOnly = cells.every((c) => c == null || (typeof c !== "object"));
     if (!scalarOnly) return { name: names[j], cells };
+    const pick = picks[key];
+    if (pick) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
     const inferred = inferColumn(names[j], cells);
     return { name: names[j], cells, type: inferred.type };
   }));

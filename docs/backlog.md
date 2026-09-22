@@ -49,16 +49,6 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **1.4.2: Solenoid reads the plugin's picked column types** (author 2026-09-21: "that column type selector
-  is what stops the guessing games"). The picks are in `.obsidian/plugins/solenoid-properties/data.json`
-  (`columnTypes`, property then column, the app's own type names). Needs: the desktop file scope widened to
-  that one path (`capabilities/default.json` stops at `.obsidian/*.json`), and the picks fed to Import
-  Obsidian Note and Vault Folder as a typing source ABOVE the guesser (a bare Note has no vault, so it keeps
-  guessing). The reader must stop turning an ISO date into a serial before the column's type is known: today
-  a column that mixes a date with anything else keeps a bare serial (`[46267, "later"]` types as Number,
-  `["later", 46267]` as Text), and only an all-ISO column is Date; a serial written as a number is always
-  Number. With a pick, coerce by the pick (Date: serials; Text: the ISO text as written). Verify in the
-  desktop app against the demo vault. Spec: `specs/obsidian-plugin.md` § Gaps.
 - [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
   row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
   `specs/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.

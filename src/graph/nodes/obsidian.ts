@@ -455,6 +455,15 @@ export class ImportObsidianNode extends NoteNode {
 
   protected reservedOutputs(): ReadonlySet<string> { return IMPORT_RESERVED; }
 
+  /** The vault's picked column types (the Solenoid Properties plugin's data), read beside the
+   *  note so `syncFields` types a frame's columns by them; none when the vault has none. */
+  async loadColumnPicks(vault: string): Promise<void> {
+    const { readVaultFile } = await import("../fileBridge");
+    const { parsePluginColumnTypes, PLUGIN_DATA_PATH } = await import("../pluginColumnTypes");
+    try { this.columnPicks = parsePluginColumnTypes(await readVaultFile(vault, PLUGIN_DATA_PATH)); }
+    catch { this.columnPicks = {}; }
+  }
+
   /** The path a wired input last drove a load for — guards a reload loop once
    *  `fileName` catches up (the VaultFolder `_lastKey` pattern). */
   private _wiredPath = "";
@@ -499,6 +508,7 @@ export class ImportObsidianNode extends NoteNode {
       if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
         this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
       }
+      await this.loadColumnPicks(vault);
       const { removed, retyped } = this.syncFields();
       const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
       await dropStrandedFrontmatterCables(this.id, removed, retyped);

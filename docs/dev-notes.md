@@ -45,6 +45,14 @@ specific item.
   1.13), so the look's classes toggle one at a time; and the graph view (a canvas) reads colors only on
   `css-change`, which a class swap never fired, so palette, accent and look changes trigger it.
 - The demo vault's notes lost their hard wraps: Obsidian renders a single newline as a break.
+- **Plugin 0.1.3 exported and pushed** to `bubba8587/Solenoid-Properties` (snapshot of `3b7024b4`, builds there
+  byte-identical to the rig's build); the release is the author's (workflow or the `0.1.3` tag).
+- **The app reads the plugin's column picks** (the 1.4.2 backlog item): `pluginColumnTypes.ts`, read by Vault
+  Folder beside `types.json` and by Import Obsidian Note with the note; a pick types that column above the
+  guesser. The reader now keeps a row's ISO date as text until the column's type is known, so a Text pick
+  holds and a mixed column no longer carries a bare serial. Desktop scope widened to that one path. NOT yet
+  checked in the desktop build against the demo vault (the author's step: pick a type in Obsidian, reopen the
+  Vault Folder / import).
 
 ### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
 

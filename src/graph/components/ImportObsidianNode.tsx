@@ -87,6 +87,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     if (sourcePath && (data.label === "Import Obsidian Note" || data.label.trim() === "")) {
       data.label = baseName(sourcePath); // the card's name elsewhere (stubs, the Inspector)
     }
+    await data.loadColumnPicks(vault);
     const { removed, retyped } = data.syncFields();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setBody(content);

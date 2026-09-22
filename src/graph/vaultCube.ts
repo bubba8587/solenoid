@@ -11,6 +11,7 @@ import {
 import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
 import { parseDate } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
+import type { PluginColumnTypes, ColumnPicks } from "./pluginColumnTypes";
 
 export interface VaultNote {
   /** Vault-relative path, POSIX-style ("Projects/Kitchen remodel.md"). */
@@ -28,6 +29,8 @@ export interface VaultTypeSources {
   mdbaseFor: (path: string) => TypeMap;
   /** The vault-wide `.obsidian/types.json` hints. */
   obsidian: TypeMap;
+  /** A frame property's picked column types (the Solenoid Properties plugin's data), by key. */
+  columns?: PluginColumnTypes;
 }
 
 export interface VaultCubeOptions {
@@ -247,7 +250,7 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
   for (const key of fmKeys) {
     // Resolve the column's parse shape: a hint (mdbase → obsidian), else the guesser.
     const hint = resolveHint(key, parsed, sources);
-    columns.push(buildColumn(key, hint, parsed));
+    columns.push(buildColumn(key, hint, parsed, sources.columns?.[key]));
   }
 
   return cubeFromColumns(columns);
@@ -269,10 +272,10 @@ function resolveHint(key: string, parsed: ParsedNote[], sources: VaultTypeSource
   return sources.obsidian[key] ?? null;
 }
 
-function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[]): { name: string; cells: CubeCell[]; type?: FrameColType } {
+function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[], picks?: ColumnPicks): { name: string; cells: CubeCell[]; type?: FrameColType } {
   // A hint decides the shape outright; otherwise the guesser looks across the rows.
   const shape: TypeHint = hint ?? guessShape(key, parsed);
-  const cells: CubeCell[] = parsed.map((p) => cellFor(p.fields.get(key)?.value, shape));
+  const cells: CubeCell[] = parsed.map((p) => cellFor(p.fields.get(key)?.value, shape, picks));
   // A list column carries its ELEMENT type, which a list cell tints and prints by (cubeCell.tsx).
   const kind = shape.kind === "list" || shape.kind === "matrix" ? shape.elem : shape.kind;
   const type: FrameColType | undefined =
@@ -324,13 +327,14 @@ function scalarKindOfValue(v: FrontmatterScalar): ScalarKind {
 }
 
 /** One cell for a note's raw value, shaped to the column. Missing → null. */
-function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint): CubeCell {
+function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}): CubeCell {
   if (value === undefined || value === null) return null;
   if (shape.kind === "frame") {
     // A rows-of-objects key is a nested CUBE (no in-cell string lists — the cube holds a
-    // record whose field may itself be a list); frame.ts's recordsToCube is the shared shape.
+    // record whose field may itself be a list); frame.ts's recordsToCube is the shared shape,
+    // and a picked column's type beats its inference.
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
-      return recordsToCube(value as FrontmatterRow[]);
+      return recordsToCube(value as FrontmatterRow[], picks);
     }
     return null;
   }

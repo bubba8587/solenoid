@@ -252,13 +252,20 @@ a cube cell as its rows, and `obsidianTypes.ts` maps every plugin type id to a `
 (a cube takes the frame hint: rows of records either way). Complex cells are text in a cube,
 as Excel's complex numbers are.
 
-## Gaps
+## The app reads the picks
 
-- **A column type PICKED in the plugin is not read by Solenoid.** It lives in the plugin's
-  `data.json`, which the desktop file scope does not reach (`.obsidian/*.json` only), so a Date
-  column the user set to Text in Obsidian still reads as Date here. It only shows when a pick
-  disagrees with the values, or when a column mixes a date with something else (the date cell
-  is a bare serial by then). Queued for 1.4.2 (`docs/backlog.md`): the pick is what ends the guessing.
+A column type picked here is read by Solenoid (author 2026-09-21: "that column type selector is
+what stops the guessing games"). `src/graph/pluginColumnTypes.ts` parses the plugin's
+`data.json` (`columnTypes`, property then column, the four type names); Vault Folder reads it
+beside `.obsidian/types.json` and Import Obsidian Note reads it with the note (a bare Note has
+no vault and keeps none; the field is transient, the vault is the source). A pick types that
+column above the guesser and only refines a frame's columns: mdbase and `types.json` still say
+what a key is. The reader keeps a row's plain ISO date as the text written, so the column's
+type decides what it becomes: a Date pick or an all-date column makes serials, a Text pick keeps
+the text, and a column mixing a date with text is text with the date as written (it used to
+carry a bare serial). What a picked type cannot read is missing, the plugin's own rule for a
+cell. The desktop file scope reaches that one path (`capabilities/default.json`). Tests:
+`pluginColumnTypes.test.ts`, `vaultCube.test.ts`, `noteFrontmatter.test.ts`, `noteNodeRanks.test.ts`.
 
 ## Verifying against real Obsidian
 

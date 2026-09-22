@@ -148,6 +148,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    columnPicks: "A Note's frame column picks from the Solenoid Properties plugin's data; the vault is the source, Import Obsidian Note re-reads them with the note ([[C107]])",
     resolved: "Write Tasks' Preview resolutions; re-derived by the next Preview, meaningless across loads",
     resolvedPath: "Write to Obsidian's last-resolved target path; re-read from the `path` input/literal on every compute",
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",

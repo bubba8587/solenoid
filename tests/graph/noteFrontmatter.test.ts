@@ -174,9 +174,11 @@ describe("parseNoteFrontmatter", () => {
     expect(f("z: [hi, 2i]").guessed).toBe("strlist");
   });
 
-  it("names a frame's date columns, since a date is a serial by the time it is a cell", () => {
+  it("names a frame's date columns, and a row keeps a date as the text written", () => {
     const r = parseNoteFrontmatter("---\nbudget:\n  - item: Cabinets\n    ordered: 2026-09-02\n    note: 2026-09-02\n  - item: Tile\n    ordered: 2026-09-12\n    note: later\n---\n");
     expect(r.fields[0]).toMatchObject({ guessed: "frame", dateColumns: ["ordered"] });
+    // The column's type decides what the text becomes; a mixed column keeps its date as text.
+    expect(r.fields[0].value).toEqual([{ item: "Cabinets", ordered: "2026-09-02", note: "2026-09-02" }, { item: "Tile", ordered: "2026-09-12", note: "later" }]);
   });
 
   it("keeps the first occurrence of a duplicated key", () => {
