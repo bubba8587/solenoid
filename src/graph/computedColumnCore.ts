@@ -74,8 +74,8 @@ export function tagComputedCell(v: unknown): FrameCell {
   }
   if (typeof v === "string" || typeof v === "boolean" || v === null) return v;
   if (v === undefined) return null;
-  if (Array.isArray(v)) return solError("#SHAPE!", "A computed column needs one value per row — @name reads this row's cell");
-  return solError("#VALUE!", "A computed column needs a number, text, boolean, or blank per row");
+  if (Array.isArray(v)) return solError("#SHAPE!", "A computed column needs one value per row. Use @name to read this row's cell.");
+  return solError("#VALUE!", "Each row of a computed column must be a number, text, TRUE/FALSE or blank.");
 }
 
 export interface ComputeColumnOptions {

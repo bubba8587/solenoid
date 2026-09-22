@@ -438,10 +438,10 @@ const JOIN_HOW_OPTIONS: OpOption<JoinHow>[] = [
   { value: "left", label: "Left", title: "All left rows. Unmatched right side is blank." },
   { value: "right", label: "Right", title: "All right rows. Unmatched left side is blank." },
   { value: "outer", label: "Outer", title: "All rows from both sides" },
-  { value: "semi", label: "Semi", title: "Left rows whose key matches in right — left columns only" },
-  { value: "anti", label: "Anti", title: "Left rows with no match in right — left columns only" },
+  { value: "semi", label: "Semi", title: "Left rows with a match in right. Keeps left columns only." },
+  { value: "anti", label: "Anti", title: "Left rows with no match in right. Keeps left columns only." },
   { value: "asof", label: "As-of", title: "Nearest match on a sorted number or date key. No exact match required." },
-  { value: "cross", label: "Cross", title: "Every left row paired with every right row — all columns, no keys" },
+  { value: "cross", label: "Cross", title: "Every left row paired with every right row. No keys." },
 ];
 
 const ASOF_DIRECTION_OPTIONS: { value: AsofDirection; label: string; title: string }[] = [

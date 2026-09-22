@@ -714,7 +714,7 @@ export function TablePopup() {
     // per column would slide a formula onto the wrong data. It is refused, loudly: the
     // table keeps its last valid state until the text fits again.
     if (computedColSet.size > 0 && rows.some((r) => r.length !== cols)) {
-      setCsvError("Current edit state will break the layout and cannot be saved. Please retain the same number of items per row.");
+      setCsvError("Every row needs the same number of values. This edit can't be saved until they match.");
       return;
     }
     setCsvError(null);
@@ -1306,7 +1306,7 @@ export function TablePopup() {
               type="button"
               aria-pressed={listVertical}
               onClick={() => setListVertical(true)}
-              title="Show the list down a column — one value per line (display only, the value is unchanged)"
+              title="Show the list down a column. Display only; the value doesn't change."
             >Column</button>
           </div>
         )}
@@ -1314,8 +1314,8 @@ export function TablePopup() {
           <label
             className="table-popup__source-check"
             title={literalSource
-              ? "Checked: show and edit exactly what you typed. Unchecked: the derived render, such as TRUE/FALSE and formatted dates."
-              : "Show the inputted source text instead of the formatted value"}
+              ? "Show and edit exactly what you typed, instead of formatted values like TRUE/FALSE and dates."
+              : "Show the source text instead of the formatted value."}
           >
             <input
               type="checkbox"
