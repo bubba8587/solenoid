@@ -9,7 +9,7 @@ import type { Shape } from "../frameShape";
 import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
@@ -24,7 +24,7 @@ import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
 import { MAX_GENERATED, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
-import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -1074,6 +1074,8 @@ export class SumIfsNode extends ClassicPreset.Node {
   width = 210;
   height = 280;
 
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
+
   constructor(init?: {
     label?: string; op?: CondAggOp; match?: "all" | "any";
     condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
@@ -1082,7 +1084,7 @@ export class SumIfsNode extends ClassicPreset.Node {
     this.op = init?.op ?? "sumifs";
     if (init?.match === "all" || init?.match === "any") this.match = init.match;
     this.label = init?.label ?? "";
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("values", strIn("Values column"));
     const ids = pairIdsFromKeys(init?.valueKeys, "column");
     if (ids.length) {
@@ -1128,6 +1130,8 @@ export class SumIfsNode extends ClassicPreset.Node {
   data(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
     const finish = (r: number | UnitCell | SolError | null) => { this.cachedResult = r; return { result: r }; };
     const raw = inputs.frame?.[0];
+    // A cube is read through its scalar columns; a list column can't be summed or matched.
+    if (isCubeValue(raw)) return this.data({ ...inputs, frame: [flatCubeToFrame(raw, "scalar")] });
     // A lazy upstream: fetch ONLY the named columns, then run on that slice.
     if (isFrameRef(raw)) {
       const names = new Set<string>();

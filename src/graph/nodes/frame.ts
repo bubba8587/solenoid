@@ -894,6 +894,7 @@ export class PivotNode extends ClassicPreset.Node {
   // Per field name, the value KEYS (pivotCellKey) to HIDE; ANDed with the wired `filter` mask.
   filterExclude: Record<string, string[]> = {};
   cachedResult: FrameValue | SolError | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   // Stashed each compute so the editor popup renders its field list without re-fetching.
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
@@ -914,7 +915,7 @@ export class PivotNode extends ClassicPreset.Node {
     this.rowSort = init?.rowSort ?? 0;
     this.colSort = init?.colSort ?? 0;
     this.relativeTo = init?.relativeTo ?? 0;
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("rowFields", strListIn("Rows"));
     this.addInput("colFields", strListIn("Columns"));
     this.addInput("values", strListIn("Values"));
@@ -935,11 +936,13 @@ export class PivotNode extends ClassicPreset.Node {
   }
 
   data(inputs: {
-    frame?: (FrameInput | null)[];
+    frame?: (FrameInput | CubeValue | null)[];
     rowFields?: string[][]; colFields?: string[][]; values?: string[][];
     filter?: (boolean | null)[][];
   }) {
-    const f = inputs.frame?.[0] ?? null;
+    const raw = inputs.frame?.[0] ?? null;
+    // A cube's fields are its scalar columns; a list column is not a pivot field.
+    const f = isCubeValue(raw) ? flatCubeToFrame(raw, "scalar") as FrameValue : raw;
     if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
     if (!isFrameRef(f)) {
       this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));

@@ -121,3 +121,26 @@ describe("the cube-adoptive input still widens a bare list / matrix (the old fra
     expect(isFrameValue(f) && f.columns[0].format?.format).toBe("datetime");
   });
 });
+
+describe("a vault-shaped cube (list columns beside scalar ones) reaches the aggregators", () => {
+  const vault = cubeFromColumns([
+    { name: "status", cells: ["open", "done", "open"], type: "string" },
+    { name: "hours", cells: [2, 3, 4], type: "number" },
+    { name: "tags", cells: [["a"], [], ["b"]] },
+  ]);
+
+  it("PIVOTBY offers the scalar columns as fields and pivots on them", async () => {
+    const { PivotNode } = await import("../../src/graph/rete-nodes");
+    const p = new PivotNode();
+    const out = await p.data({ frame: [vault], rowFields: [["status"]], colFields: [[]], values: [["hours"]] });
+    expect(p.sourceColumns.map((c) => c.name)).toEqual(["status", "hours"]);
+    expect(isFrameValue(out.frame) && out.frame.columns[1].values.slice(0, 2)).toEqual([6, 3]);
+  });
+
+  it("SUMIFS sums a cube's column by a condition", async () => {
+    const { SumIfsNode } = await import("../../src/graph/rete-nodes");
+    const s = new SumIfsNode();
+    s.stringLiterals.values = "hours"; s.stringLiterals.column0 = "status"; s.stringLiterals.value0 = "open";
+    expect(s.data({ frame: [vault] }).result).toBe(6);
+  });
+});
