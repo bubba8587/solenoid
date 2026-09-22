@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
 // A property's YAML value ⇄ the value a chip and its popup take. Pure: no DOM, no Obsidian.
 import { parseDateToSerial, serialToJsDate } from "../../src/graph/nodes/dateSerial";
 import { parseCellText } from "../../src/graph/literalEditors";

@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";

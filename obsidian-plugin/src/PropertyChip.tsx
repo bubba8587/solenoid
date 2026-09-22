@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
 import { useRef, useState, useSyncExternalStore } from "react";
 import { ArrayChip, arrayAccentFor } from "../../src/graph/components/ArrayChip";
 import { themeVersion, tokenHex } from "./shadow";

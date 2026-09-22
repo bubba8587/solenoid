@@ -58,7 +58,8 @@ specific item.
   cell's scalar and write an edited one as YAML reads it (`parseCellText`, the cube's rule); a type switch keeps
   every cell's scalar; `validate` is shape-only inside a list or matrix (the family is a lens, not Obsidian's
   gate); the Complex field alone refuses what it cannot read. Verified in the rig by driving each editor's own
-  Save and reading the note back: frame (the repro), numeric list, date list, matrix, cube, complex scalar.
+  Save and reading the note back: frame (the repro), numeric list, date list, matrix, cube, complex scalar. The
+  rule is a node, [[D72]] pluginSaveWritesSourceText under C58 and C107 (author's ask; unratified).
 - The column-format panel closed on any press inside it in the plugin: `useDismissOnOutside` read `e.target`,
   which a shadow root retargets to its host; now `composedPath()[0]`, the spec's rule. Verified in the rig.
 - The author's live test had wiped `ordered` in the repo's demo note; restored from git.

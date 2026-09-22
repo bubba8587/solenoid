@@ -115,7 +115,7 @@ and drill levels, Escape semantics.
    `tests/obsidianPlugin/yamlValue.test.ts`). Dates are ISO text in the note and serials inside
    the components. Opening and saving an untouched value writes back the same YAML. Every row of
    a saved frame carries every key, a missing cell as `null`. **Every editor's Save writes each
-   cell's SOURCE TEXT** (list, matrix, frame; the cube already did): an unchanged cell keeps the
+   cell's SOURCE TEXT** ([[D72]] pluginSaveWritesSourceText; list, matrix, frame; the cube already did): an unchanged cell keeps the
    scalar it came in with, an edited one is what was typed as YAML reads it (`parseCellText`: a
    number, true/false, else text), and no type touches the note. A frame column's picked type
    is a lens kept in the plugin's data and the property's family is a lens for a list or matrix,
