@@ -1,17 +1,12 @@
-# Value semantics — null, NaN, Infinity, and errors, across every domain
+# Value semantics: null, NaN, Infinity and errors, across every domain
 
-The one-stop spec for the value model's special kinds: what each one MEANS, what
+The one-stop reference for the value model's special kinds: what each one means, what
 produces it, how it propagates through each computation context, and how it renders.
-Consolidates the 2026-06-22 array-semantics build (decision arraySemantics) and the 2026-07-02
-step-by-step rulings ([[C14]] currentExcelParity–consistencyOverQuirks), all shipped by the 2026-07-04/05 tail
-pass. Mechanics/invariants live in `subsystem-invariants.md` "Error values"; this
-doc is the SEMANTICS reference.
+The mechanics and invariants live in `../specs/error-values.md`; this doc is the
+semantics.
 
-**Status honesty:** every rule below is **[shipped]** — the core set as of the
-2026-07-04/05 1.0-tail build pass (broadcaster contract, guardFinite/#OVERFLOW!,
-NaN affordance, readInput, IFS/SWITCH #N/A), the computed-column rules as of the
-2026-07-30/31 tableRefSemantics–firstClassUnits run. If a new rule is decided-but-unbuilt, tag it
-`[decided <date>]` and carry the build item in the backlog.
+Every rule here is built. A rule that is decided but not yet built gets a
+`[decided <date>]` tag here and an item in the backlog.
 
 ## The kinds
 
@@ -20,72 +15,70 @@ NaN affordance, readInput, IFS/SWITCH #N/A), the computed-column rules as of the
 | value | a real number/string/date/logical/complex | the normal case |
 | `null` | **missing** — no value was ever there | data, not a failure |
 | `SolError` | **failure** — a computation could not answer (tagged code, 15 incl. `#OVERFLOW!` and the internal `#ERROR!` catch-all) | loud until caught |
-| `NaN` | **undefined number that leaked** — not an error, not missing | residue; computation may not produce it (guardFinite) [shipped] |
-| `Infinity` | **definable infinity** — deliberately declared (Constant node) or derived from an infinite input | a first-class value [shipped] |
+| `NaN` | **undefined number that leaked** — not an error, not missing | residue; computation may not produce it (guardFinite) |
+| `Infinity` | **definable infinity** — deliberately declared (Constant node) or derived from an infinite input | a first-class value |
 
-A **complex** value is the tagged object `{ __cx: true, re, im }` (tagSpecialScalars) — never a
+A **complex** value is the tagged object `{ __cx: true, re, im }` (tagSpecialScalars), never a
 bare `[re, im]` array. `Array.isArray` therefore never means "a complex number": an
-array is a 1-D list, or a matrix when its own elements are arrays (rank 2 is live
-since matricesInFormulas); `isCx` (`nodes/complex.ts`) is the one complex test.
+array is a 1-D list, or a matrix when its own elements are arrays (rank 2 is allowed by
+[[C15]] matricesInFormulas); `isCx` (`nodes/complex.ts`) is the one complex test.
 
 The load-bearing distinctions:
 
 - **null vs error**: a blank cell is *data you don't have*; an error is *an answer that
   failed*. Aggregators skip null but propagate errors; Filter drops null-predicate rows;
   Fill/Coalesce recovers null, IFERROR/IFNA recovers errors. The detect/recover 2×2:
-  ISNULL / ISERROR / ISNA × Fill/Coalesce / IFERROR / IFNA. **[shipped]**
+  ISNULL / ISERROR / ISNA × Fill/Coalesce / IFERROR / IFNA.
 - **NaN vs `#N/A`**: unrelated, despite the letters. `#N/A` is a real tagged error
   ("no result exists"), minted by XLOOKUP not-found, the NA node, and IFS/SWITCH
-  no-match [shipped]; IFNA catches it. NaN is IEEE float residue with no
-  special status (the finding-13 settlement) — IFNA does NOT catch it, and it must
-  never render as "N/A" [shipped: renders `NaN` with a muted-chip affordance].
+  no-match; IFNA catches it. NaN is IEEE float residue with no
+  special status. IFNA does not catch it, and it never renders as "N/A": it renders as
+  `NaN` with a muted chip.
 - **Infinity vs overflow**: `10^400` is a really big *number* the app can't represent —
-  that's `#OVERFLOW!`, not infinity. Infinity is only ever deliberate. [shipped]
+  that's `#OVERFLOW!`, not infinity. Infinity is only ever deliberate.
 
-## Production rules — where each kind comes from
+## Production rules: where each kind comes from
 
 - **Errors mint at the failure site, with the specific code**: `#DIV/0!` at the divide,
   `#DOMAIN!` at sqrt/log/pow domain failures, `#N/A` at not-found/no-match, `#SHAPE!`
   at coercion and per row in a computed column (a list-shaped cell result, or an
-  `@`-read of a mis-sized list — the DESIGNED loud failure for a bare column name in
-  scalar position, tableRefSemantics), `#CIRC!` at engine-cache seeding, `#OVERFLOW!` at
-  representation overflow [decided]. Never a raw NaN as a failure signal.
-- **Fill's unwired pad is `null`** (first-class missing — author 2026-07-16), NOT
+  `@`-read of a mis-sized list: the deliberate loud failure for a bare column name in
+  scalar position, [[C22]] rowFormulaRefs), `#CIRC!` at engine-cache seeding, `#OVERFLOW!` at
+  representation overflow. Never a raw NaN as a failure signal.
+- **Fill's unwired pad is `null`** (first-class missing, the author's call), not
   Excel's `#N/A` for EXPAND's omitted `pad_with`: wire the NA node into Fill to get
   Excel's form (`nodes/matrix.ts`).
-- **The non-finite guard** (`guardFinite`, valueKinds.ts) [shipped]:
+- **The non-finite guard** (`guardFinite`, valueKinds.ts):
   for any numeric op — result `NaN` → `#DOMAIN!` (indeterminate: `(-8)^(1/3)`, `∞−∞`,
   `∞/∞`, `0×∞`, or a NaN input entering the op); result `±Inf` from all-FINITE inputs →
   `#OVERFLOW!`; result `±Inf` with an infinite input → passes through (definable).
   Consequence: computation cannot PRODUCE NaN — the remaining NaN sources are all
   data-entry (dirty imported data, an unparseable typed cell via `coerceFrameCell`)
   plus one BUG CLASS: a `UnitCell` that escapes the unit-blind boundary reaches
-  `coerceNumber` as NaN (the 2026-07-13 regression `stripUnitCells` exists to
-  prevent).
-- **null** comes from data (blank cells, CSV holes), from ragged-list padding
-  [shipped 2026-07-02], from empty aggregations (`AVG([])`), and from Kleene logic
+  `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
+- **null** comes from data (blank cells, CSV holes), from ragged-list padding, from empty aggregations (`AVG([])`), and from Kleene logic
   that genuinely cannot answer.
 
-## Propagation — by computation context
+## Propagation, by computation context
 
 Which rule applies is decided by the CONTEXT, not the function's name. The contexts:
 
 | Context | Error | null | Where |
 |---|---|---|---|
-| **Element-wise numeric** (operators, mapped functions) | propagates UNMORPHED, per cell, first-in-arg-order | propagates (`null+5` = `null` — the SQL model, NOT Excel's blank-as-0) | shared broadcasters (`broadcast`/`broadcastErr`/`broadcastCall`) [shipped] |
-| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unmorphed [shipped] | goes INTO Kleene — `FALSE AND null` = FALSE, `TRUE AND null` = null | `broadcastEl`; Kleene tables in `valueKinds.ts` [shipped] |
-| **Reduction / aggregate** (SUM, AVG, formula AND/OR, Aggregate node) | propagates (first error wins) | SKIPPED (Excel range semantics, SQL aggregates) | `forAggregate`, `prepRangeArgs` [shipped] |
-| **Paired / index-aligned** (SUMPRODUCT, CORREL, SUMIF…) | propagates | a null in ANY range drops that whole row pairwise; ragged ranges keep the min-length zip (pad-then-drop ≡ truncate) | `RANGE_PAIRED` [shipped] |
-| **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls STAY PUT (dropping would shift indices) | `RANGE_POSITIONAL` [shipped] |
-| **COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `RANGE_RAW` [shipped] |
-| **Ragged element-wise zip** | — | pad-to-longest with null; a padded position is missing | all broadcasters [shipped 2026-07-02] |
-| **Computed column (per row)** | a ROW-bound error cell (λ param / `@`-read) fails THAT row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | `computedColumnCore.ts` `tagComputedCell` (tableRefSemantics; one definition per column, noPerCellFormulas) [shipped] |
+| **Element-wise numeric** (operators, mapped functions) | propagates UNMORPHED, per cell, first-in-arg-order | propagates (`null+5` = `null` — the SQL model, NOT Excel's blank-as-0) | shared broadcasters (`broadcast`/`broadcastErr`/`broadcastCall`) |
+| **Element-wise logical** (Comparison, BooleanOp, IF, NOT) | propagates unmorphed | goes INTO Kleene — `FALSE AND null` = FALSE, `TRUE AND null` = null | `broadcastEl`; Kleene tables in `valueKinds.ts` |
+| **Reduction / aggregate** (SUM, AVG, formula AND/OR, Aggregate node) | propagates (first error wins) | SKIPPED (Excel range semantics, SQL aggregates) | `forAggregate`, `prepRangeArgs` |
+| **Paired / index-aligned** (SUMPRODUCT, CORREL, SUMIF…) | propagates | a null in ANY range drops that whole row pairwise; ragged ranges keep the min-length zip (pad-then-drop ≡ truncate) | `RANGE_PAIRED` |
+| **Positional lookups** (XLOOKUP, XMATCH, INDEX) | propagates | nulls STAY PUT (dropping would shift indices) | `RANGE_POSITIONAL` |
+| **COUNT family** | classified, not propagated (COUNT skips, COUNTA counts) | COUNTBLANK counts them | `RANGE_RAW` |
+| **Ragged element-wise zip** | — | pad-to-longest with null; a padded position is missing | all broadcasters |
+| **Computed column (per row)** | a ROW-bound error cell (λ param / `@`-read) fails THAT row only; an error inside a whole-column binding flows into the formula, where the aggregate's own rule applies | flows in (ISBLANK sees it); a result of `undefined` reads as blank | `computedColumnCore.ts` `tagComputedCell` ([[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas) |
 
-The sanctioned divergence (decision oneAnswerOneDivergence): formula `AND(x)` is a *reduction* (nulls
+The sanctioned divergence ([[D51]] oneAnswerOneDivergence): formula `AND(x)` is a *reduction* (nulls
 skipped → Excel behavior); the BooleanOp node is *element-wise* (Kleene). Same word,
 two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 
-### Scalar operators — the P6 operator-parity table (settled 2026-06-22; shipped at the v1.0 audit, finding 26)
+### Scalar operators: the operator-parity table
 
 `applyOp` (`excelFormula.ts`). Type-honest: match Excel where sane, diverge where
 Excel is incoherent.
@@ -101,25 +94,24 @@ Excel is incoherent.
 - `&` renders logicals TRUE/FALSE (not JS "true").
 
 **IF honors a BLANK branch** (the parser's omitted-argument form `IF(x,,y)`): the
-blank arrives as null and STAYS null — Solenoid's first-class missing — a deliberate
-Excel deviation (Excel's omitted arg IS 0; author chose null, 2026-07-16). Arg-count
+blank arrives as null and stays null, Solenoid's first-class missing. That is a deliberate
+departure from Excel, whose omitted argument is 0; the author chose null. Arg-count
 defaults keep Excel's shape: `IF(test, then)` with a false test → FALSE.
 
-## Reading an input — a WIRED blank vs the TYPED literal
+## Reading an input: a wired blank vs the typed literal
 
 The table above says how a missing value behaves once it is inside a computation. This
 says how it gets there, which is a separate decision every node makes and got wrong for
 a long time. **Target this section when writing a new node.**
 
-(There is a SECOND way a value enters a computation since tableRefSemantics — a formula-level
-reference resolved against a computed column's row context, not a socket. Its rules
+(There is a second way a value enters a computation: a formula-level reference resolved
+against a computed column's row context, not a socket ([[C22]] rowFormulaRefs). Its rules
 live with the core: precedence is column → `row`/`rows` builtins → the definition's
-own env (λ captures) → the surface's side value (`computedColumnCore.ts`); a
-reference used outside a row context is a targeted `#REF!`, not `#NAME?`. One trap
-for a NEW surface: the core's default when no `sideValue` hook is supplied is `0` —
-Frame Input deliberately overrides it with `#REF!`; a surface that forgets the hook
-gets a silent zero, the exact confidently-wrong-answer failure this section exists
-to prevent.)
+own env (λ captures) → the surface's side value (`computedColumnCore.ts`). A reference
+used outside a row context is a targeted `#REF!`, not `#NAME?`. One trap for a new
+surface: when no `sideValue` hook is supplied, the core's default is `0`. Frame Input
+overrides it with `#REF!` on purpose; a surface that forgets the hook gets a silent zero,
+exactly the confidently wrong answer this section exists to prevent.)
 
 ### The one rule
 
@@ -285,21 +277,18 @@ guarded once, up top.
 
 ## Boundaries and bridges
 
-- **Logical↔number bridge** (`coerceInputs.ts`): 0/1 ↔ FALSE/TRUE; **NaN → null**
-  (unknown truth value — R/pandas lineage) [shipped 2026-07-04]; aligned with
-  `coerceLogical` (one spec).
+- **Logical ↔ number bridge** (`coerceInputs.ts`): 0/1 ↔ FALSE/TRUE, and **NaN → null**
+  (an unknown truth value, as in R and pandas); aligned with `coerceLogical`.
 - **The unit-blind boundary** (`unitBridge.ts` `stripUnitCells`, applied per-input in
-  `coerceInputs`) [shipped 2026-07-13]: the dimension algebra runs only in
+  `coerceInputs`): the dimension algebra runs only in
   `unitAware = true` nodes; every OTHER node receives plain numbers in the display
   magnitude the user sees (a `passthrough()` node keeps tags only on its spec-named
   inputs). Without the strip, a `UnitCell` reaches `coerceNumber` as NaN and a
-  comparison/threshold/chart silently breaks. See also `subsystem-invariants.md`
-  "Unit flow".
-- **Wired null vs unwired input** (`readInput`, shared.ts) [shipped]: `undefined` (unwired) falls
+  comparison, threshold or chart silently breaks. See also `../specs/unit-flow.md`.
+- **Wired null vs unwired input** (`readInput`, shared.ts): `undefined` (unwired) falls
   back to the node's literal; a WIRED `null` propagates as missing. The `?? literal`
   read idiom must not swallow wired nulls.
-- **IPC / frame boundary** [shipped 2026-07-05, B-1b — supersedes the old
-  NaN→null normalization]: non-finite crosses BOTH directions as the tagged
+- **IPC / frame boundary:** non-finite crosses BOTH directions as the tagged
   `{"__nf":"inf"|"-inf"|"nan"}` sentinel; a per-cell SolError uploads as
   `{"__err":code}` (engine degrades it to null — Polars-typed columns can't hold
   errors — but the contract is explicit). Frame cells hold real ±Inf; NaN is
@@ -308,31 +297,27 @@ guarded once, up top.
   (SUM of ∞ is ∞; ±Inf from all-finite → `#OVERFLOW!` — engine-side classified
   at the materialization boundary via a base-column scan; JS oracle inside
   `aggregateGroup`, covering pivot totals too).
-- **List ops vs relational verbs** (excelComparisons's line, second instance): list UNIQUE never
-  dedupes error cells (each is an independent problem — the sanity-check reading)
-  [shipped 2026-07-04]; frame Distinct dedupes by error CODE (errors as values, SQL
-  identity semantics).
-  List/frame Sort both put nulls AND errors LAST, both directions, stably [shipped
-  2026-07-02].
+- **List ops vs relational verbs** ([[C45]] excelComparisons): list UNIQUE never
+  dedupes error cells, since each is an independent problem, while frame Distinct dedupes
+  by error code (errors as values, SQL identity semantics). List and Frame Sort both put
+  nulls and errors last, in both directions, stably.
 
 ## Display
 
 - **null** → a scalar renders as the muted em-dash; a list/frame CELL renders the
-  word `null` (muted) [shipped].
-- **SolError** → the red error badge with its code [shipped]; `#OVERFLOW!` is in the
-  inventory (15 codes, `errorValue.ts`) and toured in the error-showcase seed
-  [shipped].
-- **NaN** → literal `NaN` with a QUIET affordance: muted background tint (not error
-  red, not ArrayChip-like) + fixed-text structural tooltip [shipped].
-  Never "N/A".
+  word `null` (muted).
+- **SolError** → the red error badge with its code; `#OVERFLOW!` is in the
+  inventory (15 codes, `errorValue.ts`) and toured in the error-showcase seed.
+- **NaN** → the literal `NaN`, shown quietly: a muted background tint (not error red,
+  not chip-like) and a fixed structural tooltip. Never "N/A".
 - **Infinity** → the `∞` glyph (`-∞` negative), in `formatScalar` and list previews
-  (`format.ts`) [shipped 2026-08-05].
+  (`format.ts`).
 
 ## Pointers
 
 Decisions: [[C24]] arraySemantics (the value model), [[C14]] currentExcelParity (current-Excel-only parity), [[D51]] oneAnswerOneDivergence (surface
 harmony + the reduction/element-wise line), [[C45]] excelComparisons (comparisons vs identity; list vs
 relational), [[C46]] consistencyOverQuirks (engine consistency over Excel quirks).
-Mechanics: `subsystem-invariants.md` "Error values". Known open divergence: the
+Mechanics: `../specs/error-values.md`. Known open divergence: the
 mode-selector-on-a-wired-blank AUTHOR CALL in `backlog.md` (text.ts/date.ts
 literal fallback vs this doc's propagate row).
