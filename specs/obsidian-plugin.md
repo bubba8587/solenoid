@@ -30,7 +30,7 @@ frame and the cube; and one scalar, Complex, the only element family Obsidian ha
 
 **The Solenoid look.** One more setting, a toggle, off until the user turns it on: Obsidian
 wears the palette and accent chosen above (the workbench ramp, the accent, the typed hues, tabs as node
-headers, callouts and canvas groups as groups, a property's icon in the ink with its type's color as the focus ring; light mode
+headers, callouts and canvas groups as groups, a property's icon in its type's color; light mode
 is neutral or the full accent, never a hue greyed toward the ink). The rules have one source,
 `obsidian-plugin/src/look.css`, and it authors no hex: `lookTokens.ts` derives every color token
 (`--sol-*`, Obsidian's `--color-*-rgb`, the accent's HSL) from `palette.ts` as the chips' are
