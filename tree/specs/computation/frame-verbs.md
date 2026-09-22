@@ -337,7 +337,7 @@ The PIVOTBY card forwards its input unchanged when it has no value fields, and d
 
 ### window
 
-`{ kind: "window", partitionBy, orderBy?, orderDir?, fn, column?, as, n? }`. Adds one column computed per partition and writes it back in the original row order; every other column is unchanged. Partitions are distinct `partitionBy` tuples by `encodeCell` (empty means the whole frame). Within a partition, rows are ordered by `orderBy` (blank and error keys last, stable, `desc` reversing present keys) or kept in input order. `N = max(1, round(n ?? 1))`. An unknown partition, order or value column is `#REF!`. An existing column named `as` (or `fn` when `as` is blank) is removed and the new one appended last.
+`{ kind: "window", partitionBy, orderBy?, orderDir?, fn, column?, as, n? }`. Adds one column computed per partition and writes it back in the original row order; every other column is unchanged. Partitions are distinct `partitionBy` tuples by `encodeCell` (empty means the whole frame). Within a partition, rows are ordered by `orderBy` (blank, NaN and error keys last, stable, `desc` reversing present keys; a NaN key ranks blank, as Sort reads it) or kept in input order. `N = max(1, round(n ?? 1))`. An unknown partition, order or value column is `#REF!`. An existing column named `as` (or `fn` when `as` is blank) is removed and the new one appended last.
 
 Values: the arithmetic functions read a numeric view of `column`: a number is present (an infinity included), a logical is 1 or 0, and NaN or text counts as blank; `lag`, `lead`, `first` and `last` read the raw cells. An error anywhere in the partition's value column makes every row's result that error for the cumulative, difference, rolling, group, share, first and last functions.
 

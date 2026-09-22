@@ -2367,12 +2367,14 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
   };
   for (const rows of parts.values()) {
     // Order within the partition (stable; blank order keys sort LAST, both directions).
+    // NaN is a blank key, as Sort reads it.
+    const blankKey = (k: FrameCell) => k == null || isSolError(k) || (typeof k === "number" && Number.isNaN(k));
     let ordered = rows;
     if (orderCol) {
       const dir = spec.orderDir === "desc" ? -1 : 1;
       ordered = [...rows].sort((i, j) => {
         const a = cellAt(orderCol, i), b = cellAt(orderCol, j);
-        const aBlank = a == null || isSolError(a), bBlank = b == null || isSolError(b);
+        const aBlank = blankKey(a), bBlank = blankKey(b);
         if (aBlank || bBlank) return aBlank === bBlank ? i - j : aBlank ? 1 : -1;
         const c = cmp(a, b) * dir;
         return c !== 0 ? c : i - j;
@@ -2408,7 +2410,7 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
           // best rank; dense packs; percent = (rank − 1)/(m − 1) like dplyr / SQL.
           if (!orderCol) { v = spec.fn === "percent_rank" ? (m > 1 ? p / (m - 1) : 0) : p + 1; break; }
           const key = orderVals[p];
-          if (key == null || isSolError(key)) { v = null; break; }
+          if (blankKey(key)) { v = null; break; }
           if (spec.fn === "dense_rank") {
             // Same key as the previous row → its rank; else one more than the distinct keys before.
             if (p > 0 && cmp(orderVals[p], orderVals[p - 1]) === 0) v = out[ordered[p - 1]];
@@ -2421,7 +2423,7 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
             let first = p;
             while (first > 0 && cmp(orderVals[first - 1], key) === 0) first--;
             // percent_rank's denominator counts the RANKED rows (blank keys excluded — pandas rank(pct=True)).
-            const ranked = orderVals.filter((k) => k != null && !isSolError(k)).length;
+            const ranked = orderVals.filter((k) => !blankKey(k)).length;
             v = spec.fn === "rank" ? first + 1 : (ranked > 1 ? first / (ranked - 1) : 0);
           }
           break;

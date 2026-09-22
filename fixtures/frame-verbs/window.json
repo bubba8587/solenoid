@@ -2923,6 +2923,168 @@
      }
     ]
    }
+  },
+  {
+   "name": "rank: a NaN order key is blank, as Sort reads it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        {
+         "__nf": "nan"
+        },
+        7,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "fn": "rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       {
+        "__nf": "nan"
+       },
+       7,
+       null
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       2,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "dense_rank: a NaN order key is blank, as Sort reads it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        {
+         "__nf": "nan"
+        },
+        7,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "fn": "dense_rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       {
+        "__nf": "nan"
+       },
+       7,
+       null
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       2,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "percent_rank: a NaN order key is blank, as Sort reads it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        {
+         "__nf": "nan"
+        },
+        7,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "fn": "percent_rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       {
+        "__nf": "nan"
+       },
+       7,
+       null
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       0,
+       null,
+       1,
+       null
+      ]
+     }
+    ]
+   }
   }
  ]
 }
