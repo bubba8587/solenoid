@@ -1,7 +1,7 @@
 <!-- [[B14]] oneDesignSystem (DESIGN.md § Voice) -->
 # Help
 
-Sockets, ops, and fields carry tooltips, and the corner legend is the type key, so most of the surface explains itself. This covers the parts that behave in a way you wouldn't guess.
+Tooltips and the Socket Legend explain most of Solenoid. This page covers the parts that aren't obvious.
 
 ## Selecting
 
@@ -9,7 +9,7 @@ Shift-drag on empty canvas draws a free-form **lasso**, and its winding directio
 
 ## Wiring
 
-Most inputs take both a typed-in value and a socket. A connected cable wins over whatever is in the field. Sockets join only where their types match. A **Cast** node is the deliberate crossover.
+Most inputs have both a field and a socket, and a connected cable wins over the field. Sockets connect only where their types match; a **Cast** node converts between types.
 
 Deleting a simple pass-through node leaves a dashed **ghost cable** that offers to splice the chain back together, so removing a step doesn't orphan the rest. **Shift-drag** a node to lock its motion to one axis.
 
@@ -18,7 +18,7 @@ Deleting a simple pass-through node leaves a dashed **ghost cable** that offers 
 - A **Group** is a tinted frame around a set of nodes. Collapsed, it shows only its live readouts, and cables crossing the edge land on pills: a finished sub-calculation reads as a single box.
 - A **Conduit** bundles cables. Several outputs heading the same way travel as one wide **ribbon**. **Extend** carries the run on to a Conduit further along.
 - A **Standoff** holds two items a fixed distance apart while you rearrange everything around them, then can be edited or removed.
-- A **Note** is a label pinned to a region of canvas, outside the math, unless you open it with a `---`-fenced block of `key: value` lines, which turns each key into a typed output socket. A Note then doubles as a block of named constants.
+- A **Note** is a text label on the canvas. Start it with a `---`-fenced block of `key: value` lines and each key becomes a typed output, so the Note doubles as a set of named constants.
 
 ## Reading a graph
 
@@ -38,11 +38,11 @@ Formulas don't take Frames. For math on each row of a table, use a computed colu
 
 ## Recalculation
 
-Everything recomputes live. The exceptions are the random nodes and Today / Now, which hold their value until you press their ⟳ button, or **F9** to recalculate all of them at once.
+Everything recomputes live. The exceptions are the random nodes and Today / Now, which keep their value until you press their ⟳ button, or **F9** to refresh all of them at once. For heavy graphs, set **Calculate ▸ Manual**, and nothing recomputes until you press F9.
 
 ## Saving
 
-The graph autosaves and returns when you reopen, no file needed. **Save / Open** read and write a graph as JSON: a real file on the desktop app, a download and upload in the browser. The **examples** menu loads a sample in place of the canvas, so save first. A file from a newer version won't open in an older one. You get a clear message rather than a broken graph.
+Every document autosaves and comes back when you reopen. **Save / Open** read and write JSON: a real file on desktop, a download and upload in the browser. Opening a file or an **example** adds it as a new document. Files from other versions of Solenoid won't open.
 
 ## From Excel, wired
 
