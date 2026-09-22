@@ -30,7 +30,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Group**: a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
 - **Tidy / auto-arrange**: ELK-based layout with a custom symmetric port preset.
-  (elkjs via `elkTidyLayout`, `arrangeFn` — `tidyArrange.ts`)
+  (elkjs via `elkTidyLayout`, `arrangeFn`, in `tidyArrange.ts`)
 - **Isolate**: a focus mode showing only a scoped sub-region of the graph.
   (`isolate.ts`, `isolateStore.ts`)
 - **Pin**: a value lifted out of the graph onto a persistent HUD overlay.
@@ -39,8 +39,7 @@ area. When you coin a new load-bearing term, add it here.
   (`collapseStore.ts`)
 - **Snap to grid**: dropped nodes round to the 24px background-dot grid.
   (`gridSnapStore.ts`, `GRID_SNAP_STEP`)
-- **Load curtain**: the build-phase progress overlay over a document load (the
-  rete-era draw-on animation was dropped at the React Flow cutover).
+- **Load curtain**: the progress overlay shown while a document loads.
   (`loadReveal.ts`, `LoadOverlay.tsx`)
 
 ## Values, types, errors
@@ -56,11 +55,12 @@ area. When you coin a new load-bearing term, add it here.
   (`valueKinds.ts`)
 - **Kleene logic**: 3-valued AND/OR/NOT (true/false/null) matching SQL/Polars.
   (`valueKinds.ts` `kleeneAnd/Or/Not`)
-- **Logical type**: first-class Boolean (purple socket family) rendering TRUE/FALSE,
-  coercing ↔ 1/0. The one cross-family socket bridge. (`sockets.ts`, `nodes/logic.ts`)
-- **Socket lattice**: the ruleset for what can connect to what: type families never
-  auto-cross (Cast required); dimensionality flows upward freely. (`sockets.ts`,
-  `socketConnect.test.ts`; see [[C10]] socketLattice)
+- **Logical type**: the first-class Boolean (the purple socket family), rendering TRUE/FALSE
+  and converting to and from 1/0. Logical ↔ number is the one cross-family socket bridge.
+  (`sockets.ts`, `nodes/logic.ts`)
+- **Socket lattice**: the rules for what can connect to what. Type families never cross on
+  their own (that takes a Cast), and values flow freely up in rank. (`sockets.ts`,
+  `socketConnect.test.ts`; [[C10]] socketLattice, `../specs/socket-lattice.md`)
 - **Cast**: the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Fill**: the opt-in node to treat `null` as a real value.
@@ -68,19 +68,20 @@ area. When you coin a new load-bearing term, add it here.
 
 ## Format & units
 
-- **Format Controller (FC)**: a node that LOCKS a value's number format, and authors a
-  unit ONLY onto a unit-less value; both ride the value through passthroughs and
-  selectors. A transform drops the FORMAT; the unit's dimension re-derives through the
-  algebra and keeps its display when the dimension survives (unitOnValue / firstClassUnits).
-  (`nodes/formatController.ts`, `fcReconcile.ts`)
-- **FC lock states**: who owns the FC's unit dropdown: *authored* (the FC set it),
-  **forwarding** (an inherited upstream unit — the FC MIRRORS it, locked, because a
-  unit is first-class like the magnitude; firstClassUnits), **lockedByConvert** (a downstream
-  Convert's `fromUnit` dictates it). `unitLocked = lockedByConvert || forwarding`.
+- **Format Controller (FC)**: a node that locks a value's number format and sets a unit, but
+  only on a value that has none. Both ride the value through passthroughs and selectors. The
+  format also carries through a transform whose op keeps the value's meaning, and drops at
+  one that doesn't ([[D41]] formatFlowsDownstream). The unit's dimension is worked out again
+  through the algebra, keeping its display when the dimension survives ([[D40]]
+  unitOnValue). (`nodes/formatController.ts`, `fcReconcile.ts`)
+- **FC lock states**: who owns the FC's unit dropdown. *Authored*: the FC set it.
+  **forwarding**: the unit came from upstream, so the FC mirrors it, locked, because a unit
+  belongs to the value ([[C25]] firstClassUnits). **lockedByConvert**: a downstream Convert's
+  `fromUnit` dictates it. `unitLocked = lockedByConvert || forwarding`.
   (`nodes/formatController.ts`)
-- **Unit flow**: the machinery that carries an FC's unit/format lock along the value both
-  downstream and upstream through passthroughs, derived on read. ($ is a unit, not a
-  format.) (`unitFlow.ts`, `unitFormat.ts`)
+- **Unit flow**: the machinery that carries an FC's unit and format along the value,
+  downstream and upstream through passthroughs, derived on read. $ is a unit, not a format.
+  (`unitFlow.ts`, `unitFormat.ts`; `../specs/unit-flow.md`)
 - **Annotation**: the resolved unit/format metadata attached to a value for display;
   computed by walking the graph, mostly not stored. (`formatAnnotationStore.ts`)
 - **Convert**: the node that changes a value's unit (m→ft), forwarding its target into a
@@ -93,9 +94,9 @@ area. When you coin a new load-bearing term, add it here.
 - **FrameValue**: a fully-materialized frame held in JS memory. (`frame.ts`)
 - **FrameRef**: a *lazy handle* on a cable pointing at a frame living in the engine
   (a query plan), not the data itself. (`frameBackend.ts` `isFrameRef`)
-- **Verb node**: a relational operation node — Filter/Sort/Join/GROUPBY/Append/
-  Distinct/PIVOTBY/Unpivot/Nest/Unnest/Computed Column/Split Column… and the rest of the
-  catalog's Table group. (`nodes/frame.ts`, `frameVerbs.ts`; inventory in
+- **Verb node**: a relational operation node: Filter, Sort, Join, GROUPBY, Append,
+  Distinct, PIVOTBY, Unpivot, Nest, Unnest, Computed Column, Split Column and the rest of
+  the catalog's Table group. (`nodes/frame.ts`, `frameVerbs.ts`; inventory in
   `nodeCatalog.ts`)
 - **FrameBackend**: the seam with two implementations: `JsFrameBackend` (web/dev, eager)
   and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
@@ -108,8 +109,8 @@ area. When you coin a new load-bearing term, add it here.
   `FrameValue.__totalRows` carries the true count. (`frameBackend.ts`)
 - **Source-handle cache**: a WeakMap keyed by frame identity so a given frame uploads to
   Rust only once. (`frameBackend.ts` `_sourceCache`)
-- **Cube**: the recursive nested-table container (a frame whose cells can be frames);
-  the anti-flat-grid feature, with cached depth and a drill-in popup. (`CubeValue` in
+- **Cube**: the recursive nested-table container, a Frame whose cells can be Frames, for
+  nested data without flattening it to one wide sheet. It has a cached depth and a drill-in popup. (`CubeValue` in
   `frame.ts`; nodes in `nodes/cube.ts`, `cubePopupStore.ts`)
 - **Plan (tasks cube)**: the Schedule node's input shape: one row per task, Predecessors a
   list cell or a nested Task · Type · Lag table, nesting as the work breakdown, the optional
