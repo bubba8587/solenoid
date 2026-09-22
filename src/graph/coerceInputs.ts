@@ -175,6 +175,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "anycombo":
       return collapseSingleton(v);
     case "logicallist": {
+      if (v == null) return v; // a wired blank stays blank, as on the other list rungs
       const b = numsToBools(v);
       return Array.isArray(b) ? b : [b];
     }

@@ -39,8 +39,7 @@ Each was found reading the code to write the compute-pass, formula-language and 
 
 - [ ] **Join ignores units on keys.** [[C25]] says unit-tagged keys compare by dimension and base-SI magnitude; `joinFrames` ignores units (only Nest Join's `relateFramesToCube` does it).
 - [ ] **Window verb: oracle and engine disagree** on logical and ±Infinity values, on `share` over a blank group and `pct_change` from 0 (`#DIV/0!` vs blank), and on unknown `how` / function names (engine errors, oracle runs). No corpus case covers these ([[D29]] oneVerbCorpus).
-- [ ] **Sketch-mode preview scaling** looks up the ref's base handle, not the flushed one, so a truncated Group By preview is probably unscaled.
-- [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row; a wired blank into `logicallist` arrives as `[null]` but into `strlist` as `null`; `stripUnitCells` doesn't reach inside a Cube; `computeAll` never clears the collect memo.
+- [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row (reachable only through a wildcard); `stripUnitCells` doesn't reach inside a Cube.
 - [ ] **Expand push's final overlap pass separates overlaps that already existed** (it runs with no list of pre-existing overlaps to leave alone).
 - [ ] **`resetPointerCensus` is only called in tests.**
 

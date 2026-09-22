@@ -166,7 +166,7 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
   if (!p.truncated) return readFrame(out);
   const f = previewToFrame(p);
   f.__ref = out; // the grid popup fetches the FULL frame on demand
-  return applyAggGuard(handle, applySketchScaling(out.__frameRef, f));
+  return applyAggGuard(handle, applySketchScaling(handle, f));
 }
 
 export interface FrameSchemaColumn {

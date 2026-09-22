@@ -7,6 +7,7 @@ import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
 import { solError } from "./errorValue";
 import { resolveTrigModes } from "./trigMode";
+import { clearCollectMemo } from "./frameBackend";
 import type { Schemes } from "./schemes";
 
 type Editor = NodeEditor<Schemes>;
@@ -150,8 +151,10 @@ export async function fetchAll(
   return out;
 }
 
-/** The whole headless pass: trig modes, invalidate, seed loops, fetch all. */
+/** The whole headless pass: a fresh collect memo, trig modes, invalidate, seed loops, fetch all. */
 export async function computeAll(editor: Editor, engine: Engine, changedId?: string): Promise<PassValues> {
+  // A lazy frame materializes once per pass, never across passes, as in processGraph.
+  clearCollectMemo();
   resolveTrigModes(editor);
   invalidate(editor, engine, changedId);
   seedLoopErrors(editor, engine, loopMembers(editor));

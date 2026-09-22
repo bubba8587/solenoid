@@ -5,7 +5,7 @@
 // identically to the old direct-verb path. A structural failure comes back as a
 // tagged SolError VALUE, never a throw.
 import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, frameBackend, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, frameBackend, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { ReplaceValuesNode } from "../../src/graph/nodes/frame";
 import {
@@ -156,6 +156,22 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
     expect(total).toBeCloseTo(SKETCH_SAMPLE_ROWS * 2, 5);
     // avg is NOT scaled — extrapolating an average would be wrong, not approximate
     for (const v of out.columns.find((c) => c.name === "avg")!.values) expect(v).toBe(1);
+    calcModeStore.setMode("auto");
+  });
+
+  it("a truncated card preview is scaled like the full collect", async () => {
+    calcModeStore.setMode("sketch");
+    const rows = SKETCH_SAMPLE_ROWS * 2;
+    const wide: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "number", values: Array.from({ length: rows }, (_, i) => i) },
+      { name: "qty", type: "number", values: Array.from({ length: rows }, () => 1) },
+    ] };
+    const ref = await runFrameUnary(wide, { kind: "groupBy", keys: ["id"], aggs: [{ column: "qty", op: "sum", as: "total" }] });
+    const prev = await collectPreview(ref);
+    if (isSolError(prev) || prev == null) throw new Error("expected a frame");
+    expect(prev.__totalRows).toBeDefined(); // the preview really is truncated
+    expect(prev.__approx).toBeDefined();
+    for (const v of prev.columns.find((c) => c.name === "total")!.values) expect(v).toBeCloseTo(2, 5);
     calcModeStore.setMode("auto");
   });
 

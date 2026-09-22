@@ -105,7 +105,7 @@ Every runner catches a throw and returns it as a `SolError` value (`asErrorValue
 | Schema | `collectPreview(ref, 0)` | Column names and types with no rows. Pivot uses it. |
 | One column | `backend.column(handle, name)` | One `FrameColumn` or `null`. Get Column, Pivot and the aggregate guard use it. |
 
-Both collect paths apply sketch scaling and then the aggregate guard (below) before returning; a truncated preview looks its sketch scaling up on the ref's base handle, where `readFrame` uses the flushed handle. A consumer that awaits a boundary wraps it in `materialize(p)`, which returns a throw as a SolError instead of letting it escape `data()` (where the error guard would flatten it to `#ERROR!`).
+Both collect paths apply sketch scaling and then the aggregate guard (below) before returning, both keyed by the flushed handle. A consumer that awaits a boundary wraps it in `materialize(p)`, which returns a throw as a SolError instead of letting it escape `data()` (where the error guard would flatten it to `#ERROR!`).
 
 ### Who receives a ref
 
@@ -115,7 +115,7 @@ Both collect paths apply sketch scaling and then the aggregate guard (below) bef
 
 A verb card's `data()` calls `beginPass(this)` before its first await, runs its runner, and hands the result to `emitFrame(node, gen, out)`. `emitFrame` collects the card preview into `cachedResult`, keeps the output ref in `node._ref`, drops the card's previous ref if it differs, and returns `{ frame: out }`. If a newer pass started while this one awaited (`gen !== node._gen`), the result is discarded, its ref dropped unless it is the live one, and `{ frame: null }` returned. A card with nothing to do forwards a ref through `passFrame`, which appends an empty `drop` so the forwarded ref has a non-empty plan and so does not own the upstream handle.
 
-Ownership: only a ref with an empty plan owns its handle (`dropFrameRef` drops nothing else), which in practice means a binary verb's output. Handles created by flushing are owned by the per-pass memo: `clearCollectMemo()`, called at the start of every `processGraph` pass, drops every handle the previous pass flushed and clears all memos. A preview's `__ref` still works after that, because its plan re-flushes from the base handle.
+Ownership: only a ref with an empty plan owns its handle (`dropFrameRef` drops nothing else), which in practice means a binary verb's output. Handles created by flushing are owned by the per-pass memo: `clearCollectMemo()`, called at the start of every `processGraph` pass and every `computeAll`, drops every handle the previous pass flushed and clears all memos. A preview's `__ref` still works after that, because its plan re-flushes from the base handle.
 
 ### Sketch mode and the aggregate guard
 
