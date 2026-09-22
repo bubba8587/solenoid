@@ -1,8 +1,8 @@
 /* [[C107]] obsidianPlugin
    The Solenoid look: Solenoid's palette on Obsidian, the workbench neutrals, the gold accent
-   and the typed socket hues (DESIGN.md § 2), following the plugin's palette setting. Color
-   means type here too: a property's icon wears the color Solenoid gives that type, strings in
-   code are lime, numbers are gold. THE ONE SOURCE of the rules: the build scopes it under
+   and the typed socket hues (DESIGN.md § 2), following the plugin's palette and accent settings.
+   Color means type here too: a property's chip wears the color Solenoid gives that type, strings
+   in code are lime, numbers are gold. THE ONE SOURCE of the rules: the build scopes it under
    `body.solenoid-look` into the plugin's styles.css (the settings toggle adds that class) and
    writes it, with the Default palette's tokens, to the demo vault's snippet. The faces are
    Atkinson Hyperlegible, which the plugin's styles.css registers. */
@@ -865,37 +865,18 @@ button.mod-cta {
 
 .metadata-property { --sol-type: var(--sol-any); }
 /* Obsidian seats the icon behind a 4px zero-width spacer, which leaves it 12px from the card
-   and 8px from its label, and pushes a badge's glyph off center. The icon takes an 18px box
-   with 2px either side instead: 10px to the card, 10px to the label. */
+   and 8px from its label, and pushes the glyph off center. The icon takes an 18px box with 2px
+   either side instead: 10px to the card, 10px to the label. It is drawn in the ink, so it
+   follows the palette's workbench (author 2026-09-22); the type's color is the focus ring. */
 .metadata-property .metadata-property-icon {
   flex: 0 0 18px;
   justify-content: center;
   width: 18px;
   margin-inline: 2px;
-  color: color-mix(in srgb, var(--sol-type) var(--sol-ink-pct), var(--sol-text));
+  color: var(--sol-text);
 }
 .metadata-property .metadata-property-icon::before {
   content: none;
-}
-/* In light the icon is a socket: an 18px badge filled with the full type color, a 12px glyph
-   inked on top. It keeps the 22px column the bare icon had, centered on the 28px label. */
-.theme-light .metadata-property .metadata-property-icon {
-  height: 18px;
-  margin: 0 2px;
-  align-self: center; /* the 28px label on the desktop, the 36px one on a phone */
-  padding: 0;
-  color: var(--sol-type-ink, #1a1a1a);
-  background-color: var(--sol-type);
-  border-radius: 4px;
-}
-.theme-light .metadata-property .metadata-property-icon .svg-icon {
-  width: 12px;
-  height: 12px;
-  stroke-width: 2.25px;
-}
-.theme-light .metadata-property:has(> :is([data-property-type="checkbox"], [data-property-type^="solenoid-logical"],
-  [data-property-type="solenoid-frame"], [data-property-type="solenoid-cube"])) {
-  --sol-type-ink: #ffffff;
 }
 .metadata-property:focus-within {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--sol-type) var(--sol-mix-emphasis), var(--sol-border));
