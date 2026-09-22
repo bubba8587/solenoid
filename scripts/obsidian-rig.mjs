@@ -1,6 +1,6 @@
 // [[C107]] obsidianPlugin
 // A second, private Obsidian to check the plugin and the vault look against the real thing
-// (specs/obsidian-plugin.md § Verifying against real Obsidian). It runs on its own X display with
+// (tree/specs/integrations/obsidian-plugin.md § Verifying against real Obsidian). It runs on its own X display with
 // its own profile and a COPY of the demo vault, so the author's Obsidian is never touched. Linux.
 //
 //   npm run plugin:rig -- up                       start it (idempotent) and wait until it answers

@@ -1,5 +1,5 @@
 // [[C90]] drawnCablesAnnotate. World-space layer inside RF's <ViewportPortal> (the
-// standoffs' mirror, but ABOVE the cards). Spec: specs/drawn-cables.md.
+// standoffs' mirror, but ABOVE the cards). Spec: tree/specs/canvas/drawn-cables.md.
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import {

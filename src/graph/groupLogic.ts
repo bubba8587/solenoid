@@ -1,5 +1,5 @@
 // [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[C87]] groupsAreSubflows.
-// Mechanics: specs/group-expand-push.md.
+// Mechanics: tree/specs/canvas/group-expand-push.md.
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";

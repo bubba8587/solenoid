@@ -1,6 +1,6 @@
 // [[C43]] oneFlowSurface, [[C40]] storesRegisterForget
 // Cable state that lives OUTSIDE rete's editor: cable selection, socket highlight, and
-// the two ghost-cable stores (specs/react-flow-surface-contract.md § ghost cables).
+// the two ghost-cable stores (tree/specs/canvas/react-flow-surface-contract.md § ghost cables).
 
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 

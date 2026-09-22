@@ -2,7 +2,7 @@
 
 The one-stop reference for the value model's special kinds: what each one means, what
 produces it, how it propagates through each computation context, and how it renders.
-The mechanics and invariants live in `../specs/error-values.md`; this doc is the
+The mechanics and invariants live in `../tree/specs/values/error-values.md`; this doc is the
 semantics.
 
 Every rule here is built. A rule that is decided but not yet built gets a
@@ -80,7 +80,7 @@ two contexts, both correct. Any OTHER node-vs-formula disagreement is a bug.
 
 ### Scalar operators
 
-The operator table (`applyOp`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `BLANK_ARG_TYPES` types it, so `IF(x,,y)` answers `null`, not 0) are `../specs/formula-language.md`.
+The operator table (`applyOp`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `BLANK_ARG_TYPES` types it, so `IF(x,,y)` answers `null`, not 0) are `../tree/specs/computation/formula-language.md`.
 
 ## Reading an input: a wired blank vs the typed literal
 
@@ -88,7 +88,7 @@ The table above says how a missing value behaves once it is inside a computation
 says how it gets there, which is a separate decision every node makes and got wrong for
 a long time. **Target this section when writing a new node.**
 
-(There is a second way a value enters a computation: a reference resolved against a computed column's row context rather than a socket ([[C22]] rowFormulaRefs). Its resolution order and what a miss answers are `../specs/computed-columns.md`. A new surface must supply the core's `sideValue` hook and answer a miss explicitly, as Frame Input does with `#REF!`; the core supplies no default of its own.)
+(There is a second way a value enters a computation: a reference resolved against a computed column's row context rather than a socket ([[C22]] rowFormulaRefs). Its resolution order and what a miss answers are `../tree/specs/computation/computed-columns.md`. A new surface must supply the core's `sideValue` hook and answer a miss explicitly, as Frame Input does with `#REF!`; the core supplies no default of its own.)
 
 ### The one rule
 
@@ -256,8 +256,8 @@ guarded once, up top.
 
 - **Logical ↔ number bridge** (`coerceInputs.ts`): 0/1 ↔ FALSE/TRUE, and **NaN → null**
   (an unknown truth value, as in R and pandas); aligned with `coerceLogical`.
-- **The unit-blind boundary and wired null vs unwired** are arrival coercion and `readInput`: `../specs/compute-pass.md` § Arrival coercion, with the unit rules in `../specs/unit-flow.md`.
-- **IPC / frame boundary:** non-finite numbers and per-cell errors cross the wire as tagged sentinels, and aggregates apply the scalar non-finite guard in both backends: `../specs/frame-verbs.md` § The FrameBackend seam.
+- **The unit-blind boundary and wired null vs unwired** are arrival coercion and `readInput`: `../tree/specs/computation/compute-pass.md` § Arrival coercion, with the unit rules in `../tree/specs/values/unit-flow.md`.
+- **IPC / frame boundary:** non-finite numbers and per-cell errors cross the wire as tagged sentinels, and aggregates apply the scalar non-finite guard in both backends: `../tree/specs/computation/frame-verbs.md` § The FrameBackend seam.
 - **List ops vs relational verbs** ([[C45]] excelComparisons): list UNIQUE never
   dedupes error cells, since each is an independent problem, while frame Distinct dedupes
   by error code (errors as values, SQL identity semantics). List and Frame Sort both put
@@ -279,6 +279,6 @@ guarded once, up top.
 Decisions: [[C24]] arraySemantics (the value model), [[C14]] currentExcelParity (current-Excel-only parity), [[D51]] oneAnswerOneDivergence (surface
 harmony + the reduction/element-wise line), [[C45]] excelComparisons (comparisons vs identity; list vs
 relational), [[C46]] consistencyOverQuirks (engine consistency over Excel quirks).
-Mechanics: `../specs/error-values.md`. Known open divergence: the
+Mechanics: `../tree/specs/values/error-values.md`. Known open divergence: the
 mode-selector-on-a-wired-blank AUTHOR CALL in `backlog.md` (text.ts/date.ts
 literal fallback vs this doc's propagate row).

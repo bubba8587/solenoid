@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── Source-scan enforcement for the grep-shaped rules (decisions/) ───────────
+// ─── Source-scan enforcement for the grep-shaped rules (tree/decisions/) ───────────
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
 // failed when a NEW file forgot them, which [[C9]] labelUnenforced flags as precisely the shape
 // of every Origin incident. These scans close the completeness half the same way

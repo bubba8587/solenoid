@@ -1,4 +1,4 @@
-// [[D43]] unitByGranularity, [[D47]] noMixCurrencies. Mechanics: specs/unit-flow.md.
+// [[D43]] unitByGranularity, [[D47]] noMixCurrencies. Mechanics: tree/specs/values/unit-flow.md.
 // Sits between the value-layer `ColumnUnit` (unitValue.ts) and the FC unit ids
 // (unitBridge.ts). Pure — no React/Rete.
 

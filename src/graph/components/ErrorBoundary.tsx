@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface: every render is boundaried (specs/react-flow-surface-contract.md).
+// [[C43]] oneFlowSurface: every render is boundaried (tree/specs/canvas/react-flow-surface-contract.md).
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 /** `scope="app"` wraps the main React root; `scope="node"` wraps EACH rete node,

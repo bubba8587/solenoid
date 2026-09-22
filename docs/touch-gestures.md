@@ -8,7 +8,7 @@ went unrecorded because it rides the browser's native long-press → `contextmen
 synthesis with no greppable "longpress" anywhere. A gesture that exists only as an
 event-plumbing side effect is invisible to search; this file is where every gesture
 is written down. **Adding, removing, or regating a gesture updates this file in the
-same change.** The model is [[C93]] gestureByPointerType and [[C92]] pinchUnvetoable; deep mechanics stay in `../specs/pointer-gestures.md`;
+same change.** The model is [[C93]] gestureByPointerType and [[C92]] pinchUnvetoable; deep mechanics stay in `../tree/specs/canvas/pointer-gestures.md`;
 this is the WHAT/WHERE map.
 
 ## Device configs (`coarse.ts` — derive, never duplicate)

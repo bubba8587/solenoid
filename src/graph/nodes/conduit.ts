@@ -1,5 +1,5 @@
 // [[D17]] relaysTransparent, [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind, [[E6]] portOwnsSocket, [[D15]] wildcardsKeepRank, [[C27]] noDataInComponents
-// Mechanics: specs/conduit-lane-faces.md. All CONDUIT_MAX_LANES lanes are declared up front (the engine and validator address any lane); the component renders the ones in use.
+// Mechanics: tree/specs/canvas/conduit-lane-faces.md. All CONDUIT_MAX_LANES lanes are declared up front (the engine and validator address any lane); the component renders the ones in use.
 import { ClassicPreset } from "rete";
 import { trueAnySocket, MutableSocket } from "../sockets";
 

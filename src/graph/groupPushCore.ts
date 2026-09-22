@@ -1,5 +1,5 @@
 // [[C85]] groupPushDeterministic: the pure push over plain boxes (no rete, no DOM).
-// Mechanics: specs/group-expand-push.md.
+// Mechanics: tree/specs/canvas/group-expand-push.md.
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {

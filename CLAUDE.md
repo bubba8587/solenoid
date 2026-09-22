@@ -52,7 +52,7 @@ Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the i
 invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
   Voice governs help markdown, catalog descriptions, tooltips, empty states).
-- **The decision tree (`decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
+- **The decision tree (`tree/decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
   The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session; you are
   ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
   A new mechanism lands its rule node before its code ([[C6]] specFirst), and a rule's
@@ -63,10 +63,10 @@ invented vocabulary + the author's names for the on-screen chrome).
   `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate` before you finish.
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
   author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
-- **`specs/` — the mechanics, one spec per subsystem** (`docs/subsystem-invariants.md` is the index).
+- **`tree/specs/` — the mechanics, one spec per subsystem, grouped in folders; `tree/` is one Obsidian vault with `tree/decisions/`** (`docs/subsystem-invariants.md` is the index).
   Three FLOOR specs carry a `covers:` glob and govern whole classes of files: every component is built
-  to `specs/components.md`, every node class and op module to `specs/node-classes.md`, every store to
-  `specs/stores.md`; a file cites only what is specific to it.
+  to `tree/specs/floors/components.md`, every node class and op module to `tree/specs/floors/node-classes.md`, every store to
+  `tree/specs/floors/stores.md`; a file cites only what is specific to it.
   Read the spec IN FULL before touching its subsystem: **Compute pass**, **Formula language**, **Computed columns**, **Frame verbs**, **Save format**, **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
   `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
@@ -77,7 +77,7 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`docs/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
 - Reference: `docs/socket-reference.md` (every socket variant), `docs/format-model.md` (FC
   controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),
-  `specs/formulajs-divergences.md` (before touching a `registerInternal` override),
+  `tree/specs/computation/formulajs-divergences.md` (before touching a `registerInternal` override),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
   map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.
 - Queue: `docs/backlog.md` (OPEN items only), the release plan

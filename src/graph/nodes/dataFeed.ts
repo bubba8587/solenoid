@@ -8,7 +8,7 @@ import { apiKeyStore } from "../apiKeyStore";
 import { getProvider, type ProviderId, type ProviderPreset } from "../dataProviders";
 
 // One node for every market/economic data provider. data() stays synchronous: the cached
-// frame out, one background fetch per key (specs/live-connections.md).
+// frame out, one background fetch per key (tree/specs/computation/live-connections.md).
 
 export class DataFeedNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {

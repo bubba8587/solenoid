@@ -1,4 +1,4 @@
-// [[C89]] standoffsSolveLast. Mechanics: specs/standoffs.md.
+// [[C89]] standoffsSolveLast. Mechanics: tree/specs/canvas/standoffs.md.
 // Direction is encoded by `a.anchor`: the axis points from a toward b, so
 // `min ≤ dot(Pb − Pa, axis) ≤ max` with positive min/max.
 

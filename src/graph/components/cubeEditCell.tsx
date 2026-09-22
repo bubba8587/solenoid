@@ -10,7 +10,7 @@ import { stopDragStart } from "../coarse";
 import { elemFamilyOfCells } from "../valuePopup";
 import { cubeCellToken } from "./cubeCell";
 
-// The Cube Input's editing cells (specs/literal-input-editors.md): every commit patches the
+// The Cube Input's editing cells (tree/specs/documents/literal-input-editors.md): every commit patches the
 // records at the cell's path and the popup re-derives its stack from them.
 
 /** The view for the records list at `path` (a cube level). */

@@ -1,4 +1,4 @@
-/* [[C37]] observerOwnsSize, [[D17]] relaysTransparent. Mechanics: specs/resizable-content-nodes.md, specs/conduit-lane-faces.md. */
+/* [[C37]] observerOwnsSize, [[D17]] relaysTransparent. Mechanics: tree/specs/canvas/resizable-content-nodes.md, tree/specs/canvas/conduit-lane-faces.md. */
 /* Conduit: a single rotatable block that ribbons up to 8 "Any" cables. It keeps
    a constant hit-body and overflows its visual (block + sockets) so the node's
    top-left never shifts between the compressed and expanded states.

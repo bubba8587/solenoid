@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[D16]] retypeReconciles, [[C11]] socketBox12. Mechanics: specs/literal-input-editors.md.
+// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[D16]] retypeReconciles, [[C11]] socketBox12. Mechanics: tree/specs/documents/literal-input-editors.md.
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";

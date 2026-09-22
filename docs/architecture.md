@@ -5,7 +5,7 @@ line per node file — there are ~300 of those and the registry is the real
 index). Update when a new module or concern lands, in the same commit.
 
 Mechanics and gotchas live in `docs/subsystem-invariants.md`; rules and rulings in the
-decision tree (`decisions/`, see `docs/dte.md`); the running log in `docs/dev-notes.md`.
+decision tree (`tree/decisions/`, see `docs/dte.md`); the running log in `docs/dev-notes.md`.
 This file is the map.
 
 ---
@@ -99,7 +99,7 @@ src/
 | `schemes.ts` | Rete scheme types (`SolenoidConnection` must use `ClassicPreset.Node` — variance) |
 | `rete-nodes.ts` | Node class re-exports for the editor |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
-| `coerceInputs.ts` | The `nodecreated` wrapper around every `data()` that normalizes each arriving value to its socket's type. Mechanics: `../specs/compute-pass.md` § Arrival coercion |
+| `coerceInputs.ts` | The `nodecreated` wrapper around every `data()` that normalizes each arriving value to its socket's type. Mechanics: `../tree/specs/computation/compute-pass.md` § Arrival coercion |
 | `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
@@ -199,8 +199,8 @@ src/
 ### Relational engine (WS2/WS3 — the FrameBackend seam + verbs)
 | Module | Role |
 |---|---|
-| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (JS oracle on web, Polars over IPC on desktop), the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../specs/frame-verbs.md` |
-| `frameVerbs.ts` (+`.test.ts`) | The pure relational verbs, one definition each, which the JS backend runs and the Polars engine is held to; also the Cube bridge (nest / unnest) and `reconcileFrames`. Contracts: `../specs/frame-verbs.md` |
+| `frameBackend.ts` (+`.test.ts`) | The `FrameBackend` seam (JS oracle on web, Polars over IPC on desktop), the lazy `FrameRef` runners and the materialization boundary. Mechanics: `../tree/specs/computation/frame-verbs.md` |
+| `frameVerbs.ts` (+`.test.ts`) | The pure relational verbs, one definition each, which the JS backend runs and the Polars engine is held to; also the Cube bridge (nest / unnest) and `reconcileFrames`. Contracts: `../tree/specs/computation/frame-verbs.md` |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `engineAvailable`/`ipcInvoke`/`enginePing` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |
 | `frameShape.ts` (+`.test.ts`) | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real JS/Rust output is a caught test failure, not a silent divergence). `emptyFrameOf` is the other route — a zero-row frame a producer runs its OWN verb over. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |
 | `frameShapeResolver.ts` | The graph walk alone (`makeFrameShapeResolver(editor)` → `outShape(nodeId, outKey)`, memoized + cycle-guarded): resolve the input shapes, then read the producer's own `frameShape()` declaration (`nodes/frameShapeHook.ts`). Node-agnostic — it names only the Conduit lane case and reads `passthrough()` for forwarders; anything undeclared is unknown (`null`) |
@@ -466,7 +466,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `mental-model.md` | living | how the system runs, end to end — the onboarding story |
 | `architecture.md` | living | (this file) module map |
 | `glossary.md` | living | the invented vocabulary |
-| `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `decisions/` |
+| `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `tree/decisions/` |
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |

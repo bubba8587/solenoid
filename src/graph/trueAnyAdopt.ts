@@ -1,4 +1,4 @@
-// [[D15]] wildcardsKeepRank, [[E7]] trueanyNeedsPassthrough. The mechanics: specs/socket-lattice.md req. 8-9.
+// [[D15]] wildcardsKeepRank, [[E7]] trueanyNeedsPassthrough. The mechanics: tree/specs/values/socket-lattice.md req. 8-9.
 import type { ClassicPreset } from "rete";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
 import { getPassthrough, resolvePassthroughType, agreeTypes, type ProjectContext } from "./nodes/passthrough";

@@ -1,4 +1,4 @@
-// [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder. Mechanics: specs/per-doc-autosave-persistence.md.
+// [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
 // Pure library transforms: callers pass ids and timestamps in, so keep this free of
 // storage, rete, DOM and id/clock generation. Every transform must stay IMMUTABLE —
 // documentStore's persist() diffs by object identity.

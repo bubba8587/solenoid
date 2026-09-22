@@ -82,7 +82,7 @@ export class ConvertNode extends ClassicPreset.Node {
     }
     // Per-cell in a list ([[C24]] arraySemantics).
     const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
-    // Convert authors the unit and its display ([[D40]] unitOnValue; specs/unit-flow.md).
+    // Convert authors the unit and its display ([[D40]] unitOnValue; tree/specs/values/unit-flow.md).
     const toDim: Unit | undefined = to?.dim;
     const display = fcUnitToUnit(this.toUnit) ? this.toUnit : undefined;
     const convertCell = (v: UnitOperand): number | UnitCell | SolError => {

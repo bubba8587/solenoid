@@ -1,6 +1,6 @@
 // [[C93]] gestureByPointerType: on touch a one-finger drag on an UNSELECTED card or
 // group pans. Owned in CAPTURE on the wrapper; a second finger hands the gesture to
-// flowPinch ([[C92]]). Mechanics: specs/pointer-gestures.md.
+// flowPinch ([[C92]]). Mechanics: tree/specs/canvas/pointer-gestures.md.
 import { touchCount } from "../pointerGesture";
 import { touchSelectStore } from "../touchSelectStore";
 

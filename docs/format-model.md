@@ -35,7 +35,7 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
    Because the unit rides the value, it carries through passthroughs and selectors and drops
    at a transform on its own. The branches of `applyFcUnit` and the three lock states
    (authored `← →`, forwarding `→ →`, lockedByConvert `← ←`, with
-   `unitLocked = lockedByConvert || forwarding`) are specified in `../specs/unit-flow.md`.
+   `unitLocked = lockedByConvert || forwarding`) are specified in `../tree/specs/values/unit-flow.md`.
    Under a lock, the popup shows the unit dropdown present but disabled
    (`disabled={node.unitLocked}`): the value has a unit, so the control shows it, but it isn't
    this FC's to change.

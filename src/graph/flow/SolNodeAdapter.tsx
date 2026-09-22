@@ -1,6 +1,6 @@
 // [[C43]] oneFlowSurface, [[B10]] reactFlowView
 // Renders the real node components inside RF nodes, each boundaried
-// (specs/react-flow-surface-contract.md). `emit` is only ever consumed by
+// (tree/specs/canvas/react-flow-surface-contract.md). `emit` is only ever consumed by
 // NodeSocket, which renders an RF Handle on this surface (flowSurface.ts), so a
 // stub satisfies the contract. SolFlowNode is the fallback for anything unregistered.
 import { memo, useEffect } from "react";

@@ -29,7 +29,7 @@ export const IS_TABLET = IS_COARSE && !IS_MOBILE;
 /** pointerdown for a node's read-only chrome and single-line fields: swallowed on
  *  desktop so the click can't begin a node drag, left to bubble on mobile so a pan
  *  starting over the element still works. Decides the ONE-finger question only; the
- *  controls that keep a hard stopPropagation are listed in specs/pointer-gestures.md. */
+ *  controls that keep a hard stopPropagation are listed in tree/specs/canvas/pointer-gestures.md. */
 export const stopDragStart = (e: { stopPropagation: () => void }) => {
   if (!IS_MOBILE) e.stopPropagation();
 };

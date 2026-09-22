@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C19]] namingModel (specs/addressable-model.md)
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C19]] namingModel (tree/specs/documents/addressable-model.md)
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { NAME_RE, typePrefix, nextAvailableName, counterCheckpoint } from "./nodeNaming";

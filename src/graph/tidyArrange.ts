@@ -1,5 +1,5 @@
 // [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[D64]] oneSizeRead.
-// Mechanics: specs/auto-arrange-tidy.md (and specs/standoffs.md for the cluster super-node).
+// Mechanics: tree/specs/canvas/auto-arrange-tidy.md (and tree/specs/canvas/standoffs.md for the cluster super-node).
 import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";

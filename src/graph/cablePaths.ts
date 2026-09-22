@@ -1,4 +1,4 @@
-// [[C91]] cableWalkRouter. Mechanics: specs/cable-rendering-knobs.md.
+// [[C91]] cableWalkRouter. Mechanics: tree/specs/canvas/cable-rendering-knobs.md.
 import type { CableShape } from "./cableShape";
 
 export enum Position {

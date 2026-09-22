@@ -144,7 +144,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
       numbers, one per hop, are more honest than one blended percentage; `coverage` should print
       them (code→spec, spec→tree, MUST→test) rather than "artifacts that cite a decision".
     - **`show` and `blast` walk both hops.** `show C27` derives "implemented by" through the
-      components spec ("via specs/components.md"); `blast C27` lists the spec, then "Built to" the
+      components spec ("via tree/specs/floors/components.md"); `blast C27` lists the spec, then "Built to" the
       files it covers. A file's own citations still add to both.
     - **A stale `covers:` glob is a finding**, like a stale exclusion: it means the class moved and the
       spec did not.

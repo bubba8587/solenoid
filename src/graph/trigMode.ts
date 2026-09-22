@@ -1,4 +1,4 @@
-// [[D41]] formatFlowsDownstream: the one compute-time unit read. Mechanics: specs/unit-flow.md.
+// [[D41]] formatFlowsDownstream: the one compute-time unit read. Mechanics: tree/specs/values/unit-flow.md.
 import type { NodeEditor, ClassicPreset } from "rete";
 import { MathFXNode, isTrigOp } from "./nodes/scalar";
 import { makeAnnotationResolver } from "./unitFlow";

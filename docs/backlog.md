@@ -35,7 +35,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Found writing the rebuild specs (code vs its own nodes; verify, then fix or rule)
 
-Each was found reading the code to write `../specs/{compute-pass,formula-language,frame-verbs}.md`. The spec describes today's behavior; these are the places it breaks a node or looks unintended.
+Each was found reading the code to write the compute-pass, formula-language and frame-verbs specs (`../tree/specs/`). The spec describes today's behavior; these are the places it breaks a node or looks unintended.
 
 - [ ] **Desktop loses units and formats after any native verb.** The Polars wire carries name, type and values only, so `unit`, `format` and `raw` drop, while the JS oracle keeps them: the same graph shows different units on web and desktop ([[C25]] firstClassUnits, [[B2]] webTryDesktopFull).
 - [ ] **Join ignores units on keys.** [[C25]] says unit-tagged keys compare by dimension and base-SI magnitude; `joinFrames` ignores units (only Nest Join's `relateFramesToCube` does it).
@@ -59,8 +59,8 @@ Each was found reading the code to write `../specs/{compute-pass,formula-languag
 
 ## Composites
 
-- [ ] **Composite internals drop unknown types.** `CompositeNode.hydrate` skips an internal node whose type isn't registered (a pack off, a rename) instead of loading it as a Placeholder, so the next save loses it: a [[C35]] unknownViaPlaceholder breach. Its `init.internal` also stores live internal ids, which hydrate regenerates, so a composite's bytes can change on save → load → save. Found writing `../specs/save-format.md`.
-- [ ] **Save format loose ends** (`../specs/save-format.md`): `SavedGraph.seedId` is written but never read back; the literal version `2` is hardcoded in four places beside `CURRENT_SAVE_VERSION`; a Placeholder's `members` / `hostNodeId` aren't remapped on load.
+- [ ] **Composite internals drop unknown types.** `CompositeNode.hydrate` skips an internal node whose type isn't registered (a pack off, a rename) instead of loading it as a Placeholder, so the next save loses it: a [[C35]] unknownViaPlaceholder breach. Its `init.internal` also stores live internal ids, which hydrate regenerates, so a composite's bytes can change on save → load → save. Found writing `../tree/specs/documents/save-format.md`.
+- [ ] **Save format loose ends** (`../tree/specs/documents/save-format.md`): `SavedGraph.seedId` is written but never read back; the literal version `2` is hardcoded in four places beside `CURRENT_SAVE_VERSION`; a Placeholder's `members` / `hostNodeId` aren't remapped on load.
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `archive/1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
@@ -77,7 +77,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 - [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
   row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
-  `specs/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.
+  `tree/specs/integrations/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a
@@ -153,7 +153,7 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   drafts rejected 2026-09-16), then D42 / E11 (contested, kept), then the B ring. `python tools/dte.py validate` prints the
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` ([[C7]] authorRuled).
-- [ ] **Author places `decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
+- [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
 - [ ] **Coverage is 100% and pinned** (`rules.test.ts` runs `coverage --check` + `validate`). The bulk pass cited
   whole classes by blast radius (every component cites [[C27]] noDataInComponents, every node class [[C34]]
   classNameIsType + [[D50]] everyFieldClassified, every store [[B10]], every op module [[D19]] + [[C17]], tests the
@@ -172,12 +172,12 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   formula path through `rete-nodes.ts`, so pack formulas pull rete: either [[D19]] implReteFree names the exception
   or the kernels move to rete-free siblings.
 - [ ] **`docs/v2.0/25-gantt.md` § 6 is the schedule/Gantt spec** (the packages' headers point into it) but lives in
-  the proposals folder, excluded from coverage. Lift § 6.1–6.5 into a spec under `../specs/` (schedule-and-gantt) serving [[C70]]
+  the proposals folder, excluded from coverage. Lift § 6.1–6.5 into a spec under `../tree/specs/` (schedule-and-gantt) serving [[C70]]
   oneScheduleRule / [[C69]] ganttPackages and leave the survey (§ 1–5, 7–8) where it is.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
   declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]
-  parallelAgents (the file is the live claim board); the Formula.js divergences → `../specs/formulajs-divergences.md`. Exempt as queues:
+  parallelAgents (the file is the live claim board); the Formula.js divergences → `../tree/specs/computation/formulajs-divergences.md`. Exempt as queues:
   `deferrals.md`, `upstream-formulajs.md` (a few rulings inside deferrals are node candidates when touched).
   **Blocked on the author:** `out-of-scope.md` is the draft of `inbox/scope-boundary` (the four tests + the mirror
   test) and its 13 categories are that node's children; nothing can hang off an unplaced node, so

@@ -10,7 +10,7 @@ specific item.
 
 - **What stands:** the tree has one node per decision. Merged into survivors: D8→D7, D44→D45, E3→D15,
   C56→C26, D2→C1, C12→C11, and the seven HTML-in-Canvas tuning nodes D55–D61→C42 (their knobs now live in
-  `../specs/html-in-canvas.md`). C52's audit half became C108 auditDefaultsToFix. Every unratified node below
+  `../tree/specs/canvas/html-in-canvas.md`). C52's audit half became C108 auditDefaultsToFix. Every unratified node below
   ring A was rewritten for plain reading; the Why no longer restates the Decision.
 - **The rebuild test:** five new specs cover the computational core, written from the code: `compute-pass`,
   `formula-language`, `computed-columns`, `frame-verbs`, `save-format`. Every other spec was rewritten, and
@@ -22,7 +22,7 @@ specific item.
 - **Open:** the backlog section "Found writing the rebuild specs" lists the code that breaks its own nodes:
   desktop drops units after native verbs, joins ignore key units, D30's second pass copies, composites drop
   unknown internal types, quick-wire dims every row, and about fifteen smaller ones. Node candidates the
-  spec writers flagged (sections of `../specs/literal-input-editors.md`, the drawn-cable rulings) are unmoved. Still
+  spec writers flagged (sections of `../tree/specs/documents/literal-input-editors.md`, the drawn-cable rulings) are unmoved. Still
   without a spec: composites, charts and figures, Reports and Knap, the Table popup, the node families
   (`node-coverage.md` stands in); `format-model.md` is a spec living in docs/.
 

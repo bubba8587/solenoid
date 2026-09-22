@@ -134,7 +134,8 @@ DEFAULTS = {"summaries": True, "protect_human": True, "authority": (),
             "agents": ("CLAUDE.md", "AGENTS.md", ".claude/*", ".cursorrules", ".github/copilot-instructions.md"),
             "retire": "delete",   # dte:B24
             "links": "token",     # token writes dte:ID; wikilink writes [[ID]] (Obsidian-browsable)
-            "scan_self": False}   # the tool's own file is skipped unless the tree is DTE's own (dte:C3)
+            "scan_self": False,   # the tool's own file is skipped unless the tree is DTE's own (dte:C3)
+            "decisions": "decisions"}   # the decisions dir, relative to the root (local patch; --decisions overrides)
 CONFIG = dict(DEFAULTS)
 
 
@@ -157,6 +158,8 @@ def load_config(root):
                 cfg[key] = val.lower() in ("on", "true", "yes", "1")
             elif key in ("docs", "specs", "tests", "agents"):
                 cfg[key] = tuple(x.strip() for x in val.split(",") if x.strip())
+            elif key == "decisions":
+                cfg["decisions"] = val
             elif key == "broad_fraction":
                 cfg["broad_fraction"] = float(val)
             elif key == "broad_min":
@@ -3131,7 +3134,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     CONFIG.clear()
     CONFIG.update(load_config(args.root))
-    decisions = args.decisions or os.path.join(args.root, "decisions")
+    decisions = args.decisions or os.path.join(args.root, CONFIG["decisions"])
     tree = Tree(args.root, decisions)
     return {
         "validate": cmd_validate, "tree": cmd_tree, "blast": cmd_blast,

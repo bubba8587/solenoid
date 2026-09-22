@@ -11,8 +11,9 @@ protocol, overview, adoption guide and a render of DTE's own tree live in `dte-r
 `dte-rules/CLAUDE.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md` and
 `dte-rules/DECISIONS.md`, written by
 `python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
-`tools/dte.py` itself (the local copy carries one patch ahead of upstream, the `.dtecoverage`
-store below, until the author lands it; feedback 14 holds the patch). Read them before
+`tools/dte.py` itself (the local copy carries two patches ahead of upstream until the author lands them: the
+`.dtecoverage` store below, which feedback 14 holds, and a `decisions` key in `dte.cfg` so the
+tree can live at `tree/decisions`; a re-vendor must keep both). Read them before
 creating or changing decisions, and check them before filing DTE feedback. Do NOT re-create DTE's own format/protocol/usage decisions as
 nodes in this tree; this tree holds only Solenoid's own decisions. (`dte-rules/` is
 `.dteignore`d — its `dte:` tokens belong to DTE's tree; note it describes DTE's OWN rings
@@ -32,7 +33,7 @@ shareImpl` finds it and a citation may read `[[<ID>]] shareImpl`. The tool print
 
 Solenoid writes every citation as an Obsidian wikilink, `[[C41]]` or `[[C41]] branchModel`, and
 the link fields of a node (`parents`, `supersedes`, `superseded_by`, `conflicts_with`) as quoted
-wikilinks, `parents: ["[[B7]]"]`. The author opens `decisions/` itself as a vault (its `.obsidian/` is ignored), and each node's lineage, its
+wikilinks, `parents: ["[[B7]]"]`. The author opens `tree/` as one Obsidian vault holding `decisions/` and `specs/` (its `.obsidian/` is ignored; the tool finds the decisions through `decisions = tree/decisions` in `dte.cfg`, a local patch), and each node's lineage, its
 supersessions and every doc that cites it are followable links, backlinks and graph-view edges.
 `links = wikilink` in `dte.cfg` is what makes the vendored tool write this form; it reads the
 upstream `dte:ID` token as well, so the vendored spec below is still accurate about upstream and
@@ -42,7 +43,7 @@ colon in them, and Obsidian rejects the whole property block when the YAML is in
 
 Named nodes also carry `aliases: [name]` (written from `name`), so `[[branchModel]]` resolves and the link
 autocompleter offers names. The tool counts a citation only by ID, so write `[[C41]]` in code and
-docs and use the alias when browsing. `decisions/DTE.base` is the tree as Obsidian Bases views:
+docs and use the alias when browsing. `tree/decisions/DTE.base` is the tree as Obsidian Bases views:
 Outbox, Unratified, Contested, Inbox, All nodes.
 
 ## Outbox: edits made in the vault ([[C82]] vaultOutbox)
@@ -55,14 +56,14 @@ already lists changed nodes. An edit the author wants looked at gets a `#ask` be
 
 | The author does | The agent does | Clear it with |
 |---|---|---|
-| Drops or writes a note in `decisions/outbox/` | Reads it. A decision becomes `dte new` (or an inbox item if it is above the agent's ring), a correction becomes an edit, a question gets an answer in chat | `dte outbox --done <slug>` (deletes the note) |
+| Drops or writes a note in `tree/decisions/outbox/` | Reads it. A decision becomes `dte new` (or an inbox item if it is above the agent's ring), a correction becomes an edit, a question gets an answer in chat | `dte outbox --done <slug>` (deletes the note) |
 | Tags a node `ratify` (Properties pane) or types `#ratify` in its body | `dte ratify <ID> --by "the author"` (drops the contest record; History stays as the activity log), then moves the ID into `OWNER_RATIFIED` in `rules.test.ts` | `dte outbox --done <ID>` (strips the action tags) |
 | `retire` | `dte blast`, then `dte retire <ID> --by <agent> --authorized-by "the author"`, fixes the orphans | same |
 | `contest` | `dte contest <ID> --again`, builds the alternatives, records the verdict, reports | same |
 | `ask` beside a question or comment | Answers in chat; if it changes the node, makes the change and adds a History line | same |
 | Types a name into `ratified_by` in the Properties pane | `dte ratify <ID> --by "<that name>"` so History records it, then the `OWNER_RATIFIED` move | clears itself |
 
-`decisions/README.md` is the vault-side cheat sheet (pin it in Obsidian); the loader never reads it as a node.
+`tree/decisions/README.md` is the vault-side cheat sheet (pin it in Obsidian); the loader never reads it as a node.
 
 The author's word is the authorization (B25): an outbox item is acted on and reported, never
 re-asked. When acting on it touches a human-held node or one above the agent's ring, the agent
@@ -84,7 +85,7 @@ sets `authorized_by` to the author.
   **D, E — the rules that refine them**. `python tools/dte.py tree --under B17` shows one family.
   A ring-C leaf whose rule constrains a whole class of files (C27 noDataInComponents, C34
   classNameIsType) is NOT cited from every member: the class has a floor spec
-  (`specs/components.md`, `specs/node-classes.md`, `specs/stores.md`) whose header carries a
+  (`tree/specs/floors/components.md`, `tree/specs/floors/node-classes.md`, `tree/specs/floors/stores.md`) whose header carries a
   `covers:` glob, and blast runs leaf → spec → the files built to it. A file's own header cites
   only what is specific to it; a file with nothing specific has no header at all.
 
@@ -98,7 +99,7 @@ similar technical choices that fall out of a node are spec content: fluid, edite
 git history as their governance record, like code. Formula.js divergences are the worked
 example: nobody decided "do not diverge from Formula.js"; the decision is Excel parity
 ([[A5]] excelParity, [[D28]] tripwireVendorDrift), and the per-name evidence is
-`specs/formulajs-divergences.md`. One decision may govern several things when turning it off
+`tree/specs/computation/formulajs-divergences.md`. One decision may govern several things when turning it off
 for one would break the others; do not split those, and do not merge things that were ever
 reversed independently.
 

@@ -7,7 +7,7 @@ import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { columnNamesOf } from "../frameShape";
 import { stopDragStart } from "../coarse";
 
-/** The shared column-name field: specs/type-propagation-on-in-place-socket-retype.md
+/** The shared column-name field: tree/specs/values/type-propagation-on-in-place-socket-retype.md
  *  (column pickers). Writes the SAME string literal the plain field does; renders only for
  *  an UNWIRED socket. */
 export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeholder }: {

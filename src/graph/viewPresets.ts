@@ -1,5 +1,5 @@
 // [[C43]] oneFlowSurface, [[C92]] pinchUnvetoable, [[D71]] zoomLatticeDiscreteOnly
-// The camera constants + wheel curve shared by every flow surface (specs/pointer-gestures.md).
+// The camera constants + wheel curve shared by every flow surface (tree/specs/canvas/pointer-gestures.md).
 
 const ZOOM_SCALE = 0.0028;
 const ZOOM_STEP_CAP = 0.24;

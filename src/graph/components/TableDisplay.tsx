@@ -72,7 +72,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
   const hostAnn = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveDisplayAnnotation(hostId));
   const ann = annProp ?? hostAnn;
 
-  // Every result display tolerates a SolError (specs/error-values.md).
+  // Every result display tolerates a SolError (tree/specs/values/error-values.md).
   if (isSolError(table)) {
     return (
       <div

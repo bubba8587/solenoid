@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C24]] arraySemantics, [[D28]] tripwireVendorDrift (the parity:false divergence, specs/formulajs-divergences.md)
+// [[D19]] implReteFree, [[C17]] shareImpl, [[C24]] arraySemantics, [[D28]] tripwireVendorDrift (the parity:false divergence, tree/specs/computation/formulajs-divergences.md)
 // Additive Holt–Winters (ETS AAN / AAA: statsmodels ExponentialSmoothing add/add, R HoltWinters / ets("AAA")). Excel's FORECAST.ETS is the same family with Microsoft's own parameter search, so values are close, not bit-identical (parity:false).
 import { stdNormCDF, normSInv } from "./mathUtils";
 import { lowess } from "./signalOps";

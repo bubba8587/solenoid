@@ -1,5 +1,5 @@
 // [[B10]] reactFlowView, [[C43]] oneFlowSurface
-// The chrome → surface command slots (specs/react-flow-surface-contract.md): the
+// The chrome → surface command slots (tree/specs/canvas/react-flow-surface-contract.md): the
 // mounted FlowSurface registers the implementation, the composite drill-in swaps
 // slots while it is open. Compute lives in process.ts; this is only routing.
 

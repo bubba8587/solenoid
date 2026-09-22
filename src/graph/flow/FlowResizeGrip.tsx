@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C37]] observerOwnsSize (specs/resizable-content-nodes.md)
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C37]] observerOwnsSize (tree/specs/canvas/resizable-content-nodes.md)
 // The corner resize grip: RF's NodeResizeControl wearing the app's grip mark. Sizes are
 // integers (a fractional size renders the selection ring 0.5px off). The resizer's own
 // dimension changes never reach RF state (FlowSurface drops them); the MODEL owns size.

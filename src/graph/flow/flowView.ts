@@ -1,5 +1,5 @@
 // [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C87]] groupsAreSubflows
-// THE View implementation (../view.ts; specs/react-flow-surface-contract.md § the View
+// THE View implementation (../view.ts; tree/specs/canvas/react-flow-surface-contract.md § the View
 // seam): model-side verbs become React Flow state through late-bound callbacks the
 // surface supplies. Positions read and write `node.position` directly; no side map.
 import type { NodeEditor } from "rete";

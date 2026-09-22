@@ -1,4 +1,4 @@
-// [[D16]] retypeReconciles. Mechanics: specs/react-flow-surface-contract.md.
+// [[D16]] retypeReconciles. Mechanics: tree/specs/canvas/react-flow-surface-contract.md.
 // Option B — pending-reconnect ghosts for the Input Switch. When the One↔Many toggle
 // retypes the `out` socket, `retypeOutputCables` DROPS the downstream cables the new type
 // can't feed (there is then no real rete connection to ghost, unlike Option A's in-place

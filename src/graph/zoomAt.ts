@@ -3,7 +3,7 @@ import { getNodesBounds, getViewportForBounds } from "@xyflow/react";
 import { floorZoom, MIN_ZOOM } from "./viewPresets";
 import type { View } from "./view";
 // Frame a set of nodes (React Flow's bounds + viewport math; never zooms IN past 1,
-// zoom floored to the snap step). Collapsed-group callers: specs/group-collapse.md.
+// zoom floored to the snap step). Collapsed-group callers: tree/specs/canvas/group-collapse.md.
 
 type NodeLike = { id: string; width?: number; height?: number };
 

@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual. Mechanics: specs/group-collapse.md.
+// [[C88]] collapseIsVisual. Mechanics: tree/specs/canvas/group-collapse.md.
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";

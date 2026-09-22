@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 // only the node bodies and the citing tests together can say.
 
 const ROOT = path.resolve(__dirname, "../..");
-const TREE = path.join(ROOT, "decisions");
+const TREE = path.join(ROOT, "tree", "decisions");
 
 interface DecisionNode {
   id: string;
@@ -69,7 +69,7 @@ function testFileIndex(): Map<string, string[]> {
   return found;
 }
 
-describe("the decision tree (decisions/)", () => {
+describe("the decision tree (tree/decisions/)", () => {
   const nodes = readTree();
 
   it("reads a real tree", () => {
@@ -133,7 +133,7 @@ describe("the decision tree (decisions/)", () => {
         else if (/\.(ts|tsx|md|mjs|cjs|rs|css)$/.test(e.name)) scan(p);
       }
     };
-    for (const dir of ["src", "tests", "scripts", "docs", "packages", path.join("src-tauri", "src")]) {
+    for (const dir of ["src", "tests", "scripts", "docs", "packages", path.join("src-tauri", "src"), path.join("tree", "specs")]) {
       if (fs.existsSync(path.join(ROOT, dir))) walk(path.join(ROOT, dir));
     }
     for (const f of ["CLAUDE.md", "DESIGN.md", "README.md"]) scan(path.join(ROOT, f));

@@ -158,7 +158,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     if (keyUnderModal(e) && e.key !== "F9") return;
 
     // `.nokeys`: a figure that owns its own keyboard opts out, the keyboard mirror of
-    // `.nowheel` (specs/pointer-gestures.md). F9 still recomputes.
+    // `.nowheel` (tree/specs/canvas/pointer-gestures.md). F9 still recomputes.
     if (target?.closest?.(".nokeys") && e.key !== "F9") return;
 
     // F9 stays live while typing, presenting, drilled in and under a modal — there it

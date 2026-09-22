@@ -1,5 +1,5 @@
 // [[C107]] obsidianPlugin
-// The rig as a phone (specs/obsidian-plugin.md § Verifying against real Obsidian): Obsidian's
+// The rig as a phone (tree/specs/integrations/obsidian-plugin.md § Verifying against real Obsidian): Obsidian's
 // own mobile emulation, a phone-sized window, and a coarse pointer with touch events, which
 // must all live in ONE CDP session, so this takes its steps in a row:
 //

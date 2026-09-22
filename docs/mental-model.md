@@ -28,12 +28,12 @@ drill-in doesn't open a new page. It swaps the active surface through the `activ
 seam (`getActive*`, `getOwningEditor`), so the same chrome drives whichever canvas is on
 top. `getEditor()` and persistence always mean the main graph ([[C33]] saveBindsMain). The
 full surface contract (what React Flow owns, what the model owns, and the conversions at the
-boundary) is `../specs/react-flow-surface-contract.md`.
+boundary) is `../tree/specs/canvas/react-flow-surface-contract.md`.
 
 ## One edit, one recompute
 
 The compute path, in order (the full mechanics, including every coercion rung, are
-`../specs/compute-pass.md`):
+`../tree/specs/computation/compute-pass.md`):
 
 1. **Commit.** Text edits commit on Enter or blur (`useDraftCommit`), never per keystroke;
    discrete picks apply immediately (DESIGN.md § Inputs). The committed value lands in the
@@ -69,7 +69,7 @@ The compute path, in order (the full mechanics, including every coercion rung, a
 
 Sockets have declared types, and `accepts()` (the lattice) decides what may connect. Element
 families never cross on their own (that takes a Cast; the one bridge is logical ↔ number),
-and values flow up in rank. The spec is `../specs/socket-lattice.md` ([[C10]]
+and values flow up in rank. The spec is `../tree/specs/values/socket-lattice.md` ([[C10]]
 socketLattice).
 
 On top of that, derived types resolve again after every wiring or config change.
@@ -79,11 +79,11 @@ once downstream against the settled result ([[E8]] waitForTypeSettle). Derived t
 never saved; they're worked out again on load. A node that retypes a socket in place
 (Cast's target, read-as, Note frontmatter) must call `reconcileFcTypes` or
 `retypeOutputCables`, because no connection event fires. The spec is
-`../specs/type-propagation-on-in-place-socket-retype.md` ([[D16]] retypeReconciles).
+`../tree/specs/values/type-propagation-on-in-place-socket-retype.md` ([[D16]] retypeReconciles).
 
 ## Frames are different
 
-(The Frame value, laziness, the backend seam and every verb's contract are `../specs/frame-verbs.md`.)
+(The Frame value, laziness, the backend seam and every verb's contract are `../tree/specs/computation/frame-verbs.md`.)
 
 Scalars, lists and matrices are plain JS values on cables. A Frame on a cable is usually a
 lazy `FrameRef`, a handle to a verb chain living in the engine behind the `FrameBackend`
@@ -111,7 +111,7 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
 - An FC's number **format** is a display annotation, resolved by walking passthroughs in
   both directions and through transforms that keep the value's meaning
   (`makeAnnotationResolver`, [[D41]] formatFlowsDownstream). The spec is
-  `../specs/unit-flow.md`.
+  `../tree/specs/values/unit-flow.md`.
 - Errors render as the red `#CODE!` badge. A scalar null renders as a muted em dash; the
   word `null` appears only for list and Frame cells. NaN is quiet residue, never "N/A".
 
@@ -131,7 +131,7 @@ loader stays permissive, loading an unknown type as a lossless Placeholder.
 Autosave is per document, two localStorage slots per doc, diffed by object identity, so
 store transforms must return new objects or nothing saves ([[C31]] immutableDocStore;
 the slot rotation is [[C32]] autosaveSlotOrder). The full format and load algorithm are
-`../specs/save-format.md`.
+`../tree/specs/documents/save-format.md`.
 
 ## What exists (orientation only; verify in code before relying on detail)
 
@@ -163,7 +163,7 @@ The curated selling list is `release-notes-features.md`; the file map is `archit
   and cite the governing node (`[[<ID>]] name`) in comments and commits.
 - Anything visual: `DESIGN.md` first. Any gesture: `touch-gestures.md` is the inventory.
   Any bar or overlay: `layout-chrome.md`. Anything on the canvas surface:
-  `../specs/react-flow-surface-contract.md`.
+  `../tree/specs/canvas/react-flow-surface-contract.md`.
 - Socket and type questions: the per-variant tables in `socket-reference.md`. A new node's
   `data()`: `value-semantics.md` "Reading an input", deciding each input's role.
 - Trust tests over prose: `python3 tools/dte.py show <ID>` derives "enforced by" from the

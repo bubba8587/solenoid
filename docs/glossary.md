@@ -60,7 +60,7 @@ area. When you coin a new load-bearing term, add it here.
   (`sockets.ts`, `nodes/logic.ts`)
 - **Socket lattice**: the rules for what can connect to what. Type families never cross on
   their own (that takes a Cast), and values flow freely up in rank. (`sockets.ts`,
-  `socketConnect.test.ts`; [[C10]] socketLattice, `../specs/socket-lattice.md`)
+  `socketConnect.test.ts`; [[C10]] socketLattice, `../tree/specs/values/socket-lattice.md`)
 - **Cast**: the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Fill**: the opt-in node to treat `null` as a real value.
@@ -81,7 +81,7 @@ area. When you coin a new load-bearing term, add it here.
   (`nodes/formatController.ts`)
 - **Unit flow**: the machinery that carries an FC's unit and format along the value,
   downstream and upstream through passthroughs, derived on read. $ is a unit, not a format.
-  (`unitFlow.ts`, `unitFormat.ts`; `../specs/unit-flow.md`)
+  (`unitFlow.ts`, `unitFormat.ts`; `../tree/specs/values/unit-flow.md`)
 - **Annotation**: the resolved unit/format metadata attached to a value for display;
   computed by walking the graph, mostly not stored. (`formatAnnotationStore.ts`)
 - **Convert**: the node that changes a value's unit (m→ft), forwarding its target into a

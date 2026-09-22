@@ -1,4 +1,4 @@
-// [[D10]] onePrunePath. Mechanics: specs/input-cable-pruning.md.
+// [[D10]] onePrunePath. Mechanics: tree/specs/canvas/input-cable-pruning.md.
 import { getActiveEditor } from "../activeGraph";
 
 /** Remove every cable wired INTO the given input keys of `nodeId`. `gone` is the

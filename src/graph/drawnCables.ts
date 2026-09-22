@@ -1,4 +1,4 @@
-// [[C90]] drawnCablesAnnotate. Mechanics: specs/drawn-cables.md.
+// [[C90]] drawnCablesAnnotate. Mechanics: tree/specs/canvas/drawn-cables.md.
 import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 import { unselectAllNodes } from "./canvasCommands";

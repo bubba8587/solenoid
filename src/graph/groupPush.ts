@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast. Mechanics: specs/group-expand-push.md.
+// [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast. Mechanics: tree/specs/canvas/group-expand-push.md.
 import { measuredSize } from "./nodeSize";
 import type { View } from "./view";
 import type { NodeEditor } from "rete";

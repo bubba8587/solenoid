@@ -1,5 +1,5 @@
 // [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow, [[D14]] derivedSocketTypes,, [[E6]] portOwnsSocket
-// [[D15]] wildcardsKeepRank. The mechanics: specs/socket-lattice.md.
+// [[D15]] wildcardsKeepRank. The mechanics: tree/specs/values/socket-lattice.md.
 import { ClassicPreset } from "rete";
 
 export type SocketDataType =

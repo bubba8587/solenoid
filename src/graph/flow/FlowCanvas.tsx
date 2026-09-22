@@ -80,7 +80,7 @@ function getStack(): Stack {
     getContainer: () => handlers.getContainer(),
   });
   // The topology pipe coalesces a rebuild into ONE commit
-  // (specs/graph-load-teardown-performance.md).
+  // (tree/specs/documents/graph-load-teardown-performance.md).
   let queued = false;
   const trySync = () => {
     if (isGraphRebuilding()) {

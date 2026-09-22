@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[C34]] classNameIsType. Mechanics: specs/react-flow-surface-contract.md.
+// [[C43]] oneFlowSurface, [[C34]] classNameIsType. Mechanics: tree/specs/canvas/react-flow-surface-contract.md.
 // Which node types offer the "flip sockets" control (socketFlipStore).
 
 const _flippable = new Set<string>(["DisplayNode"]);

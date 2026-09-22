@@ -1,6 +1,6 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
 // Per-node "sockets flipped" state; the flip mechanics (who reads it, what stays
-// semantic) are in specs/react-flow-surface-contract.md.
+// semantic) are in tree/specs/canvas/react-flow-surface-contract.md.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

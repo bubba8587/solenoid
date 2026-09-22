@@ -1,6 +1,6 @@
 // [[C107]] obsidianPlugin
 // Export the Solenoid Properties plugin's source into its own repository, which the community
-// directory requires to hold the source it is built from (specs/obsidian-plugin.md § Publishing).
+// directory requires to hold the source it is built from (tree/specs/integrations/obsidian-plugin.md § Publishing).
 // This repository stays the source of truth: the plugin is built from the app's own components.
 // The export is a SNAPSHOT of what the build reads and what those files import for types, laid
 // out at the same paths, plus a

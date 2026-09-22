@@ -1,5 +1,5 @@
 // [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C87]] groupsAreSubflows
-// THE canvas-view seam (specs/react-flow-surface-contract.md § the View seam);
+// THE canvas-view seam (tree/specs/canvas/react-flow-surface-contract.md § the View seam);
 // flow/flowView.ts is the one implementation. Positions are ABSOLUTE canvas
 // coordinates, never React Flow's parent-relative ones.
 

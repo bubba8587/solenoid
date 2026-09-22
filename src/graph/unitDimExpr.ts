@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D47]] noMixCurrencies. Mechanics: specs/unit-flow.md.
+// [[C25]] firstClassUnits, [[D47]] noMixCurrencies. Mechanics: tree/specs/values/unit-flow.md.
 // A second interpretation over the numeric evaluator's `Ast`: the DIMENSION a
 // formula's result carries. Never evaluates a value. Returns one of:
 //   • a `Dim`      — the determined result dimension (`{}` = dimensionless);

@@ -1,4 +1,4 @@
-// [[D40]] unitOnValue, [[D41]] formatFlowsDownstream. Mechanics: specs/unit-flow.md.
+// [[D40]] unitOnValue, [[D41]] formatFlowsDownstream. Mechanics: tree/specs/values/unit-flow.md.
 // The one annotation resolution every value surface asks through, plus cell/date/unit
 // rendering. A value is a DATE when its node's OUTPUT SOCKET says so, never by cell shape.
 

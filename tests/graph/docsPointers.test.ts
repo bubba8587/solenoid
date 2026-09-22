@@ -125,3 +125,42 @@ describe("README routing-table code citations exist", () => {
     expect(basenames.has(base)).toBe(true);
   });
 });
+
+describe("the tree/ vault's wikilinks resolve", () => {
+  // tree/ is one Obsidian vault ([[C81]] wikilinkCitations): a node by ID or name,
+  // a spec by file name or title alias. Links inside code spans are code, not links.
+  const TREE = path.join(ROOT, "tree");
+  const files: string[] = [];
+  const walk = (dir: string) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (e.name.startsWith(".")) continue;
+      const p = path.join(dir, e.name);
+      if (e.isDirectory()) walk(p);
+      else if (e.name.endsWith(".md")) files.push(p);
+    }
+  };
+  walk(TREE);
+  const targets = new Set<string>();
+  for (const f of files) {
+    const text = read(f);
+    targets.add(path.basename(f, ".md"));
+    const fm = text.match(/^---\n([\s\S]*?)\n---/);
+    const names = fm?.[1].match(/^(?:name|aliases):\s*(.+)$/gm) ?? [];
+    for (const line of names) {
+      const v = line.replace(/^(?:name|aliases):\s*/, "").replace(/^\[|\]$/g, "");
+      for (const a of v.split(",")) targets.add(a.trim().replace(/^"|"$/g, ""));
+    }
+  }
+  // A retired node's ID stays citable (History lines name what was merged or moved).
+  for (const line of read(path.join(TREE, "decisions", "RETIRED")).split("\n")) {
+    const id = line.match(/^([A-Z]\d+)\b/)?.[1];
+    if (id) targets.add(id);
+  }
+  it.each(files.map((p) => [path.relative(ROOT, p), p] as const))("%s links only to vault notes", (_rel, file) => {
+    const body = read(file).replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+    const dead = [...body.matchAll(/\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|[^\]]*)?\]\]/g)]
+      .map((m) => m[1].trim())
+      .filter((t) => !targets.has(t));
+    expect(dead).toEqual([]);
+  });
+});

@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[C77]] compositeIsSubgraph (specs/composite-drill-in-mount-lifecycle.md), [[C33]] saveBindsMain
+// [[C43]] oneFlowSurface, [[C77]] compositeIsSubgraph (tree/specs/canvas/composite-drill-in-mount-lifecycle.md), [[C33]] saveBindsMain
 // The composite drill-in: a full-viewport FlowSurface over the composite's INTERNAL
 // editor, plus the drill-in-specific chrome (breadcrumb strip, port promotion, run
 // controls) and a per-composite snapshot history. The level registers as the ACTIVE
@@ -37,7 +37,7 @@ type DrillStack = {
   view: FlowView;
   handlers: SurfaceHandlers;
   /** True through hydrate/restore; the topology pipe waits it out (the drill-in's
-   *  local rebuild gate, specs/graph-load-teardown-performance.md). */
+   *  local rebuild gate, tree/specs/documents/graph-load-teardown-performance.md). */
   rebuilding: boolean;
   isRebuilding: () => boolean;
   history: { stack: string[]; index: number; timer: ReturnType<typeof setTimeout> | null };
