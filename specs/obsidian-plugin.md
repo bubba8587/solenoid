@@ -279,7 +279,9 @@ root, while `html.is-mobile` rules cannot and the bundle carries none. Measured,
 (`getBoundingClientRect`, printed): on a phone Obsidian makes the properties content a full-bleed
 panel 12px left of the card, which the look undoes so the icon keeps the desktop's 11px inset, and
 the light badge centers itself on the taller row. Checked 2026-09-22 at 412 and 360 px: every editor
-fits, a footer wraps whole buttons and its rows share a left edge, Done and Cancel/Save sit right.
+fits, and under a coarse pointer the footer's controls get SMALLER, not finger-sized, so the
+row/column buttons and Cancel/Save share one row under the view toggle (11px text on a 412px phone,
+10px at 380px and under; author's ruling, `TablePopup.css`). Done and Cancel/Save sit right.
 Open: a chip is 15px tall on a 41px row, a small tap target under the `sm` ruling (backlog).
 
 A builder that finds this spec silent stops that part and runs

@@ -26,6 +26,8 @@ specific item.
   links broke mid-URL. And a scoper bug: a look rule on a body class other than `.theme-*` (`.is-mobile`) nested
   under the look class and never matched in the plugin; the rig's snippet had masked it. Real devices remain
   unchecked (spec § Out of scope). The author looked at the captures and caught the icon inset I had passed.
+  Footer buttons on a phone go SMALLER under the coarse pointer (11px text at 412, 10px under 380), measured
+  until the row/column buttons and Cancel/Save share one row; the author saw both tiers and ruled them fine.
 - Blueprint under the look: its chrome ramp is adaptive and the plugin's accent is fixed gold, so its workbench
   comes out warm, as its chips already did (spec divergence table). A plugin accent setting would reopen it.
 
