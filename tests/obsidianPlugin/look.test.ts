@@ -30,7 +30,7 @@ describe("the look's colors come from the palette", () => {
         for (const mode of ["dark", "light"] as const) {
           const tokens = lookTokens(name, accent, mode);
           expect(Object.keys(tokens), `${name} ${accent} ${mode}`).toEqual(Object.keys(defaults));
-          for (const [token, value] of Object.entries(tokens)) expect(value, `${name} ${accent} ${mode} ${token}`).toMatch(/^(#[0-9a-f]{3}|#[0-9a-f]{6}|\d+%?|\d+, \d+, \d+)$/);
+          for (const [token, value] of Object.entries(tokens)) expect(value, `${name} ${accent} ${mode} ${token}`).toMatch(/^(#[0-9a-f]{3}|#[0-9a-f]{6}|\d+%?|\d+, \d+, \d+|var\(--sol-(accent|text)\)|oklch\(from var\(--sol-accent\) 0\.45 c h\))$/);
           // The palette's block and the accent's block split the set, nothing lost or doubled.
           const split = { ...paletteTokens(name, mode), ...accentTokens(name, accent, mode) };
           expect(split, `${name} ${accent} ${mode} split`).toEqual(tokens);
@@ -55,6 +55,14 @@ describe("the look's colors come from the palette", () => {
     // Blueprint at its home accent is the authored cyanotype, not the gold-rotated print.
     expect(accentTokens("Blueprint", "blue", "dark")["--sol-surface"]).not.toBe(accentTokens("Blueprint", "gold", "dark")["--sol-surface"]);
     expect(accentTokens("Default", "blue", "dark")["--sol-accent"]).toBe(lookTokens("Default", "blue", "dark")["--sol-blue"]);
+  });
+
+  it("the accent as text: itself on dark; on white a yellow is the ink, any other hue darkens along its own hue", () => {
+    expect(accentTokens("Default", "gold", "dark")["--sol-ink-accent"]).toBe("var(--sol-accent)");
+    expect(accentTokens("Default", "gold", "light")["--sol-ink-accent"]).toBe("var(--sol-text)");
+    expect(accentTokens("Default", "lime", "light")["--sol-ink-accent"]).toBe("var(--sol-text)");
+    expect(accentTokens("Default", "blue", "light")["--sol-ink-accent"]).toBe("oklch(from var(--sol-accent) 0.45 c h)");
+    expect(accentTokens("Default", "neutral-dark", "light")["--sol-ink-accent"]).toBe("oklch(from var(--sol-accent) 0.45 c h)");
   });
 
   it("the plugin's blocks sit under the look class, the palette's class and the accent's", () => {

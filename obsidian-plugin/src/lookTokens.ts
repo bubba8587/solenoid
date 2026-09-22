@@ -4,7 +4,7 @@
 // appends one block per built-in palette and mode, then one per palette, accent and mode, to
 // styles.css, under the classes main.tsx puts on the body for the chosen palette and accent; the
 // demo vault's snippet gets the Default palette's two blocks under the gold accent.
-import { paletteStore, PALETTE_NAMES, COLOR_PALETTE, NEUTRAL_WHITE, NEUTRAL_DARK, CHROME_HOME, resolveColor, themeAccent, contrastInk, hexToHsl, DEFAULT_CHROME, chromeCssVars, type PaletteName } from "../../src/graph/palette";
+import { paletteStore, PALETTE_NAMES, COLOR_PALETTE, NEUTRAL_WHITE, NEUTRAL_DARK, CHROME_HOME, resolveColor, themeAccent, contrastInk, hexToHsl, hexToOklch, DEFAULT_CHROME, chromeCssVars, type PaletteName } from "../../src/graph/palette";
 import { themeVars, type ThemeMode } from "../../src/graph/themeVars";
 
 export const LOOK_CLASS = "solenoid-look";
@@ -41,8 +41,17 @@ const NAMED: [string, string][] = [["red", "error"], ["orange", "amber"], ["yell
 
 const rgb = (hex: string): string => hex.slice(1).match(/../g)!.map((h) => parseInt(h, 16)).join(", ");
 
-/** The tokens that move with the accent: its color, its ink and Obsidian's HSL of it. */
-const ACCENT_TOKENS = ["--sol-accent", "--sol-accent-ink", "--accent-h", "--accent-s", "--accent-l"];
+/** The tokens that move with the accent: its color, its ink, Obsidian's HSL of it, and the
+ *  accent AS text. */
+const ACCENT_TOKENS = ["--sol-accent", "--sol-accent-ink", "--accent-h", "--accent-s", "--accent-l", "--sol-ink-accent"];
+
+/** A yellow: it cannot reach text contrast on white, and darkened it is brown (look.css, the
+ *  light-mode ink rule, which names gold and lime; this is that rule by hue). */
+function isYellow(hex: string): boolean {
+  const [, c, h] = hexToOklch(hex);
+  const hue = ((h % 360) + 360) % 360;
+  return c > 0.05 && hue >= 70 && hue <= 125;
+}
 /** A palette whose chrome ramp follows the accent's hue ([[C62]], `CHROME_HOME`). */
 const isAdaptive = (name: PaletteName): boolean => CHROME_HOME[name] !== undefined;
 
@@ -64,6 +73,9 @@ export function lookTokens(name: PaletteName, accent: string, mode: ThemeMode): 
     out["--accent-h"] = `${Math.round(h)}`;
     out["--accent-s"] = `${Math.round(s * 100)}%`;
     out["--accent-l"] = `${Math.round(l * 100)}%`;
+    // The accent as text (links, the active item, the h1): itself on the dark workbench; on
+    // white, the look's rule: a yellow is the ink, any other hue darkens along its own hue.
+    out["--sol-ink-accent"] = mode === "dark" ? "var(--sol-accent)" : isYellow(accentHex) ? "var(--sol-text)" : "oklch(from var(--sol-accent) 0.45 c h)";
     for (const sock of SOCKETS) out[`--sol-${sock}`] = vars[`--sock-${sock}`]!;
     for (const slot of SLOTS) out[`--sol-${slot}`] = themeAccent(resolveColor(slot), mode);
     out["--sol-error"] = vars["--sol-error"]!;

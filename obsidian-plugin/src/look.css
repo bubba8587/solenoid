@@ -10,8 +10,10 @@
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
 /* No hex here. The colors (workbench ramp, accent, typed hues, Obsidian's named colors) come
    from lookTokens.ts, derived from palette.ts as the chips' are: the build appends one block per
-   built-in palette to styles.css, and the snippet carries the Default palette's. Below is what
-   holds under every palette. */
+   built-in palette, and one per accent, to styles.css, and the snippet carries the Default
+   palette's under gold. Below is what holds under every palette. The accent (--sol-accent, and
+   --sol-ink-accent as text) is the UI's: tabs, the top line, links, the active item, the h1,
+   rules; a type's hue (--sol-number and the rest) means that type and nothing else. */
 
 body {
   --sol-mix-hairline: 30%;
@@ -50,7 +52,7 @@ body {
   --sol-hairline: color-mix(in srgb, var(--sol-accent) var(--sol-mix-hairline), var(--sol-border));
   --sol-edge: color-mix(in srgb, var(--sol-accent) var(--sol-mix-edge), var(--sol-border));
   --sol-emphasis: color-mix(in srgb, var(--sol-accent) var(--sol-mix-emphasis), var(--sol-border));
-  --sol-h1-rule: color-mix(in srgb, var(--sol-number) var(--sol-mix-edge), var(--sol-border));
+  --sol-h1-rule: color-mix(in srgb, var(--sol-accent) var(--sol-mix-edge), var(--sol-border));
   --sol-h2-rule: color-mix(in srgb, var(--sol-string) var(--sol-mix-hairline), var(--sol-border));
 
   --shadow-s: 0 4px 14px rgba(0, 0, 0, 0.2);
@@ -81,7 +83,7 @@ body {
   --sol-hairline: var(--sol-border);
   --sol-edge: color-mix(in srgb, var(--sol-accent) 88%, #000);
   --sol-emphasis: color-mix(in srgb, var(--sol-accent) 88%, #000);
-  --sol-h1-rule: var(--sol-number);
+  --sol-h1-rule: var(--sol-accent);
   --sol-h2-rule: var(--sol-strlist);
 
   --shadow-s: 0 4px 14px rgba(20, 30, 50, 0.06);
@@ -110,8 +112,8 @@ body {
   --text-normal: var(--sol-text);
   --text-muted: var(--sol-text-dim);
   --text-faint: var(--sol-text-muted);
-  --text-accent: var(--sol-ink-number);
-  --text-accent-hover: color-mix(in srgb, var(--sol-ink-number) 80%, var(--sol-text-bright));
+  --text-accent: var(--sol-ink-accent);
+  --text-accent-hover: color-mix(in srgb, var(--sol-ink-accent) 80%, var(--sol-text-bright));
   --text-on-accent: var(--sol-accent-ink);
   --text-on-accent-inverted: var(--sol-text-bright);
   --text-error: var(--sol-ink-error);
@@ -154,11 +156,11 @@ body {
   --prompt-border-color: var(--sol-edge);
   --menu-background: var(--sol-surface);
   --menu-border-color: var(--sol-border-strong);
-  --nav-item-color-active: var(--sol-ink-number);
+  --nav-item-color-active: var(--sol-ink-accent);
   --nav-item-background-active: color-mix(in srgb, var(--sol-accent) 16%, transparent);
   --nav-item-background-hover: var(--background-modifier-hover);
   --nav-indentation-guide-color: var(--sol-border-subtle);
-  --icon-color-active: var(--sol-ink-number);
+  --icon-color-active: var(--sol-ink-accent);
   --icon-color-focused: var(--sol-text-bright);
   --scrollbar-thumb-bg: color-mix(in srgb, var(--sol-text) 14%, transparent);
   --scrollbar-active-thumb-bg: color-mix(in srgb, var(--sol-accent) 50%, transparent);
@@ -175,7 +177,7 @@ body {
   --graph-text: var(--sol-text-dim);
 
   /* Writing */
-  --h1-color: var(--sol-ink-number);
+  --h1-color: var(--sol-ink-accent);
   --h2-color: var(--sol-ink-string);
   --h3-color: var(--sol-ink-date);
   --h4-color: var(--sol-ink-complex);
@@ -192,7 +194,7 @@ body {
   --bold-color: var(--sol-text-bright);
   --italic-color: inherit;
 
-  --link-color: var(--sol-ink-number);
+  --link-color: var(--sol-ink-accent);
   --link-color-hover: var(--text-accent-hover);
   --link-unresolved-color: var(--sol-text-dim);
   --link-unresolved-opacity: 1;
@@ -322,10 +324,10 @@ body {
   border-radius: 8px 8px 0 0;
 }
 /* A tab is a node header: 6px top corners, a tinted band under a 2px cap, and the small
-   uppercase title in the same color's ink. Gold by default, so a note's tab belongs to the
-   accent line it stands on; a base, a canvas and media keep a color of their own. */
+   uppercase title in the same color's ink. The accent, so a note's tab belongs to the accent
+   line it stands on; a base, a canvas and media keep a color of their own. */
 .mod-root .workspace-tab-header {
-  --sol-tab: var(--sol-number);
+  --sol-tab: var(--sol-accent);
   --sol-tab-ink: color-mix(in srgb, var(--sol-tab) var(--sol-ink-pct), var(--sol-text-bright));
   --tab-text-color-active: var(--sol-tab-ink);
   --tab-text-color-focused-active: var(--sol-tab-ink);
@@ -388,7 +390,7 @@ body {
 }
 .mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner-icon,
 .mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
-  color: var(--sol-ink-number);
+  color: var(--sol-ink-accent);
 }
 
 /* Icon buttons: a circle that fills on hover and turns to the accent. */
@@ -401,11 +403,11 @@ body {
   border-radius: 50%;
 }
 .clickable-icon:hover {
-  color: var(--sol-ink-number);
+  color: var(--sol-ink-accent);
   background-color: var(--sol-btn-hover);
 }
 .clickable-icon.is-active {
-  color: var(--sol-ink-number);
+  color: var(--sol-ink-accent);
   background: none;
 }
 
@@ -473,7 +475,7 @@ button.mod-cta {
    center gets one, split or not. */
 .workspace-tabs.mod-top > .workspace-tab-header-container,
 .mod-root .workspace-tabs > .workspace-tab-header-container {
-  --sol-line: var(--sol-number);
+  --sol-line: var(--sol-accent);
   position: relative;
   z-index: 1;
   border-bottom: 1px solid var(--sol-border);
@@ -520,7 +522,7 @@ button.mod-cta {
 }
 .nav-buttons-container .clickable-icon:hover,
 .view-actions .clickable-icon:hover {
-  color: var(--sol-ink-number);
+  color: var(--sol-ink-accent);
   background-color: color-mix(in srgb, var(--sol-accent) 12%, transparent);
 }
 
@@ -577,7 +579,7 @@ button.mod-cta {
 
 /* The vault's name is the one brand mark. */
 .workspace-drawer-vault-name {
-  color: var(--sol-ink-number);
+  color: var(--sol-ink-accent);
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -699,7 +701,7 @@ button.mod-cta {
    45 degree leg centered between the runs, a straight run, a socket in. */
 .markdown-rendered hr,
 .markdown-source-view.mod-cm6 .hr hr {
-  --sol-ring: color-mix(in srgb, var(--sol-number) 62%, #000);
+  --sol-ring: color-mix(in srgb, var(--sol-accent) 62%, #000);
   --sol-cable:
     radial-gradient(circle at 6px 18px, #000 0 5.6px, transparent 6px),
     radial-gradient(circle at calc(100% - 6px) 6px, #000 0 5.6px, transparent 6px),
@@ -712,7 +714,7 @@ button.mod-cta {
   background:
     radial-gradient(circle at 6px 18px, transparent 0 3.6px, var(--sol-ring) 4.2px 6px, transparent 6px),
     radial-gradient(circle at calc(100% - 6px) 6px, transparent 0 3.6px, var(--sol-ring) 4.2px 6px, transparent 6px),
-    var(--sol-number);
+    var(--sol-accent);
   -webkit-mask: var(--sol-cable);
   mask: var(--sol-cable);
 }
@@ -784,7 +786,7 @@ button.mod-cta {
   text-decoration-line: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
-  text-decoration-color: var(--sol-number);
+  text-decoration-color: var(--sol-accent);
 }
 .theme-light .markdown-rendered a.external-link,
 .theme-light .cm-s-obsidian .cm-link .cm-underline,
@@ -952,7 +954,7 @@ button.mod-cta {
   background: none;
 }
 .canvas-control-item:hover {
-  color: var(--sol-ink-number);
+  color: var(--sol-ink-accent);
   background-color: var(--sol-btn-hover);
 }
 .canvas-card-menu {
