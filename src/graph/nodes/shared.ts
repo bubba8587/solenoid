@@ -112,10 +112,10 @@ export type ResultType = "number" | "text" | "date" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
 export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string }> = {
-  number: { label: "Number", title: "Result is numeric, the default. Matches Excel arithmetic" },
-  text:   { label: "Text",   title: "Result is text: UPPER(x), TEXTJOIN(…), x & \" \" & y" },
-  date:   { label: "Date",   title: "Result is a date (Excel serial): DATE(y,m,d), EDATE(x,1)" },
-  auto:   { label: "Auto",   title: "Untyped: the wildcard socket accepts whatever the formula returns" },
+  number: { label: "Number", title: "The result is a number, the default" },
+  text:   { label: "Text",   title: "The result is text, like UPPER(x) or x & \" \" & y" },
+  date:   { label: "Date",   title: "The result is a date, like DATE(y,m,d) or EDATE(x,1)" },
+  auto:   { label: "Auto",   title: "The result takes whatever type the formula returns" },
 };
 
 const RESULT_SOCKETS: Record<ResultDim, Record<ResultType, ClassicPreset.Socket>> = {

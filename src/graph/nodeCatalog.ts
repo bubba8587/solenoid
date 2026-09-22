@@ -200,7 +200,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "color-picker", label: "Color", description: "A color in RGB or HSV, out as a hex or `rgb()` string.", create: () => new ColorPickerNode(), parity: false },
           { type: "color-blend", label: "Color Blend", description: "Blends two colors with a standard blend mode: mix, multiply, screen, overlay, darken, lighten, difference, dodge, burn. Any CSS color string in, hex out.", create: () => new ColorBlendNode(), parity: false, keywords: "color blend mix multiply screen overlay tint shade combine average darken lighten" },
           { type: "slicer",      label: "Slicer",      description: "Filters a Frame like an Excel slicer: choose a column, then the values whose rows to keep.", create: () => new SlicerNode() },
-          { type: "cable-switch", label: "Input Switch", description: "A multiplexer, distinct from the logical `SWITCH`: several named slots, any type, pick which passes through. Many mode chooses several; the result is a Cube of name · value rows.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
+          { type: "cable-switch", label: "Input Switch", description: "Passes on the value from the named slot you pick, of any type. Unlike `SWITCH`, it picks by name, not by matching a value. Many mode passes several, as a Cube of name and value rows.", create: () => new CableSwitchNode(), parity: false, keywords: "switch multiplexer select choose route mux named cube collect multi" },
         ],
       },
       {
@@ -232,7 +232,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Output", description: "Display, convert, and visualize values at the end of a chain.",
     children: [
-      { type: "display",   label: "Display",  description: "Shows a value. Pass-through, so wiring continues after it.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
+      { type: "display",   label: "Display",  description: "Shows a value and passes it on unchanged.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
       { type: "format-controller", label: "Format Controller", description: "Sets how a docked socket's value reads (decimals, fractions, percent, currency, a date style) and its unit, like `°C`, `m` or `kg`. A value that already has a unit locks it; Convert changes it.", create: () => new FormatControllerNode() },
       {
         // General plotters stay top-level; specialist figures cluster by what they show.
@@ -282,7 +282,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       },
       { type: "pair", children: [
         { type: "convert", label: "Convert", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
-        { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean `TRUE` or `FALSE`, or complex. Works element-wise on lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
+        { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
       { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       // Query ships a PENDING internal snapshot, so every add path must hydrate the
@@ -670,7 +670,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Logic", description: "Decisions, comparisons, boolean operations, and fallback handling.",
     children: [
-      { type: "if", label: "IF", description: "If Condition is true → Value if true, else → Value if false. Excel: `IF`.", create: () => new IfNode(), accent: NODE_KIND_ACCENTS.logic },
+      { type: "if", label: "IF", description: "Returns Value if true when Condition is true, and Value if false otherwise. Excel: `IF`.", create: () => new IfNode(), accent: NODE_KIND_ACCENTS.logic },
       { type: "comparison", label: "Comparison",  description: "Compares two values (`=`, `≠`, `<`, `>`, `≤`, `≥`) and emits a logical `TRUE` or `FALSE`. Broadcasts over a list.", keywords: "compare", create: () => new ComparisonNode() },
       { type: "choose",  label: "CHOOSE",        description: "Returns one of several values by a 1-based index. Excel: `CHOOSE`.", create: () => new ChooseNode() },
       { type: "switch",  label: "SWITCH",         description: "Matches a value against as many cases as you add and returns the matching result, or a default. Excel: `SWITCH`.", create: () => new SwitchNode() },
