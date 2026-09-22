@@ -25,7 +25,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Walk `2.0-plan.md`** (1.4.1 shipped 2026-09-21: Windows exe, Linux AppImage and .deb).
+- [ ] **Walk `2.0-plan.md`** (1.4.2 shipped 2026-09-22 with plugin 0.1.3; 1.4.1 was the first Windows + Linux release).
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
@@ -96,7 +96,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `html[data-webview="webkitgtk"]` as the zoom fixes are (`layout-chrome.md` § Desktop window frame). DESIGN.md
   § 2 holds the structure: dots legible without shouting.
 - [ ] **Palette on wide-gamut displays** (author 2026-09-21 noticed the Linux desktop reads more saturated than
-  the dev server; cause in `dev-notes.md`). The hexes are sRGB, so a color-managed engine (Chromium, WebView2
+  the dev server; cause in `archive/dev-notes-history.md`, digest 2026-09-21b). The hexes are sRGB, so a color-managed engine (Chromium, WebView2
   with a display profile) shows them accurately and an unmanaged one (WebKitGTK) stretches them to the panel.
   The author tuned the palette by eye on an unmanaged P3 panel, sees the same vivid look on their phone, and
   prefers it; managed Chromium on Linux is the outlier among their screens. Design call: leave it, or
