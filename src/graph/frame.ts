@@ -590,20 +590,31 @@ export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: Cube
 }
 
 /** A FLAT cube as a frame (declared column types kept; a unit cell reads as its magnitude).
- *  A nested table or list cell is a loud `#SHAPE!` naming the column. This is the NODE-side
- *  answer to "a cube where a frame verb wants one": a verb that takes a cube declares a
- *  cube-adoptive input and flattens here inside data(); the lattice never lets a cube into
- *  a frame socket (the author's ruling, 2026-09-12). */
-export function flatCubeToFrame(c: CubeValue): FrameValue | SolError {
-  for (const col of c.columns) {
-    if (col.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) {
-      return solError("#SHAPE!", `Column "${col.name}" holds nested cells; this reads flat rows`);
+ *  This is the NODE-side answer to "a cube where a frame verb wants one": a verb that takes
+ *  a cube declares a cube-adoptive input and flattens here inside data(); the lattice never
+ *  lets a cube into a frame socket (the author's ruling, 2026-09-12). `only` picks what is
+ *  read: every column (a nested cell anywhere is a loud `#SHAPE!` naming the column), just
+ *  the named ones (`#REF!` for a missing one, `#SHAPE!` for a nested one; the rest are not
+ *  read, so their cells don't matter), or `"scalar"`, every column without nested cells. */
+export function flatCubeToFrame(c: CubeValue, only?: readonly string[] | "scalar"): FrameValue | SolError {
+  const nested = (col: CubeColumn) => col.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v));
+  let cols: CubeColumn[];
+  if (only === "scalar") cols = c.columns.filter((col) => !nested(col));
+  else if (only) {
+    cols = [];
+    for (const name of only) {
+      const col = c.columns.find((cc) => cc.name === name);
+      if (!col) return solError("#REF!", `column "${name}" not found`);
+      if (!cols.includes(col)) cols.push(col);
     }
+  } else cols = c.columns;
+  for (const col of cols) {
+    if (nested(col)) return solError("#SHAPE!", `Column "${col.name}" holds nested cells; this reads flat rows`);
   }
   const rows = cubeRowCount(c);
   return {
     __frame: true,
-    columns: c.columns.map((col) => ({
+    columns: cols.map((col) => ({
       ...typedColumn(col.name, col.cells.map((v) => (isUnitCell(v) ? v.value : v)), rows, col.type ?? null),
       ...(col.format ? { format: col.format } : {}),
     })),

@@ -93,7 +93,7 @@ Ops `line`, `column`, `winloss` (`SPARKLINE_OP_META`); an old save's `bar` loads
 
 ### Chart
 
-`data()` reads the raw `values` input. A cube is flattened to a frame first (`flatCubeToFrame`); a top-level `SolError` there is treated as no data (Chart is in the error guard's see-errors set, so it runs). Every non-finite cell becomes null in place, so labels stay aligned with rows.
+`data()` reads the raw `values` input. A cube is flattened to a frame of its scalar columns first (`flatCubeToFrame(cube, "scalar")`: a list or table column has nothing to plot and is skipped); a top-level `SolError` there is treated as no data (Chart is in the error guard's see-errors set, so it runs). Every non-finite cell becomes null in place, so labels stay aligned with rows.
 
 - **Frame, op `bubble`:** the first three number-typed columns (column 0 included) become `series` in order x, y, size. No labels, no legend. `values` is the x column.
 - **Frame, op `radar`, two or more columns:** the frame is read transposed. `labels` are the names of the number columns after column 0 (the spokes). Each row becomes a series named by its column-0 cell (formatted, else `Row N`) with one value per spoke. `series` is set only for two or more rows; `values` is the first row.

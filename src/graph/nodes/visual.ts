@@ -138,9 +138,9 @@ export class ChartNode extends ClassicPreset.Node {
     // Every non-finite cell becomes null IN PLACE, so row-indexed labels stay aligned.
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw0 = inputs.values?.[0] ?? null;
-    // A cube arrives raw (rawInputs); a flat one is the frame the figure reads, a nested
-    // cell reads as nothing to draw (the lattice never lets a cube into a frame socket).
-    const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0) : raw0;
+    // A cube arrives raw (rawInputs) and draws its scalar columns; a list or table column
+    // has nothing to plot, so it is skipped (the lattice never lets a cube into a frame socket).
+    const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0, "scalar") : raw0;
     const raw = isSolError(flat) ? null : flat;
     this.cachedLabels = null;
     this.cachedSeries = null;

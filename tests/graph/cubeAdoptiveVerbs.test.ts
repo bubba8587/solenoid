@@ -69,7 +69,9 @@ describe("the lattice stays narrow; the nodes widen", () => {
     const c = new ChartNode();
     const out = c.data({ values: [flat] });
     expect(out.chart.values).toEqual([4000, 6000, 5000]);
-    expect(c.data({ values: [nested] }).chart.values).toBeNull();
+    // A list column has nothing to plot; the chart draws the rest.
+    const withTags = cubeFromColumns([...flat.columns, { name: "Tags", cells: [["a"], [], ["b"]] }]);
+    expect(c.data({ values: [withTags] }).chart.values).toEqual([4000, 6000, 5000]);
   });
 });
 
@@ -78,6 +80,21 @@ describe("the cube-adoptive input still widens a bare list / matrix (the old fra
     wrapNodeData(n as Parameters<typeof wrapNodeData>[0]);
     return (n as { data: (i: Record<string, unknown[]>) => Promise<{ frame: unknown }> }).data(inputs);
   };
+  it("GROUPBY over a cube reads only its key and value columns, list columns elsewhere included", async () => {
+    const g = new GroupByFrameNode();
+    g.stringLiterals.column = "Steps";
+    const cube = cubeFromColumns([
+      { name: "Day", cells: ["Mon", "Mon", "Tue"], type: "string" },
+      { name: "Steps", cells: [1, 2, 3], type: "number" },
+      { name: "Tags", cells: [["a"], [], ["b"]] },
+    ]);
+    const out = await g.data({ frame: [cube], keys: [["Day"]] });
+    const f = await collectPreview(out.frame as never);
+    expect(isFrameValue(f) && f.columns.map((c) => c.values)).toEqual([["Mon", "Tue"], [3, 3]]);
+    g.stringLiterals.column = "Tags";
+    const bad = await g.data({ frame: [cube], keys: [["Day"]] });
+    expect(isSolError(bad.frame) && bad.frame.code).toBe("#SHAPE!");
+  });
   it("GROUPBY over a wired 2-D table groups it", async () => {
     const g = new GroupByFrameNode();
     g.stringLiterals.column = "Col2";

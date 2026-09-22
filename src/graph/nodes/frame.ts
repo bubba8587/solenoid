@@ -831,15 +831,16 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; column?: string[] }) {
     const raw = rowVerbInput(inputs.frame?.[0]);
-    // A flat cube is rows; a nested cell is the loud #SHAPE! (the lattice never narrows a cube).
-    const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
-    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
-    const f = flat;
     const keys = readColumnList(inputs.keys);
     const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
     // A wired blank names no column/keys — unknown, not "not chosen yet".
-    if (f == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
+    if (raw == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
     const col = colRaw.trim();
+    // A cube is read through the columns the grouping uses (a nested one is #SHAPE!); the
+    // output holds only those. Unconfigured, it previews its scalar columns.
+    const flat = isCubeValue(raw) ? flatCubeToFrame(raw, keys.length && col ? [...keys, col] : "scalar") : raw;
+    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
+    const f = flat;
     if (!(keys.length && col)) return emitFrame(this, beginPass(this), await passFrame(f));
     // Totals re-aggregate the SOURCE, not the grouped output, so this path is EAGER.
     if (this.totalDepth !== 0) {
