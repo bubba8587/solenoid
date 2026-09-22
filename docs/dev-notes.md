@@ -6,6 +6,30 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-22b: the connective-core copy pass; author present, reviewing samples)
+
+- **What stands:** the shipped copy is free of em dashes and `uiCopy.test.ts` enforces it over every genre,
+  seeds included (DESIGN.md §7 now says so). Help tabs (`help.md`, `data-model.md`, `notes.md`), catalog
+  descriptions, Inspector Excel notes, socket docs, tooltips and error messages along the computed-column,
+  socket-lattice, unit-flow and type-propagation paths are rewritten in the author's register: short, plain,
+  Excel names where they help, no wiring narration.
+- **Facts corrected, not just reworded** (each verified against code): the help tab said a format resets at
+  the first transform (it carries through meaning-preserving ops, [[D41]]); Saving said examples replace the
+  canvas (they open as new documents) and only newer formats are refused (older are too); six Excel notes
+  (ISNA, ISERR, ISTEXT/ISNONTEXT, MINVERSE, CONCAT/CONCATENATE) and the CONCAT description misdescribed the
+  node; XLOOKUP's advice named Build Frame for pairing two lists (Frame from Lists does); node-coverage put
+  `anydata` below `anytable` and said a computed column's formula sees only scalars.
+- **Specs** `error-values`, `unit-flow`, `type-propagation…`, `socket-lattice`, `literal-input-editors` are
+  restructured into sections; every spec header drops the "Lifted from subsystem-invariants" line.
+  `mental-model.md`, `value-semantics.md`, `glossary.md` and all of `node-coverage.md` are reworked; build
+  history goes to git.
+- **DTE:** about 70 AI-made nodes reworded with rules unchanged, each with a History line; every `*Origin:*`
+  paragraph and duplicate `*Why:*` label is gone; 56 bare rule names became `[[ID]]` wikilinks. Human-held
+  nodes (A ring, B7, C80) were not touched; author quotes stay verbatim.
+- **Open:** the before/after log for the author lives outside the repo (session scratchpad). The trailing
+  parenthetical rule still covers only catalog, socket docs and Excel notes (279 sentence-level hits in seeds
+  and catalog, mostly legitimate glosses).
+
 ### SESSION DIGEST (2026-09-22 — 1.4.2 and plugin 0.1.3 shipped: the look follows the palette and accent, the app reads the picks, a Save writes source text; author present)
 
 - **1.4.2 SHIPPED 2026-09-22** (tag `v1.4.2` on `5d2bc6f1`: merged, bumped and tagged by the agent on the author's
