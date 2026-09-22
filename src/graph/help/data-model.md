@@ -1,74 +1,74 @@
 <!-- [[B14]] oneDesignSystem (DESIGN.md § Voice) -->
 ## What connects, exactly
 
-The ladder above is the whole rule for *shape*. These are the edges of it.
+The ladder above is the whole rule for *shape*. These are its edges.
 
-- A **combo** (split square) is the one shape that narrows: it can *be* a single value, so it drops into its own family's scalar input. A plain list never does; pull a value out with INDEX instead.
-- A **Frame** output reaches only Frame and Cube inputs, or a hollow ring. Letting it into a plain matrix input would silently throw away the column names and types. **Get Column** or **Split Frame** take the pieces out on purpose.
-- A **Cube** output reaches only another Cube, or a hollow ring; anything narrower would drop its nesting, so **UNNEST** does that explicitly. Everything flows *in*: any data value widens into a Cube cell.
-- **Lambda, Chart and Document** are object values, outside the data lattice entirely: each connects only to its own kind, or a hollow ring. A chart isn't a table of numbers. A lambda isn't a value to add.
-- The gray **wildcards** keep the shape rules at their own rung: a gray square is still a list socket, so it still refuses a Frame. The **hollow ring** is the exception to everything: it takes any value whatsoever, object types included.
+- A **combo** (split square) is the one shape that narrows. It can *be* a single value, so it plugs into its own family's single-value inputs. A plain List never does; pull a value out with INDEX instead.
+- A **Frame** output connects only to Frame and Cube inputs, or a hollow ring. A matrix input would throw away its column names and types, so **Get Column** and **Split Frame** take the pieces out on purpose.
+- A **Cube** output connects only to another Cube, or a hollow ring, since anything narrower would drop its nesting. **UNNEST** flattens it on purpose. Going the other way, any data value can become a Cube cell.
+- **LAMBDA, Chart and Document** aren't data. Each connects only to its own kind, or to a hollow ring.
+- The gray **wildcards** still follow the shape rules of their rung: a gray square is still a List socket, so it still refuses a Frame. The **hollow ring** is the one exception to everything. It takes any value at all, including LAMBDAs, Charts and Documents.
 
 ## What happens on arrival
 
-When a cable lands, the value is reshaped for the input, never mutated in place:
+When a cable connects, the value is reshaped for the input. The original is never changed.
 
-- a single value entering a list input becomes a one-element list. Entering a matrix, Frame or Cube input, a 1×1;
-- a **list entering a 2-D input becomes one row** (transpose it first if you meant a column);
-- a one-element list entering a scalar or combo input collapses to the value inside; at a *numeric* scalar, a longer list is a `#SHAPE!`;
-- a matrix entering a Frame input gets generated column names (Col1, Col2, …);
-- **Boolean ⟷ number** converts here, in whichever direction the socket asks for;
-- blanks stay **null**: missing, not zero. Aggregators skip them, Filter drops them (or selects exactly them, with **is blank**), Fill replaces them;
-- errors (`#DIV/0!`, `#N/A`, …) pass through *every* socket untouched: error in, error out, so the red trail survives any plumbing.
+- A single value going into a List input becomes a one-item List. Going into a matrix, Frame or Cube input, it becomes a 1×1.
+- A **List going into a 2-D input becomes one row**. Transpose it first if you meant a column.
+- A one-item List going into a single-value or combo input becomes the value inside. A longer List at a numeric single-value input is a `#SHAPE!`.
+- A matrix going into a Frame input gets the column names Col1, Col2, and so on.
+- **TRUE/FALSE and numbers** convert here, in whichever direction the input needs.
+- Blanks stay **null**: missing, not zero. Aggregates skip them, Filter drops them (or keeps only them, with **is blank**), and Fill replaces them.
+- Errors like `#DIV/0!` and `#N/A` pass through every socket unchanged, so a trail of red always leads back to where it started.
 
-Text, date and Boolean **list** inputs are typeable in place: with no cable attached, text typed into the box is read as CSV, and a part that won't parse for the type becomes null and holds its position.
+With no cable attached, text, date and TRUE/FALSE List inputs take typed comma-separated values. A part that doesn't parse becomes null and keeps its place.
 
-The literal sources (List / Table / Frame Input) follow one rule: **the Source is never coerced.** What you typed stays verbatim in the source text (a stray `abc` in a number table, a blank row you left for later), and only the *derived* value coerces it: blank → null, unparseable → NaN. Retype nothing. Fix it when you mean to.
+List, Table and Frame Inputs never change what you typed. A stray `abc` or a blank row stays in the source text, and only the output coerces it: blanks become null and unparseable text becomes NaN.
 
 ## Sockets that change type
 
-Some ports **adopt**: the socket takes the type of the cable plugged in and reverts to its own when unplugged. A hollow ring adopts whatever arrives, verbatim. A gray list or grid port instead **keeps its rank** and adopts only the family: wire a number into one and it becomes a *numeric list* socket, not a numeric scalar, so it still draws as a list and still refuses a Frame. Adoption is never saved to a file. It is recomputed on load, paste and drill-in. A passthrough node (Display, IF, Conduit lanes, INDEX) types its output from the input it forwards.
+Some inputs **adopt**: they take the type of whatever is plugged in and go back to their own type when unplugged. A hollow ring adopts the incoming type exactly. A gray List or grid input keeps its rank and adopts only the family. Plug a number into one and it becomes a number List socket, not a single number, so it still draws as a List and still refuses a Frame. Adopted types aren't saved; they're worked out again on load, paste and drill-in. A node that passes its input through, like Display, IF, a Conduit lane or INDEX, types its output from that input.
 
-Retyping a socket in place (switching a **Cast**'s target, a **Get Column** read-as, editing a Note's frontmatter) **drops any cable whose target no longer accepts the new type.**
+Changing a socket's type in place (a **Cast**'s target, a **Get Column**'s Read as, a Note's frontmatter) **removes any cable whose other end no longer accepts the new type.**
 
 ## Why a cable was refused
 
-A drag that won't drop has five causes: the canvas is **locked**; it's a **self-loop**, an output wired back into its own node; the **cable already exists**; the **types don't connect**; or two Format nodes carry **conflicting units**. The drag guard refuses silently, but wiring through the connection dialog names a type mismatch: `Incompatible types: Date → Number.`
+A cable won't connect if the canvas is **locked**, it loops a node into itself, the **cable already exists**, the **types don't match**, or two Format Controllers have **conflicting units**. Dragging fails silently, but the connection dialog names the mismatch: `Incompatible types: Date → Number.`
 
 On a type mismatch:
 
-- **wrong family** (a date into a number, text into a number): insert a **Cast**. The one pair that needs none is Boolean ⟷ number;
-- **wrong direction on the ladder** (a list into a scalar, a matrix into a list). The value is wider than the port, so reshape it explicitly: Get Column, TOCOL, INDEX;
-- **a container into something narrower** (a Cube into a Frame, a Frame into a matrix): UNNEST or Get Column.
+- **Wrong family**, like a date into a number: add a **Cast**. TRUE/FALSE and numbers are the one pair that doesn't need one.
+- **Too wide for the input**, like a List into a single value or a matrix into a List: reshape it with Get Column, TOCOL or INDEX.
+- **A container into something narrower**, like a Cube into a Frame or a Frame into a matrix: use UNNEST or Get Column.
 
-With quick-wire on (Settings), dragging a cable into empty canvas opens the Add menu with incompatible nodes dimmed, and picking one wires the first compatible port.
+With Quick-wire on in Settings, dropping a cable on empty canvas opens the Add menu with incompatible nodes dimmed, and picking one connects it to the first compatible input.
 
 ## What a socket's type controls besides connections
 
-**Display.** How a value renders is chosen from its socket type, not by reading its cells: a date list reads as dates because the socket says date, even if every cell is an integer. A chip takes its accent color from the same source.
+**Display.** How a value shows comes from its socket type, not its cells. A date List shows dates because the socket says date, even though every cell is a whole number. A chip takes its accent color from the same place.
 
-**Format Controller.** The FC offers the control set for its socket's family. A Frame, Cube, Document or gray list or combo socket has none.
+**Format Controller.** The FC shows the controls for its socket's family. Frame, Cube, Document and gray List or combo sockets have none.
 
 ## Units
 
-A unit is a property of the **value**, not of a node or a wire. It is authored at the value's origin: a **Format Controller** docked on a socket, a table column's unit picker, or **Convert**. From there the unit rides the value through anything that merely carries it (selectors, Displays, reshapes) and breaks at the first real transform, where the arithmetic *derives* the result's unit instead: `m × m` is `m²`, `km ÷ h` is a speed, and `10 m ÷ 2 m` cancels to a pure **ratio**, shown `5:1`.
+A unit belongs to the **value**, not to a node or a cable. It's set where the value starts: a **Format Controller** docked on a socket, a table column's unit picker, or **Convert**. From there it rides along through anything that only carries the value (selectors, Displays, reshapes) and stops at the first real calculation, where the math works out the result's unit instead: `m × m` is `m²`, `km ÷ h` is a speed, and `10 m ÷ 2 m` cancels to a plain **ratio**, shown as `5:1`.
 
-Because the unit is the value's, a Format Controller downstream of a value that already carries one shows it **locked**: it mirrors, it doesn't relabel. A unit change is really a magnitude change, so it takes **Convert**.
+Because the unit belongs to the value, a Format Controller downstream of a value that already has one shows it **locked**. It mirrors the unit and can't relabel it. Changing a unit changes the number too, so that takes **Convert**.
 
-Mixing genuinely different dimensions in one sum is a **`#UNIT!`**: meters plus seconds has no answer. A bare, unitless number is compatible with anything: it **adopts** the unit of the operation it's in, read in the other side's display unit: `$5 + 3` is `$8`, and `SUM(5 km, 3)` is `8 km`, not 5.003 km.
+Adding different dimensions is a **`#UNIT!`**: meters plus seconds has no answer. A plain number with no unit works with anything. It **adopts** the unit of the operation it's in, read in the other side's display unit: `$5 + 3` is `$8`, and `SUM(5 km, 3)` is `8 km`, not 5.003 km.
 
-Where the unit *lives* depends on the container: it attaches at the level that is guaranteed uniform:
+Where the unit lives depends on the container. It sits at the level that's guaranteed to be uniform:
 
 | Container | Unit granularity | Why |
 |---|---|---|
 | Single value | the value | the value is the whole thing |
-| List | **per element** | a list is the one shape with no uniformity guarantee, so Get Row hands you a legitimate `[$120, 4 kg]` |
-| Matrix | **one unit for the whole grid** | a matrix is one element type by construction, so one quantity |
-| Frame | **per column** | each column is one homogeneous population. A `Speed (km/h)` header locks it |
-| Cube | per cell, like a list | cube cells hold anything |
+| List | **per item** | a List's items don't have to match, like `[$120, 4 kg]` |
+| Matrix | **one unit for the whole grid** | a matrix holds one kind of value throughout |
+| Frame | **per column** | each column holds one kind of thing, and a `Speed (km/h)` header locks it |
+| Cube | per cell, like a List | Cube cells can hold anything |
 
-A fold over mixed-unit elements (SUM over that `[$120, 4 kg]`) is a `#UNIT!`: aggregation demands one dimension. Structural reshapes carry a matrix's unit. Stacking carries it only when every part agrees. Linear algebra (MMULT, MINVERSE) deliberately drops it.
+A total over mixed units (SUM over that `[$120, 4 kg]`) is a `#UNIT!`, because adding up needs one dimension. Reshaping a matrix keeps its unit. Stacking keeps it only when every part agrees. Matrix math (MMULT, MINVERSE) drops it on purpose.
 
-Two special cases: **currencies** share one dimension but never cross codes: `$5 + 5€` is a `#UNIT!`, because there is no exchange rate in the model. And a **custom** unit typed into a Format Controller ("widgets") becomes its own dimension: `widgets ÷ s` reads `widgets/s`, and widgets never add to anything that isn't widgets.
+Two special cases. **Currencies** share one dimension but never mix codes: `$5 + 5€` is a `#UNIT!`, because Solenoid has no exchange rates. And a **custom** unit typed into a Format Controller ("widgets") is its own dimension: `widgets ÷ s` reads `widgets/s`, and widgets only add to widgets.
 
-The number **format** (decimals, percent, thousands separators, `K/M/B`) is a different animal: display-only, never touching the stored value. It travels with the unit on the Format Controller but re-formats freely downstream. The unit is the part with physics.
+The number **format** (decimals, percent, thousands separators, `K/M/B`) only changes how a value looks, never the stored value. It lives on the Format Controller next to the unit, but unlike the unit, it can be changed freely downstream.
