@@ -278,7 +278,7 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 | picture | a web URL as `![alt](url)`; a `data:` URL written as an asset and embedded as `![[file]]` |
 | chart | the source node's live SVG (or the SVG a provider supplies, such as the Gantt figure) rasterized to PNG at 2 to 4 times scale (targeting at least 640 px wide), written as an asset and embedded as `![[file]]`; nothing when the chart is not on the live canvas or is under 8 px |
 | null | nothing |
-| anything else (a number, text, a logical, an error, a list, a unit value, a complex, a Cube) | the text the screen shows, `refPreview(value)` |
+| anything else (a number, text, a logical, an error, a list, a unit value, a complex, a Cube) | the text the screen shows: `refPreview` with the source Report's format pick for that ref (`resolveRefAnnotation`) |
 
 Assets are named `<note name>-<ref name>.<ext>` and go to the asset subfolder setting, else beside the note. A chart's source node is found by following the cable into the producer's input of the same name.
 

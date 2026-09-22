@@ -33,13 +33,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node ([[C7]] authorRuled; `archive/1.4-plan.md` D3).
 
-## Found writing the rebuild specs (code vs its own nodes; verify, then fix or rule)
-
-Each was found reading the code to write the compute-pass, formula-language and frame-verbs specs (`../tree/specs/`). The spec describes today's behavior; these are the places it breaks a node or looks unintended.
-
-- [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row (reachable only through a wildcard); `stripUnitCells` doesn't reach inside a Cube.
-- [ ] **Vault write: a plain value writes without the Report's format picks** (the writer has no annotation for it).
-
 ## Composites
 
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel

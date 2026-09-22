@@ -13,6 +13,7 @@ vi.mock("../../src/graph/fileBridge", () => ({
 
 const { writeDocumentToVault } = await import("../../src/graph/obsidianWrite");
 const { makeDocument } = await import("../../src/graph/documentValue");
+const { formatAnnotationStore } = await import("../../src/graph/formatAnnotationStore");
 
 const opts = { vault: "/v", subfolder: "", assetSubfolder: "", name: "Report", refSources: new Map<string, string>() };
 
@@ -34,5 +35,12 @@ describe("writing a batch document to the vault", () => {
   it("a single document writes under the sink's name", async () => {
     await writeDocumentToVault(makeDocument("hello"), opts);
     expect([...written.keys()]).toEqual(["/v/Report.md"]);
+  });
+
+  it("a plain value writes in its Report's format pick", async () => {
+    formatAnnotationStore.set("rep1", "price", { format: "decimal", unit: "none", decimalDigits: 2 });
+    await writeDocumentToVault(makeDocument("Price: `=price`", { price: 3.14159 }, undefined, "rep1"), opts);
+    expect(written.get("/v/Report.md")).toContain("Price: 3.14");
+    expect(written.get("/v/Report.md")).not.toContain("3.1416");
   });
 });
