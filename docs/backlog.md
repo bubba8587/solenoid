@@ -59,6 +59,9 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   `["later", 46267]` as Text), and only an all-ISO column is Date; a serial written as a number is always
   Number. With a pick, coerce by the pick (Date: serials; Text: the ISO text as written). Verify in the
   desktop app against the demo vault. Spec: `specs/obsidian-plugin.md` § Gaps.
+- [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
+  row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
+  `specs/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a

@@ -265,6 +265,7 @@ class SolenoidSettingTab extends PluginSettingTab {
       {
         name: "Solenoid",
         render: (setting) => {
+          setting.controlEl.addClass("solenoid-settings-links");
           for (const url of SOLENOID_LINKS) {
             setting.controlEl.createEl("a", { text: url.replace("https://", ""), href: url, cls: "external-link", attr: { target: "_blank", rel: "noopener" } });
           }

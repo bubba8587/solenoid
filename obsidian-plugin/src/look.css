@@ -820,6 +820,15 @@ button.mod-cta {
 .metadata-container .metadata-content {
   padding: 0 var(--size-4-2);
 }
+/* On a phone Obsidian makes the content its own full-bleed panel, shifted 12px left and 24px
+   wider than the card, which the card's edge clips: the icon lands 1px from the border. Here the
+   card IS the panel, so the content stays inside it, 11px to the icon as on the desktop. */
+.is-mobile .metadata-container .metadata-content {
+  width: auto;
+  transform: none;
+  background-color: transparent;
+  border-radius: 0;
+}
 /* Obsidian stacks rows with a 3px gap ABOVE each and draws the divider right under the
    content, so with dividers on nothing sits centered between its lines. The gap goes, and the
    key and value take it back as 2px above and below. */
@@ -870,7 +879,8 @@ button.mod-cta {
    inked on top. It keeps the 22px column the bare icon had, centered on the 28px label. */
 .theme-light .metadata-property .metadata-property-icon {
   height: 18px;
-  margin: 5px 2px 0;
+  margin: 0 2px;
+  align-self: center; /* the 28px label on the desktop, the 36px one on a phone */
   padding: 0;
   color: var(--sol-type-ink, #1a1a1a);
   background-color: var(--sol-type);

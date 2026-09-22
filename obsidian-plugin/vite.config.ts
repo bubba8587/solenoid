@@ -95,14 +95,15 @@ function pluginGlobals(): Plugin {
 }
 
 /** The Solenoid look, every rule scoped under `body.solenoid-look` (the settings toggle adds
- *  the class). `body`, `.theme-dark` and `.theme-light` ARE the body, so they join it; the rest
- *  hang under it. Then one token block per built-in palette, under the palette's own class. */
+ *  the class). `body`, `.theme-*` and Obsidian's platform classes (`.is-mobile`, `.is-phone`,
+ *  `.is-tablet`) ARE the body, so they join it; the rest hang under it. Then one token block per
+ *  built-in palette, under the palette's own class. */
 function scopedLook(): string {
   const root = postcss.parse(readFileSync(LOOK, "utf8"));
   root.walkRules((rule) => {
     rule.selectors = rule.selectors.map((sel) => {
       if (/^body(?![\w-])/.test(sel)) return sel.replace(/^body/, `body.${LOOK_CLASS}`);
-      if (/^\.theme-(dark|light)(?![\w-])/.test(sel)) return `body.${LOOK_CLASS}${sel}`;
+      if (/^\.(theme-(dark|light)|is-(mobile|phone|tablet))(?![\w-])/.test(sel)) return `body.${LOOK_CLASS}${sel}`;
       return `body.${LOOK_CLASS} ${sel}`;
     });
   });

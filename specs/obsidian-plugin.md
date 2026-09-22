@@ -37,7 +37,9 @@ is neutral or the full accent, never a hue greyed toward the ink). The rules hav
 derived (`themeVars`: the socket shades, the chrome ramp or the app's neutral one, the adaptive
 ramps, light mode darkened once), so a palette swap changes values only and the look's own
 formulas (inks, rules, washes) stand under every palette. The build scopes every rule under
-`body.solenoid-look` into the plugin's `styles.css` and appends one token block per built-in
+`body.solenoid-look` into the plugin's `styles.css` (a rule on `.theme-*` or a platform class,
+`.is-mobile` / `.is-phone` / `.is-tablet`, joins the body's class rather than nesting under it)
+and appends one token block per built-in
 palette and mode under `body.solenoid-look.solenoid-palette-<name>.theme-<mode>`. The toggle
 adds the look class and the palette's class to the body of every Obsidian window (the main one,
 a popped-out note, settings), a palette change swaps the palette class, and `onunload` takes
@@ -179,8 +181,9 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 
 ## Out of scope
 
-Computing anything. Reading or writing a note's body. Mobile is untested: `isDesktopOnly` is false because nothing in the bundle needs
-Electron, and that is all it claims.
+Computing anything. Reading or writing a note's body. A real phone: `isDesktopOnly` is false because
+nothing in the bundle needs Electron, and the plugin is checked as a phone only through Obsidian's
+own mobile emulation in the rig (below), never on a device.
 
 ## Publishing
 
@@ -265,6 +268,19 @@ in a vault: the demo vault installs the plugin from the community store, as a us
 lays the build under test over that copy in its own vault (`PLUGIN_OUT=<a vault's plugin folder>`
 builds straight into one). A plugin reload unmounts every chip and Obsidian does not redraw an
 open note, so `sync` rebuilds the open views.
+
+**As a phone.** `node scripts/obsidian-rig-mobile.mjs` drives the same rig through Obsidian's own
+mobile emulation (`app.emulateMobile`, the mobile layout and `body.is-mobile`) in a phone-sized
+window with a coarse pointer and touch events, and takes its steps in a row (`setup`, `look`,
+`theme`, `note`, `tap <property>`, `shot`, `settings`, `close`, `teardown`), since the emulation
+lives in one CDP session. It is the check on the chips, the popups and the settings tab at 412 and
+360 px wide; `@media (pointer: coarse)` and `dvh` in the app's popup CSS answer inside a shadow
+root, while `html.is-mobile` rules cannot and the bundle carries none. Measured, never eyeballed
+(`getBoundingClientRect`, printed): on a phone Obsidian makes the properties content a full-bleed
+panel 12px left of the card, which the look undoes so the icon keeps the desktop's 11px inset, and
+the light badge centers itself on the taller row. Checked 2026-09-22 at 412 and 360 px: every editor
+fits, a footer wraps whole buttons and its rows share a left edge, Done and Cancel/Save sit right.
+Open: a chip is 15px tall on a 41px row, a small tap target under the `sm` ruling (backlog).
 
 A builder that finds this spec silent stops that part and runs
 `python tools/dte.py gap specs/obsidian-plugin.md --title "..." --by <name>`; it never improvises.

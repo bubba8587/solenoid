@@ -18,6 +18,14 @@ specific item.
   published; the plugin repository's README still says "Default palette only" — fix it on export.
 - The build config now imports app TypeScript, so Vite bundles it to load; `VITE_CONFIG_NATIVE_IGNORE_WARNING`
   in the build scripts (here and in the exported snapshot's) is Vite's own switch for that.
+- **Checked as a phone** (author's ask): `scripts/obsidian-rig-mobile.mjs` puts the rig into Obsidian's mobile
+  emulation at 412 and 360 px with touch and a coarse pointer, and the claims are measured boxes. Fixed: the
+  property icon sat 1px from the card (Obsidian's phone stylesheet bleeds the content 12px past the card and the
+  look clipped it; now the desktop's 11px), the light badge rode 4px high on the taller row, a wrapped footer's
+  rows were 10px out of line, the cube's Done stranded left, a button's label wrapped inside itself, the settings
+  links broke mid-URL. And a scoper bug: a look rule on a body class other than `.theme-*` (`.is-mobile`) nested
+  under the look class and never matched in the plugin; the rig's snippet had masked it. Real devices remain
+  unchecked (spec § Out of scope). The author looked at the captures and caught the icon inset I had passed.
 - Blueprint under the look: its chrome ramp is adaptive and the plugin's accent is fixed gold, so its workbench
   comes out warm, as its chips already did (spec divergence table). A plugin accent setting would reopen it.
 

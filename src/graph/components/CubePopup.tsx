@@ -274,7 +274,9 @@ export function CubePopup() {
         )}
         {editView && state.edit && <CubeEditRows edit={state.edit} view={editView} />}
         <div className="table-popup__spacer" />
-        <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>
+        <div className="table-popup__actions">
+          <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>
+        </div>
       </div>
     </PopupShell>
   );

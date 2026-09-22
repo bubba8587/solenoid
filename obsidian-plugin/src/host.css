@@ -20,3 +20,20 @@
 .solenoid-settings-swatches {
   display: block;
 }
+
+/* The links row: a URL never breaks inside itself. On a phone the two stack, and the swatch
+   legend sits at the start like the full-width dropdown above it. */
+.setting-item-control.solenoid-settings-links {
+  flex-wrap: wrap;
+  gap: var(--size-4-2) var(--size-4-4);
+}
+.solenoid-settings-links a {
+  white-space: nowrap;
+}
+.is-mobile .setting-item-control.solenoid-settings-links {
+  flex-direction: column;
+  align-items: flex-start;
+}
+.is-mobile .setting-item-control.solenoid-settings-palette {
+  align-items: stretch;
+}

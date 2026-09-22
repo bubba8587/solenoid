@@ -640,6 +640,7 @@
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
+  margin-right: 10px; /* room before the row/column buttons; nothing when they wrap under */
   font-size: 12px;
   color: var(--text-dim);
   cursor: pointer;
@@ -653,8 +654,8 @@
 
 .table-popup__dim-controls {
   display: flex;
-  gap: 6px;
-  margin-left: 10px;
+  flex-wrap: wrap; /* a phone-wide footer: the four wrap, none is cut off */
+  gap: 8px;
 }
 
 .table-popup__footer {
@@ -674,6 +675,7 @@
 .table-popup__btn {
   font-size: 12px;
   padding: 5px 12px;
+  white-space: nowrap; /* a narrow footer wraps buttons, never a button's own label */
   border-radius: 4px;
   border: 1px solid var(--border-strong);
   background: var(--surface);
