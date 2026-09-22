@@ -114,16 +114,26 @@ and drill levels, Escape semantics.
 6. **A property is plain YAML, and the mapping is pure** (`yamlValue.ts`, no DOM, no Obsidian;
    `tests/obsidianPlugin/yamlValue.test.ts`). Dates are ISO text in the note and serials inside
    the components. Opening and saving an untouched value writes back the same YAML. Every row of
-   a saved frame carries every key, a missing cell as `null`. What the plugin writes, Solenoid's
-   note reader (`noteFrontmatter.ts`) reads as the same type; the one open gap is listed below.
-7. **`validate` checks shape, and family inside a list or matrix; `render` takes anything.** On a
+   a saved frame carries every key, a missing cell as `null`. **Every editor's Save writes each
+   cell's SOURCE TEXT** (list, matrix, frame; the cube already did): an unchanged cell keeps the
+   scalar it came in with, an edited one is what was typed as YAML reads it (`parseCellText`: a
+   number, true/false, else text), and no type touches the note. A frame column's picked type
+   is a lens kept in the plugin's data and the property's family is a lens for a list or matrix,
+   as the app's literal editors keep their source (author 2026-09-22: a Number pick over a date
+   column shows NaN and saves the dates; before, a cell the type could not read saved as missing
+   and wiped the note). The Complex field is the one exception: a scalar with no editor of its
+   own, it refuses text it cannot read and writes nothing. What the plugin writes, Solenoid's note
+   reader (`noteFrontmatter.ts`) reads as the same type.
+7. **`validate` checks shape only (the family inside a list or matrix is a lens, not a gate; the
+   Complex scalar still takes only what it reads); `render` takes anything.** On a
    value `validate` refuses, Obsidian shows its own mismatch warning and the inferred type. But
    when the user picks a type from the property menu over incompatible data and confirms its
    "Update" dialog, Obsidian force-renders the chosen widget over the OLD value. So every kind
    reshapes whatever arrives (`coerceYaml`): a value that fits is untouched; the rest widens as
    the socket boundary does (a scalar is one element, a list one row, a matrix gets `Col1…`
-   names); narrowing keeps what it can (a matrix or rows flatten into a list row by row) and a
-   cell the family cannot read becomes missing. The result always validates. **Nothing is
+   names); narrowing keeps what it can (a matrix or rows flatten into a list row by row) and
+   every cell keeps its scalar; only a container in a frame cell is missing. The result always
+   validates. **Nothing is
    written on render**: the note keeps its old YAML until the editor's Save.
 8. **An empty value is usable.** `null`, `""` and the `[]` Obsidian leaves behind all read as
    empty: the chip says `[0× List]`, `[0×0 Table]` (the `twoD` hint, since `[]` cannot show its
@@ -176,7 +186,7 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 | A table or cube popup is `min(1100px, 94vw)` wide and centers in the window | It is `min(1100px, 94%)` of the note's pane and centers over that pane; the dimmed overlay still covers the whole window, so a click on a sidebar closes the popup instead of changing the file under an open editor (author 2026-09-20) | Obsidian's sidebars make the window a poor measure of the room a note has. The pane is the chip's `.workspace-leaf` when it sits in the center area, else the center area (a property shown in a sidebar view). A layer-only stylesheet in `shadow.ts` does it; the app's CSS is untouched | Nothing planned |
 | A list has no popup editor: List Input's rows on the card are the only editor, and its chip opens view-only (`specs/literal-input-editors.md`) | A list property opens as a one-column raw grid with Save (author 2026-09-20: a fine workaround) | There is no card to type rows on, and a chip that cannot edit would make the type read-only. The grid is Table Input's, with the column count fixed (`fixedCols`) | A list editor in the app, which the plugin would then adopt |
 | A frame's column types are declared by its source | A column's type is the user's pick, kept in the plugin's `data.json` under the property's name, then the column's: vault-wide, as Obsidian types a property by name. Save records every column's type (`columnTypesOf`). A column nobody has typed takes a FIRST guess from its YAML values' own types, never their text: `true` is Boolean, a number is Number, a string is Text unless every one is an ISO date (`frameSourceFromYaml`). Author 2026-09-21: re-inferring from the cell text on every open made the type selector a lie, and a Save turned a Text column of `"0012"` into `12` | YAML rows carry no column types, and a note stays plain YAML | A schema beside the property (mdbase is the likely one, [[C67]] mdbaseCeiling). A level inside a CUBE has no type selector, here or in the app: a cell is typed by what is typed into it (`parseCellText`), and a cell nobody edits is never rewritten |
-| A cell can hold a `SolError` that flows on | A cell the family cannot read saves as missing (`null`) | An error is a computed result, and nothing computes here | Nothing planned |
+| A cell can hold a `SolError` that flows on | A cell the type cannot read shows as unreadable and saves as its source text; the note is never touched by a type | An error is a computed result, and nothing computes here | Nothing planned |
 | A frame may be a lazy engine handle with a head-N preview (Polars on desktop) | Always an eager value | A property is small and already parsed | Nothing planned |
 | A chip is `md` in a value box and `sm` in a result box | Always `sm` | Author's ruling 2026-09-20: `md` overpowers a property row | The author's word |
 | Accent and palette follow the app setting and the open document's palette pin | Both are the plugin's own settings, and the look wears them too | No document, and Obsidian's accent is not a palette slot | Nothing planned |
@@ -263,8 +273,8 @@ column above the guesser and only refines a frame's columns: mdbase and `types.j
 what a key is. The reader keeps a row's plain ISO date as the text written, so the column's
 type decides what it becomes: a Date pick or an all-date column makes serials, a Text pick keeps
 the text, and a column mixing a date with text is text with the date as written (it used to
-carry a bare serial). What a picked type cannot read is missing, the plugin's own rule for a
-cell. The desktop file scope reaches that one path (`capabilities/default.json`). Tests:
+carry a bare serial). What a picked type cannot read is missing in Solenoid's view; the note keeps
+its text. The desktop file scope reaches that one path (`capabilities/default.json`). Tests:
 `pluginColumnTypes.test.ts`, `vaultCube.test.ts`, `noteFrontmatter.test.ts`, `noteNodeRanks.test.ts`.
 
 ## Verifying against real Obsidian

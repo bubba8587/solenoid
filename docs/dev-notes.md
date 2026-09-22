@@ -53,6 +53,15 @@ specific item.
   holds and a mixed column no longer carries a bare serial. Desktop scope widened to that one path. NOT yet
   checked in the desktop build against the demo vault (the author's step: pick a type in Obsidian, reopen the
   Vault Folder / import).
+- **A plugin editor's Save writes SOURCE TEXT, never a value through a type** (author 2026-09-22: a Number pick
+  over a date column showed NaN and the Save wiped the dates). List, matrix and frame Saves keep an unchanged
+  cell's scalar and write an edited one as YAML reads it (`parseCellText`, the cube's rule); a type switch keeps
+  every cell's scalar; `validate` is shape-only inside a list or matrix (the family is a lens, not Obsidian's
+  gate); the Complex field alone refuses what it cannot read. Verified in the rig by driving each editor's own
+  Save and reading the note back: frame (the repro), numeric list, date list, matrix, cube, complex scalar.
+- The column-format panel closed on any press inside it in the plugin: `useDismissOnOutside` read `e.target`,
+  which a shadow root retargets to its host; now `composedPath()[0]`, the spec's rule. Verified in the rig.
+- The author's live test had wiped `ordered` in the repo's demo note; restored from git.
 
 ### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
 

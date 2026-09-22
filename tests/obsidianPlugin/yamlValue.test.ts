@@ -28,12 +28,13 @@ describe("the plugin's property kinds", () => {
     expect(scalarText(complex, { a: "nope" })).toBe("");
   });
 
-  it("validates by shape, and by family inside a list or matrix", () => {
+  it("validates by shape only: inside a list or matrix the family is a lens, not a gate", () => {
     expect(validateYaml(kind("solenoid-list"), [1, null, 2.5])).toBe(true);
-    expect(validateYaml(kind("solenoid-list"), [1, "two"])).toBe(false);
+    expect(validateYaml(kind("solenoid-list"), [1, "two"])).toBe(true);
     expect(validateYaml(kind("solenoid-list"), [[1, 2]])).toBe(false);
     expect(validateYaml(kind("solenoid-datelist"), ["2026-09-01"])).toBe(true);
-    expect(validateYaml(kind("solenoid-datelist"), ["next week"])).toBe(false);
+    expect(validateYaml(kind("solenoid-datelist"), ["next week"])).toBe(true);
+    expect(validateYaml(kind("solenoid-datelist"), [{ a: 1 }])).toBe(false);
     expect(validateYaml(kind("solenoid-complexlist"), ["3+4i", 2])).toBe(true);
     expect(validateYaml(kind("solenoid-table"), [[1, 2], [3, 4]])).toBe(true);
     expect(validateYaml(kind("solenoid-table"), [1, 2])).toBe(false);
@@ -46,20 +47,30 @@ describe("the plugin's property kinds", () => {
 
 describe("a property's YAML survives the editor untouched", () => {
   it("round-trips a list of every family", () => {
-    const back = (yaml: unknown[], family: Parameters<typeof listToYaml>[1]) =>
-      listToYaml(yaml.map((v) => [v === null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v)]), family);
-    expect(back([12.5, null, 14], "number")).toEqual([12.5, null, 14]);
-    expect(back(["Ana", "Ben"], "string")).toEqual(["Ana", "Ben"]);
-    expect(back(["2026-09-01", "2026-10-15"], "date")).toEqual(["2026-09-01", "2026-10-15"]);
-    expect(back([true, false], "logical")).toEqual([true, false]);
-    expect(back(["3+4i", "1-2i"], "complex")).toEqual(["3+4i", "1-2i"]);
+    const back = (yaml: unknown[]) =>
+      listToYaml(yaml.map((v) => [v === null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v)]), yaml);
+    expect(back([12.5, null, 14])).toEqual([12.5, null, 14]);
+    expect(back(["Ana", "Ben"])).toEqual(["Ana", "Ben"]);
+    expect(back(["2026-09-01", "2026-10-15"])).toEqual(["2026-09-01", "2026-10-15"]);
+    expect(back([true, false])).toEqual([true, false]);
+    expect(back(["3+4i", "1-2i"])).toEqual(["3+4i", "1-2i"]);
+  });
+
+  it("a list or matrix saves source text: an unchanged cell keeps its scalar, an edited one is what was typed", () => {
+    // A numeric list with a word in it: the word is the note's, and stays.
+    expect(listToYaml([["1"], ["two"], ["3"]], [1, "two", 3])).toEqual([1, "two", 3]);
+    // A quoted "0012" is a string in the note; unchanged, it stays "0012". Edited, the text rules.
+    expect(listToYaml([["0012"], ["7"]], ["0012", 4])).toEqual(["0012", 7]);
+    // A date list: an edited cell is the text typed, never reformatted through the family.
+    expect(listToYaml([["2026-09-01"], ["next week"]], ["2026-09-01", "2026-10-15"])).toEqual(["2026-09-01", "next week"]);
+    expect(matrixToYaml([["1", "x"], ["", "4"]], [[1, "x"], [null, 4]])).toEqual([[1, "x"], [null, 4]]);
   });
 
   it("hands the chip serials for a date list, and pads a ragged matrix", () => {
     const [a, b] = listFromYaml(["2026-09-01", "2026-09-02"], "date") as number[];
     expect(b - a).toBe(1);
     expect(matrixFromYaml([[1, 2, 3], [4]], "number")).toEqual([[1, 2, 3], [4, null, null]]);
-    expect(matrixToYaml([["1", ""], ["x", "4"]], "number")).toEqual([[1, null], [null, 4]]);
+    expect(matrixToYaml([["1", ""], ["x", "4"]])).toEqual([[1, null], ["x", 4]]);
   });
 
   it("types a frame's columns from the YAML and writes the same rows back", () => {
@@ -69,22 +80,36 @@ describe("a property's YAML survives the editor untouched", () => {
     ];
     const source = frameSourceFromYaml(rows);
     expect(source.map((c) => c.type)).toEqual(["string", "number", "date", "logical"]);
-    expect(frameSourceToYaml(source)).toEqual(rows);
+    expect(frameSourceToYaml(source, rows)).toEqual(rows);
+  });
+
+  it("a Save writes each cell's source text, never the column's type (the type is a lens)", () => {
+    const rows = [{ item: "Cabinets", cost: 4200, ordered: "2026-09-02" }, { item: "Tile", cost: 880, ordered: "2026-09-12" }];
+    // A Number pick over the date column shows NaN in the editor; the note keeps its dates.
+    const source = frameSourceFromYaml(rows, { ordered: "number" });
+    expect(source[2].type).toBe("number");
+    expect(frameSourceToYaml(source, rows)).toEqual(rows);
+    // An edited cell is what was typed, as YAML reads it; the others keep their scalars.
+    source[2].cells[0] = "later";
+    source[1].cells[1] = "0900";
+    expect(frameSourceToYaml(source, rows)).toEqual([{ item: "Cabinets", cost: 4200, ordered: "later" }, { item: "Tile", cost: 900, ordered: "2026-09-12" }]);
+    // A quoted "0012" the editor opened on stays "0012": it is unchanged.
+    expect(frameSourceToYaml(frameSourceFromYaml([{ sku: "0012" }], { sku: "number" }), [{ sku: "0012" }])).toEqual([{ sku: "0012" }]);
   });
 
   it("opens a column as the type the user picked, whatever its cells look like", () => {
     const rows = [{ sku: "0012", due: "2026-10-01" }, { sku: "0450", due: "2026-10-04" }];
     const source = frameSourceFromYaml(rows, { sku: "string", due: "string" });
     expect(source.map((c) => c.type)).toEqual(["string", "string"]);
-    expect(frameSourceToYaml(source)).toEqual(rows);
+    expect(frameSourceToYaml(source, rows)).toEqual(rows);
   });
 
   it("guesses an untyped column from the YAML values' own types, never their text", () => {
-    // A quoted "0012" is Text: guessed as Number, a Save would write 12 and lose the zeros.
+    // A quoted "0012" is Text: guessed as Number, the editor would show 12.
     const rows = [{ sku: "0012", qty: 3, ok: true, due: "2026-10-01", blank: null }];
     const source = frameSourceFromYaml(rows);
     expect(source.map((c) => c.type)).toEqual(["string", "number", "logical", "date", "string"]);
-    expect(frameSourceToYaml(source)).toEqual(rows);
+    expect(frameSourceToYaml(source, rows)).toEqual(rows);
     expect(frameSourceFromYaml([{ mixed: 1 }, { mixed: "two" }])[0].type).toBe("string");
   });
 
@@ -126,11 +151,12 @@ describe("a value left behind by a type switch", () => {
     expect(coerceYaml(kind("solenoid-cube"), frame)).toBe(frame);
   });
 
-  it("narrows to what the kind can hold, a cell it cannot read as missing", () => {
-    expect(coerceYaml(kind("solenoid-strlist"), frame)).toEqual(["Cabinets", "4200", "Tile", "880"]);
-    expect(coerceYaml(kind("solenoid-list"), frame)).toEqual([null, 4200, null, 880]);
-    expect(coerceYaml(kind("solenoid-list"), ["12", "x"])).toEqual([12, null]);
-    expect(coerceYaml(kind("solenoid-table"), frame)).toEqual([[null, 4200], [null, 880]]);
+  it("narrows to what the kind can hold, every cell keeping its scalar (the family is a lens)", () => {
+    expect(coerceYaml(kind("solenoid-strlist"), frame)).toEqual(["Cabinets", 4200, "Tile", 880]);
+    expect(coerceYaml(kind("solenoid-list"), frame)).toEqual(["Cabinets", 4200, "Tile", 880]);
+    expect(coerceYaml(kind("solenoid-list"), ["12", "x"])).toEqual(["12", "x"]);
+    expect(coerceYaml(kind("solenoid-table"), frame)).toEqual([["Cabinets", 4200], ["Tile", 880]]);
+    // A container has no place in a frame cell: that one is missing.
     expect(coerceYaml(kind("solenoid-frame"), [{ a: 1, b: [1, 2] }])).toEqual([{ a: 1, b: null }]);
   });
 
@@ -142,9 +168,9 @@ describe("a value left behind by a type switch", () => {
 
 describe("blank rows at the end are the editor's, never the note's", () => {
   it("drops them on save and keeps a blank in the middle", () => {
-    expect(listToYaml([["1"], [""], ["3"], [""], [""]], "number")).toEqual([1, null, 3]);
-    expect(listToYaml([[""]], "string")).toEqual([]);
-    expect(matrixToYaml([["1", "2"], ["", ""]], "number")).toEqual([[1, 2]]);
+    expect(listToYaml([["1"], [""], ["3"], [""], [""]])).toEqual([1, null, 3]);
+    expect(listToYaml([[""]])).toEqual([]);
+    expect(matrixToYaml([["1", "2"], ["", ""]])).toEqual([[1, 2]]);
     expect(frameSourceToYaml([{ name: "", type: "string", cells: ["x", ""] }])).toEqual([{ Col1: "x" }]);
     expect(frameSourceToYaml([{ name: "", type: "string", cells: [""] }])).toEqual([]);
   });
