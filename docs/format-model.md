@@ -16,48 +16,35 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
 
 1. **Type gate.** The FC's adopted socket type maps to a **format family**
    (`familyOf`). The family selects which controls exist at all (the truth table
-   below). A control outside the FAMILY is HIDDEN in the popup and INERT in
-   resolution — never disabled-but-visible, never silently applied. (The one
-   sanctioned disabled-but-visible control is WITHIN a family: the unit dropdown
-   under a lock state, below — locked is a fact worth showing, absence is not.)
+   below). A control outside the family is hidden in the popup and inert in
+   resolution: never disabled but visible, never silently applied. The one
+   sanctioned disabled-but-visible control is within a family: the unit dropdown
+   under a lock state, below. Locked is a fact worth showing; absence is not.
 2. **Style.** The numeric magnitude renders per the format style, with precision
-   resolved by ONE shared rule (below) — no per-style private precision logic.
+   resolved by one shared rule (below), with no per-style precision logic of its own.
    Dates render via their pattern instead; text/logical skip this stage.
-3. **Unit affix.** The unit label wraps the formatted string (prefix for
-   currencies, suffix otherwise). Number-family only; a date/text/logical value
-   never takes a unit. Orthogonal to style — every number style accepts a unit
-   ([[D40]] unitOnValue: the unit is a property of the VALUE, not display sugar).
+3. **Unit affix.** The unit label wraps the formatted string: a prefix for currencies, a suffix
+   otherwise. Number family only; a date, text or logical value never takes a unit. It is
+   orthogonal to style, so every number style accepts a unit ([[D40]] unitOnValue: the unit is
+   a property of the value, not display sugar).
 
-   **Unit = VALUE-level, format = DISPLAY-level (FC A4, 2026-07-13).** The FC is
-   VALUE-MUTATING for the unit: `FormatControllerNode.data()` tags the value's
-   `UnitCell` (dimension + the chosen display id) via `applyFcUnit`, whose three
-   branches are: a dimensionless number is authored (`5` + km → 5000 m base,
-   display km), a commensurable dimensioned value is re-displayed, an
-   incommensurable one is a `#UNIT!`. But the FC as a user-facing tool can only
-   REACH the authoring branch ([[C25]] firstClassUnits): the re-display branch serves the mirror of
-   an inherited unit, never a dropdown pick — re-displaying a dimensioned value
-   is Convert's job. Because the unit rides the VALUE (`unitValue.ts`, base-SI +
-   `display`), it carries downstream through passthroughs/selectors and DROPS at a
-   transform on its own — there is no graph unit-walk.
+   **The unit is value-level; the format is display-level.** For the unit, the FC changes the
+   value: `FormatControllerNode.data()` tags the value's `UnitCell` through `applyFcUnit`. As a
+   user-facing tool, though, the FC can only set a unit on a value that has none ([[C25]]
+   firstClassUnits); re-displaying a value that already has a dimension is Convert's job.
+   Because the unit rides the value, it carries through passthroughs and selectors and drops
+   at a transform on its own. The branches of `applyFcUnit` and the three lock states
+   (authored `← →`, forwarding `→ →`, lockedByConvert `← ←`, with
+   `unitLocked = lockedByConvert || forwarding`) are specified in `../specs/unit-flow.md`.
+   Under a lock, the popup shows the unit dropdown present but disabled
+   (`disabled={node.unitLocked}`): the value has a unit, so the control shows it, but it isn't
+   this FC's to change.
 
-   **Unit lock states ([[C25]] firstClassUnits).** Who
-   owns the FC's unit dropdown (`formatController.ts` `data()` lock block):
-   - **authored** (`← →`) — the incoming value carries no unit; the FC's pick
-     authors it. The only editable state.
-   - **forwarding** (`→ →`) — the value arrives already united (set elsewhere in
-     the chain); the dropdown MIRRORS it and LOCKS. This FC never re-authors
-     over it.
-   - **lockedByConvert** (`← ←`) — a downstream Convert's `fromUnit` dictates
-     the unit; locked.
-
-   `unitLocked = lockedByConvert || forwarding`; the popup renders the dropdown
-   present-but-disabled under a lock (`disabled={node.unitLocked}`) — the value
-   HAS a unit, so the control shows it; it just isn't this FC's to change. The rest of this pipeline
-   (style / precision / negatives / K-M-B) stays a DISPLAY annotation, and it FLOWS
-   DOWNSTREAM through the MEANING-preserving transforms a node declares (add/sub, a mean,
-   a rounding — not multiply, count or a rate), minus the unit, until a nearer FC
-   overrides it ([[D41]] formatFlowsDownstream, formatCarryPerOp). So the unit computes and
-   clashes honestly; the number format is pure presentation, inherited and overridable.
+   The rest of the pipeline (style, precision, negatives, K / M / B) stays a display
+   annotation. It flows downstream through the meaning-preserving transforms a node declares
+   (add and subtract, a mean, a rounding; not multiply, count or a rate), minus the unit, until
+   a nearer FC overrides it ([[D41]] formatFlowsDownstream). So the unit computes and clashes
+   honestly, while the number format is pure presentation, inherited and overridable.
 4. **Text attributes.** Case / bold / italic / size apply as display-only
    transforms (the underlying value is never mutated). Text family only.
 
