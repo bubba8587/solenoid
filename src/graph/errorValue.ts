@@ -172,7 +172,7 @@ export function findCellError(v: unknown): SolError | null {
   if (isSolError(v)) return v;
   if (Array.isArray(v)) {
     for (const i of sampledCellIndices(v.length)) {
-      const cell = v[i];
+      const cell: unknown = v[i];
       if (isSolError(cell)) return cell;
       if (Array.isArray(cell)) { const e = findCellError(cell); if (e) return e; }
     }
@@ -181,7 +181,7 @@ export function findCellError(v: unknown): SolError | null {
   if (isFrameLike(v)) {
     for (const col of v.columns) {
       for (const i of sampledCellIndices(col.values.length)) {
-        if (isSolError(col.values[i])) return col.values[i] as SolError;
+        if (isSolError(col.values[i])) return col.values[i];
       }
     }
     return null;
@@ -200,7 +200,7 @@ function withOrigin(v: unknown, nodeId: string, nodeName: string): unknown {
   if (Array.isArray(v)) {
     let out: unknown[] | null = null;
     for (let i = 0; i < v.length; i++) {
-      const cell = v[i];
+      const cell: unknown = v[i];
       if (isSolError(cell) && !cell.origin) {
         if (!out) out = v.slice();
         out[i] = { ...cell, origin: { nodeId, nodeName, rowIndex: i } };

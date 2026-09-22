@@ -25,6 +25,22 @@ const rowOf = (cube: CubeValue, nameValue: string) =>
 
 const NO_TYPES: VaultTypeSources = { mdbaseFor: () => ({}), obsidian: {} };
 
+describe("a matrix property", () => {
+  const notes: VaultNote[] = [{ path: "a.md", text: "---\ngrid:\n  - - 1\n    - 2\n  - - 3\n    - 4\n---\n" } as VaultNote];
+
+  it("sits in a cube cell as its rows, and is never mistaken for a frame's records", () => {
+    const cube = notesToCube(notes, NO_TYPES);
+    expect(cellAt(cube, "grid", 0)).toEqual([[1, 2], [3, 4]]);
+    expect(col(cube, "grid").type).toBe("number");
+  });
+
+  it("follows a types.json matrix hint", () => {
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { grid: "solenoid-strtable" } }));
+    expect(obsidian.grid).toEqual({ kind: "matrix", elem: "string" });
+    expect(cellAt(notesToCube(notes, { ...NO_TYPES, obsidian }), "grid", 0)).toEqual([["1", "2"], ["3", "4"]]);
+  });
+});
+
 describe("dateFromName (R3)", () => {
   it("parses the daily-notes format", () => {
     expect(dateFromName("2026-09-01", "YYYY-MM-DD")).toBe(parseDateToSerial("2026-09-01"));
@@ -87,6 +103,41 @@ describe("Projects — mdbase typing (source #1)", () => {
     const links = cellAt(cube, "links", r) as string[];
     expect(links).toContain("Projects/Kitchen remodel");
     expect(links).toContain("People/Sam");
+  });
+});
+
+describe("a frame property's picked column types (the Solenoid Properties plugin's data)", () => {
+  const notes: VaultNote[] = [{ path: "a.md", text: "---\nbudget:\n  - item: \"0012\"\n    cost: 12\n    ordered: 2026-09-01\n    paid: true\n  - item: Tile\n    cost: later\n    ordered: later\n    paid: false\n---\n" } as VaultNote];
+  const nested = (cube: CubeValue) => { const c = cellAt(cube, "budget", 0); if (!isCubeValue(c)) throw new Error("not a cube"); return c; };
+  const column = (cube: CubeValue, name: string) => nested(cube).columns.find((c) => c.name === name)!;
+
+  it("without picks, a column mixing a date with text is text, the date as written", () => {
+    const cube = notesToCube(notes, NO_TYPES);
+    expect(column(cube, "ordered").type).toBe("string");
+    expect(column(cube, "ordered").cells).toEqual(["2026-09-01", "later"]);
+    expect(column(cube, "cost").type).toBe("string");
+  });
+
+  it("a pick types the column through the app's own boundary: what it cannot read is NaN, never blank", () => {
+    const cube = notesToCube(notes, { ...NO_TYPES, columns: { budget: { item: "string", cost: "number", ordered: "date", paid: "logical" } } });
+    expect(column(cube, "item").type).toBe("string");
+    expect(column(cube, "item").cells).toEqual(["0012", "Tile"]);
+    expect(column(cube, "cost").type).toBe("number");
+    expect(column(cube, "cost").cells[0]).toBe(12);
+    expect(Number.isNaN(column(cube, "cost").cells[1])).toBe(true);
+    expect(column(cube, "ordered").type).toBe("date");
+    expect(column(cube, "ordered").cells[0]).toBe(Math.round(parseDateToSerial("2026-09-01")));
+    expect(Number.isNaN(column(cube, "ordered").cells[1])).toBe(true);
+    expect(column(cube, "paid").type).toBe("logical");
+    expect(column(cube, "paid").cells).toEqual([true, false]);
+  });
+
+  it("a Text pick over an all-date column keeps the dates as written", () => {
+    const dated: VaultNote[] = [{ path: "b.md", text: "---\nbudget:\n  - ordered: 2026-09-01\n  - ordered: 2026-09-12\n---\n" } as VaultNote];
+    expect(column(notesToCube(dated, NO_TYPES), "ordered").type).toBe("date");
+    const picked = notesToCube(dated, { ...NO_TYPES, columns: { budget: { ordered: "string" } } });
+    expect(column(picked, "ordered").type).toBe("string");
+    expect(column(picked, "ordered").cells).toEqual(["2026-09-01", "2026-09-12"]);
   });
 });
 

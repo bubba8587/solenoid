@@ -21,7 +21,6 @@ dateModified: 2026-09-06T08:00:00
 ---
 # Past tense drill
 
-The weak spot from the [[Notes/Spanish course]]. Twenty-five minutes of conjugation before
-the weekend session.
+The weak spot from the [[Notes/Spanish course]]. Twenty-five minutes of conjugation before the weekend session.
 
 #task #learning #spanish

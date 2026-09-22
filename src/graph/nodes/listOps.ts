@@ -62,7 +62,7 @@ export function diffList(arr: readonly Cell[]): Cell[] {
     if (isSolError(v)) return v;
     if (isSolError(prev)) return prev;
     if (isMissing(v) || isMissing(prev)) return null;
-    return (v as number) - (prev as number);
+    return v - prev;
   });
 }
 
@@ -103,8 +103,8 @@ export function pctChangeList(arr: readonly Cell[]): Cell[] {
     if (isSolError(v)) return v;
     if (isSolError(prev)) return prev;
     if (isMissing(v) || isMissing(prev)) return null;
-    if ((prev as number) === 0) return solError("#DIV/0!", "Percent change from zero is undefined");
-    return ((v as number) - (prev as number)) / (prev as number);
+    if (prev === 0) return solError("#DIV/0!", "Percent change from zero is undefined");
+    return (v - prev) / prev;
   });
 }
 
@@ -820,7 +820,7 @@ export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[], desc = fal
     const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
     const ti = isTail(ki), tj = isTail(kj);
     if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last in both directions
-    const c = (ki as number) - (kj as number);
+    const c = ki - kj;
     return c !== 0 ? (desc ? -c : c) : i - j; // stable on ties
   });
   return idx.map((i) => (i < arr.length ? arr[i] : null));

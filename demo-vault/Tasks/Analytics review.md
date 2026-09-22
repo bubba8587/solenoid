@@ -23,7 +23,6 @@ dateModified: 2026-09-04T16:00:00
 ---
 # Analytics review
 
-Weekly pulse on signups and drop-off for [[People/Priya]]. Feeds the case for the
-[[Projects/Client onboarding revamp]].
+Weekly pulse on signups and drop-off for [[People/Priya]]. Feeds the case for the [[Projects/Client onboarding revamp]].
 
 #task #work

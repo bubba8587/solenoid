@@ -68,7 +68,7 @@ export function isDimensionalFcUnit(id: string): boolean {
 export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: string): unknown {
   // A custom free-text unit carries no display id — formatDim renders the name.
   const custom = fcUnitId === "custom" && customUnit && customUnit.trim() !== "";
-  const u: Unit | null = custom ? { dim: customDim(customUnit!.trim()), scale: 1 } : fcUnitToUnit(fcUnitId);
+  const u: Unit | null = custom ? { dim: customDim(customUnit.trim()), scale: 1 } : fcUnitToUnit(fcUnitId);
   const displayId = custom ? undefined : fcUnitId;
   if (!u) return value; // none / empty custom / unresolved — carry any existing tag through
   const one = (v: unknown): unknown => {

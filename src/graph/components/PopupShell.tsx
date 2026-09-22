@@ -23,7 +23,7 @@ export function popupCardVars(v: {
   }
   if (v.groupColor) vars["--group-color"] = v.groupColor;
   if (v.groupColorDark) vars["--group-color-dark"] = v.groupColorDark;
-  return vars as CSSProperties;
+  return vars;
 }
 
 /** Shared modal chrome for the value/editor popups. Callers must mount it only while
@@ -73,7 +73,7 @@ export function PopupShell({
   const [size, setSize] = useState<PopupSize | null>(resizable?.initial ?? null);
   const sized = !!resizable && !!size;
   const cardClass = `sol-popup${cardClassName ? ` ${cardClassName}` : ""}${grouped ? " sol-popup--grouped" : ""}${sized ? " sol-popup--sized" : ""}`;
-  const style = sized ? { ...cardStyle, width: size!.w, height: size!.h } : cardStyle;
+  const style = sized ? { ...cardStyle, width: size.w, height: size.h } : cardStyle;
   return (
     <div className="sol-popup-overlay" onPointerDown={() => onClose()}>
       <div ref={cardRef} className={cardClass} style={style} onPointerDown={(e) => e.stopPropagation()}>

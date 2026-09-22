@@ -26,7 +26,6 @@ dateModified: 2026-09-09T14:20:00
 ---
 # Order cabinets
 
-The long-lead item for the [[Projects/Kitchen remodel]]. Six weeks out, so this gates the
-Cabinets-in milestone. Confirm the measurements before placing it.
+The long-lead item for the [[Projects/Kitchen remodel]]. Six weeks out, so this gates the Cabinets-in milestone. Confirm the measurements before placing it.
 
 #task #home #renovation

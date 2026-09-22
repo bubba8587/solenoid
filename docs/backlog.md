@@ -25,9 +25,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Release 1.4.1** (the bump is on `develop`): push `develop`, run `desktop-build.yml` by hand on it
-  (no tag, so it only builds) because Windows has not compiled since v1.4.0 and the Linux job has never run
-  in CI; then merge to `main` and the author tags `v1.4.1`. Then walk `2.0-plan.md`.
+- [ ] **Walk `2.0-plan.md`** (1.4.1 shipped 2026-09-21: Windows exe, Linux AppImage and .deb).
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
@@ -51,22 +49,9 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Solenoid Properties plugin follow-ups** ([[C107]] obsidianPlugin): (1) the note reader types
-  no matrix yet: a sequence of sequences reads as a text list, so `noteFrontmatter.ts` and
-  `FIELD_SOCKETS` need the `table` family rungs ([[D16]] retypeReconciles applies), and
-  `TypeHint` has no matrix or cube shape for `obsidianTypes.ts` to map those two ids to; (2) Bases
-  table cells still show raw YAML for these properties (unverified); (3) a complex scalar has no
-  property type; (4) a chip in a popped-out note opens its editor in the main window (one popup
-  layer); (5) the real-Obsidian rig lives only in the digest and spec, a `scripts/` version would
-  make it one command; (6) the community-list submission itself (spec § Publishing has the
-  release path; the author submits through community.obsidian.md).
-- [ ] **Ship the Solenoid look with the plugin** (author 2026-09-21: the plugin becomes the primary
-  way people get it; the demo vault's `.obsidian/snippets/solenoid.css` is the look today). Needs its
-  spec rule first ([[C6]] specFirst). Proposed shape: the CSS moves to `obsidian-plugin/src/` as the
-  one source, ships inside the plugin's `styles.css` scoped under a body class, and a settings toggle
-  adds that class, so nothing is written into the user's `.obsidian/`; the build emits the demo
-  vault's snippet from the same file. The snippet is already vault-agnostic (folder dots run in
-  palette order, no folder names) and targets Obsidian 1.13's callout and Bases variables.
+- [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
+  row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
+  `specs/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a

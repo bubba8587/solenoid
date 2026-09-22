@@ -26,7 +26,6 @@ dateModified: 2026-09-03T10:25:00
 ---
 # Book demolition crew
 
-Done. Sam's crew is in for the 20th, which sets the Demolition milestone on the
-[[Projects/Kitchen remodel]].
+Done. Sam's crew is in for the 20th, which sets the Demolition milestone on the [[Projects/Kitchen remodel]].
 
 #task #home #renovation

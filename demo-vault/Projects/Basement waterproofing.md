@@ -16,7 +16,6 @@ milestones:
 ---
 # Basement waterproofing
 
-Next winter's job, once the [[Projects/Kitchen remodel]] budget clears. Three quotes
-first, then decide. Low priority until the spring thaw shows how bad the seepage is.
+Next winter's job, once the [[Projects/Kitchen remodel]] budget clears. Three quotes first, then decide. Low priority until the spring thaw shows how bad the seepage is.
 
 #home

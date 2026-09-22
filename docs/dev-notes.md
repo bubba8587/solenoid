@@ -6,13 +6,101 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-22 — plugin 0.1.3: the look follows the palette; author present)
+
+- **The Solenoid look wears the plugin's palette setting, not just the chips.** `look.css` authors no hex any
+  more: `obsidian-plugin/src/lookTokens.ts` derives every color token from `palette.ts` exactly as the chips'
+  sheet does (`themeVars`), the build appends one block per built-in palette and mode to `styles.css` under
+  `body.solenoid-look.solenoid-palette-<name>`, and `main.tsx` swaps that class beside the look class (every
+  window, settings included; `onunload` sheds both). Pure value swaps, author's word: the app already settled
+  contrast, so the look's own ink/rule/wash formulas stand unchanged under every palette. The snippet stays
+  the Default palette (rules + its two generated blocks; `look.test.ts` pins it). Manifest `0.1.3`, not yet
+  published; the plugin repository's README still says "Default palette only" — fix it on export.
+- The build config now imports app TypeScript, so Vite bundles it to load; `VITE_CONFIG_NATIVE_IGNORE_WARNING`
+  in the build scripts (here and in the exported snapshot's) is Vite's own switch for that.
+- **Checked as a phone** (author's ask): `scripts/obsidian-rig-mobile.mjs` puts the rig into Obsidian's mobile
+  emulation at 412 and 360 px with touch and a coarse pointer, and the claims are measured boxes. Fixed: the
+  property icon sat 1px from the card (Obsidian's phone stylesheet bleeds the content 12px past the card and the
+  look clipped it; now the desktop's 11px), the light badge rode 4px high on the taller row, a wrapped footer's
+  rows were 10px out of line, the cube's Done stranded left, a button's label wrapped inside itself, the settings
+  links broke mid-URL. And a scoper bug: a look rule on a body class other than `.theme-*` (`.is-mobile`) nested
+  under the look class and never matched in the plugin; the rig's snippet had masked it. Real devices remain
+  unchecked (spec § Out of scope). The author looked at the captures and caught the icon inset I had passed.
+  Footer buttons on a phone go SMALLER under the coarse pointer (11px text at 412, 10px under 380), measured
+  until the row/column buttons and Cancel/Save share one row; the author saw both tiers and ruled them fine.
+- **An accent picker too** (author's ask): the settings swatch grid is now the toolbar's picker, not a legend, and
+  the accent (a slot id, the gray swatch cycling the neutrals) persists in `data.json`. The chips' sheet takes
+  it, and the look wears it as a third body class: `lookTokens.ts` splits each palette's tokens into the
+  palette's block and one block per accent (its color, ink, HSL, and for Orchard and Blueprint the chrome ramp,
+  which follows the accent's hue as in the app). So Blueprint under a blue accent is the authored cyanotype;
+  under gold it is the sepia print the app shows at its default accent, which is what I had misread as a plugin
+  divergence. Then the accent had to OWN the UI: the look had bound tabs, the top line, links, the active
+  item, the h1 and the hr cable to the number hue (gold under Default), so `--sol-ink-accent` (the accent as
+  text: itself on dark, the look's yellow rule on white) took those roles, graph nodes wear the accent (the
+  active one the ink), and a type's hue means that type only. A light property badge's glyph is the ink that
+  reads on its type color under the current palette (`--sol-ink-on-*`, the chips' contrast rule); dark icons
+  keep the type hue (author's ruling after a wrong turn to all-ink icons).
+- **Two cross-window bugs the rig caught once reproduced from a fresh start**: Obsidian's `toggleClass` tests
+  `instanceof Array`, which an array from the main window fails in the settings window (its own window in
+  1.13), so the look's classes toggle one at a time; and the graph view (a canvas) reads colors only on
+  `css-change`, which a class swap never fired, so palette, accent and look changes trigger it.
+- The demo vault's notes lost their hard wraps: Obsidian renders a single newline as a break.
+- **Plugin 0.1.3 exported and pushed** to `bubba8587/Solenoid-Properties` (snapshot of `3b7024b4`, builds there
+  byte-identical to the rig's build); the release is the author's (workflow or the `0.1.3` tag).
+- **The app reads the plugin's column picks** (the 1.4.2 backlog item): `pluginColumnTypes.ts`, read by Vault
+  Folder beside `types.json` and by Import Obsidian Note with the note; a pick types that column above the
+  guesser. The reader now keeps a row's ISO date as text until the column's type is known, so a Text pick
+  holds and a mixed column no longer carries a bare serial. Desktop scope widened to that one path. NOT yet
+  checked in the desktop build against the demo vault (the author's step: pick a type in Obsidian, reopen the
+  Vault Folder / import).
+- **A plugin editor's Save writes SOURCE TEXT, never a value through a type** (author 2026-09-22: a Number pick
+  over a date column showed NaN and the Save wiped the dates). List, matrix and frame Saves keep an unchanged
+  cell's scalar and write an edited one as YAML reads it (`parseCellText`, the cube's rule); a type switch keeps
+  every cell's scalar; `validate` is shape-only inside a list or matrix (the family is a lens, not Obsidian's
+  gate); the Complex field alone refuses what it cannot read. Verified in the rig by driving each editor's own
+  Save and reading the note back: frame (the repro), numeric list, date list, matrix, cube, complex scalar. The
+  rule is a node, [[D72]] pluginSaveWritesSourceText under C58 and C107 (author's ask; unratified).
+- The column-format panel closed on any press inside it in the plugin: `useDismissOnOutside` read `e.target`,
+  which a shadow root retargets to its host; now `composedPath()[0]`, the spec's rule. Verified in the rig.
+- The author's live test had wiped `ordered` in the repo's demo note; restored from git.
+
+### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
+
+tsc + vitest green; the plugin was checked in the rig (Obsidian 1.13.7: settings tab, a popped-out note, a
+palette change under an open editor).
+- **Plugin `0.1.2` is PUBLISHED** (2026-09-21, the author's go): built from `solenoid@b233cee2`, the three
+  release files byte-identical to the build checked in the rig, attested (`refs/tags/0.1.2`). The directory
+  rescans each release; its next report is the check on what is left.
+- **Most of the review's warnings were one defect: the snapshot did not typecheck.** The review lints WITH
+  types, and the ten shimmed modules (plus one type-only import) did not resolve there, so everything through
+  them was `any`: about ninety "unsafe" findings and many "unnecessary assertion" ones. The export now follows
+  type-only imports, the snapshot's tsconfig lays the shims over `src/graph` with `rootDirs`, the shims carry
+  the app modules' signatures, and the snapshot's build runs `tsc --noEmit` first (the guard on a shim).
+- **The plugin was writing to Obsidian's `<html>`**, against its own requirement 3: `appTheme.ts` subscribes
+  `apply()` to the palette at module level, so a palette change wrote 63 variables, `data-theme`, a forced
+  `color-scheme` and a `theme-color` meta. `themeVars()` moved to `themeVars.ts` (pure) and `appTheme` is
+  shimmed; checked in the rig, nothing is written.
+- Two more shims for the review's Errors: `clipboard` (no `execCommand` fallback in a secure context) and
+  `mobileUa` (split out of `coarse.ts`; Obsidian's `Platform` answers). The settings tab serves 1.13's
+  `getSettingDefinitions()` and keeps `display()` for older Obsidian.
+- The review is reproducible: `eslint-plugin-obsidianmd`'s recommended config run in the exported snapshot
+  matched its counts. What stands, and why, is `specs/obsidian-plugin.md` § Publishing.
+
 ### SESSION DIGEST (2026-09-21b — plugin release readiness, the vault look; author present)
 
 On `develop`, NOT pushed (the author's call). tsc + vitest green.
-- **Release `0.1.0` waits on the author**: a README rewrite with screenshots in the plugin repo, then a push of
-  `develop`, then repin `source.json` (still `1dd18714`), rerun the workflow's build-only check (it passed against
-  that pin) and publish on their go. The plugin repo clone is `~/projects/solenoid properties`; its README commit
-  naming community.obsidian.md is unpushed too.
+- **Plugin `0.1.1` is PUBLISHED** (2026-09-21): the directory's review REQUIRES the listed repository to hold
+  the source, and recommended attestations, no extra release files, no `localStorage` and a clipboard
+  disclosure. The plugin repo now carries a snapshot (`npm run plugin:export -- "<clone>"`: 87 app files + the
+  plugin folder, its own pinned `package.json` and lock) and builds from it; the three release files are
+  attested and verify (`gh attestation verify`), byte-identical to the build here. Vite takes any 1.2.x
+  rolldown and a patch bump minifies React differently, so the export pins it. The directory reviews RELEASES,
+  so a fix to a finding needs a new version.
+- **Plugin `0.1.0` is PUBLISHED** (2026-09-21, the author's go): `bubba8587/Solenoid-Properties` release `0.1.0`,
+  built from `solenoid@635905d9`, with the author's README and screenshots. It is LISTED at
+  community.obsidian.md/plugins/solenoid-properties (Health: Excellent, Review: Pending), and the 1.4.1 release
+  notes link it. The plugin repo clone
+  is `~/projects/solenoid properties`; the release steps moved from its README to the spec's § Publishing.
 - **Plugin settings** end with one "Solenoid" row carrying the deploy and the repository as bare URLs; the Property
   types sentence is gone (spec § settings page).
 - **The vault look** is `demo-vault/.obsidian/snippets/solenoid.css`, switched on by `appearance.json` (now a
@@ -28,7 +116,10 @@ On `develop`, NOT pushed (the author's call). tsc + vitest green.
   `::before`; rows stack with the gap ABOVE and the divider right under the content; the tab title color and the
   inactive tab's padding only yield to Obsidian's own long selectors or its `--tab-text-color-*` variables;
   settings is a second window (a second CDP page).
-- **1.4.1 is bumped on `develop`** and CI now builds Linux too: `desktop-build.yml` (was `windows-portable.yml`)
+- **1.4.1 SHIPPED 2026-09-21** (tag `v1.4.1` on `907b5813`, pushed by the agent on the author's word): the
+  release carries the Windows exe, the Linux AppImage and the `.deb`. A NEW workflow file cannot be run by hand
+  until it is on the default branch, so the first Linux CI build was the push to `main` itself.
+- **CI builds Linux too:** `desktop-build.yml` (was `windows-portable.yml`)
   has a windows job, a linux job (ubuntu-22.04, AppImage + .deb) and a release job that needs both. The Linux
   bundles build locally and the AppImage starts and computes on a scratch profile; neither job has run in CI
   since, and Windows has not compiled since v1.4.0. Product copy says Windows and Linux; one `DownloadLink`
@@ -46,6 +137,17 @@ On `develop`, NOT pushed (the author's call). tsc + vitest green.
   device-make-profile-default`; the EDID profile stays listed), so `_ICC_PROFILE` is sRGB and every managed app
   (Chrome, Obsidian) shows the vivid look the desktop build does. Undo: System Settings → Color, or make the
   EDID profile default again.
+- **The plugin's follow-ups are closed** (author: nothing left in the backlog for it). A frame column keeps the
+  type the user PICKED (`data.json` by property then column; first guess from the YAML value's own type, never
+  its text: re-inferring made the selector a lie and a Save turned `"0012"` into 12). A popped-out note keeps its
+  editor: the popup layer follows the chip's window and the build rewrites the components' free `document` /
+  `window` to the layer's (`popupGlobals`). A Complex scalar type, the look behind a toggle from one source
+  (`look.css`), and the rig as `npm run plugin:rig`. Two backlog lines were simply WRONG when checked in real
+  Obsidian: Bases cells show the chip, and a cube level has no type selector to persist.
+- **Solenoid reads the plugin's types back as the same socket.** The Note node already read lists, frames and
+  cubes right (the author's hunch held); three things did not survive: a matrix (a text list of `"[1,2,3]"`), a
+  complex list (text) and a frame's date column (numbers). The Note node's three hand maps became lattice
+  lookups (`typeAtRank`). Left in the spec's § Gaps: a column type picked in the plugin is not read here.
 - **Rig note:** `pkill -f` with a plain pattern matches its own shell and exits 144 before the next command; write
   the pattern as `[X]ephyr :7`. The rig scripts are still scratch-only (`backlog.md`, plugin follow-ups (5)).
 

@@ -185,7 +185,7 @@ export type ElementFamily = keyof typeof FAMILIES;
  *  types outside the 5-family lattice. */
 export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
   for (const [fam, dims] of Object.entries(FAMILIES)) {
-    if (Object.values(dims).includes(dt)) return fam as ElementFamily;
+    if (Object.values(dims).includes(dt)) return fam;
   }
   return null;
 }
@@ -196,6 +196,13 @@ export function elementFamilyOf(dt: SocketDataType): ElementFamily | null {
 export function comboOfType(dt: SocketDataType): SocketDataType | null {
   const fam = elementFamilyOf(dt);
   return fam ? FAMILIES[fam].combo : null;
+}
+
+/** A type's element family at another rank (0 scalar, 1 list, 2 matrix): `strlist` at rank 2
+ *  is `strtable`. Null for a type outside the 5-family lattice. */
+export function typeAtRank(dt: SocketDataType, rank: 0 | 1 | 2): SocketDataType | null {
+  const fam = elementFamilyOf(dt);
+  return fam ? FAMILIES[fam][rank === 0 ? "scalar" : rank === 1 ? "list" : "matrix"] : null;
 }
 
 /** `comboOfType` for a caller holding a family name instead of a socket type — a

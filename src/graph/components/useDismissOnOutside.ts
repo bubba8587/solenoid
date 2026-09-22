@@ -15,7 +15,9 @@ export function useDismissOnOutside(
   useEffect(() => {
     if (!active) return;
     const handler = (e: PointerEvent) => {
-      const t = e.target as Node | null;
+      // The path's first node, not `target`: a shadow root retargets `target` to its host, so
+      // a press inside a panel that lives in one reads as outside ([[C107]] obsidianPlugin).
+      const t = (e.composedPath()[0] ?? e.target) as Node | null;
       if (refs.current.some((r) => r.current && t && r.current.contains(t))) return;
       cb.current();
     };

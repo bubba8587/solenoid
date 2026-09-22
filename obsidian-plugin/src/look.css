@@ -1,0 +1,986 @@
+/* [[C107]] obsidianPlugin
+   The Solenoid look: Solenoid's palette on Obsidian, the workbench neutrals, the gold accent
+   and the typed socket hues (DESIGN.md § 2), following the plugin's palette setting. Color
+   means type here too: a property's icon wears the color Solenoid gives that type, strings in
+   code are lime, numbers are gold. THE ONE SOURCE of the rules: the build scopes it under
+   `body.solenoid-look` into the plugin's styles.css (the settings toggle adds that class) and
+   writes it, with the Default palette's tokens, to the demo vault's snippet. The faces are
+   Atkinson Hyperlegible, which the plugin's styles.css registers. */
+
+/* ── Tokens ─────────────────────────────────────────────────────────────────── */
+/* No hex here. The colors (workbench ramp, accent, typed hues, Obsidian's named colors) come
+   from lookTokens.ts, derived from palette.ts as the chips' are: the build appends one block per
+   built-in palette, and one per accent, to styles.css, and the snippet carries the Default
+   palette's under gold. Below is what holds under every palette. The accent (--sol-accent, and
+   --sol-ink-accent as text) is the UI's: tabs, the top line, links, the active item, the h1,
+   rules; a type's hue (--sol-number and the rest) means that type and nothing else. */
+
+body {
+  --sol-mix-hairline: 30%;
+  --sol-mix-edge: 45%;
+  --sol-mix-emphasis: 60%;
+  --sol-mix-glow: 28%;
+
+  --font-interface-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
+  --font-text-theme: "Atkinson Hyperlegible Next Variable", system-ui, sans-serif;
+  --font-monospace-theme: "Atkinson Hyperlegible Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --radius-xl: 12px;
+}
+
+.theme-dark {
+  --sol-header-tint: 22%;
+  /* A hue used as TEXT or as a line icon is itself on the dark workbench. */
+  --sol-ink-pct: 100%;
+  --sol-wash: 14%;
+  --sol-ink-number: var(--sol-number);
+  --sol-ink-string: var(--sol-string);
+  --sol-ink-date: var(--sol-date);
+  --sol-ink-complex: var(--sol-complex);
+  --sol-ink-logical: var(--sol-logical);
+  --sol-ink-frame: var(--sol-frame);
+  --sol-ink-lambda: var(--sol-lambda);
+  --sol-ink-teal: var(--sol-teal);
+  --sol-ink-blue: var(--sol-blue);
+  --sol-ink-amber: var(--sol-amber);
+  --sol-ink-error: var(--sol-error);
+  --sol-code-number: var(--sol-number);
+  --sol-code-string: var(--sol-string);
+  --sol-hairline: color-mix(in srgb, var(--sol-accent) var(--sol-mix-hairline), var(--sol-border));
+  --sol-edge: color-mix(in srgb, var(--sol-accent) var(--sol-mix-edge), var(--sol-border));
+  --sol-emphasis: color-mix(in srgb, var(--sol-accent) var(--sol-mix-emphasis), var(--sol-border));
+  --sol-h1-rule: color-mix(in srgb, var(--sol-accent) var(--sol-mix-edge), var(--sol-border));
+  --sol-h2-rule: color-mix(in srgb, var(--sol-string) var(--sol-mix-hairline), var(--sol-border));
+
+  --shadow-s: 0 4px 14px rgba(0, 0, 0, 0.2);
+  --shadow-l: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.theme-light {
+  --sol-header-tint: 52%;
+  /* On white a color is either NEUTRAL or the FULL accent, never a hue greyed toward the ink:
+     no hue here reaches 4.5:1 as text (lime is 1.6:1), and dark yellow is brown. So gold and
+     lime text is the ink and their color moves into fills, rules and badges; the other hues
+     darken along their own hue in OKLCH, which stays a color. */
+  --sol-ink-pct: 0%;
+  --sol-wash: 38%;
+  --sol-ink-number: var(--sol-text);
+  --sol-ink-string: var(--sol-text);
+  --sol-ink-date: oklch(from var(--sol-date) 0.45 c h);
+  --sol-ink-complex: oklch(from var(--sol-complex) 0.45 c h);
+  --sol-ink-logical: oklch(from var(--sol-logical) 0.42 c h);
+  --sol-ink-frame: oklch(from var(--sol-frame) 0.42 c h);
+  --sol-ink-lambda: oklch(from var(--sol-lambda) 0.45 c h);
+  --sol-ink-teal: oklch(from var(--sol-teal) 0.45 c h);
+  --sol-ink-blue: oklch(from var(--sol-blue) 0.42 c h);
+  --sol-ink-amber: oklch(from var(--sol-amber) 0.47 c h);
+  --sol-ink-error: oklch(from var(--sol-error) 0.47 c h);
+  --sol-code-number: oklch(from var(--sol-amber) 0.47 c h);
+  --sol-code-string: oklch(from var(--sol-lambda) 0.45 c h);
+  --sol-hairline: var(--sol-border);
+  --sol-edge: color-mix(in srgb, var(--sol-accent) 88%, #000);
+  --sol-emphasis: color-mix(in srgb, var(--sol-accent) 88%, #000);
+  --sol-h1-rule: var(--sol-accent);
+  --sol-h2-rule: var(--sol-strlist);
+
+  --shadow-s: 0 4px 14px rgba(20, 30, 50, 0.06);
+  --shadow-l: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
+}
+
+/* ── The workbench: Obsidian's neutrals, remapped ───────────────────────────── */
+
+.theme-dark,
+.theme-light {
+  --sol-header-band: color-mix(in srgb, var(--sol-accent) var(--sol-header-tint), var(--sol-surface));
+
+  --background-primary: var(--sol-surface);
+  --background-primary-alt: var(--sol-raised);
+  --background-secondary: var(--sol-app-bg);
+  --background-secondary-alt: var(--sol-canvas);
+  --background-modifier-border: var(--sol-border);
+  --background-modifier-border-hover: var(--sol-border-strong);
+  --background-modifier-border-focus: var(--sol-accent);
+  --background-modifier-form-field: var(--sol-sunken);
+  --background-modifier-hover: color-mix(in srgb, var(--sol-text) 7%, transparent);
+  --background-modifier-active-hover: color-mix(in srgb, var(--sol-accent) 16%, transparent);
+  --background-modifier-error: var(--sol-error);
+  --background-modifier-success: var(--sol-lambda);
+
+  --text-normal: var(--sol-text);
+  --text-muted: var(--sol-text-dim);
+  --text-faint: var(--sol-text-muted);
+  --text-accent: var(--sol-ink-accent);
+  --text-accent-hover: color-mix(in srgb, var(--sol-ink-accent) 80%, var(--sol-text-bright));
+  --text-on-accent: var(--sol-accent-ink);
+  --text-on-accent-inverted: var(--sol-text-bright);
+  --text-error: var(--sol-ink-error);
+  --text-success: var(--sol-ink-lambda);
+  --text-warning: var(--sol-ink-amber);
+  --text-selection: color-mix(in srgb, var(--sol-accent) var(--sol-mix-glow), transparent);
+  --text-highlight-bg: color-mix(in srgb, var(--sol-string) 30%, transparent);
+
+  --interactive-normal: var(--sol-sunken);
+  --interactive-hover: var(--sol-raised);
+  --interactive-accent: var(--sol-accent);
+  --interactive-accent-hover: color-mix(in srgb, var(--sol-accent) 88%, var(--sol-text-bright));
+
+  /* Obsidian's named colors, so callouts, canvas cards and graph groups pull from the palette. */
+  --color-red: var(--sol-error);
+  --color-orange: var(--sol-amber);
+  --color-yellow: var(--sol-number);
+  --color-green: var(--sol-lambda);
+  --color-cyan: var(--sol-complex);
+  --color-blue: var(--sol-blue);
+  --color-purple: var(--sol-frame);
+  --color-pink: var(--sol-date);
+
+  /* Chrome */
+  --titlebar-background: var(--sol-canvas);
+  --titlebar-background-focused: var(--sol-canvas);
+  --ribbon-background: var(--sol-app-bg);
+  --ribbon-background-collapsed: var(--sol-app-bg);
+  --tab-container-background: var(--sol-canvas);
+  --tab-background-active: var(--sol-surface);
+  --tab-text-color-focused-active: var(--sol-text-bright);
+  --tab-outline-color: var(--sol-border);
+  --tab-divider-color: var(--sol-border-subtle);
+  --divider-color: var(--sol-border);
+  --divider-color-hover: var(--sol-accent);
+  --status-bar-background: var(--sol-app-bg);
+  --status-bar-border-color: var(--sol-border);
+  --modal-background: var(--sol-surface);
+  --modal-border-color: var(--sol-edge);
+  --prompt-border-color: var(--sol-edge);
+  --menu-background: var(--sol-surface);
+  --menu-border-color: var(--sol-border-strong);
+  --nav-item-color-active: var(--sol-ink-accent);
+  --nav-item-background-active: color-mix(in srgb, var(--sol-accent) 16%, transparent);
+  --nav-item-background-hover: var(--background-modifier-hover);
+  --nav-indentation-guide-color: var(--sol-border-subtle);
+  --icon-color-active: var(--sol-ink-accent);
+  --icon-color-focused: var(--sol-text-bright);
+  --scrollbar-thumb-bg: color-mix(in srgb, var(--sol-text) 14%, transparent);
+  --scrollbar-active-thumb-bg: color-mix(in srgb, var(--sol-accent) 50%, transparent);
+
+  /* Canvas and graph sit on the void, dot grid and all. */
+  --canvas-background: var(--sol-canvas);
+  --canvas-dot-pattern: var(--sol-canvas-dot);
+  --graph-line: var(--sol-border-strong);
+  --graph-node: var(--sol-accent);
+  --graph-node-unresolved: var(--sol-text-muted);
+  --graph-node-focused: var(--sol-text-bright);
+  --graph-node-tag: var(--sol-string);
+  --graph-node-attachment: var(--sol-complex);
+  --graph-text: var(--sol-text-dim);
+
+  /* Writing */
+  --h1-color: var(--sol-ink-accent);
+  --h2-color: var(--sol-ink-string);
+  --h3-color: var(--sol-ink-date);
+  --h4-color: var(--sol-ink-complex);
+  --h5-color: var(--sol-ink-frame);
+  --h6-color: var(--sol-ink-teal);
+  --h1-weight: 600;
+  --h2-weight: 600;
+  --h3-weight: 600;
+  --h4-weight: 600;
+  --h5-weight: 600;
+  --h6-weight: 600;
+  --inline-title-color: var(--sol-text-bright);
+  --inline-title-weight: 600;
+  --bold-color: var(--sol-text-bright);
+  --italic-color: inherit;
+
+  --link-color: var(--sol-ink-accent);
+  --link-color-hover: var(--text-accent-hover);
+  --link-unresolved-color: var(--sol-text-dim);
+  --link-unresolved-opacity: 1;
+  --link-unresolved-decoration-color: var(--sol-hairline);
+  --link-external-color: var(--sol-ink-complex);
+  --link-external-color-hover: color-mix(in srgb, var(--sol-ink-complex) 80%, var(--sol-text-bright));
+
+  --hr-color: var(--sol-hairline);
+  --hr-thickness: 1px;
+
+  --list-marker-color: var(--sol-list);
+  --list-marker-color-hover: var(--sol-accent);
+  --list-marker-color-collapsed: var(--sol-accent);
+  --checkbox-color: var(--sol-accent);
+  --checkbox-color-hover: var(--interactive-accent-hover);
+  --checkbox-marker-color: var(--sol-accent-ink);
+  --checkbox-border-color: var(--sol-border-strong);
+  --checkbox-border-color-hover: var(--sol-accent);
+  --checkbox-radius: 3px;
+  --checklist-done-color: var(--sol-text-muted);
+
+  /* A quote is a tinted block, never a side stripe. */
+  --blockquote-border-thickness: 0px;
+  --blockquote-background-color: color-mix(in srgb, var(--sol-accent) 7%, var(--sol-raised));
+  --blockquote-color: var(--sol-text);
+  --embed-background: var(--sol-sunken);
+  --embed-border-start: 1px solid var(--sol-hairline);
+  --embed-border-end: 1px solid var(--sol-hairline);
+  --embed-border-top: 1px solid var(--sol-hairline);
+  --embed-border-bottom: 1px solid var(--sol-hairline);
+  --embed-padding: var(--size-4-3) var(--size-4-4);
+
+  --callout-radius: 8px;
+  --callout-border-width: 0px;
+  --callout-title-weight: 600;
+  --callout-default: var(--sol-blue);
+  --callout-info: var(--sol-complex);
+  --callout-todo: var(--sol-complex);
+  --callout-summary: var(--sol-complex);
+  --callout-tip: var(--sol-teal);
+  --callout-important: var(--sol-teal);
+  --callout-success: var(--sol-lambda);
+  --callout-question: var(--sol-number);
+  --callout-warning: var(--sol-amber);
+  --callout-fail: var(--sol-error);
+  --callout-error: var(--sol-error);
+  --callout-bug: var(--sol-error);
+  --callout-example: var(--sol-frame);
+  --callout-quote: var(--sol-any);
+
+  --tag-color: var(--sol-ink-string);
+  --tag-color-hover: var(--sol-ink-string);
+  --tag-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
+  --tag-background-hover: color-mix(in srgb, var(--sol-string) calc(var(--sol-wash) + 8%), transparent);
+  --tag-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
+  --tag-border-color-hover: color-mix(in srgb, var(--sol-string) var(--sol-mix-emphasis), var(--sol-border));
+  --tag-border-width: 1px;
+  --tag-radius: 999px;
+  --pill-color: var(--sol-ink-string);
+  --pill-background: color-mix(in srgb, var(--sol-string) var(--sol-wash), transparent);
+  --pill-border-color: color-mix(in srgb, var(--sol-string) var(--sol-mix-edge), var(--sol-border));
+  --pill-border-width: 1px;
+  --pill-radius: 999px;
+
+  /* Code wears the type colors: a string is lime, a number is gold. */
+  --code-background: var(--sol-sunken);
+  --code-border-color: var(--sol-border);
+  --code-border-width: 1px;
+  --code-radius: 4px;
+  --code-normal: var(--sol-text);
+  --code-comment: var(--sol-text-muted);
+  --code-string: var(--sol-code-string);
+  --code-value: var(--sol-code-number);
+  --code-keyword: var(--sol-ink-logical);
+  --code-function: var(--sol-ink-blue);
+  --code-property: var(--sol-ink-complex);
+  --code-operator: var(--sol-ink-teal);
+  --code-tag: var(--sol-ink-error);
+  --code-important: var(--sol-ink-amber);
+  --code-punctuation: var(--sol-text-dim);
+
+  --table-border-color: var(--sol-hairline);
+  --table-header-border-color: var(--sol-edge);
+  --table-header-background: var(--sol-header-band);
+  --table-header-background-hover: var(--sol-header-band);
+  --table-header-color: var(--sol-text-bright);
+  --table-header-weight: 600;
+  --table-row-alt-background: color-mix(in srgb, var(--sol-text) 3%, transparent);
+  --table-row-background-hover: color-mix(in srgb, var(--sol-accent) 8%, transparent);
+  --table-selection: color-mix(in srgb, var(--sol-accent) 14%, transparent);
+  --table-selection-border-color: var(--sol-accent);
+
+  --bases-table-header-background: color-mix(in srgb, var(--sol-frame) var(--sol-header-tint), var(--sol-surface));
+  --bases-table-header-background-hover: color-mix(in srgb, var(--sol-frame) calc(var(--sol-header-tint) + 8%), var(--sol-surface));
+  --bases-table-header-color: var(--sol-text-bright);
+  --bases-table-header-weight: 600;
+  --bases-table-border-color: color-mix(in srgb, var(--sol-frame) var(--sol-mix-hairline), var(--sol-border));
+  --bases-table-row-background-hover: color-mix(in srgb, var(--sol-frame) 8%, transparent);
+  --bases-cards-radius: 8px;
+  --bases-embed-border-radius: 8px;
+  --bases-embed-border-color: color-mix(in srgb, var(--sol-frame) var(--sol-mix-edge), var(--sol-border));
+
+  --metadata-border-color: var(--sol-edge);
+  --metadata-border-width: 1px;
+  --metadata-border-radius: 8px;
+  --metadata-background: var(--sol-surface);
+  --metadata-divider-color: var(--sol-border-subtle);
+  --metadata-divider-width: 1px;
+  --metadata-gap: 0px;
+  --metadata-label-text-color: var(--sol-text-dim);
+  --metadata-input-text-color: var(--sol-text);
+  --metadata-property-background-active: color-mix(in srgb, var(--sol-accent) 8%, transparent);
+  --metadata-property-box-shadow-focus: 0 0 0 1px var(--sol-accent);
+  --metadata-property-radius: 4px;
+
+  --input-shadow: none;
+  --input-shadow-hover: none;
+}
+
+/* ── Surfaces ───────────────────────────────────────────────────────────────── */
+
+/* The note sits on the void like a node card: a lit surface, a hairline, 8px corners. */
+.workspace-split.mod-root {
+  background-color: var(--sol-canvas);
+}
+.workspace-split.mod-root .workspace-tabs .workspace-leaf {
+  border-radius: 8px 8px 0 0;
+}
+/* A tab is a node header: 6px top corners, a tinted band under a 2px cap, and the small
+   uppercase title in the same color's ink. The accent, so a note's tab belongs to the accent
+   line it stands on; a base, a canvas and media keep a color of their own. */
+.mod-root .workspace-tab-header {
+  --sol-tab: var(--sol-accent);
+  --sol-tab-ink: color-mix(in srgb, var(--sol-tab) var(--sol-ink-pct), var(--sol-text-bright));
+  --tab-text-color-active: var(--sol-tab-ink);
+  --tab-text-color-focused-active: var(--sol-tab-ink);
+  --tab-text-color-focused-active-current: var(--sol-tab-ink);
+}
+.mod-root .workspace-tab-header[data-type="bases"],
+.mod-root .workspace-tab-header[data-type="table"] { --sol-tab: var(--sol-frame); }
+.mod-root .workspace-tab-header[data-type="canvas"] { --sol-tab: var(--sol-teal); }
+.mod-root .workspace-tab-header[data-type="image"],
+.mod-root .workspace-tab-header[data-type="pdf"],
+.mod-root .workspace-tab-header[data-type="audio"],
+.mod-root .workspace-tab-header[data-type="video"] { --sol-tab: var(--sol-complex); }
+
+/* Every tab stands on the pane below it, active or not. */
+.mod-root .workspace-tabs .workspace-tab-header-container .workspace-tab-header,
+.mod-root .workspace-tabs .workspace-tab-header-container .workspace-tab-header.is-active {
+  padding: 0 2px;
+  background: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+.mod-root .workspace-tab-header::before,
+.mod-root .workspace-tab-header::after {
+  display: none;
+}
+.mod-root .workspace-tab-header .workspace-tab-header-inner {
+  padding: 0 6px 0 10px;
+  border: 2px solid transparent;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background-color: color-mix(in srgb, var(--sol-tab) 7%, var(--sol-app-bg));
+}
+.mod-root .workspace-tab-header .workspace-tab-header-inner::after {
+  display: none;
+}
+.mod-root .workspace-tab-header:not(.is-active):hover .workspace-tab-header-inner {
+  background-color: color-mix(in srgb, var(--sol-tab) 14%, var(--sol-app-bg));
+}
+.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner {
+  background-color: color-mix(in srgb, var(--sol-tab) var(--sol-header-tint), var(--sol-surface));
+  border-color: color-mix(in srgb, var(--sol-tab) var(--sol-mix-emphasis), var(--sol-border));
+}
+.mod-root .workspace-tab-header .workspace-tab-header-inner-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--sol-text-dim);
+}
+.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-title,
+.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
+  color: var(--sol-tab-ink);
+}
+
+/* Sidebar tabs are bare icons; the active one wears the accent and nothing around it. */
+.mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner,
+.mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner {
+  background: none;
+  box-shadow: none;
+}
+.mod-left-split .workspace-tab-header.is-active .workspace-tab-header-inner-icon,
+.mod-right-split .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
+  color: var(--sol-ink-accent);
+}
+
+/* Icon buttons: a circle that fills on hover and turns to the accent. */
+.side-dock-ribbon-action,
+.sidebar-toggle-button .clickable-icon,
+.view-header-nav-buttons .clickable-icon,
+.workspace-tab-header-new-tab .clickable-icon,
+.workspace-tab-header-tab-list .clickable-icon,
+.workspace-drawer-vault-actions .clickable-icon {
+  border-radius: 50%;
+}
+.clickable-icon:hover {
+  color: var(--sol-ink-accent);
+  background-color: var(--sol-btn-hover);
+}
+.clickable-icon.is-active {
+  color: var(--sol-ink-accent);
+  background: none;
+}
+
+/* Fields: sunken, one hairline, the accent on focus and nothing else. */
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea,
+select.dropdown {
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border);
+  border-radius: 4px;
+}
+select.dropdown {
+  border-radius: 999px;
+  padding-inline-start: 14px;
+  box-shadow: none;
+}
+input[type="text"]:focus,
+input[type="search"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select.dropdown:focus {
+  border-color: var(--sol-accent);
+  box-shadow: none;
+}
+
+button:not(.clickable-icon):not(.mod-cta):not(.mod-warning) {
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border);
+  box-shadow: none;
+  border-radius: 999px;
+}
+button:not(.clickable-icon):not(.mod-cta):not(.mod-warning):hover {
+  background-color: var(--sol-raised);
+  border-color: var(--sol-border-strong);
+}
+button.mod-cta {
+  border-radius: 999px;
+  box-shadow: none;
+  font-weight: 600;
+}
+
+.menu,
+.suggestion-container,
+.popover,
+.prompt,
+.modal {
+  box-shadow: var(--shadow-l);
+}
+.suggestion-item.is-selected,
+.menu-item.selected:not(.is-disabled) {
+  background-color: color-mix(in srgb, var(--sol-accent) 16%, transparent);
+  color: var(--sol-text-bright);
+}
+
+/* ── Instrument chrome, after the app's own bars and floating windows ───────── */
+
+/* The top bar: a hairline with the 2px accent line under it. A pane's line takes its active
+   tab's color, so the header and the line it stands on read as one piece; every pane in the
+   center gets one, split or not. */
+.workspace-tabs.mod-top > .workspace-tab-header-container,
+.mod-root .workspace-tabs > .workspace-tab-header-container {
+  --sol-line: var(--sol-accent);
+  position: relative;
+  z-index: 1;
+  border-bottom: 1px solid var(--sol-border);
+  box-shadow: 0 2px 0 0 var(--sol-line);
+}
+.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="bases"], [data-type="table"])) {
+  --sol-line: var(--sol-frame);
+}
+.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active[data-type="canvas"]) {
+  --sol-line: var(--sol-teal);
+}
+.mod-root .workspace-tabs > .workspace-tab-header-container:has(.workspace-tab-header.is-active:is([data-type="image"], [data-type="pdf"], [data-type="audio"], [data-type="video"])) {
+  --sol-line: var(--sol-complex);
+}
+
+/* Icon buttons group into one pill, as the top bar's clusters do. */
+.nav-header {
+  display: flex;
+  justify-content: center;
+}
+.nav-buttons-container,
+.view-actions {
+  gap: 2px;
+  padding: 1px 3px;
+  background-color: var(--sol-sunken);
+  border: 1px solid var(--sol-border);
+  border-radius: 999px;
+}
+.nav-buttons-container .clickable-icon,
+.view-actions .clickable-icon {
+  border-radius: 50%;
+}
+/* The pane's bar clears the accent line by the same 6px the explorer's pill does: the line
+   paints over the bar's top 2px, so the bar takes them back as padding. */
+.view-header {
+  flex: 0 0 44px;
+  height: 44px;
+  min-height: 44px;
+  padding-top: 2px;
+}
+.view-actions {
+  align-self: center;
+  height: 30px;
+}
+.nav-buttons-container .clickable-icon:hover,
+.view-actions .clickable-icon:hover {
+  color: var(--sol-ink-accent);
+  background-color: color-mix(in srgb, var(--sol-accent) 12%, transparent);
+}
+
+/* The Navigator's rows: 6px corners, the selected one washed in the accent, and a
+   9px square of color in front of each folder. Top-level folders take the palette in its own
+   order (gold, green, amber, blue, lime, purple, gray, vermilion, violet, pink, sky, teal) and
+   loop back to gold; a subfolder shares its top folder's color. */
+.tree-item-self {
+  border-radius: 6px;
+}
+.nav-folder-title-content::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 8px;
+  border-radius: 2px;
+  background-color: var(--sol-folder, var(--sol-any));
+}
+.nav-files-container > div > .nav-folder:nth-child(12n + 1 of .nav-folder) { --sol-folder: var(--sol-number); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 2 of .nav-folder) { --sol-folder: var(--sol-lambda); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 3 of .nav-folder) { --sol-folder: var(--sol-amber); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 4 of .nav-folder) { --sol-folder: var(--sol-blue); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 5 of .nav-folder) { --sol-folder: var(--sol-string); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 6 of .nav-folder) { --sol-folder: var(--sol-logical); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 7 of .nav-folder) { --sol-folder: var(--sol-any); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 8 of .nav-folder) { --sol-folder: var(--sol-error); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 9 of .nav-folder) { --sol-folder: var(--sol-frame); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 10 of .nav-folder) { --sol-folder: var(--sol-date); }
+.nav-files-container > div > .nav-folder:nth-child(12n + 11 of .nav-folder) { --sol-folder: var(--sol-complex); }
+.nav-files-container > div > .nav-folder:nth-child(12n of .nav-folder) { --sol-folder: var(--sol-teal); }
+
+.search-result:not(.is-collapsed) .search-result-file-title {
+  color: var(--sol-text-bright);
+  font-weight: 600;
+}
+/* A row with its menu open gets the one-edge focus, not a 2px ring. */
+.tree-item-self.has-active-menu,
+.tree-item-self.has-focus {
+  box-shadow: inset 0 0 0 1px var(--sol-accent);
+}
+
+/* Section headings, as the Navigator and the socket legend set theirs. */
+.vertical-tab-header-group-title,
+.backlink-pane > .tree-item-self,
+.search-results-info,
+.graph-control-section-header {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--sol-text-dim);
+}
+
+/* The vault's name is the one brand mark. */
+.workspace-drawer-vault-name {
+  color: var(--sol-ink-accent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Floating windows wear the overlay border the minimap and the legend do. */
+.menu,
+.suggestion-container,
+.popover.hover-popover,
+.prompt,
+.modal,
+.graph-controls,
+.notice {
+  border: 2px solid var(--sol-overlay-border);
+  box-shadow: var(--shadow-l);
+}
+.menu,
+.suggestion-container,
+.graph-controls {
+  border-radius: 6px;
+}
+.status-bar {
+  border-color: var(--sol-overlay-border);
+  border-width: 2px 0 0 2px;
+  border-style: solid;
+}
+
+/* ── Writing ────────────────────────────────────────────────────────────────── */
+
+/* A heading's rule is its own hue at the hairline rung. */
+.markdown-rendered h1,
+.markdown-rendered h2,
+.cm-s-obsidian .HyperMD-header-1,
+.cm-s-obsidian .HyperMD-header-2 {
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid;
+}
+.markdown-rendered h1,
+.cm-s-obsidian .HyperMD-header-1 {
+  border-bottom-color: var(--sol-h1-rule);
+}
+.markdown-rendered h2,
+.cm-s-obsidian .HyperMD-header-2 {
+  border-bottom-color: var(--sol-h2-rule);
+}
+.inline-title {
+  padding-bottom: 0.2em;
+  border-bottom: 2px solid var(--sol-emphasis);
+  text-wrap-style: balance;
+}
+.markdown-rendered h1,
+.markdown-rendered h2,
+.markdown-rendered h3 {
+  text-wrap-style: balance;
+}
+.markdown-rendered p,
+.markdown-rendered li {
+  text-wrap-style: pretty;
+}
+
+.markdown-rendered blockquote {
+  border: 1px solid var(--sol-hairline);
+  border-radius: 8px;
+  padding: var(--size-4-2) var(--size-4-4);
+}
+.markdown-rendered .markdown-embed,
+.markdown-rendered .file-embed {
+  border-radius: 8px;
+}
+
+/* A callout is a group: a solid header in its color over a tinted body with a 2px dashed
+   outline. The header's ink is picked per color, as the app picks a header's. */
+.callout {
+  --callout-head: color-mix(in srgb, var(--callout-color) 86%, #000);
+  --callout-ink: #ffffff;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  overflow: visible;
+}
+.callout:is([data-callout="abstract"], [data-callout="summary"], [data-callout="tldr"], [data-callout="info"],
+  [data-callout="todo"], [data-callout="tip"], [data-callout="hint"], [data-callout="important"],
+  [data-callout="success"], [data-callout="check"], [data-callout="done"], [data-callout="question"],
+  [data-callout="help"], [data-callout="faq"], [data-callout="warning"], [data-callout="caution"],
+  [data-callout="attention"], [data-callout="failure"], [data-callout="fail"], [data-callout="missing"],
+  [data-callout="danger"], [data-callout="error"], [data-callout="bug"], [data-callout="quote"],
+  [data-callout="cite"]) {
+  --callout-head: var(--callout-color);
+  --callout-ink: #1a1a1a;
+}
+.callout-title {
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 8px 8px 0 0;
+  background-color: var(--callout-head);
+  color: var(--callout-ink);
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.callout.is-collapsed .callout-title,
+.callout:not(:has(> .callout-content)) .callout-title {
+  border-radius: 8px;
+}
+.callout-title .callout-title-inner,
+.callout-title .callout-icon .svg-icon,
+.callout-title .callout-fold {
+  color: inherit;
+}
+.callout-content {
+  padding: 2px 12px;
+  border: 2px dashed var(--callout-color);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  background-color: color-mix(in srgb, var(--callout-color) 9%, var(--sol-surface));
+}
+
+/* A rule is a cable in the default draw shape, diagonal: a socket out, a straight run, a
+   45 degree leg centered between the runs, a straight run, a socket in. */
+.markdown-rendered hr,
+.markdown-source-view.mod-cm6 .hr hr {
+  --sol-ring: color-mix(in srgb, var(--sol-accent) 62%, #000);
+  --sol-cable:
+    radial-gradient(circle at 6px 18px, #000 0 5.6px, transparent 6px),
+    radial-gradient(circle at calc(100% - 6px) 6px, #000 0 5.6px, transparent 6px),
+    linear-gradient(#000, #000) 6px 17px / calc(50% - 12px) 2px no-repeat,
+    linear-gradient(#000, #000) right 6px top 5px / calc(50% - 12px) 2px no-repeat,
+    linear-gradient(to bottom right, transparent calc(50% - 1px), #000 calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) 50% 5px / 14px 14px no-repeat;
+  height: 24px;
+  margin: 1.5em 0;
+  border: none;
+  background:
+    radial-gradient(circle at 6px 18px, transparent 0 3.6px, var(--sol-ring) 4.2px 6px, transparent 6px),
+    radial-gradient(circle at calc(100% - 6px) 6px, transparent 0 3.6px, var(--sol-ring) 4.2px 6px, transparent 6px),
+    var(--sol-accent);
+  -webkit-mask: var(--sol-cable);
+  mask: var(--sol-cable);
+}
+
+/* Bullets are sockets: a circle for one thing, a square for a list under it. */
+.markdown-rendered ul ul > li > .list-bullet::after,
+.cm-s-obsidian .HyperMD-list-line:not(.HyperMD-list-line-1) .list-bullet::after {
+  border-radius: 1px;
+}
+
+.markdown-rendered pre {
+  border: 1px solid var(--sol-border);
+  border-radius: 8px;
+}
+.cm-s-obsidian .HyperMD-codeblock-bg {
+  border-inline: 1px solid var(--sol-border);
+}
+.cm-s-obsidian .HyperMD-codeblock-begin-bg {
+  border-top: 1px solid var(--sol-border);
+  border-radius: 8px 8px 0 0;
+}
+.cm-s-obsidian .HyperMD-codeblock-end-bg {
+  border-bottom: 1px solid var(--sol-border);
+  border-radius: 0 0 8px 8px;
+}
+/* A table is one rounded box: the outline is the table's, the cells keep inner rules only. */
+.markdown-rendered table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--sol-edge);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.markdown-rendered table th,
+.markdown-rendered table td {
+  border-width: 0 1px 1px 0;
+}
+.markdown-rendered table tr > :last-child {
+  border-right-width: 0;
+}
+.markdown-rendered table tbody tr:last-child > td {
+  border-bottom-width: 0;
+}
+.markdown-rendered th,
+.markdown-rendered td,
+.cm-s-obsidian .cm-table-widget td,
+.cm-s-obsidian .cm-table-widget th {
+  font-variant-numeric: tabular-nums;
+}
+.markdown-rendered mark,
+.cm-s-obsidian span.cm-highlight {
+  border-radius: 3px;
+  color: var(--sol-text-bright);
+}
+
+/* Obsidian nudges the panel 4px left so bare icons line up with the text; a bordered card
+   lines up by its edge. */
+.markdown-source-view.mod-cm6 .cm-sizer > .metadata-container,
+.markdown-preview-view .metadata-container,
+.markdown-rendered .metadata-container {
+  transform: none;
+}
+
+/* In light a link is ink over a rule in the full color: the cable carries the hue. */
+.theme-light .markdown-rendered a,
+.theme-light .cm-s-obsidian .cm-hmd-internal-link .cm-underline,
+.theme-light .cm-s-obsidian .cm-link .cm-underline,
+.theme-light .cm-s-obsidian .cm-url .cm-underline {
+  text-decoration-line: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--sol-accent);
+}
+.theme-light .markdown-rendered a.external-link,
+.theme-light .cm-s-obsidian .cm-link .cm-underline,
+.theme-light .cm-s-obsidian .cm-url .cm-underline {
+  color: var(--sol-text);
+  text-decoration-color: var(--sol-complex);
+}
+.theme-light .markdown-rendered a.tag {
+  text-decoration-line: none;
+}
+.theme-light .markdown-rendered a.is-unresolved {
+  text-decoration-style: dashed;
+  text-decoration-color: var(--sol-border-strong);
+}
+
+/* ── Properties: a node card, and every type in its own color ───────────────── */
+
+.metadata-container {
+  overflow: hidden;
+  padding: 0 0 var(--size-4-2);
+}
+.metadata-container .metadata-properties-heading {
+  display: flex;
+  margin: 0 0 var(--size-4-2);
+  padding: var(--size-4-2) var(--size-4-3);
+  background-color: var(--sol-header-band);
+  border-bottom: 1px solid var(--sol-edge);
+}
+.metadata-container .metadata-properties-title {
+  color: var(--sol-text-bright);
+  font-weight: 600;
+}
+.metadata-container .metadata-content {
+  padding: 0 var(--size-4-2);
+}
+/* On a phone Obsidian makes the content its own full-bleed panel, shifted 12px left and 24px
+   wider than the card, which the card's edge clips: the icon lands 1px from the border. Here the
+   card IS the panel, so the content stays inside it, 11px to the icon as on the desktop. */
+.is-mobile .metadata-container .metadata-content {
+  width: auto;
+  transform: none;
+  background-color: transparent;
+  border-radius: 0;
+}
+/* Obsidian stacks rows with a 3px gap ABOVE each and draws the divider right under the
+   content, so with dividers on nothing sits centered between its lines. The gap goes, and the
+   key and value take it back as 2px above and below. */
+.metadata-container .metadata-property-key,
+.metadata-container .metadata-property-value {
+  padding-block: 2px;
+}
+
+/* One-line rows are all 28px of content: a text value's 21px line and the tag pills' borders
+   made theirs 29 and 31, so the same badge sat differently from row to row. */
+.metadata-container .metadata-input-longtext {
+  line-height: 20px;
+}
+.metadata-container .metadata-property-value .multi-select-container {
+  padding-block: 2.5px;
+}
+
+/* A property row is a label and a value, not two boxed fields. */
+.metadata-container input.metadata-property-key-input,
+.metadata-container .metadata-property-value input:not([type="checkbox"]),
+.metadata-container .metadata-property-value textarea {
+  background-color: transparent;
+  border-color: transparent;
+}
+.metadata-property-key-input {
+  font-size: var(--font-ui-small);
+}
+.metadata-property-value input,
+.metadata-input-longtext {
+  font-family: var(--font-monospace);
+}
+
+.metadata-property { --sol-type: var(--sol-any); --sol-type-ink: var(--sol-ink-on-any); }
+/* Obsidian seats the icon behind a 4px zero-width spacer, which leaves it 12px from the card
+   and 8px from its label, and pushes a badge's glyph off center. The icon takes an 18px box
+   with 2px either side instead: 10px to the card, 10px to the label. */
+.metadata-property .metadata-property-icon {
+  flex: 0 0 18px;
+  justify-content: center;
+  width: 18px;
+  margin-inline: 2px;
+  color: color-mix(in srgb, var(--sol-type) var(--sol-ink-pct), var(--sol-text));
+}
+.metadata-property .metadata-property-icon::before {
+  content: none;
+}
+/* In light the icon is a socket: an 18px badge filled with the full type color, a 12px glyph
+   in the ink that reads on THAT color under the current palette (--sol-ink-on-*, lookTokens.ts,
+   the chips' own contrast rule; author 2026-09-22). It keeps the 22px column the bare icon had,
+   centered on the 28px label. */
+.theme-light .metadata-property .metadata-property-icon {
+  height: 18px;
+  margin: 0 2px;
+  align-self: center; /* the 28px label on the desktop, the 36px one on a phone */
+  padding: 0;
+  color: var(--sol-type-ink, #1a1a1a);
+  background-color: var(--sol-type);
+  border-radius: 4px;
+}
+.theme-light .metadata-property .metadata-property-icon .svg-icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.25px;
+}
+.metadata-property:focus-within {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--sol-type) var(--sol-mix-emphasis), var(--sol-border));
+}
+.metadata-property:has(> [data-property-type="number"]) { --sol-type: var(--sol-number); --sol-type-ink: var(--sol-ink-on-number); }
+.metadata-property:has(> [data-property-type="text"]) { --sol-type: var(--sol-string); --sol-type-ink: var(--sol-ink-on-string); }
+.metadata-property:has(> [data-property-type="multitext"]),
+.metadata-property:has(> [data-property-type="tags"]),
+.metadata-property:has(> [data-property-type="aliases"]) { --sol-type: var(--sol-strlist); --sol-type-ink: var(--sol-ink-on-strlist); }
+.metadata-property:has(> [data-property-type="date"]),
+.metadata-property:has(> [data-property-type="datetime"]) { --sol-type: var(--sol-date); --sol-type-ink: var(--sol-ink-on-date); }
+.metadata-property:has(> [data-property-type="checkbox"]) { --sol-type: var(--sol-logical); --sol-type-ink: var(--sol-ink-on-logical); }
+.metadata-property:has(> [data-property-type="solenoid-complex"]) { --sol-type: var(--sol-complex); --sol-type-ink: var(--sol-ink-on-complex); }
+.metadata-property:has(> [data-property-type="solenoid-list"]) { --sol-type: var(--sol-list); --sol-type-ink: var(--sol-ink-on-list); }
+.metadata-property:has(> [data-property-type="solenoid-table"]) { --sol-type: var(--sol-table); --sol-type-ink: var(--sol-ink-on-table); }
+.metadata-property:has(> [data-property-type="solenoid-strlist"]) { --sol-type: var(--sol-strlist); --sol-type-ink: var(--sol-ink-on-strlist); }
+.metadata-property:has(> [data-property-type="solenoid-strtable"]) { --sol-type: var(--sol-strtable); --sol-type-ink: var(--sol-ink-on-strtable); }
+.metadata-property:has(> [data-property-type="solenoid-datelist"]) { --sol-type: var(--sol-datelist); --sol-type-ink: var(--sol-ink-on-datelist); }
+.metadata-property:has(> [data-property-type="solenoid-datetable"]) { --sol-type: var(--sol-datetable); --sol-type-ink: var(--sol-ink-on-datetable); }
+.metadata-property:has(> [data-property-type="solenoid-complexlist"]) { --sol-type: var(--sol-complexlist); --sol-type-ink: var(--sol-ink-on-complexlist); }
+.metadata-property:has(> [data-property-type="solenoid-complextable"]) { --sol-type: var(--sol-complextable); --sol-type-ink: var(--sol-ink-on-complextable); }
+.metadata-property:has(> [data-property-type="solenoid-logicallist"]) { --sol-type: var(--sol-logicallist); --sol-type-ink: var(--sol-ink-on-logicallist); }
+.metadata-property:has(> [data-property-type="solenoid-logicaltable"]) { --sol-type: var(--sol-logicaltable); --sol-type-ink: var(--sol-ink-on-logicaltable); }
+.metadata-property:has(> [data-property-type="solenoid-frame"]),
+.metadata-property:has(> [data-property-type="solenoid-cube"]) { --sol-type: var(--sol-frame); --sol-type-ink: var(--sol-ink-on-frame); }
+
+/* ── Canvas ─────────────────────────────────────────────────────────────────── */
+
+.canvas-node-container {
+  border-radius: 8px;
+}
+.canvas-node-group .canvas-node-container {
+  border-style: dashed;
+  border-width: 2px;
+  border-radius: 0 8px 8px 8px;
+}
+.canvas-group-label {
+  padding: 4px 10px;
+  border-radius: 6px 6px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.canvas-control-group {
+  overflow: hidden;
+  padding: 2px;
+  background-color: var(--sol-surface);
+  border: 1px solid var(--sol-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-s);
+}
+.canvas-control-item {
+  border: none;
+  border-radius: 50%;
+  background: none;
+}
+.canvas-control-item:hover {
+  color: var(--sol-ink-accent);
+  background-color: var(--sol-btn-hover);
+}
+.canvas-card-menu {
+  padding: 2px 10px;
+  background-color: var(--sol-surface);
+  border: 2px solid var(--sol-overlay-border);
+  border-radius: 999px;
+  box-shadow: var(--shadow-l);
+}
+
+/* ── Graph view ─────────────────────────────────────────────────────────────── */
+
+/* The graph sits on Solenoid's canvas: the void and its dot grid. */
+.workspace-leaf-content[data-type="graph"] .view-content,
+.workspace-leaf-content[data-type="localgraph"] .view-content {
+  background-color: var(--sol-canvas);
+  background-image: radial-gradient(var(--sol-canvas-dot) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+/* A note is a node in the accent; the active one is the ink (author 2026-09-22). Tags and
+   attachments keep their type's hue. */
+.graph-view.color-fill { color: var(--sol-accent); }
+.graph-view.color-fill-focused { color: var(--sol-text-bright); }
+.graph-view.color-fill-tag { color: var(--sol-string); }
+.graph-view.color-fill-attachment { color: var(--sol-complex); }
+.graph-view.color-fill-unresolved { color: var(--sol-text-muted); opacity: 1; }
+.graph-view.color-fill-highlight { color: var(--sol-text-bright); }
+.graph-view.color-line { color: var(--sol-border-strong); }
+.graph-view.color-line-highlight { color: var(--sol-accent); }
+.graph-view.color-circle { color: var(--sol-accent); }
+.graph-view.color-text { color: var(--sol-text-dim); }

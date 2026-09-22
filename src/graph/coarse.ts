@@ -1,4 +1,5 @@
 // [[C93]] gestureByPointerType. Touch-vs-mouse helpers shared across node chrome.
+import { IS_MOBILE_UA } from "./mobileUa";
 
 /** True when the primary pointer is touch (phone/tablet). Evaluated once. */
 export const IS_COARSE =
@@ -15,13 +16,6 @@ export function prefersReducedMotion(): boolean {
     window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 }
-
-/** True on a mobile UA — "Request desktop site" flips it false, which is the lever
- *  users pull to opt OUT of the mobile experience. */
-const IS_MOBILE_UA =
-  typeof navigator !== "undefined" &&
-  ((navigator as { userAgentData?: { mobile?: boolean } }).userAgentData?.mobile ??
-    /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent));
 
 /** THE mobile-mode flag — the single gate for every mobile behavior. main.tsx
  *  mirrors it onto `html.is-mobile` for the CSS gate; derive, never duplicate. */

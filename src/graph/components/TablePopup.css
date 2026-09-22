@@ -640,6 +640,7 @@
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
+  margin-right: 10px; /* room before the row/column buttons; nothing when they wrap under */
   font-size: 12px;
   color: var(--text-dim);
   cursor: pointer;
@@ -653,8 +654,8 @@
 
 .table-popup__dim-controls {
   display: flex;
-  gap: 6px;
-  margin-left: 10px;
+  flex-wrap: wrap; /* a phone-wide footer: the four wrap, none is cut off */
+  gap: 8px;
 }
 
 .table-popup__footer {
@@ -674,6 +675,7 @@
 .table-popup__btn {
   font-size: 12px;
   padding: 5px 12px;
+  white-space: nowrap; /* a narrow footer wraps buttons, never a button's own label */
   border-radius: 4px;
   border: 1px solid var(--border-strong);
   background: var(--surface);
@@ -696,13 +698,32 @@
 .table-popup__btn--primary:hover { filter: brightness(1.08); }
 .table-popup__btn:disabled { opacity: 0.45; pointer-events: none; }
 
-/* Touch devices: larger tap targets for the footer controls (the grid editor is
-   used on mobile too). Pairs with the wrapping footer above. */
+/* Touch devices: the footer's controls get SMALLER, so the row/column buttons and
+   Cancel/Save share one row under the view toggle (author 2026-09-22; measured in the
+   Obsidian rig's phone emulation: 24px buttons fit a 412px phone, a 360px one takes 10px
+   text and 4px gaps). Pairs with the wrapping footer above. */
 @media (pointer: coarse) {
   .table-popup__btn,
   .table-popup__view button {
-    padding: 9px 14px;
-    font-size: 13px;
+    padding: 4px 7px;
+    font-size: 11px;
+  }
+  .table-popup__footer,
+  .table-popup__dim-controls,
+  .table-popup__actions {
+    gap: 6px;
+  }
+}
+@media (pointer: coarse) and (max-width: 380px) {
+  .table-popup__btn,
+  .table-popup__view button {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+  .table-popup__footer,
+  .table-popup__dim-controls,
+  .table-popup__actions {
+    gap: 4px;
   }
 }
 

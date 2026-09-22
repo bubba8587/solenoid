@@ -18,13 +18,20 @@ function hintFor(t: string): TypeHint | null {
     case "tags":
     case "aliases":  return { kind: "list", elem: "string" };
     // Solenoid Properties' types ([[C107]] obsidianPlugin): `solenoid-` + the socket variant.
-    // A matrix and a cube have no hint shape yet, so they fall through to the guesser.
+    // Complex has no scalar kind here: its cells are text, as Excel's complex numbers are.
     case "solenoid-list":        return { kind: "list", elem: "number" };
     case "solenoid-strlist":
     case "solenoid-complexlist": return { kind: "list", elem: "string" };
     case "solenoid-datelist":    return { kind: "list", elem: "date" };
     case "solenoid-logicallist": return { kind: "list", elem: "logical" };
-    case "solenoid-frame":       return { kind: "frame" };
+    case "solenoid-frame":
+    case "solenoid-cube":        return { kind: "frame" }; // rows of records either way; a list cell makes it a cube
+    case "solenoid-complex":     return { kind: "string" };
+    case "solenoid-table":       return { kind: "matrix", elem: "number" };
+    case "solenoid-strtable":
+    case "solenoid-complextable": return { kind: "matrix", elem: "string" };
+    case "solenoid-datetable":   return { kind: "matrix", elem: "date" };
+    case "solenoid-logicaltable": return { kind: "matrix", elem: "logical" };
     default:         return null;
   }
 }

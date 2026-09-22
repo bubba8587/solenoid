@@ -11,6 +11,7 @@ import {
 import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
 import { parseDate } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
+import type { PluginColumnTypes, ColumnPicks } from "./pluginColumnTypes";
 
 export interface VaultNote {
   /** Vault-relative path, POSIX-style ("Projects/Kitchen remodel.md"). */
@@ -28,6 +29,8 @@ export interface VaultTypeSources {
   mdbaseFor: (path: string) => TypeMap;
   /** The vault-wide `.obsidian/types.json` hints. */
   obsidian: TypeMap;
+  /** A frame property's picked column types (the Solenoid Properties plugin's data), by key. */
+  columns?: PluginColumnTypes;
 }
 
 export interface VaultCubeOptions {
@@ -173,7 +176,7 @@ type ParsedNote = {
   fields: Map<string, { value: FrontmatterValueLoose; guessed: string }>;
   body: string;
 };
-type FrontmatterValueLoose = FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[];
+type FrontmatterValueLoose = FrontmatterScalar | FrontmatterScalar[] | FrontmatterScalar[][] | FrontmatterRow[];
 
 const BUILTINS = ["path", "name", "folder", "ext", "size", "created", "modified", "tags", "links", "embeds", "date"] as const;
 
@@ -247,7 +250,7 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
   for (const key of fmKeys) {
     // Resolve the column's parse shape: a hint (mdbase → obsidian), else the guesser.
     const hint = resolveHint(key, parsed, sources);
-    columns.push(buildColumn(key, hint, parsed));
+    columns.push(buildColumn(key, hint, parsed, sources.columns?.[key]));
   }
 
   return cubeFromColumns(columns);
@@ -269,12 +272,12 @@ function resolveHint(key: string, parsed: ParsedNote[], sources: VaultTypeSource
   return sources.obsidian[key] ?? null;
 }
 
-function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[]): { name: string; cells: CubeCell[]; type?: FrameColType } {
+function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[], picks?: ColumnPicks): { name: string; cells: CubeCell[]; type?: FrameColType } {
   // A hint decides the shape outright; otherwise the guesser looks across the rows.
   const shape: TypeHint = hint ?? guessShape(key, parsed);
-  const cells: CubeCell[] = parsed.map((p) => cellFor(p.fields.get(key)?.value, shape));
+  const cells: CubeCell[] = parsed.map((p) => cellFor(p.fields.get(key)?.value, shape, picks));
   // A list column carries its ELEMENT type, which a list cell tints and prints by (cubeCell.tsx).
-  const kind = shape.kind === "list" ? shape.elem : shape.kind;
+  const kind = shape.kind === "list" || shape.kind === "matrix" ? shape.elem : shape.kind;
   const type: FrameColType | undefined =
     kind === "frame" ? undefined
     : kind === "logical" ? "logical"
@@ -289,6 +292,7 @@ function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[]): 
 function guessShape(key: string, parsed: ParsedNote[]): TypeHint {
   let anyFrame = false;
   let anyList = false;
+  let anyMatrix = false;
   const listElemKinds: ScalarKind[] = [];
   const scalarKinds: ScalarKind[] = [];
   for (const p of parsed) {
@@ -296,18 +300,22 @@ function guessShape(key: string, parsed: ParsedNote[]): TypeHint {
     if (!field || field.value === null) continue;
     const v = field.value;
     if (Array.isArray(v)) {
-      if (v.length > 0 && typeof v[0] === "object" && v[0] !== null) { anyFrame = true; continue; }
-      anyList = true;
-      for (const item of v as FrontmatterScalar[]) {
+      // A matrix is rows of LISTS, a frame rows of RECORDS: both are arrays of objects.
+      const isMatrix = v.length > 0 && Array.isArray(v[0]);
+      if (!isMatrix && v.length > 0 && typeof v[0] === "object" && v[0] !== null) { anyFrame = true; continue; }
+      if (isMatrix) anyMatrix = true; else anyList = true;
+      const isDate = field.guessed === "datelist" || field.guessed === "datetable";
+      for (const item of (v as unknown[]).flat() as FrontmatterScalar[]) {
         if (item === null) continue;
-        // A date item is a serial by now; the parser's `datelist` is what still says so.
-        listElemKinds.push(cellKind(item, field.guessed === "datelist" ? "date" : scalarKindOfValue(item)));
+        // A date item is a serial by now; the parser's guess is what still says so.
+        listElemKinds.push(cellKind(item, isDate ? "date" : scalarKindOfValue(item)));
       }
     } else {
       scalarKinds.push(cellKind(v, field.guessed === "date" ? "date" : scalarKindOfValue(v)));
     }
   }
   if (anyFrame) return { kind: "frame" };
+  if (anyMatrix) return { kind: "matrix", elem: listElemKinds.length ? widenScalar(listElemKinds) : "string" };
   if (anyList) return { kind: "list", elem: listElemKinds.length ? widenScalar(listElemKinds) : "string" };
   return { kind: scalarKinds.length ? widenScalar(scalarKinds) : "string" };
 }
@@ -319,21 +327,27 @@ function scalarKindOfValue(v: FrontmatterScalar): ScalarKind {
 }
 
 /** One cell for a note's raw value, shaped to the column. Missing → null. */
-function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint): CubeCell {
+function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}): CubeCell {
   if (value === undefined || value === null) return null;
   if (shape.kind === "frame") {
     // A rows-of-objects key is a nested CUBE (no in-cell string lists — the cube holds a
-    // record whose field may itself be a list); frame.ts's recordsToCube is the shared shape.
+    // record whose field may itself be a list); frame.ts's recordsToCube is the shared shape,
+    // and a picked column's type beats its inference.
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
-      return recordsToCube(value as FrontmatterRow[]);
+      return recordsToCube(value as FrontmatterRow[], picks);
     }
     return null;
   }
+  if (shape.kind === "matrix") {
+    // A cube cell holds the matrix as it is: rows of cells. A flat list is one row.
+    const rows = Array.isArray(value) ? (Array.isArray(value[0]) ? (value as FrontmatterScalar[][]) : [value as FrontmatterScalar[]]) : [[value as FrontmatterScalar]];
+    return rows.map((row) => row.map((item) => coerceScalar(item, shape.elem))) as CubeCell[];
+  }
   if (shape.kind === "list") {
-    const arr = Array.isArray(value) ? (value as FrontmatterScalar[]) : [value as FrontmatterScalar];
+    const arr = (Array.isArray(value) ? (value as unknown[]).flat() : [value]) as FrontmatterScalar[];
     return arr.map((item) => coerceScalar(item, shape.elem)) as CubeCell[];
   }
   // Scalar: a stray array collapses to its first cell.
-  const scalar = Array.isArray(value) ? ((value as FrontmatterScalar[])[0] ?? null) : (value as FrontmatterScalar);
+  const scalar = (Array.isArray(value) ? ((value as unknown[]).flat()[0] ?? null) : value) as FrontmatterScalar;
   return coerceScalar(scalar, shape.kind);
 }

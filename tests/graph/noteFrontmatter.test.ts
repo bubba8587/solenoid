@@ -152,6 +152,35 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
+  it("reads a list of lists as a matrix, typed like a list from all its cells", () => {
+    const f = (yaml: string) => parseNoteFrontmatter(`---\n${yaml}\n---\n`).fields[0];
+    expect(f("grid:\n  - - 1\n    - 2\n  - - 3\n    - 4")).toMatchObject({ value: [[1, 2], [3, 4]], guessed: "table" });
+    expect(f("grid: [[a, b], [c, d]]")).toMatchObject({ value: [["a", "b"], ["c", "d"]], guessed: "strtable" });
+    expect(f("grid: [[true, false]]").guessed).toBe("logicaltable");
+    expect(f("grid: [[2026-09-01, 2026-09-02]]").guessed).toBe("datetable");
+    // A short row pads with missing cells; a mixed list of rows and scalars is still a list.
+    expect(f("grid: [[1, 2, 3], [4]]").value).toEqual([[1, 2, 3], [4, null, null]]);
+    expect(f("grid: [[1, 2], 3]").guessed).toBe("strlist");
+  });
+
+  it("reads complex text as complex, a quoted one as text", () => {
+    const f = (yaml: string) => parseNoteFrontmatter(`---\n${yaml}\n---\n`).fields[0];
+    expect(f("z: 3+4i")).toMatchObject({ value: "3+4i", guessed: "complex" });
+    expect(f('z: "3+4i"').guessed).toBe("string");
+    expect(f("z: [3+4i, 1-2i, 5]").guessed).toBe("complexlist");
+    expect(f("z: [[3+4i, 2i]]").guessed).toBe("complextable");
+    // A bare number is a number, and a word ending in i is a word.
+    expect(f("z: 5").guessed).toBe("number");
+    expect(f("z: [hi, 2i]").guessed).toBe("strlist");
+  });
+
+  it("names a frame's date columns, and a row keeps a date as the text written", () => {
+    const r = parseNoteFrontmatter("---\nbudget:\n  - item: Cabinets\n    ordered: 2026-09-02\n    note: 2026-09-02\n  - item: Tile\n    ordered: 2026-09-12\n    note: later\n---\n");
+    expect(r.fields[0]).toMatchObject({ guessed: "frame", dateColumns: ["ordered"] });
+    // The column's type decides what the text becomes; a mixed column keeps its date as text.
+    expect(r.fields[0].value).toEqual([{ item: "Cabinets", ordered: "2026-09-02", note: "2026-09-02" }, { item: "Tile", ordered: "2026-09-12", note: "later" }]);
+  });
+
   it("keeps the first occurrence of a duplicated key", () => {
     const r = parseNoteFrontmatter("---\nx: 1\nx: 2\n---");
     expect(r.fields).toEqual([{ key: "x", value: 1, guessed: "number" }]);

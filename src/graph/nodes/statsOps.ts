@@ -70,7 +70,7 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
     }
     case "mad": {                                                                       // median absolute deviation, UNSCALED (scipy; R's mad scales ×1.4826)
       const med = aggregate("median", arr) as number;
-      return aggregate("median", arr.map((v) => Math.abs(v - med))) as number;
+      return aggregate("median", arr.map((v) => Math.abs(v - med)));
     }
     case "sem":  return n < 2 ? null : Math.sqrt(ssd(arr, mean(arr)) / (n - 1)) / Math.sqrt(n); // scipy sem, R sd/sqrt(n)
     case "cv": {                                                                        // coefficient of variation sd/mean (sample sd)

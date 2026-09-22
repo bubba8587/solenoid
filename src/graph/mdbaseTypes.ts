@@ -66,7 +66,8 @@ function propHint(schema: unknown): TypeHint | null {
 /** One JSON-Schema property → its validation constraint (null when not understood). */
 function propConstraint(schema: unknown): PropConstraint | null {
   const hint = propHint(schema);
-  if (!hint || !isRecord(schema)) return null;
+  // An mdbase schema never declares a matrix (`propHint` has no branch for one).
+  if (!hint || hint.kind === "matrix" || !isRecord(schema)) return null;
   const kind = hint.kind;
   const c: PropConstraint = { kind };
   if (Array.isArray(schema.enum)) {

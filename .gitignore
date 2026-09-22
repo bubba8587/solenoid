@@ -39,7 +39,11 @@ copy-inventory.md.orig.json
 # Dev-server mirror of the document being edited (vite.config.ts devGraphMirror)
 .dev/
 
-# Third-party plugin binaries installed locally into the demo vault (TaskNotes); not ours to ship
+# The Obsidian plugin's local build (`npm run plugin:build`)
+obsidian-plugin/dist/
+
+# Plugins installed locally into the demo vault from the community store (TaskNotes, Solenoid
+# Properties); not ours to ship
 demo-vault/.obsidian/plugins/
 # Obsidian writes these when the demo vault is opened; only daily-notes.json, types.json, community-plugins.json,
 # appearance.json (it turns the Solenoid snippet on) and snippets/ are fixture

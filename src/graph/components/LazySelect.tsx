@@ -49,7 +49,7 @@ export function LazySelect({
     >
       {armed
         ? children
-        : <option value={value as string | number | undefined}>{selectedLabel(children, String(value))}</option>}
+        : <option value={value}>{selectedLabel(children, String(value))}</option>}
     </select>
   );
 }

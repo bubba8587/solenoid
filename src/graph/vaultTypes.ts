@@ -8,6 +8,7 @@ export type ScalarKind = "number" | "string" | "logical" | "date";
 export type TypeHint =
   | { kind: ScalarKind }
   | { kind: "list"; elem: ScalarKind }
+  | { kind: "matrix"; elem: ScalarKind }
   | { kind: "frame" };
 
 /** Per-key type hints for one note (or one collection's schema). */

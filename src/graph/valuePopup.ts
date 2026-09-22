@@ -27,13 +27,13 @@ export function is2D(v: ArrayValue): v is Cell[][] {
 }
 function to2D(v: ArrayValue): Cell[][] {
   // A list is orientation-less; a single ROW matches the result box and CSV line.
-  return is2D(v) ? v : [v as Cell[]];
+  return is2D(v) ? v : [v];
 }
 // The declared socket FAMILY decides this when known; the fallback reads the FIRST
 // cell only, so a leading `null` misreads a text list as numeric.
 function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
   if (family) return family === "complex" ? "string" : family; // Cx cells arrive pre-stringified
-  const first = is2D(v) ? (v[0] as Cell[])[0] : (v as Cell[])[0];
+  const first = is2D(v) ? v[0][0] : v[0];
   return typeof first === "string" ? "string" : typeof first === "boolean" ? "logical" : "number";
 }
 
@@ -41,7 +41,7 @@ function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "
  *  must not guess (dates are indistinguishable from numbers by value). */
 export function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
   let fam: ElemFamily | undefined;
-  for (const cell of (is2D(v) ? (v as Cell[][]).flat() : (v as Cell[]))) {
+  for (const cell of (is2D(v) ? (v as Cell[][]).flat() : v)) {
     if (cell === null || cell === undefined || isSolError(cell)) continue; // blanks/errors don't vote
     const f: ElemFamily | undefined =
       typeof cell === "number" ? "number"

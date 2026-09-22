@@ -219,7 +219,7 @@ function toFractionAdvanced(n: number): string {
 
 function applyCustomPattern(n: number, pattern: string): string {
   // Minimal Excel-ish custom number format: 0, #, ., comma grouping.
-  const dp = (pattern.match(/\.([0#]+)/) ?? [, ""])[1]?.length ?? 0;
+  const dp = pattern.match(/\.([0#]+)/)?.[1].length ?? 0;
   const useGrouping = pattern.includes(",");
   return n.toLocaleString(APP_LOCALE, {
     minimumFractionDigits: dp,
@@ -330,7 +330,7 @@ export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
 export interface PackUnit {
   id: string;
   label: string;             // display affix, e.g. " psi"
-  group: UnitGroup | string; // an existing group id, or a new one (+ groupLabel)
+  group: string;             // an existing group id, or a new one (+ groupLabel)
   groupLabel?: string;       // label for a brand-new group
   prefix?: boolean;          // render before the number (currencies)
 }

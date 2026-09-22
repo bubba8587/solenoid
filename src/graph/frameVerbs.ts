@@ -975,7 +975,7 @@ export function reconcileFrames(
         status = rowChanged ? "changed" : "unchanged";
         if (rowChanged) changed++; else unchanged++;
       }
-      pushRow(li !== null ? cellAt(lk, li) : cellAt(rk, ri!), status, li, ri);
+      pushRow(li !== null ? cellAt(lk, li) : cellAt(rk, ri), status, li, ri);
 
       if (havePvm) {
         const p0 = pvmFactor(li !== null, li !== null ? cellAt(sharedCols[priceIdx].left, li) : null);
@@ -1118,8 +1118,8 @@ function orderLeaves(rows: readonly number[], cols: readonly FrameColumn[], sort
     const k = leafKeyOf(cols, i);
     if (!tuples.has(k)) { tuples.set(k, cols.map((c) => cellAt(c, i))); firstSeen.push(k); }
   }
-  const levelRank: Map<string, number>[] = cols.map(() => new Map());
-  const cellByEnc: Map<string, FrameCell>[] = cols.map(() => new Map());
+  const levelRank = cols.map(() => new Map<string, number>());
+  const cellByEnc = cols.map(() => new Map<string, FrameCell>());
   for (const k of firstSeen) {
     tuples.get(k)!.forEach((cell, lvl) => {
       const vk = JSON.stringify(encodeCell(cell));
@@ -1361,7 +1361,7 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
         name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}),
         values: rowIdx.map((i) => cellAt(c, i)),
       })),
-    } as FrameValue;
+    };
   });
   return cubeFromColumns([...keyOut, { name: names[keyColumns.length], cells: nestedCells }]);
 }
@@ -1405,7 +1405,7 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
       const items = Array.isArray(cell) ? cell : [];
       const pushParent = () => flatCols.forEach((fc, k) => flatValsL[k].push(cubeCellAt(fc, i)));
       if (items.length === 0) { pushParent(); explodedL.push(null); }
-      else for (const item of items) { pushParent(); explodedL.push((item ?? null) as CubeCell); }
+      else for (const item of items) { pushParent(); explodedL.push(item ?? null); }
     }
     return frame([
       ...flatCols.map((fc, k) => ({ ...inferColumn(fc.name, flatValsL[k]), name: fc.name })),
@@ -1415,7 +1415,7 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
 
   if (sawCube) {
     // ── PEEL: nested cells are cubes → a depth-(n−1) cube. ──
-    const schemaCube = nested.cells.find((cell) => isCubeValue(cell)) as CubeValue | undefined;
+    const schemaCube = nested.cells.find((cell) => isCubeValue(cell));
     const childCubeCols = schemaCube?.columns ?? [];
     const flatValsC: CubeCell[][] = flatCols.map(() => []);
     const childValsC: CubeCell[][] = childCubeCols.map(() => []);
@@ -1442,7 +1442,7 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
   }
 
   // ── FLATTEN: nested cells are frames (or none) → the flat-frame path. ──
-  const schemaFrame = nested.cells.find((cell) => isFrameValue(cell)) as FrameValue | undefined;
+  const schemaFrame = nested.cells.find((cell) => isFrameValue(cell));
   const childCols = schemaFrame?.columns ?? [];
   const flatVals: CubeCell[][] = flatCols.map(() => []);
   const childVals: FrameCell[][] = childCols.map(() => []);
@@ -1950,8 +1950,8 @@ export function decisionSensitivity(
     // criterion NAMED "Score" would defeat a find-by-name here).
     const scoreCol = ranking.columns[1];
     const rankCol = ranking.columns[2];
-    const top = typeof scoreCol.values[0] === "number" ? (scoreCol.values[0] as number) : null;
-    const second = typeof scoreCol.values[1] === "number" ? (scoreCol.values[1] as number) : null;
+    const top = typeof scoreCol.values[0] === "number" ? scoreCol.values[0] : null;
+    const second = typeof scoreCol.values[1] === "number" ? scoreCol.values[1] : null;
 
     scenarioCells.push(scenCol.name); // the scenario is the column header
     // Every option tied at rank 1 (best-first, so they lead the frame) — a dead
@@ -2168,7 +2168,7 @@ export function describeColumn(values: readonly unknown[], type: FrameColType | 
     count: present.length,
     blank: values.length - present.length,
     error: present.filter((v) => isSolError(v)).length,
-    distinct: new Set(present.filter((v) => !isSolError(v)).map((v) => (typeof v === "number" ? `#${v}` : typeof v === "boolean" ? `b${v}` : `s${v}`))).size,
+    distinct: new Set(present.filter((v) => !isSolError(v)).map((v) => (typeof v === "number" ? `#${v}` : typeof v === "boolean" ? `b${v}` : `s${String(v)}`))).size,
     mean: null, std: null, min: null, q25: null, median: null, q75: null, max: null,
   };
   if (type === "number" || type === "date") {

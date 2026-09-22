@@ -124,12 +124,7 @@ jobs:
           # Tags containing a hyphen (v0.1.1-alpha, v0.2.0-beta.1) are marked
           # pre-release; a clean tag (v0.2.0) publishes as a full release.
           prerelease: ${{ contains(github.ref_name, '-') }}
-          # Auto-generated changelog (commits since the last tag) appended
-          # below this install note.
+          # The body starts as the auto-generated changelog (commits since the last
+          # tag). The author replaces it with the release notes written from
+          # docs/release-notes-features.md; a release carries notes, not install steps.
           generate_release_notes: true
-          body: |
-            **Windows (portable):** download `solenoid-*-windows-x64.exe` below and run it — no installer.
-
-            The binary is **unsigned**, so Windows SmartScreen will warn: click **More info → Run anyway**.
-
-            **Linux:** download `solenoid-*-linux-x64.AppImage`, mark it executable (`chmod +x`) and run it, or install `solenoid-*-linux-amd64.deb` on Debian and Ubuntu.

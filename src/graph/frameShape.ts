@@ -94,7 +94,7 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       return {
         columns: [
           ...idCols.map((c, k) => ({ name: names[k], type: c.type })),
-          { name: names[idCols.length], type: "string" as FrameColType },
+          { name: names[idCols.length], type: "string" },
           { name: names[idCols.length + 1], type: valCols[0]?.type ?? "number" },
         ],
       };

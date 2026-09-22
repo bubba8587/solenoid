@@ -52,8 +52,8 @@ describe("NoteNode frontmatter outputs", () => {
     expect(n.fieldValues().screen).toEqual({
       __frame: true,
       columns: [
-        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"] },
-        { name: "Screen", type: "number", values: [8, 9] },
+        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"], raw: ["ProBook", "UltraSlim"] },
+        { name: "Screen", type: "number", values: [8, 9], raw: ["8", "9"] },
       ],
     });
   });
@@ -106,8 +106,8 @@ describe("NoteNode frontmatter outputs", () => {
     expect(n.fieldValues().screen).toEqual({
       __frame: true,
       columns: [
-        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"] },
-        { name: "Screen", type: "number", values: [8, 9] },
+        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"], raw: ["ProBook", "UltraSlim"] },
+        { name: "Screen", type: "number", values: [8, 9], raw: ["8", "9"] },
       ],
     });
     expect(n.fieldTypes.screen).toBeUndefined();

@@ -187,7 +187,7 @@ function resolveSymbol(sym: string): Unit | null {
 function parseFactor(tok: string): Unit | null {
   const t = tok.trim();
   if (t === "") return null;
-  const caret = /^([^\^]+)\^(-?\d+(?:\.\d+)?)$/.exec(t);
+  const caret = /^([^^]+)\^(-?\d+(?:\.\d+)?)$/.exec(t);
   const trailing = /^([A-Za-zµ¤%]+?)(-?\d+)$/.exec(t);
   let symStr = t;
   let power = 1;

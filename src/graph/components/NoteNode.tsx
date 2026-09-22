@@ -19,7 +19,7 @@ import { getActiveEditor, getActiveView } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { standoffStore, settleStandoffs } from "../standoffs";
-import { SOCKET_COLORS } from "../sockets";
+import { SOCKET_COLORS, isDateType } from "../sockets";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
@@ -37,19 +37,23 @@ import { useKatexReady } from "./katexLoader";
 
 type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
-// Grouped by dimensionality — the override picker offers the four element families at
-// the field's CURRENT dimension; glyphs reuse the Socket Legend vocabulary.
-const SCALAR_FIELD_TYPES: FrontmatterFieldType[] = ["number", "string", "date", "logical"];
-const LIST_FIELD_TYPES: FrontmatterFieldType[] = ["list", "strlist", "datelist", "logicallist"];
+// Grouped by rank — the override picker offers the five element families at the field's
+// CURRENT rank; glyphs reuse the Socket Legend vocabulary.
+const FIELD_TYPES_AT_RANK: FrontmatterFieldType[][] = [
+  ["number", "string", "date", "logical", "complex"],
+  ["list", "strlist", "datelist", "logicallist", "complexlist"],
+  ["table", "strtable", "datetable", "logicaltable", "complextable"],
+];
 const FIELD_TYPE_LABEL: Record<FrontmatterFieldType, string> = {
-  number: "Number", string: "Text", date: "Date", logical: "Boolean",
-  list: "Number list", strlist: "Text list", datelist: "Date list", logicallist: "Boolean list",
+  number: "Number", string: "Text", date: "Date", logical: "Boolean", complex: "Complex",
+  list: "Number list", strlist: "Text list", datelist: "Date list", logicallist: "Boolean list", complexlist: "Complex list",
+  table: "Number table", strtable: "Text table", datetable: "Date table", logicaltable: "Boolean table", complextable: "Complex table",
   frame: "Frame", cube: "Cube",
 };
-const isListFieldType = (t: FrontmatterFieldType) => LIST_FIELD_TYPES.includes(t);
+const rankOfField = (t: FrontmatterFieldType): number => FIELD_TYPES_AT_RANK.findIndex((types) => types.includes(t));
 
 function glyphFor(t: FrontmatterFieldType): SocketGlyph {
-  return { kind: isListFieldType(t) || t === "frame" || t === "cube" ? "square" : "circle", color: SOCKET_COLORS[t] };
+  return { kind: rankOfField(t) > 0 || t === "frame" || t === "cube" ? "square" : "circle", color: SOCKET_COLORS[t] };
 }
 
 /** A short, human-readable preview of a field's value for the row. */
@@ -67,9 +71,13 @@ function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
   const one = (v: number | string | boolean | null): string => {
     if (v === null) return "null";
     if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
-    if (typeof v === "number" && (t === "date" || t === "datelist")) return formatDateSerial(v, DEFAULT_DATE_FORMAT);
+    if (typeof v === "number" && isDateType(t)) return formatDateSerial(v, DEFAULT_DATE_FORMAT);
     return String(v);
   };
+  if (Array.isArray(value) && rankOfField(t) === 2) {
+    const rows = value as unknown[][];
+    return `${rows.length}×${rows[0]?.length ?? 0} Table`;
+  }
   if (Array.isArray(value)) {
     const shown = value.slice(0, 4).map((e) => one(e as number | string | boolean | null));
     return `[${shown.join(", ")}${value.length > 4 ? ", …" : ""}]`;
@@ -410,7 +418,7 @@ export function FieldRow({
   // value already fixed scalar vs list; the override only swaps the element type. A
   // frame field has no element-type to swap, so its glyph is inert (no picker).
   const canRetype = type !== "frame" && type !== "cube";
-  const options = isListFieldType(type) ? LIST_FIELD_TYPES : SCALAR_FIELD_TYPES;
+  const options = FIELD_TYPES_AT_RANK[rankOfField(type)] ?? [];
 
   // An FC fed by this field formats the box BEHIND it — this row — so render its locked
   // format/unit (the upstream half of FC unit-locking), else the raw preview.

@@ -24,7 +24,8 @@
         { "path": "$HOME/**/*.md" },
         { "path": "$HOME/**/*.yaml" },
         { "path": "$HOME/**/*.yml" },
-        { "path": "$HOME/**/.obsidian/*.json" }
+        { "path": "$HOME/**/.obsidian/*.json" },
+        { "path": "$HOME/**/.obsidian/plugins/solenoid-properties/data.json" }
       ]
     },
     {

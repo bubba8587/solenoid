@@ -92,7 +92,7 @@ export function buildFrame(matrix: number[][], names?: ReadonlyArray<string>): F
     name,
     type: "number" as const,
     values: matrix.map((row) => (row[j] === undefined ? null : row[j])),
-    ...(parsed[j]?.unit ? { unit: parsed[j]!.unit } : {}),
+    ...(parsed[j]?.unit ? { unit: parsed[j].unit } : {}),
   }));
   return { __frame: true, columns };
 }
@@ -137,7 +137,7 @@ export function buildFrameTyped(
   const columns: FrameColumn[] = headers.map((name, j) => {
     const cells = matrix.map((row) => (j < row.length ? row[j] : null));
     const col = typedColumn(name, cells, matrix.length, colType ?? undefined);
-    return parsed[j]?.unit && col.type === "number" ? { ...col, unit: parsed[j]!.unit } : col;
+    return parsed[j]?.unit && col.type === "number" ? { ...col, unit: parsed[j].unit } : col;
   });
   return { __frame: true, columns };
 }
@@ -307,9 +307,9 @@ export function parseFrameSource(text: string): FrameSource {
           const type: FrameColType = c?.type === "string" ? "string" : c?.type === "date" ? "date"
             : c?.type === "logical" ? "logical" : "number";
           const cells = Array.isArray(c?.cells)
-            ? (c!.cells as unknown[]).map((x) => (x == null ? "" : String(x)))
+            ? (c.cells as unknown[]).map((x) => (x == null ? "" : String(x)))
             : Array.isArray(c?.values)
-              ? (c!.values as unknown[]).map((x) =>
+              ? c.values.map((x) =>
                   x == null ? "" : typeof x === "boolean" ? (x ? "TRUE" : "FALSE") : String(x))
               : [];
           const unit = typeof c?.unit === "string" && c.unit !== "" ? c.unit : undefined;
@@ -449,7 +449,15 @@ export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>
  *  type hint, a list value is a LIST cell (never joined into text), a nested record list a
  *  nested frame/cube via the same rule. The rows-of-objects shape frontmatter and the vault
  *  readers share. */
-export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>): CubeValue {
+/** A picked column's cell: the type's own value boundary, as a Frame Input cell crosses it, so
+ *  what the type cannot read is NaN over the text, never a silent blank ([[D72]]). */
+function pickedCell(type: FrameColType, v: unknown): CubeCell {
+  return v == null ? null : coerceFrameCell(type, String(v));
+}
+
+/** `picks`: a column's type as the user picked it (the Solenoid Properties plugin's
+ *  `columnTypes`), which beats inference for that column. */
+export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>, picks: Readonly<Record<string, FrameColType>> = {}): CubeValue {
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
   const names = makeHeaders(keys, keys.length);
@@ -469,6 +477,8 @@ export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>): 
     const cells = records.map((r) => toCell(r[key]));
     const scalarOnly = cells.every((c) => c == null || (typeof c !== "object"));
     if (!scalarOnly) return { name: names[j], cells };
+    const pick = picks[key];
+    if (pick) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
     const inferred = inferColumn(names[j], cells);
     return { name: names[j], cells, type: inferred.type };
   }));
@@ -639,7 +649,7 @@ function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
  *  the socket doc's), and a nested frame/cube/list cell can't be a join key (→ null). */
 function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
   if (cell === null || isSolError(cell)) return null;
-  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell as FrameCell, unit);
+  if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell, unit);
   if (isUnitCell(cell)) return keyId(cell);
   return null;
 }
@@ -744,7 +754,7 @@ export function relateCubeToFrame(parent: CubeValue, child: FrameValue | CubeVal
 export function cubeColumnFromValue(value: unknown): CubeCell[] {
   if (value == null) return [];
   if (isCubeValue(value)) return [...(value.columns[0]?.cells ?? [])];
-  if (isFrameValue(value)) return [value as CubeCell];
+  if (isFrameValue(value)) return [value];
   if (Array.isArray(value)) return value as CubeCell[];
   return [value as CubeCell];
 }

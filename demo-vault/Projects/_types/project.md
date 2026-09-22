@@ -41,7 +41,4 @@ schema:
 ---
 # Project
 
-The shape every note in the Projects collection follows: `status` is one of planning,
-active, blocked, or done; `priority` an integer 1–5; `budget` a number; `due` a date;
-`tags` a list; and `milestones` a small table of name, due, and done. New project notes
-are validated against this.
+The shape every note in the Projects collection follows: `status` is one of planning, active, blocked, or done; `priority` an integer 1–5; `budget` a number; `due` a date; `tags` a list; and `milestones` a small table of name, due, and done. New project notes are validated against this.

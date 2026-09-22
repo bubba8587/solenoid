@@ -24,7 +24,6 @@ dateModified: 2026-09-06T12:00:00
 ---
 # Write launch copy
 
-The hero and three feature blocks for the [[Projects/Website launch]]. Waiting on the
-email draft so the voice matches. Ada reviews before it goes to design.
+The hero and three feature blocks for the [[Projects/Website launch]]. Waiting on the email draft so the voice matches. Ada reviews before it goes to design.
 
 #task #work #writing

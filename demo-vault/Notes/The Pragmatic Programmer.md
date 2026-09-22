@@ -9,8 +9,6 @@ tags:
 ---
 # The Pragmatic Programmer
 
-Halfway through the reread. Still the clearest case for keeping things simple and fixing
-the broken window before it spreads. No `finished` date yet, so it shows up as still open
-in the reading list.
+Halfway through the reread. Still the clearest case for keeping things simple and fixing the broken window before it spreads. No `finished` date yet, so it shows up as still open in the reading list.
 
 #book #work

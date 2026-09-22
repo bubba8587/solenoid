@@ -4,7 +4,9 @@ import { sourceHasLayer } from "../svgLayer";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
   listSocket, strListSocket, logicalListSocket, dateListSocket, frameSocket,
-  SolenoidSocket, cubeSocket,
+  complexSocket, complexListSocket,
+  tableSocket, strTableSocket, logicalTableSocket, dateTableSocket, complexTableSocket,
+  SolenoidSocket, cubeSocket, elementFamilyOf, latticeRank, typeAtRank,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { chartOut, strOut, documentOut } from "./shared";
@@ -13,8 +15,9 @@ import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../kn
 import { solError, type SolError } from "../errorValue";
 import { getActiveView, getOwningEditor } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
-import { isFrameValue, recordsToCube, type FrameValue, type FrameColumn, type FrameColType, type FrameCell, type CubeValue } from "../frame";
+import { isFrameValue, recordsToCube, coerceFrameCell, type FrameValue, type FrameColumn, type FrameColType, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
+import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
@@ -47,34 +50,34 @@ const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   strlist: strListSocket,
   logicallist: logicalListSocket,
   datelist: dateListSocket,
+  complex: complexSocket,
+  complexlist: complexListSocket,
+  table: tableSocket,
+  strtable: strTableSocket,
+  logicaltable: logicalTableSocket,
+  datetable: dateTableSocket,
+  complextable: complexTableSocket,
   frame: frameSocket,
   cube: cubeSocket,
 };
 
-const FIELD_BASE: Record<Exclude<FrontmatterFieldType, "frame" | "cube">, "number" | "string" | "logical" | "date"> = {
-  number: "number", string: "string", logical: "logical", date: "date",
-  list: "number", strlist: "string", logicallist: "logical", datelist: "date",
-};
-const LIST_TYPES = new Set<FrontmatterFieldType>(["list", "strlist", "logicallist", "datelist"]);
-const LIST_OF: Record<"number" | "string" | "logical" | "date", FrontmatterFieldType> = {
-  number: "list", string: "strlist", logical: "logicallist", date: "datelist",
-};
+type FieldBase = "number" | "string" | "logical" | "date" | "complex";
 
-/** A pin carries only its ELEMENT family: reshape it onto the guess's dimensionality, or
- *  drop it when either side is a frame (a frame has no element family to pin). */
+/** A pin carries only its ELEMENT family: reshape it onto the guess's rank (scalar, list or
+ *  matrix), or drop it when either side is a frame or cube (no element family to pin). */
 function reshapePin(
   pinned: FrontmatterFieldType | undefined,
   guessed: FrontmatterFieldType,
 ): FrontmatterFieldType | undefined {
-  if (!pinned || pinned === "frame" || guessed === "frame" || pinned === "cube" || guessed === "cube") return undefined;
-  if (LIST_TYPES.has(pinned) === LIST_TYPES.has(guessed)) return pinned;
-  const base = FIELD_BASE[pinned];
-  return LIST_TYPES.has(guessed) ? LIST_OF[base] : base;
+  const rank = latticeRank(guessed);
+  if (!pinned || rank === null || latticeRank(pinned) === null) return undefined;
+  return (typeAtRank(pinned, rank as 0 | 1 | 2) ?? undefined) as FrontmatterFieldType | undefined;
 }
 
-/** A frame column's type from its cells, first non-null wins (dates already collapsed to
- *  serials, so they type as number — a Note frame is plain data, no per-column date pick). */
-function frameColType(cells: FrontmatterScalar[]): FrameColType {
+/** A frame column's type from its cells, first non-null wins; a plain ISO date is still text
+ *  here, so the reader's `dateColumns` says which columns are dates. */
+function frameColType(cells: FrontmatterScalar[], isDate: boolean): FrameColType {
+  if (isDate) return "date";
   for (const v of cells) {
     if (v === null) continue;
     if (typeof v === "boolean") return "logical";
@@ -85,8 +88,12 @@ function frameColType(cells: FrontmatterScalar[]): FrameColType {
 }
 
 /** Rows of `{name: value}` → a FrameValue: columns are the keys in first-appearance order
- *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. */
-function rowsToFrame(rows: FrontmatterRow[]): FrameValue {
+ *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. A
+ *  column's type is the user's pick (the Solenoid Properties plugin's `columnTypes`) when there
+ *  is one, else the cells'. Every cell crosses the app's own value boundary (`coerceFrameCell`)
+ *  with its source text kept as `raw`, as Frame Input's literal source does: a type that cannot
+ *  read a cell shows NaN over the text, never a silent blank ([[D72]]). */
+function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
   const columns: FrameColumn[] = names.map((name) => {
@@ -97,13 +104,15 @@ function rowsToFrame(rows: FrontmatterRow[]): FrameValue {
       const first = v[0] ?? null;
       return typeof first === "object" ? null : first;
     });
-    return { name, type: frameColType(cells), values: cells as FrameCell[] };
+    const type = picks[name] ?? frameColType(cells, dateColumns.includes(name));
+    const raw = cells.map((c) => (c === null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
+    return { name, type, values: raw.map((r) => coerceFrameCell(type, r)), raw };
   });
   return { __frame: true, columns };
 }
 
 // Only bites when a per-key TYPE override disagrees with the guessed value.
-function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical" | "date"): FrontmatterScalar {
+function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar {
   if (v === null) return null;
   switch (base) {
     case "number": {
@@ -111,6 +120,7 @@ function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical
       return Number.isFinite(n) ? n : null;
     }
     case "string":
+    case "complex":
       return typeof v === "string" ? v : String(v);
     case "logical":
       return typeof v === "boolean" ? v : v === 1 || v === "1" || String(v).toLowerCase() === "true";
@@ -121,16 +131,18 @@ function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical
   }
 }
 
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): EmittedValue {
-  if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : []);
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks): EmittedValue {
+  if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : [], dateColumns, picks);
   // A row list with a list value is a cube (recordsToCube keeps the list as a list cell).
-  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : []);
-  const base = FIELD_BASE[type];
-  if (LIST_TYPES.has(type)) {
-    const arr = Array.isArray(value) ? value : value === null ? [] : [value];
-    return arr.map((e) => coerceScalar(e as FrontmatterScalar, base));
+  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks);
+  const base = elementFamilyOf(type) as FieldBase;
+  const rank = latticeRank(type);
+  const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
+  if (rank === 2) {
+    return items.map((row) => (Array.isArray(row) ? row : [row]).map((e) => coerceScalar(e as FrontmatterScalar, base)));
   }
-  const scalar = Array.isArray(value) ? (value[0] ?? null) : value;
+  if (rank === 1) return items.flat().map((e) => coerceScalar(e as FrontmatterScalar, base));
+  const scalar = items.flat()[0] ?? null;
   return coerceScalar(scalar as FrontmatterScalar, base);
 }
 
@@ -147,6 +159,10 @@ export class NoteNode extends ClassicPreset.Node {
   // A user's per-key type pick, persisted. The pin holds the ELEMENT family only; the
   // value's dimensionality (scalar / list / frame) always comes from the body.
   fieldTypes: Record<string, FrontmatterFieldType>;
+  /** A frame property's picked column types, by key: what the Solenoid Properties plugin
+   *  recorded in the vault. A bare Note has no vault and keeps none; Import Obsidian Note
+   *  reads them with the note. Not saved: the vault is the source. */
+  columnPicks: PluginColumnTypes = {};
 
   // Derived from `body` on every sync (NOT persisted — the body is the source).
   private _renderBody = "";                              // markdown below the block
@@ -225,7 +241,7 @@ export class NoteNode extends ClassicPreset.Node {
         else this.fieldTypes[f.key] = pin;
       }
       const type = pin ?? guessed;
-      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type), type });
+      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key]), type });
     }
     for (const k of [...this._knapRendered.keys()]) if (!this._knapRaw.has(k)) this._knapRendered.delete(k);
     // Prune overrides for keys no longer present (keep the save lean).

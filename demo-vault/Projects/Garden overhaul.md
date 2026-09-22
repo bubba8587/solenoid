@@ -14,7 +14,6 @@ milestones:
 ---
 # Garden overhaul
 
-Blocked on the [[Projects/Kitchen remodel]] finishing so the yard has access again.
-Soil test first, then beds and irrigation in the spring.
+Blocked on the [[Projects/Kitchen remodel]] finishing so the yard has access again. Soil test first, then beds and irrigation in the spring.
 
 #home #outdoors

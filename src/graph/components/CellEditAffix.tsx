@@ -39,7 +39,7 @@ export function CellEditAffix({ type, iso, checked, onPick }: {
         aria-label="Open the calendar"
         tabIndex={-1}
         onClick={() => {
-          const el = nativeRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+          const el = nativeRef.current;
           if (!el) return;
           try { el.showPicker?.(); } catch { /* no picker on this platform: the cell still types */ }
         }}

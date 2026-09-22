@@ -16,8 +16,7 @@ sessions:
 ---
 # Spanish course
 
-Working through the beginner track with a friend on weekends. Greetings stuck; the past
-tense needs another pass. Next up: ordering food and asking for directions.
+Working through the beginner track with a friend on weekends. Greetings stuck; the past tense needs another pass. Next up: ordering food and asking for directions.
 
 Related: [[Notes/Deep Work]].
 

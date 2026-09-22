@@ -74,7 +74,10 @@ never needs a flattening step; writers take a cube; a sink's preview is a `plan`
 **Obsidian properties.** text · list · number · checkbox · date (`2020-08-21`) · date & time
 (`2020-08-21T10:30:00`) · tags; names unique per note; links in properties are quoted
 `"[[Note]]"`. The vault's property-type registry is `.obsidian/types.json`
-(`{"types": {"due": "date", …}}`). The Daily notes core plugin stores `folder` / `format` /
+(`{"types": {"due": "date", …}}`); a frame property's column types, as picked in the Solenoid
+Properties plugin, are its `.obsidian/plugins/solenoid-properties/data.json` (`columnTypes`),
+read as the column-level typing source above the guesser (`specs/obsidian-plugin.md` § The app
+reads the picks). The Daily notes core plugin stores `folder` / `format` /
 `template` (`.obsidian/daily-notes.json` — **verify** the file name against a real vault);
 templates use `{{date}}` / `{{date:FORMAT}}` (moment tokens).
 

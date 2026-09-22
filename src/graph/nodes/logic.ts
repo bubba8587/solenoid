@@ -56,7 +56,7 @@ function typedLiteral(node: LiteralHost, key: string): number | string | undefin
  *  falls back to its typed literal (`readInput`'s rule, over both literal maps). The one
  *  reader for every `autoLiterals` wildcard slot (value-semantics.md). */
 export function pickSlot(node: LiteralHost, inputs: Record<string, unknown[] | undefined>, key: string): unknown {
-  if (inputs[key]?.length) return inputs[key]![0];
+  if (inputs[key]?.length) return inputs[key][0];
   return typedLiteral(node, key) ?? null;
 }
 
@@ -257,8 +257,8 @@ export class IfNode extends ClassicPreset.Node {
   data(inputs: { cond?: unknown[]; then?: unknown[]; else?: unknown[] }) {
     // Connection-presence, not `??`, so a WIRED null/false survives.
     const cond = inputs.cond?.length ? inputs.cond[0] : this.literals.cond;
-    const then = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "then");
-    const els  = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "else");
+    const then = pickSlot(this, inputs, "then");
+    const els  = pickSlot(this, inputs, "else");
     this._selectedUnitKey = Array.isArray(cond) || isMissing(cond) ? null : truthy(cond) ? "then" : "else";
     // A missing condition → null: no branch can be picked.
     const result = broadcastEl<unknown, unknown>(
@@ -420,7 +420,7 @@ export class IFErrorNode extends ClassicPreset.Node {
     const caught = (v: unknown): boolean =>
       this.op === "iferror" ? isSolError(v) : isNaError(v);
     const result = replaceCaught(rawValue, fallback, caught);
-    this.cachedResult = result as IFErrorNode["cachedResult"];
+    this.cachedResult = result;
     return { result };
   }
 }
@@ -870,7 +870,7 @@ export class IsEvenOddNode extends ClassicPreset.Node {
     const result: Tri | Tri[] = input === null ? null
       : broadcastEl((x) => {
           if (isMissing(x)) return null;
-          const even = Math.trunc(x as number) % 2 === 0;
+          const even = Math.trunc(x) % 2 === 0;
           return this.op === "iseven" ? even : !even;
         }, input);
     this.cachedResult = result;

@@ -114,7 +114,7 @@ export function annotationForValue(value: unknown, ann: FormatAnnotation | undef
   if (!ann || !annotationCarriesNoUnit(ann)) return ann;
   const cell = isUnitCell(value)
     ? value
-    : Array.isArray(value) ? (value as unknown[]).find((c) => isUnitCell(c)) as UnitCell | undefined : undefined;
+    : Array.isArray(value) ? (value as unknown[]).find((c) => isUnitCell(c)) : undefined;
   return cell?.display ? { ...ann, unit: cell.display, customUnit: "" } : ann;
 }
 
@@ -154,10 +154,10 @@ export function unwrapUnitCells(value: DisplayValue, ann: FormatAnnotation | und
   if (Array.isArray(value) && value.some((c) => isUnitCell(c))) {
     if (ann) {
       return (value as (number | UnitCell | null | SolError)[]).map((c) =>
-        isUnitCell(c) ? displayMagnitude(c, ann) : c) as DisplayValue;
+        isUnitCell(c) ? displayMagnitude(c, ann) : c);
     }
     return (value as (number | UnitCell | boolean | string | null | SolError)[])
-      .map((c) => formatListCell(c, formatScalar)) as unknown as DisplayValue;
+      .map((c) => formatListCell(c, formatScalar));
   }
   return value;
 }
@@ -216,7 +216,7 @@ export function dateFormatDisplay(value: DisplayValue, dateLike: boolean, hasAnn
       // A non-finite SERIAL is dirty data with no date to show — blank, per the pin.
       if (typeof v === "number") return Number.isFinite(v) ? fmtSerial(v) : "";
       return v;                           // text/logical cells pass through
-    }) as unknown as DisplayValue;
+    });
   }
   return value;
 }

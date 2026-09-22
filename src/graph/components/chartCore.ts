@@ -50,7 +50,7 @@ export function axisTick(n: number): string {
  *  cell's ORIGINAL index, so x-axis labels still line up after gaps are dropped. */
 export function toSeries(v: unknown): { i: number; v: number }[] {
   if (v == null) return [];
-  const arr = Array.isArray(v) ? v : [v];
+  const arr: unknown[] = Array.isArray(v) ? v : [v];
   const out: { i: number; v: number }[] = [];
   for (let i = 0; i < arr.length; i++) {
     const x = arr[i];

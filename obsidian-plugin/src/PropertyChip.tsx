@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
 import { useRef, useState, useSyncExternalStore } from "react";
 import { ArrayChip, arrayAccentFor } from "../../src/graph/components/ArrayChip";
 import { themeVersion, tokenHex } from "./shadow";
@@ -7,8 +7,8 @@ import { CubeChip } from "../../src/graph/components/CubeChip";
 import { deriveFrame, recordsToCube } from "../../src/graph/frame";
 import type { CubeRecord } from "../../src/graph/literalEditors";
 import {
-  coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, rawCell,
-  type PropertyKind, type Family, type YamlRecord,
+  coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, columnTypesOf, rawCell,
+  type PropertyKind, type Family, type YamlRecord, type ColumnTypes,
 } from "./yamlValue";
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
@@ -22,15 +22,19 @@ function typeAccent(kind: PropertyKind): string | undefined {
   return tokenHex(token);
 }
 
-export function PropertyChip({ kind, label, initial, onChange }: {
+export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes }: {
   kind: PropertyKind;
   label: string;
   initial: unknown;
   onChange: (next: unknown) => void;
+  /** A frame's picked column types for this property, and where a Save reports them. */
+  columnTypes?: ColumnTypes;
+  onColumnTypes?: (types: ColumnTypes) => void;
 }) {
   // Obsidian skips re-rendering a focused property, so the chip tracks its own edits.
   const [yaml, setYaml] = useState<unknown>(initial);
   const latest = useRef<unknown>(initial);
+  const [picked, setPicked] = useState<ColumnTypes>(columnTypes ?? {});
   const commit = (next: unknown) => {
     latest.current = next;
     setYaml(next);
@@ -38,7 +42,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
   };
   // After a type switch the value may be anything: it shows and edits in this kind's shape, and
   // only Save writes that shape to the note.
-  const items = coerceYaml(kind, yaml);
+  const items = coerceYaml(kind, yaml) as unknown[];
   useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
   const accent = typeAccent(kind);
 
@@ -56,7 +60,7 @@ export function PropertyChip({ kind, label, initial, onChange }: {
           cellType: popupCellType(family),
           list: false,
           fixedCols: true,
-          onSaveRaw: (cells) => commit(listToYaml(cells, family)),
+          onSaveRaw: (cells) => commit(listToYaml(cells, yaml)),
         }}
       />
     );
@@ -78,14 +82,14 @@ export function PropertyChip({ kind, label, initial, onChange }: {
           data: raw.length ? raw : [[""]],
           cellType: popupCellType(family),
           list: false,
-          onSaveRaw: (cells) => commit(matrixToYaml(cells, family)),
+          onSaveRaw: (cells) => commit(matrixToYaml(cells, yaml)),
         }}
       />
     );
   }
 
   if (kind.shape === "frame") {
-    const source = frameSourceFromYaml(items);
+    const source = frameSourceFromYaml(items, picked);
     // An empty frame (what Obsidian leaves after a type switch) opens on one blank Text column
     // and row: a 0×0 grid has nothing to type into. Text, so nothing typed is lost to a type.
     const editorSource = source.length ? source : [{ name: "", type: "string" as const, cells: [""] }];
@@ -96,7 +100,12 @@ export function PropertyChip({ kind, label, initial, onChange }: {
         size="sm"
         accent={accent}
         source={editorSource}
-        onSaveSource={(columns) => commit(frameSourceToYaml(columns))}
+        onSaveSource={(columns) => {
+          const types = columnTypesOf(columns);
+          setPicked((prev) => ({ ...prev, ...types }));
+          onColumnTypes?.(types);
+          commit(frameSourceToYaml(columns, yaml));
+        }}
         popupOverrides={{ unitTaggable: false, noFormulaColumns: true }}
       />
     );

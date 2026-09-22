@@ -30,9 +30,8 @@ makes something a slide. **The 1.4 list shipped with v1.4.0 and lives in git his
 - **[slide] Solenoid Properties, an Obsidian plugin.** List, Matrix, Frame and Cube
   property types for Obsidian: a property shows as the chip Solenoid draws for it, opens
   in Solenoid's table editor and stays plain YAML in the note. Solenoid reads what it
-  writes. Plugin 0.1.0 publishes right after the 1.4.1 tag (author 2026-09-21); the release
-  notes get its URL then. It installs through BRAT or by hand until the community listing
-  is accepted.
+  writes. Listed in Obsidian's community plugins:
+  community.obsidian.md/plugins/solenoid-properties (0.1.0).
 - **[slide] Table editing.** The table popup's Form and CSV views edit in place, in both
   Source and Formatted modes. The cell being edited gets a calendar for a date and a
   checkbox for a Boolean, and a text cell suggests the values already in its column.
