@@ -1138,8 +1138,8 @@ export function KMeansComponent({ data, emit }: NodeProps<KMeansNodeType>) {
 }
 
 const PCA_SCALE_OPTIONS: { value: "cov" | "corr"; label: string; title: string }[] = [
-  { value: "cov", label: "Centered", title: "Covariance PCA — features keep their scale (prcomp default)" },
-  { value: "corr", label: "Standardized", title: "Correlation PCA — each feature scaled to unit variance first (prcomp scale. = TRUE)" },
+  { value: "cov", label: "Centered", title: "Covariance PCA: features keep their scale (prcomp's default)" },
+  { value: "corr", label: "Standardized", title: "Correlation PCA: each feature is scaled to unit variance first (prcomp scale. = TRUE)" },
 ];
 
 export function PcaComponent({ data, emit }: NodeProps<PcaNodeType>) {

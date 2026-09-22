@@ -269,7 +269,7 @@ export function CubePopup() {
         {view.kind === "list" && (
           <div className="table-popup__view" role="group" aria-label="List layout">
             <button type="button" aria-pressed={!listVertical} onClick={() => setListVertical(false)} title="Show the list across a row">Row</button>
-            <button type="button" aria-pressed={listVertical} onClick={() => setListVertical(true)} title="Show the list down a column — one value per line (display only, the value is unchanged)">Column</button>
+            <button type="button" aria-pressed={listVertical} onClick={() => setListVertical(true)} title="Show the list down a column. Display only; the value doesn't change.">Column</button>
           </div>
         )}
         {editView && state.edit && <CubeEditRows edit={state.edit} view={editView} />}

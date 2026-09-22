@@ -95,7 +95,7 @@ export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>)
 
 const offDiagOptions = (zeroTitle: string) => [
   { value: "zero" as const, label: "0", title: zeroTitle },
-  { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank (null) — skipped by sums and element-wise ops" },
+  { value: "blank" as const, label: "blank", title: "Off-diagonal cells are blank, so sums and element-wise ops skip them" },
 ];
 
 export const TableUnitComponent = makeToggleNodeComponent<TableUnitNodeType, TableUnitNodeType["offDiag"]>(

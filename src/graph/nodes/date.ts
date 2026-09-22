@@ -391,8 +391,8 @@ export class DateAddNode extends ClassicPreset.Node {
 export type WorkdaysOp = "workday" | "networkdays";
 
 export const WORKDAYS_OP_META = {
-  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list. `weekend_code` `1=Sat+Sun`, 2–7 and 11–17 per Excel. Excel: `WORKDAY` / `WORKDAY.INTL`, numeric `weekend_code` only; the 7-char weekend string isn't supported." },
-  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list. `weekend_code` `1=Sat+Sun`, 2–7 and 11–17 per Excel. Excel: `NETWORKDAYS` / `NETWORKDAYS.INTL`, numeric `weekend_code` only; the 7-char weekend string isn't supported." },
+  workday:     { label: "WORKDAY",     description: "The date N working days from Start, skipping weekends and an optional Holidays list. `weekend_code` uses Excel's numbers (1 is Sat+Sun, then 2–7 and 11–17); the 7-character weekend string isn't supported. Excel: `WORKDAY`, `WORKDAY.INTL`." },
+  networkdays: { label: "NETWORKDAYS", description: "Counts the working days between Start and End, skipping weekends and an optional Holidays list. `weekend_code` uses Excel's numbers (1 is Sat+Sun, then 2–7 and 11–17); the 7-character weekend string isn't supported. Excel: `NETWORKDAYS`, `NETWORKDAYS.INTL`." },
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
 export class WorkdaysNode extends ClassicPreset.Node {

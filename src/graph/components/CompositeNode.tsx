@@ -289,8 +289,8 @@ function ByRowEditor({ node }: { node: CompositeNodeType }) {
 }
 
 const DIST_OPTIONS: ReadonlyArray<{ value: DistributionKind; label: string; title: string }> = [
-  { value: "normal", label: "Normal", title: "Gaussian — the ± is a standard deviation (1σ)" },
-  { value: "uniform", label: "Uniform", title: "Flat — the ± is a half-width around the value" },
+  { value: "normal", label: "Normal", title: "Gaussian: the ± is one standard deviation (1σ)" },
+  { value: "uniform", label: "Uniform", title: "Flat: the ± is a half-width around the value" },
 ];
 
 function MiniHistogram({ samples }: { samples: readonly number[] }) {
@@ -395,7 +395,7 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
           <InlineNumberField value={mc?.samples ?? 500} onChange={(v) => { node.setMonteCarlo({ samples: v && v >= 1 ? Math.round(v) : 500 }); recompute(); }} />
           <span className="solenoid-node__io-label">Seed</span>
           <InlineNumberField value={mc?.seed ?? 1} onChange={(v) => { node.setMonteCarlo({ seed: v != null ? Math.round(v) : 1 }); recompute(); }} />
-          <span className="solenoid-node__io-label" title="Correlate inputs (Gaussian copula): label ~ label = ρ, several separated by ; — each input keeps its own ± and shape, only the dependence changes">Correlations</span>
+          <span className="solenoid-node__io-label" title="Correlate inputs with a Gaussian copula: label ~ label = ρ, several separated by semicolons. Each input keeps its own ± and shape; only the dependence changes.">Correlations</span>
           <InlineTextField
             value={mc?.correlations ?? ""}
             onChange={(v) => { node.setMonteCarlo({ correlations: v }); recompute(); }}

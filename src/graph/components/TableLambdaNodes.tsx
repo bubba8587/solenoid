@@ -67,7 +67,7 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
         {undeclared.length > 0 && (
           <div
             className="solenoid-expr__lambda-hint"
-            title="Used but not declared as a parameter — binds as a captured constant, not the live value."
+            title="Used but not declared as a parameter, so it binds as a captured constant, not the live value."
           >
             {undeclared.join(", ")} not declared — λ({formatLambdaSig(node.lambdaSig!)})
           </div>

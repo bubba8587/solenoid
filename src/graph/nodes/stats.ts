@@ -941,8 +941,8 @@ export const FIT_OP_META = {
 export type FitOp = keyof typeof FIT_OP_META;
 
 export const FIT_OP_OPTIONS: { value: FitOp; label: string; title?: string }[] = [
-  { value: "linear",      label: "linear", title: "Straight-line fit — slope, intercept, R² (Excel LINEST)" },
-  { value: "exponential", label: "exp",    title: "Growth-curve fit y = b·mˣ — m, b, R² on the log scale (Excel LOGEST)" },
+  { value: "linear",      label: "linear", title: "Straight-line fit: slope, intercept and R². Excel: LINEST" },
+  { value: "exponential", label: "exp",    title: "Growth-curve fit y = b·mˣ: m, b and R² on the log scale. Excel: LOGEST" },
 ];
 
 export class LinestNode extends ClassicPreset.Node {

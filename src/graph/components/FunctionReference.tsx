@@ -141,7 +141,7 @@ export function FunctionReference() {
                 className="fr-select"
                 value={lib}
                 onChange={(e) => setLib(e.target.value as "All" | LibraryTag)}
-                title="Only the rows that cite this library — the ones you'd reach for from there"
+                title="Only the rows that cite this library"
               >
                 <option value="All">Any library</option>
                 {LIBRARY_TAGS.map((l) => <option key={l} value={l}>{l}</option>)}

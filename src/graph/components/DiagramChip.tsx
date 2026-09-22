@@ -18,7 +18,7 @@ export function DiagramChip({ value, pinNodeId, size = "sm" }: {
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--chart${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title={value.title ? `${value.title} — expand to see it` : "Expand to see the diagram"}
+      title={value.title ? `${value.title}: expand to see it` : "Expand to see the diagram"}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => {
