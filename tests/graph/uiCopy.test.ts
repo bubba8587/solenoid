@@ -19,10 +19,9 @@ import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 // the corpus as written. "Is this sentence Captain Obvious?" is semantic and
 // stays a human call; what a regex can settle is caught below. A rule that would
 // flag legitimate prose was dropped rather than softened into a warning nobody
-// reads. Two section-7 rules are deliberately absent, both because the shipped
-// corpus predates them at a scale this test cannot arbitrate: the em-dash ban
-// (95 uses across help + catalog) and the no-trailing-parenthetical rule (113).
-// Enforcing either means a prose sweep first; see the 2026-07-27 dev-notes digest.
+// reads. The em-dash ban covers every shipped string. The no-trailing-parenthetical
+// rule covers catalog descriptions, socket docs and Excel notes only; help and
+// seed prose would need a sweep first.
 
 // The corpus collector lives in copyCorpus.ts, shared with scripts/copy-inventory.ts.
 
@@ -52,7 +51,7 @@ const GESTURE =
  *  be instructing at all, which depends on what the string is: a tooltip must
  *  not instruct, a demo document exists to be poked at. Seed prose is held to
  *  these only. */
-const GENRE_FREE = new Set(["british-spelling", "slogan", "tease-count", "chummy-aside", "widget-narration"]);
+const GENRE_FREE = new Set(["british-spelling", "slogan", "tease-count", "chummy-aside", "widget-narration", "em-dash"]);
 
 const RULES: Rule[] = [
   {
@@ -140,6 +139,12 @@ const RULES: Rule[] = [
     id: "widget-narration",
     why: "CLAUDE.md Captain Obvious — naming the control instead of the effect. Say what the option DOES; the reader can see it is a toggle",
     re: /\b(?:with|from|via|using)\s+the\s+(?:dropdown|checkbox|button|toggle|slider|menu|picker|selector|field|box)\b|\b(?:dropdown|checkbox|button|toggle)\s+(?:lets|allows|selects|sets)\b/i,
+  },
+  {
+    id: "em-dash",
+    why: 'section 7 "no em dashes" — use a period, a colon, or restructure',
+    // Every genre, seeds and help included: the whole shipped corpus is swept.
+    re: /—/,
   },
   {
     id: "chummy-aside",
@@ -271,6 +276,7 @@ describe("UI copy", () => {
         "A flow diagram: wire a 3-column frame (From, To, Value).",
       ],
       slogan: ["Every chart Excel has, and then some"],
+      "em-dash": ["the whole app comes with you — toolbar, minimap, zoom"],
       // Every string the 2026-07-27 aggressive sweep removed, verbatim.
       "gesture-narration": [
         "Hover any dot for its name.",

@@ -540,7 +540,7 @@
       "x": 33,
       "y": -450,
       "init": {
-        "label": "Monte Carlo — profit at risk",
+        "label": "Monte Carlo: profit at risk",
         "body": "Each input carries a **± error bar**. Solve runs the model hundreds of times, sampling the spreads, and reports the profit as **mean ± sd** with a histogram. Drill in to set each error bar.",
         "width": 300,
         "height": 150
@@ -665,7 +665,7 @@
       "x": 33,
       "y": 1144,
       "init": {
-        "label": "Scenarios — revenue cases",
+        "label": "Scenarios: revenue cases",
         "body": "Name a few input sets (Base / Bull / Bear); Solve runs each and lays the results **side by side** as a list. A blank cell falls back to the wired value.",
         "width": 300,
         "height": 140
@@ -809,7 +809,7 @@
       "x": 33,
       "y": 3401,
       "init": {
-        "label": "Data table — a what-if grid",
+        "label": "Data table: a what-if grid",
         "body": "Sweep one or more inputs over a list of values; Solve computes the **full grid** (Excel's one- and two-variable Data Table, generalized to N axes). Here: Price {8,10,12} × Qty {100,200}.",
         "width": 300,
         "height": 150

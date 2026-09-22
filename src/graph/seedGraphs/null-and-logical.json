@@ -276,7 +276,7 @@
       "y": 5812,
       "init": {
         "label": "D · Test node: null vs unwired",
-        "body": "A 1×1 Table into ISNULL → `[[FALSE]]`. An **unwired** ISNULL is NOT null: there is nothing to test, so it shows a blank `—`.",
+        "body": "A 1×1 Table into ISNULL → `[[FALSE]]`. An **unwired** ISNULL is NOT null: there is nothing to test, so it shows a blank.",
         "color": "pink",
         "width": 230,
         "height": 230
@@ -308,7 +308,7 @@
       "x": 962,
       "y": 6095,
       "init": {
-        "label": "[[FALSE]] — no crash"
+        "label": "[[FALSE]]: no crash"
       }
     },
     {

@@ -297,9 +297,9 @@ needed. The rules below are about tone once the string earns its place.
 
 `uiCopy.test.ts` enforces the machine-checkable subset of this section over the help markdown and
 the node catalog: teased counts, the slogan phrases, conventional-affordance narration, chummy
-asides. The rest stays a human call. Two rules below are NOT yet enforced because the shipped
-corpus predates them — the em-dash ban (95 uses) and no-trailing-parenthetical (113); both need a
-prose sweep before they can be turned on.
+asides, and the em-dash ban over every shipped string, seeds included. The rest stays a human
+call. No-trailing-parenthetical is enforced over catalog descriptions, socket docs and Excel notes
+only; help and seed prose need a sweep before it can cover them.
 
 - **A control's own action is a verb, and that is not "imperative tone."** "Cycle Number / Text /
   Date / Boolean", "Open the Problems panel", "Drill in", "Rename" are correct on a button, chip

@@ -11,7 +11,7 @@
       "y": 4521,
       "init": {
         "label": "Unit Flow: units live on the value; format is display",
-        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, meters + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) is a display lock that flows downstream, through passthroughs and transforms alike, until another FC overrides it. Lanes go simple → complex; watch the value boxes and the FC arrows.\n\n**K** is the frame case: a column whose header carries a unit (`Revenue ($0.00)`) locks every cell to it, so Get Column and an Aggregate answer in dollars.",
+        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes**: `5 m ÷ 1 s` is `5 m/s`, `$ + 2` adopts the `$`, meters + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) is a display lock that flows downstream, through passthroughs and transforms alike, until another FC overrides it. Lanes go simple → complex; watch the value boxes and the FC arrows.\n\n**K** is the frame case: a column whose header carries a unit (`Revenue ($0.00)`) locks every cell to it, so Get Column and an Aggregate answer in dollars.",
         "color": "gray",
         "width": 900,
         "height": 190
@@ -140,7 +140,7 @@
       "y": -1250,
       "init": {
         "label": "C · A transform keeps the FORMAT; the unit COMPUTES",
-        "body": "Each one costs `$10.00`. The **2-decimal format** is display — it flows on through the ×100 transform, so the lot total shows two places too. The **currency itself is physical**: `$10 × 100` is still money, so the total keeps its `$`. Dock an FC after the transform only to *override* the format from there on.",
+        "body": "Each one costs `$10.00`. The **2-decimal format** is display. It flows on through the ×100 transform, so the lot total shows two places too. The **currency itself is physical**: `$10 × 100` is still money, so the total keeps its `$`. Dock an FC after the transform only to *override* the format from there on.",
         "color": "amber",
         "width": 330,
         "height": 170
@@ -212,7 +212,7 @@
       "y": 1097,
       "init": {
         "label": "D · Convert AUTHORS the new unit",
-        "body": "`mi → km` re-expresses the value in kilometers and **tags the value** with that unit. It rides straight through the Display, and the FC on the result **inherits** `km` (→ → arrows) — a marathon reads `42.20 km`.",
+        "body": "`mi → km` re-expresses the value in kilometers and **tags the value** with that unit. It rides straight through the Display, and the FC on the result **inherits** `km` (→ → arrows), so a marathon reads `42.20 km`.",
         "color": "purple",
         "width": 330,
         "height": 170
@@ -385,8 +385,8 @@
       "x": -288,
       "y": 4049,
       "init": {
-        "label": "F · Units COMPUTE — and cancel to a RATIO",
-        "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed — the `m/s` is derived from the dimensions. Divide meters by meters and the units **cancel to a pure RATIO** — it reads `5:1`, formats naturally as a **percent**, and an FC can't re-label it `$` (**#UNIT!**): a known-dimensionless number isn't money.",
+        "label": "F · Units compute, and cancel to a ratio",
+        "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed; the `m/s` is derived from the dimensions. Divide meters by meters and the units **cancel to a pure ratio**. It reads `5:1`, formats naturally as a **percent**, and an FC can't re-label it `$` (**#UNIT!**): a known-dimensionless number isn't money.",
         "color": "blue",
         "width": 330,
         "height": 170
@@ -594,7 +594,7 @@
       "x": 489,
       "y": 2223,
       "init": {
-        "label": "Total — adopts $"
+        "label": "Total: adopts $"
       }
     },
     {
@@ -651,8 +651,8 @@
       "x": -201,
       "y": -44,
       "init": {
-        "label": "H · Convert has PRIMACY — or it errors",
-        "body": "A Convert **dictates the FC in front of it** (← ← arrows, dropdown locked to `m`) so the value is tagged in the unit it reads. Its `toUnit` rides the value out — the result shows **yards** with no trailing FC. Feed it a value in the wrong DIMENSION (a `$`) and it refuses with `#UNIT!` — primacy or an error, never a silent pass.",
+        "label": "H · Convert has primacy, or it errors",
+        "body": "A Convert **dictates the FC in front of it** (← ← arrows, dropdown locked to `m`) so the value is tagged in the unit it reads. Its `toUnit` rides the value out, so the result shows **yards** with no trailing FC. Feed it a value in the wrong DIMENSION (a `$`) and it refuses with `#UNIT!`: primacy or an error, never a silent pass.",
         "color": "purple",
         "width": 330,
         "height": 210
@@ -743,7 +743,7 @@
       "x": 489,
       "y": 203,
       "init": {
-        "label": "$ into a length — #UNIT!"
+        "label": "$ into a length: #UNIT!"
       }
     },
     {
@@ -753,7 +753,7 @@
       "y": 1761,
       "init": {
         "label": "I · A CUSTOM unit is a real dimension",
-        "body": "The FC's custom unit mints an opaque dimension: `widgets ÷ s` reads **widgets/s**, `widgets + widgets` works, `widgets + s` is `#UNIT!` — the algebra treats your unit like any physical one.",
+        "body": "The FC's custom unit mints an opaque dimension: `widgets ÷ s` reads **widgets/s**, `widgets + widgets` works, `widgets + s` is `#UNIT!`. The algebra treats your unit like any physical one.",
         "color": "amber",
         "width": 330,
         "height": 170
@@ -855,7 +855,7 @@
       "y": 652,
       "init": {
         "label": "J · The Equation node derives the unknown's UNIT",
-        "body": "Wire `v` in **m/s** and `t` in **s**, leave `d` unwired — the solve isolates `d = v·t` and runs the same dimensional algebra: the answer comes out in **meters**. Inconsistent knowns are a `#UNIT!`; the Check output refuses to compare different dimensions.",
+        "body": "Wire `v` in **m/s** and `t` in **s**, leave `d` unwired, and the solve isolates `d = v·t` and runs the same dimensional algebra: the answer comes out in **meters**. Inconsistent knowns are a `#UNIT!`; the Check output refuses to compare different dimensions.",
         "color": "teal",
         "width": 330,
         "height": 190
@@ -925,7 +925,7 @@
       "x": 525,
       "y": 678,
       "init": {
-        "label": "Distance — derived m"
+        "label": "Distance: derived m"
       }
     },
     {
@@ -1161,7 +1161,7 @@
       "y": -960,
       "init": {
         "label": "B · a frame column LOCKS to its header's unit",
-        "body": "Head a Build Frame column `Revenue ($0.00)` and the column is locked to **$**. Get Column carries the unit out as a list, and SUM keeps it — the total reads **$18.00**.",
+        "body": "Head a Build Frame column `Revenue ($0.00)` and the column is locked to **$**. Get Column carries the unit out as a list, and SUM keeps it, so the total reads **$18.00**.",
         "color": "violet",
         "width": 360,
         "height": 150

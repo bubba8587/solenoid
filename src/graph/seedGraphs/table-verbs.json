@@ -313,7 +313,7 @@
       "x": 358,
       "y": -954,
       "init": {
-        "label": "As-of Join — trade price at execution time (≤)",
+        "label": "As-of Join: trade price at execution time (≤)",
         "how": "asof",
         "asofDirection": "backward"
       },
@@ -328,7 +328,7 @@
       "x": 358,
       "y": -462,
       "init": {
-        "label": "XLOOKUP — next-smaller volume tier (≤)",
+        "label": "XLOOKUP: next-smaller volume tier (≤)",
         "matchMode": "nextSmaller"
       },
       "stringLiterals": {

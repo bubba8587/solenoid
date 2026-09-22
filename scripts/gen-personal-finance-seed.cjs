@@ -82,7 +82,7 @@ const GRP_DATA = ["ws-tx", "ws-acct", "ws-bud"];
 // ─── B · Cash flow ─────────────────────────────────────────────────────────────
 note("note-cash", -1480, -560,
   "2 · Cash flow this quarter",
-  "# Income vs. expenses\n**SUMIFS** works straight off the transactions frame: one node sums `Amount` where `Amount > 0` (income), a second where `< 0` (spend) — criteria rows exactly like Excel's SUMIFS, no intermediate lists. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
+  "# Income vs. expenses\n**SUMIFS** works straight off the transactions frame: one node sums `Amount` where `Amount > 0` (income), a second where `< 0` (spend). Criteria rows work exactly like Excel's SUMIFS, no intermediate lists. **Savings rate** = net ÷ income drives a gauge and an alert; drag the target slider to trip it.",
   "green", 380, 200);
 n("col-amt", "GetColumnNode", -1460, -260, { label: "Amount", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("red-net", "AggregateNode",    -1180, -360, { label: "Net cash flow", op: "sum" });
@@ -126,7 +126,7 @@ fc("fc-out", "disp-out", "currency_usd", GRP_CASH);
 // ─── C · Spending pivot (expenses only) ─────────────────────────────────────────
 note("note-pivot", 40, -600,
   "3 · Spending pivot",
-  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** — the frame verb, native Polars on desktop — collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
+  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** (the frame verb, native Polars on desktop) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
 // The frame Group By is one relational verb over the frame, then Get Column
@@ -154,7 +154,7 @@ c("col-pcnt","values","spark-cnt","values");
 // ─── D · Accounts / net worth ───────────────────────────────────────────────────
 note("note-acct", 40, 560,
   "4 · Net worth",
-  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt — the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
+  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt, and the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
   "violet", 380, 230);
 n("col-bal", "GetColumnNode", 60,  860, { label: "Balance", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("red-nw",  "AggregateNode",   340,  820, { label: "Net worth", op: "sum" });
@@ -354,7 +354,7 @@ function frameText(cols) {
 }
 note("note-v12", 40, 1960,
   "9 · New in 1.2",
-  "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left — its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **Group By** can sum it properly.",
+  "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left, and its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **Group By** can sum it properly.",
   "gold", 400, 200);
 n("fi-bridge", "FrameInputNode", 60, 2240, {
   label: "Monthly budget bridge",
@@ -454,7 +454,7 @@ note("note-advisor", 4460, -940,
 const REPORT_BODY = [
   "# The advisor's letter",
   "",
-  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {% if rateNow >= rateTarget %}healthy{% else %}running thin{% endif %} against the target you set.",
+  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }}, {% if rateNow >= rateTarget %}healthy{% else %}running thin{% endif %} against the target you set.",
   "",
   "{{ spendChart }}",
   "",
@@ -466,7 +466,7 @@ const REPORT_BODY = [
   "",
   "## Retirement",
   "",
-  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {% if eggNow >= eggTarget %}on track for{% else %}coming up short of{% endif %} your target.",
+  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}**, {% if eggNow >= eggTarget %}on track for{% else %}coming up short of{% endif %} your target.",
   "",
   "{{ growthChart }}",
   "",
@@ -476,7 +476,7 @@ const REPORT_BODY = [
   "",
   "## Groceries",
   "",
-  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {% if spendNow <= spendLimit %}under{% else %}over{% endif %} so far.",
+  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter, so you're {% if spendNow <= spendLimit %}under{% else %}over{% endif %} so far.",
   "",
   "*Move any slider and this letter rewrites itself.*",
 ].join("\n");

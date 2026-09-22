@@ -11,7 +11,7 @@
       "y": -150,
       "init": {
         "label": "How it works",
-        "body": "# Sudoku solver\n\nThe container is a **Simulation** loop over an 81×9 **candidate matrix** (one cell per row, one digit per column). Every matrix here is built by an **Expression** formula, the peer table and the unit table included, so there are no giant lookup grids to scroll past.\n\nEach round is one deduction pass:\n\n1. **Naked singles** — a cell pinned to one digit removes it from every peer.\n2. **Hidden singles** — a digit with one home left in a row, column or box claims that cell.\n3. **Naked pairs** — two cells sharing the same two candidates knock those digits out of any cell that sees both.\n\nThree puzzles feed an **Input Switch** — step it to pick which one the solver reads. Edit a puzzle (0 = empty), then press **Solve** on the container. *Solved* confirms every cell pinned to exactly one digit. Drill in to see the machinery."
+        "body": "# Sudoku solver\n\nThe container is a **Simulation** loop over an 81×9 **candidate matrix** (one cell per row, one digit per column). Every matrix here is built by an **Expression** formula, the peer table and the unit table included, so there are no giant lookup grids to scroll past.\n\nEach round is one deduction pass:\n\n1. **Naked singles**: a cell pinned to one digit removes it from every peer.\n2. **Hidden singles**: a digit with one home left in a row, column or box claims that cell.\n3. **Naked pairs**: two cells sharing the same two candidates knock those digits out of any cell that sees both.\n\nThree puzzles feed an **Input Switch**; step it to pick which one the solver reads. Edit a puzzle (0 = empty), then press **Solve** on the container. *Solved* confirms every cell pinned to exactly one digit. Drill in to see the machinery."
       }
     },
     {
@@ -63,7 +63,7 @@
       "x": -150,
       "y": -87,
       "init": {
-        "label": "Sudoku solver — drill in!",
+        "label": "Sudoku solver: drill in!",
         "runMode": "simulation",
         "simulationSteps": 25,
         "inputPorts": [
@@ -115,7 +115,7 @@
               "id": "peers",
               "type": "ExpressionNode",
               "init": {
-                "label": "A — peers (81×81)",
+                "label": "A: peers (81×81)",
                 "expr": "IF(rowix<>colix, IF((QUOTIENT(rowix,9)=QUOTIENT(colix,9)) + (MOD(rowix,9)=MOD(colix,9)) + (3*QUOTIENT(QUOTIENT(rowix,9),3)+QUOTIENT(MOD(rowix,9),3)=3*QUOTIENT(QUOTIENT(colix,9),3)+QUOTIENT(MOD(colix,9),3))>=1, 1, 0), 0)"
               },
               "x": 680,
@@ -135,7 +135,7 @@
               "id": "units",
               "type": "ExpressionNode",
               "init": {
-                "label": "U — units (27×81)",
+                "label": "U: units (27×81)",
                 "expr": "IF(IF(uix<9, QUOTIENT(colix,9)=uix, IF(uix<18, MOD(colix,9)=uix-9, 3*QUOTIENT(QUOTIENT(colix,9),3)+QUOTIENT(MOD(colix,9),3)=uix-18)), 1, 0)"
               },
               "x": 1360,

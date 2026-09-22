@@ -152,7 +152,7 @@
       "y": 4205,
       "init": {
         "label": "Functions invert too",
-        "body": "The solver peels the algebra step by step — here it squares away the SQRT, then subtracts a². EXP/LN, LOG, trig and % invert the same way. Roots take the principal branch: b = 12, not −12.",
+        "body": "The solver peels the algebra step by step. Here it squares away the SQRT, then subtracts a². EXP/LN, LOG, trig and % invert the same way. Roots take the principal branch: b = 12, not −12.",
         "width": 400,
         "height": 140
       }
@@ -213,7 +213,7 @@
       "y": -128,
       "init": {
         "label": "The rule of 72, exactly",
-        "body": "\"What growth rate doubles my money in 10 years?\" is a solve-for-the-exponent-base question — Excel needs RATE() or Goal Seek for this. The answer, ≈ 0.0718, is where the rule of 72 comes from.",
+        "body": "\"What growth rate doubles my money in 10 years?\" is a solve-for-the-exponent-base question. Excel needs RATE() or Goal Seek for this. The answer, ≈ 0.0718, is where the rule of 72 comes from.",
         "width": 400,
         "height": 140
       }
@@ -285,7 +285,7 @@
       "y": 1634,
       "init": {
         "label": "Quadratics keep both roots",
-        "body": "A relation that is quadratic in the unknown — however it's arranged — solves with the quadratic formula and outputs **every real root** as a list: [−6, 6] here, never just the positive branch. A repeated root comes out as one value; no real root is **#SOLVE!**.",
+        "body": "A relation that is quadratic in the unknown, however it's arranged, solves with the quadratic formula and outputs **every real root** as a list: [−6, 6] here, never just the positive branch. A repeated root comes out as one value; no real root is **#SOLVE!**.",
         "width": 400,
         "height": 150
       }
@@ -395,7 +395,7 @@
       "y": 2541,
       "init": {
         "label": "All knowns → a check",
-        "body": "With every variable wired, there is nothing left to solve — **Check** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
+        "body": "With every variable wired, there is nothing left to solve, so **Check** turns into a TRUE/FALSE test with a float-safe tolerance. 3-4-5 passes; 7-8-11 misses (49 + 64 ≠ 121).",
         "width": 400,
         "height": 150
       }
@@ -455,7 +455,7 @@
       "y": 1253,
       "init": {
         "label": "Solving broadcasts",
-        "body": "Wire a list into a known and the solved variable comes out as a list — three distances over the same 2 h give three speeds. The rearranged form is an ordinary formula underneath, so it maps like one.",
+        "body": "Wire a list into a known and the solved variable comes out as a list: three distances over the same 2 h give three speeds. The rearranged form is an ordinary formula underneath, so it maps like one.",
         "width": 400,
         "height": 140
       }

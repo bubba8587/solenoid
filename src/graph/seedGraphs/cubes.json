@@ -101,7 +101,7 @@
       "x": -2187,
       "y": -3129,
       "init": {
-        "label": "Ada's orders — a Frame"
+        "label": "Ada's orders: a Frame"
       }
     },
     {
@@ -193,7 +193,7 @@
       "x": -1831,
       "y": -1755,
       "init": {
-        "label": "North's reps — a nested cube"
+        "label": "North's reps: a nested cube"
       }
     },
     {
@@ -227,7 +227,7 @@
       "x": -875,
       "y": -3909,
       "init": {
-        "label": "Flat again — every order, with its rep"
+        "label": "Flat again: every order, with its rep"
       }
     },
     {
@@ -338,7 +338,7 @@
       "x": -905,
       "y": -1957,
       "init": {
-        "label": "depth 3 — drill the breadcrumb"
+        "label": "depth 3: drill the breadcrumb"
       }
     },
     {

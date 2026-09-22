@@ -11,7 +11,7 @@
       "y": 1917,
       "init": {
         "label": "Computed columns: define a column, don't type it",
-        "body": "A table column is **Data** (literal cells) or, with its type set to **Fx**, a **formula** (a row-wise expression stored on the column). A LAMBDA wired in from outside is named in the formula: `λ1` alone, or `λ1(@price, @qty)`. Excel's table rule applies: `@price` is *this row's* cell (`[@Price]`), a bare `price` is the *whole column* (`[Price]`) — so `@price * @qty` multiplies this row's two, and `@revenue / SUM(revenue)` is a share of the total. For names a variable can't spell, the brackets do both: `@[Unit Price]` is this row, `[Unit Price]` the whole column. Open the Sales table (click its chip) to see each column's formula; the chip's **ƒ** marks a table with defined columns.\n\nThe last group is the array form: **BYROW** and **MAP** take a LAMBDA as their argument and run it over a table, one row or one cell at a time.",
+        "body": "A table column is **Data** (literal cells) or, with its type set to **Fx**, a **formula** (a row-wise expression stored on the column). A LAMBDA wired in from outside is named in the formula: `λ1` alone, or `λ1(@price, @qty)`. Excel's table rule applies: `@price` is *this row's* cell (`[@Price]`), a bare `price` is the *whole column* (`[Price]`), so `@price * @qty` multiplies this row's two, and `@revenue / SUM(revenue)` is a share of the total. For names a variable can't spell, the brackets do both: `@[Unit Price]` is this row, `[Unit Price]` the whole column. Open the Sales table (click its chip) to see each column's formula; the chip's **ƒ** marks a table with defined columns.\n\nThe last group is the array form: **BYROW** and **MAP** take a LAMBDA as their argument and run it over a table, one row or one cell at a time.",
         "color": "blue",
         "width": 940,
         "height": 170
@@ -23,7 +23,7 @@
       "x": 55,
       "y": 2518,
       "init": {
-        "label": "Margin rule — its param names the column",
+        "label": "Margin rule: its param names the column",
         "expr": "revenue * 0.25",
         "params": "revenue"
       }
@@ -48,7 +48,7 @@
       "y": 2305,
       "init": {
         "label": "Three defined columns in one table",
-        "body": "`revenue` is a **Formula** column — `@price * @qty`, stored on the column itself. `margin` is a **λ** column bound to the wired Margin rule: `LAMBDA(revenue, revenue * 0.25)`, whose parameter binds to *this row's* cell of the column it names — the λ's per-row interface. `share` mixes both reference kinds: `@revenue / SUM(revenue)` — this row's revenue over the whole column's total. Computed columns reference each other freely; evaluation is in dependency order.",
+        "body": "`revenue` is a **Formula** column, `@price * @qty`, stored on the column itself. `margin` is a **λ** column bound to the wired Margin rule: `LAMBDA(revenue, revenue * 0.25)`, whose parameter binds to *this row's* cell of the column it names. That's the λ's per-row interface. `share` mixes both reference kinds: `@revenue / SUM(revenue)`, this row's revenue over the whole column's total. Computed columns reference each other freely; evaluation is in dependency order.",
         "color": "green",
         "width": 560,
         "height": 175
@@ -60,7 +60,7 @@
       "x": 1123,
       "y": 2198,
       "init": {
-        "label": "Scale — one value per row",
+        "label": "Scale: one value per row",
         "valueKeys": [
           "v0"
         ],
@@ -103,7 +103,7 @@
       "y": 1975,
       "init": {
         "label": "@ over a wired list",
-        "body": "Mid-pipeline, the **Computed Column** node adds `scaled = @revenue * @scale`. `revenue` is a column; `scale` isn't — an `@name` matching no column becomes a side input on this node, and the wired list is read **row by row** (it must line up: 4 values for 4 rows; a mismatch is a per-row `#SHAPE!`). A scalar wired there would read the same every row.",
+        "body": "Mid-pipeline, the **Computed Column** node adds `scaled = @revenue * @scale`. `revenue` is a column; `scale` isn't. An `@name` matching no column becomes a side input on this node, and the wired list is read **row by row** (it must line up: 4 values for 4 rows; a mismatch is a per-row `#SHAPE!`). A scalar wired there would read the same every row.",
         "color": "amber",
         "width": 560,
         "height": 185
@@ -162,7 +162,7 @@
       "x": 239,
       "y": 1215,
       "init": {
-        "label": "BYROW — hot week? (avg > 85)",
+        "label": "BYROW: hot week? (avg > 85)",
         "op": "row"
       },
       "stringLiterals": {
@@ -175,7 +175,7 @@
       "x": 239,
       "y": 1518,
       "init": {
-        "label": "MAP — °F → °C"
+        "label": "MAP: °F → °C"
       },
       "stringLiterals": {
         "formula": "(value - 32) * 5 / 9"
