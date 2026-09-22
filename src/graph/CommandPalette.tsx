@@ -8,6 +8,7 @@ import { runAiPrompt, type AiOutcome } from "./aiService";
 import { revealAddedNodes } from "./aiReveal";
 import { diffLines, hasChanges, type DiffLine } from "./textDiff";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
+import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 import { writeTextForm, readTextForm } from "./textForm";
 import { commandRecents } from "./commandRecents";
 import { paletteStore } from "./paletteStore";
@@ -55,7 +56,7 @@ type AiState =
 
 /** The open document as its text form — what the model reads and rewrites. */
 function currentTextForm(): string {
-  const g: SavedGraph = serializeGraph() ?? { v: 2, nodes: [], connections: [] };
+  const g: SavedGraph = serializeGraph() ?? { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
   return writeTextForm(g);
 }
 

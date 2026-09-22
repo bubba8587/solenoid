@@ -160,3 +160,27 @@ describe("Composite Workbench seed", () => {
     }
   });
 });
+
+describe("a composite's saved bytes are stable across save → load → save", () => {
+  it("every seed composite re-saves identically, its ports still finding their markers", async () => {
+    const { extractInit } = await import("../../src/graph/copyPaste");
+    const reg = ctorRegistry();
+    const rebuild = async (init: Record<string, unknown>) => {
+      const n = new CompositeNode({ ...init } as ConstructorParameters<typeof CompositeNode>[0]);
+      await n.hydrate(reg);
+      return n;
+    };
+    const composites = (seed.nodes as SavedNode[]).filter((sn) => sn.type === "CompositeNode");
+    expect(composites.length).toBeGreaterThan(0);
+    for (const sn of composites) {
+      const first = await rebuild(sn.init ?? {});
+      const saved1 = extractInit(first);
+      const second = await rebuild(saved1);
+      const saved2 = extractInit(second);
+      expect(JSON.stringify(saved2), sn.id).toBe(JSON.stringify(saved1));
+      for (const p of [...second.inputPorts, ...second.outputPorts]) {
+        expect(second.internalEditor.getNode(p.internalNodeId), `${sn.id} port ${p.id}`).toBeTruthy();
+      }
+    }
+  });
+});

@@ -250,6 +250,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         name, refSources: this.refSources(), mode: this.mode, blockName: this.label,
       });
       this.status = "ok";
+      if (res.pages === 0) { this.statusMessage = "The merge has no rows, so no note was written"; return; }
       this.lastWritten = res.file;
       // A batch that hit the page cap carries the true record count; say "500 of N".
       const count = doc.total && doc.total > res.pages ? `${res.pages} of ${doc.total}` : `${res.pages}`;

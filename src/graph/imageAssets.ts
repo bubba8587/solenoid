@@ -75,11 +75,11 @@ export function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
 // ── naming ────────────────────────────────────────────────────────────────────
 
 /** A safe plain filename: strip any path part + characters Windows refuses. */
-export function sanitizeName(name: string): string {
+export function sanitizeName(name: string, fallback = "image"): string {
   const base = name.split(/[/\\]/).pop() ?? "";
   // eslint-disable-next-line no-control-regex
   const clean = base.replace(/[<>:"|?*\x00-\x1f]/g, "").trim();
-  return clean || "image";
+  return clean || fallback;
 }
 
 function splitExt(name: string): { stem: string; ext: string } {

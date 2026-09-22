@@ -1,5 +1,6 @@
 // [[C30]] saveViaTextForm, [[C19]] namingModel
 import type { SavedGraph, SavedNode, SavedConnection, SavedStandoff } from "./persistence";
+import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 import type { Pin } from "./pinStore";
 import { INIT_FIELD_ORDER, INIT_EXTRA_FIELD_ORDER } from "./copyPaste";
 import { NAME_RE, typePrefix, nextAvailableName } from "./nodeNaming";
@@ -203,7 +204,6 @@ export function writeTextForm(g: SavedGraph): string {
   if (g.frameFormats && g.frameFormats.length > 0) {
     sidecar.frameFormats = g.frameFormats.map((f) => ({ ...f, nodeId: nameOf(f.nodeId) }));
   }
-  if (g.seedId !== undefined) sidecar.seedId = g.seedId;
   if (g.palette !== undefined) sidecar.palette = g.palette;
   if (g.reportPalette !== undefined) sidecar.reportPalette = g.reportPalette;
   if (g.meta !== undefined) sidecar.meta = g.meta;
@@ -265,7 +265,7 @@ export function readTextForm(text: string): SavedGraph {
     }
   }
 
-  const g: SavedGraph = { v: typeof sidecar.v === "number" ? sidecar.v : 2, nodes, connections };
+  const g: SavedGraph = { v: typeof sidecar.v === "number" ? sidecar.v : CURRENT_SAVE_VERSION, nodes, connections };
   if (Array.isArray(sidecar.standoffs) && sidecar.standoffs.length > 0) {
     g.standoffs = sidecar.standoffs as SavedStandoff[];
   }
@@ -281,7 +281,6 @@ export function readTextForm(text: string): SavedGraph {
   if (Array.isArray(sidecar.frameFormats) && sidecar.frameFormats.length > 0) {
     g.frameFormats = sidecar.frameFormats as SavedGraph["frameFormats"];
   }
-  if (sidecar.seedId !== undefined) g.seedId = sidecar.seedId;
   if (sidecar.palette !== undefined) g.palette = sidecar.palette;
   if (sidecar.reportPalette !== undefined) g.reportPalette = sidecar.reportPalette;
   if (sidecar.meta !== undefined) g.meta = sidecar.meta as SavedGraph["meta"];

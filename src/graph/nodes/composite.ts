@@ -308,6 +308,9 @@ export class CompositeNode extends ClassicPreset.Node {
 
   // Holds the saved internal graph until `hydrate()` rebuilds it against a class registry.
   private _pending: CompositeInternalSnapshot | null = null;
+  /** Live internal id → the id it was saved under, so a save → load → save writes the
+   *  same bytes. A node added since the load keeps its live id as its saved id. */
+  private _savedIds = new Map<string, string>();
 
   constructor(init?: {
     label?: string;
@@ -416,6 +419,7 @@ export class CompositeNode extends ClassicPreset.Node {
         if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
       }
       built.set(sn.id, node);
+      this._savedIds.set(node.id, sn.id);
       // Guard AFTER addNode: it must wrap OUTSIDE the coercion pipe so a ShapeError
       // thrown while narrowing lands in the guard as #SHAPE!.
       await this.internalEditor.addNode(node as SolenoidNode);
@@ -462,6 +466,9 @@ export class CompositeNode extends ClassicPreset.Node {
       await this.internalEditor.removeNode(n.id);
     }
     this.internalPositions = {};
+    // The snapshot speaks saved ids; hydrate maps the ports from them.
+    for (const p of [...this.inputPorts, ...this.outputPorts]) p.internalNodeId = this.savedInternalId(p.internalNodeId);
+    this._savedIds.clear();
     this._pending = { nodes: [...snap.nodes], connections: [...snap.connections] };
     await this.hydrate(reg);
   }
@@ -470,17 +477,18 @@ export class CompositeNode extends ClassicPreset.Node {
    *  in via extractInit so persistence.ts needn't know about composites. */
   snapshotInternal(): CompositeInternalSnapshot {
     if (!this.isHydrated) return this._pending!; // never computed since load — hand back untouched
+    const sid = (id: string) => this.savedInternalId(id);
     const nodes: CompositeSavedNode[] = this.internalEditor.getNodes().map((n) => {
       const anyN = n as unknown as Record<string, unknown>;
       if (n instanceof PlaceholderNode) {
-        const ph: CompositeSavedNode = { id: n.id, type: n.missingType, init: { ...n.savedInit } };
+        const ph: CompositeSavedNode = { id: sid(n.id), type: n.missingType, init: { ...n.savedInit } };
         if (n.savedLiterals) ph.literals = { ...n.savedLiterals };
         if (n.savedStringLiterals) ph.stringLiterals = { ...n.savedStringLiterals };
         const p = this.internalPositions[n.id];
         if (p) { ph.x = p.x; ph.y = p.y; }
         return ph;
       }
-      const sn: CompositeSavedNode = { id: n.id, type: n.constructor.name, init: extractInit(n) };
+      const sn: CompositeSavedNode = { id: sid(n.id), type: n.constructor.name, init: extractInit(n) };
       // An input marker's `value` is the last injected input (possibly a whole Frame), not
       // state: the constructor never reads it back, so it stays out of the save.
       if (n instanceof CompositeInputNode) delete sn.init.value;
@@ -495,12 +503,17 @@ export class CompositeNode extends ClassicPreset.Node {
       return sn;
     });
     const connections: CompositeSavedConnection[] = this.internalEditor.getConnections().map((c) => ({
-      source: c.source,
+      source: sid(c.source),
       sourceOutput: c.sourceOutput as string,
-      target: c.target,
+      target: sid(c.target),
       targetInput: c.targetInput as string,
     }));
     return { nodes, connections };
+  }
+
+  /** The id an internal node is saved under; ports are saved through it too. */
+  savedInternalId(liveId: string): string {
+    return this._savedIds.get(liveId) ?? liveId;
   }
 
   /** Returns the port id, which doubles as the composite's socket key. */

@@ -150,7 +150,6 @@ What an open scope suppresses:
 | Absorbing a newly created node into the group under it | `FlowSurface.tsx` | only a live creation is dropped into a group |
 | The React Flow topology sync (retried each task until the scope closes) | `FlowCanvas.tsx` | the rebuild commits once |
 | Undo-history recording | `flowHistory.ts` | a load is not an undoable step |
-| Marking the document as no longer a pristine seed | `seedStore.ts` | a load is not an edit |
 | Document operations (switch, create, fork and the rest) | `documentStore.ts` | they would race a half-built canvas |
 | Outward effects: Alert firing, Expect violations, a relative Date Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[C39]] effectsEdgeTriggered: a load must not replay old alerts |
 | The Conduit's lane-change recompute | `ConduitComponent.tsx` | the rebuild's own settle covers it |

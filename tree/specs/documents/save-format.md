@@ -45,7 +45,6 @@ The top-level object. Optional fields are omitted when empty, never written as e
 | `pins` | `Pin[]`? | Pinned output values: `{ nodeId, outputKey }`. |
 | `comments` | `SavedCommentData[]`? | Node-anchored comment threads: `{ id, nodeId, author, text, resolved, time? }`. `id` is the comment's own id (digits in it seed the comment counter on load); `time` is epoch ms, defaulting to the load time when missing. |
 | `frameFormats` | `FrameColumnFormat[]`? | Per-column display formats on a Frame: `{ nodeId, column, ann }`, where `ann` is a Format Controller annotation object (`docs/format-model.md`). |
-| `seedId` | string? | The seed the menu showed at capture (a seed id, or `"custom"` once edited). Written on every capture; the loader does not read it back. |
 | `palette` | `{ base?, overrides? }`? | The document's palette choice layered over the app-wide one. `overrides` maps slot id to hex. |
 | `reportPalette` | `{ base?, overrides? }`? | The same, scoped to report and export surfaces. |
 | `meta` | `{ author?, tags?, foreign?, networkAllowed? }`? | Document properties. `foreign` and `networkAllowed` carry the per-document network permission ([[C104]] foreignDocNetworkGate). The document title is not here; it is the library name. |
@@ -81,7 +80,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 
 Groups are not a side table. A Group is an ordinary node (`GroupNode`) whose `init.members` lists member node ids; group membership in the live model is rebuilt from those lists on load.
 
-A Composite's subgraph is not a side table either. It rides inside the Composite's `init.internal` as `{ nodes: [{ id, type, init, literals?, stringLiterals?, x?, y? }], connections: [...] }`, alongside `init.inputPorts` and `init.outputPorts` (each port names the internal boundary marker it feeds by `internalNodeId`). Internal ids are the internal editor's live ids at capture time; the text form does not translate them.
+A Composite's subgraph is not a side table either. It rides inside the Composite's `init.internal` as `{ nodes: [{ id, type, init, literals?, stringLiterals?, x?, y? }], connections: [...] }`, alongside `init.inputPorts` and `init.outputPorts` (each port names the internal boundary marker it feeds by `internalNodeId`). Internal ids are saved ids that survive a round trip ([[composite-nodes]]); the text form does not translate them.
 
 ## Capturing a node's `init`
 
@@ -113,7 +112,7 @@ Table Input and the paint grid store the raw typed text (`tableText`) as the sav
 
 - One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed` and `flipped` come from their stores.
 - A `PlaceholderNode` is written as the node it stands for: `type` is its `missingType`, `init` is a copy of its `savedInit`, and its saved literal maps are copied back ([[C35]] unknownViaPlaceholder).
-- `connections` from the editor, then `standoffs`, `drawnCables`, `pins`, `comments`, `frameFormats` from their stores, `seedId` from the seed store, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
+- `connections` from the editor, then `standoffs`, `drawnCables`, `pins`, `comments`, `frameFormats` from their stores, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
 
 The round trip through the text form renames every `id` to the node's name, orders nodes topologically, and canonicalizes field order. Any top-level field that `writeTextForm` or `readTextForm` does not carry is deleted from every save, so a new `SavedGraph` field must be added to both.
 
@@ -171,14 +170,14 @@ The text form carries no `id`: on read, each node's `id` is its name.
 
 | Key | Content |
 |---|---|
-| `v` | The version. Read back as `2` when absent. |
+| `v` | The version. Read back as `CURRENT_SAVE_VERSION` when absent. |
 | `positions` | Object keyed by name, in line order: `{ x, y, size?, collapsed?, flipped? }`. A node missing here reads at `(0, 0)`. |
 | `standoffs` | As saved, with both `nodeId`s as names. |
 | `drawnCables` | As saved (no node references). |
 | `pins` | `{ nodeId, outputKey }` with `nodeId` as a name. |
 | `comments` | As saved, with `nodeId` as a name. |
 | `frameFormats` | As saved, with `nodeId` as a name. |
-| `seedId`, `palette`, `reportPalette`, `meta`, `savedAt` | As saved. `savedAt` is read back only when it is a number. |
+| `palette`, `reportPalette`, `meta`, `savedAt` | As saved. `savedAt` is read back only when it is a number. |
 | `packs` | As saved. |
 
 An empty or whitespace-only sidecar reads as `{}`. Invalid sidecar JSON throws.
@@ -227,8 +226,7 @@ shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 i
       "resolved": false,
       "time": 1790000000000
     }
-  ],
-  "seedId": "custom"
+  ]
 }
 ```
 
@@ -241,7 +239,7 @@ shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 i
 - newer: "This file was saved by a newer version of Solenoid (format v*N*) and can't be opened here. Update the app to load it."
 - older: "This file uses an old save format (v*N*) that this build no longer opens."
 
-There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change to the format bumps `CURRENT_SAVE_VERSION` and updates the seeds and tests. The literal `2` also appears in `buildRawSavedGraph`, `readTextForm`'s default, `documentStore`'s empty graph and the Command Palette's empty graph, and a bump must change all of them.
+There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change to the format bumps `CURRENT_SAVE_VERSION` and updates the seeds and tests.
 
 ## The load path: `loadGraph(g, { curtain? })`
 
@@ -268,7 +266,7 @@ There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change
    - `nodeNameStore.claim(freshId, name, type)`: a valid, unclaimed saved name is kept (and bumps that prefix's counter past it); otherwise a default name is assigned.
    - Restore `size`, `collapsed` and `flipped` into their stores.
 6. **Add and position** the nodes to the editor in concurrent batches of 24.
-7. **Remap references** on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. (A Placeholder's references stay inside its `savedInit` untouched, as the names they were saved with.)
+7. **Remap references** (`remapNodeRefs`) on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. A Placeholder's `savedInit` is remapped the same way, so its references follow a rename of the node they name to the next save.
 8. **Reconnect**, in save order. A connection whose source or target does not resolve is skipped. A connection the editor refuses (incompatible sockets, duplicate) is skipped silently. Each successful connection fires `connectioncreated`.
 9. **Hydrate Composites**: each `CompositeNode` builds its internal editor from `init.internal` with the same registry, applying the same literal-map gate, then remaps its ports' `internalNodeId`s to the fresh internal ids. An unknown internal type loads as a Placeholder, as on the main canvas, and re-saves as the original type.
 10. **Settle wildcard types**: `settleWildcardTypes(editor)` alternates Conduit lane typing and trueany adoption to a joint fixpoint ([[socket-lattice]], [[type-propagation-on-in-place-socket-retype]]). This must precede step 11.

@@ -4,6 +4,7 @@
 
 import { readTextForm, writeTextForm } from "./textForm";
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
+import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 
 /** The magic "key" that routes `aiService` onto this transport. */
 export const DEMO_KEY = "demo";
@@ -84,7 +85,7 @@ export function demoReply(prompt: string, currentText: string): string {
   try {
     current = readTextForm(currentText);
   } catch {
-    current = { v: 2, nodes: [], connections: [] };
+    current = { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
   }
 
   if (QUESTION_RE.test(prompt.trim())) return describeDocument(current);

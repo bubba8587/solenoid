@@ -38,12 +38,10 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 Each was found reading the code to write the compute-pass, formula-language and frame-verbs specs (`../tree/specs/`). The spec describes today's behavior; these are the places it breaks a node or looks unintended.
 
 - [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row (reachable only through a wildcard); `stripUnitCells` doesn't reach inside a Cube.
-- [ ] **Vault write edges**: a merge with zero usable rows writes one empty note; an empty page name writes a note named `image`; a plain value writes without the Report's format picks (the writer has no annotation for it).
+- [ ] **Vault write: a plain value writes without the Report's format picks** (the writer has no annotation for it).
 
 ## Composites
 
-- [ ] **Composite ids aren't stable across saves.** A composite's `init.internal` stores live internal ids, which hydrate regenerates, so its bytes can change on save → load → save.
-- [ ] **Save format loose ends** (`../tree/specs/documents/save-format.md`): `SavedGraph.seedId` is written but never read back; the literal version `2` is hardcoded in four places beside `CURRENT_SAVE_VERSION`; a Placeholder's `members` / `hostNodeId` aren't remapped on load.
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `archive/1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).

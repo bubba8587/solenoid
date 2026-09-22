@@ -681,7 +681,6 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
     "docMetaStore.ts": "per-document metadata",
     "saveTimeStore.ts": "the save-clock read seam (provider injected by documentStore) — not node-keyed",
     "calcModeStore.ts": "per-document calc mode",
-    "seedStore.ts": "which seed the document came from (one id) — not node-keyed",
     "settingsStore.ts": "app settings",
     "apiKeyStore.ts": "the AI key (settings)",
     "shortcutsStore.ts": "keyboard-shortcut prefs",

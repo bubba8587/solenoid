@@ -143,10 +143,11 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   const assetDir = assetParts.length ? await joinPath(opts.vault, ...assetParts) : noteDir;
 
   let assetCount = 0;
-  // A batch document writes one note per page, each named by its page; a single
-  // document writes under the sink's name.
-  const pages = doc.pages?.length ? doc.pages : [{ name: opts.name, body: doc.body }];
-  let base = sanitizeName(opts.name) || "note";
+  // A batch document writes one note per page, each named by its page (a merge with no
+  // rows writes none); a single document writes under the sink's name.
+  const pages = doc.pages ?? [{ name: opts.name, body: doc.body }];
+  const sinkName = sanitizeName(opts.name, "note");
+  let base = sinkName;
 
   // Returns the Obsidian embed token, which resolves by FILENAME across the vault.
   async function writeAsset(refName: string, bytes: Uint8Array, ext: string): Promise<string> {
@@ -188,8 +189,9 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
 
   const mode = opts.mode ?? "overwrite";
   let first = "";
-  for (const page of pages) {
-    base = sanitizeName(page.name) || "note";
+  for (const [i, page] of pages.entries()) {
+    // A page with no usable name takes the sink's, numbered so pages can't overwrite each other.
+    base = sanitizeName(page.name, doc.pages ? `${sinkName}-${i + 1}` : sinkName);
     const md = await assembleDocumentMarkdown({ ...doc, body: page.body }, resolveRef);
     const notePath = await joinPath(noteDir, `${base}.md`);
     let existing: string | null = null;

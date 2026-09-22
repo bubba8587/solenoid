@@ -3,7 +3,7 @@ import { createNotifier } from "./storeKit";
 import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
 import { isGraphRebuilding } from "./process";
 import { loadRevealStore } from "./loadReveal";
-import { chooseWriteSlot, chooseReadSlot } from "./persistenceCore";
+import { chooseWriteSlot, chooseReadSlot, CURRENT_SAVE_VERSION } from "./persistenceCore";
 import { pushNotice, dismissNotice } from "./noticeStore";
 import { saveTimeStore } from "./saveTimeStore";
 import { SEEDS, DEFAULT_SEED_ID, type SeedId } from "./seeds";
@@ -32,7 +32,7 @@ const INDEX_SLOT_A = "solenoid.docs.index.a";
 const INDEX_SLOT_B = "solenoid.docs.index.b";
 const docSlotKey = (id: string, slot: "a" | "b") => `solenoid.docs.doc.${id}.${slot}`;
 
-const EMPTY_GRAPH: SavedGraph = { v: 2, nodes: [], connections: [] };
+const EMPTY_GRAPH: SavedGraph = { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
 
 interface IndexMeta { id: string; name: string; updatedAt: number; filePath?: string }
 interface IndexSlot { seq: number; currentId: string | null; docs: IndexMeta[] }

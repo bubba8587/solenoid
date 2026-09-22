@@ -265,7 +265,7 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 
 **Target.** The `path` input or literal names the note; a leading `folder/` prepends to the node's subfolder and a trailing `.md` is dropped. A blank name falls back to the node's label, then `note`. Path segments that are empty, `.` or `..` are dropped, so a write cannot leave the vault. File names pass through `sanitizeName` (the last path segment, with `<>:"|?*` and control characters removed). Preview reports the action it would take (Create, Overwrite, Append to, Rewrite the block in) with a character count.
 
-**Pages.** A document with `pages` writes one note per page, named by the page; otherwise it writes one note under the target name. The status reads `Wrote N notes` (or `N of total` when capped), plus any asset count.
+**Pages.** A document with `pages` writes one note per page, named by the page; a page whose name sanitizes to nothing takes the target name numbered by its position (`Report-2`), so pages never overwrite each other. A merge with no rows (`pages` empty) writes nothing, and the status says so. A document without `pages` writes one note under the target name. The status reads `Wrote N notes` (or `N of total` when capped), plus any asset count.
 
 **Markdown assembly.** For each page, `assembleDocumentMarkdown` resolves every distinct span name once through the resolver, replaces each span with the result, and prepends the frontmatter YAML when the document carries `frontmatter`. A `` `=name!` `` span whose result is one non-empty line becomes `==result==`. An empty result removes the span. The resolver maps values as follows:
 

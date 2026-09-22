@@ -15,7 +15,6 @@ import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
 import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, markBulkTopoDirty, isGraphRebuilding } from "../process";
 import { setUnselectAllNodes, setSelectNode, setDeleteSelected, setClearHistory, setAutoArrange, setCleanup, setRepositionDocked } from "../canvasCommands";
-import { markGraphCustom } from "../seedStore";
 import { bumpConnectionVersion } from "../graphSignals";
 import { setCtorRegistryProvider } from "../ctorProvider";
 import { flowHistory } from "./flowHistory";
@@ -117,7 +116,6 @@ const MAIN_HOOKS: SurfaceHooks = {
     await deleteSelected();
   },
   afterMove: () => {
-    markGraphCustom();
     scheduleAutosave();
     flowHistory.schedule();
   },
@@ -126,10 +124,8 @@ const MAIN_HOOKS: SurfaceHooks = {
   afterProgrammaticMove: () => flowHistory.schedule(),
   afterNodeAdded: async (nodeId) => {
     await processGraph(nodeId, undefined, { topology: true });
-    markGraphCustom();
     scheduleAutosave();
   },
-  afterConnect: () => markGraphCustom(),
   standoffs: true,
   drawnCables: true,
   standsDownWhenDrilled: true,
@@ -157,7 +153,6 @@ function FlowCanvasInner() {
       const doomed = s.editor.getNodes().some((n) => (n as { selected?: boolean }).selected);
       if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected()) return;
       await deleteSelection(s.editor, s.view);
-      markGraphCustom();
       scheduleAutosave();
     });
 

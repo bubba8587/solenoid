@@ -96,3 +96,23 @@ export function chooseReadSlot(seqA: number | null, seqB: number | null): "a" | 
   if (seqB === null) return "a";
   return seqB > seqA ? "b" : "a";
 }
+
+/** The node-id references a node (or a Placeholder's savedInit) carries: an FC's host,
+ *  a Group's members, a Presentation's steps. */
+export interface NodeRefs { hostNodeId?: unknown; members?: unknown; steps?: unknown }
+
+/** Rewrite saved ids to fresh ones; members and step ids that name no live node drop. */
+export function remapNodeRefs(target: NodeRefs, idMap: ReadonlyMap<string, string>, isLive: (id: string) => boolean): void {
+  const remap = (ids: unknown[]) =>
+    ids.map((m) => (typeof m === "string" ? idMap.get(m) ?? m : m)).filter((m): m is string => typeof m === "string" && isLive(m));
+  if (typeof target.hostNodeId === "string" && target.hostNodeId) {
+    const mapped = idMap.get(target.hostNodeId);
+    if (mapped) target.hostNodeId = mapped;
+  }
+  if (Array.isArray(target.members)) target.members = remap(target.members);
+  if (Array.isArray(target.steps)) {
+    for (const step of target.steps as Array<{ nodeIds?: unknown } | null>) {
+      if (step && Array.isArray(step.nodeIds)) step.nodeIds = remap(step.nodeIds);
+    }
+  }
+}

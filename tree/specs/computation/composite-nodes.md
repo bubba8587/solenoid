@@ -49,7 +49,7 @@ A composite is a subgraph, not a Group variant ([[C77]] compositeIsSubgraph). Th
 | `label` | Shown on the card socket. Synced from the marker's label (below). |
 | `exposure` | `exposed`: a real card input socket. `hidden`: no card socket; the value is baked. |
 | `tier` | `basic` or `advanced`. Stored and saved; nothing in the app reads it yet. |
-| `internalNodeId` | The live id of the `CompositeInputNode` this port feeds. |
+| `internalNodeId` | The live id of the `CompositeInputNode` this port feeds (its saved id in a save). |
 | `default` | Optional fallback value, below the marker's seed. Nothing in the app sets it yet except a saved or authored document. |
 
 An exposed port's card socket is an `AdoptiveSocket` with base `trueany`: unwired it is a wildcard, wired it adopts the concrete type of the cable through the outer type settle. Because an unwired wildcard input takes no inline literal on a Composite (the card declares no `autoLiterals`), the card shows each exposed input as a label row: the source's name when wired, nothing when not. The unwired value comes from inside, from the marker's seed.
@@ -321,31 +321,31 @@ The card saves through the generic `extractInit`, with no composite code in pers
 |---|---|
 | `label`, `width`, `height` | as named |
 | `runMode`, `simulationSteps`, `stopWhenPortId`, `stopWhenOp`, `stopWhenValue`, `byRowPortId` | scalars |
-| `inputPorts`, `outputPorts` | copies of the port records, `internalNodeId` being the live internal id at save time |
+| `inputPorts`, `outputPorts` | copies of the port records, `internalNodeId` translated to the marker's saved id |
 | `scenarios`, `dataTableValues` | deep copies |
 | `goalSeek`, `monteCarlo` | omitted while null |
 | `internal` | `snapshotInternal()` |
 
-`snapshotInternal()` returns `{ nodes, connections }`:
+`snapshotInternal()` returns `{ nodes, connections }`. Every id in it is a **saved id** (`savedInternalId`): the id the node was hydrated from, or its live id when it was added since, so a save → load → save writes the same bytes.
 
 - For a pending composite (loaded, never hydrated) it returns the pending snapshot untouched.
-- Each internal node becomes `{ id, type, init, literals?, stringLiterals?, x?, y? }`: `id` is its live id, `type` its class name, `init` its own `extractInit` (so a nested composite nests its own `internal`), the literal maps copied when the node has them, and `x`/`y` from `internalPositions` when recorded.
+- Each internal node becomes `{ id, type, init, literals?, stringLiterals?, x?, y? }`: `id` is its saved id, `type` its class name, `init` its own `extractInit` (so a nested composite nests its own `internal`), the literal maps copied when the node has them, and `x`/`y` from `internalPositions` when recorded.
 - A `PlaceholderNode` saves as its original type with its saved init and literal maps, never as a Placeholder ([[C35]] unknownViaPlaceholder).
-- Each connection becomes `{ source, sourceOutput, target, targetInput }`.
+- Each connection becomes `{ source, sourceOutput, target, targetInput }`, both ends as saved ids.
 
 The constructor copies ports, scenarios, overrides, data-table lists and configs, adds the card sockets (exposed inputs and every output), and parks `init.internal` as pending. It does not build the internal graph: the class registry depends on the catalog, which imports this file, so the build waits for `hydrate(reg)`.
 
 `hydrate(reg)` does nothing when nothing is pending. Otherwise, with `_hydrating` set:
 
 1. Find the saved nodes whose type is not in `reg`, and derive their socket keys from the saved connections (`deriveMissingNodeSockets`).
-2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable). Add it to the internal editor, install its guard, and record its saved position under its new id.
+2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable). Add it to the internal editor, install its guard, record its saved position under its new id, and remember the saved id for the new one.
 3. Re-add the saved connections between built nodes; a refused or dangling one is skipped.
 4. Remap every port's `internalNodeId` from the saved id to the new id (rete mints fresh ids on construction). A port whose marker was not built keeps the stale id.
 5. Clear `_hydrating` and run `settleInternalTypes()` once.
 
 Hydration happens on document load (after the outer cables, with the same registry), on add from the Add menu, on paste (each pasted composite clone), on drill-in open, and on unpack. A pack switched off still has its classes registered, so its nodes inside a composite construct normally ([[C79]] packActivationIsPresentation); only a type no build registers takes the Placeholder path. A formula pack node inside is a core Expression and always loads ([[C76]] formulaPackDefault).
 
-`restoreInternal(snapshot, reg)` (drill-in undo) removes every internal connection and node, clears `internalPositions`, parks the snapshot as pending and hydrates it.
+`restoreInternal(snapshot, reg)` (drill-in undo) removes every internal connection and node, clears `internalPositions`, translates every port's `internalNodeId` to its saved id (the snapshot's language), forgets the saved-id map, parks the snapshot as pending and hydrates it.
 
 Copy and paste treat a composite like any node: the clone is constructed from `extractInit`, so its `internal` snapshot rides along, and it is hydrated before it is added. Inside a drill-in, copy works on the internal editor and never copies markers. Saving always serializes the main graph, never the open drill-in ([[C33]] saveBindsMain). The save validator recurses into `init.internal`, prefixing its findings with "inside the composite" ([[save-format]]).
 

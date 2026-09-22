@@ -3,7 +3,6 @@ import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { beginGraphRebuild, endGraphRebuild, bulkSettle, processGraph } from "./process";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
-import { markGraphCustom } from "./seedStore";
 import { getCtorRegistry } from "./ctorProvider";
 import { getActiveEditor, getActiveView, isSubgraphActive } from "./activeGraph";
 import { collapseStore } from "./collapseStore";
@@ -170,11 +169,17 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   }
   // A composite's subgraph rides along via its own snapshotInternal(), so paste and
   // persistence round-trip its contents without knowing anything about them.
+  // Ports name their markers by the same saved ids the snapshot uses.
+  const savedId = typeof n.savedInternalId === "function"
+    ? (n.savedInternalId as (id: string) => string).bind(n)
+    : (id: string) => id;
+  const savedPort = (p: { internalNodeId?: unknown }) =>
+    (typeof p.internalNodeId === "string" ? { ...p, internalNodeId: savedId(p.internalNodeId) } : { ...p });
   if (Array.isArray(n.inputPorts)) {
-    init.inputPorts = (n.inputPorts as object[]).map((p) => ({ ...p }));
+    init.inputPorts = (n.inputPorts as { internalNodeId?: unknown }[]).map(savedPort);
   }
   if (Array.isArray(n.outputPorts)) {
-    init.outputPorts = (n.outputPorts as object[]).map((p) => ({ ...p }));
+    init.outputPorts = (n.outputPorts as { internalNodeId?: unknown }[]).map(savedPort);
   }
   if (Array.isArray(n.scenarios)) {
     init.scenarios = (n.scenarios as Array<{ id: string; name: string; overrides: Record<string, unknown> }>)
@@ -337,5 +342,4 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   }
   // A paste is self-contained, so only the pasted nodes need rendering.
   await bulkSettle(new Set(toAdd.map((b) => b.clone.id)));
-  markGraphCustom(); // a paste makes the doc no longer a pristine seed
 }

@@ -3,8 +3,6 @@ import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
-import { getCurrentSeedId } from "./seedStore";
-import type { SeedSelection } from "./seedStore";
 import { extractInit } from "./copyPaste";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";
@@ -19,7 +17,7 @@ import { standoffStore, type StandoffEnd } from "./standoffs";
 import { drawnCableStore, type SavedDrawnCable } from "./drawnCables";
 import { nodeNameStore } from "./nodeNameStore";
 import { writeTextForm, readTextForm } from "./textForm";
-import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets } from "./persistenceCore";
+import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets, remapNodeRefs, type NodeRefs } from "./persistenceCore";
 import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
 import { documentStore } from "./documentStore";
@@ -88,9 +86,6 @@ export interface SavedGraph {
   pins?: Pin[];
   comments?: SavedCommentData[];
   frameFormats?: FrameColumnFormat[];
-  // Which seed the dropdown shows after restore ("custom" once edited); seed files
-  // omit it and set the selection from their filename.
-  seedId?: SeedSelection;
   // Layered over the app-wide palette choice while this doc is open.
   palette?: { base?: string; overrides?: Record<string, string> };
   // Scoped to report/export rendering surfaces, never the editing canvas.
@@ -181,7 +176,7 @@ function buildRawSavedGraph(): SavedGraph | null {
     ...(s.locked ? { locked: true } : {}),
   }));
 
-  const g: SavedGraph = { v: 2, nodes, connections, seedId: getCurrentSeedId() };
+  const g: SavedGraph = { v: CURRENT_SAVE_VERSION, nodes, connections };
   if (standoffs.length > 0) g.standoffs = standoffs;
   const drawnCables = drawnCableStore.serialize();
   if (drawnCables.length > 0) g.drawnCables = drawnCables;
@@ -389,24 +384,12 @@ async function rebuildGraph(
     if (curtain) await paint();
   }
 
-  // Rewrite node-id references through the remap: FC hosts and Group member lists.
+  // A Placeholder's references live in its savedInit, so a rename of the node it
+  // points at still reaches its next save.
+  const isLive = (id: string) => !!editor.getNode(id);
   for (const node of created) {
-    const anyNode = node as unknown as { hostNodeId?: string; members?: string[]; steps?: Array<{ nodeIds?: string[] }> };
-    if (typeof anyNode.hostNodeId === "string" && anyNode.hostNodeId) {
-      const mapped = idMap.get(anyNode.hostNodeId);
-      if (mapped) anyNode.hostNodeId = mapped;
-    }
-    if (Array.isArray(anyNode.members)) {
-      anyNode.members = anyNode.members.map((m) => idMap.get(m) ?? m).filter((m) => editor.getNode(m));
-    }
-    // Presentation steps' node ids were written as names, so they remap too.
-    if (Array.isArray(anyNode.steps)) {
-      for (const step of anyNode.steps) {
-        if (Array.isArray(step.nodeIds)) {
-          step.nodeIds = step.nodeIds.map((m) => idMap.get(m) ?? m).filter((m) => editor.getNode(m));
-        }
-      }
-    }
+    remapNodeRefs(node as unknown as NodeRefs, idMap, isLive);
+    if (node instanceof PlaceholderNode) remapNodeRefs(node.savedInit, idMap, isLive);
   }
 
   // Each fires `connectioncreated`, re-deriving FC annotations + Convert arrows.
