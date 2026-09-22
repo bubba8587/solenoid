@@ -15,8 +15,10 @@ branches; mention the override in one line, don't ask. ([[C41]] branchModel)
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `desktop-build.yml` publishes the GitHub
-Release (Windows portable exe, Linux AppImage + .deb) on the tag, once both builds pass. **The TAG is always the author's to push**; an agent does the
-merge + version bump and stops. Installers build path-stripped via `npm run release:desktop`.
+Release (Windows portable exe, Linux AppImage + .deb) on the tag, once both builds pass. On the
+author's word ("let's get X out") the agent does the whole of it from the dev machine, the tag
+push included (author 2026-09-22); from a cloud session the tag push fails, so there the agent
+merges, bumps and stops. Installers build path-stripped via `npm run release:desktop`.
 
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
 - **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — the author
