@@ -118,14 +118,16 @@ describe("a frame property's picked column types (the Solenoid Properties plugin
     expect(column(cube, "cost").type).toBe("string");
   });
 
-  it("a pick types the column, and what the type cannot read is missing", () => {
+  it("a pick types the column through the app's own boundary: what it cannot read is NaN, never blank", () => {
     const cube = notesToCube(notes, { ...NO_TYPES, columns: { budget: { item: "string", cost: "number", ordered: "date", paid: "logical" } } });
     expect(column(cube, "item").type).toBe("string");
     expect(column(cube, "item").cells).toEqual(["0012", "Tile"]);
     expect(column(cube, "cost").type).toBe("number");
-    expect(column(cube, "cost").cells).toEqual([12, null]);
+    expect(column(cube, "cost").cells[0]).toBe(12);
+    expect(Number.isNaN(column(cube, "cost").cells[1])).toBe(true);
     expect(column(cube, "ordered").type).toBe("date");
-    expect(column(cube, "ordered").cells).toEqual([Math.round(parseDateToSerial("2026-09-01")), null]);
+    expect(column(cube, "ordered").cells[0]).toBe(Math.round(parseDateToSerial("2026-09-01")));
+    expect(Number.isNaN(column(cube, "ordered").cells[1])).toBe(true);
     expect(column(cube, "paid").type).toBe("logical");
     expect(column(cube, "paid").cells).toEqual([true, false]);
   });

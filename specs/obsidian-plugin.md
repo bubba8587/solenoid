@@ -273,8 +273,9 @@ column above the guesser and only refines a frame's columns: mdbase and `types.j
 what a key is. The reader keeps a row's plain ISO date as the text written, so the column's
 type decides what it becomes: a Date pick or an all-date column makes serials, a Text pick keeps
 the text, and a column mixing a date with text is text with the date as written (it used to
-carry a bare serial). What a picked type cannot read is missing in Solenoid's view; the note keeps
-its text. The desktop file scope reaches that one path (`capabilities/default.json`). Tests:
+carry a bare serial). Every cell crosses the app's own value boundary (`coerceFrameCell`) with its source text kept as
+the frame's `raw`, as Frame Input's literal source does: a picked type that cannot read a cell
+shows NaN over the text, never a silent blank, and the note keeps its text ([[D72]]). The desktop file scope reaches that one path (`capabilities/default.json`). Tests:
 `pluginColumnTypes.test.ts`, `vaultCube.test.ts`, `noteFrontmatter.test.ts`, `noteNodeRanks.test.ts`.
 
 ## Verifying against real Obsidian

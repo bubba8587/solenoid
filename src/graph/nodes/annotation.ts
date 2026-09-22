@@ -15,7 +15,7 @@ import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../kn
 import { solError, type SolError } from "../errorValue";
 import { getActiveView, getOwningEditor } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
-import { isFrameValue, recordsToCube, type FrameValue, type FrameColumn, type FrameColType, type FrameCell, type CubeValue } from "../frame";
+import { isFrameValue, recordsToCube, coerceFrameCell, type FrameValue, type FrameColumn, type FrameColType, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
 import type { ImageValue } from "../imageValue";
@@ -90,8 +90,9 @@ function frameColType(cells: FrontmatterScalar[], isDate: boolean): FrameColType
 /** Rows of `{name: value}` → a FrameValue: columns are the keys in first-appearance order
  *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. A
  *  column's type is the user's pick (the Solenoid Properties plugin's `columnTypes`) when there
- *  is one, else the cells'; a date column's ISO text becomes serials, and a picked column's
- *  cells cross the type's boundary (what it cannot read is missing). */
+ *  is one, else the cells'. Every cell crosses the app's own value boundary (`coerceFrameCell`)
+ *  with its source text kept as `raw`, as Frame Input's literal source does: a type that cannot
+ *  read a cell shows NaN over the text, never a silent blank ([[D72]]). */
 function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
@@ -104,8 +105,8 @@ function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = []
       return typeof first === "object" ? null : first;
     });
     const type = picks[name] ?? frameColType(cells, dateColumns.includes(name));
-    const values = picks[name] || type === "date" ? cells.map((c) => coerceScalar(c, type)) : cells;
-    return { name, type, values: values as FrameCell[] };
+    const raw = cells.map((c) => (c === null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
+    return { name, type, values: raw.map((r) => coerceFrameCell(type, r)), raw };
   });
   return { __frame: true, columns };
 }

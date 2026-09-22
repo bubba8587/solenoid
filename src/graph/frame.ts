@@ -449,12 +449,10 @@ export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>
  *  type hint, a list value is a LIST cell (never joined into text), a nested record list a
  *  nested frame/cube via the same rule. The rows-of-objects shape frontmatter and the vault
  *  readers share. */
-/** A picked column's cell: the type's value boundary, and what it cannot read is missing
- *  (the plugin's own rule for a frame property's cell). */
+/** A picked column's cell: the type's own value boundary, as a Frame Input cell crosses it, so
+ *  what the type cannot read is NaN over the text, never a silent blank ([[D72]]). */
 function pickedCell(type: FrameColType, v: unknown): CubeCell {
-  if (v == null) return null;
-  const c = coerceFrameCell(type, String(v));
-  return typeof c === "number" && Number.isNaN(c) ? null : isSolError(c) ? null : c;
+  return v == null ? null : coerceFrameCell(type, String(v));
 }
 
 /** `picks`: a column's type as the user picked it (the Solenoid Properties plugin's

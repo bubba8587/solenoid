@@ -39,17 +39,20 @@ describe("a Note's frame columns follow the plugin's picks", () => {
     expect(ordered.values).toEqual(["2026-09-02", "later"]);
   });
 
-  it("with picks, the column is the picked type and what it cannot read is missing", async () => {
+  it("with picks, the column is the picked type through the app's boundary, the source text kept", async () => {
     const n = note(yaml);
     n.columnPicks = { budget: { ordered: "date", item: "number" } };
     n.syncFields();
     const fr = await frameOf(n);
     const ordered = fr.columns.find((c) => c.name === "ordered")!;
     expect(ordered.type).toBe("date");
-    expect(ordered.values[1]).toBeNull();
     expect(typeof ordered.values[0]).toBe("number");
+    expect(Number.isNaN(ordered.values[1])).toBe(true);
+    expect(ordered.raw).toEqual(["2026-09-02", "later"]);
     const item = fr.columns.find((c) => c.name === "item")!;
     expect(item.type).toBe("number");
-    expect(item.values).toEqual([12, null]);
+    expect(item.values[0]).toBe(12);
+    expect(Number.isNaN(item.values[1])).toBe(true);
+    expect(item.raw).toEqual(["0012", "Tile"]);
   });
 });
