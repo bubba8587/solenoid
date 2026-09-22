@@ -1266,7 +1266,7 @@
    "expectError": "#TYPE!"
   },
   {
-   "name": "non-finite keys never match \u2014 not even inf to inf",
+   "name": "non-finite keys never match — not even inf to inf",
    "frames": {
     "left": {
      "columns": [
@@ -1865,6 +1865,147 @@
     "how": "sideways"
    },
    "expectError": "#VALUE!"
+  },
+  {
+   "name": "explicit right key scale: a km right key matches an m left key",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "dist",
+       "type": "number",
+       "values": [
+        5000,
+        6000
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "a",
+        "b"
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "km",
+       "type": "number",
+       "values": [
+        5,
+        7
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "dist",
+    "rightKey": "km",
+    "how": "left",
+    "rightKeyScale": 1000
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "dist",
+      "type": "number",
+      "values": [
+       5000,
+       6000
+      ]
+     },
+     {
+      "name": "tag",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "explicit right key offset: a Celsius right key matches a Kelvin left key",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        273.15,
+        300
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "c",
+       "type": "number",
+       "values": [
+        0
+       ]
+      },
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "freeze"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "k",
+    "rightKey": "c",
+    "how": "inner",
+    "rightKeyScale": 1,
+    "rightKeyOffset": 273.15
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       273.15
+      ]
+     },
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "freeze"
+      ]
+     }
+    ]
+   }
   }
  ]
 }

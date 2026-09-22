@@ -9,7 +9,9 @@ import {
   isCubeValue, frameFromRows, formatFrameCell, selectCubeRows,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
-import { sameColumnUnit } from "./unitValue";
+import { sameColumnUnit, isUnitCell } from "./unitValue";
+import { dimEqual, formatDim } from "./dimension";
+import { tagFrameCellUnit } from "./unitColumn";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
@@ -644,6 +646,29 @@ export interface JoinOpts {
   leftKey: string; rightKey: string; how: JoinHow;
   asofDirection?: AsofDirection; // only read when how === "asof"; default "backward"
   asofTolerance?: number;        // max |left-right| key distance; unset = unlimited
+  /** The right key in the left key's unit is `right × scale + offset` (`joinKeyTransform`).
+   *  The oracle derives it from the key columns' units when unset; the native engine,
+   *  which never sees units, is always handed it. */
+  rightKeyScale?: number;
+  rightKeyOffset?: number;
+}
+
+/** How to read a right join key in the left key's unit, so `5 km` matches `5000 m`
+ *  ([[C25]] firstClassUnits). Null when there is nothing to convert: neither key has a
+ *  unit, only one does, or both have the same one. Keys that measure different things
+ *  (or two different currencies) are `#UNIT!`. */
+export function joinKeyTransform(left: FrameColumn | undefined, right: FrameColumn | undefined): { scale: number; offset: number } | null {
+  const lu = left?.unit, ru = right?.unit;
+  if (!lu || !ru || sameColumnUnit(lu, ru)) return null;
+  const isCurrency = (d: typeof lu.dim) => dimEqual(d, { currency: 1 });
+  if (!dimEqual(lu.dim, ru.dim) || (isCurrency(lu.dim) && (lu.display ?? "") !== (ru.display ?? ""))) {
+    throw solError("#UNIT!", `Join keys measure different things (${lu.display ?? formatDim(lu.dim)} and ${ru.display ?? formatDim(ru.dim)}). Convert one key first`);
+  }
+  // A display unit is affine to base SI (temperatures carry an offset): base = a·x + b.
+  const toBase = (x: number, u: typeof lu) => { const t = tagFrameCellUnit(x, u); return isUnitCell(t) ? t.value : (t as number); };
+  const al = toBase(1, lu) - toBase(0, lu), bl = toBase(0, lu);
+  const ar = toBase(1, ru) - toBase(0, ru), br = toBase(0, ru);
+  return { scale: ar / al, offset: (br - bl) / al };
 }
 
 const encKey = (v: FrameCell): string => JSON.stringify(encodeCell(v));
@@ -667,6 +692,8 @@ function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
 
 /** Shared by every `how` (asof included) — they differ only in how `pairs` is
  *  resolved. Layout: LEFT columns (key coalesced) + RIGHT non-key, names de-duped. */
+const meta = (c: FrameColumn) => ({ ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}) });
+
 function assembleJoinOutput(
   left: FrameValue, right: FrameValue, leftKey: string, rightKey: string,
   pairs: readonly [number | null, number | null][],
@@ -681,7 +708,7 @@ function assembleJoinOutput(
   left.columns.forEach((c, ci) => {
     const isKey = c.name === leftKey;
     out.push({
-      name: names[ci], type: c.type,
+      name: names[ci], type: c.type, ...meta(c),
       values: pairs.map(([l, r]) =>
         isKey
           ? (l !== null ? cellAt(c, l) : r !== null ? cellAt(rk, r) : null) // coalesce key from present side
@@ -690,7 +717,7 @@ function assembleJoinOutput(
   });
   rightNonKey.forEach((c, ri) => {
     out.push({
-      name: names[left.columns.length + ri], type: c.type,
+      name: names[left.columns.length + ri], type: c.type, ...meta(c),
       values: pairs.map(([, r]) => (r !== null ? cellAt(c, r) : null)),
     });
   });
@@ -801,11 +828,24 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
   }
   if (opts.how === "cross") return crossJoinFrames(left, right);
   const lk = requireColumn(left, opts.leftKey);
-  const rk = requireColumn(right, opts.rightKey);
+  let rk = requireColumn(right, opts.rightKey);
   // Keys of two different types can never match (families never auto-cross) —
   // refuse loudly rather than return a silent empty result. Cast a key first.
   if (lk.type !== rk.type) {
     throw solError("#TYPE!", `Join keys must share a type ("${lk.type}" vs "${rk.type}")`);
+  }
+  // Read the right key in the left key's unit before anything matches on it.
+  const t = opts.rightKeyScale !== undefined || opts.rightKeyOffset !== undefined
+    ? { scale: opts.rightKeyScale ?? 1, offset: opts.rightKeyOffset ?? 0 }
+    : joinKeyTransform(lk, rk);
+  if (t && (t.scale !== 1 || t.offset !== 0) && rk.type === "number") {
+    const scaled: FrameColumn = {
+      ...rk, ...(lk.unit ? { unit: lk.unit } : {}),
+      values: rk.values.map((v) => (typeof v === "number" ? v * t.scale + t.offset : v)),
+    };
+    const { raw: _raw, ...clean } = scaled;
+    right = frame(right.columns.map((c) => (c === rk ? clean : c)));
+    rk = clean;
   }
   const ln = frameRowCount(left), rn = frameRowCount(right);
 

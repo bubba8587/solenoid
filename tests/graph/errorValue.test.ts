@@ -50,7 +50,7 @@ describe("installErrorGuards", () => {
     const n = { outputs: { chart: {} }, cachedChart: { __chart: true } as unknown, cachedPayload: { kind: "kpi" } as unknown,
       data: () => ({ chart: { __chart: true } }), constructor: { name: "KpiNode" } };
     installErrorGuards(n);
-    n.data({ values: [solError("#N/A", "upstream")] } as never);
+    (n.data as (i: unknown) => unknown)({ values: [solError("#N/A", "upstream")] });
     expect(isSolError(n.cachedChart)).toBe(true);
     expect(n.cachedPayload).toBeNull();
   });

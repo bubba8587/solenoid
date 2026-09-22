@@ -3,7 +3,7 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, joinFrames, appendFrames, bindColumns, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
+import { applyVerb, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -385,9 +385,16 @@ class PolarsBackend implements FrameBackend {
   }
 
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
-    const h = await (ipcInvoke<string>("engine_join", { left, right, opts }) as Promise<FrameHandle>);
     const l = this.schemaOf(left), r = this.schemaOf(right);
-    return this.remember(h, l && r ? shadow(() => joinFrames(l, r, opts)) : null);
+    // The engine never sees units, so the unit conversion of the right key travels as
+    // two numbers, derived here the way the oracle derives them ([[C25]] firstClassUnits).
+    let wireOpts = opts;
+    if (l && r && opts.how !== "cross" && opts.rightKeyScale === undefined && opts.rightKeyOffset === undefined) {
+      const t = joinKeyTransform(l.columns.find((c) => c.name === opts.leftKey), r.columns.find((c) => c.name === opts.rightKey));
+      if (t) wireOpts = { ...opts, rightKeyScale: t.scale, rightKeyOffset: t.offset };
+    }
+    const h = await (ipcInvoke<string>("engine_join", { left, right, opts: wireOpts }) as Promise<FrameHandle>);
+    return this.remember(h, l && r ? shadow(() => joinFrames(l, r, wireOpts)) : null);
   }
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {

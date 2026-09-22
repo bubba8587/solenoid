@@ -760,7 +760,7 @@
    }
   },
   {
-   "name": "competition rank by v (blank order key \u2192 blank)",
+   "name": "competition rank by v (blank order key → blank)",
    "frames": {
     "in": {
      "columns": [
@@ -2491,6 +2491,438 @@
     "as": "out"
    },
    "expectError": "#VALUE!"
+  },
+  {
+   "name": "cumsum: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "cumsum",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "group_sum: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "group_sum",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       4,
+       4,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "share: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "share",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       0.25,
+       null,
+       0.75
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling_sum: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "rolling_sum",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "diff: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "diff",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "group_avg: a NaN value reads as blank on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__nf": "nan"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "group_avg",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__nf": "nan"
+       },
+       3
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       2,
+       2,
+       2
+      ]
+     }
+    ]
+   }
   }
  ]
 }

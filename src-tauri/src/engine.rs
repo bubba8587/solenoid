@@ -570,6 +570,12 @@ pub struct WireJoinOpts {
     asof_direction: Option<String>,
     #[serde(rename = "asofTolerance", default)]
     asof_tolerance: Option<f64>,
+    // The right key read in the left key's unit is right * scale + offset; the TS
+    // side derives both from the key columns' units, which never cross the wire.
+    #[serde(rename = "rightKeyScale", default)]
+    right_key_scale: Option<f64>,
+    #[serde(rename = "rightKeyOffset", default)]
+    right_key_offset: Option<f64>,
 }
 
 // ─── source ─────────────────────────────────────────────────────────────────────
@@ -1020,7 +1026,11 @@ fn lazy_window(
     let col_ty = col_name.and_then(|c| type_of_in(&plan.names, &plan.types, c));
     let vnum = || {
         let c = col(col_name.unwrap());
-        match col_ty { Some(SolType::Logical) => c.cast(DataType::Float64), _ => c }
+        match col_ty {
+            Some(SolType::Logical) => c.cast(DataType::Float64),
+            // NaN (an error cell's carrier included) reads as blank, as in the oracle.
+            _ => when(c.clone().is_nan()).then(lit(NULL)).otherwise(c),
+        }
     };
     let vraw = || col(col_name.unwrap());
     // The order key expr (the sort key lazy_sort uses: logical → 0/1, NaN → null).
@@ -1961,6 +1971,24 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
             format!("Join keys must share a type (\"{}\" vs \"{}\")", lt.tag(), rt.tag()),
         ));
     }
+    // Read the right key in the left key's unit before anything matches on it.
+    let scaled_right;
+    let right = match (rt, opts.right_key_scale, opts.right_key_offset) {
+        (SolType::Number, s, o) if s.is_some() || o.is_some() => {
+            let (s, o) = (s.unwrap_or(1.0), o.unwrap_or(0.0));
+            let k = opts.right_key.as_str();
+            let df = right
+                .df
+                .clone()
+                .lazy()
+                .with_column((col(k).cast(DataType::Float64) * lit(s) + lit(o)).alias(k))
+                .collect()
+                .map_err(|e| IpcError::internal(format!("join key scale failed: {e}")))?;
+            scaled_right = SolFrame { df, types: right.types.clone() };
+            &scaled_right
+        }
+        _ => right,
+    };
     if opts.how.as_str() == "asof" {
         return verb_join_asof(left, right, opts);
     }
@@ -2018,6 +2046,8 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
             how: "left".into(),
             asof_direction: None,
             asof_tolerance: None,
+            right_key_scale: None,
+            right_key_offset: None,
         };
         let head = verb_join(left, right, &left_opts)?;
         let mut args = JoinArgs::new(JoinType::Anti);

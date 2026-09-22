@@ -59,8 +59,8 @@ describe("relateFramesToCube — dimension-keyed joins (author 2026-07-16: tagge
   });
 
   it("the same quantity matches across display units (base-SI keying)", () => {
-    // Column cells are stored base-SI: 5 km and 5000 m are both 5000.
-    const parent = buildFrame([[5000]], ["k"]);
+    // Column cells are as-typed: 5 km keys as the same quantity as 5000 m.
+    const parent = buildFrame([[5]], ["k"]);
     parent.columns[0].unit = { dim: { length: 1 }, display: "km" };
     const child = buildFrame([[5000, 7]], ["k", "amt"]);
     child.columns[0].unit = { dim: { length: 1 }, display: "m" };

@@ -37,8 +37,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 Each was found reading the code to write the compute-pass, formula-language and frame-verbs specs (`../tree/specs/`). The spec describes today's behavior; these are the places it breaks a node or looks unintended.
 
-- [ ] **Join ignores units on keys.** [[C25]] says unit-tagged keys compare by dimension and base-SI magnitude; `joinFrames` ignores units (only Nest Join's `relateFramesToCube` does it).
-- [ ] **NaN in a Window value column**: the oracle reads it as blank, the engine computes with it (NaN sums). No corpus case yet.
 - [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row (reachable only through a wildcard); `stripUnitCells` doesn't reach inside a Cube.
 - [ ] **Vault write edges**: a merge with zero usable rows writes one empty note; an empty page name writes a note named `image`; a plain value writes without the Report's format picks (the writer has no annotation for it).
 - [ ] **Chart Builder offers keys the figure ignores** (Composed: `xlabel`, `ylabel`, `grid`, `ymin`/`ymax`, `alpha`; Bubble: `grid`, `ymin`/`ymax`; single-series Radar: `radarscale`), and canvas figures are offered `title` but draw none inside the figure.

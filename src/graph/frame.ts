@@ -642,10 +642,10 @@ function keyId(v: FrameCell | UnitCell): string {
   return String(v);
 }
 
-/** `keyId` for a COLUMN-united column: bare base-SI cells key dimensioned, matching
- *  a per-cell `UnitCell` of the same quantity. */
+/** `keyId` for a COLUMN-united column: an as-typed cell keys as its base-SI quantity, so
+ *  `5 km` matches `5000 m` and a per-cell `UnitCell` of the same quantity. */
 function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
-  if (unit && typeof v === "number" && Number.isFinite(v)) return dimKeyId(v, unit.dim, unit.display);
+  if (unit && typeof v === "number" && Number.isFinite(v)) return keyId(tagFrameCellUnit(v, unit) as FrameCell | UnitCell);
   return keyId(v);
 }
 

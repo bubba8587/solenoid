@@ -271,10 +271,10 @@ export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregate
 }
 
 // A frame column is homogeneous, so its unit is ONE `ColumnUnit`, not a
-// per-cell tag. The cells stay bare base-SI numbers.
+// per-cell tag. The cells stay bare as-typed magnitudes in that unit.
 export interface ColumnUnit {
   dim: Dim;
-  /** The display unit id the column was locked to; the values stay base SI. Absent
+  /** The display unit id the column was locked to; the values are magnitudes in it. Absent
    *  ⇒ the column renders in its dimension's derived-unit form. */
   display?: string;
 }

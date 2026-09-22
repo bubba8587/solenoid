@@ -162,7 +162,7 @@ Handles are `plf:<n>`, held in a process-global store in the Rust process. The T
 | `engine_source` | `frame: { columns: [{name, type, values}] }` | handle |
 | `engine_apply` | `handle, op` | handle |
 | `engine_apply_many` | `handle, ops` | handle |
-| `engine_join` | `left, right, opts: { leftKey, rightKey, how, asofDirection?, asofTolerance? }` | handle |
+| `engine_join` | `left, right, opts: { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? }` | handle |
 | `engine_append` | `handles` | handle |
 | `engine_bind_columns` | `handles` | handle |
 | `engine_preview` | `handle, n` | `{ schema, rows, rowCount, truncated }` |
@@ -226,7 +226,7 @@ Every verb in `FRAME_OP_KINDS` and the binary verbs `join`, `append`, `bindColum
 | `window` | Window | lazy | `#REF!`, `#VALUE!` (unknown function) |
 | `fillBlanks` | Fill Down | lazy | `#REF!` |
 | `replaceValues` | Replace Values | lazy | `#REF!` |
-| `join` | Join | command | `#REF!`, `#TYPE!`, `#VALUE!` |
+| `join` | Join | command | `#REF!`, `#TYPE!`, `#UNIT!`, `#VALUE!` |
 | `append` | Append | command | `#TYPE!` |
 | `bindColumns` | Bind Columns | command | nothing |
 
@@ -377,11 +377,13 @@ The card's Find and Replace take a wired value of any type, stringified by `read
 
 ### join
 
-`joinFrames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance? })`. The key columns must exist (`#REF!`) and share a type (`#TYPE!`, `Join keys must share a type ("<l>" vs "<r>")`); a Cross join needs neither.
+`joinFrames(left, right, { leftKey, rightKey, how, asofDirection?, asofTolerance?, rightKeyScale?, rightKeyOffset? })`. The key columns must exist (`#REF!`) and share a type (`#TYPE!`, `Join keys must share a type ("<l>" vs "<r>")`); a Cross join needs neither.
+
+Keys with units compare as quantities ([[C25]] firstClassUnits): `5 km` matches `5000 m`. When both key columns carry a unit and the units differ, `joinKeyTransform` reads the right key in the left key's unit as `right × scale + offset` (the offset is for temperatures). Keys that measure different things, or two different currencies, are `#UNIT!` (`Join keys measure different things (<l> and <r>). Convert one key first`). A unit on only one side converts nothing. Explicit `rightKeyScale`/`rightKeyOffset` override the derived transform; the native engine never sees units, so `PolarsBackend.join` derives the transform from its schema shadows and always sends it.
 
 Matching: key cells match by `encodeCell` identity, case-sensitive. A `null`, error or non-finite key never matches anything, including another of its kind; such rows still flow through the outer sides. Units on key columns are not consulted.
 
-Output layout for the equality and as-of joins: every left column, then every right column except the right key, names through `makeHeaders` (a colliding right column becomes `name2`). The key appears once, under the left key's name, filled from whichever side has the row. Unmatched cells are `null`. Columns carry name, type and values; unit and format are dropped.
+Output layout for the equality and as-of joins: every left column, then every right column except the right key, names through `makeHeaders` (a colliding right column becomes `name2`). The key appears once, under the left key's name, filled from whichever side has the row. Unmatched cells are `null`. Every column keeps its unit and format; the key keeps the left key's.
 
 | `how` | Rows |
 |---|---|
