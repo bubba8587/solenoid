@@ -7,6 +7,9 @@ import MagicString from "magic-string";
 import { walk } from "estree-walker";
 import path from "node:path";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+// App TypeScript, so the config is bundled to load; `VITE_CONFIG_NATIVE_IGNORE_WARNING` in the
+// build scripts is Vite's way of saying so.
+import { LOOK_CLASS, defaultLookCss, paletteLookCss } from "./src/lookTokens";
 
 const REPO = path.resolve(import.meta.dirname, "..");
 const SHIMS = path.join(import.meta.dirname, "src/shims");
@@ -16,7 +19,6 @@ const SHIMS = path.join(import.meta.dirname, "src/shims");
 const OUT = process.env.PLUGIN_OUT ? path.resolve(process.env.PLUGIN_OUT) : path.join(import.meta.dirname, "dist");
 const LOOK = path.join(import.meta.dirname, "src/look.css");
 const SNIPPET = path.join(REPO, "demo-vault/.obsidian/snippets/solenoid.css");
-const LOOK_CLASS = "solenoid-look";
 
 /** App modules that reach the graph, and what stands in for each ([[C107]]: the whole seam). */
 const SHIMMED: Record<string, string> = {
@@ -94,7 +96,7 @@ function pluginGlobals(): Plugin {
 
 /** The Solenoid look, every rule scoped under `body.solenoid-look` (the settings toggle adds
  *  the class). `body`, `.theme-dark` and `.theme-light` ARE the body, so they join it; the rest
- *  hang under it. */
+ *  hang under it. Then one token block per built-in palette, under the palette's own class. */
 function scopedLook(): string {
   const root = postcss.parse(readFileSync(LOOK, "utf8"));
   root.walkRules((rule) => {
@@ -104,7 +106,7 @@ function scopedLook(): string {
       return `body.${LOOK_CLASS} ${sel}`;
     });
   });
-  return root.toString();
+  return root.toString() + paletteLookCss();
 }
 
 /** The bundled CSS splits in two: `@font-face` must live in the document (`styles.css`); the
@@ -136,8 +138,9 @@ function shadowCss(): Plugin {
     // `PLUGIN_REPORT=1` lists what the bundle pulled in, largest first; with
     // `PLUGIN_TRACE=src/graph/x.ts,…` it also prints how the entry reaches each of those.
     writeBundle(_options, bundle) {
-      // The demo vault wears the look as a snippet: the same file, as it stands.
-      if (existsSync(path.dirname(SNIPPET))) writeFileSync(SNIPPET, readFileSync(LOOK));
+      // The demo vault wears the look as a snippet: the rules as they stand, with the Default
+      // palette's tokens (a snippet cannot follow a setting).
+      if (existsSync(path.dirname(SNIPPET))) writeFileSync(SNIPPET, readFileSync(LOOK, "utf8") + defaultLookCss());
       // `PLUGIN_MODULES=<file>`: every source file this build read, for the snapshot export.
       if (process.env.PLUGIN_MODULES) {
         const ids = [...this.getModuleIds()].map((id) => id.split("?")[0]).filter((id) => path.isAbsolute(id) && !id.includes("node_modules"));

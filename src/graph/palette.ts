@@ -49,6 +49,12 @@ function rgbToHsl(r: number, g: number, b: number): [number, number, number] {
   return [h, s, l];
 }
 
+/** A hex as HSL: hue in degrees, saturation and lightness 0..1. */
+export function hexToHsl(hex: string): [number, number, number] {
+  const t = parseHex(hex);
+  return t ? rgbToHsl(...t) : [0, 0, 0];
+}
+
 function hslToHex(h: number, s: number, l: number): string {
   h = ((h % 360) + 360) % 360;
   const c = (1 - Math.abs(2 * l - 1)) * s;

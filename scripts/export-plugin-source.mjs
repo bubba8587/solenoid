@@ -32,7 +32,7 @@ const installed = (name) => JSON.parse(fs.readFileSync(path.join(ROOT, "node_mod
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "solenoid-plugin-export-"));
 const modulesFile = path.join(scratch, "modules.json");
 run(process.execPath, [path.join(ROOT, "node_modules/vite/bin/vite.js"), "build", "--config", "obsidian-plugin/vite.config.ts"], {
-  env: { ...process.env, PLUGIN_OUT: path.join(scratch, "dist"), PLUGIN_MODULES: modulesFile },
+  env: { ...process.env, PLUGIN_OUT: path.join(scratch, "dist"), PLUGIN_MODULES: modulesFile, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true" },
 });
 const modules = JSON.parse(fs.readFileSync(modulesFile, "utf8"));
 
@@ -77,7 +77,7 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   description: manifest.description,
   license: "MIT",
   // The typecheck is the guard on the stand-ins: the app's calls must check against them.
-  scripts: { build: "tsc --noEmit && PLUGIN_OUT=dist vite build --config obsidian-plugin/vite.config.ts" },
+  scripts: { build: "tsc --noEmit && PLUGIN_OUT=dist VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts" },
   dependencies: pin([
     "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
     "chrono-node", "papaparse", "react", "react-dom", "rete",

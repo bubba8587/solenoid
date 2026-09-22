@@ -37,7 +37,8 @@ enough that the seeds have real rows to compute over:
   `Projects/Kitchen remodel` and a labeled edge, so the look's canvas styling has something to show.
 - **`.obsidian/snippets/solenoid.css`** — Solenoid's Default palette as an Obsidian look, light
   and dark, switched on by `.obsidian/appearance.json`. Written by `npm run plugin:build` from
-  `obsidian-plugin/src/look.css`, the one source; the plugin ships the same look behind a toggle. A property's icon wears its type's
+  `obsidian-plugin/src/look.css` (the rules) and `lookTokens.ts` (the Default palette's colors); the
+  plugin ships the same look behind a toggle, in whichever palette its settings pick. A property's icon wears its type's
   color, and hues used as text are darkened in light mode to hold contrast. The Atkinson
   Hyperlegible faces come from the Solenoid Properties plugin's `styles.css`. The plugin itself is
   not in the repository: `community-plugins.json` names it, and it installs from Obsidian's

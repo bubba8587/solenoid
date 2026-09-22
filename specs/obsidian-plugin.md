@@ -29,16 +29,24 @@ frame and the cube; and one scalar, Complex, the only element family Obsidian ha
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
 
 **The Solenoid look.** One more setting, a toggle, off until the user turns it on: Obsidian
-wears Solenoid's Default palette (the workbench neutrals, the gold accent, tabs as node headers,
-callouts and canvas groups as groups, a property's icon in its type's color; light mode is
-neutral or the full accent, never a hue greyed toward the ink). The one source is
-`obsidian-plugin/src/look.css`. The build scopes every rule under `body.solenoid-look` into the
-plugin's `styles.css`, and the toggle adds that class to the body of every Obsidian window
-(the main one, a popped-out note, settings), so the plugin writes nothing into the user's
-`.obsidian/`; `onunload` takes the class away. The same build writes the file as it stands to
-`demo-vault/.obsidian/snippets/solenoid.css`, which the demo vault turns on, and
-`tests/obsidianPlugin/look.test.ts` fails when the two drift. It targets Obsidian 1.13's variables
-(`--callout-<type>`, `--bases-*`).
+wears the palette chosen above (the workbench ramp, the accent, the typed hues, tabs as node
+headers, callouts and canvas groups as groups, a property's icon in its type's color; light mode
+is neutral or the full accent, never a hue greyed toward the ink). The rules have one source,
+`obsidian-plugin/src/look.css`, and it authors no hex: `lookTokens.ts` derives every color token
+(`--sol-*`, Obsidian's `--color-*-rgb`, the accent's HSL) from `palette.ts` as the chips' are
+derived (`themeVars`: the socket shades, the chrome ramp or the app's neutral one, the adaptive
+ramps, light mode darkened once), so a palette swap changes values only and the look's own
+formulas (inks, rules, washes) stand under every palette. The build scopes every rule under
+`body.solenoid-look` into the plugin's `styles.css` and appends one token block per built-in
+palette and mode under `body.solenoid-look.solenoid-palette-<name>.theme-<mode>`. The toggle
+adds the look class and the palette's class to the body of every Obsidian window (the main one,
+a popped-out note, settings), a palette change swaps the palette class, and `onunload` takes
+both away; the plugin writes nothing into the user's `.obsidian/` and no style or variable
+onto the body. The same build writes `look.css` plus the Default palette's two blocks to
+`demo-vault/.obsidian/snippets/solenoid.css` (a snippet cannot follow a setting), and
+`tests/obsidianPlugin/look.test.ts` fails when they drift, when `look.css` authors a token the
+generator owns, or when a palette yields anything but a color value. It targets Obsidian 1.13's
+variables (`--callout-<type>`, `--bases-*`).
 
 **Bases.** A Bases table draws a typed property through the same widget, so a cell shows the chip
 and a press opens the same editor (checked in Obsidian 1.13.7; a narrow column clips the chip until it
@@ -165,7 +173,7 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 | A cell can hold a `SolError` that flows on | A cell the family cannot read saves as missing (`null`) | An error is a computed result, and nothing computes here | Nothing planned |
 | A frame may be a lazy engine handle with a head-N preview (Polars on desktop) | Always an eager value | A property is small and already parsed | Nothing planned |
 | A chip is `md` in a value box and `sm` in a result box | Always `sm` | Author's ruling 2026-09-20: `md` overpowers a property row | The author's word |
-| Accent and palette follow the app setting and the open document's palette pin | Accent is the brand gold; palette is the plugin's own setting | No document, and Obsidian's accent is not a palette slot | A setting for the accent |
+| Accent and palette follow the app setting and the open document's palette pin | Accent is the brand gold; palette is the plugin's own setting, and the look wears it too (an adaptive ramp follows the gold, so Blueprint's workbench warms) | No document, and Obsidian's accent is not a palette slot | A setting for the accent |
 | Light or dark follows the app's own toggle | Follows Obsidian's | The note is Obsidian's surface | Nothing planned |
 | Export CSV opens the desktop save dialog | The web build's download path | No Tauri bridge in Obsidian | Nothing planned |
 

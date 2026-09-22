@@ -17,6 +17,7 @@ import { PaletteSwatches } from "./PaletteSwatches";
 import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, type PropertyKind, type ColumnTypes } from "./yamlValue";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
+import { LOOK_CLASS, paletteClass } from "./lookTokens";
 
 /** What Obsidian hands a property widget (read from the 1.13 source; not in the public API). */
 interface WidgetContext {
@@ -40,8 +41,6 @@ interface MetadataTypeManager {
 interface Mount { host: HTMLElement; root: Root; attached: boolean }
 
 interface PluginData { palette?: string; columnTypes?: Record<string, ColumnTypes>; look?: boolean }
-
-const LOOK_CLASS = "solenoid-look";
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
 
@@ -73,7 +72,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   }
 
   onunload(): void {
-    for (const doc of this.windows()) doc.body.removeClass(LOOK_CLASS);
+    for (const doc of this.windows()) this.shedLook(doc);
     const widgets = this.typeManager().registeredTypeWidgets;
     for (const kind of PROPERTY_KINDS) delete widgets[kind.id];
     tablePopup.close();
@@ -91,9 +90,19 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     return docs;
   }
 
-  /** The Solenoid look is a class on the body: every rule of it hangs under that class. */
+  /** The Solenoid look is two classes on the body: the look, which every rule of it hangs
+   *  under, and the palette, which picks its tokens. */
   wearLook(doc?: Document): void {
-    for (const d of doc ? [doc] : this.windows()) d.body.toggleClass(LOOK_CLASS, this.data.look === true);
+    const palette = paletteClass(paletteStore.activeBase());
+    for (const d of doc ? [doc] : this.windows()) {
+      this.shedLook(d, palette);
+      d.body.toggleClass([LOOK_CLASS, palette], this.look);
+    }
+  }
+
+  private shedLook(doc: Document, keep?: string): void {
+    doc.body.removeClass(LOOK_CLASS);
+    for (const cls of Array.from(doc.body.classList)) if (cls.startsWith("solenoid-palette-") && cls !== keep) doc.body.removeClass(cls);
   }
 
   get look(): boolean { return this.data.look === true; }
@@ -114,6 +123,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   async setPalette(name: PaletteName): Promise<void> {
     paletteStore.setActiveBase(name);
     refreshTokens();
+    this.wearLook();
     this.data.palette = name;
     await this.saveData(this.data);
   }
@@ -229,12 +239,15 @@ class SolenoidSettingTab extends PluginSettingTab {
         name: "Color palette",
         render: (setting) => {
           // Settings is a window of its own.
-          setting.settingEl.ownerDocument.body.toggleClass(LOOK_CLASS, this.plugin.look);
+          this.plugin.wearLook(setting.settingEl.ownerDocument);
           // The app's Settings row: the dropdown with the swatch legend stacked under it.
           setting.addDropdown((dropdown) => {
             for (const name of paletteStore.names()) dropdown.addOption(name, name);
             dropdown.setValue(paletteStore.activeBase());
-            dropdown.onChange((name) => void this.plugin.setPalette(name as PaletteName));
+            dropdown.onChange(async (name) => {
+              await this.plugin.setPalette(name as PaletteName);
+              this.plugin.wearLook(setting.settingEl.ownerDocument);
+            });
           });
           setting.controlEl.addClass("solenoid-settings-palette");
           this.plugin.mount(setting.controlEl, "solenoid-settings-swatches", <PaletteSwatches />);
@@ -245,7 +258,7 @@ class SolenoidSettingTab extends PluginSettingTab {
         render: (setting) => {
           setting.addToggle((toggle) => toggle.setValue(this.plugin.look).onChange(async (on) => {
             await this.plugin.setLook(on);
-            setting.settingEl.ownerDocument.body.toggleClass(LOOK_CLASS, on);
+            this.plugin.wearLook(setting.settingEl.ownerDocument);
           }));
         },
       },

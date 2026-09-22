@@ -6,6 +6,21 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-22 — plugin 0.1.3: the look follows the palette; author present)
+
+- **The Solenoid look wears the plugin's palette setting, not just the chips.** `look.css` authors no hex any
+  more: `obsidian-plugin/src/lookTokens.ts` derives every color token from `palette.ts` exactly as the chips'
+  sheet does (`themeVars`), the build appends one block per built-in palette and mode to `styles.css` under
+  `body.solenoid-look.solenoid-palette-<name>`, and `main.tsx` swaps that class beside the look class (every
+  window, settings included; `onunload` sheds both). Pure value swaps, author's word: the app already settled
+  contrast, so the look's own ink/rule/wash formulas stand unchanged under every palette. The snippet stays
+  the Default palette (rules + its two generated blocks; `look.test.ts` pins it). Manifest `0.1.3`, not yet
+  published; the plugin repository's README still says "Default palette only" — fix it on export.
+- The build config now imports app TypeScript, so Vite bundles it to load; `VITE_CONFIG_NATIVE_IGNORE_WARNING`
+  in the build scripts (here and in the exported snapshot's) is Vite's own switch for that.
+- Blueprint under the look: its chrome ramp is adaptive and the plugin's accent is fixed gold, so its workbench
+  comes out warm, as its chips already did (spec divergence table). A plugin accent setting would reopen it.
+
 ### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
 
 tsc + vitest green; the plugin was checked in the rig (Obsidian 1.13.7: settings tab, a popped-out note, a
@@ -27,7 +42,6 @@ palette change under an open editor).
   `getSettingDefinitions()` and keeps `display()` for older Obsidian.
 - The review is reproducible: `eslint-plugin-obsidianmd`'s recommended config run in the exported snapshot
   matched its counts. What stands, and why, is `specs/obsidian-plugin.md` § Publishing.
-- NEXT for the plugin: the Solenoid look follows every palette (`backlog.md`), once the review is quiet.
 
 ### SESSION DIGEST (2026-09-21b — plugin release readiness, the vault look; author present)
 

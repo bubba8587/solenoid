@@ -1,12 +1,17 @@
 /* [[C107]] obsidianPlugin
-   The Solenoid look: Solenoid's Default palette on Obsidian, the neutral workbench, the gold
-   accent and the typed socket hues (DESIGN.md § 2). Color means type here too: a property's
-   icon wears the color Solenoid gives that type, strings in code are lime, numbers are gold.
-   THE ONE SOURCE: the build scopes it under `body.solenoid-look` into the plugin's styles.css
-   (the settings toggle adds that class) and writes it as it stands to the demo vault's
-   snippet. The faces are Atkinson Hyperlegible, which the plugin's styles.css registers. */
+   The Solenoid look: Solenoid's palette on Obsidian, the workbench neutrals, the gold accent
+   and the typed socket hues (DESIGN.md § 2), following the plugin's palette setting. Color
+   means type here too: a property's icon wears the color Solenoid gives that type, strings in
+   code are lime, numbers are gold. THE ONE SOURCE of the rules: the build scopes it under
+   `body.solenoid-look` into the plugin's styles.css (the settings toggle adds that class) and
+   writes it, with the Default palette's tokens, to the demo vault's snippet. The faces are
+   Atkinson Hyperlegible, which the plugin's styles.css registers. */
 
 /* ── Tokens ─────────────────────────────────────────────────────────────────── */
+/* No hex here. The colors (workbench ramp, accent, typed hues, Obsidian's named colors) come
+   from lookTokens.ts, derived from palette.ts as the chips' are: the build appends one block per
+   built-in palette to styles.css, and the snippet carries the Default palette's. Below is what
+   holds under every palette. */
 
 body {
   --sol-mix-hairline: 30%;
@@ -22,33 +27,10 @@ body {
   --radius-m: 8px;
   --radius-l: 12px;
   --radius-xl: 12px;
-
-  /* #f5b914 */
-  --accent-h: 44;
-  --accent-s: 92%;
-  --accent-l: 52%;
 }
 
 .theme-dark {
-  --sol-app-bg: #141414;
-  --sol-canvas: #0b0b0b;
-  --sol-canvas-dot: #2a2a2a;
-  --sol-surface: #1e1e1e;
-  --sol-sunken: #141414;
-  --sol-raised: #262626;
-  --sol-border: #2d2d2d;
-  --sol-border-strong: #3a3a3a;
-  --sol-border-subtle: #2a2a2a;
-  --sol-text: #e8e8e8;
-  --sol-text-bright: #f3f4f5;
-  --sol-text-dim: #9aa0a6;
-  --sol-text-muted: #80868e;
-
-  --sol-accent: #f5b914;
-  --sol-accent-ink: #1a1a1a;
   --sol-header-tint: 22%;
-  --sol-overlay-border: #474c54;
-  --sol-btn-hover: #1f1f1f;
   /* A hue used as TEXT or as a line icon is itself on the dark workbench. */
   --sol-ink-pct: 100%;
   --sol-wash: 14%;
@@ -71,53 +53,12 @@ body {
   --sol-h1-rule: color-mix(in srgb, var(--sol-number) var(--sol-mix-edge), var(--sol-border));
   --sol-h2-rule: color-mix(in srgb, var(--sol-string) var(--sol-mix-hairline), var(--sol-border));
 
-  --sol-number: #f5b914;
-  --sol-list: #d09d11;
-  --sol-table: #e17c00;
-  --sol-string: #c8e040;
-  --sol-strlist: #aabe36;
-  --sol-strtable: #cec820;
-  --sol-date: #de7cb0;
-  --sol-datelist: #bd6996;
-  --sol-datetable: #cc62ae;
-  --sol-complex: #56b4e9;
-  --sol-complexlist: #4999c6;
-  --sol-complextable: #37bad6;
-  --sol-logical: #c05dd1;
-  --sol-logicallist: #a34fb2;
-  --sol-logicaltable: #9742c0;
-  --sol-frame: #7b64ed;
-  --sol-lambda: #00b862;
-  --sol-any: #8a8f98;
-  --sol-amber: #d9742b;
-  --sol-blue: #3173e0;
-  --sol-teal: #4fc89a;
-  --sol-error: #e0473a;
-
   --shadow-s: 0 4px 14px rgba(0, 0, 0, 0.2);
   --shadow-l: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .theme-light {
-  --sol-app-bg: #f4f5f7;
-  --sol-canvas: #eef1f5;
-  --sol-canvas-dot: #d3d9e1;
-  --sol-surface: #fbfcfd;
-  --sol-sunken: #ffffff;
-  --sol-raised: #eef1f5;
-  --sol-border: #ccd2da;
-  --sol-border-strong: #b2bac4;
-  --sol-border-subtle: #dfe3e9;
-  --sol-text: #1b1e23;
-  --sol-text-bright: #0d0f12;
-  --sol-text-dim: #5b636b;
-  --sol-text-muted: #6a717b;
-
-  --sol-accent: #eab013;
-  --sol-accent-ink: #1a1a1a;
   --sol-header-tint: 52%;
-  --sol-overlay-border: #aeb6c1;
-  --sol-btn-hover: #e9ecf0;
   /* On white a color is either NEUTRAL or the FULL accent, never a hue greyed toward the ink:
      no hue here reaches 4.5:1 as text (lime is 1.6:1), and dark yellow is brown. So gold and
      lime text is the ink and their color moves into fills, rules and badges; the other hues
@@ -142,29 +83,6 @@ body {
   --sol-emphasis: color-mix(in srgb, var(--sol-accent) 88%, #000);
   --sol-h1-rule: var(--sol-number);
   --sol-h2-rule: var(--sol-strlist);
-
-  --sol-number: #eab013;
-  --sol-list: #c79610;
-  --sol-table: #d77600;
-  --sol-string: #bed53d;
-  --sol-strlist: #a2b534;
-  --sol-strtable: #c4bf1f;
-  --sol-date: #d376a7;
-  --sol-datelist: #b3648e;
-  --sol-datetable: #c25da5;
-  --sol-complex: #52abde;
-  --sol-complexlist: #4691bd;
-  --sol-complextable: #34b1cc;
-  --sol-logical: #b558c6;
-  --sol-logicallist: #9a4ba8;
-  --sol-logicaltable: #8e3fb6;
-  --sol-frame: #755fe2;
-  --sol-lambda: #00ad5c;
-  --sol-any: #80848d;
-  --sol-amber: #d9742b;
-  --sol-blue: #3173e0;
-  --sol-teal: #3fae84;
-  --sol-error: #e0473a;
 
   --shadow-s: 0 4px 14px rgba(20, 30, 50, 0.06);
   --shadow-l: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
@@ -209,21 +127,13 @@ body {
 
   /* Obsidian's named colors, so callouts, canvas cards and graph groups pull from the palette. */
   --color-red: var(--sol-error);
-  --color-red-rgb: 224, 71, 58;
   --color-orange: var(--sol-amber);
-  --color-orange-rgb: 217, 116, 43;
   --color-yellow: var(--sol-number);
-  --color-yellow-rgb: 245, 185, 20;
   --color-green: var(--sol-lambda);
-  --color-green-rgb: 0, 184, 98;
   --color-cyan: var(--sol-complex);
-  --color-cyan-rgb: 86, 180, 233;
   --color-blue: var(--sol-blue);
-  --color-blue-rgb: 49, 115, 224;
   --color-purple: var(--sol-frame);
-  --color-purple-rgb: 123, 100, 237;
   --color-pink: var(--sol-date);
-  --color-pink-rgb: 222, 124, 176;
 
   /* Chrome */
   --titlebar-background: var(--sol-canvas);
@@ -1062,3 +972,109 @@ button.mod-cta {
 .graph-view.color-line-highlight { color: var(--sol-accent); }
 .graph-view.color-circle { color: var(--sol-accent); }
 .graph-view.color-text { color: var(--sol-text-dim); }
+
+/* The Default palette's tokens, derived from palette.ts by lookTokens.ts (npm run plugin:build). */
+.theme-dark {
+  --sol-app-bg: #141414;
+  --sol-canvas: #0b0b0b;
+  --sol-canvas-dot: #2a2a2a;
+  --sol-surface: #1e1e1e;
+  --sol-sunken: #141414;
+  --sol-raised: #262626;
+  --sol-border: #2d2d2d;
+  --sol-border-strong: #3a3a3a;
+  --sol-border-subtle: #2a2a2a;
+  --sol-text: #e8e8e8;
+  --sol-text-bright: #f3f4f5;
+  --sol-text-dim: #9aa0a6;
+  --sol-text-muted: #80868e;
+  --sol-overlay-border: #484848;
+  --sol-btn-hover: #252525;
+  --sol-accent: #f5b914;
+  --sol-accent-ink: #1a1a1a;
+  --accent-h: 44;
+  --accent-s: 92%;
+  --accent-l: 52%;
+  --sol-number: #f5b914;
+  --sol-list: #d09d11;
+  --sol-table: #e17c00;
+  --sol-string: #c8e040;
+  --sol-strlist: #aabe36;
+  --sol-strtable: #cec820;
+  --sol-date: #de7cb0;
+  --sol-datelist: #bd6996;
+  --sol-datetable: #cc62ae;
+  --sol-complex: #56b4e9;
+  --sol-complexlist: #4999c6;
+  --sol-complextable: #37bad6;
+  --sol-logical: #c05dd1;
+  --sol-logicallist: #a34fb2;
+  --sol-logicaltable: #9742c0;
+  --sol-frame: #7b64ed;
+  --sol-lambda: #00b862;
+  --sol-any: #8a8f98;
+  --sol-amber: #d9742b;
+  --sol-blue: #3173e0;
+  --sol-teal: #4fc89a;
+  --sol-error: #e0473a;
+  --color-red-rgb: 224, 71, 58;
+  --color-orange-rgb: 217, 116, 43;
+  --color-yellow-rgb: 245, 185, 20;
+  --color-green-rgb: 0, 184, 98;
+  --color-cyan-rgb: 86, 180, 233;
+  --color-blue-rgb: 49, 115, 224;
+  --color-purple-rgb: 123, 100, 237;
+  --color-pink-rgb: 222, 124, 176;
+}
+.theme-light {
+  --sol-app-bg: #f4f5f7;
+  --sol-canvas: #eef1f5;
+  --sol-canvas-dot: #d3d9e1;
+  --sol-surface: #fbfcfd;
+  --sol-sunken: #ffffff;
+  --sol-raised: #eef1f5;
+  --sol-border: #ccd2da;
+  --sol-border-strong: #b2bac4;
+  --sol-border-subtle: #dfe3e9;
+  --sol-text: #1b1e23;
+  --sol-text-bright: #0d0f12;
+  --sol-text-dim: #5b636b;
+  --sol-text-muted: #6a717b;
+  --sol-overlay-border: #a6aeb7;
+  --sol-btn-hover: #ededed;
+  --sol-accent: #eab013;
+  --sol-accent-ink: #1a1a1a;
+  --accent-h: 44;
+  --accent-s: 85%;
+  --accent-l: 50%;
+  --sol-number: #eab013;
+  --sol-list: #c79610;
+  --sol-table: #d77600;
+  --sol-string: #bed53d;
+  --sol-strlist: #a2b534;
+  --sol-strtable: #c4bf1f;
+  --sol-date: #d376a7;
+  --sol-datelist: #b3648e;
+  --sol-datetable: #c25da5;
+  --sol-complex: #52abde;
+  --sol-complexlist: #4691bd;
+  --sol-complextable: #34b1cc;
+  --sol-logical: #b558c6;
+  --sol-logicallist: #9a4ba8;
+  --sol-logicaltable: #8e3fb6;
+  --sol-frame: #755fe2;
+  --sol-lambda: #00ad5c;
+  --sol-any: #80848d;
+  --sol-amber: #ce6e29;
+  --sol-blue: #2e6dd5;
+  --sol-teal: #4abd91;
+  --sol-error: #d54337;
+  --color-red-rgb: 213, 67, 55;
+  --color-orange-rgb: 206, 110, 41;
+  --color-yellow-rgb: 234, 176, 19;
+  --color-green-rgb: 0, 173, 92;
+  --color-cyan-rgb: 82, 171, 222;
+  --color-blue-rgb: 46, 109, 213;
+  --color-purple-rgb: 117, 95, 226;
+  --color-pink-rgb: 211, 118, 167;
+}
