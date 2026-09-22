@@ -166,7 +166,7 @@ results get retried and settled rulings relapse.
 | `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `../specs/script-sandbox.md` |
 | `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `../specs/formulajs-divergences.md`; the formula-surface nodes (`python tools/dte.py tree --under B5`); [[C22]] rowFormulaRefs |
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | [[C17]] shareImpl (one impl, two surfaces), [[D19]] implReteFree (rete-free; what not to extract) |
-| `computedColumnCore.ts` | [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas |
+| `computedColumnCore.ts`, `ComputedColumnNode`, Frame Input Fx columns | [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas; `../specs/computed-columns.md` |
 | `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule), § 6 (the cube contract, the figure payload, the figure never writes); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |
 | `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); [[C16]] polarsEngine, [[C24]] arraySemantics; cargo parity tests |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |

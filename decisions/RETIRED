@@ -21,3 +21,4 @@ D58	2026-09-22	superseded	C42	Claude	-	hicCaptureRef1: HIC captures at REF = 1, 
 D59	2026-09-22	superseded	C42	Claude	-	oneReadbackPerPaint: the atlas packer takes one GPU read-back per paint, never one per node
 D60	2026-09-22	superseded	C42	Claude	-	domSyncPresentedCamera: mid-gesture the DOM viewport follows the camera the canvas presented
 D61	2026-09-22	superseded	C42	Claude	-	cloneKeepsOwnPosition: the HIC clone never sets position; each root's own CSS class governs it
+C12	2026-09-22	superseded	C11	Claude	-	socketRows: A side with more than one socket renders one row per socket

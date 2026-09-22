@@ -104,14 +104,7 @@ The table above says how a missing value behaves once it is inside a computation
 says how it gets there, which is a separate decision every node makes and got wrong for
 a long time. **Target this section when writing a new node.**
 
-(There is a second way a value enters a computation: a formula-level reference resolved
-against a computed column's row context, not a socket ([[C22]] rowFormulaRefs). Its rules
-live with the core: precedence is column → `row`/`rows` builtins → the definition's
-own env (λ captures) → the surface's side value (`computedColumnCore.ts`). A reference
-used outside a row context is a targeted `#REF!`, not `#NAME?`. One trap for a new
-surface: when no `sideValue` hook is supplied, the core's default is `0`. Frame Input
-overrides it with `#REF!` on purpose; a surface that forgets the hook gets a silent zero,
-exactly the confidently wrong answer this section exists to prevent.)
+(There is a second way a value enters a computation: a reference resolved against a computed column's row context rather than a socket ([[C22]] rowFormulaRefs). Its resolution order and what a miss answers are `../specs/computed-columns.md`. A new surface must supply the core's `sideValue` hook and answer a miss explicitly, as Frame Input does with `#REF!`; the core supplies no default of its own.)
 
 ### The one rule
 

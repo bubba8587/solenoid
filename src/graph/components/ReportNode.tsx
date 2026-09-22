@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax, [[C12]] socketRows
+// [[C68]] knapIsTheDocumentSyntax, [[C11]] socketBox12
 import { useSyncExternalStore } from "react";
 import type { ReportNode as ReportNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";
@@ -14,7 +14,7 @@ import { collapseStore } from "../collapseStore";
 import { cableValueStore } from "../cableValueStore";
 import "./ReportNode.css";
 
-/** One inline-ref INPUT row ([[C12]] socketRows). */
+/** One inline-ref INPUT row ([[C11]] socketBox12). */
 function ReportRefRow({ data, emit, refKey, label, value }: {
   data: ReportNodeType;
   emit: Emit;

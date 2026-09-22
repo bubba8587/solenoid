@@ -1,4 +1,4 @@
-// [[C47]] equationNode, [[C12]] socketRows, [[C11]] socketBox12
+// [[C47]] equationNode, [[C11]] socketBox12
 import { useRef, useState, useLayoutEffect, type ReactNode } from "react";
 import type { EquationNode as EquationNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps, type Emit } from "./nodeKit";
@@ -8,7 +8,7 @@ import { formulaPopup } from "../formulaPopupStore";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ExpressionNode.css";
 
-// A local measured row ([[C12]] socketRows): two sockets, centered on the HERO VALUE BOX
+// A local measured row ([[C11]] socketBox12): two sockets, centered on the HERO VALUE BOX
 // rather than the row. The row must NOT become a positioning context.
 function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);

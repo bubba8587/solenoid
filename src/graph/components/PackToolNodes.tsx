@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C12]] socketRows, [[C26]] opArgDistinct
+// [[C76]] formulaPackDefault, [[C11]] socketBox12, [[C26]] opArgDistinct
 // Cards for the pack tool nodes — the domain logic lives in their node files.
 
 import {

@@ -38,6 +38,10 @@ glob; a file the glob matches is built to that spec and cites nothing class-wide
 
 `../specs/standoffs.md`.
 
+## Computed columns (`computedColumnCore.ts`, `ComputedColumnNode`, Frame Input's Fx columns)
+
+`../specs/computed-columns.md`.
+
 ## HTML-in-Canvas gesture layer (`htmlCanvasRenderer.ts`, `components/HtmlCanvasLayer.tsx`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts`)
 
 `../specs/html-in-canvas.md`.
