@@ -34,7 +34,17 @@ specific item.
   palette's block and one block per accent (its color, ink, HSL, and for Orchard and Blueprint the chrome ramp,
   which follows the accent's hue as in the app). So Blueprint under a blue accent is the authored cyanotype;
   under gold it is the sepia print the app shows at its default accent, which is what I had misread as a plugin
-  divergence.
+  divergence. Then the accent had to OWN the UI: the look had bound tabs, the top line, links, the active
+  item, the h1 and the hr cable to the number hue (gold under Default), so `--sol-ink-accent` (the accent as
+  text: itself on dark, the look's yellow rule on white) took those roles, graph nodes wear the accent (the
+  active one the ink), and a type's hue means that type only. A light property badge's glyph is the ink that
+  reads on its type color under the current palette (`--sol-ink-on-*`, the chips' contrast rule); dark icons
+  keep the type hue (author's ruling after a wrong turn to all-ink icons).
+- **Two cross-window bugs the rig caught once reproduced from a fresh start**: Obsidian's `toggleClass` tests
+  `instanceof Array`, which an array from the main window fails in the settings window (its own window in
+  1.13), so the look's classes toggle one at a time; and the graph view (a canvas) reads colors only on
+  `css-change`, which a class swap never fired, so palette, accent and look changes trigger it.
+- The demo vault's notes lost their hard wraps: Obsidian renders a single newline as a break.
 
 ### SESSION DIGEST (2026-09-21c — plugin 0.1.2, the directory review's findings; author present)
 
