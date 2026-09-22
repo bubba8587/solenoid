@@ -2,7 +2,7 @@
 
 # Spec: Inline literal maps
 
-Serves [[C28]] literalsIffEditable. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Inline literal maps; a WHY that is not in a node belongs in one.
+Serves [[C28]] literalsIffEditable. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 `literals` / `stringLiterals` are the per-node inline-typed values (number rows,
 CSV-typeable lists, column pickers). The governing convention: **a node class

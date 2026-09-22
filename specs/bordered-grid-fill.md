@@ -2,7 +2,7 @@
 
 # Spec: Bordered-grid fill
 
-Serves [[C102]] gridFillThenForecast. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Bordered-grid fill; a WHY that is not in a node belongs in one.
+Serves [[C102]] gridFillThenForecast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 **The two-pass algorithm.** The first row holds each column's X coordinate, the first column each row's Y (top-left corner ignored). The KNOWN cells define a coarse grid. Pass 1 fills a blank by true BILINEAR interpolation (MATLAB `interp2` / SciPy `RegularGridInterpolator` "linear") of the four surrounding known corners; the bracket WIDENS past any line whose corner is blank — the closest all-known-corner box wins. A query past the data on an axis is NOT enclosable and pass 1 leaves it blank for the forecast pass (forecast OFF → it stays null; a lookup table doesn't extrapolate — pinned in `stats.test.ts`). Pass 2 (`forecast`, default true): every still-blank cell fills from a smooth surface through ALL known points — thin-plate spline, or a plane for degenerate data (`surfaceFit.ts`) — which covers scattered gaps and extrapolates with a linear edge trend. Forecast OFF: only bilinear-enclosed cells fill.
 

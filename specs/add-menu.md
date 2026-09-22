@@ -2,7 +2,7 @@
 
 # Spec: Add menu
 
-Serves [[D5]] searchWiderThanLabel. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Add menu; a WHY that is not in a node belongs in one.
+Serves [[D5]] searchWiderThanLabel. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 **The pipeline.** `NODE_CATALOG` is a TREE of categories, pairs and leaves — that tree is
 what the menu renders when the search box is empty. `flattenLeaves` flattens it for

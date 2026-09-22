@@ -2,7 +2,7 @@
 
 # Spec: Script sandbox
 
-Serves [[C66]] scriptNode. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Script sandbox; a WHY that is not in a node belongs in one.
+Serves [[C66]] scriptNode. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 One shared module Worker, spawned lazily, one request id per call. `scriptRun.ts` is the
 evaluator and imports NOTHING from the app: it is the worker's whole bundle (no React, no

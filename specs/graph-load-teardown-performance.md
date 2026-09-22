@@ -2,7 +2,7 @@
 
 # Spec: Graph load / teardown performance
 
-Serves [[C43]] oneFlowSurface. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Graph load / teardown performance; a WHY that is not in a node belongs in one.
+Serves [[C43]] oneFlowSurface. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The rete-era cost model (hundreds of per-node React roots to unmount, socket-position bookkeeping) died with the rete surface — every card renders in ONE React tree and RF measures handles itself. What carries the load path now:
 

@@ -2,7 +2,7 @@
 
 # Spec: Auto-arrange / Tidy
 
-Serves [[C84]] tidyTranslatesOnly; the position lock is [[D63]] lockedGroupIsObstacle, the size read is [[D64]] oneSizeRead, standoff clusters are [[C89]] standoffsSolveLast. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Auto-arrange / Tidy; a WHY that is not in a node belongs in one.
+Serves [[C84]] tidyTranslatesOnly; the position lock is [[D63]] lockedGroupIsObstacle, the size read is [[D64]] oneSizeRead, standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 - **Every movement-stack size read routes through `measuredBox()` (`nodeSize.ts`)** — live DOM → the ResizeObserver mirror → a non-zero collapse-aware fallback (2026-07-16 unification; align/autofit adopted it first, then tidy/push/standoffs/splice/focus). Do NOT reintroduce ad-hoc `offsetWidth || node.width || 100` reads — the variants disagreed pre-paint and on collapsed groups (OutlinePanel's reversed read centered the camera on a collapsed group's stored EXPANDED box). `hostFootprint`/`realHostSize` restores are restricted to LAYOUT TARGETS (a docked-FC host that is a group member isn't laid out, and stamping it left a height pin nothing cleared — frozen card); ELK-footprint restores run BEFORE the post-layout anchor measurement (measuring while hosts/leaders were still inflated skewed the preserved center); the within-group autogrow rounds `group.width/height` to integers (the 8622a72 rule). Harness: `tidyArrangeGroups.test.ts` drives the REAL arrange/cleanup with real elkjs over a fake area modeling the DOM contract.
 

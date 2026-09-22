@@ -2,7 +2,7 @@
 
 # Spec: Composite drill-in mount lifecycle
 
-Serves [[C77]] compositeIsSubgraph. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Composite drill-in mount lifecycle; a WHY that is not in a node belongs in one.
+Serves [[C77]] compositeIsSubgraph. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A composite's drill-in stack (`DrillStack` — flowView + topology pipe + per-composite snapshot-history state) is created ONCE per composite instance and cached on the node (`__flowDrill`): the pipe attaches to the long-lived `internalEditor` and rete has no way to remove one, so a fresh stack per open would accumulate dead pipes. The RF SURFACE, by contrast, is per-OPEN: closing unmounts the whole React tree, so every card component's effects stop with it — the rete-era leak class (a Connection node's auto-refresh interval inside a closed composite firing `processGraph()` forever, audit 2026-07-05) cannot recur, because there are no per-view React roots to strand.
 

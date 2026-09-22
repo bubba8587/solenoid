@@ -2,7 +2,7 @@
 
 # Spec: React Flow surface contract
 
-Serves [[C43]] oneFlowSurface. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § React Flow surface contract; a WHY that is not in a node belongs in one.
+Serves [[C43]] oneFlowSurface. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The view is React Flow over a headless rete model ([[B10]] reactFlowView). What RF owns, what the model owns, and the conversions at the seam — every item below was a shipped bug when it was violated.
 

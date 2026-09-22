@@ -2,7 +2,7 @@
 
 # Spec: Resizable-content nodes
 
-Serves [[C37]] observerOwnsSize. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Resizable-content nodes; a WHY that is not in a node belongs in one.
+Serves [[C37]] observerOwnsSize. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 When a node renders content whose size depends on live user input (slider, drag, growing list), keep the **node body (hit area + offsetParent) a constant size** and let the visible content overflow. The inspector toolbar must not ride the varying content: the Conduit's toolbar PORTALS out of the canvas transform entirely to a viewport-fixed dock (bottom-left, above `--chrome-bottom` — `ConduitComponent.tsx` `createPortal` + `conduit.css` `--docked`), so zoom and content changes can't move it.
 

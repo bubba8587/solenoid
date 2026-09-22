@@ -2,7 +2,7 @@
 
 # Spec: Pointer gestures
 
-Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[C43]] oneFlowSurface (both canvases wire the gestures once). The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Pointer gestures; a WHY that is not in a node belongs in one.
+Serves [[C92]] pinchUnvetoable (where each gesture listens and what counts as a finger), [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[C43]] oneFlowSurface (both canvases wire the gestures once). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 **The rule ([[C92]]): pinch listens in CAPTURE and cannot be vetoed; pan and node-drag listen in BUBBLE and can be.** Both halves matter — do not move either. React Flow's node drag (d3-drag) and pane pan bind in bubble on the node/pane element, so wrapper CAPTURE listeners that consume multi-touch moves out-prioritize them — no component's `stopPropagation` can hide a finger from the pinch, while a control that wants the pointer for itself (a slider, a dial, a text field) can still suppress the pan and the drag by stopping the event. Only the zoom is unstoppable. (The rule predates the RF cutover — rete's stock `Zoom` counted fingers in bubble and any swallowed pointerdown killed the pinch for the whole gesture; the fix was positional then and stays positional now: no call site can break a pinch, and none has to remember not to.)
 

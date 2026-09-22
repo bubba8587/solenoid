@@ -81,7 +81,7 @@ and drill levels, Escape semantics.
 
 1. **The chips and popups are the app's components, never redrawn** ([[B3]] sameNodeEverywhere).
    `PropertyChip.tsx` renders `ArrayChip`, `FrameChip` and `CubeChip`; `main.tsx` mounts
-   `TablePopup` and `CubePopup` once. A look or behaviour the plugin needs that the component
+   `TablePopup` and `CubePopup` once. A look or behavior the plugin needs that the component
    lacks becomes a prop or a popup-state field on the component (`FrameChip`'s `popupOverrides`,
    `TablePopupState.noFormulaColumns`), never a fork.
 2. **The seam to the graph is a list of module swaps.** The `SHIMMED` map in

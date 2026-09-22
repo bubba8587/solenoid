@@ -2,7 +2,7 @@
 
 # Spec: Cable rendering knobs
 
-Serves [[C91]] cableWalkRouter (the router and the spline) and [[D17]] relaysTransparent (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Cable rendering knobs; a WHY that is not in a node belongs in one.
+Serves [[C91]] cableWalkRouter (the router and the spline) and [[D17]] relaysTransparent (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 - Per-socket cable exit-angle overrides live in `cableAngleStore` (keyed by `${nodeId}::${socketKey}`). The Conduit registers a per-lane exit angle from its rotation (perpendicular to the socket's face). The cable edge (`flow/FlowCableEdge.tsx`) reads from the store and passes `sourceAngleDeg` / `targetAngleDeg` to `getCablePath`.
 - **NAMING**: **Conduit** = the block bundler node (`ConduitNode`, formerly "Ribbon"). **Ribbon** = the bundled cable entity (formerly "bundle"). The old two-arm bundler **Manifold** (briefly "Conduit" before that) was removed 2026-06-19; old saves referencing `ManifoldNode` load it as a Placeholder (wiring kept, re-saves as the original type; no backward migration — pre-alpha).

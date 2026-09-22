@@ -2,7 +2,7 @@
 
 # Spec: Per-doc autosave persistence
 
-Serves [[C32]] autosaveSlotOrder. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Per-doc autosave persistence; a WHY that is not in a node belongs in one.
+Serves [[C32]] autosaveSlotOrder. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Each document persists to its OWN two-slot localStorage pair
 (`solenoid.docs.doc.<id>.a/.b`) plus one light two-slot INDEX pair

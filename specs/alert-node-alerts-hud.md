@@ -2,7 +2,7 @@
 
 # Spec: Alert node + Alerts HUD
 
-Serves [[C39]] effectsEdgeTriggered. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Alert node + Alerts HUD; a WHY that is not in a node belongs in one.
+Serves [[C39]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The **Alert** node watches a value and fires a notification when its condition is met. The trigger dropdown — an argument, persisted as **`condition`** ([[C26]] opArgDistinct) — picks BOTH the trigger condition AND which input sockets are live — `ALERT_MODE_KEYS`: `range` → value/low/high (outside [low,high]); `equals` → value/target (exact match, socket labeled "Match"); `boolean` → value (is TRUE — a real `true` or `=== 1`, NOT any nonzero: logicals are first-class and numbers bridge as 1/0); `text` → text/match (contains). The node carries the full superset of sockets and the component shows only the active mode's keys, dropping cables to now-hidden sockets on a mode change (the TVM pattern). The status output is 0=calm, 1/2 for range LOW/HIGH, 1=triggered otherwise.
 
