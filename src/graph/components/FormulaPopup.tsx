@@ -266,14 +266,9 @@ export function FormulaPopup() {
           />
         </div>
 
-        {/* Engine note: the formula path resolves through the same registry as the
-            visual nodes, so they match wherever they overlap. The load-bearing thing
-            to tell the user is the SHAPE boundary as of matricesInFormulas/tableRefSemantics: scalars, lists and
-            MATRICES are in (with complex); frames/cubes stay out — the verb nodes
-            are their surface, and a computed column's references are the row door. */}
         {host.equation ? (
           <div className="formula-popup__engine-note">
-            ƒ One <strong>=</strong> with variables on either side. Leave exactly one variable unwired and the node solves for it — a quadratic in the unknown returns <strong>both roots</strong>; no real solution is <code>#SOLVE!</code>. Wire every variable and Check turns TRUE/FALSE.
+            One <strong>=</strong>, with variables on both sides. Leave one variable unwired and the node solves for it: a quadratic returns <strong>both roots</strong>, and no real solution is <code>#SOLVE!</code>. With every variable wired, Check shows TRUE or FALSE.
           </div>
         ) : (
         <div className="formula-popup__engine-note">

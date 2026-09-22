@@ -120,7 +120,7 @@ export function cxCsch(z: Cx): Cx { return cxDiv(cx(1,0), cxSinh(z)); }
 /** Both roots of a·x² + b·x + c = 0 as the conjugate-ordered pair [x₁, x₂]; a = 0
  *  is a #DOMAIN! (a line, not a quadratic). */
 export function quadraticRoots(a: number, b: number, c: number): [Cx, Cx] | SolError {
-  if (a === 0) return solError("#DOMAIN!", "a = 0 is a line, not a quadratic — solve b·x + c = 0 directly");
+  if (a === 0) return solError("#DOMAIN!", "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");
   const disc = b * b - 4 * a * c;
   const s = Math.sqrt(Math.abs(disc)) / (2 * a);
   const z = (v: number) => (v === 0 ? 0 : v); // kill -0 (it would display "-0")

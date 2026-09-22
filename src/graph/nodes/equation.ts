@@ -322,7 +322,7 @@ export class EquationNode extends ClassicPreset.Node {
 
     // Numeric fallback — scalar knowns only.
     if (!scalarKnowns) {
-      values[unknown] = solError("#SHAPE!", "Numeric solving works on single values — this equation only solves lists where the algebra can be inverted");
+      values[unknown] = solError("#SHAPE!", "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted");
       return finish(null);
     }
     values[unknown] = solveNumeric(residual);

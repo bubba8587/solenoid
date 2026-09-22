@@ -41,7 +41,7 @@ const rowStack: RowFrame[] = [];
  *  surface's side values. */
 export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: unknown }): unknown {
   const top = rowStack[rowStack.length - 1];
-  if (!top) return solError("#REF!", "@ reads the current row — it works inside a computed column");
+  if (!top) return solError("#REF!", "@ reads the current row, so it only works inside a computed column");
   const key = String(name);
   const direct = top.strong(key);
   if (direct.hit) return direct.v;
@@ -54,7 +54,7 @@ export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: 
  *  name a variable can't spell): the column as a list, else the side value. */
 export function readWholeColumn(name: unknown): unknown {
   const top = rowStack[rowStack.length - 1];
-  if (!top) return solError("#REF!", "[column] reads a table column whole — it works inside a computed column");
+  if (!top) return solError("#REF!", "[column] reads a whole table column, so it only works inside a computed column");
   return top.whole(String(name));
 }
 

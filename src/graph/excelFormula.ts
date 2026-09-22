@@ -714,7 +714,7 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   if (isCx(a) || isCx(b)) return applyCxOp(op, a, b);
   // A LAMBDA operand is the same garbage class — a function has no arithmetic.
   if (isLambdaValue(a) || isLambdaValue(b)) {
-    return solError("#TYPE!", "A LAMBDA isn't a value — apply it with (…) or pass it to MAP/REDUCE/…");
+    return solError("#TYPE!", "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers");
   }
   // The logical↔number bridge: booleans compute as 1/0 in numeric contexts.
   const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
@@ -779,9 +779,9 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
       return op === "=" ? eq : !eq;
     }
     case "<": case ">": case "<=": case ">=":
-      return solError("#TYPE!", "Complex numbers have no order — compare IMABS values instead");
+      return solError("#TYPE!", "Complex numbers have no order. Compare their IMABS values instead");
     default:
-      return solError("#TYPE!", "Operators don't compute on complex numbers — use IMSUM, IMSUB, IMPRODUCT, IMDIV");
+      return solError("#TYPE!", "Operators don't work on complex numbers. Use IMSUM, IMSUB, IMPRODUCT or IMDIV");
   }
 }
 
@@ -861,14 +861,14 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // Per-cell contract: error propagates, missing stays missing (bare `-null` is
       // -0 in JS, hence the guard), a Cx answers #TYPE!.
       const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null
-        : isCx(x) ? solError("#TYPE!", "Operators don't compute on complex numbers — IMSUB(0, z) negates")
+        : isCx(x) ? solError("#TYPE!", "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")
         : (n.op === "-" ? -(x as number) : +(x as number)));
       return isArr(a) ? mapCells([a], f as (...ops: unknown[]) => unknown) : isErr(a) ? a : f(a);
     }
     case "percent": {
       const a = evalAst(n.arg, env);
       const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null
-        : isCx(x) ? solError("#TYPE!", "Operators don't compute on complex numbers — use IMDIV(z, COMPLEX(100, 0))")
+        : isCx(x) ? solError("#TYPE!", "Operators don't work on complex numbers. Use IMDIV(z, COMPLEX(100, 0))")
         : (x as number) / 100);
       return isArr(a) ? mapCells([a], f as (...ops: unknown[]) => unknown) : isErr(a) ? a : f(a);
     }
@@ -1012,7 +1012,7 @@ export function compileEvaluator(expr: string): ExprEvaluator | null {
   // and an UNAPPLIED lambda is not a value the graph can carry out.
   return (env) => {
     const r = evalAst(ast, env);
-    if (isLambdaValue(r)) return solError("#VALUE!", "LAMBDA needs arguments — apply it inside MAP / REDUCE / BYROW / SCAN / MAKEARRAY");
+    if (isLambdaValue(r)) return solError("#VALUE!", "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY");
     return normalizeFxResult(r);
   };
 }

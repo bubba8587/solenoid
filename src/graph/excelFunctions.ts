@@ -1225,7 +1225,7 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
   switch (toNum(v)) {
     case 1: return "first";
     case -1: return "last";
-    case 2: case -2: return solError("#VALUE!", "Binary search (±2) isn't supported — every search scans");
+    case 2: case -2: return solError("#VALUE!", "Binary search (±2) isn't supported. Every search scans the whole list");
     default: return solError("#VALUE!", "search_mode is 1 or -1");
   }
 };
@@ -2027,7 +2027,7 @@ registerInternal("SOLVE", (m, b) => {
   const a = numMat(m); if (isSolError(a)) return a;
   const bs = numsOf(b);
   if (matRows(a) !== matCols(a) || bs.length !== matRows(a)) return solError("#SHAPE!", "SOLVE needs a square A with one b per row");
-  return matSolve(a, bs) ?? solError("#DIV/0!", "A is singular — the system has no unique solution");
+  return matSolve(a, bs) ?? solError("#DIV/0!", "A is singular, so the system has no unique solution");
 });
 registerInternal("EIGENVALUES", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.values : solError("#SHAPE!", "EIGENVALUES needs a square, symmetric matrix"); });
 registerInternal("EIGENVECTORS", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.vectors : solError("#SHAPE!", "EIGENVECTORS needs a square, symmetric matrix"); });
@@ -2097,7 +2097,7 @@ registerInternal("UNIQUE", (v) => (v == null ? null : uniqueList(toList(v))));
 registerInternal("SORT", (v, sortIndex, order) => {
   if (v == null) return null;
   if (sortIndex != null && Number(sortIndex) !== 1) {
-    return solError("#SHAPE!", "SORT of a list has one column — sort_index must be 1 or omitted");
+    return solError("#SHAPE!", "A list has one column, so SORT's sort_index must be 1 or left out");
   }
   return sortNumericList(numList(v), Number(order ?? 1) === -1);
 });
@@ -2127,7 +2127,7 @@ registerInternal("TAKE", (v, rows, cols) => {
     const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : takeSlice(r, Math.round(Number(cols)))));
     return takeSlice(m, n);
   }
-  if (cols != null) return solError("#SHAPE!", "TAKE of a list has no columns — pass one count");
+  if (cols != null) return solError("#SHAPE!", "A list has no columns, so TAKE takes one count");
   return takeSlice(toList(v), n);
 });
 registerInternal("DROP", (v, rows, cols) => {
@@ -2141,7 +2141,7 @@ registerInternal("DROP", (v, rows, cols) => {
     const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, c)));
     return dropSlice(m, n);
   }
-  if (cols != null) return solError("#SHAPE!", "DROP of a list has no columns — pass one count");
+  if (cols != null) return solError("#SHAPE!", "A list has no columns, so DROP takes one count");
   const list = toList(v);
   if (gone(list.length, n)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
   return dropSlice(list, n);
@@ -2292,7 +2292,7 @@ registerInternal("GROUPBY", (keys, values, fn) => {
 
 // A stub so the name is REGISTERED and a direct resolveExcelFunction caller gets an
 // honest answer instead of a Formula.js fallthrough.
-registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));
+registerInternal("LAMBDA", () => solError("#VALUE!", "Write LAMBDA inside the call that uses it: MAP(x, LAMBDA(v, v*2))"));
 
 // The Time Zone Convert node's kernel (`timeZone.ts` convertZone): a datetime serial read on
 // one IANA zone's wall clock, rebuilt on another's.

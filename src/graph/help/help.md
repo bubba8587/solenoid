@@ -32,7 +32,9 @@ A **Format Controller** docks beside a socket and sets how a value reads: decima
 
 ## Formulas
 
-When wiring a chain of arithmetic nodes is overkill, the **Expression** node takes a formula like `a * b + 1` and turns each variable into an input socket, with the Excel functions and list-broadcasting available and `pi`/`tau`/`e`/`phi` as constants. The **lambda** nodes run that same engine over a collection: MAP transforms every cell, BYROW or BYCOL reduce each row or column, and REDUCE folds to one value; **LAMBDA** packages a formula as a value to feed any of them.
+The **Expression** node takes a formula like `a * b + 1` and turns each variable into an input, so one node can stand in for a chain of arithmetic nodes. It has the Excel functions, works over Lists and matrices, and reads `pi`, `tau`, `e` and `phi` as constants. **MAP**, **BYROW**, **BYCOL** and **REDUCE** run a formula over a collection: MAP transforms every cell, BYROW and BYCOL reduce each row or column, and REDUCE folds everything to one value. **LAMBDA** packages a formula so any of them can reuse it.
+
+Formulas don't take Frames. For math on each row of a table, use a computed column: an **Fx** column in Frame Input, or the Computed Column node. Inside one, `@Price` is this row's Price and a bare `Price` is the whole column, the same as in an Excel table.
 
 ## Recalculation
 

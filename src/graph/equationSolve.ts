@@ -207,7 +207,7 @@ export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | 
   const dscale = Math.max(b * b, Math.abs(4 * a * c));
   if (Math.abs(disc) <= 1e-12 * dscale) return -b / (2 * a); // double root
   if (disc < 0) {
-    return solError("#SOLVE!", "No real solution — the quadratic's discriminant is negative");
+    return solError("#SOLVE!", "No real solution: the quadratic's discriminant is negative");
   }
   // Numerically stable form: avoid subtracting nearly-equal magnitudes.
   const s = Math.sqrt(disc);
@@ -283,7 +283,7 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
     prevX = x; prevF = f;
   }
   if (best !== null) return best;
-  return solError("#SOLVE!", "No solution found between \u00b110\u00b9\u00b2 \u2014 the equation may have no real root here");
+  return solError("#SOLVE!", "No solution found between \u00b110\u00b9\u00b2. The equation may have no real root here");
 }
 
 /** Relative-tolerance equality for the all-variables-wired truth check. */

@@ -301,7 +301,7 @@ export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: nu
     for (let r = 0; r < m; r++) { for (let c = 0; c < m; c++) ATA[r][c] += powers[r] * powers[c]; ATy[r] += powers[r] * Y[k]; }
   }
   const coeffs = solveLinear(ATA, ATy);
-  if (!coeffs) return solError("#SOLVE!", "Polynomial fit is singular — the points may be collinear for this degree");
+  if (!coeffs) return solError("#SOLVE!", "The polynomial fit is singular. The points may be collinear for this degree");
   const evalAt = (xv: number): number => { let acc = 0; for (let j = m - 1; j >= 0; j--) acc = acc * xv + coeffs[j]; return acc; };
   return xs.map((xv) => (isNum(xv) ? evalAt(xv) : null));
 }
@@ -460,7 +460,7 @@ export function xmatchIndex(
     return -1;
   }
   if (typeof lookup !== "number" || !Number.isFinite(lookup)) {
-    return solError("#VALUE!", "Approximate match compares numbers — use exact match (0) for text");
+    return solError("#VALUE!", "Approximate match compares numbers. Use exact match (0) for text");
   }
   let bestIdx = -1, bestKey = NaN;
   for (let s = 0; s < n; s++) {

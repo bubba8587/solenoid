@@ -43,7 +43,7 @@ export function parallelCombine(cells: readonly (number | null | SolError)[]): n
   if (arr.some((v) => v === 0)) return 0;
   const sum = arr.reduce((a, b) => a + 1 / b, 0);
   return sum === 0
-    ? solError("#DIV/0!", "The reciprocals cancel out — the combination is undefined")
+    ? solError("#DIV/0!", "The reciprocals cancel out, so the combination is undefined")
     : 1 / sum;
 }
 

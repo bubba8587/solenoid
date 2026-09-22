@@ -843,7 +843,7 @@ export class MatSolveNode extends ClassicPreset.Node {
       this.cachedResult = err; return { result: err };
     }
     const x = matSolve(m, b as number[]);
-    const result = x ?? solError("#DIV/0!", "A is singular — the system has no unique solution");
+    const result = x ?? solError("#DIV/0!", "A is singular, so the system has no unique solution");
     this.cachedResult = result;
     return { result };
   }
