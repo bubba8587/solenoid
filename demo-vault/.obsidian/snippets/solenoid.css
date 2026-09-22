@@ -171,7 +171,7 @@ body {
   --graph-line: var(--sol-border-strong);
   --graph-node: var(--sol-accent);
   --graph-node-unresolved: var(--sol-text-muted);
-  --graph-node-focused: color-mix(in srgb, var(--sol-accent) 55%, var(--sol-text-bright));
+  --graph-node-focused: var(--sol-text-bright);
   --graph-node-tag: var(--sol-string);
   --graph-node-attachment: var(--sol-complex);
   --graph-text: var(--sol-text-dim);
@@ -974,14 +974,14 @@ button.mod-cta {
   background-image: radial-gradient(var(--sol-canvas-dot) 1px, transparent 1px);
   background-size: 20px 20px;
 }
-/* A note is a node in the accent; the focused one lifts toward the ink. Tags and attachments
-   keep their type's hue. */
+/* A note is a node in the accent; the active one is the ink (author 2026-09-22). Tags and
+   attachments keep their type's hue. */
 .graph-view.color-fill { color: var(--sol-accent); }
-.graph-view.color-fill-focused { color: color-mix(in srgb, var(--sol-accent) 55%, var(--sol-text-bright)); }
+.graph-view.color-fill-focused { color: var(--sol-text-bright); }
 .graph-view.color-fill-tag { color: var(--sol-string); }
 .graph-view.color-fill-attachment { color: var(--sol-complex); }
 .graph-view.color-fill-unresolved { color: var(--sol-text-muted); opacity: 1; }
-.graph-view.color-fill-highlight { color: color-mix(in srgb, var(--sol-accent) 55%, var(--sol-text-bright)); }
+.graph-view.color-fill-highlight { color: var(--sol-text-bright); }
 .graph-view.color-line { color: var(--sol-border-strong); }
 .graph-view.color-line-highlight { color: var(--sol-accent); }
 .graph-view.color-circle { color: var(--sol-accent); }
