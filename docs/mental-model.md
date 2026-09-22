@@ -126,7 +126,9 @@ ordered tail: hydrate, settle wildcard types, dock FCs. The strict validator
 loader stays permissive, loading an unknown type as a lossless Placeholder.
 
 Autosave is per document, two localStorage slots per doc, diffed by object identity, so
-store transforms must return new objects or nothing saves ([[C32]] autosaveSlotOrder).
+store transforms must return new objects or nothing saves ([[C31]] immutableDocStore;
+the slot rotation is [[C32]] autosaveSlotOrder). The full format and load algorithm are
+`../specs/save-format.md`.
 
 ## What exists (orientation only; verify in code before relying on detail)
 

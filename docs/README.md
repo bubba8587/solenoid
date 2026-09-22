@@ -156,7 +156,8 @@ results get retried and settled rulings relapse.
 | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `../specs/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
 | `formatModel.ts`, `formatController.ts`, FC controls | `format-model.md` |
 | `alertStore.ts` | [[C39]] effectsEdgeTriggered; `../specs/alert-node-alerts-hud.md` |
-| `nodeNameStore.ts`, `textForm.ts` | [[C19]] namingModel; `../specs/addressable-model.md` |
+| `nodeNameStore.ts` | [[C19]] namingModel; `../specs/addressable-model.md` |
+| `persistence.ts`, `textForm.ts`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../specs/save-format.md` (names: `../specs/addressable-model.md`) |
 | `documentStore.ts`, `documentStoreCore.ts` | [[C32]] autosaveSlotOrder; `../specs/per-doc-autosave-persistence.md` |
 | `persistence.ts` (load gate, literal maps) | [[C28]] literalsIffEditable; `../specs/inline-literal-maps.md` |
 | `flow/FlowCompositeOverlay.tsx`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../specs/composite-drill-in-mount-lifecycle.md` |

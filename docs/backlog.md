@@ -35,6 +35,8 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Composites
 
+- [ ] **Composite internals drop unknown types.** `CompositeNode.hydrate` skips an internal node whose type isn't registered (a pack off, a rename) instead of loading it as a Placeholder, so the next save loses it: a [[C35]] unknownViaPlaceholder breach. Its `init.internal` also stores live internal ids, which hydrate regenerates, so a composite's bytes can change on save → load → save. Found writing `../specs/save-format.md`.
+- [ ] **Save format loose ends** (`../specs/save-format.md`): `SavedGraph.seedId` is written but never read back; the literal version `2` is hardcoded in four places beside `CURRENT_SAVE_VERSION`; a Placeholder's `members` / `hostNodeId` aren't remapped on load.
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `archive/1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
