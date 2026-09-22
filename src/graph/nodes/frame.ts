@@ -32,7 +32,7 @@ import {
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
   filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS, LIST_FILTER_OPS,
-  sortCube, distinctCube, sliceCube, filterCube,
+  sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
@@ -737,16 +737,17 @@ export class ColumnsNode extends ClassicPreset.Node {
   label: string;
   op: ColumnsOp;
   stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 190; height = 150;
 
   constructor(init?: { label?: string; op?: ColumnsOp }) {
     super("Columns");
     this.op = init?.op ?? "keep";
     this.label = init?.label ?? "";
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("columns", strListIn("Columns"));
-    this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("frame", tableAdoptOut("Frame"));
   }
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
@@ -757,12 +758,17 @@ export class ColumnsNode extends ClassicPreset.Node {
     return shapeOf({ kind: "drop", columns: cols }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
+  async data(inputs: { frame?: unknown[]; columns?: string[][] }) {
+    const f = rowVerbInput(inputs.frame?.[0] ?? null);
     const cols = readColumnList(inputs.columns);
     const gen = beginPass(this);
     // A wired blank column list leaves the result unknown for both ops (value-semantics.md).
     if (f == null || cols === null) return emitFrame(this, gen, null);
+    if (isCubeValue(f)) {
+      const r = runVerb(() => (this.op === "keep" && cols.length === 0 ? f : selectCubeColumns(f, cols, this.op === "drop" ? "drop" : "keep")));
+      this.cachedResult = r;
+      return { frame: r };
+    }
     if (this.op === "drop") return emitFrame(this, gen, await runFrameUnary(f, { kind: "drop", columns: cols }));
     // Keep with an empty list passes the frame through; the drop op's empty list is already a no-op verb.
     return emitFrame(this, gen, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await passFrame(f));
@@ -3195,7 +3201,7 @@ export class WindowNode extends ClassicPreset.Node {
   agg: WindowFn = "cumsum";
   literals: Record<string, number> = { n: 3 };
   stringLiterals: Record<string, string> = { orderBy: "", column: "", name: "" };
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
   width = 210; height = 300;
 
   constructor(init?: { label?: string; agg?: WindowFn }) {
@@ -3208,7 +3214,7 @@ export class WindowNode extends ClassicPreset.Node {
     this.addInput("column", strIn("Value"));
     this.addInput("n", numIn("N"));
     this.addInput("name", strIn("New column"));
-    this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("frame", tableAdoptOut("Frame"));
   }
 
   /** The output column's name: the typed one, else derived from the function and Value. */
@@ -3230,15 +3236,12 @@ export class WindowNode extends ClassicPreset.Node {
     }, input);
   }
 
-  // A cube arrives AS a cube (noWidenInputs) and flattens here: a flat cube is rows, a nested
-  // cell is the loud #SHAPE! — the lattice never lets a cube into a frame socket.
+  // A cube arrives AS a cube (noWidenInputs) and leaves as one, the new column appended; the
+  // columns the function reads must be scalar ([[E2]] cubeNeverNarrowsToFrame).
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
   async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
-    const raw = rowVerbInput(inputs.frame?.[0]);
-    const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
-    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
-    const f = flat;
+    const f = rowVerbInput(inputs.frame?.[0]);
     const keys = readColumnList(inputs.keys);
     const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
@@ -3246,8 +3249,19 @@ export class WindowNode extends ClassicPreset.Node {
     const n = readInput(inputs.n, this.literals.n ?? 3);
     if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
     // A value-reading function with no Value column yet is a passthrough, not an error.
-    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) return emitFrame(this, beginPass(this), await passFrame(f));
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) {
+      if (isCubeValue(f)) { this.cachedResult = f; return { frame: f }; }
+      return emitFrame(this, beginPass(this), await passFrame(f));
+    }
     const as = this.outColumnName(name, column);
+    if (isCubeValue(f)) {
+      const r = runVerb(() => windowCube(f, {
+        partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
+        column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
+      }));
+      this.cachedResult = r;
+      return { frame: r };
+    }
     // Lazy: Polars `.over()` on desktop, the oracle's windowFrame on web (one FrameOp).
     return emitFrame(this, beginPass(this), await runFrameUnary(f, {
       kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,

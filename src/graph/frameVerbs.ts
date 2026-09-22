@@ -6,7 +6,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows,
+  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
 import { sameColumnUnit, isUnitCell } from "./unitValue";
@@ -2343,6 +2343,35 @@ const WINDOW_FNS: ReadonlySet<string> = new Set<WindowFn>([
   "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
   "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
 ]);
+
+/** Keep (in the listed order, a missing name is #REF!) or drop (missing names ignored)
+ *  cube columns, the `select` / `drop` twin; nested columns ride along like any other. */
+export function selectCubeColumns(cube: CubeValue, names: readonly string[], op: "keep" | "drop"): CubeValue {
+  if (op === "drop") return cubeFromColumns(cube.columns.filter((c) => !names.includes(c.name)));
+  return cubeFromColumns(names.map((n) => {
+    const c = cube.columns.find((cc) => cc.name === n);
+    if (!c) throw solError("#REF!", `column "${n}" not found`);
+    return c;
+  }));
+}
+
+/** Window over a Cube: only the partition, order and value columns are read (each must
+ *  be scalar), and the result is appended as a cube column. Every other column, nested
+ *  ones included, rides through untouched. */
+export function windowCube(cube: CubeValue, spec: WindowSpec): CubeValue {
+  const read = [...new Set([...spec.partitionBy, spec.orderBy, spec.column].filter((c): c is string => !!c))];
+  // The row index keeps the row count when the function reads no column (row_number).
+  const ROW = "\u0000row";
+  const rows = cubeRowCount(cube);
+  const flat: FrameValue = {
+    __frame: true,
+    columns: [{ name: ROW, type: "number", values: Array.from({ length: rows }, (_, i) => i) }, ...read.map((n) => cubeScalarColumn(cube, n))],
+  };
+  const outCols = windowFrame(flat, spec).columns;
+  const outCol = outCols[outCols.length - 1];
+  const kept = cube.columns.filter((c) => c.name !== outCol.name);
+  return cubeFromColumns([...kept, { name: outCol.name, cells: cubeCellsFromColumn(outCol), type: outCol.type }]);
+}
 
 export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
   // An unknown function is an error on both engines, never a silent blank column.

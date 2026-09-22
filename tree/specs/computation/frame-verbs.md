@@ -360,7 +360,7 @@ Values: the arithmetic functions read a numeric view of `column`: a number is pr
 
 Output type: `lag`, `lead`, `first` and `last` take the value column's type; everything else is number. The unit is kept for the cumulative, lag, lead, diff, rolling, group sum/avg/min/max, first and last functions. The engine evaluates each function with Polars `.over()` after sorting by the order key with a row-index tiebreak, then sorts back by the index; its two `#DIV/0!` cells travel as a reserved NaN payload. An unknown function name is `#VALUE!` on both engines.
 
-The Window card always sends `orderDir: "asc"`, derives `as` from the function label and Value column when the name is blank, sends `n` only for the functions that read it, and passes through when a value-reading function has no Value column. A Cube input is flattened with `flatCubeToFrame`.
+The Window card always sends `orderDir: "asc"`, derives `as` from the function label and Value column when the name is blank, sends `n` only for the functions that read it, and passes through when a value-reading function has no Value column. A Cube input stays a Cube: `windowCube` (below) appends the column, and the output socket adopts the input's rank.
 
 ### fillBlanks
 
@@ -416,6 +416,7 @@ These run only in the oracle, on the collected value, on both platforms. They ha
 
 | Verb | Function | Contract |
 |---|---|---|
+| Cube column verbs | `selectCubeColumns`, `windowCube` | The Columns and Window cards on a Cube input. `selectCubeColumns` keeps the listed columns in the listed order (a missing name is `#REF!`) or drops the listed ones (missing names ignored). `windowCube` reads only the partition, order and value columns (each through the scalar reading below, so a list or table cell in one of them is `#SHAPE!`), runs `windowFrame` over them, and appends the result as a cube column, replacing one of the same name. Every other column, nested cells included, rides through, so a vault table (whose `tags`, `links` and `embeds` are lists) runs a rolling average and trims to flat columns for a chart. |
 | Cube row verbs | `sortCube`, `distinctCube`, `sliceCube`, `filterCube` | The row verbs on a Cube input. Row order comes from the same index functions the frame verbs use, computed over a scalar reading of the needed column (`inferColumn`; a list or table cell in it is `#SHAPE!`); every column, nested cells included, rides along by reference. Distinct keys every column, nested cells encoded structurally. `filterCube` adds the list-cell ops: a non-list cell counts as a one-item list and a blank as empty; membership folds case unless `matchCase`; any and all split the value on commas. |
 | Nest | `nestFrame` | One Cube row per distinct key tuple (first-seen), the other columns nested as a sub-frame cell per group (default name `items`). |
 | Unnest | `unnestCube` | Peels one level of a nested column: frame cells flatten to a Frame, cube cells to a shallower Cube, and a list column explodes to one row per item under the same name. A mix of lists, frames and cubes is `#TYPE!`. A row with an empty table is dropped; a row with an empty list keeps a blank. Flat columns are re-inferred. |

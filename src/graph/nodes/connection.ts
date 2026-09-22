@@ -531,7 +531,7 @@ export class WeatherNode extends ClassicPreset.Node {
     ] };
   }
 
-  data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue; temp: unknown; condition: string | null } {
+  data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue | null; temp: unknown; condition: string | null } {
     const lat = readInput(inputs.lat, this.literals.lat);
     const lon = readInput(inputs.lon, this.literals.lon);
     const have = typeof lat === "number" && typeof lon === "number";
@@ -549,7 +549,9 @@ export class WeatherNode extends ClassicPreset.Node {
     const c = this.cached;
     const fcUnit = this.unit === "F" ? "degF" : "degC";
     return {
-      daily: c?.daily ?? { __frame: true, columns: [] },
+      // Blank until the fetch lands (or after it fails; the card shows why), never a
+      // column-less frame that downstream pickers would read as a missing column.
+      daily: c?.daily ?? null,
       temp: c?.nowTemp != null ? applyFcUnit(c.nowTemp, fcUnit) : null,
       condition: c?.nowCondition ?? null,
     };

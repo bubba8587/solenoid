@@ -514,7 +514,7 @@ describe("a column-LIST reference — same rule as the scalar column", () => {
 
   it("Columns (Drop): removes the named column and ignores an unknown name", async () => {
     const res = await new ColumnsNode({ op: "drop" }).data({ frame: [f], columns: [["b", "nope"]] });
-    const out = (await readFrame(res.frame)) as FrameValue;
+    const out = (await readFrame(res.frame as FrameValue)) as FrameValue;
     expect(out.columns.map((c) => c.name)).toEqual(["a"]);
   });
 

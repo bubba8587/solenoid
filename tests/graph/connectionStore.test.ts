@@ -133,3 +133,12 @@ describe("C2 — per-document network permission gate", () => {
     expect(networkAllowed()).toBe(true);
   });
 });
+
+describe("a source with nothing fetched emits blank", () => {
+  it("Weather's daily frame is null until its fetch lands, never a column-less frame", async () => {
+    const { WeatherNode } = await import("../../src/graph/nodes/connection");
+    const w = new WeatherNode();
+    // Wired blank coordinates: nothing to fetch.
+    expect(w.data({ lat: [null as unknown as number], lon: [null as unknown as number] }).daily).toBeNull();
+  });
+});
