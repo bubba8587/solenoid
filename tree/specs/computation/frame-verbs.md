@@ -37,7 +37,7 @@ A `FrameColumn` is:
 
 A frame has no row identifier. A row is a position. The row count is the length of the longest column (`frameRowCount`), and a read past the end of a shorter column is `null` (`cellAt`), so ragged columns behave as if padded with blanks. The native engine pads ragged columns with nulls on upload. Every verb returns a new frame and leaves its inputs untouched; the corpus runner checks this for every case.
 
-A verb that changes which rows a column holds (sort, distinct, head, filter, and every verb built on `reorderRows`) drops `raw`, because a derived column has no source text. `sliceRows`, `fillBlanks`, `replaceValues` and `dropBlankRows` currently spread the column and keep `raw` unchanged.
+A verb that moves or rewrites cells (sort, distinct, head, filter, slice, fill, replace, drop blank rows, and every verb built on `reorderRows`) drops `raw`, because a derived column has no source text that lines up with its values.
 
 ### Names
 
@@ -51,12 +51,12 @@ There are four entry paths, and they do not infer the same way.
 
 | Path | Used by | Rule |
 |---|---|---|
-| `inferColumn(name, cells)` | CSV import (`frameFromCells`), JSON records, arrays and columnar objects, cube-to-frame reads, Unnest | A cell is blank when it is `null`, `undefined` or whitespace text. If every non-blank cell reads as a number, the column is number. Else if every one is the text `TRUE` or `FALSE` (any case), logical. Else if every one is an unambiguous ISO date, date (cells become serials). Else string, with each cell trimmed. An all-blank column is string. `raw` keeps each cell's trimmed text. |
+| `inferColumn(name, cells)` | CSV import (`frameFromCells`), JSON records, arrays and columnar objects, cube-to-frame reads, Unnest | A cell is blank when it is `null`, `undefined` or whitespace text. If every non-blank cell is a JS boolean, the column is logical. Else if every one reads as a number, number. Else if every one is the text `TRUE` or `FALSE` (any case), logical. Else if every one is an unambiguous ISO date, date (cells become serials). Else string, with each cell trimmed. An all-blank column is string. `raw` keeps each cell's trimmed text. |
 | `typedColumn(name, cells, length, knownType)` | Build Frame from a matrix or lists, flat cube to frame | A known type from the socket wins; it is the only way to recover date. Without one, inference goes by runtime type and preserves it: all numbers is number, all booleans is logical, anything else is string (the string `"1"` stays text). Cells are then coerced to the column type: a string column stringifies, a logical column reads a non-boolean as true only for the text `true`, and a number or date cell that cannot become a number is `NaN`. Errors and blanks pass through. |
 | `coerceFrameCell(type, raw)` via `deriveFrame` | Frame Input (the column type is stored, never inferred) | Blank text is `null`. A string column keeps the text verbatim. A logical column goes through `coerceLogical`. A number column parses the trimmed text or is `NaN`. A date column tries a number, then `parseDate`; a parse error (such as `#AMBIGUOUS!`) is kept as that error cell, and a non-finite result is `NaN`. |
 | `inferColType` inside `parseFrameSource` | A hand-typed or CSV-shaped `frameText` | Type only, cells kept raw: number, then logical, then ISO date, then string, over trimmed non-blank cells. |
 
-"Reads as a number" (`cellToNumber`) accepts a finite number, a boolean (as 1 or 0), a `UnitCell` (its display magnitude), or trimmed text that `Number()` parses to a finite value. Commas are stripped only when they sit in genuine thousands positions (`^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$`), so the European `3,5` stays text. Because a boolean reads as a number and the number test runs first, `inferColumn` types a column of JS booleans as number with 1/0 cells; only the literal text `TRUE`/`FALSE` infers logical. A 0/1 column stays number.
+"Reads as a number" (`cellToNumber`) accepts a finite number, a boolean (as 1 or 0), a `UnitCell` (its display magnitude), or trimmed text that `Number()` parses to a finite value. Commas are stripped only when they sit in genuine thousands positions (`^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$`), so the European `3,5` stays text. A column whose non-blank cells are all JS booleans infers logical before the number test runs; a mix of booleans and numbers reads as number with 1/0 cells. A 0/1 column stays number.
 
 An unambiguous ISO date is `YYYY-MM-DD` with an optional ` ` or `T` time `hh:mm[:ss[.f]]` and an optional `Z` or `±hh[:]mm` zone, and it must parse to a finite serial. Bare years and slash dates such as `1/2/26` never infer as dates; Get Column's read-as converts those explicitly. The native CSV reader (`engine_read_csv`, desktop only) lets Polars type numbers and booleans, then applies the same ISO gate to its remaining string columns (`infer_iso_date_columns`); zone-less text reads as UTC wall-clock, and a column with one non-conforming cell stays text.
 
@@ -174,7 +174,7 @@ Handles are `plf:<n>`, held in a process-global store in the Rust process. The T
 
 An op is the `FrameOp` object itself, tagged by `kind` with the same camelCase field names (serde's `#[serde(tag = "kind")]` on `WireOp`); optional fields default when absent. There is no `pivot` variant.
 
-Cells cross as JSON. Upload direction (`encodeWireCell`): a finite number, string, boolean or `null` as is; a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`; a SolError as `{"__err": code}`. Only name, type and values cross: `unit`, `format` and `raw` are not sent and do not come back. The engine coerces each cell by the declared column type (`json_to_cell`):
+Cells cross as JSON. Upload direction (`encodeWireCell`): a finite number, string, boolean or `null` as is; a non-finite number as `{"__nf": "inf" | "-inf" | "nan"}`; a SolError as `{"__err": code}`. Only name, type and values cross: `unit`, `format` and `raw` are not sent and do not come back. The Polars backend puts `unit` and `format` back itself: each handle keeps a row-less copy of its frame's columns, every verb that makes a new handle is run over those copies with the same JS verbs, and a collected, previewed or read column takes the unit and format of the copy with the same name and type. So a unit survives exactly the verbs it survives on the web. `raw` is not restored. The engine coerces each cell by the declared column type (`json_to_cell`):
 
 | Column type | Accepts | Everything else |
 |---|---|---|

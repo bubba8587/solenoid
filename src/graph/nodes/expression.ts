@@ -6,16 +6,19 @@ import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
+import { isCx } from "../cxValue";
 import { isUnitCell, tagDim, type UnitCell } from "../unitValue";
 import { dimEval, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { type Dim, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
 
-/** Numbers, strings and booleans pass through; anything else — non-finite, undefined —
- *  collapses to the empty sentinel (`null` for a scalar, `NaN` inside a list). */
+/** Numbers (an infinity included), strings, booleans and complex numbers pass through;
+ *  anything else (NaN, undefined) collapses to the empty sentinel (`null` for a scalar,
+ *  `NaN` inside a list). */
 function guard(v: unknown, scalar: boolean): unknown {
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v;
-  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "number" && !Number.isNaN(v)) return v;
+  if (isCx(v)) return v;
   return scalar ? null : NaN;
 }
 

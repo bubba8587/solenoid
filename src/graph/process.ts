@@ -114,8 +114,8 @@ export async function withGraphRebuild<T>(fn: () => Promise<T>): Promise<T> {
 // Perf probe counter; enable logging with `window.__solenoidPerf = true`.
 let _pgCount = 0;
 
-// Cached loop-member set: every TOPOLOGY change routes through a FULL processGraph, which
-// recomputes it, so the targeted and additive paths can reuse it.
+// Cached loop-member set: any pass that changed topology (a full pass, or a targeted one
+// with `topology: true`) recomputes it, so a pure value edit can reuse it.
 let _cachedLoop: Set<string> | null = null;
 
 // `changedNodeId` — one node's VALUE changed (no topology change): reset + re-render only

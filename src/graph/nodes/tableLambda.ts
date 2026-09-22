@@ -31,8 +31,9 @@ export function compileLambda(expr: string, varNames: string[]): LambdaFn | null
   return compilePositional(expr, varNames) as LambdaFn | null;
 }
 
-/** A wired LAMBDA wins over the inline text. Its params bind by POSITION (`provided` =
- *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, [[C50]] lambdaBindsByName).
+/** A wired LAMBDA wins over the inline text. Its params bind by NAME under `byName`,
+ *  which every node host passes ([[C50]] lambdaBindsByName), else by POSITION
+ *  (`provided` = how many the node passes).
  *  `err` is the inline node message; `code` tags the propagating SolError. */
 export function resolveFn(
   lam: unknown, inline: string | undefined,

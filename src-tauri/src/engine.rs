@@ -33,8 +33,8 @@
 //    eq/neq and the text predicates (contains/startsWith/endsWith) match —
 //    both engines fold with a plain Unicode lowercase (Rust `to_lowercase` = JS
 //    `toLowerCase`) for the default case-insensitive text matching.
-//  • the OUTER join's appended-unmatched-right rows are not guaranteed to be in the
-//    oracle's exact tail order (Polars full-join ordering); inner/left/right match.
+//  • the OUTER join builds the oracle's row order explicitly (matched and left rows
+//    first, then the unmatched right rows in right-frame order), so all four modes match.
 
 use std::collections::{HashMap, HashSet};
 use std::fs::File;

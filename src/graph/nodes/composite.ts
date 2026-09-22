@@ -20,6 +20,8 @@ import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
+import { PlaceholderNode } from "./placeholder";
+import { deriveMissingNodeSockets } from "../persistenceCore";
 
 // Composite node — a subgraph container ([[C77]] compositeIsSubgraph). Members run in a
 // private NodeEditor/DataflowEngine; internals never leak into the outer engine or cache.
@@ -386,15 +388,33 @@ export class CompositeNode extends ClassicPreset.Node {
     this._pending = null;
     this._hydrating = true;
     const built = new Map<string, ClassicPreset.Node>();
+    // An unknown internal type (a pack off, a rename) loads as a Placeholder that re-saves
+    // as the original, exactly as on the main canvas ([[C35]] unknownViaPlaceholder).
+    const unknownIds = new Set(pending.nodes.filter((sn) => !reg.has(sn.type)).map((sn) => sn.id));
+    const phSockets = deriveMissingNodeSockets(unknownIds, pending.connections);
     for (const sn of pending.nodes) {
       const Ctor = reg.get(sn.type);
-      if (!Ctor) continue; // unknown internal type (pack off / renamed) — dropped, not placeholdered
-      const node = new Ctor({ ...sn.init });
-      const anyNode = node as unknown as Record<string, unknown>;
-      // [[C28]] literalsIffEditable: restore ONLY onto declaring classes — same gate as the main load
-      // path, so a composite's internal graph can't plant an invisible literal.
-      if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
-      if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
+      let node: ClassicPreset.Node;
+      if (!Ctor) {
+        const sockets = phSockets.get(sn.id);
+        const initLabel = sn.init?.label;
+        node = new PlaceholderNode({
+          missingType: sn.type,
+          savedInit: sn.init,
+          savedLiterals: sn.literals,
+          savedStringLiterals: sn.stringLiterals,
+          inputKeys: sockets?.inputs,
+          outputKeys: sockets?.outputs,
+          label: typeof initLabel === "string" ? initLabel : sn.type,
+        });
+      } else {
+        node = new Ctor({ ...sn.init });
+        const anyNode = node as unknown as Record<string, unknown>;
+        // [[C28]] literalsIffEditable: restore ONLY onto declaring classes — same gate as the main load
+        // path, so a composite's internal graph can't plant an invisible literal.
+        if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
+        if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
+      }
       built.set(sn.id, node);
       // Guard AFTER addNode: it must wrap OUTSIDE the coercion pipe so a ShapeError
       // thrown while narrowing lands in the guard as #SHAPE!.
@@ -452,6 +472,14 @@ export class CompositeNode extends ClassicPreset.Node {
     if (!this.isHydrated) return this._pending!; // never computed since load — hand back untouched
     const nodes: CompositeSavedNode[] = this.internalEditor.getNodes().map((n) => {
       const anyN = n as unknown as Record<string, unknown>;
+      if (n instanceof PlaceholderNode) {
+        const ph: CompositeSavedNode = { id: n.id, type: n.missingType, init: { ...n.savedInit } };
+        if (n.savedLiterals) ph.literals = { ...n.savedLiterals };
+        if (n.savedStringLiterals) ph.stringLiterals = { ...n.savedStringLiterals };
+        const p = this.internalPositions[n.id];
+        if (p) { ph.x = p.x; ph.y = p.y; }
+        return ph;
+      }
       const sn: CompositeSavedNode = { id: n.id, type: n.constructor.name, init: extractInit(n) };
       if (anyN.literals && typeof anyN.literals === "object") {
         sn.literals = { ...(anyN.literals as Record<string, number>) };

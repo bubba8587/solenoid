@@ -112,10 +112,14 @@ const cellAt = (col: FrameColumn, i: number): FrameCell =>
  *  Drops `raw` (the per-column source text — a reordered/filtered frame is
  *  derived, so it has no source text). Short columns pad with `null`. */
 export function reorderRows(f: FrameValue, indices: readonly number[]): FrameValue {
-  return frame(f.columns.map((c) => {
-    const { raw: _raw, ...rest } = c;
-    return { ...rest, values: indices.map((i) => cellAt(c, i)) };
-  }));
+  return frame(f.columns.map((c) => ({ ...withoutRaw(c), values: indices.map((i) => cellAt(c, i)) })));
+}
+
+/** A column minus its source text: any verb that moves or rewrites cells makes a derived
+ *  column, whose `raw` would no longer line up with its values. */
+function withoutRaw(c: FrameColumn): Omit<FrameColumn, "raw"> {
+  const { raw: _raw, ...rest } = c;
+  return rest;
 }
 
 /** Within-type comparator for the SORTABLE (non-null, non-error) cells of a
@@ -1996,7 +2000,7 @@ export function fillBlanks(f: FrameValue, columns: readonly string[], dir: "down
         else carry = values[i];
       }
     }
-    return { ...col, values };
+    return { ...withoutRaw(col), values };
   });
   return { __frame: true, columns: cols };
 }
@@ -2036,7 +2040,7 @@ export function replaceValues(
     if (mode === "substring") {
       if (col.type !== "string") return col;
       return {
-        ...col,
+        ...withoutRaw(col),
         values: col.values.map((v) => (typeof v === "string" ? v.split(find).join(replaceWith) : v)),
       };
     }
@@ -2127,7 +2131,7 @@ export function dropBlankRows(f: FrameValue, mode: "all" | "any"): FrameValue {
     const drop = mode === "all" ? blanks === f.columns.length : blanks > 0;
     if (!drop) keep.push(i);
   }
-  return { __frame: true, columns: f.columns.map((c) => ({ ...c, values: keep.map((i) => c.values[i] ?? null) })) };
+  return { __frame: true, columns: f.columns.map((c) => ({ ...withoutRaw(c), values: keep.map((i) => c.values[i] ?? null) })) };
 }
 
 /** Row slices beyond head's first-N: last N, skip the first N, or a 1-based
@@ -2147,7 +2151,7 @@ export function sliceBounds(rows: number, mode: "first" | "last" | "skip" | "ran
 
 export function sliceRows(f: FrameValue, mode: "first" | "last" | "skip" | "range", n: number, to?: number): FrameValue {
   const [start, end] = sliceBounds(frameRowCount(f), mode, n, to);
-  return { __frame: true, columns: f.columns.map((c) => ({ ...c, values: c.values.slice(start, end) })) };
+  return { __frame: true, columns: f.columns.map((c) => ({ ...withoutRaw(c), values: c.values.slice(start, end) })) };
 }
 
 // ─── Describe (pandas describe / R summary) — one row per column ──────────────

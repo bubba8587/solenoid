@@ -47,7 +47,7 @@ import type { FlowView } from "./flowView";
 import { processGraph } from "../process";
 import { cableDragStore, setCableDragging } from "../graphSignals";
 import { installCanvasKeyboard } from "../canvasKeyboard";
-import { firstCompatibleSocketKey } from "../catalogSearch";
+import { firstCompatibleSocketKey, quickWireCompatibleTypes } from "../catalogSearch";
 import { SolenoidSocket } from "../sockets";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { scheduleAutosave } from "../persistence";
@@ -688,7 +688,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         const originNode = s.editor.getNode(state.fromNode.id);
         const sock =
           side === "output" ? originNode?.outputs[handleId]?.socket : originNode?.inputs[handleId]?.socket;
-        const compatibleTypes = sock instanceof SolenoidSocket ? new Set([sock.dataType]) : undefined;
+        const compatibleTypes = sock instanceof SolenoidSocket ? quickWireCompatibleTypes(buildCatalog(true), sock, side) : undefined;
         setMenu({
           screenX: pt.clientX,
           screenY: pt.clientY,

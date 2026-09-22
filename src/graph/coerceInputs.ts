@@ -9,7 +9,7 @@ import { parseDate } from "./nodes/dateSerial";
 import { coerceLogical } from "./valueKinds";
 import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
-import { isSolError } from "./errorValue";
+import { isSolError, SEES_ERRORS } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
 import { isUnitCell, carryMatrixUnit } from "./unitValue";
 import { frameFormatStore } from "./frameFormatStore";
@@ -340,6 +340,11 @@ export function wrapNodeData(node: NodeLike) {
             mat[key] = Array.isArray(arr)
               ? await Promise.all(arr.map((v) => (isFrameRef(v) ? readFrame(v) : v)))
               : arr;
+            // A frame that fails to collect is an input error the guard never saw (it ran
+            // on the ref): throw it, so the guard sends it out every output unrun
+            // ([[D35]] errorInErrorOut). A node that must see errors receives it as a value.
+            const failed = mat[key]?.find(isSolError);
+            if (failed && !SEES_ERRORS.has(className)) throw failed;
           }
           return coerceAll(mat);
         })();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compileEvaluator } from "../../src/graph/excelFormula";
+import { compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
 import { isLambdaValue } from "../../src/graph/lambdaValue";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "../../src/graph/nodes/tableLambda";
 import { GroupByNode, RunningNode } from "../../src/graph/nodes/list";
@@ -15,6 +15,23 @@ import { isSolError, type SolError } from "../../src/graph/errorValue";
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const M = [[1, 2], [3, 4]];
 const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);
+
+describe("LAMBDA parameters and eta names are not the host's variables", () => {
+  it("a LAMBDA's parameters grow no socket", () => {
+    expect(extractVariables("MAP(x, LAMBDA(v, v * 2))")).toEqual(["x"]);
+    expect(extractVariables("REDUCE(0, xs, LAMBDA(acc, v, acc + v * k))")).toEqual(["xs", "k"]);
+  });
+
+  it("a bare function name in a lambda slot is eta, not a variable", () => {
+    expect(extractVariables("MAP(x, SQRT)")).toEqual(["x"]);
+    expect(ev("MAP(x, SQRT)", { x: [4, 9] })).toEqual([2, 3]);
+  });
+
+  it("a parameter shadows a constant of the same name", () => {
+    expect(ev("LAMBDA(e, e + 1)(5)")).toBe(6);
+    expect(ev("e")).toBeCloseTo(Math.E);
+  });
+});
 
 describe("LAMBDA — the special form", () => {
   it("evaluates to the LAMBDA node's own tagged currency, unevaluated until applied", () => {

@@ -355,3 +355,40 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
 function isSolErrorLike(v: unknown): boolean {
   return !!v && typeof v === "object" && "__solError" in (v as object);
 }
+
+describe("PolarsBackend — units and formats survive a native verb ([[C25]] firstClassUnits)", () => {
+  beforeEach(async () => {
+    await initWith("polars");
+    invokeMock.mockClear();
+  });
+
+  it("a column's unit comes back on collect, column and preview, as the JS oracle keeps it", async () => {
+    const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
+    const km = columnUnitFromSpec("km")!;
+    const withUnit: FrameValue = { __frame: true, columns: [{ name: "d", type: "number", values: [3, 1], unit: km }, sample.columns[1]] };
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:1");
+    const src = await be.source(withUnit);
+    invokeMock.mockResolvedValueOnce("plf:2");
+    const sorted = await be.apply(src, { kind: "sort", by: "d", dir: "asc" });
+    // The wire answers bare columns, as the native engine does.
+    invokeMock.mockResolvedValueOnce([{ name: "d", type: "number", values: [1, 3] }, { name: "s", type: "string", values: ["b", "a"] }]);
+    const f = await be.collect(sorted);
+    expect(f.columns[0].unit?.display).toBe("km");
+    expect(f.columns[1].unit).toBeUndefined();
+    invokeMock.mockResolvedValueOnce({ name: "d", type: "number", values: [1, 3] });
+    expect((await be.column(sorted, "d"))?.unit?.display).toBe("km");
+    invokeMock.mockResolvedValueOnce({ schema: [{ name: "d", type: "number" }], rows: [[1]], rowCount: 2, truncated: true });
+    expect((await be.preview(sorted, 1)).schema[0].unit?.display).toBe("km");
+  });
+
+  it("a native column whose type differs from the schema gets no unit", async () => {
+    const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
+    const withUnit: FrameValue = { __frame: true, columns: [{ name: "d", type: "number", values: [3], unit: columnUnitFromSpec("km")! }] };
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:1");
+    const src = await be.source(withUnit);
+    invokeMock.mockResolvedValueOnce([{ name: "d", type: "string", values: ["3"] }]);
+    expect((await be.collect(src)).columns[0].unit).toBeUndefined();
+  });
+});

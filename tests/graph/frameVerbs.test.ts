@@ -625,6 +625,13 @@ describe("timesaver verbs", () => {
     expect(sliceRows(f, "first", 99).columns[0].values).toEqual([1, 2, 3]);
   });
 
+  it("row and value verbs drop the source text, which would no longer line up", () => {
+    const src: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [1, null, 3], raw: ["1", "", "3"] }] };
+    expect(sliceRows(src, "last", 2).columns[0].raw).toBeUndefined();
+    expect(dropBlankRows(src, "any").columns[0].raw).toBeUndefined();
+    expect(fillBlanks(src, ["a"], "down").columns[0].raw).toBeUndefined();
+  });
+
 });
 
 describe("[[D49]] textPredicateNeedsText — a text predicate reads a TEXT column, or errors", () => {

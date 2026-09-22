@@ -130,7 +130,7 @@ export function firstInputError(
 //    listed only to keep its read path uniform.
 //  - ChartNode is a figure SINK: it renders an errored input as an empty figure and
 //    never emits a SolError out its `chart` output.
-const SEES_ERRORS = new Set([
+export const SEES_ERRORS: ReadonlySet<string> = new Set([
   "IFErrorNode", "IsTestNode",
   "ConduitNode", "CableSwitchNode",
   "DisplayNode", "NoteNode", "ReportNode",

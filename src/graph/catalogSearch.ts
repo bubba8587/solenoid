@@ -193,6 +193,16 @@ export function filterByCompatibleSocket(
   return leaves.filter((lc) => hasCompatibleSocket(lc.leaf, origin, originSide));
 }
 
+/** The catalog leaf types quick-wire leaves undimmed: every leaf, op rows included,
+ *  with a socket the dragged cable can land on. The Add menu dims by leaf `type`. */
+export function quickWireCompatibleTypes(
+  entries: CatalogEntry[],
+  origin: SolenoidSocket,
+  originSide: "input" | "output",
+): Set<string> {
+  return new Set(filterByCompatibleSocket(flattenLeaves(entries), origin, originSide).map((lc) => lc.leaf.type));
+}
+
 /** First socket key on `node`, on the given side, that's compatible with
  *  `origin` — used to wire the freshly-created node once quick-wire's pick lands. */
 export function firstCompatibleSocketKey(

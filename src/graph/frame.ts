@@ -413,6 +413,10 @@ export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameC
   // a blank → "", aligned with the null value.
   const raw = cells.map((c) => (isBlank(c) ? "" : String(c).trim()));
   const nonBlank = cells.filter((c) => !isBlank(c));
+  // Real booleans (JSON records, a Cube cell) are a logical column; cellToNumber would read them as 1/0.
+  if (nonBlank.length > 0 && nonBlank.every((c) => typeof c === "boolean")) {
+    return { name, type: "logical", values: cells.map((c) => (isBlank(c) ? null : (c as boolean))), raw };
+  }
   const numeric = nonBlank.length > 0 && nonBlank.every((c) => cellToNumber(c) !== null);
   if (numeric) {
     return { name, type: "number", values: cells.map((c) => (isBlank(c) ? null : cellToNumber(c))), raw, ...(recovered ? { unit: recovered } : {}) };

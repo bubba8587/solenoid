@@ -179,6 +179,12 @@ describe("cube units — per-cell, like a list (unitGranularity)", () => {
     expect(col.values).toEqual([5, 10]);        // back to as-typed magnitudes
     expect(col.unit?.display).toBe("km");        // unit recovered
   });
+
+  it("a column of real booleans infers as logical, not 1/0 numbers", () => {
+    const col = inferColumn("done", [true, null, false]);
+    expect(col.type).toBe("logical");
+    expect(col.values).toEqual([true, null, false]);
+  });
 });
 
 describe("typed cube columns — frame→cube keeps the element type (lossless)", () => {

@@ -301,13 +301,33 @@ export function formulaFunctionNames(): string[] {
 }
 
 // ─── Variable extraction ──────────────────────────────────────────────────────
-function collectNames(n: Ast, out: string[], seen: Set<string>): void {
+// A bare dispatchable name in a lambda slot is an eta function, not a variable (etaOrEval).
+const isEtaName = (a: Ast): boolean =>
+  a.t === "name" && constantValue(a.name) === undefined && !!resolveExcelFunction(a.name);
+
+function collectNames(n: Ast, out: string[], seen: Set<string>, bound: ReadonlySet<string> = new Set()): void {
   switch (n.t) {
-    case "name": if (constantValue(n.name) === undefined && !seen.has(n.name)) { seen.add(n.name); out.push(n.name); } break;
-    case "call": n.args.forEach((a) => collectNames(a, out, seen)); break;
-    case "apply": collectNames(n.fn, out, seen); n.args.forEach((a) => collectNames(a, out, seen)); break;
-    case "unary": case "percent": collectNames(n.t === "unary" ? n.arg : n.arg, out, seen); break;
-    case "bin": collectNames(n.l, out, seen); collectNames(n.r, out, seen); break;
+    case "name":
+      if (constantValue(n.name) === undefined && !bound.has(n.name) && !seen.has(n.name)) { seen.add(n.name); out.push(n.name); }
+      break;
+    case "call": {
+      // A LAMBDA literal binds its params, so they are never the host's variables.
+      if (n.name.toUpperCase() === "LAMBDA" && n.args.length >= 1) {
+        const inner = new Set(bound);
+        for (const a of n.args.slice(0, -1)) if (a.t === "name") inner.add(a.name);
+        collectNames(n.args[n.args.length - 1], out, seen, inner);
+        break;
+      }
+      const eta = ETA_HOSTS.has(n.name.toUpperCase());
+      n.args.forEach((a) => { if (!(eta && isEtaName(a))) collectNames(a, out, seen, bound); });
+      break;
+    }
+    case "apply":
+      collectNames(n.fn, out, seen, bound);
+      n.args.forEach((a) => { if (!isEtaName(a)) collectNames(a, out, seen, bound); });
+      break;
+    case "unary": case "percent": collectNames(n.arg, out, seen, bound); break;
+    case "bin": collectNames(n.l, out, seen, bound); collectNames(n.r, out, seen, bound); break;
   }
 }
 
@@ -843,7 +863,10 @@ function etaOrEval(a: Ast, env: Record<string, unknown>): unknown {
   return evalAst(a, env);
 }
 
-function evalAst(n: Ast, env: Record<string, unknown>): unknown {
+/** The names a LAMBDA body has bound as parameters, carried on its environment. */
+const LAMBDA_BOUND = Symbol("lambdaBound");
+
+function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
   switch (n.t) {
     case "num": return Number(n.v);
     case "str": return n.v;
@@ -855,7 +878,12 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       Object.prototype.hasOwnProperty.call(env, n.name) ? { hit: true, v: env[n.name] } : { hit: false });
     // No env fallback — a bracketed name can never be a capture/variable.
     case "wholecol": return readWholeColumn(n.name);
-    case "name": { const c = constantValue(n.name); return c !== undefined ? c : env[n.name]; }
+    case "name": {
+      // A LAMBDA parameter shadows a constant of the same name (`LAMBDA(e, e+1)`).
+      if ((env[LAMBDA_BOUND] as ReadonlySet<string> | undefined)?.has(n.name)) return env[n.name];
+      const c = constantValue(n.name);
+      return c !== undefined ? c : env[n.name];
+    }
     case "unary": {
       const a = evalAst(n.arg, env);
       // Per-cell contract: error propagates, missing stays missing (bare `-null` is
@@ -923,8 +951,9 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
           params.push(a.name);
         }
         const fn = (...args: unknown[]): unknown => {
-          const inner: Record<string, unknown> = { ...env };
+          const inner: Record<string | symbol, unknown> = { ...env };
           params.forEach((p, i) => { inner[p] = args[i]; });
+          inner[LAMBDA_BOUND] = new Set([...((env[LAMBDA_BOUND] as Set<string> | undefined) ?? []), ...params]);
           return evalAst(bodyAst, inner);
         };
         return { __lambda: true, params, fn, expr: "" } satisfies LambdaValue;

@@ -16,6 +16,17 @@ const dt = (socket: unknown): SocketDataType | undefined =>
   socket instanceof SolenoidSocket ? socket.dataType : undefined;
 
 describe("Expression — value-polymorphic results", () => {
+  it("a complex result reaches the output, not a blank ([[C15]] matricesInFormulas)", () => {
+    const r = new ExpressionNode({ expr: "COMPLEX(1, 2)" }).data({}).result as { re: number; im: number };
+    expect(r.re).toBe(1);
+    expect(r.im).toBe(2);
+  });
+
+  it("an infinity carried in from an input passes; a NaN is still #DOMAIN!", () => {
+    expect(new ExpressionNode({ expr: "x + 1" }).data({ x: [Infinity] }).result).toBe(Infinity);
+    expect(isSolError(new ExpressionNode({ expr: "SQRT(-1)" }).data({}).result)).toBe(true);
+  });
+
   it("maps a text function over a list when resultAs = text", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
     expect(n.data({ name: [["alice", "bob"]] }).result).toEqual(["ALICE", "BOB"]);

@@ -372,6 +372,17 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     expect(p.received()!.frame).toEqual(["scalar", COLLECTED]);
   });
 
+  it("a frame that fails to collect throws for the error guard; a node that sees errors gets it as a value ([[D35]] errorInErrorOut)", async () => {
+    const failed = { __solError: true, code: "#REF!", message: "gone" };
+    const rf = readFrame as unknown as { mockResolvedValueOnce: (v: unknown) => void };
+    rf.mockResolvedValueOnce(failed);
+    await expect(bridgeProbe("ListLengthNode").data({ frame: [fakeRef] })).rejects.toBe(failed);
+    rf.mockResolvedValueOnce(failed);
+    const d = bridgeProbe("DisplayNode");
+    await d.data({ frame: [fakeRef] });
+    expect(d.received()!.frame[0]).toBe(failed);
+  });
+
   it("a NON-lazy class with no ref present stays synchronous (no needless collect)", () => {
     const p = bridgeProbe("DisplayNode");
     const out = p.data({ frame: [42] });

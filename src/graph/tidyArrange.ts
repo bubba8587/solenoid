@@ -402,8 +402,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       } as unknown as Schemes["Connection"]];
     });
     // Reserve each host's docked-FC view (the host + FC bounding box) so ELK doesn't
-    // pack a neighbor into it — ONLY for hosts actually IN the layout, else the
-    // restore below stamps a fixed inline height the pin-drop loop never clears.
+    // pack a neighbor into it. The footprint lives only on the proxy ELK sees, and only
+    // for hosts actually IN the layout.
     const layoutTargetIds = new Set(layoutTargets.map((n) => n.id));
     const hostFootprint = new Map<string, { w: number; h: number }>();
     for (const fcId of dockedFcIds) {

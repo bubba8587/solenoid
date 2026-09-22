@@ -101,7 +101,7 @@ Argument lists: `(` then zero or more slots separated by commas, then `)`. `F()`
 
 A bare name (`{ t: "name" }`) resolves, in order:
 
-1. **Constant.** `pi`, `tau` (2π), `e` and `phi` (the golden ratio), matched case-insensitively (`FORMULA_CONSTANTS`). A constant always wins, even over a LAMBDA parameter of the same name: `LAMBDA(e, e+1)(5)` is `e+1` with Euler's number. A constant is never a variable, so a formula cannot have a variable named `e`, `E`, `pi` or `PI`.
+1. **Constant.** `pi`, `tau` (2π), `e` and `phi` (the golden ratio), matched case-insensitively (`FORMULA_CONSTANTS`). A constant wins over a variable, but a LAMBDA parameter shadows it inside that LAMBDA's body: `LAMBDA(e, e+1)(5)` is 6. A constant is never a variable, so a formula cannot have a variable named `e`, `E`, `pi` or `PI`.
 2. **Environment.** `env[name]`, case-sensitive. In the Expression node every non-constant bare name is a variable with a socket, so it is always bound (see *The Expression node*). A name the environment lacks evaluates to `undefined`.
 
 Function names in call position are case-insensitive and resolve through the registry (see *Calls*). A variable never shadows a function, and a function never shadows a variable: `SUM` bare is a variable named `SUM`, `SUM(…)` is the function. The one crossover is a call whose raw name is bound in the environment to a `LambdaValue`, which applies that lambda.
@@ -336,7 +336,7 @@ Errors produced by an implementation for its own reasons (a negative `SQRT`, a b
 
 `ExpressionNode` (catalog type `expression`) is the formula surface on the canvas. Its persisted fields are `label`, `expr`, `locked`, `resultAs`, `literals` (variable name to number) and `varDescriptions` (variable name to prose, shown as a hover tooltip and a legend, never part of the formula). Its sockets derive from `expr`.
 
-**Variables.** `extractVariables(expr)` walks the AST and collects every bare `name` that is not a constant, in first-appearance order without duplicates, from operator operands, call arguments, application callees and arguments, and LAMBDA bodies and parameters alike. Function names in call position, `@` and bracket references, and literals are not variables. A formula that does not parse has no variables. Because the walk does not exclude LAMBDA parameters or eta names, `MAP(x, LAMBDA(v, v*2))` grows sockets `x` and `v`, and `MAP(x, SQRT)` grows `x` and `SQRT`.
+**Variables.** `extractVariables(expr)` walks the AST and collects every bare `name` that is not a constant, in first-appearance order without duplicates, from operator operands, call arguments, application callees and arguments, and LAMBDA bodies. Function names in call position, `@` and bracket references, and literals are not variables. A LAMBDA's parameters are bound inside its body and are not variables, and neither is a bare function name in a lambda slot (an argument of `MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN`, `GROUPBY`, or of an application), which evaluates as an eta function. So `MAP(x, LAMBDA(v, v*2))` and `MAP(x, SQRT)` both grow the one socket `x`. A formula that does not parse has no variables.
 
 **Rebuild.** `_rebuild()` recomputes the variables, adds an `anydata` input (scalar, list or matrix, never a Frame) for each new one, recompiles the evaluator and the AST, and returns the added and removed names. The single edit path, `applyExprChange` in `components/expressionEdit.ts`, is a no-op on a locked node; otherwise it sets `expr`, rebuilds, drops the removed sockets' cables before removing the sockets ([[D10]] onePrunePath), resizes the card and recomputes the graph. A locked node is a pack preset: the formula is read-only and the title stays editable.
 
@@ -345,7 +345,7 @@ Errors produced by an implementation for its own reasons (a negative `SQRT`, a b
 **Evaluation.**
 
 1. No evaluator: an empty formula answers `null` with no error; otherwise `#SYNTAX!` carrying the syntax hint, and the card shows the hint (or "Syntax error").
-2. Run the evaluator. Each result cell (scalar, list cell or matrix cell) is tagged: a `SolError` passes; a Formula.js `Error` maps through `fxErrorToSol`; NaN is `#DOMAIN!`; a string, a logical or a finite number passes; anything else becomes `null`. That last rule makes a complex result (a tagged Cx object) read as `null` on the Expression card.
+2. Run the evaluator. Each result cell (scalar, list cell or matrix cell) is tagged: a `SolError` passes; a Formula.js `Error` maps through `fxErrorToSol`; NaN is `#DOMAIN!`; a string, a logical, a number (an infinity included) or a complex value passes; anything else becomes `null`.
 3. When any input carries a non-dimensionless unit, `dimEval` computes the result's dimension from the AST, the input dimensions and their currency codes. An error there is the result; a known dimension tags each numeric cell; an indeterminate one drops the unit ([[unit-flow]]).
 4. A thrown exception answers `#VALUE!` "The formula failed to evaluate".
 

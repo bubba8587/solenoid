@@ -1,6 +1,6 @@
 // [[C79]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { flattenLeaves, searchLeaves, filterByCompatibleSocket } from "../../src/graph/catalogSearch";
+import { flattenLeaves, searchLeaves, filterByCompatibleSocket, quickWireCompatibleTypes } from "../../src/graph/catalogSearch";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { SolenoidSocket, type SocketDataType } from "../../src/graph/sockets";
 import type { NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
@@ -118,6 +118,16 @@ describe("filterByCompatibleSocket — memoized socket signatures", () => {
     const compat = filterByCompatibleSocket(all, origin, "output");
     expect(compat.length).toBeGreaterThan(0);
     expect(compat.length).toBeLessThan(all.length); // it filters, not passes-through
+  });
+
+  it("quick-wire's dim set holds catalog leaf types: a number cable lights Arithmetic, not UPPER", () => {
+    const set = quickWireCompatibleTypes(buildCatalog(true), new SolenoidSocket("number"), "output");
+    const types = flattenLeaves(buildCatalog(true)).map((l) => l.leaf.type);
+    expect(set.size).toBeGreaterThan(0);
+    expect(set.size).toBeLessThan(types.length);
+    expect([...set].every((t) => types.includes(t))).toBe(true);
+    expect(set.has("arith-add")).toBe(true);
+    expect(set.has("text-upper")).toBe(false); // element families never auto-cross
   });
 });
 

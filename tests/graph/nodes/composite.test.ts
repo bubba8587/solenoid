@@ -153,6 +153,27 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(99);
   });
 
+  it("an unknown internal type loads as a Placeholder and re-saves as the original ([[C35]] unknownViaPlaceholder)", async () => {
+    const outMarker = new CompositeOutputNode({ label: "Result" });
+    const snapshot = {
+      nodes: [
+        { id: "m1", type: "NoSuchPackNode", init: { label: "Gone", knob: 7 }, literals: { k: 1 }, x: 10, y: 20 },
+        { id: "o1", type: outMarker.constructor.name, init: { label: "Result" } },
+      ],
+      connections: [{ source: "m1", sourceOutput: "result", target: "o1", targetInput: "value" }],
+    };
+    const c = new CompositeNode({ internal: snapshot });
+    await c.hydrate(ctorRegistry());
+    expect(c.internalEditor.getNodes()).toHaveLength(2);
+    expect(c.internalEditor.getConnections()).toHaveLength(1); // the cable re-links to the placeholder's socket
+    const again = c.snapshotInternal();
+    const ph = again.nodes.find((n) => n.type === "NoSuchPackNode");
+    expect(ph).toBeDefined();
+    expect(ph!.init).toEqual({ label: "Gone", knob: 7 });
+    expect(ph!.literals).toEqual({ k: 1 });
+    expect(again.connections).toHaveLength(1);
+  });
+
   it("hydrate() is a no-op the second time (already hydrated)", async () => {
     const c = new CompositeNode();
     await c.hydrate(ctorRegistry()); // freshly-built shell — nothing pending

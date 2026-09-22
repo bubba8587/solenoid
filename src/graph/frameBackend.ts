@@ -147,6 +147,7 @@ const CARD_PREVIEW_ROWS = 100;
 function previewToFrame(p: FramePreview): FrameValue {
   const columns: FrameColumn[] = p.schema.map((c, i) => ({
     name: c.name, type: c.type, values: p.rows.map((r) => r[i] ?? null),
+    ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}),
   }));
   const f: FrameValue = { __frame: true, columns };
   if (p.truncated) f.__totalRows = p.rowCount;
@@ -171,6 +172,9 @@ export async function collectPreview(out: FrameInput | SolError | null, n = CARD
 export interface FrameSchemaColumn {
   name: string;
   type: FrameColType;
+  /** The column's unit and display format, which ride the value ([[C25]] firstClassUnits). */
+  unit?: FrameColumn["unit"];
+  format?: FrameColumn["format"];
 }
 
 /** A display snapshot: schema, first N rows, and the TRUE total row count. */
@@ -215,7 +219,9 @@ export function framePreview(frame: FrameValue, n: number): FramePreview {
     rows.push(frame.columns.map((c) => (r < c.values.length ? c.values[r] : null)));
   }
   return {
-    schema: frame.columns.map((c) => ({ name: c.name, type: c.type })),
+    schema: frame.columns.map((c) => ({
+      name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}),
+    })),
     rows,
     rowCount,
     truncated: rowCount > take,
@@ -324,54 +330,109 @@ function decodeWireColumns(columns: FrameColumn[]): FrameColumn[] {
   return columns.map((c) => ({ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }));
 }
 
+/** A frame's columns with no rows: what a verb does to units and formats, without the data. */
+function schemaOnly(frame: FrameValue): FrameValue {
+  return { __frame: true, columns: frame.columns.map(({ raw: _raw, ...c }) => ({ ...c, values: [] })) };
+}
+
+/** Run a verb over row-less schemas; a verb that can't run on them leaves no schema. */
+function shadow(run: () => FrameValue): FrameValue | null {
+  try { return schemaOnly(run()); } catch { return null; }
+}
+
+/** Lay a schema's units and formats onto native columns of the same name and type. */
+function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[], schema: FrameValue | null | undefined): C[] {
+  if (!schema) return cols;
+  const byName = new Map(schema.columns.map((c) => [c.name, c] as const));
+  return cols.map((c) => {
+    const s = byName.get(c.name);
+    if (!s || s.type !== c.type) return c;
+    return { ...c, ...(s.unit ? { unit: s.unit } : {}), ...(s.format ? { format: s.format } : {}) };
+  });
+}
+
 class PolarsBackend implements FrameBackend {
+  // The wire carries a column's name, type and values only. Each handle's row-less shadow,
+  // run through the same JS verbs, restores the units and formats the oracle would carry,
+  // so web and desktop agree ([[C25]] firstClassUnits, [[B2]] webTryDesktopFull).
+  private schemas = new Map<string, FrameValue | null>();
+
+  private remember(handle: FrameHandle, schema: FrameValue | null): FrameHandle {
+    this.schemas.set(handle, schema);
+    return handle;
+  }
+
+  private schemaOf(handle: FrameHandle): FrameValue | null {
+    return this.schemas.get(handle) ?? null;
+  }
+
   async source(frame: FrameValue): Promise<FrameHandle> {
     const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
-    return ipcInvoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>;
+    const h = await (ipcInvoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);
+    return this.remember(h, schemaOnly(frame));
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
-    return ipcInvoke<string>("engine_apply", { handle, op }) as Promise<FrameHandle>;
+    const h = await (ipcInvoke<string>("engine_apply", { handle, op }) as Promise<FrameHandle>);
+    const s = this.schemaOf(handle);
+    return this.remember(h, s ? shadow(() => applyVerb(s, op)) : null);
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
-    return ipcInvoke<string>("engine_apply_many", { handle, ops }) as Promise<FrameHandle>;
+    const h = await (ipcInvoke<string>("engine_apply_many", { handle, ops }) as Promise<FrameHandle>);
+    const s = this.schemaOf(handle);
+    return this.remember(h, s ? shadow(() => ops.reduce((f, op) => applyVerb(f, op), s)) : null);
   }
 
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
-    return ipcInvoke<string>("engine_join", { left, right, opts }) as Promise<FrameHandle>;
+    const h = await (ipcInvoke<string>("engine_join", { left, right, opts }) as Promise<FrameHandle>);
+    const l = this.schemaOf(left), r = this.schemaOf(right);
+    return this.remember(h, l && r ? shadow(() => joinFrames(l, r, opts)) : null);
   }
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    return ipcInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>;
+    const h = await (ipcInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
+    const ss = handles.map((x) => this.schemaOf(x));
+    return this.remember(h, ss.every(Boolean) ? shadow(() => appendFrames(ss as FrameValue[])) : null);
   }
 
   async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
-    return ipcInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>;
+    const h = await (ipcInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
+    const ss = handles.map((x) => this.schemaOf(x));
+    return this.remember(h, ss.every(Boolean) ? shadow(() => bindColumns(ss as FrameValue[])) : null);
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
     const p = await ipcInvoke<FramePreview>("engine_preview", { handle, n });
-    return { ...p, rows: p.rows.map((r) => r.map(decodeWireCell)) as FramePreview["rows"] };
+    return {
+      ...p,
+      schema: withSchemaMeta(p.schema, this.schemaOf(handle)),
+      rows: p.rows.map((r) => r.map(decodeWireCell)) as FramePreview["rows"],
+    };
   }
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
     const columns = await ipcInvoke<FrameColumn[]>("engine_collect", { handle });
-    return { __frame: true, columns: decodeWireColumns(columns) };
+    return { __frame: true, columns: withSchemaMeta(decodeWireColumns(columns), this.schemaOf(handle)) };
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
     const c = await ipcInvoke<FrameColumn | null>("engine_column", { handle, name });
-    return c ? { ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] } : null;
+    if (!c) return null;
+    const [out] = withSchemaMeta([{ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }], this.schemaOf(handle));
+    return out;
   }
 
   drop(handle: FrameHandle): void {
+    this.schemas.delete(handle);
     // Fire-and-forget: a free can't fail meaningfully and an unknown handle no-ops.
     void ipcInvoke("engine_drop", { handle }).catch(() => {});
   }
 
   async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
-    return ipcInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>;
+    const r = await (ipcInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
+    if (r.handle !== handle) this.remember(r.handle, this.schemaOf(handle));
+    return r;
   }
 }
 
@@ -544,7 +605,7 @@ export async function runFrameJoin(left: FrameInput, right: FrameInput, opts: Jo
   }
 }
 
-/** Union by column NAME. */
+/** Side by side by POSITION; ragged pads with blanks. */
 export async function runFrameBindColumns(frames: readonly FrameInput[]): Promise<FrameRef | SolError> {
   const be = frameBackend();
   const temps: FrameHandle[] = [];
