@@ -77,6 +77,8 @@ export function lookTokens(name: PaletteName, accent: string, mode: ThemeMode): 
     // white, the look's rule: a yellow is the ink, any other hue darkens along its own hue.
     out["--sol-ink-accent"] = mode === "dark" ? "var(--sol-accent)" : isYellow(accentHex) ? "var(--sol-text)" : "oklch(from var(--sol-accent) 0.45 c h)";
     for (const sock of SOCKETS) out[`--sol-${sock}`] = vars[`--sock-${sock}`]!;
+    // The ink that reads on each hue as a fill (a light-mode property badge): the chips' rule.
+    for (const sock of SOCKETS) out[`--sol-ink-on-${sock}`] = contrastInk(out[`--sol-${sock}`]);
     for (const slot of SLOTS) out[`--sol-${slot}`] = themeAccent(resolveColor(slot), mode);
     out["--sol-error"] = vars["--sol-error"]!;
     for (const [color, hue] of NAMED) out[`--color-${color}-rgb`] = rgb(out[`--sol-${hue}`]);
