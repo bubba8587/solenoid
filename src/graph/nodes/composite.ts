@@ -481,6 +481,9 @@ export class CompositeNode extends ClassicPreset.Node {
         return ph;
       }
       const sn: CompositeSavedNode = { id: n.id, type: n.constructor.name, init: extractInit(n) };
+      // An input marker's `value` is the last injected input (possibly a whole Frame), not
+      // state: the constructor never reads it back, so it stays out of the save.
+      if (n instanceof CompositeInputNode) delete sn.init.value;
       if (anyN.literals && typeof anyN.literals === "object") {
         sn.literals = { ...(anyN.literals as Record<string, number>) };
       }
@@ -722,9 +725,10 @@ export class CompositeNode extends ClassicPreset.Node {
     for (const port of this.inputPorts) {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
       if (!marker) continue;
+      // The same fallback order as runPass: the wired value, else the marker's seed, else the default.
       marker.value = port.exposure === "exposed"
-        ? (inputs[port.id]?.[0] ?? port.default ?? null)
-        : (port.default ?? null);
+        ? (inputs[port.id]?.[0] ?? marker.defaultValue ?? port.default ?? null)
+        : (marker.defaultValue ?? port.default ?? null);
     }
     this.internalEngine.reset();
     this.simLastSteps = null; // no stepped loop unless we reach one below
@@ -899,7 +903,9 @@ export class CompositeNode extends ClassicPreset.Node {
         // genuinely blank — not a stale light-mode pass — and stale, so the user sees it
         // compute on the first Solve ([[D52]] compositesHoldUntilSolve). The goal-seek
         // readouts read unsolved too.
-        this.cachedOutputs = {};
+        // Every output key, blank: the engine refuses a result missing a key.
+        const blank: Record<string, unknown> = Object.fromEntries(Object.keys(this.outputs).map((k) => [k, null]));
+        this.cachedOutputs = blank;
         this.goalSeekResult = null;
         for (const port of this.inputPorts) {
           const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
@@ -907,7 +913,7 @@ export class CompositeNode extends ClassicPreset.Node {
         }
         this.stale = true;
         compositeStaleStore.set(this.id, true);
-        return {};
+        return blank;
       }
       this.stale = key !== this.lastSolveKey;
       compositeStaleStore.set(this.id, this.stale);

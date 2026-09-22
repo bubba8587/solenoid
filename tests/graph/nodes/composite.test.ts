@@ -174,6 +174,20 @@ describe("CompositeNode shell", () => {
     expect(again.connections).toHaveLength(1);
   });
 
+  it("an input marker's injected value stays out of the save; its seed is kept", async () => {
+    const c = new CompositeNode();
+    const inM = new CompositeInputNode({ label: "In", defaultValue: 4 });
+    const outM = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inM, outM]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inM, "value", outM, "value");
+    const inId = c.addInputPort({ label: "In", exposure: "exposed", tier: "basic", internalNodeId: inM.id });
+    c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outM.id });
+    await c.data({ [inId]: [123] });
+    const saved = c.snapshotInternal().nodes.find((n) => n.id === inM.id)!;
+    expect("value" in saved.init).toBe(false);
+    expect(saved.init.defaultValue).toBe(4);
+  });
+
   it("hydrate() is a no-op the second time (already hydrated)", async () => {
     const c = new CompositeNode();
     await c.hydrate(ctorRegistry()); // freshly-built shell — nothing pending
@@ -903,7 +917,9 @@ describe("CompositeNode Goal Seek run mode", () => {
     // Never solved (create/load): reads blank and stale until the user clicks Solve —
     // people expect to watch it compute on Solve ([[D52]] compositesHoldUntilSolve).
     const held0 = await c.data({ [inBId]: [10] });
-    expect(held0[outId]).toBeUndefined();
+    // Blank on every output key: rete-engine's fetch refuses a result missing a key.
+    expect(held0[outId]).toBeNull();
+    expect(Object.keys(held0)).toEqual(Object.keys(c.outputs));
     expect(c.goalSeekResult).toBeNull();
     expect(c.stale).toBe(true);
     // Solve runs it: Sum = A + 10, want 15 → A = 5.
@@ -920,6 +936,17 @@ describe("CompositeNode Goal Seek run mode", () => {
     const out3 = await c.data({ [inBId]: [20] });
     expect(out3[outId] as number).toBeCloseTo(-5, 4);
     expect(c.stale).toBe(false);
+  });
+
+  it("a never-solved heavy composite fetches through the engine without throwing", async () => {
+    const { c } = await makeAdder();
+    const { DataflowEngine } = await import("rete-engine");
+    const editor = new NodeEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    await editor.addNode(c as unknown as Schemes["Node"]);
+    const out = await engine.fetch(c.id);
+    expect(Object.values(out).every((v) => v === null)).toBe(true);
   });
 
   it("arm-and-run: an INTERNAL edit flags the held solve stale (dot must not lie)", async () => {
@@ -1168,7 +1195,7 @@ describe("CompositeNode manual refresh mode", () => {
     const f2 = frameFromCells(["A"], [[1], [2], [3]]);
     // Never refreshed (create/load): reads blank and stale — no solve until Refresh.
     const held0 = await c.data({ [inId]: [f1] });
-    expect(held0[outId]).toBeUndefined();
+    expect(held0[outId]).toBeNull();
     expect(c.stale).toBe(true);
     // Refresh computes it.
     c.requestSolve();
@@ -1225,7 +1252,7 @@ describe("CompositeNode manual refresh mode", () => {
     const outId = loaded.outputPorts[0].id;
     const f = frameFromCells(["A"], [[1], [2]]);
     const held = await loaded.data({ [inId]: [f] });
-    expect(held[outId]).toBeUndefined(); // blank
+    expect(held[outId]).toBeNull(); // blank
     expect(loaded.stale).toBe(true);
     loaded.requestSolve();
     const out = await loaded.data({ [inId]: [f] });
@@ -1241,7 +1268,7 @@ describe("CompositeNode manual refresh mode", () => {
     // A switch INTO a heavy mode reads unsolved — not the leftover single-pass value.
     c.runMode = "manual";
     const held = await c.data({ [inId]: [5] });
-    expect(held[outId]).toBeUndefined(); // blank, not 5
+    expect(held[outId]).toBeNull(); // blank, not 5
     expect(c.stale).toBe(true);
     c.requestSolve();
     const out = await c.data({ [inId]: [5] });

@@ -21,6 +21,8 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/computation/formulajs-divergences.md` | why each `registerInternal` override exists | `excelFunctions.ts` |
 | `../tree/specs/computation/computed-columns.md` | per-row formulas on a Frame: Fx columns and the Computed Column node | `computedColumnCore.ts`, `nodes/frame.ts` |
 | `../tree/specs/computation/frame-verbs.md` | the Frame value, lazy frames, the JS / Polars backend seam, every relational verb | `frame.ts`, `frameVerbs.ts`, `frameBackend.ts`, `src-tauri/src/engine.rs` |
+| `../tree/specs/computation/composite-nodes.md` | composite nodes: ports, run modes, the heavy-mode hold, loops, save and load | `nodes/composite.ts`, `components/CompositeNode.tsx` |
+| `../tree/specs/computation/chart-figures.md` | the values on the `chart` socket, the figure nodes, the options string, rendering | `nodes/visual.ts`, `nodes/chartOptions.ts`, `chartRender.tsx` |
 | `../tree/specs/computation/equation-solver.md` | solving a relation for any one variable | `equationSolve.ts` |
 | `../tree/specs/computation/bordered-grid-fill.md` | filling blank cells in a bordered grid | `mathUtils.ts` `fillBorderedGrid` |
 | `../tree/specs/computation/script-sandbox.md` | running Script code in a worker | `scriptWorker.ts`, `scriptExecutor.ts`, `nodes/scriptRun.ts` |
@@ -41,6 +43,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | Spec | Subsystem | Main code |
 |---|---|---|
 | `../tree/specs/documents/save-format.md` | the saved document, the text form, loading | `persistence.ts`, `textForm.ts`, `graphValidate.ts` |
+| `../tree/specs/documents/reports-and-notes.md` | Notes, Reports and Knap: the body syntax, rendering, mail merge, vault writes, export | `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` |
 | `../tree/specs/documents/addressable-model.md` | node names and name-addressed references | `nodeNameStore.ts`, `nodeNaming.ts` |
 | `../tree/specs/documents/per-doc-autosave-persistence.md` | per-document autosave slots | `documentStore.ts` |
 | `../tree/specs/documents/inline-literal-maps.md` | values edited on a card, and which classes restore them | node classes, `persistence.ts` |

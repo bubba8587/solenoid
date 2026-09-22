@@ -268,7 +268,7 @@ A Frame on a cable is usually a `FrameRef`: a handle to a verb chain held by the
 
 ## Composites
 
-A composite card owns a private `NodeEditor` and `DataflowEngine`, wrapped in the same order, and nothing inside it enters the outer engine or cache. Its pass writes each input port's value into its input marker, runs `internalEngine.reset()`, seeds `#CIRC!` on its internal loop members (with a message pointing at Simulation mode), and fetches only the output markers. Run modes, heavy-mode holding ([[D52]] compositesHoldUntilSolve) and the drill-in are [[composite-drill-in-mount-lifecycle]]; this file only supplies the retargeting in the app pass above.
+A composite card owns a private `NodeEditor` and `DataflowEngine`, wrapped in the same order, and nothing inside it enters the outer engine or cache. Its pass writes each input port's value into its input marker, runs `internalEngine.reset()`, seeds `#CIRC!` on its internal loop members (with a message pointing at Simulation mode), and fetches only the output markers. Run modes and heavy-mode holding ([[D52]] compositesHoldUntilSolve) are [[composite-nodes]], and the drill-in is [[composite-drill-in-mount-lifecycle]]; this file only supplies the retargeting in the app pass above.
 
 ## Enforcement
 
