@@ -4,20 +4,93 @@
 
 Serves [[C85]] groupPushDeterministic (the push and its records), [[C87]] groupsAreSubflows (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-Expanding a collapsed group displaces its neighbourhood via the pure, unit-tested core in `groupPushCore.ts` (plain boxes, no rete/DOM — see `groupPushCore.test.ts`).
+A collapsed group draws as a small card. Expanding it back to full size would cover whatever sits nearby, so the expansion pushes those neighbors just far enough aside, remembers each push, and slides them back when the group collapses again. This spec covers that push, how groups map onto React Flow, and the rules for who is a member of a group.
 
-The rules, in order:
-1. **Rails** — a loose node wired to the group's members that the expansion would displace lands on its dataflow side (feeders left, consumers right, y-aligned to its connected members; a consumer already right of the group just gets cleared, not re-placed).
-2. **Clear** — minimal disturbance: ONLY boxes the expanded footprint would cover move, and only just past the expanded edge + `PUSH_GAP`. Direction: a box with connection ANCHORS (cables to other entities — the other end resolved to its push entity: member → its group, docked FC → its host) picks whichever of the four clears keeps mean anchor distance + a displacement penalty smallest, so a node wired to a group on the left hops LEFT out of the way; unconnected boxes use the axis matching their position vs the collapsed card (right → right, below → down, beyond both edges → dominant axis). Free area is expanded into without anything moving.
-3. **Residual clear** (belt-and-braces).
-4. **Cascade** — a mover pushes what it lands on just clear of itself along its direction of travel, and only boxes that started AHEAD of it on that axis (movers process in original-position order), so a band of cleared boxes re-stacks in original order instead of flattening or inverting.
+## The world the push works on
 
-Boxes the user parked ON the collapsed card are exempt, and pre-existing overlaps are never "fixed".
+The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush` and `separateOverlaps` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
 
-**Records and restore:** displacements are recorded as ABSOLUTE before/after pairs with a `dueTo` SET of contributing groups. A second expansion shoving the same node merges into one record — but ONLY if the node is still within EPS of where the last push left it: a programmatic move between pushes (Tidy, Cleanup, align/distribute) voids the old record and the merge replaces it with a FRESH one anchored at the current position (the 2026-07-16 fix for "Tidy around expanded groups is wonky", pinned by `groupPushRecords.test.ts`). Restore fires when ALL contributors are collapsed or deleted, and only if the node is still where the push left it — manual moves win, and only real drags invalidate (NOT clicks: rete fires `nodedragged` on every pointerup after a pick, which once wiped records on plain clicks and broke snap-back).
+- **Movable boxes** are every group plus every loose node: a node that is in no group and is not a docked Format Controller (FC).
+- A loose node's box is widened by the width of any FC docked to its output side (FC width plus 8), because the docked FC has no box of its own.
+- A group being expanded is read at its stored full size, since its element may still be mid-render. Other groups use their measured size.
+- A group moves with its members; a loose node moves with any FC docked to it.
+- All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.
 
-**Entry points:** `setGroupsCollapsed` is the ONE toggle entry point — chevron, outline panel, and Ctrl+Shift+E all route through it; it measures collapsed-card sizes BEFORE flipping (they're the stretch seam origins). Deliberately no ELK in this path: rails+stretch are deterministic, preserve deliberate placement, and invert exactly; ELK re-derives positions globally and can't snap back. `setGroupsCollapsed` is the only *toggle* caller of `runExpandPushes`, but not the only caller — `pushForGrownGroups` reuses the same engine (non-toggle) when a within-group Tidy grows the box (see Auto-arrange / Tidy below).
+The push runs only while the `groupPush` setting is on.
 
-**Groups are React Flow sub-flows.** A member is the group's RF child (`parentId`, position RELATIVE to the group box, parents first in the node array — `flowModel.toFlowNodes`), so RF tows members with the group itself and z-orders them above it. The MODEL stays absolute (saves, Tidy, standoffs, the lasso, docking read `view.position`/`node.position` unchanged); the conversion lives at the boundary only: `toFlowPosition`/`fromFlowPosition`, `handlers.moveNode` (a moved group re-bases every member, so a Tidy that translates members before their group still lands consistent), and `onNodesChange` (RF-driven moves → model, group first). A membership rebuild re-projects through the `groupMembershipStore` subscription. During a group drag the model's member positions follow by the group's per-frame delta (`moveGroupMembers`, selected members skipped — RF moves the selection).
+## The push, per expanding group
 
-**Group membership changes ONLY on an explicit gesture** — dragging a NODE in/out (`reconcileGroupMembership` on RF drag stop), a select→group action, or a MANUAL box resize over a node (`reconcileGroupBox` from the grip drag). **Autofit must NOT** re-derive membership: it wraps the box around the EXISTING members, so running `reconcileGroupBox` after it would silently absorb any bystander whose center the shrunk box covers (the bug fixed 2026-06-15). `autofitGroupWithHistory` therefore omits the reconcile; `rebuildGroupMembership` (refreshing the color markers from the unchanged list) is fine. **A COLLAPSED group never gains members (2026-07-07):** it renders as a small card with members hidden, so a node dropped/created over the card silently joined and was hidden by the next `syncGroupCollapse` (it visibly vanished). All three editors guard it — `reconcileGroupMembership` skips collapsed join targets, `absorbIntoContainingGroup` skips collapsed groups, `reconcileGroupBox` no-ops while collapsed (reconciling against the card-box would also dump every member). Membership edits require the group expanded.
+When several groups expand at once, they are processed in order of `x + y` of their boxes (top-left first), each against the boxes as earlier groups left them.
+
+For one group, the expanded box starts at the group's position with its full size; the collapsed card is the same corner with the card's size. The right and bottom edges of the card are the "seams" the expansion grows from.
+
+**Satellites.** A loose node wired to the group's members is a satellite. Count its cables into members (upstream) and out of members (downstream). The larger count decides its side: upstream nodes are feeders, downstream nodes are consumers. A node with equal counts has no side and is not a satellite. Its target height is the mean vertical center of the members it is wired to.
+
+**Anchors.** For every other box, its anchors are the centers of the entities its cables lead to. Each cable end resolves to a push entity: a member becomes its group, a docked FC becomes its host. Satellites and groups get no anchors, so a group always clears by geometry, never toward its cables.
+
+**Exempt boxes.** A box that already overlaps the collapsed card (the user parked it there) is never moved by these steps. Pairs of boxes that already overlap each other before the push are recorded as baseline pairs, and the cascade never tries to separate them.
+
+The steps, in order:
+
+1. **Rails.** Each satellite that the expanded box would touch is placed on its dataflow side: feeders just left of the box, consumers just right of it, each `PUSH_GAP` (28) clear of the edge and vertically centered on its target height, clamped within the box's vertical span. A consumer that is already right of the group and would clear rightward is left for step 2 (cleared, not re-placed). Satellites on the same side are then stacked downward in y order, `RAIL_STACK_GAP` (12) apart.
+2. **Clear.** Every other box that the expanded box covers moves just past an edge plus `PUSH_GAP`. Only covered boxes move; free space is expanded into without moving anything.
+   - A box with anchors tries all four directions (right, down, left, up) and takes the one with the smallest score: mean distance from its new center to its anchors plus 0.5 times the length of the move. A node wired to something on the left therefore hops left out of the way.
+   - A box without anchors moves right if its center is past the right seam and it overlaps the box vertically, down if its center is below the bottom seam and it overlaps horizontally. If both apply, it takes the axis along which its center is farther from the card's center. If neither applies, it waits for step 3.
+3. **Residual clear.** Any box, satellites included, still overlapping the expanded box after steps 1 and 2 adds the cheaper of a move right or a move down to clear it plus `PUSH_GAP`.
+4. **Cascade.** Each moved box, in order of its original `x + y`, pushes any box it now lands on just clear of itself (plus `PUSH_GAP`) along its main direction of travel. It pushes only boxes that started ahead of it on that axis, and never exempt boxes or baseline pairs. Each pushed box then cascades in turn. A band of cleared boxes therefore restacks in its original order instead of flattening or reversing.
+
+## After all groups: standoffs and the backstop
+
+Three more passes run over the same boxes, after every expanding group has had its push:
+
+1. **Standoff clusters move as one block** ([[C89]] standoffsSolveLast). For each cluster of boxes joined by standoffs, every member takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
+2. **Standoff solve.** `solveStandoffs` runs with `forceLock` over the moved boxes, with the expanding groups and any position-locked group pinned. Its corrections are added to the same totals, credited to every expanding group.
+3. **Overlap backstop.** `separateOverlaps` removes every overlap left among the boxes, treating each standoff cluster as one unit so it can't tear. It repeatedly takes the largest overlapping pair and moves the one further from the top-left (by `x + y`) right or down, whichever is cheaper, to clear by `PUSH_GAP`. Moves only ever go right or down, so it always finishes. This pass is called without baseline pairs, so it also separates overlaps that existed before the expansion. Its moves are credited to every expanding group.
+
+## Records and restore
+
+Each moved box gets a push record in memory (never saved; a reload keeps everything where it is). A record holds the position before the first push, the position the latest push left it at, and `dueTo`, the set of groups whose expansion moved it.
+
+- **Merging.** When a later expansion moves the same box again, the push merges into the existing record (keeping the original position and adding to `dueTo`) only if the box is still within `EPS` (2px) of where the last push left it. Otherwise the old record is void, because something moved the box in between (Tidy, Cleanup, align or distribute move boxes without a drag), and a fresh record starts from the current position. `groupPushRecords.test.ts` pins this.
+- **Restore.** After a collapse, and when a group is deleted, `restoreSettledPushes` checks every record whose contributing groups are all collapsed or deleted. If the box is still within `EPS` of where the push left it, it slides back to its original position; if not, it stays put. Either way the record is dropped. Manual moves win.
+- **Invalidation.** Dragging a node or group ends in RF's `onNodeDragStop`, which drops every record for the dragged item and every record that item's expansion caused (`groupPushStore.invalidateGroup`). A click never starts an RF drag, so only a real move invalidates.
+
+## Entry points
+
+`setGroupsCollapsed` is the one entry point for toggling. The group's chevron, the Outline panel and the collapse hotkey (Ctrl+Shift+E) all call it. It runs these steps:
+
+1. Measure the collapsed card size of each group about to expand, before the flip re-renders it at full size. These are the seam origins.
+2. Flip `collapsed`, recompute collapse state (`syncGroupCollapse`), wait for each group to re-render, and settle the cable endpoints (`settleCollapse`).
+3. On collapse: restore settled pushes, then re-solve standoffs with `forceLock`, because the shrink moved their anchors. On expand (with `groupPush` on): run the push.
+4. Schedule an autosave.
+
+ELK (the automatic layout engine behind Tidy) is never used in this path.
+
+`pushForGrownGroups` reuses the same engine outside a toggle, when a Tidy inside a group grows its box (`specs/auto-arrange-tidy.md`). It records nothing, so that displacement is permanent and never restores on collapse.
+
+## Groups are React Flow sub-flows
+
+A member is the group's RF child: it sets `parentId`, its RF position is relative to the group box, and parents come before children in the node array (`flowModel.toFlowNodes`). RF then tows members with the group and stacks them above it.
+
+The model stays absolute. Saves, Tidy, standoffs, the lasso and docking all read `view.position` / `node.position` unchanged. Conversion lives only at the boundary:
+
+- `toFlowPosition` / `fromFlowPosition`;
+- `handlers.moveNode`, where moving a group re-bases every member, so a Tidy that moves members before their group still ends consistent;
+- `onNodesChange`, which applies RF-driven moves to the model, groups first.
+
+A membership change re-projects the nodes through the `groupMembershipStore` subscription. During a group drag, the model's member positions follow the group by its per-frame delta (`moveGroupMembers`). Selected members are skipped, because RF already moves them as part of the selection.
+
+## Who is a member
+
+Membership changes only on an explicit gesture ([[C86]] membershipByGesture):
+
+- **Dragging a node in or out** (`reconcileGroupMembership`, run on RF drag stop for each dragged non-group node). Membership is exclusive and stable: a node belongs to at most one group, and keeps it while its center stays inside that group's rendered box. Once its center leaves, it leaves; it then joins the first other expanded group whose rendered box contains its center. Any FC docked to the node follows its host's membership.
+- **A select-then-group action.**
+- **A manual resize of the box** (`reconcileGroupBox`, from the grip drag). Every non-group node whose center is inside the new box joins, unless it already belongs to another group, and every member whose center is outside leaves.
+- **Creating a node inside a group** (`absorbIntoContainingGroup`, for live creation such as the Add menu or paste). The node joins the first expanded group whose rendered box contains it entirely, unless it is already a member of some group. During a load or seed rebuild, membership comes from the saved list instead.
+
+Groups don't nest: a group is never a member.
+
+**Autofit does not change membership.** It wraps the box around the existing members, so `autofitGroupWithHistory` never runs `reconcileGroupBox`, which would absorb any bystander whose center the shrunk box happens to cover. It does run `rebuildGroupMembership`, which only refreshes the color markers from the unchanged list.
+
+**A collapsed group never gains members.** All three editors guard it: `reconcileGroupMembership` skips collapsed groups as join targets, `absorbIntoContainingGroup` skips collapsed groups, and `reconcileGroupBox` does nothing while the group is collapsed (reconciling against the small card would also drop every member). To change membership, expand the group first.
