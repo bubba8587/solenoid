@@ -175,7 +175,7 @@ During `data()`, when the active source's variables differ from the current ones
 1. Read `template` (kept only if it is a DocumentValue) and `records` (any non-null value).
 2. Reconcile the variable inputs to the active source.
 3. With a template wired, build a throwaway `NoteNode` from the source to read its frontmatter as **defaults**. A variable left unwired takes the template's field of the same name, and that field's socket type stands in for the missing source type.
-4. Record each variable's value: the wired value, else the default, else null. The card rows and the on-screen spans read these (`refValue`). A variable counts as **present** only when wired or defaulted. An absent variable is left out of the template variables entirely rather than set to null, so a bare filter argument like `list:numbered` falls back to the word and `{{ x ?? "none" }}` works.
+4. Record each variable's value: the wired value, else the default, else null. The card rows and the on-screen spans read these (`refValue`), which also answers the fixed inputs: `refValue("template")` is the wired Note and `refValue("records")` the wired records (collected when lazy), each undefined while unwired. A variable counts as **present** only when wired or defaulted. An absent variable is left out of the template variables entirely rather than set to null, so a bare filter argument like `list:numbered` falls back to the word and `{{ x ?? "none" }}` works.
 5. Build `refs` from the variables, adding `template` (the wired DocumentValue) and `records` (the wired value) when present.
 6. Rewrite bare tags (`templateSource`). When records are unwired and no Knap syntax remains, return `makeDocument(src, refs)` synchronously.
 7. Otherwise go async. If the template source has Knap syntax, render the throwaway Note first, so an unwired variable defaults to the field's rendered value rather than its tag text. Convert every present variable with `toTemplateValue` (a lazy frame reference is read in full first). With a template wired, the `template` variable is the raw source text.
@@ -274,11 +274,11 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 | Frame | a GFM pipe table, cells formatted by column type (`formatFrameCell`), `\|` escaped and newlines turned into spaces; a frame with no columns writes nothing |
 | Mermaid | a fenced `mermaid` block |
 | LAMBDA | `$$` display math `f(params) = body` plus a "where" list (`- *param* — description`); a body that does not convert writes `` `λ(params) = expr` `` |
-| DocumentValue | its `body` verbatim |
+| DocumentValue | its body without its own frontmatter |
 | picture | a web URL as `![alt](url)`; a `data:` URL written as an asset and embedded as `![[file]]` |
 | chart | the source node's live SVG (or the SVG a provider supplies, such as the Gantt figure) rasterized to PNG at 2 to 4 times scale (targeting at least 640 px wide), written as an asset and embedded as `![[file]]`; nothing when the chart is not on the live canvas or is under 8 px |
 | null | nothing |
-| anything else | `String(value)` |
+| anything else (a number, text, a logical, an error, a list, a unit value, a complex, a Cube) | the text the screen shows, `refPreview(value)` |
 
 Assets are named `<note name>-<ref name>.<ext>` and go to the asset subfolder setting, else beside the note. A chart's source node is found by following the cable into the producer's input of the same name.
 
@@ -299,7 +299,7 @@ The overlay's Export button writes one self-contained `.html` file (`reportExpor
 1. Load KaTeX first when the Report's body contains `$`.
 2. Capture a canvas snapshot image (`captureCanvasImage`).
 3. Take `renderedBody()` (a mail merge joins its pages with the page rule).
-4. **Freeze** every `` `=name` `` span whose name is a variable input. A document value is left as a span; any other value becomes its `refPreview` text with the resolved annotation, markdown-escaped (`\`, `` ` ``, `*`, `_`, `[`, `]`). Frames and charts therefore freeze to their preview word or title.
+4. **Freeze** every `` `=name` `` span whose name is a variable input, `template` or `records`. A span whose value is unknown (an unwired fixed input) or a document is left as a span. A Frame becomes its grid as a pipe table, a block of its own (`frameToMarkdownTable`). Any other value becomes its `refPreview` text with the resolved annotation, markdown-escaped (`\`, `` ` ``, `*`, `_`, `[`, `]`), and a highlighted span (`=name!`) wraps it in `==…==`. A chart freezes to its title; its figure appears in the export's Charts section.
 5. Split the frozen body at each remaining span whose value is a document, and render each segment separately. Each embedded document renders as a `report-export__embed` block headed by the escaped input name, with its frontmatter stripped.
 6. Append a **Charts** section with the serialized SVG of every chart on a node wired directly into the Report or into a Note wired into it, each labeled with its node's display name, then a **Canvas snapshot** section with the image.
 7. Title the page with the escaped label (default "Report") and an "Exported from Solenoid" timestamp. The stylesheet is inline and dark. The accent (the `sky` slot) tints the title and section rules only when the document declares a report palette; wikilinks, highlights, callouts and tags always take the accent.

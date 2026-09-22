@@ -162,6 +162,9 @@ describe("ReportNode — records: a mail merge, one page per record", () => {
     expect(doc.pages?.map((p) => p.name)).toEqual(["1", "2"]);
     expect(doc.pages?.[0].body).toBe("Ada of `=records`");
     expect(doc.refs.records).toBe(people);
+    // The card and the export read the same span through refValue, not only the vault write.
+    expect(n.refValue("records")).toBe(people);
+    expect(n.refValue("template")).toBeUndefined(); // unwired
   });
 
   it("no records wired → no pages, a single document", async () => {

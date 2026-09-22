@@ -46,6 +46,15 @@ describe("installErrorGuards", () => {
     expect(n.cachedResult).toBe(out.result); // the value box shows it too
   });
 
+  it("a figure card's own cache fields drop the last good figure on an error input", () => {
+    const n = { outputs: { chart: {} }, cachedChart: { __chart: true } as unknown, cachedPayload: { kind: "kpi" } as unknown,
+      data: () => ({ chart: { __chart: true } }), constructor: { name: "KpiNode" } };
+    installErrorGuards(n);
+    n.data({ values: [solError("#N/A", "upstream")] } as never);
+    expect(isSolError(n.cachedChart)).toBe(true);
+    expect(n.cachedPayload).toBeNull();
+  });
+
   it("converts a throwing data() into a local #ERROR!", () => {
     const n = new ArithmeticNode({ op: "add" });
     n.data = () => { throw new Error("boom"); };

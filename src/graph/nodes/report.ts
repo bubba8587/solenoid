@@ -51,6 +51,8 @@ export class ReportNode extends ClassicPreset.Node {
 
   private _refKeys: string[] = [];
   private _refValues = new Map<string, unknown>();
+  /** The wired records, collected (a lazy Frame read to a value) for the bare embed. */
+  private _recordsFrame: unknown = undefined;
   private _computed = false;
   private _templateDoc: DocumentValue | null = null;
   private _recordsValue: unknown = null;
@@ -81,7 +83,13 @@ export class ReportNode extends ClassicPreset.Node {
   /** Variable INPUT keys (first-use order) — one per root template variable. */
   refKeys(): string[] { return this._refKeys; }
   /** The last value resolved for a variable input (undefined until the first compute). */
-  refValue(key: string): unknown { return this._refValues.get(key); }
+  refValue(key: string): unknown {
+    // The fixed inputs embed too: a bare `{{ template }}` is the wired Note, a bare
+    // `{{ records }}` the wired Frame (collected), each undefined while unwired.
+    if (key === "template") return this._templateDoc ?? undefined;
+    if (key === "records") return this._recordsFrame ?? (isFrameRef(this._recordsValue) ? undefined : this._recordsValue ?? undefined);
+    return this._refValues.get(key);
+  }
   /** The wired template document, when one is (null otherwise). */
   get templateDoc(): DocumentValue | null { return this._templateDoc; }
   /** The wired records value as it arrived (a frame/cube), for the card's row. */
@@ -236,6 +244,7 @@ export class ReportNode extends ClassicPreset.Node {
       if (this._templateDoc) this.templateVars.template = source;
       if (recordsIn != null) {
         const raw = isFrameRef(recordsIn) ? await readFrame(recordsIn) : recordsIn;
+        this._recordsFrame = raw;
         const rows = toTemplateValue(raw);
         this._records = Array.isArray(rows) ? rows.filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null && !Array.isArray(r)) : [];
         this.templateVars.records = this._records;

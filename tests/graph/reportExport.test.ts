@@ -13,6 +13,19 @@ describe("escapeMd", () => {
 });
 
 describe("freezeInlineRefs", () => {
+  it("freezes a highlighted span as ==value== and a Frame as its grid", () => {
+    expect(freezeInlineRefs("n1", "Total `=t!` today.", ["t"], () => 12)).toBe("Total ==12== today.");
+    const frame = { __frame: true, columns: [{ name: "a", type: "number", values: [1, 2] }] };
+    const out = freezeInlineRefs("n1", "`=f`", ["f"], () => frame);
+    expect(out).toContain("| a |");
+    expect(out).toContain("| 2 |");
+    expect(out).not.toContain("frame");
+  });
+
+  it("leaves a span whose value is unknown (an unwired fixed input) as it was", () => {
+    expect(freezeInlineRefs("n1", "`=records`", ["records"], () => undefined)).toBe("`=records`");
+  });
+
   it("substitutes a `=name` span with its current value, no live editor needed", () => {
     const out = freezeInlineRefs("n1", "Revenue was `=revenue` last quarter.", ["revenue"], () => 4200);
     expect(out).toBe("Revenue was 4200 last quarter.");

@@ -293,6 +293,10 @@ export function installErrorGuards(node: object): void {
     const out: Record<string, unknown> = {};
     for (const key of Object.keys(n.outputs ?? {})) out[key] = tagged;
     if ("cachedResult" in n) n.cachedResult = tagged;
+    // A figure card reads its own field; it must not keep drawing the last good figure.
+    const f = n as { cachedChart?: unknown; cachedPayload?: unknown };
+    if ("cachedChart" in f) f.cachedChart = tagged;
+    if ("cachedPayload" in f) f.cachedPayload = null;
     reportError(nodeId, tagged);
     return out;
   };

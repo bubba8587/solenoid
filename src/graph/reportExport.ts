@@ -12,11 +12,14 @@ import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
 import { APP_LOCALE } from "./locale";
 import { renderNoteMarkdown } from "./noteMarkdown";
+import { isFrameValue } from "./frame";
+import { frameToMarkdownTable } from "./obsidianMarkdown";
 
 // "Export as webpage" freezes a Report into ONE self-contained .html: everything
 // inlines as data URIs / literal markup, with no external references.
 
-const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)`/g;
+// `=name!` is the highlighted form of a span (`{{ name | highlight }}`).
+const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
 
 /** Escape markdown-special characters in a frozen VALUE (not the surrounding
  *  prose), so re-parsing the substituted body can't reinterpret it as markup. */
@@ -33,12 +36,15 @@ export function freezeInlineRefs(
   refKeys: string[],
   refValue: (key: string) => unknown,
 ): string {
-  return body.replace(REF_RE, (match, name: string) => {
+  return body.replace(REF_RE, (match, name: string, hl: string) => {
     if (!refKeys.includes(name)) return match;
     const value = refValue(name);
-    if (isDocumentValue(value)) return match;
+    if (value === undefined || isDocumentValue(value)) return match;
+    // A Frame embeds as its grid, a block of its own ([[C68]] knapIsTheDocumentSyntax).
+    if (isFrameValue(value)) return `\n\n${frameToMarkdownTable(value)}\n\n`;
     const ann = resolveRefAnnotation(nodeId, name);
-    return escapeMd(refPreview(value, ann));
+    const text = escapeMd(refPreview(value, ann));
+    return hl === "!" && text !== "" ? `==${text}==` : text;
   });
 }
 
@@ -119,7 +125,7 @@ export function buildReportExportHtml(
   const allNodes = editor?.getNodes() ?? [];
   const names = nodeDisplayNames(allNodes);
 
-  const bodyFrozen = freezeInlineRefs(report.id, opts.body, report.refKeys(), (k) => report.refValue(k));
+  const bodyFrozen = freezeInlineRefs(report.id, opts.body, [...report.refKeys(), "template", "records"], (k) => report.refValue(k));
 
   // A DOCUMENT-valued ref (a wired Note) is substituted INLINE as an embed block;
   // splitting at the span keeps each surrounding markdown segment valid.

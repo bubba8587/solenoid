@@ -40,11 +40,7 @@ Each was found reading the code to write the compute-pass, formula-language and 
 - [ ] **Join ignores units on keys.** [[C25]] says unit-tagged keys compare by dimension and base-SI magnitude; `joinFrames` ignores units (only Nest Join's `relateFramesToCube` does it).
 - [ ] **NaN in a Window value column**: the oracle reads it as blank, the engine computes with it (NaN sums). No corpus case yet.
 - [ ] **Coercion loose ends**: a one-element list collapses at every scalar rung except `any`, and a one-row matrix collapses to its row (reachable only through a wildcard); `stripUnitCells` doesn't reach inside a Cube.
-- [ ] **Report export drops a highlighted value**: `reportExport.ts`'s `REF_RE` has no `!?`, so `{{ x | highlight }}` exports as the literal code `=x!`.
-- [ ] **Report export prints a bare Frame as the word "frame"** and a chart as its title, where the screen embeds the grid ([[C68]] knapIsTheDocumentSyntax names this relapse).
-- [ ] **A bare `{{ records }}` / `{{ template }}` shows "—" on screen** (`_refValues` leaves the fixed inputs out) and exports raw; they resolve only at the vault write.
-- [ ] **Vault writes**: an embedded Note keeps its `---` frontmatter mid-note, and a number writes unformatted while an error, a Cube or an SVG writes `[object Object]`. A merge with zero usable rows writes one empty note; an empty page name writes a note named `image`.
-- [ ] **Figure cards may show the last good figure on an error**: the guard mirrors an upstream error into `cachedResult` only, and the shared figure card, Sankey, Record, Gantt, KPI and Gauge read `cachedChart` / `cachedPayload`.
+- [ ] **Vault write edges**: a merge with zero usable rows writes one empty note; an empty page name writes a note named `image`; a plain value writes without the Report's format picks (the writer has no annotation for it).
 - [ ] **Chart Builder offers keys the figure ignores** (Composed: `xlabel`, `ylabel`, `grid`, `ymin`/`ymax`, `alpha`; Bubble: `grid`, `ymin`/`ymax`; single-series Radar: `radarscale`), and canvas figures are offered `title` but draw none inside the figure.
 - [ ] **Expand push's final overlap pass separates overlaps that already existed** (it runs with no list of pre-existing overlaps to leave alone).
 - [ ] **`resetPointerCensus` is only called in tests.**

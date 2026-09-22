@@ -116,10 +116,12 @@ export function seedLoopErrors(editor: Editor, engine: Engine, loop: Set<string>
     if (!node) continue;
     const outputs: NodeOutputs = {};
     for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circ;
-    const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown; cachedList?: unknown };
+    const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown; cachedList?: unknown; cachedChart?: unknown; cachedPayload?: unknown };
     if ("cachedResult" in n) n.cachedResult = circ;
     if ("cachedValue" in n) n.cachedValue = circ;
     if ("cachedList" in n) n.cachedList = circ;
+    if ("cachedChart" in n) n.cachedChart = circ;
+    if ("cachedPayload" in n) n.cachedPayload = null;
     const seeded = Object.assign(Promise.resolve(outputs), { cancel() {} });
     try { engine.cache.add(id, seeded); } catch { engine.cache.patch(id, seeded); }
   }

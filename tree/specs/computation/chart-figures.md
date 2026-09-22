@@ -361,7 +361,7 @@ The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 
 
 ## Errors and empty inputs
 
-Every figure node except Chart is subject to the error guard's short-circuit ([[compute-pass]]): a top-level `SolError` on any input becomes the `chart` output without running `data()`. Chart runs on errors: a `SolError` on Data draws nothing, and one on Options falls back to the card text. Errors a node produces itself:
+Every figure node except Chart is subject to the error guard's short-circuit ([[compute-pass]]): a top-level `SolError` on any input becomes the `chart` output without running `data()`, and the guard also writes it to the card's `cachedChart` (and blanks `cachedPayload`), so a card never keeps drawing the last good figure. Chart runs on errors: a `SolError` on Data draws nothing, and one on Options falls back to the card text. Errors a node produces itself:
 
 | Node | Error |
 |---|---|

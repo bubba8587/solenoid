@@ -8,6 +8,7 @@ import { isMermaidValue, type MermaidValue } from "./mermaidValue";
 import { isDocumentValue, type DocumentValue } from "./documentValue";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { formulaToLatex } from "./excelFormula";
+import { parseNoteFrontmatter } from "./noteFrontmatter";
 
 // Duplicates noteInlineRefs.ts's grammar rather than importing it, so this module stays
 // dependency-light; obsidianMarkdown.test.ts machine-checks the two agree.
@@ -126,7 +127,7 @@ export function frontmatterToYaml(fm: Record<string, unknown>): string {
 /** A markdown BLOCK, or a deferral for a chart (which needs the DOM at write time); a plain
  *  scalar is the caller's job, since it already has the FC-formatted preview text. */
 export type ObsidianBlock =
-  | { kind: "md"; md: string }
+  | { kind: "md"; md: string; plain?: true }
   | { kind: "chart"; value: unknown }; // render to an image asset at Run time
 
 /** Frame/mermaid/math/lambda get native markdown, a chart is deferred to the DOM-render pass, and
@@ -135,13 +136,15 @@ export type ObsidianBlock =
 export function valueToObsidianBlock(value: unknown): ObsidianBlock {
   if (isFrameValue(value)) return { kind: "md", md: frameToMarkdownTable(value) };
   if (isMermaidValue(value)) return { kind: "md", md: mermaidToMarkdown(value) };
-  if (isDocumentValue(value)) return { kind: "md", md: value.body };
+  // An embedded Note is its body without its own frontmatter, as on screen and in export.
+  if (isDocumentValue(value)) return { kind: "md", md: parseNoteFrontmatter(value.body).body };
   if (isLambdaValue(value)) return { kind: "md", md: lambdaToMarkdown(value) };
   // Charts (recharts / hand-drawn SVG) can't be markdown — render at write time.
   if (typeof value === "object" && value !== null && "__chart" in (value as object)) {
     return { kind: "chart", value };
   }
-  return { kind: "md", md: value === null || value === undefined ? "" : String(value) };
+  // Anything else is a plain value: the caller formats it as the screen does.
+  return { kind: "md", md: value === null || value === undefined ? "" : String(value), plain: true };
 }
 
 // Per-ref resolution is a CALLBACK so the DOM-render and file-io stay out of this module,

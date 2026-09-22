@@ -9,6 +9,7 @@ import { nodeChartSvg, nodeChartSvgProvided, serializeSvgWithComputedStyles } fr
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
 import { isImageValue, type ImageValue } from "./imageValue";
+import { refPreview } from "./components/inlineRefDisplay";
 import { type DocumentValue } from "./documentValue";
 import { spliceBlock } from "./managedBlock";
 
@@ -168,7 +169,8 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
       return writeAsset(name, parsed.bytes, ext);
     }
     const block = valueToObsidianBlock(value);
-    if (block.kind === "md") return block.md;
+    // A plain value (a number, an error, a list, a unit value) writes the text the screen shows.
+    if (block.kind === "md") return block.plain && value != null ? refPreview(value, undefined) : block.md;
     // A chart — rasterize the source node's SVG to a PNG asset. A figure that serializes
     // itself (the Gantt grid + banded SVGs) supplies its own markup; every other chart is
     // its live element, measured. Either way, null = not on the live canvas.

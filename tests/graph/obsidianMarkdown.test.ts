@@ -109,7 +109,12 @@ describe("valueToObsidianBlock — kind dispatch", () => {
     const chart = valueToObsidianBlock({ __chart: true, kind: "line" });
     expect(chart.kind).toBe("chart");
     // a plain scalar falls back to its string form
-    expect(valueToObsidianBlock(42)).toEqual({ kind: "md", md: "42" });
+    expect(valueToObsidianBlock(42)).toEqual({ kind: "md", md: "42", plain: true });
+  });
+
+  it("an embedded Note writes its body without its own frontmatter", () => {
+    const note = makeDocument("---\ntitle: Inner\n---\nThe body.", {});
+    expect(valueToObsidianBlock(note)).toEqual({ kind: "md", md: "The body." });
   });
 });
 
