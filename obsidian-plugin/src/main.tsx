@@ -99,17 +99,19 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   /** The Solenoid look is three classes on the body: the look, which every rule of it hangs
    *  under, and the palette and accent, which pick its tokens. */
   wearLook(doc?: Document): void {
-    const wear = [paletteClass(paletteStore.activeBase()), accentClass(this.accent)];
+    const wear = [LOOK_CLASS, paletteClass(paletteStore.activeBase()), accentClass(this.accent)];
     for (const d of doc ? [doc] : this.windows()) {
       this.shedLook(d, wear);
-      d.body.toggleClass([LOOK_CLASS, ...wear], this.look);
+      // One class per call: Obsidian's `toggleClass` tests `instanceof Array`, which an array
+      // made in this window fails in another (the settings window, a popped-out note).
+      for (const cls of wear) d.body.toggleClass(cls, this.look);
     }
   }
 
+  /** Every class of ours but `keep`, a stray one included. */
   private shedLook(doc: Document, keep: string[] = []): void {
-    doc.body.removeClass(LOOK_CLASS);
     for (const cls of Array.from(doc.body.classList)) {
-      if (/^solenoid-(palette|accent)-/.test(cls) && !keep.includes(cls)) doc.body.removeClass(cls);
+      if (cls.startsWith("solenoid-") && !keep.includes(cls)) doc.body.removeClass(cls);
     }
   }
 
