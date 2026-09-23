@@ -114,6 +114,9 @@ export function unitError(detail = ""): SolError {
 
 type Operand = number | UnitCell;
 
+/** Two temperature readings (°C, °F) have no sum, in any surface ([[C25]] firstClassUnits). */
+export const READINGS_ADD = "Temperature readings can't be added. Subtract two for a difference, or average them.";
+
 export type ArithmeticOp = "add" | "sub" | "mul" | "div" | "mod" | "pow" | "quotient";
 
 export function arithmeticCell(
@@ -138,6 +141,7 @@ export function arithmeticCell(
     if (isDimensionless(db)) return tagDim(r, da, dispA);
     return unitError();
   };
+  const readings = isAffineDisplay(dispA) && isAffineDisplay(dispB);
   const affineRefused = (): SolError | null =>
     isAffineDisplay(dispA) || isAffineDisplay(dispB)
       ? unitError("Convert the temperature to kelvin first — an offset unit can't take ×, ÷ or ^.")
@@ -146,7 +150,7 @@ export function arithmeticCell(
     dispA && dimEqual(rd, da) ? dispA : dispB && dimEqual(rd, db) ? dispB : undefined;
   switch (op) {
     case "add":
-      return combine(xc + yc);
+      return readings ? unitError(READINGS_ADD) : combine(xc + yc);
     case "sub":
       return combine(xc - yc);
     case "mul": {
@@ -161,8 +165,10 @@ export function arithmeticCell(
       if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(x / y);
       return tagDim(x / y, rd, carry(rd));
     }
-    case "mod":
+    case "mod": {
+      const refused = affineRefused(); if (refused) return refused;
       return yc === 0 ? divZero() : combine(xc - yc * Math.floor(xc / yc));
+    }
     case "quotient": {
       const refused = affineRefused(); if (refused) return refused;
       if (y === 0) return divZero();
@@ -195,7 +201,9 @@ export type UnitAggregatePrep =
   | { error: SolError }
   | { error?: undefined; dim: Dim; display?: string; nums: number[] };
 
-export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregatePrep {
+/** `bareIsReading`: a bare number beside readings on an offset scale (°C) is a reading
+ *  (MIN, AVERAGE), not a delta (SUM). */
+export function forAggregateUnits(values: ReadonlyArray<unknown>, bareIsReading = false): UnitAggregatePrep {
   for (const v of values) if (isSolError(v)) return { error: v };
   const present = values.filter((v) => !isMissing(v));
   let dim: Dim | null = null;
@@ -220,8 +228,9 @@ export function forAggregateUnits(values: ReadonlyArray<unknown>): UnitAggregate
       }
     }
   }
+  const adopt = bareIsReading ? adoptReading : adoptMagnitude;
   const nums = present.map((v) =>
-    isDimensionless(dimOf(v)) ? adoptMagnitude(magnitudeOf(v), display) : magnitudeOf(v),
+    isDimensionless(dimOf(v)) ? adopt(magnitudeOf(v), display) : magnitudeOf(v),
   );
   return { dim: dim ?? DIMENSIONLESS, display, nums };
 }

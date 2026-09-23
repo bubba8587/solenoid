@@ -268,17 +268,48 @@ describe("affine temperatures (review pins)", () => {
     const k = compareUnits(fromUnit(5, U("km"), "km"), 3000) as { l: number; r: number };
     expect(k.l > k.r).toBe(false); // a linear unit is unchanged: 3000 km
   });
-  it("Aggregate follows the same rule: a spread or a sum of readings is a delta", async () => {
+  it("two readings have no sum, and a reading has no remainder, as in a formula", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : null);
+    expect(code(arithmeticCell("add", degC(20), degC(30)))).toBe("#UNIT!");
+    expect(code(arithmeticCell("add", degC(20), fromUnit(50, U("degF"), "degF")))).toBe("#UNIT!");
+    expect(code(arithmeticCell("mod", degC(20), 5))).toBe("#UNIT!");
+    const warm = arithmeticCell("add", degC(20), fromUnit(5, U("K"), "K")) as UnitCell;
+    expect(magnitudeOf(warm)).toBeCloseTo(298.15, 9); // a kelvin cell stays linear
+  });
+  it("the Arithmetic card refuses two readings added, element-wise too", async () => {
+    const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
+    const run = (op: string, a: unknown, b: unknown) =>
+      new ArithmeticNode({ op: op as never }).data({ a: [a as never], b: [b as never] }).result;
+    expect((run("add", degC(20), degC(30)) as { code?: string }).code).toBe("#UNIT!");
+    const pair = run("add", [degC(20), degC(21)], degC(30)) as { code?: string }[];
+    expect(pair.map((c) => c.code)).toEqual(["#UNIT!", "#UNIT!"]);
+    expect(magnitudeOf(run("sub", degC(30), degC(20)) as UnitCell)).toBeCloseTo(10, 9);
+  });
+  it("Aggregate follows the formula: a spread is a delta, readings have no sum", async () => {
     const { AggregateNode } = await import("../../src/graph/nodes/list");
     const agg = (op: string, list: unknown[]) => new AggregateNode({ op: op as never }).data({ list: [list as never] }).result;
     const sd = agg("stdev", [degC(20), degC(30)]) as UnitCell;
     expect(sd.display).toBeUndefined();
     expect(magnitudeOf(sd)).toBeCloseTo(Math.SQRT2 * 5, 9); // 7.07 K, never −266 °C
-    expect((agg("sum", [degC(20), degC(30)]) as UnitCell).display).toBeUndefined();
+    expect((agg("sum", [degC(20), degC(30)]) as { code?: string }).code).toBe("#UNIT!");
     const avg = agg("avg", [degC(20), degC(30)]) as UnitCell;
     expect(avg.display).toBe("degC");
     expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C is a reading
-    expect((agg("sum", [degC(20), 5]) as UnitCell).display).toBe("degC"); // a reading plus a delta
+    const one = agg("sum", [degC(20), 5]) as UnitCell; // a reading plus a delta
+    expect(one.display).toBe("degC");
+    expect(magnitudeOf(one)).toBeCloseTo(298.15, 9);
+  });
+  it("a bare number beside readings is a reading in MIN, MAX, AVERAGE and the spreads", async () => {
+    const { AggregateNode } = await import("../../src/graph/nodes/list");
+    const agg = (op: string, list: unknown[]) => new AggregateNode({ op: op as never }).data({ list: [list as never] }).result as UnitCell;
+    expect(magnitudeOf(agg("min", [degC(25), 20]))).toBeCloseTo(293.15, 9); // 20 °C, not 20 K
+    expect(agg("min", [degC(25), 20]).display).toBe("degC");
+    expect(magnitudeOf(agg("max", [20, degC(25)]))).toBeCloseTo(298.15, 9);
+    expect(magnitudeOf(agg("avg", [degC(20), 30]))).toBeCloseTo(298.15, 9);
+    expect(magnitudeOf(agg("median", [degC(20), 30, degC(40)]))).toBeCloseTo(303.15, 9);
+    expect(magnitudeOf(agg("stdev", [degC(20), 30]))).toBeCloseTo(Math.SQRT2 * 5, 9);
+    const km = agg("min", [fromUnit(5, U("km"), "km"), 3]); // a linear unit adopts its scale only
+    expect(magnitudeOf(km)).toBeCloseTo(3000, 9);
   });
 });
 

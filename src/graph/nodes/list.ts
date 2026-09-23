@@ -16,7 +16,7 @@ import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
-import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, type UnitCell } from "../unitValue";
+import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, unitError, READINGS_ADD, type UnitCell } from "../unitValue";
 import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
@@ -1753,17 +1753,22 @@ export class AggregateNode extends ClassicPreset.Node {
       this.cachedResult = result;
       return { result };
     }
-    const prep = forAggregateUnits(inputs.list?.[0] ?? []);
+    const list = inputs.list?.[0] ?? [];
+    const prep = forAggregateUnits(list, this.op !== "sum");
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
+    // Over °C, as in a formula: readings have no sum, and a spread is a delta.
+    const affine = isAffineDisplay(prep.display);
+    if (affine && this.op === "sum" && list.filter((c) => isUnitCell(c) && isAffineDisplay(c.display)).length > 1) {
+      const err = unitError(READINGS_ADD);
+      this.cachedResult = err;
+      return { result: err };
+    }
     const arr = prep.nums;
     const dim = prep.dim;
     const result = aggregate(this.op, arr);
     if (isSolError(result)) { this.cachedResult = result; return { result }; }
-    // An affine display (°C) drops where the answer is a delta, as arithmeticCell drops it
-    // for two absolute readings: a spread, or a sum of two or more readings.
     const resultDim = aggregateResultDim(this.op, dim, arr.length);
-    const delta = isAffineDisplay(prep.display) && (AFFINE_SPREAD_OPS.has(this.op)
-      || (this.op === "sum" && (inputs.list?.[0] ?? []).filter(isUnitCell).length > 1));
+    const delta = affine && AFFINE_SPREAD_OPS.has(this.op);
     const tagged: number | UnitCell | null =
       result !== null && !isDimensionless(dim)
         ? tagDim(result, resultDim, dimEqual(resultDim, dim) && !delta ? prep.display : undefined)
