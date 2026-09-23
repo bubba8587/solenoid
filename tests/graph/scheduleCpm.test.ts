@@ -237,6 +237,11 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     const r = scheduleTasks(plan, { start: MON, workingDays: true, links });
     // A: Mon–Tue. B (FS) starts Wed. C (SS +1) starts the day after A starts = Tue.
     expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07", "2026-01-06"]);
+    // The merged links land in the Predecessors column, so a Gantt downstream draws them.
+    const preds = col(r.cube, "Predecessors");
+    expect(preds[0]).toEqual([]);
+    expect(preds[1]).toEqual(["A"]);
+    expect(col(preds[2] as CubeValue, "Type")).toEqual(["SS"]);
     // An unknown successor is the schedule's #VALUE! naming it.
     expect(() => scheduleTasks(plan, {
       start: MON, workingDays: true,

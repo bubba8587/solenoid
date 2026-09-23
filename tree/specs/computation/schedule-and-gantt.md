@@ -51,7 +51,7 @@ A Predecessors cell takes one of three shapes:
 
 A predecessor is never a grammar string inside a cell. `3FS+2d` exists only at the import border, where row numbers resolve to names ([[D67]] grammarOnlyAtBorder).
 
-The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats.
+The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors, and the output cube's Predecessors column carries the merged list (a level with no Predecessors column gains one), so a Gantt downstream draws them. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats.
 
 ### Hierarchy
 

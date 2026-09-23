@@ -19,7 +19,7 @@ const PRED_HEADERS = ["predecessors", "predecessor", "depends on", "after"];
 const GRAMMAR_TOKEN = /^\s*\d+\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(\.\d+)?\s*(e?d|w|wk|h)?)?\s*$/i;
 
 /** Plain FS/0 dependencies are a list of names; anything typed or lagged is a nested Task · Type · Lag table. */
-function predecessorCell(deps: PlanDependency[]): CubeCell {
+export function predecessorCell(deps: PlanDependency[]): CubeCell {
   if (deps.length === 0) return [];
   if (deps.every((d) => d.type === "FS" && d.lag === 0 && !d.elapsed)) return deps.map((d) => d.task);
   return cubeFromColumns([

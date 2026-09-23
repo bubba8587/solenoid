@@ -5,6 +5,7 @@ import { formatDateSerial, parseDate, DEFAULT_DATETIME_FORMAT } from "./nodes/da
 import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 import { isUnitCell } from "./unitValue";
+import { predecessorCell } from "./planImport";
 import {
   schedule, mermaidGantt, writeMspdi, ScheduleError, predecessorText, LINK_TYPES, intervalsForHours,
   type PlanTask, type PlanDependency, type LinkType, type ScheduleOutput, type ScheduledTask,
@@ -280,7 +281,7 @@ function taskCalendar(cols: Level["cols"], i: number, hoursPerDay: number): Plan
 
 const DATETIME_FORMAT: FormatAnnotation = { format: "date_custom", customPattern: DEFAULT_DATETIME_FORMAT, unit: "none" };
 
-function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean, minutes: boolean): CubeValue {
+function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean, minutes: boolean, merged: boolean): CubeValue {
   const rows = level.names.map((n, i) => (level.inactive[i] ? null : byName.get(n.toLowerCase())!)) as ScheduledTask[];
   const cells = <T extends CubeCell>(f: (t: ScheduledTask) => T): (T | null)[] => rows.map((t) => (t ? f(t) : null));
   const dateFmt = minutes ? { format: DATETIME_FORMAT } : {};
@@ -310,9 +311,12 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
       { name: "Summary", type: "logical", cells: cells((t) => t.summary) },
     );
   }
+  if (merged && !level.cols.pred && rows.some((t) => t?.predecessors.length)) {
+    appended.unshift({ name: "Predecessors", cells: cells((t) => predecessorCell(t.predecessors)) });
+  }
   if (!level.cols.duration && rows.some((t) => t?.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
   if (!level.cols.children && level.childLevels.some(Boolean)) {
-    appended.unshift({ name: "Tasks", cells: level.childLevels.map((l) => (l ? writeLevel(l, byName, nested, minutes) : null)) });
+    appended.unshift({ name: "Tasks", cells: level.childLevels.map((l) => (l ? writeLevel(l, byName, nested, minutes, merged) : null)) });
   }
   const taken = new Set(appended.map((col) => col.name));
   const kept = level.cube.columns.filter((col) => !taken.has(col.name) || col === level.cols.start || col === level.cols.finish);
@@ -320,7 +324,10 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     if (col === level.cols.start && taken.has("Start")) return null;
     if (col === level.cols.finish && taken.has("Finish")) return null;
     if (col === level.cols.children) {
-      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested, minutes) : cell)) };
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested, minutes, merged) : cell)) };
+    }
+    if (merged && col === level.cols.pred) {
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i] ? predecessorCell(rows[i]!.predecessors) : cell)) };
     }
     if (col === level.cols.duration) {
       return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i]?.summary ? rows[i]!.duration : cell)) };
@@ -346,7 +353,8 @@ const ISO = "YYYY-MM-DD";
 export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResult {
   const hoursPerDay = opts.hoursPerDay && opts.hoursPerDay > 0 ? opts.hoursPerDay : 8;
   const { level, tasks } = readLevel(c, hoursPerDay, 0);
-  if (opts.links && isFrameValue(opts.links)) applyLinksFrame(tasks, opts.links);
+  const merged = !!opts.links && isFrameValue(opts.links);
+  if (merged) applyLinksFrame(tasks, opts.links!);
   let output: ScheduleOutput;
   try {
     output = schedule({
@@ -367,7 +375,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
   }
   const byName = new Map(output.tasks.map((t) => [t.name.toLowerCase(), t]));
   const nested = output.tasks.some((t) => t.summary);
-  const cube = writeLevel(level, byName, nested, opts.precision === "minutes");
+  const cube = writeLevel(level, byName, nested, opts.precision === "minutes", merged);
   return {
     cube,
     projectFinish: output.projectFinish,
