@@ -135,7 +135,7 @@ Every live cable change, including the ones components make themselves, settles 
 
 ## Sockets
 
-The socket box is always exactly 12×12 ([[C11]] socketBox12): `display: block; line-height: 0`, a global rule in `nodeCard.css`.
+The socket box is always exactly 12×12 ([[C11]] socketBox12): `display: block; line-height: 0`, a global rule in `nodeCard.css`. The one exception under C11 is the Conduit's lane squares, sized to the lane geometry, whose tips are computed rather than measured.
 
 - The RF `Handle` wraps the socket glyph (`FlowSocketHandle.tsx`, reset by `.sol-rf-handle-reset`). RF measures the handle's box for cable endpoints and uses its outer edge at mid-height.
 - The reset Handle is `position: relative`, not `static`. The socket wrapper's pointer-catch halo (`[data-socket-side]::before` in socket.css) is a positioned box, so a static Handle paints under it, the wrapper swallows the press, and RF starts a node drag instead of a cable.
@@ -290,7 +290,9 @@ The showcase audit stage (`StaticFlowStage`, `?showcase`) is a minimal non-inter
 
 A ghost cable is a cable drawn dashed to show it is not yet valid or not yet real. There are two mechanisms, chosen by whether a real connection survives. Both live outside rete's editor, in `cableState.ts`.
 
-- **Option A: the connection survives** (`cableGhostStore`, keyed by a live connection id). The rete connection is real and is only drawn dashed until it is valid or adopted. Two cases produce it: a node spliced out of a chain, and an in-place socket retype that stays wired. The store is a side set keyed by id rather than a property on the connection, because rete copies and serializes the connection object opaquely. Clicking a ghost adopts it only when its endpoints are type-compatible right now: a splice ghost always is, while a retype ghost stays dashed until its source fits again. Adopting it recomputes the target, since the ghosted input fed nothing while dashed.
+- **Option A: the connection survives** (`cableGhostStore`, keyed by a live connection id). The rete connection is real and is only drawn dashed until it is valid or adopted. Two cases produce it: a node spliced out of a chain, and an in-place socket retype that stays wired. The store is a side set keyed by id rather than a property on the connection, because rete copies and serializes the connection object opaquely. Clicking a ghost adopts it only when its endpoints are type-compatible right now: a splice ghost always is, while a retype ghost stays dashed until its source fits again. Adopting it recomputes the target.
+  - A ghost is a real connection to the engine, so it feeds its value like any cable: a splice ghost carries the spliced-out node's input straight through, and a retype ghost feeds whatever its source now holds, which the input's coercion guard turns into an error value when it doesn't fit. A node that must treat a ghosted input as unwired asks the store itself (Group Cost Settle's `inGhosted`).
+  - The ghost mark is view state and is not saved: a reload draws every surviving connection solid. Whether it should survive a save is open with the author (inbox `ghost-cables-feed-and-save`).
 - **Option B: the connection is dropped** (the Input Switch pending reconnect: `cablePendingStore` and `cablePendingReconnect.ts`). The Input Switch's One/Many toggle retypes its `out` socket, and `retypeOutputCables` drops the downstream cables the new type can't feed, so there is no connection left to draw dashed.
   1. Before the retype, `snapshotOutgoing` records the cables leaving `out`.
   2. After it, each cable that disappeared (and whose target node still exists) is recorded as a pending ghost keyed by source, output, target and input, so re-marking the same drop is idempotent, along with the target input's label.
