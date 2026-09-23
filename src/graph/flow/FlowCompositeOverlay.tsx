@@ -5,7 +5,8 @@ import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { FlowSurfaceContext } from "../flowSurface";
 import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode, GroupNode } from "../rete-nodes";
+import { restoreSettledPushes } from "../groupPush";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getView, processGraph } from "../process";
@@ -16,7 +17,9 @@ import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
-import { cableSelectionStore } from "../cableState";
+import { deleteSelection as deleteSelectionIn } from "../canvasActions";
+import { reconcileFcTypes } from "../fcReconcile";
+import { forgetNode } from "../nodeStoreRegistry";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
@@ -27,6 +30,8 @@ import { IS_MOBILE } from "../coarse";
 import "../components/compositeEditor.css";
 
 const HISTORY_DEPTH = 50;
+
+const isBoundaryMarker = (n: object) => n instanceof CompositeInputNode || n instanceof CompositeOutputNode;
 const HISTORY_COALESCE_MS = 400;
 
 type DrillStack = {
@@ -75,6 +80,16 @@ function getDrillStack(comp: CompositeNode): DrillStack {
   };
   comp.internalEditor.addPipe((ctx) => {
     const t = (ctx as { type?: string }).type;
+    // [[C40]] storesRegisterForget: a restore re-hydrates under fresh ids, so a removed id never comes back and is forgotten even mid-rebuild.
+    if (t === "noderemoved") {
+      const n = (ctx as unknown as { data: SolenoidNode }).data;
+      forgetNode(n.id);
+      if (!s.rebuilding) {
+        rebuildGroupMembership(comp.internalEditor);
+        syncGroupCollapse(comp.internalEditor, view as unknown as View);
+        if (n instanceof GroupNode) restoreSettledPushes(comp.internalEditor, view as unknown as View);
+      }
+    }
     if (
       t === "nodecreated" || t === "noderemoved" ||
       t === "connectioncreated" || t === "connectionremoved"
@@ -292,23 +307,16 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  const deleteSelection = useCallback(async () => {
-    const editor = comp.internalEditor;
-    for (const id of cableSelectionStore.ids()) {
-      if (editor.getConnection(id)) await editor.removeConnection(id);
-    }
-    cableSelectionStore.clear();
-    const selected = editor.getNodes().filter(
-      (n) => (n as { selected?: boolean }).selected === true &&
-        !(n instanceof CompositeInputNode) && !(n instanceof CompositeOutputNode),
-    );
-    for (const node of selected) {
-      for (const c of editor.getConnections().filter((c) => c.source === node.id || c.target === node.id)) {
-        await editor.removeConnection(c.id);
-      }
-      await editor.removeNode(node.id);
-    }
-  }, [comp]);
+  const deleteSelection = useCallback(() => deleteSelectionIn(comp.internalEditor, s.view as unknown as View, {
+    mainLayers: false,
+    keeps: isBoundaryMarker,
+    begin: () => { s.rebuilding = true; },
+    end: () => { s.rebuilding = false; },
+    settle: async () => {
+      reconcileFcTypes(comp.internalEditor, s.view as unknown as View);
+      syncGroupCollapse(comp.internalEditor, s.view as unknown as View);
+    },
+  }), [comp, s]);
 
   const historyStep = useCallback(
     async (redo: boolean) => {

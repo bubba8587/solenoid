@@ -19,7 +19,7 @@ Two lifetimes, on purpose:
 
 ## The topology pipe
 
-The cached pipe watches the internal editor for `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved`. Each burst of events queues one sync on a microtask. A sync:
+The cached pipe watches the internal editor for `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved` (a `noderemoved` also runs the per-node forget, below under Deleting inside a level). Each burst of events queues one sync on a microtask. A sync:
 
 1. waits while the stack is rebuilding (`s.rebuilding`, the drill-in's own version of `isGraphRebuilding`), checking again on a 0ms timer;
 2. syncs the RF node set (`syncTopology`);
@@ -59,7 +59,9 @@ Snapshot undo is per composite and lives on the drill stack, so it survives clos
 
 ## Deleting inside a level
 
-The drill-in's delete removes the selected cables first, then the selected nodes, and never deletes a boundary marker, since markers are the composite's ports; copy skips them the same way. It uses no ghost splicing and no rebuild gate.
+The drill-in deletes through the main canvas's verb, `deleteSelection`, with its own `DeleteScope` ([[react-flow-surface-contract]]): the same ghost splicing, Conduit ghosts and FC unsplice, gated by `s.rebuilding`. It never deletes a boundary marker, since markers are the composite's ports, and it never touches the main canvas's drawn cables or standoffs; copy skips markers the same way.
+
+The topology pipe also carries the per-node forget ([[C40]] storesRegisterForget): every `noderemoved` forgets the node's stores, even under the rebuild gate, since an undo restore re-hydrates under fresh ids and a removed id never returns. Outside the gate it also rebuilds group membership, re-syncs collapse, and restores a deleted group's pushes.
 
 ## Document switches
 

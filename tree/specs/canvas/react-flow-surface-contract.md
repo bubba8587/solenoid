@@ -215,18 +215,19 @@ With Ctrl or Cmd:
 
 ## Deleting a selection
 
-`deleteSelection` (`canvasActions.ts`) is the one delete verb, behind RF's `onBeforeDelete`, the canvas keyboard and the touch delete button. `onBeforeDelete` itself returns false: the app deletes from the model and RF follows through the topology pipe, since RF's own delete would also take a deleted group's members.
+`deleteSelection` (`canvasActions.ts`) is the one delete verb for both surfaces, behind RF's `onBeforeDelete`, the canvas keyboard and the touch delete button. `onBeforeDelete` itself returns false: the app deletes from the model and RF follows through the topology pipe, since RF's own delete would also take a deleted group's members. A `DeleteScope` carries the host's differences: whether the main-only layers (drawn cables, standoffs) are in play, which nodes Delete keeps (a drill-in keeps its boundary markers, which are its ports), the rebuild gate, and the one settle (`bulkSettle` on the main canvas; FC type reconcile and collapse sync in a drill-in, whose topology pipe then recomputes).
 
-1. A selected drawn cable is its own target: it is removed and `commitDrawn()` records it.
-2. A selected standoff is its own target: it is removed and an autosave scheduled.
+1. On the main canvas, a selected drawn cable is its own target: it is removed and `commitDrawn()` records it.
+2. On the main canvas, a selected standoff is its own target: it is removed and an autosave scheduled.
 3. Otherwise the selected cables and nodes go under the rebuild gate, because the per-item `connectionremoved` and `noderemoved` sweeps are O((nodes + cables) × nodes), and a bulk delete would hang the tab.
    - A selected cable that is a ribbon lane takes every lane of its ribbon. Any ghost among them is committed first, then removed.
+   - A docked FC is unspliced (`removeFcInline`) and then removed, so its consumers go back to the host socket as solid cables. Docked FCs go before the other selected nodes, so a host deleted with its FC still sees its own wiring.
    - A deleted Conduit leaves one ghost cable per lane (`conduitGhostSpecs`), since the generic path below can't see a multi-lane bundle.
    - A node with exactly one cable in and one out is spliced out: both cables and the node go, and a ghost cable joins its source to its consumer, unless that would be a self-loop or duplicate an existing cable. Clicking the ghost adopts it.
    - Any other node goes with all its cables.
-4. After the gate, the suppressed settles run once, in the order the per-event sweeps would: each deleted node's stores forget it, group membership rebuilds, `bulkSettle` runs, and a deleted group restores the pushes it caused.
+4. After the gate, the suppressed settles run once, in the order the per-event sweeps would: each deleted node's stores forget it, group membership rebuilds, the scope's settle runs, and a deleted group restores the pushes it caused.
 
-`deleteCables` (the cable menu's Delete) commits any ghost and removes the cables. The drill-in's own delete removes cables first and never deletes its boundary markers.
+`deleteCables` (the cable menu's Delete) commits any ghost and removes the cables.
 
 ## Copy and paste
 
@@ -248,7 +249,8 @@ A Format Controller (FC) can dock onto a socket of another card and ride with it
 - **Placement** (`computeDockedCanvasPos`). On a host input the FC sits to the left, its output edge meeting the socket; on a host output it sits to the right. It is centered vertically on the socket using its measured size, because a stale estimate drops it several pixels low. The anchor is the host's model position plus the socket's offset inside the host wrapper, both read from the same DOM frame, so it holds even before the wrapper has re-committed at a new position (the post-Tidy snap runs a frame after the moves); a screen-to-canvas conversion is the fallback. The offset is snapped to the half-pixel grid first and the result rounded to whole canvas pixels. Without the snap, an odd FC height makes the rounding a coin flip that re-docks the FC a pixel off its saved spot on every load; without the rounding, a fractional edge shifts on every re-dock and a group's autofit creeps after it.
 - **Following the host.** `repositionDockedFor` re-seats every FC docked to a host, skipping a selected FC (the user is dragging it). The main canvas registers it in the `repositionDocked` slot and a drill-in swaps in its own copy, so a docked FC follows its host on a resize, a format change or a Tidy at any level. A dragged FC re-homes to the nearest socket on drop, or releases its dock.
 - **Splicing** (`insertFcInline`). Docking splices the FC into the host's data path; values are unchanged, but cables now originate at the FC. On a host output, the host's consumers are rewired to the FC's `out` and the host feeds the FC's `in`. On a host input, the splice happens only when a cable feeds it (an unwired input has nothing to route, so the FC just annotates): the source feeds the FC and the FC's `out` feeds the host input.
-- **Unsplicing** (`removeFcInline`) reverses it, and must run before `undock()` or any change to `hostNodeId`, since it reads the host, socket and side. A wired FC with no host socket left bridges its input's source straight to its output's consumers. Otherwise the consumers go back to the host output, or the source goes back to the host input, and the FC's own cables are dropped.
+- **Unsplicing** (`removeFcInline`) reverses it, and must run before `undock()` or any change to `hostNodeId`, since it reads the host, socket and side. A wired FC with no host, or whose host no longer has that socket, bridges its input's source straight to its output's consumers.
+- **Releasing.** An FC dragged off every socket releases its dock (`releaseDock`) without unsplicing: it stays in the data path as a free FC, so no consumer loses its value. Otherwise the consumers go back to the host output, or the source goes back to the host input, and the FC's own cables are dropped.
 - Adding an FC from a socket's menu (`attachFormatController`) docks it (`dockSelf` needs the id `addNode` assigns; undocked, the FC would land at the canvas origin), positions it, splices it in and recomputes.
 
 ## Isolate
