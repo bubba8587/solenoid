@@ -264,5 +264,14 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     ]);
     expect(col(scheduleTasks(noWork, { start: MON, workingDays: true }).cube, "Finish").map(iso)).toEqual(["2026-01-07"]);
   });
+
+  it("a blank Active cell, null or empty text, keeps the row in the schedule", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C"], type: "string" },
+      { name: "Duration", cells: [1, 1, 1], type: "number" },
+      { name: "Active", cells: [null, "", "no"], type: "string" },
+    ]);
+    expect(scheduleTasks(c, { start: MON, workingDays: true }).output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+  });
 });
 

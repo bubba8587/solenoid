@@ -204,7 +204,8 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     const name = String(task.cells[i] ?? "").trim();
     if (!name) throw solError("#VALUE!", `Schedule: row ${i + 1} has no task name`);
     names.push(name);
-    const off = cols.active ? cols.active.cells[i] != null && !readBool(cols.active.cells[i]) : false;
+    const activeCell = cols.active?.cells[i];
+    const off = activeCell != null && activeCell !== "" && !readBool(activeCell);
     inactive.push(off);
     if (off) { childLevels.push(null); continue; }
     const kidCell = children?.cells[i];
