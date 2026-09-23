@@ -108,8 +108,10 @@ function scanSites(): Site[] {
 
 describe("[[D73]] nodeCoversFormula — a node dispatching to a formula function must pass all its arguments", () => {
   // LITERAL-name dispatches that pass fewer args than the impl accepts ON PURPOSE, each
-  // with the reason the shortfall is not a real capability gap. (Empty: none today.)
-  const SANCTIONED: Record<string, string> = {};
+  // with the reason the shortfall is not a real capability gap.
+  const SANCTIONED: Record<string, string> = {
+    TEXTJOIN: "the card's one Strings list is what the formula flattens its text arguments into; separate rows are the inbox item node-formula-reach-gaps",
+  };
 
   // DYNAMIC / INDIRECT dispatches a static scan cannot arg-count, keyed by
   // `file::inner-expression`, each noting what it resolves to and that it passes the max.
