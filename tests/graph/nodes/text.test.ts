@@ -7,7 +7,8 @@ import {
   FormatDollarNode, ReverseTextNode, SpellNumberNode, TextJoinNode,
   TextSplitNode, ConcatNode,
 } from "../../../src/graph/nodes/text";
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, solError } from "../../../src/graph/errorValue";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { SolenoidSocket, canConnect } from "../../../src/graph/sockets";
 
 describe("NUMBERVALUE — strict full-string parse", () => {
@@ -200,6 +201,17 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(dt(new TextSplitNode(), "out", "result")).toBe("strlist");
     expect(new TextJoinNode().data({ strings: [["a", "b"]], delimiter: ["-"] }).result).toBe("a-b");
     expect(new TextSplitNode().data({ text: ["a-b"], delimiter: ["-"] }).result).toEqual(["a", "b"]);
+  });
+
+  it("TEXTJOIN answers like the formula: blanks drop, logicals read TRUE, an error wins ([[C17]] shareImpl)", () => {
+    const fx = (ign: string, xs: unknown[]) => compileEvaluator(`TEXTJOIN(",", ${ign}, x)`)!({ x: xs });
+    const cases: unknown[][] = [["a", null, "b"], ["a", "", "b"], ["a", 1, true], ["a", solError("#N/A", "gone"), "b"]];
+    for (const ign of ["ignore", "include"] as const) {
+      for (const xs of cases) {
+        const node = new TextJoinNode({ ignoreEmpty: ign }).data({ strings: [xs as string[]], delimiter: [","] }).result;
+        expect(node, `${ign} ${JSON.stringify(xs)}`).toEqual(fx(ign === "ignore" ? "TRUE" : "FALSE", xs));
+      }
+    }
   });
 
   it("strcombo is a pure widening — it wires everywhere `string` did", () => {

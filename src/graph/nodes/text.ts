@@ -637,13 +637,15 @@ export class TextJoinNode extends ClassicPreset.Node {
     this.addOutput("result", strOut("Result"));
   }
 
-  data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string | null } {
+  data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string | SolError | null } {
     const strings: string[] = inputs.strings?.[0] ?? [];
     const delimiter = strScalar(inputs.delimiter, this, "delimiter");
     if (delimiter === null) { this.cachedText = null; return { result: null }; }
-    const parts     = this.ignoreEmpty === "ignore" ? strings.filter(s => s !== "") : strings;
-    const result    = parts.join(delimiter);
-    this.cachedText = result;
+    // A reduction: the first error wins and blanks drop out, as in the formula ([[D51]] oneAnswerOneDivergence).
+    const err = (strings as unknown[]).find(isSolError);
+    const present = strings.filter((s) => s != null);
+    const result = err ?? resolveExcelFunction("TEXTJOIN")!(delimiter, this.ignoreEmpty === "ignore", present) as string | SolError;
+    this.cachedText = isSolError(result) ? null : result;
     return { result };
   }
 }
