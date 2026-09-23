@@ -12,7 +12,7 @@ import { useSeriesColors, useChartColors } from "./chartCore";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
-import { ChartTitle, titleHeight } from "./chartTitle";
+import { ChartTitle, titleHeight, UNTITLED_FIGURES } from "./chartTitle";
 import {
   WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView,
 } from "./chartCanvasViews";
@@ -128,8 +128,6 @@ export function GanttView({ payload, width, height, virtualize, fontScale }: {
     </Suspense>
   );
 }
-
-const UNTITLED_FIGURES = new Set(["kpi", "scale", "proportion", "sankey", "waterfall", "candle", "boxplot", "calheat", "gantt"]);
 
 export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
