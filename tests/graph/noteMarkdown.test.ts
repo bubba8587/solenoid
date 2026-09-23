@@ -14,6 +14,7 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
   it("a tag renders as a chip; it ends at whitespace and punctuation", () => {
     expect(renderNoteMarkdown("#learning #spanish, done")).toBe('<p><span class="sol-md__tag">#learning</span> <span class="sol-md__tag">#spanish</span>, done</p>\n');
     expect(renderNoteMarkdown("nested #area/home-office ok")).toContain('<span class="sol-md__tag">#area/home-office</span> ok');
+    expect(renderNoteMarkdown("read #1984/books")).toContain('<span class="sol-md__tag">#1984/books</span>');
   });
 
   it("an error code, a mid-word hash, a bare number and a heading are not tags", () => {
@@ -58,6 +59,8 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
     expect(renderNoteMarkdown("a\n%% solenoid:begin x %%\nmanaged\n%% solenoid:end %%\nb")).toBe("<p>a<br>managed<br>b</p>\n");
     expect(renderNoteMarkdown("A line ^abc-123\nnext")).toBe("<p>A line<br>next</p>\n");
     expect(renderNoteMarkdown("```\n%% kept %% ^kept\n```")).toContain("%% kept %% ^kept");
+    expect(renderNoteMarkdown("````\n```\n%% kept %%\n````")).toContain("%% kept %%");
+    expect(renderNoteMarkdown("~~~\n```\n%% kept %%\n~~~")).toContain("%% kept %%");
     expect(renderNoteMarkdown("x^2 stays")).toContain("x^2 stays");
   });
 

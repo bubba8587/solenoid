@@ -819,7 +819,7 @@ button.mod-cta {
 .theme-light .metadata-property .metadata-property-icon {
   height: 18px;
   margin: 0 2px;
-  align-self: center; 
+  align-self: center;
   padding: 0;
   color: var(--sol-type-ink, #1a1a1a);
   background-color: var(--sol-type);

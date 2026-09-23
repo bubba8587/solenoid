@@ -95,6 +95,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
   private headers(): Record<string, string> { return authHeaders(apiKeyStore.get(TASKNOTES_KEY_ID)); }
 
   data(inputs: { from?: (number | null)[]; to?: (number | null)[] }): Record<string, unknown> {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     let from = 0, to = 0;
     let have = true;
     if (this.provider === "calendar") {
@@ -113,7 +114,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
         this.loadDemo();
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void trackInflight(this.fetchProvider(from, to)).then(() => scheduleConnectionRecalc());
+        void trackInflight(this.fetchProvider(from, to)).then(() => scheduleConnectionRecalc(this.id));
       }
     }
     switch (this.provider) {

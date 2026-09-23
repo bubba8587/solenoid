@@ -31,15 +31,20 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
   const src = dataUrl || url;
 
-  function commitValue() { void processGraph(data.id); }
-
-  // A URL drops any local attachment, bundled-file binding included; the asset stays on disk, the node just stops pointing at it.
-  function onUrl(v: string) {
-    setUrl(v); data.url = v;
-    if (dataUrl) { setDataUrl(""); data.dataUrl = ""; }
-    if (data.assetPath) { data.assetPath = ""; data.fileName = ""; }
-    scheduleAutosave();
-  }
+  // A committed URL drops any local attachment, bundled-file binding included; the asset stays on disk, the node just stops pointing at it.
+  // The draft stays local, so the image loads once per commit, not once per character.
+  const urlField = useDraftCommit<string>(
+    url,
+    (v) => v,
+    (text) => text.trim(),
+    (v) => {
+      setUrl(v); data.url = v;
+      if (dataUrl) { setDataUrl(""); data.dataUrl = ""; }
+      if (data.assetPath) { data.assetPath = ""; data.fileName = ""; }
+      scheduleAutosave();
+      void processGraph(data.id);
+    },
+  );
 
   // An empty or invalid entry reverts to the current height instead of snapping to MIN_H.
   const heightField = useDraftCommit<number>(
@@ -141,12 +146,12 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
           <div className="solenoid-image__controls" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>
             <input
               className="solenoid-image__url"
-              value={url}
+              value={urlField.draft}
               placeholder="https://image-url…"
               spellCheck={false}
-              onChange={(e) => onUrl(e.target.value)}
-              onBlur={commitValue}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              onChange={(e) => urlField.setDraft(e.target.value)}
+              onBlur={urlField.onBlur}
+              onKeyDown={urlField.onKeyDown}
             />
             <label className="solenoid-image__height" title="Image height in px">
               H

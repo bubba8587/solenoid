@@ -3,10 +3,11 @@ import {
   cubeFromColumns, recordsToCube,
   type CubeValue, type CubeCell, type FrameColType,
 } from "./frame";
-import { parseNoteFrontmatter, isoDateText, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
-import { parseDate } from "./nodes/dateSerial";
+import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
+import { parseDate, noteDateText } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 import type { PluginColumnTypes, ColumnPicks } from "./pluginColumnTypes";
+import { fencedLines } from "./managedBlock";
 
 export interface VaultNote {
   path: string;
@@ -40,7 +41,10 @@ function utf8Bytes(s: string): number {
 
 const WIKILINK = /\[\[([^\]]+)\]\]/g;
 const EMBED = /!\[\[([^\]]+)\]\]/g;
-const INLINE_TAG = /(?:^|\s)#([A-Za-z0-9_][\w/-]*)/g;
+/** A tag as Obsidian reads one: letters, digits, `_`, `-` and `/`, never all digits (`#1`). The note renderer shares it. */
+export const TAG_BODY = "[\\p{L}\\p{N}_\\-/]+";
+export const isTagBody = (body: string): boolean => !/^\p{N}+$/u.test(body);
+const INLINE_TAG = new RegExp(`(?:^|\\s)#(${TAG_BODY})`, "gu");
 
 function linkTarget(inner: string): string {
   return inner.split("|")[0].split("#")[0].trim();
@@ -67,9 +71,13 @@ function extractEmbeds(text: string): string[] {
   for (const m of text.matchAll(EMBED)) out.push(linkTarget(m[1]));
   return uniqueInOrder(out);
 }
+/** Obsidian reads no tag inside a code fence or a code span. */
 export function extractInlineTags(body: string): string[] {
+  const lines = body.split("\n");
+  const fenced = fencedLines(lines);
+  const prose = lines.filter((_, i) => !fenced[i]).join("\n").replace(/(`+)[^`]*?\1/g, " ");
   const out: string[] = [];
-  for (const m of body.matchAll(INLINE_TAG)) out.push(m[1]);
+  for (const m of prose.matchAll(INLINE_TAG)) if (isTagBody(m[1])) out.push(m[1]);
   return out;
 }
 
@@ -290,7 +298,7 @@ function scalarKindOfValue(v: FrontmatterScalar): ScalarKind {
 /** A date the reader turned into a serial, read under a text type, is the ISO text written. */
 function datesToText(value: FrontmatterValueLoose | undefined): FrontmatterValueLoose | undefined {
   const one = (v: unknown): unknown =>
-    Array.isArray(v) ? v.map(one) : typeof v === "number" ? isoDateText(v) : v;
+    Array.isArray(v) ? v.map(one) : typeof v === "number" ? noteDateText(v) : v;
   return one(value) as FrontmatterValueLoose | undefined;
 }
 

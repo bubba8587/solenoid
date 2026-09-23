@@ -1,9 +1,11 @@
 // [[C68]] knapIsTheDocumentSyntax, [[B1]] obsidianBet
 import { Marked, type TokenizerAndRendererExtension, type Tokens } from "marked";
 import { getKatexRenderer } from "./components/katexLoader";
+import { TAG_BODY, isTagBody } from "./vaultCube";
+import { fencedLines } from "./managedBlock";
 
 const WIKILINK = /^(!?)\[\[([^[\]|#]+?)(#[^[\]|]+)?(?:\|([^[\]]+))?\]\]/;
-const TAG = /^#([\p{L}_][\p{L}\p{N}_\-/]*)/u;
+const TAG = new RegExp(`^#(${TAG_BODY})`, "u");
 const ERROR_CODE = /^#[A-Z][A-Z0-9/]*[!?]?$/;
 const HIGHLIGHT = /^==([^\s=](?:[^\n]*?[^\s=])?)==/;
 const MATH_INLINE = /^\$([^\s$](?:[^$\n]*?[^\s$])?)\$(?!\d)/;
@@ -45,7 +47,7 @@ const hashtag: TokenizerAndRendererExtension = {
     if (!m) return undefined;
     const after = src[m[0].length] ?? "";
     if (ERROR_CODE.test(m[0] + (after === "!" || after === "?" ? after : ""))) return undefined;
-    if (/^\p{N}+$/u.test(m[1])) return undefined;
+    if (!isTagBody(m[1])) return undefined;
     return { type: "hashtag", raw: m[0], tag: m[1] };
   },
   renderer(token) {
@@ -149,8 +151,17 @@ function blockquoteRenderer(this: { parser: { parse(tokens: Tokens.Generic[]): s
 
 
 function outsideFences(md: string, fn: (chunk: string) => string): string {
-  const parts = md.split(/(^(?:```|~~~)[\s\S]*?^(?:```|~~~)[ \t]*$)/m);
-  return parts.map((p, i) => (i % 2 === 1 ? p : fn(p))).join("");
+  const lines = md.split("\n");
+  const fenced = fencedLines(lines);
+  const out: string[] = [];
+  for (let i = 0; i < lines.length;) {
+    let j = i;
+    while (j < lines.length && fenced[j] === fenced[i]) j++;
+    const run = lines.slice(i, j).join("\n");
+    out.push(fenced[i] ? run : fn(run));
+    i = j;
+  }
+  return out.join("\n");
 }
 
 const COMMENT_LINE = /^[ \t]*%%[\s\S]*?%%[ \t]*(?:\n|$)/gm;

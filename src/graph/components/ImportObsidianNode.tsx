@@ -17,6 +17,7 @@ import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { getActiveView, getActiveEditor } from "../activeGraph";
 import { processGraph } from "../process";
+import { connectionStore } from "../connectionStore";
 import { bumpConnectionVersion } from "../graphSignals";
 import { reconcileFcTypes } from "../fcReconcile";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
@@ -110,12 +111,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     try { await applyBody(await readVaultFile(vault, data.fileName), data.fileName); }
     catch { /* file gone — keep what's loaded */ }
   }
-  useEffect(() => {
-    if (minutes <= 0 || !desktop) return;
-    const id = setInterval(() => { void reload(); }, minutes * 60_000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [minutes, desktop, data.fileName, vault]);
 
   function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
@@ -271,7 +266,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                     min={0}
                     value={minutes}
                     onChange={(e) => setMinutes(Math.max(0, Math.round(Number(e.target.value) || 0)))}
-                    onBlur={() => { if (minutes !== data.refreshMinutes) { data.refreshMinutes = minutes; scheduleAutosave(); } }}
+                    onBlur={() => { if (minutes !== data.refreshMinutes) { data.refreshMinutes = minutes; connectionStore.autoRefresh(data.id, minutes); scheduleAutosave(); } }}
                     onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
                   />
                   min

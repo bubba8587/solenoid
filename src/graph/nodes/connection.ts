@@ -81,13 +81,14 @@ export class WebSourceNode extends ClassicPreset.Node {
   }
 
   data(): { frame: FrameValue | null } {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const ref = this.url.trim();
     const key = connectionStore.key(this.id, ref);
     if (key === this.lastKey) return { frame: this.cachedResult };
     if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
       this.inflightKey = key;
-      void this.fetchFrame(ref, key).then(() => scheduleConnectionRecalc());
+      void this.fetchFrame(ref, key).then(() => scheduleConnectionRecalc(this.id));
     }
     return { frame: this.cachedResult };
   }
@@ -296,6 +297,7 @@ export class LocalFileNode extends ClassicPreset.Node {
   }
 
   async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = getCsvFolder();
     const name = this.fileName.trim();
     const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
@@ -413,7 +415,7 @@ export class GeocodeNode extends ClassicPreset.Node {
       } else if (requestNetwork(this.id)) {
         // Commit the key only once the fetch launches, so a gated pass asks again.
         this._lastFetchKey = key;
-        void this.fetchMatches(place).then(() => scheduleConnectionRecalc());
+        void this.fetchMatches(place).then(() => scheduleConnectionRecalc(this.id));
       }
     }
     const m = pickGeocodeMatch(this.matches, this.pickedLabel);
@@ -479,6 +481,7 @@ export class WeatherNode extends ClassicPreset.Node {
   }
 
   data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue | null; temp: unknown; condition: string | null } {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const lat = readInput(inputs.lat, this.literals.lat);
     const lon = readInput(inputs.lon, this.literals.lon);
     const have = typeof lat === "number" && typeof lon === "number";
@@ -490,7 +493,7 @@ export class WeatherNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchWeather(lat, lon).then(() => scheduleConnectionRecalc());
+        void this.fetchWeather(lat, lon).then(() => scheduleConnectionRecalc(this.id));
       }
     }
     const c = this.cached;
@@ -558,6 +561,7 @@ export class HolidaysNode extends ClassicPreset.Node {
   }
 
   data(): { frame: FrameValue; dates: number[]; next: number | null } {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const country = this.country.trim();
     const year = this.year || new Date().getUTCFullYear();
     const key = connectionStore.key(this.id, country ? `${country},${year}` : "");
@@ -568,7 +572,7 @@ export class HolidaysNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchHolidays(year, country).then(() => scheduleConnectionRecalc());
+        void this.fetchHolidays(year, country).then(() => scheduleConnectionRecalc(this.id));
       }
     }
     const applicable = filterHolidays(this.cached ?? [], this.region);
@@ -699,6 +703,7 @@ export class FxNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     return this.mode === "history" ? this.dataHistory(inputs) : this.dataSpot(inputs);
   }
 
@@ -717,7 +722,7 @@ export class FxNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchRate(from, to).then(() => scheduleConnectionRecalc());
+        void this.fetchRate(from, to).then(() => scheduleConnectionRecalc(this.id));
       }
     }
     const rate = this.cached?.rate ?? null;
@@ -743,7 +748,7 @@ export class FxNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchSeries(from, to, start, end).then(() => scheduleConnectionRecalc());
+        void this.fetchSeries(from, to, start, end).then(() => scheduleConnectionRecalc(this.id));
       }
     }
     return { frame: this.seriesFrame() };
@@ -862,6 +867,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
   }
 
   data(inputs?: { folder?: (string | null)[]; glob?: (string | null)[] }): { cube: CubeValue | null } {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const folder = (readInput(inputs?.folder, this.folder) ?? "").trim().replace(/^\/+|\/+$/g, "");
     const glob = (readInput(inputs?.glob, this.glob) ?? "").trim();
     const vault = getVaultRoot();
@@ -880,7 +886,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
         this.cached = null;
         connectionStore.setState(this.id, { status: "error", message: `"${folder}" is not inside the vault` });
       } else {
-        void trackInflight(this.load(key)).then(() => scheduleConnectionRecalc());
+        void trackInflight(this.load(key)).then(() => scheduleConnectionRecalc(this.id));
       }
     }
     return { cube: this.cached };

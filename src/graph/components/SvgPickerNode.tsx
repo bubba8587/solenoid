@@ -198,8 +198,10 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     setSource(text); data.stringLiterals.source = text;
     if (data.selectedLayer && !sourceHasLayer(text, data.selectedLayer)) { data.selectedLayer = ""; setSelectedLayer(""); }
   }
-  function onUrl(v: string) { setUrl(v); data.url = v; scheduleAutosave(); }
-  function onUrlCommit() { void loadFromUrl(url); }
+  const urlField = useDraftCommit<string>(url, (v) => v, (t) => t.trim(), (v) => {
+    setUrl(v); data.url = v; scheduleAutosave();
+    void loadFromUrl(v);
+  });
 
   // Read as text, not a data URL: the picker needs live markup, which persists in stringLiterals.
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -302,12 +304,12 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
         <div className="solenoid-svgpick__controls" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>
           <input
             className="solenoid-svgpick__url"
-            value={url}
+            value={urlField.draft}
             placeholder="https://…svg"
             spellCheck={false}
-            onChange={(e) => onUrl(e.target.value)}
-            onBlur={onUrlCommit}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onChange={(e) => urlField.setDraft(e.target.value)}
+            onBlur={urlField.onBlur}
+            onKeyDown={urlField.onKeyDown}
           />
           <label className="solenoid-svgpick__swatch" title="Highlight color">
             <input

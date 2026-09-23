@@ -82,6 +82,25 @@ export function parseDateToSerial(s: string): number {
 }
 
 
+const NOTE_DAY = /^\d{4}-\d{2}-\d{2}$/;
+/** Obsidian's Date & time property, as it and Write to Obsidian spell it: no zone, so a wall-clock time. */
+const NOTE_DAY_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+
+/** A note's date text as a serial (a whole day for a bare date), or null for any other text. App and plugin read with this one. */
+export function noteDateSerial(text: string): number | null {
+  const day = NOTE_DAY.test(text);
+  if (!day && !NOTE_DAY_TIME.test(text)) return null;
+  const serial = parseDateToSerial(text);
+  if (!Number.isFinite(serial)) return null;
+  return day ? Math.round(serial) : serial;
+}
+
+/** A date serial as the text a note holds: the day, or the day and time when it has one. App and plugin write with this one. */
+export function noteDateText(serial: number): string {
+  const wholeDay = Math.abs(serial - Math.round(serial)) < 1e-6;
+  return formatDateSerial(wholeDay ? Math.round(serial) : serial, wholeDay ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
+}
+
 export const DEFAULT_DATE_FORMAT = "DD-MMM-YYYY";
 export const DEFAULT_DATETIME_FORMAT = "DD-MMM-YYYY HH:mm";
 

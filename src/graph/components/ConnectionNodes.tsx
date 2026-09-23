@@ -15,6 +15,7 @@ import type {
   VaultFolderNode as VaultFolderNodeType,
 } from "../rete-nodes";
 import { processGraph } from "../process";
+import { scheduleAutosave } from "../persistence";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
@@ -52,22 +53,17 @@ function statusText(s: ConnectionState): string {
   }
 }
 
-// The timer takes the same refreshConnection path as the button ([[D32]] refreshOutsideRebuild).
-function useAutoRefresh(nodeId: string, minutes: number) {
-  useEffect(() => {
-    if (minutes <= 0) return;
-    const id = setInterval(() => { void refreshConnection(nodeId); }, minutes * 60_000);
-    return () => clearInterval(id);
-  }, [nodeId, minutes]);
-}
-
-function RefreshIntervalField({ minutes, onCommit }: { minutes: number; onCommit: (n: number) => void }) {
-  const [val, setVal] = useState(String(minutes));
-  useEffect(() => { setVal(String(minutes)); }, [minutes]);
+// The card's own data() runs the timer ([[D32]] refreshOutsideRebuild), so it keeps running while the card is unmounted.
+function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: number } }) {
+  const [val, setVal] = useState(String(node.refreshMinutes));
+  useEffect(() => { setVal(String(node.refreshMinutes)); }, [node.refreshMinutes]);
   function commit() {
     const n = Math.max(0, Math.round(Number(val) || 0));
     setVal(String(n));
-    if (n !== minutes) onCommit(n);
+    if (n === node.refreshMinutes) return;
+    node.refreshMinutes = n;
+    connectionStore.autoRefresh(node.id, n);
+    scheduleAutosave();
   }
   return (
     <label className="sol-conn__field" title="Automatically refreshes on this cadence. 0 turns it off.">
@@ -118,9 +114,7 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
 
 export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>) {
   const [url, setUrl] = useState(data.url);
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
   useEffect(() => { setUrl(data.url); }, [data.url]);
-  useAutoRefresh(data.id, minutes);
 
   function commit() {
     const next = url.trim();
@@ -143,7 +137,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
           onMouseDown={(e) => e.stopPropagation()}
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+        <RefreshIntervalField node={data} />
         <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
@@ -266,9 +260,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   const folder = useSyncExternalStore(settingsStore.subscribe, getCsvFolder);
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
   const desktop = isDesktop();
-  useAutoRefresh(data.id, minutes);
 
   useEffect(() => {
     let alive = true;
@@ -313,7 +305,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
         {desktop && folder && (
-          <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+          <RefreshIntervalField node={data} />
         )}
       </div>
       {frameOut && (
@@ -346,10 +338,8 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   const [freq, setFreq] = useState(data.stringLiterals.freq ?? "");
   const [start, setStart] = useState(data.stringLiterals.start ?? "");
   const [end, setEnd] = useState(data.stringLiterals.end ?? "");
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
   useEffect(() => { setProvider(data.provider); }, [data.provider]);
   useEffect(() => { setInput(data.stringLiterals.input ?? ""); }, [data.stringLiterals.input]);
-  useAutoRefresh(data.id, minutes);
 
   const preset = getProvider(provider);
 
@@ -412,7 +402,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           <div className="sol-conn__note">Add a {preset.label} API key in Settings ▸ Data.</div>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+        <RefreshIntervalField node={data} />
         <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
@@ -466,8 +456,6 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the Now rows when a fetch lands
   const [past, setPast] = useState(String(data.pastDays));
   const [fwd, setFwd] = useState(String(data.forecastDays));
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
-  useAutoRefresh(data.id, minutes);
 
   function commit() {
     const nPast = Math.max(0, Math.min(92, Math.round(Number(past) || 0)));
@@ -507,7 +495,7 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
         {numField("Forecast days", fwd, setFwd)}
         <div className="sol-conn__note">Open-Meteo forecast.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+        <RefreshIntervalField node={data} />
       </div>
       {daily && (
         <MeasuredSocketRow side="output" socketKey="daily" nodeId={data.id} emit={emit} payload={daily.socket}>
@@ -537,9 +525,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the rows when a fetch lands
   const [year, setYear] = useState(data.year ? String(data.year) : "");
   const [region, setRegion] = useState(data.region);
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
   useEffect(() => { setRegion(data.region); }, [data.region]);
-  useAutoRefresh(data.id, minutes);
 
   function commitYear() {
     const n = Math.max(0, Math.round(Number(year) || 0));
@@ -588,7 +574,7 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
         />
         <div className="sol-conn__note">Nager.Date public holidays.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+        <RefreshIntervalField node={data} />
       </div>
       {frame && (
         <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frame.socket}>
@@ -687,10 +673,8 @@ async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => vo
 
 export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill rows when a fetch lands
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
   const [mode, setMode] = useState<FxMode>(data.mode);
   useEffect(() => { setMode(data.mode); }, [data.mode]);
-  useAutoRefresh(data.id, minutes);
 
   const rate = data.cached?.rate ?? null;
   // A preview off the typed amount; the socket carries the true, possibly wired, value.
@@ -715,7 +699,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
       <div className="sol-conn">
         <div className="sol-conn__note">Frankfurter: ECB reference rates, once per business day.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+        <RefreshIntervalField node={data} />
       </div>
       {mode === "spot" ? (
         <InlineOutputRows
@@ -749,11 +733,9 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const [folder, setFolder] = useState(data.folder);
   const [glob, setGlob] = useState(data.glob);
   const [nameFormat, setNameFormat] = useState(data.nameFormat);
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
   const [folders, setFolders] = useState<string[]>([]);
   const desktop = isDesktop();
   const canRead = desktop || isDemoVaultPath(vault); // the demo vault reads with no filesystem
-  useAutoRefresh(data.id, minutes);
   useEffect(() => { setFolder(data.folder); }, [data.folder]);
   useEffect(() => {
     let alive = true;
@@ -853,7 +835,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               Include body
             </label>
             <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
-            <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+            <RefreshIntervalField node={data} />
             {cols.length > 0 && (
               <div className="sol-conn__preview" title={`${cols.length} columns`}>
                 {cols.slice(0, 6).map((c, i) => <div key={i} className="sol-conn__preview-row">{c}</div>)}
@@ -873,9 +855,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   const [provider, setProvider] = useState<TaskNotesProvider>(data.provider);
   const [token, setToken] = useState(apiKeyStore.get(TASKNOTES_KEY_ID));
-  const [minutes, setMinutes] = useState(data.refreshMinutes);
   useEffect(() => { setProvider(data.provider); }, [data.provider]);
-  useAutoRefresh(data.id, minutes);
 
   async function pickProvider(next: TaskNotesProvider) {
     if (next === data.provider) return;
@@ -930,7 +910,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
         />
         <div className="sol-conn__note">TaskNotes plugin, local HTTP API.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
+        <RefreshIntervalField node={data} />
       </div>
       {tasks && (
         <MeasuredSocketRow side="output" socketKey="tasks" nodeId={data.id} emit={emit} payload={tasks.socket}>

@@ -1,8 +1,8 @@
 // [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
-import { parseDateToSerial, serialToJsDate } from "../../src/graph/nodes/dateSerial";
+import { parseDateToSerial, noteDateSerial, noteDateText } from "../../src/graph/nodes/dateSerial";
 import { parseCellText } from "../../src/graph/literalEditors";
 import { parseCx } from "../../src/graph/cxValue";
-import { type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
+import { guessNoteColumnType, type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
 
 export type Family = "number" | "string" | "date" | "logical" | "complex";
 export type Shape = "scalar" | "list" | "matrix" | "frame" | "cube";
@@ -35,8 +35,6 @@ export const PROPERTY_KINDS: PropertyKind[] = [
 type Scalar = number | string | boolean | null;
 export type YamlRecord = Record<string, unknown>;
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}/;
-
 const isPlainObject = (v: unknown): v is YamlRecord =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 const isScalar = (v: unknown): v is Scalar => v === null || typeof v !== "object";
@@ -47,7 +45,7 @@ function fitsFamily(v: unknown, family: Family): boolean {
     case "number": return typeof v === "number";
     case "string": return typeof v === "string";
     case "logical": return typeof v === "boolean";
-    case "date": return typeof v === "string" && ISO_DATE.test(v) && Number.isFinite(parseDateToSerial(v));
+    case "date": return typeof v === "string" && noteDateSerial(v) !== null;
     case "complex": return typeof v === "number" || (typeof v === "string" && parseCx(v) !== null);
   }
 }
@@ -116,10 +114,6 @@ export function matrixFromYaml(value: unknown, family: Family): Scalar[][] {
   return rows.map((r) => Array.from({ length: width }, (_, j) => r[j] ?? null));
 }
 
-export function isoDate(serial: number): string {
-  return serialToJsDate(serial).toISOString().slice(0, 10);
-}
-
 export function cellToYaml(raw: string, family: Family): Scalar {
   if (family === "string") return raw === "" ? null : raw;
   const t = raw.trim();
@@ -136,7 +130,7 @@ export function cellToYaml(raw: string, family: Family): Scalar {
     case "date": {
       const n = Number(t);
       const serial = Number.isFinite(n) ? n : parseDateToSerial(t);
-      return Number.isFinite(serial) ? isoDate(serial) : null;
+      return Number.isFinite(serial) ? noteDateText(serial) : null;
     }
     case "complex": return parseCx(t) === null ? null : t;
   }
@@ -181,22 +175,13 @@ export function readColumnTypes(raw: unknown): Record<string, ColumnTypes> {
   return out;
 }
 
-function guessColumnType(values: unknown[]): FrameColType {
-  const present = values.filter((v) => v !== null && v !== undefined && v !== "");
-  if (present.length === 0) return "string";
-  if (present.every((v) => typeof v === "boolean")) return "logical";
-  if (present.every((v) => typeof v === "number")) return "number";
-  if (present.every((v) => fitsFamily(v, "date"))) return "date";
-  return "string";
-}
-
 export function frameSourceFromYaml(value: unknown, picked: ColumnTypes = {}): FrameSourceColumn[] {
   const records = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
   return keys.map((name) => {
     const values = records.map((rec) => (isScalar(rec[name]) ? rec[name] : null));
-    return { name, type: picked[name] ?? guessColumnType(values), cells: values.map(rawCell) };
+    return { name, type: picked[name] ?? guessNoteColumnType(values, (v) => fitsFamily(v, "date")), cells: values.map(rawCell) };
   });
 }
 

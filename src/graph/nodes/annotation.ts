@@ -9,14 +9,14 @@ import {
   SolenoidSocket, cubeSocket, elementFamilyOf, latticeRank, typeAtRank,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
-import { isoDateText } from "../noteFrontmatter";
+import { noteDateText } from "./dateSerial";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
 import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
 import { solError, type SolError } from "../errorValue";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
-import { isFrameValue, recordsToCube, coerceFrameCell, type FrameValue, type FrameColumn, type FrameColType, type CubeValue } from "../frame";
+import { isFrameValue, recordsToCube, coerceFrameCell, guessNoteColumnType, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
 import type { ImageValue } from "../imageValue";
@@ -68,17 +68,6 @@ function reshapePin(
 }
 
 /** A plain ISO date is still text here; the reader's `dateColumns` names the date columns. */
-function frameColType(cells: FrontmatterScalar[], isDate: boolean): FrameColType {
-  if (isDate) return "date";
-  for (const v of cells) {
-    if (v === null) continue;
-    if (typeof v === "boolean") return "logical";
-    if (typeof v === "number") return "number";
-    return "string";
-  }
-  return "string";
-}
-
 /** Every cell crosses coerceFrameCell with its text kept as `raw`, so a type that cannot read a cell shows NaN over the text ([[D72]]). */
 function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
@@ -91,7 +80,8 @@ function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = []
       const first = v[0] ?? null;
       return typeof first === "object" ? null : first;
     });
-    const type = picks[name] ?? frameColType(cells, dateColumns.includes(name));
+    const isDate = dateColumns.includes(name);
+    const type = picks[name] ?? guessNoteColumnType(cells, () => isDate);
     const raw = cells.map((c) => (c === null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
     return { name, type, values: raw.map((r) => coerceFrameCell(type, r)), raw };
   });
@@ -124,7 +114,7 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateCo
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
   const datesAsText = guessed !== undefined && elementFamilyOf(guessed) === "date" && (base === "string" || base === "complex");
-  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? isoDateText(e) : e) as FrontmatterScalar, base);
+  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? noteDateText(e) : e) as FrontmatterScalar, base);
   const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
   if (rank === 2) return items.map((row) => (Array.isArray(row) ? row : [row]).map(one));
   if (rank === 1) return items.flat().map(one);

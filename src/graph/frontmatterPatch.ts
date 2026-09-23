@@ -1,7 +1,7 @@
 // [[C101]] onePatchPath
 import { yamlKey, yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
-import { formatDateSerial } from "./nodes/dateSerial";
+import { noteDateText } from "./nodes/dateSerial";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineTags } from "./vaultCube";
 
@@ -13,7 +13,6 @@ export interface PatchResult { text: string; }
 
 const FENCE = "---";
 
-const isWholeDay = (serial: number) => Math.abs(serial - Math.round(serial)) < 1e-6;
 // yamlScalar would quote a leading-digit string, so ISO dates bypass it to stay YAML dates.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/;
@@ -34,7 +33,7 @@ function scalarToYaml(cell: CubeCell, colType: FrameColType | undefined, noteNam
   if (typeof cell === "boolean") return cell;
   if (typeof cell === "number") {
     if (colType === "date" && Number.isFinite(cell)) {
-      return formatDateSerial(cell, isWholeDay(cell) ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
+      return noteDateText(cell);
     }
     return cell;
   }

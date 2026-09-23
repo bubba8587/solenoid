@@ -47,13 +47,15 @@ export function ReportOverlay() {
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
 
-  // Reset on nodeId only: onBody writes node.body live, so a body dependency would clobber lastSyncRef mid-typing.
+  // The draft lives here until a commit writes node.body ([[C95]] commitOnEnter); a ref, so any close path can commit it.
+  const draftRef = useRef(node?.body ?? "");
   const lastSyncRef = useRef(node?.body ?? "");
   // Debounced: re-parsing per keystroke remounted the whole preview (the scroll jumped, embeds re-mounted).
   const [previewBody, setPreviewBody] = useState(node?.body ?? "");
   useEffect(() => {
     setBody(node?.body ?? "");
     setPreviewBody(node?.body ?? "");
+    draftRef.current = node?.body ?? "";
     lastSyncRef.current = node?.body ?? "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
@@ -158,7 +160,7 @@ export function ReportOverlay() {
 
   if (!node) return null;
 
-  function onBody(v: string) { setBody(v); node!.body = v; scheduleAutosave(); }
+  function onBody(v: string) { setBody(v); draftRef.current = v; }
 
   function insertAtCursor(text: string) {
     const ta = sourceRef.current;
@@ -174,11 +176,13 @@ export function ReportOverlay() {
     setFiltersOpen(false);
   }
 
-  // Reads node.body, never the `body` state, so any close path can call it: mobile has no textarea blur.
+  // Reads the draft ref, never the `body` state, so any close path can call it: mobile has no textarea blur.
   async function commitBody() {
-    const current = node!.body;
+    const current = draftRef.current;
     if (current === lastSyncRef.current) return;
     lastSyncRef.current = current;
+    node!.body = current;
+    scheduleAutosave();
     const { removedInputs } = node!.syncRefs();
     const ed = getEditor();
     if (ed && removedInputs.length) {
@@ -220,6 +224,7 @@ export function ReportOverlay() {
       onBody(`${body}${body.endsWith("\n") || body === "" ? "" : "\n\n"}${token}\n`);
     }
     setEmbedPickerOpen(false);
+    node!.body = draftRef.current;
     node!.syncRefs(); // mint the input now so the wire has a socket
     const ed = getEditor();
     if (ed && !ed.getConnections().some((c) => c.target === node!.id && c.targetInput === refName)) {

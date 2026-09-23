@@ -1,6 +1,9 @@
 // [[D32]] refreshOutsideRebuild, [[C103]] untrustedContentSeams
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
+import { allTopEditors } from "./activeGraph";
+import type { NodeEditor } from "rete";
+import type { Schemes } from "./schemes";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { docMetaStore } from "./docMetaStore";
 import { settingsStore } from "./settingsStore";
@@ -21,12 +24,42 @@ const IDLE: ConnectionState = { status: "idle" };
 let _gen = 0;
 const _tokens = new Map<string, number>();
 const _states = new Map<string, ConnectionState>();
+const _live = new Set<string>();
+const _landed = new Map<string, number>();
+const _timers = new Map<string, { minutes: number; handle: ReturnType<typeof setInterval> }>();
 const { notify, subscribe, version } = createNotifier();
 
 export const connectionStore = {
   gen: () => _gen,
   token: (id: string) => _tokens.get(id) ?? 0,
-  key: (id: string, reference: string) => `${_gen}:${_tokens.get(id) ?? 0}:${reference}`,
+  key(id: string, reference: string): string {
+    _live.add(id);
+    return `${_gen}:${_tokens.get(id) ?? 0}:${reference}`;
+  },
+
+  /** What a holder of these node ids must re-key on: every refresh and every landed fetch of a live card among them. */
+  liveStamp(ids: Iterable<string>): string {
+    const parts: string[] = [];
+    for (const id of ids) if (_live.has(id)) parts.push(`${id}:${_tokens.get(id) ?? 0}:${_landed.get(id) ?? 0}`);
+    return parts.length ? `${_gen}|${parts.join(",")}` : "";
+  },
+
+  /** The card's own `data()` keeps its timer in step, so a card that is not mounted still refreshes. */
+  autoRefresh(id: string, minutes: number) {
+    _live.add(id);
+    const m = Math.max(0, Math.round(minutes || 0));
+    const cur = _timers.get(id);
+    if ((cur?.minutes ?? 0) === m) return;
+    clearTimer(id);
+    if (m <= 0) return;
+    const handle = setInterval(() => {
+      if (!nodeExists(id)) { clearTimer(id); return; }
+      void refreshConnection(id);
+    }, m * 60_000);
+    _timers.set(id, { minutes: m, handle });
+  },
+
+  autoRefreshMinutes: (id: string) => _timers.get(id)?.minutes ?? 0,
 
   getState: (id: string): ConnectionState => _states.get(id) ?? IDLE,
   setState(id: string, s: ConnectionState) {
@@ -36,12 +69,34 @@ export const connectionStore = {
   forget(id: string) {
     const had = _states.delete(id);
     _tokens.delete(id);
+    _live.delete(id);
+    _landed.delete(id);
+    clearTimer(id);
     if (had) notify();
   },
 
   subscribe,
   version,
 };
+
+function clearTimer(id: string): void {
+  const t = _timers.get(id);
+  if (t) clearInterval(t.handle);
+  _timers.delete(id);
+}
+
+function hasDeep(editor: NodeEditor<Schemes>, id: string): boolean {
+  if (editor.getNode(id)) return true;
+  return editor.getNodes().some((n) => {
+    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    return !!inner && hasDeep(inner, id);
+  });
+}
+
+// A card inside a deleted composite is never forgotten one by one, so its timer checks before it fires.
+function nodeExists(id: string): boolean {
+  return allTopEditors().some((e) => hasDeep(e, id));
+}
 
 
 export function networkAllowed(): boolean {
@@ -87,6 +142,9 @@ registerNodeForgetAll(() => {
   const had = _states.size > 0 || _tokens.size > 0;
   _states.clear();
   _tokens.clear();
+  _live.clear();
+  _landed.clear();
+  for (const id of [..._timers.keys()]) clearTimer(id);
   _gated.clear();
   _prompted = false;
   if (had) notify();
@@ -110,7 +168,9 @@ export function hasInflightConnections(): boolean {
   return _inflight.size > 0;
 }
 
-export function scheduleConnectionRecalc(): void {
+/** `id` names the card whose fetch landed, so a heavy composite holding it turns stale. */
+export function scheduleConnectionRecalc(id?: string): void {
+  if (id) _landed.set(id, (_landed.get(id) ?? 0) + 1);
   if (_recalcQueued) return;
   _recalcQueued = true;
   setTimeout(() => { _recalcQueued = false; void processGraph(); }, 0);

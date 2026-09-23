@@ -108,18 +108,19 @@ The field types are a subset of the socket data types with identical names, so t
 | number (plain) | the number (non-finite becomes null) | `number` |
 | `true` / `false` | logical | `logical` |
 | plain `YYYY-MM-DD` | rounded date serial | `date` |
+| plain `YYYY-MM-DDTHH:mm`, with optional seconds and fraction and no zone (Obsidian's Date & time) | the date-time serial | `date` |
 | plain complex text with an imaginary part (`3+4i`, `-2i`) | the text | `complex` |
 | any quoted scalar | the text, always | `string` |
 | other text, null or empty | the text or null | `string` |
-| sequence of scalars | a list. All present items dates gives `datelist`; any complex (numbers allowed beside them) gives `complexlist`; otherwise the first non-null item decides (`logicallist`, `list`, `strlist`); empty or all null gives `list` | list types |
+| sequence of scalars | a list. All present items dates gives `datelist`; any complex (numbers allowed beside them) gives `complexlist`; all logical gives `logicallist`; all numbers or dates gives `list`; any other mix gives `strlist`, never typed by its first item; empty or all null gives `list` | list types |
 | sequence whose every item is a sequence of scalars | a rectangular matrix (short rows padded with null), typed like a list of all its cells, lifted to rank 2 | `table`, `strtable`, `datetable`, `logicaltable`, `complextable` |
 | sequence whose every item is a map of scalars, scalar lists or nested row lists | rows | `frame`, or `cube` when any row value is a list |
 | a bare `{{ … }}` or `{% … %}` (YAML reads it as a flow map whose key is a map; the field is flagged `knapUnquoted`) | `#SYNTAX!` "Knap vars in frontmatter require quoted "{{var}}" syntax" on a `string` socket | `string` |
 | any other map | null | `string` |
 
-A non-scalar item inside an otherwise scalar sequence is kept as its YAML text. In a row, a plain ISO date stays as the text written; the column's type decides what it becomes.
+A non-scalar item inside an otherwise scalar sequence is kept as its YAML text. In a row, a plain ISO date or date-time stays as the text written; the column's type decides what it becomes. The date shapes are `noteDateSerial` in `nodes/dateSerial.ts`, and dates are written back by `noteDateText` (the day, or the day and time when it has one); the plugin reads and writes with the same pair.
 
-A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else the first non-null cell's type (`logical`, `number`, `string`). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
+A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else `logical` or `number` when every present cell is one, else `string` (`guessNoteColumnType` in `frame.ts`, which the Obsidian plugin also guesses with). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
 
 ### Type pins
 
@@ -129,7 +130,7 @@ A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in fi
 
 `syncFields()` reconciles the output sockets to the parsed fields and returns `{ removed, retyped }`. A vanished key's output is removed; a key whose socket type changed has its output removed and re-added under the same key; new keys are added. The `document` output (and a subclass's reserved outputs) is never touched. The node has no editor handle, so the caller cleans up cables: `dropStrandedFrontmatterCables` removes every cable from a removed key, and keeps a retyped key's cable only when `canConnect(newType, targetInputType)` still holds. After a retype the caller re-adapts downstream Format Controllers (`reconcileFcTypes`), because a pure retype fires no connection event.
 
-The card reconciles on textarea blur and after a type pick, never per keystroke ([[C95]] commitOnEnter). A blur whose body equals the last reconciled body does nothing.
+The body is a local draft while the textarea has focus and reaches the node on blur; the card reconciles then and after a type pick, never per keystroke ([[C95]] commitOnEnter). A blur whose body equals the last reconciled body does nothing.
 
 ### Knap in a Note
 
@@ -144,7 +145,7 @@ A **quoted Knap field** (`total: "{{ price | round }}"`) puts its rendered value
 
 The card (`NoteNode.tsx`) shows a title bar (collapse chevron, editable title, color swatch), a strip of field rows, the `document` socket and the body. Each field row shows the type glyph, the key, a preview and the output socket; an attached Format Controller formats a numeric preview. Frames preview as `rows×cols Frame`, cubes as `rows×cols×depth Cube`, matrices as `rows×cols Table`, lists as their first four items, and dates in `DD-MMM-YYYY` ([[C44]] dateSerials). The field strip renders even when collapsed, so its sockets and cables survive. The resize floor is 160 by 80 px, plus 22 px per field row and 6 px of padding when any row exists. A resize writes no undo entry; it autosaves on release. When standoffs exist, the release settles them a frame later (the solver measures the painted size) with this note pinned, so its partner re-aligns to it, never the reverse.
 
-The read view renders the Knap output (variables from the last committed sync, keepUnknown) with the frontmatter stripped. A Note renders no `` `=name` `` spans, since it has no inputs. When the Knap render left the body unchanged, the rendered GFM task checkboxes are enabled, and ticking the Nth one toggles the Nth task marker in the source (`toggleTaskMarker`), counting only markers below the frontmatter and outside code, so the index taken from the rendered body lines up with the source. A marker is the shape `marked` treats as a checkbox: a bullet item whose text opens with `[ ]` or `[x]` followed by a space or the line end. Code is a ```` ``` ```` or `~~~` fence, or a four-space block opened after a blank line outside a list; the frontmatter boundary is the parser's own. Any other click enters edit mode.
+The read view renders the Knap output (variables from the last committed sync, keepUnknown) with the frontmatter stripped. A Note renders no `` `=name` `` spans, since it has no inputs. When the Knap render left the body unchanged, the rendered GFM task checkboxes are enabled, and ticking the Nth one toggles the Nth task marker in the source (`toggleTaskMarker`), counting only markers below the frontmatter and outside code, so the index taken from the rendered body lines up with the source. A marker is the shape `marked` treats as a checkbox: a bullet item whose text opens with `[ ]` or `[x]` followed by a space or the line end. Code is a ```` ``` ```` or `~~~` fence, closed only by a bare run of the same character at least as long as the opener (`fencedLines` in `managedBlock.ts`, which the renderer's comment stripping and managed blocks also read), or a four-space block opened after a blank line outside a list; the frontmatter boundary is the parser's own. Any other click enters edit mode.
 
 ## Reports
 
@@ -235,7 +236,7 @@ In the Report overlay every figure kind (chart, Mermaid, picture, SVG, Frame, Cu
 | Form | Rendered as |
 |---|---|
 | `[[target#heading\|alias]]`, `![[…]]` | a `sol-md__wikilink` span (the embed variant for `!`); its text is the alias, else the target plus heading |
-| `#tag` at a word start (the start of the text, or after whitespace or an opening bracket) | a `sol-md__tag` span. A tag is `#`, then a letter or underscore, then letters, digits, `_`, `-` or `/`. An error code (`#NAME?`, `#DIV/0!`, `#N/A`) and an all-digit tag (a heading count) are not tags. |
+| `#tag` at a word start (the start of the text, or after whitespace or an opening bracket) | a `sol-md__tag` span. A tag is `#`, then letters, digits, `_`, `-` or `/`, not all digits, as Obsidian reads one; Vault Folder's `tags` column reads inline tags by the same rule (`TAG_BODY` in `vaultCube.ts`). An error code (`#NAME?`, `#DIV/0!`, `#N/A`) and an all-digit tag (a heading count) are not tags. |
 | `==text==` | `<mark class="sol-md__hl">` |
 | `$tex$` (no space just inside the dollars, no digit after) and `$$tex$$` | KaTeX once its chunk has loaded, else the source in a pending span; a KaTeX failure shows the TeX escaped |
 | `> [!kind]± Title` | a callout. The kind picks an icon and, for failure, fail, missing, danger, error and bug, the danger ink. An unknown kind reads as `note`, and a blank title uses the capitalized kind. |
@@ -250,7 +251,7 @@ Opened on a **Note**, the panel is read-only: the title, the dock and close butt
 
 Opened on a **Report**:
 
-- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing writes `node.body` and schedules an autosave. Sockets reconcile on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
+- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing keeps a local draft ([[C95]] commitOnEnter). The draft reaches `node.body`, with an autosave and a socket reconcile, on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab; inserting an embed commits it at once. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
 - **Preview pane.** Renders `templateSource(draft)` against the last compute's `templateVars`, 250 ms after the last keystroke. It renders from a debounced copy of the draft because re-parsing on every keystroke would remount the whole pane, jumping the scroll and remounting embeds. The previous render stays up while the next one settles. Errors replace the preview with their `line:column` lines.
 - **Embed Note.** Lists every Note in the graph. Picking one inserts `{{ <name> }}` as its own paragraph at the caret (the Note's addressable name, minted if missing), mints the input, and wires the Note's `document` output to it.
 - **Filters.** A searchable list of every standard filter with its example; a click inserts ` | <example>` at the caret.

@@ -425,13 +425,14 @@ export class ImportObsidianNode extends NoteNode {
   }
 
   private _wiredPath = "";
-  private _seenGen = connectionStore.gen();
+  private _seenGen = `${connectionStore.gen()}:${connectionStore.token(this.id)}`;
 
   data(inputs?: { path?: (string | null)[] }): ReturnType<NoteNode["data"]> {
     const wired = (readInput(inputs?.path, "") ?? "").trim();
     const readable = hasFs() || isDemoVaultPath(getVaultRoot());
-    // "Refresh all connections" re-reads the note here, so a card that is not mounted (in a composite, a collapsed group) refreshes too.
-    const gen = connectionStore.gen();
+    // A refresh (all connections, or this card's own timer) re-reads the note here, so a card that is not mounted refreshes too.
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
+    const gen = `${connectionStore.gen()}:${connectionStore.token(this.id)}`;
     const refresh = gen !== this._seenGen;
     this._seenGen = gen;
     // Dedupe on the raw wired value, not fileName (which gains `.md`), or a stable input reloads forever.
@@ -486,6 +487,6 @@ export class ImportObsidianNode extends NoteNode {
     await view?.rerenderNode(this.id);
     const editor = getOwningEditor(this.id);
     if (editor && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
-    scheduleConnectionRecalc();
+    scheduleConnectionRecalc(this.id);
   }
 }

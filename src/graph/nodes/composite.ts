@@ -18,6 +18,7 @@ import { isGraphRebuilding } from "../process";
 import { loopMembers, seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
+import { connectionStore } from "../connectionStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 import { PlaceholderNode } from "./placeholder";
@@ -189,6 +190,15 @@ export class CompositeOutputNode extends ClassicPreset.Node {
     this.cachedResult = v;
     return { value: v };
   }
+}
+
+function nestedNodeIds(editor: NodeEditor<Schemes>, out: string[] = []): string[] {
+  for (const n of editor.getNodes()) {
+    out.push(n.id);
+    const inner = (n as unknown as { internalEditor?: NodeEditor<Schemes> }).internalEditor;
+    if (inner) nestedNodeIds(inner, out);
+  }
+  return out;
 }
 
 export class CompositeNode extends ClassicPreset.Node {
@@ -847,6 +857,7 @@ export class CompositeNode extends ClassicPreset.Node {
         return m ? [m.uncertainty ?? null, m.distribution] : null;
       }),
       edits: this.internalEditSeq,
+      live: connectionStore.liveStamp(nestedNodeIds(this.internalEditor)),
       mode: this.runMode,
       goalSeek: this.goalSeek,
       monteCarlo: this.monteCarlo,
