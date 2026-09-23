@@ -96,8 +96,20 @@ export function remapNodeRefs(target: NodeRefs, idMap: ReadonlyMap<string, strin
   }
   if (Array.isArray(target.members)) target.members = remap(target.members);
   if (Array.isArray(target.steps)) {
-    for (const step of target.steps as Array<{ nodeIds?: unknown } | null>) {
-      if (step && Array.isArray(step.nodeIds)) step.nodeIds = remap(step.nodeIds);
-    }
+    target.steps = (target.steps as Array<{ nodeIds?: unknown } | null>).map((step) =>
+      step && Array.isArray(step.nodeIds) ? { ...step, nodeIds: remap(step.nodeIds) } : step);
   }
+}
+
+/** A copy of `init` with its node references (`hostNodeId`, `members`, step `nodeIds`) passed through `map`; `init` is not touched. */
+export function mapNodeRefs(init: Record<string, unknown>, map: (id: string) => string): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...init };
+  const ids = (xs: unknown[]) => xs.map((m) => (typeof m === "string" ? map(m) : m));
+  if (typeof out.hostNodeId === "string" && out.hostNodeId) out.hostNodeId = map(out.hostNodeId);
+  if (Array.isArray(out.members)) out.members = ids(out.members);
+  if (Array.isArray(out.steps)) {
+    out.steps = (out.steps as Array<{ nodeIds?: unknown } | null>).map((s) =>
+      s && Array.isArray(s.nodeIds) ? { ...s, nodeIds: ids(s.nodeIds) } : s);
+  }
+  return out;
 }
