@@ -204,6 +204,7 @@ describe("VALUE — strict like Excel: unparseable text is #VALUE!, not FX's sil
     expect(isSolError(call("VALUE", "abc"))).toBe(true);
     expect(isSolError(call("VALUE", ""))).toBe(true);
     expect(isSolError(call("VALUE", true))).toBe(true); // Excel: VALUE(TRUE) is #VALUE!
+    expect(isSolError(call("VALUE", "0x1F"))).toBe(true); // JS Number() would read 31
   });
   it("FX still returns 0 for garbage (tripwire)", () => {
     expect(fx.VALUE("abc")).toBe(0);
