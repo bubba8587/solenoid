@@ -25,7 +25,7 @@ While open, the panel polls the graph every 300 ms and re-renders only when an o
 ## Acting on rows
 
 - A plain click on a row does nothing, to avoid jumpy recentering.
-- A double click selects the node and pans it to the center (`focusNode`, also the Command Palette's jump-to-node). It sizes through `measuredBox` ([[D64]] oneSizeRead), so a collapsed group centers on its visible box.
+- A double click selects the node and pans it to the center (`focusNode`). It sizes through `measuredBox` ([[D64]] oneSizeRead), so a collapsed group centers on its visible box.
 - Ctrl or Cmd click and Shift click add to the selection or select a range without recentering; on a touch device in select mode a tap accumulates too.
 - On mobile a plain tap selects and jumps, since there is no double click.
 - Ctrl or Cmd+F, without Shift, opens the panel and focuses its search, except under a modal (`keyUnderModal`), where the search would open behind it and take its focus.

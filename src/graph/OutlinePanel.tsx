@@ -122,7 +122,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
 }
 
 /** Shared with the palette's jump-to-node. */
-export async function focusNode(id: string) {
+async function focusNode(id: string) {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return;
