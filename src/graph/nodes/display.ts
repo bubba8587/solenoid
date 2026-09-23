@@ -198,8 +198,13 @@ function statusKey(result: number | number[]): string {
   return Array.isArray(result) ? result.join(",") : String(result);
 }
 
+// A blank or error cell in a list status is unknown, so it never alerts.
+export function isAlertMet(cell: unknown): boolean {
+  return typeof cell === "number" && cell !== 0;
+}
+
 function isAlerting(result: number | number[]): boolean {
-  return Array.isArray(result) ? result.some((x) => x !== 0) : result !== 0;
+  return Array.isArray(result) ? result.some(isAlertMet) : isAlertMet(result);
 }
 
 export class RandBetweenNode extends ClassicPreset.Node {
