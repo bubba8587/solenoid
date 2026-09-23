@@ -45,7 +45,22 @@ export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   const main = getEditor();
   if (main?.getNode(nodeId)) return main;
   for (const g of owned) if (g.editor.getNode(nodeId)) return g.editor;
-  return main;
+  return (main && closedSubgraphOf(main, nodeId)) ?? main;
+}
+
+type Subgraphed = { internalEditor?: NodeEditor<Schemes> };
+
+/** A node inside a composite that isn't open: its editor is only reachable through the composite, at any depth. */
+function closedSubgraphOf(editor: NodeEditor<Schemes>, nodeId: string, depth = 0): NodeEditor<Schemes> | null {
+  if (depth > 16) return null;
+  for (const n of editor.getNodes()) {
+    const inner = (n as Subgraphed).internalEditor;
+    if (!inner) continue;
+    if (inner.getNode(nodeId)) return inner;
+    const deeper = closedSubgraphOf(inner, nodeId, depth + 1);
+    if (deeper) return deeper;
+  }
+  return null;
 }
 
 export function getActiveView(): View | null {
