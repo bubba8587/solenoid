@@ -219,16 +219,14 @@ export const documentStore = {
   currentName: (): string => getCurrent(_lib)?.name ?? "Untitled",
   currentFilePath: (): string | null => getCurrent(_lib)?.filePath ?? null,
 
-  bindCurrentToPath(filePath: string, name?: string): void {
-    if (!_lib.currentId) return;
-    _lib = setDocPath(_lib, _lib.currentId, filePath, name);
+  bindToPath(id: string, filePath: string, name?: string): void {
+    _lib = setDocPath(_lib, id, filePath, name);
     persist();
     notify();
   },
 
-  markCurrentFileSaved(at: number = Date.now()): void {
-    if (!_lib.currentId) return;
-    _lib = setDocFileSaved(_lib, _lib.currentId, at);
+  markFileSaved(id: string, at: number = Date.now()): void {
+    _lib = setDocFileSaved(_lib, id, at);
     persist();
     notify();
   },

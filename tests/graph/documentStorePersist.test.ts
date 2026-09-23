@@ -87,13 +87,13 @@ describe("per-doc autosave keys", () => {
 });
 
 describe("the save clock — saveTimeStore reads the CURRENT doc through the provider", () => {
-  it("markCurrentFileSaved stamps only the current doc, and the stamp is persisted", () => {
+  it("markFileSaved stamps only the named doc, and the stamp is persisted", () => {
     documentStore.saveAs("Clock A");
     const a = documentStore.list().find((m) => m.name === "Clock A")!;
     expect(saveTimeStore.lastAutosaveAt()).not.toBeNull(); // stamped when the doc landed in storage
     expect(saveTimeStore.lastFileSaveAt()).toBeNull();     // never written to a file
 
-    documentStore.markCurrentFileSaved();
+    documentStore.markFileSaved(a.id);
     const stamp = saveTimeStore.lastFileSaveAt();
     expect(stamp).not.toBeNull();
 
