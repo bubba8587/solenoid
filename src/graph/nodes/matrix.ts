@@ -221,7 +221,7 @@ export class TableMultNode extends ClassicPreset.Node {
 
 export class TableUnitNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: Mat | null = null;
+  cachedResult: Mat | SolError | null = null;
   literals: Record<string, number> = { n: 3 };
   /** 0, as Excel's MUNIT, or blank, which stays out of sums, counts and element-wise combines. */
   offDiag: "zero" | "blank" = "zero";
@@ -246,7 +246,7 @@ export class TableUnitNode extends ClassicPreset.Node {
 // ─── DIAGONAL ───────────────────────────────────────────────────────────────
 export class TableDiagNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: Mat | null = null;
+  cachedResult: Mat | SolError | null = null;
   offDiag: "zero" | "blank" = "zero";
   width = 180; height = 190;
 
@@ -269,7 +269,7 @@ export class TableDiagNode extends ClassicPreset.Node {
 // ─── OUTER ────────────────────────────────────────────────────────────────────
 export class TableOuterNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: Mat | null = null;
+  cachedResult: Mat | SolError | null = null;
   width = 180; height = 200;
 
   constructor(init?: { label?: string }) {
