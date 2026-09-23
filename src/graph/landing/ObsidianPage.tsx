@@ -93,18 +93,18 @@ export default function ObsidianPage() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Two parts that share one set of types. The Solenoid Properties plugin puts
-                  lists, tables, frames and cubes into Obsidian&apos;s properties, edited in
-                  Solenoid&apos;s own table editor. The Solenoid app brings spreadsheet math to
-                  the vault: it reads and writes frontmatter properties, pulls tasks from{" "}
+                  Solenoid turbocharges your Obsidian notes with real spreadsheet
+                  capabilities. You can manage frontmatter properties, read{" "}
                   <a href="https://tasknotes.dev/" target="_blank" rel="noreferrer">
                     TaskNotes
-                  </a>
-                  , and writes computed values into your notes with{" "}
+                  </a>{" "}
+                  data, and insert values into your notes via{" "}
                   <a href="https://github.com/obsidianmd/knap" target="_blank" rel="noreferrer">
                     Knap
                   </a>{" "}
-                  and Reports.
+                  + Reports. The Solenoid Properties plugin puts lists, tables, frames and
+                  cubes into Obsidian&apos;s properties, edited in Solenoid&apos;s own table
+                  editor.
                 </p>
               </Reveal>
               <Reveal delay={220}>
