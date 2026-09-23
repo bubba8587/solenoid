@@ -1,12 +1,12 @@
 // [[D10]] onePrunePath. Mechanics: tree/specs/canvas/input-cable-pruning.md.
-import { getActiveEditor } from "../activeGraph";
+import { getOwningEditor } from "../activeGraph";
 
 /** `gone` is the set of departing keys, or a predicate over the target-input key for the complement case. */
 export async function dropInputCables(
   nodeId: string,
   gone: Iterable<string> | ((targetInput: string) => boolean),
 ): Promise<void> {
-  const editor = getActiveEditor();
+  const editor = getOwningEditor(nodeId);
   if (!editor) return;
   const test = typeof gone === "function"
     ? gone
@@ -22,7 +22,7 @@ export async function dropOutputCables(
   nodeId: string,
   gone: Iterable<string> | ((sourceOutput: string) => boolean),
 ): Promise<void> {
-  const editor = getActiveEditor();
+  const editor = getOwningEditor(nodeId);
   if (!editor) return;
   const test = typeof gone === "function"
     ? gone

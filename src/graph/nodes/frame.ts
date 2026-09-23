@@ -7,7 +7,7 @@ import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRef
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
-import { getActiveView, getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
 import { readFilterValue } from "./list";
 import type { FrameHint } from "../frameHint";
@@ -2419,7 +2419,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         await dropInputCables(this.id, removed); // [[D10]] onePrunePath
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
-        await getActiveView()?.rerenderNode(this.id);
+        await getOwningView(this.id)?.rerenderNode(this.id);
       })();
     });
   }
