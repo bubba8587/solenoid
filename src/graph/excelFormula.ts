@@ -521,15 +521,17 @@ function applyErrorHandler(name: string, argv: unknown[]): unknown {
     case "IFERROR":
     case "IFNA": {
       const fallback = argv.length > 1 ? argv[1] : null;
-      const walk = (v: unknown, f: unknown): unknown =>
-        isArr(v) ? v.map((x, i) => walk(x, isArr(f) ? f[i] : f)) : caught(v) ? f : v;
-      return walk(value, fallback);
+      if (!isArr(value) && !isArr(fallback)) return caught(value) ? fallback : value;
+      return mapCells([value, fallback], (v, f) => (caught(v) ? f : v));
     }
-    case "ERROR.TYPE":
-      return mapOne(value, (v) => {
+    case "ERROR.TYPE": {
+      const walk = (v: unknown): unknown => {
+        if (isArr(v)) return v.map(walk);
         const e = asSol(v);
         return e ? ERROR_TYPE_NUM[e.code] ?? 3 : solError("#N/A", "ERROR.TYPE: the value is not an error");
-      });
+      };
+      return walk(value);
+    }
     default: {
       const walk = (v: unknown): unknown => (isArr(v) ? v.map(walk) : caught(v));
       return walk(value);
@@ -540,9 +542,6 @@ function applyErrorHandler(name: string, argv: unknown[]): unknown {
 const isArr = (v: unknown): v is unknown[] => Array.isArray(v);
 
 const isErr = (v: unknown): boolean => isSolError(v) || v instanceof Error;
-
-const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
-  isArr(v) ? v.map(f) : f(v);
 
 // ─── Rank-aware element-wise mapping ([[C15]] matricesInFormulas — the broadcast-rules table) ────────
 

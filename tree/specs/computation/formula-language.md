@@ -233,7 +233,7 @@ If every list argument is empty, the answer is `[]`.
 
 ## Broadcasting
 
-`mapCells(argv, cellFn)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, and function broadcasting ([[D27]] oneBroadcast). It owns shape only; `cellFn` owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
+`mapCells(argv, cellFn)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, `IFERROR` and `IFNA`, and function broadcasting ([[D27]] oneBroadcast). It owns shape only; `cellFn` owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
 
 - A value nested deeper than a matrix (a matrix cell that is itself an array) answers one `#SHAPE!`.
 - Each argument first collapses a singleton: a 1×1 matrix and a one-element list are their scalar, so `[5] + [1,2,3]` is `[6,7,8]` (B10, B11).
@@ -294,9 +294,9 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[D4
 
 `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` (`ERROR_HANDLER_FUNCTIONS`) are handled by `applyErrorHandler` before error propagation. An operand counts as an error when it is a `SolError` or a Formula.js `Error`. `IFNA` and `ISNA` catch only `#N/A`; `ISERR` catches everything except `#N/A`; the rest catch every error.
 
-- `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. A list or matrix is walked cell by cell; when the fallback is also a list, cell `i` uses fallback cell `i`. A missing fallback is `null`.
+- `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. When either argument is a list or matrix, the two broadcast through `mapCells` like an operator's operands ([[D27]] oneBroadcast): a list fallback reads as one row across a matrix, and a cell past a shorter operand's edge is `null`. A missing fallback is `null`.
 - `ISERROR`, `ISERR`, `ISNA`: TRUE or FALSE, walked cell by cell over lists and matrices.
-- `ERROR.TYPE`: per element of a list, Excel's number for the code (`#DIV/0!` 2, `#VALUE!` 3, `#REF!` 4, `#NAME?` 5, `#N/A` 7, and 6 for `#NUM!` and the Solenoid codes that split it: `#DOMAIN!`, `#OVERFLOW!`, `#CONV!`); any other code is 3; a non-error answers `#N/A`.
+- `ERROR.TYPE`: per cell of a list or matrix, Excel's number for the code (`#DIV/0!` 2, `#VALUE!` 3, `#REF!` 4, `#NAME?` 5, `#N/A` 7, and 6 for `#NUM!` and the Solenoid codes that split it: `#DOMAIN!`, `#OVERFLOW!`, `#CONV!`); any other code is 3; a non-error answers `#N/A`.
 
 ## LAMBDA
 
