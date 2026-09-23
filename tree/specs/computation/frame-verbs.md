@@ -54,7 +54,7 @@ A verb that moves or rewrites cells (sort, distinct, head, filter, slice, fill, 
 
 `makeHeaders(names, ncols)` is the one naming rule, used by every builder and every verb that emits new names. It returns exactly `ncols` names: each given name is trimmed; a blank becomes `Col{i+1}` (1-based position); a repeat takes the smallest free integer suffix starting at 2 (`Date, Name, Date` becomes `Date, Name, Date2`). Names are processed left to right, so the later of two colliding columns is the one renamed. The Rust engine's `make_headers` is the same algorithm.
 
-Column lookup is exact and case-sensitive everywhere a verb needs a column (`requireColumn`); a missing name is `#REF!` with the message `column "<name>" not found`. The looser `getColumn` (used by Get Column and the `column` backend call) trims the name, matches exactly, and otherwise accepts a bare integer string as a 1-based column index. The engine's `engine_column` follows the same rule except that it matches the name untrimmed (only the index form is trimmed).
+Column lookup is exact and case-sensitive everywhere a verb needs a column (`requireColumn`); a missing name is `#REF!` with the message `column "<name>" not found`. The looser `getColumn` (used by Get Column and the `column` backend call) trims the name, matches exactly, and otherwise accepts a bare integer string as a 1-based column index. The engine's `engine_column` follows the same rule.
 
 `addColumn(f, name, values, type = "number")` appends a column, or replaces the column already holding that name in place. A `Name (unit)` suffix is split off first and tags a number column with the unit; an appended name is de-duplicated with `makeHeaders`, and a replaced column drops its `raw`.
 

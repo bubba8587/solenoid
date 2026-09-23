@@ -2021,8 +2021,9 @@ fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
         .iter()
         .position(|c| c.name().as_str() == key)
         .or_else(|| {
-            key.parse::<usize>()
-                .ok()
+            (!key.is_empty() && key.bytes().all(|b| b.is_ascii_digit()))
+                .then(|| key.parse::<usize>().ok())
+                .flatten()
                 .filter(|&i| i >= 1 && i <= frame.df.width())
                 .map(|i| i - 1)
         })?;
