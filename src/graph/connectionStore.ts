@@ -1,7 +1,7 @@
 // [[D32]] refreshOutsideRebuild, [[C103]] untrustedContentSeams
 import { createNotifier } from "./storeKit";
-import { processGraph, getEditor } from "./process";
-import { getOwningEditor } from "./activeGraph";
+import { processGraph } from "./process";
+import { allTopEditors } from "./activeGraph";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -95,9 +95,7 @@ function hasDeep(editor: NodeEditor<Schemes>, id: string): boolean {
 
 // A card inside a deleted composite is never forgotten one by one, so its timer checks before it fires.
 function nodeExists(id: string): boolean {
-  const main = getEditor();
-  const owner = getOwningEditor(id);
-  return (!!owner && hasDeep(owner, id)) || (!!main && hasDeep(main, id));
+  return allTopEditors().some((e) => hasDeep(e, id));
 }
 
 

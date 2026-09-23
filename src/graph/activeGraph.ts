@@ -48,6 +48,16 @@ export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   return main;
 }
 
+/** Every live graph's top editor: the main one, a drill-in, each owned canvas. */
+export function allTopEditors(): NodeEditor<Schemes>[] {
+  const out = new Set<NodeEditor<Schemes>>();
+  const main = getEditor();
+  if (main) out.add(main);
+  if (_override) out.add(_override.editor);
+  for (const g of owned) out.add(g.editor);
+  return [...out];
+}
+
 export function getActiveView(): View | null {
   return _override?.view ?? getView();
 }

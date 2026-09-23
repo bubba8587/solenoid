@@ -1,14 +1,13 @@
 // [[D32]] refreshOutsideRebuild
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 import { CompositeNode, CompositeOutputNode } from "../../src/graph/nodes/composite";
 import { WebSourceNode } from "../../src/graph/nodes/connection";
 import { NumberInputNode } from "../../src/graph/nodes/input";
 import { connectionStore, refreshConnection, refreshAllConnections, scheduleConnectionRecalc } from "../../src/graph/connectionStore";
-import { setEditorRefs } from "../../src/graph/process";
+import { registerOwnedGraph } from "../../src/graph/activeGraph";
 
 afterEach(() => { vi.useRealTimers(); });
 
@@ -64,10 +63,9 @@ describe("a heavy composite holding a live card", () => {
 describe("auto-refresh runs from the card's data(), not its component", () => {
   it("a card inside a composite refreshes on its cadence, and a deleted one stops", async () => {
     vi.useFakeTimers();
+    // An owned graph, not the main editor: the refresh's processGraph then has no pass to run.
     const editor = new NodeEditor<Schemes>();
-    const engine = new DataflowEngine<Schemes>();
-    editor.use(engine);
-    setEditorRefs(editor, engine, { rerenderNode: async () => {} } as unknown as View);
+    const unregister = registerOwnedGraph({ editor, view: {} as View });
 
     const card = new WebSourceNode({ url: "", refreshMinutes: 1 });
     const c = await manualCompositeWith(card as unknown as Schemes["Node"]);
@@ -83,6 +81,7 @@ describe("auto-refresh runs from the card's data(), not its component", () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(connectionStore.token(card.id)).toBe(t0 + 1);
     expect(connectionStore.autoRefreshMinutes(card.id)).toBe(0);
+    unregister();
   });
 
   it("turning the cadence to 0 clears the timer", () => {
