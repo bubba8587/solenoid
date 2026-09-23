@@ -73,7 +73,7 @@ The Schedule node is in the Add menu's Plan category.
 | `holidays` | date list | Days to skip alongside the weekend. Read only in Working days mode. The Holidays node feeds it. |
 | `weekend_code` | number | Excel's `WORKDAY.INTL` code: 1 is Saturday and Sunday (the default), 2 is Sunday and Monday, 11 to 17 a single day off. |
 | `status` | date | The status date. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars. |
-| `hours` | number | Hours in a working day, default 8 (a value of 0 or less reads as 8). It converts hour durations and Work, and in Minutes mode it is the length of the working day from 08:00. |
+| `hours` | number | Hours in a working day, default 8 (a value of 0 or less reads as 8). It converts hour durations and Work, and in Minutes mode it is the length of the working day from 08:00 (a day longer than 16 hours starts earlier, so it ends at midnight). |
 
 The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, over the one working-day implementation the app shares.
 

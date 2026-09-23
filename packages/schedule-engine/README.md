@@ -62,7 +62,8 @@ Saturday, 11 to 17 a single day), `holidays`, `precision` and `intervals`.
 - **Minutes**: Project's model. `intervals` are the working spans of a day in minutes from
   midnight (default 08:00 to 12:00 and 13:00 to 17:00), and durations in days convert through
   their sum. `intervalsForHours(h)` builds a day of `h` hours from 08:00, with Project's lunch
-  hour when the day is over 4 and at most 8 hours. An FS successor may start at 13:00 the same
+  hour when the day is over 4 and at most 8 hours; a day over 16 hours starts earlier so it
+  ends at midnight. An FS successor may start at 13:00 the same
   day, and a finish is 17:00.
 
 **The input** (`ScheduleInput`): the tasks, the project `start`, the project calendar, and:

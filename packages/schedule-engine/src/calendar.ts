@@ -38,9 +38,10 @@ export function weekendDays(code: number | undefined): number[] {
 export const DEFAULT_INTERVALS: ReadonlyArray<readonly [number, number]> = [[480, 720], [780, 1020]];
 
 export function intervalsForHours(hours: number): Array<[number, number]> {
-  const minutes = Math.max(1, Math.round(hours * 60));
+  const minutes = Math.max(1, Math.min(MINUTES_PER_DAY, Math.round(hours * 60)));
   if (minutes > 240 && minutes <= 480) return [[480, 720], [780, 780 + minutes - 240]];
-  return [[480, Math.min(MINUTES_PER_DAY, 480 + minutes)]];
+  const start = Math.min(480, MINUTES_PER_DAY - minutes);
+  return [[start, start + minutes]];
 }
 
 export function calendarKey(spec: CalendarSpec): string {
