@@ -20,6 +20,13 @@ describe("a Note's frontmatter at every rank", () => {
     expect(n.fieldType("n")).toBe("string");
   });
 
+  it("a date read as text is the ISO text written, never its serial; a mixed list loses nothing", () => {
+    const n = note("due: 2026-09-02\nwhen: [2026-09-02]\nmixed: [1, two]", { due: "string", when: "strlist" }) as unknown as { _fieldValues: Map<string, unknown> };
+    expect(n._fieldValues.get("due")).toBe("2026-09-02");
+    expect(n._fieldValues.get("when")).toEqual(["2026-09-02"]);
+    expect(n._fieldValues.get("mixed")).toEqual(["1", "two"]);
+  });
+
   it("types a frame column as Date when every cell in it is a date", () => {
     const n = note("budget:\n  - item: Cabinets\n    ordered: 2026-09-02\n  - item: Tile\n    ordered: 2026-09-12") as unknown as { _fieldValues: Map<string, unknown> };
     const frame = n._fieldValues.get("budget");

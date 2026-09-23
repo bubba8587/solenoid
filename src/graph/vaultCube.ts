@@ -4,7 +4,7 @@ import {
   type CubeValue, type CubeCell, type FrameColType,
 } from "./frame";
 import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
-import { parseDate } from "./nodes/dateSerial";
+import { parseDate, formatDateSerial } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 import type { PluginColumnTypes, ColumnPicks } from "./pluginColumnTypes";
 
@@ -241,7 +241,7 @@ function resolveHint(key: string, parsed: ParsedNote[], sources: VaultTypeSource
 
 function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[], picks?: ColumnPicks): { name: string; cells: CubeCell[]; type?: FrameColType } {
   const shape: TypeHint = hint ?? guessShape(key, parsed);
-  const cells: CubeCell[] = parsed.map((p) => cellFor(p.fields.get(key)?.value, shape, picks));
+  const cells: CubeCell[] = parsed.map((p) => { const f = p.fields.get(key); return cellFor(f?.value, shape, picks, f?.guessed); });
   const kind = shape.kind === "list" || shape.kind === "matrix" ? shape.elem : shape.kind;
   const type: FrameColType | undefined =
     kind === "frame" ? undefined
@@ -287,7 +287,16 @@ function scalarKindOfValue(v: FrontmatterScalar): ScalarKind {
   return "string";
 }
 
-function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}): CubeCell {
+/** A date the reader turned into a serial, read under a text type, is the ISO text written. */
+function datesToText(value: FrontmatterValueLoose | undefined): FrontmatterValueLoose | undefined {
+  const one = (v: unknown): unknown =>
+    Array.isArray(v) ? v.map(one) : typeof v === "number" ? formatDateSerial(v, "YYYY-MM-DD") : v;
+  return one(value) as FrontmatterValueLoose | undefined;
+}
+
+function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}, guessed?: string): CubeCell {
+  const textShape = "elem" in shape ? shape.elem === "string" : shape.kind === "string";
+  if (textShape && guessed !== undefined && guessed.startsWith("date")) value = datesToText(value);
   if (value === undefined || value === null) return null;
   if (shape.kind === "frame") {
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null) {

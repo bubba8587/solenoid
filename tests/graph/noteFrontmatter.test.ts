@@ -47,6 +47,18 @@ describe("parseNoteFrontmatter", () => {
     expect(r.fields[2].guessed).toBe("strlist");
   });
 
+  it("a list mixing families is text, and a date in it keeps the text written", () => {
+    const f = (yaml: string) => parseNoteFrontmatter(`---\n${yaml}\n---\n`).fields[0];
+    expect(f("l: [2026-09-01, foo]")).toMatchObject({ value: ["2026-09-01", "foo"], guessed: "strlist" });
+    expect(f("l: [1, two]")).toMatchObject({ value: [1, "two"], guessed: "strlist" });
+    expect(f("l: [true, 1]").guessed).toBe("strlist");
+    expect(f("g: [[2026-09-01, x]]")).toMatchObject({ value: [["2026-09-01", "x"]], guessed: "strtable" });
+  });
+
+  it("a day the month does not have is text, never rolled into the next month", () => {
+    expect(parseNoteFrontmatter("---\nd: 2026-02-30\n---\n").fields[0]).toMatchObject({ value: "2026-02-30", guessed: "string" });
+  });
+
   it("treats quoted numbers/dates/bools as strings", () => {
     const r = parseNoteFrontmatter(`---\nid: "42"\nlabel: 'true'\nwhen: "2026-01-01"\n---`);
     expect(r.fields.map((f) => [f.guessed, f.value])).toEqual([
@@ -56,7 +68,7 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
-  it("parses inline flow arrays and types from the first element", () => {
+  it("parses inline flow arrays, one family each", () => {
     const r = parseNoteFrontmatter('---\ntags: [a, b, c]\nnums: [1, 2, 3]\nflags: [true, false]\n---');
     expect(r.fields).toEqual([
       { key: "tags", value: ["a", "b", "c"], guessed: "strlist" },

@@ -343,7 +343,10 @@ matrix of numbers, text, dates, Booleans or complex numbers (`noteFrontmatter.ts
 rank and the family, `FIELD_SOCKETS` in `nodes/annotation.ts` mints the socket, and the lattice's
 `typeAtRank` reshapes a pinned family onto the value's rank), a frame, a cube and a complex
 scalar. A frame's text, number and Boolean columns keep their type, and a column whose every
-cell is an ISO date is a Date column (`dateColumns`). The Vault Folder reader holds a matrix in
+cell is an ISO date is a Date column (`dateColumns`). A list or matrix that mixes families is text,
+never typed by its first element, and a date read as text (in a text list, or under a Text pin or
+a `text` type in `types.json`) is the ISO text written, never its serial. A day the month does not
+have (`2026-02-30`) is text. The Vault Folder reader holds a matrix in
 a cube cell as its rows, and `obsidianTypes.ts` maps every plugin type id to a `TypeHint`
 (a cube takes the frame hint: rows of records either way). Complex cells are text in a cube,
 as Excel's complex numbers are.
