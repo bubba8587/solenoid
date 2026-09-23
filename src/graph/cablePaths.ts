@@ -28,6 +28,30 @@ export function intoSocket(x: number, position: Position): number {
   return position === Position.Right ? x - SOCKET_OVERLAP : position === Position.Left ? x + SOCKET_OVERLAP : x;
 }
 
+const OPPOSITE: Record<Position, Position> = {
+  [Position.Left]: Position.Right,
+  [Position.Right]: Position.Left,
+  [Position.Top]: Position.Bottom,
+  [Position.Bottom]: Position.Top,
+};
+
+/** A cable being dragged from a socket: the origin leaves from the side its handle faces (a flipped socket's side), and the pointer end faces back at it. */
+export function draggedCableArgs(
+  side: "output" | "input",
+  fromPosition: Position,
+  from: Pt,
+  to: Pt,
+  originAngleDeg: number | null,
+): PathArgs {
+  const origin = { x: intoSocket(from.x, fromPosition), y: from.y, position: fromPosition, angle: originAngleDeg };
+  const pointer = { x: to.x, y: to.y, position: OPPOSITE[fromPosition], angle: null };
+  const [src, tgt] = side === "output" ? [origin, pointer] : [pointer, origin];
+  return {
+    sourceX: src.x, sourceY: src.y, sourcePosition: src.position, sourceAngleDeg: src.angle,
+    targetX: tgt.x, targetY: tgt.y, targetPosition: tgt.position, targetAngleDeg: tgt.angle,
+  };
+}
+
 const STRAIGHT_THRESHOLD = 15;
 
 const straightLine = (sx: number, sy: number, tx: number, ty: number) =>
