@@ -39,7 +39,7 @@ export const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
         return solError("#VALUE!", `Unknown property "${p}" — diameter, area, resistance, ampacity`);
       }
       const w = awgWire(n);
-      if (isSolError(w)) return p === "ampacity" ? null : w;
+      if (isSolError(w)) return w;
       return w[p as keyof typeof w];
     },
     returns: "number", arity: [1, 2],

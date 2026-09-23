@@ -138,6 +138,13 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(String(evalPackFormula("EMSPECTRUMBAND(5e14)"))).toMatch(/^Visible/);
     expect(evalPackFormula("EMSPECTRUMBAND(, 0.05)")).toBe("Microwave");
   });
+  it("a non-positive wavelength is #DOMAIN!, like a non-positive frequency", () => {
+    const wl = evalPackFormula("EMSPECTRUMBAND(, -1)");
+    expect(isSolError(wl) && wl.code).toBe("#DOMAIN!");
+    const n = new EmSpectrumNode();
+    n.literals = {};
+    expect(isSolError(n.data({ wavelength: [0] }).band)).toBe(true);
+  });
   it("PHYSICSCONSTANT reads the table by id, case-sensitively", () => {
     expect(evalPackFormula('PHYSICSCONSTANT("c")')).toBe(299792458);
     const bad = evalPackFormula('PHYSICSCONSTANT("speed")');

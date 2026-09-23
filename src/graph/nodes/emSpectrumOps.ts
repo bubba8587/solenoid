@@ -4,7 +4,7 @@ import { solError, type SolError } from "../errorValue";
 
 const C = 299792458; // m/s
 
-/** Takes a wavelength in meters; the band boundaries follow ISO 21348. */
+/** Takes a wavelength in meters. Textbook boundaries, not ISO 21348's (which puts visible at 380–760 nm and X-ray down to 0.001 nm). */
 export function emBand(wavelengthM: number): string {
   const nm = wavelengthM * 1e9;
   if (wavelengthM >= 1) return "Radio";
@@ -23,9 +23,9 @@ export function emBand(wavelengthM: number): string {
   return "Gamma";
 }
 
-/** Frequency wins when both are given; null means no usable input, and a non-positive or non-finite frequency is #DOMAIN!. */
+/** Frequency wins when both are given; null means no usable input, and a non-positive or non-finite frequency or wavelength is #DOMAIN!. */
 export function emSpectrum(f: number | null, wl: number | null): { band: string; freq: number; wavelength: number } | SolError | null {
-  const fq = typeof f === "number" ? f : typeof wl === "number" && wl > 0 ? C / wl : null;
+  const fq = typeof f === "number" ? f : typeof wl === "number" ? (wl > 0 ? C / wl : NaN) : null;
   if (fq === null) return null;
   if (!(fq > 0) || !Number.isFinite(fq)) {
     return solError("#DOMAIN!", "Needs a positive frequency or wavelength");

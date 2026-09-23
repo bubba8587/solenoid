@@ -55,7 +55,7 @@ export function nearestESeries(value: number, series: ESeriesOp): number {
 
 const AWG_AMPACITY_75C: Record<number, number> = {
   [-3]: 230, [-2]: 200, [-1]: 175, 0: 150, 1: 130, 2: 115, 3: 100,
-  4: 85, 6: 65, 8: 50, 10: 35, 12: 25, 14: 20, 16: 18, 18: 14,
+  4: 85, 6: 65, 8: 50, 10: 35, 12: 25, 14: 20,
 };
 
 /** Diameter in mm, area in mm², resistance in Ω/km (ρ_cu = 1.724e-8 Ω·m). */

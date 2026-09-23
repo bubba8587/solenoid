@@ -65,7 +65,7 @@ export class AwgNode extends ClassicPreset.Node {
   cachedDiameter: number | SolError | null = null;
   cachedArea: number | SolError | null = null;
   cachedResistance: number | SolError | null = null;
-  cachedAmpacity: number | null = null;
+  cachedAmpacity: number | SolError | null = null;
   width = 210;
   height = 220;
 
@@ -84,11 +84,11 @@ export class AwgNode extends ClassicPreset.Node {
     let diameter: number | SolError | null = null;
     let area: number | SolError | null = null;
     let resistance: number | SolError | null = null;
-    let ampacity: number | null = null;
+    let ampacity: number | SolError | null = null;
     if (typeof n === "number") {
       const w = awgWire(n);
       if (isSolError(w)) {
-        diameter = area = resistance = w;
+        diameter = area = resistance = ampacity = w;
       } else {
         ({ diameter, area, resistance, ampacity } = w);
       }

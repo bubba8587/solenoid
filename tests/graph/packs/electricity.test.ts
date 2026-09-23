@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ELECTRICITY_FORMULAS, ELECTRICITY_PACK } from "../../../src/graph/packs/electricity";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { ResistorCodeNode } from "../../../src/graph/nodes/electrical";
+import { ResistorCodeNode, AwgNode } from "../../../src/graph/nodes/electrical";
 import { decodeResistor } from "../../../src/graph/nodes/electricalOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -27,6 +27,15 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(evalPackFormula('AWGWIRE(12, "ampacity")')).toBe(25);
     const bad = evalPackFormula('AWGWIRE(12, "sparkles")');
     expect(isSolError(bad) && bad.code).toBe("#VALUE!");
+  });
+  it("AWG ampacity: 16 and 18 have no 75 °C rating; out of range is #DOMAIN! on every output", () => {
+    expect(evalPackFormula('AWGWIRE(14, "ampacity")')).toBe(20);
+    expect(evalPackFormula('AWGWIRE(16, "ampacity")')).toBeNull();
+    expect(evalPackFormula('AWGWIRE(18, "ampacity")')).toBeNull();
+    const far = evalPackFormula('AWGWIRE(50, "ampacity")');
+    expect(isSolError(far) && far.code).toBe("#DOMAIN!");
+    const out = new AwgNode().data({ gauge: [50] }) as Record<string, unknown>;
+    for (const k of ["diameter", "area", "resistance", "ampacity"]) expect(isSolError(out[k]), k).toBe(true);
   });
   it("RESISTORCOLORCODE decodes 4- and 5-band markings to ohms", () => {
     expect(evalPackFormula('RESISTORCOLORCODE("brown", "black", "red", "gold")')).toBe(1000);
