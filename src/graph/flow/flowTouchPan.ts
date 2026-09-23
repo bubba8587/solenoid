@@ -18,8 +18,6 @@ export function installTouchCardPan(
   let startY = 0;
   let startVp: Viewport | null = null;
 
-  const dbg = (m: string) => (window as unknown as { __panLog?: string[] }).__panLog?.push(m);
-
   const claims = (t: EventTarget | null): boolean => {
     const target = t as HTMLElement | null;
     const nodeEl = target?.closest?.(".react-flow__node") as HTMLElement | null;
@@ -37,14 +35,12 @@ export function installTouchCardPan(
   };
 
   const down = (e: PointerEvent) => {
-    dbg(`down:${e.pointerType}:${touchCount()}:${String((e.target as HTMLElement)?.className).slice(0, 22)}`);
     if (e.pointerType !== "touch" || touchCount() > 1) return;
     if (!claims(e.target)) return;
     if (touchSelectStore.get()) {
       e.stopPropagation();
       return;
     }
-    dbg("claimed");
     // No preventDefault: the tap's click must still fire so tap-select works.
     e.stopPropagation();
     pointerId = e.pointerId;

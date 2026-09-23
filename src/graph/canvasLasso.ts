@@ -93,8 +93,19 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     lastNodeSig = "";
     cacheNodeRects();
     setLasso({ points: [...points], mode: "touch" });
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    listen(true);
+  }
+  // A lasso the browser never finishes (a cancelled touch, a lost window, Escape) ends unapplied.
+  function onKey(e: KeyboardEvent) {
+    if (e.key === "Escape") cancelLasso();
+  }
+  function listen(on: boolean) {
+    const f = on ? window.addEventListener.bind(window) : window.removeEventListener.bind(window);
+    f("pointermove", onMove as EventListener);
+    f("pointerup", onUp as EventListener);
+    f("pointercancel", cancelLasso);
+    f("blur", cancelLasso);
+    f("keydown", onKey as EventListener);
   }
   function onMove(e: PointerEvent) {
     if (!active) return;
@@ -111,8 +122,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (!active) return;
     active = false;
     lassoActiveStore.set(false);
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
+    listen(false);
     if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }
     if (points.length >= 3) applyLasso(points, latestMode, true);
     setLasso(null);
@@ -125,8 +135,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (!active) return;
     active = false;
     lassoActiveStore.set(false);
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
+    listen(false);
     if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }
     setLasso(null);
   }
@@ -200,8 +209,6 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   container.addEventListener("pointerdown", onDown, true);
   return () => {
     container.removeEventListener("pointerdown", onDown, true);
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-    if (lassoRaf) cancelAnimationFrame(lassoRaf);
+    cancelLasso();
   };
 }
