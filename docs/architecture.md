@@ -38,7 +38,7 @@ This file is the map.
 │                             #     validate-graph.ts (strict-reader CLI), ai-grounding.ts
 │                             #     (model-facing spec CLI), ai-prompt.ts (the palette's AI
 │                             #     loop from a terminal, real key),
-│                             #     formula-node-parity.ts (oneMetricImpl gap report), op-exposure.ts,
+│                             #     formula-node-parity.ts (oneMetricImpl gap report),
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
 │                             #     copy-inventory.ts (shipped-string extract/apply),
 │                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
