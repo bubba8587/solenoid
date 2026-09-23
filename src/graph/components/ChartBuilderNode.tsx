@@ -217,7 +217,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
               minWidth: 0,
               fontSize: 10,
               color: data.cachedString ? "var(--text-dim)" : "var(--text-muted)",
-              fontFamily: "var(--mono-font, ui-monospace, monospace)",
+              fontFamily: "var(--font-mono)",
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",

@@ -13,13 +13,13 @@
 }
 
 .solenoid-standoff__bar {
-  stroke: var(--standoff-bar, rgba(138, 150, 170, 0.26));
+  stroke: rgba(138, 150, 170, 0.26);
   stroke-linecap: round;
   transition: stroke 120ms ease;
 }
 
 .solenoid-standoff__cap {
-  fill: var(--standoff-cap, rgba(138, 150, 170, 0.45));
+  fill: rgba(138, 150, 170, 0.45);
 }
 
 .solenoid-standoff-hit {
@@ -29,15 +29,15 @@
 }
 
 .solenoid-standoff:hover .solenoid-standoff__bar {
-  stroke: var(--standoff-bar-hover, rgba(138, 150, 170, 0.42));
+  stroke: rgba(138, 150, 170, 0.42);
 }
 
 .solenoid-standoff--selected .solenoid-standoff__bar {
-  stroke: var(--standoff-bar-selected, rgba(150, 168, 196, 0.6));
+  stroke: rgba(150, 168, 196, 0.6);
 }
 
 .solenoid-standoff--selected .solenoid-standoff__cap {
-  fill: var(--standoff-cap-selected, rgba(170, 188, 214, 0.85));
+  fill: rgba(170, 188, 214, 0.85);
 }
 
 :root[data-theme="light"] .solenoid-standoff__bar {

@@ -48,7 +48,7 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
           placeholder={DEFAULT_DATE_FORMAT}
           spellCheck={false}
           title={isSolError(parsed) ? parsed.message : undefined}
-          style={{ flex: 1, minWidth: 0, color: bad ? "var(--error, #c0392b)" : undefined }}
+          style={{ flex: 1, minWidth: 0, color: bad ? "var(--sol-error)" : undefined }}
           onFocus={() => { setDraft(raw); setEditing(true); }}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => { commit(draft); setEditing(false); }}

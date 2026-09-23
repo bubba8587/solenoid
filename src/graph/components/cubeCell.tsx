@@ -44,7 +44,7 @@ export function frameCellNode(type: FrameColType, cell: FrameCell, format?: Form
     return <span style={{ color: "var(--text-muted)" }}>—</span>;
   }
   if (isSolError(cell)) {
-    return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
+    return <span title={errorTip(cell)} style={{ color: "var(--sol-error)" }}>{cell.code}</span>;
   }
   const f = formatFrameCell(type, cell, format);
   return <>{f === null ? "" : String(f)}</>;
@@ -113,7 +113,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
     );
   }
   if (isSolError(cell)) {
-    return <span title={errorTip(cell)} style={{ color: "var(--error, #d33)" }}>{cell.code}</span>;
+    return <span title={errorTip(cell)} style={{ color: "var(--sol-error)" }}>{cell.code}</span>;
   }
   if (isUnitCell(cell)) return <>{formatListCell(cell, formatScalar)}</>;
   if (type) return frameCellNode(type, cell, format);
