@@ -1673,7 +1673,7 @@ export type ReduceOp = AggregateOp | "countblank";
 
 export const REDUCE_OP_META = {
   sum:     { label: "SUM",     description: "Sums all values. Excel: `SUM`." },
-  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`." },
+  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`.", keywords: "mean" },
   min:     { label: "MIN",     description: "Smallest value. Excel: `MIN`." },
   max:     { label: "MAX",     description: "Largest value. Excel: `MAX`." },
   count:   { label: "COUNT",   description: "Number of values. Excel: `COUNT`." },
@@ -1681,8 +1681,8 @@ export const REDUCE_OP_META = {
   countblank: { label: "COUNTBLANK", description: "Number of blank (missing) cells. Excel: `COUNTBLANK`." },
   median:  { label: "MEDIAN",  description: "Middle value. Excel: `MEDIAN`." },
   product: { label: "PRODUCT", description: "Multiply all values. Excel: `PRODUCT`." },
-  stdev:   { label: "STDEV.S", description: "Sample standard deviation (`n−1`). Excel: `STDEV.S`." },
-  stdev_p: { label: "STDEV.P", description: "Population standard deviation (`n`). Excel: `STDEV.P`." },
+  stdev:   { label: "STDEV.S", description: "Sample standard deviation (`n−1`). Excel: `STDEV.S`.", keywords: "std sd standard deviation" },
+  stdev_p: { label: "STDEV.P", description: "Population standard deviation (`n`). Excel: `STDEV.P`.", keywords: "std sd standard deviation" },
   var_s:   { label: "VAR.S",   description: "Sample variance (`n−1`). Excel: `VAR.S`." },
   var_p:   { label: "VAR.P",   description: "Population variance (`n`). Excel: `VAR.P`." },
   geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be `> 0`). Excel: `GEOMEAN`." },
@@ -1699,7 +1699,7 @@ export const REDUCE_OP_META = {
   sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ `√n`. scipy `sem`, or `sd(x)/sqrt(n)` in R." },
   cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy `variation`, or `sd(x)/mean(x)` in R." },
   rms:     { label: "RMS",     description: "Root mean square: √ of the mean of the squares." },
-} satisfies Record<ReduceOp, { label: string; description: string; fx?: string }>;
+} satisfies Record<ReduceOp, { label: string; description: string; fx?: string; keywords?: string }>;
 
 export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   if (isDimensionless(dim)) return DIMENSIONLESS;
