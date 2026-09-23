@@ -228,6 +228,24 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
 // generalizes it — was the stricter of the two. The lattice already permits
 // combo→scalar on the grounds that "a combo can be a scalar" (sockets.ts calls it a
 // runtime-accepted risk); collapsing is what makes that promise true.
+describe("text reaching a number-family rung through a wildcard stays one value", () => {
+  const through = (rung: "number" | "list" | "table", v: unknown) => {
+    let got: unknown;
+    const node = {
+      data: (inputs: Record<string, unknown[]>) => { got = inputs.x[0]; return {}; },
+      inputs: { x: { socket: new SolenoidSocket(rung) } },
+    };
+    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    node.data({ x: [v] });
+    return got;
+  };
+  it("is never split into characters or refused as a list of its length", () => {
+    expect(through("number", "abc")).toBe("abc");
+    expect(through("list", "abc")).toEqual(["abc"]);
+    expect(through("table", "abc")).toEqual([["abc"]]);
+  });
+});
+
 describe("coerceInputs — a one-element list collapses at a combo / scalar socket", () => {
   const run = <T>(node: T, inputs: Record<string, unknown[]>) => {
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
