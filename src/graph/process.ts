@@ -66,6 +66,11 @@ export function setGraphChanged(fn: () => void) {
   _graphChanged = fn;
 }
 
+/** Autosave plus a history entry, for an edit that changes no value (a Conduit's rotation). */
+export function notifyGraphChanged(): void {
+  _graphChanged();
+}
+
 let _bulkSettle: (renderOnly?: Set<string>) => Promise<void> = async (r) => { await processGraph(undefined, r); };
 
 export function setBulkSettle(fn: (renderOnly?: Set<string>) => Promise<void>) {
