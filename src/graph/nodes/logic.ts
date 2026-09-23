@@ -594,7 +594,7 @@ export class SwitchNode extends ClassicPreset.Node {
 
   label: string;
   cachedResult: unknown = null;
-  literals: Record<string, number> = { expr: 0, default: 0 };
+  literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
   nextPairId = 0;
