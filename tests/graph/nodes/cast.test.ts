@@ -38,6 +38,24 @@ describe("Cast node", () => {
     expect(isSolError(r[2]) && (r[2] as import("../../../src/graph/errorValue").SolError).code).toBe("#VALUE!");
   });
 
+  it("empty text and 0x/0o/0b literals are #VALUE!, never a silent number ([[B17]] typedValueModel)", () => {
+    for (const t of ["", "   ", "0x1F", "0b11", "0o7"]) {
+      const r = cast("number", t);
+      expect(isSolError(r) && r.code, JSON.stringify(t)).toBe("#VALUE!");
+    }
+  });
+
+  it("reads number text exactly as the formula VALUE does ([[B16]] oneFormulaSurface)", () => {
+    expect(cast("number", "$1,000")).toBe(1000);
+    expect(cast("number", "50%")).toBeCloseTo(0.5, 9);
+    expect(cast("number", "(5)")).toBe(-5);
+  });
+
+  it("casts a logical to text as TRUE/FALSE, as & does", () => {
+    expect(cast("text", true)).toBe("TRUE");
+    expect(cast("text", [false])).toEqual(["FALSE"]);
+  });
+
   it("casts a logical to number via the 0/1 bridge (Excel N(TRUE)=1), scalar and per-cell", () => {
     expect(cast("number", true)).toBe(1);
     expect(cast("number", false)).toBe(0);

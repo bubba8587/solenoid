@@ -261,6 +261,43 @@ describe("affine temperatures (review pins)", () => {
     expect(isSolError(arithmeticCell("pow", degC(20), 2))).toBe(true);
     expect(isUnitCell(arithmeticCell("mul", fromUnit(20, U("K"), "K"), 2))).toBe(true); // kelvin is linear
   });
+  it("a bare number compared with a reading is a reading: 25 °C > 30 is FALSE", () => {
+    const r = compareUnits(degC(25), 30) as { l: number; r: number };
+    expect(r.l > r.r).toBe(false);
+    expect(r.r).toBeCloseTo(303.15, 9);
+    const k = compareUnits(fromUnit(5, U("km"), "km"), 3000) as { l: number; r: number };
+    expect(k.l > k.r).toBe(false); // a linear unit is unchanged: 3000 km
+  });
+  it("Aggregate follows the same rule: a spread or a sum of readings is a delta", async () => {
+    const { AggregateNode } = await import("../../src/graph/nodes/list");
+    const agg = (op: string, list: unknown[]) => new AggregateNode({ op: op as never }).data({ list: [list as never] }).result;
+    const sd = agg("stdev", [degC(20), degC(30)]) as UnitCell;
+    expect(sd.display).toBeUndefined();
+    expect(magnitudeOf(sd)).toBeCloseTo(Math.SQRT2 * 5, 9); // 7.07 K, never −266 °C
+    expect((agg("sum", [degC(20), degC(30)]) as UnitCell).display).toBeUndefined();
+    const avg = agg("avg", [degC(20), degC(30)]) as UnitCell;
+    expect(avg.display).toBe("degC");
+    expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C is a reading
+    expect((agg("sum", [degC(20), 5]) as UnitCell).display).toBe("degC"); // a reading plus a delta
+  });
+});
+
+describe("Math's dimension-preserving ops act on the displayed reading ([[C25]] firstClassUnits)", () => {
+  const run = async (op: string, v: unknown) => {
+    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
+    return new MathFXNode({ op: op as never }).data({ in: [v as never] }).result as UnitCell;
+  };
+  it("ABS(-5 km) is 5 km, INT(1.7 km) is 1 km, INT(20.5 °C) is 20 °C", async () => {
+    const { applyFcUnit, displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const abs = await run("abs", applyFcUnit(-5, "km"));
+    expect(abs.display).toBe("km");
+    expect(displayMagnitudeOf(abs)).toBeCloseTo(5, 9);
+    const int = await run("int", applyFcUnit(1.7, "km"));
+    expect(displayMagnitudeOf(int)).toBeCloseTo(1, 9);
+    const t = await run("int", applyFcUnit(20.5, "degC"));
+    expect(t.display).toBe("degC");
+    expect(displayMagnitudeOf(t)).toBeCloseTo(20, 9);
+  });
 });
 
 describe("the Arithmetic card's unit path classifies a non-finite result (review pin)", () => {

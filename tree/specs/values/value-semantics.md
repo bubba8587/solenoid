@@ -153,6 +153,7 @@ Two placement rules, both found by sweeping `finance.ts` (73 reads, about 20 mul
 ## Boundaries and bridges
 
 - **The logical and number bridge** (`coerceInputs.ts`): 0 and 1 map to FALSE and TRUE, and **NaN maps to null** (an unknown truth value, as in R and pandas), consistent with `coerceLogical`.
+- **Text on a number port** (`coerceInputs.ts` `numericCells`): only a wildcard cable can land text or a complex on a number-family input. It is `#TYPE!`, per cell on a list or matrix port and for the whole node on a scalar port, never a parsed number ([[B17]] typedValueModel). Pinned in `coerceInputs.test.ts`.
 - **The unit-blind boundary, and wired null versus unwired**, are arrival coercion and `readInput`: [[compute-pass]], "Arrival coercion", with the unit rules in [[unit-flow]].
 - **The IPC and frame boundary.** Non-finite numbers and per-cell errors cross the wire as tagged sentinels, and aggregates apply the scalar non-finite guard in both backends: [[frame-verbs]], "The FrameBackend seam".
 - **List ops versus relational verbs** ([[C45]] excelComparisons). List UNIQUE never dedupes error cells, since each is an independent problem, while frame Distinct dedupes by error code (errors as values, SQL identity). List and Frame Sort both put nulls and errors last, in both directions, stably.

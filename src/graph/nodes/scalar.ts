@@ -6,7 +6,8 @@ import { solError, type SolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
-import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, type ArithmeticOp } from "../unitValue";
+import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
+import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helpers ───────────────────────────────────────────────────────────
@@ -351,6 +352,13 @@ export class MathFXNode extends ClassicPreset.Node {
           const rd = mathFnResultDim(this.op, dimOf(cell));
           if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
           const bare = !isUnitCell(cell);
+          // abs / int / even… act on the number the user reads (5 km, 20.5 °C), never
+          // its base-SI magnitude, and the reading keeps its display unit.
+          const shown = !bare && cell.display && MATHFN_PRESERVE.has(this.op) ? fcUnitToUnit(cell.display) : null;
+          if (shown && !bare && dimEqual(shown.dim, cell.dim)) {
+            const r = computeRaw(displayMagnitudeOf(cell));
+            return r === null ? domainErr() : fromUnit(r, shown, cell.display);
+          }
           const x = magnitudeOf(cell);
           const raw = computeRaw(bare && fwdDeg ? x * DEG2RAD : x);
           if (raw === null) return domainErr();

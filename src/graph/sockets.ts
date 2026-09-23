@@ -279,6 +279,14 @@ export class AdoptiveSocket extends MutableSocket {
   }
 }
 
+/** The rung a port was DECLARED at: an adoptive port's base, never the type it adopted
+ *  from its cable. Judge an input's acceptance and coerce its value by this
+ *  ([[D15]] wildcardsKeepRank). */
+export function declaredTypeOf(socket: unknown): SocketDataType | undefined {
+  if (socket instanceof AdoptiveSocket) return socket.base;
+  return socket instanceof SolenoidSocket ? socket.dataType : undefined;
+}
+
 export const numberSocket  = new SolenoidSocket("number");
 export const listSocket    = new SolenoidSocket("list");
 export const numListSocket = new SolenoidSocket("numlist");

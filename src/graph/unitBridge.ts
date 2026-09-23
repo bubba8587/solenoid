@@ -1,7 +1,7 @@
 // [[C25]], [[D43]]
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT } from "./unitValue";
+import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 const DIRECT: Record<string, Unit> = {
@@ -74,14 +74,31 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
     if (value.some((c) => Array.isArray(c))) {
       const firstRow = (value as unknown[]).find((r) => Array.isArray(r)) as unknown[] | undefined;
       const firstCell = firstRow?.find((c) => c !== null && c !== undefined && c !== "");
+      if (typeof firstCell !== "number") return value;
+      const held = matrixUnitOf(value);
+      if (held) return redisplayMatrix(value as unknown[][], held, u, displayId);
       // Tag a copy: the engine hands this same cached array to every consumer.
-      return typeof firstCell === "number"
-        ? withMatrixUnit((value as unknown[]).slice() as typeof value, { dim: u.dim, display: displayId })
-        : value;
+      return withMatrixUnit((value as unknown[]).slice() as typeof value, { dim: u.dim, display: displayId });
     }
     return value.map(one);
   }
   return one(value);
+}
+
+/** A matrix that already carries a unit keeps its value: a clash is `#UNIT!`, and a
+ *  commensurable new display unit rescales the as-typed cells. */
+function redisplayMatrix(m: unknown[][], held: ColumnUnit, u: Unit, displayId: string | undefined): unknown {
+  if (!dimEqual(held.dim, u.dim)) {
+    return unitError(
+      `This grid is ${formatDim(held.dim)}, but the format unit is ${formatDim(u.dim) || "dimensionless"}. Convert it first.`,
+    );
+  }
+  if (!displayId || (held.display ?? "") === displayId) return m;
+  const from = held.display ? fcUnitToUnit(held.display) : null;
+  const fromScale = from?.scale ?? 1, fromOff = from?.offset ?? 0, toOff = u.offset ?? 0;
+  const rescale = (c: unknown) => (typeof c === "number" ? (c * fromScale + fromOff - toOff) / u.scale : c);
+  const out = m.map((r) => (Array.isArray(r) ? r.map(rescale) : rescale(r)));
+  return withMatrixUnit(out, { dim: u.dim, display: displayId });
 }
 
 export function displayMagnitudeOf(cell: UnitCellT): number {

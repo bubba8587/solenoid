@@ -6,6 +6,7 @@ import { coerceLogical } from "../valueKinds";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { formatCx, cx, isCx, type Cx } from "./complex";
 import { formatNumberPattern } from "./text";
+import { parseValueText } from "./textOps";
 
 import { solError, isSolError, type SolError } from "../errorValue";
 import { getOwningEditor } from "../activeGraph";
@@ -54,7 +55,7 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
       if (isCx(x)) return x.re;
       if (typeof x === "number") return x;
       if (typeof x === "boolean") return x ? 1 : 0;
-      if (typeof x === "string") { const n = Number(x.trim()); return Number.isNaN(n) ? NaN : n; }
+      if (typeof x === "string") return parseValueText(x);
       return NaN;
     }
     case "text": {
@@ -63,6 +64,7 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
       if (typeof x === "number") {
         return dateish ? formatDateSerial(x, format || DEFAULT_DATE_FORMAT) : formatNumberPattern(x, format);
       }
+      if (typeof x === "boolean") return x ? "TRUE" : "FALSE";
       return String(x);
     }
     case "date": {

@@ -14,7 +14,7 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { parseValueText, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -1232,14 +1232,8 @@ registerInternal("DOLLAR", (value, decimals) => {
 });
 registerInternal("VALUE", (x) => {
   if (typeof x === "number") return x;
-  const s = toStr(typeof x === "boolean" ? "" : x).trim();
-  let t = s, pct = 0, neg = false;
-  while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
-  if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
-  t = t.replace(/^([+-]?)\$/, "$1").replace(/,/g, "");
-  const n = t === "" ? NaN : Number(t);
-  if (Number.isNaN(n)) return VALUE("VALUE");
-  return (neg ? -n : n) / Math.pow(100, pct);
+  const n = parseValueText(toStr(typeof x === "boolean" ? "" : x));
+  return Number.isNaN(n) ? VALUE("VALUE") : n;
 });
 registerInternal("NUMBERVALUE", (text, dec, grp) => {
   const d = (toStr(dec ?? "") || ".")[0];
