@@ -260,6 +260,7 @@ export const FORMULA_CONSTANTS: Record<string, number> = {
 function constantValue(name: string): number | undefined {
   return FORMULA_CONSTANTS[name.toLowerCase()];
 }
+export const isFormulaConstant = (name: string): boolean => constantValue(name) !== undefined;
 
 let _names: string[] = [];
 let _namesGen = -1;
@@ -733,9 +734,7 @@ function etaOrEval(a: Ast, env: Record<string, unknown>): unknown {
   return evalAst(a, env);
 }
 
-const LAMBDA_BOUND = Symbol("lambdaBound");
-
-function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
+function evalAst(n: Ast, env: Record<string, unknown>): unknown {
   switch (n.t) {
     case "num": return Number(n.v);
     case "str": return n.v;
@@ -744,11 +743,7 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
     case "atcol": return readRowCell(n.name, () =>
       Object.prototype.hasOwnProperty.call(env, n.name) ? { hit: true, v: env[n.name] } : { hit: false });
     case "wholecol": return readWholeColumn(n.name);
-    case "name": {
-      if ((env[LAMBDA_BOUND] as ReadonlySet<string> | undefined)?.has(n.name)) return env[n.name];
-      const c = constantValue(n.name);
-      return c !== undefined ? c : env[n.name];
-    }
+    case "name": { const c = constantValue(n.name); return c !== undefined ? c : env[n.name]; }
     case "unary": {
       const a = evalAst(n.arg, env);
       // The isMissing guard matters: `-null` is -0 in JavaScript.
@@ -804,12 +799,13 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
         for (const a of n.args.slice(0, -1)) {
           if (a.t !== "name") return solError("#VALUE!", "LAMBDA parameters must be plain names");
           if (params.includes(a.name)) return solError("#VALUE!", `LAMBDA parameter ${a.name} appears twice`);
+          // [[D77]] constantsAlwaysWin
+          if (isFormulaConstant(a.name)) return solError("#VALUE!", `${a.name} is a constant, so it can't name a LAMBDA parameter`);
           params.push(a.name);
         }
         const fn = (...args: unknown[]): unknown => {
-          const inner: Record<string | symbol, unknown> = { ...env };
+          const inner: Record<string, unknown> = { ...env };
           params.forEach((p, i) => { inner[p] = args[i]; });
-          inner[LAMBDA_BOUND] = new Set([...((env[LAMBDA_BOUND] as Set<string> | undefined) ?? []), ...params]);
           return evalAst(bodyAst, inner);
         };
         return { __lambda: true, params, fn, expr: "" } satisfies LambdaValue;
@@ -878,11 +874,10 @@ export function compilePositional(
 ): ((...args: unknown[]) => unknown) | null {
   const evaluate = compileEvaluator(expr);
   if (!evaluate) return null;
-  const bound = new Set(paramNames);
   return (...args: unknown[]) => {
-    const env: Record<string | symbol, unknown> = { [LAMBDA_BOUND]: bound };
+    const env: Record<string, unknown> = {};
     for (let i = 0; i < paramNames.length; i++) env[paramNames[i]] = args[i];
-    return evaluate(env as Record<string, unknown>);
+    return evaluate(env);
   };
 }
 

@@ -28,9 +28,19 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
     expect(ev("MAP(x, SQRT)", { x: [4, 9] })).toEqual([2, 3]);
   });
 
-  it("a parameter shadows a constant of the same name", () => {
-    expect(ev("LAMBDA(e, e + 1)(5)")).toBe(6);
-    expect(ev("e")).toBeCloseTo(Math.E);
+  it("a constant keeps its meaning inside a LAMBDA body ([[D77]] constantsAlwaysWin)", () => {
+    expect(ev("LAMBDA(x, x + e)(1)")).toBeCloseTo(1 + Math.E);
+    expect(ev("MAP(xs, LAMBDA(v, v * PI))", { xs: [1, 2] })).toEqual([Math.PI, 2 * Math.PI]);
+  });
+
+  it("a parameter named after a constant is refused, on the formula and the card ([[D77]] constantsAlwaysWin)", () => {
+    const f = ev("LAMBDA(e, e + 1)(5)") as SolError;
+    expect(code(f)).toBe("#VALUE!");
+    expect(f.message).toMatch(/e is a constant/);
+    expect(code(ev("LAMBDA(x, Tau, x + Tau)(1, 2)"))).toBe("#VALUE!");
+    const card = new LambdaNode({ params: "x, phi", expr: "x + phi" });
+    expect(code(card.data({}).result)).toBe("#NAME?");
+    expect(card.cachedError).toBe("phi is a constant");
   });
 
   it("a parameter named twice is refused, not silently bound to the last argument", () => {
@@ -38,8 +48,8 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
     expect(code(new LambdaNode({ params: "x, x", expr: "x + 1" }).data({}).result)).toBe("#NAME?");
   });
 
-  it("a positional parameter (the LAMBDA node's) shadows a constant the same way", () => {
-    expect(compilePositional("e + 1", ["e"])!(5)).toBe(6);
+  it("a positional binding never shadows a constant ([[D77]] constantsAlwaysWin)", () => {
+    expect(compilePositional("e + 1", ["e"])!(5)).toBeCloseTo(Math.E + 1);
     expect(compilePositional("pi * r", ["r"])!(1)).toBeCloseTo(Math.PI);
   });
 });

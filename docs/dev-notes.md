@@ -62,7 +62,7 @@ specific item.
   and share / pct_change agree on blanks. A parity fuzz (every corpus case re-run with NaN, infinities, blanks
   and -0 added, prepended, or with every cell blank) found one more break, NaN order keys in the ranks, now
   fixed. The generator lives in the session scratchpad, not the repo.
-- **Formulas:** LAMBDA parameters shadow names and constants, a blank scalar argument gives a blank answer
+- **Formulas:** LAMBDA parameters shadow variables but never a constant (a parameter named `e` is refused, [[D77]] constantsAlwaysWin), a blank scalar argument gives a blank answer
   while an empty argument slot does not, arithmetic on text is #VALUE! with advice, malformed numbers are
   lexed as errors.
 - **Documents:** composites re-save byte-identical (saved ids), `seedStore.ts` and `SavedGraph.seedId` are
