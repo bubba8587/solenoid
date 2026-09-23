@@ -6,7 +6,7 @@ import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } fr
 import { resolveTrigModes } from "../trigMode";
 import { settleWildcardTypes } from "../trueAnyAdopt";
 import { extractInit } from "../copyPaste";
-import { installErrorGuards, solError, type SolError } from "../errorValue";
+import { installErrorGuards, isSolError, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
   mulberry32, sampleUncertain, summarizeSamples, parseCorrelations, correlationCholesky, sampleCorrelated,
@@ -918,19 +918,21 @@ export class CompositeNode extends ClassicPreset.Node {
     const draws = Math.max(1, Math.round(cfg.samples));
     const rng = mulberry32((cfg.seed | 0) >>> 0);
 
-    const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number | null => {
+    const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number | SolError | null => {
       const wired = port.exposure === "exposed" && port.id in inputs ? inputs[port.id]?.[0] : undefined;
       const raw = wired === undefined ? (marker.defaultValue ?? port.default ?? 0) : wired;
+      if (isSolError(raw)) return raw;
       const n = toNumber(raw);
       return Number.isFinite(n) ? n : null;
     };
     const means = uncertainPorts.map((port) => meanOf(port, this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode));
-    if (means.some((m) => m === null)) {
+    if (means.some((m) => typeof m !== "number")) {
+      const fill = means.find(isSolError) ?? null;
       const outputs: Record<string, unknown> = {};
       for (const port of this.outputPorts) {
-        outputs[port.id] = null;
+        outputs[port.id] = fill;
         const marker = this.internalEditor.getNode(port.internalNodeId);
-        if (marker instanceof CompositeOutputNode) marker.cachedResult = null;
+        if (marker instanceof CompositeOutputNode) marker.cachedResult = fill;
       }
       return outputs;
     }
@@ -980,6 +982,13 @@ export class CompositeNode extends ClassicPreset.Node {
     const driverPort = this.inputPorts.find((p) => p.id === gs.inputPortId);
     const driverMarker = driverPort ? this.internalEditor.getNode(driverPort.internalNodeId) as CompositeInputNode | undefined : undefined;
     const seedRaw = inputs[gs.inputPortId]?.[0] ?? driverMarker?.defaultValue ?? driverPort?.default ?? 0;
+    if (isSolError(seedRaw)) {
+      this.goalSeekResult = seedRaw;
+      if (driverMarker) driverMarker.solvedValue = seedRaw;
+      const row = await this.runPass(inputs);
+      row[gs.outputPortId] = seedRaw;
+      return row;
+    }
     const seed = Number.isFinite(toNumber(seedRaw)) ? toNumber(seedRaw) : 0;
     const solvedRaw = await solveGoalSeek(objective, seed, {
       maxIterations: gs.maxIterations,
