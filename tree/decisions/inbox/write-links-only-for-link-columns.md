@@ -1,5 +1,5 @@
 ---
-title: "Write Properties turns text into a [[link]] only in a column that holds links"
+title: "Write Properties turns text into a wikilink only in a column that holds links"
 proposed_ring: D
 ask: human
 made_by: ai
