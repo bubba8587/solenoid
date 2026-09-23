@@ -75,6 +75,24 @@ function canonicalEntries(obj: Record<string, unknown>): [string, unknown][] {
 }
 
 const FIELD_KEY_RE = /^([A-Za-z_][A-Za-z0-9_:]*)(=|<-)/;
+const BARE_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const EMPTY_LIT = "lit:{}";
+const EMPTY_STR = "str:{}";
+
+// Socket keys can be user text (a formula variable `rate.annual`, `λ1`, a Knap `{{ a-b }}`), so any key off the bare pattern is JSON-quoted.
+function keyToken(key: string): string {
+  return BARE_KEY_RE.test(key) ? key : JSON.stringify(key);
+}
+
+function jsonStringEnd(s: string, start: number): number {
+  let i = start + 1;
+  while (i < s.length) {
+    if (s[i] === "\\") { i += 2; continue; }
+    if (s[i] === '"') return i + 1;
+    i++;
+  }
+  return -1;
+}
 
 function tokenizeFields(s: string): string[] {
   const tokens: string[] = [];
@@ -102,10 +120,26 @@ function tokenizeFields(s: string): string[] {
   return tokens;
 }
 
-function splitField(token: string): { key: string; op: "=" | "<-"; rest: string } {
+type FieldMap = "init" | "lit" | "str";
+
+function splitField(token: string): { map: FieldMap; key: string; op: "=" | "<-"; rest: string } {
+  const prefix = /^(lit|str):"/.exec(token);
+  const at = prefix ? 4 : 0;
+  if (token[at] === '"') {
+    const end = jsonStringEnd(token, at);
+    const op = end === -1 ? null : token.startsWith("<-", end) ? "<-" : token[end] === "=" ? "=" : null;
+    if (end === -1 || !op || (prefix && op === "<-")) throw new Error(`textForm: malformed field "${token}"`);
+    let key: string;
+    try { key = JSON.parse(token.slice(at, end)) as string; } catch { throw new Error(`textForm: malformed field "${token}"`); }
+    const map: FieldMap = prefix ? (prefix[1] as FieldMap) : "init";
+    return { map, key, op, rest: token.slice(end + op.length) };
+  }
   const m = FIELD_KEY_RE.exec(token);
   if (!m) throw new Error(`textForm: malformed field "${token}"`);
-  return { key: m[1], op: m[2] as "=" | "<-", rest: token.slice(m[0].length) };
+  const raw = m[1];
+  const op = m[2] as "=" | "<-";
+  const map: FieldMap = op === "<-" ? "init" : raw.startsWith("lit:") ? "lit" : raw.startsWith("str:") ? "str" : "init";
+  return { map, key: map === "init" ? raw : raw.slice(4), op, rest: token.slice(m[0].length) };
 }
 
 const BARE_OUTPUT_RE = /^[^"\\ ]+$/;
@@ -144,24 +178,28 @@ export function writeTextForm(g: SavedGraph): string {
           : s.nodeIds,
       }));
     }
-    for (const [k, v] of canonicalEntries(init)) parts.push(`${k}=${JSON.stringify(v)}`);
+    for (const [k, v] of canonicalEntries(init)) parts.push(`${keyToken(k)}=${JSON.stringify(v)}`);
 
+    // A declared map left empty is written as `lit:{}`, or the load would bring back the class defaults the user cleared.
+    if (sn.literals && Object.keys(sn.literals).length === 0) parts.push(EMPTY_LIT);
     for (const k of Object.keys(sn.literals ?? {}).sort()) {
-      parts.push(`lit:${k}=${JSON.stringify(sn.literals![k])}`);
+      parts.push(`lit:${keyToken(k)}=${JSON.stringify(sn.literals![k])}`);
     }
+    if (sn.stringLiterals && Object.keys(sn.stringLiterals).length === 0) parts.push(EMPTY_STR);
     for (const k of Object.keys(sn.stringLiterals ?? {}).sort()) {
-      parts.push(`str:${k}=${JSON.stringify(sn.stringLiterals![k])}`);
+      parts.push(`str:${keyToken(k)}=${JSON.stringify(sn.stringLiterals![k])}`);
     }
 
     const conns = [...(incoming.get(id) ?? [])].sort((a, b) => (a.targetInput < b.targetInput ? -1 : a.targetInput > b.targetInput ? 1 : 0));
     for (const c of conns) {
-      parts.push(`${c.targetInput}<-${nameOf(c.source)}.${outputToken(c.sourceOutput)}`);
+      parts.push(`${keyToken(c.targetInput)}<-${nameOf(c.source)}.${outputToken(c.sourceOutput)}`);
     }
 
     lines.push(parts.join(" "));
   }
 
-  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean }> = {};
+  // No prototype, so a node named `__proto__` is an ordinary key.
+  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean }> = Object.create(null);
   for (const id of order) {
     const sn = byId.get(id);
     if (!sn) continue;
@@ -216,6 +254,8 @@ export function readTextForm(text: string): SavedGraph {
     init: Record<string, unknown>;
     literals: Record<string, number>;
     stringLiterals: Record<string, string>;
+    hasLiterals: boolean;
+    hasStringLiterals: boolean;
     conns: Array<{ targetInput: string; sourceName: string; sourceOutput: string }>;
   };
   const parsed: Parsed[] = nodeLines.map((line) => parseNodeLine(line));
@@ -227,7 +267,8 @@ export function readTextForm(text: string): SavedGraph {
   }
 
   const nodes: SavedNode[] = parsed.map((p) => {
-    const pos = (sidecar.positions?.[p.name] ?? { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean };
+    const own = sidecar.positions && typeof sidecar.positions === "object" && Object.prototype.hasOwnProperty.call(sidecar.positions, p.name);
+    const pos = (own ? sidecar.positions[p.name] : { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean };
     const sn: SavedNode = {
       id: p.name,
       type: p.type,
@@ -236,8 +277,8 @@ export function readTextForm(text: string): SavedGraph {
       y: pos.y ?? 0,
       init: p.init,
     };
-    if (Object.keys(p.literals).length > 0) sn.literals = p.literals;
-    if (Object.keys(p.stringLiterals).length > 0) sn.stringLiterals = p.stringLiterals;
+    if (p.hasLiterals) sn.literals = p.literals;
+    if (p.hasStringLiterals) sn.stringLiterals = p.stringLiterals;
     if (pos.size) sn.size = pos.size;
     if (pos.collapsed) sn.collapsed = true;
     if (pos.flipped) sn.flipped = true;
@@ -282,6 +323,8 @@ export function parseNodeLine(line: string): {
   init: Record<string, unknown>;
   literals: Record<string, number>;
   stringLiterals: Record<string, string>;
+  hasLiterals: boolean;
+  hasStringLiterals: boolean;
   conns: Array<{ targetInput: string; sourceName: string; sourceOutput: string }>;
 } {
   const colonIdx = line.indexOf(": ");
@@ -297,22 +340,28 @@ export function parseNodeLine(line: string): {
   const stringLiterals: Record<string, string> = {};
   const conns: Array<{ targetInput: string; sourceName: string; sourceOutput: string }> = [];
 
+  let hasLiterals = false;
+  let hasStringLiterals = false;
   for (const token of tokenizeFields(fieldsStr)) {
-    const { key, op, rest: valueStr } = splitField(token);
+    if (token === EMPTY_LIT) { hasLiterals = true; continue; }
+    if (token === EMPTY_STR) { hasStringLiterals = true; continue; }
+    const { map, key, op, rest: valueStr } = splitField(token);
     if (op === "<-") {
       const dotIdx = valueStr.indexOf(".");
       if (dotIdx === -1) throw new Error(`textForm: malformed connection "${token}"`);
       const outRaw = valueStr.slice(dotIdx + 1);
       const sourceOutput = outRaw.startsWith('"') ? (JSON.parse(outRaw) as string) : outRaw;
       conns.push({ targetInput: key, sourceName: valueStr.slice(0, dotIdx), sourceOutput });
-    } else if (key.startsWith("lit:")) {
-      literals[key.slice(4)] = JSON.parse(valueStr) as number;
-    } else if (key.startsWith("str:")) {
-      stringLiterals[key.slice(4)] = JSON.parse(valueStr) as string;
+    } else if (map === "lit") {
+      literals[key] = JSON.parse(valueStr) as number;
+      hasLiterals = true;
+    } else if (map === "str") {
+      stringLiterals[key] = JSON.parse(valueStr) as string;
+      hasStringLiterals = true;
     } else {
       init[key] = JSON.parse(valueStr);
     }
   }
 
-  return { name, type, init, literals, stringLiterals, conns };
+  return { name, type, init, literals, stringLiterals, hasLiterals, hasStringLiterals, conns };
 }

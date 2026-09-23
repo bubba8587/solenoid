@@ -293,7 +293,7 @@ async function rebuildGraph(
       const initLabel = sn.init?.label;
       node = new PlaceholderNode({
         missingType: sn.type,
-        savedInit: sn.init,
+        savedInit: { ...sn.init },
         savedLiterals: sn.literals,
         savedStringLiterals: sn.stringLiterals,
         inputKeys: sockets?.inputs,

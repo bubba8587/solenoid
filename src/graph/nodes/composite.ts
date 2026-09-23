@@ -21,7 +21,7 @@ import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 import { PlaceholderNode } from "./placeholder";
-import { deriveMissingNodeSockets } from "../persistenceCore";
+import { deriveMissingNodeSockets, remapNodeRefs, mapNodeRefs, type NodeRefs } from "../persistenceCore";
 
 export type PortTier = "basic" | "advanced";
 export type PortExposure = "hidden" | "exposed";
@@ -300,7 +300,7 @@ export class CompositeNode extends ClassicPreset.Node {
         const initLabel = sn.init?.label;
         node = new PlaceholderNode({
           missingType: sn.type,
-          savedInit: sn.init,
+          savedInit: { ...sn.init },
           savedLiterals: sn.literals,
           savedStringLiterals: sn.stringLiterals,
           inputKeys: sockets?.inputs,
@@ -335,6 +335,12 @@ export class CompositeNode extends ClassicPreset.Node {
         // Skip incompatible/duplicate connections.
       }
     }
+    const liveOf = new Map([...built].map(([savedId, n]) => [savedId, n.id]));
+    const isLive = (id: string) => !!this.internalEditor.getNode(id);
+    for (const node of built.values()) {
+      remapNodeRefs(node as unknown as NodeRefs, liveOf, isLive);
+      if (node instanceof PlaceholderNode) remapNodeRefs(node.savedInit, liveOf, isLive);
+    }
     for (const p of this.inputPorts) {
       const mapped = built.get(p.internalNodeId);
       if (mapped) p.internalNodeId = mapped.id;
@@ -367,14 +373,14 @@ export class CompositeNode extends ClassicPreset.Node {
     const nodes: CompositeSavedNode[] = this.internalEditor.getNodes().map((n) => {
       const anyN = n as unknown as Record<string, unknown>;
       if (n instanceof PlaceholderNode) {
-        const ph: CompositeSavedNode = { id: sid(n.id), type: n.missingType, init: { ...n.savedInit } };
+        const ph: CompositeSavedNode = { id: sid(n.id), type: n.missingType, init: mapNodeRefs(n.savedInit, sid) };
         if (n.savedLiterals) ph.literals = { ...n.savedLiterals };
         if (n.savedStringLiterals) ph.stringLiterals = { ...n.savedStringLiterals };
         const p = this.internalPositions[n.id];
         if (p) { ph.x = p.x; ph.y = p.y; }
         return ph;
       }
-      const sn: CompositeSavedNode = { id: sid(n.id), type: n.constructor.name, init: extractInit(n) };
+      const sn: CompositeSavedNode = { id: sid(n.id), type: n.constructor.name, init: mapNodeRefs(extractInit(n), sid) };
       // `value` is the last injected input, not state, so it stays out of the save.
       if (n instanceof CompositeInputNode) delete sn.init.value;
       if (anyN.literals && typeof anyN.literals === "object") {

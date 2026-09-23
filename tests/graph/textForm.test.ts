@@ -150,6 +150,22 @@ describe("text form: unit cases", () => {
     expect(readTextForm(text).drawnCables).toBeUndefined();
   });
 
+  it("positions keep a node named like an Object.prototype member ([[B12]] losslessSaves)", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [
+        { id: "__proto__", name: "__proto__", type: "NumberInputNode", x: 40, y: 50, init: {} },
+        { id: "constructor", name: "constructor", type: "NumberInputNode", x: 0, y: 0, init: {} },
+      ],
+      connections: [],
+    };
+    const text = writeTextForm(g);
+    const back = readTextForm(text);
+    expect(back.nodes.map((n) => [n.name, n.x, n.y])).toEqual([["__proto__", 40, 50], ["constructor", 0, 0]]);
+    const noSidecar = readTextForm(text.split("\n---\n")[0] + "\n---\n{}");
+    expect(noSidecar.nodes.map((n) => [n.x, n.y])).toEqual([[0, 0], [0, 0]]);
+  });
+
   it("round-trips an empty graph", () => {
     const text1 = writeTextForm(base);
     const text2 = writeTextForm(readTextForm(text1));

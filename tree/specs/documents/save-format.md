@@ -133,13 +133,15 @@ A document in the text form is a header of node lines, a separator line of exact
 
 ```
 node-line   = name ": " type { " " field }
-field       = init-field | num-literal | str-literal | connection
+field       = init-field | num-literal | str-literal | empty-map | connection
 init-field  = key "=" json
 num-literal = "lit:" key "=" json-number
 str-literal = "str:" key "=" json-string
-connection  = input-key "<-" source-name "." output
+empty-map   = "lit:{}" | "str:{}"
+connection  = key "<-" source-name "." output
 output      = bare-output | json-string
-key         = [A-Za-z_][A-Za-z0-9_:]*
+key         = bare-key | json-string
+bare-key    = [A-Za-z_][A-Za-z0-9_:]*
 bare-output = one or more characters, none of which is a space, `"` or `\`
 ```
 
@@ -147,9 +149,9 @@ Reading rules (`parseNodeLine`):
 
 - The name is everything before the first `": "` (colon then space); a line without one is malformed. The type is the text up to the next space.
 - The rest is split into tokens at spaces that are outside a JSON string. Inside a string, a backslash escapes the next character. Runs of spaces are allowed; tabs are not separators.
-- Each token must start with a key followed by `=` or `<-`, or the line is malformed. A key may contain `:` only as part of the `lit:` and `str:` prefixes in practice; the key regex allows it anywhere.
+- Each token must start with a key followed by `=` or `<-`, or the line is malformed. A bare key may contain `:` only as part of the `lit:` and `str:` prefixes in practice; the regex allows it anywhere. A quoted key is taken as is: `"lit:x"=1` is an `init` field, never a literal, and a quoted key on a connection takes no prefix.
 - `key=value` parses `value` with `JSON.parse`. A `lit:` key goes to `literals`, a `str:` key to `stringLiterals`, anything else to `init`. Values must be valid JSON: `label=Months` is an error, `label="Months"` is correct.
-- `input<-Source.output` splits at the first `.` after `<-`. The source name therefore cannot contain a dot (names never do), while the output key can. An output that starts with `"` is decoded as a JSON string; otherwise it is taken verbatim. Input keys are never quoted, so an input key must match the key pattern.
+- `input<-Source.output` splits at the first `.` after `<-`. The source name therefore cannot contain a dot (names never do), while the output key can. An output that starts with `"` is decoded as a JSON string; otherwise it is taken verbatim. An input key off the bare pattern is JSON-quoted, like any other key.
 - Empty lines in the header are skipped. The header ends at the first line that is exactly `---`; a document without one is refused.
 - Two lines with the same name are refused.
 
@@ -157,9 +159,10 @@ Writing rules (`writeTextForm`), which make two writes of an unchanged graph byt
 
 - **Names.** Nodes are named in array order: a node's saved `name` is kept when it is a valid identifier not already taken; otherwise it gets the next free default `<Prefix>_<n>`, where the prefix is the type with a trailing `Node` removed (`Filter_1`, `Filter_2`) and `n` counts up per prefix from 1, skipping taken names. This is the same algorithm as the live `nodeNameStore` (`nodeNaming.ts`).
 - **Line order.** Topological: Kahn's algorithm over the connections, always emitting the ready node whose name sorts first (plain JavaScript string comparison, so uppercase sorts before lowercase). Nodes left in a cycle follow, sorted by name. Connections naming a node that is not in the save are ignored for ordering.
-- **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `bindings`), then every other key sorted. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key.
+- **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `bindings`), then every other key sorted. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key. A map the node declares but holds empty is written as `lit:{}` or `str:{}` in its place, so the load keeps it empty; without it the constructor's defaults would come back, turning a cleared slot on IF or SWITCH into a typed 0 ([[B12]] losslessSaves). An absent map (a hand-written seed) still takes the defaults.
 - **Values** are `JSON.stringify` output: compact, no spaces outside strings, numbers in shortest round-trip form, newlines in strings as `\n`.
 - **References become names.** In `init`, `hostNodeId` (a Format Controller's host), every entry of `members` (a Group), and every entry of each `steps[].nodeIds` (a Presentation) is rewritten from id to name. A reference to an id not in the save is written unchanged.
+- **Keys.** An `init`, `lit:`, `str:` or input key is written bare when it matches `[A-Za-z_][A-Za-z0-9_]*` and JSON-quoted otherwise (`lit:"rate.annual"=2`, `"λ1"<-Rate.value`), since socket keys can be user text: a formula variable may hold `.` or `λ`, a Knap variable `-` ([[B12]] losslessSaves). `tests/graph/textFormCatalog.test.ts` carries every catalog node, with a cable on every socket, through the text form.
 - **Output keys** are written bare when they contain no space, `"` or `\`, and JSON-quoted otherwise (a Note's frontmatter keys are user text).
 - An empty graph has no node lines, so the document starts with `---`.
 
@@ -269,9 +272,9 @@ There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change
    - `nodeNameStore.claim(freshId, name, type)`: a valid, unclaimed saved name is kept (and bumps that prefix's counter past it); otherwise a default name is assigned.
    - Restore `size`, `collapsed` and `flipped` into their stores.
 6. **Add and position** the nodes to the editor in concurrent batches of 24.
-7. **Remap references** (`remapNodeRefs`) on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. A Placeholder's `savedInit` is remapped the same way, so its references follow a rename of the node they name to the next save.
+7. **Remap references** (`remapNodeRefs`) on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. A Placeholder's `savedInit` (a copy of the saved `init`) is remapped the same way, so its references follow a rename of the node they name to the next save. The remap never writes into the `SavedGraph` it loads from, which may be a library document or a seed that loads again.
 8. **Reconnect**, in save order. A connection whose source or target does not resolve is skipped. A connection the editor refuses (incompatible sockets, duplicate) is skipped silently. Each successful connection fires `connectioncreated`.
-9. **Hydrate Composites**: each `CompositeNode` builds its internal editor from `init.internal` with the same registry, applying the same literal-map gate, then remaps its ports' `internalNodeId`s to the fresh internal ids. An unknown internal type loads as a Placeholder, as on the main canvas, and re-saves as the original type.
+9. **Hydrate Composites**: each `CompositeNode` builds its internal editor from `init.internal` with the same registry, applying the same literal-map gate, then remaps its internal nodes' references (as in step 7) and its ports' `internalNodeId`s to the fresh internal ids. `snapshotInternal` maps both back to saved ids, so a Group or Format Controller inside a Composite finds its members and host after every load. An unknown internal type loads as a Placeholder, as on the main canvas, and re-saves as the original type.
 10. **Settle wildcard types**: `settleWildcardTypes(editor)` alternates Conduit lane typing and trueany adoption to a joint fixpoint ([[socket-lattice]], [[type-propagation-on-in-place-socket-retype]]). This must precede step 11.
 11. **Format Controllers and Convert**: every constructed Format Controller docks to its host; every Convert node syncs its unit arrows; every Format Controller refreshes its annotation.
 12. **Side tables**, each remapped through the id map and filtered to live nodes: standoffs (skipped when either end is missing or both ends are the same node), drawn cables (loaded as is), pins, comments, frame formats.
@@ -329,9 +332,9 @@ The document library is the working store; files are exports and imports of one 
 
 **localStorage.** Each document has its own two-slot pair `solenoid.docs.doc.<id>.a` / `.b` holding `{ seq, doc }`, and the library has one index pair `solenoid.docs.index.a` / `.b` holding `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`. Every write goes to the older slot; every read takes the newer structurally valid one; `seq` is a strictly rising in-session counter and must be the first key of the payload ([[C32]] autosaveSlotOrder). A failed write raises a sticky notice until a write fully succeeds. Restore reads the index, then each document's slots through `validateDoc` (which applies `validateSavedGraph`), skipping a missing or corrupt document. The mechanics are in [[per-doc-autosave-persistence]].
 
-**Autosave.** Any settled edit calls `scheduleAutosave()`, which debounces 700 ms and then calls `documentStore.captureCurrent()`: serialize the main graph, write it into the current document with a fresh `updatedAt`, float that document to the top, persist. A capture is skipped while autosave is suspended or while a rebuild is in progress. A pending autosave is flushed synchronously on `pagehide`. In the dev server each capture is also mirrored to `.dev/current-graph.json`.
+**Autosave.** Any settled edit calls `scheduleAutosave()`, which debounces 700 ms and then calls `documentStore.captureCurrent()`: serialize the main graph, write it into the current document with a fresh `updatedAt`, float that document to the top, persist. A capture is skipped while autosave is suspended or while a rebuild is in progress. A capture whose serialize throws writes nothing, raises one sticky error notice (dismissed by the next capture that succeeds) and returns false ([[B12]] losslessSaves). A pending autosave is flushed synchronously on `pagehide`. In the dev server each capture is also mirrored to `.dev/current-graph.json`.
 
-**Switching documents.** Every `documentStore` verb that changes which document is on screen (`newBlank`, `newFromTemplate`, `open`, `saveAs`, `duplicate`, `importAsDocument`) first returns early if a rebuild is running, then captures the outgoing document ([[C36]] captureBeforeSwap). The sanctioned exceptions are `restore` (nothing live at startup), `remove` (capturing would resurrect the deleted edits) and `reloadCurrent` (gated on the load reveal instead). When the incoming document's load is refused, the library reverts `currentId` to the document still on screen, or, with nothing to revert to, adds and shows a blank "Untitled", so an autosave never writes one document's graph into another. Deleting the last document replaces it with a blank one. A fresh profile starts from the default seed.
+**Switching documents.** Every `documentStore` verb that changes which document is on screen (`newBlank`, `newFromTemplate`, `open`, `saveAs`, `duplicate`, `importAsDocument`) first returns early if a rebuild is running, then captures the outgoing document, and stays on it when that capture fails ([[C36]] captureBeforeSwap). The sanctioned exceptions are `restore` (nothing live at startup), `remove` (capturing would resurrect the deleted edits) and `reloadCurrent` (gated on the load reveal instead). When the incoming document's load is refused, the library reverts `currentId` to the document still on screen, or, with nothing to revert to, adds and shows a blank "Untitled", so an autosave never writes one document's graph into another. Deleting the last document replaces it with a blank one. A fresh profile starts from the default seed.
 
 **Save clocks.** `saveTimeStore` is the leaf module node classes read the clocks through (`autosavedAt`, the current document's `updatedAt`, and `fileSavedAt`), since a node class cannot import `documentStore`. `documentStore` registers itself as its provider at load and bumps it on every library change; in a headless run nothing registers, so both read null.
 

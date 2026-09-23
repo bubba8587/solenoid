@@ -1,5 +1,5 @@
-// [[C32]]
-import { describe, it, expect } from "vitest";
+// [[C32]], [[C36]] captureBeforeSwap, [[B12]] losslessSaves
+import { describe, it, expect, vi } from "vitest";
 
 // Per-doc autosave keys (2026-07-05): each document persists under its own
 // two-slot pair plus a light index — an edit writes ONLY the changed doc, and
@@ -19,7 +19,15 @@ const localStorageStub = {
 };
 (globalThis as Record<string, unknown>).localStorage = localStorageStub;
 
+// A switch the tests flip to make serializeGraph throw, as a text-form refusal would.
+const captureFault = { on: false };
+vi.mock("../../src/graph/persistence", async (orig) => {
+  const real = await orig<typeof import("../../src/graph/persistence")>();
+  return { ...real, serializeGraph: () => { if (captureFault.on) throw new Error("capture fault"); return real.serializeGraph(); } };
+});
+
 const { documentStore } = await import("../../src/graph/documentStore");
+const { noticeStore } = await import("../../src/graph/noticeStore");
 const { saveTimeStore } = await import("../../src/graph/saveTimeStore");
 
 const keysMatching = (re: RegExp) => [..._mem.keys()].filter((k) => re.test(k));
@@ -155,5 +163,25 @@ describe("[[C32]] autosaveSlotOrder — every written slot payload starts {\"seq
     documentStore.rename(d.id, "SeqCheck2 Renamed");
     const after = Math.max(...pair().map(seqOf));
     expect(after, "a rewrite must carry a strictly larger seq — a tie makes newest-slot selection ambiguous").toBeGreaterThan(before);
+  });
+});
+
+describe("[[B12]] losslessSaves — a capture that throws is loud and keeps the document on screen", () => {
+  it("returns false, raises one sticky notice, and a swap verb stays put", async () => {
+    documentStore.saveAs("Faulty");
+    const before = documentStore.currentId();
+    captureFault.on = true;
+    try {
+      expect(documentStore.captureCurrent()).toBe(false);
+      expect(documentStore.captureCurrent()).toBe(false);
+      await documentStore.newBlank();
+      expect(documentStore.currentId()).toBe(before);
+      const errors = noticeStore.get().filter((n) => n.tone === "error" && /autosave this document/.test(n.message));
+      expect(errors.length).toBe(1);
+    } finally {
+      captureFault.on = false;
+    }
+    expect(documentStore.captureCurrent()).toBe(true);
+    expect(noticeStore.get().some((n) => /autosave this document/.test(n.message))).toBe(false);
   });
 });

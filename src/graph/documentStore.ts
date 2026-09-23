@@ -48,6 +48,7 @@ function mirrorToDevServer(g: SavedGraph): void {
     .catch(() => { /* no dev server behind this origin (tauri dev without vite, a preview) */ });
 }
 let _saveFailNoticeId: number | null = null;
+let _captureFailNoticeId: number | null = null;
 const _lastPersisted = new Map<string, SolDoc>();
 let _seq = Date.now();
 const nextSeq = () => ++_seq;
@@ -246,26 +247,38 @@ export const documentStore = {
     return getCurrent(_lib) !== null;
   },
 
-  captureCurrent(): void {
-    if (!_lib.currentId) return;
-    if (isGraphRebuilding()) return;
-    const g = serializeGraph();
-    if (!g) return;
+  /** False only when the live graph could not be serialized; a swap verb then stays on this document. */
+  captureCurrent(): boolean {
+    if (!_lib.currentId) return true;
+    if (isGraphRebuilding()) return true;
+    let g: SavedGraph | null;
+    try {
+      g = serializeGraph();
+    } catch (e) {
+      console.error("[solenoid] capture failed", e);
+      if (_captureFailNoticeId === null) {
+        _captureFailNoticeId = pushNotice("Couldn't autosave this document, so your recent changes aren't saved. It stays open until a save succeeds.", "error", 0);
+      }
+      return false;
+    }
+    if (_captureFailNoticeId !== null) { dismissNotice(_captureFailNoticeId); _captureFailNoticeId = null; }
+    if (!g) return true;
     _lib = updateCurrentGraph(_lib, g, Date.now());
     persist();
     notify();
     mirrorToDevServer(g);
+    return true;
   },
 
   async reloadCurrent(): Promise<void> {
     if (loadRevealStore.isActive()) return;
-    this.captureCurrent();
+    if (!this.captureCurrent()) return;
     await showCurrent();
   },
 
   async newBlank(): Promise<void> {
     if (isGraphRebuilding()) return;
-    this.captureCurrent();
+    if (!this.captureCurrent()) return;
     _lib = addDocument(_lib, makeDoc("Untitled", { ...EMPTY_GRAPH }));
     persist();
     notify();
@@ -276,7 +289,7 @@ export const documentStore = {
     const seed = SEEDS[seedId];
     if (!seed) return;
     if (isGraphRebuilding()) return;
-    this.captureCurrent();
+    if (!this.captureCurrent()) return;
     _lib = addDocument(_lib, makeDoc(seed.label, seed.graph));
     persist();
     notify();
@@ -286,7 +299,7 @@ export const documentStore = {
   async open(id: string): Promise<void> {
     if (id === _lib.currentId) return;
     if (isGraphRebuilding()) return;
-    this.captureCurrent();
+    if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
     _lib = setCurrent(_lib, id);
     persist();
@@ -296,7 +309,7 @@ export const documentStore = {
 
   saveAs(name: string): void {
     if (isGraphRebuilding()) return;
-    this.captureCurrent();
+    if (!this.captureCurrent()) return;
     const g = serializeGraph() ?? { ...EMPTY_GRAPH };
     _lib = addDocument(_lib, makeDoc(name.trim() || "Untitled", g));
     persist();
@@ -317,7 +330,7 @@ export const documentStore = {
     const src = _lib.documents.find((d) => d.id === id);
     if (!src) return;
     if (isGraphRebuilding()) return;
-    if (id === _lib.currentId) this.captureCurrent();
+    if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
     _lib = duplicateDocument(_lib, id, newId(), uniqueName(_lib, `${src.name} copy`));
     persist();
@@ -343,7 +356,7 @@ export const documentStore = {
 
   async importAsDocument(graph: SavedGraph, name: string, filePath?: string): Promise<void> {
     if (isGraphRebuilding()) return;
-    this.captureCurrent();
+    if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
     graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined };
     const doc = makeDoc(name, graph);
