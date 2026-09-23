@@ -578,6 +578,11 @@ describe("timesaver verbs", () => {
     expect(out.columns[1].values).toEqual([101, 102, 103]); // numbers untouched in substring mode
   });
 
+  it("replaceValues drops a rewritten column's source text, so the popup shows the new cell", () => {
+    const t: FrameValue = { __frame: true, columns: [{ name: "n", type: "number", values: [5, 6], raw: ["5", "6"] }] };
+    expect(replaceValues(t, "n", "5", "9", "cell").columns[0].raw).toBeUndefined();
+  });
+
   it("mergeColumns joins formatted cells, drops sources, sits at the first source's slot", () => {
     const out = mergeColumns(f, ["name", "qty"], " · ", "Tag");
     expect(out.columns.map((c) => c.name)).toEqual(["id", "Tag"]);

@@ -1665,7 +1665,7 @@ export function replaceValues(
     const replacement = coerceReplacement(col.type, replaceWith);
     if (replacement === undefined) return col;
     return {
-      ...col,
+      ...withoutRaw(col),
       values: col.values.map((v) => {
         if (v == null || isSolError(v)) return v;
         const hit = typeof v === "number"
@@ -1933,78 +1933,72 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
     const present = nums.filter((v): v is number => v !== null);
     const orderVals = orderCol ? ordered.map((i) => cellAt(orderCol, i)) : [];
     const m = ordered.length;
+    const minOf = (xs: readonly number[]) => xs.reduce((a, b) => (b < a ? b : a));
+    const maxOf = (xs: readonly number[]) => xs.reduce((a, b) => (b > a ? b : a));
     const groupAgg = (): FrameCell => {
+      if (!spec.fn.startsWith("group_")) return null;
       if (err) return err;
       if (present.length === 0) return spec.fn === "group_count" ? 0 : null;
       switch (spec.fn) {
         case "group_sum":   return present.reduce((a, b) => a + b, 0);
         case "group_avg":   return present.reduce((a, b) => a + b, 0) / present.length;
-        case "group_min":   return Math.min(...present);
-        case "group_max":   return Math.max(...present);
+        case "group_min":   return minOf(present);
+        case "group_max":   return maxOf(present);
         case "group_count": return present.length;
         default: return null;
       }
     };
+    const groupValue = groupAgg();
+    const total = present.reduce((a, b) => a + b, 0);
+    const ranked = orderVals.filter((k) => !blankKey(k)).length;
+    let runStart = 0, dense = 0;
+    let cumSum = 0, cumCount = 0, cumMin = Infinity, cumMax = -Infinity;
     for (let p = 0; p < m; p++) {
       const row = ordered[p];
       let v: FrameCell = null;
+      if (orderCol && (p === 0 || cmp(orderVals[p], orderVals[p - 1]) !== 0)) { runStart = p; dense++; }
+      const x = nums[p];
+      if (x !== null) { cumSum += x; cumCount++; if (x < cumMin) cumMin = x; if (x > cumMax) cumMax = x; }
       switch (spec.fn) {
         case "row_number": v = p + 1; break;
         case "rank": case "dense_rank": case "percent_rank": {
           if (!orderCol) { v = spec.fn === "percent_rank" ? (m > 1 ? p / (m - 1) : 0) : p + 1; break; }
-          const key = orderVals[p];
-          if (blankKey(key)) { v = null; break; }
-          if (spec.fn === "dense_rank") {
-            if (p > 0 && cmp(orderVals[p], orderVals[p - 1]) === 0) v = out[ordered[p - 1]];
-            else {
-              let distinctBefore = 0;
-              for (let q = 0; q < p; q++) if (q === 0 || cmp(orderVals[q], orderVals[q - 1]) !== 0) distinctBefore++;
-              v = distinctBefore + 1;
-            }
-          } else {
-            let first = p;
-            while (first > 0 && cmp(orderVals[first - 1], key) === 0) first--;
-            const ranked = orderVals.filter((k) => !blankKey(k)).length;
-            v = spec.fn === "rank" ? first + 1 : (ranked > 1 ? first / (ranked - 1) : 0);
-          }
+          if (blankKey(orderVals[p])) { v = null; break; }
+          v = spec.fn === "dense_rank" ? dense : spec.fn === "rank" ? runStart + 1 : (ranked > 1 ? runStart / (ranked - 1) : 0);
           break;
         }
         case "ntile": v = Math.floor((p * N) / m) + 1; break;
         case "cumcount": v = p + 1; break;
         case "cumsum": case "cumavg": case "cummin": case "cummax": {
           if (err) { v = err; break; }
-          const prefix = nums.slice(0, p + 1).filter((x): x is number => x !== null);
-          if (nums[p] === null) { v = null; break; }
-          if (prefix.length === 0) { v = null; break; }
-          v = spec.fn === "cumsum" ? prefix.reduce((a, b) => a + b, 0)
-            : spec.fn === "cumavg" ? prefix.reduce((a, b) => a + b, 0) / prefix.length
-            : spec.fn === "cummin" ? Math.min(...prefix) : Math.max(...prefix);
+          if (x === null) { v = null; break; }
+          v = spec.fn === "cumsum" ? cumSum
+            : spec.fn === "cumavg" ? cumSum / cumCount
+            : spec.fn === "cummin" ? cumMin : cumMax;
           break;
         }
         case "lag": v = p - N >= 0 ? vals[p - N] : null; break;
         case "lead": v = p + N < m ? vals[p + N] : null; break;
         case "diff": case "pct_change": {
-          const cur = nums[p], prev = p >= 1 ? nums[p - 1] : null;
+          const prev = p >= 1 ? nums[p - 1] : null;
           if (err) { v = err; break; }
-          if (cur === null || prev === null) { v = null; break; }
-          v = spec.fn === "diff" ? cur - prev : prev === 0 ? solError("#DIV/0!", "Percent change from zero is undefined") : (cur - prev) / prev;
+          if (x === null || prev === null) { v = null; break; }
+          v = spec.fn === "diff" ? x - prev : prev === 0 ? solError("#DIV/0!", "Percent change from zero is undefined") : (x - prev) / prev;
           break;
         }
         case "rolling_sum": case "rolling_avg": case "rolling_min": case "rolling_max": {
           if (err) { v = err; break; }
-          if (p < N - 1 || nums[p] === null) { v = null; break; }
-          const win = nums.slice(p - N + 1, p + 1).filter((x): x is number => x !== null);
-          if (win.length === 0) { v = null; break; }
+          if (p < N - 1 || x === null) { v = null; break; }
+          const win = nums.slice(p - N + 1, p + 1).filter((y): y is number => y !== null);
           v = spec.fn === "rolling_sum" ? win.reduce((a, b) => a + b, 0)
             : spec.fn === "rolling_avg" ? win.reduce((a, b) => a + b, 0) / win.length
-            : spec.fn === "rolling_min" ? Math.min(...win) : Math.max(...win);
+            : spec.fn === "rolling_min" ? minOf(win) : maxOf(win);
           break;
         }
-        case "group_sum": case "group_avg": case "group_min": case "group_max": case "group_count": v = groupAgg(); break;
+        case "group_sum": case "group_avg": case "group_min": case "group_max": case "group_count": v = groupValue; break;
         case "share": {
           if (err) { v = err; break; }
-          const total = present.reduce((a, b) => a + b, 0);
-          v = nums[p] === null ? null : total === 0 ? solError("#DIV/0!", "The group total is 0") : nums[p]! / total;
+          v = x === null ? null : total === 0 ? solError("#DIV/0!", "The group total is 0") : x / total;
           break;
         }
         case "first": v = err ?? (vals.length ? vals[0] : null); break;

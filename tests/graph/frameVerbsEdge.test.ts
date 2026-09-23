@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 import {
   selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
   filterRows, groupByFrame, joinFrames, appendFrames, pivotFrame, unpivotFrame,
-  nestFrame,
+  nestFrame, windowFrame,
 } from "../../src/graph/frameVerbs";
 import { frameRowCount, type FrameValue } from "../../src/graph/frame";
 
@@ -76,4 +76,17 @@ describe("ragged + all-null", () => {
     expect(out.columns.map((c) => c.name)).toEqual(["a", "b", "c"]);
     expect(frameRowCount(out)).toBe(0);
   });
+});
+
+describe("window over one large partition", () => {
+  it("runs in linear time and never spreads the partition into Math.min", () => {
+    const n = 200_000;
+    const f: FrameValue = { __frame: true, columns: [{ name: "v", type: "number", values: Array.from({ length: n }, (_, i) => i % 7) }] };
+    for (const fn of ["group_min", "cummax", "cumsum", "dense_rank", "rank"] as const) {
+      const out = windowFrame(f, { partitionBy: [], orderBy: "v", fn, column: "v", as: "w" });
+      expect(out.columns[1].values.length).toBe(n);
+    }
+    const ranks = windowFrame(f, { partitionBy: [], orderBy: "v", fn: "dense_rank", as: "w" }).columns[1].values;
+    expect(ranks[6]).toBe(7);
+  }, 10_000);
 });
