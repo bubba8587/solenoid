@@ -169,6 +169,32 @@ describe("groupBy — error cells + the aggregate guard", () => {
   });
 });
 
+// [[D76]] textMinMax
+describe("text min and max", () => {
+  const t: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "k", type: "string", values: ["a", "a", "a", "b"] },
+      { name: "s", type: "string", values: ["pear", "Plum", null, solError("#N/A", "x")] },
+    ],
+  };
+  it("Group By returns the code-unit first and last as text; an error cell wins", () => {
+    const out = groupByFrame(t, ["k"], [{ column: "s", op: "min", as: "lo" }, { column: "s", op: "max", as: "hi" }]);
+    expect(out.columns[1].type).toBe("string");
+    expect(out.columns[1].values[0]).toBe("Plum");
+    expect(out.columns[2].values[0]).toBe("pear");
+    const err = out.columns[1].values[1];
+    expect(isSolError(err) && err.code).toBe("#N/A");
+  });
+  it("PIVOTBY (GROUPBY with totals) agrees and types the body column as text", () => {
+    const out = pivotFrame(t, { rowFields: ["k"], colFields: [], values: ["s"], funcs: ["max"], rowTotalDepth: 1 });
+    const body = out.columns[1];
+    expect(body.type).toBe("string");
+    expect(body.values[0]).toBe("pear");
+    expect(isSolError(body.values[2])).toBe(true);
+  });
+});
+
 describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () => {
   const prices: FrameValue = {
     __frame: true,

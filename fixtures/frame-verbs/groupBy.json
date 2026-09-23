@@ -945,7 +945,7 @@
    }
   },
   {
-   "name": "a text column contributes nothing numeric: sum 0, min null, count still counts",
+   "name": "a text column: sum 0, min is its alphabetical first, count still counts",
    "frames": {
     "in": {
      "columns": [
@@ -1011,7 +1011,7 @@
       "name": "lo",
       "type": "string",
       "values": [
-       null
+       "x"
       ]
      },
      {
@@ -1721,6 +1721,175 @@
       "type": "number",
       "values": [
        null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "text min and max order by code unit: uppercase before lowercase, digits as text",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "banana",
+        "Banana",
+        "apple",
+        "9",
+        "10",
+        "x"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "s",
+      "op": "min",
+      "as": "lo"
+     },
+     {
+      "column": "s",
+      "op": "max",
+      "as": "hi"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "lo",
+      "type": "string",
+      "values": [
+       "Banana",
+       "10"
+      ]
+     },
+     {
+      "name": "hi",
+      "type": "string",
+      "values": [
+       "banana",
+       "x"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "text min and max skip blanks and empty strings; a group of only those is blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        null,
+        "",
+        "m",
+        null,
+        ""
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "s",
+      "op": "min",
+      "as": "lo"
+     },
+     {
+      "column": "s",
+      "op": "max",
+      "as": "hi"
+     },
+     {
+      "column": "s",
+      "op": "count",
+      "as": "n"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "lo",
+      "type": "string",
+      "values": [
+       "m",
+       null
+      ]
+     },
+     {
+      "name": "hi",
+      "type": "string",
+      "values": [
+       "m",
+       null
+      ]
+     },
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       2,
+       1
       ]
      }
     ]

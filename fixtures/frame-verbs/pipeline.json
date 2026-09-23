@@ -662,7 +662,7 @@
    }
   },
   {
-   "name": "max over a text column is a text blank that a text filter can read",
+   "name": "max over a text column stays text, so a text filter reads it and drops the blank group",
    "frames": {
     "in": {
      "columns": [
@@ -716,12 +716,16 @@
      {
       "name": "g",
       "type": "number",
-      "values": []
+      "values": [
+       1
+      ]
      },
      {
       "name": "m",
       "type": "string",
-      "values": []
+      "values": [
+       "b"
+      ]
      }
     ]
    }

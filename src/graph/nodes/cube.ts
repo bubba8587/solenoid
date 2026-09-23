@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } from "./shared";
 import { parseCubeRecords, DEFAULT_CUBE_TEXT } from "../literalEditors";
-import { cubeFromColumns, recordsToCube, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
+import { cubeFromColumns, recordsToCube, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, typedColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell, type FrameColType } from "../frame";
 import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 
@@ -221,28 +221,40 @@ export class CubeRollupNode extends ClassicPreset.Node {
     const rows = cubeRowCount(cube);
     const flatVals: FrameCell[][] = flatCols.map(() => []);
     const rolled: FrameCell[] = [];
+    let textRolled = false;
     for (let i = 0; i < rows; i++) {
       flatCols.forEach((fc, k) => flatVals[k].push((fc.cells[i] ?? null) as FrameCell));
       const cell = nested.cells[i];
+      let type: FrameColType | undefined;
       const values: FrameCell[] | SolError | null = isFrameValue(cell)
-        ? (cell.columns.find((c) => c.name === col)?.values ?? solError("#REF!", `column "${col}" not found in nested frame`))
+        ? (() => {
+            const fc = cell.columns.find((c) => c.name === col);
+            if (!fc) return solError("#REF!", `column "${col}" not found in nested frame`);
+            type = fc.type;
+            return fc.values;
+          })()
         : isCubeValue(cell)
           ? (() => {
               const cc = cell.columns.find((c) => c.name === col);
               if (!cc) return solError("#REF!", `column "${col}" not found in nested cube`);
               if (cc.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) return solError("#SHAPE!", `column "${col}" holds nested cells; roll up a flat column`);
+              type = cc.type;
               return cc.cells as FrameCell[];
             })()
           : null;
       if (values === null) { rolled.push(null); continue; }
-      rolled.push(isSolError(values) ? values : aggregateGroup(values, this.agg));
+      const r = isSolError(values) ? values : aggregateGroup(values, this.agg, type);
+      if (typeof r === "string") textRolled = true;
+      rolled.push(r);
     }
     const names = makeHeaders([...flatCols.map((c) => c.name), outName], flatCols.length + 1);
     const result: FrameValue = {
       __frame: true,
       columns: [
         ...flatCols.map((_, k) => ({ ...inferColumn(names[k], flatVals[k]), name: names[k] })),
-        { name: names[flatCols.length], type: "number", values: rolled },
+        textRolled
+          ? typedColumn(names[flatCols.length], rolled, rolled.length, "string")
+          : { name: names[flatCols.length], type: "number", values: rolled },
       ],
     };
     this.cachedResult = result;
