@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { anyListIn, lambdaOut, readInput } from "./shared";
-import { extractVariables, atColNames, compilePositional, formulaSyntaxHint } from "../excelFormula";
+import { extractVariables, atColNames, compilePositional, formulaSyntaxHint, isFormulaConstant } from "../excelFormula";
 export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
 import { solError, type SolError } from "../errorValue";
@@ -93,6 +93,13 @@ export class LambdaNode extends ClassicPreset.Node {
       this.cachedValue = null;
       this.cachedError = "A parameter appears twice";
       return { result: solError("#NAME?", "A lambda parameter name appears twice") };
+    }
+    const constant = params.find(isFormulaConstant);
+    if (constant) {
+      // [[D77]] constantsAlwaysWin
+      this.cachedValue = null;
+      this.cachedError = `${constant} is a constant`;
+      return { result: solError("#NAME?", `${constant} is a constant, so it can't name a lambda parameter`) };
     }
     if (!this.compiled) {
       this.cachedValue = null;
