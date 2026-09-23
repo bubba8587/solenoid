@@ -116,8 +116,8 @@ negative or non-numeric duration or Complete) throws one `ScheduleError` naming 
    serial). It maps onto the successor's calendar as the first unit at or after it, and the lag
    then counts on the successor's calendar, or in calendar days when elapsed. A sub-day lag counts
    in Minutes mode and rounds in Days mode.
-5. **Forward pass.** Each task's early start is the latest of the project start, its links, and
-   its floor. A summary's dates are the span of its children on its own calendar. An actual start
+5. **Forward pass.** A task with no links starts at the project start; a linked task's early
+   start is the latest of its links and its floor, so a lead can put it before the project start. A summary's dates are the span of its children on its own calendar. An actual start
    pins the early start. With a status date, the remaining part cannot start before it; a done part
    of zero units is nothing to split off, so the whole task moves.
 6. **Backward pass.** Every late finish starts at the project finish, on the task's own calendar,
