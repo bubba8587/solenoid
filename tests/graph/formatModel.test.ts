@@ -4,7 +4,7 @@ import { familyOf, controlsFor, precisionApplies, COMPLEX_FORMAT_STYLES } from "
 import { applyLogicalStyle } from "../../src/graph/formatAnnotationStore";
 import type { SocketDataType } from "../../src/graph/sockets";
 
-// The spec's truth table (docs/format-model.md), machine-checked.
+// The spec's truth table (tree/specs/values/format-model.md), machine-checked.
 
 describe("familyOf — the ENTIRE SocketDataType union is covered or explicitly none", () => {
   // Every member of the union, exhaustively — a new socket type must be added

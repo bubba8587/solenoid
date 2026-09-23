@@ -279,7 +279,7 @@
    padding; keyboard-shortcut hints mean nothing without a keyboard. */
 html.is-mobile .solenoid-cmdpalette {
   /* 92 = the mobile top-chrome bottom edge (82) + 10 gap — level with the nav
-     pill; see docs/layout-chrome.md "Mobile stack" (hand-keyed, keep in sync). */
+     pill; see tree/specs/canvas/layout-chrome.md "Mobile stack" (hand-keyed, keep in sync). */
   top: calc(env(safe-area-inset-top, 0px) + 92px);
   bottom: auto;
 }

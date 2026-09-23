@@ -829,7 +829,7 @@ export class FxNode extends ClassicPreset.Node {
   }
 
   /** A wired date (serial) wins; else the typed ISO literal; else today ± `dayOffset`. A
-   *  wired blank/error is unknown → "" (blanks the result, value-semantics.md). */
+   *  wired blank/error is unknown → "" (blanks the result, tree/specs/values/value-semantics.md). */
   private readDate(wired: unknown[] | undefined, literal: string | undefined, dayOffset: number): string {
     if (wired && wired.length > 0) {
       const s = wired[0];

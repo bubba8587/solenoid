@@ -134,7 +134,7 @@ the decision tree (`dte.md`).
 
 - **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't build
   per-panel resize. **Moveable / resizable / hideable toolbar chrome** is the same
-  customization slice (`archive/1.4-plan.md` F3 HOLD; `layout-chrome.md` shows the cost).
+  customization slice (`archive/1.4-plan.md` F3 HOLD; `tree/specs/canvas/layout-chrome.md` shows the cost).
 - **Cable collision avoidance** — spec: `archive/cable-routing.md` §2. Superseded by the
   obstacle-router shape if the author accepts its license (`archive/1.4-plan.md` F1); delete this
   entry when F1 lands.

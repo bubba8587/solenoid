@@ -93,7 +93,7 @@ function DrawnCableShape({
   const heads = drawnHeadings(cable.points);
   const activePoint = selected ? drawnCableStore.activePoint() : null;
   // On touch an UNSELECTED body is pan surface: the tap's click selects, a drag pans
-  // (touch-gestures.md). Grabbable things carry `nopan` so RF's d3 pan stands down.
+  // (tree/specs/canvas/touch-gestures.md). Grabbable things carry `nopan` so RF's d3 pan stands down.
   const bodyGrabs = !IS_COARSE || selected;
   const drag = useRef<{ index: number | null; last: DrawnPoint; moved: boolean } | null>(null);
 

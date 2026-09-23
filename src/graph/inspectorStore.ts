@@ -1,6 +1,6 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit)
 // Open state for the node Inspector; the root class `html.sol-inspector-docked` drives
-// the canvas squeeze (docs/layout-chrome.md). The two right-side docks are mutually
+// the canvas squeeze (tree/specs/canvas/layout-chrome.md). The two right-side docks are mutually
 // exclusive; InspectorPanel watches reportStore for the reverse direction.
 import { createToggleStore } from "./storeKit";
 import { reportStore } from "./reportStore";

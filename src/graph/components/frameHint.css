@@ -3,7 +3,7 @@
    corner + row-number column, sunken column heads with the popup's tinted-name
    recipe, per-cell gridlines, mono cells. Extremely small on purpose: a glance
    cue for "wire a frame shaped like this", not a surface to read. Sits in the
-   110–199 band: above the HUD, below modals (layout-chrome.md ladder). */
+   110–199 band: above the HUD, below modals (tree/specs/canvas/layout-chrome.md ladder). */
 .solenoid-frame-hint {
   position: fixed;
   z-index: 120;

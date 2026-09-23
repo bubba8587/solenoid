@@ -30,7 +30,7 @@ import "./desktopFrame.css";
 
 // Marks the shell so the custom title bar's CSS applies and reserves its strip.
 if (isDesktop()) document.documentElement.dataset.shell = "desktop";
-// linux shim for crisp canvas zoom (docs/layout-chrome.md)
+// linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md)
 if (OWN_WINDOW_CONTROLS) document.documentElement.dataset.webview = "webkitgtk";
 
 // All mobile styling keys off THIS flag, never a `pointer: coarse` query — that is

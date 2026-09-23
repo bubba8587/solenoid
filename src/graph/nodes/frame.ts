@@ -436,7 +436,7 @@ export class HeadNode extends ClassicPreset.Node {
     // `to` is read by the "range" op ALONE, so a wired blank To must not blank a First-N slice.
     const to = this.op === "range" ? readInput(inputs.to, this.literals.to ?? n) : 0;
     const gen = beginPass(this);
-    // A wired blank row count leaves the slice unknown (value-semantics.md, "Reading an input").
+    // A wired blank row count leaves the slice unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (f == null || n === null || to === null) return emitFrame(this, gen, null);
     // A cube reorders/keeps whole rows in JS (sliceCube covers first/last/skip/range);
     // Polars never sees a nested cell.
@@ -762,7 +762,7 @@ export class ColumnsNode extends ClassicPreset.Node {
     const f = rowVerbInput(inputs.frame?.[0] ?? null);
     const cols = readColumnList(inputs.columns);
     const gen = beginPass(this);
-    // A wired blank column list leaves the result unknown for both ops (value-semantics.md).
+    // A wired blank column list leaves the result unknown for both ops (tree/specs/values/value-semantics.md).
     if (f == null || cols === null) return emitFrame(this, gen, null);
     if (isCubeValue(f)) {
       const r = runVerb(() => (this.op === "keep" && cols.length === 0 ? f : selectCubeColumns(f, cols, this.op === "drop" ? "drop" : "keep")));
@@ -986,7 +986,7 @@ export class PivotNode extends ClassicPreset.Node {
     const rowRaw = readColumnList(inputs.rowFields);
     const colRaw = readColumnList(inputs.colFields);
     const valRaw = readColumnList(inputs.values);
-    // A wired blank field list is unknown (value-semantics.md, "Reading an input").
+    // A wired blank field list is unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (rowRaw === null || colRaw === null || valRaw === null) { this.cachedResult = null; return { frame: null }; }
     const rowFields = rowRaw.filter((n) => valid.has(n));
     const colFields = colRaw.filter((n) => valid.has(n));
@@ -1092,7 +1092,7 @@ export class NestNode extends ClassicPreset.Node {
     const f = inputs.frame?.[0] ?? null;
     const keys = readColumnList(inputs.keys);
     const nameRaw = readInput(inputs.nestedName, this.stringLiterals.nestedName ?? "items");
-    // A wired blank name or key list is unknown (value-semantics.md, "Reading an input").
+    // A wired blank name or key list is unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (!f || keys === null || !keys.length || nameRaw === null) { this.cachedResult = null; return { cube: null }; }
     const name = nameRaw.trim() || "items";
     this.cachedResult = runVerb(() => nestFrame(f, keys, name));
@@ -1123,7 +1123,7 @@ export class UnnestNode extends ClassicPreset.Node {
   data(inputs: { cube?: (CubeValue | null)[]; column?: string[] }) {
     const c = inputs.cube?.[0] ?? null;
     const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
-    // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
+    // A wired blank names no column — unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (!c || colRaw === null || !colRaw.trim()) { this.cachedResult = null; return { frame: null }; }
     const col = colRaw.trim();
     this.cachedResult = runVerb(() => unnestCube(c, col));
@@ -1334,7 +1334,7 @@ export class SplitColumnNode extends ClassicPreset.Node {
     const columnRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
     const delimiter = readInput(inputs.delimiter, this.stringLiterals.delimiter ?? "");
     const into = readColumnList(inputs.into);
-    // A wired blank column, delimiter or name list is unknown (value-semantics.md, "Reading an input").
+    // A wired blank column, delimiter or name list is unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (columnRaw === null || delimiter === null || into === null) { this.cachedResult = null; return { frame: null }; }
     const column = columnRaw.trim();
     this.cachedResult = column ? runVerb(() => splitColumn(f, column, delimiter, into)) : f;
@@ -1369,7 +1369,7 @@ export class AddIndexNode extends ClassicPreset.Node {
     if (!f) { this.cachedResult = null; return { frame: null }; }
     const start = readInput(inputs.start, this.literals.start ?? 1);
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
-    // A wired blank start or name is unknown (value-semantics.md, "Reading an input").
+    // A wired blank start or name is unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (start === null || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Index";
     this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
@@ -1408,7 +1408,7 @@ export class FillBlanksNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const colsRaw = readColumnList(inputs.columns);
-    // A wired blank column list is unknown (value-semantics.md, "Reading an input").
+    // A wired blank column list is unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (f == null || colsRaw === null) return emitFrame(this, beginPass(this), null);
     const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
     // Lazy: Polars forward_fill / backward_fill on desktop, the oracle on web.
@@ -1507,7 +1507,7 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     const colsRaw = readColumnList(inputs.columns);
     const separator = readInput(inputs.separator, this.stringLiterals.separator ?? "");
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    // A wired blank column list, separator or name is unknown (value-semantics.md, "Reading an input").
+    // A wired blank column list, separator or name is unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (colsRaw === null || separator === null || name === null) { this.cachedResult = null; return { frame: null }; }
     const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
     // No columns typed yet → pass through untouched (not an error: "not written yet").
@@ -2443,7 +2443,7 @@ export class GetColumnNode extends ClassicPreset.Node {
   data(inputs: { frame?: unknown[]; name?: string[] }): { values: GetColumnValues } {
     const f = inputs.frame?.[0] ?? null;
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
+    // A wired blank names no column — unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
     // A cube: read the named SCALAR column (missing → null, like a frame; a list or
     // sub-table column → #SHAPE!). inferColumn types the cells and recovers per-cell units.
@@ -2575,7 +2575,7 @@ export class AddColumnNode extends ClassicPreset.Node {
     const f: FrameValue | null = rawF == null ? null : isCube ? null : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
     const values = inputs.values?.[0] ?? null;
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
-    // A wired blank name is unknown (value-semantics.md, "Reading an input").
+    // A wired blank name is unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if ((!f && !isCube) || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Col";
     const colType = colTypeForAddAs(this.addAs);
@@ -2812,7 +2812,7 @@ export class GetRowNode extends ClassicPreset.Node {
   data(inputs: { frame?: unknown[]; index?: number[] }) {
     const raw = inputs.frame?.[0] ?? null;
     const idx1 = readInput(inputs.index, this.literals.index ?? 1);
-    // A wired blank index picks no row — unknown (value-semantics.md, "Reading an input").
+    // A wired blank index picks no row — unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (raw == null || idx1 === null) { this.cachedResult = null; return { frame: null }; }
     const i = Math.round(idx1) - 1; // 1-based row number → 0-based index
     // A cube keeps the whole row (nested cells ride along); Polars never sees it.

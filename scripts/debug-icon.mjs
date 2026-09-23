@@ -1,4 +1,4 @@
-// Regenerates the debug build's bug-badged icon (docs/layout-chrome.md).
+// Regenerates the debug build's bug-badged icon (tree/specs/canvas/layout-chrome.md).
 //   node scripts/debug-icon.mjs
 import fs from "node:fs";
 import path from "node:path";

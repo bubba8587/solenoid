@@ -1,8 +1,12 @@
+---
+aliases: ["Touch gestures"]
+tags: [spec, canvas]
+---
 <!-- [[C93]] gestureByPointerType, [[C92]] pinchUnvetoable -->
 # Touch & pointer gestures — the input inventory
 
 **THE normative list of what every pointer gesture means, per device config.** Born
-2026-08-06 after two phantom-gesture incidents in one session: `layout-chrome.md`
+2026-08-06 after two phantom-gesture incidents in one session: [[layout-chrome]]
 claimed a "canvas double-tap add" that never existed, and the real long-press-to-add
 went unrecorded because it rides the browser's native long-press → `contextmenu`
 synthesis with no greppable "longpress" anywhere. A gesture that exists only as an

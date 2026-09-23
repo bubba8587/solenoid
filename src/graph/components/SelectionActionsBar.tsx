@@ -5,7 +5,7 @@ import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
 
-// Placement: docs/layout-chrome.md (Align pill). Selection has no push store, so a
+// Placement: tree/specs/canvas/layout-chrome.md (Align pill). Selection has no push store, so a
 // light interval counts the selected nodes with a view.
 
 const POLL_MS = 150;

@@ -354,7 +354,7 @@ The webpage export and Write to Obsidian take a chart as SVG from the source nod
 
 ## A Format Controller on a chart socket
 
-The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 default, ×1.25, ×1.5, ×2), and nothing else ([[C94]] formatFamilyGates; the table is `docs/format-model.md`). It is display-only: it never changes the value on the cable. The scale multiplies with the value's own `fontsize`: the payload figures get `fscale = chartFontScale · fontsize / 10`, and the recharts series figures compute the same product themselves.
+The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 default, ×1.25, ×1.5, ×2), and nothing else ([[C94]] formatFamilyGates; the table is [[format-model]]). It is display-only: it never changes the value on the cable. The scale multiplies with the value's own `fontsize`: the payload figures get `fscale = chartFontScale · fontsize / 10`, and the recharts series figures compute the same product themselves.
 
 - **Where it is read:** the Chart and Merge Plots cards (the FC on their own output), Display (`resolveDisplayAnnotation`: an FC on the Display, else one on its source output or downstream), the popup (the FC on the node it was opened from) and a Report embed (the FC resolved for that reference). The other figure cards do not read it.
 - **Figures it affects:** every recharts series figure, Overlay, Composed, Bubble, Treemap and Sankey labels, KPI, the Bar gauge and Record (through `--chart-fscale`) and Gantt. It has no effect on the Dial, Waffle, Surface or the canvas figures.

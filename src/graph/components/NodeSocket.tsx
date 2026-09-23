@@ -178,7 +178,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
   // the face, so peeking it would just repeat it. Leaving, pressing (a cable pick), unmount, or a
   // wheel hides it. The dot has NO touch trigger: a touch press begins the cable pick,
   // which captures the pointer, so the tap's up never reaches this wrapper — the touch
-  // trigger is the whole row (MeasuredSocketRow's example-hint path; touch-gestures.md).
+  // trigger is the whole row (MeasuredSocketRow's example-hint path; tree/specs/canvas/touch-gestures.md).
   const hint = hintFor(side, nodeId, socketKey);
   const hintTimer = useRef<number | null>(null);
   const [peekShown, setPeekShown] = useState(false);

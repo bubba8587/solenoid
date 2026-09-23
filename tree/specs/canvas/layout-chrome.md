@@ -1,3 +1,7 @@
+---
+aliases: ["Layout and chrome"]
+tags: [spec, canvas]
+---
 <!-- [[C99]] chromeEnvelopeVars -->
 # Layout & chrome geometry (desktop + mobile)
 
@@ -66,7 +70,7 @@ bottom; everything else floats over the canvas.
 > rete's double-click zoom). The touch add gesture is LONG-PRESS on empty canvas
 > (the browser's native long-press → `contextmenu`, routed by `canvasContextMenu.ts`).
 > Full add paths: long-press/right-click canvas, mobile bar ➕, the `A` shortcut,
-> Insert ▸ Add node…. The gesture inventory lives in `touch-gestures.md`.
+> Insert ▸ Add node…. The gesture inventory lives in [[touch-gestures]].
 >
 > The exception is the **pinned trio** — theme · Reference · Settings
 > (`.solenoid-apptools`) — which must hold the top-right corner. An in-flow flex item

@@ -49,7 +49,7 @@ Element families never cross on their own: crossing takes a Cast, and the only b
 
 ## Out of scope
 
-Unit separation (`#UNIT!` at compute time, `unitLattice.ts`, [[C25]] firstClassUnits): `accepts()` stays unit-blind. Value coercion on arrival beyond req. 4 (`coerceInputs.ts`, `docs/value-semantics.md`). In-place retype reconciliation ([[D16]] retypeReconciles, `fcReconcile.ts`).
+Unit separation (`#UNIT!` at compute time, `unitLattice.ts`, [[C25]] firstClassUnits): `accepts()` stays unit-blind. Value coercion on arrival beyond req. 4 (`coerceInputs.ts`, [[value-semantics]]). In-place retype reconciliation ([[D16]] retypeReconciles, `fcReconcile.ts`).
 
 ## Gaps
 

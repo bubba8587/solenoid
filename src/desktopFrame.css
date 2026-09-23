@@ -33,7 +33,7 @@ html[data-shell="desktop"] .solenoid-menubar {
   padding-right: 120px;
 }
 
-/* linux shim for crisp canvas zoom (docs/layout-chrome.md) */
+/* linux shim for crisp canvas zoom (tree/specs/canvas/layout-chrome.md) */
 html[data-webview="webkitgtk"] .react-flow__viewport *,
 html[data-webview="webkitgtk"] .react-flow__viewport *::before,
 html[data-webview="webkitgtk"] .react-flow__viewport *::after {

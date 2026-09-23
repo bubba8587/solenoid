@@ -143,7 +143,7 @@ script when the component needs hand-writing anyway (op select, custom render).
   cable carrying blank", so it substitutes the card's value for the graph's
   answer. Then decide what a wired blank DOES from the input's role —
   propagate / skip / skip-the-check / fall back — per the table in
-  `docs/value-semantics.md` "Reading an input". Pin both halves in a test
+  `tree/specs/values/value-semantics.md` "Reading an input". Pin both halves in a test
   (wired blank AND unwired default); `nodes/readInputSweep.test.ts` fails on a
   new `?? literal` read.
 - **`literals` / `stringLiterals`**: declare the map on the class IFF the card

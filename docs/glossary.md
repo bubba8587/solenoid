@@ -207,7 +207,7 @@ area. When you coin a new load-bearing term, add it here.
 
 ## The author's UI vocabulary (chrome name → code handle)
 
-Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → handle.
+Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; this is term → handle.
 
 - **File / menu bar**: top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
 - **Top bar**: toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.

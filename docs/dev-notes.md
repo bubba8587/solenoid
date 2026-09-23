@@ -46,7 +46,7 @@ specific item.
   C51, C61, C72, D10, D20, D22, B16.
 - **Open:** node candidates the spec writers flagged (sections of `../tree/specs/documents/literal-input-editors.md`,
   the drawn-cable rulings) are unmoved. Still without a spec: the Table popup and the node families
-  (`node-coverage.md` stands in); `format-model.md` is a spec living in docs/.
+  (`node-coverage.md` stands in); `tree/specs/values/format-model.md` is a spec living in docs/.
 
 ### SESSION DIGEST (2026-09-22b: the connective-core copy pass; author present, reviewing samples)
 
@@ -63,7 +63,7 @@ specific item.
   `anydata` below `anytable` and said a computed column's formula sees only scalars.
 - **Specs** `error-values`, `unit-flow`, `type-propagation…`, `socket-lattice`, `literal-input-editors` are
   restructured into sections; every spec header drops the "Lifted from subsystem-invariants" line.
-  `mental-model.md`, `value-semantics.md`, `glossary.md` and all of `node-coverage.md` are reworked; build
+  `mental-model.md`, `tree/specs/values/value-semantics.md`, `glossary.md` and all of `node-coverage.md` are reworked; build
   history goes to git.
 - **DTE:** about 70 AI-made nodes reworded with rules unchanged, each with a History line; every `*Origin:*`
   paragraph and duplicate `*Why:*` label is gone; 56 bare rule names became `[[ID]]` wikilinks. Human-held

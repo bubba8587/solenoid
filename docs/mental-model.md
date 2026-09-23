@@ -161,10 +161,10 @@ The curated selling list is `release-notes-features.md`; the file map is `archit
 
 - Check the Code → spec routing table (`docs/README.md`) before editing any routed file,
   and cite the governing node (`[[<ID>]] name`) in comments and commits.
-- Anything visual: `DESIGN.md` first. Any gesture: `touch-gestures.md` is the inventory.
-  Any bar or overlay: `layout-chrome.md`. Anything on the canvas surface:
+- Anything visual: `DESIGN.md` first. Any gesture: `tree/specs/canvas/touch-gestures.md` is the inventory.
+  Any bar or overlay: `tree/specs/canvas/layout-chrome.md`. Anything on the canvas surface:
   `../tree/specs/canvas/react-flow-surface-contract.md`.
 - Socket and type questions: the per-variant tables in `socket-reference.md`. A new node's
-  `data()`: `value-semantics.md` "Reading an input", deciding each input's role.
+  `data()`: `tree/specs/values/value-semantics.md` "Reading an input", deciding each input's role.
 - Trust tests over prose: `python3 tools/dte.py show <ID>` derives "enforced by" from the
   tests that cite a rule node, so a doc claim without a test is a claim to verify.

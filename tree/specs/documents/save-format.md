@@ -44,7 +44,7 @@ The top-level object. Optional fields are omitted when empty, never written as e
 | `drawnCables` | `SavedDrawnCable[]`? | Free-drawn annotation curves ([[drawn-cables]]). They reference no node. |
 | `pins` | `Pin[]`? | Pinned output values: `{ nodeId, outputKey }`. |
 | `comments` | `SavedCommentData[]`? | Node-anchored comment threads: `{ id, nodeId, author, text, resolved, time? }`. `id` is the comment's own id (digits in it seed the comment counter on load); `time` is epoch ms, defaulting to the load time when missing. |
-| `frameFormats` | `FrameColumnFormat[]`? | Per-column display formats on a Frame: `{ nodeId, column, ann }`, where `ann` is a Format Controller annotation object (`docs/format-model.md`). |
+| `frameFormats` | `FrameColumnFormat[]`? | Per-column display formats on a Frame: `{ nodeId, column, ann }`, where `ann` is a Format Controller annotation object ([[format-model]]). |
 | `palette` | `{ base?, overrides? }`? | The document's palette choice layered over the app-wide one. `overrides` maps slot id to hex. |
 | `reportPalette` | `{ base?, overrides? }`? | The same, scoped to report and export surfaces. |
 | `meta` | `{ author?, tags?, foreign?, networkAllowed? }`? | Document properties. `foreign` and `networkAllowed` carry the per-document network permission ([[C103]] untrustedContentSeams). The document title is not here; it is the library name. |

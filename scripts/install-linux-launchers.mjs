@@ -1,4 +1,4 @@
-// Pinnable launchers for the local release + debug apps (docs/layout-chrome.md).
+// Pinnable launchers for the local release + debug apps (tree/specs/canvas/layout-chrome.md).
 //   npm run desktop:launchers
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";

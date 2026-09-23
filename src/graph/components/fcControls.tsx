@@ -11,7 +11,7 @@ import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { LazySelect } from "./LazySelect";
 
-// The FC's flow states (authored ← →, inherited → →, dictated ← ←): docs/format-model.md.
+// The FC's flow states (authored ← →, inherited → →, dictated ← ←): tree/specs/values/format-model.md.
 
 export type FcDir = "back" | "fwd" | null;
 export interface FcFlowState { left: FcDir; right: FcDir }

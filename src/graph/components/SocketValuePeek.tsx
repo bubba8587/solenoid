@@ -17,7 +17,7 @@ import type { MermaidValue } from "../mermaidValue";
 import type { SvgValue } from "../svgValue";
 import type { LambdaValue } from "../nodes/lambda";
 
-/** The body of a socket hover-peek (docs/touch-gestures.md): the socket's live value
+/** The body of a socket hover-peek (tree/specs/canvas/touch-gestures.md): the socket's live value
  *  rendered by the Display's OWN value views ([[B3]] sameNodeEverywhere), inside the
  *  producing node's format context so units and per-column formats resolve as they do
  *  on that node. Read-only: frames/tables show a head-5 preview with no chip; the whole

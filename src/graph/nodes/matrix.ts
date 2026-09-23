@@ -684,7 +684,7 @@ export class ExpandNode extends ClassicPreset.Node {
     const reqCRaw = readInput(inputs.cols, this.literals.cols ?? 0);
     if (reqRRaw === null || reqCRaw === null) { this.cachedResult = null; return { result: null }; }
     // Unwired Fill pads with `null`, NOT Excel's #N/A (wire the NA node for that) —
-    // the author's deliberate override (value-semantics.md).
+    // the author's deliberate override (tree/specs/values/value-semantics.md).
     const fill = (inputs.fill?.[0] ?? null) as Cell;
     const result = expandMat(m, Math.round(reqRRaw), Math.round(reqCRaw), fill);
     this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);

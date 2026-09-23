@@ -1,3 +1,7 @@
+---
+aliases: ["Value semantics"]
+tags: [spec, values]
+---
 # Value semantics: null, NaN, Infinity and errors, across every domain
 
 The one-stop reference for the value model's special kinds: what each one means, what

@@ -586,7 +586,7 @@ describe("Filter — condition rows over the list's own values ([[C49]] filterOn
     expect(nb.data({ list: [[true, false, true]], value0: [true] }).result).toEqual([true, true]);
     // A wired MISSING makes the condition unevaluable, so which elements survive is
     // unknown — blank out, NOT the unfiltered list. That reading (an empty literal's
-    // "not written yet") belongs to the UNWIRED slot only; value-semantics.md,
+    // "not written yet") belongs to the UNWIRED slot only; tree/specs/values/value-semantics.md,
     // "Reading an input" -> "absent is not unknown".
     const nn = mk([{ op: "gt", value: "2" }]);
     const out = nn.data({ list: [[1, 5]], value0: [null] });

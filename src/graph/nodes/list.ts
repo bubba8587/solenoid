@@ -249,7 +249,7 @@ export class SeriesNode extends ClassicPreset.Node {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       // `stop` is legitimately UNSET: undefined is unset, null is a cable carrying blank.
       const stop  = readInput(inputs.stop, this.literals.stop as number | undefined);
-      // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+      // A wired blank leaves the result unknown (tree/specs/values/value-semantics.md, "Reading an input").
       const step  = readInput(inputs.step, this.literals.step ?? 1);
       if (start === null || stop === null || step === null) list = null;
       else {
@@ -515,7 +515,7 @@ export class SortNode extends ClassicPreset.Node {
       this.cachedList = sortByKeys(arr, by, desc) as (number | string | boolean | null | SolError)[];
       return { result: this.cachedList };
     }
-    // A wired-blank `by` leaves the result unknown (value-semantics.md, role table);
+    // A wired-blank `by` leaves the result unknown (tree/specs/values/value-semantics.md, role table);
     // an UNWIRED `by` self-sorts the list by its own (numeric) values — the classic Sort.
     if ("by" in inputs) { this.cachedList = null; return { result: null }; }
     this.cachedList = sortNumericList(arr as ListCell[], desc) as (number | null | SolError)[];
@@ -877,7 +877,7 @@ export class SliceNode extends ClassicPreset.Node {
     const arr = inputs.list?.[0] ?? [];
     const startRaw = readInput(inputs.start, this.literals.start ?? 1);
     // An UNSET end means "to the end of the list"; a WIRED blank does not.
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    // A wired blank leaves the result unknown (tree/specs/values/value-semantics.md, "Reading an input").
     const endRaw = readInput(inputs.end, this.literals.end as number | undefined);
     if (startRaw === null || endRaw === null) { this.cachedList = null; return { result: null }; }
     const sliced = sliceList(arr, startRaw, endRaw);
@@ -1186,7 +1186,7 @@ export class SumIfsNode extends ClassicPreset.Node {
       return finish(count);
     }
     const vnameRaw = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
-    // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
+    // A wired blank names no column — unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (vnameRaw === null) return finish(null);
     const vname = String(vnameRaw).trim();
     if (vname === "") return finish(null); // not written yet
@@ -1508,7 +1508,7 @@ export class RunningNode extends ClassicPreset.Node {
   data(inputs: { list?: ListCell[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const w = readInput(inputs.window, this.literals.window ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    // A wired blank leaves the result unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (w === null) { this.cachedList = null; return { result: null }; }
     if (!Number.isFinite(w) || w < 0) { this.cachedList = []; return { result: solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count") }; }
     const result = running(this.agg, arr, w);
@@ -1748,7 +1748,7 @@ export class NthElementNode extends ClassicPreset.Node {
   data(inputs: { list?: unknown[][]; n?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const nRaw = readInput(inputs.n, this.literals.n ?? 2);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    // A wired blank leaves the result unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (nRaw === null) { this.cachedList = null; return { result: null }; }
     this.cachedList = nthElement(arr, nRaw);
     return { result: this.cachedList };
@@ -1819,7 +1819,7 @@ export class PadNode extends ClassicPreset.Node {
     const arr  = inputs.list?.[0] ?? [];
     const nRaw = readInput(inputs.n, this.literals.n ?? 5);
     const fill = readInput(inputs.fill, this.literals.fill ?? 0);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    // A wired blank leaves the result unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (nRaw === null || fill === null) { this.cachedList = null; return { result: null }; }
     this.cachedList = padList(arr, nRaw, fill as unknown, this.op);
     return { result: this.cachedList };
@@ -2014,7 +2014,7 @@ export class RandArrayNode extends ClassicPreset.Node {
     const countRaw = readInput(inputs.count, this.literals.count ?? 10);
     const lo    = readInput(inputs.min, this.literals.min ?? 0);
     const hi    = readInput(inputs.max, this.literals.max ?? 1);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    // A wired blank leaves the result unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (countRaw === null || lo === null || hi === null) {
       this.cachedList = null; this.rolls = []; this.lastGen = -1;
       return { list: null };
@@ -2089,7 +2089,7 @@ export class XMatchNode extends ClassicPreset.Node {
 
   data(inputs: { value?: unknown[]; array?: unknown[][] }): { result: XMatchResult } {
     const val = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "value");
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    // A wired blank leaves the result unknown (tree/specs/values/value-semantics.md, "Reading an input").
     if (val === null) { this.cachedResult = null; return { result: null }; }
     const keys = inputs.array?.[0] ?? null;
     const ks = keys ?? [];

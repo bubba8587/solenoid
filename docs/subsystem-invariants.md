@@ -37,6 +37,8 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` | reconciling downstream when a socket retypes in place | `fcReconcile.ts` |
 | `../tree/specs/values/unit-flow.md` | units on values and formats flowing downstream | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts` |
 | `../tree/specs/values/error-values.md` | error codes, propagation and display | `errorValue.ts` |
+| `../tree/specs/values/value-semantics.md` | null, NaN, infinity and errors per context, and reading an input (wired blank vs literal) | every `data()` |
+| `../tree/specs/values/format-model.md` | the Format Controller's render pipeline, per-family controls and precision | `formatModel.ts`, `formatAnnotationStore.ts` |
 
 ## Documents
 
@@ -55,7 +57,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | Spec | Subsystem | Main code |
 |---|---|---|
 | `../tree/specs/canvas/react-flow-surface-contract.md` | what React Flow owns, sub-flows, cables, sockets, overlays, ghost cables | `flow/*` |
-| `../tree/specs/canvas/pointer-gestures.md` | pinch, pan, drag and their priority (with `touch-gestures.md`) | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` |
+| `../tree/specs/canvas/pointer-gestures.md` | pinch, pan, drag and their priority (with `tree/specs/canvas/touch-gestures.md`) | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` |
 | `../tree/specs/canvas/html-in-canvas.md` | the HTML-in-Canvas gesture layer | `htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx` |
 | `../tree/specs/canvas/cable-rendering-knobs.md` | cable shapes, ribbons and the walk router | `cablePaths.ts`, `flow/FlowCableEdge.tsx` |
 | `../tree/specs/canvas/drawn-cables.md` | annotation cables drawn by hand | `drawnCables.ts`, `DrawnCableLayer.tsx` |
@@ -68,6 +70,8 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/canvas/input-cable-pruning.md` | dropping cables before their sockets go | `components/cablePrune.ts` |
 | `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` | opening and leaving a composite's inner canvas | `flow/FlowCompositeOverlay.tsx` |
 | `../tree/specs/canvas/add-menu.md` | the Add menu tree, search rows and scoring | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` |
+| `../tree/specs/canvas/layout-chrome.md` | where every bar and floating overlay sits, and what its offsets derive from | `Header.tsx`, `chromeBottom.ts`, the chrome CSS |
+| `../tree/specs/canvas/touch-gestures.md` | the inventory of every pointer and touch gesture per device | `flow/*`, `pointerGesture.ts` |
 
 ## Integrations
 

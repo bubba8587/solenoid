@@ -62,7 +62,7 @@ describe("the mobile bar and the tablet top-bar actions share one source", () =>
 // ─── The header envelope is MEASURED, not written down ───────────────────────
 // Six top-anchored overlays used to hard-code an offset derived from the same
 // 66px header height. That is the documented source of the recurring "overlay
-// overlaps a bar" bug (layout-chrome.md was started for it: the align pill
+// overlaps a bar" bug (tree/specs/canvas/layout-chrome.md was started for it: the align pill
 // shipped at 56px against an 82px bar and landed inside the toolbar). A TABLET
 // wraps the bar to a second row, and where it wraps depends on the viewport —
 // so the envelope stopped being a number anyone could write down. Header.tsx

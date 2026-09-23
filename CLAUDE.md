@@ -69,14 +69,14 @@ invented vocabulary + the author's names for the on-screen chrome).
   `tree/specs/floors/stores.md`; a file cites only what is specific to it.
   Read the spec IN FULL before touching its subsystem: **Compute pass**, **Formula language**, **Computed columns**, **Frame verbs**, **Save format**, **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
-  `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
+  `tree/specs/canvas/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
   collapse, Standoffs, Tidy, Conduit faces / resizable-content nodes, Input-cable pruning, Add
   menu, Socket lattice, Type propagation, Unit flow, Error values, Alerts, Addressable model,
   Live connections, Load performance, Per-doc autosave, Inline literal maps, Composite drill-in,
   HTML-in-Canvas.
-- **`docs/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
-- Reference: `docs/socket-reference.md` (every socket variant), `docs/format-model.md` (FC
-  controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),
+- **`tree/specs/canvas/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
+- Reference: `docs/socket-reference.md` (every socket variant), `tree/specs/values/format-model.md` (FC
+  controls), `tree/specs/values/value-semantics.md` ("Reading an input" — before writing a `data()`),
   `tree/specs/computation/formulajs-divergences.md` (before touching a `registerInternal` override),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
   map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.

@@ -1141,7 +1141,7 @@ export class RegexNode extends ClassicPreset.Node {
   }): { result: number | number[] | string | string[] | null } {
     const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
     // `replacement`/`occurrence` are read by the "replace" op ALONE — guard scoped to the
-    // active op (value-semantics.md), so a wired blank must not blank a TEST.
+    // active op (tree/specs/values/value-semantics.md), so a wired blank must not blank a TEST.
     const replacement = this.op === "replace"
       ? readInput(inputs.replacement, this.stringLiterals.replacement ?? "")
       : "";
@@ -1158,7 +1158,7 @@ export class RegexNode extends ClassicPreset.Node {
 
     // Unwired text keeps the old empty-string reading; a WIRED blank is unknown and
     // propagates. Per-cell missing/error cells ride through untouched — never
-    // stringified into "null" / "[object Object]" (value-semantics.md).
+    // stringified into "null" / "[object Object]" (tree/specs/values/value-semantics.md).
     const rawText = inputs.text === undefined ? "" : (inputs.text[0] ?? null);
     const applyCell = (c: unknown): number | string | string[] | SolError | null =>
       c == null ? null

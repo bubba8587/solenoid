@@ -50,7 +50,7 @@ Affordances are sized for the screen and content for the canvas. Handles, the hi
 ## Pointer and touch
 
 - Everything that can be grabbed carries the `nopan` class: the hit path while the cable is grabbable, and the handles always. React Flow's d3 pan listens to native touch and mouse events that React's `stopPropagation` never reaches, so `nopan` is what makes it stand down.
-- On touch, an unselected cable body is pan surface: a tap selects it through its click, and a drag pans (a finger never selects on pointerdown; see `docs/touch-gestures.md`). A selected body drags the cable. A pinch in the middle of a drag aborts the drag.
+- On touch, an unselected cable body is pan surface: a tap selects it through its click, and a drag pans (a finger never selects on pointerdown; see [[touch-gestures]]). A selected body drags the cable. A pinch in the middle of a drag aborts the drag.
 - With a mouse, pressing on the body selects and drags in one motion. Alt-click on a handle removes that point; double-click on the body inserts one.
 - The panel's `+` and `✕` buttons beside the point stepper are the finger's versions of insert and remove. `+` splits the span after the active point at its midpoint. A cable never drops below two points.
 

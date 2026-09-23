@@ -68,7 +68,7 @@ pub fn run() {
             let main_window = app.get_webview_window("main").unwrap();
             #[cfg(not(target_os = "linux"))]
             main_window.create_overlay_titlebar().unwrap();
-            // linux shim for window controls (docs/layout-chrome.md)
+            // linux shim for window controls (tree/specs/canvas/layout-chrome.md)
             #[cfg(target_os = "linux")]
             main_window.set_decorations(false)?;
             #[cfg(target_os = "linux")]

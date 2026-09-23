@@ -29,7 +29,7 @@ describe("formatScalar", () => {
     expect(formatScalar(0.00001)).toBe("1e-5");
   });
 
-  it("Infinity renders as the ∞ glyph (value-semantics.md, author call 2026-08-05)", () => {
+  it("Infinity renders as the ∞ glyph (tree/specs/values/value-semantics.md, author call 2026-08-05)", () => {
     expect(formatScalar(Infinity)).toBe("∞");
     expect(formatScalar(-Infinity)).toBe("-∞");
   });

@@ -2,7 +2,7 @@
 import { createNotifier } from "./storeKit";
 
 // WHICH report is open (a document may hold several) and whether it is docked; the root
-// class `html.sol-report-docked` drives the layout shift (docs/layout-chrome.md).
+// class `html.sol-report-docked` drives the layout shift (tree/specs/canvas/layout-chrome.md).
 
 let _openNodeId: string | null = null;
 let _docked = false;

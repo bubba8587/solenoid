@@ -1,3 +1,7 @@
+---
+aliases: ["Format model"]
+tags: [spec, values]
+---
 <!-- [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream -->
 # The Format Model (FC function model)
 

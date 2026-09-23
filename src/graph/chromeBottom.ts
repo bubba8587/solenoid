@@ -2,7 +2,7 @@
 import { useEffect, useRef, type RefObject } from "react";
 
 // The BOTTOM chrome envelope, measured — the mirror of Header.tsx's
-// `--chrome-top` (layout-chrome.md). Two bars can own the bottom edge (the
+// `--chrome-top` (tree/specs/canvas/layout-chrome.md). Two bars can own the bottom edge (the
 // desktop/tablet status bar, the mobile action bar); whichever is visible is
 // taller, so the published value is the max over the registered elements
 // (a display:none bar measures 0). The mobile bar's height INCLUDES its

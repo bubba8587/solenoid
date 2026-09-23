@@ -351,7 +351,7 @@
    it reappears top-left as the re-expand affordance. Selection is the explicit
    touch path: tap selects, the chevron appears, tap it (previously this leaned
    on tap-hover emulation). Note dblclick can NEVER fire inside the canvas
-   (capture-phase swallow — touch-gestures.md), so the chevron is the only
+   (capture-phase swallow — tree/specs/canvas/touch-gestures.md), so the chevron is the only
    re-expand control. */
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__chevron {
   opacity: 0;

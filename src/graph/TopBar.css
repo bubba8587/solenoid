@@ -117,7 +117,7 @@
 
 /* ─── Tidy options popover ─────────────────────────────────────────────────────
    The layout group anchors the popover under the Tidy button; see the z-slot in
-   docs/layout-chrome.md. The header doesn't clip its dropdowns, so it overflows
+   tree/specs/canvas/layout-chrome.md. The header doesn't clip its dropdowns, so it overflows
    down over the canvas like the menu-bar dropdown. */
 .solenoid-topbar__group--layout {
   position: relative;
@@ -167,7 +167,7 @@
    HEIGHT IS UNCHANGED — deliberately. The bar stays 44px inside the 66px header
    envelope, because four overlays clear that envelope with hand-keyed offsets
    (nav pill top:80, align pill top:76, HUD top:124, report dock top:66 — see
-   docs/layout-chrome.md). Growing the bar would silently push the bar's bottom
+   tree/specs/canvas/layout-chrome.md). Growing the bar would silently push the bar's bottom
    edge under all four. These are ordinary 28px pill buttons in the existing row. */
 .solenoid-topbar__group--tablet {
   display: none;

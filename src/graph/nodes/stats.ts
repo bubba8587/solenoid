@@ -782,7 +782,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
     } else if (this.op === "z") {
       const x = readInput(inputs.x, this.literals.x ?? 0); // wired blank → null → blank result
       // σ: UNWIRED is Excel's omitted argument (use the sample std); a WIRED blank is
-      // unknown and propagates (value-semantics.md, "Reading an input").
+      // unknown and propagates (tree/specs/values/value-semantics.md, "Reading an input").
       const sigma = inputs.sigma === undefined ? undefined : (inputs.sigma[0] ?? null);
       if (a && a.length >= 2 && x !== null && sigma !== null) {
         const n = a.length;

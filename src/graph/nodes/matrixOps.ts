@@ -178,7 +178,7 @@ export function chooseAxis<T>(m: T[][], indices: readonly number[], kind: "row" 
 /** EXPAND: grow a matrix to R×C, filling new cells with `fill`. Shrinking is #VALUE!;
  *  a 0 (Excel's omitted) target keeps that axis. Unlike WRAP, the omitted-Fill default
  *  is the caller's choice — the node/formula pass first-class `null`, the author's
- *  override of Excel's #N/A (value-semantics.md). */
+ *  override of Excel's #N/A (tree/specs/values/value-semantics.md). */
 export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[][] | SolError {
   const curR = matRows(m), curC = matCols(m);
   const R = reqR > 0 ? reqR : curR;

@@ -6,7 +6,7 @@ tags: [spec, values]
 
 # Spec: Error values
 
-Serves [[C24]] arraySemantics. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are `docs/value-semantics.md`; this file is the mechanics.
+Serves [[C24]] arraySemantics. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one. The semantics (what null, NaN, Infinity and each error mean, and how they propagate by context) are [[value-semantics]]; this file is the mechanics.
 
 ## Errors are values
 
@@ -53,7 +53,7 @@ The shared helpers are `cellShortCircuit` (the full rule) and `cellError` (error
 
 It runs at the producing op (the broadcasters, `applyOp`, `broadcastCall`), so Expression's `tagResult` trusts it: a surviving ∞ passes, and a stray NaN nets to `#DOMAIN!`. `0^0 = 1`, as in JS and Polars, while Excel gives #NUM! (`parity: false` on the pow leaf).
 
-**Scalar reads** use `readInput(wired, literal)` (`shared.ts`) for data inputs, so a wired `null` propagates instead of being swallowed by the literal. Config inputs (base, digits, order, counts) keep their defaults. `readInputSweep.test.ts` is the zero-floor ratchet across `nodes/*.ts`, and the full rules are `value-semantics.md` "Reading an input". Machine-checked by `broadcastContract.test.ts`.
+**Scalar reads** use `readInput(wired, literal)` (`shared.ts`) for data inputs, so a wired `null` propagates instead of being swallowed by the literal. Config inputs (base, digits, order, counts) keep their defaults. `readInputSweep.test.ts` is the zero-floor ratchet across `nodes/*.ts`, and the full rules are [[value-semantics]] "Reading an input". Machine-checked by `broadcastContract.test.ts`.
 
 ### Producers of each code
 

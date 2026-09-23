@@ -30,25 +30,14 @@ is parked there.
 
 ## Reference (read the relevant section before touching a subsystem)
 
-- **`subsystem-invariants.md`** — the "don't break this" mechanics (the React Flow
-  surface contract, pointer gestures, cable routing, group push, standoffs, tidy,
-  error values, unit flow, alerts, addressable model, autosave, drill-in lifecycle).
-- **`layout-chrome.md`** — the on-screen chrome map (bars, overlays, offsets,
-  z-index ladder). Read before adding or moving any bar/overlay.
-- **`touch-gestures.md`** — the pointer/touch gesture INVENTORY (what every
-  gesture means, per device config, incl. the long-press → contextmenu paths).
-  Read before adding/changing any gesture; update it in the same change.
-- **`format-model.md`** — the FC function model: the render pipeline, the
-  per-family control truth table (mirrored in `formatModel.ts`), the precision
-  rule. Read before touching FC controls/resolution.
+- **`subsystem-invariants.md`**: the index of every spec in `../tree/specs/` (the mechanics, one per
+  subsystem, in folders), including the chrome map (`layout-chrome`), the gesture inventory
+  (`touch-gestures`), the FC format model (`format-model`) and the null/NaN/error semantics with
+  "Reading an input" (`value-semantics`). Read the relevant spec before touching a subsystem.
 - **`socket-reference.md`** — every socket variant in plain English: what each
   carries, its glyph/color, what connects in, what is blocked, what it reaches,
   and what the coercion boundary does on arrival. Generated lists — regenerate
   with `scripts/socket-inventory.ts`.
-- **`value-semantics.md`** — null / NaN / Infinity / SolError semantics per
-  computation context, plus **"Reading an input"**: the spec for what a node
-  does with a WIRED blank vs its typed literal. Target that section when
-  writing a new node. All shipped.
 - **`node-coverage.md`** — the node inventory + the arity/labeled-slots rules;
   `nodeCatalog.ts` is the real source of truth.
 - **`knap-upstream.md`** — the `knap` bugs (with repros) and API asks found
@@ -151,10 +140,10 @@ results get retried and settled rulings relapse.
 | `standoffSolver.ts`, `standoffs.ts` | [[C89]] standoffsSolveLast; `../tree/specs/canvas/standoffs.md` |
 | `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | [[C90]] drawnCablesAnnotate; `../tree/specs/canvas/drawn-cables.md` |
 | `tidyArrange.ts` (ELK), `nodeSize.ts` | [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead; `../tree/specs/canvas/auto-arrange-tidy.md` |
-| `errorValue.ts`, `valueKinds.ts` | `value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
+| `errorValue.ts`, `valueKinds.ts` | `tree/specs/values/value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
 | `fcReconcile.ts`, in-place socket retype | [[D16]] retypeReconciles; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
 | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `../tree/specs/values/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
-| `formatModel.ts`, `formatController.ts`, FC controls | `format-model.md` |
+| `formatModel.ts`, `formatController.ts`, FC controls | `tree/specs/values/format-model.md` |
 | `alertStore.ts` | [[C39]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |
 | `nodeNameStore.ts` | [[C19]] namingModel; `../tree/specs/documents/addressable-model.md` |
 | `persistence.ts`, `textForm.ts`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
@@ -175,8 +164,8 @@ results get retried and settled rulings relapse.
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | [[C26]] opArgDistinct; `../DESIGN.md` § Op pickers; `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; [[C14]] currentExcelParity (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
-| any bar/overlay position or z-index | `layout-chrome.md` |
-| `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `layout-chrome.md` § Desktop window frame |
+| any bar/overlay position or z-index | `tree/specs/canvas/layout-chrome.md` |
+| `WindowControls.tsx`, `desktopFrame.css`, the window setup in `src-tauri/src/lib.rs` | `tree/specs/canvas/layout-chrome.md` § Desktop window frame |
 | `obsidian-plugin/**` | `../tree/specs/integrations/obsidian-plugin.md` (what it has, how it is built, every divergence from the app), under [[C107]] obsidianPlugin |
 | `ConduitComponent.tsx`, conduit faces/lanes | [[D17]] relaysTransparent; `../tree/specs/canvas/conduit-lane-faces.md` |
 
@@ -187,11 +176,11 @@ results get retried and settled rulings relapse.
   Reference generate from it). Merging nodes: [[B11]] maximalMerge.
 - **Anything on the canvas surface (a gesture, a key, a menu, a layer, a cable or
   socket change):** [[C43]] oneFlowSurface; `../tree/specs/canvas/react-flow-surface-contract.md` first;
-  `touch-gestures.md` for gestures.
+  `tree/specs/canvas/touch-gestures.md` for gestures.
 - **Choosing a socket type for a port, or "why won't this cable connect?":**
   `socket-reference.md` (the per-variant tables) + subsystem-invariants "Socket
   lattice".
-- **Touching the FC / formats / units:** `format-model.md` + subsystem-invariants
+- **Touching the FC / formats / units:** `tree/specs/values/format-model.md` + subsystem-invariants
   "Unit flow" + [[D43]] unitByGranularity (units granularity).
 - **Touching frames/the engine:** `glossary.md` + [[C16]] polarsEngine/arraySemantics + the
   `frameVerbs.ts` oracle and cargo parity tests.

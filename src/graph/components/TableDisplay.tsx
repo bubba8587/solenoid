@@ -105,7 +105,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
   const maxR = full ? rows : Math.min(rows, peek ? 5 : 4), maxC = full ? cols : Math.min(cols, 4);
   const dateLike = kind === "date" || elem === "date";
   // Chip style: one categorical map over the whole matrix, so a value is the same color
-  // in any cell (docs/format-model.md).
+  // in any cell (tree/specs/values/format-model.md).
   const chipMap = ann?.chip ? categoryColorIndex(table.flat().map((v) => (typeof v === "string" ? v : null))) : null;
 
   return (

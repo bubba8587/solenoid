@@ -71,7 +71,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
   Pins, Alerts, Comments panels list the page beside the node and fly across pages. Report and
   Presentation references are name-addressed already and work unchanged; Presentation steps
   gain the page implicitly from the node.
-- **The page strip**: a `layout-chrome.md` decision — recommend the strip lives in the top
+- **The page strip**: a `tree/specs/canvas/layout-chrome.md` decision — recommend the strip lives in the top
   bar's middle gap on desktop (the empty div the art slot was reserved for — the author
   decides which wins) and as a row in the mobile menu bar; rename inline, reorder by drag,
   add/close with the usual guards (closing a page with nodes asks; nodes move to a page, never
@@ -92,7 +92,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
 2. Projection filter + stubs + camera-per-page; `syncTopology` identity across switches
    (perf probe at 200 nodes).
 3. Edit-verb guards (single-page groups/standoffs/docks); paste onto the active page.
-4. The page strip (desktop + mobile), rename/reorder/add/close, `layout-chrome.md` row.
+4. The page strip (desktop + mobile), rename/reorder/add/close, `tree/specs/canvas/layout-chrome.md` row.
 5. Page-scoped Tidy/Cleanup/fit/isolate/lasso; `flyToNode` page switch; panels show pages.
 6. Validator + grounding; a seed with two pages and a cross-page reference; What's-New.
 

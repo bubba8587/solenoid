@@ -6,7 +6,7 @@
 .solenoid-selbar {
   position: fixed;
   /* Clear the header (menu bar 22px + toolbar 44px + accent border). */
-  /* 10px below the header envelope — see Header.tsx / layout-chrome.md. */
+  /* 10px below the header envelope — see Header.tsx / tree/specs/canvas/layout-chrome.md. */
   top: calc(var(--chrome-top, 66px) + 10px);
   left: 50%;
   transform: translateX(-50%);

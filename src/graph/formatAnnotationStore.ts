@@ -1,5 +1,5 @@
 // [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation, [[C40]] storesRegisterForget
-// Format Controller annotations: nodeId::socketKey → { format, unit } (docs/format-model.md).
+// Format Controller annotations: nodeId::socketKey → { format, unit } (tree/specs/values/format-model.md).
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { extremeSci } from "./components/format";
@@ -579,7 +579,7 @@ export const formatMismatchStore = {
   subscribe: mismatchNotifier.subscribe,
 };
 
-/** The format-model pipeline (docs/format-model.md): scale-divide → style → scale suffix
+/** The format-model pipeline (tree/specs/values/format-model.md): scale-divide → style → scale suffix
  *  → unit affix → negative wrap. Parens wrap OUTSIDE the unit: ($1.2K). */
 export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): string {
   if (!Number.isFinite(n)) return String(n);

@@ -1,4 +1,4 @@
-// [[C94]] formatFamilyGates (the lambda view-as: docs/format-model.md)
+// [[C94]] formatFamilyGates (the lambda view-as: tree/specs/values/format-model.md)
 // The Report's inline embed has a separate KaTeX-first variant honoring the same annotation.
 import { useKatexRender } from "./katexLoader";
 import { formulaToLatex } from "../excelFormula";
