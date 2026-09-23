@@ -1,61 +1,60 @@
-// [[C24]]
+// [[C24]], [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
-import { escapeMd, freezeInlineRefs, buildExportCss, reportReferencedNodeIds } from "../../src/graph/reportExport";
+import { exportBodyHtml, exportFileName, buildExportCss, reportReferencedNodeIds } from "../../src/graph/reportExport";
+import { renderNoteMarkdown } from "../../src/graph/noteMarkdown";
+import { makeDocument } from "../../src/graph/documentValue";
 import { solError } from "../../src/graph/errorValue";
 
-describe("escapeMd", () => {
-  it("escapes markdown-special characters", () => {
-    expect(escapeMd("the *dev* build")).toBe("the \\*dev\\* build");
-    expect(escapeMd("a_b_c")).toBe("a\\_b\\_c");
-    expect(escapeMd("[link]")).toBe("\\[link\\]");
-    expect(escapeMd("plain text")).toBe("plain text");
-  });
-});
+const md = (m: string) => renderNoteMarkdown(m);
+const body = (src: string, values: Record<string, unknown>) =>
+  exportBodyHtml(src, Object.keys(values), (k) => values[k], () => undefined, md);
 
-describe("freezeInlineRefs", () => {
-  it("freezes a highlighted span as ==value== and a Frame as its grid", () => {
-    expect(freezeInlineRefs("n1", "Total `=t!` today.", ["t"], () => 12)).toBe("Total ==12== today.");
-    const frame = { __frame: true, columns: [{ name: "a", type: "number", values: [1, 2] }] };
-    const out = freezeInlineRefs("n1", "`=f`", ["f"], () => frame);
-    expect(out).toContain("| a |");
-    expect(out).toContain("| 2 |");
-    expect(out).not.toContain("frame");
+describe("exportBodyHtml freezes spans after the markdown render", () => {
+  it("freezes a highlighted span as a mark and a Frame as an HTML table filling its paragraph", () => {
+    expect(body("Total `=t!` today.", { t: 12 })).toContain('Total <mark class="sol-md__hl">12</mark> today.');
+    const frame = { __frame: true, columns: [{ name: "a<b", type: "number", values: [1, 2] }] };
+    const out = body("`=f`", { f: frame });
+    expect(out).toContain("<table><thead><tr><th>a&lt;b</th></tr></thead><tbody><tr><td>1</td></tr><tr><td>2</td></tr></tbody></table>");
+    expect(out).not.toContain("<p>");
   });
 
-  it("leaves a span whose value is unknown (an unwired fixed input) as it was", () => {
-    expect(freezeInlineRefs("n1", "`=records`", ["records"], () => undefined)).toBe("`=records`");
+  it("leaves a span whose value is unknown (an unwired fixed input) or whose name is not an input", () => {
+    expect(body("`=records`", { records: undefined })).toContain("<code>=records</code>");
+    expect(exportBodyHtml("Run `=x` here.", [], () => 0, () => undefined, md)).toContain("<code>=x</code>");
   });
 
-  it("substitutes a `=name` span with its current value, no live editor needed", () => {
-    const out = freezeInlineRefs("n1", "Revenue was `=revenue` last quarter.", ["revenue"], () => 4200);
-    expect(out).toBe("Revenue was 4200 last quarter.");
+  it("writes a value's text literally: markdown, HTML, math and comments in it stay text", () => {
+    const out = body("Name: `=name`", { name: "<img src=x onerror=alert(1)> *b* $x$ %%c%% [[w]]" });
+    expect(out).toContain("Name: &lt;img src=x onerror=alert(1)&gt; *b* $x$ %%c%% [[w]]");
   });
 
-  it("substitutes multiple distinct refs", () => {
-    const values: Record<string, unknown> = { a: 1, b: "two" };
-    const out = freezeInlineRefs("n1", "`=a` and `=b`.", ["a", "b"], (k) => values[k]);
-    expect(out).toBe("1 and two.");
+  it("freezes an error to its code and null to the dash", () => {
+    expect(body("`=x` `=y`", { x: solError("#DIV/0!", "divide by zero"), y: null })).toContain("#DIV/0! —");
   });
 
-  it("leaves a span untouched when its name isn't a known ref key", () => {
-    const out = freezeInlineRefs("n1", "Run `=notAKey` here.", [], () => 0);
-    expect(out).toBe("Run `=notAKey` here.");
+  it("embeds a web or attached image, and never a script URL", () => {
+    const web = { __image: true, src: "https://e.com/a b.png", height: 80, alt: 'q"x' };
+    expect(body("`=i`", { i: web })).toContain('<img class="report-export__image" src="https://e.com/a b.png" alt="q&quot;x" height="80" />');
+    const file = { __image: true, src: "data:image/png;base64,AAAA", height: 40 };
+    expect(body("`=i`", { i: file })).toContain('src="data:image/png;base64,AAAA"');
+    const bad = { __image: true, src: "javascript:alert(1)", height: 40, title: "Pic" };
+    const out = body("`=i`", { i: bad });
+    expect(out).not.toContain("<img");
+    expect(out).toContain("Pic");
   });
 
-  it("escapes markdown-special characters IN the substituted value", () => {
-    const out = freezeInlineRefs("n1", "Name: `=name`", ["name"], () => "under_score");
-    expect(out).toBe("Name: under\\_score");
+  it("renders a wired document as its own block, its spans resolved from its own refs", () => {
+    const doc = makeDocument("---\na: 1\n---\nInner `=v` and `=gone`", { v: "<b>" });
+    const out = body("Before\n\n`=d`\n\nAfter", { d: doc });
+    expect(out).toContain('<div class="report-export__embed-name">d</div>');
+    expect(out).toContain("Inner &lt;b&gt; and <code>=gone</code>");
+    expect(out).not.toContain("a: 1");
   });
 
-  it("freezes an error value to its #CODE!", () => {
-    const err = solError("#DIV/0!", "divide by zero");
-    const out = freezeInlineRefs("n1", "`=x`", ["x"], () => err);
-    expect(out).toBe("#DIV/0!");
-  });
-
-  it("freezes null to the em-dash placeholder", () => {
-    const out = freezeInlineRefs("n1", "`=x`", ["x"], () => null);
-    expect(out).toBe("—");
+  it("names the file from the label, falling back when nothing survives", () => {
+    expect(exportFileName("Q3 / review?")).toBe("Q3  review.html");
+    expect(exportFileName("???")).toBe("report.html");
+    expect(exportFileName(undefined)).toBe("report.html");
   });
 });
 

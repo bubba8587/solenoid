@@ -268,7 +268,7 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 
 **Target.** The `path` input or literal names the note; a leading `folder/` prepends to the node's subfolder and a trailing `.md` is dropped. A blank name falls back to the node's label, then `note`. Path segments that are empty, `.` or `..` are dropped, so a write cannot leave the vault. File names pass through `sanitizeName` (the last path segment, with `<>:"|?*` and control characters removed). Preview reports the action it would take (Create, Overwrite, Append to, Rewrite the block in) with a character count.
 
-**Pages.** A document with `pages` writes one note per page, named by the page; a page whose name sanitizes to nothing takes the target name numbered by its position (`Report-2`), so pages never overwrite each other. A merge with no rows (`pages` empty) writes nothing, and the status says so. A document without `pages` writes one note under the target name. The status reads `Wrote N notes` (or `N of total` when capped), plus any asset count.
+**Pages.** A document with `pages` writes one note per page, named by the page; a page whose name sanitizes to nothing takes the target name numbered by its position (`Report-2`). A name already taken in this run, ignoring case (two pages that sanitize alike, or a page named like a numbered fallback), gains ` (2)`, ` (3)` and so on, so pages never overwrite each other even on a case-insensitive filesystem. A merge with no rows (`pages` empty) writes nothing, and the status says so. A document without `pages` writes one note under the target name. The status reads `Wrote N notes` (or `N of total` when capped), plus any asset count.
 
 **Markdown assembly.** For each page, `assembleDocumentMarkdown` resolves every distinct span name once through the resolver, replaces each span with the result, and prepends the frontmatter YAML when the document carries `frontmatter`. A `` `=name!` `` span whose result is one non-empty line becomes `==result==`; a block result is left unmarked, since an embed cannot sit in a mark. An empty result removes the span. The resolver is a callback, which keeps the DOM render and the file writes out of the pure module. It maps values as follows:
 
@@ -278,12 +278,12 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 | Mermaid | a fenced `mermaid` block |
 | LAMBDA | `$$` display math `f(params) = body` plus a "where" list (`- *param* — description`); a body that does not convert writes `` `λ(params) = expr` `` |
 | DocumentValue | its body without its own frontmatter |
-| picture | a web URL as `![alt](url)`; a `data:` URL written as an asset and embedded as `![[file]]` |
+| picture | a web URL as `![alt](url)`, the alt's brackets and backslashes escaped, its line breaks spaced, and the URL's spaces, parentheses and angle brackets percent-encoded; an attached file (a `data:` URL) written as an asset and embedded as `![[file]]`; any other source writes nothing |
 | chart | the source node's live SVG (or the SVG a provider supplies, such as the Gantt figure) rasterized to PNG at 2 to 4 times scale (targeting at least 640 px wide), written as an asset and embedded as `![[file]]`; nothing when the chart is not on the live canvas or is under 8 px. The vault has none of the app's CSS, so computed styles are baked into the SVG first. A live element is sized from its measured box, since a recharts root has no reliable intrinsic size until drawn; a provider's SVG from its root `width`/`height` (unit stripped), else its `viewBox`. This is why charts write only from the Run click. |
 | null | nothing |
 | anything else (a number, text, a logical, an error, a list, a unit value, a complex, a Cube) | the text the screen shows: `refPreview` with the source Report's format pick for that ref (`resolveRefAnnotation`) |
 
-Assets are named `<note name>-<ref name>.<ext>` and go to the asset subfolder setting, else beside the note; the `![[file]]` embed resolves by file name anywhere in the vault. A chart's source node is found by following the cable into the producer's input of the same name.
+Assets are named `<note name>-<ref name>.<ext>` with `#`, `^`, `[`, `]` and `|` removed (each would break the wikilink), and go to the asset subfolder setting, else beside the note; the `![[file]]` embed resolves by file name anywhere in the vault. An asset name already written in this run, ignoring case, gains ` (2)`, ` (3)` and so on. A rerun writes the same names, overwriting the previous run's assets. A chart's source node is found by following the cable into the producer's input of the same name.
 
 **Modes.** `mergeNoteText(existing, md, mode, blockName)`:
 
@@ -307,15 +307,15 @@ A key is quoted when it is empty, contains any of `:#[]{}",'|>%@` or a backtick,
 
 The overlay's Export button writes one self-contained `.html` file (`reportExport.ts`), through the native save dialog on desktop or a download on web. There is no PDF export, and no markdown export from the overlay; the vault write is the markdown path.
 
-1. Load KaTeX first when the Report's body contains `$`.
-2. Capture a canvas snapshot image (`captureCanvasImage`).
-3. Take `renderedBody()` (a mail merge joins its pages with the page rule).
-4. **Freeze** every `` `=name` `` span whose name is a variable input, `template` or `records`. A span whose value is unknown (an unwired fixed input) or a document is left as a span. A Frame becomes its grid as a pipe table, a block of its own (`frameToMarkdownTable`). Any other value becomes its `refPreview` text with the resolved annotation, markdown-escaped (`\`, `` ` ``, `*`, `_`, `[`, `]`), and a highlighted span (`=name!`) wraps it in `==…==`. A chart freezes to its title; its figure appears in the export's Charts section.
-5. Split the frozen body at each remaining span whose value is a document, and render each segment separately. Each embedded document renders as a `report-export__embed` block headed by the escaped input name, with its frontmatter stripped.
-6. Append a **Charts** section with the serialized SVG of every chart on a node wired directly into the Report or into a Note wired into it, each labeled with its node's display name, then a **Canvas snapshot** section with the image.
+1. Take `renderedBody()` (a mail merge joins its pages with the page rule; a merge with no rows exports an empty body under the title).
+2. Load KaTeX when that body or a wired document's body contains `$`, so a template's or an embed's math renders rather than exporting as pending source.
+3. Capture a canvas snapshot image (`captureCanvasImage`).
+4. Split the body at each span whose name is an input and whose value is a document (`exportBodyHtml`). Each embedded document renders as a `report-export__embed` block headed by the escaped input name, with its frontmatter stripped and its own spans replaced by the escaped `refPreview` of its `refs` (a name its `refs` lack stays a span), as on screen.
+5. Render each other segment to sanitized HTML, then **freeze** every rendered span (`<code>=name</code>`, `substituteRefCodes`) whose name is a variable input, `template` or `records` (`frozenRefHtml`). The value is escaped after the render, so its text never reads as markdown or HTML. A span whose value is unknown (an unwired fixed input) is left as a span. A Frame becomes an HTML table (replacing its paragraph when it stands alone), an image with a web or attached (`data:image`) source an `<img>`, and any other value its `refPreview` text with the resolved annotation; a highlighted span (`=name!`) wraps the text in a highlight. A chart freezes to its title; its figure appears in the export's Charts section. A span inside a fenced code block is not a rendered span and stays literal, as on screen.
+6. Append a **Charts** section with the largest SVG (over 40 by 40 px) on every node wired directly into the Report or into a Note wired into it, serialized from the live canvas with computed styles baked in, each labeled with its node's display name. That is a chart's figure, and also a Mermaid diagram or an SVG Picker's figure. Then a **Canvas snapshot** section with the image.
 7. Title the page with the escaped label (default "Report") and an "Exported from Solenoid" timestamp. The stylesheet is inline and dark. The accent (the `sky` slot) tints the title and section rules only when the document declares a report palette; wikilinks, highlights, callouts and tags always take the accent.
 
-The file name is the label with every character other than word characters, spaces and hyphens removed, plus `.html`. A failure raises an error notice.
+The file name is the label with every character other than word characters, spaces and hyphens removed, plus `.html`; `report.html` when nothing survives. A failure raises an error notice.
 
 ## What is sanitized, and where
 
@@ -325,9 +325,9 @@ A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each
 |---|---|
 | Note card read view | `DOMPurify.sanitize` on every render. Checkboxes are re-enabled after sanitizing, on marked's own `<input>` elements only. |
 | Report preview, Note panel, embedded document | `DOMPurify.sanitize` on the rendered HTML. |
-| Webpage export | each markdown segment passes DOMPurify; the title, embed names and chart labels pass `escapeHtml`; frozen values pass `escapeMd` before re-parsing. Chart SVG is serialized from the live canvas. |
+| Webpage export | each markdown segment passes DOMPurify; the title, embed names, chart labels and every frozen value pass `escapeHtml` after the render; an image source must be `http(s)` or `data:image`. The palette accent is written into the stylesheet, so a palette override loaded from a file must be a `#rrggbb` hex (`palette.ts`). Chart SVG is serialized from the live canvas, where every SVG source was already sanitized at its seam (Mermaid in strict mode, the SVG Picker at intake). |
 | Source highlight | the source is HTML-escaped before any span is added. |
 | Links in rendered markdown | one capture-phase document click guard (`installExternalLinkGuard`, installed by `App.tsx`) opens `http(s)` links to another origin, and `mailto:` links, in the system browser (a new tab on web), and never navigates the app's webview. Same-origin, hash and relative links are left alone. |
 | SVG | markup is sanitized once at intake by the SVG Picker (`svgSanitize.ts`), because the picker inlines it into the live DOM (hit-testing needs real elements) and it persists in the document. A text pass, which works headless and is what the tests pin, removes scripting elements, `on*` handlers (quoted or bare), every external `href` or `xlink:href` (a `use` or `image` beacon, an anchor) while keeping a local `#fragment`, and `javascript:` or `data:text/html` in any value; ids, names, classes, paths and fills stay. DOMPurify's SVG profile then runs wherever a DOM exists. An SVG embedded in a Report is already clean. |
 | KaTeX and the lambda syntax view | KaTeX output and `highlightFormula` output are the only unsanitized HTML inserted, both generated from the value rather than copied from it. |
-| Vault write | markdown only; `..` segments dropped; file names sanitized; a managed block refuses `%%` content; frame cells escape pipes and newlines. |
+| Vault write | markdown only; `..` segments dropped; file names sanitized and made unique; asset names stripped of wikilink metacharacters; web image alt and URL escaped; a managed block refuses `%%` content; frame cells escape pipes and newlines. |

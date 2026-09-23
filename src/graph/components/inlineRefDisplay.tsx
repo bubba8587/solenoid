@@ -30,6 +30,7 @@ import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
 import { renderNoteMarkdown } from "../noteMarkdown";
+import { substituteRefCodes, escapeHtml } from "../noteInlineRefs";
 
 
 export interface RefValueHost {
@@ -184,9 +185,8 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
 function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   const tex = useKatexReady();
   const html = useMemo(() => {
-    const substituted = parseNoteFrontmatter(value.body).body.replace(/`=([A-Za-z_][A-Za-z0-9_]*)!?`/g, (m, name: string) =>
-      name in value.refs ? refPreview(value.refs[name], undefined) : m);
-    return DOMPurify.sanitize(renderNoteMarkdown(substituted));
+    const html = DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(value.body).body));
+    return substituteRefCodes(html, (name) => name in value.refs ? { html: escapeHtml(refPreview(value.refs[name], undefined)) } : null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, tex]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;

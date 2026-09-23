@@ -38,6 +38,10 @@ Each pair rotates so a crash in the middle of a write never destroys the only go
 
 When any write is refused (storage full or disabled), one sticky error notice says "Couldn't autosave: local storage may be full or disabled. Save your graph to a file (Ctrl+S) to be safe." It stays until a later persist fully succeeds, which dismisses it.
 
+## Open drafts
+
+A text field's draft stays local until blur ([[C95]] commitOnEnter), so a capture could miss what the user typed. Every draft field registers with `draftFlush.ts` while its draft differs from the node (`usePendingDraft`: every `useDraftCommit` field, the Note body, the Report overlay's source). `flushDrafts()` commits each one as if it had blurred. `captureCurrent()` flushes first, so every swap verb (open, new, duplicate, import, reload) commits the draft into the outgoing document; a file save flushes before it serializes; `pagehide` flushes and captures when a draft or a pending autosave exists. The idle autosave timer alone captures with `keepDrafts`, because committing a field the user is still typing in would reconcile a half-typed Note frontmatter or Report template and prune its cables. `draftFlush.test.ts` pins the call sites.
+
 ## Change detection is object identity
 
 `persist()` decides a document changed by comparing object references, so the transforms in `documentStoreCore.ts` must stay immutable. A changed document is a new object (`{ ...d, … }`). Mutating a `SolDoc` in place means `persist()` sees the same reference and never writes it. Mutating a document you just created, before its first persist, is fine; `importAsDocument` does this. A future transform that needs to touch a document copies it first.
