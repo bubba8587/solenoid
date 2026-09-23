@@ -16,13 +16,14 @@ export type LeafWithContext = { leaf: NodeCatalogEntry; categoryPath: string[] }
 
 export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = []): LeafWithContext[] {
   const out = flattenTree(entries, ancestors);
+  // A name any card or op already wears gets no alias row, so the menu never shows "Group Lists: GROUPBY" beside GROUPBY.
+  const worn = new Set(out.flatMap(({ leaf }) => [leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)]).map(bareName));
   for (const { leaf, categoryPath } of [...out]) {
     const decl = leaf.hiddenOps?.length ? opsFor(leaf.type) : undefined;
     // hiddenOps is set only for a declaration that lists ops, so `create` is present; the guard tells the type checker.
     if (decl?.create) for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
-    const own = new Set([leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)].map(bareName));
     for (const name of CATALOG_TO_EXCEL.get(leaf.type) ?? []) {
-      if (!own.has(name.toUpperCase())) out.push({ leaf: excelEntry(leaf, name), categoryPath });
+      if (!worn.has(name.toUpperCase())) out.push({ leaf: excelEntry(leaf, name), categoryPath });
     }
   }
   return out;

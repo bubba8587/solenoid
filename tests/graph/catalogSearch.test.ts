@@ -7,6 +7,7 @@ import type { NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 import { packsStore, BUILTIN_PACKS } from "../../src/graph/packs";
 import type { Pack } from "../../src/graph/packs/packShared";
 import { NODE_OPS } from "../../src/graph/nodeOps";
+import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 
 // Search against the REAL catalog tree (active entries only, as the menu does).
 const leaves = flattenLeaves(buildCatalog(true));
@@ -206,5 +207,27 @@ describe("Add-menu search — hyphenated tokens and word hits over description n
   it("'sunm' ranks SUM ahead of leaves whose descriptions merely contain the letters", () => {
     const top = types("sunm", 3);
     expect(top[0]).toBe("reduce-sum");
+  });
+});
+
+describe("Excel-alias rows never repeat a name a card already wears", () => {
+  const all = flattenLeaves(buildCatalog(false));
+  const bare = (s: string) => s.replace(/\s*\([^)]*\)\s*$/, "").trim().toUpperCase();
+  const worn = new Set(all.filter((l) => !l.leaf.type.includes("__")).flatMap(({ leaf }) => [leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)]).map(bare));
+
+  it("no alias row names another card or op", () => {
+    const clashes = all.filter((l) => l.leaf.type.includes("__excel-")).map((l) => l.leaf.label).filter((label) => worn.has(bare(label.split(": ").pop()!)));
+    expect(clashes).toEqual([]);
+  });
+
+  it("GROUPBY and SCAN find their own cards, not Group Lists or Running", () => {
+    expect(types("GROUPBY", 1)).toEqual(["group-by-frame"]);
+    expect(types("SCAN", 1)).toEqual(["scan-lambda"]);
+    expect(search("GROUPBY").map((l) => l.label)).not.toContain("Group Lists: GROUPBY");
+  });
+
+  it("no card lists the same Excel name twice", () => {
+    const dupes = Object.entries(NODE_EXCEL).filter(([, eqs]) => new Set(eqs.map((e) => e.excel)).size !== eqs.length).map(([t]) => t);
+    expect(dupes).toEqual([]);
   });
 });

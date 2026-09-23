@@ -488,7 +488,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "text-split": [
     { excel: "TEXTSPLIT", syntax: "=TEXTSPLIT(text, delim)", parity: false, note: "Returns a text List. Separate row and column delimiters aren't supported." },
-    { excel: "TEXTSPLIT", syntax: "=TEXTSPLIT(text, delim)", parity: false, note: "Returns a text List. Separate row and column delimiters aren't supported." },
   ],
   "text-substitute": [{ excel: "SUBSTITUTE", syntax: "=SUBSTITUTE(text, old, new, [instance])", parity: true }],
   "text-trim": [{ excel: "TRIM", syntax: "=TRIM(text)", parity: false }],
