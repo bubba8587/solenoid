@@ -61,7 +61,7 @@ A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`.
 - `moveNode`, `rerenderNode`, `rerenderCables` and `onRender` (per-card re-render events, which the HTML-in-Canvas layer uses to re-capture);
 - `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[D64]] oneSizeRead).
 
-Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). The model layer stamps it on every add path, so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
+Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). An add path sets it right after `addNode` (`flowModel.addNode` before, most others through `view.moveNode` after), so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
 
 `view.moveNode(nodeId, …)` is async and never lands in the same paint as a React commit. If a size change would need a matching position change in the same frame, restructure so it doesn't ([[resizable-content-nodes]]).
 
@@ -71,7 +71,7 @@ Positions are always absolute canvas coordinates, never RF's parent-relative one
 
 `flow/flowModel.ts` builds the headless model: a rete `NodeEditor` and `DataflowEngine` with the coercion and error guards installed, its edit verbs, and the projections RF reads. The projections are RF-shaped without importing RF, so they stay testable in the node test environment.
 
-- `addConnection` is the one connection gate: the socket lattice rule plus no self-loop. A single-connection input evicts its existing cable first.
+- `canConnect` / `connect` are the user's connection gate: the socket lattice rule plus no self-loop, and a single-connection input evicts its existing cable first. RF's connect and quick-wire go through them. Programmatic rewires (paste, ghosts, Conduit insert, the FC splice) still call `editor.addConnection` directly and rely on their own sources being valid.
 - Removing nodes removes their cables through the editor, and their names go too.
 - `toFlowNodes` lists parents before their children, as RF requires.
 

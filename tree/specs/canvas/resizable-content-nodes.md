@@ -30,4 +30,4 @@ The Conduit is the one node built this way today.
 ## What not to do
 
 - Do not size the body to fit the variable content. When the body grows, the toolbar and top-left position shift and the node jiggles.
-- Do not try to pin the visible center by translating the node in `useLayoutEffect`. `area.moveNode` is async (it awaits a guard pipe), so its DOM update does not land in the same paint as React's commit, and the node flashes for one frame.
+- Do not try to pin the visible center by translating the node in `useLayoutEffect`. `view.moveNode` writes the model position and asks React Flow to re-project, so the wrapper moves on a later render than the content's own commit, and the node flashes for one frame.

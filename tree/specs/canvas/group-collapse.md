@@ -46,7 +46,7 @@ A member whose outputs all feed members only is hidden with no row. Members alre
 `flyToNode.ts` serves every "go to this node" caller: the pins and alerts HUD, the cable inspector and Presentation. It is drill-in aware: a node inside an open composite moves the drill-in's camera.
 
 - **Resolve a visible target.** A node hidden in a collapsed group has no visible element, so framing it would target a stale point near (0,0) and jump the view off-screen. Before framing, `resolveVisibleTarget` walks up from the node to its group for as long as the target is still hidden.
-- **Frame a collapsed group by its rendered size.** `zoomAt` frames `node.width` / `node.height` whenever they are defined, but a collapsed group still carries its expanded dimensions. So a collapsed group is passed as a sizeless reference (only its id), and `zoomAt` falls back to the rendered element's size. Plain nodes pass the real node.
+- **Frame a collapsed group by its rendered size.** `zoomAt` sizes each node through `frameSize`: React Flow's measure, then the rendered element, and the stored `width` / `height` only last, since a collapsed group still carries its expanded dimensions. A collapsed group is also passed as a sizeless reference (only its id), so even that last tier cannot frame it at its expanded size. Plain nodes pass the real node.
 - `flashNode` flashes the same resolved target, so a node inside a collapsed group lights up its group card.
 
 The minimap draws from React Flow's own node set, with colors from `minimapFillForNode`. The fit-all math in `NavMenu` uses `collapsedAwareNodesRect`, which sizes collapsed groups the same way.
