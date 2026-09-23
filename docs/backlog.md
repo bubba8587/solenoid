@@ -33,10 +33,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node ([[C7]] authorRuled; `archive/1.4-plan.md` D3).
 
-## Found in the comment lift (verify against the code, then fix or rule)
-
-- [ ] **For the author:** the Range kernel includes Stop on an author ruling whose reason was never recorded.
-
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
 - [ ] **The stack merge (author to rule):** Append and Bind Columns (Frames) sit beside XSTACK (lists and tables). [[E14]] frameVerbExcelNames says the Frame pair becomes VSTACK and HSTACK when the stack merge lands; [[C48]] appendLadder keeps one append node per rank, which reads as keeping them apart. Pick one and the other node gets reworded.

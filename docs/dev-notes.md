@@ -26,8 +26,8 @@ specific item.
   a fresh module graph.
 - **Code fixes riding along:** the Composed chart draws its legend below the plot like Scatter; the
   HTML-in-Canvas renderer draws `anycombo` as a split square like the DOM socket.
-- **Open:** the backlog section "Found in the comment lift" lists suspected bugs the comment writers noticed;
-  none is fixed yet.
+- **Comment-lift suspects:** fixed or ruled (`a6cb19b2`); the last one, Range including Stop, is now
+  [[C110]] rangeIncludesStop on the author's reason (not an Excel function, so it matches LinSpace).
 
 ### SESSION DIGEST (2026-09-22d: fixing what the rebuild specs found; author away)
 

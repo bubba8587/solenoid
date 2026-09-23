@@ -1,4 +1,4 @@
-// [[C17]], [[C60]], [[D19]], [[C21]] matchNodeLimits (MAX_GENERATED)
+// [[C17]], [[C60]], [[D19]], [[C21]] matchNodeLimits (MAX_GENERATED), [[C110]] rangeIncludesStop
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";
