@@ -122,6 +122,45 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
+describe("[[B12]] losslessSaves: a grown row keeps the socket order a reload rebuilds", () => {
+  it("every row-growing catalog node reloads with its live input order", () => {
+    const moved: string[] = [];
+    for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
+      let n: ClassicPreset.Node;
+      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const a = n as unknown as { addValueInput?: () => void; addValuePair?: () => void };
+      const grow = a.addValuePair ?? a.addValueInput;
+      if (typeof grow !== "function") continue;
+      grow.call(n);
+      grow.call(n);
+      const live = Object.keys(n.inputs);
+      const back = Object.keys(rebuild(n).inputs);
+      if (JSON.stringify(live) !== JSON.stringify(back)) moved.push(`${type}: live ${live.join(",")} / reloaded ${back.join(",")}`);
+    }
+    expect(moved).toEqual([]);
+  });
+});
+
+// Literal keys share names with init fields (Pad Text's `width` input beside its card width), so the maps stay out of init.
+describe("literal values never enter init", () => {
+  it("no catalog node's init carries a literal-only key or a literal's value over a field", () => {
+    const leaked: string[] = [];
+    for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
+      let n: ClassicPreset.Node;
+      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const a = n as unknown as AnyNode;
+      const lits = { ...((a.literals as object) ?? {}), ...((a.stringLiterals as object) ?? {}) } as Record<string, unknown>;
+      for (const k of Object.keys(lits)) {
+        if (k === "valueKeys") continue;
+        const init = extractInit(n);
+        if (!(k in init)) continue;
+        if (!(k in a) || init[k] !== a[k]) leaked.push(`${type}.${k}`);
+      }
+    }
+    expect(leaked).toEqual([]);
+  });
+});
+
 // ─── [[D50]] everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
 // The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
 // to a field the whitelist never captured (both sides omit it identically). This

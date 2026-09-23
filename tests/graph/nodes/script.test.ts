@@ -5,7 +5,7 @@ import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "../../
 import { coerceScriptResult } from "../../../src/graph/nodes/scriptCoerce";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { isSolError, solError } from "../../../src/graph/errorValue";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit, cloneNode } from "../../../src/graph/copyPaste";
 import { jsDateToSerial } from "../../../src/graph/nodes/dateSerial";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
@@ -249,8 +249,17 @@ describe("persistence", () => {
     const back = new ScriptNode(init as ConstructorParameters<typeof ScriptNode>[0]);
     expect(back.expr).toBe("(a, b) => a");
     expect(back.label).toBe("Mine");
-    expect(init.a).toBe(2); // literals spread flat into the snapshot; the clone path copies the map
+    expect(init.a).toBeUndefined();
     expect(Object.keys(back.inputs)).toEqual(["a", "b"]);
+  });
+
+  it("a parameter named like an init field keeps both through the clone path", () => {
+    const n = new ScriptNode({ expr: "(label) => label", literals: { label: 7 } });
+    n.label = "Mine";
+    expect(extractInit(n).label).toBe("Mine");
+    const back = cloneNode(n) as ScriptNode;
+    expect(back.label).toBe("Mine");
+    expect(back.literals.label).toBe(7);
   });
 });
 

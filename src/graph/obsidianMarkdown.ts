@@ -64,10 +64,10 @@ export function yamlScalar(v: unknown): string {
     /[:#\[\]{}",]/.test(s) ||
     /[\n\r\t]/.test(s) ||
     /^(true|false|null|yes|no|on|off)$/i.test(s) ||
-    /^-?\d/.test(s) ||
-    /^[*&!|>%@`~]/.test(s) ||
+    /^[-+]?\.?\d/.test(s) ||
+    /^[*&!|>%@`~']/.test(s) ||
     /^[-?](\s|$)/.test(s) ||
-    /^\.\d|^\.(inf|nan)$/i.test(s);
+    /^[-+]?\.(inf|nan)$/i.test(s);
   if (!ambiguous) return s;
   const esc = s
     .replace(/\\/g, "\\\\")

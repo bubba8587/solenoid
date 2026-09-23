@@ -1,6 +1,6 @@
 // [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero
 import { ClassicPreset } from "rete";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput } from "./shared";
+import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput, keepInputLast } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
@@ -594,7 +594,7 @@ export class SwitchNode extends ClassicPreset.Node {
 
   label: string;
   cachedResult: unknown = null;
-  literals: Record<string, number> = { expr: 0, default: 0 };
+  literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
   autoLiterals = true;
   nextPairId = 0;
@@ -637,6 +637,7 @@ export class SwitchNode extends ClassicPreset.Node {
 
   addValuePair(): void {
     this.addPairWithId(this.nextPairId);
+    keepInputLast(this, "default");
   }
 
   removeValuePair(aKey: string): void {
@@ -728,6 +729,7 @@ export class IfsNode extends ClassicPreset.Node {
 
   addValuePair(): void {
     this.addPairWithId(this.nextPairId);
+    keepInputLast(this, "otherwise");
   }
 
   removeValuePair(aKey: string): void {

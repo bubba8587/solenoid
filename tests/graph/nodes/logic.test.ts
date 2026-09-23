@@ -298,6 +298,11 @@ describe("SwitchNode — fixed expr/default + extensible when/then pairs", () =>
     expect(n.valuePairKeys()).toEqual([["when0", "then0"], ["when2", "then2"]]);
     expect("expr" in n.inputs && "default" in n.inputs).toBe(true);
   });
+  it("a rebuilt card with no saved literals has an unset Default, like a fresh one", () => {
+    const n = new SwitchNode({ valueKeys: ["expr", "when0", "then0", "default"] });
+    const r = n.data({ expr: [99], when0: [1], then0: [10] }).result;
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#N/A");
+  });
 });
 
 // The slots are WILDCARD sockets, so a typed literal can be text as well as a number —

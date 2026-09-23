@@ -133,6 +133,10 @@ describe("renderKnap keepUnknown (a Note's mode)", () => {
     const r = await renderKnap("a{% if person %}X{% endif %}b", {}, { keepUnknown: true });
     expect(r.output).toBe("ab");
   });
+  it("an operator or a literal is not the leading variable", async () => {
+    const r = await renderKnap("{{ not done }} / {{ true }} / {{ not other }}", { done: false }, { keepUnknown: true });
+    expect(r.output).toBe("true / true / {{ not other }}");
+  });
   it("a comment is stripped even when it wraps an unknown tag", async () => {
     const r = await renderKnap("a{# {{ person }} #}b", {}, { keepUnknown: true });
     expect(r.output).toBe("ab");

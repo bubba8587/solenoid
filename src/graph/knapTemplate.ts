@@ -187,10 +187,22 @@ export interface KnapRender {
 const HOLD = "\u0001";
 const HOLD_RE = /\u0001(\d+)\u0001/g;
 
+/** The tag's first variable read, by position; an operator (`not`) or a literal (`true`) is not one. */
+function leadingRoot(tag: string): string | undefined {
+  const { ast } = parse(tag);
+  const node = ast.length === 1 ? ast[0] : undefined;
+  if (node?.type !== "variable") return /^\{\{\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(tag)?.[1];
+  let lead: { name: string; line: number; column: number } | undefined;
+  walkExpr(node.expression, (name, line, column) => {
+    if (!lead || line < lead.line || (line === lead.line && column < lead.column)) lead = { name, line, column };
+  });
+  return lead?.name;
+}
+
 function holdUnknownTags(body: string, known: ReadonlySet<string>): { src: string; held: string[] } {
   const held: string[] = [];
   const src = body.replace(/\{\{[\s\S]*?\}\}/g, (tag) => {
-    const root = /^\{\{\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(tag)?.[1];
+    const root = leadingRoot(tag);
     if (!root || known.has(root)) return tag;
     return `${HOLD}${held.push(tag) - 1}${HOLD}`;
   });

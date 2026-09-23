@@ -1,6 +1,6 @@
 // [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
 import { createNotifier } from "./storeKit";
-import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
+import { serializeGraph, loadGraph, loadRefusal, type SavedGraph } from "./persistence";
 import { isGraphRebuilding } from "./process";
 import { loadRevealStore } from "./loadReveal";
 import { chooseWriteSlot, chooseReadSlot, CURRENT_SAVE_VERSION } from "./persistenceCore";
@@ -219,16 +219,14 @@ export const documentStore = {
   currentName: (): string => getCurrent(_lib)?.name ?? "Untitled",
   currentFilePath: (): string | null => getCurrent(_lib)?.filePath ?? null,
 
-  bindCurrentToPath(filePath: string, name?: string): void {
-    if (!_lib.currentId) return;
-    _lib = setDocPath(_lib, _lib.currentId, filePath, name);
+  bindToPath(id: string, filePath: string, name?: string): void {
+    _lib = setDocPath(_lib, id, filePath, name);
     persist();
     notify();
   },
 
-  markCurrentFileSaved(at: number = Date.now()): void {
-    if (!_lib.currentId) return;
-    _lib = setDocFileSaved(_lib, _lib.currentId, at);
+  markFileSaved(id: string, at: number = Date.now()): void {
+    _lib = setDocFileSaved(_lib, id, at);
     persist();
     notify();
   },
@@ -356,6 +354,12 @@ export const documentStore = {
 
   async importAsDocument(graph: SavedGraph, name: string, filePath?: string): Promise<void> {
     if (isGraphRebuilding()) return;
+    // A file the load gates refuse could never open, so it never becomes a library entry.
+    const refusal = loadRefusal(graph);
+    if (refusal) {
+      pushNotice(refusal, "error", 0);
+      return;
+    }
     if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
     graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined };
