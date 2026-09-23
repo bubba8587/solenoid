@@ -224,6 +224,10 @@ describe("review pins: vault reads stay inside the vault", () => {
     expect(isInsideVault("/etc/passwd")).toBe(false);
     expect(isInsideVault("C:/secrets.md")).toBe(false);
     expect(isInsideVault("")).toBe(false);
+    // Windows joins on a backslash too.
+    expect(isInsideVault("..\\..\\secrets.md")).toBe(false);
+    expect(isInsideVault("notes\\..\\..\\x.md")).toBe(false);
+    expect(isInsideVault("\\\\server\\share\\x.md")).toBe(false);
   });
 });
 
