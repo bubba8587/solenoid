@@ -14,7 +14,7 @@ import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
 import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
 import { solError, type SolError } from "../errorValue";
-import { getActiveView, getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { isFrameValue, recordsToCube, coerceFrameCell, type FrameValue, type FrameColumn, type FrameColType, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
@@ -258,10 +258,10 @@ export class NoteNode extends ClassicPreset.Node {
       void (async () => {
         const { removed, retyped } = this.syncFields();
         await dropStrandedFrontmatterCables(this.id, removed, retyped);
-        const view = getActiveView();
+        const view = getOwningView(this.id);
         await view?.rerenderNode(this.id);
         const editor = getOwningEditor(this.id);
-        if (editor && view && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
+        if (editor && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
       })();
     });
   }

@@ -174,6 +174,7 @@ describe("[[D42]] perInputUnitBlind — a node file that runs the dimension alge
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
     "nodes/shared.ts": "the helper library (broadcastUnit/guardCell/anyDimensioned) — declares no node class; every caller declares unitAware in its own file",
+    "nodes/listOps.ts": "a rete-free kernel with no node class; setKey keys a unit cell for Unique, which gets tags through its passthrough() input",
     "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
   };
   const NODE_DIRS = ["nodes", "packs"].map((d) => path.join(SRC, d));
@@ -364,6 +365,19 @@ describe("[[C34]] classNameIsType — class names are load-bearing: keepNames st
       const src = fs.readFileSync(path.resolve(SRC, "../..", cfg), "utf8");
       expect(/keepNames:\s*true/.test(src), `${cfg} lost esbuild keepNames — class-name dispatch and save types break in production only`).toBe(true);
     }
+  });
+});
+
+describe("[[D16]] retypeReconciles — a node class reconciles on the editor that owns it", () => {
+  // The active editor is the surface on screen; a main-graph node behind an open drill-in isn't in it.
+  it("no nodes/packs file reads getActiveEditor / getActiveView (use getOwningEditor / getOwningView)", () => {
+    const offenders: string[] = [];
+    for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
+      for (const file of walk(dir)) {
+        if (codeLines(file).some((l) => /\bgetActive(?:Editor|View)\b/.test(l))) offenders.push(rel(file));
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });
 

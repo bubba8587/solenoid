@@ -89,3 +89,25 @@ describe("activeGraph resolver", () => {
     expect(getOwningEditor("s1")).toBe(main); // sub no longer owns anything resolvable
   });
 });
+
+describe("a main-graph node retypes on its own surface while a drill-in is open ([[D16]] retypeReconciles)", () => {
+  it("SEQUENCE and Expression swap their result socket and re-render on the main view", async () => {
+    const { SeriesNode } = await import("../../src/graph/nodes/list");
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const seq = new SeriesNode({ op: "sequence" });
+    const expr = new ExpressionNode({ expr: "SEQUENCE(2, 2)" });
+    const rerendered: string[] = [];
+    const mainView = { rerenderNode: async (id: string) => { rerendered.push(id); } } as unknown as View;
+    const drillView = { rerenderNode: async () => { throw new Error("the drill-in view must not be touched"); } } as unknown as View;
+    const owner = { getNode: (id: string) => (id === seq.id ? seq : id === expr.id ? expr : undefined), getNodes: () => [seq, expr], getConnections: () => [] } as unknown as NodeEditor<Schemes>;
+    setEditorRefs(owner, {} as never, mainView);
+    setActiveGraph({ editor: sub, view: drillView });
+    seq.literals.count = 2; seq.literals.cols = 2;
+    seq.data({});
+    expr.data({});
+    await new Promise((r) => setTimeout(r, 0));
+    expect(seq.outputs.list!.socket.name).toBe("table");
+    expect(String(expr.outputs.result!.socket.name)).toMatch(/table/);
+    expect(rerendered.sort()).toEqual([seq.id, expr.id].sort());
+  });
+});

@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { resolveExcelFunction } from "../excelFunctions";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
@@ -272,7 +272,7 @@ export class SeriesNode extends ClassicPreset.Node {
     return { list };
   }
 
-  /** Value-driven, so the socket swap runs outside data() in a microtask; a headless run keeps the last socket. */
+  /** Value-driven, so the socket swap runs outside data() in a microtask, on the editor that owns the node, not the one on screen. */
   private reconcileRank(result: unknown): void {
     // An error, blank or empty result says nothing about shape; a transient blank must not sever a 2-D SEQUENCE's table cables.
     if (isSolError(result) || result == null || (Array.isArray(result) && result.length === 0)) return;
@@ -281,13 +281,13 @@ export class SeriesNode extends ClassicPreset.Node {
     this.lastRank = want;
     queueMicrotask(() => {
       void (async () => {
-        const editor = getActiveEditor();
-        const view = getActiveView();
         const out = this.outputs.list;
-        if (!editor || !view || !out || !editor.getNode(this.id)) return;
+        if (!out) return;
         out.socket = want === 2 ? tableSocket : listSocket;
-        await retypeOutputCables(editor, view, this.id, "list");
-        await view.rerenderNode(this.id);
+        const editor = getOwningEditor(this.id);
+        const view = getOwningView(this.id);
+        if (editor?.getNode(this.id)) await retypeOutputCables(editor, view, this.id, "list");
+        await view?.rerenderNode(this.id);
       })();
     });
   }
