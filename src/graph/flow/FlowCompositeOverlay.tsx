@@ -22,6 +22,7 @@ import { reconcileFcTypes } from "../fcReconcile";
 import { forgetNode } from "../nodeStoreRegistry";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
+import { reconcileLeftPorts } from "../compositeLogic";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { rebuildGroupMembership } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
@@ -232,36 +233,25 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     });
   }, [comp, s]);
 
-  const leaveLevel = useCallback(async () => {
+  // Every level the jump leaves reconciles its ports, not just the one on screen.
+  const leaveLevels = useCallback(async (to: number) => {
     if (s.history.timer) recordNow(comp, s);
     syncPositionsToComp(comp, s);
-    if (parentEditor) {
-      let droppedCables = 0;
-      let droppedPorts = 0;
-      for (const p of [...comp.inputPorts]) {
-        if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        const cables = parentEditor.getConnections().filter((c) => c.target === comp.id && c.targetInput === p.id);
-        for (const c of cables) await parentEditor.removeConnection(c.id);
-        if (cables.length > 0) { droppedCables += cables.length; droppedPorts++; }
-        comp.removeInputPort(p.id);
-      }
-      for (const p of [...comp.outputPorts]) {
-        if (comp.internalEditor.getNode(p.internalNodeId)) continue;
-        const cables = parentEditor.getConnections().filter((c) => c.source === comp.id && c.sourceOutput === p.id);
-        for (const c of cables) await parentEditor.removeConnection(c.id);
-        if (cables.length > 0) { droppedCables += cables.length; droppedPorts++; }
-        comp.removeOutputPort(p.id);
-      }
-      if (droppedCables > 0) {
-        const name = comp.label?.trim() || "Composite";
+    const st = compositeEditorStore.stack();
+    for (let i = st.length - 1; i > to; i--) {
+      const level = st[i];
+      const parent = i > 0 ? st[i - 1].internalEditor : getEditor();
+      if (!parent) { level.syncPortLabels(); continue; }
+      const dropped = await reconcileLeftPorts(level, parent);
+      if (dropped.cables > 0) {
+        const name = level.label?.trim() || "Composite";
         pushNotice(
-          `Removed ${droppedCables} cable${droppedCables === 1 ? "" : "s"} connected to ${name}; ${droppedPorts === 1 ? "a port was" : `${droppedPorts} ports were`} deleted inside.`,
+          `Removed ${dropped.cables} cable${dropped.cables === 1 ? "" : "s"} connected to ${name}; ${dropped.ports === 1 ? "a port was" : `${dropped.ports} ports were`} deleted inside.`,
           "warn",
         );
       }
     }
-    comp.syncPortLabels();
-  }, [comp, s, parentEditor]);
+  }, [comp, s]);
 
   const settleAfterLeave = useCallback(async () => {
     if (parentEditor === getEditor()) {
@@ -274,11 +264,11 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
 
   const drillTo = useCallback(
     async (i: number) => {
-      await leaveLevel();
+      await leaveLevels(i);
       compositeEditorStore.backTo(i);
       await settleAfterLeave();
     },
-    [leaveLevel, settleAfterLeave],
+    [leaveLevels, settleAfterLeave],
   );
 
   async function addPort(kind: "input" | "output") {

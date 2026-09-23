@@ -43,9 +43,9 @@ On unmount it restores the four slots, exits isolate mode, clears the active gra
 
 ## Leaving a level
 
-Leaving a level (the breadcrumb, or Escape, which goes up one level) runs `leaveLevel`, then `compositeEditorStore.backTo(i)`, then `settleAfterLeave`.
+Leaving a level (the breadcrumb, or Escape, which goes up one level) runs `leaveLevels(i)`, then `compositeEditorStore.backTo(i)`, then `settleAfterLeave`.
 
-- `leaveLevel` flushes any pending undo record and saves positions. It then reconciles the composite's ports against the parent editor: any port whose marker node was deleted inside is removed, together with the parent's cables on it. If any cables went, a warning notice says how many cables and ports were removed. Finally it syncs port labels.
+- `leaveLevels` flushes the open level's pending undo record and saves its positions. Then, for every level the jump leaves, deepest first (a crumb two levels up leaves two), it reconciles that composite's ports against its parent editor (`reconcileLeftPorts`, `compositeLogic.ts`): any port whose marker node was deleted inside is removed, together with the parent's cables on it, and port labels resync. If any cables went, a warning notice per level says how many cables and ports were removed. Drilling deeper leaves no level, so a level passed over on the way down is reconciled when a jump finally leaves it.
 - `settleAfterLeave` re-renders the composite's card on the main canvas (when the parent is the main editor), recomputes from `stack[0]`, and schedules an autosave.
 
 ## Undo inside a composite
