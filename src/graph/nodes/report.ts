@@ -39,6 +39,7 @@ export class ReportNode extends ClassicPreset.Node {
   private _computed = false;
   private _templateDoc: DocumentValue | null = null;
   private _recordsValue: unknown = null;
+  private _recordsWired = false;
   private _records: Record<string, unknown>[] | null = null;
   private _pages: DocumentPage[] | null = null;
   templateVars: Record<string, unknown> = {};
@@ -94,7 +95,7 @@ export class ReportNode extends ClassicPreset.Node {
   }
 
   private hostVariables(source: string): string[] {
-    return extractKnapVariables(source).filter((k) => !FIXED.has(k) && !(this._recordsValue != null && BATCH_LOCALS.has(k)));
+    return extractKnapVariables(source).filter((k) => !FIXED.has(k) && !(this._recordsWired && BATCH_LOCALS.has(k)));
   }
 
   private reconcileInputs(desired: string[]): void {
@@ -155,6 +156,7 @@ export class ReportNode extends ClassicPreset.Node {
     const tpl = inputs?.template?.[0];
     this._templateDoc = isDocumentValue(tpl) ? tpl : null;
     this._recordsValue = inputs?.records?.[0] ?? null;
+    this._recordsWired = inputs?.records !== undefined;
     const source = this.activeSource();
 
     const desired = this.hostVariables(source);
