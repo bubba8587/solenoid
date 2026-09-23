@@ -115,7 +115,7 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
 
   const SANCTIONED: Record<string, string> = {
     "frame.ts": "isDateCell is ISO_DATE-gated and boolean; the typing pass runs only after every cell passed it",
-    "noteFrontmatter.ts": "DATE_ONLY is /^\d{4}-\d{2}-\d{2}$/ — ISO only, never ambiguous",
+    "nodes/dateSerial.ts": "noteDateSerial is gated on the ISO day and day-time shapes a note holds, never ambiguous",
     "nodes/annotation.ts": "returns number | null; an annotation date has no error channel",
     "nodes/cast.ts": "already LOUD — a failed date cast is #VALUE!, never a silent blank (precision upgrade, backlogged)",
     "nodes/dateOps.ts": "TIMEVALUE's datetime fallback — already answers #VALUE! on failure",
@@ -919,6 +919,18 @@ describe("[[C95]] commitOnEnter — no raw text field commits per keystroke", ()
 
   // The same, one or two local calls deep: `onChange={(e) => onFlags(e.target.value)}` where onFlags recomputes.
   it("no <input> or <textarea> onChange reaches processGraph through a local function", () => {
+    expect(rawFieldsReaching(/processGraph\(/), "route the edit through useDraftCommit; onChange must not recompute the graph").toEqual([]);
+  });
+
+  // A keystroke that writes the node or saves leaks the half-typed draft to any recompute and to the save.
+  it("no <input> or <textarea> onChange writes the node or schedules a save", () => {
+    const WRITES = /\b(?:data|node!?)\.\w+(?:\.\w+)*\s*=[^=]|scheduleAutosave\(/;
+    expect(rawFieldsReaching(WRITES), "keep the draft local and write it in useDraftCommit's commit").toEqual([]);
+  });
+});
+
+function rawFieldsReaching(effect: RegExp): string[] {
+  {
     const bad: string[] = [];
     for (const file of walk(SRC).filter((p) => p.endsWith(".tsx"))) {
       const src = fs.readFileSync(file, "utf8");
@@ -937,7 +949,7 @@ describe("[[C95]] commitOnEnter — no raw text field commits per keystroke", ()
         bodies.set(name, lines.slice(i, end + 1).join("\n"));
       });
       const recomputes = (text: string, depth: number): boolean => {
-        if (/processGraph\(/.test(text)) return true;
+        if (effect.test(text)) return true;
         if (depth === 0) return false;
         for (const call of text.matchAll(/\b(\w+)\(/g)) {
           const body = bodies.get(call[1]);
@@ -959,9 +971,9 @@ describe("[[C95]] commitOnEnter — no raw text field commits per keystroke", ()
         if (recomputes(h[1], 2)) bad.push(`${rel(file)}:${i + 1}`);
       });
     }
-    expect(bad, "route the edit through useDraftCommit; onChange must not recompute the graph").toEqual([]);
-  });
-});
+    return bad;
+  }
+}
 
 describe("[[C97]] rechartsLazyChunk — recharts is imported statically by exactly one module", () => {
   it("only components/chartRender.tsx imports recharts", () => {

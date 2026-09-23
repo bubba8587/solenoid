@@ -129,7 +129,7 @@ A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in fi
 
 `syncFields()` reconciles the output sockets to the parsed fields and returns `{ removed, retyped }`. A vanished key's output is removed; a key whose socket type changed has its output removed and re-added under the same key; new keys are added. The `document` output (and a subclass's reserved outputs) is never touched. The node has no editor handle, so the caller cleans up cables: `dropStrandedFrontmatterCables` removes every cable from a removed key, and keeps a retyped key's cable only when `canConnect(newType, targetInputType)` still holds. After a retype the caller re-adapts downstream Format Controllers (`reconcileFcTypes`), because a pure retype fires no connection event.
 
-The card reconciles on textarea blur and after a type pick, never per keystroke ([[C95]] commitOnEnter). A blur whose body equals the last reconciled body does nothing.
+The body is a local draft while the textarea has focus and reaches the node on blur; the card reconciles then and after a type pick, never per keystroke ([[C95]] commitOnEnter). A blur whose body equals the last reconciled body does nothing.
 
 ### Knap in a Note
 
@@ -250,7 +250,7 @@ Opened on a **Note**, the panel is read-only: the title, the dock and close butt
 
 Opened on a **Report**:
 
-- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing writes `node.body` and schedules an autosave. Sockets reconcile on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
+- **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing keeps a local draft ([[C95]] commitOnEnter). The draft reaches `node.body`, with an autosave and a socket reconcile, on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab; inserting an embed commits it at once. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
 - **Preview pane.** Renders `templateSource(draft)` against the last compute's `templateVars`, 250 ms after the last keystroke. It renders from a debounced copy of the draft because re-parsing on every keystroke would remount the whole pane, jumping the scroll and remounting embeds. The previous render stays up while the next one settles. Errors replace the preview with their `line:column` lines.
 - **Embed Note.** Lists every Note in the graph. Picking one inserts `{{ <name> }}` as its own paragraph at the caret (the Note's addressable name, minted if missing), mints the input, and wires the Note's `document` output to it.
 - **Filters.** A searchable list of every standard filter with its example; a click inserts ` | <example>` at the caret.

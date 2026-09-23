@@ -136,6 +136,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     await processGraph();
   }
 
+  // The body stays a local draft while typing and reaches the node here ([[C95]] commitOnEnter).
+  async function commitBody() {
+    if (body !== data.body) { data.body = body; scheduleAutosave(); }
+    await commitFields();
+  }
+
   async function setFieldType(key: string, t: FrontmatterFieldType) {
     data.fieldTypes[key] = t;
     scheduleAutosave();
@@ -205,7 +211,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     startEdit();
   }
 
-  function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
   // A bare setColor re-renders only rete's root, leaving the canvas renderer on the old color.
   function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
@@ -303,8 +308,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               placeholder="Markdown note…"
               spellCheck={false}
               autoFocus
-              onChange={(e) => onBody(e.target.value)}
-              onBlur={() => { lastBlurRef.current = Date.now(); setEditing(false); void commitFields(); }}
+              onChange={(e) => setBody(e.target.value)}
+              onBlur={() => { lastBlurRef.current = Date.now(); setEditing(false); void commitBody(); }}
               // Not stopDragStart: while editing a tap must place the cursor, and rete's drag would close the keyboard.
               onPointerDown={stop}
               onMouseDown={stop}

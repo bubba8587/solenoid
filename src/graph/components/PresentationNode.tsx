@@ -14,14 +14,30 @@ import { stopDragStart } from "../coarse";
 import "./PresentationNode.css";
 import { getActiveEditor } from "../activeGraph";
 import { PlayIcon } from "./Icons";
+import { useDraftCommit, useEditableLabel } from "./inlineInput";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
+function StepTitle({ title, onCommit }: { title: string; onCommit: (t: string) => void }) {
+  const field = useDraftCommit<string>(title, (v) => v, (t) => t, onCommit);
+  return (
+    <input
+      className="solenoid-pres__step-title"
+      value={field.draft}
+      onChange={(e) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={stop}
+      onMouseDown={stop}
+    />
+  );
+}
+
 /** Steps are node-id sets captured from the selection; stepping is pan and zoom only and must not touch isolate, highlight or dim. */
 export function PresentationComponent({ data }: NodeProps<PresentationNodeType>) {
-  const [label, setLabel] = useState(data.label);
+  const title = useEditableLabel(data);
   const [color, setColor] = useState(data.color);
-  const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   // `steps`/`activeIndex` mutate on the node instance directly, so re-render by hand.
   const [, bump] = useState(0);
@@ -29,13 +45,11 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
 
-  useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setColor(data.color); }, [data.color]);
 
   // Without this the card holds a stale accent hex until some unrelated re-render.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
 
-  function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
   function pick(c: string) { setColor(c); data.color = c; scheduleAutosave(); }
   function refresh() { bump((v) => v + 1); scheduleAutosave(); }
 
@@ -69,28 +83,15 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   return (
     <div className={`solenoid-pres${data.selected ? " solenoid-pres--selected" : ""}`} style={{ width: data.width, ...vars }}>
       <div className="solenoid-pres__bar">
-        {editingLabel ? (
-          <input
-            className="solenoid-pres__name"
-            value={label}
-            placeholder="Presentation"
-            spellCheck={false}
-            autoFocus
-            onChange={(e) => onLabel(e.target.value)}
-            onBlur={() => setEditingLabel(false)}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur(); }}
-            onPointerDown={stop}
-            onMouseDown={stop}
-          />
+        {title.editing ? (
+          <input className="solenoid-pres__name" placeholder="Presentation" {...title.inputProps} />
         ) : (
           <div
-            className={`solenoid-pres__name-display${label.trim() ? "" : " solenoid-pres__name-display--empty"}`}
-            title={label || "Presentation"}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stop}
-            onMouseDown={stop}
+            className={`solenoid-pres__name-display${data.label.trim() ? "" : " solenoid-pres__name-display--empty"}`}
+            title={data.label || "Presentation"}
+            {...title.displayProps}
           >
-            {label.trim() || "Presentation"}
+            {data.label.trim() || "Presentation"}
           </div>
         )}
         <button
@@ -120,15 +121,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
           data.steps.map((step, i) => (
             <div key={i} className={`solenoid-pres__step${i === data.activeIndex ? " solenoid-pres__step--active" : ""}`}>
               <button type="button" className="solenoid-pres__step-go" onClick={() => goTo(i)} title="Fly to this step">
-                <input
-                  className="solenoid-pres__step-title"
-                  value={step.title}
-                  onChange={(e) => rename(i, e.target.value)}
-                  onClick={(e) => e.stopPropagation()}
-                  onPointerDown={stop}
-                  onMouseDown={stop}
-                  onBlur={() => scheduleAutosave()}
-                />
+                <StepTitle title={step.title} onCommit={(t) => rename(i, t)} />
                 <span className="solenoid-pres__step-count" title={step.nodeIds.map((id) => names.get(id) ?? "node").join(", ")}>
                   {step.nodeIds.length}
                 </span>
