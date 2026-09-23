@@ -317,7 +317,7 @@ export const documentStore = {
     const src = _lib.documents.find((d) => d.id === id);
     if (!src) return;
     if (isGraphRebuilding()) return;
-    if (id === _lib.currentId) this.captureCurrent();
+    this.captureCurrent();
     const prevId = _lib.currentId;
     _lib = duplicateDocument(_lib, id, newId(), uniqueName(_lib, `${src.name} copy`));
     persist();

@@ -570,7 +570,8 @@ describe("[[C36]] captureBeforeSwap — every documentStore verb that swaps the 
       const body = src.slice(line, bodyEnd).join("\n");
       if (!/loadGraph\(|showCurrent/.test(body)) continue;
       if (name in SANCTIONED) continue;
-      if (!/captureCurrent/.test(body)) offenders.push(`${name} (no captureCurrent — outgoing edits discarded)`);
+      // Top-level and unconditional: duplicate once captured only when copying the current doc, and duplicating another one dropped the outgoing edits.
+      if (!/^    this\.captureCurrent\(\);$/m.test(body)) offenders.push(`${name} (no unconditional captureCurrent — outgoing edits discarded)`);
       if (!/isGraphRebuilding/.test(body)) offenders.push(`${name} (no isGraphRebuilding guard — races a load, audit 21p)`);
     }
     expect(
