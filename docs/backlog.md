@@ -48,6 +48,8 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
+- [ ] **Next plugin release:** `PropertyChip` gained `resolveToken` (2026-09-23), so re-export the snapshot
+  (`npm run plugin:export`); the README fix waits on `claude/copy-editing-style-kytmz0` in Solenoid-Properties.
 - [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
   row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
   `tree/specs/integrations/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.
@@ -83,6 +85,16 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
 
+## Charts
+
+- [ ] **Radar `ymin`/`ymax` under Scale = per axis (author to pick):** a multi-series radar normalizes each axis,
+  so the range does nothing; a single-series radar honors it. Either a set range implies a shared scale, or it
+  stays the documented [[D75]] exception. Multi-series `color` is the other exception (the author skipped the fix).
+- [ ] **Gauge Dial has no Options input**, so no title or font size in Dial mode (author's call).
+- [ ] **Multi-output services still fall to math blue:** Geocode, Weather, Holidays, FX; input amber would fit
+  ([[C111]] reaches only one-output cards).
+- [ ] **The `display` node kind has no card left** (`NODE_KIND_SLOTS`); prune it or give it a use.
+
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 
 - [ ] **Collapsed stadium pill hover preview** — a collapsed node's input pill shows a hover
@@ -114,6 +126,7 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 
 - [ ] **Author reviews the site copy.** An agent pass (2026-09-23) brought every page to DESIGN.md §7;
   the Packs and Examples pages now render from the pack definitions and the seed list.
+- [ ] **Check the per-page link previews on the next Vercel deploy** (share `/obsidian` or `/packs` and read the card).
 - [ ] **Public changelog page (parked, author wants it later).** Would live at `/changelog` off
   `docs/release-notes-features.md` + the What's New slides. Deferred so it does not just mirror
   GitHub Releases; revisit when there is a reason it earns its own surface.

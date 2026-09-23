@@ -44,6 +44,12 @@ specific item.
 - **Also:** the Schedule and Gantt spec is in the vault (`schedule-and-gantt`); dependencies are on latest,
   `mermaid` 12 with a `lodash-es` override. **For the author:** C70's per-row faults vs the whole-run error,
   and Local File's grammar-text Predecessors (both in the backlog).
+- **Charts:** every figure the Chart Builder titles now draws its title, and the Sankey, KPI and Gauge cards
+  render through `ChartFigure`, so options apply on the card ([[D75]] builderExposesEveryOption: a type's
+  builder keys are exactly what its renderer honors; `chartTitles.test.ts`). The audit made alpha, radar,
+  canvas-figure fontsize and the Gantt view keys real. Sankey merges repeated From/To pairs (`mergeFlows`)
+  and lifts a flow on hover. Every chart card, Chart Builder, Mermaid and Record included, is the chart
+  kind; an unfiled card with one non-numeric output wears its output's color ([[C111]]).
 
 ### SESSION DIGEST (2026-09-22d: fixing what the rebuild specs found; author away)
 
