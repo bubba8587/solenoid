@@ -35,11 +35,13 @@ function isAngleOrScalar(d: Dim): boolean {
   return isDimensionless(d) || dimEqual(d, ANGLE_DIM);
 }
 
+// A dimensionless argument adopts, as it does under `+` (ROUND's digits, MIN(5 km, 3)).
 function requireSame(args: DimResult[], what: string): DimResult {
   let acc: Dim | null = null;
   for (const a of args) {
     if (a === null) return null;
     if (isSolError(a)) return a;
+    if (isDimensionless(a)) continue;
     if (acc === null) acc = a;
     else if (!dimEqual(acc, a)) return unitError(`${what} needs matching units.`);
   }

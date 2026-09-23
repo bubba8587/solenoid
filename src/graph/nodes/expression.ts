@@ -8,8 +8,9 @@ import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell, tagDim, type UnitCell } from "../unitValue";
+import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
 import { dimEval, type DimEnv, type CodeEnv } from "../unitDimExpr";
-import { type Dim, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
+import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
 
 function guard(v: unknown, scalar: boolean): unknown {
   if (typeof v === "string") return v;
@@ -35,6 +36,44 @@ function stripUnits(v: unknown): unknown {
       Array.isArray(c) ? c.map((e) => (isUnitCell(e) ? (e as UnitCell).value : e))
       : isUnitCell(c) ? (c as UnitCell).value : c);
   }
+  return v;
+}
+
+/** The one linear display unit every dimensioned input cell is shown in, or null
+ *  (none, mixed, a derived form with no id, or an affine °C/°F). */
+function sharedLinearDisplay(values: unknown[]): { id: string; unit: Unit } | null {
+  let id: string | undefined;
+  for (const c of values.flat(2)) {
+    if (!isUnitCell(c) || isDimensionless(c.dim)) continue;
+    if (c.display == null || (id !== undefined && c.display !== id)) return null;
+    id = c.display;
+  }
+  if (id === undefined) return null;
+  const unit = fcUnitToUnit(id);
+  if (!unit || (unit.offset ?? 0) !== 0) return null;
+  for (const c of values.flat(2)) {
+    if (isUnitCell(c) && !isDimensionless(c.dim) && !dimEqual(c.dim, unit.dim)) return null;
+  }
+  return { id, unit };
+}
+
+/** `k` with `dim` = `base`^k, or null when `dim` is no power of `base`. */
+function powerOf(dim: Dim, base: Dim): number | null {
+  const keys = new Set([...Object.keys(dim), ...Object.keys(base)] as (keyof Dim)[]);
+  let k: number | null = null;
+  for (const key of keys) {
+    const d = (dim[key] as number | undefined) ?? 0, b = (base[key] as number | undefined) ?? 0;
+    if (b === 0) { if (d !== 0) return null; continue; }
+    const kk = d / b;
+    if (k === null) k = kk;
+    else if (Math.abs(kk - k) > 1e-12) return null;
+  }
+  return k;
+}
+
+function toShown(v: unknown): unknown {
+  if (isUnitCell(v)) return displayMagnitudeOf(v);
+  if (Array.isArray(v)) return v.map(toShown);
   return v;
 }
 
@@ -165,15 +204,9 @@ export class ExpressionNode extends ClassicPreset.Node {
     try {
       const rawEnv: Record<string, unknown> = {};
       for (const v of this.varNames) rawEnv[v] = readInput(inputs[v], this.literals[v] ?? 0);
-      const env: Record<string, unknown> = {};
-      for (const v of this.varNames) env[v] = stripUnits(rawEnv[v]);
-
-      const raw = this.evaluator(env);
-      let result: unknown = Array.isArray(raw)
-        ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
-        : tagResult(raw);
-
-      if (this.ast && this.varNames.some((v) => envDim(rawEnv[v]) !== DIMENSIONLESS && !isDimensionless(envDim(rawEnv[v])))) {
+      let dr: Dim | null = null;
+      let shown: { id: string; unit: Unit; k: number | null } | null = null;
+      if (this.ast && this.varNames.some((v) => !isDimensionless(envDim(rawEnv[v])))) {
         const dimEnv: DimEnv = {};
         const codeEnv: CodeEnv = {};
         for (const v of this.varNames) {
@@ -181,16 +214,37 @@ export class ExpressionNode extends ClassicPreset.Node {
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }
-        const dr = dimEval(this.ast, dimEnv, codeEnv);
-        if (isSolError(dr)) {
-          this.cachedResult = dr; this.cachedError = null;
-          return { result: dr };
+        const r = dimEval(this.ast, dimEnv, codeEnv);
+        if (isSolError(r)) {
+          this.cachedResult = r; this.cachedError = null;
+          return { result: r };
         }
-        if (dr !== null && !isDimensionless(dr)) {
-          result = Array.isArray(result)
-            ? result.map((c) => (typeof c === "number" ? tagDim(c, dr) : c))
-            : (typeof result === "number" ? tagDim(result, dr) : result);
+        dr = r;
+        // One shared linear display unit: the formula runs on the numbers the user reads,
+        // as the Arithmetic and Comparison cards do ([[B16]] oneFormulaSurface).
+        const sd = sharedLinearDisplay(this.varNames.map((v) => rawEnv[v]));
+        if (sd) {
+          const k = dr === null || isDimensionless(dr) ? null : powerOf(dr, sd.unit.dim);
+          if (dr === null || isDimensionless(dr) || k !== null) shown = { ...sd, k };
         }
+      }
+
+      const env: Record<string, unknown> = {};
+      for (const v of this.varNames) env[v] = shown ? toShown(rawEnv[v]) : stripUnits(rawEnv[v]);
+
+      const raw = this.evaluator(env);
+      let result: unknown = Array.isArray(raw)
+        ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
+        : tagResult(raw);
+
+      if (dr !== null && !isDimensionless(dr)) {
+        const d = dr;
+        const tag = (c: number) => shown && shown.k !== null
+          ? tagDim(c * shown.unit.scale ** shown.k, d, shown.k === 1 ? shown.id : undefined)
+          : tagDim(c, d);
+        result = Array.isArray(result)
+          ? result.map((c) => (typeof c === "number" ? tag(c) : c))
+          : (typeof result === "number" ? tag(result) : result);
       }
       this.cachedResult = result;
       this.cachedError  = null;

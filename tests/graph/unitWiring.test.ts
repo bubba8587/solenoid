@@ -145,6 +145,28 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const n = new ExpressionNode({ expr: "a + b" });
     expect(n.data({ a: [2], b: [3] }).result).toBe(5);
   });
+  // [[C25]] firstClassUnits, [[B16]] oneFormulaSurface: the formula reads a united input
+  // as the Arithmetic and Comparison cards do, in its display unit.
+  it("a bare number adopts the display unit: 5 km + 3 is 8 km, and 5 km > 3000 is FALSE", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const km = applyFcUnit(5, "km");
+    const run = (expr: string, a: unknown) => new ExpressionNode({ expr }).data({ a: [a as never] }).result;
+    const sum = run("a + 3", km) as UnitCell;
+    expect(sum.display).toBe("km");
+    expect(displayMagnitudeOf(sum)).toBeCloseTo(8, 9);
+    expect(run("a > 3000", km)).toBe(false);
+    expect(run("a & \"x\"", km)).toBe("5x");
+    expect(displayMagnitudeOf(run("ROUND(a, 1)", applyFcUnit(1.44, "km")) as UnitCell)).toBeCloseTo(1.4, 9);
+    expect(displayMagnitudeOf(run("INT(a)", applyFcUnit(1.7, "km")) as UnitCell)).toBeCloseTo(1, 9);
+    const area = run("a * a", km) as UnitCell;
+    expect(magnitudeOf(area)).toBeCloseTo(25e6, 3); // 25 km² in base m²
+  });
+  it("inputs in different units still compute in base SI", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const r = new ExpressionNode({ expr: "a + b" }).data({ a: [applyFcUnit(1, "km") as never], b: [applyFcUnit(500, "m") as never] }).result;
+    expect(magnitudeOf(r as UnitCell)).toBeCloseTo(1500, 9);
+  });
 });
 
 describe("unit bridge", () => {

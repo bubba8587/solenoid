@@ -152,6 +152,10 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 
 `dimEvalWithCode` returns the dimension with its code, for a caller whose top level is itself a combination, so no operator inside either side ever sees both codes. `formulaResultDim` folds a conflict into `null`; use `dimEval` when the conflict must surface as an error.
 
+## Expression
+
+`dimEval` (`unitDimExpr.ts`) sets the result dimension. A dimensionless argument adopts, under `+` and in the dimension-preserving functions alike (ROUND's digits, MIN(5 km, 3)). When every united input reads in ONE linear display unit, the formula runs on the displayed numbers: `5 km + 3` is 8 km, `5 km > 3000` is FALSE and `5 km & "x"` is "5x", as on Arithmetic and Comparison. A result `k` powers of that unit converts back by scale^k. Mixed units, a derived form, or an affine °C/°F run on base SI. Machine-checked: `unitWiring.test.ts`.
+
 ## LAMBDA hosts over a 1-D list
 
 REDUCE, BYROW and BYCOL strip tagged cells to base-SI magnitudes for the numeric fold, run `dimEval` (`unitDimExpr.ts`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. MAP, MAKEARRAY and SCAN ignore units on matrices (`tableLambda.ts`).
