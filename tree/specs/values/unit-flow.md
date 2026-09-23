@@ -182,6 +182,7 @@ The value-side author, in `unitBridge.ts`. The third argument is the custom-name
 | a pure ratio | `#UNIT!`. Its units canceled, so it can't be relabeled |
 | a non-blank **custom** name | an opaque `customDim` tag. Only `none` or a blank custom name passes through |
 | a numeric **matrix** | tagged through `withMatrixUnit` on a freshly `slice()`d outer array; never tag the shared cached array |
+| a numeric matrix that already carries a grid unit | the cell rules: an incommensurable unit is `#UNIT!`, a commensurable one re-displays by rescaling the as-typed cells. The FC mirrors and locks a grid's unit as it does a cell's |
 | text or a Frame | passes through, and any existing tag rides on |
 
 `null` and `SolError` values pass untouched. A custom free-text unit becomes a `customDim` axis with no display id, so `formatDim` renders the name. A value counts as a matrix when any element is an array, and it is tagged only when the first non-blank cell of its first row is a number.
