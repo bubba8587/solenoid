@@ -122,6 +122,25 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
+describe("[[B12]] losslessSaves: a grown row keeps the socket order a reload rebuilds", () => {
+  it("every row-growing catalog node reloads with its live input order", () => {
+    const moved: string[] = [];
+    for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
+      let n: ClassicPreset.Node;
+      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const a = n as unknown as { addValueInput?: () => void; addValuePair?: () => void };
+      const grow = a.addValuePair ?? a.addValueInput;
+      if (typeof grow !== "function") continue;
+      grow.call(n);
+      grow.call(n);
+      const live = Object.keys(n.inputs);
+      const back = Object.keys(rebuild(n).inputs);
+      if (JSON.stringify(live) !== JSON.stringify(back)) moved.push(`${type}: live ${live.join(",")} / reloaded ${back.join(",")}`);
+    }
+    expect(moved).toEqual([]);
+  });
+});
+
 // Literal keys share names with init fields (Pad Text's `width` input beside its card width), so the maps stay out of init.
 describe("literal values never enter init", () => {
   it("no catalog node's init carries a literal-only key or a literal's value over a field", () => {
