@@ -468,15 +468,11 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `glossary.md` | living | the invented vocabulary |
 | `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `tree/decisions/` |
 | `subsystem-invariants.md` | living | the index of every spec under `tree/specs/` (the mechanics, one per subsystem) |
-| `tree/specs/canvas/layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
-| `tree/specs/canvas/touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |
 | `deferrals.md` | living | the deferred/parked/author-gated set, incl. Pushed-to-1.4/2.0 |
 | `2.0-plan.md` | living | the author-present flagships — release view over `v2.0/` |
 | `release-notes-features.md` | living | curated feature list — release-notes source + What's-New slide content |
-| `tree/specs/values/format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
-| `tree/specs/values/value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context |
 | `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
