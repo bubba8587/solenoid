@@ -22,7 +22,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
+import { MAX_GENERATED, shuffleList, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -1150,17 +1150,6 @@ export class IsInNode extends ClassicPreset.Node {
   }
 }
 
-/** Shared with the pack's ISIN formula. */
-export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean | null | SolError)[] {
-  const members = new Set<unknown>();
-  for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
-  return a.map((v) => {
-    if (isMissing(v)) return null;
-    if (isSolError(v)) return v as SolError;
-    return members.has(setKey(v));
-  });
-}
-
 // ─── Tally ────────────────────────────────────────────────────────────────────
 export class TallyNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1192,19 +1181,6 @@ export class TallyNode extends ClassicPreset.Node {
     this.cachedResult = list.length || values.length ? frame : null;
     return { frame: this.cachedResult };
   }
-}
-
-/** Shared with the pack's TALLY formula. */
-export function tallyPairs(list: readonly unknown[]): { values: unknown[]; counts: number[] } {
-  const counts = new Map<unknown, { value: unknown; count: number }>();
-  for (const v of list) {
-    if (isMissing(v) || isSolError(v)) continue;
-    const k = setKey(v);
-    const e = counts.get(k);
-    if (e) e.count++; else counts.set(k, { value: v, count: 1 });
-  }
-  const entries = [...counts.values()];
-  return { values: entries.map((e) => e.value), counts: entries.map((e) => e.count) };
 }
 
 export type SetRelation = "equal" | "subset" | "superset" | "disjoint";

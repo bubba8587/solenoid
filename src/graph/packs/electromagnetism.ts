@@ -1,8 +1,9 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // CODATA 2018 constants baked into each formula; SI units; angles in radians.
 
-import { PhysicsConstantNode, EmSpectrumNode, emSpectrum, PHYS_CONSTANTS, type PhysConstOp } from "../rete-nodes";
-import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { PhysicsConstantNode, EmSpectrumNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { ELECTROMAGNETISM_PACK_FORMULAS } from "./electromagnetismFormulas";
 
 // Written as decimal·10^n so the formula grammar stays simple.
 const KE   = "8.9875517923*10^9";    // Coulomb constant (N·m²/C²)
@@ -77,31 +78,6 @@ export const EM_INDUCTION: FormulaPackEntry[] = [
 
 export const EM_FORMULAS: FormulaPackEntry[] = [
   ...EM_ELECTROSTATICS, ...EM_MAGNETISM, ...EM_WAVES, ...EM_INDUCTION,
-];
-
-const ELECTROMAGNETISM_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "EMSPECTRUMBAND",
-    impl: (freq, wavelength) => {
-      const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
-      const r = emSpectrum(num(freq), num(wavelength));
-      if (r === null) return null;
-      return isSolError(r) ? r : r.band;
-    },
-    returns: "string", arity: [1, 2],
-    signature: "frequency Hz — or blank, wavelength m",
-  },
-  {
-    name: "PHYSICSCONSTANT",
-    impl: (id) => {
-      if (id == null) return null;
-      const k = String(id);
-      const m = PHYS_CONSTANTS[k as PhysConstOp];
-      return m ? m.value : solError("#NAME?", `Unknown constant "${k}" — c, G, h, e, kb, na… (case matters)`);
-    },
-    returns: "number", arity: [1, 1],
-    signature: "id — c, G, h, e, kb, na…",
-  },
 ];
 
 export const ELECTROMAGNETISM_PACK: Pack = {

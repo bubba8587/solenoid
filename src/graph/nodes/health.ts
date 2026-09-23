@@ -5,38 +5,16 @@ import { numIn, frameOut, readInput } from "./shared";
 import type { FrameValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import { solError, type SolError } from "../errorValue";
-
-const ZONES: Array<{ name: string; lo: number; hi: number }> = [
-  { name: "Z1 Recovery", lo: 0.5, hi: 0.6 },
-  { name: "Z2 Endurance", lo: 0.6, hi: 0.7 },
-  { name: "Z3 Tempo", lo: 0.7, hi: 0.8 },
-  { name: "Z4 Threshold", lo: 0.8, hi: 0.9 },
-  { name: "Z5 Maximum", lo: 0.9, hi: 1 },
-];
-
-export function hrZonesDomainOk(maxHr: number, restingHr: number | null): boolean {
-  return maxHr > 0 && (restingHr === null || (restingHr > 0 && restingHr < maxHr));
-}
-
-export function hrZonesMatrix(maxHr: number, restingHr: number | null): number[][] | SolError {
-  if (!hrZonesDomainOk(maxHr, restingHr)) {
-    return solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");
-  }
-  const f = hrZonesFrame(maxHr, restingHr);
-  const lo = f.columns[1].values as number[];
-  const hi = f.columns[2].values as number[];
-  return lo.map((l, i) => [l, hi[i]]);
-}
+import { ZONES, hrZonesDomainOk, hrZoneBounds } from "./healthOps";
 
 export function hrZonesFrame(maxHr: number, restingHr: number | null): FrameValue {
-  const at = (pct: number) =>
-    Math.round(restingHr !== null ? restingHr + pct * (maxHr - restingHr) : pct * maxHr);
+  const bounds = hrZoneBounds(maxHr, restingHr);
   return {
     __frame: true,
     columns: [
       { name: "Zone", type: "string", values: ZONES.map((z) => z.name) },
-      { name: "Low", type: "number", values: ZONES.map((z) => at(z.lo)) },
-      { name: "High", type: "number", values: ZONES.map((z) => at(z.hi)) },
+      { name: "Low", type: "number", values: bounds.map((r) => r[0]) },
+      { name: "High", type: "number", values: bounds.map((r) => r[1]) },
     ],
   };
 }

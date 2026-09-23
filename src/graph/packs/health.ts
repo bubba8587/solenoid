@@ -1,8 +1,9 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // Metric inputs throughout (kg, cm, years); a sex-specific equation ships as two presets, never a hidden ±sign input.
 
-import { HrZonesNode, hrZonesMatrix } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { HrZonesNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { HEALTH_PACK_FORMULAS } from "./healthFormulas";
 
 export const HEALTH_BODY: FormulaPackEntry[] = [
   { type: "hf-bmi", label: "BMI", expr: "w/h^2",
@@ -78,21 +79,6 @@ export const HEALTH_CLINICAL: FormulaPackEntry[] = [
 
 export const HEALTH_FORMULAS: FormulaPackEntry[] = [
   ...HEALTH_BODY, ...HEALTH_COMPOSITION, ...HEALTH_ENERGY, ...HEALTH_CARDIO, ...HEALTH_CLINICAL,
-];
-
-const HEALTH_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "HEARTRATEZONES",
-    impl: (max, resting) => {
-      if (max == null) return null;
-      const m = Number(max);
-      if (!Number.isFinite(m)) return null;
-      const r = resting == null ? null : Number(resting);
-      return hrZonesMatrix(m, r !== null && Number.isFinite(r) ? r : null);
-    },
-    returns: "number", rank: "matrix", arity: [1, 2],
-    signature: "max HR, resting HR — five [low, high] rows",
-  },
 ];
 
 export const HEALTH_PACK: Pack = {

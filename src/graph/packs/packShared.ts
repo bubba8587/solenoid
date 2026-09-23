@@ -1,14 +1,12 @@
 // [[B15]] leanCore, [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation
-// A pack file may import only this module, ../rete-nodes and type-only app seams, never core internals.
+// A pack file may import only this module, its <id>Formulas.ts, ../rete-nodes and type-only app seams, never core internals;
+// <id>Formulas.ts imports only rete-free kernels ([[D19]] implReteFree).
 
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
 import type { ExcelReturn, ExcelRank } from "../excelFunctions";
 import { ExpressionNode, EquationNode } from "../rete-nodes";
-
-export { solError, isSolError } from "../errorValue";
-export type { SolError } from "../errorValue";
 
 export interface PackFormula {
   /** Dispatch name, UPPERCASE. */

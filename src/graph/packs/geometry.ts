@@ -2,8 +2,9 @@
 // Trig is in RADIANS, per the core Trigonometry convention.
 
 import type { NodeCatalogEntry } from "../AddNodeMenu";
-import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode, solveGivenParts, type TriangleGiven } from "../rete-nodes";
-import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { TwoInputMathNode, TWO_INPUT_MATH_OP_META, TriangleSolverNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { GEOMETRY_PACK_FORMULAS } from "./geometryFormulas";
 
 const GEOMETRY_FORMULAS: FormulaPackEntry[] = [
   { type: "geo-circle-area",    label: "Circle Area",          expr: "PI()*r^2",
@@ -95,26 +96,6 @@ export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
 const CIRCLE_IDS = new Set(["geo-circle-area", "geo-circle-circum", "geo-ellipse-area"]);
 const SOLID_IDS = new Set(["geo-sphere-vol", "geo-sphere-area", "geo-cylinder-vol", "geo-cone-vol"]);
 const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
-
-const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "TRIANGLESOLVER",
-    impl: (...args: unknown[]) => {
-      const keys = ["a", "b", "c", "A", "B", "C"] as const;
-      const given: Record<string, number> = {};
-      let any = false;
-      keys.forEach((k, i) => {
-        const v = args[i];
-        if (typeof v === "number" && Number.isFinite(v)) { given[k] = v; any = true; }
-      });
-      if (!any) return null;
-      const r = solveGivenParts(given as TriangleGiven);
-      return keys.map((k) => r.values[k]);
-    },
-    returns: "number", rank: "list", listArgs: true, arity: [3, 6],
-    signature: "a, b, c, A°, B°, C° — any 3 incl. a side; returns all six",
-  },
-];
 
 export const GEOMETRY_PACK: Pack = {
   formulas: GEOMETRY_PACK_FORMULAS,

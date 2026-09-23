@@ -1,8 +1,9 @@
 // [[C51]] formulaNaming
 // Lab units throughout: grams, moles, liters, kelvin where absolute.
 
-import { ElementNode, MolarMassNode, molarMass, ELEMENTS, ELEMENT_BY_SYMBOL } from "../rete-nodes";
-import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { ElementNode, MolarMassNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { CHEMISTRY_PACK_FORMULAS } from "./chemistryFormulas";
 
 const R_GAS = "8.314462618";
 const FARADAY = "96485.33212";
@@ -47,38 +48,6 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
 ];
 
 export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_EQUILIBRIA];
-
-const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "ELEMENT",
-    impl: (el, property) => {
-      if (el == null) return null;
-      const meta = typeof el === "number"
-        ? ELEMENTS.find((m) => m.n === el)
-        : ELEMENT_BY_SYMBOL.get(String(el));
-      if (!meta) return solError("#NAME?", `Unknown element "${el}"`);
-      const p = property == null ? "mass" : String(property).toLowerCase();
-      if (p === "mass") return meta.mass;
-      if (p === "number") return meta.n;
-      if (p === "name") return meta.name;
-      if (p === "symbol") return meta.symbol;
-      if (p === "period") return meta.period;
-      return solError("#VALUE!", `Unknown property "${p}" — mass, number, name, symbol, period`);
-    },
-    returns: "any", arity: [1, 2],
-    signature: "symbol or atomic number, [property (mass)]",
-  },
-  {
-    name: "MOLARMASS",
-    impl: (formula) => {
-      if (formula == null) return null;
-      const s = String(formula);
-      return s.trim() ? molarMass(s) : null;
-    },
-    returns: "number", arity: [1, 1],
-    signature: "chemical formula — H2O, CuSO4·5H2O",
-  },
-];
 
 export const CHEMISTRY_PACK: Pack = {
   formulas: CHEMISTRY_PACK_FORMULAS,

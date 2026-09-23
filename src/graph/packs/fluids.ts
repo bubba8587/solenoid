@@ -1,8 +1,9 @@
 // [[C51]] formulaNaming
 // SI units throughout; g = 9.80665 m/s² baked in where gravity appears.
 
-import { ColebrookNode, PipeRoughnessNode, colebrookFriction, PIPE_ROUGHNESS } from "../rete-nodes";
-import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
+import { ColebrookNode, PipeRoughnessNode } from "../rete-nodes";
+import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
+import { FLUIDS_PACK_FORMULAS } from "./fluidsFormulas";
 
 const G0 = "9.80665";
 
@@ -67,31 +68,6 @@ export const FLUIDS_AERO: FormulaPackEntry[] = [
 
 export const FLUIDS_FORMULAS: FormulaPackEntry[] = [
   ...FLUIDS_BASE, ...FLUIDS_PIPE, ...FLUIDS_PUMPS, ...FLUIDS_AERO,
-];
-
-const FLUIDS_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "COLEBROOK",
-    impl: (re, rr) => {
-      if (re == null || rr == null) return null;
-      const r = Number(re), e = Number(rr);
-      if (!Number.isFinite(r) || !Number.isFinite(e)) return null;
-      return colebrookFriction(r, e);
-    },
-    returns: "number", arity: [2, 2],
-    signature: "Re, relative roughness ε/D",
-  },
-  {
-    name: "PIPEROUGHNESS",
-    impl: (material) => {
-      if (material == null) return null;
-      const id = String(material);
-      const row = PIPE_ROUGHNESS.find((m) => m.id === id);
-      return row ? row.mm : solError("#NAME?", `Unknown material "${id}" — pvc, copper, steel, castiron…`);
-    },
-    returns: "number", arity: [1, 1],
-    signature: "material — pvc, copper, steel, castiron…",
-  },
 ];
 
 export const FLUIDS_PACK: Pack = {

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { EARTHSKY_FORMULAS } from "../../../src/graph/packs/earthsky";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { solarBasis, solarPosition, sunTimes, moonPhase, serialToJulianDay, SunriseSunsetNode } from "../../../src/graph/nodes/astro";
+import { SunriseSunsetNode } from "../../../src/graph/nodes/astro";
+import { solarBasis, solarPosition, sunTimes, moonPhase, serialToJulianDay } from "../../../src/graph/nodes/astroOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {

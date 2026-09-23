@@ -5,9 +5,9 @@ import {
   HrZonesNode as HrZonesNodeType,
   PipeRoughnessNode as PipeRoughnessNodeType,
   TriangleSolverNode as TriangleSolverNodeType,
-  PIPE_ROUGHNESS,
-  type TriangleSolved,
 } from "../rete-nodes";
+import { PIPE_ROUGHNESS } from "../nodes/fluidsOps";
+import type { TriangleSolved } from "../nodes/triangleOps";
 import { NodeShell, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";

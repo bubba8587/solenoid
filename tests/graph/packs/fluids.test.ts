@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { FLUIDS_FORMULAS } from "../../../src/graph/packs/fluids";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { PIPE_ROUGHNESS, PipeRoughnessNode } from "../../../src/graph/nodes/fluids";
-import { ColebrookNode, colebrookF } from "../../../src/graph/nodes/fluids";
+import { PipeRoughnessNode, ColebrookNode } from "../../../src/graph/nodes/fluids";
+import { PIPE_ROUGHNESS, colebrookF } from "../../../src/graph/nodes/fluidsOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {

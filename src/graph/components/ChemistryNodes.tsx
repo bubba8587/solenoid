@@ -1,8 +1,8 @@
 import {
   ElementNode as ElementNodeType,
   MolarMassNode as MolarMassNodeType,
-  ELEMENT_BY_SYMBOL,
 } from "../rete-nodes";
+import { ELEMENT_BY_SYMBOL } from "../nodes/chemistryOps";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { makeNodeComponent } from "./standardNode";
 import { elementPicker } from "../elementPickerStore";

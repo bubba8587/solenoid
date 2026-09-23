@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { GEOMETRY_CIRCLES, GEOMETRY_SOLIDS } from "../../../src/graph/packs/geometry";
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { solveTriangle, TriangleSolverNode, type TriangleSolved } from "../../../src/graph/nodes/triangle";
+import { TriangleSolverNode } from "../../../src/graph/nodes/triangle";
+import { solveTriangle, type TriangleSolved } from "../../../src/graph/nodes/triangleOps";
 import { isSolError } from "../../../src/graph/errorValue";
 import { tagDim } from "../../../src/graph/unitValue";
 

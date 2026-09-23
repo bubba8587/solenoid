@@ -350,6 +350,8 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `stats`, `dist-*`, `finance`, `financeOps`, `text`, `textOps`, `date`,
 `dateSerial`, `complex`, `matrix`, `matrixOps`, `frame`, `cube`,
 `tableLambda`, `lambda`, `expression`, `script` (+ `scriptRun`, `scriptCoerce`), `convert`, `convertUnits`,
+the pack kernels (`astroOps`, `chemistryOps`, `electricalOps`, `emSpectrumOps`, `fluidsOps`,
+`healthOps`, `physicsConstantsOps`, `thermoOps`, `triangleOps`),
 `logic`, `input`, `control`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
@@ -398,7 +400,8 @@ overlay tabs.
 
 One file per pack on `packs/packShared.ts` (authoring types,
 `formulaNode`/`placeFormulas`, Equation presets; a pack file may import ONLY
-packShared, `../rete-nodes`, and type-only app seams — never core internals),
+packShared, its `<id>Formulas.ts`, `../rete-nodes`, and type-only app seams — never core internals),
+its `formulas` in `packs/<id>Formulas.ts`, which imports only rete-free kernels ([[D19]] implReteFree),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
 `fcExtensions.ts` above); the settled calls are [[B15]] leanCore and its children, the

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ELECTRICITY_FORMULAS } from "../../../src/graph/packs/electricity";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { decodeResistor, ResistorCodeNode } from "../../../src/graph/nodes/electrical";
+import { ResistorCodeNode } from "../../../src/graph/nodes/electrical";
+import { decodeResistor } from "../../../src/graph/nodes/electricalOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {

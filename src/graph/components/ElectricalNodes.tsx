@@ -4,9 +4,8 @@ import {
   ESeriesNode as ESeriesNodeType,
   AwgNode as AwgNodeType,
   ResistorCodeNode as ResistorCodeNodeType,
-  RESISTOR_DIGIT, RESISTOR_MULT, RESISTOR_TOL,
-  type ESeriesOp,
 } from "../rete-nodes";
+import { RESISTOR_DIGIT, RESISTOR_MULT, RESISTOR_TOL, type ESeriesOp } from "../nodes/electricalOps";
 import { NodeShell, OpSelect, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";

@@ -872,3 +872,27 @@ export function spectrum(x: readonly Cell[], rate = 1): SpectrumRow[] {
   }
   return rows;
 }
+
+/** Shared with the pack's ISIN formula. */
+export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean | null | SolError)[] {
+  const members = new Set<unknown>();
+  for (const v of b) if (!isMissing(v) && !isSolError(v)) members.add(setKey(v));
+  return a.map((v) => {
+    if (isMissing(v)) return null;
+    if (isSolError(v)) return v as SolError;
+    return members.has(setKey(v));
+  });
+}
+
+/** Shared with the pack's TALLY formula. */
+export function tallyPairs(list: readonly unknown[]): { values: unknown[]; counts: number[] } {
+  const counts = new Map<unknown, { value: unknown; count: number }>();
+  for (const v of list) {
+    if (isMissing(v) || isSolError(v)) continue;
+    const k = setKey(v);
+    const e = counts.get(k);
+    if (e) e.count++; else counts.set(k, { value: v, count: 1 });
+  }
+  const entries = [...counts.values()];
+  return { values: entries.map((e) => e.value), counts: entries.map((e) => e.count) };
+}

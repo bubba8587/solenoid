@@ -1,8 +1,5 @@
-import {
-  PhysicsConstantNode as PhysicsConstantNodeType,
-  PHYS_CONSTANTS,
-  type PhysConstOp,
-} from "../rete-nodes";
+import { PhysicsConstantNode as PhysicsConstantNodeType } from "../rete-nodes";
+import { PHYS_CONSTANTS, type PhysConstOp } from "../nodes/physicsConstantsOps";
 import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
 
 const OPS = (Object.entries(PHYS_CONSTANTS) as [PhysConstOp, (typeof PHYS_CONSTANTS)[PhysConstOp]][]).map(

@@ -1,24 +1,7 @@
 // [[C51]] formulaNaming
-import { IsInNode, TallyNode, isInMask, tallyPairs } from "../rete-nodes";
-import type { Pack, PackFormula } from "./packShared";
-
-const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v]);
-
-// TALLY returns only the counts, because the node's frame cannot cross the formula surface.
-const SETS_PACK_FORMULAS: PackFormula[] = [
-  {
-    name: "ISIN",
-    impl: (a, b) => isInMask(asList(a), asList(b)),
-    returns: "logical", rank: "list", listArgs: true, arity: [2, 2],
-    signature: "values, set — mask aligned to values",
-  },
-  {
-    name: "TALLY",
-    impl: (v) => tallyPairs(asList(v)).counts,
-    returns: "number", rank: "list", listArgs: true, arity: [1, 1],
-    signature: "values — counts per distinct value, first seen",
-  },
-];
+import { IsInNode, TallyNode } from "../rete-nodes";
+import type { Pack } from "./packShared";
+import { SETS_PACK_FORMULAS } from "./setsFormulas";
 
 export const SETS_PACK: Pack = {
   formulas: SETS_PACK_FORMULAS,

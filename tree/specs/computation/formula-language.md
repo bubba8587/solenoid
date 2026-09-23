@@ -30,9 +30,10 @@ The per-name reasons Solenoid overrides a Formula.js function are [[formulajs-di
 | `src/graph/cxValue.ts` | The tagged complex value, its text forms and its arithmetic kernels. |
 | `src/graph/excelToCatalog.ts` | `EXCEL_TO_CATALOG` and `CATALOG_TO_EXCEL`, derived from `NODE_EXCEL`, never hand-edited. |
 | `src/graph/formulaNodeParity.ts` | The node-and-formula parity measurement (see *Parity measurement*). |
-| `src/graph/nodes/listOps.ts`, `statsOps.ts`, `mathUtils.ts`, `financeOps.ts`, `dateSerial.ts`, `dateOps.ts`, `textOps.ts`, `matrixOps.ts`, `distributionOps.ts`, `fitOps.ts`, `forecastOps.ts`, `signalOps.ts`, `indexAccess.ts`, `visualOps.ts`, `hashOps.ts`, `convertUnits.ts` | The shared kernels (see *Shared kernels*). |
+| `src/graph/nodes/listOps.ts`, `statsOps.ts`, `mathUtils.ts`, `financeOps.ts`, `dateSerial.ts`, `dateOps.ts`, `textOps.ts`, `matrixOps.ts`, `distributionOps.ts`, `fitOps.ts`, `forecastOps.ts`, `signalOps.ts`, `indexAccess.ts`, `visualOps.ts`, `hashOps.ts`, `convertUnits.ts`, `astroOps.ts`, `chemistryOps.ts`, `electricalOps.ts`, `emSpectrumOps.ts`, `fluidsOps.ts`, `healthOps.ts`, `physicsConstantsOps.ts`, `thermoOps.ts`, `triangleOps.ts` | The shared kernels (see *Shared kernels*). |
+| `src/graph/packs/*Formulas.ts` | A pack's `formulas` (its `PackFormula` impls), importing only kernels. |
 
-Every module the formula path imports is rete-free ([[D19]] implReteFree). `formulaPathIsReteFree.test.ts` pins it.
+Every module the formula path imports is rete-free, each pack's `*Formulas.ts` included ([[D19]] implReteFree). `formulaPathIsReteFree.test.ts` pins it.
 
 ## Lexical grammar
 

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "../../../src/graph/packs/thermo";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
-import { isaAtGeopotential, isaAtGeometric, IsaAtmosphereNode, ANTOINE, antoinePressure, AntoineNode, type AntoineOp } from "../../../src/graph/nodes/thermo";
+import { IsaAtmosphereNode, AntoineNode } from "../../../src/graph/nodes/thermo";
+import { isaAtGeopotential, isaAtGeometric, ANTOINE, antoinePressure, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {

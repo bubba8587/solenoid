@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import { EM_FORMULAS, ELECTROMAGNETISM_PACK } from "../../../src/graph/packs/electromagnetism";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { isSolError } from "../../../src/graph/errorValue";
-import { emBand, EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
-import { PHYS_CONSTANTS, PhysicsConstantNode } from "../../../src/graph/rete-nodes";
+import { EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
+import { emBand } from "../../../src/graph/nodes/emSpectrumOps";
+import { PhysicsConstantNode } from "../../../src/graph/rete-nodes";
+import { PHYS_CONSTANTS } from "../../../src/graph/nodes/physicsConstantsOps";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(EM_FORMULAS, type), inputs);

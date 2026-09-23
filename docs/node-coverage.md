@@ -594,7 +594,7 @@ The mechanics of Notes, Reports, Knap, mail merge, vault writes and export are `
 Add-on node bundles in `src/graph/packs/`. Pack nodes live in per-pack files (`packs/electricity.ts`, …), not `nodeCatalog.ts`: each pack file is its own inventory (formula entries, custom-node placements, Format Controller units and formats), and every pack has a vitest file asserting its formulas against reference values. Registration and activation are `packs.ts`; the authoring guide is `docs/pack-architecture.md`.
 
 **Authoring shapes** (`packs/packShared.ts`, [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation):
-- A pack file imports only `packShared`, `rete-nodes` and type-only app seams, never core internals.
+- A pack file imports only `packShared`, its `<id>Formulas.ts`, `rete-nodes` and type-only app seams, never core internals. `<id>Formulas.ts` holds the pack's `formulas` and imports only rete-free kernels ([[D19]] implReteFree).
 - A formula preset is pure data compiled into a locked Expression (or, with `equation: true`, a locked Equation, one relation replacing several solved forms), so it saves as a plain Expression and reloads even with its pack off. Presets carry no accent; the Add-menu highlight is for key nodes. Seeded `literals` let an idiom be a configuration of an existing preset rather than a sibling (Fiscal Quarter's start month of 1); an unseeded variable is 0.
 - A real node class is for what the formula engine can't do: a list reducer, root-finding, a fact table, a custom widget.
 - A pack's formula functions (`PackFormula`) are always registered for resolution and advertised only while the pack is active. Their names follow [[C51]] formulaNaming, and `formulaExtensions.ts` refuses to shadow a core name.
