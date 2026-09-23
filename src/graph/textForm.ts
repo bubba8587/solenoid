@@ -198,7 +198,8 @@ export function writeTextForm(g: SavedGraph): string {
     lines.push(parts.join(" "));
   }
 
-  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean }> = {};
+  // No prototype, so a node named `__proto__` is an ordinary key.
+  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean }> = Object.create(null);
   for (const id of order) {
     const sn = byId.get(id);
     if (!sn) continue;
@@ -266,7 +267,8 @@ export function readTextForm(text: string): SavedGraph {
   }
 
   const nodes: SavedNode[] = parsed.map((p) => {
-    const pos = (sidecar.positions?.[p.name] ?? { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean };
+    const own = sidecar.positions && typeof sidecar.positions === "object" && Object.prototype.hasOwnProperty.call(sidecar.positions, p.name);
+    const pos = (own ? sidecar.positions[p.name] : { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean };
     const sn: SavedNode = {
       id: p.name,
       type: p.type,
