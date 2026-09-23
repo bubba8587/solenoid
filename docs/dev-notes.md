@@ -15,8 +15,8 @@ specific item.
   are green.
 - **Tree:** C72 merged into B11 and C104 into C103; D73 nodeCoversFormula split out of C17; new C109
   linuxOwnWindowControls and D74 webkitgtkNoNodeLayers give the Linux window chrome its reasons. About 30
-  nodes gained a Why or a correction from the lift, each with a History line. E14 keeps its stack-merge line:
-  Append and Bind Columns still sit beside XSTACK, and the E14 vs C48 question is in the backlog for the author.
+  nodes gained a Why or a correction from the lift, each with a History line. The E14 vs C48 stack merge is
+  deferred (`deferrals.md`).
 - **Specs:** `format-model`, `value-semantics`, `layout-chrome` and `touch-gestures` moved into the vault and
   are cited as wikilinks. New: `table-popup`, `palette-and-theme`, `command-palette`, `outline-panel`. Nearly
   every other spec was restructured for reading in Obsidian with no fact dropped. Stale
@@ -28,6 +28,22 @@ specific item.
   HTML-in-Canvas renderer draws `anycombo` as a split square like the DOM socket.
 - **Comment-lift suspects:** fixed or ruled (`a6cb19b2`); the last one, Range including Stop, is now
   [[C110]] rangeIncludesStop on the author's reason (not an Excel function, so it matches LinSpace).
+- **Author rulings, author present:** C90 retired (the drawn-cables spec covers its files); D62 ratified;
+  Conduit N and the Slider's per-change speed are exceptions under D22 and C95; op switches stop writing
+  `node.label` (a sweep in `sourceInvariants.test.ts` holds it, [[D22]]).
+- **Demo data:** Local File's folder falls back to the demo vault's `Data` like the vault does ([[C1]]), and
+  Personal Finance reads its CSVs from there with Local File cards. The demo vault serves
+  `.obsidian/types.json` and `daily-notes.json`, so demo reads match a real vault.
+- **Formula side:** every kernel a pack formula calls lives in a rete-free `nodes/*Ops.ts`, each pack's
+  formulas in `packs/<id>Formulas.ts`, and `formulaPathIsReteFree.test.ts` roots at them ([[D19]]).
+- **Site:** the Packs and Examples pages render from `BUILTIN_PACKS` and `SEED_GROUPS`; the Obsidian page
+  leads with Solenoid Properties, a live panel of the plugin's own `PropertyChip` over the demo vault; each
+  page gets its own title and link-preview tags (`siteMeta.ts`, `<page>.html`, `vercel.json`). Phone
+  layout: the scene thread hides in one column and scene frames cap at 82vw. The author's own copy is theirs:
+  flag, don't rewrite ("turbocharges" restored).
+- **Also:** the Schedule and Gantt spec is in the vault (`schedule-and-gantt`); dependencies are on latest,
+  `mermaid` 12 with a `lodash-es` override. **For the author:** C70's per-row faults vs the whole-run error,
+  and Local File's grammar-text Predecessors (both in the backlog).
 
 ### SESSION DIGEST (2026-09-22d: fixing what the rebuild specs found; author away)
 
