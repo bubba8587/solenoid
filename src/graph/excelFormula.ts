@@ -360,7 +360,7 @@ function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = n
     case "atcol": if (!bound.has(n.name)) out.add(n.name); break;
     case "wholecol": if (!bound.has(n.name)) out.add(n.name); break;
     case "call": {
-      if (n.name === "LAMBDA" && n.args.length >= 1) {
+      if (n.name.toUpperCase() === "LAMBDA" && n.args.length >= 1) {
         const inner = new Set(bound);
         for (const a of n.args.slice(0, -1)) if (a.t === "name") inner.add(a.name);
         collectRowRefs(n.args[n.args.length - 1], out, inner);

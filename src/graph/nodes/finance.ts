@@ -627,7 +627,7 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DiscountSecurityOp }) {
     super("DiscountSecurity");
     this.label = init?.label ?? "";
-    this.op = init?.op && init.op in DISCOUNT_SECURITY_META ? init.op : "tbillprice";
+    this.op = init?.op ?? "tbillprice";
     for (const k of discountSecurityKeys(this.op)) this.addInput(k, DISCOUNT_SECURITY_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
     this.height = 149 + 27 * discountSecurityKeys(this.op).length;
@@ -864,7 +864,7 @@ export class PaymentBreakdownNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: PaymentBreakdownOp; paymentTiming?: PaymentTiming }) {
     super("PaymentBreakdown");
     this.label         = init?.label         ?? "";
-    this.op            = init?.op && init.op in PAYMENT_BREAKDOWN_OP_META ? init.op : "ipmt";
+    this.op            = init?.op ?? "ipmt";
     this.paymentTiming = init?.paymentTiming ?? "end";
     for (const k of paymentBreakdownKeys(this.op)) this.addInput(k, PAYMENT_BREAKDOWN_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
@@ -1055,7 +1055,7 @@ export class BondPricingNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: BondPricingOp }) {
     super("BondPricing");
     this.label = init?.label ?? "";
-    this.op = init?.op && init.op in BOND_PRICING_META ? init.op : "price";
+    this.op = init?.op ?? "price";
     for (const k of bondPricingKeys(this.op)) this.addInput(k, BOND_PRICING_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
     this.height = 149 + 27 * bondPricingKeys(this.op).length;

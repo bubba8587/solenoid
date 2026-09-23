@@ -42,11 +42,10 @@ export function formatTableCell(v: Cell, dateLike: boolean, ann?: FormatAnnotati
   return fmtNum(v);
 }
 
-export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annProp, popupOverrides, peek }: {
+export function TableDisplay({ table, label, full, kind, elem, ann: annProp, popupOverrides, peek }: {
   table: Mat | SolError | null;
   label?: string;
   peek?: boolean;
-  onSave?: (next: (number | null)[][]) => void;
   /** The socket-declared element family: pass `"number"` for a concretely numeric matrix. */
   elem: ElemFamily | undefined;
   popupOverrides?: Partial<TablePopupState>;
@@ -72,12 +71,12 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
     );
   }
   if (!table || table.length === 0) {
-    if (onSave || popupOverrides) {
+    if (popupOverrides) {
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
           <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
           <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-            <ArrayChip value={[[0]]} label={label} size="sm" onSave={onSave} elem={elem} popupOverrides={popupOverrides} />
+            <ArrayChip value={[[0]]} label={label} size="sm" elem={elem} popupOverrides={popupOverrides} />
           </div>
         </div>
       );
@@ -117,7 +116,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
       </table>
       {!full && !peek && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <ArrayChip value={table} label={label} size="sm" onSave={onSave} elem={elem} popupOverrides={popupOverrides} />
+          <ArrayChip value={table} label={label} size="sm" elem={elem} popupOverrides={popupOverrides} />
         </div>
       )}
     </div>

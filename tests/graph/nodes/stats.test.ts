@@ -196,8 +196,10 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
     expect(interpolateLinear([20, 0, 10], [300, 0, 100], [5])).toEqual([50]);
   });
   it("resolves a duplicated x to its first-seen y (no divide-by-zero)", () => {
-    const r = interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [5]);
-    expect(Number.isFinite(r[0])).toBe(true);
+    expect(interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [5])).toEqual([50]);
+    expect(interpolateLinear([5, 5, 10], [50, 999, 100], [5])).toEqual([50]);
+    // Past the repeat, the line leaves from the later point.
+    expect(interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [7.5])).toEqual([549.5]);
   });
   it("holds flat with a single known point", () => {
     expect(interpolateLinear([7], [42], [0, 7, 100])).toEqual([42, 42, 42]);

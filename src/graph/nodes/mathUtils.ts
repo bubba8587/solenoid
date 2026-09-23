@@ -259,6 +259,10 @@ function bracket(axis: number[], x: number): [number, number, number] {
     const mid = (lo + hi) >> 1;
     if (axis[mid] <= x) lo = mid; else hi = mid;
   }
+  if (axis[lo] === x) {
+    while (lo > 0 && axis[lo - 1] === x) lo--;
+    return [lo, lo, 0];
+  }
   const x0 = axis[lo], x1 = axis[hi];
   return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)];
 }

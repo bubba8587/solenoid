@@ -29,12 +29,9 @@ export interface TablePopupState {
   columnTypes?: ("number" | "string" | "date" | "logical")[];
   /** `null` where a column has no source text (a computed column). */
   sourceCells?: (string | null)[][];
-  onSaveFrame?: (columns: FramePopupColumn[]) => void;
-  literalSource?: boolean;
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
   onSaveRaw?: (cells: string[][]) => void;
-  onSave?: (next: (number | null)[][], headers?: string[]) => void;
   accent?: string;
   groupColor?: string;
   groupColorDark?: string;

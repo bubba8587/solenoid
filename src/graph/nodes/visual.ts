@@ -1,7 +1,7 @@
 // [[C63]], [[B11]], [[C8]] declareOnce
 import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
-import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
+import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
 export { histogram2d } from "./visualOps";
@@ -1068,7 +1068,7 @@ export class RecordNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: RecordOp }) {
     super("Record");
     this.label = init?.label ?? "Record";
-    this.op = init?.op && init.op in RECORD_OP_META ? init.op : "card";
+    this.op = init?.op ?? "card";
     this.addInput("frame", frameIn("Frame"));
     if (this.op === "card") this.addInput("row", numIn("Row"));
     if (this.op === "board") this.addInput("by", strIn("Group by"));
@@ -1222,7 +1222,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; target?: ChartTargetId }) {
     super("ChartBuilder");
     this.label = init?.label ?? "Chart Builder";
-    this.target = init?.target && init.target in CHART_BUILDER_TARGETS ? init.target : "column";
+    this.target = init?.target ?? "column";
     this.addInput("title",     strIn("Title"));
     this.addInput("xlabel",    strIn("X label"));
     this.addInput("ylabel",    strIn("Y label"));

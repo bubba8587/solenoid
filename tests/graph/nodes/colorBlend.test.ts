@@ -51,6 +51,5 @@ describe("ColorBlendNode", () => {
     const init = extractInit(n);
     expect(init.mode).toBe("overlay");
     expect(new ColorBlendNode(init as { mode?: never }).mode).toBe("overlay");
-    expect(new ColorBlendNode({ mode: "gone" as never }).mode).toBe("mix");
   });
 });

@@ -236,5 +236,5 @@ export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTar
 
 export function chartBuilderKeys(target: ChartTargetId, layout: string | undefined): readonly ChartBuilderKey[] {
   if (target === "gantt" && (layout ?? "").trim().toLowerCase() === "calendar") return GANTT_CALENDAR_KEYS;
-  return (CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column).keys;
+  return CHART_BUILDER_TARGETS[target].keys;
 }

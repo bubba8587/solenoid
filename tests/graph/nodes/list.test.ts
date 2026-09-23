@@ -334,9 +334,6 @@ describe("Set — one merged card across both families", () => {
     expect(isSetRelationOp("union")).toBe(false);
     expect(isSetRelationOp("subset")).toBe(true);
   });
-  it("a stale op from an old save falls back to difference", () => {
-    expect(new SetsNode({ op: "bogus" as SetOpAll }).op).toBe("difference");
-  });
 });
 
 describe("Running — all so far (window grows)", () => {
@@ -603,8 +600,7 @@ describe("Filter — condition rows over the list's own values ([[C49]] filterOn
     expect((out.dropped as unknown[])[1]).toBe(err);
   });
 
-  it("legacy combine \"none\" folds to AND; valueKeys round-trip (persistence contract)", () => {
-    expect(new FilterNode({ combine: "none" }).combine).toBe("and");
+  it("valueKeys round-trip (persistence contract)", () => {
     const n = mk([{ op: "gt", value: "1" }, { op: "lt", value: "9" }]);
     const clone = new FilterNode({ valueKeys: n.valueInputKeys(), condConfig: n.condConfig });
     expect(clone.valueInputKeys()).toEqual(n.valueInputKeys());

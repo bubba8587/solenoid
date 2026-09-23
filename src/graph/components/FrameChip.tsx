@@ -1,6 +1,6 @@
 // [[C16]] polarsEngine (a lazy frame ref, head-N preview)
 import { useEffect, useState } from "react";
-import { tablePopup, type FramePopupColumn, type SourceCommitRefresh, type TablePopupState } from "../tablePopupStore";
+import { tablePopup, type SourceCommitRefresh, type TablePopupState } from "../tablePopupStore";
 import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
 import { collectPreview, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
@@ -22,12 +22,11 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
   return <FrameChip value={value} label={label} size={size} accent={accent} />;
 }
 
-export function FrameChip({ value, label, size = "md", accent, onSave, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, popupOverrides }: {
+export function FrameChip({ value, label, size = "md", accent, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, popupOverrides }: {
   value: FrameValue;
   label?: string;
   size?: "sm" | "md";
   accent?: string;
-  onSave?: (columns: FramePopupColumn[]) => void;
   source?: FrameSourceColumn[];
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
@@ -48,14 +47,14 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
     <button
       type="button"
       className={`solenoid-array-chip solenoid-array-chip--frame${size === "sm" ? " solenoid-array-chip--sm" : ""}`}
-      title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSave || onSaveSource ? "Edit" : "View"}.`}
+      title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSaveSource ? "Edit" : "View"}.`}
       onClick={(e) => {
         e.stopPropagation();
         const st = readChipPopupStyle(e.currentTarget, "--sock-frame");
         const isSource = !!source && !!onSaveSource;
         if (!isSource) {
           void openFramePopup(value, {
-            label, hostId, onSave,
+            label, hostId,
             accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
           });
           return;
@@ -72,7 +71,6 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           columnFormats: value.columns.map((c) => c.format),
           unitTaggable: true,
           editableHeaders: true,
-          literalSource: true,
           onSaveSource,
           onCommitSource,
           accent: accent || st.accent,

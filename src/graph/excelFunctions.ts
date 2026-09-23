@@ -632,7 +632,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TRANSPOSE:  { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   MMULT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2] },
   MUNIT:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
-  DIAGONAL:   { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
+  DIAGONAL:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1] },
   OUTER:      { returns: "number", rank: "matrix", listArgs: true, arity: [2, 2] },
   MDETERM:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },

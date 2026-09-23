@@ -83,11 +83,6 @@ describe("Physics Constant node", () => {
     expect(PHYS_CONSTANTS.na.value * PHYS_CONSTANTS.e.value).toBeCloseTo(PHYS_CONSTANTS.faraday.value, 4);
   });
 
-  it("a stale op from an old save falls back instead of crashing", () => {
-    const n = new PhysicsConstantNode({ op: "nope" as never });
-    expect(n.op).toBe("c");
-  });
-
   it("carries its unit like an FC lock: the annotation rides through a Display", async () => {
     const { NodeEditor, ClassicPreset } = await import("rete");
     const { makeAnnotationResolver } = await import("../../../src/graph/unitFlow");

@@ -20,7 +20,7 @@ Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupSt
 
 - **`popOutKindFor(value)`** names the popup a value has: `frame`, `cube`, `table` (a 2-D array) or `list` (a non-empty 1-D array), from `POP_OUT_KINDS`. A scalar or a chart has none (a chart has its own popup, [[chart-figures]]). `displayPopupCoverage.test.ts` checks that every Display value kind resolves to one of these.
 - **`openValuePopup(value, opts)`** is the read-only dispatcher the expand button calls. Editing chips call the typed openers directly so their Save callback keeps its shape.
-- **`openFramePopup(frame, opts)`** first resolves a head-N preview (one carrying `__totalRows` and `__ref`) to the whole frame through `readFrame`, so the popup never shows the truncated sample. It opens with the title (the label, else `Frame`), the column names, the column types, `cellType: "number"`, per-column format controls, the column units and the column formats that arrived. When any column carries `raw` text, it passes it as `sourceCells` for the Source view. Given an `onSave`, the headers become editable and Save goes through `onSaveFrame`.
+- **`openFramePopup(frame, opts)`** first resolves a head-N preview (one carrying `__totalRows` and `__ref`) to the whole frame through `readFrame`, so the popup never shows the truncated sample. It opens with the title (the label, else `Frame`), the column names, the column types, `cellType: "number"`, per-column format controls, the column units and the column formats that arrived. When any column carries `raw` text, it passes it as `sourceCells` for the Source view.
 - **`openArrayPopup(value, opts)`** opens a table as its rows and a list as one row (`list: true`), titled by the label, else `Table` or `List`. The cell type comes from the declared socket family when known (`complex` shows as text, since complex cells arrive as strings), else from the first cell alone, so a leading `null` reads a text list as numeric. A numeric table gets one whole-sheet format control (`formatControls: "matrix"`) and its one matrix unit (`matrixUnitOf`). `popupOverrides` merge last.
 - **`openCubePopup(cube, opts)`** opens the Cube popup (below).
 - **`elemFamilyOfCells(value)`** answers only for a homogeneous container: blanks and errors don't vote, a unit cell counts as a number, and anything mixed or unknown is `undefined`. A chip must not guess, since a date can't be told from a number by its value.
@@ -57,19 +57,16 @@ A frame input's example hint ([[D18]] frameLabelHint) draws as the popup grid in
 
 ## Modes and what Save writes back
 
-The opener's callback sets the mode. The popup is editable when it has `onSave` with a number cell type, or any of `onSaveFrame`, `onSaveSource` or `onSaveRaw`. With `onSaveSource` or `onSaveRaw` it is a literal-source editor: the grid holds the raw typed text and never coerces it ([[C58]] tableInputRawText). Save calls the first callback present in this order, then closes the popup:
+The opener's callback sets the mode. The popup is editable when it has `onSaveSource` or `onSaveRaw`, and either makes it a literal-source editor: the grid holds the raw typed text and never coerces it ([[C58]] tableInputRawText). Save calls the first callback present in this order, then closes the popup:
 
 | Callback | Save returns | Built by | Who passes it |
 |---|---|---|---|
 | `onSaveRaw` | the grid's cells verbatim, `string[][]` | copy of the grid | Table Input; the Obsidian plugin's list and matrix properties |
 | `onSaveSource` | `FrameSourceColumn[]` | `buildSourceColumns` | Frame Input; the Obsidian plugin's frame properties |
-| `onSaveFrame` | typed `FramePopupColumn[]` | `buildFrameColumns` | `openFramePopup` with an `onSave` |
-| `onSave` | `(number \| null)[][]` and, with editable headers, the names | `fromGrid` | `openArrayPopup` with an `onSave` (number tables only) |
 | none | nothing: a read-only viewer with a Done button | | every read-only chip and the expand button |
 
 - **`buildSourceColumns`** keeps every cell verbatim; coercion happens downstream in `deriveFrame`. Each column carries its trimmed name, its type, its cells (none for a computed column, whose cells derive from the formula), its trimmed `expr` when it has one, and its `unit` when the source is unit-taggable, the column is a number and the unit is not `none`.
-- **`buildFrameColumns`** parses each cell. Text keeps its value, blank as null. A logical cell reads `true`/`1` and `false`/`0`, ignoring case; anything else is null. Number and date cells parse as numbers (a date is its serial), a date column falls back to the date parser for typed text, and anything unparseable is `NaN`. A blank is null.
-- **`fromGrid`** reads each trimmed cell as a number. A blank is null, never a fabricated 0; a non-number is also null.
+- **`buildFrameColumns`** feeds the column summaries of an editable frame popup, parsing each cell. Text keeps its value, blank as null. A logical cell reads `true`/`1` and `false`/`0`, ignoring case; anything else is null. Number and date cells parse as numbers (a date is its serial), a date column falls back to the date parser for typed text, and anything unparseable is `NaN`. A blank is null.
 
 What each node does with the save:
 

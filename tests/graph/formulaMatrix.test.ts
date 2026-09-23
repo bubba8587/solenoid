@@ -73,6 +73,8 @@ describe("each matrix name computes what its node computes", () => {
     expect(new TableDiagNode().data({}).result).toBeNull();
     // The DIAGONAL formula (off-diagonal 0; the blank toggle is node-only).
     expect(ev("DIAGONAL(x)", { x: [2, 5, 7] })).toEqual([[2, 0, 0], [0, 5, 0], [0, 0, 7]]);
+    // A matrix gives back its diagonal, as numpy.diag does.
+    expect(ev("DIAGONAL(m)", { m: [[1, 2], [3, 4]] })).toEqual([1, 4]);
   });
 
   it("OUTER node + formula — the matrix of products a[i]·b[j] (numpy.outer)", () => {

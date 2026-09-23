@@ -5,6 +5,7 @@ import { toAnyMatrix } from "./coerce";
 import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } from "../excelFormula";
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
+import { guardFinite } from "../valueKinds";
 import { isUnitCell, tagDim, magnitudeOf, unitError, type UnitCell } from "../unitValue";
 import { dimEval, type DimEnv } from "../unitDimExpr";
 import { type Dim, dimEqual, isDimensionless } from "../dimension";
@@ -69,7 +70,7 @@ function cell(v: unknown): Cell {
   if (isSolError(v)) return v;
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v;
-  return typeof v === "number" && Number.isFinite(v) ? v : null;
+  return typeof v === "number" ? guardFinite(v, v) : null;
 }
 
 // ─── Unit carry over a 1-D list ───────────────────────────────────────────────

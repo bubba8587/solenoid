@@ -3,6 +3,7 @@ import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
+import { guardFinite } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, type ArithmeticOp } from "../unitValue";
@@ -840,7 +841,7 @@ export class SumProductNode extends ClassicPreset.Node {
 
 export class SeriesSumNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { x: 1, n: 0, m: 1 };
   width = 180;
   height = 215;
@@ -866,7 +867,7 @@ export class SeriesSumNode extends ClassicPreset.Node {
     for (let i = 0; i < coef.length; i++) {
       result += coef[i] * Math.pow(x, n + i * m);
     }
-    this.cachedResult = Number.isFinite(result) ? result : null;
+    this.cachedResult = guardFinite(result, x, n, m, ...coef);
     return { result: this.cachedResult };
   }
 }
@@ -878,7 +879,7 @@ export class MultinomialNode extends ClassicPreset.Node {
     values: "The category counts n₁, n₂, …: the multinomial coefficient of their sum.",
   };
   label: string;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   width = 180;
   height = 135;
 
@@ -897,7 +898,7 @@ export class MultinomialNode extends ClassicPreset.Node {
     const total = ns.reduce((s, v) => s + v, 0);
     const lnResult = lnGamma(total + 1) - ns.reduce((s, v) => s + lnGamma(v + 1), 0);
     const result = Math.round(Math.exp(lnResult));
-    this.cachedResult = Number.isFinite(result) ? result : null;
+    this.cachedResult = guardFinite(result, ...vals);
     return { result: this.cachedResult };
   }
 }

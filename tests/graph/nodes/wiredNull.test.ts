@@ -10,7 +10,7 @@ import { ExpressionNode } from "../../../src/graph/nodes/expression";
 import { ClampNode, ArithmeticNode, MathFXNode, MRoundNode, CombinatoricsNode } from "../../../src/graph/nodes/scalar";
 import { MirrNode, DiscountSecurityNode, IRRNode, BondPricingNode, NPVNode, DepreciationNode } from "../../../src/graph/nodes/finance";
 import { SortFrameNode, JoinNode, HeadNode, ColumnsNode, XLookupNode } from "../../../src/graph/nodes/frame";
-import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "../../../src/graph/nodes/list";
+import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode, FindPeaksNode } from "../../../src/graph/nodes/list";
 import { GaugeNode, KpiNode, HistogramNode } from "../../../src/graph/nodes/visual";
 import { AlertNode } from "../../../src/graph/nodes/display";
 import { ExpectNode } from "../../../src/graph/nodes/quality";
@@ -864,5 +864,18 @@ describe("Set Cell — wired blank by role", () => {
     const node = new SetCellNode();
     node.literals = { row0: 2, col0: 2, value0: 99 };
     expect(node.data({ matrix: [M()] }).result).toEqual([[1, 2], [3, 99]]);
+  });
+});
+
+describe("FindPeaks — a wired blank minimum blanks the result", () => {
+  const Y = [[0, 1, 0, 3, 0, 2, 0]];
+  it("a wired blank height, distance or prominence gives a blank result", () => {
+    for (const k of ["height", "distance", "prominence"] as const) {
+      expect(new FindPeaksNode().data({ list: Y, [k]: [null as unknown as number] }).result).toBeNull();
+    }
+  });
+  it("an unwired empty field means no minimum", () => {
+    const out = new FindPeaksNode().data({ list: Y }).result!;
+    expect(out.columns[0].values).toEqual([2, 4, 6]);
   });
 });

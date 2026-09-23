@@ -214,7 +214,6 @@ describe("Chart Builder", () => {
     const init = extractInit(b);
     expect(init.target).toBe("kpi");
     expect(new ChartBuilderNode(init as { target?: never }).target).toBe("kpi");
-    expect(new ChartBuilderNode({ target: "gone" as never }).target).toBe("column");
   });
 
   it("serialization ignores the target — set fields always emit", () => {
@@ -613,8 +612,6 @@ describe("Record node", () => {
     const clone = new RecordNode(extractInit(n) as { op: "gallery" });
     expect(clone.label).toBe("Part");
     expect(clone.op).toBe("gallery");
-    // A stale op from an old save falls back rather than crashing.
-    expect(new RecordNode({ op: "kanban" as "board" }).op).toBe("card");
   });
 
   it("gallery draws every row as a card, capped with a `more` count", async () => {

@@ -109,7 +109,7 @@ export class ColorBlendNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; mode?: BlendMode }) {
     super("ColorBlend");
     this.label = init?.label ?? "Color Blend";
-    this.mode = init?.mode && init.mode in BLEND_MODE_META ? init.mode : "mix";
+    this.mode = init?.mode ?? "mix";
     this.addInput("a", strIn("Color A"));
     this.addInput("b", strIn("Color B"));
     this.addOutput("color", strOut("Color"));
@@ -174,7 +174,7 @@ export class ConstantNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ConstantOp }) {
     super("Constant");
-    this.op = init?.op && init.op in CONSTANTS ? init.op : "pi";
+    this.op = init?.op ?? "pi";
     this.label = init?.label ?? "";
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
   }

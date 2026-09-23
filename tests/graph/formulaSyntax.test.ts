@@ -20,6 +20,9 @@ describe("highlightFormula", () => {
     expect(html).toContain('<span class="fx-var">x</span>');
     expect(html).toContain('<span class="fx-const">pi</span>');
   });
+  it("a dotted function name is one token", () => {
+    expect(highlightFormula("NORM.S.DIST(z, TRUE)")).toContain('<span class="fx-fn">NORM.S.DIST</span>');
+  });
   it("a name is a function only in CALL position (followed by `(`, spaces ok)", () => {
     expect(highlightFormula("SUM")).toContain('<span class="fx-var">SUM</span>');     // bare → variable
     expect(highlightFormula("SUM (1)")).toContain('<span class="fx-fn">SUM</span>');  // call w/ space

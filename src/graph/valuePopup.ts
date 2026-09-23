@@ -1,5 +1,5 @@
 // [[C24]] arraySemantics
-import { tablePopup, type Cell, type TablePopupState, type FramePopupColumn } from "./tablePopupStore";
+import { tablePopup, type Cell, type TablePopupState } from "./tablePopupStore";
 import { cubePopup, type CubeEditBinding } from "./cubePopupStore";
 import { frameToGrid, frameRowCount, isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "./frame";
 import { readFrame, type FrameRef } from "./frameBackend";
@@ -74,7 +74,7 @@ export interface PopupStyle {
 
 export async function openFramePopup(
   value: FrameValue,
-  { label, hostId, accent, groupColor, groupColorDark, onSave }: PopupStyle & { onSave?: (columns: FramePopupColumn[]) => void },
+  { label, hostId, accent, groupColor, groupColorDark }: PopupStyle,
 ): Promise<void> {
   let resolved = value;
   if (value.__totalRows != null && value.__ref) {
@@ -93,8 +93,6 @@ export async function openFramePopup(
     formatControls: "columns",
     columnUnits: resolved.columns.map((c) => c.unit),
     columnFormats: resolved.columns.map((c) => c.format),
-    editableHeaders: !!onSave,
-    onSaveFrame: onSave,
     accent,
     groupColor,
     groupColorDark,
@@ -104,9 +102,8 @@ export async function openFramePopup(
 
 export function openArrayPopup(
   value: ArrayValue,
-  { label, hostId, accent, groupColor, groupColorDark, elem, onSave, popupOverrides }: PopupStyle & {
+  { label, hostId, accent, groupColor, groupColorDark, elem, popupOverrides }: PopupStyle & {
     elem?: ElemFamily;
-    onSave?: (next: (number | null)[][]) => void;
     popupOverrides?: Partial<TablePopupState>;
   },
 ): void {
@@ -124,7 +121,6 @@ export function openArrayPopup(
     groupColor,
     groupColorDark,
     pinNodeId: hostId ?? undefined,
-    onSave,
     ...popupOverrides,
   });
 }

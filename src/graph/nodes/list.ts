@@ -844,13 +844,13 @@ export class FilterNode extends ClassicPreset.Node {
 
   constructor(init?: {
     label?: string;
-    combine?: FilterCombine | "none";
+    combine?: FilterCombine;
     condConfig?: Record<string, FilterCondConfig>;
     valueKeys?: string[];
   }) {
     super("Filter");
     this.label = init?.label ?? "List Filter";
-    this.combine = init?.combine === "or" ? "or" : "and";
+    this.combine = init?.combine ?? "and";
     this.addInput("list", anyListIn("List"));
     const ids = pairIdsFromKeys(init?.valueKeys?.filter((k) => k.startsWith("value")), "value");
     if (ids.length) {
@@ -1243,7 +1243,7 @@ export class SetsNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SetOpAll }) {
     super("Sets");
     this.label = init?.label ?? "";
-    this.op = init?.op && init.op in SET_META ? init.op : "difference";
+    this.op = init?.op ?? "difference";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
     this.addOutput("result", isSetRelationOp(this.op) ? logicalOut("Result") : adoptiveListOut("Result"));
@@ -2163,7 +2163,7 @@ export class SmoothNode extends ClassicPreset.Node {
 export class FindPeaksNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "One row per local maximum that passes every filter: Position (1-based) and Height.",
-    height: "Leave blank for no minimum.",
+    height: "Leave the field empty for no minimum. A wired blank here, or on either filter below, gives a blank result.",
     distance: "Minimum spacing between kept peaks (in samples); the higher peak wins.",
     prominence: "Minimum rise above the higher of the two surrounding valleys: the filter that separates peaks from ripples.",
   };
@@ -2188,11 +2188,13 @@ export class FindPeaksNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }): { result: FrameValue | null } {
     const arr = inputs.list?.[0] ?? null;
-    const opt = (k: "height" | "distance" | "prominence") => {
+    const keys = ["height", "distance", "prominence"] as const;
+    const wiredBlank = keys.some((k) => inputs[k]?.length && inputs[k]![0] == null);
+    const opt = (k: (typeof keys)[number]) => {
       const v = readInput(inputs[k], this.literals[k]);
       return v === null || v === undefined || Number.isNaN(v) ? undefined : v;
     };
-    if (arr === null) { this.cachedResult = null; return { result: null }; }
+    if (arr === null || wiredBlank) { this.cachedResult = null; return { result: null }; }
     const peaks = findPeaks(arr, { height: opt("height"), distance: opt("distance"), prominence: opt("prominence") });
     const frame: FrameValue = {
       __frame: true,

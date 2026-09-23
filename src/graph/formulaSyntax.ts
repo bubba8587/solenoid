@@ -72,7 +72,7 @@ export function highlightFormula(src: string): string {
     }
     if (isIdStart(c)) {
       let j = i + 1;
-      while (j < src.length && isIdChar(src[j])) j++;
+      while (j < src.length && (isIdChar(src[j]) || (src[j] === "." && isIdChar(src[j + 1] ?? "")))) j++;
       const word = src.slice(i, j);
       let k = j;
       while (k < src.length && /\s/.test(src[k])) k++;

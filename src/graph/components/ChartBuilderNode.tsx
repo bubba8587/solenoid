@@ -149,7 +149,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const out = data.outputs.result;
   const [target, setTarget] = useNodeField(data, "target");
   const connected = useConnectedInputs(data.id);
-  const spec = CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column;
+  const spec = CHART_BUILDER_TARGETS[target];
   const accepted = new Set<string>(chartBuilderKeys(target, data.stringLiterals["layout"]));
   const live = (k: ChartBuilderKey) =>
     connected.has(k) || (data.stringLiterals[k] ?? "") !== "" || data.literals[k] !== undefined;

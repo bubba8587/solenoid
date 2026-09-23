@@ -143,7 +143,7 @@ export class AntoineNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; substance?: AntoineOp }) {
     super("Antoine");
-    this.substance = init?.substance && init.substance in ANTOINE ? init.substance : "water";
+    this.substance = init?.substance ?? "water";
     this.label = init?.label ?? "Vapor Pressure";
     this.addInput("t", numIn("T °C"));
     this.addOutput("pressure", numOut("p (Pa)"));

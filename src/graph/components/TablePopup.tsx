@@ -65,16 +65,6 @@ function toGrid(data: CellValue[][], cellType: CellType, columnTypes?: CellType[
     }),
   );
 }
-function fromGrid(grid: string[][]): (number | null)[][] {
-  return grid.map((row) =>
-    row.map((cell) => {
-      const t = cell.trim();
-      if (t === "") return null;
-      const n = Number(t);
-      return Number.isFinite(n) ? n : null;
-    }),
-  );
-}
 function cell(c: string, cellType: CellType): string {
   if (cellType === "string") return c;
   return c.trim();
@@ -207,7 +197,7 @@ export function TablePopup() {
 
   if (!state) return null;
   const cellType: CellType = state.cellType ?? "number";
-  const editable = (!!state.onSave && cellType === "number") || !!state.onSaveFrame || !!state.onSaveSource || !!state.onSaveRaw;
+  const editable = !!state.onSaveSource || !!state.onSaveRaw;
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
   const formattedPreview = literalSource && displayMode === "formatted";
   const fxColumns = !!state.onSaveSource && !state.noFormulaColumns;
@@ -640,8 +630,6 @@ export function TablePopup() {
   function save() {
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
     else if (state?.onSaveSource) state.onSaveSource(buildSourceColumns());
-    else if (state?.onSaveFrame) state.onSaveFrame(buildFrameColumns());
-    else state?.onSave?.(fromGrid(grid), editableHeaders ? headerNames : state.headers);
     tablePopup.close();
   }
 

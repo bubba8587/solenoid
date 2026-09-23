@@ -4,7 +4,7 @@ import { FrameChip } from "./FrameChip";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
-import type { FramePopupColumn, SourceCommitRefresh } from "../tablePopupStore";
+import type { SourceCommitRefresh } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
@@ -31,12 +31,11 @@ export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: Forma
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
+export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
   frame: FrameValue | SolError | null;
   label?: string;
   peek?: boolean;
   formatNodeId?: string;
-  onSave?: (columns: FramePopupColumn[]) => void;
   source?: FrameSourceColumn[];
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
@@ -67,13 +66,13 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
     );
   }
   if (!frame || frame.columns.length === 0) {
-    if (onSave || source || onSaveSource || onCommitSource) {
+    if (source || onSaveSource || onCommitSource) {
       const stub: FrameValue = frame ?? { __frame: true, columns: [] };
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
           <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
           <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-            <FrameChip value={stub} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
+            <FrameChip value={stub} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
           </div>
         </div>
       );
@@ -131,7 +130,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
       </table>
       {!full && !peek && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
+          <FrameChip value={frame} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
         </div>
       )}
     </div>

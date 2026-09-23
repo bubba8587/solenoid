@@ -38,6 +38,18 @@ describe("reconcileFrames — (a) blank/invalid key rows are surfaced, not dropp
     expect(summary.skipped).toBe(2); // errored-left + null-right
   });
 
+  it("skips a non-finite number key instead of dropping it", () => {
+    const before: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "number", values: [1, NaN, Infinity] },
+    ] };
+    const after: FrameValue = { __frame: true, columns: [
+      { name: "id", type: "number", values: [1, -Infinity] },
+    ] };
+    const { frame, summary } = reconcileFrames(before, after, { leftKey: "id", rightKey: "id" });
+    expect(summary).toMatchObject({ unchanged: 1, skipped: 3 });
+    expect(frame.columns.find((c) => c.name === "Status")!.values).toHaveLength(4);
+  });
+
   it("a keyless row is NOT miscounted as added/removed/changed/unchanged", () => {
     const before: FrameValue = { __frame: true, columns: [
       { name: "id", type: "string", values: [null] },

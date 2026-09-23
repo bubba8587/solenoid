@@ -616,6 +616,10 @@ describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
   it("rowRefNames feeds the topo: @names and bracket references, no variables", () => {
     expect(rowRefNames("@a + [b c] * @[2024] + SUM(qty)").sort()).toEqual(["2024", "a", "b c"]);
   });
+  it("a LAMBDA's parameters shadow row references however LAMBDA is cased", () => {
+    expect(rowRefNames("LAMBDA(a, @a + @b)(1)")).toEqual(["b"]);
+    expect(rowRefNames("lambda(a, @a + @b)(1)")).toEqual(["b"]);
+  });
 });
 
 describe("@ over side values — row-aligned lists (no capture, no column)", () => {

@@ -3,54 +3,15 @@
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import type { View } from "./view";
-import { nodeAccent } from "./nodes/kind";
-import { appThemeStore } from "./appTheme";
-import { parseColor, mixSrgb, type RGBA } from "./cssColor";
+import { parseColor } from "./cssColor";
 import { cableAngleStore } from "./cableAngleStore";
 import { socketFlipStore } from "./socketFlipStore";
-import { pickTextColor } from "./hicColors";
 import { SOCKET_COLORS } from "./sockets";
 import { socketGlyphKind, COMBO_PAIRS, type GlyphKind } from "./hicSocketGlyph";
-import { standoffStore, anchorPoint, type Box } from "./standoffs";
 
-export interface SnapSocket {
+interface SnapSocket {
   key: string; side: "input" | "output"; x: number; y: number;
   kind: GlyphKind; color: number; color2: number | null;
-}
-export interface SnapText {
-  text: string; x: number; y: number; w: number; h: number;
-  size: number; color: number; mono: boolean; bold: boolean; isTitle: boolean; boxed: boolean; chevron: boolean;
-  letterSpacing: number;
-  boxFill: number | null;
-  boxBorder: number | null;
-  align: "left" | "right" | "center";
-}
-export interface SnapSlider { x: number; y: number; w: number; h: number; frac: number }
-export interface SnapCheckbox { x: number; y: number; size: number; checked: boolean }
-export interface SnapImage { x: number; y: number; w: number; h: number; svg: string }
-export interface SnapBox {
-  x: number; y: number; w: number; h: number; radius: number;
-  fill: number | null; border: number | null; borderW: number;
-  text: string; textColor: number; textSize: number;
-}
-export interface SnapNode {
-  id: string;
-  x: number; y: number; w: number; h: number; headerH: number;
-  accent: number;
-  body: number;
-  headerColor: number;
-  border: number;
-  borderAlpha: number;
-  texts: SnapText[];
-  sliders: SnapSlider[];
-  checkboxes: SnapCheckbox[];
-  decorations: SnapBox[];
-  images: SnapImage[];
-  isConduit: boolean;
-  hasChevron: boolean;
-  rotation: number;
-  selected: boolean;
-  sockets: SnapSocket[];
 }
 export interface SnapCable {
   id: string;
@@ -63,20 +24,6 @@ export interface SnapCable {
   targetFlipped: boolean;
   color: number;
 }
-export interface SnapGroup {
-  id: string; x: number; y: number; w: number; h: number; headerH: number;
-  label: string; color: number; border: number;
-}
-export interface SnapStandoff { ax: number; ay: number; bx: number; by: number; locked: boolean }
-export interface GraphSnapshot {
-  nodes: SnapNode[];
-  groups: SnapGroup[];
-  cables: SnapCable[];
-  standoffs: SnapStandoff[];
-  transform: { k: number; x: number; y: number };
-}
-
-const FALLBACK_BODY = 0x1b1e25;
 
 function hexToNum(hex: string): number {
   const h = hex.replace("#", "");
@@ -87,10 +34,6 @@ function rgbaToNum(css: string | null | undefined): number | null {
   if (!css) return null;
   const c = parseColor(css);
   return c ? ((c.r & 255) << 16) | ((c.g & 255) << 8) | (c.b & 255) : null;
-}
-function flatten(fg: RGBA, base: RGBA): number {
-  const f = fg.a >= 0.999 ? fg : mixSrgb(base, fg, fg.a);
-  return ((Math.round(f.r) & 255) << 16) | ((Math.round(f.g) & 255) << 8) | (Math.round(f.b) & 255);
 }
 const _sockColorCache = new Map<string, number>();
 function cssToNum(raw: string | null | undefined): number | null {
@@ -113,259 +56,29 @@ function resolveSockColor(dataType: string | undefined): number {
   return n;
 }
 
-const TEXT_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: boolean }[] = [
-  { sel: ".solenoid-node__label-display", title: true },
-  { sel: ".solenoid-node__io-label" },
-  { sel: ".solenoid-node__display-value" },
-  { sel: ".solenoid-node__output-value" },
-  { sel: ".solenoid-node__inline-input", input: true },
-  { sel: ".solenoid-node__value-input", input: true },
-  { sel: ".solenoid-node__select", select: true },
-];
-const NOTE_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: boolean }[] = [
-  { sel: "h1", title: true }, { sel: "h2", title: true }, { sel: "h3" },
-  { sel: "p" }, { sel: "li" }, { sel: "blockquote" }, { sel: "code" },
-];
-
-function scrapeTextRuns(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number, selectors = TEXT_SELECTORS): SnapText[] {
-  const runs: SnapText[] = [];
-  const pushRun = (te: HTMLElement, raw: string, title?: boolean, input?: boolean, select?: boolean) => {
-    let text = raw.trim();
-    if (!text) return;
-    const r = te.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) return;
-    const cs = getComputedStyle(te);
-    const tt = cs.textTransform;
-    if (tt === "uppercase") text = text.toUpperCase();
-    else if (tt === "lowercase") text = text.toLowerCase();
-    else if (tt === "capitalize") text = text.replace(/\b\w/g, (c) => c.toUpperCase());
-    const ls = parseFloat(cs.letterSpacing);
-    const boxBw = parseFloat(cs.borderTopWidth) || 0;
-    const bgC = parseColor(cs.backgroundColor);
-    const hasBox = (bgC != null && bgC.a > 0.04) || boxBw > 0;
-    const boxed = !!input || !!select || hasBox;
-    const ta = cs.textAlign;
-    const align: "left" | "right" | "center" = ta === "right" || ta === "end" ? "right" : ta === "center" ? "center" : "left";
-    runs.push({
-      text,
-      x: viewX + (r.left - elRect.left) / k, y: viewY + (r.top - elRect.top) / k,
-      w: r.width / k, h: r.height / k,
-      size: parseFloat(cs.fontSize) || 13,
-      color: rgbaToNum(cs.color) ?? 0x9aa3b2,
-      mono: /mono/i.test(cs.fontFamily),
-      bold: (parseFloat(cs.fontWeight) || 400) >= 600,
-      isTitle: !!title, boxed, chevron: !!select,
-      letterSpacing: (Number.isFinite(ls) ? ls : 0) / k,
-      boxFill: boxed && bgC && bgC.a > 0.04 ? rgbaToNum(cs.backgroundColor) : null,
-      boxBorder: boxed && boxBw > 0 ? rgbaToNum(cs.borderTopColor) : null,
-      align,
-    });
-  };
-  for (const { sel, title, input, select } of selectors) {
-    for (const te of card.querySelectorAll<HTMLElement>(sel)) {
-      if (!input && !select) {
-        const table = te.querySelector("table");
-        if (table) {
-          for (const cell of table.querySelectorAll<HTMLElement>("td, th")) pushRun(cell, cell.textContent ?? "");
-          continue;
-        }
-      }
-      const raw = select ? ((te as HTMLSelectElement).selectedOptions?.[0]?.text ?? (te as HTMLSelectElement).value)
-        : input ? (te as HTMLInputElement).value : (te.textContent ?? "");
-      pushRun(te, raw, title, input, select);
-    }
-  }
-  return runs;
-}
-
-function scrapeSliders(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapSlider[] {
-  const out: SnapSlider[] = [];
-  for (const el of card.querySelectorAll<HTMLInputElement>(".solenoid-slider__range, input[type=range]")) {
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) continue;
-    const min = parseFloat(el.min || "0"), max = parseFloat(el.max || "100"), val = parseFloat(el.value || "0");
-    const frac = max > min ? Math.min(1, Math.max(0, (val - min) / (max - min))) : 0.5;
-    out.push({ x: viewX + (r.left - elRect.left) / k, y: viewY + (r.top - elRect.top) / k, w: r.width / k, h: r.height / k, frac });
-  }
-  return out;
-}
-
-const DECO_SELECTORS = [
-  ".solenoid-node__add-input", ".solenoid-node__add-row", ".solenoid-node__row-remove",
-  ".solenoid-node__recalc-btn", ".solenoid-node__input-pill", ".solenoid-node__output-pill",
-  ".solenoid-node__corner-badge", ".solenoid-node__corner-lock", ".solenoid-node__quoted",
-  ".solenoid-node__section-divider", ".solenoid-swatchgrid__opt", ".solenoid-note__swatch",
-  ".solenoid-seg button", ".solenoid-fc__toggle",
-  ".solenoid-fc__arrow", ".solenoid-fc__digits", ".solenoid-fc__pattern",
-  "button",
-];
-function toNumA(css: string): { num: number; a: number } | null {
-  const c = parseColor(css);
-  return c ? { num: ((c.r & 255) << 16) | ((c.g & 255) << 8) | (c.b & 255), a: c.a ?? 1 } : null;
-}
-function readBox(el: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapBox | null {
-  const r = el.getBoundingClientRect();
-  if (r.width < 2 || r.height < 1) return null;
-  const cs = getComputedStyle(el);
-  if (cs.visibility === "hidden" || cs.display === "none" || parseFloat(cs.opacity || "1") < 0.05) return null;
-  const bg = toNumA(cs.backgroundColor);
-  const bw = parseFloat(cs.borderTopWidth) || 0;
-  const bd = bw > 0 ? toNumA(cs.borderTopColor) : null;
-  const tx = toNumA(cs.color);
-  return {
-    x: viewX + (r.left - elRect.left) / k, y: viewY + (r.top - elRect.top) / k,
-    w: r.width / k, h: r.height / k, radius: (parseFloat(cs.borderTopLeftRadius) || 0) / k,
-    fill: bg && bg.a > 0.04 ? bg.num : null,
-    border: bd && bd.a > 0.04 ? bd.num : null, borderW: bw,
-    text: (el.textContent ?? "").trim().slice(0, 12),
-    textColor: tx ? tx.num : 0x9aa3b2, textSize: parseFloat(cs.fontSize) || 11,
-  };
-}
-function scrapeDecorations(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapBox[] {
-  const out: SnapBox[] = [];
-  const seen = new Set<Element>();
-  for (const sel of DECO_SELECTORS) {
-    for (const el of card.querySelectorAll<HTMLElement>(sel)) {
-      if (seen.has(el)) continue;
-      seen.add(el);
-      const b = readBox(el, elRect, viewX, viewY, k);
-      if (b) out.push(b);
-    }
-  }
-  for (const el of card.querySelectorAll<HTMLElement>('[style*="background"]')) {
-    if (seen.has(el)) continue;
-    if (el.querySelector("svg, canvas, input, select, .recharts-surface")) continue;
-    const inline = el.style.background || el.style.backgroundColor;
-    if (!inline) continue;
-    const r = el.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2 || r.width > 80 || r.height > 80) continue;
-    seen.add(el);
-    const b = readBox(el, elRect, viewX, viewY, k);
-    if (b && b.fill != null) out.push(b);
-  }
-  return out;
-}
-
-function scrapeImages(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapImage[] {
-  const out: SnapImage[] = [];
-  for (const svg of card.querySelectorAll<SVGElement>(".recharts-surface")) {
-    const r = svg.getBoundingClientRect();
-    if (r.width < 4 || r.height < 4) continue;
-    try {
-      const clone = svg.cloneNode(true) as SVGElement;
-      if (!clone.getAttribute("viewBox")) clone.setAttribute("viewBox", `0 0 ${Math.round(r.width)} ${Math.round(r.height)}`);
-      clone.setAttribute("width", String(r.width / k));
-      clone.setAttribute("height", String(r.height / k));
-      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      out.push({
-        x: viewX + (r.left - elRect.left) / k, y: viewY + (r.top - elRect.top) / k,
-        w: r.width / k, h: r.height / k, svg: new XMLSerializer().serializeToString(clone),
-      });
-    } catch { /* skip an unserializable chart */ }
-  }
-  return out;
-}
-
-function scrapeCheckboxes(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapCheckbox[] {
-  const out: SnapCheckbox[] = [];
-  for (const el of card.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) continue;
-    out.push({ x: viewX + (r.left - elRect.left) / k, y: viewY + (r.top - elRect.top) / k, size: Math.min(r.width, r.height) / k, checked: el.checked });
-  }
-  return out;
-}
-
-export function readThemeColors(): { body: number; title: number; value: number } {
-  try {
-    const card = document.querySelector<HTMLElement>(".solenoid-node");
-    if (card) {
-      const body = rgbaToNum(getComputedStyle(card).backgroundColor) ?? FALLBACK_BODY;
-      const t = card.querySelector<HTMLElement>(".solenoid-node__label-display");
-      const v = card.querySelector<HTMLElement>(".solenoid-node__display-value");
-      const title = (t && rgbaToNum(getComputedStyle(t).color)) ?? pickTextColor(body);
-      const value = (v && rgbaToNum(getComputedStyle(v).color)) ?? pickTextColor(body);
-      return { body, title, value };
-    }
-  } catch { /* fall through to default */ }
-  return { body: FALLBACK_BODY, title: 0xf3f5f8, value: 0xcfd6e4 };
-}
-
-export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | null): GraphSnapshot | null {
+export function snapshotCables(editor: NodeEditor<Schemes> | null, view: View | null): SnapCable[] | null {
   if (!view || !editor) return null;
   const t = view.transform ?? { k: 1, x: 0, y: 0 };
   const k = t.k > 0 ? t.k : 1;
 
   _sockColorCache.clear();
-  const canvasEl = document.querySelector(".sol-rf-appcanvas .react-flow") ?? document.body;
-  const canvasRGBA = parseColor(getComputedStyle(canvasEl).backgroundColor) ?? { r: 14, g: 16, b: 20, a: 1 };
-  const nodes: SnapNode[] = [];
-  const groups: SnapGroup[] = [];
   const lookup = new Map<string, { input: Map<string, SnapSocket>; output: Map<string, SnapSocket> }>();
-  let bodyColor: number | null = null;
 
   for (const node of editor.getNodes()) {
     try {
       const pos = view.position(node.id);
       const el = view.nodeElement(node.id);
       if (!pos || !el) continue;
-
-      const groupEl = el.querySelector<HTMLElement>(".solenoid-group")
-        ?? (el.classList.contains("solenoid-group") ? el : null);
-      if (groupEl) {
-        const gw = groupEl.offsetWidth, gh = groupEl.offsetHeight;
-        if (gw > 0 && gh > 0) {
-          const gHeader = groupEl.querySelector<HTMLElement>(".solenoid-group__header");
-          const headerH = gHeader && gHeader.offsetHeight > 0 ? gHeader.offsetHeight : 34;
-          const color = (gHeader ? rgbaToNum(getComputedStyle(gHeader).backgroundColor) : null) ?? 0x8a93a6;
-          const border = (gHeader ? rgbaToNum(getComputedStyle(gHeader).borderTopColor) : null) ?? color;
-          let label = (node as { label?: string }).label || "";
-          const gLabelEl = groupEl.querySelector<HTMLElement>(".solenoid-group__label");
-          const gtt = gLabelEl ? getComputedStyle(gLabelEl).textTransform : "none";
-          if (gtt === "uppercase") label = label.toUpperCase();
-          else if (gtt === "lowercase") label = label.toLowerCase();
-          else if (gtt === "capitalize") label = label.replace(/\b\w/g, (c) => c.toUpperCase());
-          groups.push({ id: node.id, x: pos.x, y: pos.y, w: gw, h: gh, headerH, label, color, border });
-        }
-        continue;
-      }
+      if (el.querySelector(".solenoid-group") || el.classList.contains("solenoid-group")) continue;
 
       const ROOT_SEL = ".solenoid-node, .solenoid-note, .solenoid-conduit";
       const card = el.querySelector<HTMLElement>(ROOT_SEL)
         ?? (el.matches(ROOT_SEL) ? el : null);
       if (!card) continue;
       if (getComputedStyle(card).visibility === "hidden") continue;
-
-      const w = card.offsetWidth, h = card.offsetHeight;
-      if (w <= 0 || h <= 0) continue;
-      const ownRGBA = parseColor(getComputedStyle(card).backgroundColor);
-      const ownBg = ownRGBA ? flatten(ownRGBA, canvasRGBA) : FALLBACK_BODY;
-      if (bodyColor == null && card.classList.contains("solenoid-node")) bodyColor = ownBg;
-      const headerEl = card.querySelector<HTMLElement>(".solenoid-node__header");
-      const headerH = headerEl && headerEl.offsetHeight > 0 ? headerEl.offsetHeight : 0;
-      const headerRGBA = headerEl ? parseColor(getComputedStyle(headerEl).backgroundColor) : null;
-      const headerColor = headerRGBA ? flatten(headerRGBA, ownRGBA ?? canvasRGBA) : ownBg;
-
-      const accent = hexToNum(nodeAccent(node, appThemeStore.getMode()));
-
-      const cardCs = getComputedStyle(card);
-      const bc = parseColor(cardCs.borderTopColor || cardCs.borderColor || "");
-      const borderW = parseFloat(cardCs.borderTopWidth || "1") || 1;
-      const border = bc ? ((bc.r & 255) << 16) | ((bc.g & 255) << 8) | (bc.b & 255) : accent;
-      const borderAlpha = bc && borderW > 0 ? bc.a : 0;
+      if (card.offsetWidth <= 0 || card.offsetHeight <= 0) continue;
 
       const elRect = el.getBoundingClientRect();
-      const isNode = card.classList.contains("solenoid-node");
-      const texts = scrapeTextRuns(card, elRect, pos.x, pos.y, k, isNode ? TEXT_SELECTORS : NOTE_SELECTORS);
-      if (isNode && headerH > 0) {
-        if (!texts.some((t) => t.isTitle)) {
-          const label = (node as { label?: string }).label;
-          if (label) texts.push({ text: label, x: pos.x + 9, y: pos.y + 6, w: 0, h: 0, size: 13, color: 0xf3f5f8, mono: false, isTitle: true, boxed: false, chevron: false, bold: true, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
-        }
-      } else if (!texts.length) {
-        const raw = (card.textContent ?? "").trim();
-        if (raw) texts.push({ text: raw.slice(0, 120), x: pos.x + 9, y: pos.y + 7, w: 0, h: 0, size: 12, color: 0xcfd6e4, mono: false, isTitle: false, boxed: false, chevron: false, bold: false, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
-      }
       const inputs = (node as { inputs?: Record<string, { socket?: { dataType?: string } }> }).inputs ?? {};
       const outputs = (node as { outputs?: Record<string, { socket?: { dataType?: string } }> }).outputs ?? {};
       const sockEls = el.querySelectorAll<HTMLElement>("[data-socket-key][data-socket-side]");
@@ -396,30 +109,6 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
         byKey[sideAttr].set(key, s);
       }
       lookup.set(node.id, byKey);
-
-      let nx = pos.x, ny = pos.y, nw = w, nh = h;
-      if (card.classList.contains("solenoid-conduit")) {
-        const cr = card.getBoundingClientRect();
-        nx = pos.x + (cr.left - elRect.left) / k;
-        ny = pos.y + (cr.top - elRect.top) / k;
-        nw = cr.width / k; nh = cr.height / k;
-      }
-
-      nodes.push({
-        id: node.id,
-        x: nx, y: ny, w: nw, h: nh, headerH,
-        accent, body: isNode ? (bodyColor ?? ownBg) : ownBg, headerColor, border, borderAlpha,
-        texts,
-        sliders: isNode ? scrapeSliders(card, elRect, pos.x, pos.y, k) : [],
-        checkboxes: isNode ? scrapeCheckboxes(card, elRect, pos.x, pos.y, k) : [],
-        decorations: scrapeDecorations(card, elRect, pos.x, pos.y, k),
-        images: isNode ? scrapeImages(card, elRect, pos.x, pos.y, k) : [],
-        isConduit: card.classList.contains("solenoid-conduit"),
-        hasChevron: headerH > 0 && !card.classList.contains("solenoid-node--no-chevron"),
-        rotation: (((node as { angle?: number }).angle ?? 0) * Math.PI) / 180,
-        selected: !!(node as { selected?: boolean }).selected,
-        sockets,
-      });
     } catch { /* skip a node that won't read; keep the rest */ }
   }
 
@@ -443,18 +132,5 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
     }
   } catch { /* connections unavailable — render nodes only */ }
 
-  const standoffs: SnapStandoff[] = [];
-  try {
-    const boxOf = new Map<string, Box>();
-    for (const n of nodes) boxOf.set(n.id, { x: n.x, y: n.y, w: n.w, h: n.h });
-    for (const grp of groups) boxOf.set(grp.id, { x: grp.x, y: grp.y, w: grp.w, h: grp.h });
-    for (const s of standoffStore.all()) {
-      const ba = boxOf.get(s.a.nodeId), bb = boxOf.get(s.b.nodeId);
-      if (!ba || !bb) continue;
-      const pa = anchorPoint(ba, s.a.anchor), pb = anchorPoint(bb, s.b.anchor);
-      standoffs.push({ ax: pa.x, ay: pa.y, bx: pb.x, by: pb.y, locked: !!s.locked });
-    }
-  } catch { /* standoffs unavailable — render the rest */ }
-
-  return { nodes, groups, cables, standoffs, transform: { k, x: t.x, y: t.y } };
+  return cables;
 }

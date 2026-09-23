@@ -22,14 +22,12 @@ export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): s
   }
 }
 
-export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId, elem, popupOverrides, twoD }: {
+export function ArrayChip({ value, label, size = "md", accent, pinNodeId, elem, popupOverrides, twoD }: {
   value: ArrayValue;
   label?: string;
   size?: "sm" | "md";
   /** Pass it when the chip itself is recolored, so the popup still gets a type accent. */
   accent?: string;
-  /** When set, the popup opens editable and Save writes the grid back through this. */
-  onSave?: (next: (number | null)[][]) => void;
   /** The node the popup's Pin action targets; defaults to the host node from context. */
   pinNodeId?: string;
   /** Required, so a host can't fall back to cell-guessing; `undefined` is an unresolved wildcard, the one case cells are sniffed. */
@@ -51,7 +49,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     : "";
 
   const chipLabel = table ? `${rows}×${cols} Table` : `${rows}× List`;
-  const verb = onSave || popupOverrides?.onSaveRaw ? "Edit" : "View";
+  const verb = popupOverrides?.onSaveRaw ? "Edit" : "View";
   const titleText = table ? `${rows}×${cols} table. ${verb}.` : `${rows}-item list. ${verb}.`;
 
   return (
@@ -63,7 +61,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
         e.stopPropagation();
         const st = readChipPopupStyle(e.currentTarget, "--sock-list");
         openArrayPopup(value, {
-          label, hostId, elem: family, onSave, popupOverrides,
+          label, hostId, elem: family, popupOverrides,
           accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
         });
       }}

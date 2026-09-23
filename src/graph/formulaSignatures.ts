@@ -581,6 +581,6 @@ export function signatureFor(name: string): string | null {
 
 export function signatureParams(sig: string): string[] | null {
   if (sig === "") return [];
-  if (sig.includes(" — ")) return null;
+  if (sig.includes(" — ") || sig.startsWith("use the ")) return null;
   return sig.split(", ");
 }

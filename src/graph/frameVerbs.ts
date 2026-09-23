@@ -495,11 +495,14 @@ export function joinKeyTransform(left: FrameColumn | undefined, right: FrameColu
 
 const encKey = (v: FrameCell): string => JSON.stringify(encodeCell(v));
 
+const unmatchableKey = (cell: FrameCell): boolean =>
+  cell === null || isSolError(cell) || (typeof cell === "number" && !Number.isFinite(cell));
+
 function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   const idx = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
     const cell = cellAt(col, i);
-    if (cell === null || isSolError(cell) || (typeof cell === "number" && !Number.isFinite(cell))) continue;
+    if (unmatchableKey(cell)) continue;
     const k = encKey(cell);
     const bucket = idx.get(k);
     if (bucket) bucket.push(i); else idx.set(k, [i]);
@@ -815,11 +818,11 @@ export function reconcileFrames(
 
   for (let i = 0; i < ln; i++) {
     const kc = cellAt(lk, i);
-    if (kc === null || isSolError(kc)) { pushRow(kc, "skipped", i, null); skipped++; }
+    if (unmatchableKey(kc)) { pushRow(kc, "skipped", i, null); skipped++; }
   }
   for (let i = 0; i < rn; i++) {
     const kc = cellAt(rk, i);
-    if (kc === null || isSolError(kc)) { pushRow(kc, "skipped", null, i); skipped++; }
+    if (unmatchableKey(kc)) { pushRow(kc, "skipped", null, i); skipped++; }
   }
 
   const outCols: FrameColumn[] = [
@@ -1704,7 +1707,9 @@ export function promoteHeaders(f: FrameValue): FrameValue {
     return String(formatFrameCell(c.type, v) ?? "").trim();
   });
   const unique = makeHeaders(names, f.columns.length);
-  return { __frame: true, columns: f.columns.map((c, i) => ({ ...c, name: unique[i], values: c.values.slice(1) })) };
+  return { __frame: true, columns: f.columns.map((c, i) => ({
+    ...c, name: unique[i], values: c.values.slice(1), ...(c.raw ? { raw: c.raw.slice(1) } : {}),
+  })) };
 }
 
 export function demoteHeaders(f: FrameValue): FrameValue {

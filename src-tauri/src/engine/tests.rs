@@ -57,6 +57,7 @@ fn source_preview_column_drop_lifecycle() {
     assert_eq!(col.ty, "string");
     assert_eq!(col.values.len(), 5);
     assert!(with_frame(&h, |f| Ok(column_of(f, "missing"))).unwrap().is_none());
+    assert_eq!(with_frame(&h, |f| Ok(column_of(f, " s "))).unwrap().unwrap().name, "s");
 
     {
         let mut s = store().lock().unwrap();

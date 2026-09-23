@@ -70,6 +70,7 @@ describe("formula signatures (display hints)", () => {
     expect(signatureParams("array, row, [col]")).toEqual(["array", "row", "[col]"]);
     expect(signatureParams("")).toEqual([]);
     expect(signatureParams("frame verb — use the Join node")).toBeNull();
+    expect(signatureParams(signatureFor("TEXTFILTER")!)).toBeNull();
   });
 });
 

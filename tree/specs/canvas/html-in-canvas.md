@@ -54,7 +54,7 @@ Each card's live element is cloned into the canvas (`layoutSubtree`) and capture
 
 ## Cables on the canvas
 
-`snapshotGraph` (`hicGraphSnapshot.ts`) reads the live graph for the layer. Every read is guarded, so a half-built graph yields a partial snapshot, never a throw. The layer consumes only its `cables`, minus those touching DOM-only elements. (The snapshot also scrapes a card scene of text runs, sliders, checkboxes, images, boxes and theme colors, which nothing consumes.)
+`snapshotCables` (`hicGraphSnapshot.ts`) measures every visible card's sockets and returns the cables between them. Every read is guarded, so a half-built graph yields a partial list, never a throw. The layer draws those cables, minus the ones touching DOM-only elements; the cards themselves come from the captures above, never from the snapshot.
 
 - **Cable ends.** React Flow anchors an edge at the handle box's outer edge (right for a source, left for a target), not its center, so the snapshot measures the handle and the routed ends match the DOM cable. A flipped node's handles sit on the mirrored edge, so the anchor follows the visual side.
 - **Collapsed members.** Members of a collapsed group are skipped, and so are their cables, since the DOM shows nothing for them.

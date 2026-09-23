@@ -1580,7 +1580,7 @@ export class AllocatorNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; mode?: AllocateMode }) {
     super("Allocator");
     this.label = init?.label ?? "Allocator";
-    this.mode = init?.mode && init.mode in ALLOCATE_MODE_META ? init.mode : "budget";
+    this.mode = init?.mode ?? "budget";
     this.addInput("categories", frameIn("Categories"));
     this.addInput("amount", numIn("Budget / Target"));
     this.addOutput("frame", frameOut("Allocation"));

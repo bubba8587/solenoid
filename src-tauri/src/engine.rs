@@ -1976,14 +1976,14 @@ fn collect_of(frame: &SolFrame) -> Vec<OutColumn> {
 }
 
 fn column_of(frame: &SolFrame, name: &str) -> Option<OutColumn> {
+    let key = name.trim();
     let idx = frame
         .df
         .get_columns()
         .iter()
-        .position(|c| c.name().as_str() == name)
+        .position(|c| c.name().as_str() == key)
         .or_else(|| {
-            name.trim()
-                .parse::<usize>()
+            key.parse::<usize>()
                 .ok()
                 .filter(|&i| i >= 1 && i <= frame.df.width())
                 .map(|i| i - 1)
