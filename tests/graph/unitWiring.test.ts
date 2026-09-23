@@ -180,6 +180,24 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect((run("b / a") as { code?: string }).code).toBe("#UNIT!");
     expect(run("(b - a) / (b - a)")).toBe(1);
   });
+  it("°C is classified statically: volatile functions, MIN/AVERAGE, SUM and lists", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const t20 = applyFcUnit(20, "degC"), t30 = applyFcUnit(30, "degC");
+    const run = (expr: string, a: unknown = t20, b: unknown = t30) =>
+      new ExpressionNode({ expr }).data({ a: [a as never], b: [b as never] }).result;
+    const code = (v: unknown) => (v as { code?: string }).code;
+    for (let i = 0; i < 5; i++) expect((run("IF(RAND() < 2, a, b)") as UnitCell).display).toBe("degC");
+    expect(displayMagnitudeOf(run("MIN(a, 25)") as UnitCell)).toBeCloseTo(20, 9);
+    expect(displayMagnitudeOf(run("AVERAGE(a, b)") as UnitCell)).toBeCloseTo(25, 9);
+    expect(code(run("SUM(a, b)"))).toBe("#UNIT!");
+    expect(code(run("SQRT(a)"))).toBe("#UNIT!");
+    expect(displayMagnitudeOf(run("ROUND(a + 0.4, 0)") as UnitCell)).toBeCloseTo(20, 9);
+    const list = [t20, t30];
+    expect(displayMagnitudeOf(run("AVERAGE(a)", list) as UnitCell)).toBeCloseTo(25, 9);
+    expect(code(run("SUM(a)", list))).toBe("#UNIT!");
+    expect(magnitudeOf(run("MAX(a) - MIN(a)", list) as UnitCell)).toBeCloseTo(10, 9); // 10 K
+  });
   it("inputs in different units still compute in base SI", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const r = new ExpressionNode({ expr: "a + b" }).data({ a: [applyFcUnit(1, "km") as never], b: [applyFcUnit(500, "m") as never] }).result;

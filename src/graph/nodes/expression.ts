@@ -5,11 +5,11 @@ import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, solError } from "../errorValue";
 import { isCx } from "../cxValue";
-import { isUnitCell, tagDim, fromUnit, unitError, type UnitCell } from "../unitValue";
+import { isUnitCell, tagDim, fromUnit, type UnitCell } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
-import { dimEval, type DimEnv, type CodeEnv } from "../unitDimExpr";
+import { dimEval, affineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
 
 function guard(v: unknown, scalar: boolean): unknown {
@@ -57,20 +57,11 @@ function sharedDisplay(values: unknown[]): { id: string; unit: Unit } | null {
   return { id, unit };
 }
 
-function toShown(v: unknown, shift = 0): unknown {
-  if (isUnitCell(v)) return displayMagnitudeOf(v) + shift;
-  if (Array.isArray(v)) return v.map((c) => toShown(c, shift));
+function toShown(v: unknown): unknown {
+  if (isUnitCell(v)) return displayMagnitudeOf(v);
+  if (Array.isArray(v)) return v.map(toShown);
   return v;
 }
-
-/** The formula's result cells, tagged as an in-formula error would be. */
-function tagAll(raw: unknown): unknown {
-  return Array.isArray(raw)
-    ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
-    : tagResult(raw);
-}
-
-const AFFINE_REFUSED = "Convert the temperature to kelvin first: an offset unit can't take ×, ÷ or ^.";
 
 function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
   if (!dimEqual(dim, { currency: 1 })) return undefined;
@@ -200,7 +191,7 @@ export class ExpressionNode extends ClassicPreset.Node {
       const rawEnv: Record<string, unknown> = {};
       for (const v of this.varNames) rawEnv[v] = readInput(inputs[v], this.literals[v] ?? 0);
       let dr: Dim | null = null;
-      let shown: { id: string; unit: Unit; k: number | null; affine: boolean } | null = null;
+      let shown: { id: string; unit: Unit; k: number | null; point: 0 | 1 | null } | null = null;
       if (this.ast && this.varNames.some((v) => !isDimensionless(envDim(rawEnv[v])))) {
         const dimEnv: DimEnv = {};
         const codeEnv: CodeEnv = {};
@@ -217,56 +208,45 @@ export class ExpressionNode extends ClassicPreset.Node {
         dr = r;
         // One shared linear display unit: the formula runs on the numbers the user reads,
         // as the Arithmetic and Comparison cards do ([[B16]] oneFormulaSurface).
-        // An affine one (°C) follows arithmeticCell: a reading ± a delta is a reading, a
-        // difference of readings is a delta, and anything else needs kelvin.
+        // An affine one (°C) is a point scale: `affineWeight` says whether the answer is
+        // a reading, a difference in the base unit, or #UNIT!.
         const sd = sharedDisplay(this.varNames.map((v) => rawEnv[v]));
         if (sd) {
-          const affine = (sd.unit.offset ?? 0) !== 0;
           const k = dr === null || isDimensionless(dr) ? null : dimPowerOf(dr, sd.unit.dim);
-          if (affine && k !== null && k !== 1) {
-            const err = unitError(AFFINE_REFUSED);
-            this.cachedResult = err; this.cachedError = null;
-            return { result: err };
+          let point: 0 | 1 | null = null;
+          if (sd.unit.offset) {
+            const united = this.varNames.filter((v) => !isDimensionless(envDim(rawEnv[v])));
+            const w = affineWeight(this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))));
+            if (isSolError(w)) {
+              this.cachedResult = w; this.cachedError = null;
+              return { result: w };
+            }
+            point = w;
           }
-          if (dr === null || isDimensionless(dr) || k !== null) shown = { ...sd, k, affine };
+          if (dr === null || isDimensionless(dr) || k !== null) shown = { ...sd, k, point };
         }
       }
 
       const env: Record<string, unknown> = {};
       for (const v of this.varNames) env[v] = shown ? toShown(rawEnv[v]) : stripUnits(rawEnv[v]);
 
-      let result = tagAll(this.evaluator(env));
+      const raw = this.evaluator(env);
+      let result: unknown = Array.isArray(raw)
+        ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
+        : tagResult(raw);
 
-      // An affine result's reading-or-delta is its slope in the inputs: shift every
-      // reading by one unit and see whether the answer moves by one or by nothing.
-      const sh = shown;
-      let moved: unknown = null;
-      if (sh?.affine) {
-        const env1: Record<string, unknown> = {};
-        for (const v of this.varNames) env1[v] = toShown(rawEnv[v], 1);
-        moved = tagAll(this.evaluator(env1));
-      }
-      const at = (i: number) => (Array.isArray(moved) ? moved[i] : moved);
-
-      if (sh?.affine && (dr === null || isDimensionless(dr))) {
-        // A plain number out of readings must not depend on where zero sits (a ratio
-        // of two readings does; a ratio of two differences does not).
-        const plain = (c: unknown, c1: unknown) =>
-          typeof c === "number" && typeof c1 === "number" && Math.abs(c1 - c) > 1e-9 ? unitError(AFFINE_REFUSED) : c;
-        result = Array.isArray(result) ? result.map((c, i) => plain(c, at(i))) : plain(result, moved);
-      } else if (dr !== null && !isDimensionless(dr)) {
+      if (dr !== null && !isDimensionless(dr)) {
         const d = dr;
-        const tag = (c: number, c1: unknown): number | UnitCell | SolError => {
+        const sh = shown;
+        const tag = (c: number): number | UnitCell => {
           if (!sh || sh.k === null) return tagDim(c, d);
-          if (!sh.affine) return tagDim(c * sh.unit.scale ** sh.k, d, sh.k === 1 ? sh.id : undefined);
-          const slope = typeof c1 === "number" ? c1 - c : NaN;
-          if (Math.abs(slope - 1) < 1e-9) return fromUnit(c, sh.unit, sh.id);
-          if (Math.abs(slope) < 1e-9) return tagDim(c * sh.unit.scale, d);
-          return unitError(AFFINE_REFUSED);
+          if (sh.point === 1) return fromUnit(c, sh.unit, sh.id) as UnitCell;
+          if (sh.point === 0) return tagDim(c * sh.unit.scale, d);
+          return tagDim(c * sh.unit.scale ** sh.k, d, sh.k === 1 ? sh.id : undefined);
         };
         result = Array.isArray(result)
-          ? result.map((c, i) => (typeof c === "number" ? tag(c, at(i)) : c))
-          : (typeof result === "number" ? tag(result, moved) : result);
+          ? result.map((c) => (typeof c === "number" ? tag(c) : c))
+          : (typeof result === "number" ? tag(result) : result);
       }
       this.cachedResult = result;
       this.cachedError  = null;

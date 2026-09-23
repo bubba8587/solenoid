@@ -314,6 +314,22 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
     expect(magnitudeOf(area)).toBeCloseTo(2e6, 3); // 2 km² in m²
   });
 
+  it("over °C the fold is classified as Expression is: a reading, a difference, or #UNIT!", () => {
+    const C = { dim: { temperature: 1 }, scale: 1, offset: 273.15 };
+    const list = [fromUnit(20, C, "degC"), fromUnit(30, C, "degC")];
+    const by = (expr: string) => new ByAxisNode({ op: "row", expr }).data({ table: [list] }).result;
+    const avg = (by("AVERAGE(values)") as UnitCell[])[0];
+    expect(avg.display).toBe("degC");
+    expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C
+    const span = (by("MAX(values) - MIN(values)") as UnitCell[])[0];
+    expect(span.display).toBeUndefined();
+    expect(magnitudeOf(span)).toBeCloseTo(10, 9); // 10 K
+    expect((by("SUM(values)") as SolError).code).toBe("#UNIT!");
+    const hi = new ReduceLambdaNode({ expr: "MAX(acc, value)" }).data({ initial: [-50], table: [list] }).result as UnitCell;
+    expect(magnitudeOf(hi)).toBeCloseTo(303.15, 9); // 30 °C; the bare initial is a reading
+    expect((new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [list] }).result as SolError).code).toBe("#UNIT!");
+  });
+
   it("a bare (unitless) list is unchanged — no tagging", () => {
     expect(new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [[1, 2, 3]] }).result).toBe(6);
     expect(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result).toEqual([6]);
