@@ -8,6 +8,7 @@ import * as Nodes from "../rete-nodes";
 import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
 import { nodeNameStore } from "../nodeNameStore";
 import { groupCollapseStore } from "../groupCollapse";
+import { isolateStore } from "../isolateStore";
 import { SolenoidSocket } from "../sockets";
 import { FLAT_CATALOG } from "../catalogUtils";
 
@@ -195,6 +196,7 @@ export function fromFlowPosition(
 export function nodeClassName(node: SolenoidNode): string | undefined {
   const cls = [];
   if (groupCollapseStore.isNodeHidden(node.id)) cls.push("sol-member-hidden");
+  if (!isolateStore.isVisible(node.id)) cls.push("sol-isolate-dim");
   if (node instanceof Nodes.ConduitNode) cls.push("sol-conduit-node");
   if (node instanceof Nodes.GroupNode && !node.collapsed) cls.push("sol-group-open");
   return cls.length ? cls.join(" ") : undefined;

@@ -246,22 +246,22 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   useEffect(() => groupMembershipStore.subscribe(syncTopology), [syncTopology]);
 
-  useEffect(
-    () =>
-      groupCollapseStore.subscribe(() => {
-        setNodes((ns) => {
-          let changed = false;
-          const next = ns.map((n) => {
-            const cls = nodeClassName(n.data.node);
-            if ((n.className ?? undefined) === cls) return n;
-            changed = true;
-            return { ...n, className: cls };
-          });
-          return changed ? next : ns;
+  useEffect(() => {
+    const restamp = () =>
+      setNodes((ns) => {
+        let changed = false;
+        const next = ns.map((n) => {
+          const cls = nodeClassName(n.data.node);
+          if ((n.className ?? undefined) === cls) return n;
+          changed = true;
+          return { ...n, className: cls };
         });
-      }),
-    [],
-  );
+        return changed ? next : ns;
+      });
+    const offCollapse = groupCollapseStore.subscribe(restamp);
+    const offIsolate = isolateStore.subscribe(restamp);
+    return () => { offCollapse(); offIsolate(); };
+  }, []);
 
   useEffect(() => {
     s.handlers.bumpNode = (id) =>
@@ -371,30 +371,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   useEffect(() => {
     let wasActive = false;
-    const snapshot = new Map<string, { x: number; y: number }>();
     const apply = () => {
       const active = isolateStore.isActive();
-      for (const n of s.editor.getNodes()) {
-        s.view.nodeElement(n.id)?.classList.toggle("solenoid-isolate-dim", active && !isolateStore.isVisible(n.id));
-      }
       if (active && !wasActive) {
-        snapshot.clear();
-        const focus: Schemes["Node"][] = [];
-        for (const n of s.editor.getNodes()) {
-          if (!isolateStore.isVisible(n.id)) continue;
-          const pos = s.view.position(n.id);
-          if (pos) snapshot.set(n.id, { ...pos });
-          focus.push(n);
-        }
-        if (focus.length) {
-          void zoomAt(s.view, focus);
-        }
-      } else if (!active && wasActive) {
-        for (const [id, pos] of snapshot) {
-          if (s.view.hasNode(id)) void s.view.moveNode(id, pos);
-        }
-        snapshot.clear();
-        scheduleAutosave();
+        const focus = s.editor.getNodes().filter((n) => isolateStore.isVisible(n.id));
+        if (focus.length) void zoomAt(s.view, focus);
       }
       wasActive = active;
     };

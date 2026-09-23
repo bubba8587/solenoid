@@ -1,6 +1,8 @@
 // [[B10]], [[C65]], [[C43]]
 import { describe, it, expect } from "vitest";
-import { buildModel, toFlowNodes, toFlowEdges, toFlowPosition, fromFlowPosition } from "../../../src/graph/flow/flowModel";
+import { buildModel, toFlowNodes, toFlowEdges, toFlowPosition, fromFlowPosition, nodeClassName } from "../../../src/graph/flow/flowModel";
+import { isolateStore } from "../../../src/graph/isolateStore";
+import { DisplayNode } from "../../../src/graph/rete-nodes";
 import { computeAll } from "../../../src/graph/graphCompute";
 import { FLOW_SEEDS, DEFAULT_SEED_ID } from "../../../src/graph/flow/flowSeeds";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -105,5 +107,20 @@ describe("group members as RF children", () => {
     expect(toFlowPosition(m, g, { x: 160, y: 190 })).toEqual({ x: 160, y: 190 });
     expect(fromFlowPosition(m, { x: 60, y: 90 }, g)).toEqual({ x: 160, y: 190 });
     expect(fromFlowPosition(m, { x: 60, y: 90 }, undefined)).toEqual({ x: 60, y: 90 });
+  });
+});
+
+describe("isolate dims through RF's className", () => {
+  it("a receded card carries sol-isolate-dim, so a className rebuild cannot drop it", () => {
+    const kept = new DisplayNode();
+    const receded = new DisplayNode();
+    isolateStore.set([kept.id]);
+    try {
+      expect(nodeClassName(receded as never)).toContain("sol-isolate-dim");
+      expect(nodeClassName(kept as never) ?? "").not.toContain("sol-isolate-dim");
+    } finally {
+      isolateStore.exit();
+    }
+    expect(nodeClassName(receded as never) ?? "").not.toContain("sol-isolate-dim");
   });
 });
