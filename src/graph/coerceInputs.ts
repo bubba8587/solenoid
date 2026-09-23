@@ -112,9 +112,9 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   switch (dataType) {
     case "table":
       // toMatrix rebuilds the outer array, which drops the non-enumerable matrix unit tag.
-      return carryMatrixUnit(toMatrix(scalarOrThrow(numericCells(v)) as Numeric), v);
+      return carryMatrixUnit(toMatrix(numericCells(v) as Numeric), v);
     case "list":
-      return toList(scalarOrThrow(numericCells(v)) as Numeric);
+      return toList(numericCells(v) as Numeric);
     case "number":
       return scalarOrThrow(toScalar(scalarOrThrow(numericCells(v)) as Numeric));
     case "numlist": {

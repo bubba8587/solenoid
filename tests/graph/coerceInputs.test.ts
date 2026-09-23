@@ -229,7 +229,7 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
 // generalizes it — was the stricter of the two. The lattice already permits
 // combo→scalar on the grounds that "a combo can be a scalar" (sockets.ts calls it a
 // runtime-accepted risk); collapsing is what makes that promise true.
-describe("text reaching a number-family rung through a wildcard stays one value", () => {
+describe("text reaching a number-family rung through a wildcard is one #TYPE! value ([[B17]] typedValueModel)", () => {
   const through = (rung: "number" | "list" | "table", v: unknown) => {
     let got: unknown;
     const node = {
@@ -237,13 +237,18 @@ describe("text reaching a number-family rung through a wildcard stays one value"
       inputs: { x: { socket: new SolenoidSocket(rung) } },
     };
     wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
-    node.data({ x: [v] });
+    try { node.data({ x: [v] }); } catch (e) { return e; }
     return got;
   };
+  const code = (v: unknown) => (v as { code?: string }).code;
   it("is never split into characters or refused as a list of its length", () => {
-    expect(through("number", "abc")).toBe("abc");
-    expect(through("list", "abc")).toEqual(["abc"]);
-    expect(through("table", "abc")).toEqual([["abc"]]);
+    expect(code(through("number", "abc"))).toBe("#TYPE!");
+    const l = through("list", "abc") as unknown[];
+    expect(l).toHaveLength(1);
+    expect(code(l[0])).toBe("#TYPE!");
+    const m = through("table", "abc") as unknown[][];
+    expect(m).toHaveLength(1);
+    expect(code(m[0][0])).toBe("#TYPE!");
   });
 });
 
