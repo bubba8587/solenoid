@@ -1,7 +1,6 @@
-import { useState } from "react";
 import type { RegexNode as RegexNodeType } from "../rete-nodes";
 import { REGEX_OP_META } from "../rete-nodes";
-import { InlineInputs } from "./inlineInput";
+import { InlineInputs, useDraftCommit } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import { processGraph } from "../process";
 import type { RegexOp } from "../rete-nodes";
@@ -13,13 +12,10 @@ const REGEX_OPTIONS: ReadonlyArray<OpOption<RegexOp>> = (Object.keys(REGEX_OP_ME
 
 export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
   const [op, setOp]     = useNodeField(node, "op");
-  const [flags, setFlags] = useState(node.stringLiterals.flags ?? "");
-
-  function handleFlags(v: string) {
+  const flags = useDraftCommit(node.stringLiterals.flags ?? "", (v) => v, (t) => t, (v) => {
     node.stringLiterals.flags = v;
-    setFlags(v);
     void processGraph(node.id);
-  }
+  });
 
   return (
     <NodeShell node={node} emit={emit}>
@@ -34,9 +30,11 @@ export function RegexComponent({ data: node, emit }: NodeProps<RegexNodeType>) {
         <input
           type="text"
           className="solenoid-node__inline-input"
-          value={flags}
+          value={flags.draft}
           placeholder="i, g, …"
-          onChange={(e) => handleFlags(e.target.value)}
+          onChange={(e) => flags.setDraft(e.target.value)}
+          onBlur={flags.onBlur}
+          onKeyDown={flags.onKeyDown}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
           spellCheck={false}
