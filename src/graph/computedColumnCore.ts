@@ -168,14 +168,14 @@ export function computeColumnCells(
     const errIdx = bindings.findIndex((b, k) => b.kind === "col" && isSolError(rowCells[k]));
     if (errIdx >= 0) { cells.push(rowCells[errIdx] as SolError); continue; }
     const r = withRow(rowFrame, () => {
-      if (spec.kind === "lambda") {
-        try { return spec.lam.fn(...rowCells); } catch (e) {
-          return isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
-        }
+      try {
+        if (spec.kind === "lambda") return spec.lam.fn(...rowCells);
+        const env: Record<string, unknown> = {};
+        params.forEach((p, k) => { env[p] = rowCells[k]; });
+        return spec.evaluator(env);
+      } catch (e) {
+        return isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
       }
-      const env: Record<string, unknown> = {};
-      params.forEach((p, k) => { env[p] = rowCells[k]; });
-      return spec.evaluator(env);
     });
     cells.push(tagComputedCell(r));
   }

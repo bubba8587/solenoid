@@ -6,6 +6,7 @@ import { compileEvaluator, rowRefNames } from "../../../src/graph/excelFormula";
 import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
 import { extractInit } from "../../../src/graph/copyPaste";
+import { computeColumnCells } from "../../../src/graph/computedColumnCore";
 
 // ─── Computed Column — the row-wise formula verb ─────────────────────────────
 // The node that keeps frames OUT of formulas ([[C15]] matricesInFormulas): the row iteration lives
@@ -129,6 +130,16 @@ describe("ComputedColumnNode — the per-row contract", () => {
     expect(isSolError(vals[1])).toBe(true);
     const seq = run(named("SEQUENCE(3)", "spill"), f) as FrameValue;
     expect(isSolError(getColumn(seq, "spill")!.values[0])).toBe(true);
+  });
+
+  it("a formula that throws errors its row, not the whole column", () => {
+    let n = 0;
+    const evaluator = () => { if (n++ === 1) throw new Error("boom"); return 1; };
+    const r = computeColumnCells(sales, { kind: "expr", evaluator, vars: [] });
+    if (isSolError(r)) throw new Error("expected cells");
+    expect(r.cells[0]).toBe(1);
+    expect(isSolError(r.cells[1]) && r.cells[1].code).toBe("#VALUE!");
+    expect(r.cells[2]).toBe(1);
   });
 
   it("an empty frame computes an empty column, typed", () => {
