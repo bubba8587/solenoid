@@ -60,7 +60,7 @@ processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: 
 | `processGraph()` | full | `engine.reset()` | recomputed | every node |
 | `processGraph(id)` | targeted | cone of `id` deleted by hand | cached (computed if none cached yet) | early cutoff within the cone |
 | `processGraph(id, undefined, { topology: true })` | targeted after a cable change | cone of `id` deleted by hand | recomputed | early cutoff within the cone |
-| `processGraph(undefined, set)` | additive | none; existing caches stay | cached | only the nodes in `set` |
+| `processGraph(undefined, set)` | additive | none; existing caches stay | recomputed | only the nodes in `set` |
 | `processGraph(undefined, undefined, { topology: true })` | full | `engine.reset()` | recomputed | every node |
 
 A targeted pass is correct only for a change whose effect flows solely through cables out of `id`: a value edit on that node, or a cable into it. Any other structural change, a load, or a doubt calls the full form. Callers pass `changedNodeId` or `renderOnly`, never both.
@@ -79,7 +79,7 @@ A targeted pass is correct only for a change whose effect flows solely through c
 3. `clearCollectMemo()` (see Lazy Frames).
 4. `resolveTrigModes(editor)`.
 5. **Invalidate.** Targeted: compute the cone and delete each member's cache entry by hand, never `engine.reset(id)`. Full: `engine.reset()`. Additive: nothing.
-6. **Loop set.** A targeted or additive pass without `topology` reuses the module's cached loop set (computing it once if absent); every other pass recomputes and caches it. Then `seedLoopErrors` over that set.
+6. **Loop set.** A targeted pass without `topology` reuses the module's cached loop set (computing it once if absent); every other pass recomputes and caches it. An additive pass follows a paste, and pasted nodes can carry a loop of their own, so it never reuses the set: an unseeded loop would leave the pass waiting on itself forever. Then `seedLoopErrors` over that set.
 7. **Fetch** (`fetchAll` with `stopOnCancel`). For each node in `editor.getNodes()` order: skip it if it has left the editor since the list was taken (a node removed while an earlier fetch awaited), otherwise `await engine.fetch(id)`. On a targeted pass, before overwriting the stored value, it records the node as a sink when it has no output keys, and as changed when any output differs by identity (`!==`) from what `cableValueStore` holds for it. Then `cableValueStore.setNodeOutputs(id, outputs)`. A `Cancelled` rejection ends the pass silently (no render, no hooks); any other rejection propagates.
 8. `cableValueStore.bump()`: cable value readouts re-read. The store holds the latest value per output, keyed `nodeId:outputKey` (the colon makes the node-id prefix unambiguous for `forget`), and serves a combo socket's cable color, the fallback card's preview and the group readouts.
 9. **Render.** Full pass: every node. Additive: only the `renderOnly` set. Targeted: a node in the cone renders when its own outputs changed, or when it is a sink fed directly by a changed node. Nodes outside the cone never render. Object outputs are fresh references on each run, so the cutoff mostly prunes scalar chains. All selected nodes re-render concurrently through `view.rerenderNode`, which is safe because each card is its own React root.
@@ -283,7 +283,7 @@ A composite card owns a private `NodeEditor` and `DataflowEngine`, wrapped in th
 ## Enforcement
 
 - `processTargeted.test.ts`: the cone includes the start and every transitive dependent across branches and joins, and terminates on a cycle.
-- `circularReset.test.ts`: closing a cycle with a live cable yields `#CIRC!` on the members instead of a stack overflow.
+- `circularReset.test.ts`: closing a cycle with a live cable, or pasting one, yields `#CIRC!` on the members instead of a stack overflow or a hung pass.
 - `processReentrancy.test.ts`: a recompute fired during a pass runs no nested pass and settles as one rerun; a coalesced forced call stays forced.
 - `calcModeStore.test.ts`: the mode and dirty-flag transitions, notification on each transition only, and a missing `localStorage`.
 - `coerceInputs.test.ts`: typed-literal injection and declaration, the adoptive base rung, `noWidenInputs`, singleton collapse per family, strict list rungs, and the `FrameRef` bridge for lazy and eager classes.

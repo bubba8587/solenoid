@@ -164,7 +164,8 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   const affected = invalidate(_editor, _engine, changedNodeId, !!renderOnly);
 
   // Seed before fetching: the engine resolves inputs before data(), so an unseeded loop never returns.
-  const loop = (changedNodeId || renderOnly) && !topologyChanged
+  // An additive pass follows a paste, which can bring its own loop, so only a value edit reuses the set.
+  const loop = changedNodeId && !topologyChanged
     ? (_cachedLoop ?? (_cachedLoop = loopMembers(_editor)))
     : (_cachedLoop = loopMembers(_editor));
   seedLoopErrors(_editor, _engine, loop);

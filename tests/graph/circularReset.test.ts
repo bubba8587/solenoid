@@ -76,3 +76,24 @@ describe("closing a cycle with a live cable (targeted topology pass)", () => {
     }
   });
 });
+
+describe("pasting a loop (additive pass)", () => {
+  it("seeds #CIRC! on the pasted members instead of hanging on a stale loop set", async () => {
+    const { editor } = makeGraph();
+    const src = new ArithmeticNode({ op: "add" });
+    await editor.addNode(src);
+    await processGraph(); // caches a loop set with no members
+
+    const a = new ArithmeticNode({ op: "add" });
+    const b = new ArithmeticNode({ op: "add" });
+    await editor.addNode(a);
+    await editor.addNode(b);
+    await connect(editor, a, "result", b, "a");
+    await connect(editor, b, "result", a, "a");
+
+    const settled = processGraph(undefined, new Set([a.id, b.id])).then(() => "settled");
+    const timeout = new Promise((r) => setTimeout(() => r("hung"), 500));
+    expect(await Promise.race([settled, timeout])).toBe("settled");
+    for (const n of [a, b]) expect((cableValueStore.get(n.id, "result") as SolError).code).toBe("#CIRC!");
+  });
+});
