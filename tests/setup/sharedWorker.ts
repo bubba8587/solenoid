@@ -10,6 +10,7 @@ import { standoffStore } from "../../src/graph/standoffs";
 import { drawnCableStore } from "../../src/graph/drawnCables";
 import { cableSelectionStore } from "../../src/graph/cableState";
 import { forceDemoVault } from "../../src/graph/demoVault";
+import { resetPointerCensus } from "../../src/graph/pointerGesture";
 
 const SNAPSHOT = Symbol.for("solenoid.test.globals");
 type Snap = Map<PropertyKey, PropertyDescriptor>;
@@ -35,6 +36,8 @@ afterAll(() => {
   drawnCableStore.clear();
   cableSelectionStore.clear();
   forceDemoVault(false);
+  // A finger left down in one file reads as a pinch to the next file's lasso.
+  resetPointerCensus();
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) settingsStore.set(key, DEFAULT_SETTINGS[key] as never);
   vi.useRealTimers();
   vi.unstubAllGlobals();

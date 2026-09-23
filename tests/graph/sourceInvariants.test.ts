@@ -991,3 +991,26 @@ describe("[[D22]] oneNamePerCard — no component syncs a label on an op change"
     expect(offenders, "an op switch must leave node.label alone; nodeDisplayName derives the title from the op").toEqual([]);
   });
 });
+
+describe("the shared test project never runs a module mock", () => {
+  // Shared-project files share one module cache per worker: a vi.mock there misses a
+  // module another file already loaded, and reaches every file after it.
+  it("every test file that calls vi.mock or vi.doMock is on vitest.config.ts's ISOLATED list", () => {
+    const root = path.resolve(SRC, "../..");
+    const cfg = fs.readFileSync(path.join(root, "vitest.config.ts"), "utf8");
+    const isolated = new Set([...(cfg.match(/const ISOLATED = \[([\s\S]*?)\];/)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((m) => m[1]));
+    expect(isolated.size).toBeGreaterThan(0);
+    const tests: string[] = [];
+    const scan = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.name === "node_modules") continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) scan(p);
+        else if (/\.test\.tsx?$/.test(e.name)) tests.push(path.relative(root, p).split(path.sep).join("/"));
+      }
+    };
+    for (const d of ["tests", "scripts", "packages"]) scan(path.join(root, d));
+    const leaks = tests.filter((f) => /\bvi\.(doMock|mock)\(/.test(fs.readFileSync(path.join(root, f), "utf8")) && !isolated.has(f));
+    expect(leaks, `add to ISOLATED in vitest.config.ts: ${leaks.join(", ")}`).toEqual([]);
+  });
+});
