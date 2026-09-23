@@ -7,14 +7,14 @@ import { NoteNode } from "./annotation";
 import { type FrontmatterFieldType } from "../noteFrontmatter";
 import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
-import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, readFileText } from "../fileBridge";
+import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, readFileText, pathExists } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { trackInflight, scheduleConnectionRecalc } from "../connectionStore";
 import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
 import { mdbaseSchemaFor, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
-import { isCubeValue, type CubeValue, type FrameValue } from "../frame";
+import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -44,13 +44,15 @@ function noteNamesOf(cube: CubeValue): Set<string> {
   return names;
 }
 
-function obsidianTypeName(cube: CubeValue, key: string): string {
+/** Null when Obsidian has no type for it (rows, a matrix): registering Text there would only raise its mismatch warning. */
+export function obsidianTypeName(cube: CubeValue, key: string): string | null {
   const col = cube.columns.find((c) => c.name === key);
+  if (col?.cells.some((cell) => isFrameValue(cell) || isCubeValue(cell) || (Array.isArray(cell) && cell.some(Array.isArray)))) return null;
   if (col && col.cells.some((cell) => Array.isArray(cell))) return "multitext";
   switch (col?.type) {
     case "number":  return "number";
     case "logical": return "checkbox";
-    case "date":    return "date";
+    case "date":    return col.cells.some((c) => typeof c === "number" && !Number.isInteger(c)) ? "datetime" : "date";
     default:        return "text";
   }
 }
@@ -339,7 +341,8 @@ export class WriteObsidianNode extends ClassicPreset.Node {
           }
           patch[r.key] = r.value;
           touched++;
-          if (action === "add" && cube) newTypes.set(r.key, obsidianTypeName(cube, r.key));
+          const typeName = action === "add" && cube ? obsidianTypeName(cube, r.key) : null;
+          if (typeName) newTypes.set(r.key, typeName);
         }
         for (const stampKey of ["dateModified", "updated"]) {
           const cur = resolveKey(text, stampKey, "");
@@ -367,12 +370,16 @@ export class WriteObsidianNode extends ClassicPreset.Node {
 
   private async registerTypes(vault: string, newTypes: Map<string, string>): Promise<void> {
     try {
-      let types: Record<string, string> = {};
-      try { const parsed = JSON.parse(await readVaultFile(vault, ".obsidian/types.json")) as { types?: Record<string, string> }; types = parsed.types ?? {}; } catch { /* no file yet */ }
+      const file = await joinPath(vault, ".obsidian", "types.json");
+      let text: string | null = null;
+      try { text = await readVaultFile(vault, ".obsidian/types.json"); } catch { if (await pathExists(file)) return; }
+      // A file that is there but unreadable as JSON is left alone, never replaced by the few keys added here.
+      const parsed = (text === null ? {} : JSON.parse(text)) as { types?: Record<string, string> };
+      const types: Record<string, string> = { ...(parsed.types ?? {}) };
       let added = false;
       for (const [k, t] of newTypes) if (!(k in types)) { types[k] = t; added = true; }
       if (!added) return;
-      await writeTextFilePath(await joinPath(vault, ".obsidian", "types.json"), JSON.stringify({ types }, null, 2) + "\n");
+      await writeTextFilePath(file, JSON.stringify({ ...parsed, types }, null, 2) + "\n");
     } catch { /* registration is a convenience, never a write failure */ }
   }
 }

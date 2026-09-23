@@ -502,7 +502,7 @@ The shared fetch machinery (cache keys, background fetches, status, the network 
   - `data()` plans the **`plan`** frame (path · key · before · after · action, pending).
   - **Preview** reads each note, resolves add / update / unchanged / refused / unreadable, and fills the current value.
   - **Run** (armed only, gated on `hasFs()` so headless `--run` drives it) patches and writes atomically.
-    - It registers a new key's type in `.obsidian/types.json` (`addMissing`; a list column is `multitext`, number `number`, logical `checkbox`, date `date`, anything else `text`) and bumps an existing `dateModified` / `updated`. Registration never fails the write.
+    - It registers a new key's type in `.obsidian/types.json` (`addMissing`; a list column is `multitext`, number `number`, logical `checkbox`, date `date` or `datetime` when a cell has a time, anything else `text`; rows and matrices, which Obsidian has no type for, register nothing, and a `types.json` that is there but not readable JSON is left alone) and bumps an existing `dateModified` / `updated`. Registration never fails the write.
     - It is **mdbase-aware**: it walks up for the note's `mdbase.yaml` / `_types` and refuses a row breaking type / enum / min / max / required, with the reason in the plan's `action` (`mdbaseSchemaFor` + `validateAgainst`).
   - `writeBase` (off by default; a card toggle) also writes a `<node>.base` Bases view over the folder; that companion never fails the write either.
   - Tests: `frontmatterPatch.test.ts`, `baseView.test.ts`, and the mdbase-validation slice in `vaultCube.test.ts`.

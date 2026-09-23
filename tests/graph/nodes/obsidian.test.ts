@@ -1,6 +1,6 @@
 // [[C38]]
 import { describe, it, expect } from "vitest";
-import { WriteObsidianNode, ImportObsidianNode } from "../../../src/graph/nodes/obsidian";
+import { WriteObsidianNode, ImportObsidianNode, obsidianTypeName } from "../../../src/graph/nodes/obsidian";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { makeDocument, isDocumentValue } from "../../../src/graph/documentValue";
@@ -63,6 +63,24 @@ describe("WriteObsidianNode.run() guards", () => {
     } finally {
       settingsStore.set("obsidianVault", prev);
     }
+  });
+});
+
+describe("the type a new property registers in types.json", () => {
+  const frame = { __frame: true as const, columns: [{ name: "x", type: "number" as const, values: [1] }] };
+  const cube = { __cube: true as const, columns: [
+    { name: "rows", cells: [frame], type: undefined },
+    { name: "grid", cells: [[[1, 2]]], type: "number" as const },
+    { name: "tags", cells: [["a"]], type: "string" as const },
+    { name: "when", cells: [46000.5], type: "date" as const },
+    { name: "due", cells: [46000], type: "date" as const },
+  ] } as never;
+  it("rows and matrices register nothing; a time of day is Date & time", () => {
+    expect(obsidianTypeName(cube, "rows")).toBeNull();
+    expect(obsidianTypeName(cube, "grid")).toBeNull();
+    expect(obsidianTypeName(cube, "tags")).toBe("multitext");
+    expect(obsidianTypeName(cube, "when")).toBe("datetime");
+    expect(obsidianTypeName(cube, "due")).toBe("date");
   });
 });
 
