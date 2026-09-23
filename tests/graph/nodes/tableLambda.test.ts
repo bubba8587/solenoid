@@ -303,6 +303,17 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
     expect(isSolError(red) && (red as SolError).code).toBe("#UNIT!");
   });
 
+  it("the fold runs in the list's display unit: a bare 1 is 1 km, as on the Arithmetic card ([[C25]] firstClassUnits)", () => {
+    const list = [km(1), km(2)];
+    const r = new ReduceLambdaNode({ expr: "acc + value + 1" }).data({ initial: [0], table: [list] }).result as UnitCell;
+    expect(magnitudeOf(r)).toBeCloseTo(5000, 6); // 0+1+1 + 2+1 = 5 km, never 3002 m
+    expect(r.display).toBe("km");
+    const cap = new ByAxisNode({ op: "row", expr: "MIN(MAX(values), 1.5)" }).data({ table: [list] }).result as UnitCell[];
+    expect(magnitudeOf(cap[0])).toBeCloseTo(1500, 6);
+    const area = new ReduceLambdaNode({ expr: "acc * value" }).data({ initial: [1], table: [list] }).result as UnitCell;
+    expect(magnitudeOf(area)).toBeCloseTo(2e6, 3); // 2 km² in m²
+  });
+
   it("a bare (unitless) list is unchanged — no tagging", () => {
     expect(new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [[1, 2, 3]] }).result).toBe(6);
     expect(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result).toEqual([6]);

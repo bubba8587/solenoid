@@ -10,7 +10,7 @@ import { isCx } from "../cxValue";
 import { isUnitCell, tagDim, fromUnit, unitError, type UnitCell } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
 import { dimEval, type DimEnv, type CodeEnv } from "../unitDimExpr";
-import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
+import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
 
 function guard(v: unknown, scalar: boolean): unknown {
   if (typeof v === "string") return v;
@@ -55,20 +55,6 @@ function sharedDisplay(values: unknown[]): { id: string; unit: Unit } | null {
     if (isUnitCell(c) && !isDimensionless(c.dim) && !dimEqual(c.dim, unit.dim)) return null;
   }
   return { id, unit };
-}
-
-/** `k` with `dim` = `base`^k, or null when `dim` is no power of `base`. */
-function powerOf(dim: Dim, base: Dim): number | null {
-  const keys = new Set([...Object.keys(dim), ...Object.keys(base)] as (keyof Dim)[]);
-  let k: number | null = null;
-  for (const key of keys) {
-    const d = (dim[key] as number | undefined) ?? 0, b = (base[key] as number | undefined) ?? 0;
-    if (b === 0) { if (d !== 0) return null; continue; }
-    const kk = d / b;
-    if (k === null) k = kk;
-    else if (Math.abs(kk - k) > 1e-12) return null;
-  }
-  return k;
 }
 
 function toShown(v: unknown, shift = 0): unknown {
@@ -236,7 +222,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         const sd = sharedDisplay(this.varNames.map((v) => rawEnv[v]));
         if (sd) {
           const affine = (sd.unit.offset ?? 0) !== 0;
-          const k = dr === null || isDimensionless(dr) ? null : powerOf(dr, sd.unit.dim);
+          const k = dr === null || isDimensionless(dr) ? null : dimPowerOf(dr, sd.unit.dim);
           if (affine && k !== null && k !== 1) {
             const err = unitError(AFFINE_REFUSED);
             this.cachedResult = err; this.cachedError = null;

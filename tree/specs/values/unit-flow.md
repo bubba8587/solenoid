@@ -158,7 +158,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 
 ## LAMBDA hosts over a 1-D list
 
-REDUCE, BYROW and BYCOL strip tagged cells to base-SI magnitudes for the numeric fold, run `dimEval` (`unitDimExpr.ts`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. MAP, MAKEARRAY and SCAN ignore units on matrices (`tableLambda.ts`).
+REDUCE, BYROW and BYCOL strip tagged cells to plain magnitudes for the numeric fold: in the display unit the tagged cells share when it is linear (so a bare `+ 1` means 1 km, and a result `k` powers of that unit converts back by scale^k), else in base SI. They run `dimEval` (`unitDimExpr.ts`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag the result, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. MAP, MAKEARRAY and SCAN ignore units on matrices (`tableLambda.ts`).
 
 ## The display bridge (`unitBridge.ts`)
 

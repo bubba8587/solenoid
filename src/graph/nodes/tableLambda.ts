@@ -8,7 +8,8 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "../error
 import { guardFinite } from "../valueKinds";
 import { isUnitCell, tagDim, magnitudeOf, unitError, type UnitCell } from "../unitValue";
 import { dimEval, type DimEnv } from "../unitDimExpr";
-import { type Dim, dimEqual, isDimensionless } from "../dimension";
+import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
+import { fcUnitToUnit } from "../unitBridge";
 
 // ─── 2D LAMBDA family: MAP / BYROW / BYCOL / MAKEARRAY / REDUCE / SCAN ─────────
 
@@ -92,8 +93,15 @@ function elemUnitOf(m: Mat): { dim: Dim; display?: string } | null | SolError {
   return dim === null ? null : { dim, display };
 }
 
-function stripCells(m: Mat): Mat {
-  return m.map((row) => row.map((c) => (isUnitCell(c) ? (c as unknown as UnitCell).value : c)));
+/** The linear display unit the tagged cells share, which the fold then runs in, so a bare
+ *  `+ 1` means 1 km as it does on the Arithmetic card; null folds in base SI. */
+function foldUnit(elem: { dim: Dim; display?: string } | null): Unit | null {
+  const u = elem?.display ? fcUnitToUnit(elem.display) : null;
+  return u && dimEqual(u.dim, elem!.dim) && !u.offset ? u : null;
+}
+
+function stripCells(m: Mat, u: Unit | null): Mat {
+  return m.map((row) => row.map((c) => (isUnitCell(c) ? (c as unknown as UnitCell).value / (u?.scale ?? 1) : c)));
 }
 
 /** `dimVars` take the element dim; every other variable is dimensionless. */
@@ -115,10 +123,13 @@ function retagFold(
   out: Cell,
   dr: Dim | SolError | null,
   elem: { dim: Dim; display?: string },
+  u: Unit | null,
 ): Cell | UnitCell {
   if (typeof out !== "number" || dr === null || isSolError(dr) || isDimensionless(dr)) return out;
   const display = dimEqual(dr, elem.dim) ? elem.display : undefined;
-  return tagDim(out, dr, display);
+  const k = u ? dimPowerOf(dr, elem.dim) : null;
+  if (u && k === null) return unitError("The fold's result unit can't be read back from the list's unit.");
+  return tagDim(u ? out * u.scale ** k! : out, dr, display);
 }
 
 // ─── MAP ────────────────────────────────────────────────────────────────────────
@@ -219,14 +230,15 @@ export class ByAxisNode extends ClassicPreset.Node {
     if (!m || m.length === 0) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     const elem = elemUnitOf(m);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    const mm = elem ? stripCells(m) : m;
+    const fu = foldUnit(elem);
+    const mm = elem ? stripCells(m, fu) : m;
     try {
       const vectors = this.op === "row" ? mm : transpose(mm);
       let out: (Cell | UnitCell)[] = vectors.map((vec) => cell(fn(vec)));
       if (elem) {
         const dr = foldResultDim(foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "SUM(values)"), ["values"], elem.dim);
         if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        out = out.map((c) => retagFold(c as Cell, dr, elem));
+        out = out.map((c) => retagFold(c as Cell, dr, elem, fu));
       }
       this.cachedResult = out;
       this.cachedError = null;
@@ -280,8 +292,9 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
     if (!m) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
     const elem = elemUnitOf(m);
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
-    const mm = elem ? stripCells(m) : m;
-    const initial = isUnitCell(initialRaw) ? magnitudeOf(initialRaw) : initialRaw;
+    const fu = foldUnit(elem);
+    const mm = elem ? stripCells(m, fu) : m;
+    const initial = isUnitCell(initialRaw) ? magnitudeOf(initialRaw) / (fu?.scale ?? 1) : initialRaw;
     try {
       let acc: unknown = initial;
       let i = 0;
@@ -290,7 +303,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
       if (elem) {
         const dr = foldResultDim(foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "acc + value"), ["acc", "value"], elem.dim);
         if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
-        out = retagFold(out as Cell, dr, elem);
+        out = retagFold(out as Cell, dr, elem, fu);
       }
       this.cachedResult = out;
       this.cachedError = null;
