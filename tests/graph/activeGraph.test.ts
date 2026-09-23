@@ -21,7 +21,7 @@ import {
 
 function fakeEditor(ids: string[]): NodeEditor<Schemes> {
   const nodes = new Map(ids.map((id) => [id, { id }]));
-  return { getNode: (id: string) => nodes.get(id) } as unknown as NodeEditor<Schemes>;
+  return { getNode: (id: string) => nodes.get(id), getNodes: () => [...nodes.values()] } as unknown as NodeEditor<Schemes>;
 }
 const fakeView = {} as unknown as View;
 const subView = { sub: true } as unknown as View;

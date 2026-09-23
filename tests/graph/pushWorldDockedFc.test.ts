@@ -2,7 +2,7 @@
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, afterEach } from "vitest";
 import { NodeEditor } from "rete";
-import type { Schemes } from "../../src/graph/schemes";
+import type { Schemes, SolenoidNode } from "../../src/graph/schemes";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
@@ -12,9 +12,9 @@ afterEach(() => dockedNodeStore.clear());
 
 async function scene(side: "input" | "output") {
   const editor = new NodeEditor<Schemes>();
-  const host = new DisplayNode();
-  const fc = new FormatControllerNode();
-  const neighbor = new DisplayNode();
+  const host: SolenoidNode = new DisplayNode();
+  const fc: SolenoidNode = new FormatControllerNode();
+  const neighbor: SolenoidNode = new DisplayNode();
   for (const n of [host, fc, neighbor]) await editor.addNode(n);
   const size = new Map([[host.id, { w: 100, h: 60 }], [fc.id, { w: 116, h: 60 }], [neighbor.id, { w: 100, h: 60 }]]);
   // The neighbor clears the host by 40 but sits under the FC on the host's docked side.
