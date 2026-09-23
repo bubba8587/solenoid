@@ -18,7 +18,7 @@ import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
-import { getVaultRoot, isDemoVaultPath } from "../demoVault";
+import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
@@ -263,7 +263,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 // A native <LazySelect> needs pointerdown and mousedown stopPropagation, or the node-drag re-render closes it mid-pick.
 
 export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>) {
-  const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
+  const folder = useSyncExternalStore(settingsStore.subscribe, getCsvFolder);
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
   const [minutes, setMinutes] = useState(data.refreshMinutes);
@@ -294,8 +294,8 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div className="sol-conn">
-        {!desktop ? (
-          <div className="sol-conn__note">Local files are available in the desktop app only.</div>
+        {!desktop && !isDemoVaultPath(folder) ? (
+          <div className="sol-conn__note">Local files are available in the desktop app only. Turn on the demo vault in Settings ▸ Data to try the sample files.</div>
         ) : !folder ? (
           <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
         ) : (

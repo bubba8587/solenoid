@@ -11,7 +11,7 @@ import committedSeed from "../../src/graph/seedGraphs/personal-finance.json";
 // header names) and that the headline aggregates land where the seed's gauges
 // and alerts assume.
 function loadFrame(file: string) {
-  const text = readFileSync(`public/data/personal-finance/${file}`, "utf8");
+  const text = readFileSync(`demo-vault/Data/${file}`, "utf8");
   const rows = parseCsvRows(text, { detectDelimiter: true });
   return frameFromCells(rows[0].map((h) => h.trim()), rows.slice(1));
 }

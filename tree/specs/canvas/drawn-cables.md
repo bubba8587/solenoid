@@ -2,17 +2,17 @@
 aliases: ["Drawn cables"]
 tags: [spec, canvas]
 ---
-<!-- [[C90]] drawnCablesAnnotate -->
+<!-- [[B10]] reactFlowView; covers: src/graph/drawnCables.ts, src/graph/drawnCablePath.ts, src/graph/components/drawnCableLayer.css, tests/graph/drawnCablePath.test.ts -->
 
 # Spec: Drawn cables
 
-Serves [[C90]] drawnCablesAnnotate. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B10]] reactFlowView. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A drawn cable is a free-drawn annotation curve: a list of points the user places, rendered with the same three drawers (spline, diagonal, straight) as wired cables. Drawn cables live in a world-coordinate layer inside React Flow's `<ViewportPortal>`, the same pattern the standoffs use. The layer is gated on the main-graph hook `hooks.drawnCables` and has its own store (`drawnCables.ts`), its own exclusive selection and a docked panel (`DrawnCableInspector.tsx`). The geometry is pure (`drawnCablePath.ts`); the components are `DrawnCableLayer.tsx` and `DrawnCableCapture.tsx`. Tests: `drawnCablePath.test.ts`, `textForm.test.ts`, `flow/flowHistoryDigest.test.ts`.
 
 ## Annotation, not wiring
 
-A drawn cable has no sockets, no value, no Conduit run, no ribbon and no part in the engine. It never touches `cableShapeStore`: the toolbar's shape setting governs wired cables only. Each drawn cable carries its own style:
+A drawn cable has no sockets, no value, no Conduit run, no ribbon and no part in the engine. It borrows the wired cables' drawers so it reads as part of the same visual language, which is why nothing else about it may look like it carries a value. It never touches `cableShapeStore`: the toolbar's shape setting governs wired cables only. Each drawn cable carries its own style:
 
 | Field | Values | Default |
 |---|---|---|

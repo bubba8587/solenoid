@@ -127,8 +127,8 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 ## DTE — decision provenance (`docs/dte.md`, [[B8]] treeIsTheHome)
 
 Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feedback.md`.
-- [ ] **Author ratifies the tree** — A1, B7 and C80 are ratified; D62 is the author's to reword first (two agent
-  drafts rejected 2026-09-16), then D42 / E11 (contested, kept), then the B ring. `python tools/dte.py validate` prints the
+- [ ] **Author ratifies the tree** — A1, B7, C80 and D62 are ratified; next D42 / E11
+  (contested, kept), then the B ring. `python tools/dte.py validate` prints the
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` ([[C7]] authorRuled).
 - [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
@@ -139,16 +139,9 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
   exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest
   (components, nodes, packages, core modules); what is left is line-granular.
-- [ ] **Relapses the sweep found, each a code change the author should rule on first:** (a) `nodes/conduit.ts`
-  upgrades a saved bare "Conduit" label to "Conduit N" on load, a migration shim [[B7]] preAlphaBreakFreely forbids;
-  (b) `DateNodes.tsx` (and any op handler calling `setLabel(OP_META[next].label)`) syncs a label on op change against
-  [[D22]] oneNamePerCard's "the ONE derivation is nodeDisplayName"; (c) `ConnectionNodes.tsx` LocalFile says
-  "desktop only" off-desktop while [[C1]] demoVault says it reads a demo CSV on web; (d) `PacksPage.tsx` /
-  `ExamplesPage.tsx` hand-copy pack descriptions and seed labels ("keep in step") against [[C8]] declareOnce;
-  (e) `SliderInputNode.tsx` writes `literals.speed` per keystroke (no recompute, so the [[C95]] sweep passes, but
-  it is the pattern); (f) pack kernels (`hrZonesMatrix`, `standardAtmosphere`, `emSpectrum`) are consumed by the
-  formula path through `rete-nodes.ts`, so pack formulas pull rete: either [[D19]] implReteFree names the exception
-  or the kernels move to rete-free siblings.
+- [ ] **Op switches overwrite the header label (author to confirm):** `DateNodes.tsx`, `CouponNode.tsx`,
+  `TextAfterBeforeNode.tsx`, `BesselNode.tsx` and `DurationNode.tsx` write the op's name into `node.label` on an
+  op change, replacing a name the user typed, against [[D22]] oneNamePerCard ("no component syncs a label").
 - [ ] **`docs/v2.0/25-gantt.md` § 6 is the schedule/Gantt spec** (the packages' headers point into it) but lives in
   the proposals folder, excluded from coverage. Lift § 6.1–6.5 into a spec under `../tree/specs/` (schedule-and-gantt) serving [[C70]]
   oneScheduleRule / [[C69]] ganttPackages and leave the survey (§ 1–5, 7–8) where it is.

@@ -354,7 +354,7 @@ export class LocalFileNode extends ClassicPreset.Node {
         });
         return { frame: plan.frame, plan: plan.cube };
       }
-      const frame = engineAvailable()
+      const frame = engineAvailable() && !isDemoVaultPath(folder)
         ? await (async () => {
             const r = await readCsvFrame(folder, name);
             if (isSolError(r)) throw new Error(r.message);

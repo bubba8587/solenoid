@@ -1,4 +1,3 @@
-// [[C90]] drawnCablesAnnotate
 import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 import { unselectAllNodes } from "./canvasCommands";

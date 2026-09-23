@@ -345,7 +345,7 @@ On `develop`, pushed.
 - **The cite-and-prune sweep, second half of the day.** Sixteen leaves lifted out of specs and docs that had only a
   nearest-ancestor governor: the layout cluster under B10 ([[C84]] tidyTranslatesOnly, [[C85]] groupPushDeterministic,
   [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
-  [[C90]] drawnCablesAnnotate, [[C91]] cableWalkRouter, with [[D63]] lockedGroupIsObstacle and [[D64]] oneSizeRead),
+  C90 drawnCablesAnnotate (retired), [[C91]] cableWalkRouter, with [[D63]] lockedGroupIsObstacle and [[D64]] oneSizeRead),
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
   UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers ([[C94]]
   formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk,

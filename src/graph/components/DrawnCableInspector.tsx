@@ -1,4 +1,3 @@
-// [[C90]] drawnCablesAnnotate. The wired-cable CableInspector is untouched; the two selections are mutually exclusive.
 import { useSyncExternalStore } from "react";
 import {
   drawnCableStore, nearestOption, commitDrawn,

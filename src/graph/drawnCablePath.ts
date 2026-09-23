@@ -1,4 +1,3 @@
-// [[C90]] drawnCablesAnnotate
 import { getCablePath, Position } from "./cablePaths";
 import type { CableShape } from "./cableShape";
 

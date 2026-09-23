@@ -22,7 +22,10 @@ export function getVaultRoot(): string {
 }
 
 export function getCsvFolder(): string {
-  return _forced ? `${DEMO_VAULT_ROOT}/Data` : settingsStore.get("csvFolder");
+  if (_forced) return `${DEMO_VAULT_ROOT}/Data`;
+  const own = settingsStore.get("csvFolder").trim();
+  if (own !== "") return own;
+  return settingsStore.get("useDemoVault") ? `${DEMO_VAULT_ROOT}/Data` : "";
 }
 
 function relOf(path: string): string {

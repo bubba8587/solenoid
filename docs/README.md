@@ -140,7 +140,7 @@ results get retried and settled rulings relapse.
 | `cablePaths.ts`, `ribbonCable.ts` | [[C91]] cableWalkRouter, [[D17]] relaysTransparent; `../tree/specs/canvas/cable-rendering-knobs.md` |
 | `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts` | [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows; `../tree/specs/canvas/group-expand-push.md` |
 | `standoffSolver.ts`, `standoffs.ts` | [[C89]] standoffsSolveLast; `../tree/specs/canvas/standoffs.md` |
-| `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | [[C90]] drawnCablesAnnotate; `../tree/specs/canvas/drawn-cables.md` |
+| `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | `../tree/specs/canvas/drawn-cables.md` |
 | `tidyArrange.ts` (ELK), `nodeSize.ts` | [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead; `../tree/specs/canvas/auto-arrange-tidy.md` |
 | `errorValue.ts`, `valueKinds.ts` | `tree/specs/values/value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
 | `fcReconcile.ts`, in-place socket retype | [[D16]] retypeReconciles; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |

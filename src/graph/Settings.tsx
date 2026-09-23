@@ -6,7 +6,7 @@ import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from
 import { apiKeyStore } from "./apiKeyStore";
 import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
 import { IS_MOBILE } from "./coarse";
-import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
+import { packsStore, allPacks, loadCustomPacks, customPacksFolder, PACK_GROUP_ORDER } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
 import { useRenderMode, renderModeStore } from "./renderMode";
@@ -234,7 +234,6 @@ function RendererSection() {
   );
 }
 
-const PACK_GROUP_ORDER = ["Everyday", "Analysis", "Science & Engineering"];
 
 function PacksSection() {
   useSyncExternalStore(packsStore.subscribe, packsStore.version);

@@ -1,5 +1,3 @@
-// [[C90]] drawnCablesAnnotate. The armed draw tool: a screen-space sheet over the pane,
-// mounted only while armed; owns pan itself (a SIBLING of the pane). Spec: tree/specs/canvas/drawn-cables.md.
 import { useRef, useSyncExternalStore } from "react";
 import { drawModeStore, finishDrawing } from "../drawnCables";
 import { isPinching } from "../pointerGesture";

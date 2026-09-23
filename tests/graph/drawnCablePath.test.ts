@@ -1,4 +1,3 @@
-// [[C90]] drawnCablesAnnotate
 import { describe, expect, it, beforeEach } from "vitest";
 import {
   drawnCablePath,

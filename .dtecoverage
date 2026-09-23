@@ -55,7 +55,6 @@ docs/assets
 why: fixtures and sample data are inputs to tests and demos, not artifacts that serve a decision
 fixtures
 assets
-public/data
 public/fonts
 tests/fixtures
 

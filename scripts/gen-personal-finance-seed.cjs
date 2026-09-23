@@ -4,8 +4,8 @@
 // connection / group definitions. The seed is large and heavily cross-wired, so
 // it's authored in code (coordinates + auto-sized group rects) rather than by
 // hand. Run with:  node scripts/gen-personal-finance-seed.cjs
-// The data lives in public/data/personal-finance/*.csv (fetched same-origin by
-// the Web Source nodes). After editing, `npx vitest run src/graph/seeds.test.ts`
+// The data lives in demo-vault/Data/*.csv (read by the Local File nodes from the
+// demo vault when no data folder is set). After editing, `npx vitest run src/graph/seeds.test.ts`
 // validates every node / socket / group against the real classes.
 //
 // Design notes:
@@ -18,8 +18,6 @@
 //    keeping them non-members avoids the group-box "absorb a bystander" trap.
 const fs = require("fs");
 const path = require("path");
-
-const RAW = "/data/personal-finance"; // same-origin static path (public/)
 
 const nodes = [];
 const conns = [];
@@ -66,17 +64,17 @@ function fc(id, host, kind, members, label) {
 // ─── Title ──────────────────────────────────────────────────────────────────
 note("note-title", 180, -940,
   "Personal Finance dashboard",
-  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the repo at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. A **Display** chip opens the table; **Ctrl+/** opens the function reference.",
+  "# Your money, as a graph\nThree CSVs (transactions, accounts, budgets) flow in from the demo vault at left; everything to the right is **computed live**. Drag any slider and the pivots, gauges, projections and alerts recompute. Each group ships its headline numbers through a **Conduit** as one **Ribbon** into the Dashboard. A **Display** chip opens the table; **Ctrl+/** opens the function reference.",
   "blue", 580, 220);
 
 // ─── A · Data Sources ─────────────────────────────────────────────────────────
 note("note-data", -1920, -560,
   "1 · Data sources",
-  "# Live from the repo\nEach **Web Source** pulls a CSV and types every column automatically. It stores the URL, not the data; **Data ▸ Refresh** re-pulls. Desktop can read a local file via the **CSV File** node.",
+  "# From the demo vault\nEach **Local File** reads a CSV and types every column automatically. It stores the file name, not the data; **Data ▸ Refresh** re-reads. With no data folder set in Settings, it reads the demo vault's copies.",
   "blue", 360, 230);
-n("ws-tx",   "WebSourceNode", -1900, -300, { label: "Transactions", url: `${RAW}/transactions.csv` });
-n("ws-acct", "WebSourceNode", -1900,  -40, { label: "Accounts",     url: `${RAW}/accounts.csv` });
-n("ws-bud",  "WebSourceNode", -1900,  200, { label: "Budgets",      url: `${RAW}/budgets.csv` });
+n("ws-tx",   "LocalFileNode", -1900, -300, { label: "Transactions", fileName: "transactions.csv" });
+n("ws-acct", "LocalFileNode", -1900,  -40, { label: "Accounts",     fileName: "accounts.csv" });
+n("ws-bud",  "LocalFileNode", -1900,  200, { label: "Budgets",      fileName: "budgets.csv" });
 const GRP_DATA = ["ws-tx", "ws-acct", "ws-bud"];
 
 // ─── B · Cash flow ─────────────────────────────────────────────────────────────

@@ -17,6 +17,8 @@ import type { Pack, PackPlacement } from "./packs/packShared";
 
 export type { Pack, PackPlacement, FormulaPackEntry } from "./packs/packShared";
 
+export const PACK_GROUP_ORDER = ["Everyday", "Analysis", "Science & Engineering"];
+
 export const BUILTIN_PACKS: Pack[] = [
   GEOMETRY_PACK,
   TIMESAVERS_PACK,
