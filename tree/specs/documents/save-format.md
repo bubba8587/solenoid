@@ -98,8 +98,9 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
    - `inputPorts`, `outputPorts`: each port copied. `scenarios`: `{ id, name, overrides }` each. `dataTableValues`: each array copied. `goalSeek`, `monteCarlo`: copied when set (a `null` config is omitted).
    - `uncertainty` only when it is a positive number, with `distribution: "uniform"` only when not normal.
    - `internal`: the node's `snapshotInternal()` result, when it has one.
-3. The node's `literals` map is spread into `init` as well, so a constructor that reads defaults such as `min`, `max` or `step` from its init sees them. (The same values are also saved in `SavedNode.literals`.)
-4. When the node grows value rows (`addValueInput` or `addValuePair` exists), `init.valueKeys` lists every current input key so the constructor rebuilds exactly those rows.
+3. When the node grows value rows (`addValueInput` or `addValuePair` exists), `init.valueKeys` lists every current input key so the constructor rebuilds exactly those rows.
+
+Literal values never enter `init`: they live only in `SavedNode.literals` and `stringLiterals`, restored after construction. A literal key can share a name with an init field (Pad Text's `width` input beside its card `width`, a Script parameter named `label`), so one flat namespace would let either overwrite the other. A constructor may still accept a literal key in its `init` to seed a catalog preset or a hand-written text form; the saved map wins on load.
 
 The capture must be a fixed point: `extractInit(new Ctor(extractInit(n)))` equals `extractInit(n)`, and every value must survive `JSON.parse(JSON.stringify(v))`. A `Map`, `Set`, class instance, `NaN` or `Infinity` breaks the second rule silently, because the text form stringifies each field (`Infinity` becomes `null`).
 
@@ -194,7 +195,7 @@ Two Number Inputs multiplied and displayed, inside a Group, with one comment:
 budget: NumberInputNode label="Monthly budget" value=50 width=180 height=76
 grp: GroupNode label="Budget" members=["budget","months","annual","shown"] color="blue" collapsed=false width=560 height=282
 months: NumberInputNode label="Months" value=12 width=180 height=76
-annual: ArithmeticNode label="Annual total" op="mul" width=180 height=177 a=0 b=0 lit:a=0 lit:b=0 a<-budget.value b<-months.value
+annual: ArithmeticNode label="Annual total" op="mul" width=180 height=177 lit:a=0 lit:b=0 a<-budget.value b<-months.value
 shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 in<-annual.result
 ---
 {
@@ -234,7 +235,7 @@ shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 i
 }
 ```
 
-`grp` sorts before `months` because both are ready once `budget` is emitted. `a=0 b=0` in `init` are the Arithmetic node's literal map spread into its init by `extractInit`; they follow `height` because they are not in either order list. The JSON save of this document has `nodes` in the same order with `id` equal to `name`, `connections` in line order (`budget.value → annual.a`, `months.value → annual.b`, `annual.result → shown.in`), and the sidecar's other keys at the top level.
+`grp` sorts before `months` because both are ready once `budget` is emitted. The JSON save of this document has `nodes` in the same order with `id` equal to `name`, `connections` in line order (`budget.value → annual.a`, `months.value → annual.b`, `annual.result → shown.in`), and the sidecar's other keys at the top level.
 
 ## The version gate
 

@@ -122,6 +122,26 @@ describe("everything extractInit captures survives a JSON round trip", () => {
   });
 });
 
+// Literal keys share names with init fields (Pad Text's `width` input beside its card width), so the maps stay out of init.
+describe("literal values never enter init", () => {
+  it("no catalog node's init carries a literal-only key or a literal's value over a field", () => {
+    const leaked: string[] = [];
+    for (const [type, entry] of [...FLAT_CATALOG.entries()]) {
+      let n: ClassicPreset.Node;
+      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const a = n as unknown as AnyNode;
+      const lits = { ...((a.literals as object) ?? {}), ...((a.stringLiterals as object) ?? {}) } as Record<string, unknown>;
+      for (const k of Object.keys(lits)) {
+        if (k === "valueKeys") continue;
+        const init = extractInit(n);
+        if (!(k in init)) continue;
+        if (!(k in a) || init[k] !== a[k]) leaked.push(`${type}.${k}`);
+      }
+    }
+    expect(leaked).toEqual([]);
+  });
+});
+
 // ─── [[D50]] everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
 // The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
 // to a field the whitelist never captured (both sides omit it identically). This

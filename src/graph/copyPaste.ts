@@ -183,16 +183,13 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   if (typeof n.snapshotInternal === "function") {
     init.internal = (n.snapshotInternal as () => unknown)();
   }
-  if (n.literals && typeof n.literals === "object") {
-    Object.assign(init, n.literals as object);
-  }
   if ((typeof n.addValueInput === "function" || typeof n.addValuePair === "function") && n.inputs) {
     init.valueKeys = Object.keys(n.inputs as object);
   }
   return init;
 }
 
-function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
+export function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
   try {
     const Ctor = src.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
     const clone = new Ctor(extractInit(src));
