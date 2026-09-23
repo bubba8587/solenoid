@@ -96,6 +96,7 @@ export const flowHistory = {
 
   async redo(): Promise<void> {
     if (_restoring) return;
+    if (_timer) flowHistory.recordNow();
     if (_index >= _stack.length - 1) return;
     _index++;
     await restore(_stack[_index].json);

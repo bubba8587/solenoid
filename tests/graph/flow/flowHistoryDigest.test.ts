@@ -101,4 +101,9 @@ describe("sameIgnoringDims", () => {
     expect(sameIgnoringDims(before, moved)).toBe(false);
     expect(sameIgnoringDims(before, graph([]))).toBe(false);
   });
+
+  it("a group's resize is an edit", () => {
+    const g = (w: number) => graph([node("g1", "Group", { type: "GroupNode", init: { width: w, height: 200 } })]);
+    expect(sameIgnoringDims(g(300), g(420))).toBe(false);
+  });
 });
