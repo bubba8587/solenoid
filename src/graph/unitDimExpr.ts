@@ -4,7 +4,7 @@ import type { Ast } from "./excelFormula";
 import {
   type Dim, DIMENSIONLESS, dimMul, dimDiv, dimPow, dimEqual, isDimensionless,
 } from "./dimension";
-import { unitError, READINGS_ADD } from "./unitValue";
+import { unitError, READINGS_ADD, READINGS_SCALE } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
 import { resolveExcelFunction } from "./excelFunctions";
 
@@ -201,7 +201,7 @@ type OpResult = Op | SolError | null;
 const codeClash = (l: Op, r: Op): boolean =>
   l.code !== undefined && r.code !== undefined && l.code !== r.code;
 const clashError = (l: Op, r: Op): SolError =>
-  unitError(`Can't combine ${l.code} and ${r.code} — different currencies, no exchange rate. Convert one side first.`);
+  unitError(`Can't combine ${l.code} and ${r.code}: they are different currencies with no exchange rate. Convert one side first.`);
 
 function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
   switch (node.t) {
@@ -295,8 +295,7 @@ export function formulaResultDim(node: Ast, env: DimEnv): Dim | null {
 // is known.
 
 type Aff = { w: number; list: boolean; konst: number | null };
-const AFFINE_ERR = "Convert the temperature to kelvin first: an offset unit can't take ×, ÷ or ^.";
-const affErr = (): SolError => unitError(AFFINE_ERR);
+const affErr = (): SolError => unitError(READINGS_SCALE);
 const sumErr = (): SolError => unitError(READINGS_ADD);
 const ZERO: Aff = { w: 0, list: false, konst: null };
 
