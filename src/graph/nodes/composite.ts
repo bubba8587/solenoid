@@ -313,6 +313,8 @@ export class CompositeNode extends ClassicPreset.Node {
         // [[C28]] literalsIffEditable: restore only onto classes that declare the map.
         if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
         if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
+        // A nested composite computes inside this one's pass, so it cannot wait for a drill-in to build.
+        if (node instanceof CompositeNode) await node.hydrate(reg);
       }
       built.set(sn.id, node);
       this._savedIds.set(node.id, sn.id);

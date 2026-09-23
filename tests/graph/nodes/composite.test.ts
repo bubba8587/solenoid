@@ -138,6 +138,28 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(5); // 2 + 3, recomputed from the rebuilt internal graph
   });
 
+  it("a nested composite computes after a reload, without being drilled into", async () => {
+    const inner = new CompositeNode({ label: "Inner" });
+    const num = new NumberInputNode({ value: 42 });
+    const innerOut = new CompositeOutputNode({ label: "V" });
+    await inner.internalEditor.addNode(num as unknown as Schemes["Node"]);
+    await inner.internalEditor.addNode(innerOut as unknown as Schemes["Node"]);
+    await connect(inner.internalEditor, num, "value", innerOut, "value");
+    const innerPort = inner.addOutputPort({ label: "V", tier: "basic", internalNodeId: innerOut.id });
+
+    const outer = new CompositeNode({ label: "Outer" });
+    const outerOut = new CompositeOutputNode({ label: "V" });
+    await outer.internalEditor.addNode(inner as unknown as Schemes["Node"]);
+    await outer.internalEditor.addNode(outerOut as unknown as Schemes["Node"]);
+    await connect(outer.internalEditor, inner, innerPort, outerOut, "value");
+    const outerPort = outer.addOutputPort({ label: "V", tier: "basic", internalNodeId: outerOut.id });
+    expect((await outer.data({}))[outerPort]).toBe(42);
+
+    const reloaded = new CompositeNode(extractInit(outer) as ConstructorParameters<typeof CompositeNode>[0]);
+    await reloaded.hydrate(ctorRegistry());
+    expect((await reloaded.data({}))[outerPort]).toBe(42);
+  });
+
   it("NumberInputNode survives a snapshot/hydrate round-trip with its literal intact", async () => {
     const c = new CompositeNode();
     const num = new NumberInputNode({ value: 99 });
