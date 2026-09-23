@@ -1,5 +1,5 @@
 // [[C101]] onePatchPath
-import { yamlScalar } from "./obsidianMarkdown";
+import { yamlKey, yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
 import { formatDateSerial } from "./nodes/dateSerial";
 
@@ -10,7 +10,6 @@ export type YamlValue = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[]
 export interface PatchResult { text: string; }
 
 const FENCE = "---";
-const TOP_KEY = /^([A-Za-z0-9_][\w .-]*?):\s*(.*)$/;
 
 const isWholeDay = (serial: number) => Math.abs(serial - Math.round(serial)) < 1e-6;
 // yamlScalar would quote a leading-digit string, so ISO dates bypass it to stay YAML dates.
@@ -60,67 +59,100 @@ function isRows(v: YamlValue): v is Record<string, YamlRowV>[] {
   return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null;
 }
 
+/** A blank value is written as Obsidian writes it, `key:` with nothing after. */
+const line = (head: string, v: YamlScalarV) => `${head} ${renderScalar(v)}`.trimEnd();
+
 function renderRow(row: Record<string, YamlRowV>): string[] {
   const out: string[] = [];
   for (const [k, val] of Object.entries(row)) {
     const lead = out.length === 0 ? "  - " : "    ";
+    const key = yamlKey(k);
     if (Array.isArray(val)) {
-      if (val.length === 0) { out.push(`${lead}${k}: []`); continue; }
-      out.push(`${lead}${k}:`, ...val.map((x) => `      - ${renderScalar(x)}`));
+      if (val.length === 0) { out.push(`${lead}${key}: []`); continue; }
+      out.push(`${lead}${key}:`, ...val.map((x) => line("      -", x)));
     } else {
-      out.push(`${lead}${k}: ${renderScalar(val)}`);
+      out.push(line(`${lead}${key}:`, val));
     }
   }
   return out;
 }
 
-export function renderKey(key: string, v: YamlValue): string[] {
+export function renderKey(rawKey: string, v: YamlValue, spelledAs?: string): string[] {
+  const key = spelledAs ?? yamlKey(rawKey);
   if (isRows(v)) return [`${key}:`, ...v.flatMap(renderRow)];
   if (Array.isArray(v)) {
     if (v.length === 0) return [`${key}: []`];
-    return [`${key}:`, ...(v as YamlScalarV[]).map((x) => `  - ${renderScalar(x)}`)];
+    return [`${key}:`, ...(v as YamlScalarV[]).map((x) => line("  -", x))];
   }
-  return [`${key}: ${renderScalar(v)}`];
+  return [line(`${key}:`, v)];
 }
 
-interface KeySpan { start: number; end: number; scalar: boolean; }
+interface KeySpan { start: number; end: number; scalar: boolean; rest: string; head: string; }
 
+const QUOTED_KEY = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*')\s*:(?:\s+(.*))?$/;
+const PLAIN_KEY = /^([^\s#'"-].*?|-\S.*?)\s*:(?:\s+(.*))?$/;
+
+function topKey(line: string): { key: string; rest: string; head: string } | null {
+  const q = QUOTED_KEY.exec(line);
+  if (q) {
+    const raw = q[1];
+    const key = raw[0] === "'" ? raw.slice(1, -1).replace(/''/g, "'") : raw.slice(1, -1).replace(/\\(.)/g, "$1");
+    return { key, rest: q[2] ?? "", head: raw };
+  }
+  const m = PLAIN_KEY.exec(line);
+  return m ? { key: m[1].trim(), rest: m[2] ?? "", head: m[1].trim() } : null;
+}
+
+const isIndented = (l: string) => /^\s/.test(l);
+const isSeqItem = (l: string) => /^-(\s|$)/.test(l);
+
+/** Every unindented line bounds the key above it, except a sequence item written at column 0; a comment belongs
+ *  to the key above only when an indented line follows it. So a patch never swallows a line it does not own. */
 function scanKeys(interior: string[]): Map<string, KeySpan> {
   const spans = new Map<string, KeySpan>();
-  const starts: { key: string; line: number; rest: string }[] = [];
+  const bounds: { key: string | null; line: number; rest: string; head: string }[] = [];
   for (let i = 0; i < interior.length; i++) {
-    if (/^\s/.test(interior[i])) continue;
-    const m = TOP_KEY.exec(interior[i]);
-    if (m) starts.push({ key: m[1].trim(), line: i, rest: m[2] });
+    const l = interior[i];
+    if (l.trim() === "" || isIndented(l) || isSeqItem(l)) continue;
+    if (l.startsWith("#")) {
+      let j = i + 1;
+      while (j < interior.length && (interior[j].trim() === "" || interior[j].startsWith("#"))) j++;
+      if (j < interior.length && (isIndented(interior[j]) || isSeqItem(interior[j]))) continue;
+    }
+    const k = l.startsWith("#") ? null : topKey(l);
+    bounds.push({ key: k?.key ?? null, line: i, rest: k?.rest ?? "", head: k?.head ?? "" });
   }
-  for (let s = 0; s < starts.length; s++) {
-    const { key, line, rest } = starts[s];
-    const end = (s + 1 < starts.length ? starts[s + 1].line : interior.length) - 1;
-    const scalar = rest.trim() !== "" || interior.slice(line + 1, end + 1).every((l) => l.trim() === "");
-    if (!spans.has(key)) spans.set(key, { start: line, end, scalar });
+  for (let s = 0; s < bounds.length; s++) {
+    const { key, line, rest, head } = bounds[s];
+    if (key === null) continue;
+    let end = (s + 1 < bounds.length ? bounds[s + 1].line : interior.length) - 1;
+    while (end > line && interior[end].trim() === "") end--;
+    const scalar = rest.trim() !== "" || end === line;
+    if (!spans.has(key)) spans.set(key, { start: line, end, scalar, rest, head });
   }
   return spans;
+}
+
+/** The lines with any CR stripped, and the note's own line ending to join them back with. */
+function splitLines(text: string): { lines: string[]; nl: string } {
+  return { lines: text.split("\n").map((l) => l.replace(/\r$/, "")), nl: text.includes("\r\n") ? "\r\n" : "\n" };
+}
+
+function fenceClose(lines: string[]): number {
+  if (lines[0]?.trim() !== FENCE) return -1;
+  for (let i = 1; i < lines.length; i++) if (lines[i].trim() === FENCE) return i;
+  return -1;
 }
 
 export function patchFrontmatter(text: string, patch: Record<string, YamlValue>): PatchResult {
   const keys = Object.keys(patch);
   if (keys.length === 0) return { text };
 
-  const lines = text.split("\n");
-
-  if (lines[0]?.trim() !== FENCE) {
-    const rendered = keys.flatMap((k) => renderKey(k, patch[k]));
-    const block = [FENCE, ...rendered, FENCE, ""].join("\n");
-    return { text: block + text };
-  }
-  let close = -1;
-  for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim() === FENCE) { close = i; break; }
-  }
-  if (close === -1) {
-    const rendered = keys.flatMap((k) => renderKey(k, patch[k]));
-    return { text: [FENCE, ...rendered, FENCE, "", ...lines].join("\n") };
-  }
+  const { lines, nl } = splitLines(text);
+  const rendered = () => keys.flatMap((k) => renderKey(k, patch[k]));
+  if (lines[0]?.trim() !== FENCE) return { text: [FENCE, ...rendered(), FENCE, ""].join(nl) + text };
+  const close = fenceClose(lines);
+  if (close === -1) return { text: [FENCE, ...rendered(), FENCE, "", ...lines].join(nl) };
 
   const interior = lines.slice(1, close);
   const spans = scanKeys(interior);
@@ -130,7 +162,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   for (const key of keys) {
     const span = spans.get(key);
     if (span) {
-      replacements.set(span.start, { end: span.end, lines: renderKey(key, patch[key]) });
+      replacements.set(span.start, { end: span.end, lines: renderKey(key, patch[key], span.head) });
     } else {
       appends.push(...renderKey(key, patch[key]));
     }
@@ -145,7 +177,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   out.push(...appends);
 
   const rebuilt = [lines[0], ...out, ...lines.slice(close)];
-  return { text: rebuilt.join("\n") };
+  return { text: rebuilt.join(nl) };
 }
 
 
@@ -245,20 +277,18 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
 }
 
 export function resolveKey(text: string, key: string, value: YamlValue): { action: "add" | "unchanged" | "update"; before: string } {
-  const lines = text.split("\n");
-  if (lines[0]?.trim() !== FENCE) return { action: "add", before: "" };
-  let close = -1;
-  for (let i = 1; i < lines.length; i++) if (lines[i].trim() === FENCE) { close = i; break; }
+  const { lines } = splitLines(text);
+  const close = fenceClose(lines);
   if (close === -1) return { action: "add", before: "" };
   const interior = lines.slice(1, close);
   const span = scanKeys(interior).get(key);
   if (!span) return { action: "add", before: "" };
   const existing = interior.slice(span.start, span.end + 1);
   const before = span.scalar
-    ? (TOP_KEY.exec(existing[0])?.[2] ?? "").trim()
+    ? span.rest.trim()
     : existing.slice(1).map((l) => l.trim()).filter(Boolean).join(", ");
-  const rendered = renderKey(key, value);
-  const same = existing.length === rendered.length && existing.every((l, i) => l === rendered[i]);
+  const rendered = renderKey(key, value, span.head);
+  const same = existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]);
   return { action: same ? "unchanged" : "update", before };
 }
 
