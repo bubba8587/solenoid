@@ -37,6 +37,7 @@ function BandField({ value, onCommit }: { value: number; onCommit: (v: number) =
 import { getEditor, getView } from "../process";
 import { unselectAllNodes } from "../canvasCommands";
 import { cableSelectionStore } from "../cableState";
+import { drawnCableStore } from "../drawnCables";
 import { groupCollapseStore } from "../groupCollapse";
 import { scheduleAutosave } from "../persistence";
 import "./conduit.css"; // reuse the docked-toolbar chrome
@@ -82,6 +83,7 @@ function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {
       // Standoff + node + cable selections stay mutually exclusive.
       unselectAllNodes();
       cableSelectionStore.set(null);
+      drawnCableStore.select(null);
     }
   };
 

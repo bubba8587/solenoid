@@ -4,6 +4,7 @@ import { NodeEditor, ClassicPreset } from "rete";
 import { GroupNode, FormatControllerNode, DisplayNode, NumberInputNode } from "../../src/graph/rete-nodes";
 import { recomputeGroupCollapse, groupCollapseStore, groupReadouts } from "../../src/graph/groupCollapse";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
+import { resolveVisibleTarget } from "../../src/graph/flyToNode";
 import type { Schemes } from "../../src/graph/schemes";
 
 type Editor = NodeEditor<Schemes>;
@@ -42,6 +43,13 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(groupCollapseStore.isNodeHidden(host.id)).toBe(true);
     expect(groupCollapseStore.isNodeHidden(fc.id)).toBe(true); // the fix
     expect(groupCollapseStore.isNodeHidden(outside.id)).toBe(false);
+  });
+
+  it("flying to a hidden docked FC frames its group card", async () => {
+    const { editor, host, fc, group } = await build();
+    dock(fc.id, host.id);
+    recomputeGroupCollapse(editor);
+    expect(resolveVisibleTarget(editor, fc.id)).toBe(group.id);
   });
 
   it("an undocked FC outside the group stays visible", async () => {

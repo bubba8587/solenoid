@@ -4,11 +4,12 @@ import type { NodeEditor } from "rete";
 
 import { getOwningEditor, getOwningView } from "./activeGraph";
 import { groupCollapseStore } from "./groupCollapse";
+import { dockedNodeStore } from "./dockedNodeStore";
 import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 
-function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): string {
+export function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): string {
   let targetId = nodeId;
   const seen = new Set<string>();
   while (groupCollapseStore.isNodeHidden(targetId) && !seen.has(targetId)) {
@@ -16,8 +17,10 @@ function resolveVisibleTarget(editor: NodeEditor<Schemes>, nodeId: string): stri
     const grp = editor
       .getNodes()
       .find((n) => n instanceof GroupNode && n.members.includes(targetId));
-    if (!grp) break;
-    targetId = grp.id;
+    const host = grp ? null : dockedNodeStore.get(targetId)?.hostNodeId;
+    if (grp) targetId = grp.id;
+    else if (host) targetId = host;
+    else break;
   }
   return targetId;
 }
