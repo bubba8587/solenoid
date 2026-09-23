@@ -162,3 +162,8 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
       `coverage-store` branch of the DTE checkout (`covers:` parsing, `covered_by`/`covered_files`,
       `cited_by` "via", `blast` "Built to", stale-glob check; comment-line only, so a markdown heading
       that says "covers:" does not count).
+
+19. **The scanner treats a git worktree's `.git` file as an artifact.** `coverage --check` in a
+    `git worktree` fails with `.git` as the one uncited file: the walk skips a `.git` directory
+    (`dirs[:] = ... d != ".git"`) but a worktree's `.git` is a file. Worked around with `.git` in
+    `.dteignore`; the tool should skip `.git` whether file or directory.

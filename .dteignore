@@ -11,6 +11,8 @@ sample-data
 __pycache__
 # Agent worktrees hold full repo copies; scanning them double-counts everything.
 .claude
+# Inside a worktree .git is a file, which the scanner's .git-directory skip misses.
+.git
 # Generated dev-graph mirror + coverage output.
 .dev
 coverage
