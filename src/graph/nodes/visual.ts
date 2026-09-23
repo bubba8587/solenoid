@@ -1203,7 +1203,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "cardsize", "clamp"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "week", "fiscal_start", "status", "group_by", "cardsize", "clamp"] as const;
 const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1245,6 +1245,11 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("minutes",   strIn("Times"));
     this.addInput("window",    strIn("Window"));
     this.addInput("columns",   strIn("Columns"));
+    this.addInput("collapse",  strIn("Outline"));
+    this.addInput("week",      strIn("Week numbers"));
+    this.addInput("fiscal_start", strIn("Fiscal year starts"));
+    this.addInput("status",    strIn("Status line"));
+    this.addInput("group_by",  strIn("Project groups"));
     this.addInput("cardsize",  strIn("Tile size"));
     this.addInput("clamp",     strIn("Clamp tiles"));
     this.addInput("ymin",      numIn("Y min"));
@@ -1282,6 +1287,11 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       minutes: str("minutes"),
       window: str("window"),
       columns: str("columns"),
+      collapse: str("collapse"),
+      week: str("week"),
+      fiscal_start: str("fiscal_start"),
+      status: str("status"),
+      group_by: str("group_by"),
       cardsize: str("cardsize"),
       clamp: str("clamp"),
       ymin:      num("ymin"),

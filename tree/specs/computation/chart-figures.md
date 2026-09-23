@@ -2,11 +2,11 @@
 aliases: ["Chart figures"]
 tags: [spec, computation]
 ---
-<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C8]] declareOnce, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams -->
+<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[C97]] rechartsLazyChunk, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C8]] declareOnce, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams -->
 
 # Spec: Chart figures
 
-Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk, [[C71]] noBarEditing, [[C63]] oneRecordNode and [[C94]] formatFamilyGates (the Format Controller's `chart` family). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[C97]] rechartsLazyChunk, [[C71]] noBarEditing, [[C63]] oneRecordNode and [[C94]] formatFamilyGates (the Format Controller's `chart` family). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A chart in Solenoid is a value, not a drawing. Each figure node computes a small, self-describing figure value and sends it down a `chart` cable; whatever receives it (the node's own card, a Display, the chart popup, a Report embed) draws it at the size it has. This spec covers that value, the nodes that make it, the options string that styles it, and the renderers that draw it.
 
@@ -193,12 +193,12 @@ Figures with an `options` input take one string of `key=value` pairs separated b
 | `xlabel`, `ylabel` | non-empty text | none | Axis titles, drawn only on axed figures. |
 | `color` | non-empty text (any CSS color) | the Display kind accent | The single-series mark color. |
 | `grid` | boolean | on | Grid lines on axed figures. |
-| `marker` | boolean | on for single-series axed line and area; off elsewhere | Dots on line, area and radar points. |
+| `marker` | boolean | on for single-series axed line, area and radar; off elsewhere | Dots on line, area and radar points. |
 | `ylim` | `lo,hi`, either side may be blank | none | Sets `ymin` and `ymax`. |
 | `ymin`, `ymax` | number | open (`auto`) | The value-axis bounds. On a horizontal Bar chart they bound the horizontal value axis. |
 | `linewidth`, `lw` | number | 1.5 | Line, area and radar stroke width. |
 | `markersize`, `ms` | number greater than 0 | 2 on lines, 3 on scatter | Marker radius in pixels. |
-| `alpha` | number | 0.25 area fill (0.18 when two or more area series overlap); bars opaque | Fill opacity. |
+| `alpha` | number | 0.25 area and radar fill (0.18 when two or more area series overlap); lines, bars and dots opaque | Mark opacity: the fill of areas, radar polygons and bars, the stroke of lines, the dots of scatter. |
 | `fontsize` | number greater than 0 | 10 | Text size in points; every text size scales by `fontsize / 10`. |
 | `pielabels` | `off`, `outside` (`leader`, `on`, a true boolean), `inside` (`center`, `on-chart`); a false boolean is `off` | outside | Pie category labels. |
 | `radarscale` | `axis` (`normalize`, `normalized`, `independent`) or `shared` (`raw`, `absolute`) | axis | Multi-series radar radius. `axis` scales each spoke to 0 to 1 by its own maximum, so one large-valued column (dollars beside scores out of 10) cannot swamp the rest, and a negative value plots at the center; `shared` keeps one raw radius. |
@@ -209,36 +209,39 @@ Figures with an `options` input take one string of `key=value` pairs separated b
 |---|---|---|
 | `cardsize` | Record (`readCardSize`) | `s`, `m`, `l` (the single letter only) |
 | `clamp` | Record (`readClamp`) | `on`, `true`, `yes`, `1` |
-| `layout`, `zoom`, `fit`, `tiers`, `collapse`, `fiscal_start`, `week`, `window`, `columns`, `critical`, `baseline`, `arrows`, `today`, `status`, `weekends`, `group_by`, `labels`, `minutes`, `histogram` | Gantt (`parseGanttViewOptions`) | As the gantt-react README's Option keys. Defaults the figure applies when absent: `layout=gantt`, `zoom=fit`, two header rows, `critical`, `baseline`, `arrows`, `today`, `weekends` and `labels` on, `histogram` and `minutes` off. A `window` bound is parsed as a date; an unreadable or ambiguous bound means no window. |
+| `layout`, `zoom`, `fit`, `tiers`, `collapse`, `fiscal_start`, `week`, `window`, `columns`, `critical`, `baseline`, `arrows`, `today`, `status`, `weekends`, `group_by`, `labels`, `minutes`, `histogram` | Gantt (`parseGanttViewOptions`) | As the gantt-react README's Option keys. Defaults the figure applies when absent: `layout=gantt`, `zoom=fit`, two header rows, every level open, ISO weeks, a January fiscal year, `critical`, `baseline`, `arrows`, `today`, `status`, `weekends`, `group_by` and `labels` on, `histogram` and `minutes` off. A `window` bound is parsed as a date; an unreadable or ambiguous bound means no window. |
 
 Each parser reads only its own keys from the shared string and ignores the rest, so one string can carry chart keys and figure keys together.
 
 ### Which renderer reads which key
 
-A key a renderer does not read is inert on that figure:
+A key a renderer does not read is inert on that figure. For each Chart Builder target the key list (`CHART_BUILDER_TARGETS`) is exactly this set ([[D75]] builderExposesEveryOption); the target's `op` names the figure it draws.
 
-| Figure | Keys read |
+| Target (`op`) | Keys read |
 |---|---|
-| Column, Line, Area, Scatter, single series | `title`, `xlabel`, `ylabel`, `color`, `grid`, `ymin`/`ymax`, `alpha`, `fontsize`; Line and Area also `marker`, `linewidth`, `markersize`; Scatter also `markersize` |
-| Bar (horizontal), single series | as Column; the value axis is horizontal |
+| Column, Bar, Histogram (`column`, `bar`) | `title`, `xlabel`, `ylabel`, `color`, `grid`, `ymin`/`ymax`, `alpha`, `fontsize`. On Bar the value axis is horizontal. |
+| Line, Area | as Column, plus `marker`, `linewidth`, `markersize` |
+| Scatter | as Column, plus `markersize` |
 | Pie | `title`, `fontsize`, `pielabels` |
-| Radar, single series | `title`, `grid`, `ymin`/`ymax`, `alpha`, `linewidth`, `marker`, `markersize`, `fontsize` (radius is shared; `radarscale` and `color` are not read, though the Radar builder target offers `radarscale` since it can't know the series count) |
+| Radar | `title`, `grid`, `marker`, `radarscale`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha`, `fontsize` |
 | Radial, Funnel | `title`, `fontsize` |
-| Any multi-series cartesian or radar | `title`, `xlabel`, `ylabel`, `grid`, `marker`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha`, `fontsize`, `radarscale` (radar); never `color` (the palette wins) |
-| Composed | `title`, `xlabel`, `ylabel`, `grid`, `ymin`/`ymax`, `alpha` (the bars), `linewidth`, `marker`, `markersize`, `fontsize` |
+| Composed | `title`, `xlabel`, `ylabel`, `grid`, `marker`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha` (the bars), `fontsize` |
 | Bubble | `title`, `xlabel`, `ylabel` (default the x and y column names), `grid`, `ymin`/`ymax`, `fontsize` |
-| Merge Plots (overlay) | its own `title`, `grid`, `ymin`/`ymax`, `fontsize`, and `linewidth` as a fallback; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
-| Histogram 1-D | as Column |
-| KPI, Gauge Bar, Treemap, Sankey | `fontsize` (title via the value only) |
+| Merge Plots (`overlay`) | `title`, `grid`, `ymin`/`ymax`, `linewidth` (a fallback for series without one), `fontsize`; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
+| Histogram 2-D (`contour`), KPI, Gauge (`scale`), Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap | `title`, `fontsize` |
 | Record | `title`, `fontsize`, `cardsize`, `clamp` |
-| Gantt | `fontsize`, the Gantt view keys (title via the value only) |
-| Dial, Waffle, Waterfall, Candlestick, Boxplot, Calendar Heatmap, Contour, Surface, Vector Field, Histogram 2-D | none (title via the value only) |
+| Gantt, timeline | `title`, `fontsize`, `zoom`, `tiers`, `layout`, `fit`, `critical`, `baseline`, `arrows`, `today`, `status`, `weekends`, `labels`, `histogram`, `minutes`, `window`, `columns`, `collapse`, `group_by`, `week`, `fiscal_start` |
+| Gantt, `layout=calendar` | `title`, `fontsize`, `layout`, `critical`, `minutes`, `window`, `week` |
 
+Exceptions a key list cannot see, because the builder does not know the data:
+
+- **Series count.** Two or more series paint from the palette, so `color` is inert on a multi-series Column, Bar, Line, Area or Scatter. `radarscale` is read only by a multi-series Radar, and with `radarscale=axis` (the default) the radius is `[0, 1]`, so `ymin`/`ymax` apply to a single-series or `shared` Radar only. A Composed or Bubble with a single number column draws as Column or Scatter and reads their keys.
+- **Mode.** Gauge's Dial mode has no Options input and emits `{}`; the Gauge target covers the Bar mode. Surface (both views) and Vector Field have no Options input and no target.
 ### Serialization and the Chart Builder
 
-`serializeChartOptions(fields)` emits only set fields, in this order: `title`, `xlabel`, `ylabel`, `color`, `grid`, `marker`, `pielabels`, `radarscale`, `zoom`, `layout`, `tiers`, `fit`, `critical`, `baseline`, `arrows`, `today`, `weekends`, `labels`, `histogram`, `minutes`, `window`, `columns`, `cardsize`, `clamp`, then `ylim=lo,hi` (either side blank when unset; emitted when either bound is finite), `linewidth`, `markersize`, `alpha`, `fontsize`. Text values are trimmed and a blank one is skipped; a number must be finite. Parts join with `;`, so an untouched builder yields `""`.
+`serializeChartOptions(fields)` emits only set fields, in this order: `title`, `xlabel`, `ylabel`, `color`, `grid`, `marker`, `pielabels`, `radarscale`, `zoom`, `layout`, `tiers`, `fit`, `critical`, `baseline`, `arrows`, `today`, `weekends`, `labels`, `histogram`, `minutes`, `window`, `columns`, `collapse`, `week`, `fiscal_start`, `status`, `group_by`, `cardsize`, `clamp`, then `ylim=lo,hi` (either side blank when unset; emitted when either bound is finite), `linewidth`, `markersize`, `alpha`, `fontsize`. Text values are trimmed and a blank one is skipped; a number must be finite. Parts join with `;`, so an untouched builder yields `""`.
 
-The Chart Builder node has one input per field (24 text, 6 number) and one output, `result` (a string). Each field is the wired value, else the card literal; a wired blank means the field is unset, never the literal. Its `target` (one of the 22 `CHART_BUILDER_TARGETS`, default `column`; a stale saved target loads as `column`) only chooses which rows the card offers (`chartBuilderKeys`; the Gantt target offers fewer keys when `layout=calendar`). The Chart node's own ops are targets of their own, so each offers only the keys that op reads, in a two-level dropdown (`group`). The categorical ops (Pie, Radar, Radial, Funnel) are not offered `color`, because they paint from the palette. The Gantt calendar layout draws its own grid and ignores the scale, bars, links and grid pane, so it is offered only `title`, `fontsize`, `layout`, `critical`, `minutes` and `window`; it always outlines today, shades weekends and labels its chips. A row the target does not read stays visible and dimmed while it is wired or holds a value, and every set field serializes regardless of target, so one builder can feed several figures. Toggles store `on`/`off`; a select's default option stores `""`.
+The Chart Builder node has one input per field (29 text, 6 number) and one output, `result` (a string). Each field is the wired value, else the card literal; a wired blank means the field is unset, never the literal. Its `target` (one of the 24 `CHART_BUILDER_TARGETS`, default `column`; a stale saved target loads as `column`) only chooses which rows the card offers (`chartBuilderKeys`; the Gantt target offers fewer keys when `layout=calendar`). The Chart node's own ops are targets of their own, and Histogram, Histogram 2-D and Merge Plots are targets beside them, so each offers only the keys its figure reads (see Which renderer reads which key), in a two-level dropdown (`group`). The categorical ops (Pie, Radar, Radial, Funnel) are not offered `color`, because they paint from the palette. The Gantt calendar layout draws its own grid and ignores the scale, bars, links and grid pane, so it is offered only `title`, `fontsize`, `layout`, `critical`, `minutes`, `window` and `week`; it always outlines today, shades weekends and labels its chips. A row the target does not read stays visible and dimmed while it is wired or holds a value, and every set field serializes regardless of target, so one builder can feed several figures. Toggles store `on`/`off`; a select's default option stores `""`.
 
 ## Render dispatch
 
@@ -277,7 +280,7 @@ Multi-series marks, categorical slices, treemap cells, Sankey nodes and waffle c
 
 ### Titles
 
-The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `ComposedView`, `BubbleView` and `RecordCardView`. For the figures that draw none themselves (KPI, Gauge, Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap and Gantt, `UNTITLED_FIGURES` in `chartTitle.tsx`), `ChartFigure` draws the same strip (`chartTitle.tsx`) above the figure and hands it the remaining height. The Sankey, KPI and Gauge cards draw through `ChartFigure`, so their options apply on the card as they do in a Display. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
+The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `ComposedView`, `BubbleView` and `RecordCardView`. For the figures that draw none themselves (KPI, Gauge, Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap, Contour and Gantt, `UNTITLED_FIGURES` in `chartTitle.tsx`), `ChartFigure` draws the same strip (`chartTitle.tsx`) above the figure and hands it the remaining height. The Sankey, KPI and Gauge cards draw through `ChartFigure`, so their options apply on the card as they do in a Display. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
 
 ## The recharts figures
 
@@ -285,7 +288,7 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 
 - **Axis ticks.** With `labels`, a tick shows the label at the rounded index (a number label is snapped to 10 significant figures by `axisTick`), blank past the ends; without, the 1-based index. Every tick is shown while there are 12 points or fewer; beyond that recharts thins them.
 - **Tooltips.** Values format with `formatScalar`. The single-series tooltip shows `#n` (1-based) and the value (Scatter shows the real x instead when it has one); categorical tooltips show the value only; multi-series tooltips list each series with a swatch; a tooltip value that is an object shows its `code`.
-- **Line, Area, Column.** Cartesian plot with 14 pixels of top headroom for the expand button. Column bars use `color` at full opacity unless `alpha` is given.
+- **Line, Area, Column.** Cartesian plot with 14 pixels of top headroom for the expand button. Column bars and line strokes use `color` at full opacity unless `alpha` is given.
 - **Bar.** Horizontal bars; the category axis is sized to the widest label (about `5.2 · fs` pixels per character plus 8, at least 18, at most a third of the width).
 - **Scatter.** When every label of the plotted points is a number, each dot sits at that real x; otherwise x is the row index, pinned to `[0, n-1]` with 8 pixels padding and integer ticks.
 - **Pie.** Radius `max(18, min(width, height) / 2 - pad)`, where pad is 6 with no labels, `min(16, 7% of width)` inside, `min(30, 12% of width)` outside. Labels draw only when `labels` exist and `pielabels` is not `off`. Label text goes through `sanitizeChartLabel` (control characters to spaces, whitespace collapsed, capped at 10 code points when the width is under 260, else 16, with an ellipsis). A slice under 3% gets no label. Outside labels ride a two-segment leader (a 7 pixel radial stub, then a horizontal run to a shared column per side). Inside labels sit at 62% of the radius on a translucent plate, for slices of 6% or more; smaller slices keep the outside leader.
@@ -295,7 +298,7 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 - **Multi-series.** The legend is a fixed 18 pixel DOM row under the plot, its height taken off the plot, inset by the y-axis width to center on the plot area. It is never recharts' `<Legend>`, which reserves a strip inside the plot, lays it out against the x-axis (landing on the x label) and re-reserves whenever its measured height changes, so the plot jumps on a click. Clicking an entry spotlights that series (the others drop to 0.18 opacity); clicking it again clears. A pointer press on the legend is stopped so the card does not start a drag.
 - **Composed.** Series 0 as bars, the rest as lines, gridded unless `grid=off`, with a legend when there are two or more series: the same DOM row under the plot as every multi-series chart (`SeriesLegend`), whose click spotlights a series.
 - **Bubble.** One dot per row at `(x, y)` sized by the third column (area range 40 to 420, a missing size counts 1) at 0.55 opacity; a row with no y is dropped; with a single column the dot plots at `(x, x)`. The tooltip names all three columns.
-- **Overlay.** One shared cartesian plane (a recharts `ComposedChart`) with each series in its own mark: line, area, scatter, and both `column` and `bar` as vertical bars, so every mark shares the x axis. A series without an inherited color takes the palette. Legend clicks spotlight by series index (the data key), never by name, since merged series names can collide.
+- **Overlay.** A series' inherited `alpha` is its line stroke, area fill, bar fill or dot opacity. One shared cartesian plane (a recharts `ComposedChart`) with each series in its own mark: line, area, scatter, and both `column` and `bar` as vertical bars, so every mark shares the x axis. A series without an inherited color takes the palette. Legend clicks spotlight by series index (the data key), never by name, since merged series names can collide.
 - **Treemap.** Cells sized by value (non-positive values dropped, blank names shown as `#n`); a name is drawn in white only in a cell wider than `46 · fs` and taller than `20 · fs`.
 - **Sankey.** Flows that are blank, self-loops or not positive are skipped; node width 10, padding 16; labels sit inward (left of nodes in the right half, right of the others).
 - **Dial.** A half-ring arc for `value` clamped to `[0, 1]` over a track, with the percent (one decimal) centered and `0%`, `100%` at the ends. Its size is the given `size`, else the width clamped to 120 to 200 pixels, drawn 0.55 times as tall. The Gauge card's square-collapsed miniature draws the same arc (`GaugeArc`).
@@ -315,7 +318,7 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 - **Surface.** An orthographic projection of the grid normalized to a unit box (height exaggerated 0.55), yaw about the vertical then pitch. The floor and the two farthest walls draw as faint grids behind; cells with all four corners known paint back to front (the painter's algorithm, no depth buffer), colored by mean height on the height ramp and lit from the upper front left, at 0.86 opacity. X, Y and Z label the box edges.
 - **Vector Field.** One arrow per cell, centered on the cell, colored on the height ramp by magnitude relative to the largest, length `0.15 + 0.85` of that fraction times 46% of the cell; positive v points up. The stroke thins on small arrows (`max(0.7, 7% of the cell × (0.55 + 0.45 · t))`), because a full-width stroke on a short arrow reads as a blob. The head is `min(4.5, 55% of the length)` long and 0.9 of that wide, drawn only when at least 2.2 pixels long (else the arrow is a plain line), and the shaft stops at the head's base so it can't poke past the tip. A cell with a null component draws a faint dot.
 
-Tick labels on the canvas figures are compact: three significant figures with K, M, B above a thousand.
+Tick labels on the canvas figures are compact: three significant figures with K, M, B above a thousand. Their text is `8.5 · fscale` pixels, and the gutters that hold it (the y-axis and label strips, the Calendar Heatmap's month and weekday rows, the Contour hints, the Waffle legend) grow with it.
 
 ## Mermaid
 
@@ -362,7 +365,7 @@ The webpage export and Write to Obsidian take a chart as SVG from the source nod
 The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 default, ×1.25, ×1.5, ×2), and nothing else ([[C94]] formatFamilyGates; the table is [[format-model]]). It is display-only: it never changes the value on the cable. The scale multiplies with the value's own `fontsize`: the payload figures get `fscale = chartFontScale · fontsize / 10`, and the recharts series figures compute the same product themselves.
 
 - **Where it is read:** the Chart and Merge Plots cards (the FC on their own output), Display (`resolveDisplayAnnotation`: an FC on the Display, else one on its source output or downstream), the popup (the FC on the node it was opened from) and a Report embed (the FC resolved for that reference). The other figure cards do not read it.
-- **Figures it affects:** every recharts series figure, Overlay, Composed, Bubble, Treemap and Sankey labels, KPI, the Bar gauge and Record (through `--chart-fscale`) and Gantt. It has no effect on the Dial, Waffle, Surface or the canvas figures.
+- **Figures it affects:** every recharts series figure, Overlay, Composed, Bubble, Treemap and Sankey labels, KPI, the Bar gauge and Record (through `--chart-fscale`), Gantt, and the canvas text of Waterfall, Candlestick, Boxplot, Calendar Heatmap, Waffle and Contour. It has no effect on the Dial, Surface or Vector Field.
 
 ## Errors and empty inputs
 
@@ -382,4 +385,4 @@ Empty is never an error. A figure with nothing to draw shows the muted em-dash b
 
 ## Enforced by
 
-`tests/graph/chartValue.test.ts`, `tests/graph/chartPopupCoverage.test.ts` (every op reaches the popup), `tests/graph/components/chartCore.test.ts`, `tests/graph/chartLabel.test.ts` (`sanitizeChartLabel`), `tests/graph/nodes/chartOptions.test.ts`, `tests/graph/nodes/visual.test.ts`, `tests/graph/nodes/mergePlots.test.ts`, `tests/graph/recordViews.test.ts`, `tests/graph/components/masonryLayout.test.ts`, `tests/graph/ganttBuilder.test.ts`, `tests/graph/ganttPayload.test.ts`, `tests/graph/nodes/gantt.test.ts`, `tests/graph/fcLambdaChart.test.ts`, `tests/graph/chartTitles.test.ts` (every target that offers a title draws one), and the source sweep in `tests/graph/sourceInvariants.test.ts` (only `chartRender.tsx` imports recharts).
+`tests/graph/chartValue.test.ts`, `tests/graph/chartPopupCoverage.test.ts` (every op reaches the popup), `tests/graph/components/chartCore.test.ts`, `tests/graph/chartLabel.test.ts` (`sanitizeChartLabel`), `tests/graph/nodes/chartOptions.test.ts`, `tests/graph/nodes/visual.test.ts`, `tests/graph/nodes/mergePlots.test.ts`, `tests/graph/recordViews.test.ts`, `tests/graph/components/masonryLayout.test.ts`, `tests/graph/ganttBuilder.test.ts`, `tests/graph/ganttPayload.test.ts`, `tests/graph/nodes/gantt.test.ts`, `tests/graph/fcLambdaChart.test.ts`, `tests/graph/chartTitles.test.ts` (every target that offers a title draws one, draws a real op, and offers only keys a parser reads), and the source sweep in `tests/graph/sourceInvariants.test.ts` (only `chartRender.tsx` imports recharts).

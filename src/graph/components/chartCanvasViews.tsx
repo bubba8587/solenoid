@@ -39,7 +39,7 @@ function themeInk(canvas: HTMLCanvasElement) {
   };
 }
 
-const TICK_FONT = "500 8.5px system-ui, sans-serif";
+const tickFont = (fs: number) => `500 ${8.5 * fs}px system-ui, sans-serif`;
 
 function fmtTick(n: number): string {
   const a = Math.abs(n);
@@ -52,8 +52,8 @@ function trim3(n: number): string {
   return String(Number(n.toPrecision(3)));
 }
 
-function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number) {
-  ctx.font = TICK_FONT;
+function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number, fs: number) {
+  ctx.font = tickFont(fs);
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
   const ticks = 3;
@@ -87,7 +87,7 @@ function span(lo: number, hi: number): [number, number] {
 
 // ─── Waterfall ─────────────────────────────────────────────────────────────────
 
-function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number, H: number) {
+function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -106,9 +106,9 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
   let lo = 0, hi = 0;
   for (const b of bars) { if (b.kind !== "gap") { lo = Math.min(lo, b.a, b.b); hi = Math.max(hi, b.a, b.b); } }
   [lo, hi] = span(lo, hi);
-  const padL = 30, padR = 4, padT = 4, padB = 14;
+  const padL = Math.round(30 * fs), padR = 4, padT = Math.max(4, Math.round(4.25 * fs)), padB = Math.round(14 * fs);
   const sy = (v: number) => padT + ((hi - v) / (hi - lo)) * (H - padT - padB);
-  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR);
+  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR, fs);
 
   const plotW = W - padL - padR;
   const bw = plotW / bars.length;
@@ -134,7 +134,7 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
       ctx.globalAlpha = 1;
     }
     if (bw >= 20) {
-      ctx.font = TICK_FONT;
+      ctx.font = tickFont(fs);
       ctx.fillStyle = ink.dim;
       ctx.fillText(fitLabel(ctx, b.name, bw - 2), padL + i * bw + bw / 2, H - padB + 3);
     }
@@ -148,7 +148,7 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
 
 // ─── Candlestick ───────────────────────────────────────────────────────────────
 
-function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: number) {
+function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -164,9 +164,9 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
   for (let i = 0; i < n; i++) { const k = candle(i); if (k) { lo = Math.min(lo, k.l); hi = Math.max(hi, k.h); } }
   if (!Number.isFinite(lo)) return;
   [lo, hi] = span(lo, hi);
-  const padL = 30, padR = 4, padT = 4, padB = 13;
+  const padL = Math.round(30 * fs), padR = 4, padT = Math.max(4, Math.round(4.25 * fs)), padB = Math.round(13 * fs);
   const sy = (v: number) => padT + ((hi - v) / (hi - lo)) * (H - padT - padB);
-  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR);
+  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR, fs);
 
   const bw = (W - padL - padR) / n;
   const bodyW = Math.max(1.5, Math.min(9, bw * 0.6));
@@ -183,7 +183,7 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
     ctx.fillStyle = col;
     ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1, Math.abs(yC - yO)));
   }
-  ctx.font = TICK_FONT;
+  ctx.font = tickFont(fs);
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "top";
   ctx.textAlign = "left";
@@ -194,7 +194,7 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
 
 // ─── Boxplot ───────────────────────────────────────────────────────────────────
 
-function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H: number) {
+function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -206,9 +206,9 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
     hi = Math.max(hi, b.hi, ...b.outliers);
   }
   [lo, hi] = span(lo, hi);
-  const padL = 30, padR = 4, padT = 4, padB = 14;
+  const padL = Math.round(30 * fs), padR = 4, padT = Math.max(4, Math.round(4.25 * fs)), padB = Math.round(14 * fs);
   const sy = (v: number) => padT + ((hi - v) / (hi - lo)) * (H - padT - padB);
-  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR);
+  drawYAxis(ctx, ink, lo, hi, sy, padL, W - padR, fs);
 
   const bw = (W - padL - padR) / boxes.length;
   const boxW = Math.max(6, Math.min(36, bw * 0.55));
@@ -236,7 +236,7 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
       ctx.beginPath(); ctx.arc(cx, sy(v), 1.6, 0, Math.PI * 2); ctx.fill();
     }
     if (b.name && bw >= 20) {
-      ctx.font = TICK_FONT;
+      ctx.font = tickFont(fs);
       ctx.fillStyle = ink.dim;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
@@ -251,7 +251,7 @@ function mondayIndex(serial: number): number {
   return (serialToJsDate(serial).getUTCDay() + 6) % 7;
 }
 
-function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H: number) {
+function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -261,7 +261,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   const dayList = [...byDay.keys()];
   const end = Math.max(...dayList);
   const dataStart = Math.min(...dayList);
-  const padL = 14, padT = 11, padR = 1, padB = 1;
+  const padL = Math.round(14 * fs), padT = Math.round(11 * fs), padR = 1, padB = 1;
   const MIN_CELL = 3.2;
   const endMonday = end - mondayIndex(end);
   const spanStart = Math.max(dataStart, end - 365);
@@ -280,14 +280,14 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   const gap = cell > 6 ? 1 : 0.5;
 
   if (truncated) {
-    ctx.font = TICK_FONT;
+    ctx.font = tickFont(fs);
     ctx.fillStyle = ink.dim;
     ctx.textAlign = "right";
     ctx.textBaseline = "bottom";
     ctx.fillText(`last ${weeks} wk`, W - padR - 1, padT - 2);
   }
 
-  ctx.font = TICK_FONT;
+  ctx.font = tickFont(fs);
   ctx.fillStyle = ink.dim;
   ctx.textAlign = "left";
   ctx.textBaseline = "bottom";
@@ -325,7 +325,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
 
 // ─── Waffle ────────────────────────────────────────────────────────────────────
 
-function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, H: number, colors: string[]) {
+function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, H: number, colors: string[], fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -348,7 +348,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
   }
 
   const legend = !single && counts.some((c) => c.name);
-  const legendH = legend ? 12 : 0;
+  const legendH = legend ? Math.round(12 * fs) : 0;
   const side = Math.min(W, H - legendH);
   const cell = side / 10;
   const gap = Math.max(0.75, cell * 0.12);
@@ -368,7 +368,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
     ctx.fillRect(ox + col * cell, oy + row * cell, cell - gap, cell - gap);
   }
   if (legend) {
-    ctx.font = TICK_FONT;
+    ctx.font = tickFont(fs);
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
     let x = ox;
@@ -378,7 +378,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
       ctx.fillStyle = c.color;
       ctx.fillRect(x, y - 3, 6, 6);
       ctx.fillStyle = ink.dim;
-      const t = fitLabel(ctx, c.name, 52);
+      const t = fitLabel(ctx, c.name, 52 * fs);
       ctx.fillText(t, x + 8, y);
       x += 8 + ctx.measureText(t).width + 8;
       if (x > ox + side - 20) break;
@@ -449,7 +449,7 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
 
 // ─── Contour ───────────────────────────────────────────────────────────────────
 
-function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H: number) {
+function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H: number, fs: number) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -462,7 +462,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   if (!Number.isFinite(zmin)) return;
   if (zmin === zmax) zmax = zmin + 1;
 
-  const padL = 6, padR = 6, padT = 12, padB = 12;
+  const padL = 6, padR = 6, padT = Math.round(12 * fs), padB = Math.round(12 * fs);
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);
   const sx = (v: number) => padL + ((v - xmin) / (xmax - xmin || 1)) * (W - padL - padR);
@@ -519,7 +519,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
     }
   }
 
-  ctx.font = TICK_FONT;
+  ctx.font = tickFont(fs);
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
@@ -541,32 +541,32 @@ function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
 
 const Empty = () => <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
 
-export function WaterfallView({ payload, width, height }: { payload: WaterfallPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawWaterfall(c, payload, width, height));
+export function WaterfallView({ payload, width, height, fscale = 1 }: { payload: WaterfallPayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawWaterfall(c, payload, width, height, fscale));
   if (payload.values.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function CandleView({ payload, width, height }: { payload: CandlePayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawCandle(c, payload, width, height));
+export function CandleView({ payload, width, height, fscale = 1 }: { payload: CandlePayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawCandle(c, payload, width, height, fscale));
   if (payload.close.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function BoxplotView({ payload, width, height }: { payload: BoxplotPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawBoxplot(c, payload, width, height));
+export function BoxplotView({ payload, width, height, fscale = 1 }: { payload: BoxplotPayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawBoxplot(c, payload, width, height, fscale));
   if (payload.boxes.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function CalHeatView({ payload, width, height }: { payload: CalHeatPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawCalHeat(c, payload, width, height));
+export function CalHeatView({ payload, width, height, fscale = 1 }: { payload: CalHeatPayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawCalHeat(c, payload, width, height, fscale));
   if (payload.days.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function WaffleView({ payload, width, height, colors }: { payload: ProportionPayload; width: number; height: number; colors: string[] }) {
-  const ref = useThemedCanvas((c) => drawWaffle(c, payload, width, height, colors));
+export function WaffleView({ payload, width, height, colors, fscale = 1 }: { payload: ProportionPayload; width: number; height: number; colors: string[]; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawWaffle(c, payload, width, height, colors, fscale));
   if (payload.values.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
@@ -579,8 +579,8 @@ export function QuiverView({ payload, width, height }: { payload: QuiverPayload;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function ContourView({ payload, width, height }: { payload: ContourPayload; width: number; height: number }) {
-  const ref = useThemedCanvas((c) => drawContour(c, payload, width, height));
+export function ContourView({ payload, width, height, fscale = 1 }: { payload: ContourPayload; width: number; height: number; fscale?: number }) {
+  const ref = useThemedCanvas((c) => drawContour(c, payload, width, height, fscale));
   const empty = payload.xs.length < 2 || payload.ys.length < 2 || !payload.z.some((r) => r.some((v) => v != null && Number.isFinite(v)));
   if (empty) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;

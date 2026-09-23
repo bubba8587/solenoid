@@ -1,4 +1,5 @@
-// [[C96]] chartOptionsAreMatplotlib
+// [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption
+import type { ChartValueOp } from "../chartValue";
 
 export interface ChartOptions {
   title?: string;
@@ -114,6 +115,11 @@ export interface ChartBuilderFields {
   minutes?: string;
   window?: string;
   columns?: string;
+  collapse?: string;
+  week?: string;
+  fiscal_start?: string;
+  status?: string;
+  group_by?: string;
   cardsize?: string;
   clamp?: string;
   ymin?: number | null;
@@ -154,6 +160,11 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("minutes", f.minutes);
   str("window", f.window);
   str("columns", f.columns);
+  str("collapse", f.collapse);
+  str("week", f.week);
+  str("fiscal_start", f.fiscal_start);
+  str("status", f.status);
+  str("group_by", f.group_by);
   str("cardsize", f.cardsize);
   str("clamp", f.clamp);
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
@@ -173,14 +184,15 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "zoom"
   | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
+  | "collapse" | "week" | "fiscal_start" | "status" | "group_by"
   | "cardsize" | "clamp"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter"
   | "pie" | "radar" | "radialbar" | "funnel"
-  | "composed" | "bubble"
-  | "histogram" | "kpi" | "scale" | "proportion" | "sankey"
+  | "composed" | "bubble" | "overlay"
+  | "histogram" | "histogram2d" | "kpi" | "scale" | "proportion" | "sankey"
   | "waterfall" | "candle" | "boxplot" | "calheat" | "gantt" | "record";
 
 const XY_KEYS: readonly ChartBuilderKey[] =
@@ -190,45 +202,46 @@ const LINE_KEYS: readonly ChartBuilderKey[] =
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "markersize", "alpha", "fontsize"];
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
-const RADAR_KEYS: readonly ChartBuilderKey[] = ["title", "grid", "radarscale", "fontsize"];
+const RADAR_KEYS: readonly ChartBuilderKey[] =
+  ["title", "grid", "marker", "radarscale", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const COMPOSED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const BUBBLE_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "grid", "ymin", "ymax", "fontsize"];
-const AXED_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
+const OVERLAY_KEYS: readonly ChartBuilderKey[] = ["title", "grid", "ymin", "ymax", "linewidth", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
-const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
 const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
-  ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"];
+  ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "group_by", "week", "fiscal_start"];
 const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
-  ["title", "fontsize", "layout", "critical", "minutes", "window"];
+  ["title", "fontsize", "layout", "critical", "minutes", "window", "week"];
 const RECORD_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "cardsize", "clamp"];
 
-export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; keys: readonly ChartBuilderKey[] }> = {
-  column:    { label: "Column",           group: "Cartesian",    keys: XY_KEYS },
-  bar:       { label: "Bar",              group: "Cartesian",    keys: XY_KEYS },
-  line:      { label: "Line",             group: "Cartesian",    keys: LINE_KEYS },
-  area:      { label: "Area",             group: "Cartesian",    keys: LINE_KEYS },
-  scatter:   { label: "Scatter",          group: "Cartesian",    keys: SCATTER_KEYS },
-  pie:       { label: "Pie",              group: "Categorical",  keys: PIE_KEYS },
-  radar:     { label: "Radar",            group: "Categorical",  keys: RADAR_KEYS },
-  radialbar: { label: "Radial",           group: "Categorical",  keys: SLICE_KEYS },
-  funnel:    { label: "Funnel",           group: "Categorical",  keys: SLICE_KEYS },
-  composed:  { label: "Composed",         group: "Multi-series", keys: COMPOSED_KEYS },
-  bubble:    { label: "Bubble",           group: "Multi-series", keys: BUBBLE_KEYS },
-  histogram: { label: "Histogram",        group: "Figures",      keys: AXED_KEYS },
-  kpi:       { label: "KPI",              group: "Figures",      keys: STAT_KEYS },
-  scale:     { label: "Gauge",            group: "Figures",      keys: STAT_KEYS },
-  proportion: { label: "Proportion",      group: "Figures",      keys: STAT_KEYS },
-  sankey:    { label: "Sankey",           group: "Figures",      keys: STAT_KEYS },
-  waterfall: { label: "Waterfall",        group: "Figures",      keys: TITLE_ONLY },
-  candle:    { label: "Candlestick",      group: "Figures",      keys: TITLE_ONLY },
-  boxplot:   { label: "Boxplot",          group: "Figures",      keys: TITLE_ONLY },
-  calheat:   { label: "Calendar Heatmap", group: "Figures",      keys: TITLE_ONLY },
-  gantt:     { label: "Gantt",            group: "Figures",      keys: GANTT_TIMELINE_KEYS },
-  record:    { label: "Record",           group: "Figures",      keys: RECORD_KEYS },
+export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; op: ChartValueOp; keys: readonly ChartBuilderKey[] }> = {
+  column:    { label: "Column",           group: "Cartesian",    op: "column", keys: XY_KEYS },
+  bar:       { label: "Bar",              group: "Cartesian",    op: "bar", keys: XY_KEYS },
+  line:      { label: "Line",             group: "Cartesian",    op: "line", keys: LINE_KEYS },
+  area:      { label: "Area",             group: "Cartesian",    op: "area", keys: LINE_KEYS },
+  scatter:   { label: "Scatter",          group: "Cartesian",    op: "scatter", keys: SCATTER_KEYS },
+  pie:       { label: "Pie",              group: "Categorical",  op: "pie", keys: PIE_KEYS },
+  radar:     { label: "Radar",            group: "Categorical",  op: "radar", keys: RADAR_KEYS },
+  radialbar: { label: "Radial",           group: "Categorical",  op: "radialbar", keys: SLICE_KEYS },
+  funnel:    { label: "Funnel",           group: "Categorical",  op: "funnel", keys: SLICE_KEYS },
+  composed:  { label: "Composed",         group: "Multi-series", op: "composed", keys: COMPOSED_KEYS },
+  bubble:    { label: "Bubble",           group: "Multi-series", op: "bubble", keys: BUBBLE_KEYS },
+  overlay:   { label: "Merge Plots",      group: "Multi-series", op: "overlay", keys: OVERLAY_KEYS },
+  histogram: { label: "Histogram",        group: "Figures",      op: "column", keys: XY_KEYS },
+  histogram2d: { label: "Histogram 2-D",  group: "Figures",      op: "contour", keys: STAT_KEYS },
+  kpi:       { label: "KPI",              group: "Figures",      op: "kpi", keys: STAT_KEYS },
+  scale:     { label: "Gauge",            group: "Figures",      op: "scale", keys: STAT_KEYS },
+  proportion: { label: "Proportion",      group: "Figures",      op: "proportion", keys: STAT_KEYS },
+  sankey:    { label: "Sankey",           group: "Figures",      op: "sankey", keys: STAT_KEYS },
+  waterfall: { label: "Waterfall",        group: "Figures",      op: "waterfall", keys: STAT_KEYS },
+  candle:    { label: "Candlestick",      group: "Figures",      op: "candle", keys: STAT_KEYS },
+  boxplot:   { label: "Boxplot",          group: "Figures",      op: "boxplot", keys: STAT_KEYS },
+  calheat:   { label: "Calendar Heatmap", group: "Figures",      op: "calheat", keys: STAT_KEYS },
+  gantt:     { label: "Gantt",            group: "Figures",      op: "gantt", keys: GANTT_TIMELINE_KEYS },
+  record:    { label: "Record",           group: "Figures",      op: "record", keys: RECORD_KEYS },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])

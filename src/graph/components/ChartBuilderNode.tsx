@@ -138,6 +138,26 @@ const SELECT_KEYS: readonly {
   { key: "labels", label: "Bar labels", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
   { key: "histogram", label: "Resource band", clearValue: "off", options: [{ value: "off", label: "Hidden" }, { value: "on", label: "Shown" }] },
   { key: "minutes", label: "Times", clearValue: "off", options: [{ value: "off", label: "Whole days" }, { value: "on", label: "To the minute" }] },
+  { key: "status", label: "Status line", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "group_by", label: "Project groups", clearValue: "on", options: [{ value: "on", label: "Grouped" }, { value: "off", label: "One list" }] },
+  {
+    key: "collapse", label: "Outline", clearValue: "open",
+    options: [
+      { value: "open", label: "Every level" },
+      { value: "0", label: "Top level" },
+      { value: "1", label: "Two levels" },
+      { value: "2", label: "Three levels" },
+    ],
+  },
+  {
+    key: "week", label: "Week numbers", clearValue: "iso",
+    options: [{ value: "iso", label: "ISO, Monday first" }, { value: "us", label: "US, Sunday first" }],
+  },
+  {
+    key: "fiscal_start", label: "Fiscal year starts", clearValue: "1",
+    options: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+      .map((m, i) => ({ value: String(i + 1), label: m })),
+  },
   {
     key: "cardsize", label: "Tile size", clearValue: "m",
     options: [{ value: "s", label: "Small" }, { value: "m", label: "Medium" }, { value: "l", label: "Large" }],

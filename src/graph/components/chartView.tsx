@@ -159,21 +159,21 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
   if (value.op === "proportion" && value.payload?.kind === "proportion")
     return value.payload.layout === "treemap"
       ? <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} fscale={fscale} />
-      : <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} />;
+      : <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} fscale={fscale} />;
   if (value.op === "sankey" && value.payload?.kind === "sankey")
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "surface" && value.payload?.kind === "surface")
     return <SurfaceView payload={value.payload} width={width} height={height} />;
   if (value.op === "contour" && value.payload?.kind === "contour")
-    return <ContourView payload={value.payload} width={width} height={height} />;
+    return <ContourView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "waterfall" && value.payload?.kind === "waterfall")
-    return <WaterfallView payload={value.payload} width={width} height={height} />;
+    return <WaterfallView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "candle" && value.payload?.kind === "candle")
-    return <CandleView payload={value.payload} width={width} height={height} />;
+    return <CandleView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "boxplot" && value.payload?.kind === "boxplot")
-    return <BoxplotView payload={value.payload} width={width} height={height} />;
+    return <BoxplotView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "calheat" && value.payload?.kind === "calheat")
-    return <CalHeatView payload={value.payload} width={width} height={height} />;
+    return <CalHeatView payload={value.payload} width={width} height={height} fscale={fscale} />;
   if (value.op === "quiver" && value.payload?.kind === "quiver")
     return <QuiverView payload={value.payload} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")

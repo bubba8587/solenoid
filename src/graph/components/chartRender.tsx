@@ -156,7 +156,7 @@ export function ChartView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
-        <Line dataKey="v" stroke={color} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
+        <Line dataKey="v" stroke={color} strokeOpacity={opts?.alpha ?? 1} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </LineChart>
     );
   } else if (op === "area") {
@@ -273,7 +273,7 @@ export function ChartView({
         {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {SCATTER_TIP}
-        <Scatter data={scatterData} fill={color} shape={dot} isAnimationActive={false} />
+        <Scatter data={scatterData} fill={color} fillOpacity={opts?.alpha ?? 1} shape={dot} isAnimationActive={false} />
       </ScatterChart>
     );
   } else {
@@ -394,6 +394,7 @@ export function MultiSeriesView({
   const dotR = opts?.markersize ?? LINE_DOT_R;
   const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
   const fillAlpha = opts?.alpha ?? (op === "area" && series.length >= 2 ? 0.18 : 0.25);
+  const markAlpha = opts?.alpha ?? 1;
   const yDomain = yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
@@ -422,7 +423,7 @@ export function MultiSeriesView({
         {tip}
         {series.map((s, j) => op === "area"
           ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
-          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
+          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={markAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
       </Container>
     );
   } else if (op === "bar") {
@@ -432,7 +433,7 @@ export function MultiSeriesView({
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 52 : 40} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {tip}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   } else if (op === "radar") {
@@ -452,7 +453,7 @@ export function MultiSeriesView({
         {/* Radial tick text would print rotated on the polygons. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} />
         {radarTip}
-        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
+        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
       </RadarChart>
     );
   } else if (op === "scatter") {
@@ -465,7 +466,7 @@ export function MultiSeriesView({
         {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}
         {series.map((s, j) => (
-          <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} shape={dot} isAnimationActive={false}
+          <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} shape={dot} isAnimationActive={false}
             data={data.map((d) => ({ x: numericX ? Number(labels![d.i as number]) : (d.i as number), y: d[`s${j}`] }))} />
         ))}
       </ScatterChart>
@@ -477,7 +478,7 @@ export function MultiSeriesView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   }
@@ -553,13 +554,13 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
         const fillAlpha = (s.alpha ?? 0.25) * o;
         const lineDotR = s.markersize ?? LINE_DOT_R;
         if (s.kind === "line") {
-          return <Line key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
+          return <Line key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={(s.alpha ?? 1) * o} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
         }
         if (s.kind === "area") {
           return <Area key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
         }
         if (s.kind === "scatter") {
-          return <Scatter key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={o} shape={scatterDot(s.markersize ?? SCATTER_DOT_R)} isAnimationActive={false} />;
+          return <Scatter key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={(s.alpha ?? 1) * o} shape={scatterDot(s.markersize ?? SCATTER_DOT_R)} isAnimationActive={false} />;
         }
         return <Bar key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
       })}
