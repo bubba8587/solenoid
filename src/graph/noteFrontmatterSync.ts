@@ -1,6 +1,6 @@
 // [[B1]] obsidianBet
 
-import { getActiveEditor } from "./activeGraph";
+import { getOwningEditor } from "./activeGraph";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 
 /** True when a cable was dropped for a removed output key, which callers fold into an undo entry. */
@@ -9,7 +9,7 @@ export async function dropStrandedFrontmatterCables(
   removed: string[],
   retyped: { key: string; type: SocketDataType }[],
 ): Promise<boolean> {
-  const editor = getActiveEditor();
+  const editor = getOwningEditor(nodeId);
   if (!editor || (removed.length === 0 && retyped.length === 0)) return false;
   const retypedMap = new Map(retyped.map((r) => [r.key, r.type]));
   let strandedByRemoval = false;

@@ -1,5 +1,7 @@
 // [[C38]]
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
+import { forceDemoVault } from "../../../src/graph/demoVault";
+import { refreshAllConnections, whenConnectionsSettled } from "../../../src/graph/connectionStore";
 import { WriteObsidianNode, ImportObsidianNode, obsidianTypeName } from "../../../src/graph/nodes/obsidian";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/copyPaste";
@@ -110,6 +112,28 @@ describe("ImportObsidianNode", () => {
     const reloaded = new ImportObsidianNode(init);
     expect(reloaded.fileName).toBe("notes/weekly.md");
     expect(reloaded.fieldKeys()).toEqual(["a"]); // frontmatter sockets rebuild from the persisted body
+  });
+});
+
+describe("ImportObsidianNode reads the demo vault on the web ([[B2]] webTryDesktopFull)", () => {
+  afterEach(() => forceDemoVault(false));
+
+  it("a wired path loads, and Refresh all connections re-reads the picked note without its card mounted", async () => {
+    forceDemoVault(true);
+    const wiredNode = new ImportObsidianNode();
+    wiredNode.data({ path: ["Projects/Kitchen remodel"] });
+    await whenConnectionsSettled();
+    expect(wiredNode.fileName).toBe("Projects/Kitchen remodel.md");
+    expect(wiredNode.fieldKeys()).toContain("status");
+
+    const picked = new ImportObsidianNode({ fileName: "Projects/Kitchen remodel.md", body: "---\nstale: 1\n---\n" });
+    picked.data({});
+    await whenConnectionsSettled();
+    expect(picked.fieldKeys()).toEqual(["stale"]);
+    await refreshAllConnections();
+    picked.data({});
+    await whenConnectionsSettled();
+    expect(picked.fieldKeys()).toContain("status");
   });
 });
 

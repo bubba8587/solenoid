@@ -27,7 +27,7 @@ A card keeps out of the reference whatever it can apply to the cached result: Ge
 An ordinary `processGraph()`, such as one caused by editing an unrelated card, leaves all three parts unchanged, so the card answers from its cache with no network or disk access. A refresh changes exactly one part:
 
 - `refreshConnection(id)` bumps that card's token, so only that card fetches again. The card's refresh button and its auto-refresh timer both call it.
-- `refreshAllConnections()` bumps the global counter, so every card fetches again. It is the "Refresh all connections" menu item, and it also notifies the store's subscribers so readers outside the engine (an Import Obsidian Note) re-read.
+- `refreshAllConnections()` bumps the global counter, so every card fetches again. It is the "Refresh all connections" menu item, and it also notifies the store's subscribers. Import Obsidian Note sees the new counter in its own `data()` and re-reads its note (the wired path, or the picked file), so a card that is not mounted, inside a composite or a collapsed group, refreshes too; a note renamed or deleted since keeps what was loaded.
 
 Both then run `processGraph()` outside any rebuild scope ([[D32]] refreshOutsideRebuild), so an Alert watching live data still fires on fresh values ([[C39]] effectsEdgeTriggered).
 

@@ -10,7 +10,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, readFileText, pathExists } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
-import { trackInflight, scheduleConnectionRecalc } from "../connectionStore";
+import { connectionStore, trackInflight, scheduleConnectionRecalc } from "../connectionStore";
 import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
 import { mdbaseSchemaFor, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
@@ -423,15 +423,22 @@ export class ImportObsidianNode extends NoteNode {
   }
 
   private _wiredPath = "";
+  private _seenGen = connectionStore.gen();
 
   data(inputs?: { path?: (string | null)[] }): ReturnType<NoteNode["data"]> {
     const wired = (readInput(inputs?.path, "") ?? "").trim();
+    const readable = hasFs() || isDemoVaultPath(getVaultRoot());
+    // "Refresh all connections" re-reads the note here, so a card that is not mounted (in a composite, a collapsed group) refreshes too.
+    const gen = connectionStore.gen();
+    const refresh = gen !== this._seenGen;
+    this._seenGen = gen;
     // Dedupe on the raw wired value, not fileName (which gains `.md`), or a stable input reloads forever.
     if (!wired) {
       this._wiredPath = "";
-    } else if (wired !== this._wiredPath && hasFs()) {
+      if (refresh && readable && this.fileName) void trackInflight(this.reloadFile());
+    } else if ((wired !== this._wiredPath || refresh) && readable) {
       this._wiredPath = wired;
-      void trackInflight(this.loadFromWire(wired));
+      void trackInflight(this.loadFromWire(wired, refresh));
     }
     const base = super.data();
     return base instanceof Promise
@@ -439,7 +446,16 @@ export class ImportObsidianNode extends NoteNode {
       : { ...base, path: this.fileName };
   }
 
-  private async loadFromWire(path: string): Promise<void> {
+  /** A note renamed or deleted since keeps what was loaded. */
+  async reloadFile(): Promise<void> {
+    try {
+      const vault = getVaultRoot().trim();
+      const { readVaultFile } = await import("../fileBridge");
+      await this.applyFile(vault, this.fileName, await readVaultFile(vault, this.fileName));
+    } catch { /* gone: keep the current body */ }
+  }
+
+  private async loadFromWire(path: string, force = false): Promise<void> {
     try {
       const vault = getVaultRoot().trim();
       const { readVaultFile, listVaultMarkdownFiles } = await import("../fileBridge");
@@ -448,19 +464,23 @@ export class ImportObsidianNode extends NoteNode {
       const base = (path.split("/").pop() ?? path).replace(/\.md$/i, "").toLowerCase();
       const rel = files.includes(withMd) ? withMd
         : files.find((f) => (f.split("/").pop() ?? f).replace(/\.md$/i, "").toLowerCase() === base) ?? null;
-      if (!rel || rel === this.fileName) return;
-      const content = await readVaultFile(vault, rel);
-      this.body = content;
-      this.fileName = rel;
-      if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
-        this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
-      }
-      await this.loadColumnPicks(vault);
-      const { removed, retyped } = this.syncFields();
-      const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
-      await dropStrandedFrontmatterCables(this.id, removed, retyped);
-      await getOwningView(this.id)?.rerenderNode(this.id);
-      scheduleConnectionRecalc();
+      if (!rel || (rel === this.fileName && !force)) return;
+      await this.applyFile(vault, rel, await readVaultFile(vault, rel));
     } catch { /* unreadable (moved / renamed / off-desktop) — keep the current body */ }
+  }
+
+  private async applyFile(vault: string, rel: string, content: string): Promise<void> {
+    if (content === this.body && rel === this.fileName) return;
+    this.body = content;
+    this.fileName = rel;
+    if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
+      this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
+    }
+    await this.loadColumnPicks(vault);
+    const { removed, retyped } = this.syncFields();
+    const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
+    await dropStrandedFrontmatterCables(this.id, removed, retyped);
+    await getOwningView(this.id)?.rerenderNode(this.id);
+    scheduleConnectionRecalc();
   }
 }
