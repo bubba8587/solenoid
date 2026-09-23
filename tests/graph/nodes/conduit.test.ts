@@ -1,6 +1,6 @@
 // [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[D17]] relaysTransparent
 import { describe, it, expect } from "vitest";
-import { ConduitNode, conduitGhostSpecs, conduitLaneOf } from "../../../src/graph/nodes/conduit";
+import { ConduitNode, conduitGhostSpecs, conduitLaneOf, conduitSeqTaken } from "../../../src/graph/nodes/conduit";
 
 // rotateBy is what the Canvas `[` / `]` keys call. It must keep the angle on the
 // 45° quantum and wrap into [0, 360) in both directions.
@@ -88,5 +88,22 @@ describe("conduitGhostSpecs", () => {
     const incoming = [conn("A", "result", "cd", "in_0"), conn("A", "result", "cd", "in_1")];
     const outgoing = [conn("cd", "out_0", "C", "in"), conn("cd", "out_1", "C", "in")];
     expect(conduitGhostSpecs(incoming, outgoing, [])).toEqual([conn("A", "result", "C", "in")]);
+  });
+});
+
+describe("Conduit angle and sequence number", () => {
+  it("snaps a loaded angle onto the 45° quantum in [0, 360)", () => {
+    expect(new ConduitNode({ angle: 30 }).angle).toBe(45);
+    expect(new ConduitNode({ angle: -90 }).angle).toBe(270);
+    expect(new ConduitNode({ angle: 720 }).angle).toBe(0);
+    expect(new ConduitNode({ angle: Number.NaN }).angle).toBe(0);
+  });
+
+  it("reports a number another Conduit in the graph already holds", () => {
+    const a = new ConduitNode({ seq: 900 });
+    const b = new ConduitNode({ seq: 901 });
+    expect(conduitSeqTaken([a, b], b, 900)).toBe(true);
+    expect(conduitSeqTaken([a, b], b, 901)).toBe(false);
+    expect(conduitSeqTaken([a, b], b, 902)).toBe(false);
   });
 });

@@ -9,6 +9,7 @@ import {
   CONDUIT_MAX_LANES,
   conduitInKey,
   conduitOutKey,
+  conduitSeqTaken,
 } from "../rete-nodes";
 import type { SolenoidConnection, SolenoidNode } from "../schemes";
 import { cableAngleStore } from "../cableAngleStore";
@@ -96,7 +97,8 @@ export function ConduitComponent({ data }: Props) {
     String,
     (t) => {
       const n = Math.floor(Number(t));
-      return Number.isFinite(n) && n >= 1 ? n : INVALID_DRAFT;
+      if (!Number.isFinite(n) || n < 1) return INVALID_DRAFT;
+      return conduitSeqTaken(getOwningEditor(node.id)?.getNodes() ?? [], node, n) ? INVALID_DRAFT : n;
     },
     (v) => { node.setSeq(v); void processGraph(); },
   );

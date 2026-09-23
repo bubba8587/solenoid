@@ -1,6 +1,7 @@
 // [[C30]] saveViaTextForm, [[C86]] membershipByGesture, [[D50]] everyFieldClassified, [[C29]] plainJsonInit
-import { ClassicPreset } from "rete";
-import type { SolenoidNode, SolenoidConnection } from "./schemes";
+import { ClassicPreset, type NodeEditor } from "rete";
+import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
+import { dockedNodeStore } from "./dockedNodeStore";
 import { beginGraphRebuild, endGraphRebuild, bulkSettle, processGraph } from "./process";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { getCtorRegistry } from "./ctorProvider";
@@ -9,8 +10,15 @@ import { collapseStore } from "./collapseStore";
 import { socketFlipStore } from "./socketFlipStore";
 import { nodeNameStore } from "./nodeNameStore";
 
+// A snapshot taken at copy time, so a later edit or delete of the source never changes what pastes.
 interface ClipboardEntry {
-  node: SolenoidNode;
+  id: string;
+  Ctor: new (init?: Record<string, unknown>) => ClassicPreset.Node;
+  init: Record<string, unknown>;
+  literals?: Record<string, number>;
+  stringLiterals?: Record<string, string>;
+  collapsed: boolean;
+  flipped: boolean;
   x: number;
   y: number;
 }
@@ -27,20 +35,45 @@ interface ClipboardData {
 
 let _clipboard: ClipboardData | null = null;
 
+// By name, not instanceof: composite.ts imports this module.
+const isMarker = (n: { constructor: { name: string } }) =>
+  n.constructor.name === "CompositeInputNode" || n.constructor.name === "CompositeOutputNode";
+
+/** The nodes a copy takes: the selection, a group's members and every docked FC riding a copied node, never a boundary marker. */
+export function copySet(editor: NodeEditor<Schemes>): SolenoidNode[] {
+  const ids = new Set<string>();
+  for (const n of editor.getNodes()) {
+    if (!n.selected) continue;
+    ids.add(n.id);
+    const members = (n as unknown as { members?: string[] }).members;
+    if (Array.isArray(members)) for (const m of members) ids.add(m);
+  }
+  for (const id of [...ids]) for (const d of dockedNodeStore.getDockedTo(id)) ids.add(d.id);
+  return editor.getNodes().filter((n) => ids.has(n.id) && !isMarker(n)) as SolenoidNode[];
+}
+
+function snapshotEntry(n: ClassicPreset.Node, x: number, y: number): ClipboardEntry {
+  const any = n as unknown as Record<string, unknown>;
+  return {
+    id: n.id,
+    Ctor: n.constructor as ClipboardEntry["Ctor"],
+    init: structuredClone(extractInit(n)),
+    literals: any.literals && typeof any.literals === "object" ? { ...(any.literals as Record<string, number>) } : undefined,
+    stringLiterals: any.stringLiterals && typeof any.stringLiterals === "object" ? { ...(any.stringLiterals as Record<string, string>) } : undefined,
+    collapsed: !!collapseStore.get(n.id),
+    flipped: !!socketFlipStore.get(n.id),
+    x,
+    y,
+  };
+}
+
 export function copySelected() {
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return;
 
-  const isMarker = (n: { constructor: { name: string } }) => n.constructor.name === "CompositeInputNode" || n.constructor.name === "CompositeOutputNode";
-  const directly = editor.getNodes().filter((n) => n.selected && !isMarker(n)) as SolenoidNode[];
-  if (directly.length === 0) return;
-  const ids = new Set(directly.map((n) => n.id));
-  for (const n of directly) {
-    const members = (n as unknown as { members?: string[] }).members;
-    if (Array.isArray(members)) for (const m of members) ids.add(m);
-  }
-  const selected = editor.getNodes().filter((n) => ids.has(n.id)) as SolenoidNode[];
+  const selected = copySet(editor);
+  if (selected.length === 0) return;
 
   const selectedIds = new Set(selected.map((n) => n.id));
   const internalConns = editor.getConnections().filter(
@@ -56,11 +89,7 @@ export function copySelected() {
   const idxMap = new Map(selected.map((n, i) => [n.id, i]));
 
   _clipboard = {
-    entries: selected.map((n, i) => ({
-      node: n,
-      x: positions[i].x - minX,
-      y: positions[i].y - minY,
-    })),
+    entries: selected.map((n, i) => snapshotEntry(n, positions[i].x - minX, positions[i].y - minY)),
     connections: internalConns.map((c) => ({
       srcIdx: idxMap.get(c.source)!,
       srcOutput: c.sourceOutput,
@@ -189,19 +218,18 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   return init;
 }
 
+/** A copy of one node as the clipboard would paste it. */
 export function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
+  return cloneEntry(snapshotEntry(src, 0, 0));
+}
+
+function cloneEntry(e: ClipboardEntry): ClassicPreset.Node | null {
   try {
-    const Ctor = src.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
-    const clone = new Ctor(extractInit(src));
+    const clone = new e.Ctor(structuredClone(e.init));
     // Restore the value maps after construction, or the constructor's own defaults overwrite them.
-    const srcAny = src as unknown as Record<string, unknown>;
     const cloneAny = clone as unknown as Record<string, unknown>;
-    if (srcAny.literals && typeof srcAny.literals === "object") {
-      cloneAny.literals = { ...(srcAny.literals as Record<string, number>) };
-    }
-    if (srcAny.stringLiterals && typeof srcAny.stringLiterals === "object") {
-      cloneAny.stringLiterals = { ...(srcAny.stringLiterals as Record<string, string>) };
-    }
+    if (e.literals) cloneAny.literals = { ...e.literals };
+    if (e.stringLiterals) cloneAny.stringLiterals = { ...e.stringLiterals };
     return clone;
   } catch {
     return null;
@@ -220,11 +248,12 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   const originX = canvasX + PASTE_OFFSET;
   const originY = canvasY + PASTE_OFFSET;
 
-  const clones = _clipboard.entries.map((e) => cloneNode(e.node));
+  const clip = _clipboard;
+  const clones = clip.entries.map(cloneEntry);
 
   const oldToNew = new Map<string, string>();
   for (let i = 0; i < clones.length; i++) {
-    if (clones[i]) oldToNew.set(_clipboard.entries[i].node.id, clones[i]!.id);
+    if (clones[i]) oldToNew.set(clip.entries[i].id, clones[i]!.id);
   }
   for (const clone of clones) {
     if (!clone) continue;
@@ -249,14 +278,14 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   for (let i = 0; i < clones.length; i++) {
     const clone = clones[i];
     if (!clone) continue;
-    if (collapseStore.get(_clipboard.entries[i].node.id)) collapseStore.set(clone.id, true);
-    if (socketFlipStore.get(_clipboard.entries[i].node.id)) socketFlipStore.set(clone.id, true);
+    if (clip.entries[i].collapsed) collapseStore.set(clone.id, true);
+    if (clip.entries[i].flipped) socketFlipStore.set(clone.id, true);
     const fresh = (clone as unknown as { assignFreshSeq?: () => void }).assignFreshSeq;
     if (typeof fresh === "function") fresh.call(clone);
-    toAdd.push({ clone: clone as SolenoidNode, x: originX + _clipboard.entries[i].x, y: originY + _clipboard.entries[i].y });
+    toAdd.push({ clone: clone as SolenoidNode, x: originX + clip.entries[i].x, y: originY + clip.entries[i].y });
   }
 
-  if (!subgraph) unselectAllNodes();
+  unselectAllNodes();
   beginGraphRebuild();
   try {
     await Promise.all(toAdd.map(async ({ clone, x, y }) => {
@@ -269,8 +298,8 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       const hydrate = (clone as unknown as { hydrate?: (r: typeof reg) => Promise<void> }).hydrate;
       if (typeof hydrate === "function") await hydrate(reg);
     }
-    if (!subgraph) toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
-    for (const conn of _clipboard.connections) {
+    toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
+    for (const conn of clip.connections) {
       const src = clones[conn.srcIdx];
       const tgt = clones[conn.tgtIdx];
       if (!src || !tgt) continue;
@@ -285,6 +314,11 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
         );
       } catch {
       }
+    }
+    // The copied cables already carry the splice, so re-docking only registers the dock.
+    for (const { clone } of toAdd) {
+      const fc = clone as unknown as { hostNodeId?: string; dockSelf?: (e: typeof editor) => void };
+      if (fc.hostNodeId && typeof fc.dockSelf === "function") fc.dockSelf(editor);
     }
   } finally {
     endGraphRebuild();

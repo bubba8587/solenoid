@@ -32,6 +32,7 @@ A readout row shows one of the group's terminals: a value that leaves the group 
    - Display → nothing: shown.
    - Display → FC → outside: shown, as the Display.
    - Display → FC → inside only: no row.
+   - A shown Display read through its FC that also feeds outside directly: that direct cable leaves from the Display's row too, so no crossing cable is left pointing at a hidden socket.
 2. **Other outputs that cross the edge.** Any other member output socket with a cable leaving the group gets a generic row: the member's label and its live value from `cableValueStore`. There is one row per source socket. Two refinements apply only in `recomputeGroupCollapse`:
    - if the value's source already feeds a shown Display, the crossing gets a pill on that Display's row instead of a second row;
    - for a Conduit lane, the row is labeled with the node that feeds the matching input lane, since that is where the value comes from.

@@ -15,7 +15,7 @@ A collapsed group draws as a small card. Expanding it back to full size would co
 The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush`, `separateOverlaps` and `separateAll` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
 
 - **Movable boxes** are every group plus every loose node: a node that is in no group and is not a docked Format Controller (FC).
-- A loose node's box is widened by the width of any FC docked to its output side (FC width plus 8), because the docked FC has no box of its own.
+- A loose node's box reaches over its docked FCs (FC width plus 8), rightward for an FC docked to an output and leftward for one docked to an input, because a docked FC has no box of its own.
 - An expanded group is read at its stored size, which is exactly the size it renders at; React Flow's measure lags a resize by a frame. A collapsed group is read at its card size.
 - A group moves with its members; a loose node moves with any FC docked to it.
 - All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.

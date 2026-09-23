@@ -207,3 +207,28 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
   await bulkSettle();
   return true;
 }
+
+/** Drops every port whose marker was deleted inside, with the parent's cables on it; run for each level a breadcrumb jump leaves. */
+export async function reconcileLeftPorts(
+  comp: CompositeNode,
+  parentEditor: Editor,
+): Promise<{ cables: number; ports: number }> {
+  let cables = 0;
+  let ports = 0;
+  for (const p of [...comp.inputPorts]) {
+    if (comp.internalEditor.getNode(p.internalNodeId)) continue;
+    const doomed = parentEditor.getConnections().filter((c) => c.target === comp.id && c.targetInput === p.id);
+    for (const c of doomed) await parentEditor.removeConnection(c.id);
+    if (doomed.length > 0) { cables += doomed.length; ports++; }
+    comp.removeInputPort(p.id);
+  }
+  for (const p of [...comp.outputPorts]) {
+    if (comp.internalEditor.getNode(p.internalNodeId)) continue;
+    const doomed = parentEditor.getConnections().filter((c) => c.source === comp.id && c.sourceOutput === p.id);
+    for (const c of doomed) await parentEditor.removeConnection(c.id);
+    if (doomed.length > 0) { cables += doomed.length; ports++; }
+    comp.removeOutputPort(p.id);
+  }
+  comp.syncPortLabels();
+  return { cables, ports };
+}

@@ -57,6 +57,21 @@ function claimSeq(n?: number): number {
   return _nextSeq++;
 }
 
+/** On the 45° quantum and in [0, 360), whatever a save or a caller hands in. */
+export function snapConduitAngle(deg: unknown): number {
+  const d = typeof deg === "number" && Number.isFinite(deg) ? deg : 0;
+  const s = Math.round(d / 45) * 45;
+  return ((s % 360) + 360) % 360;
+}
+
+/** Another Conduit in the same graph already holds `n`, so both would read "Conduit N". */
+export function conduitSeqTaken(nodes: Iterable<object>, self: object, n: number): boolean {
+  for (const other of nodes) {
+    if (other !== self && other instanceof ConduitNode && other.seq === n) return true;
+  }
+  return false;
+}
+
 export class ConduitNode extends ClassicPreset.Node {
   /** Lanes forward tags untouched ([[D42]] perInputUnitBlind). */
   unitAware = true;
@@ -73,7 +88,7 @@ export class ConduitNode extends ClassicPreset.Node {
     super("Conduit");
     this.seq = claimSeq(init?.seq);
     this.label = init?.label && init.label !== "Conduit" ? init.label : `Conduit ${this.seq}`;
-    this.angle = init?.angle ?? 0;
+    this.angle = snapConduitAngle(init?.angle);
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
       // `trueany` in, the supremum ([[D15]] wildcardsKeepRank); a fresh MutableSocket out per
       // lane ([[E6]] portOwnsSocket) so the lane carries its adopted type on.
@@ -83,8 +98,7 @@ export class ConduitNode extends ClassicPreset.Node {
   }
 
   rotateBy(steps: number) {
-    const next = (Math.round(this.angle / 45) + steps) * 45;
-    this.angle = ((next % 360) + 360) % 360;
+    this.angle = snapConduitAngle(this.angle + steps * 45);
   }
 
   setSeq(n: number) {

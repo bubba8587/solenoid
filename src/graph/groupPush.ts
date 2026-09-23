@@ -91,13 +91,16 @@ function buildWorld(editor: Editor, view: View, expandedIds: Set<string>): World
       const mb = measuredBox(view, n.id, editor);
       const w = mb?.w ?? 100;
       const h = mb?.h ?? 50;
-      let fcW = 0;
+      // A docked FC rides its host, so the host's box reaches over it: right for an output dock, left for an input dock.
+      let fcRight = 0;
+      let fcLeft = 0;
       for (const d of dockedNodeStore.getDockedTo(n.id)) {
-        if (d.side !== "output") continue;
         const fc = editor.getNode(d.id) as { width?: number } | undefined;
-        if (fc?.width) fcW = Math.max(fcW, fc.width + 8);
+        if (!fc?.width) continue;
+        if (d.side === "output") fcRight = Math.max(fcRight, fc.width + 8);
+        else fcLeft = Math.max(fcLeft, fc.width + 8);
       }
-      boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w: w + fcW, h });
+      boxes.set(n.id, { id: n.id, x: p.x - fcLeft, y: p.y, w: w + fcLeft + fcRight, h });
       looseIds.add(n.id);
     }
   }

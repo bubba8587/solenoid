@@ -153,8 +153,9 @@ export async function insertFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
 export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatControllerNode): Promise<void> {
   const host = fc.hostNodeId ? editor.getNode(fc.hostNodeId) : undefined;
   const hostKey = fc.socketKey;
+  const hostSocket = fc.side === "output" ? host?.outputs[hostKey] : host?.inputs[hostKey];
 
-  if (!host) {
+  if (!host || !hostSocket) {
     const inConn = editor.getConnections().find((c) => c.target === fc.id && c.targetInput === "in");
     const src = inConn ? editor.getNode(inConn.source) : undefined;
     for (const c of editor.getConnections().filter((c) => c.source === fc.id && c.sourceOutput === "out")) {
@@ -174,7 +175,7 @@ export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       const tgt = editor.getNode(c.target);
       const targetInput = c.targetInput;
       await editor.removeConnection(c.id);
-      if (host && tgt) {
+      if (tgt) {
         try { await editor.addConnection(new ClassicPreset.Connection(host, hostKey, tgt, targetInput) as SolenoidConnection); } catch { /* ignore */ }
       }
     }
@@ -186,7 +187,7 @@ export async function removeFcInline(editor: NodeEditor<Schemes>, fc: FormatCont
       const src = editor.getNode(c.source);
       const sourceOutput = c.sourceOutput;
       await editor.removeConnection(c.id);
-      if (host && src) {
+      if (src) {
         try { await editor.addConnection(new ClassicPreset.Connection(src, sourceOutput, host, hostKey) as SolenoidConnection); } catch { /* ignore */ }
       }
     }

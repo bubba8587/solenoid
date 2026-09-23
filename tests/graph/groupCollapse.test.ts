@@ -82,6 +82,24 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(rows[0].displayId).toBe(disp.id);
     expect(rows[0].effNodeId).toBe(fc.id);
   });
+
+  it("a Display read through a member FC still gets a pill for its own cable leaving the group", async () => {
+    const editor = new NodeEditor<Schemes>() as Editor;
+    const disp = new DisplayNode();
+    const fc = new FormatControllerNode();
+    const outA = new DisplayNode();
+    const outB = new DisplayNode();
+    for (const n of [disp, fc, outA, outB]) await editor.addNode(n as never);
+    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", fc as never, "in") as never);
+    await editor.addConnection(new ClassicPreset.Connection(fc as never, "out", outA as never, "in") as never);
+    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", outB as never, "in") as never);
+    const group = new GroupNode({ members: [disp.id, fc.id], collapsed: true });
+    await editor.addNode(group as never);
+    recomputeGroupCollapse(editor);
+    const viaFc = groupCollapseStore.outPillFor(fc.id, "out");
+    expect(viaFc).toBeDefined();
+    expect(groupCollapseStore.outPillFor(disp.id, "out")).toEqual(viaFc);
+  });
 });
 
 describe("collapse state is per editor", () => {
