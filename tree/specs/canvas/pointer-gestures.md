@@ -113,6 +113,7 @@ Locking is CSS plus React Flow props, and both surfaces apply both halves.
 
 - The wrapper gets `.solenoid-canvas--locked`, which sets `pointer-events: none !important` on node and group chrome and on cable hit paths (`canvas.css`). Presses and wheels fall through to the pane, so pan and zoom stay live, but nothing can be wired, selected or edited.
 - The surface passes `nodesDraggable`, `nodesConnectable` and `elementsSelectable` as `!locked`.
+- The Add menu does not open on a locked surface, from the A key, the menu bar, the pane's right-click or a dropped cable, since a pick would add a card.
 
 Keep the class on both surfaces. Without it, a locked drill-in would leave its fields and sockets editable. The keyboard half of locking is in [[react-flow-surface-contract]]: the keys that move, add or remove stand down, and the view keys stay live.
 

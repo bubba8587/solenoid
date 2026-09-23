@@ -30,6 +30,9 @@ const GROUPS: Group[] = [
   {
     title: "Edit",
     rows: [
+      { keys: ["Ctrl", "S"], label: "Save" },
+      { keys: ["Ctrl", "Shift", "S"], label: "Save as" },
+      { keys: ["Ctrl", "O"], label: "Open a document" },
       { keys: ["Ctrl", "Z"], label: "Undo" },
       { keys: ["Ctrl", "Shift", "Z"], label: "Redo" },
       { keys: ["Ctrl", "Y"], label: "Alternate redo" },
