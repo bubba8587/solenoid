@@ -15,11 +15,11 @@ colors:
   canvas-bg: "#0b0b0b"
   sock-number: "#f5b914"
   sock-string: "#c8e040"
-  sock-date: "#d685b1"
+  sock-date: "#de7cb0"
   sock-complex: "#56b4e9"
-  sock-table: "#e96b3c"
-  sock-frame: "#8e64ed"
-  sock-lambda: "#00b890"
+  sock-table: "#e17c00"
+  sock-frame: "#7b64ed"
+  sock-lambda: "#00b862"
   sock-any: "#8a8f98"
   danger: "#e0473a"
   success: "#2fae7a"
@@ -129,14 +129,13 @@ The socket colors are the system's real palette: each data type owns a hue so a 
 
 **The sibling derivation runs in HSV** (`palette.ts`) — the same space as `themeAccent` / `darkenAccent` / `socketRingShade`, so the whole family is tuned on one set of axes and each knob does exactly one thing: array = HSV value ×0.85; matrix = hue −11°, S ×1.18, V ×0.92. Do NOT reintroduce an RGB multiply or HSL step - use HSV. This rule's scope is these fixed near-hue steps; the one derivation that crosses hue regions — the adaptive-chrome rotation — runs in OKLCh for the same underlying reason (see §Secondary), not as an exception to it. The socket RING is a fixed HSV value drop rather than one translucent black.
 
-- **Number Amber** (`#f5b914`): scalar numbers. List sibling `#c08512`.
-- **String Lime** (`#c8e040`): scalar text. List sibling `#7a9210`.
-- **Date Orchid** (`#d685b1`): scalar dates. List sibling `#c06a98`.
-- **Complex Sky** (`#56b4e9`): complex/scalar-or-list. Matrix sibling `#2a8fd9`.
+- **Number Amber** (`#f5b914`): scalar numbers. List sibling `#d09d11`; its table sibling `#e17c00` is `--sock-table`, the number table.
+- **String Lime** (`#c8e040`): scalar text. List sibling `#aabe36`.
+- **Date Orchid** (`#de7cb0`): scalar dates. List sibling `#bd6996`.
+- **Complex Sky** (`#56b4e9`): complex/scalar-or-list. Matrix sibling `#37bad6`.
 - **Logical Purple** (`#c05dd1`): booleans (TRUE/FALSE), with list/matrix siblings.
-- **Table Coral** (`#e96b3c`): table/frame data.
-- **Frame Violet** (`#8e64ed`): named-column frames.
-- **Lambda Teal** (`#00b890`): lambda values.
+- **Frame Violet** (`#7b64ed`): named-column frames and cubes.
+- **Lambda Green** (`#00b862`): lambda values and charts.
 - **Any Gray** (`#8a8f98`): untyped sockets (`trueany` is the same gray as a hollow,
   border-only ring).
 

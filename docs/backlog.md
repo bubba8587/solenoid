@@ -35,7 +35,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Found in the comment lift (verify against the code, then fix or rule)
 
-- [ ] **For the author:** DESIGN.md still lists Table Coral for table and frame data, while `--sock-table` is gold; the AI-mode "quiet accent" rule in the Command Palette isn't in DESIGN.md; the Range kernel includes Stop on an author ruling whose reason was never recorded.
+- [ ] **For the author:** the Range kernel includes Stop on an author ruling whose reason was never recorded.
 
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
