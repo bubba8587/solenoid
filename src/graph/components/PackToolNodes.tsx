@@ -8,6 +8,7 @@ import {
 } from "../rete-nodes";
 import { PIPE_ROUGHNESS } from "../nodes/fluidsOps";
 import type { TriangleSolved } from "../nodes/triangleOps";
+import { isUnitCell } from "../unitValue";
 import { NodeShell, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
@@ -127,7 +128,7 @@ export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolver
   // The figure draws ONE triangle — index 0 when parts are broadcast lists.
   const scalarPart = (val: unknown): number | undefined => {
     const cell = Array.isArray(val) ? val[0] : val;
-    return typeof cell === "number" ? cell : undefined;
+    return typeof cell === "number" ? cell : isUnitCell(cell) ? cell.value : undefined;
   };
   const figureParts = Object.fromEntries(
     TRIANGLE_KEYS.map((k) => [k, scalarPart(v[k])]),
