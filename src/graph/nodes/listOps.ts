@@ -1,6 +1,7 @@
 // [[C17]], [[C60]], [[D19]], [[C21]] matchNodeLimits (MAX_GENERATED), [[C110]] rangeIncludesStop
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
+import { isUnitCell } from "../unitValue";
 import { forAggregate, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
 import { percentileOf } from "./statsOps";
@@ -476,8 +477,11 @@ export function fibonacci(count: number): number[] {
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
 // JavaScript Sets key objects by reference, so a complex value canonicalizes to a string; primitives key as themselves.
+/** Equal values share a key: complex by parts, a unit cell by base-SI magnitude and dimension, so 5 km and 5000 m are one member ([[C25]] firstClassUnits). */
 export function setKey(v: unknown): unknown {
-  return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
+  if (isCx(v)) return `\x00cx:${v.re},${v.im}`;
+  if (isUnitCell(v)) return `\x00u:${v.value}:${Object.keys(v.dim).sort().map((k) => `${k}${v.dim[k]}`).join(",")}`;
+  return v;
 }
 
 function memberSet(arr: readonly unknown[]): Set<unknown> {

@@ -909,3 +909,23 @@ describe("Running — the window's domain", () => {
     expect(n.data({ list: [[1, 2, 3, 4]], window: [0] }).result).toEqual([1, 3, 6, 10]);
   });
 });
+
+describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
+  it("dedupes text like the formula does, and passes its input type through", async () => {
+    const { UniqueNode } = await import("../../../src/graph/nodes/list");
+    const { compileEvaluator } = await import("../../../src/graph/excelFormula");
+    const n = new UniqueNode();
+    expect(n.data({ list: [["a", "b", "a"]] }).result).toEqual(["a", "b"]);
+    expect(compileEvaluator("UNIQUE(x)")!({ x: ["a", "b", "a"] })).toEqual(["a", "b"]);
+    expect(n.passthrough()).toEqual([{ output: "result", inputs: ["list"], combine: "single" }]);
+  });
+  it("5 km and 5000 m are one member", async () => {
+    const { uniqueList } = await import("../../../src/graph/nodes/listOps");
+    const { fromUnit } = await import("../../../src/graph/unitValue");
+    const { parseUnit } = await import("../../../src/graph/dimension");
+    const km = fromUnit(5, parseUnit("km")!, "km");
+    const m = fromUnit(5000, parseUnit("m")!, "m");
+    const s = fromUnit(5, parseUnit("s")!, "s");
+    expect(uniqueList([km, m, s])).toEqual([km, s]);
+  });
+});

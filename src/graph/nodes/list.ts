@@ -1098,21 +1098,22 @@ export class SumIfsNode extends ClassicPreset.Node {
 // ─── Array operation nodes ────────────────────────────────────────────────────
 
 export class UniqueNode extends ClassicPreset.Node {
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  cachedList: number[] = [];
+  cachedList: unknown[] = [];
   width = 180;
   height = 120;
 
   constructor(init?: { label?: string }) {
     super("Unique");
     this.label = init?.label ?? "UNIQUE";
-    this.addInput("list",   listIn("List"));
-    this.addOutput("result", listOut("Unique"));
+    this.addInput("list",   adoptiveListIn("List"));
+    this.addOutput("result", adoptiveListOut("Unique"));
   }
 
-  data(inputs: { list?: number[][] }) {
-    const arr = (inputs.list?.[0] ?? []) as unknown[];
-    this.cachedList = uniqueList(arr) as number[];
+  data(inputs: { list?: unknown[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    this.cachedList = uniqueList(arr);
     return { result: this.cachedList };
   }
 }
