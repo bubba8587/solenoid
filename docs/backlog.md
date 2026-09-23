@@ -35,6 +35,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
+- [ ] **The stack merge (author to rule):** Append and Bind Columns (Frames) sit beside XSTACK (lists and tables). [[E14]] frameVerbExcelNames says the Frame pair becomes VSTACK and HSTACK when the stack merge lands; [[C48]] appendLadder keeps one append node per rank, which reads as keeping them apart. Pick one and the other node gets reworded.
 - [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
 
 ## Composites
