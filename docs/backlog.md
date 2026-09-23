@@ -35,7 +35,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
-- [ ] **The stack merge (author to rule):** Append and Bind Columns (Frames) sit beside XSTACK (lists and tables). [[E14]] frameVerbExcelNames says the Frame pair becomes VSTACK and HSTACK when the stack merge lands; [[C48]] appendLadder keeps one append node per rank, which reads as keeping them apart. Pick one and the other node gets reworded.
 - [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
 
 ## Composites
@@ -169,13 +168,6 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   missing under Excel parity / divergence, or the finding is noise (feedback 4). The author decides.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
   commit flow); `validate` is not in CI either.
-
-## Canvas annotation
-
-- [ ] **Drawn cables: nothing tows one.** A drawn arrow annotating a node stays put when that node
-  moves, Tidy runs, or a group expands. An optional per-END anchor to a node id would fix it and is
-  the natural v2; deliberately out of v1 (they take no part in layout).
-
 
 ## Formatting & units
 
