@@ -40,6 +40,7 @@ export class DataFeedNode extends ClassicPreset.Node {
   }
 
   data(): { frame: FrameValue | null } {
+    connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const p = this.preset();
     const input = (this.stringLiterals.input ?? "").trim();
     if (input === "") {
@@ -67,7 +68,7 @@ export class DataFeedNode extends ClassicPreset.Node {
     if (cacheKey === this.lastKey) return { frame: this.cachedResult };
     if (this.inflightKey !== cacheKey) {
       this.inflightKey = cacheKey;
-      void this.fetchFrame(url, cacheKey).then(() => scheduleConnectionRecalc());
+      void this.fetchFrame(url, cacheKey).then(() => scheduleConnectionRecalc(this.id));
     }
     return { frame: this.cachedResult };
   }
