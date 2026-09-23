@@ -1,4 +1,5 @@
 // [[E8]]
+import { flushDrafts } from "./draftFlush";
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
@@ -430,14 +431,16 @@ export function scheduleAutosave(): void {
   _timer = setTimeout(() => {
     _timer = null;
     if (_suspend > 0) return;
-    documentStore.captureCurrent();
+    documentStore.captureCurrent({ keepDrafts: true });
   }, AUTOSAVE_DELAY);
 }
 
 if (typeof window !== "undefined") {
   window.addEventListener("pagehide", () => {
-    if (_timer === null || _suspend > 0) return;
-    clearTimeout(_timer);
+    if (_suspend > 0) return;
+    const flushed = flushDrafts();
+    if (_timer === null && !flushed) return;
+    if (_timer) clearTimeout(_timer);
     _timer = null;
     documentStore.captureCurrent();
   });

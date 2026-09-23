@@ -1,4 +1,5 @@
 // [[C68]] knapIsTheDocumentSyntax
+import { usePendingDraft } from "../draftFlush";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";
@@ -196,6 +197,8 @@ export function ReportOverlay() {
     await processGraph();
     setRenderVersion((v) => v + 1);
   }
+
+  usePendingDraft(!!node && body !== lastSyncRef.current, () => void commitBody());
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);

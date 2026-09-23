@@ -1,4 +1,5 @@
 // [[C68]] knapIsTheDocumentSyntax, [[D10]] onePrunePath
+import { usePendingDraft } from "../draftFlush";
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
@@ -141,6 +142,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     if (body !== data.body) { data.body = body; scheduleAutosave(); }
     await commitFields();
   }
+
+  usePendingDraft(body !== data.body, () => void commitBody());
 
   async function setFieldType(key: string, t: FrontmatterFieldType) {
     data.fieldTypes[key] = t;

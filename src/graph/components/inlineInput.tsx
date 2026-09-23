@@ -16,6 +16,7 @@ import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ColumnPickerField } from "./ColumnPickerField";
 import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
+import { usePendingDraft } from "../draftFlush";
 
 // Body-height estimate only; socket placement is measured per row ([[C11]] socketBox12).
 export const INPUT_ROW_PITCH = 28;
@@ -67,14 +68,18 @@ export function useDraftCommit<T>(
   const canceled = useRef(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setDraft(toText(committed)); }, [committed]);
-  const onBlur = () => {
-    if (canceled.current) { canceled.current = false; setDraft(toText(committed)); return; }
+  const commit = () => {
     const next = parse(draft);
     if (next === INVALID_DRAFT || Object.is(next, committed)) {
       setDraft(toText(committed));
       return;
     }
     apply(next);
+  };
+  usePendingDraft(draft !== toText(committed), commit);
+  const onBlur = () => {
+    if (canceled.current) { canceled.current = false; setDraft(toText(committed)); return; }
+    commit();
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }

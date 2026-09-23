@@ -1,4 +1,5 @@
 // [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
+import { flushDrafts } from "./draftFlush";
 import { createNotifier } from "./storeKit";
 import { serializeGraph, loadGraph, loadRefusal, type SavedGraph } from "./persistence";
 import { isGraphRebuilding } from "./process";
@@ -245,10 +246,11 @@ export const documentStore = {
     return getCurrent(_lib) !== null;
   },
 
-  /** False only when the live graph could not be serialized; a swap verb then stays on this document. */
-  captureCurrent(): boolean {
+  /** False only when the live graph could not be serialized; a swap verb then stays on this document. Open drafts commit first, except for the idle autosave (`keepDrafts`), which must not commit a field the user is still typing in. */
+  captureCurrent(opts?: { keepDrafts?: boolean }): boolean {
     if (!_lib.currentId) return true;
     if (isGraphRebuilding()) return true;
+    if (!opts?.keepDrafts) flushDrafts();
     let g: SavedGraph | null;
     try {
       g = serializeGraph();

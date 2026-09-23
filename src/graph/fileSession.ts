@@ -1,6 +1,7 @@
 // [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder
 // Disk save and open. The documentStore library stays the working store; a document bound to a path saves through to it.
 
+import { flushDrafts } from "./draftFlush";
 import { serializeGraph, type SavedGraph } from "./persistence";
 import { validateSavedGraph } from "./persistenceCore";
 import { documentStore } from "./documentStore";
@@ -41,6 +42,7 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
         if (!stillCurrent()) return;
         fresh = true;
       }
+      flushDrafts();
       const { failed } = await bundleLocalImages(path);
       if (!stillCurrent()) return;
       const g = serializeGraph();
@@ -58,6 +60,7 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
       }
       return;
     }
+    flushDrafts();
     const g = serializeGraph();
     if (!g) return;
     const at = Date.now();
