@@ -279,7 +279,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "convert", label: "Convert", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
         { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
-      { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
+      { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       { type: "pair", children: [
         { type: "composite", label: "Composite", description: "A reusable subgraph as one card with a typed boundary. Built inside via Edit contents, or from selected nodes with Ctrl+Shift+G.", create: () => new CompositeNode(), parity: false },
         { type: "query", label: "Query", description: "A Composite shaped for data transformation: table in, verb chain inside, result out. Recomputes only on Refresh. Excel: Power Query.", create: () => new CompositeNode({
