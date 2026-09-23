@@ -125,7 +125,7 @@ export const INIT_FIELD_ORDER = [
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "bindings",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "bindings",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -170,6 +170,11 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
     const entries = Object.entries(n.varDescriptions as Record<string, string>)
       .filter(([k, v]) => live.has(k) && v.trim() !== "");
     if (entries.length) init.varDescriptions = Object.fromEntries(entries);
+  }
+  if (n.varUnits && typeof n.varUnits === "object") {
+    const live = new Set((n.varNames as string[] | undefined) ?? []);
+    const entries = Object.entries(n.varUnits as Record<string, string>).filter(([k, v]) => live.has(k) && v !== "");
+    if (entries.length) init.varUnits = Object.fromEntries(entries);
   }
   if (n.bindings && typeof n.bindings === "object") {
     const live = new Set((n.defVars as string[] | undefined) ?? []);

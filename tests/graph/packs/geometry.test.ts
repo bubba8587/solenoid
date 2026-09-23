@@ -4,7 +4,7 @@ import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../
 import { TriangleSolverNode } from "../../../src/graph/nodes/triangle";
 import { solveTriangle, type TriangleSolved } from "../../../src/graph/nodes/triangleOps";
 import { isSolError } from "../../../src/graph/errorValue";
-import { tagDim } from "../../../src/graph/unitValue";
+import { tagDim, type UnitCell } from "../../../src/graph/unitValue";
 
 const ALL = [...GEOMETRY_CIRCLES, ...GEOMETRY_SOLIDS];
 
@@ -126,20 +126,36 @@ describe("Triangle Solver", () => {
     expect(bad.valid).toBe(false);
   });
 
-  it("an angle input in ANY angle unit reads in degrees; a dimensioned side takes its display magnitude", () => {
+  it("an angle input in ANY angle unit reads in degrees", () => {
     const n = new TriangleSolverNode();
     // An FC-tagged radian angle (base π/2) is a right angle, not 1.57°.
     const right = tagDim(Math.PI / 2, { angle: 1 }, "rad");
     const out = n.data({ a: [3], b: [4], C: [right] });
     expect(out.c as number).toBeCloseTo(5, 9);
-    // Degrees-tagged reads the same; a km side reads as its km magnitude.
     const deg90 = tagDim(Math.PI / 2, { angle: 1 }, "deg");
-    const km3 = tagDim(3000, { length: 1 }, "km");
-    const out2 = n.data({ a: [km3], b: [4], C: [deg90] });
-    expect(out2.c as number).toBeCloseTo(5, 9);
     // The broadcast path reads each cell the same way.
     const out3 = n.data({ a: [[3, 6]], b: [[4, 8]], C: [[right, deg90]] });
     expect((out3.c as number[]).map((x) => Math.round(x))).toEqual([5, 10]);
+  });
+
+  it("[[C25]] sides solve in one unit: a km side and a m side convert, answers come back in the first side's unit", () => {
+    const n = new TriangleSolverNode();
+    const km3 = tagDim(3000, { length: 1 }, "km");
+    const m4000 = tagDim(4000, { length: 1 }, "m");
+    const out = n.data({ a: [km3], b: [m4000], C: [90] });
+    const c = out.c as UnitCell;
+    expect(c.display).toBe("km");
+    expect(c.value).toBeCloseTo(5000, 6);
+    expect((out.perimeter as UnitCell).value).toBeCloseTo(12000, 6);
+    const area = out.area as UnitCell;
+    expect(area.dim).toEqual({ length: 2 });
+    expect(area.value).toBeCloseTo(6e6, 3);
+    // A bare side reads in the sides' unit: 3 km and 4 → 5 km.
+    expect((n.data({ a: [km3], b: [4], C: [90] }).c as UnitCell).value).toBeCloseTo(5000, 6);
+    // Two dimensions, or a length where an angle belongs, are #UNIT!.
+    const sec = tagDim(4, { time: 1 }, "s");
+    expect((n.data({ a: [km3], b: [sec], C: [90] }).c as { code?: string }).code).toBe("#UNIT!");
+    expect((n.data({ a: [3], b: [4], C: [km3] }).valid as { code?: string }).code).toBe("#UNIT!");
   });
 
   it("broadcasts over parallel lists: three triangles, Valid a logical list", () => {

@@ -127,6 +127,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(new FormatDollarNode().data({ number: [-12345.678], decimals: [-2] }).result).toBe("($12,300)");
     expect(new FormatDollarNode().data({ number: [-0.004], decimals: [2] }).result).toBe("($0.00)");
     expect(new FormatDollarNode().data({ number: [1.005], decimals: [2] }).result).toBe("$1.01");
+    expect(new FixedNode().data({ number: [1.005], decimals: [2] }).result).toBe("1.01");
     expect(new SpellNumberNode().data({ value: [[1, 2]] }).result).toEqual(["one", "two"]);
   });
 

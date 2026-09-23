@@ -465,6 +465,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TEXTJOIN:    { returns: "string", arity: [3, 255], family: "text" },
   TEXT:        { returns: "string", arity: [2, 2], family: "text" },
   DOLLAR:      { returns: "string", arity: [1, 2], family: "text" },
+  FIXED:       { returns: "string", arity: [1, 3], family: "text" },
   VALUE:       { returns: "number", arity: [1, 1], family: "text" },
   NUMBERVALUE: { returns: "number", arity: [1, 3], family: "text" },
   MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
@@ -1228,8 +1229,21 @@ registerInternal("TEXT", (value, fmt) => {
   if (dateish) return fxText(serialToJsDate(n), f);
   return fxText(n, f);
 });
+/** `roundDigits` first, so 1.005 to 2 places is 1.01 as in Excel; a value that rounds to 0 goes through as given, keeping its sign. */
+const preRound = (value: unknown, decimals: unknown): unknown => {
+  const n = toNum(value), d = optNum(decimals, 2);
+  if (badNum(n, d)) return value;
+  const r = roundDigits(n, d);
+  return r === 0 ? n : r;
+};
+registerInternal("FIXED", (value, decimals, noCommas) => {
+  const d = optNum(decimals, 2);
+  if (badNum(toNum(value), d)) return VALUE("FIXED");
+  const dd = Math.min(Math.trunc(d), 100);
+  return (FX as unknown as { FIXED: (...a: unknown[]) => unknown }).FIXED(preRound(value, dd), dd, noCommas ?? false);
+});
 registerInternal("DOLLAR", (value, decimals) => {
-  const out = (FX as unknown as { DOLLAR: (...a: unknown[]) => unknown }).DOLLAR(value, decimals);
+  const out = (FX as unknown as { DOLLAR: (...a: unknown[]) => unknown }).DOLLAR(preRound(value, decimals), decimals);
   if (typeof out !== "string") return out;
   if (out.startsWith("$(")) return `($${out.slice(2)}`;
   // A negative that rounds to zero still takes the negative form: DOLLAR(-0.004) is ($0.00).

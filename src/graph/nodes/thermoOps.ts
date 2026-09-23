@@ -53,11 +53,11 @@ export function isaAtGeometric(z: number): IsaPoint {
   return isaAtGeopotential((EARTH_R * z) / (EARTH_R + z));
 }
 
-/** The −2…86 km domain is checked on the geopotential altitude, like the tables. */
+/** The −5…86 km domain (the 1976 tables start at −5 km) is checked on the geopotential altitude. */
 export function standardAtmosphere(z: number): IsaPoint | SolError {
   const h = (EARTH_R * z) / (EARTH_R + z);
-  if (h < -2000 || h > ISA_TOP) {
-    return solError("#DOMAIN!", "The 1976 standard atmosphere is defined from −2 to 86 km");
+  if (h < -5000 || h > ISA_TOP) {
+    return solError("#DOMAIN!", "The 1976 standard atmosphere is defined from −5 to 86 km");
   }
   return isaAtGeopotential(h);
 }

@@ -180,7 +180,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
   const BESPOKE_EXTRAS = new Set([
-    "varDescriptions", "inputPorts", "outputPorts", "scenarios", "dataTableValues",
+    "varDescriptions", "varUnits", "inputPorts", "outputPorts", "scenarios", "dataTableValues",
     "goalSeek", "monteCarlo", "uncertainty", "distribution", "bindings",
   ]);
   const RETE_BASE = new Set(["id", "inputs", "outputs", "controls"]);

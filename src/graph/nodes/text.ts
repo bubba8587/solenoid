@@ -1015,12 +1015,7 @@ export class FixedNode extends ClassicPreset.Node {
 
   data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
     const result = broadcastCells(
-      (n: number, d: number) => {
-        const dd = Math.trunc(d);
-        const rounded = dd < 0 ? Math.round(n * 10 ** dd) / 10 ** dd : n;
-        return resolveExcelFunction("FIXED")!(
-          rounded, Math.max(0, dd), this.noCommas === "no_commas") as string;
-      },
+      (n: number, d: number) => resolveExcelFunction("FIXED")!(n, d, this.noCommas === "no_commas") as string,
       readInput(inputs.number,   this.literals.number   ?? 0),
       readInput(inputs.decimals, this.literals.decimals ?? 2),
     );

@@ -34,6 +34,8 @@ export interface FormulaPackEntry {
   /** Space-separated search synonyms, never displayed. */
   keywords?: string;
   varDescriptions?: Record<string, string>;
+  /** The unit each variable's number is read in; a wired value converts to it, another dimension is #UNIT!. */
+  units?: Record<string, string>;
   /** Seeded literals; an unseeded variable defaults to 0. */
   literals?: Record<string, number>;
 }
@@ -47,8 +49,8 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     keywords: e.keywords,
     // No `accent`: the Add-menu highlight is reserved for key nodes.
     create: () => e.equation
-      ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions })
-      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions, literals: e.literals }),
+      ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions, varUnits: e.units })
+      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions, varUnits: e.units, literals: e.literals }),
   };
 }
 

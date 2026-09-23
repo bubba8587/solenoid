@@ -2,8 +2,10 @@ import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "../../../src/graph/packs/thermo";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { IsaAtmosphereNode, AntoineNode } from "../../../src/graph/nodes/thermo";
-import { isaAtGeopotential, isaAtGeometric, ANTOINE, antoinePressure, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
+import { isaAtGeopotential, isaAtGeometric, standardAtmosphere, ANTOINE, antoinePressure, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
 import { isSolError } from "../../../src/graph/errorValue";
+import { formulaNode } from "../../../src/graph/packs/packShared";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
 
 const num = (type: string, inputs: Record<string, number>): number => {
   const r = evalFormula(entryByType(THERMO_FORMULAS, type), inputs);
@@ -132,5 +134,45 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect((evalPackFormula('ANTOINE("water", 100)') as number) / 101325).toBeCloseTo(1, 2);
     const bad = evalPackFormula('ANTOINE("mercury", 25)');
     expect(isSolError(bad) && bad.code).toBe("#NAME?");
+  });
+});
+
+describe("Standard Atmosphere domain", () => {
+  it("accepts down to −5 km, as the 1976 tables do, and refuses below", () => {
+    const low = standardAtmosphere(-4900);
+    expect(isSolError(low)).toBe(false);
+    expect((low as { T: number }).T).toBeGreaterThan(288.15);
+    const under = standardAtmosphere(-5100);
+    expect(isSolError(under) && under.code).toBe("#DOMAIN!");
+  });
+});
+
+describe("[[C25]] firstClassUnits — a preset reads each input in its declared unit", () => {
+  type Runner = { data: (i: Record<string, unknown[]>) => Record<string, unknown> };
+  const node = (type: string) => formulaNode(entryByType(THERMO_FORMULAS, type)).create() as unknown as Runner;
+  const run = (type: string, inputs: Record<string, unknown>) => {
+    const ins: Record<string, unknown[]> = {};
+    for (const [k, v] of Object.entries(inputs)) ins[k] = [v];
+    return node(type).data(ins).result;
+  };
+  it("the Magnus presets give the same answer for 20 °C, 68 °F, 293.15 K and a bare 20", () => {
+    for (const type of ["th-svp", "th-dew-point", "th-wet-bulb"]) {
+      const bare = run(type, { tc: 20, rh: 50 }) as number;
+      expect(typeof bare).toBe("number");
+      for (const [v, u] of [[20, "degC"], [68, "degF"], [293.15, "K"]] as const) {
+        expect(run(type, { tc: applyFcUnit(v, u), rh: 50 }) as number, `${type} ${u}`).toBeCloseTo(bare, 6);
+      }
+    }
+  });
+  it("a kelvin preset converts °C; a wrong dimension is #UNIT!", () => {
+    const k = run("th-air-density", { p: 101325, tk: 288.15 }) as number;
+    expect(run("th-air-density", { p: 101325, tk: applyFcUnit(15, "degC") }) as number).toBeCloseTo(k, 9);
+    expect((run("th-svp", { tc: applyFcUnit(5, "km") }) as { code?: string }).code).toBe("#UNIT!");
+    const w = run("th-wind-chill", { tc: -10, v: 20 }) as number;
+    expect(run("th-wind-chill", { tc: applyFcUnit(14, "degF"), v: applyFcUnit(20 / 3.6, "ms1") }) as number).toBeCloseTo(w, 6);
+  });
+  it("the Equation preset reads tk in kelvin", () => {
+    const out = node("th-ideal-gas").data({ vol: [1], n: [1], tk: [applyFcUnit(0, "degC")] });
+    expect(out.p as number).toBeCloseTo(8.314462618 * 273.15, 6);
   });
 });
