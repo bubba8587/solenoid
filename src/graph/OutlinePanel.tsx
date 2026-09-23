@@ -11,7 +11,7 @@ import { connectionDialog } from "./connectionDialogStore";
 import { nodeConnections } from "./nodeNames";
 import {
   GroupNode, FormatControllerNode, DisplayNode,
-  nodeKindOf, NODE_KIND_ACCENTS,
+  nodeAccent,
 } from "./rete-nodes";
 import { setGroupsCollapsed } from "./groupPush";
 import { measuredBox } from "./nodeSize";
@@ -37,10 +37,8 @@ type Row = {
 type State = { tree: Row[]; flat: Row[] };
 
 function colorOf(n: unknown, mode: "dark" | "light"): string {
-  const base = n instanceof GroupNode
-    ? resolveColor((n as GroupNode).color)
-    : NODE_KIND_ACCENTS[nodeKindOf(n as never)] ?? "#8a8f98";
-  return themeAccent(base, mode);
+  if (n instanceof GroupNode) return themeAccent(resolveColor((n as GroupNode).color), mode);
+  return nodeAccent(n as never, mode);
 }
 
 function typeOf(n: unknown): string {

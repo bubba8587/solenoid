@@ -2,7 +2,7 @@
 aliases: ["Palette and theme"]
 tags: [spec, canvas]
 ---
-<!-- [[C62]] paletteAllOrNone -->
+<!-- [[C62]] paletteAllOrNone, [[C111]] unfiledCardTakesOutputColor -->
 
 # Spec: Palette and theme
 
@@ -53,6 +53,13 @@ Each socket color is derived in this order:
 4. Write the result as `--sock-X` and a ring as `--sock-X-ring`: `socketRingShade`, a fixed HSV value drop of 0.23 off that same fill, so every glyph's border reads at the same contrast whatever the fill's lightness.
 
 All of these steps run in HSV (`DESIGN.md` §Tertiary). A canvas renderer (the minimap, the HTML-in-Canvas snapshot) cannot read a CSS variable, so `socketVarHex(expr, mode)` runs the same derivation without the DOM. It accepts a bare `--sock-*` name or a `var(--sock-*)` expression, passes a bare hex through unchanged, and returns gray for anything it does not recognize.
+
+## Card colors
+
+A card's accent is its node kind's slot (`NODE_KIND_SLOTS` in `nodes/shared.ts`); `nodeKindOf` in `nodes/kind.ts` files each card under a kind, and a card it doesn't list falls back to math. `nodeAccent` is the one place a card's color is read, and every consumer (the card header, the Navigator, the minimap, the canvas snapshot) goes through it. It departs from the kind's slot in two cases:
+
+- **Socket-driven cards** (List Input, Table Input, Sets, the Format Controller) wear their first output socket's color, so a retype recolors them.
+- **Unfiled cards** ([[C111]] unfiledCardTakesOutputColor): a card `explicitKindOf` returns no kind for, with exactly one output whose type is not a number, list, numeric matrix or wildcard, wears that output socket's color. A numeric fallback keeps math blue.
 
 ## Accent helpers
 

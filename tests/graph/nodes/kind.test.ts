@@ -1,9 +1,12 @@
 // [[C42]], [[C63]], [[B11]]
 import { describe, it, expect } from "vitest";
-import { nodeDomWeight, nodeAccent, nodeKindOf } from "../../../src/graph/nodes/kind";
+import { nodeDomWeight, nodeAccent, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
 import { NumberInputNode, BooleanInputNode } from "../../../src/graph/nodes/input";
 import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode, RecordNode } from "../../../src/graph/nodes/visual";
 import { GanttNode } from "../../../src/graph/nodes/gantt";
+import { UrlEncodeNode } from "../../../src/graph/nodes/text";
+import { EpochNode } from "../../../src/graph/nodes/date";
+import { CombinatoricsNode } from "../../../src/graph/nodes/scalar";
 import { TornadoNode } from "../../../src/graph/nodes/tornado";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
 import { BuildFrameNode } from "../../../src/graph/nodes/frame";
@@ -104,5 +107,21 @@ describe("chart cards wear the chart green", () => {
     for (const n of [new ChartNode(), new SankeyNode(), new KpiNode(), new GanttNode(), new ChartBuilderNode(), new GaugeNode(), new MermaidNode(), new RecordNode()]) {
       expect(nodeKindOf(n), n.constructor.name).toBe("chart");
     }
+  });
+});
+
+describe("[[C111]] unfiledCardTakesOutputColor", () => {
+  it("a card no family lists wears its one non-numeric output's color", () => {
+    for (const n of [new UrlEncodeNode(), new EpochNode()]) {
+      expect(explicitKindOf(n), n.constructor.name).toBeNull();
+      const out = Object.values(n.outputs)[0]!.socket as unknown as { dataType: keyof typeof SOCKET_COLORS };
+      expect(nodeAccent(n, "dark"), n.constructor.name).toBe(socketVarHex(SOCKET_COLORS[out.dataType], "dark"));
+    }
+  });
+  it("a numeric fallback keeps math blue, and a listed card keeps its family", () => {
+    const math = new CombinatoricsNode();
+    expect(nodeAccent(math, "dark")).toBe(themeAccent(NODE_KIND_ACCENTS.math, "dark"));
+    const sankey = new SankeyNode();
+    expect(nodeAccent(sankey, "dark")).toBe(themeAccent(NODE_KIND_ACCENTS.chart, "dark"));
   });
 });

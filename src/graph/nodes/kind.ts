@@ -1,4 +1,4 @@
-// [[C42]]
+// [[C42]], [[C111]] unfiledCardTakesOutputColor
 import { ClassicPreset } from "rete";
 import { type NodeKind, NODE_KIND_ACCENTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
@@ -82,6 +82,10 @@ import {
 // Runs at call time, so forward references are safe; never relies on constructor.name, which minification breaks.
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
+  return explicitKindOf(node) ?? "math";
+}
+
+export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof ReportNode) return "document";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
@@ -229,7 +233,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof EquationNode) return "math";
   if (node instanceof RegexNode) return "string";
   if (node instanceof GroupByNode) return "list";
-  return "math";
+  return null;
 }
 
 // These recolor with their output socket, so every accent consumer (card, minimap, canvas snapshot) must read nodeAccent, never nodeKindOf.
@@ -239,8 +243,20 @@ const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
   node instanceof SetsNode;
 
 /** Resolves the socket CSS vars a <canvas> cannot read, so the minimap and canvas snapshot paint the accent the card shows. */
+const NO_FAMILY_OUTPUTS = new Set(["number", "list", "numlist", "table", "any", "anylist", "anycombo", "anydata", "anytable", "trueany"]);
+
+function unfiledOutput(node: ClassicPreset.Node): SolenoidSocket | null {
+  if (explicitKindOf(node) !== null) return null;
+  const outs = Object.values(node.outputs ?? {});
+  if (outs.length !== 1) return null;
+  const socket = (outs[0] as { socket?: unknown } | undefined)?.socket;
+  return socket instanceof SolenoidSocket && !NO_FAMILY_OUTPUTS.has(socket.dataType) ? socket : null;
+}
+
 export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): string {
   const kindAccent = themeAccent(NODE_KIND_ACCENTS[nodeKindOf(node)], mode);
+  const unfiled = unfiledOutput(node);
+  if (unfiled) return socketVarHex(SOCKET_COLORS[unfiled.dataType], mode);
   if (!SOCKET_DRIVEN_ACCENT(node)) return kindAccent;
   for (const port of Object.values(node.outputs ?? {})) {
     const socket = (port as { socket?: unknown } | undefined)?.socket;
