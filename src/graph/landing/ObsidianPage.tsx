@@ -1,9 +1,12 @@
-// [[D62]], [[C2]]
+// [[D62]], [[C2]], [[C107]] obsidianPlugin
 import { useEffect, useMemo } from "react";
 import { Reveal, useRevealAnim, NoteImportScene, VaultTableScene, TaskNotesScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
-import { SiteHeader, SiteFooter, Feature, DownloadLink } from "./siteNav";
+import { SiteHeader, SiteFooter, Feature, DownloadLink, PLUGIN_URL } from "./siteNav";
+import { PropertiesDemo } from "./PropertiesDemo";
+import { TablePopup } from "../components/TablePopup";
+import { CubePopup } from "../components/CubePopup";
 import { SceneThread } from "./SceneThread";
 import { forceDemoVault } from "../demoVault";
 import { forceDemoTaskNotes } from "../demoTaskNotes";
@@ -17,7 +20,7 @@ function FlowScene() {
     <div className="obs-flow">
       <div className="obs-flow__node">
         <span className="obs-flow__name">Obsidian</span>
-        <small>notes · tasks</small>
+        <small>notes · tasks · Solenoid Properties</small>
       </div>
       <div className="obs-flow__link">
         <span className="obs-flow__arrows" aria-hidden="true">⇄</span>
@@ -90,12 +93,14 @@ export default function ObsidianPage() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Solenoid brings spreadsheet math to your Obsidian notes. Read and write
-                  frontmatter properties, pull tasks from{" "}
+                  Two parts that share one set of types. The Solenoid Properties plugin puts
+                  lists, tables, frames and cubes into Obsidian&apos;s properties, edited in
+                  Solenoid&apos;s own table editor. The Solenoid app brings spreadsheet math to
+                  the vault: it reads and writes frontmatter properties, pulls tasks from{" "}
                   <a href="https://tasknotes.dev/" target="_blank" rel="noreferrer">
                     TaskNotes
                   </a>
-                  , and write computed values into your notes with{" "}
+                  , and writes computed values into your notes with{" "}
                   <a href="https://github.com/obsidianmd/knap" target="_blank" rel="noreferrer">
                     Knap
                   </a>{" "}
@@ -111,13 +116,89 @@ export default function ObsidianPage() {
               </Reveal>
               <Reveal delay={300}>
                 <div className="sol-landing__actions">
-                  <DownloadLink primary />
+                  <a className="sol-landing__cta sol-landing__cta--primary" href={PLUGIN_URL} target="_blank" rel="noreferrer">
+                    Get the plugin
+                  </a>
+                  <DownloadLink />
                   <a className="sol-landing__cta" href="/?landing">
                     What is Solenoid?
                   </a>
                 </div>
               </Reveal>
             </div>
+          </section>
+
+          <section className="sol-landing__section">
+            <Reveal>
+              <h2>Solenoid Properties, the plugin</h2>
+              <p className="sol-landing__lede">
+                An Obsidian plugin that adds Solenoid&apos;s value types to your properties.
+                Each one shows as a chip and opens Solenoid&apos;s editor, and the note
+                underneath stays plain YAML.
+              </p>
+            </Reveal>
+            <Reveal delay={100}>
+              <PropertiesDemo />
+              <p className="sol-landing__demo-note">
+                The plugin&apos;s own chips and editor, over the demo vault&apos;s Property
+                types note. Open one, change a cell and save; the YAML follows.
+              </p>
+            </Reveal>
+          </section>
+
+          <Feature
+            title="The Solenoid look"
+            flip
+            scene={<img className="obs-shot" src="/obsidian-look.png" alt="An Obsidian vault in Solenoid's dark palette with the gold accent, showing a note's Solenoid properties" loading="lazy" />}
+          >
+            <p>
+              Turn on the plugin&apos;s theme and the whole vault takes Solenoid&apos;s
+              palette, with the accent you pick.
+            </p>
+          </Feature>
+
+          <section className="sol-landing__section">
+            <Reveal>
+              <div className="obs-cards obs-cards--four">
+                <div className="obs-card">
+                  <h3>Thirteen property types</h3>
+                  <p>
+                    A list and a matrix for each of numbers, text, dates, complex numbers
+                    and booleans, plus Frame, Cube and a Complex value.
+                  </p>
+                </div>
+                <div className="obs-card">
+                  <h3>Plain YAML underneath</h3>
+                  <p>
+                    A list saves as a sequence, a matrix as rows, a frame as rows of{" "}
+                    <code>key: value</code>. Without the plugin, the note still reads.
+                  </p>
+                </div>
+                <div className="obs-card">
+                  <h3>In Bases too</h3>
+                  <p>
+                    A Bases table shows the same chip, and opens the same editor.
+                  </p>
+                </div>
+                <div className="obs-card">
+                  <h3>Stays on your machine</h3>
+                  <p>
+                    No network access and no telemetry. Settings and column types live in
+                    the plugin&apos;s own data file.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          </section>
+
+          <section className="sol-landing__section">
+            <Reveal>
+              <h2>Solenoid, the app</h2>
+              <p className="sol-landing__lede">
+                The app reads the vault as tables, computes like a spreadsheet, and writes
+                the answers back as properties, notes and tasks.
+              </p>
+            </Reveal>
           </section>
 
           <section className="sol-landing__demo">
@@ -152,7 +233,9 @@ export default function ObsidianPage() {
           <Feature title="Import a note" flip scene={<NoteImportScene />}>
             <p>
               Pick a note from your vault and Solenoid shows it on the canvas, with every
-              frontmatter property as a value you can use as an input.
+              frontmatter property as a value you can use as an input. The plugin&apos;s
+              types come through: a Frame arrives as a frame, with the column types you
+              picked.
             </p>
           </Feature>
 
@@ -173,7 +256,8 @@ export default function ObsidianPage() {
                   <h3>Update note properties</h3>
                   <p>
                     Each column becomes a properly typed property, so dates, lists and
-                    links come out right.
+                    links come out right. With the plugin, a table written back opens as a
+                    chip in the note.
                   </p>
                 </div>
                 <div className="obs-card">
@@ -261,19 +345,27 @@ export default function ObsidianPage() {
                 <li>
                   <span className="obs-step-n">1</span>
                   <div>
+                    <strong>Install Solenoid Properties.</strong> In Obsidian, open
+                    Settings ▸ Community plugins, search for Solenoid Properties and turn
+                    it on. It needs nothing else.
+                  </div>
+                </li>
+                <li>
+                  <span className="obs-step-n">2</span>
+                  <div>
                     <strong>Get the desktop app.</strong> The integration reads and writes
                     your files, so it runs in the desktop build.
                   </div>
                 </li>
                 <li>
-                  <span className="obs-step-n">2</span>
+                  <span className="obs-step-n">3</span>
                   <div>
                     <strong>Point it at your vault.</strong> Under Settings ▸ Obsidian,
                     choose your vault folder. Every reader and writer defaults to it.
                   </div>
                 </li>
                 <li>
-                  <span className="obs-step-n">3</span>
+                  <span className="obs-step-n">4</span>
                   <div>
                     <strong>For TaskNotes, turn on the HTTP API</strong> in the
                     plugin&apos;s settings, then set the address (localhost:8080 by
@@ -288,7 +380,10 @@ export default function ObsidianPage() {
             <Reveal className="sol-landing__strip-in">
               <p>Free and open source. Point it at your vault and start computing.</p>
               <div className="sol-landing__actions">
-                <DownloadLink primary />
+                <a className="sol-landing__cta sol-landing__cta--primary" href={PLUGIN_URL} target="_blank" rel="noreferrer">
+                  Get the plugin
+                </a>
+                <DownloadLink />
                 <a className="sol-landing__cta" href="/">Open Solenoid</a>
               </div>
             </Reveal>
@@ -300,6 +395,8 @@ export default function ObsidianPage() {
       {/* The live hero's Report chip opens its rendered note here (App mounts this for
           the main canvas; the standalone page mounts its own, as with TablePopup). */}
       <ReportOverlay />
+      <TablePopup />
+      <CubePopup />
     </div>
   );
 }

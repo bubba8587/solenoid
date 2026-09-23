@@ -25,6 +25,8 @@ export function DownloadLink({ primary }: { primary?: boolean }) {
   );
 }
 
+export const PLUGIN_URL = "https://community.obsidian.md/plugins/solenoid-properties";
+
 // The home page is served under ?landing, since the root is the app itself.
 export const HOME_HREF = "/?landing";
 

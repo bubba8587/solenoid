@@ -282,6 +282,10 @@ Computing anything. Reading or writing a note's body. A real phone: `isDesktopOn
 nothing in the bundle needs Electron, and the plugin is checked as a phone only through Obsidian's
 own mobile emulation in the rig (below), never on a device.
 
+## On the site
+
+The site's Obsidian page renders `PropertyChip` itself, over the demo vault's `Solenoid/Property types.md` and `.obsidian/types.json` (`landing/PropertiesDemo.tsx`), with the app's `TablePopup` and `CubePopup` mounted beside it. Off Obsidian there is no shadow root, so the page passes `resolveToken` to read its own CSS variables instead of `tokenHex`. Each save updates a YAML pane beside the panel, printed with `yaml`'s `stringify`.
+
 ## Publishing
 
 Obsidian's community list points at one GitHub repository, reads `manifest.json` from the root of

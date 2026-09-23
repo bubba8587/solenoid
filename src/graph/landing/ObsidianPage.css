@@ -409,3 +409,105 @@
     min-width: 0;
   }
 }
+
+/* ── Solenoid Properties demo ── */
+.obs-props {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.obs-props__panel {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.obs-props__head {
+  padding: 10px 16px;
+  font-weight: 600;
+  color: var(--text-bright);
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.obs-props__row {
+  display: grid;
+  grid-template-columns: 14px minmax(88px, 0.8fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.obs-props__row:last-child {
+  border-bottom: 0;
+}
+
+.obs-props__icon {
+  display: inline-flex;
+  width: 12px;
+  height: 12px;
+}
+
+.obs-props__icon .solenoid-socket-dot {
+  width: 12px;
+  height: 12px;
+}
+
+.obs-props__key {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.obs-props__value {
+  min-width: 0;
+}
+
+.obs-props__yaml-box {
+  position: relative;
+  min-height: 240px;
+}
+
+.obs-props__yaml {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.obs-cards--four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 1100px) {
+  .obs-cards--four {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.obs-shot {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+@media (max-width: 900px) {
+  .obs-props {
+    grid-template-columns: 1fr;
+  }
+  .obs-props__yaml-box {
+    height: 300px;
+  }
+}
+
+@media (max-width: 580px) {
+  .obs-cards--four {
+    grid-template-columns: 1fr;
+  }
+}

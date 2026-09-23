@@ -13,21 +13,22 @@ import {
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
 
-function typeAccent(kind: PropertyKind): string | undefined {
+function typeAccent(kind: PropertyKind, resolveToken: (token: string) => string | undefined): string | undefined {
   const token =
     kind.shape === "frame" ? "--sock-frame"
     : kind.shape === "cube" ? "--sock-cube"
     : arrayAccentFor(kind.family, kind.shape === "matrix").replace(/^var\(|\)$/g, "");
-  return tokenHex(token);
+  return resolveToken(token);
 }
 
-export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes }: {
+export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, resolveToken = tokenHex }: {
   kind: PropertyKind;
   label: string;
   initial: unknown;
   onChange: (next: unknown) => void;
   columnTypes?: ColumnTypes;
   onColumnTypes?: (types: ColumnTypes) => void;
+  resolveToken?: (token: string) => string | undefined;
 }) {
   const [yaml, setYaml] = useState<unknown>(initial);
   const latest = useRef<unknown>(initial);
@@ -39,7 +40,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   };
   const items = coerceYaml(kind, yaml) as unknown[];
   useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
-  const accent = typeAccent(kind);
+  const accent = typeAccent(kind, resolveToken);
 
   if (kind.shape === "list") {
     const family = kind.family!;

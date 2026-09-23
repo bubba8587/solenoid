@@ -179,6 +179,7 @@ function devGraphMirror(): Plugin {
 function devDemoVault(): Plugin {
   const ROOT = path.resolve("demo-vault");
   const EXT = /\.(md|base|yaml|csv)$/;
+  const SETTINGS = new Set([".obsidian/types.json", ".obsidian/daily-notes.json"]);
   async function list(dir: string, rel: string, out: string[]): Promise<void> {
     let entries: import("node:fs").Dirent[];
     try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
@@ -200,12 +201,13 @@ function devDemoVault(): Plugin {
           if (rel === null) {
             const out: string[] = [];
             await list(ROOT, "", out);
+            out.push(...SETTINGS);
             res.setHeader("content-type", "application/json");
             res.end(JSON.stringify(out));
             return;
           }
           const abs = path.resolve(ROOT, rel);
-          if (!abs.startsWith(ROOT + path.sep) || !EXT.test(abs)) { res.statusCode = 404; res.end(); return; }
+          if (!abs.startsWith(ROOT + path.sep) || !(EXT.test(abs) || SETTINGS.has(rel))) { res.statusCode = 404; res.end(); return; }
           try {
             const text = await readFile(abs, "utf8");
             res.setHeader("content-type", "text/plain; charset=utf-8");
