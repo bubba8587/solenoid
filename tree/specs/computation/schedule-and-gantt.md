@@ -21,7 +21,7 @@ Columns are found by name, case-insensitive; the first alias in each row below t
 | Column (aliases) | Read as | Meaning |
 |---|---|---|
 | Task (`name`, `title`; else the first column holding text) | text | The task's name. Required, unique, never blank. |
-| Duration (`days`; else the first numeric or united column that is not Task, a child column, Work or Units) | number | Working days. Blank or 0 is a milestone. A cell holding a time unit value converts through hours per day; any other unit is an error. A parent's Duration is ignored, since it rolls up. |
+| Duration (`days`; else the first numeric or united column that is not a date column and not named in this table) | number | Working days. Blank or 0 is a milestone. A cell holding a time unit value converts through hours per day; any other unit is an error. A parent's Duration is ignored, since it rolls up. |
 | Predecessors (`predecessor`, `after`, `depends on`, `blockedby`, `blocked by`) | list, text or nested table | The tasks that come first. See [Predecessors](#predecessors). |
 | Tasks (`children`, `subtasks`, `steps`; else a column of nested tables that have a Task column) | nested table | The row's children. See [Hierarchy](#hierarchy). |
 | Start | date, optional | A floor: the task starts no earlier. |

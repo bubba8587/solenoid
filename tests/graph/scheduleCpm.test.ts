@@ -246,4 +246,23 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
       ] },
     })).toThrow(/Ghost/);
   });
+
+  it("with no Duration column, a known column (a date, Complete) is never read as the duration", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Start", cells: [MON, null], type: "date" },
+      { name: "Complete", cells: [50, 0], type: "number" },
+      { name: "Work", cells: [16, 8], type: "number" },
+      { name: "Predecessors", cells: [[], ["A"]] },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    expect(col(r.cube, "Finish").map(iso)).toEqual(["2026-01-06", "2026-01-07"]);
+    const noWork = cubeFromColumns([
+      { name: "Task", cells: ["A"], type: "string" },
+      { name: "Deadline", cells: [MON + 30], type: "date" },
+      { name: "Days of work", cells: [3], type: "number" },
+    ]);
+    expect(col(scheduleTasks(noWork, { start: MON, workingDays: true }).cube, "Finish").map(iso)).toEqual(["2026-01-07"]);
+  });
 });
+

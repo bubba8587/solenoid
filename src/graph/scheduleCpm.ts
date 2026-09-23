@@ -58,6 +58,12 @@ const UNITS_NAMES = ["units", "assignment", "fte"];
 const ACTIVE_NAMES = ["active", "included"];
 const REPEAT_NAMES = ["repeat", "occurrences", "times"];
 const EVERY_NAMES = ["every", "every (days)", "interval", "period"];
+// The duration fallback skips every column the schedule reads by name.
+const KNOWN_NAMES = new Set([
+  ...TASK_NAMES, ...PRED_NAMES, ...CHILD_NAMES, ...START_NAMES, ...FINISH_NAMES, ...DEADLINE_NAMES, ...MANUAL_NAMES,
+  ...COMPLETE_NAMES, ...GROUP_NAMES, ...ALAP_NAMES, ...ACTUAL_NAMES, ...ELAPSED_NAMES, ...TASK_WEEKEND_NAMES,
+  ...TASK_HOURS_NAMES, ...TASK_HOLIDAY_NAMES, ...WORK_NAMES, ...UNITS_NAMES, ...ACTIVE_NAMES, ...REPEAT_NAMES, ...EVERY_NAMES,
+]);
 
 function findColumn(c: CubeValue, names: string[], pick?: (col: CubeColumn) => boolean): CubeColumn | undefined {
   for (const n of names) {
@@ -177,7 +183,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
   if (!task) throw solError("#VALUE!", "Schedule needs a Task column (text) naming each task");
   const pred = findColumn(c, PRED_NAMES);
   const children = findColumn(c, CHILD_NAMES, (col) => col !== pred && col.cells.some((v) => isTable(v) && !!findColumn(asCube(v), TASK_NAMES, (cc) => cc.cells.some(isText))));
-  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && !WORK_NAMES.includes(norm(col.name)) && !UNITS_NAMES.includes(norm(col.name)) && col.cells.some((v) => isNum(v) || isUnitCell(v)));
+  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && col.type !== "date" && !KNOWN_NAMES.has(norm(col.name)) && col.cells.some((v) => isNum(v) || isUnitCell(v)));
   const work = findColumn(c, WORK_NAMES);
   if (!duration && !children && !work) throw solError("#VALUE!", "Schedule needs a Duration column (number of days) or a Work column (hours)");
   const cols: Level["cols"] = {
