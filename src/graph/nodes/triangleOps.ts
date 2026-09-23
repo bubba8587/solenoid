@@ -53,10 +53,12 @@ export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {
       const other = sides.find((k) => k !== oppositeSide)!;
       const sinOther = (g[other]! * Math.sin(g[angleKey]! * D2R)) / g[oppositeSide]!;
       if (sinOther > 1 + EPS) return solError("#DOMAIN!", "No triangle fits those parts");
-      const deg1 = Math.asin(clamp1(sinOther)) * R2D;
+      // Judge the right angle on the sine: asin near 1 loses about 1e-6° to rounding, enough to split one root in two.
+      const right = sinOther >= 1 - EPS;
+      const deg1 = right ? 90 : Math.asin(clamp1(sinOther)) * R2D;
       const deg2 = 180 - deg1;
       const fits = (d: number) => g[angleKey]! + d < 180 - EPS;
-      if (fits(deg1) && fits(deg2) && Math.abs(deg1 - deg2) > 1e-6) {
+      if (!right && fits(deg1) && fits(deg2)) {
         return solError("#SOLVE!", "Ambiguous (SSA): two triangles fit. Give a different third part");
       }
       const otherAngleKey = other.toUpperCase() as "A" | "B" | "C";

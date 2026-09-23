@@ -101,6 +101,13 @@ describe("Triangle Solver", () => {
     expect(isSolError(none) && none.code).toBe("#DOMAIN!");
   });
 
+  it("SSA: b·sinA = a exactly is the one right triangle, not ambiguous", () => {
+    const t = solved({ a: 7, b: 14, A: 30 });
+    expect(t.B).toBe(90);
+    expect(t.C).toBeCloseTo(60, 9);
+    expect(t.c).toBeCloseTo(7 * Math.sqrt(3), 9);
+  });
+
   it("degenerate givens error honestly", () => {
     expect(isSolError(solveTriangle({ A: 60, B: 60, C: 60 }))).toBe(true);        // no scale
     expect(isSolError(solveTriangle({ a: 1, b: 1, c: 5 }))).toBe(true);           // inequality
