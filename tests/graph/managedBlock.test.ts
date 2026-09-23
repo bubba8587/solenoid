@@ -37,6 +37,20 @@ describe("spliceBlock", () => {
     const r = spliceBlock(before, "Weekly", "x");
     expect(r.text).toBe(`${B}\norphan\n\n${B}\nx\n${END_MARKER}\n`);
   });
+  it("a second write after an orphan replaces only its own pair, never the text after the orphan", () => {
+    const once = spliceBlock(`${B}\nmy notes\n`, "Weekly", "x").text;
+    const twice = spliceBlock(once, "Weekly", "y").text;
+    expect(twice).toBe(`${B}\nmy notes\n\n${B}\ny\n${END_MARKER}\n`);
+    expect(readBlock(once, "Weekly")).toBe("x");
+  });
+  it("an orphan begin never pairs with another writer's end", () => {
+    const B2 = beginMarker("Monthly");
+    const before = `${B}\nprose\n${B2}\nb\n${END_MARKER}\n`;
+    const r = spliceBlock(before, "Weekly", "w");
+    expect(r.text).toBe(`${before}\n${B}\nw\n${END_MARKER}\n`);
+    expect(readBlock(before, "Weekly")).toBeNull();
+    expect(readBlock(before, "Monthly")).toBe("b");
+  });
   it("content carrying %% outside a fence is refused with the line; inside a fence it is fine", () => {
     const r = spliceBlock("body\n", "Weekly", "ok\n%% hidden %%");
     expect(r.refused).toMatch(/line 2/);

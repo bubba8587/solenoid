@@ -175,25 +175,26 @@ export function getLastLoadIdMap(): ReadonlyMap<string, string> {
   return _lastLoadIdMap;
 }
 
+/** The notice a load would refuse this graph with (the structural gate, then the version gate), or null when it loads. */
+export function loadRefusal(g: SavedGraph): string | null {
+  const valid = validateSavedGraph(g);
+  if (!valid.ok) return `Couldn't open this graph: ${valid.reason}. Your current work is unchanged.`;
+  if (g.v !== CURRENT_SAVE_VERSION) {
+    return g.v > CURRENT_SAVE_VERSION
+      ? `This file was saved by a newer version of Solenoid (format v${g.v}) and can't be opened here. Update the app to load it.`
+      : `This file uses an old save format (v${g.v}) that this build no longer opens.`;
+  }
+  return null;
+}
+
 export async function loadGraph(g: SavedGraph, opts?: { curtain?: boolean }): Promise<boolean> {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return false;
 
-  const valid = validateSavedGraph(g);
-  if (!valid.ok) {
-    pushNotice(`Couldn't open this graph: ${valid.reason}. Your current work is unchanged.`, "error", 0);
-    return false;
-  }
-
-  if (g.v !== CURRENT_SAVE_VERSION) {
-    pushNotice(
-      g.v > CURRENT_SAVE_VERSION
-        ? `This file was saved by a newer version of Solenoid (format v${g.v}) and can't be opened here. Update the app to load it.`
-        : `This file uses an old save format (v${g.v}) that this build no longer opens.`,
-      "error",
-      0,
-    );
+  const refusal = loadRefusal(g);
+  if (refusal) {
+    pushNotice(refusal, "error", 0);
     return false;
   }
 

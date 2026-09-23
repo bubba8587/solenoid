@@ -23,32 +23,43 @@ function fenceRanges(lines: readonly string[]): [number, number][] {
 
 const inFence = (i: number, ranges: [number, number][]) => ranges.some(([a, b]) => i >= a && i <= b);
 
+const ANY_BEGIN = /^%% solenoid:begin .* %%$/;
+
+/** An end closes the nearest begin of any name before it, so an orphan begin never pairs with a later block's end. */
+function findBlock(lines: readonly string[], name: string): [number, number] | null {
+  const begin = beginMarker(name);
+  const fences = fenceRanges(lines);
+  let open = -1;
+  for (let i = 0; i < lines.length; i++) {
+    if (inFence(i, fences)) continue;
+    const t = lines[i].trim();
+    if (ANY_BEGIN.test(t)) open = i;
+    else if (t === END_MARKER && open >= 0) {
+      if (lines[open].trim() === begin) return [open, i];
+      open = -1;
+    }
+  }
+  return null;
+}
+
 export function spliceBlock(text: string, name: string, content: string): SpliceResult {
   const contentLines = content.replace(/\r\n/g, "\n").split("\n");
   const contentFences = fenceRanges(contentLines);
   const bad = contentLines.findIndex((l, i) => l.includes("%%") && !inFence(i, contentFences));
   if (bad >= 0) return { text, refused: `the content has "%%" on line ${bad + 1}, which Obsidian would hide` };
 
-  const begin = beginMarker(name);
   const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const fences = fenceRanges(lines);
-  const beginAt = lines.findIndex((l, i) => l.trim() === begin && !inFence(i, fences));
-  const endAt = beginAt < 0 ? -1 : lines.findIndex((l, i) => i > beginAt && l.trim() === END_MARKER && !inFence(i, fences));
-  const block = [begin, ...contentLines, END_MARKER];
-  if (beginAt >= 0 && endAt > beginAt) {
-    return { text: [...lines.slice(0, beginAt), ...block, ...lines.slice(endAt + 1)].join("\n") };
+  const found = findBlock(lines, name);
+  const block = [beginMarker(name), ...contentLines, END_MARKER];
+  if (found) {
+    return { text: [...lines.slice(0, found[0]), ...block, ...lines.slice(found[1] + 1)].join("\n") };
   }
   const body = lines.join("\n").replace(/\s+$/, "");
   return { text: (body ? body + "\n\n" : "") + block.join("\n") + "\n" };
 }
 
 export function readBlock(text: string, name: string): string | null {
-  const begin = beginMarker(name);
   const lines = text.replace(/\r\n/g, "\n").split("\n");
-  const fences = fenceRanges(lines);
-  const beginAt = lines.findIndex((l, i) => l.trim() === begin && !inFence(i, fences));
-  if (beginAt < 0) return null;
-  const endAt = lines.findIndex((l, i) => i > beginAt && l.trim() === END_MARKER && !inFence(i, fences));
-  if (endAt < 0) return null;
-  return lines.slice(beginAt + 1, endAt).join("\n");
+  const found = findBlock(lines, name);
+  return found ? lines.slice(found[0] + 1, found[1]).join("\n") : null;
 }

@@ -98,8 +98,9 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
    - `inputPorts`, `outputPorts`: each port copied. `scenarios`: `{ id, name, overrides }` each. `dataTableValues`: each array copied. `goalSeek`, `monteCarlo`: copied when set (a `null` config is omitted).
    - `uncertainty` only when it is a positive number, with `distribution: "uniform"` only when not normal.
    - `internal`: the node's `snapshotInternal()` result, when it has one.
-3. The node's `literals` map is spread into `init` as well, so a constructor that reads defaults such as `min`, `max` or `step` from its init sees them. (The same values are also saved in `SavedNode.literals`.)
-4. When the node grows value rows (`addValueInput` or `addValuePair` exists), `init.valueKeys` lists every current input key so the constructor rebuilds exactly those rows.
+3. When the node grows value rows (`addValueInput` or `addValuePair` exists), `init.valueKeys` lists every current input key so the constructor rebuilds exactly those rows.
+
+Literal values never enter `init`: they live only in `SavedNode.literals` and `stringLiterals`, restored after construction. A literal key can share a name with an init field (Pad Text's `width` input beside its card `width`, a Script parameter named `label`), so one flat namespace would let either overwrite the other. A constructor may still accept a literal key in its `init` to seed a catalog preset or a hand-written text form; the saved map wins on load.
 
 The capture must be a fixed point: `extractInit(new Ctor(extractInit(n)))` equals `extractInit(n)`, and every value must survive `JSON.parse(JSON.stringify(v))`. A `Map`, `Set`, class instance, `NaN` or `Infinity` breaks the second rule silently, because the text form stringifies each field (`Infinity` becomes `null`).
 
@@ -194,7 +195,7 @@ Two Number Inputs multiplied and displayed, inside a Group, with one comment:
 budget: NumberInputNode label="Monthly budget" value=50 width=180 height=76
 grp: GroupNode label="Budget" members=["budget","months","annual","shown"] color="blue" collapsed=false width=560 height=282
 months: NumberInputNode label="Months" value=12 width=180 height=76
-annual: ArithmeticNode label="Annual total" op="mul" width=180 height=177 a=0 b=0 lit:a=0 lit:b=0 a<-budget.value b<-months.value
+annual: ArithmeticNode label="Annual total" op="mul" width=180 height=177 lit:a=0 lit:b=0 a<-budget.value b<-months.value
 shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 in<-annual.result
 ---
 {
@@ -234,7 +235,7 @@ shown: DisplayNode label="Annual budget" unitSuffix="none" width=180 height=88 i
 }
 ```
 
-`grp` sorts before `months` because both are ready once `budget` is emitted. `a=0 b=0` in `init` are the Arithmetic node's literal map spread into its init by `extractInit`; they follow `height` because they are not in either order list. The JSON save of this document has `nodes` in the same order with `id` equal to `name`, `connections` in line order (`budget.value → annual.a`, `months.value → annual.b`, `annual.result → shown.in`), and the sidecar's other keys at the top level.
+`grp` sorts before `months` because both are ready once `budget` is emitted. The JSON save of this document has `nodes` in the same order with `id` equal to `name`, `connections` in line order (`budget.value → annual.a`, `months.value → annual.b`, `annual.result → shown.in`), and the sidecar's other keys at the top level.
 
 ## The version gate
 
@@ -342,5 +343,5 @@ The document library is the working store; files are exports and imports of one 
 
 **Files on disk.** A file is the `SavedGraph` JSON (not the text form), written with `JSON.stringify(g, null, 2)` and a `.json` extension.
 
-- *Save* (`saveToDisk`) captures the current document, then on desktop resolves the destination (the bound `filePath`, or a save dialog for a new document or Save As), bundles images into it, serializes, stamps `savedAt` with the write instant, and writes through a `<path>.tmp` sibling renamed over the target (a direct write when the temp file is outside the granted scope). A new destination binds the document to the path and renames it to the file name. It then captures again (so the library copy carries the new `assetPath`s) and sets `fileSavedAt` to the same instant as `savedAt`. In the browser the file is offered as a download, with no image bundling.
-- *Open* (`openFromDisk`) parses the JSON (error notice when it is not JSON), applies `validateSavedGraph` (error notice when it fails), and adopts it with `importAsDocument(graph, fileName, path)`: the graph's `meta` is marked `foreign: true` with `networkAllowed` cleared, so a shared file cannot pre-grant network access; the new document takes the file name, binds to the path on desktop, and seeds both `updatedAt` and `fileSavedAt` from the file's `savedAt` when present. `saveToDisk` captures right before it writes, so at that instant the last autosave and the write coincide, and a document opened on another machine shows when its content was really saved rather than when it was imported. A load refused by the version gate reverts to the previous document.
+- *Save* (`saveToDisk`) captures the current document, then on desktop resolves the destination (the bound `filePath`, or a save dialog for a new document or Save As), bundles images into it, serializes, stamps `savedAt` with the write instant, and writes through a `<path>.tmp` sibling renamed over the target (a direct write when the temp file is outside the granted scope). A new destination binds the document to the path and renames it to the file name. It then captures again (so the library copy carries the new `assetPath`s) and sets `fileSavedAt` to the same instant as `savedAt`. The save belongs to the document current when it began: binding and stamping go to that document's id, and a switch to another document while the dialog is open or images bundle abandons the save with a warning, so one document's graph is never written to another's file. In the browser the file is offered as a download, with no image bundling.
+- *Open* (`openFromDisk`) parses the JSON (error notice when it is not JSON), applies `validateSavedGraph` (error notice when it fails), and adopts it with `importAsDocument(graph, fileName, path)`: the graph's `meta` is marked `foreign: true` with `networkAllowed` cleared, so a shared file cannot pre-grant network access; the new document takes the file name, binds to the path on desktop, and seeds both `updatedAt` and `fileSavedAt` from the file's `savedAt` when present. `saveToDisk` captures right before it writes, so at that instant the last autosave and the write coincide, and a document opened on another machine shows when its content was really saved rather than when it was imported. `importAsDocument` runs the load gates (`loadRefusal`: structural, then version) before it adds anything, so a refused file shows the gate's notice and never becomes a library entry; a load that throws later rolls back to the previous document and leaves the new entry in the library.

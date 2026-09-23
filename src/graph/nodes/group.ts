@@ -19,8 +19,8 @@ export class GroupNode extends ClassicPreset.Node {
     height?: number;
     lockedPosition?: boolean;
   }) {
-    super("Group");
-    this.label = init?.label ?? "Group";
+    super("Node Group");
+    this.label = init?.label ?? "Node Group";
     this.members = init?.members ? [...init.members] : [];
     this.color = init?.color ?? "violet";
     this.collapsed = init?.collapsed ?? false;

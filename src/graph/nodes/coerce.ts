@@ -13,7 +13,7 @@ export class ShapeError extends Error {
   }
 }
 
-// A non-array is a scalar whatever its type: text reaching a number rung through a wildcard is the node's to judge, never a list of characters.
+// A non-array is a scalar whatever its type, never a list of characters.
 type Numeric = number | number[] | Mat;
 
 function is2D(v: number[] | Mat): v is Mat {

@@ -10,6 +10,7 @@ import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton, type SortKey } from "./columnSort";
 import { copyText } from "../clipboard";
 import { saveCsvFileDialog } from "../fileBridge";
+import { csvField } from "../csvSafety";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
@@ -88,11 +89,7 @@ function tokenAt(view: DrillView, r: number, c: number, listVertical: boolean): 
   return cubeCellToken(view.cells[r]?.[c] ?? null);
 }
 
-function csvEsc(s: string): string {
-  let out = s;
-  if (/^[=+\-@\t\r]/.test(out) && Number.isNaN(Number(out))) out = `'${out}`;
-  return /[",\n]/.test(out) ? `"${out.replace(/"/g, '""')}"` : out;
-}
+const csvEsc = (s: string): string => csvField(s, true);
 function mdEsc(s: string): string {
   return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }

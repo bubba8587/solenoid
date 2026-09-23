@@ -8,6 +8,7 @@ import { type LambdaValue } from "../../src/graph/lambdaValue";
 import { buildFrame } from "../../src/graph/frame";
 import { type MermaidValue } from "../../src/graph/mermaidValue";
 import { makeDocument } from "../../src/graph/documentValue";
+import { parse as parseYaml } from "yaml";
 
 describe("frontmatterToYaml", () => {
   it("emits a --- fenced block; numbers/booleans bare, order preserved", () => {
@@ -45,6 +46,10 @@ describe("frontmatterToYaml", () => {
     expect(yamlScalar("back\\slash\nnl")).toBe('"back\\\\slash\\nnl"');
     // the emitted block is a single line per key — no stray newline splices in
     expect(frontmatterToYaml({ notes: "one\ntwo" })).toBe('---\nnotes: "one\\ntwo"\n---\n');
+  });
+  it("every text value reads back as the same text through the yaml package", () => {
+    const texts = ["+1", "-.5", "+.5", "-.inf", "+.INF", ".NaN", "'quoted'", "0x1F", "1e3", "~", "Null", "- x", "a #b", "plain", "-item", "it's"];
+    for (const t of texts) expect(parseYaml(`k: ${yamlScalar(t)}`), t).toEqual({ k: t });
   });
   it("renders a list as a YAML block sequence", () => {
     expect(frontmatterToYaml({ tags: ["finance", "q3"] })).toBe(

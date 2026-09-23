@@ -16,7 +16,7 @@ import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
-import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
+import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, unitError, READINGS_ADD, type UnitCell } from "../unitValue";
 import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
@@ -1673,7 +1673,7 @@ export type ReduceOp = AggregateOp | "countblank";
 
 export const REDUCE_OP_META = {
   sum:     { label: "SUM",     description: "Sums all values. Excel: `SUM`." },
-  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`." },
+  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`.", keywords: "mean" },
   min:     { label: "MIN",     description: "Smallest value. Excel: `MIN`." },
   max:     { label: "MAX",     description: "Largest value. Excel: `MAX`." },
   count:   { label: "COUNT",   description: "Number of values. Excel: `COUNT`." },
@@ -1681,8 +1681,8 @@ export const REDUCE_OP_META = {
   countblank: { label: "COUNTBLANK", description: "Number of blank (missing) cells. Excel: `COUNTBLANK`." },
   median:  { label: "MEDIAN",  description: "Middle value. Excel: `MEDIAN`." },
   product: { label: "PRODUCT", description: "Multiply all values. Excel: `PRODUCT`." },
-  stdev:   { label: "STDEV.S", description: "Sample standard deviation (`n−1`). Excel: `STDEV.S`." },
-  stdev_p: { label: "STDEV.P", description: "Population standard deviation (`n`). Excel: `STDEV.P`." },
+  stdev:   { label: "STDEV.S", description: "Sample standard deviation (`n−1`). Excel: `STDEV.S`.", keywords: "std sd standard deviation" },
+  stdev_p: { label: "STDEV.P", description: "Population standard deviation (`n`). Excel: `STDEV.P`.", keywords: "std sd standard deviation" },
   var_s:   { label: "VAR.S",   description: "Sample variance (`n−1`). Excel: `VAR.S`." },
   var_p:   { label: "VAR.P",   description: "Population variance (`n`). Excel: `VAR.P`." },
   geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be `> 0`). Excel: `GEOMEAN`." },
@@ -1699,7 +1699,7 @@ export const REDUCE_OP_META = {
   sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ `√n`. scipy `sem`, or `sd(x)/sqrt(n)` in R." },
   cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy `variation`, or `sd(x)/mean(x)` in R." },
   rms:     { label: "RMS",     description: "Root mean square: √ of the mean of the squares." },
-} satisfies Record<ReduceOp, { label: string; description: string; fx?: string }>;
+} satisfies Record<ReduceOp, { label: string; description: string; fx?: string; keywords?: string }>;
 
 export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   if (isDimensionless(dim)) return DIMENSIONLESS;
@@ -1716,6 +1716,9 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
       return DIMENSIONLESS;
   }
 }
+
+/** The dimension-preserving ops whose answer is a spread, not a reading. */
+const AFFINE_SPREAD_OPS: ReadonlySet<ReduceOp> = new Set(["stdev", "stdev_p", "avedev", "ptp", "iqr", "mad", "sem"]);
 
 export class AggregateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1750,16 +1753,25 @@ export class AggregateNode extends ClassicPreset.Node {
       this.cachedResult = result;
       return { result };
     }
-    const prep = forAggregateUnits(inputs.list?.[0] ?? []);
+    const list = inputs.list?.[0] ?? [];
+    const prep = forAggregateUnits(list, this.op !== "sum");
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
+    // Over °C, as in a formula: readings have no sum, and a spread is a delta.
+    const affine = isAffineDisplay(prep.display);
+    if (affine && this.op === "sum" && list.filter((c) => isUnitCell(c) && isAffineDisplay(c.display)).length > 1) {
+      const err = unitError(READINGS_ADD);
+      this.cachedResult = err;
+      return { result: err };
+    }
     const arr = prep.nums;
     const dim = prep.dim;
     const result = aggregate(this.op, arr);
     if (isSolError(result)) { this.cachedResult = result; return { result }; }
     const resultDim = aggregateResultDim(this.op, dim, arr.length);
+    const delta = affine && AFFINE_SPREAD_OPS.has(this.op);
     const tagged: number | UnitCell | null =
       result !== null && !isDimensionless(dim)
-        ? tagDim(result, resultDim, dimEqual(resultDim, dim) ? prep.display : undefined)
+        ? tagDim(result, resultDim, dimEqual(resultDim, dim) && !delta ? prep.display : undefined)
         : result;
     this.cachedResult = tagged;
     return { result: tagged };

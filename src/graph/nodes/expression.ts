@@ -7,9 +7,10 @@ import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, t
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
 import { isCx } from "../cxValue";
-import { isUnitCell, tagDim, type UnitCell } from "../unitValue";
-import { dimEval, type DimEnv, type CodeEnv } from "../unitDimExpr";
-import { type Dim, DIMENSIONLESS, isDimensionless, dimEqual } from "../dimension";
+import { isUnitCell, isAffineDisplay, tagDim, fromUnit, type UnitCell } from "../unitValue";
+import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
+import { dimEval, affineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
+import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
 
 function guard(v: unknown, scalar: boolean): unknown {
   if (typeof v === "string") return v;
@@ -35,6 +36,35 @@ function stripUnits(v: unknown): unknown {
       Array.isArray(c) ? c.map((e) => (isUnitCell(e) ? (e as UnitCell).value : e))
       : isUnitCell(c) ? (c as UnitCell).value : c);
   }
+  return v;
+}
+
+/** The one display unit every dimensioned input cell is shown in, or null (none, mixed,
+ *  or a derived form with no id). */
+function sharedDisplay(values: unknown[]): { id: string; unit: Unit } | null {
+  let id: string | undefined;
+  for (const c of values.flat(2)) {
+    if (!isUnitCell(c) || isDimensionless(c.dim)) continue;
+    if (c.display == null || (id !== undefined && c.display !== id)) return null;
+    id = c.display;
+  }
+  if (id === undefined) return null;
+  const unit = fcUnitToUnit(id);
+  if (!unit) return null;
+  for (const c of values.flat(2)) {
+    if (isUnitCell(c) && !isDimensionless(c.dim) && !dimEqual(c.dim, unit.dim)) return null;
+  }
+  return { id, unit };
+}
+
+function allReadings(values: unknown[]): boolean {
+  const cells = values.flat(2).filter((c): c is UnitCell => isUnitCell(c) && !isDimensionless(c.dim));
+  return cells.length > 0 && cells.every((c) => isAffineDisplay(c.display));
+}
+
+function toShown(v: unknown): unknown {
+  if (isUnitCell(v)) return displayMagnitudeOf(v);
+  if (Array.isArray(v)) return v.map(toShown);
   return v;
 }
 
@@ -165,15 +195,9 @@ export class ExpressionNode extends ClassicPreset.Node {
     try {
       const rawEnv: Record<string, unknown> = {};
       for (const v of this.varNames) rawEnv[v] = readInput(inputs[v], this.literals[v] ?? 0);
-      const env: Record<string, unknown> = {};
-      for (const v of this.varNames) env[v] = stripUnits(rawEnv[v]);
-
-      const raw = this.evaluator(env);
-      let result: unknown = Array.isArray(raw)
-        ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
-        : tagResult(raw);
-
-      if (this.ast && this.varNames.some((v) => envDim(rawEnv[v]) !== DIMENSIONLESS && !isDimensionless(envDim(rawEnv[v])))) {
+      let dr: Dim | null = null;
+      let shown: { id: string; unit: Unit; k: number | null; point: 0 | 1 | null } | null = null;
+      if (this.ast && this.varNames.some((v) => !isDimensionless(envDim(rawEnv[v])))) {
         const dimEnv: DimEnv = {};
         const codeEnv: CodeEnv = {};
         for (const v of this.varNames) {
@@ -181,16 +205,54 @@ export class ExpressionNode extends ClassicPreset.Node {
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }
-        const dr = dimEval(this.ast, dimEnv, codeEnv);
-        if (isSolError(dr)) {
-          this.cachedResult = dr; this.cachedError = null;
-          return { result: dr };
+        const r = dimEval(this.ast, dimEnv, codeEnv);
+        if (isSolError(r)) {
+          this.cachedResult = r; this.cachedError = null;
+          return { result: r };
         }
-        if (dr !== null && !isDimensionless(dr)) {
-          result = Array.isArray(result)
-            ? result.map((c) => (typeof c === "number" ? tagDim(c, dr) : c))
-            : (typeof result === "number" ? tagDim(result, dr) : result);
+        dr = r;
+        // One shared linear display unit: the formula runs on the numbers the user reads,
+        // as the Arithmetic and Comparison cards do ([[B16]] oneFormulaSurface).
+        // An affine one (°C) is a point scale: `affineWeight` says whether the answer is
+        // a reading, a difference in the base unit, or #UNIT!.
+        const sd = sharedDisplay(this.varNames.map((v) => rawEnv[v]));
+        const united = this.varNames.filter((v) => !isDimensionless(envDim(rawEnv[v])));
+        // Readings in different offset units (°C and °F) run in base SI, but still classify.
+        let point: 0 | 1 | null = null;
+        if (sd ? sd.unit.offset : allReadings(united.map((v) => rawEnv[v]))) {
+          const w = affineWeight(this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))));
+          if (isSolError(w)) {
+            this.cachedResult = w; this.cachedError = null;
+            return { result: w };
+          }
+          point = w;
         }
+        if (sd) {
+          const k = dr === null || isDimensionless(dr) ? null : dimPowerOf(dr, sd.unit.dim);
+          if (dr === null || isDimensionless(dr) || k !== null) shown = { ...sd, k, point };
+        }
+      }
+
+      const env: Record<string, unknown> = {};
+      for (const v of this.varNames) env[v] = shown ? toShown(rawEnv[v]) : stripUnits(rawEnv[v]);
+
+      const raw = this.evaluator(env);
+      let result: unknown = Array.isArray(raw)
+        ? raw.map((e) => (Array.isArray(e) ? e.map(tagResult) : tagResult(e)))
+        : tagResult(raw);
+
+      if (dr !== null && !isDimensionless(dr)) {
+        const d = dr;
+        const sh = shown;
+        const tag = (c: number): number | UnitCell => {
+          if (!sh || sh.k === null) return tagDim(c, d);
+          if (sh.point === 1) return fromUnit(c, sh.unit, sh.id) as UnitCell;
+          if (sh.point === 0) return tagDim(c * sh.unit.scale ** sh.k, d);
+          return tagDim(c * sh.unit.scale ** sh.k, d, sh.k === 1 ? sh.id : undefined);
+        };
+        result = Array.isArray(result)
+          ? result.map((c) => (typeof c === "number" ? tag(c) : c))
+          : (typeof result === "number" ? tag(result) : result);
       }
       this.cachedResult = result;
       this.cachedError  = null;

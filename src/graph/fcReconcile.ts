@@ -3,7 +3,7 @@ import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
-import { SolenoidSocket, AdoptiveSocket, canConnect } from "./sockets";
+import { SolenoidSocket, canConnect, declaredTypeOf } from "./sockets";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 
 export async function retypeOutputCables(
@@ -18,7 +18,7 @@ export async function retypeOutputCables(
     if (c.source !== nodeId || c.sourceOutput !== outKey) continue;
     const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
     // Judge an adoptive input by its base, not the type it adopted from this very cable.
-    const inType = inSock instanceof AdoptiveSocket ? inSock.base : inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
+    const inType = declaredTypeOf(inSock);
     if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);
   }
   reconcileFcTypes(editor, view);

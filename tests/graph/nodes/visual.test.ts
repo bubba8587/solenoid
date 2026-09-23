@@ -11,7 +11,7 @@ import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nod
 import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { DateInputNode, XYPadNode } from "../../../src/graph/nodes/control";
-import { extractInit } from "../../../src/graph/copyPaste";
+import { extractInit, cloneNode } from "../../../src/graph/copyPaste";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
 import { isMermaidValue } from "../../../src/graph/mermaidValue";
@@ -175,11 +175,11 @@ describe("Surface (3-D plot)", () => {
     expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
   });
 
-  it("the view angles round-trip through extractInit (rotate buttons persist)", () => {
+  it("the view angles round-trip through the clone path (rotate buttons persist)", () => {
     const s = new SurfaceNode();
     s.literals.yaw = 135;
     s.literals.pitch = 60;
-    const s2 = new SurfaceNode(extractInit(s));
+    const s2 = cloneNode(s) as SurfaceNode;
     expect(s2.literals.yaw).toBe(135);
     expect(s2.literals.pitch).toBe(60);
     expect(s2.data({}).chart.payload).toMatchObject({ yaw: 135, pitch: 60 });
@@ -303,7 +303,7 @@ describe("control nodes", () => {
   it("XY Pad outputs its two fractions and round-trips", () => {
     const p = new XYPadNode({ fx: 0.25, fy: 0.75 });
     expect(p.data()).toEqual({ x: 0.25, y: 0.75 });
-    const p2 = new XYPadNode(extractInit(p));
+    const p2 = cloneNode(p) as XYPadNode;
     expect(p2.literals.fx).toBe(0.25);
     expect(p2.literals.fy).toBe(0.75);
   });
@@ -454,9 +454,9 @@ describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
     expect(n.data({ z: [z] }).chart).toMatchObject({ op: "surface", payload: { kind: "surface", yaw: 45 } });
   });
 
-  it("op round-trips through extractInit with the view's literals", () => {
+  it("op round-trips through the clone path with the view's literals", () => {
     const n = new SurfaceNode({ op: "contour", levels: 12 });
-    const clone = new SurfaceNode(extractInit(n) as { op: "contour" });
+    const clone = cloneNode(n) as SurfaceNode;
     expect(clone.op).toBe("contour");
     expect(clone.literals.levels).toBe(12);
   });

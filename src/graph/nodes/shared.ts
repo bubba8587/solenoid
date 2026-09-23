@@ -100,6 +100,14 @@ export function resultOut(label: string, dim: ResultDim, t: ResultType): Classic
   return new ClassicPreset.Output(resultSocket(dim, t), label);
 }
 
+/** Re-seats a fixed input after a grown row, so the live key order is the one a reload rebuilds. */
+export function keepInputLast(node: ClassicPreset.Node, key: string): void {
+  const input = node.inputs[key];
+  if (!input) return;
+  delete node.inputs[key];
+  node.inputs[key] = input;
+}
+
 export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | null {
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
 }

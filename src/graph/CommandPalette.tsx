@@ -14,16 +14,8 @@ import { commandRecents } from "./commandRecents";
 import { paletteStore } from "./paletteStore";
 import { settingsStore, SETTINGS_SCHEMA } from "./settingsStore";
 import { alignSelection, distributeSelection, collapseSelection } from "./selectionOps";
-import { buildMenus, type MenuItem } from "./menuModel";
+import { buildMenus, fireMenuKey, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
-
-function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } = {}) {
-  window.dispatchEvent(
-    new KeyboardEvent("keydown", {
-      code, ctrlKey: !!opts.ctrl, shiftKey: !!opts.shift, bubbles: true, cancelable: true,
-    }),
-  );
-}
 
 // Lucide "sparkle"; the viewBox shifts +0.7/-1 to center its ink, which sits upper-right of the box.
 function SparkleIcon() {
@@ -61,8 +53,8 @@ function buildCommands(): PaletteItem[] {
     .filter((it): it is Extract<MenuItem, { label: string }> => !("sep" in it) && !it.disabled && !!it.onClick)
     .map((it) => ({ label: it.label, shortcut: it.shortcut, run: it.onClick! }));
   const extra: { label: string; shortcut?: string; run: () => void }[] = [
-    { label: "Isolate selection", shortcut: "I", run: () => fireCanvasKey("KeyI") },
-    { label: "Expand or collapse groups", shortcut: "E", run: () => fireCanvasKey("KeyE") },
+    { label: "Isolate selection", shortcut: "I", run: () => fireMenuKey("KeyI") },
+    { label: "Expand or collapse groups", shortcut: "E", run: () => fireMenuKey("KeyE") },
     { label: "Align left", run: () => void alignSelection("left") },
     { label: "Align right", run: () => void alignSelection("right") },
     { label: "Align top", run: () => void alignSelection("top") },
@@ -184,9 +176,10 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
 
   function run(item: PaletteItem) {
     if (item.kind === "command" || item.kind === "setting") commandRecents.record(item.label);
+    // Close first: an open palette owns the keyboard, so a command that presses a canvas key would meet its own gate.
+    onClose();
     item.run();
     if (persistent) { setQuery(""); setActiveIndex(-1); inputRef.current?.focus(); }
-    else onClose();
   }
 
   function onKeyDown(e: React.KeyboardEvent) {

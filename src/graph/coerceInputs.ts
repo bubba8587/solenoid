@@ -1,7 +1,7 @@
 // [[C25]], [[D43]], [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";
+import { declaredTypeOf, elementFamilyOf, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
@@ -9,7 +9,7 @@ import { parseDate } from "./nodes/dateSerial";
 import { coerceLogical } from "./valueKinds";
 import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
-import { isSolError, SEES_ERRORS } from "./errorValue";
+import { isSolError, solError, SEES_ERRORS } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
 import { isUnitCell, carryMatrixUnit } from "./unitValue";
 import { frameFormatStore } from "./frameFormatStore";
@@ -25,11 +25,6 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 ]);
 
 export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
-
-function coercionType(socket: unknown): SocketDataType | undefined {
-  if (socket instanceof AdoptiveSocket) return socket.base;
-  return socket instanceof SolenoidSocket ? socket.dataType : undefined;
-}
 
 function parseBoolText(p: string): boolean | null {
   const t = p.trim().toLowerCase();
@@ -52,9 +47,20 @@ export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
 
 type Numeric = number | number[] | number[][];
 
-function boolsToNums(v: unknown): unknown {
+// Text or a complex on a number port (only a wildcard cable can carry one there) is a
+// per-cell `#TYPE!`, never a silently parsed number ([[B17]] typedValueModel).
+function numericCells(v: unknown): unknown {
   if (typeof v === "boolean") return v ? 1 : 0;
-  if (Array.isArray(v)) return v.map(boolsToNums);
+  if (typeof v === "string") return solError("#TYPE!", "Text where a number is expected");
+  if (typeof v === "object" && v !== null && (v as { __cx?: unknown }).__cx === true) {
+    return solError("#TYPE!", "A complex number where a real number is expected");
+  }
+  if (Array.isArray(v)) return v.map(numericCells);
+  return v;
+}
+/** A scalar rung cannot hold a per-cell error, so it fails the node instead. */
+function scalarOrThrow<T>(v: T): T {
+  if (isSolError(v)) throw v;
   return v;
 }
 function numsToBools(v: unknown): unknown {
@@ -77,8 +83,6 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
     case "list":
     case "anylist":
       return isUnitCell(v) ? [v] : v;
-    case "numlist":
-      return v;
     case "table":
       return toAnyMatrix(v);
     case "frame":
@@ -87,9 +91,16 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
     case "cube":
       return toCube(v);
     default:
-      return v;
+      // The rank rule does not depend on whether the value carries a unit.
+      return COLLAPSING.has(dataType) ? collapseSingleton(v) : v;
   }
 }
+
+/** The rungs `coerceValue` collapses a singleton on (socket-lattice req. 4). */
+const COLLAPSING: ReadonlySet<SocketDataType> = new Set([
+  "numlist", "logical", "logicalcombo", "string", "date", "complex",
+  "strcombo", "datecombo", "complexcombo", "anydata", "anycombo",
+]);
 
 function collapseSingleton(v: unknown): unknown {
   return Array.isArray(v) && v.length === 1 ? v[0] : v;
@@ -101,15 +112,15 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   switch (dataType) {
     case "table":
       // toMatrix rebuilds the outer array, which drops the non-enumerable matrix unit tag.
-      return carryMatrixUnit(toMatrix(boolsToNums(v) as Numeric), v);
+      return carryMatrixUnit(toMatrix(numericCells(v) as Numeric), v);
     case "list":
-      return toList(boolsToNums(v) as Numeric);
+      return toList(numericCells(v) as Numeric);
     case "number":
-      return toScalar(boolsToNums(v) as Numeric);
+      return scalarOrThrow(toScalar(scalarOrThrow(numericCells(v)) as Numeric));
     case "numlist": {
-      const n = boolsToNums(v);
+      const n = numericCells(v);
       const flat = Array.isArray(n) && Array.isArray((n as unknown[])[0]) ? toList(n as Numeric) : n;
-      return collapseSingleton(flat);
+      return scalarOrThrow(collapseSingleton(flat));
     }
     case "logicalcombo":
       return collapseSingleton(numsToBools(v));
@@ -155,7 +166,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
 function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
   if (isFrameRef(v) || isSolError(v) || hasUnitCell(v)) return v;
   const fam = elementFamilyOf(dataType);
-  if (fam === "number") return boolsToNums(v);
+  if (fam === "number") return scalarOrThrow(numericCells(v));
   if (fam === "logical") return numsToBools(v);
   return v;
 }
@@ -227,7 +238,7 @@ export function wrapNodeData(node: NodeLike) {
       const keepUnits = keepAllUnits || (passKeys?.has(key) ?? false);
       const arr = keepUnits || !Array.isArray(raw) ? raw : (raw.map(stripUnitCells) as unknown[]);
       const socket = node.inputs?.[key]?.socket;
-      const dt = coercionType(socket);
+      const dt = declaredTypeOf(socket);
       if (!dt || !Array.isArray(arr)) { coerced[key] = arr; continue; }
       if (rawInputs?.has(key)) { coerced[key] = arr; continue; }
       if (noWiden?.has(key)) { coerced[key] = arr.map((v) => coerceValueNoWiden(dt, v)); continue; }
@@ -238,7 +249,7 @@ export function wrapNodeData(node: NodeLike) {
       for (const key of Object.keys(node.inputs)) {
         if ((coerced[key]?.length ?? 0) > 0) continue;
         const socket = node.inputs[key]?.socket;
-        const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        const dt = declaredTypeOf(socket);
         if (!dt || !(TYPEABLE_LIST.has(dt) || (dt === "numlist" && key in lits))) continue;
         const csv = lits[key];
         if (csv != null && csv.trim() !== "") coerced[key] = [parseListLiteral(csv, dt)];

@@ -41,7 +41,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 6px 8px;
-  font-family: var(--mono-font, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 13px;
   text-align: center;
   background: var(--surface-sunken);

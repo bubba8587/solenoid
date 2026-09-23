@@ -167,6 +167,12 @@ describe("ReportNode — records: a mail merge, one page per record", () => {
     expect(n.refValue("template")).toBeUndefined(); // unwired
   });
 
+  it("a records cable carrying no value yet still reserves `record` and `index`", async () => {
+    const n = new ReportNode({ body: "{{ record.Name }} {{ index }} {{ other }}" });
+    await n.data({ records: [null] });
+    expect(n.refKeys()).toEqual(["other"]);
+  });
+
   it("no records wired → no pages, a single document", async () => {
     const n = new ReportNode({ body: "plain" });
     const doc = (n.data({}) as { document: DocumentValue }).document;

@@ -27,7 +27,7 @@ area. When you coin a new load-bearing term, add it here.
   rendered through the wired cables' three drawers, with its own shape, width,
   arrowheads, color and a per-point heading dial. Carries no value and joins no
   socket. (`drawnCables.ts`)
-- **Group**: a container box around member nodes; expand/collapse pushes surrounding
+- **Group** (Add menu: Node Group): a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
 - **Tidy / auto-arrange**: ELK-based layout with a custom symmetric port preset.
   (elkjs via `elkTidyLayout`, `arrangeFn`, in `tidyArrange.ts`)

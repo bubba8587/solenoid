@@ -228,7 +228,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             ref={taRef}
             className="solenoid-group__label"
             rows={1}
-            placeholder="Group"
+            placeholder="Node Group"
             style={{ color: ink }}
             {...title.inputProps}
           />
@@ -239,7 +239,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             title={node.label}
             {...title.displayProps}
           >
-            {node.label || "Group"}
+            {node.label || "Node Group"}
           </div>
         )}
         {node.lockedPosition && (

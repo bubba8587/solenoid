@@ -146,7 +146,7 @@ A socket type can also come from static config (INDEX's Column literal, and the 
 
 **Invariants:**
 
-- Adoption never drops cables. It is derived state, and the mismatch scan flags a cable that no longer fits. Only an explicit user retype goes through `retypeOutputCables`.
+- Adoption never drops cables. It is derived state; only an explicit user retype goes through `retypeOutputCables`. A cable adoption leaves ill-typed is not flagged on the canvas: it keeps delivering, and the consumer's coercion is the only check (text on a number port is `#TYPE!`, `coerceInputs.ts` `numericCells`; the other families pass the value through).
 - Adopted types are never saved. They're worked out from the wiring on load.
 - An adopting port owns its socket instance, since a shared one would leak adoption between cards ([[E6]] portOwnsSocket).
 - A drilled-into composite settles its inner editor itself (`composite.ts` `settleInternalTypes`: the same joint settle plus boundary adoption). The main canvas pipe never touches the inner editor.

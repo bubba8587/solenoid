@@ -31,6 +31,7 @@ import type { NodeProps } from "./nodeKit";
 import "./nodeCard.css";
 import "./FormatControllerNode.css";
 import { stopDragStart } from "../coarse";
+import { useDraftCommit } from "./inlineInput";
 
 
 /** Delegates to `frameFormatStore.describeAnnotation`, so the hint's wording can't drift from the frame column row. */
@@ -65,8 +66,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const [chip,          setChipLocal]     = useState(node.chip);
   const [decimalDigits, setDigitsLocal]   = useState(node.decimalDigits);
   const [decimalMode,   setModeLocal]     = useState<DecimalMode>(node.decimalMode);
-  // Raw digits text, separate from the committed number, so the box can be empty while editing.
-  const [digitsText,    setDigitsText]    = useState(String(node.decimalDigits));
 
   // The socket that meets the host's sits exactly on it, so only the host's dot shows.
   const dockSide = useSyncExternalStore(dockedNodeStore.subscribe, () => dockedNodeStore.get(node.id)?.side);
@@ -256,27 +255,16 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     const clamped = clamp(Math.round(d), lo, 20);
     node.decimalDigits = clamped;
     setDigitsLocal(clamped);
-    setDigitsText(String(clamped));
     syncNode();
   }
 
-  function onDigitsInput(raw: string) {
-    setDigitsText(raw);
-    if (raw === "") return;
-    const d = parseInt(raw, 10);
-    if (!Number.isFinite(d)) return;
-    const lo = decimalMode === "sigfigs" ? 1 : 0;
-    const clamped = clamp(Math.round(d), lo, 20);
-    node.decimalDigits = clamped;
-    setDigitsLocal(clamped);
-    syncNode();
-  }
-
-  // Empty or invalid falls back to 1: 0 sig figs is meaningless.
-  function onDigitsBlur() {
-    const d = parseInt(digitsText, 10);
-    commitDigits(digitsText === "" || !Number.isFinite(d) ? 1 : d);
-  }
+  // Empty or invalid falls back to 1: 0 sig figs is meaningless. Parsed already clamped, so an out-of-range entry resets the box.
+  const digitsField = useDraftCommit(decimalDigits, String, (t) => {
+    const d = parseInt(t, 10);
+    return clamp(t === "" || !Number.isFinite(d) ? 1 : d, decimalMode === "sigfigs" ? 1 : 0, 20);
+  }, commitDigits);
+  const patternField = useDraftCommit(customPattern, (v) => v, (t) => t, onPatternChange);
+  const unitField = useDraftCommit(customUnit, (v) => v, (t) => t, onCustomUnitChange);
 
   function onModeSet(mode: DecimalMode) {
     if (mode === decimalMode) return;
@@ -486,9 +474,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <input
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
-              value={customPattern}
+              value={patternField.draft}
               placeholder="pattern, for example YYYY-MM-DD"
-              onChange={(e) => onPatternChange(e.target.value)}
+              onChange={(e) => patternField.setDraft(e.target.value)}
+              onBlur={patternField.onBlur}
+              onKeyDown={patternField.onKeyDown}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
@@ -618,12 +608,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <input
               type="number"
               className="solenoid-node__inline-input solenoid-fc__digits"
-              value={digitsText}
+              value={digitsField.draft}
               min={decimalMode === "sigfigs" ? 1 : 0}
               max={20}
               step={1}
-              onChange={(e) => onDigitsInput(e.target.value)}
-              onBlur={onDigitsBlur}
+              onChange={(e) => digitsField.setDraft(e.target.value)}
+              onBlur={digitsField.onBlur}
+              onKeyDown={digitsField.onKeyDown}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
               title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
@@ -646,9 +637,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <input
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
-              value={customPattern}
+              value={patternField.draft}
               placeholder='format, for example "0.00"'
-              onChange={(e) => onPatternChange(e.target.value)}
+              onChange={(e) => patternField.setDraft(e.target.value)}
+              onBlur={patternField.onBlur}
+              onKeyDown={patternField.onKeyDown}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />
@@ -775,9 +768,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <input
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
-              value={customUnit}
+              value={unitField.draft}
               placeholder="unit, for example psi"
-              onChange={(e) => onCustomUnitChange(e.target.value)}
+              onChange={(e) => unitField.setDraft(e.target.value)}
+              onBlur={unitField.onBlur}
+              onKeyDown={unitField.onKeyDown}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
             />

@@ -4,6 +4,7 @@ import { getActiveEditor as getEditor, getActiveView as getView } from "./active
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { connectionVersionStore } from "./graphSignals";
 import { outlineSearch } from "./outlineStore";
+import { keyUnderModal } from "./modalGuard";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_COARSE, IS_MOBILE } from "./coarse";
@@ -121,7 +122,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
 }
 
 /** Shared with the palette's jump-to-node. */
-export async function focusNode(id: string) {
+async function focusNode(id: string) {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return;
@@ -229,8 +230,8 @@ export function OutlinePanel() {
   }, [open]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // Plain Ctrl/Cmd+F only — Ctrl+Shift+F is the group autofit hotkey.
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.code === "KeyF") { e.preventDefault(); requestSearch(); }
+      // A modal keeps its own Ctrl+F; the search would open behind it and take its focus.
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.code === "KeyF" && !keyUnderModal(e)) { e.preventDefault(); requestSearch(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

@@ -87,13 +87,13 @@ describe("per-doc autosave keys", () => {
 });
 
 describe("the save clock — saveTimeStore reads the CURRENT doc through the provider", () => {
-  it("markCurrentFileSaved stamps only the current doc, and the stamp is persisted", () => {
+  it("markFileSaved stamps only the named doc, and the stamp is persisted", () => {
     documentStore.saveAs("Clock A");
     const a = documentStore.list().find((m) => m.name === "Clock A")!;
     expect(saveTimeStore.lastAutosaveAt()).not.toBeNull(); // stamped when the doc landed in storage
     expect(saveTimeStore.lastFileSaveAt()).toBeNull();     // never written to a file
 
-    documentStore.markCurrentFileSaved();
+    documentStore.markFileSaved(a.id);
     const stamp = saveTimeStore.lastFileSaveAt();
     expect(stamp).not.toBeNull();
 
@@ -127,6 +127,16 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     const stored = docKeysFor(doc.id).map((k) => JSON.parse(_mem.get(k)!) as { doc?: { fileSavedAt?: number; updatedAt?: number } });
     expect(stored.every((s) => s.doc?.fileSavedAt === undefined)).toBe(true);
     expect(stored.some((s) => (s.doc?.updatedAt ?? 0) >= t0)).toBe(true); // adoption time, not zero
+  });
+
+  it("a file the version gate refuses leaves no library entry and keeps the previous document current", async () => {
+    documentStore.saveAs("Keeper");
+    const keeper = documentStore.list().find((m) => m.name === "Keeper")!;
+    const before = documentStore.list().length;
+    await documentStore.importAsDocument({ v: 1, nodes: [], connections: [] } as never, "Ancient");
+    expect(documentStore.list().some((m) => m.name === "Ancient")).toBe(false);
+    expect(documentStore.list().length).toBe(before);
+    expect(documentStore.currentId()).toBe(keeper.id);
   });
 });
 

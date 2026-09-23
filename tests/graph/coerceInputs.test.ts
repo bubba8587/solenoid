@@ -20,6 +20,7 @@ import { TextTransformNode } from "../../src/graph/nodes/text";
 import { ComplexUnaryNode, cx } from "../../src/graph/nodes/complex";
 import { NotNode } from "../../src/graph/nodes/logic";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
+import { applyFcUnit } from "../../src/graph/unitBridge";
 import { ListLengthNode, ListInputNode, ListIndexNode } from "../../src/graph/nodes/list";
 
 const MAR_2026 = parseDateToSerial("2026-03-20");
@@ -228,7 +229,7 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
 // generalizes it — was the stricter of the two. The lattice already permits
 // combo→scalar on the grounds that "a combo can be a scalar" (sockets.ts calls it a
 // runtime-accepted risk); collapsing is what makes that promise true.
-describe("text reaching a number-family rung through a wildcard stays one value", () => {
+describe("text reaching a number-family rung through a wildcard is one #TYPE! value ([[B17]] typedValueModel)", () => {
   const through = (rung: "number" | "list" | "table", v: unknown) => {
     let got: unknown;
     const node = {
@@ -236,13 +237,18 @@ describe("text reaching a number-family rung through a wildcard stays one value"
       inputs: { x: { socket: new SolenoidSocket(rung) } },
     };
     wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
-    node.data({ x: [v] });
+    try { node.data({ x: [v] }); } catch (e) { return e; }
     return got;
   };
+  const code = (v: unknown) => (v as { code?: string }).code;
   it("is never split into characters or refused as a list of its length", () => {
-    expect(through("number", "abc")).toBe("abc");
-    expect(through("list", "abc")).toEqual(["abc"]);
-    expect(through("table", "abc")).toEqual([["abc"]]);
+    expect(code(through("number", "abc"))).toBe("#TYPE!");
+    const l = through("list", "abc") as unknown[];
+    expect(l).toHaveLength(1);
+    expect(code(l[0])).toBe("#TYPE!");
+    const m = through("table", "abc") as unknown[][];
+    expect(m).toHaveLength(1);
+    expect(code(m[0][0])).toBe("#TYPE!");
   });
 });
 
@@ -407,5 +413,53 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     expect(out).not.toBeInstanceOf(Promise);
     expect(readFrame).not.toHaveBeenCalled();
     expect(p.received()!.frame).toEqual([42]);
+  });
+});
+
+describe("coerceInputs — text on a number port is #TYPE!, never a parsed number ([[B17]] typedValueModel)", () => {
+  // Only a wildcard cable (XLOOKUP's static trueany result, a passthrough that adopted
+  // text after its outgoing cable was drawn) can land text on a number port; the lattice
+  // refuses the typed edge.
+  function run(dt: string, wired: unknown): unknown {
+    let received: Record<string, unknown[]> | undefined;
+    const node = {
+      data: (inputs: Record<string, unknown[]>) => { received = inputs; return {}; },
+      inputs: { a: { socket: new SolenoidSocket(dt as never) } },
+    };
+    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    try { node.data({ a: [wired] }); } catch (e) { return e; }
+    return received!.a?.[0];
+  }
+  const code = (v: unknown) => (v as { code?: string }).code;
+
+  it("a scalar number port fails the node with #TYPE!", () => {
+    expect(code(run("number", "5"))).toBe("#TYPE!");
+    expect(code(run("number", "hello"))).toBe("#TYPE!");
+    expect(code(run("number", ["x"]))).toBe("#TYPE!");
+    expect(code(run("numlist", "5"))).toBe("#TYPE!");
+    expect(code(run("number", cx(1, 2)))).toBe("#TYPE!");
+  });
+  it("a list or matrix port marks the text cell, per cell", () => {
+    const l = run("list", [1, "x", true]) as unknown[];
+    expect(l[0]).toBe(1);
+    expect(code(l[1])).toBe("#TYPE!");
+    expect(l[2]).toBe(1);
+    const m = run("table", [[1, "x"]]) as unknown[][];
+    expect(code(m[0][1])).toBe("#TYPE!");
+  });
+  it("numbers, booleans and blanks still coerce as before", () => {
+    expect(run("number", 5)).toBe(5);
+    expect(run("number", true)).toBe(1);
+    expect(run("number", null)).toBe(null);
+    expect(run("numlist", [1, null])).toEqual([1, null]);
+  });
+});
+
+describe("coerceInputs — the rank rule ignores units (socket-lattice spec req. 4)", () => {
+  it("a united singleton collapses on a combo port exactly as a plain one does", () => {
+    const add = () => { const n = new ArithmeticNode({ op: "add" } as never); wrapNodeData(n as never); return n; };
+    const km = applyFcUnit(5, "km");
+    expect(Array.isArray(add().data({ a: [[5]], b: [[5]] } as never).result)).toBe(false);
+    expect(Array.isArray(add().data({ a: [[km]], b: [[km]] } as never).result)).toBe(false);
   });
 });

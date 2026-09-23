@@ -1,6 +1,6 @@
 // [[C63]], [[B11]], [[C8]] declareOnce
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { readInput, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
@@ -224,6 +224,7 @@ export class MergePlotsNode extends ClassicPreset.Node {
   addValueInput(): string {
     const key = `p${this.nextInputId}`;
     this.addPlotWithKey(key);
+    keepInputLast(this, "options");
     return key;
   }
 

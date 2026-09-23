@@ -52,6 +52,21 @@ export function copySet(editor: NodeEditor<Schemes>): SolenoidNode[] {
   return editor.getNodes().filter((n) => ids.has(n.id) && !isMarker(n)) as SolenoidNode[];
 }
 
+function snapshotEntry(n: ClassicPreset.Node, x: number, y: number): ClipboardEntry {
+  const any = n as unknown as Record<string, unknown>;
+  return {
+    id: n.id,
+    Ctor: n.constructor as ClipboardEntry["Ctor"],
+    init: structuredClone(extractInit(n)),
+    literals: any.literals && typeof any.literals === "object" ? { ...(any.literals as Record<string, number>) } : undefined,
+    stringLiterals: any.stringLiterals && typeof any.stringLiterals === "object" ? { ...(any.stringLiterals as Record<string, string>) } : undefined,
+    collapsed: !!collapseStore.get(n.id),
+    flipped: !!socketFlipStore.get(n.id),
+    x,
+    y,
+  };
+}
+
 export function copySelected() {
   const editor = getActiveEditor();
   const view = getActiveView();
@@ -74,20 +89,7 @@ export function copySelected() {
   const idxMap = new Map(selected.map((n, i) => [n.id, i]));
 
   _clipboard = {
-    entries: selected.map((n, i) => {
-      const any = n as unknown as Record<string, unknown>;
-      return {
-        id: n.id,
-        Ctor: n.constructor as ClipboardEntry["Ctor"],
-        init: structuredClone(extractInit(n)),
-        literals: any.literals && typeof any.literals === "object" ? { ...(any.literals as Record<string, number>) } : undefined,
-        stringLiterals: any.stringLiterals && typeof any.stringLiterals === "object" ? { ...(any.stringLiterals as Record<string, string>) } : undefined,
-        collapsed: !!collapseStore.get(n.id),
-        flipped: !!socketFlipStore.get(n.id),
-        x: positions[i].x - minX,
-        y: positions[i].y - minY,
-      };
-    }),
+    entries: selected.map((n, i) => snapshotEntry(n, positions[i].x - minX, positions[i].y - minY)),
     connections: internalConns.map((c) => ({
       srcIdx: idxMap.get(c.source)!,
       srcOutput: c.sourceOutput,
@@ -210,13 +212,15 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   if (typeof n.snapshotInternal === "function") {
     init.internal = (n.snapshotInternal as () => unknown)();
   }
-  if (n.literals && typeof n.literals === "object") {
-    Object.assign(init, n.literals as object);
-  }
   if ((typeof n.addValueInput === "function" || typeof n.addValuePair === "function") && n.inputs) {
     init.valueKeys = Object.keys(n.inputs as object);
   }
   return init;
+}
+
+/** A copy of one node as the clipboard would paste it. */
+export function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
+  return cloneEntry(snapshotEntry(src, 0, 0));
 }
 
 function cloneEntry(e: ClipboardEntry): ClassicPreset.Node | null {

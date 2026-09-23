@@ -194,7 +194,7 @@ The gates run in this order:
 5. A key whose target has a `.nokeys` ancestor returns, except F9 ([[pointer-gestures]]).
 6. F9 recomputes. It stays live while typing, presenting, drilled in and under a modal, where it is the only remaining recompute path.
 7. The armed draw tool is modal: outside a field and without Ctrl or Cmd, Escape disarms it, Enter finishes the run and Backspace drops the last point, before the palette and isolate can claim those keys.
-8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, composite create, autofit, expand and collapse, `[` and `]` rotation, undo and redo), and the Add menu does not open from any entry point, while the view keys (palette, isolate, chrome, Tab, F9) keep working.
+8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, Wrap as Composite (Ctrl+Shift+G), autofit, expand and collapse, `[` and `]` rotation, undo and redo). The menu bar, palette and touch commands press these same keys (`fireMenuKey`), so menu Tidy and Cleanup stand down through this gate too. The Add menu does not open from any entry point: the `A` key, the menu bar and toolbar `+` (both through `addMenuRequest`), and the pane's right-click menu. The view keys (palette, isolate, chrome, Tab, F9) keep working.
 
 Bare keys, outside a field and without a modifier:
 

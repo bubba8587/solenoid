@@ -92,7 +92,7 @@ import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     keywords: "arithmetic", create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
 const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFXNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
-const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: "aggregate", create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
+const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: ["aggregate", (REDUCE_OP_META[op] as { keywords?: string }).keywords].filter(Boolean).join(" "), create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  keywords: "combinatorics", create: () => new CombinatoricsNode({ op }) });
 // NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace", geometric: "list-geometric", fibonacci: "list-fibonacci", repeat: "list-repeat" };
@@ -109,7 +109,7 @@ const covLeaf      = (op: CovarianceOp):   NodeCatalogEntry => ({ type: `cov-${o
 const fisherLeaf   = (op: FisherOp):       NodeCatalogEntry => ({ type: `fisher-${op}`,    label: FISHER_OP_META[op].label,         description: FISHER_OP_META[op].description,         create: () => new FisherNode({ op })        });
 const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise-${op}`,   label: BITWISE_OP_META[op].label,        description: BITWISE_OP_META[op].description,        create: () => new BitwiseNode({ op })       });
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
-const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "slope", create: () => new RegressionNode({ op })    });
+const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "regression", create: () => new RegressionNode({ op })    });
 // NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
   z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test",
@@ -181,7 +181,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       ]},
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
       { type: "pair", children: [
-        { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel `RAND()`). Bottom and Top give a custom range.", create: () => new RandBetweenNode(), parity: false },
+        { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel `RAND()`). Bottom and Top give a custom range.", create: () => new RandBetweenNode(), parity: false, keywords: "random" },
         { type: "na",          label: "NA",          description: "Outputs `#N/A`, which propagates through calculations like Excel. Catch it with `IFERROR` or `IFNA`.", create: () => new NaNode() },
       ]},
       {
@@ -279,7 +279,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "convert", label: "Convert", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
         { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
-      { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
+      { type: "group", label: "Node Group", description: "A container: drop it around nodes, or select them and press G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       { type: "pair", children: [
         { type: "composite", label: "Composite", description: "A reusable subgraph as one card with a typed boundary. Built inside via Edit contents, or from selected nodes with Ctrl+Shift+G.", create: () => new CompositeNode(), parity: false },
         { type: "query", label: "Query", description: "A Composite shaped for data transformation: table in, verb chain inside, result out. Recomputes only on Refresh. Excel: Power Query.", create: () => new CompositeNode({
@@ -620,7 +620,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Regression", description: "Fit or interpolate: predict y from known data and measure the fit.",
         children: [
-          { type: "linest",  label: "LINEST",  description: "Fits a line (`LINEST`: slope, intercept, R²) or a growth curve (`LOGEST`: m, b, R² on the log scale). Supersedes `SLOPE`, `INTERCEPT`, `RSQ`.", create: () => new LinestNode(), parity: false, keywords: "linest logest slope intercept rsq regression fit linear exponential growth curve least squares" },
+          { type: "linest",  label: "LINEST",  description: "Fits a line with `LINEST`, giving slope, intercept and R², or a growth curve with `LOGEST`, giving m, b and R² on the log scale.", create: () => new LinestNode(), parity: false, keywords: "linest logest slope intercept rsq regression fit linear exponential growth curve least squares" },
           { type: "forecast", label: "FORECAST.LINEAR", description: "Predict Y for one X or a list of them from known data: a straight line or a growth curve y = b·mˣ. Excel: `FORECAST.LINEAR` / `TREND`, or `GROWTH`.", create: () => new ForecastNode(), parity: false, keywords: "forecast trend growth predict linear exponential regression fit extrapolate" },
           regressionLeaf("steyx"),
           { type: "polyfit", label: "Poly Fit", description: "Least-squares polynomial fit of the chosen degree, evaluated back over the data. Degree 1 is a line, 2 a parabola, and so on. `numpy.polyfit` + `polyval`.", create: () => new PolyfitNode(), parity: false, keywords: "polynomial fit polyfit polyval regression curve degree quadratic cubic least squares numpy trendline" },

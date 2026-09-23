@@ -4,16 +4,17 @@ import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type 
 import { sharedAnnotationResolver } from "../unitFlow";
 import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
 import { isPurePassthroughNode } from "./passthrough";
-import { isUnitCell, type UnitCell } from "../unitValue";
+import { isUnitCell, matrixUnitOf, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
-function firstUnitCell(v: unknown): UnitCell | null {
+/** The unit a value already carries: a scalar or list's first dimensioned cell, or a matrix's grid unit. */
+function heldUnit(v: unknown): Pick<UnitCell, "dim" | "display"> | null {
   if (isUnitCell(v)) return v;
   if (Array.isArray(v) && !Array.isArray(v[0])) {
     for (const c of v) if (isUnitCell(c)) return c;
   }
-  return null;
+  return matrixUnitOf(v) ?? null;
 }
 
 class MutableSocket extends SolenoidSocket {
@@ -307,7 +308,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
 
   data(inputs: { in?: unknown[] }): { out: unknown } {
     const val = inputs.in?.[0] ?? null;
-    const cell = firstUnitCell(val);
+    const cell = heldUnit(val);
     const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
     const dictated = this.dictatedFromUnit && isFcUnit(this.dictatedFromUnit) ? this.dictatedFromUnit : "";
     if (dictated && this.unit === "none") this.unit = dictated;

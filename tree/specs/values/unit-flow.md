@@ -50,10 +50,10 @@ The value-side model is small and strict. Every tagged value stores its magnitud
 The dimensional half of an element-wise op sees only present operands, since the per-cell contract ([[error-values]]) runs first. In order:
 
 1. **Different currency codes** give `#UNIT!` in every op, checked up front so no op below can forget it ([[D47]] noMixCurrencies).
-2. **A dimensionless operand adopts** the other side's display unit for `+`, `−`, `mod` and comparisons: `adoptMagnitude` multiplies it by that unit's scale, never its affine offset, because the bare number is read as a delta. `×` and `÷` keep the face value, since a bare factor is a factor (`$5 × 2 = $10`).
+2. **A dimensionless operand adopts** the other side's display unit for `+`, `−` and `mod`: `adoptMagnitude` multiplies it by that unit's scale, never its affine offset, because the bare number is read as a delta. In a comparison it is read as a reading instead (`adoptReading`, offset included), so `25 °C > 30` is FALSE. `×` and `÷` keep the face value, since a bare factor is a factor (`$5 × 2 = $10`).
 3. **Add, subtract and mod** need equal dimensions, or one dimensionless side; otherwise `#UNIT!`. The result keeps `display` from the first operand that has one.
-4. **Two absolute temperatures** (an affine display such as °C or °F on both cells) combine to a delta: `25 °C − 20 °C` is 5 K, never −268 °C, so the affine display drops and the base unit renders. One absolute reading plus a bare delta keeps the reading (`20 °C + 5 = 25 °C`).
-5. **Multiply, divide, quotient and power** are refused on an affine display ("Convert the temperature to kelvin first"), because an offset reading is not a magnitude. `×` and `÷` keep a display unit only when the result stays in an operand's dimension; `5 m × 3 s` fits neither and shows the derived symbol. A division that cancels the dimension between cells mints a pure ratio. Division or quotient by zero is `#DIV/0!`. An exponent must be dimensionless, or the result is `#UNIT!`.
+4. **Two absolute temperatures** (an affine display such as °C or °F on both cells) subtract to a delta: `25 °C − 20 °C` is 5 K, never −268 °C, so the affine display drops and the base unit renders. Two readings have no sum, so `add` is `#UNIT!`, as `a + b` is in a formula. One absolute reading plus a bare delta keeps the reading (`20 °C + 5 = 25 °C`).
+5. **Multiply, divide, quotient, mod and power** are refused on an affine display ("Convert the temperature to kelvin first"), because an offset reading is not a magnitude. `×` and `÷` keep a display unit only when the result stays in an operand's dimension; `5 m × 3 s` fits neither and shows the derived symbol. A division that cancels the dimension between cells mints a pure ratio. Division or quotient by zero is `#DIV/0!`. An exponent must be dimensionless, or the result is `#UNIT!`.
 6. **Comparison** refuses two different real dimensions and two currency codes with `#UNIT!`, and otherwise hands the comparator the two base magnitudes, adopting as in step 2.
 
 The display-id resolvers (`setDisplayScaleResolver`, `setDisplayOffsetResolver`) start on `parseUnit` and are upgraded by `unitBridge.ts` at module load, so every display id the bridge knows resolves.
@@ -64,9 +64,9 @@ The unit-aware twin of `forAggregate`, run first by a list reducer:
 
 1. A `SolError` anywhere returns that error; missing values are dropped.
 2. A first pass finds the list's one real dimension and its display; a second real dimension is `#UNIT!` ("Can't aggregate mixed units"), and two different explicit currency codes are `#UNIT!` too.
-3. A second pass reads the magnitudes, with each dimensionless cell adopting the list's display unit. Because the dimension is found before any magnitude is read, a leading bare number can adopt a unit that appears later in the list.
+3. A second pass reads the magnitudes, with each dimensionless cell adopting the list's display unit. Because the dimension is found before any magnitude is read, a leading bare number can adopt a unit that appears later in the list. A bare number adopts as a delta (`adoptMagnitude`), or as a reading (`adoptReading`) when the caller passes `bareIsReading`.
 
-The reducer re-tags its result with `tagDim` from the returned `dim` and `display`.
+The reducer re-tags its result with `tagDim` from the returned `dim` and `display`. Over an affine display the Aggregate node answers as a formula does: SUM of two or more readings is `#UNIT!` and its bare numbers are deltas (`[20 °C, 5]` sums to 25 °C); every other op reads a bare number as a reading (MIN of `[25 °C, 20]` is 20 °C); AVERAGE, MIN, MAX and MEDIAN are readings, and the spreads (STDEV, AVEDEV, PTP, IQR, MAD, SEM) are deltas in the base unit.
 
 ### Column and matrix units
 
@@ -123,7 +123,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 
 - a `Dim`, the determined result dimension (`{}` is dimensionless);
 - a `SolError`, a real dimensional conflict (`#UNIT!`: meters plus seconds, SIN of a length, comparing incommensurable quantities, two currency codes);
-- `null`, indeterminate (a non-constant exponent, an unknown function, IF branches that disagree). The caller drops the unit rather than guessing; no error is raised.
+- `null`, indeterminate (a non-constant exponent, a LAMBDA call, IF branches that disagree). The caller drops the unit rather than guessing; no error is raised.
 
 **Leaves.** Numbers, logicals, text, a blank argument, and `@`-row and whole-column references are dimensionless, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity). A name reads `env` and `codes`. Unary `±` and `%` keep the argument's dimension. A computed-lambda application is indeterminate, since its body is not visible.
 
@@ -142,19 +142,28 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 | Class | Functions | Rule |
 |---|---|---|
 | dimensionless in and out | SIN, COS, TAN, CSC, SEC, COT (which also take a pure angle), ASIN, ACOS, ATAN, ATAN2, SINH, COSH, TANH, ASINH, ACOSH, ATANH, ACOT, EXP, LN, LOG, LOG10 | a dimensioned argument is `#UNIT!`; an indeterminate argument is skipped |
-| dimensionless result, any arguments | COUNT, COUNTA, ISNUMBER, ISBLANK, ISERROR, SIGN, LEN, EXACT | they count, test or read a sign; a conflict inside an argument still propagates |
-| preserve the shared dimension | ABS, MIN, MAX, MEDIAN, SUM, AVERAGE, AVG, ROUND, ROUNDUP, ROUNDDOWN, MROUND, CEILING, FLOOR, INT, TRUNC, MOD | mixed dimensions are `#UNIT!` |
-| PRODUCT | | multiplies the argument dimensions |
+| dimensionless result, any arguments | COUNT, COUNTA, COUNTBLANK, COUNTIF(S), the IS tests, SIGN, LEN, EXACT, TEXT, FIXED, DOLLAR, CONCAT(ENATE), TEXTJOIN, AND, OR, NOT, XOR, ROWS, COLUMNS, MATCH, XMATCH, RANK(.EQ/.AVG), TYPE, SKEW(.P), KURT, CORREL, PEARSON | they count, test, place or read a shape; a conflict inside an argument still propagates |
+| preserve the shared dimension | ABS, MIN, MAX, MEDIAN, SUM, AVERAGE, AVG, ROUND, ROUNDUP, ROUNDDOWN, MROUND, CEILING, FLOOR, INT, TRUNC, MOD, GEOMEAN, HARMEAN, and the spreads STDEV(.S/.P/A/PA), STDEVP, AVEDEV | mixed dimensions are `#UNIT!` |
+| square the shared dimension | VAR(.S/.P), VARP, DEVSQ, SUMSQ | mixed dimensions are `#UNIT!` |
+| PRODUCT, SUMPRODUCT | | multiply the argument dimensions |
+| pick from the first argument | LARGE, SMALL, PERCENTILE(.INC/.EXC), QUARTILE(.INC/.EXC), MODE(.SNGL), INDEX, SORT, UNIQUE, TAKE, DROP, FILTER, TRANSPOSE, CHOOSEROWS, CHOOSECOLS | the first argument's dimension; a dimensioned other argument is `#UNIT!` |
+| criteria aggregates | SUMIF, AVERAGEIF (the sum range, else the range), SUMIFS, AVERAGEIFS, MAXIFS, MINIFS (the first argument) | the value range's dimension; the criteria ranges are compared, not carried |
+| lookups | XLOOKUP (the return array), VLOOKUP, HLOOKUP (the table), LOOKUP (the result vector, else the lookup vector) | the returned range's dimension; the key is compared, not carried |
 | SQRT | | halves the exponents |
 | POWER | | only the exponent's dimension is visible, not its value, so it is determinable only for a dimensionless base |
-| IF | | the then-branch's dimension when there is no else or both agree; disagreeing branches are indeterminate, not a conflict |
-| anything else | | indeterminate |
+| IF, IFERROR, IFNA, CHOOSE | | the answer is one of the branches (IF's then and else, IFERROR's value and fallback, CHOOSE's options): their shared dimension, or indeterminate when they disagree, not a conflict |
+| a LAMBDA call | LAMBDA itself, or a name bound to one | indeterminate, since the body is not visible |
+| any other function | | reads plain numbers: a dimensioned argument is `#UNIT!` rather than a silently dropped unit; all-dimensionless arguments give a dimensionless answer (`a + RAND() * 0` keeps °C) |
 
 `dimEvalWithCode` returns the dimension with its code, for a caller whose top level is itself a combination, so no operator inside either side ever sees both codes. `formulaResultDim` folds a conflict into `null`; use `dimEval` when the conflict must surface as an error.
 
+## Expression
+
+`dimEval` (`unitDimExpr.ts`) sets the result dimension. A dimensionless argument adopts, under `+` and in the dimension-preserving functions alike (ROUND's digits, MIN(5 km, 3)). When every united input reads in ONE linear display unit, the formula runs on the displayed numbers: `5 km + 3` is 8 km, `5 km > 3000` is FALSE and `5 km & "x"` is "5x", as on Arithmetic and Comparison. A result `k` powers of that unit converts back by scale^k. Mixed units or a derived form run on base SI. An affine unit (°C, °F) is classified statically (`affineWeight` in `unitDimExpr.ts`): each subexpression carries its point weight, the sum of its coefficients on the readings. A reading is 1, a difference or a bare number 0, and a reading scales only by a constant, so `(a + b) / 2` is 1 again. MIN, MAX, MEDIAN and AVERAGE keep their arguments' weight (a bare constant beside readings is a reading); the spreads and squared spreads (STDEV, AVEDEV, VAR, DEVSQ) need their arguments to agree and answer a difference; SUM adds them and refuses a list of readings, as SUMIF and SUMIFS do; ROUND and its kin, and the picks (LARGE, SORT), keep their first argument's; AVERAGEIF, MAXIFS and MINIFS keep their value range's; IF, IFERROR, IFNA and CHOOSE need their branches to agree; any other function of a reading is `#UNIT!`. The formula then runs once on the readings: weight 1 is a reading (`a + 5` is 25 °C), 0 a difference in the base unit (`b - a` is 10 K), anything else `#UNIT!` (`a * 2`, `b / a`, `SUM(a, b)`). Readings in different offset units (°C and °F) run in base SI but are classified the same way, so `a + b` is `#UNIT!` there too. Machine-checked: `unitWiring.test.ts`.
+
 ## LAMBDA hosts over a 1-D list
 
-REDUCE, BYROW and BYCOL strip tagged cells to base-SI magnitudes for the numeric fold, run `dimEval` (`unitDimExpr.ts`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. MAP, MAKEARRAY and SCAN ignore units on matrices (`tableLambda.ts`).
+REDUCE, BYROW and BYCOL strip tagged cells to plain magnitudes for the numeric fold: in the display unit the tagged cells share (so a bare `+ 1` means 1 km, and a result `k` powers of that unit converts back by scale^k), else in base SI. Over an affine unit the fold is classified as Expression is, with `values` a list of readings and REDUCE's `acc` and `value` both readings; REDUCE must answer a reading each step (`MAX(acc, value)`), so `acc + value` is `#UNIT!`. They run `dimEval` (`unitDimExpr.ts`) with the fold and aggregate variables bound to the element's dimension to get the result's dimension, and re-tag the result, keeping `display` when the dimension is unchanged. Mixed units or a clash inside the formula give `#UNIT!`, and a formula that yields a plain count (COUNT) strips to a plain number. MAP, MAKEARRAY and SCAN ignore units on matrices (`tableLambda.ts`).
 
 ## The display bridge (`unitBridge.ts`)
 
@@ -182,6 +191,7 @@ The value-side author, in `unitBridge.ts`. The third argument is the custom-name
 | a pure ratio | `#UNIT!`. Its units canceled, so it can't be relabeled |
 | a non-blank **custom** name | an opaque `customDim` tag. Only `none` or a blank custom name passes through |
 | a numeric **matrix** | tagged through `withMatrixUnit` on a freshly `slice()`d outer array; never tag the shared cached array |
+| a numeric matrix that already carries a grid unit | the cell rules: an incommensurable unit is `#UNIT!`, a commensurable one re-displays by rescaling the as-typed cells. The FC mirrors and locks a grid's unit as it does a cell's |
 | text or a Frame | passes through, and any existing tag rides on |
 
 `null` and `SolError` values pass untouched. A custom free-text unit becomes a `customDim` axis with no display id, so `formatDim` renders the name. A value counts as a matrix when any element is an array, and it is tagged only when the first non-blank cell of its first row is a number.
