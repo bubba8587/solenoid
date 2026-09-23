@@ -60,7 +60,7 @@ const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
   height: number;
 }> = {
   nth:         { inputs: [{ key: "k", label: "K", def: 1 }],                                                    outLabel: "Value",      height: 170 },
-  rank:        { inputs: [{ key: "value", label: "Value", def: 0 }],                                            outLabel: "Rank",       height: 185 },
+  rank:        { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "order", label: "Order", def: 0 }],   outLabel: "Rank",       height: 210 },
   percentile:  { inputs: [{ key: "p", label: "Percentile", def: 0.5 }],                                          outLabel: "Value",      height: 185 },
   quartile:    { inputs: [{ key: "q", label: "Quartile", def: 2 }],                                              outLabel: "Value",      height: 185 },
   percentrank: { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "significance", label: "Digits", def: 3 }], outLabel: "Rank (0–1)", height: 210 },
@@ -69,6 +69,7 @@ const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
 export class RankPercentileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     significance: "The rank truncates to this many digits. It does not round.",
+    order: "0 ranks the largest value 1, as Excel does. Any other number ranks the smallest value 1.",
     p: "A fraction from 0 to 1.",
     q: "0 to 4: 0 = min, 1 = Q1, 2 = median, 3 = Q3, 4 = max.",
   };
@@ -115,7 +116,7 @@ export class RankPercentileNode extends ClassicPreset.Node {
     this.height = spec.height;
   }
 
-  data(inputs: { list?: (number | null | SolError)[][]; k?: number[]; value?: number[]; p?: number[]; q?: number[]; significance?: number[] }): { result: number | SolError | null } {
+  data(inputs: { list?: (number | null | SolError)[][]; k?: number[]; value?: number[]; p?: number[]; q?: number[]; significance?: number[]; order?: number[] }): { result: number | SolError | null } {
     const family = this.family;
     const exc = this.op.endsWith("-exc");
 
@@ -130,8 +131,9 @@ export class RankPercentileNode extends ClassicPreset.Node {
         this.cachedResult = result;
         return { result };
       }
-      if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-      const result = excelRank(v, arr as number[], this.op === "rank-avg");
+      const order = readInput(inputs.order, this.literals.order ?? 0);
+      if (!arr || arr.length === 0 || v === null || order === null) { this.cachedResult = null; return { result: null }; }
+      const result = excelRank(v, arr as number[], this.op === "rank-avg", order !== 0);
       this.cachedResult = result;
       return { result };
     }

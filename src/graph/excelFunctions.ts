@@ -751,9 +751,10 @@ const badNum = (...xs: number[]) => xs.some(Number.isNaN);
 const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 const VALUE = (fn: string) => solError("#VALUE!", `${fn} needs a number`);
 
-export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false): number | SolError {
+/** `ascending` is Excel's nonzero `order`: the smallest value ranks 1. */
+export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false, ascending = false): number | SolError {
   if (Number.isNaN(value)) return VALUE("RANK");
-  const above = ref.filter((x) => x > value).length;
+  const above = ref.filter((x) => (ascending ? x < value : x > value)).length;
   const equal = ref.filter((x) => x === value).length;
   if (equal === 0) return solError("#N/A", "Value not found in the list");
   return avg ? above + 1 + (equal - 1) / 2 : above + 1;
@@ -935,9 +936,10 @@ registerInternal("STEYX",     (y, x) => regression(numsOf(x), numsOf(y), "steyx"
 registerInternal("FISHER",    (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHER") : fisher(n, false); });
 registerInternal("FISHERINV", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHERINV") : fisher(n, true); });
 
-registerInternal("RANK",     (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], false));
-registerInternal("RANK.EQ",  (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], false));
-registerInternal("RANK.AVG", (v, ref) => excelRank(toNum(v), (ref as number[]) ?? [], true));
+const rankOrder = (order: unknown) => order != null && toNum(order) !== 0;
+registerInternal("RANK",     (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], false, rankOrder(order)));
+registerInternal("RANK.EQ",  (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], false, rankOrder(order)));
+registerInternal("RANK.AVG", (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], true, rankOrder(order)));
 registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? [], toNum(pct)));
 registerInternal("PERCENTRANK", (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), false));
 

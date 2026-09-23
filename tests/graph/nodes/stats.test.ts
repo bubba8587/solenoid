@@ -138,6 +138,16 @@ describe("RANK", () => {
     const r = new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [99] }).result;
     expect(isSolError(r) && r.code).toBe("#N/A");
   });
+  it("a nonzero Order ranks ascending, on the card and in the formula ([[D73]] nodeCoversFormula)", () => {
+    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [10], order: [1] }).result).toBe(1);
+    expect(new RankPercentileNode({ op: "rank-avg" }).data({ list: data, value: [20], order: [1] }).result).toBe(2.5);
+    expect(new RankPercentileNode({ op: "rank-eq" }).data({ list: data, value: [40], order: [1] }).result).toBe(4);
+    const fx = (f: string) => compileEvaluator(f)!({ x: [10, 20, 20, 40] });
+    expect(fx("RANK.EQ(10, x, 1)")).toBe(1);
+    expect(fx("RANK.EQ(10, x, 0)")).toBe(4);
+    expect(fx("RANK(40, x, 1)")).toBe(4);
+    expect(fx("RANK.AVG(20, x, 1)")).toBe(2.5);
+  });
 });
 
 describe("STANDARDIZE", () => {
@@ -575,8 +585,8 @@ describe("Hypothesis Test — one node, six tests", () => {
 describe("Rank & Percentile — one node, op-switch mechanics", () => {
   it("rank ↔ percentrank keeps the shared Value cable; percentile drops it", () => {
     const n = new RankPercentileNode({ op: "rank-eq" });
-    expect(n.keysDroppedBySwitch("percentrank-inc")).toEqual([]);
-    expect(n.keysDroppedBySwitch("percentile-inc")).toEqual(["value"]);
+    expect(n.keysDroppedBySwitch("percentrank-inc")).toEqual(["order"]);
+    expect(n.keysDroppedBySwitch("percentile-inc")).toEqual(["value", "order"]);
     n.setOp("percentrank-inc");
     expect(Object.keys(n.inputs).sort()).toEqual(["list", "significance", "value"]);
     expect(n.outputs.result!.label).toBe("Rank (0–1)");
