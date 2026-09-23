@@ -13,7 +13,7 @@ The Command Palette is a searchable list of every action the app can take from i
 ## What it lists
 
 - **Every enabled menubar item** (`buildMenus`), so a new menu item is a palette command automatically.
-- **Canvas operations with no menu home:** Isolate selection (I) and Expand or collapse groups (E), which the palette fires as synthetic keydowns so the canvas's own keyboard handler runs them.
+- **Canvas operations with no menu home:** Isolate selection (I) and Expand or collapse groups (E), which the palette presses as synthetic keys (`fireMenuKey`) so the canvas's own keyboard handler runs them, with every gate it applies (a locked canvas refuses Tidy from the menu as it does from T). The key goes down on the document, where React Flow's Delete listens, bubbles on to the canvas keyboard on `window`, and is released a task later, since RF's key trackers would otherwise hold it pressed and a later Ctrl-click would stop multi-selecting.
 - **Selection layout:** the six aligns, whose labels name the end effect ("Align center (vertical)" runs `center-h` and stacks nodes in a column), the two distributes, and Collapse and Expand selection.
 - **Settings:** every boolean and text setting in `SETTINGS_SCHEMA` as a "Toggle <label>" item that shows on or off. Folder and segment fields are left out, and so, on mobile, are fields marked `disabledOnMobile`, since a palette that could flip a setting greyed out on this device would be a back door around that gate.
 - **Never node types:** the Add menu is the one place to browse the catalog.
@@ -23,7 +23,7 @@ The Command Palette is a searchable list of every action the app can take from i
 - With an empty query the palette shows 8 previews, led by up to 3 recently run commands (`commandRecents`, recorded by label and marked "recent"). A docked bar shows nothing until it is focused.
 - A query scores command and toggle labels with `fieldScore` and shows the best 20.
 - Nothing is selected until the user types; then the top result is. A blind Enter never runs an action the user did not pick.
-- Running an item records it as recent, then closes the modal, or clears and refocuses a docked bar.
+- Running an item records it as recent and closes the palette before the command runs, since an open palette owns the keyboard ([[react-flow-surface-contract]] gate 4) and would refuse the command's own key; a docked bar is then cleared and refocused.
 - Escape closes the modal, or clears and blurs the bar.
 - The modal takes focus when it opens. The docked bar never takes focus on mount; the palette hotkey (the `paletteStore` flag) means "focus the bar" instead.
 
