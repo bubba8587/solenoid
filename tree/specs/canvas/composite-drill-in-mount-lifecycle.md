@@ -16,12 +16,13 @@ Two lifetimes, on purpose:
 
 - **The drill stack lasts as long as the composite.** `DrillStack` holds the level's flow view, its topology pipe and its snapshot history. It is created once per composite instance by `getDrillStack` and cached on the node as `__flowDrill`. The pipe attaches to the long-lived `internalEditor`, and rete has no way to remove a pipe, so building a fresh stack on every open would pile up dead pipes.
 - **The React surface lasts only while open.** Closing unmounts the whole React tree, so every card component's effects stop with it. A timer inside a card in a closed composite (a Connection node's auto-refresh, for example) cannot keep running, because there are no per-view React roots left behind.
+- **A closed level's pipes stand down.** The stack's `open` flag is raised on mount and lowered on unmount, and `isRebuilding()` reads true while it is down, so the topology pipe, the cable-settle pipe and the group-absorb pipe all do nothing for a closed level. The surface's unmount also resets the stack's handlers to idle, so the stale flow view drives no dead React state. A closed composite then behaves exactly like one never opened: its own internal pipe settles cable types ([[composite-nodes]]), and a node leaving its editor while closed is a relocation (Unpack), whose store entries stay.
 
 ## The topology pipe
 
 The cached pipe watches the internal editor for `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved` (a `noderemoved` also runs the per-node forget, below under Deleting inside a level). Each burst of events queues one sync on a microtask. A sync:
 
-1. waits while the stack is rebuilding (`s.rebuilding`, the drill-in's own version of `isGraphRebuilding`), checking again on a 0ms timer;
+1. does nothing when the level is closed, and otherwise waits while the stack is rebuilding (`s.rebuilding`, the drill-in's own version of `isGraphRebuilding`), checking again on a 0ms timer;
 2. syncs the RF node set (`syncTopology`);
 3. recomputes, targeting the root of the breadcrumb (`stack[0]`, the ancestor that lives in the main editor);
 4. schedules an autosave and an undo record.
@@ -37,7 +38,7 @@ On mount, `FlowDrillInner`:
 3. lowers the gate and syncs the topology once;
 4. registers the level as the active graph (`setActiveGraph({ editor, view, scope })`), so chrome acts on it and every bulk edit of it runs under its edit scope;
 5. swaps the chrome's command slots to this level: selection, Tidy and Cleanup, the touch delete button, and docked-FC repositioning ([[react-flow-surface-contract]]);
-6. records a first undo snapshot if the history is empty.
+6. records an undo snapshot, which is skipped when it matches the latest record; this catches edits made while the level was closed (a port reconcile when a deeper level was left), which no pipe recorded.
 
 On unmount it restores the four slots, exits isolate mode, clears the active graph (`setActiveGraph(null)`), copies node positions back into `comp.internalPositions`, and re-applies the main canvas's semantic zoom.
 

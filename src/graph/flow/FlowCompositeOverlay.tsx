@@ -40,6 +40,8 @@ type DrillStack = {
   view: FlowView;
   handlers: SurfaceHandlers;
   rebuilding: boolean;
+  /** Closed, the level's pipes stand down: the composite settles its own cables, and a closed-level removal is a relocation. */
+  open: boolean;
   isRebuilding: () => boolean;
   history: { stack: string[]; index: number; timer: ReturnType<typeof setTimeout> | null };
   afterCableChange: () => void;
@@ -66,7 +68,8 @@ function getDrillStack(comp: CompositeNode): DrillStack {
     view,
     handlers,
     rebuilding: true,
-    isRebuilding: () => s.rebuilding,
+    open: false,
+    isRebuilding: () => s.rebuilding || !s.open,
     history: { stack: [], index: -1, timer: null },
     // The topology pipe below recomputes from the breadcrumb root once per burst.
     afterCableChange: () => {},
@@ -78,6 +81,10 @@ function getDrillStack(comp: CompositeNode): DrillStack {
   };
   let queued = false;
   const trySync = () => {
+    if (!s.open) {
+      queued = false;
+      return;
+    }
     if (s.rebuilding) {
       setTimeout(trySync, 0);
       return;
@@ -91,7 +98,7 @@ function getDrillStack(comp: CompositeNode): DrillStack {
   comp.internalEditor.addPipe((ctx) => {
     const t = (ctx as { type?: string }).type;
     if (t === "noderemoved") {
-      settleNodeRemoved(comp.internalEditor, view as unknown as View, (ctx as unknown as { data: SolenoidNode }).data, s.rebuilding);
+      settleNodeRemoved(comp.internalEditor, view as unknown as View, (ctx as unknown as { data: SolenoidNode }).data, s.isRebuilding());
     }
     if (
       t === "nodecreated" || t === "noderemoved" ||
@@ -169,6 +176,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     let restoreArrange: (() => void) | null = null;
     let restoreDelete: (() => void) | null = null;
     let restoreReposition: (() => void) | null = null;
+    s.open = true;
     s.rebuilding = true;
     void (async () => {
       await comp.hydrate(ctorRegistry());
@@ -209,7 +217,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       });
       restoreDelete = swapDeleteSlot(() => deleteSelection());
       restoreReposition = swapRepositionDockedSlot(repositionDockedTo);
-      if (s.history.stack.length === 0) recordNow(comp, s);
+      // Also catches edits made while closed, which no pipe recorded; an unchanged level records nothing.
+      recordNow(comp, s);
     })();
     return () => {
       canceled = true;
@@ -220,6 +229,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       isolateStore.exit();
       setActiveGraph(null);
       syncPositionsToComp(comp, s);
+      s.open = false;
       const mainView = getView();
       if (mainView) syncSemanticZoomFor(mainView.transform.k);
     };
