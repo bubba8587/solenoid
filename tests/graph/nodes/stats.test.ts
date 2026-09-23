@@ -80,6 +80,12 @@ describe("QUARTILE", () => {
       expect(q(fn, 3)).toBe(4);
     }
   });
+  it("an out-of-range INC quartile is #DOMAIN! on the card, as in the formula ([[C17]] shareImpl)", () => {
+    const node = new RankPercentileNode({ op: "quartile-inc" }).data({ list: data, q: [5] }).result;
+    expect(isSolError(node) && node.code).toBe("#DOMAIN!");
+    const fx = compileEvaluator("QUARTILE.INC(x, 5)")!({ x: [1, 2, 3, 4, 5] });
+    expect(isSolError(fx) && fx.code).toBe("#DOMAIN!");
+  });
   it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
     expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
     expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [2] }).result).toBe(3);

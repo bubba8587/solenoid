@@ -152,8 +152,7 @@ export class RankPercentileNode extends ClassicPreset.Node {
     } else {
       const qRaw = readInput(inputs.q, this.literals.q ?? 2);
       if (qRaw === null) { this.cachedResult = null; return { result: null }; }
-      // Deliberately blank on the node where the QUARTILE formula gives #DOMAIN!.
-      result = !exc && (Math.round(qRaw) < 0 || Math.round(qRaw) > 4) ? null : quartile(arr, qRaw, exc);
+      result = quartile(arr, qRaw, exc);
     }
     this.cachedResult = result;
     return { result };
