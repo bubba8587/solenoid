@@ -109,6 +109,13 @@ describe("separateAll — every op's final no-overlap pass (randomized)", () => 
     }
   });
 
+  it("clears a dense 300-box pile completely", () => {
+    const rng = mulberry32(0x7E57);
+    const boxes = randBoxes(rng, 300, 3000);
+    const moved = boxes.map((b) => applyDisp(b, separateAll(boxes)));
+    expect(firstOverlap(moved)).toBeNull();
+  });
+
   it("a preferred box holds still when its partner can yield", () => {
     const boxes: PushBox[] = [
       { id: "placed", x: 200, y: 200, w: 300, h: 200 },

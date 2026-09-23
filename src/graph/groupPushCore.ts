@@ -208,53 +208,36 @@ export function computeExpandPush(
   return disp;
 }
 
+/** Places boxes top-left first (pinned ones before all); each moves right or down until it clears every box placed before it. */
 export function separateOverlaps(
   boxes: PushBox[],
   gap = PUSH_GAP,
-  pinned: Set<string> = new Set(),
+  pinned: ReadonlySet<string> = new Set(),
 ): Map<string, Disp> {
+  const order = [...boxes].sort((a, b) =>
+    (pinned.has(a.id) ? 0 : 1) - (pinned.has(b.id) ? 0 : 1) || (a.x + a.y) - (b.x + b.y));
+  const placed: Rect[] = [];
   const disp = new Map<string, Disp>();
-  const at = (b: PushBox): Rect => {
-    const d = disp.get(b.id);
-    return d ? { x: b.x + d.dx, y: b.y + d.dy, w: b.w, h: b.h } : b;
-  };
-  const bump = (id: string, dx: number, dy: number) => {
-    const d = disp.get(id) ?? { dx: 0, dy: 0 };
-    disp.set(id, { dx: d.dx + dx, dy: d.dy + dy });
-  };
-  let guard = 0;
-  for (;;) {
-    if (guard++ > 2000) break;
-    let worst: { a: PushBox; b: PushBox; ox: number; oy: number } | null = null;
-    let worstArea = 0;
-    for (let i = 0; i < boxes.length; i++) {
-      for (let j = i + 1; j < boxes.length; j++) {
-        if (pinned.has(boxes[i].id) && pinned.has(boxes[j].id)) continue;
-        const a = at(boxes[i]);
-        const b = at(boxes[j]);
-        const ox = xOverlap(a, b);
-        const oy = yOverlap(a, b);
-        if (ox > 0 && oy > 0 && ox * oy > worstArea) {
-          worstArea = ox * oy;
-          worst = { a: boxes[i], b: boxes[j], ox, oy };
+  for (const b of order) {
+    const r: Rect = { x: b.x, y: b.y, w: b.w, h: b.h };
+    if (!pinned.has(b.id)) {
+      for (let guard = 0; guard < 10000; guard++) {
+        let hit: Rect | null = null;
+        let hitArea = 0;
+        for (const o of placed) {
+          const ox = xOverlap(r, o), oy = yOverlap(r, o);
+          if (ox > 0 && oy > 0 && ox * oy > hitArea) { hitArea = ox * oy; hit = o; }
         }
+        if (!hit) break;
+        const right = hit.x + hit.w + gap - r.x;
+        const down = hit.y + hit.h + gap - r.y;
+        if (right <= down) r.x += right;
+        else r.y += down;
       }
+      if (r.x !== b.x || r.y !== b.y) disp.set(b.id, { dx: r.x - b.x, dy: r.y - b.y });
     }
-    if (!worst) break;
-    const ra = at(worst.a);
-    const rb = at(worst.b);
-    let mover: PushBox, other: PushBox;
-    if (pinned.has(worst.a.id)) { mover = worst.b; other = worst.a; }
-    else if (pinned.has(worst.b.id)) { mover = worst.a; other = worst.b; }
-    else [mover, other] = ra.x + ra.y >= rb.x + rb.y ? [worst.a, worst.b] : [worst.b, worst.a];
-    const m = at(mover);
-    const o = at(other);
-    const right = o.x + o.w + gap - m.x;
-    const down = o.y + o.h + gap - m.y;
-    if (right <= down) bump(mover.id, right, 0);
-    else bump(mover.id, 0, down);
+    placed.push(r);
   }
-  for (const [id, d] of [...disp]) if (d.dx === 0 && d.dy === 0) disp.delete(id);
   return disp;
 }
 
