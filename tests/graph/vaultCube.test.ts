@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { notesToCube, dateFromName, type VaultNote, type VaultTypeSources } from "../../src/graph/vaultCube";
+import { notesToCube, dateFromName, extractInlineTags, type VaultNote, type VaultTypeSources } from "../../src/graph/vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, mdbaseSchemaFor, validateAgainst } from "../../src/graph/mdbaseTypes";
 import { parseObsidianTypes } from "../../src/graph/obsidianTypes";
 import { parseDailyNotesConfig } from "../../src/graph/dailyNotesConfig";
@@ -249,5 +249,12 @@ describe("review pins: path_glob `?`", () => {
     expect(mdbaseSchemaFor(one, "task-1.md")).not.toBeNull();
     expect(mdbaseSchemaFor(one, "task.md")).toBeNull();
     expect(mdbaseSchemaFor(one, "task-12.md")).toBeNull();
+  });
+});
+
+describe("extractInlineTags", () => {
+  it("reads tags as Obsidian does: no all-digit tag, any letter", () => {
+    expect(extractInlineTags("Item #1 and #2024 but #y2024, #1984/books, #café and #a-b_c/d."))
+      .toEqual(["y2024", "1984/books", "café", "a-b_c/d"]);
   });
 });

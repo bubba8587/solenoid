@@ -40,7 +40,10 @@ function utf8Bytes(s: string): number {
 
 const WIKILINK = /\[\[([^\]]+)\]\]/g;
 const EMBED = /!\[\[([^\]]+)\]\]/g;
-const INLINE_TAG = /(?:^|\s)#([A-Za-z0-9_][\w/-]*)/g;
+/** A tag as Obsidian reads one: letters, digits, `_`, `-` and `/`, never all digits (`#1`). The note renderer shares it. */
+export const TAG_BODY = "[\\p{L}\\p{N}_\\-/]+";
+export const isTagBody = (body: string): boolean => !/^\p{N}+$/u.test(body);
+const INLINE_TAG = new RegExp(`(?:^|\\s)#(${TAG_BODY})`, "gu");
 
 function linkTarget(inner: string): string {
   return inner.split("|")[0].split("#")[0].trim();
@@ -69,7 +72,7 @@ function extractEmbeds(text: string): string[] {
 }
 export function extractInlineTags(body: string): string[] {
   const out: string[] = [];
-  for (const m of body.matchAll(INLINE_TAG)) out.push(m[1]);
+  for (const m of body.matchAll(INLINE_TAG)) if (isTagBody(m[1])) out.push(m[1]);
   return out;
 }
 

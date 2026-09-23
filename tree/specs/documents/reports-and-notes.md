@@ -235,7 +235,7 @@ In the Report overlay every figure kind (chart, Mermaid, picture, SVG, Frame, Cu
 | Form | Rendered as |
 |---|---|
 | `[[target#heading\|alias]]`, `![[…]]` | a `sol-md__wikilink` span (the embed variant for `!`); its text is the alias, else the target plus heading |
-| `#tag` at a word start (the start of the text, or after whitespace or an opening bracket) | a `sol-md__tag` span. A tag is `#`, then a letter or underscore, then letters, digits, `_`, `-` or `/`. An error code (`#NAME?`, `#DIV/0!`, `#N/A`) and an all-digit tag (a heading count) are not tags. |
+| `#tag` at a word start (the start of the text, or after whitespace or an opening bracket) | a `sol-md__tag` span. A tag is `#`, then letters, digits, `_`, `-` or `/`, not all digits, as Obsidian reads one; Vault Folder's `tags` column reads inline tags by the same rule (`TAG_BODY` in `vaultCube.ts`). An error code (`#NAME?`, `#DIV/0!`, `#N/A`) and an all-digit tag (a heading count) are not tags. |
 | `==text==` | `<mark class="sol-md__hl">` |
 | `$tex$` (no space just inside the dollars, no digit after) and `$$tex$$` | KaTeX once its chunk has loaded, else the source in a pending span; a KaTeX failure shows the TeX escaped |
 | `> [!kind]± Title` | a callout. The kind picks an icon and, for failure, fail, missing, danger, error and bug, the danger ink. An unknown kind reads as `note`, and a blank title uses the capitalized kind. |
