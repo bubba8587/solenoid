@@ -9,7 +9,7 @@ import {
   SolenoidSocket, cubeSocket, elementFamilyOf, latticeRank, typeAtRank,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
-import { formatDateSerial } from "./dateSerial";
+import { isoDateText } from "../noteFrontmatter";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
 import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
@@ -112,7 +112,7 @@ function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar 
       return typeof v === "boolean" ? v : v === 1 || v === "1" || String(v).toLowerCase() === "true";
     case "date": {
       const s = typeof v === "number" ? v : parseDateToSerial(String(v));
-      return Number.isFinite(s) ? Math.round(s) : null;
+      return Number.isFinite(s) ? s : null;
     }
   }
 }
@@ -124,7 +124,7 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateCo
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
   const datesAsText = guessed !== undefined && elementFamilyOf(guessed) === "date" && (base === "string" || base === "complex");
-  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? formatDateSerial(e, "YYYY-MM-DD") : e) as FrontmatterScalar, base);
+  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? isoDateText(e) : e) as FrontmatterScalar, base);
   const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
   if (rank === 2) return items.map((row) => (Array.isArray(row) ? row : [row]).map(one));
   if (rank === 1) return items.flat().map(one);

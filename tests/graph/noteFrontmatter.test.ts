@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
+import { cellToYaml } from "../../src/graph/frontmatterPatch";
 
 describe("parseNoteFrontmatter", () => {
   it("returns no block when the body does not open with a fence", () => {
@@ -53,6 +54,14 @@ describe("parseNoteFrontmatter", () => {
     expect(f("l: [1, two]")).toMatchObject({ value: [1, "two"], guessed: "strlist" });
     expect(f("l: [true, 1]").guessed).toBe("strlist");
     expect(f("g: [[2026-09-01, x]]")).toMatchObject({ value: [["2026-09-01", "x"]], guessed: "strtable" });
+  });
+
+  it("reads Obsidian's Date & time as a date that keeps its time, the spelling Write to Obsidian writes", () => {
+    const serial = parseDateToSerial("2026-09-01") + 0.4375; // 10:30
+    const f = parseNoteFrontmatter(`---\nat: ${cellToYaml(serial, "date", new Set())}\nq: "2026-09-01T10:30:00"\n---\n`).fields;
+    expect(f[0]).toMatchObject({ guessed: "date" });
+    expect(f[0].value as number).toBeCloseTo(serial, 9);
+    expect(f[1].guessed).toBe("string");
   });
 
   it("a day the month does not have is text, never rolled into the next month", () => {
