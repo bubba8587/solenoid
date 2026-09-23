@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeKindOf } from "../../../src/graph/nodes/kind";
 import { NumberInputNode, BooleanInputNode } from "../../../src/graph/nodes/input";
-import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode } from "../../../src/graph/nodes/visual";
+import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode, RecordNode } from "../../../src/graph/nodes/visual";
 import { GanttNode } from "../../../src/graph/nodes/gantt";
 import { TornadoNode } from "../../../src/graph/nodes/tornado";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
@@ -101,7 +101,7 @@ describe("nodeAccent", () => {
 
 describe("chart cards wear the chart green", () => {
   it("the chart figures and the Chart Builder are the chart kind", () => {
-    for (const n of [new ChartNode(), new SankeyNode(), new KpiNode(), new GanttNode(), new ChartBuilderNode(), new GaugeNode()]) {
+    for (const n of [new ChartNode(), new SankeyNode(), new KpiNode(), new GanttNode(), new ChartBuilderNode(), new GaugeNode(), new MermaidNode(), new RecordNode()]) {
       expect(nodeKindOf(n), n.constructor.name).toBe("chart");
     }
   });
