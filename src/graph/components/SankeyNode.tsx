@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { SankeyNode as SankeyNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
-import { SankeyView } from "./chartView";
+import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import type { ChartValue } from "../chartValue";
@@ -25,7 +25,7 @@ export function SankeyComponent({ data, emit }: NodeProps<SankeyNodeType>) {
       <div className="solenoid-node__section-divider" />
       <div style={{ height: H, marginTop: 4 }}>
         {has && !collapsed
-          ? <SankeyView sources={p!.sources} targets={p!.targets} values={p!.values} width={W} height={H} />
+          ? <ChartFigure value={chartValue} width={W} height={H} />
           : !has && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
       </div>
       <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={chartValue} /></div>

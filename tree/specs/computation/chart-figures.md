@@ -277,7 +277,7 @@ Multi-series marks, categorical slices, treemap cells, Sankey nodes and waffle c
 
 ### Titles
 
-The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `ComposedView`, `BubbleView` and `RecordCardView`. No other figure draws a title. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
+The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `ComposedView`, `BubbleView` and `RecordCardView`. For the figures that draw none themselves (KPI, Gauge, Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap and Gantt, `UNTITLED_FIGURES` in `chartView.tsx`), `ChartFigure` draws the same strip (`chartTitle.tsx`) above the figure and hands it the remaining height. The Sankey, KPI and Gauge cards draw through `ChartFigure`, so their options apply on the card as they do in a Display. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
 
 ## The recharts figures
 

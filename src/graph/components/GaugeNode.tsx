@@ -8,8 +8,7 @@ import { getActiveView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
-import { ScaleDial, GaugeArc, useChartColors } from "./chartView";
-import { BulletBar } from "./chartCards";
+import { ChartFigure, GaugeArc, useChartColors } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import type { ChartValue } from "../chartValue";
 import { dropInputCables } from "./cablePrune";
@@ -52,7 +51,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       <InlineInputs node={data} emit={emit} />
       {dial ? (
         <>
-          {!collapsed && (payload ? <ScaleDial payload={payload} size={160} /> : empty)}
+          {!collapsed && (payload ? <ChartFigure value={cv} width={160} height={120} /> : empty)}
           <div className="solenoid-node__collapsed-only">
             {collapsed && payload && (
               <div style={{ position: "relative", width: MINI_SIZE, height: MINI_SHOW, overflow: "hidden" }}>
@@ -63,7 +62,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
         </>
       ) : (
         <>
-          {!collapsed && (payload ? <BulletBar payload={payload} /> : empty)}
+          {!collapsed && (payload ? <ChartFigure value={cv} width={data.width - 22} height={60} /> : empty)}
           {/* Collapsed: the standard hero box and [Chart] chip, like Chart and Histogram. */}
           <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
             {payload && <ChartChip value={cv} />}

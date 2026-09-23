@@ -6,6 +6,7 @@ import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { OverlayPayload } from "../chartValue";
+import { ChartTitle, titleHeight } from "./chartTitle";
 
 const LINE_DOT_R = 2;
 const SCATTER_DOT_R = 3;
@@ -89,15 +90,6 @@ function catDomain(indices: number[]): { domain?: [number, number]; ticks?: numb
   };
 }
 
-const titleHeight = (fs: number) => Math.ceil(16 * fs);
-function ChartTitle({ text, fs }: { text: string; fs: number }) {
-  const h = titleHeight(fs);
-  return (
-    <div style={{ height: h, lineHeight: `${h}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-      {text}
-    </div>
-  );
-}
 
 function yDomainOf(opts: ChartOptions | undefined): [number | string, number | string] | undefined {
   return opts?.ymin !== undefined || opts?.ymax !== undefined ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] : undefined;

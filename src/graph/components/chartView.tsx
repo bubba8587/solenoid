@@ -12,6 +12,7 @@ import { useSeriesColors, useChartColors } from "./chartCore";
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
+import { ChartTitle, titleHeight } from "./chartTitle";
 import {
   WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView,
 } from "./chartCanvasViews";
@@ -128,6 +129,8 @@ export function GanttView({ payload, width, height, virtualize, fontScale }: {
   );
 }
 
+const UNTITLED_FIGURES = new Set(["kpi", "scale", "proportion", "sankey", "waterfall", "candle", "boxplot", "calheat", "gantt"]);
+
 export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
   fontScale?: number;
@@ -137,6 +140,19 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
   // Before any early return: a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
+  const title = value.options?.title?.trim();
+  if (title && UNTITLED_FIGURES.has(value.op)) {
+    const th = titleHeight(fscale);
+    return (
+      <div style={{ width, margin: "0 auto" }}>
+        <ChartTitle text={title} fs={fscale} />
+        <ChartFigure
+          value={{ ...value, options: { ...value.options, title: undefined } }}
+          width={width} height={Math.max(0, height - th)} axes={axes} fontScale={fontScale} recordNav={recordNav} virtualize={virtualize}
+        />
+      </div>
+    );
+  }
   if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
   if (value.op === "scale" && value.payload?.kind === "scale")
     return value.payload.style === "dial"
