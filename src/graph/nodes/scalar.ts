@@ -1,7 +1,7 @@
 // [[C46]]
 import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
-import { lnGamma } from "./mathUtils";
+import { lnGamma, roundDigits } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import { guardFinite } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
@@ -571,16 +571,7 @@ export class RoundNNode extends ClassicPreset.Node {
     const digits = readInput(inputs.digits, this.literals.digits ?? 0);
     let result: BroadcastResult = null;
     if (value !== null) {
-      result = broadcast((v, d) => {
-        const factor = Math.pow(10, Math.round(d));
-        switch (this.op) {
-          // Halves round away from zero, as Excel does, not toward +∞ like Math.round.
-          case "round":     return Math.sign(v) * Math.round(Math.abs(v) * factor) / factor;
-          case "roundup":   return (v >= 0 ? Math.ceil(v * factor) : Math.floor(v * factor)) / factor;
-          case "rounddown": return (v >= 0 ? Math.floor(v * factor) : Math.ceil(v * factor)) / factor;
-        }
-        return null;
-      }, value, digits);
+      result = broadcast((v, d) => roundDigits(v, d, this.op), value, digits);
     }
     this.cachedResult = result;
     return { result };

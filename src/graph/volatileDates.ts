@@ -8,7 +8,9 @@ const VOLATILE_FN = /\b(TODAY|NOW)\s*\(/i;
 
 export function hasVolatileDates(nodes: readonly unknown[]): boolean {
   for (const n of nodes) {
-    const o = n as { expr?: unknown; frameText?: unknown; stringLiterals?: Record<string, unknown> };
+    const o = n as { expr?: unknown; frameText?: unknown; stringLiterals?: Record<string, unknown>; internalEditor?: { getNodes(): readonly unknown[] } };
+    if (o.constructor?.name === "TodayNowNode") return true;
+    if (o.internalEditor && hasVolatileDates(o.internalEditor.getNodes())) return true;
     if (typeof o.expr === "string" && VOLATILE_FN.test(o.expr)) return true;
     if (typeof o.frameText === "string" && VOLATILE_FN.test(o.frameText)) return true;
     const date = o.stringLiterals?.date;

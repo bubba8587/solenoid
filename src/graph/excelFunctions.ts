@@ -1,10 +1,10 @@
 // [[C14]], [[D4]], [[E12]], [[E14]], [[C22]], [[D20]] declareContract (EXCEL_IMPL_META), [[D24]] prepByShape, [[D25]] blockedFailFast (LEGACY_ALIASES), [[E10]] pickVsAggregateErrors
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
-import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
+import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate } from "./excelCriteria";
-import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -14,7 +14,7 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -326,6 +326,8 @@ export function wholeArgNames(): string[] {
 
 export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ROUND:       { returns: "number", arity: [2, 2], family: "rounding" },
+  ROUNDUP:     { returns: "number", arity: [2, 2], family: "rounding" },
+  ROUNDDOWN:   { returns: "number", arity: [2, 2], family: "rounding" },
   SQRT:        { returns: "number", arity: [1, 1], family: "scalar-math" },
   STANDARDIZE: { returns: "number", arity: [3, 3], family: "statistics" },
   YEAR:        { returns: "number", arity: [1, 1], family: "datetime" },
@@ -466,6 +468,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   VALUE:       { returns: "number", arity: [1, 1], family: "text" },
   NUMBERVALUE: { returns: "number", arity: [1, 3], family: "text" },
   MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
+  POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   CONVERT:     { returns: "number", arity: [3, 3], family: "scalar-math" },
@@ -496,6 +499,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   REPT:       { returns: "string", arity: [2, 2], family: "text" },
   SUBSTITUTE: { returns: "string", arity: [3, 4], family: "text" },
   REPLACE:    { returns: "string", arity: [4, 4], family: "text" },
+  UNICHAR:    { returns: "string", arity: [1, 1], family: "text" },
+  UNICODE:    { returns: "number", arity: [1, 1], family: "text" },
   EXACT:      { returns: "logical", arity: [2, 2], family: "text" },
   FIND:       { returns: "number", arity: [2, 3], family: "text" },
   SEARCH:     { returns: "number", arity: [2, 3], family: "text" },
@@ -746,12 +751,6 @@ const badNum = (...xs: number[]) => xs.some(Number.isNaN);
 const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 const VALUE = (fn: string) => solError("#VALUE!", `${fn} needs a number`);
 
-/** Rounds half away from zero, as Excel does; `Math.round` rounds half up, so ROUND(-2.5, 0) would be -2. */
-function excelRound(n: number, digits: number): number {
-  const f = Math.pow(10, digits);
-  return (Math.sign(n) * Math.round(Math.abs(n) * f)) / f;
-}
-
 export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false): number | SolError {
   if (Number.isNaN(value)) return VALUE("RANK");
   const above = ref.filter((x) => x > value).length;
@@ -789,10 +788,12 @@ export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number
   return quartile(nums, q, false) ?? solError("#DOMAIN!", "QUARTILE needs at least one number");
 }
 
-registerInternal("ROUND", (x, d) => {
-  const n = toNum(x), digits = optNum(d, 0);
-  return badNum(n, digits) ? VALUE("ROUND") : excelRound(n, digits);
-});
+for (const [name, mode] of [["ROUND", "round"], ["ROUNDUP", "roundup"], ["ROUNDDOWN", "rounddown"]] as const) {
+  registerInternal(name, (x, d) => {
+    const n = toNum(x), digits = optNum(d, 0);
+    return badNum(n, digits) ? VALUE(name) : roundDigits(n, digits, mode);
+  });
+}
 registerInternal("SQRT", (x) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("SQRT");
@@ -827,14 +828,37 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
 });
 
 const TEXT_ARG_POSITIONS: Record<string, number[]> = {
-  LEFT: [0], RIGHT: [0], MID: [0], UPPER: [0], LOWER: [0], PROPER: [0],
-  TRIM: [0], REPT: [0], REPLACE: [0, 3],
+  LEFT: [0], RIGHT: [0], UPPER: [0], LOWER: [0],
+  TRIM: [0], REPLACE: [0, 3],
   EXACT: [0, 1], FIND: [0, 1], SEARCH: [0, 1],
 };
 for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
 }
+registerInternal("MID", (text, start, len) => {
+  const t = toStr(text), s = Math.trunc(toNum(start)), n = Math.trunc(toNum(len));
+  if (badNum(s, n)) return VALUE("MID");
+  if (s < 1 || n < 0) return solError("#VALUE!", "MID starts at 1 or later and takes 0 or more characters");
+  return t.slice(s - 1, s - 1 + n);
+});
+registerInternal("PROPER", (text) => properCase(toStr(text)));
+registerInternal("REPT", (text, times) => {
+  const t = toStr(text), n = Math.trunc(toNum(times));
+  if (Number.isNaN(n)) return VALUE("REPT");
+  if (n < 0) return solError("#VALUE!", "REPT can't repeat text a negative number of times");
+  if (t.length * n > 32767) return solError("#VALUE!", "REPT's result would pass 32,767 characters, Excel's text limit");
+  return t.repeat(n);
+});
+registerInternal("UNICHAR", (code) => {
+  const c = Math.trunc(toNum(code));
+  if (!(c >= 1 && c <= 0x10ffff) || (c >= 0xd800 && c <= 0xdfff)) return solError("#VALUE!", "UNICHAR needs a code point from 1 to 1114111");
+  return String.fromCodePoint(c);
+});
+registerInternal("UNICODE", (text) => {
+  const c = toStr(text).codePointAt(0);
+  return c === undefined ? solError("#VALUE!", "UNICODE needs at least one character") : c;
+});
 registerInternal("SUBSTITUTE", (text, old, neu, instance) => {
   const t = toStr(text), o = toStr(old), n = toStr(neu);
   if (o === "") return t;
@@ -923,6 +947,10 @@ const num1 = (fn: string, f: (x: number) => number | SolError) =>
 registerInternal("MOD", (a, b) => {
   const x = toNum(a), y = optNum(b, 0);
   return badNum(x, y) ? VALUE("MOD") : y === 0 ? solError("#DIV/0!", "Division by zero") : x - y * Math.floor(x / y);
+});
+registerInternal("POWER", (a, b) => {
+  const x = toNum(a), y = toNum(b);
+  return badNum(x, y) ? VALUE("POWER") : Math.pow(x, y);
 });
 registerInternal("QUOTIENT", (a, b) => {
   const x = toNum(a), y = toNum(b);
@@ -1178,11 +1206,8 @@ registerInternal("DATEDIF",  (start, end, unit) => {
   if (typeof flat === "function") registerInternal("NETWORKDAYS", swapNeg(flat));
   if (typeof intl === "function") registerInternal("NETWORKDAYS.INTL", swapNeg(intl));
 }
-registerInternal("TODAY", () => {
-  const n = new Date();
-  return jsDateToSerial(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())));
-});
-registerInternal("NOW", () => jsDateToSerial(new Date()));
+registerInternal("TODAY", () => wallClockSerial(new Date(), true));
+registerInternal("NOW", () => wallClockSerial(new Date()));
 registerInternal("TEXT", (value, fmt) => {
   const fxText = (FX as unknown as { TEXT: (...a: unknown[]) => unknown }).TEXT;
   const f = toStr(fmt);
@@ -1420,8 +1445,8 @@ registerInternal("SLICE",      (list, start, end) =>
   sliceList(toList(list), Number(start), end == null ? undefined : Number(end)));
 registerInternal("NTHELEMENT", (list, n) => nthElement(toList(list), Number(n)));
 registerInternal("INTERLEAVE", (a, b) => interleave(toList(a), toList(b)));
-registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "right"));
-registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
+registerInternal("PADRIGHT",   (list, n, fill) => capped("PADRIGHT", Number(n), () => padList(toList(list), Number(n), fill ?? 0, "right")));
+registerInternal("PADLEFT",    (list, n, fill) => capped("PADLEFT", Number(n), () => padList(toList(list), Number(n), fill ?? 0, "left")));
 registerInternal("DIFF",       (list) => diffList(numList(list)));
 registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
 registerInternal("PCTCHANGE",  (list) => pctChangeList(numList(list)));

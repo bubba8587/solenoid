@@ -230,23 +230,34 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
     const scale = Math.max(1, Math.abs(flo), Math.abs(fhi));
     return Math.abs(fm) <= 1e-6 * scale ? mid : null;
   };
-  const domainEdge = (lo: number, hi: number): { x: number; f: number } | null => {
-    let l = lo, h = hi;
-    for (let i = 0; i < 100; i++) {
-      const mid = (l + h) / 2;
-      if (finite(residual(mid))) h = mid; else l = mid;
+  /** The last finite point between a finite end and a non-finite end, found by bisection. */
+  const domainEdge = (inside: number, outside: number): { x: number; f: number } | null => {
+    let i = inside, o = outside;
+    for (let k = 0; k < 100; k++) {
+      const mid = (i + o) / 2;
+      if (finite(residual(mid))) i = mid; else o = mid;
     }
-    const f = residual(h);
-    return finite(f) ? { x: h, f } : null;
+    const f = residual(i);
+    return finite(f) ? { x: i, f } : null;
   };
   let prevX: number | null = null;
   let prevF: number | null = null;
   for (const x of grid) {
     const f = residual(x);
-    if (!finite(f)) { prevX = x; prevF = null; continue; }
+    if (!finite(f)) {
+      if (prevX !== null && prevF !== null && prevF !== 0) {
+        const edge = domainEdge(prevX, x);
+        if (edge && edge.f === 0) consider(edge.x);
+        else if (edge && Math.sign(edge.f) !== Math.sign(prevF)) {
+          const r = bisect(prevX, edge.x, prevF, edge.f);
+          if (r !== null) consider(r);
+        }
+      }
+      prevX = x; prevF = null; continue;
+    }
     if (f === 0) { consider(x); prevX = x; prevF = f; continue; }
     if (prevX !== null && prevF === null) {
-      const edge = domainEdge(prevX, x);
+      const edge = domainEdge(x, prevX);
       if (edge && edge.f !== 0 && Math.sign(edge.f) !== Math.sign(f)) {
         const r = bisect(edge.x, x, edge.f, f);
         if (r !== null) consider(r);

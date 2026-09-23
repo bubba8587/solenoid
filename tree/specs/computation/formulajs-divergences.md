@@ -14,6 +14,8 @@ Deliberate differences from Excel itself (not from Formula.js) are in [[formula-
 
 - **MOD** takes the divisor's sign, as Excel does: `MOD(10, -3)` is -2, where Formula.js gives -1. A zero divisor is `#DIV/0!`, and so is a blank one, which reads as 0.
 - **QUOTIENT** by zero is `#DIV/0!`; Formula.js returns null.
+- **ROUNDUP, ROUNDDOWN**: Formula.js scales and rounds the raw binary value, so `ROUNDUP(0.1+0.2, 1)` is 0.4 where Excel answers 0.3. All three rounding names run `roundDigits`, the ROUND card's kernel, which reads the scaled value at 15 significant digits and truncates a fractional digits count.
+- **POWER(0, 0)** is 1, the answer of `^` and the Arithmetic card ([[C46]] consistencyOverQuirks); Formula.js answers `#NUM!`.
 - **ATAN2**: Excel's `ATAN2(x, y)` is `atan2(y, x)`, x first. Formula.js computes `atan2(x, y)`.
 - **LN, LOG10, SQRTPI, ASIN, ACOS, ACOSH, ATANH** outside their domain answer `#DOMAIN!` ("Input is outside this function's domain"). Formula.js silently returns null for some of them.
 
@@ -33,7 +35,11 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 ## Text and number parsing
 
 - **CONCAT, CONCATENATE, TEXTJOIN** are owned so a number is written with `numberToText` (15 significant digits) rather than Formula.js's formatting.
-- **Text pass-throughs.** LEFT, RIGHT, MID, UPPER, LOWER, PROPER, TRIM, REPT, REPLACE, EXACT, FIND and SEARCH stay Formula.js for their semantics, but each text-position argument (`TEXT_ARG_POSITIONS`; REPLACE's first and fourth) first goes through `numberToText`, so `LEFT(0.1+0.2, 3)` reads "0.3". Two nodes step around Formula.js where these formulas do not. The Text Transform node hand-rolls PROPER, because Formula.js capitalizes only after certain separators while Excel capitalizes after any non-letter (`a-b_c.d` is `A-B_c.D` in Excel and on the node, `A-b_c.d` in Formula.js). The Text Slice node returns `""` for a MID length of 0, as Excel does, where Formula.js errors.
+- **Text pass-throughs.** LEFT, RIGHT, UPPER, LOWER, TRIM, REPLACE, EXACT, FIND and SEARCH stay Formula.js for their semantics, but each text-position argument (`TEXT_ARG_POSITIONS`; REPLACE's first and fourth) first goes through `numberToText`, so `LEFT(0.1+0.2, 3)` reads "0.3".
+- **PROPER** runs `properCase` (`nodes/textOps.ts`), the Text Transform card's kernel: a letter after any non-letter is capitalized and every other letter lowercased, Excel's rule, so `PROPER("76BudGet")` is `76Budget` and `o'neil 2nd` is `O'Neil 2Nd`. Formula.js capitalizes only after certain separators.
+- **MID** of length 0 is `""`, as in Excel; Formula.js answers an error. A start below 1 or a negative length is `#VALUE!`. The Text Slice card calls the same registration.
+- **REPT** truncates a fractional count (`REPT("ab", 2.9)` is `abab`), refuses a negative one, and refuses a result past Excel's 32,767 characters, all with `#VALUE!`. Formula.js throws a raw `RangeError` on a fractional count.
+- **UNICHAR, UNICODE** cover every code point, as the CHAR / CODE card does: `UNICHAR(128512)` is 😀 and `UNICODE("😀")` is 128512. Formula.js works in UTF-16 units, so it answers a lone surrogate half.
 - **SUBSTITUTE** is owned: Formula.js replaces the (instance + 1)th match, while Excel truncates `instance` like every numeric argument and replaces that match. An instance below 1 is `#VALUE!`; an empty search text returns the text unchanged.
 - **VALUE** is strict. It accepts a plain number, an optional `$` after the sign, thousands commas, a wrapping pair of parentheses for a negative, and any number of trailing `%` (each divides by 100). Anything else is `#VALUE!`, including a logical (`VALUE(TRUE)`) and empty text. Formula.js returns 0 for any unparseable text, which silently corrupts a result. VALUE deliberately does not parse date or time text; that is DATEVALUE's job.
 - **NUMBERVALUE(text, [decimal], [group])**: only the first character of each separator argument counts, whitespace is stripped anywhere, trailing `%` each divide by 100, and empty text is 0. The group separator is legal only before the decimal point. The default group separator `,` steps aside when the decimal separator is `,`; only two explicitly identical separators are `#VALUE!`. Formula.js returns null when only a decimal separator is given.

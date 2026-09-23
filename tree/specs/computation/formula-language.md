@@ -141,7 +141,7 @@ Function names in call position are case-insensitive and resolve through the reg
 
 `FUNCTION_FAMILY` and `FAMILY_BACKING` record, for names that exist both as a node and in Formula.js, whether the family is backed internally, by Formula.js, or awaits verification. They are documentation data; `excelFunctionInfo(name)` reads them, and the evaluator does not.
 
-The core registers every internal function at module load. The node and the formula call the same kernel ([[C17]] shareImpl). A generator that a formula can reach (SEQUENCE, RANDARRAY, MAKEARRAY and the list generators) checks `MAX_GENERATED` (1,000,000 elements, from `nodes/listOps.ts`, the constant the nodes use) and answers `#OVERFLOW!` past it ([[C21]] matchNodeLimits).
+The core registers every internal function at module load. The node and the formula call the same kernel ([[C17]] shareImpl). A generator that a formula can reach (SEQUENCE, RANDARRAY, MAKEARRAY and the list generators) checks `MAX_GENERATED` (1,000,000 elements, from `nodes/listOps.ts`, the constant the nodes use) and answers `#OVERFLOW!` past it ([[C21]] matchNodeLimits). The 2-D builders (EXPAND, MUNIT, DIAGONAL, OUTER) apply the same limit to their cell count inside their `matrixOps` kernels, so the card and the formula refuse together.
 
 ### Blocked and wrong-surface names
 
@@ -233,7 +233,7 @@ If every list argument is empty, the answer is `[]`.
 
 ## Broadcasting
 
-`mapCells(argv, cellFn)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, and function broadcasting ([[D27]] oneBroadcast). It owns shape only; `cellFn` owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
+`mapCells(argv, cellFn)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, `IFERROR` and `IFNA`, and function broadcasting ([[D27]] oneBroadcast). It owns shape only; `cellFn` owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
 
 - A value nested deeper than a matrix (a matrix cell that is itself an array) answers one `#SHAPE!`.
 - Each argument first collapses a singleton: a 1×1 matrix and a one-element list are their scalar, so `[5] + [1,2,3]` is `[6,7,8]` (B10, B11).
@@ -274,7 +274,7 @@ Formula.js reports failures as `Error` objects. Inside a formula they stay `Erro
 
 `compileEvaluator(expr)` parses once and returns `(env) => value`, or null on a syntax error. The returned evaluator answers `#VALUE!` "LAMBDA needs arguments…" when the result is an unapplied `LambdaValue`, and otherwise returns `normalizeFxResult(result)`. Array results are returned as they are; each host cleans cells itself.
 
-`compilePositional(expr, paramNames)` wraps `compileEvaluator` with positional binding: argument `i` binds to `paramNames[i]` in a fresh environment. The LAMBDA node and the table-lambda nodes use it.
+`compilePositional(expr, paramNames)` wraps `compileEvaluator` with positional binding: argument `i` binds to `paramNames[i]` in a fresh environment, and the names are bound the way a LAMBDA's parameters are, so a LAMBDA node parameter named `e` shadows the constant exactly as `LAMBDA(e, e+1)` does. The LAMBDA node and the table-lambda nodes use it.
 
 ## Complex numbers
 
@@ -294,15 +294,15 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[D4
 
 `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` (`ERROR_HANDLER_FUNCTIONS`) are handled by `applyErrorHandler` before error propagation. An operand counts as an error when it is a `SolError` or a Formula.js `Error`. `IFNA` and `ISNA` catch only `#N/A`; `ISERR` catches everything except `#N/A`; the rest catch every error.
 
-- `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. A list or matrix is walked cell by cell; when the fallback is also a list, cell `i` uses fallback cell `i`. A missing fallback is `null`.
+- `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. When either argument is a list or matrix, the two broadcast through `mapCells` like an operator's operands ([[D27]] oneBroadcast): a list fallback reads as one row across a matrix, and a cell past a shorter operand's edge is `null`. A missing fallback is `null`.
 - `ISERROR`, `ISERR`, `ISNA`: TRUE or FALSE, walked cell by cell over lists and matrices.
-- `ERROR.TYPE`: per element of a list, Excel's number for the code (`#DIV/0!` 2, `#VALUE!` 3, `#REF!` 4, `#NAME?` 5, `#N/A` 7, and 6 for `#NUM!` and the Solenoid codes that split it: `#DOMAIN!`, `#OVERFLOW!`, `#CONV!`); any other code is 3; a non-error answers `#N/A`.
+- `ERROR.TYPE`: per cell of a list or matrix, Excel's number for the code (`#DIV/0!` 2, `#VALUE!` 3, `#REF!` 4, `#NAME?` 5, `#N/A` 7, and 6 for `#NUM!` and the Solenoid codes that split it: `#DOMAIN!`, `#OVERFLOW!`, `#CONV!`); any other code is 3; a non-error answers `#N/A`.
 
 ## LAMBDA
 
 ### Syntax and evaluation
 
-`LAMBDA(p1, …, pn, body)` is a special form: its arguments are not evaluated. With no arguments it answers `#VALUE!` "LAMBDA needs a body…". Every argument but the last must be a bare name, or it answers `#VALUE!` "LAMBDA parameters must be plain names". The value is a closure, `{ __lambda: true, params, fn, expr: "" }`: calling `fn(...args)` copies the defining environment, binds parameter `i` to argument `i` (a missing argument binds `undefined`) and evaluates the body. The closure captures the whole defining environment, so a body can read the formula's variables. A lambda can return a lambda.
+`LAMBDA(p1, …, pn, body)` is a special form: its arguments are not evaluated. With no arguments it answers `#VALUE!` "LAMBDA needs a body…". Every argument but the last must be a bare name, or it answers `#VALUE!` "LAMBDA parameters must be plain names", and a name may appear once (`#VALUE!` "LAMBDA parameter x appears twice"). The value is a closure, `{ __lambda: true, params, fn, expr: "" }`: calling `fn(...args)` copies the defining environment, binds parameter `i` to argument `i` (a missing argument binds `undefined`) and evaluates the body. The closure captures the whole defining environment, so a body can read the formula's variables. A lambda can return a lambda.
 
 A lambda is applied three ways:
 
@@ -334,7 +334,7 @@ Arity is not checked by the hosts: missing parameters bind `null` from the host'
 
 ### The LAMBDA node and wired lambdas
 
-The LAMBDA node has a comma-separated `params` field and a body `expr`. Every name in the body that is not a parameter, together with every identifier-shaped `@name` (from `atColNames`), except the builtins `row` and `rows`, becomes a capture input socket. The node compiles the body with `compilePositional(expr, [...params, ...captures])` and emits `{ __lambda: true, params, fn, expr, captured, descriptions }`, where `fn(...args)` passes the first `params.length` arguments followed by the capture values resolved at compute time. An unchanged recompute returns the same object, since consumers memoize on identity. A parameter that is not an identifier answers `#NAME?`; a body that does not parse answers `#SYNTAX!` with the syntax hint; an empty body answers `null`.
+The LAMBDA node has a comma-separated `params` field and a body `expr`. Every name in the body that is not a parameter, together with every identifier-shaped `@name` (from `atColNames`), except the builtins `row` and `rows`, becomes a capture input socket. The node compiles the body with `compilePositional(expr, [...params, ...captures])` and emits `{ __lambda: true, params, fn, expr, captured, descriptions }`, where `fn(...args)` passes the first `params.length` arguments followed by the capture values resolved at compute time. An unchanged recompute returns the same object, since consumers memoize on identity. A parameter that is not an identifier, or one named twice, answers `#NAME?`; a body that does not parse answers `#SYNTAX!` with the syntax hint; an empty body answers `null`.
 
 A wired lambda reaching the MAP, BYROW, BYCOL, REDUCE, SCAN or MAKEARRAY node binds by parameter name, not position ([[C50]] lambdaBindsByName). Each node has fixed variable names (MAP `value`, `value2`, `value3`, `row`, `col`; BYROW and BYCOL `values`; REDUCE and SCAN `acc`, `value`, `step`; MAKEARRAY `row`, `col`). A parameter outside that set answers `#VALUE!` naming the node's variables. A captured name that matches one of the node's variables is flagged on the card as a likely missing parameter (`undeclaredConsumerVars`). Without a wired lambda, the node compiles its inline formula text over its fixed variables, and any other name answers `#NAME?`, pointing at the LAMBDA node. The formula hosts above bind positionally; only the node hosts bind by name.
 
@@ -437,7 +437,8 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 ### Math
 
-- **ROUND** rounds half away from zero, as Excel does (`ROUND(-2.5, 0)` is −3), and a blank digits argument is 0.
+- **ROUND**, **ROUNDUP** and **ROUNDDOWN** run the ROUND card's kernel, `roundDigits` (`nodes/mathUtils.ts`). ROUND rounds half away from zero, as Excel does (`ROUND(-2.5, 0)` is −3). The digits count truncates toward zero, and the scaled value is read at 15 significant digits before it rounds, as Excel reads it, so binary noise never tips a result: `ROUND(1.005, 2)` is 1.01 and `ROUNDUP(0.1+0.2, 1)` is 0.3. A blank digits argument is 0.
+- **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[C46]] consistencyOverQuirks).
 - **LOG2** answers blank for x at or below 0, the node's quiet-blank convention, rather than `#DOMAIN!`. **HYPOTENUSE(x, y)** answers blank when either is blank.
 - **ERF.PRECISE** and **ERFC.PRECISE** are Excel's single-argument forms, identical to ERF and ERFC, and delegate to them.
 - **CONVERT** runs the unit system on the Convert node's unit keys ([[formulajs-divergences]]).
@@ -460,7 +461,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **DATE(year, month, day)**: the year is literal and a blank day is 0, the last day of the month before.
 - **DAYS(end, start)** is signed. **DAYS360(start, end, [method])** is European when `method` is TRUE. **YEARFRAC** defaults its basis to 0. **WEEKDAY** and **WEEKNUM** default their return type to 1.
 - **DATEDIF(start, end, unit)** refuses a start after the end for every unit with `#DOMAIN!`, as Excel does, while the Date Diff card's Days op keeps its sign. An unknown unit is `#DOMAIN!`.
-- **TODAY()** is the serial of today's UTC midnight, an integer; **NOW()** keeps the time fraction. Both match the Today / Now node.
+- **TODAY()** is today's date on the local calendar as an integer serial; **NOW()** is the local wall clock with its time fraction. Both run `wallClockSerial`, the Today / Now card's kernel and the day a relative date text such as `tomorrow` counts from, so the day turns at local midnight, when the rollover recalculates.
 - **FROMEPOCH(value, [unit])** and **TOEPOCH(date, [unit])** take `s` (the default) or `ms`, case-insensitive; any other unit is `#DOMAIN!`. **DATETRUNC(date, [unit], [ceiling])** defaults to `day`; an unknown unit is `#DOMAIN!`.
 - **TIMEZONECONVERT(datetime, from, to)** reads a datetime serial on one IANA zone's wall clock and rebuilds it on another's, the Time Zone Convert node's `convertZone`; any blank argument answers blank.
 
@@ -499,7 +500,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 - The list functions call the list nodes' kernels (*List kernels*). A bare scalar argument widens to a one-element list, as a cable widens a Number into a list input, so `REVERSE(5)` is `[5]`; a blank argument is an empty list.
 - The formula names of the Sets and Fill ops (`SETUNION`, `FILLVALUE` and the rest) are declared on `SET_OP_META`, `SET_RELATION_META` and `FILL_OP_META`, because the bare op labels despace to other names ([[D3]] overrideInPlace).
-- **LINSPACE, REPEAT, GEOMETRIC, RANGE** check their count at the formula boundary: a non-finite count is `#VALUE!`, and one above `MAX_GENERATED` is `#OVERFLOW!` ([[C21]] matchNodeLimits). RANGE(start, [stop], [step]) has no count argument, so it caps on the implied length (`rangeCount`), and an endless walk is `#VALUE!`. FIBONACCI caps itself at 78 terms.
+- **LINSPACE, REPEAT, GEOMETRIC, RANGE, PADLEFT, PADRIGHT** check their count at the formula boundary, as their cards do at theirs: a non-finite count is `#VALUE!`, and one above `MAX_GENERATED` is `#OVERFLOW!` ([[C21]] matchNodeLimits). RANGE(start, [stop], [step]) has no count argument, so it caps on the implied length (`rangeCount`), and an endless walk is `#VALUE!`. FIBONACCI caps itself at 78 terms.
 - **RUNNING(op, list, [window])** is the Running family's one name, the aggregator a text argument, as SORT carries its direction ([[C26]] opArgDistinct). The op is SUM, AVERAGE (or AVG), MIN, MAX, MEDIAN, PRODUCT or STDEV, case-insensitive; anything else is `#VALUE!` listing them. A blank op or list answers blank. An omitted window is cumulative; a blank window is unknown and answers blank; 0 is cumulative, a positive count is the sliding window, and anything else is `#DOMAIN!`.
 - **LENGTH** counts every slot, blanks included, which is why it takes the whole-list route.
 - **CONTAINS(list, value)** refuses a matrix with `#SHAPE!`.
@@ -555,7 +556,7 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 - EXPAND's default padding is blank rather than `#N/A`.
 - XMATCH and XLOOKUP refuse wildcard and binary search modes.
 - Excel's `#NUM!` is split into `#DOMAIN!`, `#OVERFLOW!` and `#CONV!`; `ERROR.TYPE` still reports all three as 6. A percentile outside its domain, dropping everything, and an XIRR date before the first are `#DOMAIN!`.
-- A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[D70]] nullNotEnoughData); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel.
+- A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[D70]] nullNotEnoughData), and so are AVERAGE and MEDIAN of no numbers and LARGE or SMALL with k past the count (Excel: `#DIV/0!`, `#NUM!`); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel, and so does AVERAGEIF(S) with no matching row.
 - LOG2 of a value at or below 0 is blank.
 - FORECAST.ETS uses its own parameter search, so its values are close to Excel's but not identical.
 

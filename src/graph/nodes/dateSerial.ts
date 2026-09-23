@@ -13,6 +13,14 @@ export function jsDateToSerial(d: Date): number {
   return d.getTime() / 86400000 + 25569;
 }
 
+/** The local wall clock as a serial, the day alone with `dateOnly`: what TODAY, NOW and a relative date read. */
+export function wallClockSerial(now: Date = new Date(), dateOnly = false): number {
+  const ms = dateOnly
+    ? Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())
+    : Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+  return ms / 86400000 + 25569;
+}
+
 const NUMERIC_DMY = /^(\d{1,2})[-/.](\d{1,2})[-/.]\d{4}$/;
 const RELATIVE = /\b(today|tonight|tomorrow|yesterday|now|next|last|this|coming|upcoming|ago|from now|in \d|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)\b/i;
 
@@ -35,8 +43,7 @@ export function parseDate(s: string, opts?: ParseDateOptions): number | SolError
     const ref = opts.now ?? new Date();
     const r = chrono.parse(t, ref, { forwardDate: true })[0];
     if (!r || r.index !== 0 || !/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
-    const d = r.start.date();
-    return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
+    return wallClockSerial(r.start.date(), true);
   }
   if (!/\d{4}/.test(t)) return NaN;
   // ISO date-only goes through `new Date`, which reads it as UTC with no 0–99 century pivot (chrono pivots "0026").

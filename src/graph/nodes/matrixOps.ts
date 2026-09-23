@@ -2,6 +2,14 @@
 import { solError, type SolError } from "../errorValue";
 import { indexRefError } from "./indexAccess";
 import type { Cell } from "./coerce";
+import { MAX_GENERATED } from "./listOps";
+
+/** `#OVERFLOW!` past MAX_GENERATED cells, so a typo like EXPAND(x, 1e5, 1e5) answers an error instead of exhausting memory ([[C21]] matchNodeLimits). */
+function cellCap(fn: string, rows: number, cols: number): SolError | null {
+  return rows * cols > MAX_GENERATED
+    ? solError("#OVERFLOW!", `${fn} would build ${rows}×${cols} cells, past the ${MAX_GENERATED} element limit`)
+    : null;
+}
 
 export type NumMat = number[][];
 
@@ -14,20 +22,23 @@ export function matTranspose<T>(m: T[][]): T[][] {
     Array.from({ length: rows }, (_, i) => m[i][j]));
 }
 
-export function matUnit(n: number, offDiag: number | null = 0): (number | null)[][] {
+export function matUnit(n: number, offDiag: number | null = 0): (number | null)[][] | SolError {
   const k = Math.round(n);
   if (k < 1) return [];
+  const cap = cellCap("MUNIT", k, k); if (cap) return cap;
   return Array.from({ length: k }, (_, i) =>
     Array.from({ length: k }, (_, j) => (i === j ? 1 : offDiag)));
 }
 
-export function matDiag(values: ReadonlyArray<number | null>, offDiag: number | null = 0): (number | null)[][] {
+export function matDiag(values: ReadonlyArray<number | null>, offDiag: number | null = 0): (number | null)[][] | SolError {
   const n = values.length;
+  const cap = cellCap("DIAGONAL", n, n); if (cap) return cap;
   return Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => (i === j ? values[i] : offDiag)));
 }
 
-export function outerProduct(a: ReadonlyArray<number | null>, b: ReadonlyArray<number | null>): (number | null)[][] {
+export function outerProduct(a: ReadonlyArray<number | null>, b: ReadonlyArray<number | null>): (number | null)[][] | SolError {
+  const cap = cellCap("OUTER", a.length, b.length); if (cap) return cap;
   return a.map((ai) => b.map((bj) => (ai == null || bj == null ? null : ai * bj)));
 }
 
@@ -159,6 +170,7 @@ export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[]
   const C = reqC > 0 ? reqC : curC;
   if (R < curR || C < curC)
     return solError("#VALUE!", `EXPAND can only grow: the table is ${curR}×${curC}, the target ${R}×${C}. Use TAKE to shrink`);
+  const cap = cellCap("EXPAND", R, C); if (cap) return cap;
   const out: T[][] = [];
   for (let i = 0; i < R; i++) {
     const src = i < curR ? m[i] : [];

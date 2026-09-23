@@ -134,6 +134,13 @@ describe("numeric fallback", () => {
     expect(Math.abs(root * Math.exp(root) - 5)).toBeLessThan(1e-6);
   });
 
+  it("finds a root near a domain that ends on the right, as well as one that starts on the left", () => {
+    const right = (x: number) => (x <= 2 ? Math.sqrt(2 - x) - 0.1 : null);
+    expect(solveNumeric(right) as number).toBeCloseTo(1.99, 9);
+    const left = (x: number) => (x >= 2 ? Math.sqrt(x - 2) - 0.1 : null);
+    expect(solveNumeric(left) as number).toBeCloseTo(2.01, 9);
+  });
+
   it("no real root → #SOLVE!", () => {
     const r = solveNumeric((x) => x * x + 1);
     expect(isSolError(r)).toBe(true);

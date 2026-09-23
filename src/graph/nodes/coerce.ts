@@ -13,6 +13,7 @@ export class ShapeError extends Error {
   }
 }
 
+// A non-array is a scalar whatever its type: text reaching a number rung through a wildcard is the node's to judge, never a list of characters.
 type Numeric = number | number[] | Mat;
 
 function is2D(v: number[] | Mat): v is Mat {
@@ -21,14 +22,14 @@ function is2D(v: number[] | Mat): v is Mat {
 
 export function toMatrix(v: Numeric | null | undefined): Mat | null {
   if (v == null) return null;
-  if (typeof v === "number") return [[v]];
+  if (!Array.isArray(v)) return [[v]];
   if (v.length === 0) return [];
   return is2D(v) ? v : [v as number[]];
 }
 
 export function toList(v: Numeric | null | undefined): number[] | null {
   if (v == null) return null;
-  if (typeof v === "number") return [v];
+  if (!Array.isArray(v)) return [v];
   if (v.length === 0) return [];
   if (!is2D(v)) return v as number[];
   const m = v as Mat;
@@ -39,7 +40,7 @@ export function toList(v: Numeric | null | undefined): number[] | null {
 
 export function toScalar(v: Numeric | null | undefined): number | null {
   if (v == null) return null;
-  if (typeof v === "number") return v;
+  if (!Array.isArray(v)) return v;
   const flat = is2D(v) ? (v as Mat).flat() : (v as number[]);
   if (flat.length === 1) return flat[0];
   throw new ShapeError(`Expected a single value, got ${flat.length}`);

@@ -51,7 +51,7 @@ Any other step (`ABS`, a function of several arguments) has no clean inverse, an
 
 1. Build a symmetric log grid: 0 and ±10ᵏ for k from −6 to 12, sorted.
 2. Walk the grid. A point where the residual is exactly 0 is a root. Between neighbors whose residuals change sign, bisect (up to 200 steps, until the bracket is within 10⁻¹² relative). A sign change can also be a pole, like 1/(x − 3) at 3, so the converged point counts as a root only when its residual is at most 10⁻⁶ times the largest of 1 and the two bracket ends' residuals: a true root drives the residual toward 0, while a pole's stays as large as the ends or larger. A non-finite residual during bisection abandons that bracket.
-3. Where the residual first becomes finite (`SQRT(x − 2)` below 2 is not), find the domain's edge by bisection, and bracket between the edge and the next grid point, so a root near a domain boundary is not missed.
+3. Where the residual turns finite or stops being finite between two grid points (`SQRT(x − 2)` below 2 is not, `SQRT(2 − x)` above 2 is not), find the domain's edge by bisection and bracket between the edge and the finite grid point, so a root near either end of a domain is not missed.
 4. Bisect every bracket, and return the root closest to zero. Taking the first bracket in ascending order would pick the most negative root; a TVM rate residual also crosses zero where 1 + r < 0, and −290% interest is never the intended answer.
 5. With no root found, return `#SOLVE!` "No solution found between ±10¹². The equation may have no real root here".
 

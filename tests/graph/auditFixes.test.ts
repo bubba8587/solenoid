@@ -4,6 +4,9 @@ import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, Mod
 import { extractInit } from "../../src/graph/copyPaste";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
+import { compileEvaluator } from "../../src/graph/excelFormula";
+import { TableUnitNode, TableOuterNode } from "../../src/graph/nodes/matrix";
+import { PadNode } from "../../src/graph/nodes/list";
 
 // Regressions from the data-pathway audit (empty / null / error / large-list).
 
@@ -30,6 +33,23 @@ describe("generator element caps (#5)", () => {
     const off = new RandArrayNode({ integer: false }).data({ count: [30], min: [0], max: [1] }).list as number[];
     expect(off.some((v) => v > 0 && v < 1)).toBe(true);
     expect(extractInit(new RandArrayNode({ integer: true }) as never).integer).toBe(true);
+  });
+
+  it("the 2-D builders cap their cell count on both surfaces instead of exhausting memory", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : "no error");
+    for (const f of ["EXPAND(x, 100000, 100000)", "MUNIT(100000)", "DIAGONAL(SEQUENCE(2000))", "OUTER(SEQUENCE(2000), SEQUENCE(2000))"]) {
+      expect(code(compileEvaluator(f)!({ x: [1] })), f).toBe("#OVERFLOW!");
+    }
+    expect(code(new TableUnitNode().data({ n: [100_000] }).result)).toBe("#OVERFLOW!");
+    const long = Array.from({ length: 2000 }, (_, i) => i);
+    expect(code(new TableOuterNode().data({ a: [long], b: [long] }).result)).toBe("#OVERFLOW!");
+  });
+
+  it("Linspace and Pad cap their length on the card as the formulas do", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : "no error");
+    expect(code(new SeriesNode({ op: "linspace" }).data({ count: [5_000_000] }).list)).toBe("#OVERFLOW!");
+    expect(code(new PadNode().data({ list: [[1]], n: [5_000_000] }).result)).toBe("#OVERFLOW!");
+    expect(code(compileEvaluator("PADRIGHT(x, 5000000)")!({ x: [1] }))).toBe("#OVERFLOW!");
   });
 
   // A normal SEQUENCE's values are pinned (node ≡ formula) in formulaMatrix.test.ts.

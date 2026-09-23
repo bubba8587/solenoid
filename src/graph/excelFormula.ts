@@ -521,15 +521,17 @@ function applyErrorHandler(name: string, argv: unknown[]): unknown {
     case "IFERROR":
     case "IFNA": {
       const fallback = argv.length > 1 ? argv[1] : null;
-      const walk = (v: unknown, f: unknown): unknown =>
-        isArr(v) ? v.map((x, i) => walk(x, isArr(f) ? f[i] : f)) : caught(v) ? f : v;
-      return walk(value, fallback);
+      if (!isArr(value) && !isArr(fallback)) return caught(value) ? fallback : value;
+      return mapCells([value, fallback], (v, f) => (caught(v) ? f : v));
     }
-    case "ERROR.TYPE":
-      return mapOne(value, (v) => {
+    case "ERROR.TYPE": {
+      const walk = (v: unknown): unknown => {
+        if (isArr(v)) return v.map(walk);
         const e = asSol(v);
         return e ? ERROR_TYPE_NUM[e.code] ?? 3 : solError("#N/A", "ERROR.TYPE: the value is not an error");
-      });
+      };
+      return walk(value);
+    }
     default: {
       const walk = (v: unknown): unknown => (isArr(v) ? v.map(walk) : caught(v));
       return walk(value);
@@ -540,9 +542,6 @@ function applyErrorHandler(name: string, argv: unknown[]): unknown {
 const isArr = (v: unknown): v is unknown[] => Array.isArray(v);
 
 const isErr = (v: unknown): boolean => isSolError(v) || v instanceof Error;
-
-const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
-  isArr(v) ? v.map(f) : f(v);
 
 // ─── Rank-aware element-wise mapping ([[C15]] matricesInFormulas — the broadcast-rules table) ────────
 
@@ -804,6 +803,7 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
         const params: string[] = [];
         for (const a of n.args.slice(0, -1)) {
           if (a.t !== "name") return solError("#VALUE!", "LAMBDA parameters must be plain names");
+          if (params.includes(a.name)) return solError("#VALUE!", `LAMBDA parameter ${a.name} appears twice`);
           params.push(a.name);
         }
         const fn = (...args: unknown[]): unknown => {
@@ -878,10 +878,11 @@ export function compilePositional(
 ): ((...args: unknown[]) => unknown) | null {
   const evaluate = compileEvaluator(expr);
   if (!evaluate) return null;
+  const bound = new Set(paramNames);
   return (...args: unknown[]) => {
-    const env: Record<string, unknown> = {};
+    const env: Record<string | symbol, unknown> = { [LAMBDA_BOUND]: bound };
     for (let i = 0; i < paramNames.length; i++) env[paramNames[i]] = args[i];
-    return evaluate(env);
+    return evaluate(env as Record<string, unknown>);
   };
 }
 

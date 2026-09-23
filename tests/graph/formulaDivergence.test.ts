@@ -27,6 +27,18 @@ const num = (v: unknown): number => {
   return v as number;
 };
 
+describe("ROUND family and POWER share the node's kernels (FX is wrong)", () => {
+  it("ROUNDUP reads 0.1 + 0.2 as 0.3, and POWER(0, 0) is 1 like ^ and the Arithmetic node", () => {
+    expect(call("ROUNDUP", 0.1 + 0.2, 1)).toBe(0.3);
+    expect(call("POWER", 0, 0)).toBe(1);
+  });
+  it("FX still rounds binary noise up and refuses 0^0 (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
+    expect(fx.ROUNDUP(0.1 + 0.2, 1)).toBe(0.4);
+    expect(fx.POWER(0, 0)).toBeInstanceOf(Error);
+  });
+});
+
 describe("MOD — Excel result takes the DIVISOR's sign (FX is wrong)", () => {
   it("our impl matches Excel across sign combinations", () => {
     expect(num(call("MOD", 10, -3))).toBeCloseTo(-2, 9); // divisor negative → negative
@@ -157,6 +169,26 @@ describe("number → text in string contexts — numberToText's 15-sig-digit con
     expect(fx.UPPER(0.1 + 0.2)).toBe("0.30000000000000004");
     expect(() => fx.SUBSTITUTE(0.1 + 0.2, ".", ",")).toThrow();
     expect(fx.EXACT(0.1 + 0.2, "0.3")).toBe(false);
+  });
+});
+
+describe("PROPER, MID, REPT, UNICHAR, UNICODE — the text cards' answers, Excel's answers (FX is wrong)", () => {
+  it("PROPER capitalizes after any non-letter", () => {
+    expect(call("PROPER", "76BudGet")).toBe("76Budget");
+    expect(call("PROPER", "o'neil 2nd")).toBe("O'Neil 2Nd");
+  });
+  it("MID of length 0 is empty, REPT truncates its count, UNICHAR and UNICODE cover the astral planes", () => {
+    expect(call("MID", "abc", 2, 0)).toBe("");
+    expect(call("REPT", "ab", 2.9)).toBe("abab");
+    expect(call("UNICHAR", 128512)).toBe("😀");
+    expect(call("UNICODE", "😀")).toBe(128512);
+  });
+  it("FX still gets them wrong (tripwires)", () => {
+    expect(fx.PROPER("76BudGet")).not.toBe("76Budget");
+    expect(fx.MID("abc", 2, 0)).toBeInstanceOf(Error);
+    expect(() => fx.REPT("ab", 2.9)).toThrow();
+    expect(fx.UNICHAR(128512)).not.toBe("😀");
+    expect(fx.UNICODE("😀")).not.toBe(128512);
   });
 });
 

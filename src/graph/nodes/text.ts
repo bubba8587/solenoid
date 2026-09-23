@@ -11,7 +11,7 @@ export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { dropInputCables } from "../components/cablePrune";
 import { getActiveView } from "../activeGraph";
@@ -112,13 +112,12 @@ export const TEXT_TRANSFORM_OP_META = {
   slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. `python-slugify`, R `make_clean_names`." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
-// PROPER is hand-rolled because Formula.js capitalizes only after some separators, not after any non-letter.
 function applyTextTransform(op: TextTransformOp, text: string): string {
   switch (op) {
     case "upper": return resolveExcelFunction("UPPER")!(text) as string;
     case "lower": return resolveExcelFunction("LOWER")!(text) as string;
     case "trim":  return resolveExcelFunction("TRIM")!(text) as string;
-    case "proper": return text.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase());
+    case "proper": return properCase(text);
     case "clean":  return text.replace(/[\x00-\x1F\x7F]/g, "");
     case "unaccent": return unaccent(text);
     case "slugify":  return slugify(text);
@@ -369,9 +368,7 @@ export class TextSliceNode extends ClassicPreset.Node {
     // Only the chosen op's operands join the zip, or a list left in an unused box would spill.
     const result = this.op === "mid"
       ? broadcastCells((t: string, s: number, l: number) => {
-          const len = Math.max(0, Math.floor(l));
-          // Formula.js MID errors on a length of 0, where Excel returns "".
-          return len === 0 ? "" : resolveExcelFunction("MID")!(t, Math.max(1, Math.floor(s)), len) as string;
+          return resolveExcelFunction("MID")!(t, Math.max(1, Math.floor(s)), Math.max(0, Math.floor(l))) as string;
         },
         text,
         readInput(inputs.start, this.literals.start ?? 1),

@@ -546,6 +546,17 @@ describe("IFERROR family catches Solenoid-minted errors (audit finding 8)", () =
     const r = ev("ERROR.TYPE(x)", { x: 5 });
     expect(isSolError(r) && r.code).toBe("#N/A");
   });
+
+  it("a list fallback broadcasts like an operator: a list is a row, a short one pads blank", () => {
+    expect(ev("IFERROR(x, f)", { x: [1, div, div], f: [9, 8] })).toEqual([1, 8, null]);
+    expect(ev("IFERROR(m, f)", { m: [[div, div], [3, div]], f: [10, 20] })).toEqual([[10, 20], [3, 20]]);
+    expect(ev("IFERROR(x, f)", { x: div, f: [1, 2] })).toEqual([1, 2]);
+  });
+
+  it("ERROR.TYPE walks a matrix cell by cell", () => {
+    const r = ev("ERROR.TYPE(m)", { m: [[div, na]] }) as unknown[];
+    expect(r).toEqual([[2, 7]]);
+  });
 });
 
 describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
@@ -559,7 +570,7 @@ describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
     const t = ev("TODAY()");
     expect(typeof t).toBe("number");
     expect(Number.isInteger(t)).toBe(true);
-    expect(ev("YEAR(TODAY())")).toBe(new Date().getUTCFullYear());
+    expect(ev("YEAR(TODAY())")).toBe(new Date().getFullYear());
   });
 
   it("NOW() is a number with a time fraction and NOW()+1 is numeric", () => {
