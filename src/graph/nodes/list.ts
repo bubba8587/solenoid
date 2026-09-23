@@ -243,7 +243,10 @@ export class SeriesNode extends ClassicPreset.Node {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       const end   = readInput(inputs.end, this.literals.end ?? 1);
       const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
-      list = start === null || end === null || nRaw === null ? null : linspace(start, end, nRaw);
+      if (start === null || end === null || nRaw === null) list = null;
+      else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
+        ? solError("#OVERFLOW!", `Linspace count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
+        : linspace(start, end, nRaw);
     } else if (this.op === "geometric") {
       const start = readInput(inputs.start, this.literals.start ?? 1);
       const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
@@ -1600,7 +1603,7 @@ export class PadNode extends ClassicPreset.Node {
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   op: PadDir;
-  cachedList: unknown[] | null = [];
+  cachedList: unknown[] | SolError | null = [];
   literals: Record<string, number> = { n: 5, fill: 0 };
   width = 180; height = 230;
 
@@ -1619,7 +1622,9 @@ export class PadNode extends ClassicPreset.Node {
     const nRaw = readInput(inputs.n, this.literals.n ?? 5);
     const fill = readInput(inputs.fill, this.literals.fill ?? 0);
     if (nRaw === null || fill === null) { this.cachedList = null; return { result: null }; }
-    this.cachedList = padList(arr, nRaw, fill as unknown, this.op);
+    this.cachedList = Math.round(nRaw) > MAX_GENERATED
+      ? solError("#OVERFLOW!", `Pad length ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
+      : padList(arr, nRaw, fill as unknown, this.op);
     return { result: this.cachedList };
   }
 }

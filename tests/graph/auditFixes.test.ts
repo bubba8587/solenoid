@@ -6,6 +6,7 @@ import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { TableUnitNode, TableOuterNode } from "../../src/graph/nodes/matrix";
+import { PadNode } from "../../src/graph/nodes/list";
 
 // Regressions from the data-pathway audit (empty / null / error / large-list).
 
@@ -42,6 +43,13 @@ describe("generator element caps (#5)", () => {
     expect(code(new TableUnitNode().data({ n: [100_000] }).result)).toBe("#OVERFLOW!");
     const long = Array.from({ length: 2000 }, (_, i) => i);
     expect(code(new TableOuterNode().data({ a: [long], b: [long] }).result)).toBe("#OVERFLOW!");
+  });
+
+  it("Linspace and Pad cap their length on the card as the formulas do", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : "no error");
+    expect(code(new SeriesNode({ op: "linspace" }).data({ count: [5_000_000] }).list)).toBe("#OVERFLOW!");
+    expect(code(new PadNode().data({ list: [[1]], n: [5_000_000] }).result)).toBe("#OVERFLOW!");
+    expect(code(compileEvaluator("PADRIGHT(x, 5000000)")!({ x: [1] }))).toBe("#OVERFLOW!");
   });
 
   // A normal SEQUENCE's values are pinned (node ≡ formula) in formulaMatrix.test.ts.

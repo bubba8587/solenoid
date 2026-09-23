@@ -1445,8 +1445,8 @@ registerInternal("SLICE",      (list, start, end) =>
   sliceList(toList(list), Number(start), end == null ? undefined : Number(end)));
 registerInternal("NTHELEMENT", (list, n) => nthElement(toList(list), Number(n)));
 registerInternal("INTERLEAVE", (a, b) => interleave(toList(a), toList(b)));
-registerInternal("PADRIGHT",   (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "right"));
-registerInternal("PADLEFT",    (list, n, fill) => padList(toList(list), Number(n), fill ?? 0, "left"));
+registerInternal("PADRIGHT",   (list, n, fill) => capped("PADRIGHT", Number(n), () => padList(toList(list), Number(n), fill ?? 0, "right")));
+registerInternal("PADLEFT",    (list, n, fill) => capped("PADLEFT", Number(n), () => padList(toList(list), Number(n), fill ?? 0, "left")));
 registerInternal("DIFF",       (list) => diffList(numList(list)));
 registerInternal("NORMALIZE",  (list) => normalizeList(numList(list)));
 registerInternal("PCTCHANGE",  (list) => pctChangeList(numList(list)));
