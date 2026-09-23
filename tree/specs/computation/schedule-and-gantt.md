@@ -21,7 +21,7 @@ Columns are found by name, case-insensitive; the first alias in each row below t
 | Column (aliases) | Read as | Meaning |
 |---|---|---|
 | Task (`name`, `title`; else the first column holding text) | text | The task's name. Required, unique, never blank. |
-| Duration (`days`; else the first numeric or united column that is not Task, a child column, Work or Units) | number | Working days. Blank or 0 is a milestone. A cell holding a time unit value converts through hours per day; any other unit is an error. A parent's Duration is ignored, since it rolls up. |
+| Duration (`days`; else the first numeric or united column that is not a date column and not named in this table) | number | Working days. Blank or 0 is a milestone. A cell holding a time unit value converts through hours per day; any other unit is an error. A parent's Duration is ignored, since it rolls up. |
 | Predecessors (`predecessor`, `after`, `depends on`, `blockedby`, `blocked by`) | list, text or nested table | The tasks that come first. See [Predecessors](#predecessors). |
 | Tasks (`children`, `subtasks`, `steps`; else a column of nested tables that have a Task column) | nested table | The row's children. See [Hierarchy](#hierarchy). |
 | Start | date, optional | A floor: the task starts no earlier. |
@@ -51,7 +51,7 @@ A Predecessors cell takes one of three shapes:
 
 A predecessor is never a grammar string inside a cell. `3FS+2d` exists only at the import border, where row numbers resolve to names ([[D67]] grammarOnlyAtBorder).
 
-The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats.
+The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors, and the output cube's Predecessors column carries the merged list (a level with no Predecessors column gains one), so a Gantt downstream draws them. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats.
 
 ### Hierarchy
 
@@ -73,7 +73,7 @@ The Schedule node is in the Add menu's Plan category.
 | `holidays` | date list | Days to skip alongside the weekend. Read only in Working days mode. The Holidays node feeds it. |
 | `weekend_code` | number | Excel's `WORKDAY.INTL` code: 1 is Saturday and Sunday (the default), 2 is Sunday and Monday, 11 to 17 a single day off. |
 | `status` | date | The status date. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars. |
-| `hours` | number | Hours in a working day, default 8 (a value of 0 or less reads as 8). It converts hour durations and Work, and in Minutes mode it is the length of the working day from 08:00. |
+| `hours` | number | Hours in a working day, default 8 (a value of 0 or less reads as 8). It converts hour durations and Work, and in Minutes mode it is the length of the working day from 08:00 (a day longer than 16 hours starts earlier, so it ends at midnight). |
 
 The calendar is not a new socket type and not a separate node. The Schedule node takes what the Workdays node takes, `weekend_code` and `holidays`, over the one working-day implementation the app shares.
 

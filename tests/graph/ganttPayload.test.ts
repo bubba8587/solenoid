@@ -73,4 +73,19 @@ describe("Schedule rows with a Repeat column", () => {
     const start = r.cube.columns.find((c) => c.name === "Start")!.cells;
     expect((start[phase] as number) > (start[a] as number)).toBe(true);
   });
+
+  it("skips a row the Schedule left out (Active false), with its subtree", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "Off", "B"], type: "string" },
+      { name: "Duration", cells: [1, null, 1], type: "number" },
+      { name: "Tasks", cells: [null, cubeFromColumns([{ name: "Task", cells: ["Kid"], type: "string" }, { name: "Duration", cells: [1], type: "number" }]), null] },
+      { name: "Active", cells: [true, false, "yes"], type: "string" },
+      { name: "Predecessors", cells: [[], [], ["A"]] },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    const p = ganttPayloadFromSchedule(r.cube, { today: MON });
+    if (isSolError(p)) throw new Error(p.message);
+    expect(p.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+  });
 });
+

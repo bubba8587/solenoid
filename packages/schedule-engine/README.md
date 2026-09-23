@@ -62,7 +62,8 @@ Saturday, 11 to 17 a single day), `holidays`, `precision` and `intervals`.
 - **Minutes**: Project's model. `intervals` are the working spans of a day in minutes from
   midnight (default 08:00 to 12:00 and 13:00 to 17:00), and durations in days convert through
   their sum. `intervalsForHours(h)` builds a day of `h` hours from 08:00, with Project's lunch
-  hour when the day is over 4 and at most 8 hours. An FS successor may start at 13:00 the same
+  hour when the day is over 4 and at most 8 hours; a day over 16 hours starts earlier so it
+  ends at midnight. An FS successor may start at 13:00 the same
   day, and a finish is 17:00.
 
 **The input** (`ScheduleInput`): the tasks, the project `start`, the project calendar, and:
@@ -115,8 +116,8 @@ negative or non-numeric duration or Complete) throws one `ScheduleError` naming 
    serial). It maps onto the successor's calendar as the first unit at or after it, and the lag
    then counts on the successor's calendar, or in calendar days when elapsed. A sub-day lag counts
    in Minutes mode and rounds in Days mode.
-5. **Forward pass.** Each task's early start is the latest of the project start, its links, and
-   its floor. A summary's dates are the span of its children on its own calendar. An actual start
+5. **Forward pass.** A task with no links starts at the project start; a linked task's early
+   start is the latest of its links and its floor, so a lead can put it before the project start. A summary's dates are the span of its children on its own calendar. An actual start
    pins the early start. With a status date, the remaining part cannot start before it; a done part
    of zero units is nothing to split off, so the whole task moves.
 6. **Backward pass.** Every late finish starts at the project finish, on the task's own calendar,

@@ -5,6 +5,7 @@ import { formatDateSerial, parseDate, DEFAULT_DATETIME_FORMAT } from "./nodes/da
 import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
 import type { FormatAnnotation } from "./formatAnnotationStore";
 import { isUnitCell } from "./unitValue";
+import { predecessorCell } from "./planImport";
 import {
   schedule, mermaidGantt, writeMspdi, ScheduleError, predecessorText, LINK_TYPES, intervalsForHours,
   type PlanTask, type PlanDependency, type LinkType, type ScheduleOutput, type ScheduledTask,
@@ -55,9 +56,15 @@ const TASK_HOURS_NAMES = ["hours", "hours per day"];
 const TASK_HOLIDAY_NAMES = ["holidays", "days off"];
 const WORK_NAMES = ["work", "effort", "work (h)", "hours of work"];
 const UNITS_NAMES = ["units", "assignment", "fte"];
-const ACTIVE_NAMES = ["active", "included"];
+export const ACTIVE_NAMES = ["active", "included"];
 const REPEAT_NAMES = ["repeat", "occurrences", "times"];
 const EVERY_NAMES = ["every", "every (days)", "interval", "period"];
+// The duration fallback skips every column the schedule reads by name.
+const KNOWN_NAMES = new Set([
+  ...TASK_NAMES, ...PRED_NAMES, ...CHILD_NAMES, ...START_NAMES, ...FINISH_NAMES, ...DEADLINE_NAMES, ...MANUAL_NAMES,
+  ...COMPLETE_NAMES, ...GROUP_NAMES, ...ALAP_NAMES, ...ACTUAL_NAMES, ...ELAPSED_NAMES, ...TASK_WEEKEND_NAMES,
+  ...TASK_HOURS_NAMES, ...TASK_HOLIDAY_NAMES, ...WORK_NAMES, ...UNITS_NAMES, ...ACTIVE_NAMES, ...REPEAT_NAMES, ...EVERY_NAMES,
+]);
 
 function findColumn(c: CubeValue, names: string[], pick?: (col: CubeColumn) => boolean): CubeColumn | undefined {
   for (const n of names) {
@@ -158,6 +165,11 @@ function readBool(cell: CubeCell | undefined): boolean {
   return false;
 }
 
+/** An Active cell that is set and false leaves its row, and the row's subtree, out of the schedule. */
+export function isInactive(cell: CubeCell | undefined): boolean {
+  return cell != null && cell !== "" && !readBool(cell);
+}
+
 interface Level {
   cube: CubeValue;
   cols: {
@@ -177,7 +189,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
   if (!task) throw solError("#VALUE!", "Schedule needs a Task column (text) naming each task");
   const pred = findColumn(c, PRED_NAMES);
   const children = findColumn(c, CHILD_NAMES, (col) => col !== pred && col.cells.some((v) => isTable(v) && !!findColumn(asCube(v), TASK_NAMES, (cc) => cc.cells.some(isText))));
-  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && !WORK_NAMES.includes(norm(col.name)) && !UNITS_NAMES.includes(norm(col.name)) && col.cells.some((v) => isNum(v) || isUnitCell(v)));
+  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && col.type !== "date" && !KNOWN_NAMES.has(norm(col.name)) && col.cells.some((v) => isNum(v) || isUnitCell(v)));
   const work = findColumn(c, WORK_NAMES);
   if (!duration && !children && !work) throw solError("#VALUE!", "Schedule needs a Duration column (number of days) or a Work column (hours)");
   const cols: Level["cols"] = {
@@ -198,7 +210,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     const name = String(task.cells[i] ?? "").trim();
     if (!name) throw solError("#VALUE!", `Schedule: row ${i + 1} has no task name`);
     names.push(name);
-    const off = cols.active ? cols.active.cells[i] != null && !readBool(cols.active.cells[i]) : false;
+    const off = isInactive(cols.active?.cells[i]);
     inactive.push(off);
     if (off) { childLevels.push(null); continue; }
     const kidCell = children?.cells[i];
@@ -269,7 +281,7 @@ function taskCalendar(cols: Level["cols"], i: number, hoursPerDay: number): Plan
 
 const DATETIME_FORMAT: FormatAnnotation = { format: "date_custom", customPattern: DEFAULT_DATETIME_FORMAT, unit: "none" };
 
-function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean, minutes: boolean): CubeValue {
+function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean, minutes: boolean, merged: boolean): CubeValue {
   const rows = level.names.map((n, i) => (level.inactive[i] ? null : byName.get(n.toLowerCase())!)) as ScheduledTask[];
   const cells = <T extends CubeCell>(f: (t: ScheduledTask) => T): (T | null)[] => rows.map((t) => (t ? f(t) : null));
   const dateFmt = minutes ? { format: DATETIME_FORMAT } : {};
@@ -299,9 +311,12 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
       { name: "Summary", type: "logical", cells: cells((t) => t.summary) },
     );
   }
+  if (merged && !level.cols.pred && rows.some((t) => t?.predecessors.length)) {
+    appended.unshift({ name: "Predecessors", cells: cells((t) => predecessorCell(t.predecessors)) });
+  }
   if (!level.cols.duration && rows.some((t) => t?.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
   if (!level.cols.children && level.childLevels.some(Boolean)) {
-    appended.unshift({ name: "Tasks", cells: level.childLevels.map((l) => (l ? writeLevel(l, byName, nested, minutes) : null)) });
+    appended.unshift({ name: "Tasks", cells: level.childLevels.map((l) => (l ? writeLevel(l, byName, nested, minutes, merged) : null)) });
   }
   const taken = new Set(appended.map((col) => col.name));
   const kept = level.cube.columns.filter((col) => !taken.has(col.name) || col === level.cols.start || col === level.cols.finish);
@@ -309,7 +324,10 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     if (col === level.cols.start && taken.has("Start")) return null;
     if (col === level.cols.finish && taken.has("Finish")) return null;
     if (col === level.cols.children) {
-      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested, minutes) : cell)) };
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested, minutes, merged) : cell)) };
+    }
+    if (merged && col === level.cols.pred) {
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i] ? predecessorCell(rows[i]!.predecessors) : cell)) };
     }
     if (col === level.cols.duration) {
       return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i]?.summary ? rows[i]!.duration : cell)) };
@@ -335,7 +353,8 @@ const ISO = "YYYY-MM-DD";
 export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResult {
   const hoursPerDay = opts.hoursPerDay && opts.hoursPerDay > 0 ? opts.hoursPerDay : 8;
   const { level, tasks } = readLevel(c, hoursPerDay, 0);
-  if (opts.links && isFrameValue(opts.links)) applyLinksFrame(tasks, opts.links);
+  const merged = !!opts.links && isFrameValue(opts.links);
+  if (merged) applyLinksFrame(tasks, opts.links!);
   let output: ScheduleOutput;
   try {
     output = schedule({
@@ -356,7 +375,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
   }
   const byName = new Map(output.tasks.map((t) => [t.name.toLowerCase(), t]));
   const nested = output.tasks.some((t) => t.summary);
-  const cube = writeLevel(level, byName, nested, opts.precision === "minutes");
+  const cube = writeLevel(level, byName, nested, opts.precision === "minutes", merged);
   return {
     cube,
     projectFinish: output.projectFinish,

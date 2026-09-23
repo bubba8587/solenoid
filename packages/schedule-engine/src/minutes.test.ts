@@ -36,6 +36,8 @@ describe("Calendar in Minutes mode", () => {
     expect(intervalsForHours(8)).toEqual([[480, 720], [780, 1020]]);
     expect(intervalsForHours(6)).toEqual([[480, 720], [780, 900]]);
     expect(intervalsForHours(10)).toEqual([[480, 1080]]);
+    expect(intervalsForHours(20)).toEqual([[240, 1440]]);   // a day past 16 hours starts early to keep its length
+    expect(intervalsForHours(24)).toEqual([[0, 1440]]);
     expect(new Calendar(MON, { workingDays: true, precision: "minutes", intervals: [[540, 780]] }).unitsPerDay).toBe(240);
   });
 });

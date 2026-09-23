@@ -49,3 +49,8 @@ export function toSeries(v: unknown): { i: number; v: number }[] {
   }
   return out;
 }
+
+// A pie has no place for a zero or negative slice, and recharts would sum it into the others' angles.
+export function pieSlices(series: readonly { i: number; v: number }[]): { i: number; v: number }[] {
+  return series.filter((d) => d.v > 0);
+}

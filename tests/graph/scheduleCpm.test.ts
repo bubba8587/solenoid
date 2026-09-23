@@ -237,6 +237,11 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     const r = scheduleTasks(plan, { start: MON, workingDays: true, links });
     // A: Mon–Tue. B (FS) starts Wed. C (SS +1) starts the day after A starts = Tue.
     expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07", "2026-01-06"]);
+    // The merged links land in the Predecessors column, so a Gantt downstream draws them.
+    const preds = col(r.cube, "Predecessors");
+    expect(preds[0]).toEqual([]);
+    expect(preds[1]).toEqual(["A"]);
+    expect(col(preds[2] as CubeValue, "Type")).toEqual(["SS"]);
     // An unknown successor is the schedule's #VALUE! naming it.
     expect(() => scheduleTasks(plan, {
       start: MON, workingDays: true,
@@ -246,4 +251,32 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
       ] },
     })).toThrow(/Ghost/);
   });
+
+  it("with no Duration column, a known column (a date, Complete) is never read as the duration", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Start", cells: [MON, null], type: "date" },
+      { name: "Complete", cells: [50, 0], type: "number" },
+      { name: "Work", cells: [16, 8], type: "number" },
+      { name: "Predecessors", cells: [[], ["A"]] },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    expect(col(r.cube, "Finish").map(iso)).toEqual(["2026-01-06", "2026-01-07"]);
+    const noWork = cubeFromColumns([
+      { name: "Task", cells: ["A"], type: "string" },
+      { name: "Deadline", cells: [MON + 30], type: "date" },
+      { name: "Days of work", cells: [3], type: "number" },
+    ]);
+    expect(col(scheduleTasks(noWork, { start: MON, workingDays: true }).cube, "Finish").map(iso)).toEqual(["2026-01-07"]);
+  });
+
+  it("a blank Active cell, null or empty text, keeps the row in the schedule", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C"], type: "string" },
+      { name: "Duration", cells: [1, 1, 1], type: "number" },
+      { name: "Active", cells: [null, "", "no"], type: "string" },
+    ]);
+    expect(scheduleTasks(c, { start: MON, workingDays: true }).output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+  });
 });
+

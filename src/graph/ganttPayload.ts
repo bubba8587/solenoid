@@ -8,6 +8,7 @@ import { parseGanttViewOptions, type GanttPayload, type GanttTask, type GanttLin
 import { predecessorText, Calendar, type PlanDependency } from "@solenoid/schedule-engine";
 import { parseDate } from "./nodes/dateSerial";
 import { isSolError } from "./errorValue";
+import { isInactive, ACTIVE_NAMES } from "./scheduleCpm";
 
 const norm = (s: string) => s.trim().toLowerCase();
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -55,10 +56,11 @@ function flatten(c: CubeValue, level: number, out: Row[]): void {
   if (!task) throw solError("#VALUE!", "Gantt needs a Task column naming each task");
   const pred = col(c, ...PRED_NAMES);
   const children = col(c, ...CHILD_NAMES) ?? c.columns.find((x) => x !== pred && norm(x.name) !== "segments" && x.cells.some((v) => isTable(v) && !!col(asCube(v), ...TASK_NAMES)));
+  const active = col(c, ...ACTIVE_NAMES);
   const rows = c.columns.reduce((m, x) => Math.max(m, x.cells.length), 0);
   for (let i = 0; i < rows; i++) {
     const name = String(task.cells[i] ?? "").trim();
-    if (!name) continue;
+    if (!name || isInactive(active?.cells[i])) continue;
     const cells: Record<string, CubeCell> = {};
     for (const x of c.columns) cells[norm(x.name)] = x.cells[i] ?? null;
     out.push({ name, level, cells, deps: pred ? depsOf(pred.cells[i]) : [] });

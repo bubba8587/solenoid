@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, toSeries } from "../../../src/graph/components/chartCore";
+import { axisTick, toSeries, pieSlices } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -29,5 +29,11 @@ describe("toSeries", () => {
     expect(toSeries(5)).toEqual([{ i: 0, v: 5 }]);
     expect(toSeries(null)).toEqual([]);
     expect(toSeries(solError("#DIV/0!", "x"))).toEqual([]);
+  });
+});
+
+describe("pieSlices", () => {
+  it("drops zero and negative slices and keeps each slice's row index", () => {
+    expect(pieSlices(toSeries([10, -5, 0, 3]))).toEqual([{ i: 0, v: 10 }, { i: 3, v: 3 }]);
   });
 });
