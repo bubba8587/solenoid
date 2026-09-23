@@ -92,6 +92,20 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(7);
   });
 
+  it("a wired blank beats the declared default ([[D33]] unwiredNotBlank)", async () => {
+    const c = new CompositeNode();
+    const passthrough = new CompositeOutputNode({ label: "Result" });
+    const inMarker = new CompositeInputNode({ label: "A" });
+    await c.internalEditor.addNode(inMarker as unknown as Schemes["Node"]);
+    await c.internalEditor.addNode(passthrough as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inMarker, "value", passthrough, "value");
+    const inId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inMarker.id, default: 7 });
+    const outId = c.addOutputPort({ label: "Result", tier: "basic", internalNodeId: passthrough.id });
+
+    const out = await c.data({ [inId]: [null] });
+    expect(out[outId]).toBeNull();
+  });
+
   it("a hidden input port always uses its baked default, ignoring any injected value", async () => {
     const c = new CompositeNode();
     const passthrough = new CompositeOutputNode({ label: "Result" });

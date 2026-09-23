@@ -105,6 +105,17 @@ export function byRowValues(v: unknown): unknown[] {
 
 export const BY_ROW_MAX_ROWS = 500;
 
+/** A wired exposed port wins even when it carries a blank; only an unwired or hidden one takes the default ([[D33]] unwiredNotBlank). */
+export function portSource(
+  port: CompositeInputPort,
+  marker: { defaultValue: number | null } | undefined,
+  inputs: Record<string, unknown[] | undefined>,
+): unknown {
+  const wired = port.exposure === "exposed" ? inputs[port.id] : undefined;
+  if (wired && wired.length > 0) return wired[0];
+  return marker?.defaultValue ?? port.default ?? null;
+}
+
 export function stopConditionMet(raw: unknown, op: CompositeStopOp, value: number): boolean {
   if (raw === null || raw === undefined) return false; // Number(null) is 0, so guard first
   const n = typeof raw === "boolean" ? (raw ? 1 : 0) : Number(raw);
@@ -559,9 +570,7 @@ export class CompositeNode extends ClassicPreset.Node {
       const override = overrides?.[port.id];
       marker.value = override !== undefined
         ? override
-        : port.exposure === "exposed"
-          ? (inputs[port.id]?.[0] ?? marker.defaultValue ?? port.default ?? null)
-          : (marker.defaultValue ?? port.default ?? null);
+        : portSource(port, marker, inputs);
     }
     this.internalEngine.reset();
     this.seedInternalLoopErrors();
@@ -599,9 +608,7 @@ export class CompositeNode extends ClassicPreset.Node {
     for (const port of this.inputPorts) {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
       if (!marker) continue;
-      marker.value = port.exposure === "exposed"
-        ? (inputs[port.id]?.[0] ?? marker.defaultValue ?? port.default ?? null)
-        : (marker.defaultValue ?? port.default ?? null);
+      marker.value = portSource(port, marker, inputs);
     }
     this.internalEngine.reset();
     this.simLastSteps = null;
@@ -887,9 +894,7 @@ export class CompositeNode extends ClassicPreset.Node {
     const port = this.inputPorts.find((p) => p.id === this.byRowPortId);
     if (!port) return this.runPass(inputs);
     const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
-    const source = port.exposure === "exposed"
-      ? (inputs[port.id]?.[0] ?? marker?.defaultValue ?? port.default ?? null)
-      : (marker?.defaultValue ?? port.default ?? null);
+    const source = portSource(port, marker, inputs);
     let rows = byRowValues(source);
     if (rows.length === 0) return this.runPass(inputs);
     if (rows.length > BY_ROW_MAX_ROWS) {

@@ -1,4 +1,4 @@
-// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D22]], [[D42]], [[D46]], [[D64]], [[C95]], [[C97]]
+// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[D64]], [[C95]], [[C97]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -363,6 +363,35 @@ describe("[[C34]] classNameIsType — class names are load-bearing: keepNames st
     for (const cfg of ["vite.config.ts", "vitest.config.ts"]) {
       const src = fs.readFileSync(path.resolve(SRC, "../..", cfg), "utf8");
       expect(/keepNames:\s*true/.test(src), `${cfg} lost esbuild keepNames — class-name dispatch and save types break in production only`).toBe(true);
+    }
+  });
+});
+
+describe("[[D33]] unwiredNotBlank — a wired blank never falls back to a literal or default", () => {
+  // `inputs.x?.[0] ?? fallback` hides a wired null behind the fallback. Test connection presence
+  // (readInput, or inputs.x?.length) instead. `?? null` / `?? []` only normalize an absent cable.
+  const PATTERN = /\binputs(?:\.\w+|\[[^\]]+\])\?\.\[0\]\s*\?\?\s*([^\s,;)]+)/g;
+  const NEUTRAL = /^(?:null|undefined|\[\]|"")$/;
+  const SANCTIONED: Record<string, string> = {
+    "nodes/composite.ts::driverMarker?.defaultValue": "goal seek's starting guess, not a value: a wired blank seeds from the default",
+  };
+  // Keyed `file::fallback`, so a sanction covers one read, never a whole file.
+  const hits = (file: string) => codeLines(file).flatMap((l) =>
+    [...l.matchAll(PATTERN)].filter((m) => !NEUTRAL.test(m[1])).map((m) => `${rel(file)}::${m[1]}`));
+  it("no nodes/packs file reads a cable as `?.[0] ?? <fallback>` (or is sanctioned, with a reason)", () => {
+    const offenders: string[] = [];
+    for (const dir of ["nodes", "packs"].map((d) => path.join(SRC, d))) {
+      for (const file of walk(dir)) {
+        for (const h of hits(file)) if (!(h in SANCTIONED)) offenders.push(h);
+      }
+    }
+    expect(offenders, `A wired blank falls back here ([[D33]] unwiredNotBlank); use readInput:\n  ${offenders.join("\n  ")}`).toEqual([]);
+  });
+  it("the sanctioned list stays honest", () => {
+    for (const [key, why] of Object.entries(SANCTIONED)) {
+      const file = path.join(SRC, key.split("::")[0]);
+      expect(fs.existsSync(file), `${key} (sanctioned: ${why}) no longer exists — drop the entry`).toBe(true);
+      expect(hits(file), `${key} no longer falls back — drop the stale sanction`).toContain(key);
     }
   });
 });
