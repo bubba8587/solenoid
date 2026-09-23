@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow, [[D14]] derivedSocketTypes, [[E6]] portOwnsSocket, [[D15]] wildcardsKeepRank, [[D12]] dateValuedPortIsDateTyped, [[E4]] oneResolvePredicate
+// [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow, [[D14]] derivedSocketTypes, [[E6]] portOwnsSocket, [[D15]] wildcardsKeepRank, [[D12]] dateValuedPortIsDateTyped
 import { ClassicPreset } from "rete";
 
 export type SocketDataType =
@@ -239,7 +239,7 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
-  // [[E2]] cubeNeverNarrowsToFrame
+  // [[D13]] widenNeverNarrow
   if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "frame")) return true;
   return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
 }

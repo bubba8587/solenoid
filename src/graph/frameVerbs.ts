@@ -6,8 +6,9 @@ import {
   isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
-import { sameColumnUnit, isUnitCell } from "./unitValue";
-import { dimEqual, formatDim } from "./dimension";
+import { sameColumnUnit, isUnitCell, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
+import { dimEqual, dimPow, formatDim } from "./dimension";
+import { fcUnitToUnit } from "./unitBridge";
 import { tagFrameCellUnit } from "./unitColumn";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
@@ -61,7 +62,9 @@ type _MissingFrameOpKind = Exclude<FrameOp["kind"], (typeof FRAME_OP_KINDS)[numb
 const _frameOpKindsExhaustive: _MissingFrameOpKind[] = [] satisfies never[];
 void _frameOpKindsExhaustive;
 
-export interface AggSpec { column: string; op: AggOp; as: string; }
+/** `readingScale` marks the column as readings on an offset scale (°C 1, °F 5/9). The oracle
+ *  reads it off the column's unit when absent; the native engine, which sees no units, needs it. */
+export interface AggSpec { column: string; op: AggOp; as: string; readingScale?: number }
 
 const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
 
@@ -407,7 +410,43 @@ function sumGroup(values: FrameCell[]): FrameCell {
   return prep.nums.filter((n) => Number.isFinite(n)).reduce((a, b) => a + b, 0);
 }
 
-const UNIT_KEEPING_AGGS: ReadonlySet<string> = new Set(["sum", "avg", "min", "max", "median", "first", "last"]);
+const UNIT_KEEPING_AGGS: ReadonlySet<string> = new Set(["sum", "avg", "min", "max", "median", "mode", "first", "last"]);
+
+// ─── Readings on an offset scale (°C, °F) through an aggregate ([[C25]] firstClassUnits) ───
+// As in a formula: readings have no sum, product or share; a spread is a delta in kelvin
+// (var a squared one); the averages and picks stay readings. A refused op is #UNIT! in
+// every cell of its column, since the op, not a cell, is at fault.
+
+/** The display scale of an offset unit (°C 1, °F 5/9), or undefined for any other unit. */
+export function readingScaleOf(unit: ColumnUnit | undefined): number | undefined {
+  const d = unit?.display;
+  return d && isAffineDisplay(d) ? fcUnitToUnit(d)?.scale ?? 1 : undefined;
+}
+
+const AGG_READINGS_REFUSED: Partial<Record<AggOp, string>> = { sum: READINGS_ADD, product: READINGS_SCALE, percentof: READINGS_SCALE };
+const AGG_READINGS_DELTA: Partial<Record<AggOp, 1 | 2>> = { stdev: 1, stdevp: 1, var: 2, varp: 2 };
+
+interface ReadingPlan { cell: (v: FrameCell) => FrameCell; unit?: ColumnUnit }
+
+function readingPlan(
+  unit: ColumnUnit | undefined, given: number | undefined, refused: string | undefined, delta: 1 | 2 | undefined, keeps: boolean,
+): ReadingPlan {
+  const scale = given ?? readingScaleOf(unit);
+  const kept = { cell: (v: FrameCell) => v, ...(unit && keeps ? { unit } : {}) };
+  if (scale === undefined) return kept;
+  if (refused !== undefined) { const err = unitError(refused); return { cell: () => err }; }
+  if (delta === undefined) return kept;
+  const k = delta === 2 ? scale * scale : scale;
+  return {
+    cell: (v) => (typeof v === "number" && Number.isFinite(v) ? v * k : v),
+    unit: { dim: dimPow(unit?.dim ?? { temperature: 1 }, delta) },
+  };
+}
+
+/** How an aggregate answers over a column: its cells and its unit. */
+export function aggUnitPlan(op: AggOp, unit: ColumnUnit | undefined, readingScale?: number): ReadingPlan {
+  return readingPlan(unit, readingScale, AGG_READINGS_REFUSED[op], AGG_READINGS_DELTA[op], UNIT_KEEPING_AGGS.has(op));
+}
 
 export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: readonly AggSpec[]): FrameValue {
   const keyCols = keys.map((n) => requireColumn(f, n));
@@ -426,14 +465,15 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
   }));
   const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => {
     const preserves = spec.op === "min" || spec.op === "max";
-    let values = keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op, col.type));
+    const plan = aggUnitPlan(spec.op, col.unit, spec.readingScale);
+    let values = keyOrder.map((k) => plan.cell(aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op, col.type)));
     if (preserves && col.type === "logical") {
       values = values.map((v) => (typeof v === "number" ? v !== 0 : v));
     }
     return {
       name: spec.as,
       type: preserves ? col.type : "number",
-      ...(col.unit && UNIT_KEEPING_AGGS.has(spec.op) ? { unit: col.unit } : {}),
+      ...(plan.unit ? { unit: plan.unit } : {}),
       values,
     };
   });
@@ -1102,10 +1142,11 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   const bodySpecs: { co: AxisOut; v: number }[] = [];
   for (const co of colOut) for (let v = 0; v < V; v++) { rawHeaders.push(colHeader(co, v)); bodySpecs.push({ co, v }); }
   const bodyNames = makeHeaders(rawHeaders, rawHeaders.length);
+  const plans = valCols.map((c, v) => aggUnitPlan(funcs[v], c.unit));
   const bodyColumns: FrameColumn[] = bodySpecs.map(({ co, v }, bi) => ({
     name: bodyNames[bi], type: valCols[v].type === "string" && (funcs[v] === "min" || funcs[v] === "max") ? "string" : "number",
-    ...(valCols[v].unit && UNIT_KEEPING_AGGS.has(funcs[v]) ? { unit: valCols[v].unit } : {}),
-    values: rowOut.map((ro) => cellValue(v, ro.span, co.span)),
+    ...(plans[v].unit ? { unit: plans[v].unit } : {}),
+    values: rowOut.map((ro) => plans[v].cell(cellValue(v, ro.span, co.span))),
   }));
 
   return frame([...keyColumns, ...bodyColumns]);
@@ -1344,6 +1385,20 @@ export function bindColumns(frames: readonly FrameValue[]): FrameValue {
     for (let r = 0; r < rows; r++) values.push(cellAt(c, r));
     return { name: names[i], type: c.type, values };
   }));
+}
+
+/** The op as the native engine needs it: an aggregate or window over readings names its
+ *  reading scale, read off `f`'s column units, since the engine sees no units. */
+export function withReadingScales(f: FrameValue, op: FrameOp): FrameOp {
+  const scaleOf = (name: string | undefined) => readingScaleOf(f.columns.find((c) => c.name === name)?.unit);
+  if (op.kind === "groupBy") {
+    return { ...op, aggs: op.aggs.map((a) => { const s = a.readingScale ?? scaleOf(a.column); return s === undefined ? a : { ...a, readingScale: s }; }) };
+  }
+  if (op.kind === "window") {
+    const s = op.readingScale ?? scaleOf(op.column);
+    return s === undefined ? op : { ...op, readingScale: s };
+  }
+  return op;
 }
 
 export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
@@ -1861,6 +1916,8 @@ const WINDOW_UNIT_KEEPING: ReadonlySet<WindowFn> = new Set([
 ]);
 
 export interface WindowSpec {
+  /** As on `AggSpec`: the column holds readings on an offset scale. */
+  readingScale?: number;
   partitionBy: string[];
   orderBy?: string;
   orderDir?: "asc" | "desc";
@@ -1869,6 +1926,10 @@ export interface WindowSpec {
   as: string;
   n?: number;
 }
+
+const WINDOW_READINGS_REFUSED: Partial<Record<WindowFn, string>> = {
+  cumsum: READINGS_ADD, rolling_sum: READINGS_ADD, group_sum: READINGS_ADD, share: READINGS_SCALE, pct_change: READINGS_SCALE,
+};
 
 export const WINDOW_FN_NEEDS_COLUMN: ReadonlySet<WindowFn> = new Set([
   "cumsum", "cumavg", "cummin", "cummax", "lag", "lead", "diff", "pct_change",
@@ -2024,6 +2085,11 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
   const outType: FrameColType =
     (spec.fn === "lag" || spec.fn === "lead" || spec.fn === "first" || spec.fn === "last") && valCol ? valCol.type : "number";
   const name = spec.as.trim() || spec.fn;
-  const unit = valCol?.unit && WINDOW_UNIT_KEEPING.has(spec.fn) ? { unit: valCol.unit } : {};
-  return { __frame: true, columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, ...unit, values: out }] };
+  const plan: ReadingPlan = valCol
+    ? readingPlan(valCol.unit, spec.readingScale, WINDOW_READINGS_REFUSED[spec.fn], spec.fn === "diff" ? 1 : undefined, WINDOW_UNIT_KEEPING.has(spec.fn))
+    : { cell: (v) => v };
+  return {
+    __frame: true,
+    columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, ...(plan.unit ? { unit: plan.unit } : {}), values: out.map(plan.cell) }],
+  };
 }

@@ -52,10 +52,13 @@ function translatePushed(editor: Editor, view: View, id: string, dx: number, dy:
   if (!p) return;
   void view.moveNode(id, { x: p.x + dx, y: p.y + dy });
   const node = editor.getNode(id);
-  if (node instanceof GroupNode) {
-    moveGroupMembers(editor, view, node, dx, dy);
-  } else {
-    for (const d of dockedNodeStore.getDockedTo(id)) {
+  // A group's members move with it, and so does every FC docked to one that isn't a member itself.
+  const riders = node instanceof GroupNode ? node.members : [id];
+  if (node instanceof GroupNode) moveGroupMembers(editor, view, node, dx, dy);
+  const moved = new Set(riders);
+  for (const host of riders) {
+    for (const d of dockedNodeStore.getDockedTo(host)) {
+      if (moved.has(d.id)) continue;
       const dp = position(view, d.id);
       if (dp) void view.moveNode(d.id, { x: dp.x + dx, y: dp.y + dy });
     }
@@ -68,6 +71,22 @@ interface World {
   boxes: Map<string, PushBox>;
   looseIds: Set<string>;
   origin: Map<string, { x: number; y: number }>;
+  /** How far an open group's box reaches left of and above the group's own corner, over its members' docked FCs. */
+  overhang: Map<string, { left: number; top: number }>;
+}
+
+/** An open group's box reaches over any FC docked to a member that hangs past its edge, since the FC rides that member ([[C112]] noOverlapsEver). */
+function withDockedOverhang(editor: Editor, view: View, g: GroupNode, box: PushBox): PushBox {
+  let x0 = box.x, y0 = box.y, x1 = box.x + box.w, y1 = box.y + box.h;
+  for (const m of g.members) {
+    for (const d of dockedNodeStore.getDockedTo(m)) {
+      const b = measuredBox(view, d.id, editor);
+      if (!b) continue;
+      x0 = Math.min(x0, b.x); y0 = Math.min(y0, b.y);
+      x1 = Math.max(x1, b.x + b.w); y1 = Math.max(y1, b.y + b.h);
+    }
+  }
+  return { id: box.id, x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
 
 function buildWorld(editor: Editor, view: View, expandedIds: Set<string>): World {
@@ -78,31 +97,38 @@ function buildWorld(editor: Editor, view: View, expandedIds: Set<string>): World
   const boxes = new Map<string, PushBox>();
   const looseIds = new Set<string>();
   const origin = new Map<string, { x: number; y: number }>();
+  const overhang = new Map<string, { left: number; top: number }>();
   for (const n of editor.getNodes()) {
     const p = view.position(n.id);
     if (!p) continue;
     if (n instanceof GroupNode) {
-      const { w, h } = n.collapsed && !expandedIds.has(n.id)
-        ? collapsedCardSize(view, n)
-        : { w: n.width, h: n.height };
-      boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
+      if (n.collapsed && !expandedIds.has(n.id)) {
+        boxes.set(n.id, { id: n.id, x: p.x, y: p.y, ...collapsedCardSize(view, n) });
+        continue;
+      }
+      const box = withDockedOverhang(editor, view, n, { id: n.id, x: p.x, y: p.y, w: n.width, h: n.height });
+      boxes.set(n.id, box);
+      overhang.set(n.id, { left: p.x - box.x, top: p.y - box.y });
     } else {
       if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
       const mb = measuredBox(view, n.id, editor);
       const w = mb?.w ?? 100;
       const h = mb?.h ?? 50;
-      let fcW = 0;
+      // A docked FC rides its host, so the host's box reaches over it: right for an output dock, left for an input dock.
+      let fcRight = 0;
+      let fcLeft = 0;
       for (const d of dockedNodeStore.getDockedTo(n.id)) {
-        if (d.side !== "output") continue;
         const fc = editor.getNode(d.id) as { width?: number } | undefined;
-        if (fc?.width) fcW = Math.max(fcW, fc.width + 8);
+        if (!fc?.width) continue;
+        if (d.side === "output") fcRight = Math.max(fcRight, fc.width + 8);
+        else fcLeft = Math.max(fcLeft, fc.width + 8);
       }
-      boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w: w + fcW, h });
+      boxes.set(n.id, { id: n.id, x: p.x - fcLeft, y: p.y, w: w + fcLeft + fcRight, h });
       looseIds.add(n.id);
     }
   }
   for (const [id, b] of boxes) origin.set(id, { x: b.x, y: b.y });
-  return { boxes, looseIds, origin };
+  return { boxes, looseIds, origin, overhang };
 }
 
 function satellitesFor(editor: Editor, view: View, g: GroupNode, world: World): Map<string, Satellite> {
@@ -228,7 +254,9 @@ function runExpandPushes(
     const gBox = world.boxes.get(g.id);
     const pre = preSizes.get(g.id);
     if (!gBox || !pre) continue;
-    const spec = { x: gBox.x, y: gBox.y, preW: pre.w, preH: pre.h, postW: gBox.w, postH: gBox.h };
+    // The collapsed card keeps its right and bottom seams; an overhang only widens it toward the box's corner.
+    const oh = world.overhang.get(g.id) ?? { left: 0, top: 0 };
+    const spec = { x: gBox.x, y: gBox.y, preW: pre.w + oh.left, preH: pre.h + oh.top, postW: gBox.w, postH: gBox.h };
     const obstacles = [...world.boxes.values()].filter((b) => b.id !== g.id);
     const sats = satellitesFor(editor, view, g, world);
     const anchors = buildAnchors(editor, world, sats);

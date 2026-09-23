@@ -15,7 +15,7 @@ import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
 import { type Shape } from "../frameShape";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
-import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile } from "../fileBridge";
+import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
@@ -421,14 +421,17 @@ export class GeocodeNode extends ClassicPreset.Node {
   }
 
   private async fetchMatches(place: string): Promise<void> {
+    const key = this._lastFetchKey;
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const { text } = await fetchText(geocodeUrl(place));
+      if (this._lastFetchKey !== key) return;
       this.matches = parseGeocode(text);
       connectionStore.setState(this.id, this.matches.length === 0
         ? { status: "error", message: "No match" }
         : { status: "ok", rows: this.matches.length, cols: 1, fetchedAt: Date.now() });
     } catch (e) {
+      if (this._lastFetchKey !== key) return;
       this.matches = [];
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
@@ -500,12 +503,15 @@ export class WeatherNode extends ClassicPreset.Node {
   }
 
   private async fetchWeather(lat: number, lon: number): Promise<void> {
+    const key = this._lastKey;
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const { text } = await fetchText(weatherUrl(lat, lon, this.unit, this.pastDays, this.forecastDays));
+      if (this._lastKey !== key) return;
       this.cached = parseWeather(text, this.unit);
       connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(this.cached.daily), cols: this.cached.daily.columns.length, fetchedAt: Date.now() });
     } catch (e) {
+      if (this._lastKey !== key) return;
       this.cached = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
@@ -574,14 +580,17 @@ export class HolidaysNode extends ClassicPreset.Node {
   }
 
   private async fetchHolidays(year: number, country: string): Promise<void> {
+    const key = this._lastKey;
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const { text } = await fetchText(holidaysUrl(year, country));
+      if (this._lastKey !== key) return;
       this.cached = parseHolidays(text);
       connectionStore.setState(this.id, this.cached.length === 0
         ? { status: "error", message: "No holidays" }
         : { status: "ok", rows: this.cached.length, cols: 3, fetchedAt: Date.now() });
     } catch (e) {
+      if (this._lastKey !== key) return;
       this.cached = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
@@ -758,30 +767,36 @@ export class FxNode extends ClassicPreset.Node {
   }
 
   private async fetchRate(from: string, to: string): Promise<void> {
+    const key = this._lastKey;
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const { text } = await fetchText(fxLatestUrl(from, to));
+      if (this._lastKey !== key) return;
       const parsed = parseFxRate(text, to);
       this.cached = parsed;
       connectionStore.setState(this.id, parsed.rate == null
         ? { status: "error", message: `No ${from}→${to} rate` }
         : { status: "ok", rows: 1, cols: 1, fetchedAt: Date.now() });
     } catch (e) {
+      if (this._lastKey !== key) return;
       this.cached = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
   }
 
   private async fetchSeries(from: string, to: string, start: string, end: string): Promise<void> {
+    const key = this._lastKey;
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const { text } = await fetchText(fxRangeUrl(from, to, start, end));
+      if (this._lastKey !== key) return;
       const pts = parseFxSeries(text, to);
       this.cachedSeries = pts;
       connectionStore.setState(this.id, pts.length === 0
         ? { status: "error", message: `No ${from}→${to} history` }
         : { status: "ok", rows: pts.length, cols: 2, fetchedAt: Date.now() });
     } catch (e) {
+      if (this._lastKey !== key) return;
       this.cachedSeries = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
@@ -861,15 +876,20 @@ export class VaultFolderNode extends ClassicPreset.Node {
       } else if (vault.trim() === "") {
         this.cached = null;
         connectionStore.setState(this.id, { status: "idle" });
+      } else if (folder !== "" && !isInsideVault(folder)) {
+        this.cached = null;
+        connectionStore.setState(this.id, { status: "error", message: `"${folder}" is not inside the vault` });
       } else {
-        void trackInflight(this.load()).then(() => scheduleConnectionRecalc());
+        void trackInflight(this.load(key)).then(() => scheduleConnectionRecalc());
       }
     }
     return { cube: this.cached };
   }
 
-  private async load(): Promise<void> {
+  /** A load that a newer key overtook lands nowhere, so a slow read never overwrites a fresh one. */
+  private async load(key: string): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
+    const current = () => this._lastKey === key;
     try {
       const vault = getVaultRoot().trim();
       const folder = this._folder;
@@ -881,7 +901,9 @@ export class VaultFolderNode extends ClassicPreset.Node {
       const rel = (p: string) => (folder ? `${folder}/${p}` : p);
       const notes: VaultNote[] = [];
       for (const f of files) {
-        const text = await readVaultFile(readRoot, f);
+        let text: string;
+        // A note renamed or deleted between the listing and its read is simply gone.
+        try { text = await readVaultFile(readRoot, f); } catch { continue; }
         const st = await statVaultFile(readRoot, f);
         notes.push({ path: rel(f), text, mtimeMs: st?.mtimeMs ?? null, birthtimeMs: st?.birthtimeMs ?? null });
       }
@@ -893,9 +915,11 @@ export class VaultFolderNode extends ClassicPreset.Node {
       const nameFormat = this.nameFormat.trim() || (await this.defaultNameFormat(vault, folder));
       const cube = notesToCube(notes, sources, { nameFormat, includeBody: this.includeBody });
 
+      if (!current()) return;
       this.cached = cube;
       connectionStore.setState(this.id, { status: "ok", rows: cubeRowCount(cube), cols: cube.columns.length, fetchedAt: Date.now() });
     } catch (e) {
+      if (!current()) return;
       this.cached = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }

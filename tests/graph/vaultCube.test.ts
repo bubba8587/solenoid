@@ -41,6 +41,16 @@ describe("a matrix property", () => {
   });
 });
 
+describe("a date under a text type", () => {
+  it("is the ISO text written, never its serial as text", () => {
+    const notes = [{ path: "a.md", text: "---\nwhen: 2026-09-01\nalso: [2026-09-01]\n---\n" } as VaultNote];
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { when: "text", also: "multitext" } }));
+    const cube = notesToCube(notes, { ...NO_TYPES, obsidian });
+    expect(cellAt(cube, "when", 0)).toBe("2026-09-01");
+    expect(cellAt(cube, "also", 0)).toEqual(["2026-09-01"]);
+  });
+});
+
 describe("dateFromName (R3)", () => {
   it("parses the daily-notes format", () => {
     expect(dateFromName("2026-09-01", "YYYY-MM-DD")).toBe(parseDateToSerial("2026-09-01"));

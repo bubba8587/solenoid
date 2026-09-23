@@ -141,6 +141,8 @@ export class TaskNotesNode extends ClassicPreset.Node {
   }
 
   private async fetchProvider(from: number, to: number): Promise<void> {
+    const key = this._lastKey;
+    const stale = () => this._lastKey !== key;
     connectionStore.setState(this.id, { status: "loading" });
     const provider = this.provider;
     try {
@@ -154,18 +156,22 @@ export class TaskNotesNode extends ClassicPreset.Node {
           if (!page.hasMore || page.nextOffset === offset) break;
           offset = page.nextOffset;
         }
+        if (stale()) return;
         this.cachedTasks = all;
         this.reportOk(all.length, tasksToCube(all).columns.length);
       } else if (provider === "calendar") {
         const { text } = await fetchText(eventsUrl(this.apiUrl(), from, to), { headers: this.headers() });
+        if (stale()) return;
         this.cachedEvents = parseEvents(text);
         this.reportOk(this.cachedEvents.columns[0].values.length, this.cachedEvents.columns.length);
       } else {
         const { text } = await fetchText(statsUrl(this.apiUrl()), { headers: this.headers() });
+        if (stale()) return;
         this.cachedStats = parseStats(text);
         this.reportOk(this.cachedStats ? statsToFrame(this.cachedStats).columns[0].values.length : 0, EMPTY_STATS.columns.length);
       }
     } catch (e) {
+      if (stale()) return;
       const msg = e instanceof Error ? e.message : String(e);
       const friendly = /HTTP 401/.test(msg) ? "Token rejected. Paste the plugin's API token." : /Failed to fetch|ECONNREFUSED|error sending request|NetworkError|Couldn't fetch this URL/i.test(msg) ? "Can't reach TaskNotes. Install the plugin in the vault Obsidian has open, turn on its HTTP API, and check the port in Settings." : msg;
       connectionStore.setState(this.id, { status: "error", message: friendly });

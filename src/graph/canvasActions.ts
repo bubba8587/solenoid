@@ -15,8 +15,9 @@ import { restoreSettledPushes } from "./groupPush";
 import { CONDUIT_PIVOT } from "./ribbonCable";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
-import { computeDockedCanvasPos, insertFcInline } from "./fcDocking";
+import { computeDockedCanvasPos, insertFcInline, removeFcInline } from "./fcDocking";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
+import { dockedNodeStore } from "./dockedNodeStore";
 import {
   standoffStore, settleStandoffs, anchorPoint, anchorFromVector,
   OPPOSITE_ANCHOR, ANCHOR_DIR, type Box as StandoffBox,
@@ -25,7 +26,8 @@ import { drawnCableStore, commitDrawn } from "./drawnCables";
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
-import { processGraph, beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
+import { processGraph } from "./process";
+import { MAIN_EDIT_SCOPE, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
@@ -185,29 +187,56 @@ export function linkStandoffBetween(
   scheduleAutosave();
 }
 
+/** What differs between the surfaces that share the delete verb ([[C43]] oneFlowSurface). */
+export type DeleteScope = EditScope & {
+  /** Drawn cables and standoffs exist on the main canvas alone. */
+  mainLayers: boolean;
+  /** Nodes Delete never removes (a drill-in's boundary markers, which are its ports). */
+  keeps?: (n: SolenoidNode) => boolean;
+};
+
+export const MAIN_DELETE_SCOPE: DeleteScope = { ...MAIN_EDIT_SCOPE, mainLayers: true };
+
+const dockedFc = (n: SolenoidNode): n is FormatControllerNode & SolenoidNode =>
+  n instanceof FormatControllerNode && !!n.hostNodeId;
+
+/** The selection plus every FC docked to a doomed node, at any depth: a docked FC is part of its host's entity. */
+export function deleteSet(editor: NodeEditor<Schemes>): Set<string> {
+  const ids = new Set(editor.getNodes().filter((n) => n.selected).map((n) => n.id));
+  for (const id of ids) for (const d of dockedNodeStore.getDockedTo(id)) if (editor.getNode(d.id)) ids.add(d.id);
+  return ids;
+}
+
 export async function deleteSelection(
   editor: NodeEditor<Schemes>,
   view: View | null,
+  scope: DeleteScope = MAIN_DELETE_SCOPE,
 ): Promise<void> {
-  const drawnSel = drawnCableStore.selected();
-  if (drawnSel) {
-    drawnCableStore.remove(drawnSel);
-    commitDrawn();
-    return;
+  if (scope.mainLayers) {
+    const drawnSel = drawnCableStore.selected();
+    if (drawnSel) {
+      drawnCableStore.remove(drawnSel);
+      commitDrawn();
+      return;
+    }
+
+    const standoffSel = standoffStore.selected();
+    if (standoffSel) {
+      standoffStore.remove(standoffSel);
+      scheduleAutosave();
+      return;
+    }
   }
 
-  const standoffSel = standoffStore.selected();
-  if (standoffSel) {
-    standoffStore.remove(standoffSel);
-    scheduleAutosave();
-    return;
-  }
-
+  const doomedIds = deleteSet(editor);
   const selectedCableIds = cableSelectionStore.ids();
-  const selected = editor.getNodes().filter((n) => n.selected);
+  // A docked FC goes before its host, so its unsplice sees the host's wiring intact.
+  const selected = editor.getNodes()
+    .filter((n) => doomedIds.has(n.id) && !scope.keeps?.(n))
+    .sort((a, b) => Number(dockedFc(b)) - Number(dockedFc(a)));
   const deletedIds: string[] = [];
   let deletedGroup = false;
-  beginGraphRebuild();
+  scope.begin();
   try {
     if (selectedCableIds.length > 0) {
       cableSelectionStore.clear();
@@ -228,9 +257,18 @@ export async function deleteSelection(
     for (const node of selected) {
       deletedIds.push(node.id);
       if (node instanceof GroupNode) deletedGroup = true;
+
+      if (dockedFc(node)) {
+        await removeFcInline(editor, node);
+        for (const c of editor.getConnections().filter((c) => c.source === node.id || c.target === node.id)) {
+          await editor.removeConnection(c.id);
+        }
+        await editor.removeNode(node.id);
+        continue;
+      }
+
       const incoming = editor.getConnections().filter((c) => c.target === node.id);
       const outgoing = editor.getConnections().filter((c) => c.source === node.id);
-
       if (node instanceof ConduitNode) {
         const specs = conduitGhostSpecs(incoming, outgoing, editor.getConnections());
         for (const conn of [...incoming, ...outgoing]) await editor.removeConnection(conn.id);
@@ -283,18 +321,14 @@ export async function deleteSelection(
       await editor.removeNode(node.id);
     }
   } finally {
-    endGraphRebuild();
+    scope.end();
   }
 
   // The per-event settles were suppressed above; run their equivalents once, in the order noderemoved and connectionremoved would.
-  if (deletedIds.length || selectedCableIds.length) {
-    for (const id of deletedIds) forgetNode(id);
-    if (deletedIds.length) rebuildGroupMembership(editor);
-    await bulkSettle();
-    if (deletedGroup && view) restoreSettledPushes(editor, view);
-  } else {
-    await processGraph();
-  }
+  for (const id of deletedIds) forgetNode(id);
+  if (deletedIds.length) rebuildGroupMembership(editor);
+  await scope.settle();
+  if (deletedGroup && view) restoreSettledPushes(editor, view);
 }
 
 export async function deleteCables(
@@ -309,12 +343,19 @@ export async function deleteCables(
   await processGraph();
 }
 
+/** An FC never docks onto another FC, from the socket menu or a drag. */
+export function canAttachFc(editor: NodeEditor<Schemes>, nodeId: string): boolean {
+  const host = editor.getNode(nodeId);
+  return !!host && !(host instanceof FormatControllerNode);
+}
+
 export async function attachFormatController(
   editor: NodeEditor<Schemes>,
   view: View,
   container: HTMLElement,
   target: SocketContextTarget,
 ): Promise<void> {
+  if (!canAttachFc(editor, target.nodeId)) return;
   const fc = new FormatControllerNode({
     hostNodeId: target.nodeId,
     socketKey:  target.socketKey,

@@ -253,9 +253,13 @@ export function recomputeGroupCollapse(editor: Editor): void {
     }
 
     _retained.set(g.id, terminals);
-    terminals.forEach((t, i) =>
-      _outPill.set(`${t.effNodeId}::${t.effSocketKey}`, { groupId: g.id, side: "right", index: i }),
-    );
+    terminals.forEach((t, i) => {
+      _outPill.set(`${t.effNodeId}::${t.effSocketKey}`, { groupId: g.id, side: "right", index: i });
+      // A Display read through a member FC can still feed outside directly; that cable leaves from the same row.
+      if (t.kind === "display" && t.effNodeId !== t.displayId) {
+        _outPill.set(`${t.displayId}::out`, { groupId: g.id, side: "right", index: i });
+      }
+    });
 
     const inputs: InputPill[] = [];
     let inIdx = 0;

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody } from "../../src/graph/frontmatterPatch";
+import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags } from "../../src/graph/frontmatterPatch";
+import { notesToCube } from "../../src/graph/vaultCube";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { isFrameValue } from "../../src/graph/frame";
@@ -219,5 +220,45 @@ describe("review pins: a list inside a row", () => {
     const { parse } = await import("yaml");
     const back = parse(renderKey("steps", v).join("\n")) as { steps: { tags: unknown }[] };
     expect(back.steps.map((r) => r.tags)).toEqual([["x", "y"], []]);
+  });
+});
+
+describe("writing Vault Folder's tags back", () => {
+  it("leaves out a tag only the body holds, so a round trip copies no inline tag into the frontmatter", () => {
+    const note = "---\ntags:\n  - home\n---\nSome #idea and #home here.\n";
+    const cube = notesToCube([{ path: "a.md", text: note }], { mdbaseFor: () => ({}), obsidian: {} });
+    const cell = cube.columns.find((c) => c.name === "tags")!.cells[0];
+    expect(cell).toEqual(["home", "idea"]);
+    const value = frontmatterTags(note, cellToYaml(cell, "string", NO_NAMES));
+    expect(value).toEqual(["home"]);
+    expect(resolveKey(note, "tags", value).action).toBe("unchanged");
+    expect(frontmatterTags(note, ["home", "idea", "new"])).toEqual(["home", "new"]);
+  });
+});
+
+describe("patchFrontmatter never swallows a line it does not own", () => {
+  it("a CRLF note is patched in place and stays CRLF, never gains a duplicate key", () => {
+    const crlf = "---\r\ntitle: a\r\nrating: 3\r\n---\r\nbody\r\n";
+    expect(resolveKey(crlf, "rating", 3)).toEqual({ action: "unchanged", before: "3" });
+    expect(patchFrontmatter(crlf, { rating: 4 }).text).toBe("---\r\ntitle: a\r\nrating: 4\r\n---\r\nbody\r\n");
+  });
+  it("quoted keys, non-ASCII keys and comments survive a patch of the key above them", () => {
+    const note = "---\ntitle: a\n\"odd key\": b\n# a comment\nétat: c\nrating: 3\n---\n";
+    expect(patchFrontmatter(note, { title: "z" }).text).toBe("---\ntitle: z\n\"odd key\": b\n# a comment\nétat: c\nrating: 3\n---\n");
+    expect(patchFrontmatter(note, { "odd key": "q", "état": "d" }).text).toBe("---\ntitle: a\n\"odd key\": q\n# a comment\nétat: d\nrating: 3\n---\n");
+  });
+  it("a sequence written at column 0 is replaced whole", () => {
+    const note = "---\ntags:\n- a\n- b\nrating: 3\n---\n";
+    expect(patchFrontmatter(note, { tags: ["x"] }).text).toBe("---\ntags:\n  - x\nrating: 3\n---\n");
+  });
+  it("a blank line after a block stays", () => {
+    const note = "---\ntags:\n  - a\n\nrating: 3\n---\n";
+    expect(patchFrontmatter(note, { tags: ["x"] }).text).toBe("---\ntags:\n  - x\n\nrating: 3\n---\n");
+  });
+  it("a blank value is written as Obsidian writes it, and a key YAML would misread is quoted", () => {
+    expect(renderKey("due", null)).toEqual(["due:"]);
+    expect(resolveKey("---\ndue:\n---\n", "due", null).action).toBe("unchanged");
+    expect(renderKey("a: b", 1)).toEqual(['"a: b": 1']);
+    expect(resolveKey("---\n\"a: b\": 1\n---\n", "a: b", 1).action).toBe("unchanged");
   });
 });

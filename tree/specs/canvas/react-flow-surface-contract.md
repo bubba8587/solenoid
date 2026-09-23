@@ -17,12 +17,14 @@ The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay
 - Anything that belongs to the surface goes in `FlowSurface`, never in one host. That covers gestures, menus, keys, layers and installers. A behavior installed in one host is a behavior the other silently lacks.
 - The top-bar chrome calls commands through slots in `canvasCommands.ts`. While a drill-in is open it swaps four of them to point at its own level and restores them on unmount: `swapSelectionSlots` (select, unselect all), `swapArrangeSlots` (Tidy and Cleanup), `swapDeleteSlot` (the delete button used on touch, where there is no Delete key) and `swapRepositionDockedSlot` (re-seating a docked Format Controller). A new slot that the drill-in should own needs its own `swap*` function here, or the command silently acts on the main canvas. The `setClearHistory` slot must run after every document load or rebuild, or Ctrl+Z unwinds the load itself.
 - The "open the Add menu here" request (`addMenuRequest`, used by the command palette, the top bar's + and the `A` key) nests the same way: the drill-in's registration replaces the main canvas's while open and restores it on close.
-- Code that runs for one node finds its graph with `getOwningEditor` / `getOwningView`. Chrome finds the graph the user is looking at with `getActiveEditor` / `getActiveView`. The bare `getEditor()` / `getView()` are only for persistence and main-only lifecycle code ([[C33]] saveBindsMain).
+- Code that runs for one node finds its graph with `getOwningEditor` / `getOwningView`; `getOwningView` is null for a node no surface shows (one in a closed composite), so nothing pans to, moves or measures it through a view that doesn't hold it. Chrome finds the graph the user is looking at with `getActiveEditor` / `getActiveView`. The bare `getEditor()` / `getView()` are only for persistence and main-only lifecycle code ([[C33]] saveBindsMain).
 - Two mounted flows must carry different RF `id`s (`hooks.rfId`), because RF derives every internal pattern, marker and aria id from it. The main canvas uses `main`, the drill-in `drill`, the landing graph `landing`, and each landing scene card `scene` plus a React `useId`.
 
 ### The stack and its handlers
 
-A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`. The handlers are late-bound: each mount binds them and they fall back to no-ops (`idleHandlers`), so a stack can exist before, and across, mounts. They are `bumpNode`, `bumpConnections`, `bumpAllNodes` (re-render every card after a completed composite pass), `moveNode`, `setViewport`, `getContainer`, `syncTopology` and `syncSelection` (re-derive RF's `selected` from the model flags after a verb wrote them). `isRebuilding` reports a host-level rebuild (a drill-in hydrate or restore), during which live-creation behaviors such as group absorption stand down.
+A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`. The handlers are late-bound: each mount binds them and they fall back to no-ops (`idleHandlers`), so a stack can exist before, and across, mounts. They are `bumpNode`, `bumpConnections`, `bumpAllNodes` (re-render every card after a completed composite pass), `moveNode`, `setViewport`, `getContainer`, `syncTopology` and `syncSelection` (re-derive RF's `selected` from the model flags after a verb wrote them). `isRebuilding` reports a host-level rebuild (a drill-in hydrate, restore or bulk edit), during which live-creation behaviors such as group absorption stand down.
+
+A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSettlePipe`, `cableSettle.ts`), installed by the surface once per stack, since a rete pipe can't be removed and outlives a mount. It is a stack field rather than a hook for the same reason. The surface also re-runs the FC unit-mismatch rescan on every format annotation edit while it is mounted. The main canvas and the drill-in set it; the landing and showcase stacks, whose cables never change live, don't.
 
 ### The hooks
 
@@ -31,7 +33,7 @@ A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`.
 | `rfId` | The RF instance id; distinct per mounted flow. |
 | `className` | Extra wrapper classes (the drill-in host). |
 | `history` | The undo and redo this surface answers. |
-| `deleteSelected` | What Delete removes. |
+| `deleteSelected` | What Delete removes: the shared `deleteSelection` verb under the host's `DeleteScope` (below). |
 | `afterMove` | A drag settled; the host records position, size and membership. |
 | `afterProgrammaticMove` | A programmatic move landed (nudge, push, standoffs); record only. |
 | `afterNodeAdded` | A node was added from the Add menu and positioned. |
@@ -126,16 +128,16 @@ A cable renders as an SVG `<g>` inside RF's shared edge SVG (`FlowCableEdge.tsx`
 
 - The visible strokes are RF `BaseEdge`s styled inline, because RF's edge CSS would otherwise recolor a selected path. They are `pointer-events: none`. The one hit target is the named `.solenoid-cable-hit` path, which carries `data-conn-id`.
 - RF's own interaction path stays disabled (`interactionWidth: 0`). Left on, it sits over the hit path and catches `closest()` lookups and context-menu targeting first.
-- The cable being dragged from a socket (`FlowConnectionLine`) uses the same router and type color as a live cable; RF's default is a plain bezier in a fixed color. From an output it leaves rightward toward the pointer; from an input the pointer end is the source and it arrives leftward at the socket.
+- The cable being dragged from a socket (`FlowConnectionLine`) uses the same router and type color as a live cable; RF's default is a plain bezier in a fixed color. It leaves the origin socket on the side its handle faces (`draggedCableArgs`), so a flipped socket's drag leaves the other way, and the pointer end faces back at it: from a plain output it leaves rightward toward the pointer; from an input the pointer end is the source and it arrives at the socket.
 - Routing and ribbons are in [[cable-rendering-knobs]].
 
 Starting a cable drag blurs the focused field first (`onConnectStart`), so a value that is mid-edit commits before it is wired. Rely on this; don't re-implement it. The drag also lights the origin socket for its duration, and the canvas root wears `solenoid-canvas--cabling` from pickup to drop: socket.css grows every socket's catch zone and re-arms mobile's drop targets off that class. The socket a dragged cable would land on (RF snaps within `connectionRadius`) lights once the pair validates.
 
-Every live cable change, including the ones components make themselves, settles through the cable-change pipe: FC retype reconcile, the unit-mismatch rescan, and a targeted recompute. A cable dropped on empty canvas can open the Add menu instead (quick-wire, [[add-menu]]).
+Every live cable change on either surface, including the ones components make themselves, settles through the cable-change pipe ([[D16]] retypeReconciles). `settleCableChange` reconciles FC and wildcard types, bumps the connection version, rescans FC unit mismatches and re-derives group collapse; then the stack's `afterCableChange` recomputes. On the main canvas that is a targeted pass from the cable's target. The drill-in's is empty, because its topology pipe already recomputes from the breadcrumb root once per burst. Under a rebuild gate the pipe holds: the main gate marks the bulk topology dirty for `withGraphRebuild`, and a bulk edit's scope settles once at its end. A cable dropped on empty canvas can open the Add menu instead (quick-wire, [[add-menu]]).
 
 ## Sockets
 
-The socket box is always exactly 12×12 ([[C11]] socketBox12): `display: block; line-height: 0`, a global rule in `nodeCard.css`.
+The socket box is always exactly 12×12 ([[C11]] socketBox12): `display: block; line-height: 0`, a global rule in `nodeCard.css`. The one exception under C11 is the Conduit's lane squares, sized to the lane geometry, whose tips are computed rather than measured.
 
 - The RF `Handle` wraps the socket glyph (`FlowSocketHandle.tsx`, reset by `.sol-rf-handle-reset`). RF measures the handle's box for cable endpoints and uses its outer edge at mid-height.
 - The reset Handle is `position: relative`, not `static`. The socket wrapper's pointer-catch halo (`[data-socket-side]::before` in socket.css) is a positioned box, so a static Handle paints under it, the wrapper swallows the press, and RF starts a node drag instead of a cable.
@@ -194,7 +196,7 @@ The gates run in this order:
 5. A key whose target has a `.nokeys` ancestor returns, except F9 ([[pointer-gestures]]).
 6. F9 recomputes. It stays live while typing, presenting, drilled in and under a modal, where it is the only remaining recompute path.
 7. The armed draw tool is modal: outside a field and without Ctrl or Cmd, Escape disarms it, Enter finishes the run and Backspace drops the last point, before the palette and isolate can claim those keys.
-8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, composite create, autofit, expand and collapse, `[` and `]` rotation, undo and redo), and the Add menu does not open from any entry point, while the view keys (palette, isolate, chrome, Tab, F9) keep working.
+8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, Wrap as Composite (Ctrl+Shift+G), autofit, expand and collapse, `[` and `]` rotation, undo and redo). The menu bar, palette and touch commands press these same keys (`fireMenuKey`), so menu Tidy and Cleanup stand down through this gate too. The Add menu does not open from any entry point: the `A` key, the menu bar and toolbar `+` (both through `addMenuRequest`), and the pane's right-click menu. The view keys (palette, isolate, chrome, Tab, F9) keep working.
 
 Bare keys, outside a field and without a modifier:
 
@@ -215,40 +217,45 @@ With Ctrl or Cmd:
 
 ## Deleting a selection
 
-`deleteSelection` (`canvasActions.ts`) is the one delete verb, behind RF's `onBeforeDelete`, the canvas keyboard and the touch delete button. `onBeforeDelete` itself returns false: the app deletes from the model and RF follows through the topology pipe, since RF's own delete would also take a deleted group's members.
+`deleteSelection` (`canvasActions.ts`) is the one delete verb for both surfaces, behind RF's `onBeforeDelete`, the canvas keyboard and the touch delete button. `onBeforeDelete` itself returns false: the app deletes from the model and RF follows through the topology pipe, since RF's own delete would also take a deleted group's members. A `DeleteScope` carries the host's differences: whether the main-only layers (drawn cables, standoffs) are in play, which nodes Delete keeps (a drill-in keeps its boundary markers, which are its ports), and the surface's `EditScope`, the rebuild gate and the one settle every bulk edit shares (`activeGraph.ts`: `bulkSettle` on the main canvas; `settleCableChange` in a drill-in, whose topology pipe then recomputes).
 
-1. A selected drawn cable is its own target: it is removed and `commitDrawn()` records it.
-2. A selected standoff is its own target: it is removed and an autosave scheduled.
+What goes is the selection plus every FC docked to a doomed node, at any depth (`deleteSet`). A docked FC is part of its host's entity, as copy, isolate, nudge and Wrap as Composite treat it, and it formats nothing once its host is gone ([[D41]] formatFlowsDownstream), so deleting a host takes its FCs and no FC is ever left docked to a missing host.
+
+1. On the main canvas, a selected drawn cable is its own target: it is removed and `commitDrawn()` records it.
+2. On the main canvas, a selected standoff is its own target: it is removed and an autosave scheduled.
 3. Otherwise the selected cables and nodes go under the rebuild gate, because the per-item `connectionremoved` and `noderemoved` sweeps are O((nodes + cables) × nodes), and a bulk delete would hang the tab.
    - A selected cable that is a ribbon lane takes every lane of its ribbon. Any ghost among them is committed first, then removed.
+   - A docked FC is unspliced (`removeFcInline`) and then removed, so its consumers go back to the host socket as solid cables. Docked FCs go before the other doomed nodes, so a host deleted with its FC still sees its own wiring and then splices or goes like any other node.
    - A deleted Conduit leaves one ghost cable per lane (`conduitGhostSpecs`), since the generic path below can't see a multi-lane bundle.
    - A node with exactly one cable in and one out is spliced out: both cables and the node go, and a ghost cable joins its source to its consumer, unless that would be a self-loop or duplicate an existing cable. Clicking the ghost adopts it.
    - Any other node goes with all its cables.
-4. After the gate, the suppressed settles run once, in the order the per-event sweeps would: each deleted node's stores forget it, group membership rebuilds, `bulkSettle` runs, and a deleted group restores the pushes it caused.
+4. After the gate, the suppressed settles run once, in the order the per-event sweeps would: each deleted node's stores forget it, group membership rebuilds, the scope's settle runs, and a deleted group restores the pushes it caused.
 
-`deleteCables` (the cable menu's Delete) commits any ghost and removes the cables. The drill-in's own delete removes cables first and never deletes its boundary markers.
+`deleteCables` (the cable menu's Delete) commits any ghost and removes the cables.
 
 ## Copy and paste
 
 `copyPaste.ts` works on the active graph, so it works inside a drill-in too.
 
-- **Copy** (Ctrl+C) takes the selected nodes, except a composite's boundary markers, which are its ports: a pasted marker would be an orphan with no port. A selected group brings its members. The in-memory clipboard holds each node with its position relative to the selection's top-left corner, and the cables internal to the copied set.
-- **Cloning.** A clone is `new Ctor(extractInit(src))` ([[save-format]]), and its `literals` and `stringLiterals` maps are copied after construction, or the constructor's own defaults would overwrite them.
+- **Copy** (Ctrl+C) takes the selected nodes (`copySet`). A selected group brings its members, and a copied node brings its docked FCs, since a docked FC is part of its host's entity. A composite's boundary markers never go, even as a group's members, because they are its ports: a pasted marker would be an orphan with no port.
+- **The clipboard is a snapshot.** It holds, per node, the constructor, a deep copy of `extractInit` ([[save-format]]), the `literals` and `stringLiterals` maps, the collapse and flip state, and the position relative to the selection's top-left corner, plus the cables internal to the copied set. Editing or deleting a source after the copy never changes what pastes.
+- **Cloning.** A clone is `new Ctor(init)` from a fresh copy of the snapshot, and its `literals` and `stringLiterals` maps are restored after construction, or the constructor's own defaults would overwrite them.
 - **Paste** (Ctrl+V) places the clones at the mouse plus `PASTE_OFFSET` (30 canvas units).
   - A group's member list is remapped to the clones, dropping members that weren't copied, so a pasted group can't take originals. A docked FC's `hostNodeId` is remapped too; an FC whose host wasn't copied undocks. A Presentation's steps are remapped the same way, so a duplicated deck flies to its own nodes.
-  - Body collapse (`collapseStore`) and the socket flip (`socketFlipStore`) carry over. A sequenced identity re-claims a fresh number (`assignFreshSeq`), and every clone gets a fresh name, never the source's, since the source is still on the canvas.
-  - Everything is added under the rebuild gate. That skips the per-`nodecreated` absorb sweep, so pasted nodes keep their copied membership instead of joining whatever group they land in, and skips the per-cable settle of `connectioncreated`. A composite clone hydrates its captured subgraph once it has been added. Cables are re-added, skipping any that are incompatible or duplicate.
-  - On the main canvas the selection clears first and the pasted nodes become the selection, then `bulkSettle` renders only the pasted nodes. In a drill-in the selection and settle singletons are main-bound, so the paste recomputes through the owning composite instead.
+  - Body collapse (`collapseStore`) and the socket flip (`socketFlipStore`) carry over from the snapshot. A pasted FC whose host came along re-docks onto the clone (`dockSelf`); the copied cables already carry its splice. A sequenced identity re-claims a fresh number (`assignFreshSeq`), and every clone gets a fresh name, never the source's, since the source is still on the canvas.
+  - Everything is added under the surface's edit scope (`editScopeFor`, the drill-in's own while one is open). Its gate skips the per-`nodecreated` absorb sweep, so pasted nodes keep their copied membership instead of joining whatever group they land in, and skips the per-cable settle of `connectioncreated`. A composite clone hydrates its captured subgraph once it has been added. Cables are re-added, skipping any that are incompatible or duplicate.
+  - The selection clears first and the pasted nodes become the selection, through the selection slots, which a drill-in swaps to its own level. RF has no wrapper for a clone yet when it is selected, so `syncTopology` (`mergeFlowNodes`) gives a node RF hasn't seen the model's `selected` flag, while a node RF already holds keeps RF's. The scope's settle runs once: on the main canvas `bulkSettle` renders only the pasted nodes; in a drill-in `settleCableChange` settles the level and its topology pipe recomputes from the breadcrumb root.
 
 ## Format Controller docking
 
 A Format Controller (FC) can dock onto a socket of another card and ride with it ([[D41]] formatFlowsDownstream: a docked FC formats display only). `fcDocking.ts` is pure over an editor, a view, a container and the FC, so the main canvas and a drill-in share it.
 
-- **Snapping.** `findDockTarget` finds the nearest host socket whose pairing edge is within `DOCK_SNAP_CANVAS_PX` (34 canvas units, the screen distance divided by the zoom; raw screen pixels would let a zoomed-out canvas snap to a far host). A host output pairs with the FC's input edge and a host input with its output edge. An FC never docks onto another FC.
+- **Snapping.** `findDockTarget` finds the nearest host socket whose pairing edge is within `DOCK_SNAP_CANVAS_PX` (34 canvas units, the screen distance divided by the zoom; raw screen pixels would let a zoomed-out canvas snap to a far host). A host output pairs with the FC's input edge and a host input with its output edge. An FC never docks onto another FC, by a drag or from the socket menu: `canAttachFc` refuses an FC host, and right-clicking an FC's own socket opens no socket menu.
 - **Placement** (`computeDockedCanvasPos`). On a host input the FC sits to the left, its output edge meeting the socket; on a host output it sits to the right. It is centered vertically on the socket using its measured size, because a stale estimate drops it several pixels low. The anchor is the host's model position plus the socket's offset inside the host wrapper, both read from the same DOM frame, so it holds even before the wrapper has re-committed at a new position (the post-Tidy snap runs a frame after the moves); a screen-to-canvas conversion is the fallback. The offset is snapped to the half-pixel grid first and the result rounded to whole canvas pixels. Without the snap, an odd FC height makes the rounding a coin flip that re-docks the FC a pixel off its saved spot on every load; without the rounding, a fractional edge shifts on every re-dock and a group's autofit creeps after it.
 - **Following the host.** `repositionDockedFor` re-seats every FC docked to a host, skipping a selected FC (the user is dragging it). The main canvas registers it in the `repositionDocked` slot and a drill-in swaps in its own copy, so a docked FC follows its host on a resize, a format change or a Tidy at any level. A dragged FC re-homes to the nearest socket on drop, or releases its dock.
 - **Splicing** (`insertFcInline`). Docking splices the FC into the host's data path; values are unchanged, but cables now originate at the FC. On a host output, the host's consumers are rewired to the FC's `out` and the host feeds the FC's `in`. On a host input, the splice happens only when a cable feeds it (an unwired input has nothing to route, so the FC just annotates): the source feeds the FC and the FC's `out` feeds the host input.
-- **Unsplicing** (`removeFcInline`) reverses it, and must run before `undock()` or any change to `hostNodeId`, since it reads the host, socket and side. A wired FC with no host socket left bridges its input's source straight to its output's consumers. Otherwise the consumers go back to the host output, or the source goes back to the host input, and the FC's own cables are dropped.
+- **Unsplicing** (`removeFcInline`) reverses it, and must run before `undock()` or any change to `hostNodeId`, since it reads the host, socket and side. A wired FC with no host, or whose host no longer has that socket, bridges its input's source straight to its output's consumers.
+- **Releasing.** An FC dragged off every socket releases its dock (`releaseDock`) without unsplicing: it stays in the data path as a free FC, so no consumer loses its value. Otherwise the consumers go back to the host output, or the source goes back to the host input, and the FC's own cables are dropped.
 - Adding an FC from a socket's menu (`attachFormatController`) docks it (`dockSelf` needs the id `addNode` assigns; undocked, the FC would land at the canvas origin), positions it, splices it in and recomputes.
 
 ## Isolate
@@ -275,7 +282,7 @@ A composite drill-in keeps its own per-composite history ([[composite-drill-in-m
 
 ## The main canvas
 
-`FlowCanvas` owns one editor, engine and view stack for the app's lifetime. Documents load through the real persistence and `documentStore` path, and chrome reaches the canvas through the `process.ts` slots. Once, at startup, it registers the delete verb, the docked-FC reposition, Tidy and Cleanup, the FC unit-mismatch badges (rescanned on every cable change and annotation edit), the bulk settle (the one settle after a bulk topology change such as paste or unpack), the standoff settle (the pure solver, with locked groups pinned) and the cable-change pipe.
+`FlowCanvas` owns one editor, engine and view stack for the app's lifetime. Documents load through the real persistence and `documentStore` path, and chrome reaches the canvas through the `process.ts` slots. Once, at startup, it registers the delete verb, the docked-FC reposition, Tidy and Cleanup, the bulk settle (`settleCableChange` plus a pass, the one settle after a bulk topology change such as paste or unpack), the standoff settle (the pure solver, with locked groups pinned) and the per-node forget pipe. Its stack's `afterCableChange` is the targeted recompute.
 
 - A live node deletion re-derives membership and collapse, and deleting an expanded group restores the pushes it caused ([[C40]] storesRegisterForget; a rebuild runs the forget-all pass once instead).
 - A `/?seed=<id>` link (from the Examples page) opens that seed as a new document, then strips the parameter, so a reload or an autosave doesn't keep minting copies.
@@ -287,7 +294,9 @@ The showcase audit stage (`StaticFlowStage`, `?showcase`) is a minimal non-inter
 
 A ghost cable is a cable drawn dashed to show it is not yet valid or not yet real. There are two mechanisms, chosen by whether a real connection survives. Both live outside rete's editor, in `cableState.ts`.
 
-- **Option A: the connection survives** (`cableGhostStore`, keyed by a live connection id). The rete connection is real and is only drawn dashed until it is valid or adopted. Two cases produce it: a node spliced out of a chain, and an in-place socket retype that stays wired. The store is a side set keyed by id rather than a property on the connection, because rete copies and serializes the connection object opaquely. Clicking a ghost adopts it only when its endpoints are type-compatible right now: a splice ghost always is, while a retype ghost stays dashed until its source fits again. Adopting it recomputes the target, since the ghosted input fed nothing while dashed.
+- **Option A: the connection survives** (`cableGhostStore`, keyed by a live connection id). The rete connection is real and is only drawn dashed until it is valid or adopted. Two cases produce it: a node spliced out of a chain, and an in-place socket retype that stays wired. The store is a side set keyed by id rather than a property on the connection, because rete copies and serializes the connection object opaquely. Clicking a ghost adopts it only when its endpoints are type-compatible right now: a splice ghost always is, while a retype ghost stays dashed until its source fits again. Adopting it recomputes the target.
+  - A ghost is a real connection to the engine, so it feeds its value like any cable: a splice ghost carries the spliced-out node's input straight through, and a retype ghost feeds whatever its source now holds, which the input's coercion guard turns into an error value when it doesn't fit. A node that must treat a ghosted input as unwired asks the store itself (Group Cost Settle's `inGhosted`).
+  - The ghost mark is view state and is not saved: a reload draws every surviving connection solid. Whether it should survive a save is open with the author (inbox `ghost-cables-feed-and-save`).
 - **Option B: the connection is dropped** (the Input Switch pending reconnect: `cablePendingStore` and `cablePendingReconnect.ts`). The Input Switch's One/Many toggle retypes its `out` socket, and `retypeOutputCables` drops the downstream cables the new type can't feed, so there is no connection left to draw dashed.
   1. Before the retype, `snapshotOutgoing` records the cables leaving `out`.
   2. After it, each cable that disappeared (and whose target node still exists) is recorded as a pending ghost keyed by source, output, target and input, so re-marking the same drop is idempotent, along with the target input's label.

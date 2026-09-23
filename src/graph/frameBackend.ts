@@ -3,7 +3,7 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
+import { applyVerb, withReadingScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -296,6 +296,19 @@ function shadow(run: () => FrameValue): FrameValue | null {
   try { return schemaOnly(run()); } catch { return null; }
 }
 
+/** Each op against the schema it will meet, so a reading column's aggregates reach the
+ *  unit-blind engine with their reading scale, and the result's schema shadow. */
+export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[]): { wire: FrameOp[]; schema: FrameValue | null } {
+  let s = schema;
+  const wire = ops.map((op) => {
+    const w = s ? withReadingScales(s, op) : op;
+    const cur = s;
+    s = cur ? shadow(() => applyVerb(cur, op)) : null;
+    return w;
+  });
+  return { wire, schema: s };
+}
+
 function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[], schema: FrameValue | null | undefined): C[] {
   if (!schema) return cols;
   const byName = new Map(schema.columns.map((c) => [c.name, c] as const));
@@ -325,15 +338,15 @@ class PolarsBackend implements FrameBackend {
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
-    const h = await (ipcInvoke<string>("engine_apply", { handle, op }) as Promise<FrameHandle>);
-    const s = this.schemaOf(handle);
-    return this.remember(h, s ? shadow(() => applyVerb(s, op)) : null);
+    const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
+    const h = await (ipcInvoke<string>("engine_apply", { handle, op: wire[0] }) as Promise<FrameHandle>);
+    return this.remember(h, schema);
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
-    const h = await (ipcInvoke<string>("engine_apply_many", { handle, ops }) as Promise<FrameHandle>);
-    const s = this.schemaOf(handle);
-    return this.remember(h, s ? shadow(() => ops.reduce((f, op) => applyVerb(f, op), s)) : null);
+    const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
+    const h = await (ipcInvoke<string>("engine_apply_many", { handle, ops: wire }) as Promise<FrameHandle>);
+    return this.remember(h, schema);
   }
 
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {

@@ -116,6 +116,8 @@ type Operand = number | UnitCell;
 
 /** Two temperature readings (°C, °F) have no sum, in any surface ([[C25]] firstClassUnits). */
 export const READINGS_ADD = "Temperature readings can't be added. Subtract two for a difference, or average them.";
+/** A reading on an offset scale is not a magnitude, so it can't scale or divide. */
+export const READINGS_SCALE = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
 
 export type ArithmeticOp = "add" | "sub" | "mul" | "div" | "mod" | "pow" | "quotient";
 
@@ -130,7 +132,7 @@ export function arithmeticCell(
   const dispB = isUnitCell(b) ? b.display : undefined;
   const divZero = () => solError("#DIV/0!", "Division by zero");
   if (currencyMismatch(a, b)) {
-    return unitError(`Can't combine ${dispA} and ${dispB} — different currencies, no exchange rate. Convert one side first.`);
+    return unitError(`Can't combine ${dispA} and ${dispB}: they are different currencies with no exchange rate. Convert one side first.`);
   }
   const xc = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(x, dispB) : x;
   const yc = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(y, dispA) : y;
@@ -144,7 +146,7 @@ export function arithmeticCell(
   const readings = isAffineDisplay(dispA) && isAffineDisplay(dispB);
   const affineRefused = (): SolError | null =>
     isAffineDisplay(dispA) || isAffineDisplay(dispB)
-      ? unitError("Convert the temperature to kelvin first — an offset unit can't take ×, ÷ or ^.")
+      ? unitError(READINGS_SCALE)
       : null;
   const carry = (rd: Dim): string | undefined =>
     dispA && dimEqual(rd, da) ? dispA : dispB && dimEqual(rd, db) ? dispB : undefined;
@@ -189,7 +191,7 @@ export function compareUnits(a: Operand, b: Operand): { l: number; r: number } |
   if (!isDimensionless(da) && !isDimensionless(db) && !dimEqual(da, db))
     return unitError("Can't compare values with different units.");
   if (currencyMismatch(a, b))
-    return unitError("Can't compare different currencies — no exchange rate.");
+    return unitError("Can't compare different currencies. There is no exchange rate.");
   const dispA = isUnitCell(a) ? a.display : undefined;
   const dispB = isUnitCell(b) ? b.display : undefined;
   const l = isDimensionless(da) && !isDimensionless(db) ? adoptReading(magnitudeOf(a), dispB) : magnitudeOf(a);

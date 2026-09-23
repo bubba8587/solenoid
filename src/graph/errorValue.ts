@@ -83,6 +83,7 @@ export const SEES_ERRORS: ReadonlySet<string> = new Set([
   "ConduitNode", "CableSwitchNode",
   "DisplayNode", "NoteNode", "ReportNode",
   "ChartNode",
+  "CompositeNode", "CompositeOutputNode",
 ]);
 
 const WRAPPED = Symbol("solErrorGuard");

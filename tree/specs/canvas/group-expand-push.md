@@ -15,9 +15,9 @@ A collapsed group draws as a small card. Expanding it back to full size would co
 The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush`, `separateOverlaps` and `separateAll` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
 
 - **Movable boxes** are every group plus every loose node: a node that is in no group and is not a docked Format Controller (FC).
-- A loose node's box is widened by the width of any FC docked to its output side (FC width plus 8), because the docked FC has no box of its own.
-- An expanded group is read at its stored size, which is exactly the size it renders at; React Flow's measure lags a resize by a frame. A collapsed group is read at its card size.
-- A group moves with its members; a loose node moves with any FC docked to it.
+- A loose node's box reaches over its docked FCs (FC width plus 8), rightward for an FC docked to an output and leftward for one docked to an input, because a docked FC has no box of its own.
+- An expanded group is read at its stored size, which is exactly the size it renders at; React Flow's measure lags a resize by a frame. Its box then reaches over any FC docked to a member that hangs past its edge (an input FC on a member at the left pad does), since that FC rides the member. When such a group expands, its collapsed card is widened to the same top-left corner, so the right and bottom seams stay where the card's were. A collapsed group is read at its card size; its members' FCs are hidden with them.
+- A group moves with its members and with every FC docked to one of them; a loose node moves with any FC docked to it.
 - All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.
 
 The push runs only while the `groupPush` setting is on.
@@ -52,6 +52,10 @@ Three more passes run over the same boxes, after every expanding group has had i
 3. **Overlap backstop** ([[C112]] noOverlapsEver). `separateAll` removes every overlap left among the boxes, with no exemptions: an overlap the user made before the expand is separated too. Each standoff cluster is one unit, so it can't tear. Locked groups are fixed; the expanding groups are preferred, so they hold still while a partner can yield. Its moves are credited to every expanding group.
 
 `separateAll` runs `separateOverlaps` twice. The first pass pins the fixed and the preferred units; the second pins only the fixed ones, clearing any overlap the first had to leave between two pinned units. `separateOverlaps` places the boxes one at a time, pinned ones first, then the rest from the top-left (by `x + y`). A pinned box stays where it is. Every other box, while it overlaps one already placed, moves right or down, whichever is cheaper, to clear the placed box it overlaps most by `PUSH_GAP`. So the top-left box keeps its anchor corner, a pinned box's partner yields, and two pinned boxes are left alone. Moves only ever go right or down, so it always finishes, and a few hundred boxes take milliseconds. Afterwards only two fixed units can still overlap.
+
+## What is not a layout op
+
+A card that grows with its live content (a Display showing a longer value, a list that gains rows) and a card whose body chevron expands push nothing. Either can cover a neighbor until the next layout op's no-overlap pass separates them, which measures the grown card. Content that overflows a constant-size body ([[resizable-content-nodes]]) is never counted at all, since the pass reads the card's box. Whether growth should push is open with the author (inbox `card-growth-pushes`).
 
 ## Records and restore
 

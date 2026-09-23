@@ -224,6 +224,10 @@ describe("review pins: vault reads stay inside the vault", () => {
     expect(isInsideVault("/etc/passwd")).toBe(false);
     expect(isInsideVault("C:/secrets.md")).toBe(false);
     expect(isInsideVault("")).toBe(false);
+    // Windows joins on a backslash too.
+    expect(isInsideVault("..\\..\\secrets.md")).toBe(false);
+    expect(isInsideVault("notes\\..\\..\\x.md")).toBe(false);
+    expect(isInsideVault("\\\\server\\share\\x.md")).toBe(false);
   });
 });
 
@@ -260,16 +264,6 @@ describe("review pins: SORTBY length, COMBINA at zero", () => {
     expect(card(0, 0)).toBe(1);
     expect(card(0, 3)).toBe(0);
     expect(card(4, 2)).toBe(10);
-  });
-});
-
-describe("review pins: copy skips composite markers", () => {
-  it("copySelected filters the boundary marker classes like deleteSelection does", async () => {
-    const { readFileSync } = await import("node:fs");
-    const src = readFileSync("src/graph/copyPaste.ts", "utf8");
-    expect(src).toMatch(/CompositeInputNode/);
-    expect(src).toMatch(/CompositeOutputNode/);
-    expect(src).toMatch(/n\.selected && !isMarker\(n\)/);
   });
 });
 

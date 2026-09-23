@@ -47,9 +47,12 @@ export function parseDate(s: string, opts?: ParseDateOptions): number | SolError
   }
   if (!/\d{4}/.test(t)) return NaN;
   // ISO date-only goes through `new Date`, which reads it as UTC with no 0–99 century pivot (chrono pivots "0026").
-  if (/^[+-]?\d{4,6}-\d{2}(?:-\d{2})?$/.test(t)) {
+  const isoParts = /^[+-]?\d{4,6}-(\d{2})(?:-(\d{2}))?$/.exec(t);
+  if (isoParts) {
     const iso = new Date(t);
-    return Number.isNaN(iso.getTime()) ? NaN : iso.getTime() / 86400000 + 25569;
+    // `new Date` rolls 2024-02-30 over to March 1; a day the month does not have is not a date.
+    const rolled = isoParts[2] !== undefined && iso.getUTCDate() !== +isoParts[2];
+    return Number.isNaN(iso.getTime()) || rolled || iso.getUTCMonth() + 1 !== +isoParts[1] ? NaN : iso.getTime() / 86400000 + 25569;
   }
   const num = NUMERIC_DMY.exec(t);
   if (num) {

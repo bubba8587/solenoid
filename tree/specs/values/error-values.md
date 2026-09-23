@@ -51,6 +51,7 @@ IFERROR catches every code; IFNA and ISNA match only `#N/A`.
 - **Conduit and CableSwitch** route lanes independently, and the any-error-to-every-output rule would poison sibling lanes.
 - **Display** reads `cachedValue`, not the `cachedResult` the guard mirrors to, so it has to run on the raw error to both show the badge and forward the error on `out`. Most nodes render `cachedResult` and show propagated errors already; the gap is only the minority that render `cachedValue`, `cachedList` or `cachedText`.
 - **Report**'s inline refs are independent lanes too. **Note** is output-only and is listed only to keep its read path uniform.
+- **Composite** and its **output marker** are a subgraph boundary: an error crosses into the members, whose own guards apply, so an IFERROR inside catches it and a lane that never reads it keeps its value, as unpacked. The output marker has no outputs of its own, so short-circuiting it would turn an arriving error into a blank.
 - **Chart** is a figure sink: it renders an errored input as an empty figure and never sends a `SolError` out its `chart` socket.
 
 ### Producers and provenance

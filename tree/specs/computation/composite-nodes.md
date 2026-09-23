@@ -77,7 +77,7 @@ A hidden port skips step 2. An override of `null` is used as `null`.
 - `syncPortLabels()` copies each marker's current label onto its port record and the card socket's label. A cleared marker label becomes `Input` or `Output`, the marker card's placeholder. A port whose marker is missing keeps its label. It runs at the start of every `data()` and when a drill-in level is left.
 - The markers' sockets are per-instance `MutableSocket`s, outside the `trueany` adoption fixpoint, and display only. At every `data()`, `syncMarkerSocketTypes()` sets each input marker's `value` output to the card input socket's current type, and each output marker's `value` input to the type of the internal socket that feeds it (`trueany` when unwired).
 - `adoptBoundaryTypes()` sets each output port's card socket to the `dataType` of the internal socket feeding its marker, or `trueany` when unwired or the marker is missing, and returns whether any type changed. Adoption never removes an outer cable.
-- `settleInternalTypes()` runs `settleWildcardTypes(internalEditor)` and then `adoptBoundaryTypes()`. It runs at the end of `hydrate()`, after each internal connection change outside hydrate, and once at the end of make-from-selection. The main canvas's own connection-pipe settle never reaches the internal editor, so this is the only settle it gets.
+- `settleInternalTypes()` runs `settleWildcardTypes(internalEditor)` and then `adoptBoundaryTypes()`. It runs at the end of `hydrate()`, after each internal connection change outside hydrate, and once at the end of make-from-selection. The main canvas's cable-change settle never reaches the internal editor. The drill-in's does, from the first time the composite is opened ([[react-flow-surface-contract]]); before that this is the only settle it gets.
 
 ## The boundary markers
 
@@ -196,7 +196,7 @@ Config: `byRowPortId` (`""` = unset).
 Config: `goalSeek: { inputPortId, outputPortId, target, maxIterations?, tolerance?, boundsLo?, boundsHi? }` or null. `setGoalSeek(patch)` creates the config on first use with the first exposed input, the first output and target 0. The editor creates it on first render when an exposed input and an output exist, and triggers a pass.
 
 - Heavy when configured. In `goal-seek` mode without a config the card is a live single pass.
-- Starting point: the driver's wired value, else its marker's seed, else the port default, else 0; a non-numeric start becomes 0.
+- Starting point: the driver's wired value, else its marker's seed, else the port default, else 0; a non-numeric start becomes 0. An error start is not solved from: it is `goalSeekResult` and the driver's `solvedValue`, one pass runs with no override, and the target port carries it.
 - The objective for a trial x is one internal pass with the driver overridden to x, returning `coerceNumber(output) − target`. `coerceNumber` maps a number to itself, an uncertain number to its central value, a logical to 1 or 0, a non-blank string through `Number`, and everything else to NaN.
 - `solveGoalSeek(f, x0, opts)`:
   - `FTOL` is `tolerance` when > 0, else 1e-7; `XTOL` is 1e-9; `MAX` is `round(maxIterations)` when ≥ 1, else 80. Bounds apply only when both are finite and lo < hi; every secant step is then clamped to [lo, hi].
@@ -214,7 +214,7 @@ Config: `monteCarlo: { samples, seed, correlations? }` or null; the defaults are
 
 - The uncertain ports are the input ports whose marker has `uncertainty > 0`, in input-port order. Heavy when there is at least one. With none, one plain pass.
 - Draw count: `max(1, round(samples))`. RNG: `mulberry32((seed | 0) >>> 0)`, so a fixed seed gives the same draws on every platform and every Solve.
-- Each uncertain port's mean: the wired value when the port is exposed and has a wired value, else the seed, else the port default, else 0, through `coerceNumber`. If any mean is non-finite (a wired blank, error or text), every output is null and no draw runs.
+- Each uncertain port's mean: the wired value when the port is exposed and has a wired value, else the seed, else the port default, else 0, through `coerceNumber`. If any mean is an error, every output is that error; if any is otherwise non-finite (a wired blank or text), every output is null. Either way no draw runs.
 - Correlations: the text `a ~ b = 0.7; c ~ d = -0.3`, pairs separated by `;` or `,`. Each pair must match `<name> ~ <name> = <number>` with ρ in [−1, 1] and two different names, or it is dropped. Names resolve to an uncertain port by id or by trimmed label; unresolved and self pairs are dropped. With any pair left, the k × k matrix (1 on the diagonal, the pairs' ρ, 0 elsewhere) is factored by Cholesky; when it is not positive definite, the off-diagonals shrink toward 0 in steps of 0.05 until it is, and the identity is the last resort. An inconsistent set of pairs is softened, never refused; the factorization treats a pivot at or below 1e-12 as not positive definite. This is a Gaussian copula: the correlated standard normals map onto each input's own marginal, so every input keeps exactly the distribution it declared and only the dependence between them changes. The entered ρ is the normal-score (Pearson) correlation; the Spearman rank correlation it induces is (6/π)·asin(ρ/2), within 2% of ρ across the range.
 - Per draw, in order: independent draws take each uncertain port in turn, normal as mean + z·spread with z from Box-Muller (two uniforms, cosine branch, a first uniform ≤ `Number.EPSILON` redrawn), uniform as mean + (2u − 1)·spread. Correlated draws take k standard normals, multiply by the factor, and map each onto its own marginal: normal as mean + z·spread, uniform as mean + (2Φ(z) − 1)·spread. One internal pass runs per draw with the draws as overrides.
 - Each output becomes `summarizeSamples` of its per-draw `coerceNumber` values: non-finite draws are dropped and counted in `dropped`; the mean, and the sample standard deviation (N − 1) for N ≥ 2 (0 for N = 1; NaN mean for N = 0), form an uncertain number `{ kind: "uncertain", value, error, samples, dropped? }`.
@@ -289,20 +289,20 @@ Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids
 
 **Solve from inside.** `requestSolve(insideOnly)` sets `solveRequested` and sets `solveInsideOnly` to `insideOnly && runMode !== "manual"`. The drill-in's controls pass `insideOnly`, so a Solve there runs on empty inputs: every exposed port falls to its seed, and Monte Carlo means and the goal-seek start come from the seeds too. The key is still taken on the real inputs, so the card does not read stale right after.
 
-**Errors on the card.** The card's own error guard runs before `data()`: an error value on any wired input makes every output that error, and `data()` does not run for that pass (no `runSeq` bump, no stale update) ([[error-values]]).
+**Errors on the card.** The card and the output marker are in `SEES_ERRORS` ([[D35]] errorInErrorOut): an error on a wired input crosses into the subgraph through its marker like any other value, and each member's own guard applies there. So a catcher inside (IFERROR) catches it, an output whose lane never reads that input keeps its value, and an error that reaches an output marker is that port's value, as the same nodes unpacked would give ([[C77]] compositeIsSubgraph). A held heavy card keeps its held outputs and reads stale ([[error-values]]).
 
 ## Make a composite from a selection
 
 `createCompositeFromSelection(editor, view)` runs on Ctrl+Shift+G (Cmd on macOS) over the focused surface's editor when any node is selected; the Composite catalog description names the shortcut.
 
 1. Clear the cable selection.
-2. The members are the selected nodes that are not a Group, not a Composite and not hidden inside a collapsed Group. None, or no measurable box, returns null.
+2. The members are the selected nodes that are not a Group, not a Composite and not hidden inside a collapsed Group, plus every FC docked to one of them, since a docked FC is part of its host's entity and keeps its dock inside. None, or no measurable box, returns null.
 3. The origin is the minimum x and y over the members' measured boxes.
 4. Classify every cable: internal (both ends members), incoming (target is a member), outgoing (source is a member).
-5. Inside a graph rebuild scope: remove all three sets of cables from the outer editor; move each member instance (not a copy) from the outer editor into the new composite's internal editor, recording its position relative to the origin in `internalPositions`; re-add the internal cables inside.
+5. Inside the surface's edit scope (`editScopeFor`: the main canvas's rebuild gate, or an open drill-in's own): remove all three sets of cables from the outer editor; move each member instance (not a copy) from the outer editor into the new composite's internal editor, recording its position relative to the origin in `internalPositions`; re-add the internal cables inside.
 6. For each incoming cable, separately: create a `CompositeInputNode` labeled `<target label or class name> · <target input label or key>`, add it and install its guard, cable it to the member's input, place it 220 left of the member, add an exposed basic input port on it, and cable the outer source to that port on the card. Two cables into the selection give two ports even from one source.
 7. For each outgoing cable, separately: create a `CompositeOutputNode` labeled `<source label or class name> · <source output label or key>`, cable the member's output to it, place it 80 right of the member's right edge (member width, or 220 when unknown), add an output port, and cable that port to the outer target. One member output feeding two outer targets gives two ports.
-8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the rebuild scope and run one `bulkSettle()` (a full pass).
+8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the scope and run its settle once (`bulkSettle()` on the main canvas, a full pass).
 
 The new composite is labeled `Composite`, in `single` mode, and returns its id.
 
@@ -316,7 +316,7 @@ The new composite is labeled `Composite`, in `single` mode, and returns its id.
 4. Re-add every internal cable that touches no marker.
 5. Collapse each input port: for every outer cable into the port and every internal cable out of its marker, add one cable from the outer source to the internal target.
 6. Collapse each output port: the internal cable into its marker, joined to each outer cable out of the port.
-7. Remove the card, close the scope, run one `bulkSettle()`.
+7. Remove the card, close the scope, and run its settle once.
 
 Any re-added cable the editor refuses is dropped silently. What only the boundary held is gone after unpack: marker seeds, port defaults, Monte Carlo spreads, the run mode and its config. An unwired input that relied on a seed arrives unwired.
 
@@ -345,7 +345,7 @@ The constructor copies ports, scenarios, overrides, data-table lists and configs
 `hydrate(reg)` does nothing when nothing is pending. Otherwise, with `_hydrating` set:
 
 1. Find the saved nodes whose type is not in `reg`, and derive their socket keys from the saved connections (`deriveMissingNodeSockets`).
-2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable). Add it to the internal editor, install its guard, record its saved position under its new id, and remember the saved id for the new one.
+2. For each saved node in order: an unknown type becomes a `PlaceholderNode` carrying `missingType`, the saved init and literal maps, the derived input and output keys, and the label from `init.label` or the type name; its outputs emit `#REF!`. A known type is constructed with a copy of its init, and its literal maps are restored only onto a class that declares them ([[C28]] literalsIffEditable); a nested composite is hydrated right there, since it computes inside this one's pass and would otherwise read null until drilled into. Add it to the internal editor, install its guard, record its saved position under its new id, and remember the saved id for the new one.
 3. Re-add the saved connections between built nodes; a refused or dangling one is skipped.
 4. Remap every port's `internalNodeId` from the saved id to the new id (rete mints fresh ids on construction). A port whose marker was not built keeps the stale id.
 5. Clear `_hydrating` and run `settleInternalTypes()` once.

@@ -75,7 +75,7 @@ Insert ▸ Draw a cable in the menu bar is the only entry point, and it also app
 ## Selection and editing
 
 - Drawn-cable selection is exclusive with node, cable and standoff selection, in both directions. Arming the tool clears it.
-- `deleteSelection` deletes a selected drawn cable before anything else.
+- On the main canvas, `deleteSelection` deletes a selected drawn cable before anything else; a drill-in's delete scope leaves drawn cables alone.
 - Every settled edit goes through `commitDrawn()`, which `FlowCanvas` registers as autosave plus `flowHistory.schedule()`, so `drawnCables.ts` never imports persistence or the history. A drawn cable therefore gets undo entries like any graph edit, and the history digest labels them "Drew a cable", "Edited a drawn cable" and "Removed a drawn cable".
 
 ## Saving and loading

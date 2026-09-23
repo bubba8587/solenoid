@@ -136,8 +136,8 @@ export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promis
 
 /** A saved document can carry any string here, so this is the vault-escape guard. */
 export function isInsideVault(relPath: string): boolean {
-  if (relPath === "" || /^[\/]/.test(relPath) || /^[A-Za-z]:/.test(relPath)) return false;
-  return relPath.split(/[\/]/).every((seg) => seg !== "" && seg !== "." && seg !== "..");
+  if (relPath === "" || /^[\\/]/.test(relPath) || /^[A-Za-z]:/.test(relPath)) return false;
+  return relPath.split(/[\\/]/).every((seg) => seg !== "" && seg !== "." && seg !== "..");
 }
 
 export async function readVaultFile(root: string, relPath: string): Promise<string> {

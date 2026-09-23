@@ -10,6 +10,8 @@ import {
   getActiveEditor,
   getOwningEditor,
   getOwningView,
+  editScopeFor,
+  MAIN_EDIT_SCOPE,
 } from "../../src/graph/activeGraph";
 
 // The action layer (keyboard, copy/paste, right-click, in-node socket/row edits)
@@ -21,7 +23,7 @@ import {
 
 function fakeEditor(ids: string[]): NodeEditor<Schemes> {
   const nodes = new Map(ids.map((id) => [id, { id }]));
-  return { getNode: (id: string) => nodes.get(id) } as unknown as NodeEditor<Schemes>;
+  return { getNode: (id: string) => nodes.get(id), getNodes: () => [...nodes.values()] } as unknown as NodeEditor<Schemes>;
 }
 const fakeView = {} as unknown as View;
 const subView = { sub: true } as unknown as View;
@@ -68,7 +70,15 @@ describe("activeGraph resolver", () => {
     // view (getActiveView() would wrongly return the drill-in here).
     expect(getOwningView("m1")).toBe(fakeView);
     setActiveGraph(null);
-    expect(getOwningView("s1")).toBe(fakeView); // closed → main (s1 unresolvable)
+    expect(getOwningView("s1")).toBeNull(); // no surface shows it, so no view may pan to or move it
+  });
+
+  it("a bulk edit takes the open drill-in's scope only for the drill-in's own editor", () => {
+    const scope = { begin: () => {}, end: () => {}, settle: async () => {} };
+    expect(editScopeFor(main)).toBe(MAIN_EDIT_SCOPE);
+    setActiveGraph({ editor: sub, view: subView, scope });
+    expect(editScopeFor(sub)).toBe(scope);
+    expect(editScopeFor(main)).toBe(MAIN_EDIT_SCOPE);
   });
 
   it("clears back to main on close", () => {

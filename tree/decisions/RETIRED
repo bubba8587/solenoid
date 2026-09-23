@@ -25,3 +25,6 @@ C12	2026-09-22	superseded	C11	Claude	-	socketRows: A side with more than one soc
 C72	2026-09-23	superseded	B11	Claude	-	nodeCombiningRound1: The eight approved round-1 merges and what each card now holds
 C104	2026-09-23	superseded	C103	Claude	-	foreignDocNetworkGate: A document not authored here fetches nothing until the user allows it for that document
 C90	2026-09-23	reverted	-	Claude Opus 5.5	the author	drawnCablesAnnotate: A drawn cable is annotation, not wiring: own store, above every card, reached only from Insert
+E1	2026-09-24	superseded	D4	Claude Opus 5.5	-	shapeGuardManualSets: An irreducibly hand-kept set is guarded by the behavior it produces
+E2	2026-09-24	superseded	D13	Claude Opus 5.5	-	cubeNeverNarrowsToFrame: A cube never enters a frame socket; the node gets the wider socket
+E4	2026-09-24	superseded	D15	Claude Opus 5.5	-	oneResolvePredicate: "Resolve past untyped passthroughs" goes through one predicate

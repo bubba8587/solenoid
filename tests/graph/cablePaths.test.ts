@@ -1,6 +1,6 @@
 // [[C91]] cableWalkRouter
 import { describe, expect, it } from "vitest";
-import { getCablePath, Position } from "../../src/graph/cablePaths";
+import { getCablePath, draggedCableArgs, Position } from "../../src/graph/cablePaths";
 
 // Property tests for the cable routers. The contract, checked over thousands
 // of random configurations per mode:
@@ -317,5 +317,27 @@ describe("spline", () => {
   it("collapses to a straight line only when sockets nearly touch", () => {
     expect(spline({ sx: 0, sy: 0, tx: 10, ty: 4, sa: 0, ta: 270 }))
       .toMatch(/^M [-\d.eE]+,[-\d.eE]+ L [-\d.eE]+,[-\d.eE]+$/);
+  });
+});
+
+describe("draggedCableArgs", () => {
+  it("a plain output leaves rightward and the pointer end faces back", () => {
+    const a = draggedCableArgs("output", Position.Right, { x: 100, y: 0 }, { x: 300, y: 50 }, null);
+    expect([a.sourcePosition, a.targetPosition]).toEqual([Position.Right, Position.Left]);
+    expect([a.sourceX, a.targetX]).toEqual([98, 300]);
+  });
+
+  it("a flipped output leaves leftward, from inside its glyph", () => {
+    const a = draggedCableArgs("output", Position.Left, { x: 100, y: 0 }, { x: -100, y: 0 }, null);
+    expect([a.sourcePosition, a.targetPosition]).toEqual([Position.Left, Position.Right]);
+    expect(a.sourceX).toBe(102);
+  });
+
+  it("from an input the pointer is the source, and a flipped input is entered from the right", () => {
+    const plain = draggedCableArgs("input", Position.Left, { x: 0, y: 0 }, { x: -200, y: 0 }, 45);
+    expect([plain.sourcePosition, plain.targetPosition, plain.targetAngleDeg]).toEqual([Position.Right, Position.Left, 45]);
+    const flipped = draggedCableArgs("input", Position.Right, { x: 0, y: 0 }, { x: 200, y: 0 }, null);
+    expect([flipped.sourcePosition, flipped.targetPosition]).toEqual([Position.Left, Position.Right]);
+    expect([flipped.sourceX, flipped.targetX]).toEqual([200, -2]);
   });
 });

@@ -7,14 +7,14 @@ import { NoteNode } from "./annotation";
 import { type FrontmatterFieldType } from "../noteFrontmatter";
 import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
-import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, readFileText } from "../fileBridge";
+import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, readFileText, pathExists } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
-import { trackInflight, scheduleConnectionRecalc } from "../connectionStore";
-import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
+import { connectionStore, trackInflight, scheduleConnectionRecalc } from "../connectionStore";
+import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, frontmatterTags, displayValue, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
 import { mdbaseSchemaFor, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
-import { isCubeValue, type CubeValue, type FrameValue } from "../frame";
+import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -44,13 +44,15 @@ function noteNamesOf(cube: CubeValue): Set<string> {
   return names;
 }
 
-function obsidianTypeName(cube: CubeValue, key: string): string {
+/** Null when Obsidian has no type for it (rows, a matrix): registering Text there would only raise its mismatch warning. */
+export function obsidianTypeName(cube: CubeValue, key: string): string | null {
   const col = cube.columns.find((c) => c.name === key);
+  if (col?.cells.some((cell) => isFrameValue(cell) || isCubeValue(cell) || (Array.isArray(cell) && cell.some(Array.isArray)))) return null;
   if (col && col.cells.some((cell) => Array.isArray(cell))) return "multitext";
   switch (col?.type) {
     case "number":  return "number";
     case "logical": return "checkbox";
-    case "date":    return "date";
+    case "date":    return col.cells.some((c) => typeof c === "number" && !Number.isInteger(c)) ? "datetime" : "date";
     default:        return "text";
   }
 }
@@ -294,6 +296,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         catch { for (const r of rows) { r.action = "unreadable"; r.before = ""; r.reason = undefined; } continue; }
         for (const r of rows) {
           if (r.key === NOTE_BODY) { const { action, before } = resolveBody(text, r.value as string); r.before = before; r.action = action; r.reason = undefined; continue; }
+          if (r.key === "tags") { r.value = frontmatterTags(text, r.value); r.after = displayValue(r.value); }
           const { action, before } = resolveKey(text, r.key, r.value);
           r.before = before;
           r.action = action === "add" && !this.addMissing ? "unchanged" : action;
@@ -329,17 +332,19 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         let newBody: string | null = null;
         for (const r of rows) {
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
-          const { action } = resolveKey(text, r.key, r.value);
+          const value = r.key === "tags" ? frontmatterTags(text, r.value) : r.value;
+          const { action } = resolveKey(text, r.key, value);
           if (action === "add" && !this.addMissing) continue;
           if (action === "unchanged") continue;
           if (sch) {
-            if (sch.required.includes(r.key) && r.value === null) continue;
+            if (sch.required.includes(r.key) && value === null) continue;
             const c = sch.constraints[r.key];
-            if (c && validateAgainst(r.value, c)) continue;
+            if (c && validateAgainst(value, c)) continue;
           }
-          patch[r.key] = r.value;
+          patch[r.key] = value;
           touched++;
-          if (action === "add" && cube) newTypes.set(r.key, obsidianTypeName(cube, r.key));
+          const typeName = action === "add" && cube ? obsidianTypeName(cube, r.key) : null;
+          if (typeName) newTypes.set(r.key, typeName);
         }
         for (const stampKey of ["dateModified", "updated"]) {
           const cur = resolveKey(text, stampKey, "");
@@ -367,12 +372,16 @@ export class WriteObsidianNode extends ClassicPreset.Node {
 
   private async registerTypes(vault: string, newTypes: Map<string, string>): Promise<void> {
     try {
-      let types: Record<string, string> = {};
-      try { const parsed = JSON.parse(await readVaultFile(vault, ".obsidian/types.json")) as { types?: Record<string, string> }; types = parsed.types ?? {}; } catch { /* no file yet */ }
+      const file = await joinPath(vault, ".obsidian", "types.json");
+      let text: string | null = null;
+      try { text = await readVaultFile(vault, ".obsidian/types.json"); } catch { if (await pathExists(file)) return; }
+      // A file that is there but unreadable as JSON is left alone, never replaced by the few keys added here.
+      const parsed = (text === null ? {} : JSON.parse(text)) as { types?: Record<string, string> };
+      const types: Record<string, string> = { ...(parsed.types ?? {}) };
       let added = false;
       for (const [k, t] of newTypes) if (!(k in types)) { types[k] = t; added = true; }
       if (!added) return;
-      await writeTextFilePath(await joinPath(vault, ".obsidian", "types.json"), JSON.stringify({ types }, null, 2) + "\n");
+      await writeTextFilePath(file, JSON.stringify({ ...parsed, types }, null, 2) + "\n");
     } catch { /* registration is a convenience, never a write failure */ }
   }
 }
@@ -416,15 +425,22 @@ export class ImportObsidianNode extends NoteNode {
   }
 
   private _wiredPath = "";
+  private _seenGen = connectionStore.gen();
 
   data(inputs?: { path?: (string | null)[] }): ReturnType<NoteNode["data"]> {
     const wired = (readInput(inputs?.path, "") ?? "").trim();
+    const readable = hasFs() || isDemoVaultPath(getVaultRoot());
+    // "Refresh all connections" re-reads the note here, so a card that is not mounted (in a composite, a collapsed group) refreshes too.
+    const gen = connectionStore.gen();
+    const refresh = gen !== this._seenGen;
+    this._seenGen = gen;
     // Dedupe on the raw wired value, not fileName (which gains `.md`), or a stable input reloads forever.
     if (!wired) {
       this._wiredPath = "";
-    } else if (wired !== this._wiredPath && hasFs()) {
+      if (refresh && readable && this.fileName) void trackInflight(this.reloadFile());
+    } else if ((wired !== this._wiredPath || refresh) && readable) {
       this._wiredPath = wired;
-      void trackInflight(this.loadFromWire(wired));
+      void trackInflight(this.loadFromWire(wired, refresh));
     }
     const base = super.data();
     return base instanceof Promise
@@ -432,7 +448,16 @@ export class ImportObsidianNode extends NoteNode {
       : { ...base, path: this.fileName };
   }
 
-  private async loadFromWire(path: string): Promise<void> {
+  /** A note renamed or deleted since keeps what was loaded. */
+  async reloadFile(): Promise<void> {
+    try {
+      const vault = getVaultRoot().trim();
+      const { readVaultFile } = await import("../fileBridge");
+      await this.applyFile(vault, this.fileName, await readVaultFile(vault, this.fileName));
+    } catch { /* gone: keep the current body */ }
+  }
+
+  private async loadFromWire(path: string, force = false): Promise<void> {
     try {
       const vault = getVaultRoot().trim();
       const { readVaultFile, listVaultMarkdownFiles } = await import("../fileBridge");
@@ -441,22 +466,26 @@ export class ImportObsidianNode extends NoteNode {
       const base = (path.split("/").pop() ?? path).replace(/\.md$/i, "").toLowerCase();
       const rel = files.includes(withMd) ? withMd
         : files.find((f) => (f.split("/").pop() ?? f).replace(/\.md$/i, "").toLowerCase() === base) ?? null;
-      if (!rel || rel === this.fileName) return;
-      const content = await readVaultFile(vault, rel);
-      this.body = content;
-      this.fileName = rel;
-      if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
-        this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
-      }
-      await this.loadColumnPicks(vault);
-      const { removed, retyped } = this.syncFields();
-      const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
-      await dropStrandedFrontmatterCables(this.id, removed, retyped);
-      const view = getOwningView(this.id);
-      await view?.rerenderNode(this.id);
-      const editor = getOwningEditor(this.id);
-      if (editor && view && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
-      scheduleConnectionRecalc();
+      if (!rel || (rel === this.fileName && !force)) return;
+      await this.applyFile(vault, rel, await readVaultFile(vault, rel));
     } catch { /* unreadable (moved / renamed / off-desktop) — keep the current body */ }
+  }
+
+  private async applyFile(vault: string, rel: string, content: string): Promise<void> {
+    if (content === this.body && rel === this.fileName) return;
+    this.body = content;
+    this.fileName = rel;
+    if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
+      this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
+    }
+    await this.loadColumnPicks(vault);
+    const { removed, retyped } = this.syncFields();
+    const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
+    await dropStrandedFrontmatterCables(this.id, removed, retyped);
+    const view = getOwningView(this.id);
+    await view?.rerenderNode(this.id);
+    const editor = getOwningEditor(this.id);
+    if (editor && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
+    scheduleConnectionRecalc();
   }
 }

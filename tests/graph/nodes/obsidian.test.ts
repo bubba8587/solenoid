@@ -1,6 +1,8 @@
 // [[C38]]
-import { describe, it, expect } from "vitest";
-import { WriteObsidianNode, ImportObsidianNode } from "../../../src/graph/nodes/obsidian";
+import { describe, it, expect, afterEach } from "vitest";
+import { forceDemoVault } from "../../../src/graph/demoVault";
+import { refreshAllConnections, whenConnectionsSettled } from "../../../src/graph/connectionStore";
+import { WriteObsidianNode, ImportObsidianNode, obsidianTypeName } from "../../../src/graph/nodes/obsidian";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { makeDocument, isDocumentValue } from "../../../src/graph/documentValue";
@@ -66,6 +68,24 @@ describe("WriteObsidianNode.run() guards", () => {
   });
 });
 
+describe("the type a new property registers in types.json", () => {
+  const frame = { __frame: true as const, columns: [{ name: "x", type: "number" as const, values: [1] }] };
+  const cube = { __cube: true as const, columns: [
+    { name: "rows", cells: [frame], type: undefined },
+    { name: "grid", cells: [[[1, 2]]], type: "number" as const },
+    { name: "tags", cells: [["a"]], type: "string" as const },
+    { name: "when", cells: [46000.5], type: "date" as const },
+    { name: "due", cells: [46000], type: "date" as const },
+  ] } as never;
+  it("rows and matrices register nothing; a time of day is Date & time", () => {
+    expect(obsidianTypeName(cube, "rows")).toBeNull();
+    expect(obsidianTypeName(cube, "grid")).toBeNull();
+    expect(obsidianTypeName(cube, "tags")).toBe("multitext");
+    expect(obsidianTypeName(cube, "when")).toBe("datetime");
+    expect(obsidianTypeName(cube, "due")).toBe("date");
+  });
+});
+
 describe("ImportObsidianNode", () => {
   it("is a Note (inherits the frontmatter-socket + document machinery)", async () => {
     const n = new ImportObsidianNode({ body: "---\ntitle: Weekly\ncount: 5\n---\n# Body" });
@@ -92,6 +112,28 @@ describe("ImportObsidianNode", () => {
     const reloaded = new ImportObsidianNode(init);
     expect(reloaded.fileName).toBe("notes/weekly.md");
     expect(reloaded.fieldKeys()).toEqual(["a"]); // frontmatter sockets rebuild from the persisted body
+  });
+});
+
+describe("ImportObsidianNode reads the demo vault on the web ([[B2]] webTryDesktopFull)", () => {
+  afterEach(() => forceDemoVault(false));
+
+  it("a wired path loads, and Refresh all connections re-reads the picked note without its card mounted", async () => {
+    forceDemoVault(true);
+    const wiredNode = new ImportObsidianNode();
+    wiredNode.data({ path: ["Projects/Kitchen remodel"] });
+    await whenConnectionsSettled();
+    expect(wiredNode.fileName).toBe("Projects/Kitchen remodel.md");
+    expect(wiredNode.fieldKeys()).toContain("status");
+
+    const picked = new ImportObsidianNode({ fileName: "Projects/Kitchen remodel.md", body: "---\nstale: 1\n---\n" });
+    picked.data({});
+    await whenConnectionsSettled();
+    expect(picked.fieldKeys()).toEqual(["stale"]);
+    await refreshAllConnections();
+    picked.data({});
+    await whenConnectionsSettled();
+    expect(picked.fieldKeys()).toContain("status");
   });
 });
 
