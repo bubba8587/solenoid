@@ -5,13 +5,14 @@ import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 import { BUILTIN_PACKS, PACK_GROUP_ORDER } from "../packs";
+import { SITE_PAGES } from "./siteMeta";
 
 const PACK_GROUPS = PACK_GROUP_ORDER.map((head) => ({ head, packs: BUILTIN_PACKS.filter((p) => p.group === head) }));
 
 export default function PacksPage() {
   const anim = useRevealAnim();
   useEffect(() => {
-    document.title = "Solenoid · Packs";
+    document.title = SITE_PAGES.packs.title;
   }, []);
 
   return (

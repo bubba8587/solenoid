@@ -5,6 +5,7 @@ import license from "rollup-plugin-license";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
+import { SITE_PAGES, pageHtml, type SitePage } from "./src/graph/landing/siteMeta";
 const host = process.env.TAURI_DEV_HOST;
 
 /** Dev-only endpoint for the in-app copy-edit freeze (`src/devCopyEdit.ts`): maps an
@@ -219,9 +220,26 @@ function devDemoVault(): Plugin {
   };
 }
 
+/** Writes `<page>.html` beside `index.html` for every site page, each with its own title and link-preview tags; `vercel.json` routes each path to its file. */
+function sitePageHtml(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "solenoid-site-page-html",
+    apply: "build",
+    configResolved(config) { outDir = path.resolve(config.root, config.build.outDir); },
+    async closeBundle() {
+      const index = await readFile(path.join(outDir, "index.html"), "utf8");
+      for (const name of Object.keys(SITE_PAGES) as SitePage[]) {
+        const page = SITE_PAGES[name];
+        await writeFile(path.join(outDir, `${name}.html`), pageHtml(index, page));
+      }
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), copyEditEndpoint(), devGraphMirror(), devDemoVault()],
+  plugins: [react(), copyEditEndpoint(), devGraphMirror(), devDemoVault(), sitePageHtml()],
 
   // Preserve class / function names through minification. Node components
   // derive their human-readable type hint from `constructor.name` (see

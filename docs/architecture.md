@@ -428,7 +428,7 @@ packs from `BUILTIN_PACKS` and `PACK_GROUP_ORDER`). Scenes live in `LandingScene
 `LandingGraph.tsx` with its hero scene switcher, `SceneStage.tsx`, and `SceneThread.tsx`, the
 decorative bezier joining the scene viewports); styles in `LandingPage.css` + `ObsidianPage.css` +
 `SitePages.css`. `App.tsx` routes each page by pathname (`/obsidian`, `/download`,
-`/examples`, `/packs`) or `?landing`, off the Vercel catch-all rewrite. `public/` carries
+`/examples`, `/packs`) or `?landing`. `siteMeta.ts` holds each page's title and link-preview text; the build writes `<page>.html` per page (`vite.config.ts` sitePageHtml) and `vercel.json` routes each path to its file ahead of the catch-all. `public/` carries
 `robots.txt`, `sitemap.xml`, `og-hero.png` (the link-preview image `index.html` points at) and `obsidian-look.png` (the plugin's theme, from the plugin repo's screenshots). `siteChrome.ts`
 lets a page suppress app-only overlay chrome (the Report's Export/Dock). The dev node
 gallery is `showcase/NodeShowcase.tsx`.

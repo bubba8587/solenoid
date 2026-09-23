@@ -13,6 +13,7 @@ import { forceDemoTaskNotes } from "../demoTaskNotes";
 import { siteChrome } from "../siteChrome";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
+import { SITE_PAGES } from "./siteMeta";
 
 
 function FlowScene() {
@@ -63,7 +64,7 @@ function PlanScene() {
 export default function ObsidianPage() {
   const anim = useRevealAnim();
   useEffect(() => {
-    document.title = "Solenoid · The computation layer for your vault";
+    document.title = SITE_PAGES.obsidian.title;
   }, []);
   // Forced during render, so the pin is in place before the scene children mount and read it; cleared on unmount.
   // The popup here is a read-only shop window: Export and Dock have nothing to act on off the app.

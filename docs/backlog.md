@@ -117,9 +117,6 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 - [ ] **Public changelog page (parked, author wants it later).** Would live at `/changelog` off
   `docs/release-notes-features.md` + the What's New slides. Deferred so it does not just mirror
   GitHub Releases; revisit when there is a reason it earns its own surface.
-- [ ] **Per-route meta description.** `index.html` now has a description, OG/Twitter tags and an
-  `og:image` (hero), plus `sitemap.xml` + `robots.txt`. Still one static default for every route;
-  per-route text needs a small prerender step.
 - [ ] **Finish the landing/Obsidian scene rebuild.** Feature scenes are real canvases (Obsidian
   hero `LiveGraph`, `VaultTableScene`, `LocalFileScene`, `NoteImportScene`, `TaskNotesScene` on the
   demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's

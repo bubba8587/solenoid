@@ -3,5 +3,42 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/obsidian",
+      "destination": "/obsidian.html"
+    },
+    {
+      "source": "/obsidian/",
+      "destination": "/obsidian.html"
+    },
+    {
+      "source": "/download",
+      "destination": "/download.html"
+    },
+    {
+      "source": "/download/",
+      "destination": "/download.html"
+    },
+    {
+      "source": "/examples",
+      "destination": "/examples.html"
+    },
+    {
+      "source": "/examples/",
+      "destination": "/examples.html"
+    },
+    {
+      "source": "/packs",
+      "destination": "/packs.html"
+    },
+    {
+      "source": "/packs/",
+      "destination": "/packs.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

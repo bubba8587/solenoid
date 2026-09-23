@@ -5,11 +5,12 @@ import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 import { SEEDS, SEED_GROUPS } from "../seeds";
+import { SITE_PAGES } from "./siteMeta";
 
 export default function ExamplesPage() {
   const anim = useRevealAnim();
   useEffect(() => {
-    document.title = "Solenoid · Examples";
+    document.title = SITE_PAGES.examples.title;
   }, []);
 
   return (

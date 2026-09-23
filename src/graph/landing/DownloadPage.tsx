@@ -4,12 +4,13 @@ import { GITHUB_URL, SiteHeader, SiteFooter, DownloadLink } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
+import { SITE_PAGES } from "./siteMeta";
 
 
 export default function DownloadPage() {
   const anim = useRevealAnim();
   useEffect(() => {
-    document.title = "Solenoid · Download";
+    document.title = SITE_PAGES.download.title;
   }, []);
 
   return (
