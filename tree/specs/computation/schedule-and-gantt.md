@@ -2,7 +2,7 @@
 aliases: ["Schedule and Gantt"]
 tags: [spec, computation]
 ---
-<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[E2]] cubeNeverNarrowsToFrame, [[C63]] oneRecordNode, [[C8]] declareOnce, [[C38]] sinkRunButtonOnly -->
+<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[D13]] widenNeverNarrow, [[C63]] oneRecordNode, [[C8]] declareOnce, [[C38]] sinkRunButtonOnly -->
 
 # Spec: Schedule and Gantt
 
@@ -102,7 +102,7 @@ Every run recomputes the whole schedule from the table, and four visible columns
 
 ### Computed columns
 
-The output is always a Cube, even when a Frame came in ([[E2]] cubeNeverNarrowsToFrame). Computed columns are appended after the input columns. Each level of the nesting gets its own:
+The output is always a Cube, even when a Frame came in ([[D13]] widenNeverNarrow). Computed columns are appended after the input columns. Each level of the nesting gets its own:
 
 | Column | Type | Meaning |
 |---|---|---|

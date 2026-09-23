@@ -2,11 +2,11 @@
 aliases: ["Frame model and relational verbs"]
 tags: [spec, computation]
 ---
-<!-- [[C16]] polarsEngine, [[D29]] oneVerbCorpus, [[C24]] arraySemantics, [[C45]] excelComparisons, [[C59]] byteStringOrder, [[D76]] textMinMax, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[E2]] cubeNeverNarrowsToFrame, [[D11]] noAutoCross, [[C25]] firstClassUnits, [[C64]] decisionMatrixFamily, [[C8]] declareOnce, [[D46]] freezeVolatilePerCalc -->
+<!-- [[C16]] polarsEngine, [[D29]] oneVerbCorpus, [[C24]] arraySemantics, [[C45]] excelComparisons, [[C59]] byteStringOrder, [[D76]] textMinMax, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[D13]] widenNeverNarrow, [[D11]] noAutoCross, [[C25]] firstClassUnits, [[C64]] decisionMatrixFamily, [[C8]] declareOnce, [[D46]] freezeVolatilePerCalc -->
 
 # Spec: Frame model and relational verbs
 
-Serves [[C16]] polarsEngine, [[D29]] oneVerbCorpus, [[C24]] arraySemantics (and its children [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[D76]] textMinMax), [[C45]] excelComparisons, [[C59]] byteStringOrder and [[E2]] cubeNeverNarrowsToFrame. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C16]] polarsEngine, [[D29]] oneVerbCorpus, [[C24]] arraySemantics (and its children [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[D76]] textMinMax), [[C45]] excelComparisons, [[C59]] byteStringOrder and [[D13]] widenNeverNarrow. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A Frame is Solenoid's table: named, typed columns of cells. The relational verbs (select, sort, filter, group, join and the rest) take Frames and return new ones. They run on two engines behind one seam: a pure JavaScript implementation on the web, called the oracle because it is the one definition every engine must match, and native Polars on desktop. A shared corpus of cases holds the two to identical answers. A Cube is the Frame's nested sibling, whose cells may hold lists and whole tables.
 
@@ -122,7 +122,7 @@ The `format` annotation is stamped on a node's FrameValue outputs by the input-c
 
 ### Frames and Cubes
 
-A Cube never enters a Frame socket ([[E2]] cubeNeverNarrowsToFrame). A verb card that accepts a Cube declares a cube-adoptive input with `noWidenInputs` and either runs its own cube branch (the cube row verbs under Eager verbs outside the seam) or calls `flatCubeToFrame(cube, only?)`, which types each column through `typedColumn` with the cube column's carried type and reads a `UnitCell` as its bare base-SI value (the unit is not recovered). `only` picks the columns: all of them, the named ones (`#REF!` for a missing name), or `"scalar"` (every column without nested cells). A list, Frame or Cube cell in a picked column is `#SHAPE!` (`Column "<name>" holds nested cells; this reads flat rows`). GROUPBY picks its keys and value column (its scalar columns while unconfigured); PIVOTBY, SUMIFS and Chart read `"scalar"`, so a list column is simply not a field. `frameToCube` goes the other way: depth 1, element type and format carried, locked cells tagged.
+A Cube never enters a Frame socket ([[D13]] widenNeverNarrow). A verb card that accepts a Cube declares a cube-adoptive input with `noWidenInputs` and either runs its own cube branch (the cube row verbs under Eager verbs outside the seam) or calls `flatCubeToFrame(cube, only?)`, which types each column through `typedColumn` with the cube column's carried type and reads a `UnitCell` as its bare base-SI value (the unit is not recovered). `only` picks the columns: all of them, the named ones (`#REF!` for a missing name), or `"scalar"` (every column without nested cells). A list, Frame or Cube cell in a picked column is `#SHAPE!` (`Column "<name>" holds nested cells; this reads flat rows`). GROUPBY picks its keys and value column (its scalar columns while unconfigured); PIVOTBY, SUMIFS and Chart read `"scalar"`, so a list column is simply not a field. `frameToCube` goes the other way: depth 1, element type and format carried, locked cells tagged.
 
 ### The Cube value
 
