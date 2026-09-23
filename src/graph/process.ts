@@ -100,13 +100,19 @@ let _cachedLoop: Set<string> | null = null;
 let _passActive = false;
 let _rerunQueued = false;
 let _rerunForce = false;
+let _rerunExact = false;
 
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
   if (calcModeStore.isManual() && !opts?.force && !isGraphRebuilding()) {
     calcModeStore.markDirty();
     return;
   }
-  if (_passActive) { _rerunQueued = true; _rerunForce ||= opts?.force === true; return; }
+  if (_passActive) {
+    _rerunQueued = true;
+    _rerunForce ||= opts?.force === true;
+    _rerunExact ||= calcModeStore.forcingExact();
+    return;
+  }
   _passActive = true;
   beginCompute();
   try {
@@ -117,9 +123,14 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
     endCompute();
   }
   if (_rerunQueued) {
-    const force = _rerunForce;
-    _rerunQueued = false; _rerunForce = false;
-    await processGraph(undefined, undefined, force ? { force } : undefined);
+    const force = _rerunForce, exact = _rerunExact;
+    _rerunQueued = false; _rerunForce = false; _rerunExact = false;
+    if (exact) calcModeStore.beginForceExact();
+    try {
+      await processGraph(undefined, undefined, force ? { force } : undefined);
+    } finally {
+      if (exact) calcModeStore.endForceExact();
+    }
   }
 }
 

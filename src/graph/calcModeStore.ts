@@ -48,6 +48,7 @@ export const calcModeStore = {
   },
 
   sketchActive: (): boolean => _mode === "sketch" && _forceExact === 0,
+  forcingExact: (): boolean => _forceExact > 0,
 
   beginForceExact(): void { _forceExact++; },
   endForceExact(): void { _forceExact = Math.max(0, _forceExact - 1); },

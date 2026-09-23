@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
-import { processGraph, setEditorRefs } from "../../src/graph/process";
+import { processGraph, setEditorRefs, requestRecalc } from "../../src/graph/process";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 
 // Single-flight invariant (the fix for the flushSync-mount crash): a processGraph call made
@@ -81,6 +81,34 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
       // Without the carried flag the rerun would be an unforced call → markDirty + return: one pass.
       expect(resetCount).toBe(2);
       expect(calcModeStore.dirty()).toBe(false);
+    } finally {
+      calcModeStore.setMode("auto");
+    }
+  });
+
+  it("F9 pressed during a sketch pass still runs its coalesced pass on full data", async () => {
+    const seen: boolean[] = [];
+    class Probe extends Src {
+      data() { seen.push(calcModeStore.sketchActive()); return { out: 1 }; }
+    }
+    const editor = new NodeEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    await editor.addNode(new Probe("p") as unknown as Schemes["Node"]);
+    let reentered = false;
+    const view = {
+      rerenderNode: async () => {
+        if (reentered) return;
+        reentered = true;
+        await requestRecalc();
+      },
+    } as unknown as View;
+    setEditorRefs(editor, engine, view);
+    calcModeStore.setMode("sketch");
+    try {
+      await processGraph();
+      expect(seen).toEqual([true, false]);
+      expect(calcModeStore.sketchActive()).toBe(true);
     } finally {
       calcModeStore.setMode("auto");
     }
