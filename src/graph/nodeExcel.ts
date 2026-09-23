@@ -462,7 +462,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "text-find-search": [
     { excel: "SEARCH", syntax: "=SEARCH(find_text, within)", parity: false },
   ],
-  "text-fixed": [{ excel: "FIXED", syntax: "=FIXED(number, decimals)", parity: false, note: "Use TEXT node with \"0.00\" format" }],
+  "text-fixed": [{ excel: "FIXED", syntax: "=FIXED(number, [decimals], [no_commas])" }],
   "text-join": [{ excel: "TEXTJOIN", syntax: "=TEXTJOIN(delim, ignore, ...)", parity: false, note: "Takes one text List instead of separate arguments." }],
   "text-left": [
     { excel: "LEFT", syntax: "=LEFT(text, chars)", parity: false },

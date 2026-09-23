@@ -881,7 +881,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       },
       { type: "text-dollar", label: "DOLLAR",  description: "Format a number as a currency string, for example `\"$1,234.56\"`, or `\"($78.90)\"` for a negative. Excel: `DOLLAR`.", create: () => new FormatDollarNode() },
       { type: "text-numbervalue", label: "NUMBERVALUE", description: "Parses a number from a string with custom decimal and group separators, for example `\"1.234,56\"` with `decimal=\",\"` `group=\".\"`. Excel: `NUMBERVALUE`.", create: () => new NumberValueNode(), parity: false },
-      { type: "text-fixed", label: "FIXED",     description: "Format a number as a fixed-decimal string with optional thousands separators. Excel: `FIXED`.", create: () => new FixedNode(), parity: false },
+      { type: "text-fixed", label: "FIXED",     description: "Format a number as a fixed-decimal string with optional thousands separators. Excel: `FIXED`.", create: () => new FixedNode() },
       { type: "pair", children: [romanArabicLeaf("roman"), romanArabicLeaf("arabic")] },
     ],
   },

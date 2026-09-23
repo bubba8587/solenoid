@@ -239,7 +239,19 @@ describe("DOLLAR — Excel's negative accounting form is ($…), FX prints $(…
   });
 });
 
-describe("FIXED — FX pass-through already Excel-correct (drift guards, incl. half-away rounding)", () => {
+describe("FIXED and DOLLAR round with roundDigits, as ROUND does", () => {
+  it("1.005 to 2 places is 1.01, where Formula.js's toFixed gives 1.00", () => {
+    expect(str(call("FIXED", 1.005, 2))).toBe("1.01");
+    expect(str(call("FIXED", -1.005, 2))).toBe("-1.01");
+    expect(str(call("DOLLAR", 1.005, 2))).toBe("$1.01");
+    expect(str(call("FIXED", 1234.5, -1))).toBe("1,230");
+    expect(str(call("FIXED", 1.25))).toBe("1.25");
+    expect(str(call("FIXED", 2.675, 2.9))).toBe("2.68");
+    expect(str((FX as unknown as Record<string, (...a: number[]) => unknown>).FIXED(1.005, 2))).toBe("1.00"); // the Formula.js tripwire
+  });
+});
+
+describe("FIXED — drift guards, incl. half-away rounding", () => {
   it("decimals, negative decimals, no_commas, signed halves", () => {
     expect(str(call("FIXED", 1234.567, 1))).toBe("1,234.6");
     expect(str(call("FIXED", 1234.567, -1))).toBe("1,230");
