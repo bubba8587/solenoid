@@ -35,16 +35,16 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
 
   it("a parameter named after a constant is refused, on the formula and the card ([[D77]] constantsAlwaysWin)", () => {
     const f = ev("LAMBDA(e, e + 1)(5)") as SolError;
-    expect(code(f)).toBe("#VALUE!");
+    expect(code(f)).toBe("#NAME?");
     expect(f.message).toMatch(/e is a constant/);
-    expect(code(ev("LAMBDA(x, Tau, x + Tau)(1, 2)"))).toBe("#VALUE!");
+    expect(code(ev("LAMBDA(x, Tau, x + Tau)(1, 2)"))).toBe("#NAME?");
     const card = new LambdaNode({ params: "x, phi", expr: "x + phi" });
     expect(code(card.data({}).result)).toBe("#NAME?");
     expect(card.cachedError).toBe("phi is a constant");
   });
 
   it("a parameter named twice is refused, not silently bound to the last argument", () => {
-    expect(code(ev("LAMBDA(x, x, x + 1)(1, 2)"))).toBe("#VALUE!");
+    expect(code(ev("LAMBDA(x, x, x + 1)(1, 2)"))).toBe("#NAME?");
     expect(code(new LambdaNode({ params: "x, x", expr: "x + 1" }).data({}).result)).toBe("#NAME?");
   });
 

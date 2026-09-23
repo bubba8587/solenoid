@@ -302,7 +302,7 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[D4
 
 ### Syntax and evaluation
 
-`LAMBDA(p1, …, pn, body)` is a special form: its arguments are not evaluated. With no arguments it answers `#VALUE!` "LAMBDA needs a body…". Every argument but the last must be a bare name, or it answers `#VALUE!` "LAMBDA parameters must be plain names", a name may appear once (`#VALUE!` "LAMBDA parameter x appears twice"), and a constant's name is refused (`#VALUE!` "e is a constant, so it can't name a LAMBDA parameter", [[D77]] constantsAlwaysWin). The value is a closure, `{ __lambda: true, params, fn, expr: "" }`: calling `fn(...args)` copies the defining environment, binds parameter `i` to argument `i` (a missing argument binds `undefined`) and evaluates the body. The closure captures the whole defining environment, so a body can read the formula's variables. A lambda can return a lambda.
+`LAMBDA(p1, …, pn, body)` is a special form: its arguments are not evaluated. With no arguments it answers `#VALUE!` "LAMBDA needs a body…". Every argument but the last must be a bare name, or it answers `#VALUE!` "LAMBDA parameters must be plain names", a name may appear once (`#NAME?` "LAMBDA parameter x appears twice"), and a constant's name is refused (`#NAME?` "e is a constant, so it can't name a LAMBDA parameter", [[D77]] constantsAlwaysWin). The value is a closure, `{ __lambda: true, params, fn, expr: "" }`: calling `fn(...args)` copies the defining environment, binds parameter `i` to argument `i` (a missing argument binds `undefined`) and evaluates the body. The closure captures the whole defining environment, so a body can read the formula's variables. A lambda can return a lambda.
 
 A lambda is applied three ways:
 

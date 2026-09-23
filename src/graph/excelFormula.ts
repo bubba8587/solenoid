@@ -798,9 +798,9 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         const params: string[] = [];
         for (const a of n.args.slice(0, -1)) {
           if (a.t !== "name") return solError("#VALUE!", "LAMBDA parameters must be plain names");
-          if (params.includes(a.name)) return solError("#VALUE!", `LAMBDA parameter ${a.name} appears twice`);
+          if (params.includes(a.name)) return solError("#NAME?", `LAMBDA parameter ${a.name} appears twice`);
           // [[D77]] constantsAlwaysWin
-          if (isFormulaConstant(a.name)) return solError("#VALUE!", `${a.name} is a constant, so it can't name a LAMBDA parameter`);
+          if (isFormulaConstant(a.name)) return solError("#NAME?", `${a.name} is a constant, so it can't name a LAMBDA parameter`);
           params.push(a.name);
         }
         const fn = (...args: unknown[]): unknown => {
