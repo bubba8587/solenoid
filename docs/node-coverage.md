@@ -216,7 +216,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ### Schedule
 
-`nodes/schedule.ts` + `scheduleCpm.ts`, which binds the cube to `@solenoid/schedule-engine` in `packages/schedule-engine/`; frame kind, Table verbs › Plan. The critical-path method over a tasks cube, on the `v2.0/25-gantt.md` § 6.1 contract. The rows come as a cube because Predecessors is a list cell (or a nested Task · Type · Lag table) and nesting is the WBS; a Frame widens in, and then its scalar Predecessors cell is one name.
+`nodes/schedule.ts` + `scheduleCpm.ts`, which binds the cube to `@solenoid/schedule-engine` in `packages/schedule-engine/`; frame kind, Table verbs › Plan. The critical-path method over a tasks cube, on the `../tree/specs/computation/schedule-and-gantt.md` contract. The rows come as a cube because Predecessors is a list cell (or a nested Task · Type · Lag table) and nesting is the WBS; a Frame widens in, and then its scalar Predecessors cell is one name.
 - **Core columns:**
   - Task: `Task` / `name` / `title` or the first text column. Names are unique, matched trimmed and case-insensitive.
   - Duration: `Duration` / `days` or the first number column, in days. Blank or 0 is a milestone. An hour-united column converts through `hours`.

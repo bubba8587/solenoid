@@ -94,7 +94,7 @@ Written fresh: the whole component (`GanttFigure.tsx`), the injected stylesheet 
 splitter, the synced two-pane scroll, and the row windower (a ~30-line index range over uniform
 rows, no virtualization dependency).
 
-Studied for design only (`docs/v2.0/25-gantt.md` § 4.3/§ 5/§ 6.3): the **SVAR / Bryntum /
+Studied for design only (`docs/v2.0/25-gantt.md` § 4.3/§ 5, `tree/specs/computation/schedule-and-gantt.md`): the **SVAR / Bryntum /
 Syncfusion** hybrid of DOM/HTML for the grid and labels with SVG for bars and one overlay SVG for
 links (a wide invisible hit-path carries the hover), and **TanStack Virtual**'s windowing
 proportions (its range math, not its code). The chrome (CSS variables, the popup shell, the

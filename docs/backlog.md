@@ -7,21 +7,16 @@ the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promot
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
-## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
+## Dependency updates (walking them one at a time)
 
-Current state (2026-09-13): the walkable set is on latest in-range (`react` 19.3,
-`vite` 8.3, `@xyflow/react` 12.11.6, the Tauri plugins, `@anthropic-ai/sdk` 0.125 — git
-has the walk), and **`vitest` 5 landed** (5.0.0; the whole suite is green, and it now
-transforms with Oxc — the `esbuild: { keepNames: true }` in `vite.config.ts` is only for
-the production `minify: "esbuild"` path, so vitest 5's "esbuild options ignored" warning
-is expected and harmless). **Held major: `mermaid` 12** — it hard-depends on
-`chevrotain` 11, which bundles a `lodash-es` with two unfixed high-severity advisories
-(`_.template` code injection, `_.unset`/`_.omit` prototype pollution); no patched
-`lodash-es` is published, so an `overrides` pin can't clear it. Stay on 11.17.2 until
-chevrotain ships a fixed lodash-es. The rete RENDER packages and `styled-components` were removed outright
-by the React Flow cutover (rete core 2.0.6 + rete-engine + elkjs 0.12 + `@xyflow/react`
-remain). The `.npmrc` `legacy-peer-deps` workaround is REMOVED — the old
-elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
+Current state (2026-09-23): everything is on latest, `mermaid` 12 included. Mermaid 12's
+`chevrotain` 11.1 still asks for `lodash-es` 4.17.23, which carries two high-severity advisories;
+`package.json` `overrides` pins `lodash-es` ^4.18.1, the release that fixes both. Drop the override
+once chevrotain moves off 11.1. `@tauri-apps/plugin-http` stays an exact pin matching the
+`tauri-plugin-http` crate in `Cargo.lock`; bump them together. `magic-string` stays on 0.30 (the
+plugin build's pin; 1.x is a new major). Vitest 5 transforms with Oxc, so the `esbuild: { keepNames:
+true }` in `vite.config.ts` serves only the production minify, and its "esbuild options ignored"
+warning is expected.
 
 ## Release planning (author-run)
 
@@ -78,6 +73,12 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Gantt + Schedule (BUILT 2026-09-12 — `v2.0/25-gantt.md` § 9 is the ledger; follow-ups)
 
+- [ ] **Schedule row faults vs [[C70]] oneScheduleRule (author to rule):** C70 says a per-row fault (a bad
+  Duration, an unparseable date) stays on its row, but `scheduleCpm.ts` throws on every fault and the whole
+  run is one `#VALUE!` on all outputs. Either the code grows a per-row path or C70's line changes.
+- [ ] **Local File's plan `frame` writes Predecessors as grammar text** (`Framing SS+2`), so wiring that frame
+  (not the `plan` cube) into Schedule reads the text as one task name and fails as unknown. Verify, then
+  either write structured predecessors or let Schedule's frame path parse the grammar ([[D67]]).
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
@@ -139,9 +140,6 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
   exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest
   (components, nodes, packages, core modules); what is left is line-granular.
-- [ ] **`docs/v2.0/25-gantt.md` § 6 is the schedule/Gantt spec** (the packages' headers point into it) but lives in
-  the proposals folder, excluded from coverage. Lift § 6.1–6.5 into a spec under `../tree/specs/` (schedule-and-gantt) serving [[C70]]
-  oneScheduleRule / [[C69]] ganttPackages and leave the survey (§ 1–5, 7–8) where it is.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
   declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]

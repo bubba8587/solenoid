@@ -228,7 +228,7 @@ Microsoft's "How Project schedules tasks" pages and the MSPDI schema; MPXJ's
 late dates; no code taken, MPXJ is LGPL); Bryntum's published scheduling scenarios and
 DHTMLX 10's changelog as a list of edge cases; the DCMA 14-point assessment; Excel's
 `WORKDAY.INTL` and `NETWORKDAYS`. The design and the rules it implements are recorded in the
-Solenoid repo's `docs/v2.0/25-gantt.md` § 3 and § 6.
+Solenoid repo's `docs/v2.0/25-gantt.md` § 3 and `tree/specs/computation/schedule-and-gantt.md`.
 
 ## Not in this package
 

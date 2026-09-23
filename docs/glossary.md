@@ -115,7 +115,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Plan (tasks cube)**: the Schedule node's input shape: one row per task, Predecessors a
   list cell or a nested Task · Type · Lag table, nesting as the work breakdown, the optional
   Start / Finish / Deadline / Manual / Complete columns; a Local File's Project XML or
-  grammar CSV arrives in this shape. (`scheduleCpm.ts`, `planImport.ts`; `v2.0/25-gantt.md` § 6.1)
+  grammar CSV arrives in this shape. (`scheduleCpm.ts`, `planImport.ts`; `../tree/specs/computation/schedule-and-gantt.md`)
 - **Gantt figure**: the read-only `chart`-socket figure of a scheduled plan: bars, milestone
   diamonds, summary brackets, dependency arrows, the critical path, today / status lines,
   shaded non-working days. Data-only payload (`packages/gantt-layout/src/payload.ts`), laid

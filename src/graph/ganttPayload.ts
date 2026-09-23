@@ -1,6 +1,6 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing
 // The Gantt figure's payload, data and never geometry, read from any table with the Schedule node's computed
-// columns, so a Filter or Sort between them still draws (docs/v2.0/25-gantt.md § 6.3).
+// columns, so a Filter or Sort between them still draws (tree/specs/computation/schedule-and-gantt.md).
 
 import { isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type FrameValue, type CubeColumn } from "./frame";
 import { solError, type SolError } from "./errorValue";

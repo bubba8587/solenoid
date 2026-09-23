@@ -23,6 +23,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/computation/frame-verbs.md` | the Frame value, lazy frames, the JS / Polars backend seam, every relational verb | `frame.ts`, `frameVerbs.ts`, `frameBackend.ts`, `src-tauri/src/engine.rs` |
 | `../tree/specs/computation/composite-nodes.md` | composite nodes: ports, run modes, the heavy-mode hold, loops, save and load | `nodes/composite.ts`, `components/CompositeNode.tsx` |
 | `../tree/specs/computation/chart-figures.md` | the values on the `chart` socket, the figure nodes, the options string, rendering | `nodes/visual.ts`, `nodes/chartOptions.ts`, `chartRender.tsx` |
+| `../tree/specs/computation/schedule-and-gantt.md` | the tasks cube, the Schedule and Gantt nodes, plan import, the Gantt figure, dates and precision | `scheduleCpm.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `ganttPayload.ts`, `planImport.ts`, `packages/schedule-engine`, `packages/gantt-layout`, `packages/gantt-react` |
 | `../tree/specs/computation/equation-solver.md` | solving a relation for any one variable | `equationSolve.ts` |
 | `../tree/specs/computation/bordered-grid-fill.md` | filling blank cells in a bordered grid | `mathUtils.ts` `fillBorderedGrid` |
 | `../tree/specs/computation/script-sandbox.md` | running Script code in a worker | `scriptWorker.ts`, `scriptExecutor.ts`, `nodes/scriptRun.ts` |

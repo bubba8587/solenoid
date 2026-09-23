@@ -1,6 +1,6 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[D67]] grammarOnlyAtBorder
 // A plan file into the tasks cube the Schedule node reads; predecessor grammar (`3FS+2d`) resolves to task names
-// here, at the border, and never lives in a cell (docs/v2.0/25-gantt.md § 6.1). Pure: no I/O, no rete.
+// here, at the border, and never lives in a cell (tree/specs/computation/schedule-and-gantt.md). Pure: no I/O, no rete.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from "./frame";
 import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, predecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";

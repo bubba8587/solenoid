@@ -320,7 +320,7 @@ The marketing stages (the surfaces carrying `.sol-flow-reveal`) animate their en
 
 ## Chart figures
 
-A figure on a `chart` socket carries data, not geometry, and lays itself out at its measured width (`docs/v2.0/25-gantt.md` § 6.3; the Gantt is the first figure that isn't a single `<svg>`).
+A figure on a `chart` socket carries data, not geometry, and lays itself out at its measured width ([[schedule-and-gantt]]; the Gantt is the first figure that isn't a single `<svg>`).
 
 - The value on the cable is flat JSON, a `ChartPayload`.
 - The same figure draws at four sizes: the card's [Chart] chip, the resizable Display (with a size cap), the popup, and a Report embed. None of them uses a pre-rendered pixel frame.
