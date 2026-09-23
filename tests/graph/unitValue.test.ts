@@ -261,6 +261,13 @@ describe("affine temperatures (review pins)", () => {
     expect(isSolError(arithmeticCell("pow", degC(20), 2))).toBe(true);
     expect(isUnitCell(arithmeticCell("mul", fromUnit(20, U("K"), "K"), 2))).toBe(true); // kelvin is linear
   });
+  it("a bare number compared with a reading is a reading: 25 °C > 30 is FALSE", () => {
+    const r = compareUnits(degC(25), 30) as { l: number; r: number };
+    expect(r.l > r.r).toBe(false);
+    expect(r.r).toBeCloseTo(303.15, 9);
+    const k = compareUnits(fromUnit(5, U("km"), "km"), 3000) as { l: number; r: number };
+    expect(k.l > k.r).toBe(false); // a linear unit is unchanged: 3000 km
+  });
   it("Aggregate follows the same rule: a spread or a sum of readings is a delta", async () => {
     const { AggregateNode } = await import("../../src/graph/nodes/list");
     const agg = (op: string, list: unknown[]) => new AggregateNode({ op: op as never }).data({ list: [list as never] }).result;

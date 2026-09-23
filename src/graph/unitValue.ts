@@ -39,6 +39,13 @@ export function adoptMagnitude(face: number, display: string | undefined): numbe
   return s == null || s === 1 ? face : face * s;
 }
 
+/** A bare face value read as a READING in `display`: the offset too, so 30 beside a °C
+ *  reading is 30 °C. Linear units read as `adoptMagnitude`. */
+export function adoptReading(face: number, display: string | undefined): number {
+  const base = adoptMagnitude(face, display);
+  return display ? base + (_displayOffset(display) ?? 0) : base;
+}
+
 export function tagRatio(value: number): UnitCell {
   return { __unitCell: true, value, dim: {}, ratio: true };
 }
@@ -179,8 +186,8 @@ export function compareUnits(a: Operand, b: Operand): { l: number; r: number } |
     return unitError("Can't compare different currencies — no exchange rate.");
   const dispA = isUnitCell(a) ? a.display : undefined;
   const dispB = isUnitCell(b) ? b.display : undefined;
-  const l = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(magnitudeOf(a), dispB) : magnitudeOf(a);
-  const r = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(magnitudeOf(b), dispA) : magnitudeOf(b);
+  const l = isDimensionless(da) && !isDimensionless(db) ? adoptReading(magnitudeOf(a), dispB) : magnitudeOf(a);
+  const r = isDimensionless(db) && !isDimensionless(da) ? adoptReading(magnitudeOf(b), dispA) : magnitudeOf(b);
   return { l, r };
 }
 
