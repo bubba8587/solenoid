@@ -1,4 +1,4 @@
-// [[D32]] refreshOutsideRebuild (refreshConnection). Mechanics: tree/specs/computation/live-connections.md., [[C104]] foreignDocNetworkGate
+// [[D32]] refreshOutsideRebuild (refreshConnection). Mechanics: tree/specs/computation/live-connections.md., [[C103]] untrustedContentSeams
 // A connection node holds only a *reference*, never the data. Its fetched Frame is
 // cached under key(), so an unrelated processGraph() re-hits neither network nor disk.
 import { createNotifier } from "./storeKit";

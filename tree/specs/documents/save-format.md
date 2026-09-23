@@ -47,7 +47,7 @@ The top-level object. Optional fields are omitted when empty, never written as e
 | `frameFormats` | `FrameColumnFormat[]`? | Per-column display formats on a Frame: `{ nodeId, column, ann }`, where `ann` is a Format Controller annotation object (`docs/format-model.md`). |
 | `palette` | `{ base?, overrides? }`? | The document's palette choice layered over the app-wide one. `overrides` maps slot id to hex. |
 | `reportPalette` | `{ base?, overrides? }`? | The same, scoped to report and export surfaces. |
-| `meta` | `{ author?, tags?, foreign?, networkAllowed? }`? | Document properties. `foreign` and `networkAllowed` carry the per-document network permission ([[C104]] foreignDocNetworkGate). The document title is not here; it is the library name. |
+| `meta` | `{ author?, tags?, foreign?, networkAllowed? }`? | Document properties. `foreign` and `networkAllowed` carry the per-document network permission ([[C103]] untrustedContentSeams). The document title is not here; it is the library name. |
 | `savedAt` | number? | Epoch ms of the disk write that produced this file. Stamped only by the file-write path, never by `serializeGraph`, so autosaves, undo snapshots and seeds stay stable. |
 | `packs` | string[]? | Ids of the packs active at save time, a provenance record. Nothing reads it on load. |
 

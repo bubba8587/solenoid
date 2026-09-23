@@ -33,6 +33,10 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node ([[C7]] authorRuled; `archive/1.4-plan.md` D3).
 
+## Node merges (parked by the author, [[B11]] maximalMerge)
+
+- [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
+
 ## Composites
 
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel

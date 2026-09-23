@@ -1,4 +1,4 @@
-// [[C58]], [[C48]], [[C72]]
+// [[C58]], [[C48]], [[B11]]
 import { ClassicPreset } from "rete";
 import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";

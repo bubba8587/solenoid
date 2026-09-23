@@ -50,7 +50,7 @@ Each card's status lives in `connectionStore` as `idle`, `loading`, `ok` (with r
 
 ## The network gate
 
-A document opened or imported from outside the app is **foreign**, and its connection cards fetch nothing until the user allows it ([[C104]] foreignDocNetworkGate). `networkAllowed()` is true for the user's own documents, when the "always allow" setting (`alwaysAllowNetwork`) is on, or when this document has been granted. A card that fetches over the network calls `requestNetwork(id)` before each fetch (Local File reads the disk and does not):
+A document opened or imported from outside the app is **foreign**, and its connection cards fetch nothing until the user allows it ([[C103]] untrustedContentSeams). `networkAllowed()` is true for the user's own documents, when the "always allow" setting (`alwaysAllowNetwork`) is on, or when this document has been granted. A card that fetches over the network calls `requestNetwork(id)` before each fetch (Local File reads the disk and does not):
 
 - allowed: the card proceeds;
 - not allowed: the card records itself as gated, and on the next tick, once every gated card has registered, one sticky warning asks "This document connects to N services. Allow it to fetch?" with an **Allow** button. The prompt shows once per document.

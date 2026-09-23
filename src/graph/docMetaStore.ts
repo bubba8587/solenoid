@@ -1,4 +1,4 @@
-// [[C104]] foreignDocNetworkGate
+// [[C103]] untrustedContentSeams
 import { createNotifier, createToggleStore } from "./storeKit";
 
 // The OPEN document's author + tags, a module singleton so Rete's separate React root

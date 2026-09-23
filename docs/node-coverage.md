@@ -46,9 +46,9 @@ scrollbar that sweep removed.
 - **Transform** (each also a formula): DIFF (a Δ / % / ∇ gradient toggle), Shift (blank, or wrap like `numpy.roll`), Bin (digitize), EWMA, Convolve, Integrate (trapz), Run Lengths (rle, into a value and count table). **Build:** Combinations (a combos / perms toggle, capped at 10k rows). Toggle cards share `makeToggleNodeComponent` (`standardNode.tsx`).
 - **From the Python and R survey** (`python-r-gap.md`, Tier 1): Aggregate gained PTP, IQR, MAD, SEM, CV and RMS; Correl gained SPEARMAN and KENDALL; Bin gained a quantiles mode (NTILE); Outliers (z, IQR or MAD, into one Value / Outlier frame); Spectrum (FFT); Text Similarity and Fuzzy Match (Text ▸ Measure & Encode); Forecast (ETS) under Regression; and Hypothesis Test gained ANOVA, Kruskal–Wallis, Mann–Whitney, Wilcoxon, Fisher exact, KS, two-proportion z and binomial (with table sockets for the k-group ops).
 
-**Stats**: the ONE Distributions node (oneDistributionNode, below) covers the distribution families; **Hypothesis Test** is likewise ONE node (nodeCombiningRound1): Z.TEST / T.TEST (paired, equal var, Welch) / F.TEST / CHISQ.TEST as ops — every op emits a p-value, the two-sample ops share the a/b keys so switches keep cables.
+**Stats**: the ONE Distributions node (oneDistributionNode, below) covers the distribution families; **Hypothesis Test** is likewise ONE node (maximalMerge): Z.TEST / T.TEST (paired, equal var, Welch) / F.TEST / CHISQ.TEST as ops — every op emits a p-value, the two-sample ops share the a/b keys so switches keep cables.
 
-**Finance**: TVM — ONE acausal Equation node covering PMT/PV/FV/NPER/RATE (wire four of {rate, nper, pmt, pv, fv}, the fifth solves; payment-timing dropdown swaps the locked relation; rate = 0 uses the exact limit form), Compound Growth (fv = pv·(1+rate)^nper; covers PDURATION/RRI) and Effective Rate (EFFECT/NOMINAL) as locked Equation presets, IPMT/PPMT, CumPmt, NPV and IRR (each with a Periodic/Dated SegToggle — Dated reveals a Dates input and IS XNPV/XIRR, nodeCombiningRound1), MIRR, depreciation (ONE node since nodeCombiningRound1: SLN/DB/DDB/SYD/VDB, per-op input rows), bond pricing (PRICE/YIELD, odd coupons, accrued interest).
+**Finance**: TVM — ONE acausal Equation node covering PMT/PV/FV/NPER/RATE (wire four of {rate, nper, pmt, pv, fv}, the fifth solves; payment-timing dropdown swaps the locked relation; rate = 0 uses the exact limit form), Compound Growth (fv = pv·(1+rate)^nper; covers PDURATION/RRI) and Effective Rate (EFFECT/NOMINAL) as locked Equation presets, IPMT/PPMT, CumPmt, NPV and IRR (each with a Periodic/Dated SegToggle — Dated reveals a Dates input and IS XNPV/XIRR, [[B11]] maximalMerge), MIRR, depreciation (ONE node since the round-1 merges ([[B11]] maximalMerge): SLN/DB/DDB/SYD/VDB, per-op input rows), bond pricing (PRICE/YIELD, odd coupons, accrued interest).
 
 **Distributions**: ONE Distributions node (oneDistributionNode, 2026-08-09): a distribution dropdown (normal, standard normal, **PHI** — φ, the standard-normal density — and **GAUSS** — Φ−½, the 0-to-x half-area, both single-input forms that moved here from the Math node 2026-08-25, t, chi-squared, F, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial) plus a form dropdown (CDF / PDF / PMF / tails / inverse; GAUSS carries the one "Φ − ½" form); the inverse trades the x input for a probability, a distribution switch swaps the parameter inputs. `DIST_SPECS` in `nodes/distribution.ts` is the SSOT. BINOM.DIST.RANGE stays its own node. Z/T/F/Chisq tests unchanged.
 
@@ -61,7 +61,7 @@ scrollbar that sweep removed.
   - TEXTSPLIT is already 1-D → 1-D. Broadcasting would need a rank-2 result, and the lattice has no 1-D→2-D edge for it.
   - Regex stays on the wildcard ladder because its element type depends on the op. It emits `anycombo` rather than `any`, so its dot doesn't draw a scalar circle on a port that can spill a list.
 
-**Date & Time**: TODAY/NOW, DATE/TIME construct, date parts, WEEKNUM/WEEKDAY, DATEDIF, **Workdays** (ONE node, nodeCombiningRound1: WORKDAY/NETWORKDAYS as inverse forms — the op swaps Days↔End date and retypes the output date↔number via `retypeOutputCables`), date formatting.
+**Date & Time**: TODAY/NOW, DATE/TIME construct, date parts, WEEKNUM/WEEKDAY, DATEDIF, **Workdays** (ONE node ([[B11]] maximalMerge): WORKDAY/NETWORKDAYS as inverse forms — the op swaps Days↔End date and retypes the output date↔number via `retypeOutputCables`), date formatting.
 
 **Complex numbers**: COMPLEX build/unpack, 16 unary ops, 4 binary ops, IMPOWER.
 
@@ -139,7 +139,7 @@ scrollbar that sweep removed.
 - **Holidays** (Nager.Date): a year's public holidays as a frame, a Dates list feeding NETWORKDAYS/WORKDAY, and days-to-next. The region is optional.
 - **Currency** (Frankfurter ECB FX): a **Spot/History** `mode` swaps the sockets in place.
   - Spot: Amount/From/To → Converted (authored with the target currency as an FC unit), plus Rate and As-of.
-  - History: From/To and a typeable date range → a Date·Rate `frame` to chart. The range endpoint fetch sits behind the same [[C104]] foreignDocNetworkGate gate.
+  - History: From/To and a typeable date range → a Date·Rate `frame` to chart. The range endpoint fetch sits behind the same network gate ([[C103]] untrustedContentSeams).
 - **Vault Folder** (`nodes/connection.ts` VaultFolderNode + the pure `vaultCube.ts`/`mdbaseTypes.ts`/`obsidianTypes.ts`/`dailyNotesConfig.ts`; in the Connections › Obsidian menu with the other vault nodes): an Obsidian folder becomes one `cube`, a row per note.
   - Columns: the Bases `file.*` built-ins (path/name/folder/ext/size/created/modified/tags/links/embeds/date) plus the frontmatter union. Scalars are typed, lists become list cells, and rows-of-objects become nested frames.
   - Typing per key: mdbase, then `.obsidian/types.json`, then a guesser widened across rows. R3 date-from-name uses the daily-notes format by default.
@@ -221,7 +221,7 @@ scrollbar that sweep removed.
   - **Calendar** → `from`/`to` date inputs (unwired: today .. today+7; a wired blank fetches nothing) and an `events` frame (Title · Start · End · Source).
   - **Stats** → five number outputs.
 - It pages `GET /api/tasks` (200 per page) until `hasMore` is false. `{success,data}` envelope errors surface in the status line (401 → "token"; unreachable → "turn on its HTTP API").
-- The WebSource sync-background fetch, keyed on provider + url + window, rides the [[C104]] foreignDocNetworkGate gate.
+- The WebSource sync-background fetch, keyed on provider + url + window, rides the network gate ([[C103]] untrustedContentSeams).
 - The provider switch prunes departing cables through `dropInputCables` + `dropStrandedFrontmatterCables` ([[D10]] onePrunePath).
 - Tests: `taskNotesApi.test.ts` (one fixture per endpoint), `nodes/taskNotes.test.ts`. Write Tasks is below.
 - Not yet: the calendar-events source shape beyond title/start/end/source.

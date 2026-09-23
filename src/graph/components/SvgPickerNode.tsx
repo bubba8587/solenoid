@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue, [[C104]] foreignDocNetworkGate
+// [[C95]] commitOnEnter, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[C100]] chartIsAValue
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
