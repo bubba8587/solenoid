@@ -288,7 +288,7 @@ Assets are named `<note name>-<ref name>.<ext>` and go to the asset subfolder se
 
 - `overwrite`: the note becomes the markdown.
 - `append`: the markdown is added after the existing text, with trailing whitespace trimmed and one blank line between.
-- `block`: the writer owns the span between `%% solenoid:begin <label> %%` and `%% solenoid:end %%` (`managedBlock.ts`). An existing pair outside code fences has its span replaced; otherwise a new pair is appended after one blank line, and an orphan begin marker is left alone. Content carrying `%%` outside a fence is refused, since Obsidian would hide it.
+- `block`: the writer owns the span between `%% solenoid:begin <label> %%` and `%% solenoid:end %%` (`managedBlock.ts`). An existing pair outside code fences has its span replaced; otherwise a new pair is appended after one blank line, and an orphan begin marker is left alone. An end marker closes the nearest begin marker of any name before it, so an orphan never pairs with a later block's end and a rewrite never swallows the text between them. Content carrying `%%` outside a fence is refused, since Obsidian would hide it.
 
 A note that does not exist yet is written as the markdown (wrapped in markers for `block`). In `block` mode the writer's addressable name keys the pair, so two writers own two blocks; the markers are Obsidian comments, hidden in reading view. An unclosed code fence runs to the end of the note.
 
