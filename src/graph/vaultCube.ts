@@ -7,6 +7,7 @@ import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } fro
 import { parseDate, noteDateText } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 import type { PluginColumnTypes, ColumnPicks } from "./pluginColumnTypes";
+import { fencedLines } from "./managedBlock";
 
 export interface VaultNote {
   path: string;
@@ -70,9 +71,13 @@ function extractEmbeds(text: string): string[] {
   for (const m of text.matchAll(EMBED)) out.push(linkTarget(m[1]));
   return uniqueInOrder(out);
 }
+/** Obsidian reads no tag inside a code fence or a code span. */
 export function extractInlineTags(body: string): string[] {
+  const lines = body.split("\n");
+  const fenced = fencedLines(lines);
+  const prose = lines.filter((_, i) => !fenced[i]).join("\n").replace(/(`+)[^`]*?\1/g, " ");
   const out: string[] = [];
-  for (const m of body.matchAll(INLINE_TAG)) if (isTagBody(m[1])) out.push(m[1]);
+  for (const m of prose.matchAll(INLINE_TAG)) if (isTagBody(m[1])) out.push(m[1]);
   return out;
 }
 

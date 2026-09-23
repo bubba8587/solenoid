@@ -257,4 +257,8 @@ describe("extractInlineTags", () => {
     expect(extractInlineTags("Item #1 and #2024 but #y2024, #1984/books, #café and #a-b_c/d."))
       .toEqual(["y2024", "1984/books", "café", "a-b_c/d"]);
   });
+
+  it("skips a tag in a code fence or a code span", () => {
+    expect(extractInlineTags("#a\n```\n#b\n```\nsee `#c` and #d")).toEqual(["a", "d"]);
+  });
 });
