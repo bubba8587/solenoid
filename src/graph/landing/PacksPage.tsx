@@ -28,8 +28,8 @@ export default function PacksPage() {
               <Reveal delay={110}>
                 <p>
                   Packs add nodes and functions for a domain. Geometry and the Excel timesavers
-                  are on out of the box; turn the rest on under Settings ▸ Packs. Every pack keeps
-                  its functions on the Formula surface and its units on the Format Controller.
+                  are on out of the box; turn the rest on under Settings ▸ Packs. A pack's functions
+                  also work in formulas, and its units show up in the Format Controller.
                 </p>
               </Reveal>
             </div>

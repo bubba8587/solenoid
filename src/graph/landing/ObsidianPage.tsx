@@ -90,16 +90,16 @@ export default function ObsidianPage() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Solenoid turbocharges your Obsidian notes with real spreadsheet
-                  capabilities. You can manage frontmatter properties, read{" "}
+                  Solenoid brings spreadsheet math to your Obsidian notes. Read and write
+                  frontmatter properties, pull tasks from{" "}
                   <a href="https://tasknotes.dev/" target="_blank" rel="noreferrer">
                     TaskNotes
-                  </a>{" "}
-                  data, and insert values into your notes via{" "}
+                  </a>
+                  , and write computed values into your notes with{" "}
                   <a href="https://github.com/obsidianmd/knap" target="_blank" rel="noreferrer">
                     Knap
                   </a>{" "}
-                  + Reports.
+                  and Reports.
                 </p>
               </Reveal>
               <Reveal delay={220}>
@@ -124,15 +124,15 @@ export default function ObsidianPage() {
             <Reveal>
               <LiveGraph build={buildReportPipeline} />
               <p className="sol-landing__demo-note">
-                This graph is live. Edit an input, or open the report to read the note it
-                writes — everything downstream recomputes.
+                This graph is live. Edit an input and everything downstream recomputes, or
+                open the report to read the note it writes.
               </p>
             </Reveal>
           </section>
 
           <section className="sol-landing__section obs-flow-section">
             <Reveal>
-              <h2>A knowledge management system bridge</h2>
+              <h2>Between your vault and Excel</h2>
             </Reveal>
             <Reveal delay={100}>
               <FlowScene />
@@ -149,19 +149,17 @@ export default function ObsidianPage() {
             <p>A folder of notes, read as one table.</p>
           </Feature>
 
-          <Feature title="Import a Note" flip scene={<NoteImportScene />}>
+          <Feature title="Import a note" flip scene={<NoteImportScene />}>
             <p>
-              Selecting a note from your vault not only renders it in your Solenoid graph
-              but also exposes all of its frontmatter properties as values you can use as
-              inputs.
+              Pick a note from your vault and Solenoid shows it on the canvas, with every
+              frontmatter property as a value you can use as an input.
             </p>
           </Feature>
 
           <Feature title="TaskNotes API and .mdbase" scene={<TaskNotesScene />}>
             <p>
-              Solenoid connects to the local TaskNotes HTTP API for advanced task and
-              calendar data. Solenoid also uses .mdbase schema to determine value types
-              where possible.
+              Solenoid reads task and calendar data from the local TaskNotes HTTP API, and
+              reads .mdbase schemas to type values where it can.
             </p>
           </Feature>
 
@@ -264,8 +262,7 @@ export default function ObsidianPage() {
                   <span className="obs-step-n">1</span>
                   <div>
                     <strong>Get the desktop app.</strong> The integration reads and writes
-                    files, so it runs in the Solenoid desktop build. It is free and open
-                    source.
+                    your files, so it runs in the desktop build.
                   </div>
                 </li>
                 <li>

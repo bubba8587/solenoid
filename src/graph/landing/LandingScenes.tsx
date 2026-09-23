@@ -454,7 +454,7 @@ export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
     body:
       "# Weekly review\n\n" +
       "Logged **{{ focus }} h** of deep work across **{{ tasks }}** finished tasks. " +
-      "Nice momentum — keep the streak going.",
+      "Nice momentum. Keep the streak going.",
   });
   const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
   write.stringLiterals.path = "Weekly review";

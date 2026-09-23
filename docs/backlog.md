@@ -111,8 +111,8 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
 
-- [ ] **Copy pass on `/download` + `/examples` + `/packs`.** New-page prose is placeholder in the
-  author's voice, marked `NEW COPY` in those page files. Author to rewrite.
+- [ ] **Author reviews the site copy.** An agent pass (2026-09-23) brought every page to DESIGN.md §7;
+  the Packs and Examples pages now render from the pack definitions and the seed list.
 - [ ] **Public changelog page (parked, author wants it later).** Would live at `/changelog` off
   `docs/release-notes-features.md` + the What's New slides. Deferred so it does not just mirror
   GitHub Releases; revisit when there is a reason it earns its own surface.

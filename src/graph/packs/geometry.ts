@@ -102,7 +102,7 @@ export const GEOMETRY_PACK: Pack = {
   id: "geometry",
   group: "Everyday",
   name: "Geometry",
-  description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids. On by default. Turn off to declutter.",
+  description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids.",
   builtin: true,
   defaultActive: true,
   nodes: [

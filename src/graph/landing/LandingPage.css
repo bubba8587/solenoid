@@ -432,6 +432,7 @@
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text);
+  white-space: nowrap;
 }
 
 /* ── Diagram plane (fixed-coordinate scenes, scaled to fit) ── */
@@ -850,6 +851,10 @@
     display: none;
   }
 
+  .sol-scene-thread {
+    display: none;
+  }
+
   .sol-landing__section {
     margin: 68px 0 0;
   }
@@ -869,6 +874,10 @@
 @media (max-width: 580px) {
   .sol-landing__inner {
     padding: 0 18px;
+  }
+
+  .sol-scene-stage {
+    max-height: 82vw;
   }
 
   .sol-landing__hero {
