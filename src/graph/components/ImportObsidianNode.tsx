@@ -6,7 +6,6 @@ import type { ImportObsidianNode as ImportObsidianNodeType } from "../rete-nodes
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { settingsStore } from "../settingsStore";
-import { connectionStore } from "../connectionStore";
 import { SwatchGrid } from "./SwatchGrid";
 import { NodeSocket } from "./NodeSocket";
 import { FieldRow } from "./NoteNode";
@@ -117,15 +116,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minutes, desktop, data.fileName, vault]);
-  // "Refresh all connections" re-reads this note too: the file is read here, not in data().
-  const gen = useSyncExternalStore(connectionStore.subscribe, connectionStore.gen);
-  const seenGen = useRef(gen);
-  useEffect(() => {
-    if (gen === seenGen.current) return;
-    seenGen.current = gen;
-    void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gen]);
 
   function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }

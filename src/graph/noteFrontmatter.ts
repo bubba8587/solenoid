@@ -1,6 +1,6 @@
 // [[B1]] obsidianBet (any spelling Obsidian emits parses)
 import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type Pair, type YAMLSeq } from "yaml";
-import { parseDateToSerial } from "./nodes/dateSerial";
+import { parseDateToSerial, formatDateSerial } from "./nodes/dateSerial";
 import { typeAtRank } from "./sockets";
 import { parseCx } from "./cxValue";
 
@@ -43,9 +43,15 @@ export interface ParsedFrontmatter {
 }
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+/** Obsidian's Date & time property, as it and Write to Obsidian spell it: no zone, so a wall-clock time. */
+const DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
 const NUMERIC = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
 type ScalarKind = "number" | "string" | "logical" | "date" | "complex";
+
+/** A date serial as the ISO text a note holds: the day, or the day and time when it has one. */
+export const isoDateText = (serial: number): string =>
+  formatDateSerial(serial, Number.isInteger(serial) ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
 
 const isComplexText = (t: string): boolean => /[ij]$/.test(t) && parseCx(t) !== null;
 
@@ -56,15 +62,15 @@ export function guessScalarText(text: string): { value: FrontmatterScalar; kind:
   if (lower === "true") return { value: true, kind: "logical" };
   if (lower === "false") return { value: false, kind: "logical" };
   if (NUMERIC.test(t)) return { value: Number(t), kind: "number" };
-  if (DATE_ONLY.test(t)) {
+  if (DATE_ONLY.test(t) || DATE_TIME.test(t)) {
     const serial = parseDateToSerial(t);
-    if (Number.isFinite(serial)) return { value: Math.round(serial), kind: "date" };
+    if (Number.isFinite(serial)) return { value: DATE_ONLY.test(t) ? Math.round(serial) : serial, kind: "date" };
   }
   if (isComplexText(t)) return { value: t, kind: "complex" };
   return { value: t, kind: "string" };
 }
 
-function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; kind: ScalarKind } {
+function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; kind: ScalarKind; text?: string } {
   if (!isScalar(node)) return { value: node == null ? null : String(node), kind: "string" };
   const v = node.value;
   const quoted = node.type === Scalar.QUOTE_DOUBLE || node.type === Scalar.QUOTE_SINGLE;
@@ -73,9 +79,9 @@ function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; 
   if (typeof v === "number") return { value: Number.isFinite(v) ? v : null, kind: "number" };
   if (typeof v === "bigint") return { value: Number(v), kind: "number" };
   const s = String(v);
-  if (!quoted && DATE_ONLY.test(s)) {
+  if (!quoted && (DATE_ONLY.test(s) || DATE_TIME.test(s))) {
     const serial = parseDateToSerial(s);
-    if (Number.isFinite(serial)) return { value: Math.round(serial), kind: "date" };
+    if (Number.isFinite(serial)) return { value: DATE_ONLY.test(s) ? Math.round(serial) : serial, kind: "date", text: s };
   }
   if (!quoted && isComplexText(s.trim())) return { value: s.trim(), kind: "complex" };
   return { value: s, kind: "string" };
@@ -109,18 +115,22 @@ function readRow(node: Node | null | undefined): FrontmatterRow | null {
   return row;
 }
 
+/** Mixed families are text, never typed by the first element, so no element is coerced away ([[B17]] typedValueModel). */
 function listType(values: FrontmatterScalar[], kinds: ScalarKind[]): FrontmatterFieldType {
   const present = kinds.filter((_, i) => values[i] !== null);
-  if (present.length > 0 && present.every((k) => k === "date")) return "datelist";
+  if (present.length === 0) return "list";
+  if (present.every((k) => k === "date")) return "datelist";
   if (present.some((k) => k === "complex") && present.every((k) => k === "complex" || k === "number")) return "complexlist";
-  for (const v of values) {
-    if (v === null) continue;
-    if (typeof v === "boolean") return "logicallist";
-    if (typeof v === "number") return "list";
-    return "strlist";
-  }
-  return "list";
+  if (present.every((k) => k === "logical")) return "logicallist";
+  if (present.every((k) => k === "number" || k === "date")) return "list";
+  return "strlist";
 }
+
+type Read = { value: FrontmatterScalar; kind: ScalarKind; text?: string };
+
+/** In a text list a date keeps the text written, not its serial. */
+const asElement = (r: Read, family: FrontmatterFieldType): FrontmatterScalar =>
+  r.kind === "date" && (family === "strlist" || family === "strtable") ? (r.text ?? r.value) : r.value;
 
 function dateColumnsOf(items: (Node | null)[]): string[] {
   const seen = new Map<string, boolean>();
@@ -150,10 +160,10 @@ function fieldFromMatrix(key: string, items: (Node | null)[]): FrontmatterField 
   if (items.length === 0 || !items.every((x) => isSeq(x) && x.items.every((c) => c == null || isScalar(c)))) return null;
   const read = items.map((row) => (row as YAMLSeq).items.map((c) => readScalar(c as Node | null)));
   const width = read.reduce((m, r) => Math.max(m, r.length), 0);
-  const value = read.map((r) => Array.from({ length: width }, (_, j) => r[j]?.value ?? null));
   const flat = read.flat();
-  const asList = listType(flat.map((c) => c.value), flat.map((c) => c.kind));
-  return { key, value, guessed: (typeAtRank(asList, 2) ?? "strtable") as FrontmatterFieldType };
+  const guessed = (typeAtRank(listType(flat.map((c) => c.value), flat.map((c) => c.kind)), 2) ?? "strtable") as FrontmatterFieldType;
+  const value = read.map((r) => Array.from({ length: width }, (_, j) => (r[j] ? asElement(r[j], guessed) : null)));
+  return { key, value, guessed };
 }
 
 function fieldFromSeq(key: string, items: (Node | null)[]): FrontmatterField {
@@ -161,9 +171,9 @@ function fieldFromSeq(key: string, items: (Node | null)[]): FrontmatterField {
   if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[], items);
   const matrix = fieldFromMatrix(key, items);
   if (matrix) return matrix;
-  const read = items.map((x) => (x == null || isScalar(x) ? readScalar(x) : { value: String(x).trim(), kind: "string" as const }));
-  const values = read.map((r) => r.value);
-  return { key, value: values, guessed: listType(values, read.map((r) => r.kind)) };
+  const read: Read[] = items.map((x) => (x == null || isScalar(x) ? readScalar(x) : { value: String(x).trim(), kind: "string" as const }));
+  const guessed = listType(read.map((r) => r.value), read.map((r) => r.kind));
+  return { key, value: read.map((r) => asElement(r, guessed)), guessed };
 }
 
 function fieldOf(key: string, node: Node | null, src: string): FrontmatterField {

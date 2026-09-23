@@ -6,7 +6,7 @@ import type { Schemes } from "../../../src/graph/schemes";
 import { ctorRegistry } from "../../../src/graph/nodeCtorRegistry";
 import { FLAT_CATALOG } from "../../../src/graph/catalogUtils";
 import { extractInit } from "../../../src/graph/copyPaste";
-import { isSolError } from "../../../src/graph/errorValue";
+import { installErrorGuards, isSolError, solError } from "../../../src/graph/errorValue";
 import { isUncertain } from "../../../src/graph/valueKinds";
 import { loopMembers } from "../../../src/graph/graphCompute";
 import { alertStore } from "../../../src/graph/alertStore";
@@ -14,7 +14,7 @@ import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMe
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../../../src/graph/frame";
 import { NumberInputNode } from "../../../src/graph/nodes/input";
 import { ArithmeticNode, MathFXNode } from "../../../src/graph/nodes/scalar";
-import { ComparisonNode } from "../../../src/graph/nodes/logic";
+import { ComparisonNode, IFErrorNode } from "../../../src/graph/nodes/logic";
 
 function connect(
   editor: NodeEditor<Schemes>,
@@ -136,6 +136,28 @@ describe("CompositeNode shell", () => {
 
     const out = await reloaded.data({});
     expect(out[outId]).toBe(5); // 2 + 3, recomputed from the rebuilt internal graph
+  });
+
+  it("a nested composite computes after a reload, without being drilled into", async () => {
+    const inner = new CompositeNode({ label: "Inner" });
+    const num = new NumberInputNode({ value: 42 });
+    const innerOut = new CompositeOutputNode({ label: "V" });
+    await inner.internalEditor.addNode(num as unknown as Schemes["Node"]);
+    await inner.internalEditor.addNode(innerOut as unknown as Schemes["Node"]);
+    await connect(inner.internalEditor, num, "value", innerOut, "value");
+    const innerPort = inner.addOutputPort({ label: "V", tier: "basic", internalNodeId: innerOut.id });
+
+    const outer = new CompositeNode({ label: "Outer" });
+    const outerOut = new CompositeOutputNode({ label: "V" });
+    await outer.internalEditor.addNode(inner as unknown as Schemes["Node"]);
+    await outer.internalEditor.addNode(outerOut as unknown as Schemes["Node"]);
+    await connect(outer.internalEditor, inner, innerPort, outerOut, "value");
+    const outerPort = outer.addOutputPort({ label: "V", tier: "basic", internalNodeId: outerOut.id });
+    expect((await outer.data({}))[outerPort]).toBe(42);
+
+    const reloaded = new CompositeNode(extractInit(outer) as ConstructorParameters<typeof CompositeNode>[0]);
+    await reloaded.hydrate(ctorRegistry());
+    expect((await reloaded.data({}))[outerPort]).toBe(42);
   });
 
   it("NumberInputNode survives a snapshot/hydrate round-trip with its literal intact", async () => {
@@ -1338,5 +1360,62 @@ describe("CompositeNode run modes — review pins", () => {
     c.requestSolve();
     const ok = await c.data({ [aId]: [10] });
     expect(isUncertain(ok[outId])).toBe(true);
+  });
+});
+
+describe("an error crossing the boundary acts as it would unpacked ([[D35]] errorInErrorOut)", () => {
+  // Lane A: A → IFERROR(A, -1) → OutA. Lane B: B → OutB.
+  async function twoLanes() {
+    const c = new CompositeNode();
+    installErrorGuards(c);
+    const inA = new CompositeInputNode({ label: "A" });
+    const inB = new CompositeInputNode({ label: "B" });
+    const catcher = new IFErrorNode();
+    catcher.literals = { value: 0, fallback: -1 };
+    const outA = new CompositeOutputNode({ label: "OutA" });
+    const outB = new CompositeOutputNode({ label: "OutB" });
+    for (const n of [inA, inB, catcher, outA, outB]) {
+      await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+      installErrorGuards(n);
+    }
+    await connect(c.internalEditor, inA, "value", catcher, "value");
+    await connect(c.internalEditor, catcher, "result", outA, "value");
+    await connect(c.internalEditor, inB, "value", outB, "value");
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const bId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const aOut = c.addOutputPort({ label: "OutA", tier: "basic", internalNodeId: outA.id });
+    const bOut = c.addOutputPort({ label: "OutB", tier: "basic", internalNodeId: outB.id });
+    return { c, aId, bId, aOut, bOut };
+  }
+
+  it("a catcher inside catches it, and a lane that never reads it is untouched", async () => {
+    const { c, aId, bId, aOut, bOut } = await twoLanes();
+    const out = await c.data({ [aId]: [solError("#DIV/0!", "")], [bId]: [7] });
+    expect(out[aOut]).toBe(-1);
+    expect(out[bOut]).toBe(7);
+  });
+
+  it("an error that reaches an output marker is that output's value, never a blank", async () => {
+    const { c, aId, bId, aOut, bOut } = await twoLanes();
+    const out = await c.data({ [aId]: [3], [bId]: [solError("#N/A", "")] });
+    expect(out[aOut]).toBe(3);
+    expect((out[bOut] as { code: string }).code).toBe("#N/A");
+  });
+
+  it("Monte Carlo over an error mean gives that error, and goal seek from an error start does too", async () => {
+    const { c, aId, bId, aOut, bOut } = await twoLanes();
+    const markerB = c.internalEditor.getNode(c.inputPorts[1].internalNodeId) as CompositeInputNode;
+    markerB.uncertainty = 1;
+    c.runMode = "montecarlo";
+    c.requestSolve();
+    const mc = await c.data({ [aId]: [3], [bId]: [solError("#VALUE!", "")] });
+    expect((mc[bOut] as { code: string }).code).toBe("#VALUE!");
+    markerB.uncertainty = null;
+    c.runMode = "goal-seek";
+    c.setGoalSeek({ inputPortId: bId, outputPortId: bOut, target: 5 });
+    c.requestSolve();
+    const gs = await c.data({ [aId]: [3], [bId]: [solError("#REF!", "")] });
+    expect((gs[bOut] as { code: string }).code).toBe("#REF!");
+    expect(gs[aOut]).toBe(3);
   });
 });

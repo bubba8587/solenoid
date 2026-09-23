@@ -9,6 +9,7 @@ import {
   SolenoidSocket, cubeSocket, elementFamilyOf, latticeRank, typeAtRank,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
+import { isoDateText } from "../noteFrontmatter";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
 import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
@@ -111,23 +112,23 @@ function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar 
       return typeof v === "boolean" ? v : v === 1 || v === "1" || String(v).toLowerCase() === "true";
     case "date": {
       const s = typeof v === "number" ? v : parseDateToSerial(String(v));
-      return Number.isFinite(s) ? Math.round(s) : null;
+      return Number.isFinite(s) ? s : null;
     }
   }
 }
 
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks): EmittedValue {
+/** `guessed` is what the reader saw: a date pinned to text keeps the ISO text written, not its serial. */
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks, guessed?: FrontmatterFieldType): EmittedValue {
   if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : [], dateColumns, picks);
   if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks);
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
+  const datesAsText = guessed !== undefined && elementFamilyOf(guessed) === "date" && (base === "string" || base === "complex");
+  const one = (e: unknown) => coerceScalar((datesAsText && typeof e === "number" ? isoDateText(e) : e) as FrontmatterScalar, base);
   const items: unknown[] = Array.isArray(value) ? value : value === null ? [] : [value];
-  if (rank === 2) {
-    return items.map((row) => (Array.isArray(row) ? row : [row]).map((e) => coerceScalar(e as FrontmatterScalar, base)));
-  }
-  if (rank === 1) return items.flat().map((e) => coerceScalar(e as FrontmatterScalar, base));
-  const scalar = items.flat()[0] ?? null;
-  return coerceScalar(scalar as FrontmatterScalar, base);
+  if (rank === 2) return items.map((row) => (Array.isArray(row) ? row : [row]).map(one));
+  if (rank === 1) return items.flat().map(one);
+  return one(items.flat()[0] ?? null);
 }
 
 export class NoteNode extends ClassicPreset.Node {
@@ -197,7 +198,7 @@ export class NoteNode extends ClassicPreset.Node {
         else this.fieldTypes[f.key] = pin;
       }
       const type = pin ?? guessed;
-      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key]), type });
+      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key], guessed), type });
     }
     for (const k of [...this._knapRendered.keys()]) if (!this._knapRaw.has(k)) this._knapRendered.delete(k);
     for (const k of Object.keys(this.fieldTypes)) if (!wanted.has(k)) delete this.fieldTypes[k];
@@ -250,7 +251,7 @@ export class NoteNode extends ClassicPreset.Node {
       if (typeof value === "string") { const g = guessScalarText(value); value = g.value; type = g.kind; }
       if (this.fieldTypes[k] === undefined && this.fieldType(k) !== type) retype = true;
       this._knapRendered.set(k, { raw, value, type });
-      this._fieldValues.set(k, coerceValue(value, this.fieldTypes[k] ?? type));
+      this._fieldValues.set(k, coerceValue(value, this.fieldTypes[k] ?? type, undefined, undefined, type));
     }
     if (!retype) return;
     queueMicrotask(() => {
