@@ -83,3 +83,18 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(rows[0].effNodeId).toBe(fc.id);
   });
 });
+
+describe("collapse state is per editor", () => {
+  it("a drill-in's recompute leaves the main canvas's hidden members alone", async () => {
+    const main = await build();
+    const drill = await build();
+    drill.group.collapsed = false;
+    recomputeGroupCollapse(main.editor);
+    recomputeGroupCollapse(drill.editor);
+    expect(groupCollapseStore.isNodeHidden(main.host.id)).toBe(true);
+    expect(groupCollapseStore.isNodeHidden(drill.host.id)).toBe(false);
+    main.group.collapsed = false;
+    recomputeGroupCollapse(main.editor);
+    expect(groupCollapseStore.isNodeHidden(main.host.id)).toBe(false);
+  });
+});

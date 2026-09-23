@@ -12,7 +12,7 @@ Collapsing a group shrinks it to a small card that shows the group's results as 
 
 ## What collapse hides
 
-`recomputeGroupCollapse()` (`groupCollapse.ts`) rebuilds the collapse state for every collapsed group at once. `syncGroupCollapse` calls it.
+`recomputeGroupCollapse(editor)` (`groupCollapse.ts`) rebuilds the collapse state for every collapsed group of one editor at once. `syncGroupCollapse` calls it. The store is shared, but each editor's entries are kept apart, so a drill-in's recompute never clears the main canvas's hidden members or pills, and the drill-in computes its own groups once it has hydrated.
 
 - **Hidden nodes.** Every member is hidden, along with any FC docked to a member (the group's "extended members"). A docked FC collapses with its host, and everything downstream treats it exactly like a member.
 - **Hidden cables.** A cable is hidden only when both ends are hidden in the same collapsed group. A cable that crosses the group's edge stays visible and is redirected to a pill on the card: outbound cables to a pill on the right, next to that value's readout row, and inbound cables to a pill on the left, one per member input. A cable between two different collapsed groups stays visible and runs between both groups' pills.

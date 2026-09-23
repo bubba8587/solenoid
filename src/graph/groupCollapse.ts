@@ -137,13 +137,25 @@ export function groupReadouts(editor: Editor, group: GroupNode): RetainedTermina
   return terminals;
 }
 
+interface Contribution { nodes: string[]; conns: string[]; groups: string[]; outKeys: string[]; inKeys: string[] }
+// Keyed per editor, so a drill-in's recompute never wipes the main canvas's collapse state (or the reverse).
+const _byEditor = new WeakMap<Editor, Contribution>();
+
+function forgetEditor(editor: Editor): void {
+  const c = _byEditor.get(editor);
+  if (!c) return;
+  for (const id of c.nodes) _hiddenNodes.delete(id);
+  for (const id of c.conns) _hiddenConns.delete(id);
+  for (const id of c.groups) { _retained.delete(id); _inputPillList.delete(id); }
+  for (const k of c.outKeys) _outPill.delete(k);
+  for (const k of c.inKeys) _inPill.delete(k);
+}
+
 export function recomputeGroupCollapse(editor: Editor): void {
-  _hiddenNodes.clear();
-  _hiddenConns.clear();
-  _retained.clear();
-  _outPill.clear();
-  _inPill.clear();
-  _inputPillList.clear();
+  forgetEditor(editor);
+  const conns0 = new Set(_hiddenConns);
+  const out0 = new Set(_outPill.keys());
+  const in0 = new Set(_inPill.keys());
 
   const groups = editor.getNodes().filter(
     (n): n is GroupNode => n instanceof GroupNode && n.collapsed,
@@ -279,6 +291,13 @@ export function recomputeGroupCollapse(editor: Editor): void {
     const tg = nodeGroup.get(c.target);
     if (sg && tg && sg === tg) _hiddenConns.add(c.id);
   }
+  _byEditor.set(editor, {
+    nodes: [...nodeGroup.keys()],
+    conns: [..._hiddenConns].filter((id) => !conns0.has(id)),
+    groups: groups.map((g) => g.id),
+    outKeys: [..._outPill.keys()].filter((k) => !out0.has(k)),
+    inKeys: [..._inPill.keys()].filter((k) => !in0.has(k)),
+  });
   notify();
 }
 
