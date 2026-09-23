@@ -83,7 +83,7 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 
 ## Known gaps
 
-- An end hidden inside a collapsed group makes the standoff dormant: the bar is hidden and the constraint is skipped.
+- A linked item dragged into a group stays linked, so a member can be an end after all. An end hidden inside a collapsed group makes the standoff dormant: the bar is hidden, and every solve and cluster reads `liveStandoffs`, which leaves it out.
 - A cluster whose members aren't all in the loose layout falls back to the `forceLock` settle instead of the super-node path.
 - Standoff edits don't record undo steps of their own.
 - Tidy and Cleanup edge cases under heavy overlap have not been fully tested.

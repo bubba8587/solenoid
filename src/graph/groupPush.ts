@@ -7,7 +7,7 @@ import { GroupNode } from "./rete-nodes";
 import { moveGroupMembers, withLockedGroupsPinned } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
 import { computeExpandPush, separateAll, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
-import { standoffStore, standoffClusters, Box as StandoffBox } from "./standoffs";
+import { standoffStore, standoffClusters, liveStandoffs, Box as StandoffBox } from "./standoffs";
 import { solveStandoffs } from "./standoffSolver";
 import { scheduleAutosave } from "./persistence";
 import { settingsStore } from "./settingsStore";
@@ -247,7 +247,7 @@ function runExpandPushes(
   }
 
   if (!standoffStore.isEmpty()) {
-    for (const cluster of standoffClusters(standoffStore.all())) {
+    for (const cluster of standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden))) {
       let lead: Disp = { dx: 0, dy: 0 };
       let leadMag = 0;
       for (const id of cluster) {
@@ -276,7 +276,7 @@ function runExpandPushes(
     const plain = new Map<string, StandoffBox>(
       [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
     );
-    const settle = solveStandoffs(plain, standoffStore.all(), withLockedGroupsPinned(editor, expandedIds), { forceLock: true });
+    const settle = solveStandoffs(plain, liveStandoffs(groupCollapseStore.isNodeHidden), withLockedGroupsPinned(editor, expandedIds), { forceLock: true });
     for (const [id, d] of settle) {
       const b = world.boxes.get(id);
       if (!b) continue;
@@ -293,7 +293,7 @@ function runExpandPushes(
   }
 
   const backstop = separateAll([...world.boxes.values()], {
-    clusters: standoffClusters(standoffStore.all()),
+    clusters: standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden)),
     fixed: locked,
     prefer: expandedIds,
   });
@@ -404,7 +404,7 @@ function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string
   const plain = new Map<string, StandoffBox>(
     [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
   );
-  const disp = solveStandoffs(plain, standoffStore.all(), withLockedGroupsPinned(editor, pinned), { forceLock: true });
+  const disp = solveStandoffs(plain, liveStandoffs(groupCollapseStore.isNodeHidden), withLockedGroupsPinned(editor, pinned), { forceLock: true });
   for (const [id, d] of disp) translatePushed(editor, view, id, d.dx, d.dy);
 }
 
@@ -412,7 +412,7 @@ function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string
 export function settleOverlaps(editor: Editor, view: View, prefer: ReadonlySet<string> = new Set()): void {
   const world = buildWorld(editor, view, new Set());
   const disp = separateAll([...world.boxes.values()], {
-    clusters: standoffClusters(standoffStore.all()),
+    clusters: standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden)),
     fixed: lockedGroupIds(editor),
     prefer,
   });

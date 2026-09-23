@@ -13,9 +13,9 @@ import { nodeSizeStore } from "./nodeSizeStore";
 import { pushForGrownGroups, settleOverlaps } from "./groupPush";
 import { socketFlipStore } from "./socketFlipStore";
 import { collapseStore } from "./collapseStore";
-import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
+import { standoffStore, standoffClusters, settleStandoffs, liveStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
-import { syncGroupCollapse, settleCollapse } from "./groupCollapse";
+import { syncGroupCollapse, settleCollapse, groupCollapseStore } from "./groupCollapse";
 import { fitAll } from "./NavMenu";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
@@ -263,7 +263,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
       const boxOf = (id: string) => measuredBox(view, id, editor);
-      for (const cluster of standoffClusters(standoffStore.all())) {
+      for (const cluster of standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden))) {
         if (!cluster.every((id) => looseTargetIds.has(id))) continue;
         const boxes = cluster
           .map((id) => [id, boxOf(id)] as const)

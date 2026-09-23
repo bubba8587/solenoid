@@ -87,6 +87,11 @@ export function standoffClusters(standoffs: readonly Standoff[] = _standoffs): s
   return clusters;
 }
 
+/** A standoff with an end hidden in a collapsed group is dormant: no bar, no constraint. */
+export function liveStandoffs(isHidden: (id: string) => boolean, standoffs: readonly Standoff[] = _standoffs): Standoff[] {
+  return standoffs.filter((s) => !isHidden(s.a.nodeId) && !isHidden(s.b.nodeId));
+}
+
 type Listener = () => void;
 
 let _standoffs: Standoff[] = [];
