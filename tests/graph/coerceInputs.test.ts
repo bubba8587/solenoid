@@ -409,3 +409,42 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     expect(p.received()!.frame).toEqual([42]);
   });
 });
+
+describe("coerceInputs — text on a number port is #TYPE!, never a parsed number ([[B17]] typedValueModel)", () => {
+  // Only a wildcard cable (XLOOKUP's static trueany result, a passthrough that adopted
+  // text after its outgoing cable was drawn) can land text on a number port; the lattice
+  // refuses the typed edge.
+  function run(dt: string, wired: unknown): unknown {
+    let received: Record<string, unknown[]> | undefined;
+    const node = {
+      data: (inputs: Record<string, unknown[]>) => { received = inputs; return {}; },
+      inputs: { a: { socket: new SolenoidSocket(dt as never) } },
+    };
+    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
+    try { node.data({ a: [wired] }); } catch (e) { return e; }
+    return received!.a?.[0];
+  }
+  const code = (v: unknown) => (v as { code?: string }).code;
+
+  it("a scalar number port fails the node with #TYPE!", () => {
+    expect(code(run("number", "5"))).toBe("#TYPE!");
+    expect(code(run("number", "hello"))).toBe("#TYPE!");
+    expect(code(run("number", ["x"]))).toBe("#TYPE!");
+    expect(code(run("numlist", "5"))).toBe("#TYPE!");
+    expect(code(run("number", cx(1, 2)))).toBe("#TYPE!");
+  });
+  it("a list or matrix port marks the text cell, per cell", () => {
+    const l = run("list", [1, "x", true]) as unknown[];
+    expect(l[0]).toBe(1);
+    expect(code(l[1])).toBe("#TYPE!");
+    expect(l[2]).toBe(1);
+    const m = run("table", [[1, "x"]]) as unknown[][];
+    expect(code(m[0][1])).toBe("#TYPE!");
+  });
+  it("numbers, booleans and blanks still coerce as before", () => {
+    expect(run("number", 5)).toBe(5);
+    expect(run("number", true)).toBe(1);
+    expect(run("number", null)).toBe(null);
+    expect(run("numlist", [1, null])).toEqual([1, null]);
+  });
+});
