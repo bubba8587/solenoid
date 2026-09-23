@@ -9,8 +9,7 @@ const OPS = (Object.keys(DURATION_OP_META) as DurationOp[]).map(op => ({
 
 export function DurationComponent({ data, emit }: NodeProps<DurationNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
-  function handleOp(next: DurationOp) { setOp(next); setLabel(DURATION_OP_META[next].label); }
+  function handleOp(next: DurationOp) { setOp(next); }
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />

@@ -1,4 +1,4 @@
-// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D42]], [[D46]], [[D64]], [[C95]], [[C97]]
+// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D22]], [[D42]], [[D46]], [[D64]], [[C95]], [[C97]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -924,5 +924,19 @@ describe("[[C97]] rechartsLazyChunk — recharts is imported statically by exact
       .filter((f) => /from\s+["'](mermaid|elkjs)/.test(fs.readFileSync(f, "utf8")))
       .map(rel);
     expect(importers).toEqual([]);
+  });
+});
+
+describe("[[D22]] oneNamePerCard — no component syncs a label on an op change", () => {
+  it("no component writes an op's catalog label into node.label", () => {
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      codeLines(file).forEach((l, i) => {
+        if (/setLabel\(\s*[A-Z_]+_OP_META\[/.test(l) || /\.label\s*=\s*[A-Z_]+_OP_META\[/.test(l)) {
+          offenders.push(`${path.relative(SRC, file)}:${i + 1}`);
+        }
+      });
+    }
+    expect(offenders, "an op switch must leave node.label alone; nodeDisplayName derives the title from the op").toEqual([]);
   });
 });

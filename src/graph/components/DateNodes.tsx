@@ -35,10 +35,8 @@ const TODAY_NOW_OPS = (Object.keys(TODAY_NOW_OP_META) as TodayNowOp[]).map(op =>
 
 export function TodayNowComponent({ data, emit }: NodeProps<TodayNowNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: TodayNowOp) {
     setOp(next);
-    setLabel(TODAY_NOW_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -73,7 +71,6 @@ const DATE_TIME_VALUE_OPS = (Object.keys(DATE_TIME_VALUE_OP_META) as DateTimeVal
 
 export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNodeType>) {
   const [op, setOpField] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
 
   async function pickOp(next: DateTimeValueOp) {
     if (next === data.op) return;
@@ -84,7 +81,6 @@ export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNo
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
-    setLabel(DATE_TIME_VALUE_OP_META[next].label);
   }
 
   return (
@@ -102,10 +98,8 @@ const DATE_PART_OPS = (Object.keys(DATE_PART_OP_META) as DatePartOp[]).map(op =>
 
 export function DatePartComponent({ data, emit }: NodeProps<DatePartNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: DatePartOp) {
     setOp(next);
-    setLabel(DATE_PART_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -122,10 +116,8 @@ const WEEK_INFO_OPS = (Object.keys(WEEK_INFO_OP_META) as WeekInfoOp[]).map(op =>
 
 export function WeekInfoComponent({ data, emit }: NodeProps<WeekInfoNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: WeekInfoOp) {
     setOp(next);
-    setLabel(WEEK_INFO_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -143,14 +135,12 @@ const DATE_DIFF_OPS = (Object.keys(DATE_DIFF_OP_META) as DateDiffOp[]).map(op =>
 
 export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   async function handleOp(next: DateDiffOp) {
     // [[D10]] onePrunePath: prune before removeInput.
     if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
       await dropInputCables(data.id, ["basis"]);
     }
     setOp(next);
-    setLabel(DATE_DIFF_OP_META[next].label);
     if (data.syncBasisInput()) await getActiveView()?.rerenderNode(data.id);
   }
   return (
@@ -168,10 +158,8 @@ const DATE_ADD_OPS = (Object.keys(DATE_ADD_OP_META) as DateAddOp[]).map(op => ({
 
 export function DateAddComponent({ data, emit }: NodeProps<DateAddNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: DateAddOp) {
     setOp(next);
-    setLabel(DATE_ADD_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>

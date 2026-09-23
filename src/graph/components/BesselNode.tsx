@@ -9,10 +9,8 @@ const OPS = (Object.keys(BESSEL_OP_META) as BesselOp[]).map(op => ({
 
 export function BesselComponent({ data, emit }: NodeProps<BesselNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: BesselOp) {
     setOp(next);
-    setLabel(BESSEL_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>

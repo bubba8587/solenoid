@@ -139,9 +139,6 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
   exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest
   (components, nodes, packages, core modules); what is left is line-granular.
-- [ ] **Op switches overwrite the header label (author to confirm):** `DateNodes.tsx`, `CouponNode.tsx`,
-  `TextAfterBeforeNode.tsx`, `BesselNode.tsx` and `DurationNode.tsx` write the op's name into `node.label` on an
-  op change, replacing a name the user typed, against [[D22]] oneNamePerCard ("no component syncs a label").
 - [ ] **`docs/v2.0/25-gantt.md` § 6 is the schedule/Gantt spec** (the packages' headers point into it) but lives in
   the proposals folder, excluded from coverage. Lift § 6.1–6.5 into a spec under `../tree/specs/` (schedule-and-gantt) serving [[C70]]
   oneScheduleRule / [[C69]] ganttPackages and leave the survey (§ 1–5, 7–8) where it is.

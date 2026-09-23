@@ -10,10 +10,8 @@ const OPS = (Object.keys(TEXT_AFTER_BEFORE_OP_META) as TextAfterBeforeOp[]).map(
 
 export function TextAfterBeforeComponent({ data, emit }: NodeProps<TextAfterBeforeNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
-  const [, setLabel] = useNodeField(data, "label");
   function handleOp(next: TextAfterBeforeOp) {
     setOp(next);
-    setLabel(TEXT_AFTER_BEFORE_OP_META[next].label);
   }
   return (
     <NodeShell node={data} emit={emit}>
