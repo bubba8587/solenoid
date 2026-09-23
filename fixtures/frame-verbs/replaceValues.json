@@ -527,6 +527,120 @@
     "mode": "cell"
    },
    "expectError": "#REF!"
+  },
+  {
+   "name": "a blank replacement blanks a text cell",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "replaceValues",
+    "column": "s",
+    "find": "a",
+    "replaceWith": "",
+    "mode": "cell"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "string",
+      "values": [
+       null,
+       "b",
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "find reads a hex number as JavaScript does",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        16,
+        10
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "replaceValues",
+    "column": "n",
+    "find": "0x10",
+    "replaceWith": "0b11",
+    "mode": "cell"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       3,
+       10
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "find that spells infinity matches no number",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "replaceValues",
+    "column": "n",
+    "find": "inf",
+    "replaceWith": "0",
+    "mode": "cell"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       1
+      ]
+     }
+    ]
+   }
   }
  ]
 }

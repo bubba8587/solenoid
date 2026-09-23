@@ -688,7 +688,7 @@ fn corpus_cases() {
                     }
                 }
                 (Err(e), Some(_), None) => {
-                    failures.push(format!("{label}: expected a frame, got error {}", err_code(&e)));
+                    failures.push(format!("{label}: expected a frame, got error {} {:?}", err_code(&e), serde_json::to_value(&e).ok()));
                 }
                 (Ok(_), None, None) | (Err(_), None, None) => {
                     failures.push(format!("{label}: case has neither expect nor expectError"));

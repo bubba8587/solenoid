@@ -822,6 +822,7 @@ fn lazy_head(plan: Plan, n: f64) -> Result<Plan, IpcError> {
 
 // ─── Window ────────────────────────────────────────────────────────────────────
 const WINDOW_IDX: &str = "__solenoid_window_idx__";
+const WINDOW_OUT: &str = "__solenoid_window_out__";
 fn lazy_window(
     plan: Plan,
     partition_by: &[String],
@@ -844,13 +845,16 @@ fn lazy_window(
         (false, _) => None,
     };
     let nn = n.unwrap_or(1.0).round().max(1.0) as i64;
-    let keys: Vec<Expr> = if partition_by.is_empty() { vec![lit(1)] } else { partition_by.iter().map(|k| col(k.as_str())).collect() };
+    // No partition is one group: a constant column key, since `.over(lit)` breaks `first` and `last`.
+    let keys: Vec<Expr> = if partition_by.is_empty() { vec![col(WINDOW_IDX).is_null()] } else { partition_by.iter().map(|k| col(k.as_str())).collect() };
     let over = |e: Expr| e.over(keys.clone());
     let col_ty = col_name.and_then(|c| type_of_in(&plan.names, &plan.types, c));
     let vnum = || {
         let c = col(col_name.unwrap());
         match col_ty {
             Some(SolType::Logical) => c.cast(DataType::Float64),
+            // Text reads as blank, as in the oracle's numeric view.
+            Some(SolType::Str) => when(c.is_null()).then(lit(NULL)).otherwise(lit(NULL)).cast(DataType::Float64),
             _ => when(c.clone().is_nan()).then(lit(NULL)).otherwise(c),
         }
     };
@@ -888,8 +892,17 @@ fn lazy_window(
         "ntile" => ((rownum() - lit(1.0)) * lit(nn as f64) / group_len()).cast(DataType::Int64).cast(DataType::Float64) + lit(1.0),
         "cumsum" => over(vnum().cum_sum(false)),
         "cumavg" => over(vnum().cum_sum(false)) / over(vnum().cum_count(false)).cast(DataType::Float64),
-        "cummin" => over(vnum().cum_min(false)),
-        "cummax" => over(vnum().cum_max(false)),
+        // Polars seeds cum_min/cum_max with f64::MAX/MIN, so a prefix of only ±inf reads back as
+        // that sentinel; with no genuine sentinel value seen yet it is the infinity.
+        "cummin" | "cummax" => {
+            let (r, sentinel, inf) = if func == "cummin" {
+                (vnum().cum_min(false), f64::MAX, f64::INFINITY)
+            } else {
+                (vnum().cum_max(false), f64::MIN, f64::NEG_INFINITY)
+            };
+            let seen = vnum().eq(lit(sentinel)).fill_null(lit(false)).cast(DataType::Float64).cum_sum(false);
+            over(when(r.clone().eq(lit(sentinel)).and(seen.eq(lit(0.0)))).then(lit(inf)).otherwise(r))
+        }
         "lag" => over(vraw().shift(lit(nn))),
         "lead" => over(vraw().shift(lit(-nn))),
         "diff" => over(vnum().clone() - vnum().shift(lit(1))),
@@ -902,11 +915,15 @@ fn lazy_window(
         }
         "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max" => {
             let opts = RollingOptionsFixedWindow { window_size: nn as usize, min_periods: 1, ..Default::default() };
+            // Polars 0.46's null-aware rolling min/max kernel overflows, so blanks are filled with
+            // each op's identity. This row is present, so a window never holds only fill.
+            let filled = |fill: f64| vnum().fill_null(lit(fill));
             let rolled = match func {
-                "rolling_sum" => vnum().rolling_sum(opts),
-                "rolling_avg" => vnum().rolling_mean(opts),
-                "rolling_min" => vnum().rolling_min(opts),
-                _ => vnum().rolling_max(opts),
+                "rolling_sum" => filled(0.0).rolling_sum(opts),
+                "rolling_avg" => filled(0.0).rolling_sum(opts.clone())
+                    / vnum().is_not_null().cast(DataType::Float64).rolling_sum(opts),
+                "rolling_min" => filled(f64::INFINITY).rolling_min(opts),
+                _ => filled(f64::NEG_INFINITY).rolling_max(opts),
             };
             when(rownum().gt_eq(lit(nn as f64)).and(vnum().is_not_null())).then(over(rolled)).otherwise(lit(NULL))
         }
@@ -935,15 +952,18 @@ fn lazy_window(
         let opts = SortMultipleOptions::default().with_order_descending_multi([desc, false]).with_nulls_last(true);
         lf = lf.sort_by_exprs([k.clone(), col(WINDOW_IDX)], opts);
     }
+    // The output may reuse the name of a column the expression reads, so it
+    // computes under a temporary name and replaces that column afterwards.
     let existed = plan.names.iter().position(|c| c == name);
-    if existed.is_some() { lf = lf.drop([name]); }
-    let lf = lf
-        .with_column(expr.alias(name))
-        .sort([WINDOW_IDX], SortMultipleOptions::default())
-        .drop([WINDOW_IDX]);
     let mut names = plan.names.clone();
     let mut types = plan.types.clone();
     if let Some(i) = existed { names.remove(i); types.remove(i); }
+    let mut out_cols: Vec<Expr> = names.iter().map(|n| col(n.as_str())).collect();
+    out_cols.push(col(WINDOW_OUT).alias(name));
+    let lf = lf
+        .with_column(expr.alias(WINDOW_OUT))
+        .sort([WINDOW_IDX], SortMultipleOptions::default())
+        .select(out_cols);
     names.push(name.to_string());
     types.push(out_ty);
     Ok(Plan { lf, names, types })
@@ -961,14 +981,32 @@ fn lazy_fill_blanks(plan: Plan, columns: &[String], dir: &str) -> Result<Plan, I
     Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
 }
 
+/// The oracle's `Number(text)` on trimmed text, kept only when finite. Rust's parser also reads
+/// `inf` and `nan`; JavaScript also reads `0x`, `0o` and `0b` integers.
+fn js_finite_number(t: &str) -> Option<f64> {
+    let radix = match t.get(..2) { Some("0x" | "0X") => 16, Some("0o" | "0O") => 8, Some("0b" | "0B") => 2, _ => 0 };
+    let n = if radix != 0 {
+        let digits = &t[2..];
+        if digits.is_empty() { return None; }
+        let mut acc = 0.0f64;
+        for ch in digits.chars() { acc = acc * radix as f64 + ch.to_digit(radix)? as f64; }
+        acc
+    } else {
+        if t.chars().any(|c| c.is_ascii_alphabetic() && c != 'e' && c != 'E') { return None; }
+        t.parse::<f64>().ok()?
+    };
+    n.is_finite().then_some(n)
+}
+
 fn replacement_lit(ty: SolType, text: &str) -> Option<Expr> {
     let t = text.trim();
+    if t.is_empty() {
+        let dtype = match ty { SolType::Str => DataType::String, SolType::Logical => DataType::Boolean, _ => DataType::Float64 };
+        return Some(lit(NULL).cast(dtype));
+    }
     Some(match ty {
         SolType::Str => lit(text.to_string()),
-        SolType::Number | SolType::Date => {
-            if t.is_empty() { return Some(lit(NULL).cast(DataType::Float64)); }
-            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => return None }
-        }
+        SolType::Number | SolType::Date => lit(js_finite_number(t)?),
         SolType::Logical => match t.to_ascii_lowercase().as_str() {
             "true" | "1" => lit(true),
             "false" | "0" => lit(false),
@@ -981,7 +1019,7 @@ fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str,
     if find.is_empty() { return Ok(plan); }
     let target = column.trim();
     if !target.is_empty() { require_in(&plan.names, std::slice::from_ref(&target.to_string()))?; }
-    let find_num = find.trim().parse::<f64>().ok().filter(|n| n.is_finite());
+    let find_num = js_finite_number(find.trim());
     let find_lower = find.to_ascii_lowercase();
     let exprs: Vec<Expr> = plan.names.iter().enumerate().map(|(i, n)| {
         let c = col(n.as_str());
@@ -1116,12 +1154,10 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
                 match t.to_ascii_lowercase().as_str() {
                     "true" => Some(1.0),
                     "false" => Some(0.0),
-                    _ => t.parse::<f64>().ok().map(|n| if n == 0.0 { 0.0 } else { 1.0 }),
+                    _ => js_finite_number(t).map(|n| if n == 0.0 { 0.0 } else { 1.0 }),
                 }
-            } else if t.is_empty() {
-                None
             } else {
-                t.parse::<f64>().ok()
+                js_finite_number(t)
             }
         }
         _ => None,
@@ -1275,6 +1311,8 @@ fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
         return match op {
             "sum" => lit(0.0),
             "product" => lit(1.0),
+            // min and max keep the source type, so their blank is a text blank.
+            "min" | "max" => lit(NULL).cast(DataType::String),
             _ => lit(NULL).cast(DataType::Float64),
         };
     }

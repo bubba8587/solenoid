@@ -3085,6 +3085,560 @@
      }
     ]
    }
+  },
+  {
+   "name": "cummax over a prefix of only -inf is -inf, not the float floor",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "-inf"
+        },
+        {
+         "__nf": "-inf"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "cummax",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "-inf"
+       },
+       {
+        "__nf": "-inf"
+       },
+       3
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "-inf"
+       },
+       {
+        "__nf": "-inf"
+       },
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "cummin over a prefix of only +inf is +inf",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "cummin",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       2
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling min and max read past a blank inside the window",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        5,
+        null,
+        3,
+        7,
+        null,
+        null,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "rolling_min",
+    "column": "v",
+    "as": "w",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       5,
+       null,
+       3,
+       7,
+       null,
+       null,
+       2
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       3,
+       3,
+       null,
+       null,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling max of one row past a blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "number",
+       "values": [
+        1,
+        1,
+        1,
+        1
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        4,
+        null,
+        0,
+        9
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "rolling_max",
+    "column": "v",
+    "as": "w",
+    "n": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "number",
+      "values": [
+       1,
+       1,
+       1,
+       1
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       4,
+       null,
+       0,
+       9
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       4,
+       null,
+       0,
+       9
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling avg averages only the present values",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        2,
+        null,
+        4,
+        8
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "rolling_avg",
+    "column": "v",
+    "as": "w",
+    "n": 3
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       2,
+       null,
+       4,
+       8
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       3,
+       6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "first and last with no partition fill every row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "c"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "last",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "c"
+      ]
+     },
+     {
+      "name": "w",
+      "type": "string",
+      "values": [
+       "c",
+       "c",
+       "c"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "the output may take the name of the column it reads",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "v",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "v",
+    "as": "v"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       6,
+       1,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an arithmetic function over a text column reads every cell as blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "string",
+       "values": [
+        "1",
+        "x",
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "cumsum",
+    "column": "v",
+    "as": "w"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "string",
+      "values": [
+       "1",
+       "x",
+       null
+      ]
+     },
+     {
+      "name": "w",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "two infinite order keys tie for one rank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        1,
+        {
+         "__nf": "inf"
+        },
+        {
+         "__nf": "-inf"
+        },
+        {
+         "__nf": "-inf"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "orderDir": "desc",
+    "fn": "rank",
+    "column": "k",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       1,
+       {
+        "__nf": "inf"
+       },
+       {
+        "__nf": "-inf"
+       },
+       {
+        "__nf": "-inf"
+       }
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       1,
+       3,
+       1,
+       4,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "infinite order keys count once in a dense rank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        1,
+        {
+         "__nf": "inf"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "orderDir": "asc",
+    "fn": "dense_rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       {
+        "__nf": "inf"
+       },
+       1,
+       {
+        "__nf": "inf"
+       }
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       2,
+       1,
+       2
+      ]
+     }
+    ]
+   }
   }
  ]
 }

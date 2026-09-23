@@ -852,6 +852,109 @@
     "value": "t"
    },
    "expectError": "#TYPE!"
+  },
+  {
+   "name": "a value spelling infinity matches no number",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        {
+         "__nf": "inf"
+        },
+        1,
+        {
+         "__nf": "-inf"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "neq",
+    "value": "Infinity"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "a value spelling nan matches no logical",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "b",
+       "type": "logical",
+       "values": [
+        true,
+        false
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "b",
+    "op": "eq",
+    "value": "nan"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "b",
+      "type": "logical",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "a hex value reads as its number",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        16,
+        10
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "eq",
+    "value": "0x10"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       16
+      ]
+     }
+    ]
+   }
   }
  ]
 }

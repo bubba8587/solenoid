@@ -83,11 +83,14 @@ function withoutRaw(c: FrameColumn): Omit<FrameColumn, "raw"> {
   return rest;
 }
 
+// Not `a - b`, which is NaN for two equal infinities and splits their tie.
+const compareNumbers = (a: number, b: number): number => (a < b ? -1 : a > b ? 1 : 0);
+
 function comparatorFor(type: FrameColType): (a: FrameCell, b: FrameCell) => number {
   switch (type) {
     case "string": return (a, b) => compareStrings(String(a), String(b));
     case "logical": return (a, b) => (a ? 1 : 0) - (b ? 1 : 0);
-    default: return (a, b) => (a as number) - (b as number);
+    default: return (a, b) => compareNumbers(a as number, b as number);
   }
 }
 
@@ -1906,7 +1909,7 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
   }
   const out: FrameCell[] = new Array<FrameCell>(n).fill(null);
   const cmp = (a: FrameCell, b: FrameCell): number => {
-    if (typeof a === "number" && typeof b === "number") return a - b;
+    if (typeof a === "number" && typeof b === "number") return compareNumbers(a, b);
     if (typeof a === "string" && typeof b === "string") return compareStrings(a, b);
     if (typeof a === "boolean" && typeof b === "boolean") return Number(a) - Number(b);
     return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;

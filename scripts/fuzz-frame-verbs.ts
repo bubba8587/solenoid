@@ -11,7 +11,7 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import { applyVerb, joinFrames, appendFrames, type FrameOp, type JoinOpts, type FilterOp, type AggOp } from "../src/graph/frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns, type FrameOp, type JoinOpts, type FilterOp, type AggOp } from "../src/graph/frameVerbs";
 import { isSolError } from "../src/graph/errorValue";
 import type { FrameValue, FrameCell, FrameColType } from "../src/graph/frame";
 
@@ -74,6 +74,12 @@ const encFrame = (f: FrameValue) => ({ columns: f.columns.map((c) => ({ name: c.
 const FILTER_OPS: FilterOp[] = ["eq", "neq", "lt", "lte", "gt", "gte", "contains", "startsWith", "endsWith", "isblank", "notblank"];
 const FILTER_VALUES: FrameCell[] = [0, 1, 12, "oslo", "OS", "a", "garbage", " 1100 ", "1,234", "false", "TRUE", true, null];
 const AGG_OPS: AggOp[] = ["sum", "avg", "min", "max", "count", "product", "median", "mode", "stdev", "stdevp", "var", "varp"];
+const WINDOW_FNS = [
+  "row_number", "rank", "dense_rank", "percent_rank", "ntile", "cumsum", "cumavg", "cummin", "cummax", "cumcount",
+  "lag", "lead", "diff", "pct_change", "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
+  "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
+];
+const REPLACE_TEXT = ["", " ", "1", " 2 ", "0x10", "1e3", "Infinity", "inf", "nan", "oslo", "a", "TRUE", "false", "0", "garbage"];
 
 type Gen = () => { frames: Record<string, FrameValue>; op: Record<string, unknown> };
 const cond = (f: FrameValue) => ({ column: someCol(f), op: pick(FILTER_OPS), value: pick(FILTER_VALUES), ...(chance(0.3) ? { matchCase: true } : {}) });
@@ -110,6 +116,22 @@ const UNARY_MAKERS: Record<string, OpMaker> = {
       ...(chance(0.3) ? { variableName: "var", valueName: "val" } : {}),
     };
   },
+  window: (f) => ({
+    kind: "window",
+    partitionBy: chance(0.4) ? [] : [someCol(f)],
+    ...(chance(0.7) ? { orderBy: someCol(f), orderDir: pick(["asc", "desc"]) } : {}),
+    fn: pick(WINDOW_FNS), column: someCol(f), as: pick(["", "w", ...NAME_POOL]),
+    ...(chance(0.6) ? { n: pick([1, 2, 3, 0, -1, 2.5]) } : {}),
+  }),
+  fillBlanks: (f) => ({ kind: "fillBlanks", columns: chance(0.3) ? [] : [someCol(f)], dir: pick(["down", "up"]) }),
+  replaceValues: (f) => ({
+    kind: "replaceValues", column: chance(0.3) ? "" : someCol(f),
+    find: pick(REPLACE_TEXT), replaceWith: pick(REPLACE_TEXT), mode: pick(["cell", "substring"]),
+  }),
+  sliceRows: () => {
+    const mode = pick(["first", "last", "skip", "range"]);
+    return { kind: "sliceRows", mode, n: pick([0, 1, 2, 3, 5, -2, 2.7]), ...(mode === "range" ? { to: pick([0, 2, 4, 99, 1.5]) } : {}) };
+  },
 };
 const WANT_TWO_COLS = new Set(["groupBy", "unpivot"]);
 
@@ -133,7 +155,7 @@ GENERATORS.pipeline = () => {
   return { frames: { in: f0 }, op: { kind: "pipeline", ops } };
 };
 GENERATORS.join = () => {
-  const how = pick(["inner", "left", "right", "outer", "semi", "anti", "asof"] as const);
+  const how = pick(["inner", "left", "right", "outer", "semi", "anti", "asof", "cross"] as const);
   if (how === "asof") {
     const left = randFrame({ types: ["number"], rows: int(0, 6) });
     const right = randFrame({ types: ["number"], rows: int(0, 6) });
@@ -145,6 +167,13 @@ GENERATORS.join = () => {
   }
   const left = randFrame(); const right = randFrame();
   return { frames: { left, right }, op: { kind: "join", leftKey: someCol(left), rightKey: someCol(right), how } };
+};
+GENERATORS.bindColumns = () => {
+  const n = int(1, 3);
+  const frames: Record<string, FrameValue> = {};
+  const order: string[] = [];
+  for (let i = 0; i < n; i++) { const k = `f${i + 1}`; frames[k] = randFrame(); order.push(k); }
+  return { frames, op: { kind: "bindColumns", frames: order } };
 };
 GENERATORS.append = () => {
   const n = int(2, 3);
@@ -167,6 +196,7 @@ for (const [verb, gen] of Object.entries(GENERATORS)) {
     try {
       if (verb === "join") { const { kind: _k, ...opts } = op; out = joinFrames(frames.left, frames.right, opts as unknown as JoinOpts); }
       else if (verb === "append") out = appendFrames((op.frames as string[]).map((k) => frames[k]));
+      else if (verb === "bindColumns") out = bindColumns((op.frames as string[]).map((k) => frames[k]));
       else if (verb === "pipeline") {
         let cur = frames.in;
         for (const o of op.ops as FrameOp[]) {

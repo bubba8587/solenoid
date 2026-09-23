@@ -660,6 +660,71 @@
      }
     ]
    }
+  },
+  {
+   "name": "max over a text column is a text blank that a text filter can read",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "number",
+       "values": [
+        1,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [
+       "g"
+      ],
+      "aggs": [
+       {
+        "column": "s",
+        "op": "max",
+        "as": "m"
+       }
+      ]
+     },
+     {
+      "kind": "filter",
+      "column": "m",
+      "op": "gt",
+      "value": "a"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "number",
+      "values": []
+     },
+     {
+      "name": "m",
+      "type": "string",
+      "values": []
+     }
+    ]
+   }
   }
  ]
 }
