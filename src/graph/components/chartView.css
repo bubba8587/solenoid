@@ -7,3 +7,11 @@
   -webkit-user-select: none;
   outline: none;
 }
+
+.sol-sankey .recharts-sankey-link {
+  transition: stroke-opacity 0.12s ease;
+}
+
+.sol-sankey .recharts-sankey-link:hover {
+  stroke-opacity: 0.85;
+}

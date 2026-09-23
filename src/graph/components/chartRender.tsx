@@ -659,6 +659,7 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
   if (links.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   return (
     <Sankey
+      className="sol-sankey"
       width={width}
       height={height}
       data={{ nodes, links }}
