@@ -5,17 +5,14 @@ import { useEffect, useState } from "react";
 import { cableSelectionStore } from "./cableState";
 import { IS_COARSE } from "./coarse";
 import { getActiveEditor } from "./activeGraph";
+import { fireMenuKey } from "./menuModel";
 
 export function fireUndo(redo: boolean) {
-  window.dispatchEvent(
-    new KeyboardEvent("keydown", { code: "KeyZ", ctrlKey: true, shiftKey: redo, bubbles: true, cancelable: true }),
-  );
+  fireMenuKey("KeyZ", { ctrl: true, shift: redo });
 }
 
 export function fireGroup() {
-  window.dispatchEvent(
-    new KeyboardEvent("keydown", { code: "KeyG", key: "g", bubbles: true, cancelable: true }),
-  );
+  fireMenuKey("KeyG", { key: "g" });
 }
 
 /** Polled, since there is no selection store, so a button dimmed by it must stay tappable; `enabled` skips the interval where the bar isn't rendered. */
