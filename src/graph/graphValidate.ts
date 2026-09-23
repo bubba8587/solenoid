@@ -1,6 +1,4 @@
 // [[B12]] losslessSaves, [[C30]] saveViaTextForm
-// STRICT counterpart to the forgiving load path: every condition the loader would
-// silently repair is an issue. Pure + headless; an empty socket record skips key checks.
 
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";
@@ -15,18 +13,12 @@ import {
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 
 export interface GraphIssue {
-  /** 1-based line in the text form; null for sidecar/whole-graph issues (and
-   *  for graphs validated straight from JSON, which has no line numbers). */
   line: number | null;
-  /** The node the issue anchors to (its name), when there is one. */
   node: string | null;
   message: string;
-  /** "warning" = legal to load and run but almost certainly unintended; errors (the
-   *  default) are conditions the loader would repair or the editor refuse. */
   severity?: "warning";
 }
 
-// ─── Nearest-name suggestions ───────────────────────────────────────────────────
 
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length;
@@ -47,8 +39,6 @@ function levenshtein(a: string, b: string): number {
   return prev[n];
 }
 
-/** " — nearest: `x`, `y`" for the closest candidates within an edit-distance
- *  budget that scales with the key's length; "" when nothing is close. */
 function nearest(key: string, candidates: Iterable<string>): string {
   const budget = Math.max(2, Math.ceil(key.length / 4));
   const lower = key.toLowerCase();
@@ -67,7 +57,6 @@ function keyList(keys: string[]): string {
   return shown.join(", ") + (keys.length > shown.length ? ", …" : "");
 }
 
-// ─── Socket introspection off a headless instance ───────────────────────────────
 
 interface PortMap { [key: string]: { dataType: SocketDataType | null; multiple: boolean } }
 
@@ -82,7 +71,6 @@ function portsOf(record: Record<string, unknown> | undefined): PortMap {
   return out;
 }
 
-/** Why `canConnect` says no, phrased as the fix. */
 function refusalReason(outT: SocketDataType, inT: SocketDataType): string {
   const of = elementFamilyOf(outT), inf = elementFamilyOf(inT);
   if (of && inf && of !== inf) {
@@ -95,12 +83,9 @@ function refusalReason(outT: SocketDataType, inT: SocketDataType): string {
   return `the socket lattice refuses it (canConnect)`;
 }
 
-// ─── The semantic pass ──────────────────────────────────────────────────────────
 
 const INIT_KEY_SET = new Set<string>([...INIT_FIELD_ORDER, ...INIT_EXTRA_FIELD_ORDER]);
 
-/** Validate a SavedGraph strictly; `lineOf` maps a node name to its 1-based
- *  text-form line for anchored messages (absent for JSON). */
 export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number | null): GraphIssue[] {
   const issues: GraphIssue[] = [];
   const registry = ctorRegistry();
@@ -111,8 +96,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     issues.push({ line: null, node: null, message: `save version ${g.v} is not this build's ${CURRENT_SAVE_VERSION} — the loader only opens the current format.` });
   }
 
-  // One headless instance per node — init can change the socket set, so a per-class
-  // cache would lie for op-selected and row-driven sockets.
+  // One headless instance per node: init can change the socket set, so a per-class cache would lie.
   const instances = new Map<string, { inputs: PortMap; outputs: PortMap; hasLiterals: boolean; hasStringLiterals: boolean } | null>();
   const byId = new Map<string, SavedNode>();
 
@@ -141,8 +125,6 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
     const anyInst = inst as unknown as Record<string, unknown>;
 
-    // Every key extractInit can emit comes FROM the instance, so judge init keys
-    // against the constructed instance, not the static whitelist alone.
     const litKeys = Object.keys((anyInst.literals as object) ?? {});
     const strKeys = Object.keys((anyInst.stringLiterals as object) ?? {});
     const inputKeys = Object.keys((anyInst.inputs as object) ?? {});
@@ -157,8 +139,6 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       }
     }
 
-    // An unknown op constructs without complaint and then miscomputes; enforce only
-    // against a 2+ op vocabulary, a single entry asserts too little.
     const opValue = sn.init?.op;
     if (typeof opValue === "string") {
       const vocab = opVocabByCtor().get(sn.type);
@@ -167,12 +147,10 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
       }
     }
 
-    // Internal composite ids are live rete ids, not user names, so the recursion
-    // skips the name check.
     const internal = sn.init?.internal as { nodes?: unknown; connections?: unknown } | undefined;
     if (internal && Array.isArray(internal.nodes) && Array.isArray(internal.connections)) {
       const sub: SavedGraph = {
-        v: CURRENT_SAVE_VERSION, // the outer graph's version is checked once, above
+        v: CURRENT_SAVE_VERSION,
         nodes: (internal.nodes as Array<{ id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string>; x?: number; y?: number }>).map((n) => {
           const mapped: SavedNode = { id: n.id, type: n.type, x: n.x ?? 0, y: n.y ?? 0, init: n.init ?? {} };
           if (n.literals) mapped.literals = n.literals;
@@ -188,7 +166,6 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     const info = {
       inputs: portsOf(anyInst.inputs as Record<string, unknown> | undefined),
       outputs: portsOf(anyInst.outputs as Record<string, unknown> | undefined),
-      // The persistence.ts gate: a class takes inline literals iff it declares the map.
       hasLiterals: typeof anyInst.literals === "object" && anyInst.literals !== null,
       hasStringLiterals: typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals !== null,
     };
@@ -210,7 +187,6 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
   }
 
-  // rebuildGraph would DROP every refused connection without a word.
   const wiredCount = new Map<string, number>(); // "targetId\u0000input" → cables in
   for (const c of g.connections) {
     const tgt = byId.get(c.target);
@@ -258,7 +234,6 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     }
   }
 
-  // Dependency cycles compute as #CIRC! at runtime rather than failing to load.
   const cycleNames = findCycle(g);
   if (cycleNames) {
     issues.push({ line: null, node: null, severity: "warning", message: `dependency cycle: ${cycleNames.join(" → ")} — these nodes will compute as #CIRC!.` });
@@ -293,17 +268,12 @@ function findCycle(g: SavedGraph): string[] | null {
   return leftover.sort();
 }
 
-// ─── The text-form pass (grammar + semantics, all issues in one report) ─────────
 
 export interface TextValidation {
   issues: GraphIssue[];
-  /** The parsed graph — real reader when the grammar is clean, per-line salvage when
-   *  it isn't; null only when nothing parsed at all. */
   graph: SavedGraph | null;
 }
 
-/** Validate a text-form document end to end, reporting EVERY malformed line rather
- *  than stopping at the first. */
 export function validateText(text: string): TextValidation {
   const issues: GraphIssue[] = [];
   const allLines = text.split("\n");
@@ -350,7 +320,6 @@ export function validateText(text: string): TextValidation {
     }
   }
 
-  // Salvage keeps the FIRST of duplicate names, matching a map's insert-once.
   let graph: SavedGraph | null = null;
   if (grammarClean) {
     graph = readTextForm(text);
@@ -374,7 +343,6 @@ export function validateText(text: string): TextValidation {
   if (graph) {
     issues.push(...validateGraph(graph, (name) => lineByName.get(name) ?? null));
 
-    // Sidecar refs are name-addressed: a typo silently loses the entry on load.
     const names = new Set(graph.nodes.map((n) => n.name ?? n.id));
     const refIssue = (section: string, name: unknown) => {
       if (typeof name === "string" && !names.has(name)) {
@@ -394,12 +362,10 @@ export function validateText(text: string): TextValidation {
   return { issues, graph };
 }
 
-/** The issues that make a graph unsafe to apply — warnings excluded. */
 export function hardIssues(issues: GraphIssue[]): GraphIssue[] {
   return issues.filter((i) => i.severity !== "warning");
 }
 
-/** One issue per line, `line N: message`-shaped, ready for a CLI or a model. */
 export function formatIssues(issues: GraphIssue[]): string {
   return issues
     .map((i) => {

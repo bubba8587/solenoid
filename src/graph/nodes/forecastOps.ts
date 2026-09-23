@@ -1,17 +1,12 @@
 // [[D19]] implReteFree, [[C17]] shareImpl, [[C24]] arraySemantics, [[D28]] tripwireVendorDrift (the parity:false divergence, tree/specs/computation/formulajs-divergences.md)
-// Additive Holt–Winters (ETS AAN / AAA: statsmodels ExponentialSmoothing add/add, R HoltWinters / ets("AAA")). Excel's FORECAST.ETS is the same family with Microsoft's own parameter search, so values are close, not bit-identical (parity:false).
 import { stdNormCDF, normSInv } from "./mathUtils";
 import { lowess } from "./signalOps";
 
 export interface EtsFit {
-  /** Smoothing parameters the search settled on. */
   alpha: number; beta: number; gamma: number;
-  /** Season length used (1 = no seasonality). */
   season: number;
   level: number; trend: number; seasonal: number[];
-  /** One-step-ahead fitted values, aligned with the input. */
   fitted: number[];
-  /** Residual standard deviation of the one-step errors. */
   sigma: number;
 }
 
@@ -38,7 +33,7 @@ function runHW(y: readonly number[], m: number, alpha: number, beta: number, gam
     const pred = level + trend + (m > 1 ? s : 0);
     fitted.push(pred);
     const err = y[t] - pred;
-    if (t >= (m > 1 ? m : 1)) { sse += err * err; count++; } // skip the initialization window
+    if (t >= (m > 1 ? m : 1)) { sse += err * err; count++; }
     const prevLevel = level;
     if (m > 1) {
       level = alpha * (y[t] - s) + (1 - alpha) * (level + trend);
@@ -53,9 +48,6 @@ function runHW(y: readonly number[], m: number, alpha: number, beta: number, gam
   return { sse, fit: { alpha, beta, gamma, season: m, level, trend, seasonal: [...seasonal], fitted, sigma } };
 }
 
-/** Fit additive Holt–Winters to an equally spaced series; `season` 1 = trend only (Holt).
- *  Parameters by a coarse grid then coordinate refinement on the one-step SSE.
- *  `null` when the series is too short (< 3, or < 2 seasons when seasonal). */
 export function fitEts(y: readonly number[], season = 1): EtsFit | null {
   const n = y.length, m = Math.max(1, Math.round(season));
   if (n < 3 || (m > 1 && n < 2 * m)) return null;
@@ -81,7 +73,6 @@ export function fitEts(y: readonly number[], season = 1): EtsFit | null {
   return best!.fit;
 }
 
-/** Forecast h steps ahead from a fit. */
 export function etsForecast(fit: EtsFit, h: number): number[] {
   const out: number[] = [];
   const m = fit.season;
@@ -89,16 +80,11 @@ export function etsForecast(fit: EtsFit, h: number): number[] {
   return out;
 }
 
-/** Half-width of the prediction interval h steps ahead at `confidence` (default 95%):
- *  z · σ · √h — the usual growing-band approximation (Excel's ETS.CONFINT is the same shape). */
 export function etsInterval(fit: EtsFit, h: number, confidence = 0.95): number {
   const z = normSInv(0.5 + confidence / 2);
   return z * fit.sigma * Math.sqrt(h);
 }
 
-/** Detect a season length from the autocorrelation of the differenced series: the lag
- *  2..min(n/2, 24) with the highest ACF, when it clears 0.3 and beats its neighbours; else
- *  1 (no seasonality). FORECAST.ETS.SEASONALITY's job, with an open method. */
 export function detectSeason(y: readonly number[]): number {
   const n = y.length;
   if (n < 6) return 1;
@@ -122,17 +108,11 @@ export function detectSeason(y: readonly number[]): number {
   return bestLag;
 }
 
-/** Two-sided normal tail helper exported for the confidence argument validation. */
 export const confidenceOk = (c: number): boolean => c > 0 && c < 1 && Number.isFinite(stdNormCDF(c));
 
-// ─── Classical seasonal decomposition (statsmodels seasonal_decompose, R decompose) ───
 export type DecomposeModel = "additive" | "multiplicative" | "stl";
 export interface Decomposition { trend: (number | null)[]; seasonal: (number | null)[]; residual: (number | null)[] }
 
-/** Trend = centred moving average over `period` (a 2×MA when the period is even — the
- *  classical filter), blank for the half-window at each end; seasonal = the per-position
- *  mean of the detrended series, centred to zero (additive) or to one (multiplicative) and
- *  tiled; residual = what is left. Blanks in the input leave blanks where they touch. */
 export function seasonalDecompose(y: readonly (number | null)[], period: number, model: DecomposeModel = "additive"): Decomposition | null {
   const n = y.length;
   const m = Math.round(period);
@@ -161,12 +141,6 @@ export function seasonalDecompose(y: readonly (number | null)[], period: number,
   return { trend, seasonal, residual };
 }
 
-/** STL (Seasonal-Trend decomposition by Loess), the R `stl(s.window="periodic")` variant:
- *  the seasonal component is EXACTLY periodic (each phase the mean of its cycle-subseries,
- *  centred to zero) and the trend is a LOWESS fit of the deseasonalised series, refined
- *  over a few inner passes. Reuses `lowess` (local linear, so a smooth trend is recovered
- *  cleanly and a linear one exactly). Needs a gap-free series and at least two full
- *  periods; null otherwise. Unlike the classical filter, the trend has NO blank ends. */
 export function stlDecompose(
   y: readonly (number | null)[], period: number,
   opts?: { trendFrac?: number; inner?: number },
@@ -177,14 +151,12 @@ export function stlDecompose(
   if (y.some((v) => v === null || !Number.isFinite(v as number))) return null;
   const data = y as readonly number[];
   const trendFrac = opts?.trendFrac ?? Math.min(1, (1.5 * m) / n);
-  // The periodic mean ↔ loess-trend fixed-point iteration converges geometrically;
-  // ~15 inner passes drive a clean signal's residual well below 1e-4.
+  // The seasonal-mean and loess-trend iteration converges geometrically; 15 passes put a clean signal's residual well below 1e-4.
   const inner = opts?.inner ?? 15;
   let trend = new Array<number>(n).fill(0);
   let seasonal = new Array<number>(n).fill(0);
   for (let it = 0; it < inner; it++) {
     const detrended = data.map((v, i) => v - trend[i]);
-    // Periodic seasonal: per-phase mean of the detrended series, centred to zero, tiled.
     const pa: number[] = [];
     for (let r = 0; r < m; r++) {
       let s = 0, c = 0;

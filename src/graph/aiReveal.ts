@@ -1,6 +1,5 @@
 // [[B13]] aiInScope
-// Entrance animation for nodes an AI apply ADDED. The class goes on rete's HOLDER
-// and the keyframes run on its CHILD, leaving rete's translate positioning intact.
+// The class goes on rete's holder and the keyframes run on its child, leaving rete's translate positioning intact.
 
 import { getView } from "./process";
 import { getLastLoadIdMap } from "./persistence";
@@ -10,8 +9,7 @@ const CLASS = "solenoid-ainew";
 const STAGGER_MS = 90;
 const DURATION_MS = 480;
 
-/** Play the added-node reveal. `savedIds` are the APPLIED graph's ids (names —
- *  `getLastLoadIdMap` maps them to the fresh live ids the rebuild minted). */
+/** `savedIds` are the applied graph's names; getLastLoadIdMap maps them to the fresh live ids. */
 export function revealAddedNodes(savedIds: string[]): void {
   if (savedIds.length === 0 || prefersReducedMotion()) return;
   const view = getView();
@@ -27,7 +25,6 @@ export function revealAddedNodes(savedIds: string[]): void {
     el.style.setProperty("--ainew-delay", `${i * STAGGER_MS}ms`);
     el.classList.add(CLASS);
   });
-  // Drop the class once settled, so a second apply can replay it.
   window.setTimeout(() => {
     for (const el of els) {
       el.classList.remove(CLASS);

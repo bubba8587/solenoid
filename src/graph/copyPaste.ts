@@ -1,4 +1,4 @@
-// [[C30]] saveViaTextForm (INIT_FIELD_ORDER is shared with the writer), [[C86]] membershipByGesture, [[D50]] everyFieldClassified., [[C29]] plainJsonInit (extractInit)
+// [[C30]] saveViaTextForm, [[C86]] membershipByGesture, [[D50]] everyFieldClassified, [[C29]] plainJsonInit
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { beginGraphRebuild, endGraphRebuild, bulkSettle, processGraph } from "./process";
@@ -11,7 +11,7 @@ import { nodeNameStore } from "./nodeNameStore";
 
 interface ClipboardEntry {
   node: SolenoidNode;
-  x: number; // relative to selection top-left
+  x: number;
   y: number;
 }
 
@@ -28,17 +28,13 @@ interface ClipboardData {
 let _clipboard: ClipboardData | null = null;
 
 export function copySelected() {
-  // Active graph, not main — copy/paste works inside a Composite drill-in too.
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return;
 
-  // A composite's boundary markers are the composite's ports, not nodes to copy: a pasted
-  // marker would be an orphan with no port (deleteSelection refuses them the same way).
   const isMarker = (n: { constructor: { name: string } }) => n.constructor.name === "CompositeInputNode" || n.constructor.name === "CompositeOutputNode";
   const directly = editor.getNodes().filter((n) => n.selected && !isMarker(n)) as SolenoidNode[];
   if (directly.length === 0) return;
-  // A selected group brings its members along, so paste reproduces the contents.
   const ids = new Set(directly.map((n) => n.id));
   for (const n of directly) {
     const members = (n as unknown as { members?: string[] }).members;
@@ -74,8 +70,7 @@ export function copySelected() {
   };
 }
 
-// textForm.ts's writer shares this order so a node's text-form line is byte-identical
-// across writes; appending is safe, reordering rewrites every existing save.
+// textForm.ts's writer shares this order: appending is safe, reordering rewrites every existing save.
 export const INIT_FIELD_ORDER = [
   "label", "op", "form", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "lambdaView", "chartFontScale", "grouping", "negativeStyle", "scaleMode", "advancedOpen", "match",
   "tableText", "frameText", "pointsText", "url", "fileName", "assetPath", "path", "subfolder", "refreshMinutes", "tableIndex", "query", "dir", "how", "asofDirection", "mode", "precision", "progress", "criticalPaths", "inFormat", "outFormat", "provider",
@@ -101,7 +96,6 @@ export const INIT_FIELD_ORDER = [
   "pageName",
 ] as const;
 
-// Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "bindings",
 ] as const;
@@ -112,8 +106,6 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   for (const key of INIT_FIELD_ORDER) {
     if (key in n && n[key] !== undefined) init[key] = n[key];
   }
-  // Every map below is deep-copied because the source node mutates it live; a
-  // shallow share would let a paste edit its original.
   if (n.funcs && typeof n.funcs === "object") {
     init.funcs = { ...(n.funcs as object) };
   }
@@ -122,9 +114,6 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
       Object.entries(n.filterExclude as Record<string, string[]>).map(([k, v]) => [k, [...v]]),
     );
   }
-  // Keep only LIVE rows: a removed row leaves an orphan behind for undo's row-restore,
-  // which would break the text form's byte-identical second write. Match on EITHER key
-  // so a List Filter row (value-only, no column) persists too.
   if (n.condConfig && typeof n.condConfig === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     init.condConfig = Object.fromEntries(
@@ -136,30 +125,24 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   if (n.fieldTypes && typeof n.fieldTypes === "object") {
     init.fieldTypes = { ...(n.fieldTypes as object) };
   }
-  // Keep only LIVE input keys, else an orphan title breaks the text form's
-  // byte-identical second write.
   if (n.titles && typeof n.titles === "object") {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     const entries = Object.entries(n.titles as Record<string, string>).filter(([k]) => k in liveInputs);
     if (entries.length) init.titles = Object.fromEntries(entries);
     else delete init.titles;
   }
-  // Live input keys only, same rationale.
   if (Array.isArray(n.selectedKeys)) {
     const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
     const kept = (n.selectedKeys as string[]).filter((k) => k in liveInputs);
     if (kept.length) init.selectedKeys = kept;
     else delete init.selectedKeys;
   }
-  // Live variables only, same rationale.
   if (n.varDescriptions && typeof n.varDescriptions === "object") {
     const live = new Set((n.varNames as string[] | undefined) ?? []);
     const entries = Object.entries(n.varDescriptions as Record<string, string>)
       .filter(([k, v]) => live.has(k) && v.trim() !== "");
     if (entries.length) init.varDescriptions = Object.fromEntries(entries);
   }
-  // Live variables only, and SORTED — a reordered entry breaks the text form's
-  // byte-identical second write.
   if (n.bindings && typeof n.bindings === "object") {
     const live = new Set((n.defVars as string[] | undefined) ?? []);
     const entries = Object.entries(n.bindings as Record<string, string>)
@@ -167,9 +150,6 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     if (entries.length) init.bindings = Object.fromEntries(entries);
   }
-  // A composite's subgraph rides along via its own snapshotInternal(), so paste and
-  // persistence round-trip its contents without knowing anything about them.
-  // Ports name their markers by the same saved ids the snapshot uses.
   const savedId = typeof n.savedInternalId === "function"
     ? (n.savedInternalId as (id: string) => string).bind(n)
     : (id: string) => id;
@@ -190,14 +170,12 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
       Object.entries(n.dataTableValues as Record<string, unknown[]>).map(([k, v]) => [k, [...v]]),
     );
   }
-  // null means unconfigured, so drop the key rather than persist a null.
   if (n.goalSeek && typeof n.goalSeek === "object") {
     init.goalSeek = { ...(n.goalSeek as object) };
   }
   if (n.monteCarlo && typeof n.monteCarlo === "object") {
     init.monteCarlo = { ...(n.monteCarlo as object) };
   }
-  // Only when SET: a point-value marker persists nothing, and "normal" is implied.
   if (typeof n.uncertainty === "number" && n.uncertainty > 0) {
     init.uncertainty = n.uncertainty;
     if (n.distribution === "uniform") init.distribution = "uniform";
@@ -205,12 +183,9 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   if (typeof n.snapshotInternal === "function") {
     init.internal = (n.snapshotInternal as () => unknown)();
   }
-  // Spread literals so constructor fields like min/max/step are picked up.
   if (n.literals && typeof n.literals === "object") {
     Object.assign(init, n.literals as object);
   }
-  // Capture EVERY input key so the constructor rebuilds the exact rows on clone/load;
-  // it filters down to the keys it owns.
   if ((typeof n.addValueInput === "function" || typeof n.addValuePair === "function") && n.inputs) {
     init.valueKeys = Object.keys(n.inputs as object);
   }
@@ -221,8 +196,7 @@ function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
   try {
     const Ctor = src.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
     const clone = new Ctor(extractInit(src));
-    // Restore the mutable value maps AFTER construction — the constructor's own
-    // defaults would otherwise overwrite the copied values.
+    // Restore the value maps after construction, or the constructor's own defaults overwrite them.
     const srcAny = src as unknown as Record<string, unknown>;
     const cloneAny = clone as unknown as Record<string, unknown>;
     if (srcAny.literals && typeof srcAny.literals === "object") {
@@ -237,14 +211,13 @@ function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
   }
 }
 
-const PASTE_OFFSET = 30; // canvas units
+const PASTE_OFFSET = 30;
 
 export async function pasteClipboard(canvasX: number, canvasY: number) {
   if (!_clipboard || _clipboard.entries.length === 0) return;
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return;
-  // Inside a drill-in the selection + settle singletons are main-bound and don't apply.
   const subgraph = isSubgraphActive();
 
   const originX = canvasX + PASTE_OFFSET;
@@ -252,7 +225,6 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
 
   const clones = _clipboard.entries.map((e) => cloneNode(e.node));
 
-  // Members not part of the copy are dropped, so a copied group can't steal originals.
   const oldToNew = new Map<string, string>();
   for (let i = 0; i < clones.length; i++) {
     if (clones[i]) oldToNew.set(_clipboard.entries[i].node.id, clones[i]!.id);
@@ -263,11 +235,9 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     if (Array.isArray(ref.members)) {
       ref.members = ref.members.map((m) => oldToNew.get(m)).filter((m): m is string => !!m);
     }
-    // A docked FC whose host wasn't copied must UNDOCK, not bind to the original.
     if (typeof ref.hostNodeId === "string" && ref.hostNodeId) {
       ref.hostNodeId = oldToNew.get(ref.hostNodeId) ?? "";
     }
-    // Same rule for presentation steps: a duplicated deck flies to its OWN nodes.
     const stepsRef = clone as unknown as { steps?: Array<{ nodeIds?: string[] }> };
     if (Array.isArray(stepsRef.steps)) {
       for (const step of stepsRef.steps) {
@@ -278,17 +248,12 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     }
   }
 
-  // The rebuild gate skips the per-`nodecreated` absorb sweep (O(N²) ungated), so
-  // pasted nodes keep their COPIED membership instead of joining where they land.
   const toAdd: Array<{ clone: SolenoidNode; x: number; y: number }> = [];
   for (let i = 0; i < clones.length; i++) {
     const clone = clones[i];
     if (!clone) continue;
-    // Body collapse lives in collapseStore, not on the instance, so carry it across.
     if (collapseStore.get(_clipboard.entries[i].node.id)) collapseStore.set(clone.id, true);
-    // The socket flip lives in socketFlipStore the same way.
     if (socketFlipStore.get(_clipboard.entries[i].node.id)) socketFlipStore.set(clone.id, true);
-    // Sequenced identities must not duplicate — the clone re-claims a fresh number.
     const fresh = (clone as unknown as { assignFreshSeq?: () => void }).assignFreshSeq;
     if (typeof fresh === "function") fresh.call(clone);
     toAdd.push({ clone: clone as SolenoidNode, x: originX + _clipboard.entries[i].x, y: originY + _clipboard.entries[i].y });
@@ -299,21 +264,15 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   try {
     await Promise.all(toAdd.map(async ({ clone, x, y }) => {
       await editor.addNode(clone);
-      // A FRESH name, never the source's — the source is still on the canvas, so
-      // inheriting it would collide immediately.
       nodeNameStore.ensure(clone.id, clone.constructor.name);
       await view.moveNode(clone.id, { x, y });
     }));
-    // The captured subgraph snapshot hydrates into live instances only once the
-    // clone exists.
     const reg = getCtorRegistry();
     for (const { clone } of toAdd) {
       const hydrate = (clone as unknown as { hydrate?: (r: typeof reg) => Promise<void> }).hydrate;
       if (typeof hydrate === "function") await hydrate(reg);
     }
     if (!subgraph) toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
-    // `connectioncreated`'s settle is O(cables × nodes); the gate skips it per-cable
-    // and bulkSettle() runs the equivalent ONCE below.
     for (const conn of _clipboard.connections) {
       const src = clones[conn.srcIdx];
       const tgt = clones[conn.tgtIdx];
@@ -328,7 +287,6 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
           ) as SolenoidConnection,
         );
       } catch {
-        // Skip incompatible or duplicate connections.
       }
     }
   } finally {
@@ -336,10 +294,8 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   }
 
   if (subgraph) {
-    // rete already created the views on addNode; recompute through the owning composite.
     await processGraph();
     return;
   }
-  // A paste is self-contained, so only the pasted nodes need rendering.
   await bulkSettle(new Set(toAdd.map((b) => b.clone.id)));
 }

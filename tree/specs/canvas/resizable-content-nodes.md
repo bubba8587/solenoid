@@ -23,7 +23,7 @@ The Conduit is the one node built this way today.
 **The constant body is a pivot box, never a hit target.** It is much larger than the block it wraps, so an invisible 92 square would out-rank the cables, standoffs and canvas under it.
 
 - `nodeClassName` (`flow/flowModel.ts`) marks the React Flow wrapper `sol-conduit-node`, and `flow.css` makes it pointer-transparent with `!important`, because React Flow stamps `pointer-events: all` inline on every selectable wrapper. The `.solenoid-conduit` root is pointer-transparent too.
-- Pointers land only on what is painted: the shell shapes, plus the lane squares while the block is expanded.
+- Pointers land only on what is painted: the shell shapes, plus the lane squares while the block is expanded. Because `pointer-events` inherits, each live descendant sets `auto` for itself. On mobile an unselected Conduit is tapped on its painted shell too, never the box.
 - A compressed (collapsed) lane takes the `solenoid-conduit__lane--inert` class, which also reaches React Flow's Handle inside it. Without it, the bunched squares cover the whole block, every press starts a cable drag, and the block can never be grabbed.
 - The **grab handle** is the shell's top slice, `HANDLE_H` (12) tall. Its height does not take the collapse scale. It is the one strip no cable crosses, so it stays a grab target at any lane count or zoom.
 

@@ -65,8 +65,7 @@ export class PhysicsConstantNode extends ClassicPreset.Node {
     return { value: PHYS_CONSTANTS[this.op].value };
   }
 
-  /** Authors the unit at the origin ([[D40]] unitOnValue; unitFlow duck-types `annotation()`).
-   *  A custom suffix, since units like J·s aren't FC-pickable ids. */
+  /** A custom suffix, because units like J·s are not Format Controller unit ids. */
   annotation(): FormatAnnotation {
     return { format: "auto", unit: "custom", customUnit: ` ${PHYS_CONSTANTS[this.op].unit}` };
   }

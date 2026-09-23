@@ -12,14 +12,14 @@ Two node classes hold markdown documents. A **Note** (`NoteNode`, `nodes/annotat
 
 ## The DocumentValue
 
-`documentValue.ts` defines the value every document cable carries. `makeDocument` is the one place the `__document: true` brand is stamped, and `isDocumentValue` checks the brand, never the structure.
+`documentValue.ts` defines the value every document cable carries. `makeDocument` is the one place the `__document: true` brand is stamped, and `isDocumentValue` checks the brand, never the structure, because a DocumentValue crosses React roots. Serializing it to markdown is the consumer's job, since each ref resolves by kind and a chart needs the DOM.
 
 | Field | Meaning |
 |---|---|
 | `body` | The rendered markdown. Internal `` `=name` `` spans are still present; a consumer resolves them against `refs`. |
 | `refs` | `name → value` for every span the body may contain. A Note's is always `{}`. |
 | `frontmatter` | Optional YAML fields, serialized ahead of the body at write time. No producer sets it today: a Note's frontmatter travels inside `body` as text. |
-| `sourceId` | The producing node's id, so the Document chip can open it. Runtime only. |
+| `sourceId` | The producing node's id, so the Document chip can open it. Runtime only: documents are recomputed, never persisted on cables. |
 | `source` | The un-rendered Knap text. A Note sets it to its raw body so a Report can use the Note as its template. |
 | `pages` | `[{ name, body }]`, one per record, present only on a mail merge. |
 | `total` | The record count, present only when it exceeds `pages.length` (the merge hit the page cap). |
@@ -84,7 +84,7 @@ A date serial becomes `YYYY-MM-DD` when whole and `YYYY-MM-DDTHH:mm:ss` when it 
 
 `renderKnap(body, variables, { keepUnknown })` never throws. It returns `{ output, errors }`; when any error exists the output is `""`. Each error carries a line and column, and `knapErrorText` formats them as one `line:column message` line each. A render error makes the node's `document` output a `#SYNTAX!` error value whose message is that text; the card and overlay previews show the same lines in place of the rendered body.
 
-**keepUnknown** is the Note's mode. Before the render, every `{{ … }}` tag whose leading identifier is neither a known variable nor a template-local (any `for` iterator, `loop` or `set` name anywhere in the body) is replaced by an index sentinel, and restored verbatim after. Bare, dotted and filtered tags on an unknown name all survive as literal text, so a template Note reads as a template on the canvas and writes to the vault with its tags intact. A tag that opens with a literal (`{{ "{" }}`) is not parked. An `if` or `for` on an unknown name still renders empty, as Knap does. A Report renders without keepUnknown.
+**keepUnknown** is the Note's mode. Before the render, every `{{ … }}` tag whose leading identifier is neither a known variable nor a template-local (any `for` iterator, `loop` or `set` name anywhere in the body) is replaced by an index sentinel, and restored verbatim after. Bare, dotted and filtered tags on an unknown name all survive as literal text, so a template Note reads as a template on the canvas and writes to the vault with its tags intact. A tag that opens with a literal (`{{ "{" }}`) is not parked. The template-locals are collected over the whole body, ignoring scope, so a Note that loops over a frontmatter list never parks its own iterator. An `if` or `for` on an unknown name still renders empty, as Knap does, because a block region cannot be parked without evaluating it. A Report renders without keepUnknown.
 
 ## Notes
 
@@ -101,7 +101,7 @@ A Note persists `label`, `body`, `color` (a palette slot id, default `amber`), `
 - The YAML between the fences is parsed with the `yaml` package (core schema, duplicate keys allowed). A key that repeats keeps its first occurrence. A parse failure yields no fields but still strips the block.
 - Keys are trimmed; an empty key is skipped.
 
-Each key's value is guessed into a field type whose name equals a socket data type:
+The field types are a subset of the socket data types with identical names, so the node maps a field to its socket by identity (`FIELD_SOCKETS` in `nodes/annotation.ts`). Each key's value is guessed into one:
 
 | YAML value | Emitted value | Guessed type |
 |---|---|---|
@@ -114,12 +114,12 @@ Each key's value is guessed into a field type whose name equals a socket data ty
 | sequence of scalars | a list. All present items dates gives `datelist`; any complex (numbers allowed beside them) gives `complexlist`; otherwise the first non-null item decides (`logicallist`, `list`, `strlist`); empty or all null gives `list` | list types |
 | sequence whose every item is a sequence of scalars | a rectangular matrix (short rows padded with null), typed like a list of all its cells, lifted to rank 2 | `table`, `strtable`, `datetable`, `logicaltable`, `complextable` |
 | sequence whose every item is a map of scalars, scalar lists or nested row lists | rows | `frame`, or `cube` when any row value is a list |
-| a bare `{{ … }}` or `{% … %}` (YAML reads it as a flow map) | `#SYNTAX!` "Knap vars in frontmatter require quoted "{{var}}" syntax" on a `string` socket | `string` |
+| a bare `{{ … }}` or `{% … %}` (YAML reads it as a flow map whose key is a map; the field is flagged `knapUnquoted`) | `#SYNTAX!` "Knap vars in frontmatter require quoted "{{var}}" syntax" on a `string` socket | `string` |
 | any other map | null | `string` |
 
 A non-scalar item inside an otherwise scalar sequence is kept as its YAML text. In a row, a plain ISO date stays as the text written; the column's type decides what it becomes.
 
-A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else the first non-null cell's type (`logical`, `number`, `string`). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell.
+A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else the first non-null cell's type (`logical`, `number`, `string`). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
 
 ### Type pins
 
@@ -142,9 +142,9 @@ A **quoted Knap field** (`total: "{{ price | round }}"`) puts its rendered value
 
 ### The Note card
 
-The card (`NoteNode.tsx`) shows a title bar (collapse chevron, editable title, color swatch), a strip of field rows, the `document` socket and the body. Each field row shows the type glyph, the key, a preview and the output socket; an attached Format Controller formats a numeric preview. Frames preview as `rows×cols Frame`, cubes as `rows×cols×depth Cube`, matrices as `rows×cols Table`, lists as their first four items, and dates in `DD-MMM-YYYY` ([[C44]] dateSerials). The field strip renders even when collapsed, so its sockets and cables survive. The resize floor is 160 by 80 px, plus 22 px per field row and 6 px of padding when any row exists.
+The card (`NoteNode.tsx`) shows a title bar (collapse chevron, editable title, color swatch), a strip of field rows, the `document` socket and the body. Each field row shows the type glyph, the key, a preview and the output socket; an attached Format Controller formats a numeric preview. Frames preview as `rows×cols Frame`, cubes as `rows×cols×depth Cube`, matrices as `rows×cols Table`, lists as their first four items, and dates in `DD-MMM-YYYY` ([[C44]] dateSerials). The field strip renders even when collapsed, so its sockets and cables survive. The resize floor is 160 by 80 px, plus 22 px per field row and 6 px of padding when any row exists. A resize writes no undo entry; it autosaves on release. When standoffs exist, the release settles them a frame later (the solver measures the painted size) with this note pinned, so its partner re-aligns to it, never the reverse.
 
-The read view renders the Knap output (variables from the last committed sync, keepUnknown) with the frontmatter stripped. A Note renders no `` `=name` `` spans, since it has no inputs. When the Knap render left the body unchanged, the rendered GFM task checkboxes are enabled, and ticking the Nth one toggles the Nth task marker in the source (`toggleTaskMarker`), counting only markers below the frontmatter and outside fenced or indented code. Any other click enters edit mode.
+The read view renders the Knap output (variables from the last committed sync, keepUnknown) with the frontmatter stripped. A Note renders no `` `=name` `` spans, since it has no inputs. When the Knap render left the body unchanged, the rendered GFM task checkboxes are enabled, and ticking the Nth one toggles the Nth task marker in the source (`toggleTaskMarker`), counting only markers below the frontmatter and outside code, so the index taken from the rendered body lines up with the source. A marker is the shape `marked` treats as a checkbox: a bullet item whose text opens with `[ ]` or `[x]` followed by a space or the line end. Code is a ```` ``` ```` or `~~~` fence, or a four-space block opened after a blank line outside a list; the frontmatter boundary is the parser's own. Any other click enters edit mode.
 
 ## Reports
 
@@ -190,10 +190,10 @@ A render or page-name error yields `#SYNTAX!` on `document`. `templateVars` (the
 - The first `MAX_PAGES` (500) records render; the rest are dropped, and `total` reports the true count.
 - Each page renders the body with the host variables plus `record` (that row) and `index` (1-based).
 - The page name is `nameTemplate` (the Report's `pageName`) rendered with the same variables and trimmed; a blank result names the page by its index.
-- Names are unique ignoring case: a repeat becomes `Name (2)`, then `Name (3)`, and so on.
+- Names are unique ignoring case: a repeat becomes `Name (2)`, then `Name (3)`, and so on, so a batch never writes two pages into one note.
 - The first page whose body or name fails to render stops the batch, and its errors become the document's `#SYNTAX!`.
 
-The document carries `pages`, the joined body, and `total` when truncated. `batchTruncation(total)` returns `{ truncated, shown, total }` for callers that say "500 of N".
+The document carries `pages`, the joined body, and `total` when truncated. `batchTruncation(total)` returns `{ truncated, shown, total }` for the callers that say "500 of N": the overlay's stepper and Write to Obsidian.
 
 ### The Report card
 
@@ -230,12 +230,12 @@ In the Report overlay every figure kind (chart, Mermaid, picture, SVG, Frame, Cu
 
 ## The markdown renderer
 
-`renderNoteMarkdown` (`noteMarkdown.ts`) renders all Note-shaped text: Note cards, the overlay, a document embed and the webpage export. It is its own `marked` instance (GFM, single newlines as line breaks), so help prose and catalog descriptions are unaffected. It returns unsanitized HTML, and every caller sanitizes. Before parsing, outside fenced code, it removes `%% comments %%` (a comment alone on its line takes the line with it) and trailing ` ^block-id` markers. Extensions:
+`renderNoteMarkdown` (`noteMarkdown.ts`) renders all Note-shaped text: Note cards, the overlay, a document embed and the webpage export. It is its own `marked` instance (GFM, single newlines as line breaks), so help prose and catalog descriptions (`Markdown.tsx`, `descriptionMd.ts`) are unaffected, and an error code in a description is never a tag. It returns unsanitized HTML, and every caller sanitizes. Before parsing, outside fenced code, it removes `%% comments %%` (a comment alone on its line takes the line with it) and trailing ` ^block-id` markers. Extensions:
 
 | Form | Rendered as |
 |---|---|
 | `[[target#heading\|alias]]`, `![[…]]` | a `sol-md__wikilink` span (the embed variant for `!`); its text is the alias, else the target plus heading |
-| `#tag` at a word start | a `sol-md__tag` span. An error code (`#NAME?`, `#DIV/0!`) and an all-digit tag are not tags. |
+| `#tag` at a word start (the start of the text, or after whitespace or an opening bracket) | a `sol-md__tag` span. A tag is `#`, then a letter or underscore, then letters, digits, `_`, `-` or `/`. An error code (`#NAME?`, `#DIV/0!`, `#N/A`) and an all-digit tag (a heading count) are not tags. |
 | `==text==` | `<mark class="sol-md__hl">` |
 | `$tex$` (no space just inside the dollars, no digit after) and `$$tex$$` | KaTeX once its chunk has loaded, else the source in a pending span; a KaTeX failure shows the TeX escaped |
 | `> [!kind]± Title` | a callout. The kind picks an icon and, for failure, fail, missing, danger, error and bug, the danger ink. An unknown kind reads as `note`, and a blank title uses the capitalized kind. |
@@ -251,11 +251,13 @@ Opened on a **Note**, the panel is read-only: the title, the dock and close butt
 Opened on a **Report**:
 
 - **Source pane.** A transparent textarea over a highlighted backdrop (`knapHighlight.ts`: markdown structure plus Knap tokens inside every tag, every character preserved and escaped first). Typing writes `node.body` and schedules an autosave. Sockets reconcile on blur, on close (Escape, the close button, a backdrop click) and on switching to the Preview tab. With a template wired, the pane shows the template's highlighted source read-only, under "Template from the wired Note. Edit it there."
-- **Preview pane.** Renders `templateSource(draft)` against the last compute's `templateVars`, 250 ms after the last keystroke. The previous render stays up while the next one settles. Errors replace the preview with their `line:column` lines.
+- **Preview pane.** Renders `templateSource(draft)` against the last compute's `templateVars`, 250 ms after the last keystroke. It renders from a debounced copy of the draft because re-parsing on every keystroke would remount the whole pane, jumping the scroll and remounting embeds. The previous render stays up while the next one settles. Errors replace the preview with their `line:column` lines.
 - **Embed Note.** Lists every Note in the graph. Picking one inserts `{{ <name> }}` as its own paragraph at the caret (the Note's addressable name, minted if missing), mints the input, and wires the Note's `document` output to it.
 - **Filters.** A searchable list of every standard filter with its example; a click inserts ` | <example>` at the caret.
 - **Export.** The webpage export, when the site chrome allows it.
-- **Dock.** Toggles a right-side docked panel with no backdrop. Docked, a small Draft/Preview toggle replaces the side-by-side split; on mobile, a full-width tab bar does the same.
+- **Dock.** Toggles a right-side docked panel (440 px, `--report-dock-w`) with no backdrop. Docked, a small Draft/Preview toggle replaces the side-by-side split; on mobile, a full-width tab bar does the same. The Dock button shows on desktop only, since on a narrow screen the report is already full-screen. Docked, the canvas area narrows by the dock width, and the viewport-fixed nav pill, HUD column, socket legend and command palette shift left with it.
+
+**Layout.** On desktop the overlay sits under the app bar, which stays usable, and the panel fills the remaining height. At a viewport width of 760 px or less the side-by-side split becomes Draft and Preview tabs, decided by width alone, never by device detection. An image or SVG embed with nothing loaded shows a quiet inline hint ("no image attached", "no SVG loaded"), not an error. A Frame embed never scrolls vertically, so its chip stays in view; a wide one scrolls sideways.
 
 Embed Note and Filters are disabled while a template is wired. With records wired, the preview shows one page at a time. A header row holds a stepper (`‹`, `name.md`, `i / N`, `›`), "first N of M" when the merge was capped, and the **Page name** field, which commits on blur or Enter and recomputes the graph.
 
@@ -267,7 +269,7 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 
 **Pages.** A document with `pages` writes one note per page, named by the page; a page whose name sanitizes to nothing takes the target name numbered by its position (`Report-2`), so pages never overwrite each other. A merge with no rows (`pages` empty) writes nothing, and the status says so. A document without `pages` writes one note under the target name. The status reads `Wrote N notes` (or `N of total` when capped), plus any asset count.
 
-**Markdown assembly.** For each page, `assembleDocumentMarkdown` resolves every distinct span name once through the resolver, replaces each span with the result, and prepends the frontmatter YAML when the document carries `frontmatter`. A `` `=name!` `` span whose result is one non-empty line becomes `==result==`. An empty result removes the span. The resolver maps values as follows:
+**Markdown assembly.** For each page, `assembleDocumentMarkdown` resolves every distinct span name once through the resolver, replaces each span with the result, and prepends the frontmatter YAML when the document carries `frontmatter`. A `` `=name!` `` span whose result is one non-empty line becomes `==result==`; a block result is left unmarked, since an embed cannot sit in a mark. An empty result removes the span. The resolver is a callback, which keeps the DOM render and the file writes out of the pure module. It maps values as follows:
 
 | Value | Written as |
 |---|---|
@@ -276,11 +278,11 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 | LAMBDA | `$$` display math `f(params) = body` plus a "where" list (`- *param* — description`); a body that does not convert writes `` `λ(params) = expr` `` |
 | DocumentValue | its body without its own frontmatter |
 | picture | a web URL as `![alt](url)`; a `data:` URL written as an asset and embedded as `![[file]]` |
-| chart | the source node's live SVG (or the SVG a provider supplies, such as the Gantt figure) rasterized to PNG at 2 to 4 times scale (targeting at least 640 px wide), written as an asset and embedded as `![[file]]`; nothing when the chart is not on the live canvas or is under 8 px |
+| chart | the source node's live SVG (or the SVG a provider supplies, such as the Gantt figure) rasterized to PNG at 2 to 4 times scale (targeting at least 640 px wide), written as an asset and embedded as `![[file]]`; nothing when the chart is not on the live canvas or is under 8 px. The vault has none of the app's CSS, so computed styles are baked into the SVG first. A live element is sized from its measured box, since a recharts root has no reliable intrinsic size until drawn; a provider's SVG from its root `width`/`height` (unit stripped), else its `viewBox`. This is why charts write only from the Run click. |
 | null | nothing |
 | anything else (a number, text, a logical, an error, a list, a unit value, a complex, a Cube) | the text the screen shows: `refPreview` with the source Report's format pick for that ref (`resolveRefAnnotation`) |
 
-Assets are named `<note name>-<ref name>.<ext>` and go to the asset subfolder setting, else beside the note. A chart's source node is found by following the cable into the producer's input of the same name.
+Assets are named `<note name>-<ref name>.<ext>` and go to the asset subfolder setting, else beside the note; the `![[file]]` embed resolves by file name anywhere in the vault. A chart's source node is found by following the cable into the producer's input of the same name.
 
 **Modes.** `mergeNoteText(existing, md, mode, blockName)`:
 
@@ -288,7 +290,15 @@ Assets are named `<note name>-<ref name>.<ext>` and go to the asset subfolder se
 - `append`: the markdown is added after the existing text, with trailing whitespace trimmed and one blank line between.
 - `block`: the writer owns the span between `%% solenoid:begin <label> %%` and `%% solenoid:end %%` (`managedBlock.ts`). An existing pair outside code fences has its span replaced; otherwise a new pair is appended after one blank line, and an orphan begin marker is left alone. Content carrying `%%` outside a fence is refused, since Obsidian would hide it.
 
-A note that does not exist yet is written as the markdown (wrapped in markers for `block`).
+A note that does not exist yet is written as the markdown (wrapped in markers for `block`). In `block` mode the writer's addressable name keys the pair, so two writers own two blocks; the markers are Obsidian comments, hidden in reading view. An unclosed code fence runs to the end of the note.
+
+**Frontmatter YAML** (`frontmatterToYaml` in `obsidianMarkdown.ts`; `yamlScalar` is shared with `frontmatterPatch.ts`). The block is `---`-fenced with a trailing newline, keys in insertion order, and empty when there are no keys. A list is a block sequence (`key: []` when empty). A scalar is written bare unless YAML would misread it:
+
+- null is empty, a finite number is bare, a non-finite number is quoted, and a logical is `true` or `false`;
+- text is quoted when it is empty, has surrounding whitespace, contains any of `:#[]{}",` or a newline or tab, reads as `true`, `false`, `null`, `yes`, `no`, `on` or `off` in any case, starts with a digit or `-` and a digit, starts with a YAML indicator (`*&!|>%@` or a backtick, or `~`), is a bare or space-followed `-` or `?`, or is a leading-dot number (`.5`, `.inf`, `.nan`);
+- quoted text is a double-quoted scalar with backslash, quote, newline, carriage return and tab escaped, so a multi-line value stays valid on one line.
+
+A key is quoted when it is empty, contains any of `:#[]{}",'|>%@` or a backtick, starts with `-`, `?`, `!`, `&`, `*` or whitespace, or ends with whitespace.
 
 **Stamp.** When `stamp` is on and exactly one note was written, the note's frontmatter gains a `solenoid:` link to a `Solenoid/<doc>` stub note through `patchFrontmatter` ([[C101]] onePatchPath), and the stub note is merged. Stamping never fails the write. This is the only frontmatter write on the document path; a Note's own frontmatter reaches the vault as the text of its body.
 
@@ -317,6 +327,6 @@ A body arrives in shared `.solenoid` files, so no rendered body is trusted. Each
 | Webpage export | each markdown segment passes DOMPurify; the title, embed names and chart labels pass `escapeHtml`; frozen values pass `escapeMd` before re-parsing. Chart SVG is serialized from the live canvas. |
 | Source highlight | the source is HTML-escaped before any span is added. |
 | Links in rendered markdown | one capture-phase document click guard (`installExternalLinkGuard`, installed by `App.tsx`) opens `http(s)` links to another origin, and `mailto:` links, in the system browser (a new tab on web), and never navigates the app's webview. Same-origin, hash and relative links are left alone. |
-| SVG | markup is sanitized once at intake by the SVG Picker (`sanitizeSvg`: scripting elements, `on*` handlers, external `href`s and `javascript:` or `data:text/html` values removed, then DOMPurify's SVG profile), so an SVG embedded in a Report is already clean. |
+| SVG | markup is sanitized once at intake by the SVG Picker (`svgSanitize.ts`), because the picker inlines it into the live DOM (hit-testing needs real elements) and it persists in the document. A text pass, which works headless and is what the tests pin, removes scripting elements, `on*` handlers (quoted or bare), every external `href` or `xlink:href` (a `use` or `image` beacon, an anchor) while keeping a local `#fragment`, and `javascript:` or `data:text/html` in any value; ids, names, classes, paths and fills stay. DOMPurify's SVG profile then runs wherever a DOM exists. An SVG embedded in a Report is already clean. |
 | KaTeX and the lambda syntax view | KaTeX output and `highlightFormula` output are the only unsanitized HTML inserted, both generated from the value rather than copied from it. |
 | Vault write | markdown only; `..` segments dropped; file names sanitized; a managed block refuses `%%` content; frame cells escape pipes and newlines. |

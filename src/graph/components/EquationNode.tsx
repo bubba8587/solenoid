@@ -8,8 +8,7 @@ import { formulaPopup } from "../formulaPopupStore";
 import type { DisplayValue } from "./valueDisplayFormat";
 import "./ExpressionNode.css";
 
-// A local measured row ([[C11]] socketBox12): two sockets, centered on the HERO VALUE BOX
-// rather than the row. The row must NOT become a positioning context.
+// Two sockets centered on the hero value box, not the row; the row must not become a positioning context.
 function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
@@ -23,15 +22,13 @@ function useRowTop(ref: React.RefObject<HTMLElement | null>): number | undefined
   return top;
 }
 
-// The structural slice these rows need; any acausal card satisfies it.
 export interface AcausalRowNode {
   id: string;
   inputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
   outputs: Partial<Record<string, { socket: import("rete").ClassicPreset.Socket }>>;
 }
 
-// One variable = one hero row with sockets on BOTH edges, shared by every acausal card.
-// `--output` keeps rows visible when collapsed.
+// `--output` keeps the rows visible when collapsed.
 export function EquationVarRow({
   node, emit, varKey, value, solved, label, desc,
 }: {
@@ -40,9 +37,7 @@ export function EquationVarRow({
   varKey: string;
   value: DisplayValue;
   solved: boolean;
-  /** Display label; defaults to the socket key. */
   label?: string;
-  /** Optional hover tooltip (the variable's description). */
   desc?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,7 +64,6 @@ export function EquationVarRow({
   );
 }
 
-// A single-OUTPUT hero row measured the same way.
 export function EquationOutRow({
   node, emit, socketKey, label, value,
 }: {
@@ -94,13 +88,11 @@ export function EquationOutRow({
 }
 
 export function EquationComponent({ data: node, emit, config }: NodeProps<EquationNodeType> & {
-  /** Extra control row a subclass card slots between the formula box and the
-   *  variable rows (the TVM node's payment-timing dropdown). */
+  /** A control row between the formula box and the variable rows (TVM's payment timing). */
   config?: ReactNode;
 }) {
   return (
     <NodeShell node={node} emit={emit} hideOutputSockets>
-      {/* No "=" prefix — the equation text carries its own. */}
       <FormulaField
         value={node.expr}
         onChange={() => {}}

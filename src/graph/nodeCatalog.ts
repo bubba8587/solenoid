@@ -1,4 +1,4 @@
-// [[C19]], [[C53]], [[E13]], [[C14]]
+// [[C19]] namingModel, [[C53]] queryIsCompositePreset, [[E13]] dateBuildName, [[C14]] currentExcelParity
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
@@ -88,19 +88,17 @@ import {
 } from "./rete-nodes";
 import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 
-// Label + description come from OP_META; tree structure and ordering are hand-authored.
 
 const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     keywords: "arithmetic", create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
 const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFXNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
 const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: "aggregate", create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  keywords: "combinatorics", create: () => new CombinatoricsNode({ op }) });
-// One Series node; the leaf types keep their historical spellings (nodeExcel keys).
+// NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace", geometric: "list-geometric", fibonacci: "list-fibonacci", repeat: "list-repeat" };
-// Every op is a leaf of the ONE Series card, so "series" must find all of them in search.
 const seriesLeaf   = (op: SeriesOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: SERIES_LEAF_TYPE[op], label: SERIES_OP_META[op].label, description: SERIES_OP_META[op].description, keywords: "series generate list", create: () => new SeriesNode({ op }), ...overrides });
 
-// One Rank & Percentile node; the leaf types keep their historical spellings (nodeExcel keys).
+// NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const RP_LEAF_TYPE: Partial<Record<RankPercentileOp, string>> = { large: "nth-large", small: "nth-small", "rank-eq": "rank-eq", "rank-avg": "rank-avg", "percentile-inc": "stat-percentile", "quartile-inc": "stat-quartile", "percentrank-inc": "stat-percentrank" };
 const rpLeaf       = (op: RankPercentileOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: RP_LEAF_TYPE[op]!, label: RANK_PERCENTILE_OP_META[op].label, description: RANK_PERCENTILE_OP_META[op].description, create: () => new RankPercentileNode({ op }), ...overrides, keywords: ["rank & percentile", overrides?.keywords].filter(Boolean).join(" ") });
 const argLeaf      = (op: ArgMinMaxOp):    NodeCatalogEntry => ({ type: `arg-${op}`,       label: ARG_MIN_MAX_OP_META[op].label,    description: ARG_MIN_MAX_OP_META[op].description,    create: () => new ArgMinMaxNode({ op })     });
@@ -112,7 +110,7 @@ const fisherLeaf   = (op: FisherOp):       NodeCatalogEntry => ({ type: `fisher-
 const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise-${op}`,   label: BITWISE_OP_META[op].label,        description: BITWISE_OP_META[op].description,        create: () => new BitwiseNode({ op })       });
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
 const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "slope", create: () => new RegressionNode({ op })    });
-// One Hypothesis Test node; the leaf types keep their historical spellings (nodeExcel keys).
+// NODE_EXCEL keys on these leaf types, so they don't follow the op names.
 const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
   z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test",
   anova: "anova-test", mannwhitney: "mannwhitney-test", wilcoxon: "wilcoxon-test", kruskal: "kruskal-test", fisher: "fisher-exact-test", ks: "ks-test", proptest: "proportion-test", binomtest: "binomial-test",
@@ -121,8 +119,7 @@ const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
 const DT = NODE_KIND_ACCENTS.date;
-// The Parse pair keeps its Excel-name types: `date-value` / `time-value` key the
-// Excel-equivalent table, and the op is not part of either name.
+// NODE_EXCEL keys on `date-value` and `time-value`, so they don't follow the op names.
 const dateTimeValueLeaf = (op: DateTimeValueOp): NodeCatalogEntry => ({ type: op === "date" ? "date-value" : "time-value", label: DATE_TIME_VALUE_OP_META[op].label, description: DATE_TIME_VALUE_OP_META[op].description, create: () => new DateTimeValueNode({ op }), parity: false });
 const datePartLeaf  = (op: DatePartOp):  NodeCatalogEntry => ({ type: `date-part-${op}`,  label: DATE_PART_OP_META[op].label,  description: DATE_PART_OP_META[op].description,  create: () => new DatePartNode({ op }),  parity: false });
 const weekInfoLeaf  = (op: WeekInfoOp):  NodeCatalogEntry => ({ type: `date-week-${op}`,  label: WEEK_INFO_OP_META[op].label,  description: WEEK_INFO_OP_META[op].description,  create: () => new WeekInfoNode({ op }),  parity: false });
@@ -214,7 +211,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "import-xml",    label: "Import XML",  description: "A page's XPath matches as a text list. Stores the URL; refresh re-pulls. Desktop any URL, browser CORS-only. Sheets: `IMPORTXML`.", create: () => new ImportXmlNode(), parity: false },
           ]},
           { type: "write-file",    label: "Write File",  description: "Writes a Frame as CSV or JSON rows, or Text as-is. Pick the format, arm it, then press Run. Never writes on its own. Desktop only.", create: () => new WriteFileNode(), parity: false, keywords: "csv json text write export save file sink xml mspdi verbatim string" },
-          // Keyless lookups: Geocode feeds Weather; Holidays feeds WORKDAY / NETWORKDAYS and Schedule.
           { type: "pair", children: [
             { type: "geocode",       label: "Geocode",     description: "A place name to latitude, longitude and timezone, with a pick among matches when the name is ambiguous. No key needed.", create: () => new GeocodeNode(), parity: false, keywords: "geocode place location city coordinates latitude longitude timezone lookup open-meteo" },
             { type: "weather",       label: "Weather",     description: "A daily forecast frame and the current temperature for a latitude and longitude. °C or °F carries as a unit. No key needed.", create: () => new WeatherNode(), parity: false, keywords: "weather forecast rain temperature precipitation climate open-meteo garden watering" },
@@ -235,7 +231,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "display",   label: "Display",  description: "Shows a value and passes it on unchanged.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
       { type: "format-controller", label: "Format Controller", description: "Sets how a docked socket's value reads (decimals, fractions, percent, currency, a date style) and its unit, like `°C`, `m` or `kg`. A value that already has a unit locks it; Convert changes it.", create: () => new FormatControllerNode() },
       {
-        // General plotters stay top-level; specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
         children: [
           { type: "chart",     label: "Chart (Recharts)",     description: "Plots a List or a Frame as a column, bar, line, area, scatter, pie, radar or funnel chart, among others. A Frame's number columns become named series with a legend, and can combine bars with lines.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series legend" },
@@ -285,8 +280,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
       { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
-      // Query ships a PENDING internal snapshot, so every add path must hydrate the
-      // CompositeNode right after create().
       { type: "pair", children: [
         { type: "composite", label: "Composite", description: "A reusable subgraph as one card with a typed boundary. Built inside via Edit contents, or from selected nodes with Ctrl+Shift+G.", create: () => new CompositeNode(), parity: false },
         { type: "query", label: "Query", description: "A Composite shaped for data transformation: table in, verb chain inside, result out. Recomputes only on Refresh. Excel: Power Query.", create: () => new CompositeNode({
@@ -303,8 +296,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         }), parity: false, keywords: "power query get transform etl refresh manual steps applied pipeline shape clean data table verbs" },
       ]},
-      // FLAT_CATALOG-only: these live inside a Composite's internal graph, never on
-      // the main canvas, but hydrate() must rebuild them from a save/paste snapshot.
       { type: "composite-input", label: "Composite Input", description: "Internal: a Composite's exposed-input boundary marker.", create: () => new CompositeInputNode(), parity: false, hidden: true },
       { type: "composite-output", label: "Composite Output", description: "Internal: a Composite's output boundary marker.", create: () => new CompositeOutputNode(), parity: false, hidden: true },
       { type: "conduit",    label: "Conduit",   description: "Bundle up to 8 cables into one block. They travel onward as a single ribbon that splits back into lanes at the destination. Rotate or extend it.", create: () => new ConduitNode(), parity: false },
@@ -468,8 +459,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
   },
 
   // ── DOCS & FILES ─────────────────────────────────────────────────────────────
-  // Also the pack fallback bucket (catalogUtils placementPath, packShared): an
-  // uncategorized pack node lands here, so it is never empty.
   {
     type: "category", label: "Docs & Files", description: "Documents and files: markdown notes and reports, your Obsidian vault, and attached pictures, files and graphics.",
     children: [
@@ -758,7 +747,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "discount-security", label: "Discount Security", description: "Price, yield and discount rate for non-coupon securities. Excel: `TBILLEQ`, `TBILLPRICE`, `TBILLYIELD`, `DISC`, `PRICEDISC`, `YIELDDISC`, `INTRATE`, `RECEIVED`, `PRICEMAT`, `YIELDMAT`.", create: () => new DiscountSecurityNode(), parity: false, keywords: "treasury bill t-bill tbill discount discounted security paper note zero coupon price yield rate redemption investment received interest at maturity money market bond equivalent" },
           { type: "accrued-interest", label: "Accrued Interest", description: "Interest a security has earned since issue but not yet paid at settlement, periodic or at maturity. Excel: `ACCRINT`, `ACCRINTM`.", create: () => new AccruedInterestNode(), parity: false, keywords: "accrued interest accrint accrintm coupon issue settlement periodic maturity bond par" },
           { type: "pair", children: [durationLeaf("duration"),  durationLeaf("mduration")] },
-          // XNPV lives in Cash flow analysis beside XIRR, not here.
           {
             type: "category", label: "Coupon dates", description: "Coupon period day counts and dates for bond calculations.",
             children: [
@@ -937,7 +925,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "drop-blank-rows", label: "Drop Blank Rows", description: "Removes blank rows: only fully blank spacer rows, or any row with a blank cell. Errors count as values. Power Query: Remove Blank Rows.", create: () => new DropBlankRowsNode(), parity: false, keywords: "drop remove blank empty rows spacers nulls complete clean" },
             ],
           },
-          // Everyday verbs stay top-level; surgery/reshape/compare fold into subcategories.
           {
             type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
             children: [
@@ -998,9 +985,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Select", description: "Pick rows or columns, by index or from the table's edges.",
         children: [
           { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
-          // One rank-preserving card (list, matrix or scalar), so both ops get a bare
-          // Add-menu leaf — no "TAKE: Drop" colon row. The family keywords carry the old
-          // "list take" / "table take" spellings onto both.
           { type: "pair", children: [
             { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
             { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
@@ -1050,9 +1034,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // Declared EMPTY so it sits last among the core rows: the catalog builder fills it
-  // per active pack and prunes the row when no pack targets it. Cross-woven pack nodes
-  // stay put. Uncategorized pack nodes fall to "Docs & Files" (the placement fallback).
   {
     type: "category", label: "Packs", description: "Nodes from your enabled packs, by domain. Manage packs in Settings.",
     children: [],

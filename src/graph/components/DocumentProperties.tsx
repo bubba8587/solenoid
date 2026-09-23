@@ -10,7 +10,6 @@ import { rebuildGroupMembership } from "../groupMembership";
 import "../Settings.css";
 import "./DocumentProperties.css";
 
-// Commits on Enter/blur (Escape reverts), never per keystroke.
 function TextRow({ label, value, placeholder, onCommit }: {
   label: string;
   value: string;
@@ -41,8 +40,7 @@ function TextRow({ label, value, placeholder, onCommit }: {
 
 const splitTags = (v: string) => v.split(",").map((t) => t.trim()).filter(Boolean);
 
-/** Title lives in documentStore, author/tags in docMetaStore (→ SavedGraph.meta);
- *  edits capture into the current document so they persist. */
+/** The title lives in documentStore, author and tags in docMetaStore (SavedGraph.meta); edits capture into the current document so they persist. */
 export function DocumentProperties() {
   const open = useSyncExternalStore(docPropertiesPanel.subscribe, docPropertiesPanel.get);
   useSyncExternalStore(documentStore.subscribe, documentStore.version);

@@ -1,4 +1,4 @@
-// [[D5]], [[D6]]
+// [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { IS_COARSE } from "./coarse";
@@ -6,38 +6,22 @@ import { descriptionText } from "./descriptionMd";
 import "./AddNodeMenu.css";
 import { ChevronRightIcon } from "./components/Icons";
 
-// Leaf entry — produces a node when selected.
 export type NodeCatalogEntry = {
   type: string;
   label: string;
   description?: string;
   create: () => unknown;
-  // Node-kind accent, drawn as a filled rounded-rect; highlights user-input nodes.
   accent?: string;
-  // true (default) = fully equivalent to the Excel counterpart(s); false = known
-  // limitations (see `note`). An ExcelEquiv may override this per Excel function.
   parity?: boolean;
-  // Stays registered so saved graphs still load, but is hidden from the Add menu and the
-  // Function Reference so new ones can't be created.
   hidden?: boolean;
-  // Pack id(s) contributing this node; undefined/empty = built-in. Set by the catalog builder.
   packs?: string[];
-  // Ops with no Add-menu leaf of their own, DERIVED from `nodeOps.ts` — never hand-set, so
-  // the `{ }` marker can't claim something the menu contradicts.
   hiddenOps?: Array<{ op: string; label: string }>;
-  // Opts out of the `{ }` glyph; the ops stay in `hiddenOps` and stay searchable.
   hideOpsMark?: boolean;
-  // The node's OWN reference metadata, so the Function Reference generates from the catalog
-  // rather than a parallel hand-list; empty = a Solenoid-native node.
   excel?: ExcelEquiv[];
-  // Space-separated search synonyms, matched by the Add-menu search only, never displayed.
   keywords?: string;
-  // The formula name(s) this leaf answers to when the despaced label can't be the name
-  // (punctuation, or one node splitting into several functions).
   fx?: string[];
 };
 
-// `parity`/`note` override the entry's defaults for this one Excel function.
 export type ExcelEquiv = {
   excel: string;
   syntax: string;
@@ -45,12 +29,7 @@ export type ExcelEquiv = {
   note?: string;
 };
 
-// `▶` is reserved for an expanding category and parentheses would collide with formula
-// syntax, so hidden-op cards take braces. Rendered, not baked into the label, so search and
-// the node header keep the clean name.
 function OpsMark() {
-  // aria-hidden keeps the glyph out of the announced name; the title is a mouse-hover
-  // hint for the marker, generic by design (no op names — tooltips are structural).
   return <span className="solenoid-add-menu__ops-mark" aria-hidden="true" title="Node contains multiple operations">{"{ }"}</span>;
 }
 
@@ -64,7 +43,6 @@ function PackDot({ packs }: { packs: string[] }) {
   );
 }
 
-// Category entry — opens a submenu.
 export type CatalogCategory = {
   type: "category";
   label: string;
@@ -72,7 +50,6 @@ export type CatalogCategory = {
   children: CatalogEntry[];
 };
 
-// Pair entry — two leaf entries shown side by side (for opposites).
 export type CatalogPair = {
   type: "pair";
   children: [NodeCatalogEntry, NodeCatalogEntry];
@@ -88,8 +65,6 @@ function isPair(e: CatalogEntry): e is CatalogPair {
 }
 
 // ─── Render/nav items ───────────────────────────────────────────────────
-// Pairs flatten into two half-leaves so the keyboard moves through every node and the grid
-// lays the halves into its two columns.
 type RenderItem =
   | { kind: "leaf"; entry: NodeCatalogEntry; half: boolean }
   | { kind: "category"; entry: CatalogCategory };
@@ -119,7 +94,6 @@ function levelItemsAt(entries: CatalogEntry[], path: number[]): RenderItem[] {
   return items;
 }
 
-// Rows match the grid layout, so the keyboard moves up/down by row and left/right in a pair.
 function rowsOf(items: RenderItem[]): number[][] {
   const rows: number[][] = [];
   for (let i = 0; i < items.length; ) {
@@ -130,9 +104,6 @@ function rowsOf(items: RenderItem[]): number[][] {
   return rows;
 }
 
-// ─── Fuzzy search ───────────────────────────────────────────────────────
-// Scoring lives in catalogSearch.ts, over label + description + Excel names + ancestor
-// category path + kebab type id + keywords.
 
 const VIEWPORT_MARGIN = 8;
 
@@ -175,13 +146,10 @@ type TreeMenuProps = {
   entries: CatalogEntry[];
   depth: number;
   path: number[];
-  // The parent gates this so a click-PINNED submenu isn't collapsed by mousing elsewhere.
   onHover: (p: number[]) => void;
-  // Click on a category: pin its submenu open.
   onOpenCategory: (p: number[]) => void;
   onSelect: (entry: NodeCatalogEntry) => void;
   onSubmenuSide: (s: "left" | "right") => void;
-  // Quick-wire only: a leaf that can't wire to the dragged socket is grayed + inert.
   isDim: (leaf: NodeCatalogEntry) => boolean;
 };
 
@@ -204,8 +172,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
               className={`solenoid-add-menu__item solenoid-add-menu__item--category${onPath ? " solenoid-add-menu__item--active" : ""}${open ? " solenoid-add-menu__item--open" : ""}`}
               title={it.entry.description && descriptionText(it.entry.description)}
               onMouseEnter={() => onHover([...prefix, i, 0])}
-              // Submenus are DOM children of this div, so without stopping the bubble the
-              // outermost ancestor's handler wins and re-pins to the top.
+              // Submenus are DOM children of this div: without stopping the bubble, the outermost ancestor re-pins to the top.
               onClick={(e) => { e.stopPropagation(); onOpenCategory([...prefix, i]); }}
             >
               <span>{it.entry.label}</span>
@@ -249,7 +216,6 @@ type AddNodeMenuProps = {
   entries: CatalogEntry[];
   onSelect: (entry: NodeCatalogEntry) => void;
   onClose: () => void;
-  // When present the menu shows the WHOLE catalog but grays out every leaf not in the set.
   compatibleTypes?: Set<string>;
 };
 
@@ -257,9 +223,8 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0); // search results
-  const [treePath, setTreePath] = useState<number[]>([0]); // tree nav
-  // While `pinned` is set, hover navigates WITHIN that subtree but can't collapse it.
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [treePath, setTreePath] = useState<number[]>([0]);
   const [pinned, setPinned] = useState<number[] | null>(null);
   const [submenuSide, setSubmenuSide] = useState<"left" | "right">("right");
   const [rootOpensLeft, setRootOpensLeft] = useState(false);
@@ -274,12 +239,9 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
   );
   const searching = !!query.trim();
 
-  // `select` is the one gate every pick path goes through, so a dimmed leaf can't be chosen
-  // by click OR keyboard.
   const isDim = (leaf: NodeCatalogEntry) => compatibleTypes != null && !compatibleTypes.has(leaf.type);
   const select = (leaf: NodeCatalogEntry) => { if (!isDim(leaf)) onSelect(leaf); };
 
-  // Ignore hover that would leave the pinned subtree.
   const startsWith = (p: number[], base: number[]) => base.every((v, i) => p[i] === v);
   const handleHover = (p: number[]) => {
     if (pinned && !startsWith(p, pinned)) return;
@@ -290,20 +252,16 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     setTreePath([...p, 0]);
   };
 
-  // Desktop only: on touch this pops the on-screen keyboard over the category list.
   useEffect(() => { if (pos.visible && !IS_COARSE) inputRef.current?.focus(); }, [pos.visible]);
 
-  // Keep the highlighted search result in view as the list scrolls.
   const activeRef = useRef<HTMLDivElement>(null);
   useEffect(() => { activeRef.current?.scrollIntoView({ block: "nearest" }); }, [activeIndex]);
 
-  // Only ever move UP/LEFT, never back down/right, so the menu doesn't jump as search
-  // results come and go.
+  // Only ever move up or left, so the menu doesn't jump as results come and go.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    // Predict which side submenus open on, from the root's position.
     setRootOpensLeft(screenX + rect.width * 2 + 8 > window.innerWidth - VIEWPORT_MARGIN);
     setPos((p) => {
       let left = p.visible ? p.left : screenX;
@@ -321,8 +279,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    // Capture phase: RF's d3 handlers stop a canvas mousedown at the target, so a bubble
-    // listener never hears the click that should dismiss the menu.
+    // Capture phase: React Flow's handlers stop a canvas mousedown before it bubbles.
     const onDown = (e: PointerEvent) => {
       const t = e.target as Element | null;
       if (t?.closest?.(".solenoid-add-menu, .solenoid-add-menu__panel--submenu")) return;
@@ -345,7 +302,6 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
       else if (e.key === "Escape") { e.stopPropagation(); setQuery(""); }
       return;
     }
-    // Keyboard nav releases any click-pin, so arrowing out of a pinned branch can't strand it.
     if (pinned) setPinned(null);
     const items = levelItemsAt(entries, treePath);
     const rows = rowsOf(items);
@@ -369,10 +325,8 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
     } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
       e.preventDefault();
       const goRight = e.key === "ArrowRight";
-      // Spatial move within a pair takes priority (toward the partner).
       if (rows[r].length === 2 && goRight && c === 0) { setActive(rows[r][1]); return; }
       if (rows[r].length === 2 && !goRight && c === 1) { setActive(rows[r][0]); return; }
-      // Flipped when submenus open leftward, so the arrow toward the submenu enters.
       const openLeft = treePath.length > 1 ? submenuSide === "left" : rootOpensLeft;
       const isDescend = openLeft ? !goRight : goRight;
       if (isDescend) { if (active?.kind === "category") setTreePath([...treePath, 0]); }

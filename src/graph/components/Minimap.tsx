@@ -6,9 +6,7 @@ import { groupCollapseStore } from "../groupCollapse";
 import { themeAccent, resolveColor } from "../palette";
 import "./Minimap.css";
 
-// The minimap accent policy + collapse-aware geometry, shared by the RF minimaps
-// (FlowCanvas, the drill-in) and NavMenu's fit-all math; .solenoid-minimap
-// (Minimap.css) is the window both wear.
+// Shared by the RF minimaps (FlowCanvas, the drill-in) and NavMenu's fit-all math.
 
 function hexToRgba(hex: string, a: number): string {
   const h = hex.replace("#", "");
@@ -20,10 +18,8 @@ function hexToRgba(hex: string, a: number): string {
 
 interface Fill { background: string; borderColor: string }
 
-// ONE stable order shared by the geometry override and the color lookup, so the two
-// stay index-aligned; members hidden inside a collapsed group are dropped.
+// One stable order shared by the geometry override and the color lookup, so the two stay index-aligned.
 function minimapNodes() {
-  // getActive* follows the drill-in subgraph when one is open, else main.
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return { view: null, nodes: [] as ReturnType<NonNullable<typeof editor>["getNodes"]> };
@@ -33,8 +29,7 @@ function minimapNodes() {
   return { view, nodes };
 }
 
-// The plugin's `getNodesRect` shape, but skipping hidden members and sizing a
-// collapsed group to its real compact box, not its stored expanded one.
+// Skips hidden members and sizes a collapsed group to its compact box, not its stored expanded one.
 export function collapsedAwareNodesRect() {
   const { view, nodes } = minimapNodes();
   if (!view) return [];
@@ -51,15 +46,13 @@ export function collapsedAwareNodesRect() {
   });
 }
 
-/** One node's minimap fill — shared with the flow surface's RF MiniMap so the
- *  two minimaps can't drift on accent policy. */
+/** Shared with the flow surface's RF MiniMap, so the two can't drift on accent policy. */
 export function minimapFillForNode(n: SolenoidNode, mode: "dark" | "light"): Fill {
   if (n instanceof GroupNode) {
     const c = themeAccent(resolveColor(n.color), mode);
     return { background: hexToRgba(c, 0.2), borderColor: hexToRgba(c, 0.75) };
   }
   if (n instanceof NoteNode) {
-    // Notes read more solid than a group's wash on canvas.
     const c = themeAccent(resolveColor(n.color), mode);
     return { background: hexToRgba(c, 0.35), borderColor: hexToRgba(c, 0.9) };
   }

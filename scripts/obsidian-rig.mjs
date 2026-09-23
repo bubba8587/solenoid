@@ -1,8 +1,7 @@
 // [[C107]] obsidianPlugin
-// A second, private Obsidian to check the plugin and the vault look against the real thing
-// (tree/specs/integrations/obsidian-plugin.md § Verifying against real Obsidian). It runs on its own X display with
-// its own profile and a COPY of the demo vault, so the author's Obsidian is never touched. Linux.
-//
+// A second, private Obsidian for checking the plugin against the real thing, on its own X display and
+// profile with a copy of the demo vault, so the author's Obsidian is never touched. It always tests this
+// repository's plugin build. Linux.
 //   npm run plugin:rig -- up                       start it (idempotent) and wait until it answers
 //   npm run plugin:rig -- sync                     copy the vault's config + plugin build in, reload the plugin
 //   npm run plugin:rig -- shot <note> <out.png>    open a note and screenshot the window
@@ -24,8 +23,6 @@ const DISPLAY = process.env.RIG_DISPLAY ?? ":7";
 const PORT = Number(process.env.RIG_PORT ?? 9333);
 const OBSIDIAN = process.env.OBSIDIAN ?? "/opt/Obsidian/obsidian";
 // `pkill -f` matches its own shell on a plain pattern; the bracket keeps it off itself.
-// The build under test is always this repository's (`npm run plugin:build`), laid over whatever
-// copy of the plugin the demo vault has installed from the community store.
 const BUILD = path.join(ROOT, "obsidian-plugin", "dist");
 const bracket = (s) => `[${s[0]}]${s.slice(1)}`;
 
@@ -40,7 +37,6 @@ async function answers() {
 function copyVault() {
   fs.rmSync(VAULT, { recursive: true, force: true });
   fs.cpSync(path.join(ROOT, "demo-vault"), VAULT, { recursive: true });
-  // The author's own pane layout is theirs; the rig opens one clean pane.
   fs.rmSync(path.join(VAULT, ".obsidian", "workspace.json"), { force: true });
   copyBuild();
 }
@@ -68,7 +64,6 @@ async function up() {
       const { plugins } = window.app;
       if (!plugins.isEnabled?.() && plugins.setEnable) await plugins.setEnable(true);
       if (!plugins.enabledPlugins.has("solenoid-properties")) await plugins.enablePluginAndSave("solenoid-properties").catch(() => {});
-      // A first open asks whether to trust the vault; the answer is already yes.
       for (const btn of document.querySelectorAll(".modal-container button")) if (/trust/i.test(btn.textContent ?? "")) btn.click();
       document.querySelectorAll(".modal-container .modal-close-button").forEach((x) => x.click());
       try { window.electron.remote.getCurrentWindow().setBounds({ x: 0, y: 0, width: 1480, height: 920 }); } catch { /* no remote: the window keeps its size */ }
@@ -101,7 +96,7 @@ async function sync() {
     await plugins.disablePlugin("solenoid-properties");
     await plugins.enablePlugin("solenoid-properties");
     customCss.requestLoadSnippets?.();
-    // A reload unmounts every chip, and Obsidian does not redraw a note that is already open.
+    // Obsidian does not redraw an open note after a reload, and the reload unmounts every chip.
     window.app.workspace.iterateAllLeaves((leaf) => { void leaf.rebuildView?.(); });
   }));
   console.log("rig: synced, plugin reloaded");
@@ -142,7 +137,6 @@ async function shot(args) {
       }, Number(f.scroll));
       await sleep(900);
     }
-    // Settings and a popped-out note are windows of their own: shoot the newest other page.
     const pages = await browser.pages();
     const target = f.popout || f.settings ? pages.filter((p) => p !== page).at(-1) ?? page : page;
     const clip = typeof f.clip === "string" ? (([x, y, width, height]) => ({ x, y, width, height }))(f.clip.split(",").map(Number)) : undefined;

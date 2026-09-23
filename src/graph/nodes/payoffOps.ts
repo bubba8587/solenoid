@@ -1,29 +1,24 @@
 // [[D19]] implReteFree, [[C17]] shareImpl
-// Pay every minimum, throw the extra plus each freed minimum at the head debt (highest APR = avalanche, smallest balance = snowball), month by month; closed-form amortization, no solver.
 
 export type PayoffOrder = "avalanche" | "snowball";
 
 export interface Debt {
   name: string;
   balance: number;
-  /** Annual percentage rate as a fraction (0.18) — a value ≥ 1 is read as a percent (18). */
+  /** A fraction (0.18); a value of 1 or more reads as a percent (18). */
   apr: number;
-  /** The minimum monthly payment. */
   min: number;
 }
 
 export interface DebtSummary {
   name: string;
-  /** Months until this debt reaches zero (0 = already clear). */
   months: number;
-  /** Interest paid on this debt over the plan. */
   interest: number;
 }
 
 export interface PayoffPlan {
-  /** Months until the last debt clears. */
   months: number;
-  /** Balances after each month, [month][debt] — month 0 is the starting balances. */
+  /** [month][debt]; month 0 holds the starting balances. */
   schedule: number[][];
   perDebt: DebtSummary[];
   totalInterest: number;
@@ -37,16 +32,14 @@ export function monthlyRate(apr: number): number {
   return (a >= 1 ? a / 100 : a) / 12;
 }
 
-/** The payoff order: the index list of debts, head first. */
 export function payoffOrder(debts: readonly Debt[], order: PayoffOrder): number[] {
   const idx = debts.map((_, i) => i);
   if (order === "snowball") return idx.sort((a, b) => debts[a].balance - debts[b].balance || a - b);
-  // By the rate the plan charges, so 18 (a percent) and 0.24 (a fraction) compare honestly.
+  // Sort by the rate the plan charges, so 18 (a percent) and 0.24 (a fraction) compare correctly.
   return idx.sort((a, b) => monthlyRate(debts[b].apr) - monthlyRate(debts[a].apr) || a - b);
 }
 
-/** Roll the plan. Throws when the payments can't cover the interest (the balances would
- *  grow forever) — the caller turns that into `#VALUE!` naming the debt. */
+/** Throws when the payments never clear a debt; the caller turns that into `#VALUE!` naming it. */
 export function payoffPlan(debts: readonly Debt[], extra: number, order: PayoffOrder): PayoffPlan {
   const n = debts.length;
   const rates = debts.map((d) => monthlyRate(d.apr));
@@ -54,7 +47,6 @@ export function payoffPlan(debts: readonly Debt[], extra: number, order: PayoffO
   const mins = debts.map((d) => Math.max(0, Number.isFinite(d.min) ? d.min : 0));
   const interest = new Array<number>(n).fill(0);
   const clearedAt: number[] = balances.map((b) => (b <= 0 ? 0 : -1));
-  // A debt that started clear has no payment to free; only minimums that were being paid cascade.
   const wasOpen = balances.map((b) => b > 0.005);
   const rank = payoffOrder(debts, order);
   const schedule: number[][] = [balances.map(round2)];
@@ -65,7 +57,6 @@ export function payoffPlan(debts: readonly Debt[], extra: number, order: PayoffO
       const worst = rank.find((i) => balances[i] > 0.005) ?? 0;
       throw new Error(`the payments never clear "${debts[worst].name}" — raise a minimum or the extra`);
     }
-    // Interest accrues, then every open debt gets its minimum (never more than it owes).
     let freed = pot;
     for (let i = 0; i < n; i++) {
       if (balances[i] <= 0.005) { if (wasOpen[i]) freed += mins[i]; continue; }
@@ -74,9 +65,8 @@ export function payoffPlan(debts: readonly Debt[], extra: number, order: PayoffO
       balances[i] += acc;
       const pay = Math.min(mins[i], balances[i]);
       balances[i] -= pay;
-      freed += mins[i] - pay; // an overpaid minimum's remainder joins the pot
+      freed += mins[i] - pay;
     }
-    // The pot (extra + freed minimums) hits the head debt, cascading down the order.
     for (const i of rank) {
       if (freed <= 0.005) break;
       if (balances[i] <= 0.005) continue;

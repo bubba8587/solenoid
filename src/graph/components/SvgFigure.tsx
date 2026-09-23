@@ -1,9 +1,9 @@
+// [[C103]] untrustedContentSeams
 import { useLayoutEffect, useRef } from "react";
 import type { SvgValue } from "../svgValue";
 import { elementName } from "../svgLayer";
 
-// Read-only: the pick happens only on the source node. The markup is TRUSTED
-// (the author's own file / URL), the same model as the Image node's src.
+// Read-only: the pick happens only on the source node, and the markup was sanitized at intake by the SVG Picker.
 
 export function SvgFigure({ value, height, className }: { value: SvgValue; height?: number; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -15,7 +15,7 @@ export function SvgFigure({ value, height, className }: { value: SvgValue; heigh
     el.innerHTML = value.source || "";
     const svg = el.querySelector("svg");
     if (!svg) return;
-    // Strip any hard-coded width/height that would fight the container.
+    // Hard-coded width and height would fight the container.
     svg.removeAttribute("width");
     svg.removeAttribute("height");
     svg.style.width = "100%";

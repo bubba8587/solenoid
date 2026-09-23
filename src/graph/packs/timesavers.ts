@@ -1,6 +1,4 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault
-// Conveniences that are not single Excel functions: reclassified core nodes, the shared
-// HYPOTENUSE claim, formula presets, and nodes with no Excel answer at all.
 
 import { HYPOTENUSE_ENTRY } from "./geometry";
 import { ReverseTextNode, SpellNumberNode, TimeZoneConvertNode, WorldClockNode, QrCodeNode } from "../rete-nodes";
@@ -126,8 +124,6 @@ export const TIMESAVERS_PACK: Pack = {
       },
     },
   ],
-  // Reclassifies EXISTING core nodes; the pack ships ON, so nothing disappears by default.
-  // Fundamental list ops (Range, LinSpace, Reverse, Slice, Length) stay core deliberately.
   tags: [
     "weighted-wavg", "weighted-wstdev", "weighted-wvar",
     "arg-argmax", "arg-argmin",

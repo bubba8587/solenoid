@@ -1,13 +1,9 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C106]] noNativeDialogs
-// Transient in-app notices, used instead of window.alert — unreliable in the Tauri WebView
-// — for things the user must not silently miss.
+// [[B10]] reactFlowView, [[C106]] noNativeDialogs
 
 import { createNotifier } from "./storeKit";
 
 export type NoticeTone = "info" | "warn" | "error";
 
-/** An optional single button on a notice (e.g. "Allow" on the network-permission prompt).
- *  Clicking it runs `onClick` and dismisses the notice. */
 export interface NoticeAction {
   label: string;
   onClick: () => void;
@@ -20,13 +16,12 @@ export interface Notice {
   action?: NoticeAction;
 }
 
-const DEFAULT_TTL = 6500; // ms before auto-dismiss; 0 = sticky (until dismissed)
+const DEFAULT_TTL = 6500;
 
 let _notices: Notice[] = [];
 let _seq = 0;
 const { notify, subscribe } = createNotifier();
 
-/** Returns the notice id, so a sticky notice (ttl 0) can be dismissed programmatically. */
 export function pushNotice(message: string, tone: NoticeTone = "info", ttl = DEFAULT_TTL, action?: NoticeAction): number {
   const id = ++_seq;
   _notices = [..._notices, { id, message, tone, ...(action ? { action } : {}) }];

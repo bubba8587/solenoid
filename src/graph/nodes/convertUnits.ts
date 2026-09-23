@@ -15,8 +15,7 @@ export interface ConvertUnitDef {
   dim: Unit;
 }
 
-// Each category's dimension + the SI scale of its LOCAL base unit (every factor here is
-// relative to that base), so a unit's SI scale = its factor × the base's SI scale.
+// Every unit factor is relative to its category's local base unit, so a unit's SI scale is its factor times `baseScale`.
 const CATEGORY_DIM: Record<Exclude<ConvertCategory, "temperature">, { dim: Dim; baseScale: number }> = {
   angle:    { dim: { angle: 1 }, baseScale: 1 },
   length:   { dim: { length: 1 }, baseScale: 1 },
@@ -77,8 +76,7 @@ export const CONVERT_UNIT_DEFS: Record<string, ConvertUnitDef> = {
   stone: mkUnit("Stone",        "stone", "mass",   6350.29318),
   tonne: mkUnit("Metric ton",   "t",     "mass",   1e6),
 
-  // Temperature is affine: toBase/fromBase are to CELSIUS, the `dim` units to KELVIN
-  // (what dimConvert uses). Both encode the same physics.
+  // Temperature is affine: toBase and fromBase work in Celsius, while `dim` works in kelvin for dimConvert.
   C: { label: "Celsius",    excelCode: "C", category: "temperature", toBase: (x) => x,                 fromBase: (x) => x,               dim: { dim: { temperature: 1 }, scale: 1,     offset: 273.15 } },
   F: { label: "Fahrenheit", excelCode: "F", category: "temperature", toBase: (x) => (x - 32) * 5 / 9, fromBase: (x) => x * 9 / 5 + 32,  dim: { dim: { temperature: 1 }, scale: 5 / 9, offset: 273.15 - (32 * 5) / 9 } },
   K: { label: "Kelvin",     excelCode: "K", category: "temperature", toBase: (x) => x - 273.15,        fromBase: (x) => x + 273.15,      dim: { dim: { temperature: 1 }, scale: 1,     offset: 0 } },

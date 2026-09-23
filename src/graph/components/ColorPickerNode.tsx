@@ -34,7 +34,7 @@ const CHANNELS: Record<"rgb" | "hsv", { key: ChKey; label: string; max: number }
   ],
 };
 
-// The slider track gradient: the color as THAT channel sweeps, others held.
+// The color as that channel sweeps, the others held.
 function channelGradient(mode: "rgb" | "hsv", key: ChKey, ch: Ch): string {
   if (mode === "rgb") {
     const { c0: r, c1: g, c2: b } = ch;
@@ -97,8 +97,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
     void processGraph(data.id);
   }
 
-  // Hex field commits on Enter / blur (project rule) but the swatch tracks the
-  // draft live so typing previews.
+    // The hex field commits on Enter or blur, while the swatch tracks the draft live as a preview.
   function commitHex() {
     data.stringLiterals.hex = hexDraft;
     void processGraph(data.id);
@@ -151,8 +150,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
         <ArgSelect value={format} onChange={changeFormat} options={FORMAT_OPTS} />
       </div>
 
-      {/* The color output socket is measured onto the swatch row so it sits next
-          to what it emits. */}
+        {/* Measured onto the swatch row, so the socket sits next to what it emits. */}
       {colorOut && (
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0, width: "100%" }}>

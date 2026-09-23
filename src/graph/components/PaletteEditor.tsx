@@ -1,4 +1,4 @@
-// [[C62]]
+// [[C62]] paletteAllOrNone
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CardFrame } from "./NodeCard";
 import { useHeaderHeightVar } from "./useHeaderHeightVar";
@@ -36,9 +36,7 @@ const SLOT_ROLES: { slot: PaletteSlot; label: string }[] = [
   { slot: "gray",      label: "Any" },
 ];
 
-// The neutral chrome (App.css's ramps). Wells edit the LIVE theme's ramp only — dark
-// and light chrome can't be judged at once, and the other mode's ramp is carried
-// untouched through Save. Order walks outward: ground, surfaces, edges, ink.
+// Wells edit the live theme's ramp only: dark and light chrome can't be judged at once, and the other mode's ramp rides through Save untouched.
 const CHROME_ROLES: { key: ChromeKey; label: string }[] = [
   { key: "canvasBg",      label: "Canvas" },
   { key: "canvasDot",     label: "Dots" },
@@ -57,8 +55,7 @@ const CHROME_ROLES: { key: ChromeKey; label: string }[] = [
 
 type Draft = Record<PaletteSlot, string>;
 
-/** Edits live in a local DRAFT that previews only in the sample — the app is retinted once
- *  on Save, never on every color-drag tick. The sample uses the REAL node chrome + CSS. */
+/** Edits preview only in the sample, which uses the real node chrome and CSS; the app retints once on Save. */
 export function PaletteEditorModal() {
   const open = useSyncExternalStore(paletteEditorPanel.subscribe, paletteEditorPanel.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -154,8 +151,7 @@ export function PaletteEditorModal() {
                   onClick={() => {
                     const t = BUILTIN_CHROME[name as PaletteName];
                     setDraft({ ...BUILTIN_PALETTES[name as PaletteName] });
-                    // A template with no chrome of its own seeds the neutral ramps, so
-                    // loading it clears chrome the author had set (matches loadCustomTemplate).
+                    // A template with no chrome of its own seeds the neutral ramps (as loadCustomTemplate does).
                     setChromeDraft({
                       dark: { ...DEFAULT_CHROME.dark, ...t.dark },
                       light: { ...DEFAULT_CHROME.light, ...t.light },
@@ -192,11 +188,7 @@ function PaletteSample({ draft, chrome }: { draft: Draft; chrome: PaletteChrome 
   const nodeAccentDark = darkenAccent(draft.blue);
   const nc = themeAccent(draft.pink, mode);
   const numberColor = themeAccent(draft.gold, mode);
-  // The drafted chrome vars are scoped to the sample rather than :root, so the real
-  // node/group/note CSS inside resolves against the DRAFT while the modal around it
-  // keeps the live theme. That's the whole preview: --canvas-bg drives the ground,
-  // and --surface / --border / --text reach the cards through the same var()s they
-  // use on the canvas.
+  // The drafted chrome vars are scoped to the sample, not :root, so the real node CSS inside resolves against the draft while the modal keeps the live theme.
   const scoped = chromeCssVars(chrome[mode], mode) as React.CSSProperties;
   return (
     <div className="sol-pal-editor__preview">
@@ -223,8 +215,6 @@ function PaletteSample({ draft, chrome }: { draft: Draft; chrome: PaletteChrome 
                   <div className="solenoid-node__body">
                     <div className="solenoid-node__display-value">42</div>
                   </div>
-                  {/* One real output socket (Number) at the card edge, colored from the
-                      draft — so the socket palette shows in context too. */}
                   <span className="sol-pal-sample__socket">
                     <svg viewBox="0 0 12 12" width={12} height={12} style={{ overflow: "visible", display: "block" }} aria-hidden="true">
                       <circle cx="6" cy="6" r="6" fill={numberColor} />

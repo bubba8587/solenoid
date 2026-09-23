@@ -5,11 +5,8 @@ import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 
-// The /examples route: each tile deep-links /?seed=<id>, which FlowCanvas opens as a new
-// document. Static DOM; chrome comes from siteNav.
 
-// Group heads and labels must match the seeds' own (seeds.ts); the id is the JSON
-// file's stem. Internal seeds (Getting started, Scratch, Script tour) are left out.
+// Group heads and labels must match the seeds' own (seeds.ts); internal seeds are left out.
 const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
   {
     head: "Obsidian",

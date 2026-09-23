@@ -1,21 +1,16 @@
-// [[D17]] relaysTransparent: a Conduit is wiring, so its lanes to one entity render as one
-// ribbon. Mechanics: tree/specs/canvas/cable-rendering-knobs.md.
+// [[D17]] relaysTransparent, [[C7]] authorRuled
 import { ConduitNode, conduitLaneOf } from "./rete-nodes";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
 
 import { getOwningView } from "./activeGraph";
 
-// Shared with ConduitComponent so trunk endpoints need no DOM measurement; the
-// squares ARE the sockets, lane pitch is SQ + ROW_GAP (scaled).
 export const CONDUIT_BODY_SIZE = 92;
 export const CONDUIT_PIVOT = CONDUIT_BODY_SIZE / 2;
 export const CONDUIT_SQ = 10;
 export const CONDUIT_COL_GAP = 1.5;
 export const CONDUIT_ROW_GAP = 1.5;
 
-// ConduitComponent publishes its live angle + scale here; connections subscribe so
-// the trunk tracks expansion.
 
 export type ConduitLayout = { angle: number; scale: number; selected: boolean; lanes: number };
 
@@ -41,12 +36,8 @@ export const conduitLayoutStore = {
   subscribe(l: () => void) { _layoutListeners.add(l); return () => { _layoutListeners.delete(l); }; },
 };
 
-// Distance from the pivot to a lane column's centre — the same halfW
-// ConduitComponent lays the squares out on.
 const columnHalf = (scale: number) => ((CONDUIT_SQ + CONDUIT_COL_GAP) * scale) / 2;
 
-// Where the ribbon trunk attaches, in canvas coords. Null until the Conduit has
-// mounted and published its layout.
 export function conduitFacePoint(
   nodeId: string,
   side: "in" | "out",
@@ -63,10 +54,6 @@ export function conduitFacePoint(
   };
 }
 
-/** One lane square's CENTRE, as an offset from the pivot. THE lane geometry:
- *  ConduitComponent places the painted square on it and cable tips land on it, so
- *  the two cannot drift. Local frame is out along ±x to the lane column, then the
- *  lane's row offset along +y, the whole thing rotated by the block's angle. */
 export function conduitLaneOffset(
   lay: Pick<ConduitLayout, "angle" | "scale" | "lanes">,
   side: "in" | "out",
@@ -81,15 +68,6 @@ export function conduitLaneOffset(
   return { x: lx * c - ly * s, y: lx * s + ly * c };
 }
 
-/** Where a cable plugs into ONE lane: the CENTRE of that lane's socket square, in
- *  canvas coords ([[C7]] authorRuled — the tip seats in the pin hole, not on its rim).
- *  Null when the node is not a laid-out Conduit lane.
- *
- *  Computed, never measured. React Flow stores a handle's bounding box, which for
- *  a Conduit is wrong twice over: it re-measures only on a node version bump, so
- *  the expand/collapse scale change leaves every endpoint on the old geometry, and
- *  the box is the AABB of the ROTATED square, which inflates by √2 off-axis. Both
- *  errors put the tip off the square's centre; this puts it exactly there. */
 export function conduitLanePoint(
   nodeId: string,
   side: "in" | "out",
@@ -100,13 +78,11 @@ export function conduitLanePoint(
   if (!lay || !pos) return null;
   const i = conduitLaneOf(socketKey, side);
   if (i < 0) return null;
-  // A cable can land a frame ahead of the component republishing its lane count.
+  // A cable can land a frame before the component republishes its lane count.
   const off = conduitLaneOffset(lay, side, Math.min(i, lay.lanes - 1));
   return { x: pos.x + CONDUIT_PIVOT + off.x, y: pos.y + CONDUIT_PIVOT + off.y };
 }
 
-// Trunk and fan branches are separate ConnectionComponents, so hover must be shared
-// through a store for the whole ribbon to light up.
 
 let _hoveredRibbon: string | null = null;
 const _hoverListeners = new Set<() => void>();
@@ -135,25 +111,16 @@ type EditorLike = {
 
 export type RibbonCable = {
   key: string;
-  // "conduit" / "group": a VISIBLE Conduit's outputs bundle to one entity
-  // (another Conduit, or a collapsed group's combined input pill).
-  // "groupSource": the INVERSE — a Conduit HIDDEN in a collapsed group whose
-  // outputs leave the group bundle out of the group's combined OUTPUT pill,
-  // fanning to their various external targets.
   kind: "conduit" | "group" | "groupSource";
-  sourceId: string; // source Conduit id, or (groupSource) the source collapsed group id
-  targetId: string; // destination Conduit id / collapsed group id
-  // For "groupSource": whether the destination is a visible Conduit (fan into it)
-  // or a collapsed group (land whole on its pill). Undefined for the other kinds.
+  sourceId: string;
+  targetId: string;
   destKind?: "conduit" | "group";
-  members: Conn[];  // sorted by lane index; members[0] is the representative
+  members: Conn[];
   repId: string;
 };
 
 const laneIdx = (key: string) => Number(key.slice(key.indexOf("_") + 1));
 
-// The bundling target: a collapsed group's pill FIRST — a hidden target Conduit
-// belongs to its group — else a visible Conduit's lane input.
 function ribbonTargetOf(editor: EditorLike, c: Conn): { kind: "conduit" | "group"; id: string } | null {
   const pill = groupCollapseStore.inPillFor(c.target, c.targetInput);
   if (pill) return { kind: "group", id: pill.groupId };
@@ -167,7 +134,7 @@ function ribbonTargetOf(editor: EditorLike, c: Conn): { kind: "conduit" | "group
   return null;
 }
 
-const _separationPins = new Map<string, Set<string>>(); // conduit id → pinning cable ids
+const _separationPins = new Map<string, Set<string>>();
 
 export function pinRibbonSeparation(conduitIds: string[], cableId: string): void {
   for (const id of conduitIds) {
@@ -181,14 +148,11 @@ function isSeparated(conduitId: string): boolean {
   if (_layouts.get(conduitId)?.selected) return true;
   const pins = _separationPins.get(conduitId);
   if (!pins) return false;
-  // Prune pins whose cable is no longer selected — they've expired.
   for (const id of pins) if (!cableSelectionStore.has(id)) pins.delete(id);
   if (pins.size === 0) _separationPins.delete(conduitId);
   return pins.size > 0;
 }
 
-/** The ribbon this connection belongs to (2+ non-ghost cables from one visible
- *  Conduit to the same entity), derived fresh each call — never stored membership. */
 export function ribbonForConnection(
   editor: EditorLike,
   conn: Conn,

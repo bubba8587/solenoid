@@ -1,15 +1,10 @@
-// [[C92]] pinchUnvetoable (same capture-on-wrapper position). The Solenoid wheel curve, [[D71]] zoomLatticeDiscreteOnly
-// (viewPresets.wheelZoomDelta, tuned for trackpads) replaces RF's d3-zoom wheel;
-// zoomOnScroll stays off so there is exactly one wheel path.
+// [[C92]] pinchUnvetoable, [[D71]] zoomLatticeDiscreteOnly
 import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
 
 type ScrollBox = { scrollHeight: number; clientHeight: number; scrollWidth: number; clientWidth: number; parentElement: ScrollBox | null };
 
-/** Does some element from `target` up to and including `stop` scroll in the wheel's
- *  direction? A `.nowheel` body that has nothing to scroll (a card sized taller than
- *  its content) must not swallow the zoom. */
 export function scrollsInDirection(target: ScrollBox | null, stop: ScrollBox, dx: number, dy: number): boolean {
   for (let el: ScrollBox | null = target; el; el = el === stop ? null : el.parentElement) {
     if (dy !== 0 && el.scrollHeight > el.clientHeight + 1) return true;
@@ -26,15 +21,10 @@ export function installWheelZoom(
     setViewport(v: Viewport): void;
   },
 ): () => void {
-  // Unsnapped zoom carried across wheel events, so a trackpad glide of tiny deltas
-  // still climbs to the next snap step instead of rounding back to the current one.
-  // Reset whenever the viewport zoom moved by another path (pill, fit, pinch).
   let virtualZoom = NaN;
   let lastSetZoom = NaN;
   const wheel = (e: WheelEvent) => {
     const target = e.target as HTMLElement | null;
-    // Only the canvas proper: the minimap zooms itself, and overlays (panels,
-    // inspectors) sit outside the pane on the rete surface too — no zoom there.
     if (!target?.closest?.(".react-flow")) return;
     if (target.closest(".react-flow__minimap, .react-flow__panel")) return;
     const nowheel = target.closest<HTMLElement>(".nowheel");
@@ -47,7 +37,6 @@ export function installWheelZoom(
     const zoom = clampZoom(virtualZoom);
     lastSetZoom = zoom;
     if (zoom === vp.zoom) return;
-    // The world point under the cursor stays pinned.
     const rect = el.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;

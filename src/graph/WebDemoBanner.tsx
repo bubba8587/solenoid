@@ -3,8 +3,7 @@ import { useState } from "react";
 import { isDesktop } from "./fileBridge";
 import "./WebDemoBanner.css";
 
-// Web frontend only, never the Tauri shell. Disabled for now (author request) —
-// keep the component so flipping this flag back re-enables it.
+// Web frontend only, never the Tauri shell; off at the author's request.
 const WEB_DEMO_BANNER_ENABLED = false;
 
 export function WebDemoBanner() {

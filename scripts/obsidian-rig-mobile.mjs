@@ -1,13 +1,10 @@
 // [[C107]] obsidianPlugin
-// The rig as a phone (tree/specs/integrations/obsidian-plugin.md § Verifying against real Obsidian): Obsidian's
-// own mobile emulation, a phone-sized window, and a coarse pointer with touch events, which
-// must all live in ONE CDP session, so this takes its steps in a row:
-//
+// Runs the rig as a phone: Obsidian's mobile emulation, a phone-sized window, and a coarse pointer with
+// touch, which must share one CDP session, so the steps run in a row. Needs `npm run plugin:rig -- up`.
 //   node scripts/obsidian-rig-mobile.mjs setup 412x915 look Orchard theme light \
 //     note "Solenoid/Property types.md" shot note.png tap budget shot frame.png close teardown
-//
-// setup [WxH] | look <palette> | theme dark|light | note <path> | tap <property> | shot <out.png>
-// | settings | close | eval '<js>' | teardown. Needs `npm run plugin:rig -- up` first.
+// Steps: setup [WxH] | look <palette> | theme dark|light | note <path> | tap <property> | shot <out.png>
+//   | settings | close | eval '<js>' | teardown.
 import puppeteer from "puppeteer-core";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const browser = await puppeteer.connect({ browserURL: "http://127.0.0.1:9333", defaultViewport: null });
@@ -71,7 +68,7 @@ for (let i = 0; i < args.length; i++) {
     await cdp.send("Emulation.setTouchEmulationEnabled", { enabled: false });
     await cdp.send("Emulation.setEmulatedMedia", { features: [] });
     await page.evaluate(() => { try { window.electron.remote.getCurrentWindow().setBounds({ x: 0, y: 0, width: 1480, height: 920 }); } catch {} });
-    // Leaving the emulation reloads the app, which ends this session's context: last step.
+    // Must be the last step: leaving the emulation reloads the app and ends this session's context.
     await page.evaluate(() => { if (window.app.isMobile) window.app.emulateMobile(false); }).catch(() => {});
     out.push("teardown");
   }

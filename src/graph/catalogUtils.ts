@@ -1,4 +1,4 @@
-// [[D22]], [[C79]]
+// [[D22]] oneNamePerCard, [[C79]] packActivationIsPresentation, [[C19]] namingModel
 import { NODE_CATALOG } from "./nodeCatalog";
 import { nodeTypeName, setNodeNamer } from "./nodeNamer";
 import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";
@@ -9,13 +9,10 @@ import { processGraph } from "./process";
 import { unselectAllNodes, selectNode } from "./canvasCommands";
 import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
 import { nodeNameStore } from "./nodeNameStore";
-// Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither module
-// touches the other's exports at init time.
+// Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither touches the other's exports at init.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 
-// Pack nodes are INSERTED into the core tree at their target category path, so packs
-// never grow the top level; a type claimed by several packs records every owner.
 
 function isCategory(e: CatalogEntry): e is CatalogCategory { return e.type === "category"; }
 function isPair(e: CatalogEntry): e is CatalogPair { return e.type === "pair"; }
@@ -36,8 +33,7 @@ function flattenCatalog(
   return out;
 }
 
-// Deep-clone (leaves included) so the builder can splice children and write `packs`
-// without mutating the shared NODE_CATALOG.
+// Deep clone: the build splices children and writes `packs`, and must not mutate NODE_CATALOG.
 function cloneEntry(e: CatalogEntry): CatalogEntry {
   if (isCategory(e)) return { ...e, children: e.children.map(cloneEntry) };
   if (isPair(e)) return { ...e, children: [{ ...e.children[0] }, { ...e.children[1] }] };
@@ -77,15 +73,11 @@ function pruneEmpty(entries: CatalogEntry[]): void {
   }
 }
 
-// Only the Add-menu build filters by visibility — FLAT_CATALOG keeps hidden entries
-// so saved graphs still resolve.
 function leafVisible(leaf: NodeCatalogEntry, isActive: (id: string) => boolean): boolean {
   if (leaf.hidden) return false;
   return !leaf.packs?.length || leaf.packs.some(isActive);
 }
 
-// A pair whose halves don't both survive is demoted to a single leaf — a one-child
-// pair would break the grid.
 function filterInactive(entries: CatalogEntry[], isActive: (id: string) => boolean): CatalogEntry[] {
   const out: CatalogEntry[] = [];
   for (const e of entries) {
@@ -103,8 +95,6 @@ function filterInactive(entries: CatalogEntry[], isActive: (id: string) => boole
   return out;
 }
 
-/** Build the Add-menu tree; `activeOnly` filters to active packs — pass false for the
- *  resolution map, which needs every node type present. */
 export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
   const root = NODE_CATALOG.map(cloneEntry);
   const byType = new Map<string, NodeCatalogEntry>();
@@ -145,8 +135,6 @@ export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
   return root;
 }
 
-/** Apply the multi-op declarations (`nodeOps.ts`): COLLAPSED records the leafless ops
- *  (the `{ }` marker + search rows); LEAVES generates them as siblings of the host. */
 function applyNodeOps(root: CatalogEntry[], byType: Map<string, NodeCatalogEntry>): void {
   for (const decl of NODE_OPS) {
     const host = byType.get(decl.type);
@@ -155,7 +143,6 @@ function applyNodeOps(root: CatalogEntry[], byType: Map<string, NodeCatalogEntry
     if (!hidden.length || !decl.create) continue;
     if (exposureOf(decl) === "collapsed") {
       host.hiddenOps = hidden;
-      // `mark: false` opts out of the glyph only — the ops stay searchable.
       if (decl.mark === false) host.hideOpsMark = true;
       continue;
     }
@@ -166,8 +153,7 @@ function applyNodeOps(root: CatalogEntry[], byType: Map<string, NodeCatalogEntry
   }
 }
 
-/** The child list containing `leaf`; descends PAIRS as well as categories, or a host
- *  inside a pair silently generates zero leaves under expose: "leaves". */
+/** Descends pairs as well as categories, or a host inside a pair would generate no leaves. */
 function findParent(entries: CatalogEntry[], leaf: NodeCatalogEntry): CatalogEntry[] | null {
   if (entries.includes(leaf)) return entries;
   for (const e of entries) {
@@ -179,20 +165,14 @@ function findParent(entries: CatalogEntry[], leaf: NodeCatalogEntry): CatalogEnt
   return null;
 }
 
-// Built-in classification derived from the Excel mapping; pack nodes are classified
-// by their pack, not here.
 export type NodeClass = "core" | "matcher";
 export function classifyType(type: string): NodeClass {
   return (CATALOG_TO_EXCEL.get(type)?.length ?? 0) > 0 ? "matcher" : "core";
 }
 
-// Over EVERY pack, active or not, so a deactivated pack's node type still resolves to
-// its constructor when loading a saved graph.
 export const FLAT_CATALOG: Map<string, NodeCatalogEntry> =
   flattenCatalog(buildCatalog(false));
 
-// A placed node knows only its constructor (+ op), so index `${ctor.name}::${op}` by
-// instantiating every leaf once; the ctor-only key covers unenumerated op values.
 let _descIndex: Map<string, string> | null = null;
 function descIndex(): Map<string, string> {
   if (_descIndex) return _descIndex;
@@ -212,7 +192,6 @@ function descIndex(): Map<string, string> {
   return _descIndex;
 }
 
-/** Catalog description for a placed node (op-aware), or null if unknown. */
 export function describeNode(node: object): string | null {
   const idx = descIndex();
   const ctor = (node as { constructor: { name: string } }).constructor.name;
@@ -224,8 +203,6 @@ export function describeNode(node: object): string | null {
   );
 }
 
-// Parallel to descIndex, for the catalog LABEL — a cleared title falls back to it, so
-// the header never collapses to zero height.
 let _nameIndex: Map<string, string> | null = null;
 function nameIndex(): Map<string, string> {
   if (_nameIndex) return _nameIndex;
@@ -243,8 +220,6 @@ function nameIndex(): Map<string, string> {
   return _nameIndex;
 }
 
-// Parallel to descIndex, for the catalog TYPE key — what nodeExcel.ts and the
-// pack metadata are keyed by (the Inspector's Excel-equivalence lookup).
 let _typeIndex: Map<string, string> | null = null;
 function typeIndex(): Map<string, string> {
   if (_typeIndex) return _typeIndex;
@@ -261,7 +236,6 @@ function typeIndex(): Map<string, string> {
   return _typeIndex;
 }
 
-/** Catalog type key for a placed node (op-aware), or null if unknown. */
 export function catalogTypeOf(node: object): string | null {
   const idx = typeIndex();
   const ctor = (node as { constructor: { name: string } }).constructor.name;
@@ -273,7 +247,6 @@ export function catalogTypeOf(node: object): string | null {
   );
 }
 
-/** Catalog label (node name) for a placed node (op-aware), or null if unknown. */
 export function nodeName(node: object): string | null {
   const idx = nameIndex();
   const ctor = (node as { constructor: { name: string } }).constructor.name;
@@ -285,10 +258,6 @@ export function nodeName(node: object): string | null {
   );
 }
 
-/** The name a placed node shows everywhere (card title, Navigator, Inspector, cable
- *  inspector, popups): the user's own label if typed, else the catalog name of its
- *  current op — so an op family's card is named by its op ([[D22]] oneNamePerCard). The op-agnostic
- *  FAMILY name (nodeTypeName) is shown only on the card's hover type-hint. */
 export function nodeDisplayName(node: object): string {
   const label = ((node as { label?: string }).label ?? "").trim();
   return label || nodeName(node) || nodeTypeName(node as { constructor: { name: string } });
@@ -305,8 +274,7 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
 
   // Cast through unknown: this file deliberately imports no node classes.
   const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
-  // A pre-seeded composite carries a pending internal snapshot — build its live
-  // subgraph before the first recompute.
+  // A pre-seeded composite must hydrate before the first recompute.
   if (node.hydrate) await node.hydrate(ctorRegistry());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await editor.addNode(node as any);

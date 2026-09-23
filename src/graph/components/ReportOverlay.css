@@ -1,4 +1,4 @@
-/* [[C39]] effectsEdgeTriggered. Mechanics: tree/specs/computation/alert-node-alerts-hud.md. */
+/* [[C68]] knapIsTheDocumentSyntax. Mechanics: tree/specs/documents/reports-and-notes.md. */
 .report-backdrop {
   position: fixed;
   inset: 0;
@@ -9,8 +9,6 @@
   justify-content: center;
 }
 
-/* Desktop: the overlay lives UNDER the app bar (menu + top bar stay visible and
-   usable, as the docked column already does); the panel fits the remaining height. */
 html:not(.is-mobile) .report-backdrop { top: var(--chrome-top, 66px); }
 html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
 
@@ -117,10 +115,7 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   min-height: 0;
 }
 
-/* The source pane: a tinted backdrop (`__hl`, the text with Knap tags in spans) under
-   a transparent textarea (`__ta`) that carries the caret and the editing. Both share
-   one box, font and padding so their glyphs land on the same pixels; the textarea's
-   scroll drives the backdrop's. */
+/* The backdrop and the textarea share one box, font and padding, so their glyphs land on the same pixels. */
 .report-source {
   position: relative;
   flex: 1 1 50%;
@@ -152,8 +147,6 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
 .report-source__ta { color: transparent; caret-color: var(--text); }
 .report-source__ta::placeholder { color: var(--text-muted); }
 .report-source__ta::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
-/* Knap tags ride the formula surface's token colors (.fx-tokens, FormulaEditor.css)
-   on a faint field so a tag reads as one unit; Markdown structure gets its own. */
 .knap-tag { background: color-mix(in srgb, var(--accent) 10%, transparent); border-radius: 3px; }
 .fx-tokens .fx-kw { color: #c678dd; font-weight: 600; }
 .md-heading { color: var(--text-bright, var(--text)); font-weight: 700; }
@@ -170,23 +163,16 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   min-width: 0;
   overflow: auto;
   padding: 16px 24px;
-  /* Same as the Note's read view: `pretty` over the whole rendered body, which
-     also carries into embedded notes (.report-embed__body renders in here). The
-     .report-source textarea beside it is a sibling and stays greedy. */
+  /* The .report-source textarea is a sibling, so it never inherits `pretty`. */
   text-wrap-style: pretty;
 }
 .report-preview__md { max-width: none; margin: 0; }
-/* A Note opened from its Document chip: read-only, so the preview is the whole body
-   and the markdown fills it edge to edge (author: no reading-column flanks).
-   .sol-md's own `max-width: 760px; margin: 0 auto` is overridden at both levels.
-   Wide blocks scroll within themselves, never the pane. */
+/* A Note fills the pane edge to edge, so .sol-md's reading-column max-width is overridden at both levels. */
 .report-preview--solo { flex: 1 1 100%; max-width: none; margin: 0; overflow-x: hidden; }
 .report-preview--solo .report-preview__md { max-width: none; margin: 0; }
 .report-preview--solo img { max-width: 100%; height: auto; }
 .report-preview--solo table { display: block; max-width: 100%; overflow-x: auto; }
-/* InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
-   last block is a grandchild — reach through it (the `> * >` hop) to zero the
-   outer margin, else the report's first heading floats below a phantom gap. */
+/* InlineRefBody wraps the markdown in a bare <div>, so the real first and last blocks are grandchildren. */
 .report-preview__md > :first-child,
 .report-preview__md > * > :first-child { margin-top: 0; }
 .report-preview__md > :last-child,
@@ -209,8 +195,6 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   overflow: hidden;
   margin: 12px 0;
 }
-/* An `![[Name]]` token that doesn't resolve to a live Note — quiet inline hint,
-   not an error badge (the author is likely mid-typing the name). */
 .report-embed-missing {
   font-family: var(--font-mono, monospace);
   font-size: 12px;
@@ -253,16 +237,10 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   padding: 10px 14px;
   font-size: 12.5px;
 }
-/* A frame embed never scrolls vertically (its row/col chip must stay in view);
-   a wide one scrolls sideways inside FrameDisplay. */
 .report-embed__body:has(.solenoid-table-display) { max-height: none; overflow: visible; }
 
-/* ── Narrow screens: Draft/Preview become TABS (one pane at a time), instead of
-      a side-by-side split that would push the preview into the right half.
-      Driven off VIEWPORT WIDTH, not html.is-mobile — UA detection is fragile
-      (desktop-site toggle, odd browsers), and the split-vs-tab choice is purely
-      about how much width there is. So any viewport ≤760px gets tabs, phone or
-      not; a real wide desktop/tablet keeps the split. ── */
+/* ── Narrow screens: Draft and Preview become tabs ─────────────────────────────
+   Driven by viewport width, never html.is-mobile: UA detection is fragile, and the choice is only about width. */
 .report-tabs { display: none; }
 
 @media (max-width: 760px) {
@@ -288,23 +266,15 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
     color: var(--text-bright);
     border-bottom-color: var(--accent);
   }
-  /* Stack, then show only the active pane at full width. */
   .report-body { flex-direction: column; }
   .report-source,
   .report-preview { flex: 1 1 100%; }
   .report-body[data-tab="draft"] .report-preview { display: none; }
   .report-body[data-tab="preview"] .report-source { display: none; }
   .report-source { border-right: none; }
-  /* .report-preview carries .sol-md, whose `margin: 0 auto` (a centered reading
-     column) turns into "shrink to content + center" on the CROSS axis of this
-     column flexbox — collapsing the text to a narrow strip pushed to the middle.
-     Force it to fill the pane. (Desktop is unaffected: the row flex-grows, so
-     the auto margins collapse to 0.) */
+  /* .sol-md's `margin: 0 auto` shrinks the preview to a centered strip on this column flexbox's cross axis. */
   .report-preview { margin: 0; max-width: none; align-self: stretch; }
 
-  /* Clamp preview content to the viewport — an inline chart figure (~360px) or
-     a wide embed scrolls WITHIN its own box, never forcing a sideways page
-     scroll. */
   .report-preview { padding: 14px 16px; }
   .report-preview .solenoid-ref-figure,
   .report-preview .solenoid-ref-embed,
@@ -313,8 +283,6 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   .report-preview .report-embed__body { overflow-x: auto; }
 }
 
-/* Full-screen panel + safe-area insets + a header that wraps (title row, then
-   the actions), so the three text buttons don't crush the title on a phone. */
 html.is-mobile .report-panel {
   width: 100vw;
   height: 100vh;
@@ -331,10 +299,7 @@ html.is-mobile .report-embed-btn { padding: 8px 12px; font-size: 12.5px; }
 html.is-mobile .report-source__hl,
 html.is-mobile .report-source__ta { padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
 
-/* ── Dock toggle (desktop) ──────────────────────────────────────────────────
-   Pins the report to the right side of the page; the canvas area squeezes left
-   (see the html.sol-report-docked rules below). Round icon button matching the
-   close button. Hidden on mobile, where the report is already full-screen. */
+/* ── Dock toggle (desktop) ──────────────────────────────────────────────────── */
 .report-dock-btn {
   display: flex;
   align-items: center;
@@ -351,10 +316,7 @@ html.is-mobile .report-source__ta { padding-bottom: calc(16px + env(safe-area-in
 .report-dock-btn--on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
 html.is-mobile .report-dock-btn { display: none; }
 
-/* ── Docked layout ──────────────────────────────────────────────────────────
-   The panel becomes a fixed right-side column between the top chrome and the
-   footer (both stay put), and the whole canvas area shifts left by the dock
-   width. Dock geometry is in vars so it's tunable in one place. */
+/* ── Docked layout ──────────────────────────────────────────────────────────── */
 html.sol-report-docked {
   --report-dock-w: 440px;
   --report-dock-top: var(--chrome-top, 66px); /* measured header; 22 + 44 fallback */
@@ -372,24 +334,17 @@ html.sol-report-docked {
   border: none;
   border-left: 1px solid var(--border-strong);
   border-radius: 0;
-  /* Same dock chrome as the Inspector: under the header (z 5 < 6) so the shadow
-     can't spill over the bars; the minimal dock-edge lift marks where cards
-     scroll off the page. */
+  /* Under the header (z 5 < 6), like the Inspector, so the shadow can't spill over the bars. */
   box-shadow: var(--dock-shadow);
   z-index: 5;
 }
 
-/* Docked is a narrow column: stack the header so the title sits on its own row and
-   the action buttons wrap onto the next, and never squeeze the title. */
 .report-panel--docked .report-header { flex-wrap: wrap; }
 .report-panel--docked .report-title { flex: 1 1 100%; }
 .report-panel--docked .report-header-actions { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 
-/* Docked moves the Draft/Preview switch into the header button row (report-viewtoggle),
-   so the full-width tab bar is hidden here — mobile keeps it. */
 .report-panel--docked .report-tabs { display: none; }
 
-/* The tiny segmented Draft/Preview toggle in the docked header row. */
 .report-viewtoggle {
   display: inline-flex;
   flex: 0 0 auto;
@@ -413,8 +368,6 @@ html.sol-report-docked {
   color: var(--text-bright);
 }
 
-/* Docked: one common control height across the header row — the tiny Draft/Preview
-   toggle bumps up and the buttons down so every control matches (26px). */
 .report-panel--docked .report-embed-btn,
 .report-panel--docked .report-viewtoggle,
 .report-panel--docked .report-dock-btn,
@@ -432,22 +385,16 @@ html.sol-report-docked {
 .report-panel--docked .report-preview { margin: 0; max-width: none; align-self: stretch; }
 
 
-/* Shift the canvas area left so nothing hides behind the docked panel. The wrapper
-   carries the canvas, minimap and add-menu (all positioned inside it); the nav pill,
-   HUD column and socket legend are app/viewport-fixed, so offset their right.
-   The top header, bottom StatusBar and the LEFT navigator are untouched. */
+/* The nav pill, HUD column and socket legend are viewport-fixed, so their right offsets move too. */
 html.sol-report-docked .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { width: calc(100% - var(--report-dock-w)); }
 html.sol-report-docked .solenoid-nav { right: calc(12px + var(--report-dock-w)); }
 html.sol-report-docked .solenoid-hud-stack { right: calc(12px + var(--report-dock-w)); }
 html.sol-report-docked .solenoid-legend { right: calc(16px + var(--report-dock-w)); }
-/* The command palette centers on the CANVAS, and its width follows the canvas width a
-   little (never below 340px, never above its 480px default). */
 html.sol-report-docked .solenoid-cmdpalette {
   left: calc((100vw - var(--report-dock-w)) / 2);
   width: clamp(340px, calc((100vw - var(--report-dock-w)) * 0.42), 480px);
 }
 
-/* A template that failed to render: the error lines replace the preview until fixed. */
 .report-preview__error {
   margin: 0;
   white-space: pre-wrap;
@@ -456,7 +403,6 @@ html.sol-report-docked .solenoid-cmdpalette {
   color: var(--sol-error);
 }
 
-/* The source pane when a template Note is wired: its text, read-only. */
 .report-source--wired {
   display: flex;
   flex-direction: column;
@@ -481,7 +427,6 @@ html.sol-report-docked .solenoid-cmdpalette {
   color: var(--text-muted);
 }
 
-/* Batch page name: a small labeled field in the header. */
 .report-page-name {
   display: flex;
   align-items: center;
@@ -501,7 +446,6 @@ html.sol-report-docked .solenoid-cmdpalette {
   font-size: 11px;
 }
 
-/* A merge previews one page at a time: the stepper sits above the preview. */
 .report-pages {
   display: flex;
   align-items: center;
@@ -514,8 +458,6 @@ html.sol-report-docked .solenoid-cmdpalette {
   font-size: 11px;
   color: var(--text-muted);
 }
-/* The Page-name field lives at the right of the stepper; when the strip is too
-   narrow it wraps to its own line still compact and right-aligned, never stretched. */
 .report-pages .report-page-name { margin-left: auto; }
 .report-pages__step {
   padding: 0 8px;
@@ -539,7 +481,6 @@ html.sol-report-docked .solenoid-cmdpalette {
 }
 .report-pages__cap { color: var(--text-dim); font-size: 11px; white-space: nowrap; }
 
-/* The filters cheat-sheet: a searchable list; a row inserts its example. */
 .report-filters { width: 320px; max-height: 60vh; display: flex; flex-direction: column; }
 .report-filters__search {
   margin: 4px;

@@ -11,26 +11,22 @@ interface FormulaEditorProps {
   placeholder?: string;
   autoFocus?: boolean;
   rows?: number;
-  /** The node's own variable names, suggested alongside functions/constants. */
   extraNames?: string[];
   className?: string;
 }
 
-/** The highlight is an overlay: a transparent <textarea> layered exactly over a colored
- *  <pre> mirror. Pure presentational — no graph deps. */
+/** A transparent <textarea> layered exactly over a colored <pre> mirror; no graph deps. */
 export function FormulaEditor({
   value, onChange, onBlur, readOnly, placeholder, autoFocus, rows = 2, extraNames = [], className,
 }: FormulaEditorProps) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const [menu, setMenu] = useState<{ items: Suggestion[]; sel: number; tokenStart: number } | null>(null);
-  // The innermost call the caret sits in → the param-hint bar (arg-count surfacing).
   const [callHint, setCallHint] = useState<{ name: string; argIndex: number } | null>(null);
-  // A caret position to restore after a controlled value change (e.g. on accept).
+  // A caret position to restore after a controlled value change (on accept).
   const pendingCaret = useRef<number | null>(null);
 
-  // A trailing newline needs a filler char or the <pre> runs one line short of the
-  // <textarea>, knocking the overlay out of alignment.
+  // A trailing newline needs a filler char, or the <pre> runs one line short of the textarea.
   const html = useMemo(
     () => highlightFormula(value) + (value.endsWith("\n") ? " " : ""),
     [value],
@@ -101,8 +97,7 @@ export function FormulaEditor({
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onKeyUp={(e) => {
-          // Arrow keys / Home / End move the caret without an input event, so the
-          // param-hint bar has to be refreshed here.
+          // Arrow keys, Home and End move the caret without an input event, so the hint bar refreshes here.
           const k = e.key;
           if (k.startsWith("Arrow") || k === "Home" || k === "End") {
             setCallHint(enclosingCall(value, (e.target as HTMLTextAreaElement).selectionStart));
@@ -137,8 +132,7 @@ export function FormulaEditor({
   );
 }
 
-/** The enclosing call's signature with the caret's argument emphasized; hidden for a
- *  name with no known signature. */
+/** Hidden for a name with no known signature. */
 function ParamHintBar({ name, argIndex }: { name: string; argIndex: number }) {
   const sig = signatureFor(name);
   if (sig == null) return null;
@@ -149,8 +143,7 @@ function ParamHintBar({ name, argIndex }: { name: string; argIndex: number }) {
   if (params.length === 0) {
     return <div className="fx-editor__sigbar"><b>{name.toUpperCase()}</b>()</div>;
   }
-  // Past the named params the highlight clamps to the last one — a variadic tail
-  // absorbs the extras, and a wrong-arity call still shows where the signature ended.
+  // Past the named params the highlight clamps to the last: a variadic tail absorbs extras, and a wrong-arity call still shows where the signature ended.
   const last = params.length - 1;
   const active = Math.min(argIndex, last);
   return (

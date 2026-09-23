@@ -1,4 +1,4 @@
-// [[C8]] declareOnce (rendered from SETTINGS_SCHEMA), [[C98]] paletteMirrorsMenubar (a device-greyed setting is greyed here too)
+// [[C8]] declareOnce, [[C98]] paletteMirrorsMenubar
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
@@ -18,10 +18,7 @@ import { rebuildGroupMembership } from "./groupMembership";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
 
-// Rendered from SETTINGS_SCHEMA — add a field there and its control appears here.
 
-// A desktop-only setting greys rather than hides, so the page keeps one shape and a
-// user who knows the desktop app still finds the row.
 const MOBILE_NA = "Not available in mobile mode.";
 const naOnThisDevice = (field: SettingField): boolean => IS_MOBILE && !!field.disabledOnMobile;
 
@@ -46,8 +43,7 @@ function Row({ label, help, on, onToggle, disabled, disabledNote }: {
   disabled?: boolean; disabledNote?: string;
 }) {
   return (
-    // Must stay a <label> so a click anywhere on the row reaches the switch; the
-    // Switch's own aria-label keeps the help text out of the announced name.
+    // Must stay a <label> so a click anywhere on the row reaches the switch.
     <label className={`solenoid-settings__row${disabled ? " solenoid-settings__row--disabled" : ""}`}>
       <span className="solenoid-settings__row-text">
         <span className="solenoid-settings__row-label">{label}</span>
@@ -73,7 +69,6 @@ function Toggle({ field }: { field: SettingField }) {
   );
 }
 
-// A mutually-exclusive choice: a row of buttons, one highlighted.
 function SegmentRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const off = naOnThisDevice(field);
@@ -103,7 +98,6 @@ function SegmentRow({ field }: { field: SettingField }) {
   );
 }
 
-// A path setting; the picker is desktop-only (no filesystem in the browser).
 function FolderRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const desktop = isDesktop();
@@ -128,10 +122,6 @@ function FolderRow({ field }: { field: SettingField }) {
   );
 }
 
-// The open document's network permission (C2). Own docs connect freely and the
-// "Always allow network" toggle above covers the standing choice, so this appears
-// ONLY for a foreign, still-undecided doc — the way back to Allow after its notice
-// is dismissed. No row otherwise (it carried no control).
 function NetworkDocRow() {
   useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
@@ -149,7 +139,6 @@ function NetworkDocRow() {
   );
 }
 
-// Commits on blur / Enter, the typed-field convention — never per keystroke.
 function TextRow({ field }: { field: SettingField }) {
   const value = settingsStore.get(field.key) as string;
   const [draft, setDraft] = useState(value);
@@ -177,8 +166,7 @@ function TextRow({ field }: { field: SettingField }) {
   );
 }
 
-// Bound to paletteStore, not settingsStore, so it can't reuse SegmentRow. The group
-// member-dot store caches resolved hexes, so a palette change must rebuild it.
+// A palette change must rebuild group membership: the member-dot store caches resolved hexes.
 function PaletteSection() {
   useSyncExternalStore(paletteStore.subscribe, paletteStore.version);
   const active = paletteStore.activeBase();
@@ -222,7 +210,6 @@ function PaletteSection() {
     </div>
   );
 }
-// HTML-in-Canvas vs the permanent DOM renderer, gated on the Chrome flag.
 function RendererSection() {
   const mode = useRenderMode();
   const [supported] = useState(supportsHtmlInCanvas);
@@ -253,8 +240,6 @@ function PacksSection() {
   useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const builtin = allPacks().filter((p) => p.builtin);
   const custom = loadCustomPacks();
-  // Accordion groups by each pack's declared group; an undeclared one lands in Other
-  // rather than vanishing.
   const groupNames = [...PACK_GROUP_ORDER, "Other"];
   const grouped = groupNames
     .map((g) => ({
@@ -359,7 +344,6 @@ function ApiKeysSection() {
   );
 }
 
-// Its own section: this key gates the command palette's AI mode, not a data node.
 function AiSection() {
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   return (
@@ -385,8 +369,6 @@ function renderField(f: SettingField): ReactNode {
     : <Toggle key={f.key} field={f} />;
 }
 
-// Render a section's fields, folding consecutive fields that share an `accordion`
-// title into one collapsible <details> (same chrome as the Packs accordion).
 function SectionFields({ fields }: { fields: SettingField[] }) {
   const out: ReactNode[] = [];
   for (let i = 0; i < fields.length; ) {

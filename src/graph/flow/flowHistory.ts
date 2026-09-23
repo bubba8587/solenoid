@@ -1,21 +1,13 @@
 // [[B10]] reactFlowView (the snapshot history), [[C30]] saveViaTextForm
-// Snapshot undo/redo: every settled mutation records the canonical document
-// (serializeGraph), so undo needs no per-action inverse: restore = loadGraph with
-// the camera held. The stack clears on a document load (the setClearHistory slot),
-// never on its own restores.
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding } from "../process";
 import { describeGraphDelta, sameIgnoringDims } from "./flowHistoryDigest";
 
 const MAX_DEPTH = 80;
-// Snapshots are whole documents; on a large doc the depth cap alone lets the stack
-// sit at tens of MB. Oldest entries go first, but the current one always stays.
 const MAX_BYTES = 16 * 1024 * 1024;
 const COALESCE_MS = 400;
 
-// json doubles as the cheap no-op-change comparison; label describes the
-// transition from the previous entry (Session History reads it).
 type Entry = { json: string; time: number; label: string };
 
 let _stack: Entry[] = [];
@@ -33,13 +25,11 @@ async function restore(json: string): Promise<void> {
   try {
     const view = getView();
     const t = view ? { ...view.transform } : null;
-    // An undo must feel like an edit: no load curtain, and the camera stays put.
     await loadGraph(JSON.parse(json) as SavedGraph, { curtain: false });
     if (view && t) {
       await view.pan(t.x, t.y);
       await view.zoom(t.k);
     }
-    // The restored state is the document now — persist it.
     scheduleAutosave();
   } finally {
     _restoring = false;
@@ -47,9 +37,6 @@ async function restore(json: string): Promise<void> {
 }
 
 export const flowHistory = {
-  /** Baseline on document load — registered as the setClearHistory slot, so
-   *  loadGraph's own end-of-load clear seeds the new document's baseline.
-   *  Restores skip it (their loadGraph must not wipe the stack). */
   reset(): void {
     if (_restoring) return;
     if (_timer) {
@@ -61,7 +48,6 @@ export const flowHistory = {
     _index = _stack.length - 1;
   },
 
-  /** Debounced record after a mutation settles (graphChanged, drag stop…). */
   schedule(): void {
     if (_restoring || isGraphRebuilding()) return;
     if (_timer) clearTimeout(_timer);
@@ -85,8 +71,6 @@ export const flowHistory = {
       try {
         const prev = JSON.parse(top.json) as SavedGraph;
         const next = JSON.parse(s) as SavedGraph;
-        // Measured dims re-stamped after a restore are not an edit: recording them
-        // would push a new entry and cut off the redo tail.
         if (sameIgnoringDims(prev, next)) return;
         label = describeGraphDelta(prev, next);
       } catch { /* a label is cosmetic — never block the record */ }
@@ -104,7 +88,7 @@ export const flowHistory = {
 
   async undo(): Promise<void> {
     if (_restoring) return;
-    if (_timer) flowHistory.recordNow(); // flush the pending edit first
+    if (_timer) flowHistory.recordNow();
     if (_index <= 0) return;
     _index--;
     await restore(_stack[_index].json);
@@ -117,14 +101,10 @@ export const flowHistory = {
     await restore(_stack[_index].json);
   },
 
-  /** The applied transitions, oldest first (the baseline entry carries no
-   *  transition and is skipped) — Session History's feed. */
   records: (): Array<{ time: number; label: string }> =>
     _stack.slice(1, _index + 1).map(({ time, label }) => ({ time, label })),
 
-  /** Test hook. */
   _state: () => ({ depth: _stack.length, index: _index }),
-  /** Debug hook (dev probes). */
   _stack: () => _stack,
 };
 

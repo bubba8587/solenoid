@@ -17,7 +17,7 @@ export interface AlertEvent {
   label: string;
   kind: AlertKind;
   message: string;
-  time: number; // Date.now()
+  time: number;
 }
 
 const MAX_EVENTS = 50;
@@ -29,7 +29,6 @@ const { notify, subscribe, version } = createNotifier();
 export const alertStore = {
   list: (): readonly AlertEvent[] => _events,
 
-  /** Record a fired alert (newest first). Trims to the cap. */
   push(e: Omit<AlertEvent, "id" | "time">): void {
     const ev: AlertEvent = { ...e, id: ++_seq, time: Date.now() };
     _events = [ev, ..._events].slice(0, MAX_EVENTS);
@@ -54,7 +53,6 @@ export const alertStore = {
   version,
 };
 
-/** The single entry point: logs to the HUD panel AND raises a matching-tone toast. */
 export function fireAlert(e: Omit<AlertEvent, "id" | "time">): void {
   alertStore.push(e);
   pushNotice(e.message, ALERT_TONE[e.kind]);

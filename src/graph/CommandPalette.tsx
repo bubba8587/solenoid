@@ -1,4 +1,4 @@
-// [[C98]] paletteMirrorsMenubar.
+// [[C98]] paletteMirrorsMenubar
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
 import { IS_MOBILE } from "./coarse";
@@ -17,7 +17,6 @@ import { alignSelection, distributeSelection, collapseSelection } from "./select
 import { buildMenus, type MenuItem } from "./menuModel";
 import "./CommandPalette.css";
 
-// Graph-domain shortcuts route through Canvas's keydown handler, never duplicated here.
 function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } = {}) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
@@ -26,9 +25,7 @@ function fireCanvasKey(code: string, opts: { ctrl?: boolean; shift?: boolean } =
   );
 }
 
-// Lucide "sparkle" (ISC), NOT the three-star cluster or a gradient mark (DESIGN.md).
-// viewBox shifted +0.7/-1: the glyph's ink centroid measured +0.69/-1.03 from the
-// box center (upper-right-heavy), so it sat off-center (archived dev-notes 2026-06-20).
+// Lucide "sparkle"; the viewBox shifts +0.7/-1 to center its ink, which sits upper-right of the box.
 function SparkleIcon() {
   return (
     <svg width="16" height="16" viewBox="0.7 -1 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -46,7 +43,6 @@ type PaletteItem = {
   run: () => void;
 };
 
-// One turn at a time: a prompt replaces the previous result.
 type AiState =
   | { phase: "idle" }
   | { phase: "busy" }
@@ -54,19 +50,16 @@ type AiState =
   | { phase: "edit"; newText: string; diff: DiffLine[]; warnings: string[] }
   | { phase: "error"; message: string };
 
-/** The open document as its text form — what the model reads and rewrites. */
 function currentTextForm(): string {
   const g: SavedGraph = serializeGraph() ?? { v: CURRENT_SAVE_VERSION, nodes: [], connections: [] };
   return writeTextForm(g);
 }
 
 function buildCommands(): PaletteItem[] {
-  // Every menubar action is a command; node types stay out ([[C98]] paletteMirrorsMenubar).
   const fromMenus = buildMenus()
     .flatMap((m) => m.items)
     .filter((it): it is Extract<MenuItem, { label: string }> => !("sep" in it) && !it.disabled && !!it.onClick)
     .map((it) => ({ label: it.label, shortcut: it.shortcut, run: it.onClick! }));
-  // Canvas / selection ops that don't live in the menu bar.
   const extra: { label: string; shortcut?: string; run: () => void }[] = [
     { label: "Isolate selection", shortcut: "I", run: () => fireCanvasKey("KeyI") },
     { label: "Expand or collapse groups", shortcut: "E", run: () => fireCanvasKey("KeyE") },
@@ -74,7 +67,6 @@ function buildCommands(): PaletteItem[] {
     { label: "Align right", run: () => void alignSelection("right") },
     { label: "Align top", run: () => void alignSelection("top") },
     { label: "Align bottom", run: () => void alignSelection("bottom") },
-    // Labels name the END EFFECT, not the axis: center-h stacks nodes VERTICALLY.
     { label: "Align center (vertical)", run: () => void alignSelection("center-h") },
     { label: "Align center (horizontal)", run: () => void alignSelection("center-v") },
     { label: "Distribute horizontally", run: () => void distributeSelection("h") },
@@ -90,7 +82,6 @@ function buildSettingToggles(): PaletteItem[] {
   for (const section of SETTINGS_SCHEMA) {
     for (const f of section.fields) {
       if (f.type === "folder" || f.type === "segment") continue;
-      // Device-disabled settings are unreachable here too ([[C98]]).
       if (IS_MOBILE && f.disabledOnMobile) continue;
       out.push({
         id: `setting:${f.key}`,
@@ -106,17 +97,12 @@ function buildSettingToggles(): PaletteItem[] {
 
 export function CommandPalette({ onClose, persistent = false }: { onClose: () => void; persistent?: boolean }) {
   const [query, setQuery] = useState("");
-  // Local state, not a store: the mode belongs to THIS palette session, so a reopened
-  // modal comes back in command mode.
   const [aiMode, setAiMode] = useState(false);
-  // Subscribed so storing or clearing the key shows/hides the sparkle live.
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);
   const aiAvailable = aiConnected();
-  // Clearing the key must not strand the palette in a mode whose exit control just went.
   useEffect(() => { if (!aiAvailable) setAiMode(false); }, [aiAvailable]);
   const [aiState, setAiState] = useState<AiState>({ phase: "idle" });
-  // A reply landing after unmount must not set state on a dead component; the flag
-  // outlives the closure.
+  // Outlives the closure, so a reply that lands after unmount sets no state.
   const aliveRef = useRef(true);
   useEffect(() => () => { aliveRef.current = false; }, []);
   useEffect(() => { if (!aiMode) setAiState({ phase: "idle" }); }, [aiMode]);
@@ -143,7 +129,6 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
 
   async function applyAiEdit() {
     if (aiState.phase !== "edit") return;
-    // The same governed path a file open takes — the validator already passed this text.
     const before = new Set(readTextForm(currentTextForm()).nodes.map((n) => n.name ?? n.id));
     const graph = readTextForm(aiState.newText);
     const ok = await loadGraph(graph);
@@ -152,14 +137,12 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
       setAiState({ phase: "error", message: "The rewrite failed to load. The document is unchanged." });
       return;
     }
-    // Only what the edit ADDED animates in — kept nodes stay put.
     revealAddedNodes(graph.nodes.map((n) => n.name ?? n.id).filter((n) => !before.has(n)));
     setQuery("");
     setAiState({ phase: "idle" });
     if (!persistent) onClose();
   }
-  // -1 = nothing selected: a blind Enter must never fire an action the user didn't
-  // pick, though typing a query DOES auto-select the top result.
+  // -1: a blind Enter must never fire an action the user didn't pick.
   const [activeIndex, setActiveIndex] = useState(-1);
   const [focused, setFocused] = useState(false);
   const recentsVersion = useSyncExternalStore(commandRecents.subscribe, commandRecents.version);
@@ -167,21 +150,16 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   const commands = useMemo(buildCommands, []);
   const toggles = useMemo(buildSettingToggles, []);
 
-  // Docked mode must NOT steal focus from the canvas on mount; the modal opens for
-  // immediate typing.
+  // Docked mode must not steal focus from the canvas on mount.
   useEffect(() => { if (!persistent) inputRef.current?.focus(); }, [persistent]);
-  // Docked mode is always mounted, so paletteStore's open flag can't mount it —
-  // it means "focus the bar" instead, and blur resets it so Enter re-arms.
+  // Docked mode is always mounted, so paletteStore's flag means "focus the bar", and blur resets it.
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
   useEffect(() => { if (persistent && paletteOpen) inputRef.current?.focus(); }, [persistent, paletteOpen]);
   useEffect(() => setActiveIndex(query.trim() ? 0 : -1), [query]);
 
   const results = useMemo<PaletteItem[]>(() => {
-    // AI mode has no result list — what you type is a prompt, so ranking commands
-    // under it would offer an Enter that does something else.
     if (aiMode) return [];
     const q = query.trim();
-    // No query → 8 previews, LED by the 3 most-recently-run commands.
     if (!q) {
       if (persistent && !focused) return [];
       const byLabel = new Map(commands.map((c) => [c.label, c]));
@@ -205,8 +183,6 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   }, [query, commands, toggles, persistent, focused, recentsVersion, aiMode]);
 
   function run(item: PaletteItem) {
-    // Only repeatable actions are recorded, and by LABEL — a recent-preview item's
-    // id carries a `recent:` prefix.
     if (item.kind === "command" || item.kind === "setting") commandRecents.record(item.label);
     item.run();
     if (persistent) { setQuery(""); setActiveIndex(-1); inputRef.current?.focus(); }
@@ -214,7 +190,6 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    // In AI mode Escape steps back out of a shown result FIRST, then the palette.
     if (aiMode) {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -247,8 +222,6 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
         onMouseDown={(e) => e.stopPropagation()}
       >
         {aiMode && aiState.phase !== "idle" && (
-          // A NEUTRAL surface even in AI mode — the accent marks the input's
-          // rerouted Enter, not the output.
           <div className="solenoid-cmdpalette__airesult" onMouseDown={(e) => e.preventDefault()}>
             {aiState.phase === "busy" && (
               <div className="solenoid-cmdpalette__aibusy">Working…</div>
@@ -288,15 +261,13 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
           </div>
         )}
         {results.length > 0 && (
-          // preventDefault so clicking a row doesn't blur the input — in docked mode
-          // that would hide the list before the click fires.
+          // preventDefault keeps the input focused; in docked mode a blur would hide the list before the click fires.
           <div className="solenoid-cmdpalette__results" onMouseDown={(e) => e.preventDefault()}>
             {results.map((r, i) => (
               <div
                 key={r.id}
                 className={`solenoid-cmdpalette__item${i === activeIndex ? " solenoid-cmdpalette__item--active" : ""}`}
-                // onMouseMove, NOT onMouseEnter: the palette mounts under the pointer
-                // and a synthetic mouseenter would steal the highlight from row 0.
+                // onMouseMove, not onMouseEnter: the palette mounts under the pointer, and a synthetic mouseenter would steal row 0.
                 onMouseMove={() => setActiveIndex(i)}
                 onClick={() => run(r)}
               >
@@ -312,8 +283,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
             ref={inputRef}
             className="solenoid-cmdpalette__input"
             value={query}
-            // `type="search"` with no `name` is what stops Android Chrome's autofill
-            // bar; `autocomplete="off"` alone is ignored.
+            // `type="search"` with no `name` is what stops Android Chrome's autofill bar; `autocomplete="off"` alone is ignored.
             type="search"
             inputMode="search"
             enterKeyHint="go"
@@ -327,8 +297,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             onFocus={() => setFocused(true)}
-            // Blur must clear paletteStore, else it stays true after the first Enter
-            // and the hotkey never re-focuses the bar.
+            // Blur must clear paletteStore, or the hotkey never re-focuses the bar after the first Enter.
             onBlur={() => { setFocused(false); if (persistent) onClose(); }}
           />
           {aiAvailable && (
@@ -338,8 +307,7 @@ export function CommandPalette({ onClose, persistent = false }: { onClose: () =>
               aria-pressed={aiMode}
               aria-label={aiMode ? "Back to commands" : "Ask the AI"}
               title={aiMode ? "Back to commands" : "Ask the AI"}
-              // preventDefault so the press doesn't blur the input — in docked mode
-              // the bar would flip mode and drop focus in the same click.
+              // preventDefault keeps the input focused, so docked mode doesn't flip mode and drop focus in one click.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => { setAiMode((m) => !m); inputRef.current?.focus(); }}
             >

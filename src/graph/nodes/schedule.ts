@@ -8,11 +8,6 @@ import type { ScheduleOutput } from "@solenoid/schedule-engine";
 import type { Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
-// The Schedule node: one eager verb over a tasks CUBE — the critical-path pass lives in
-// `@solenoid/schedule-engine` behind scheduleCpm.ts; this class only reads its inputs and
-// caches the outputs. Rows come as a cube because Predecessors is a list cell (or a nested
-// Task · Type · Lag table) and nesting is the WBS (a frame widens in; its scalar
-// Predecessors cell is then ONE name).
 
 export type ScheduleMode = "working" | "calendar";
 export type SchedulePrecision = "days" | "minutes";
@@ -40,7 +35,6 @@ export const SCHEDULE_MODE_OPTIONS: ReadonlyArray<{ value: ScheduleMode; label: 
   { value: "calendar", label: "Calendar days", title: "Durations count every day" },
 ];
 
-/** Today as the LOCAL calendar day — the start a fresh card schedules from. */
 export function todaySerial(): number {
   const d = new Date();
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
@@ -68,7 +62,7 @@ export class ScheduleNode extends ClassicPreset.Node {
   criticalPaths: ScheduleCriticalPaths;
   progress: ScheduleProgress;
   literals: Record<string, number> = { weekend_code: 1, hours: 8 };
-  stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
+  stringLiterals: Record<string, string> = {};
   cachedResult: CubeValue | SolError | null = null;
   cachedFinish: number | SolError | null = null;
   cachedGantt: string | SolError | null = null;
@@ -86,7 +80,6 @@ export class ScheduleNode extends ClassicPreset.Node {
     ] },
   };
 
-  /** The diagnostics frame is fixed-shape; the schedule cube has no static shape. */
   frameShape(outKey: string): Shape | null {
     if (outKey !== "diagnostics") return null;
     return { columns: [{ name: "Check", type: "string" }, { name: "Task", type: "string" }, { name: "Detail", type: "string" }] };
@@ -118,7 +111,6 @@ export class ScheduleNode extends ClassicPreset.Node {
     weekend_code?: number[]; status?: (number | null)[]; hours?: number[];
   }) {
     const tasks = inputs.tasks?.[0] ?? null;
-    // A wired blank start is "no start yet": nothing to schedule. Unwired = today.
     const start = inputs.start ? inputs.start[0] : todaySerial();
     const empty = { cube: null, finish: null, diagnostics: null, gantt: null, mspdi: null };
     if (!isCubeValue(tasks) || start == null || !Number.isFinite(start)) {

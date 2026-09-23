@@ -33,9 +33,7 @@ import "./FormatControllerNode.css";
 import { stopDragStart } from "../coarse";
 
 
-/** The muted `← Decimal · 3 places` hint the inherit pick shows — the SAME wording the
- *  frame column-format row uses, so the two can't drift: map the FC's family to that
- *  function's column type and delegate to `frameFormatStore.describeAnnotation`. */
+/** Delegates to `frameFormatStore.describeAnnotation`, so the hint's wording can't drift from the frame column row. */
 function describeInheritedStyle(ann: FormatAnnotation, family: FormatFamily): string {
   const type: FrameColType =
     family === "text" ? "string" : family === "logical" ? "logical" : family === "date" ? "date" : "number";
@@ -67,11 +65,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const [chip,          setChipLocal]     = useState(node.chip);
   const [decimalDigits, setDigitsLocal]   = useState(node.decimalDigits);
   const [decimalMode,   setModeLocal]     = useState<DecimalMode>(node.decimalMode);
-  // Raw text of the digits box, kept separate from the committed number so the
-  // field can be transiently empty while editing (backspace the last digit).
+  // Raw digits text, separate from the committed number, so the box can be empty while editing.
   const [digitsText,    setDigitsText]    = useState(String(node.decimalDigits));
 
-  // The socket that meets the host's sits exactly on it — one dot, the host's, shows.
+  // The socket that meets the host's sits exactly on it, so only the host's dot shows.
   const dockSide = useSyncExternalStore(dockedNodeStore.subscribe, () => dockedNodeStore.get(node.id)?.side);
   const matedClass = (side: "input" | "output") =>
     dockSide && (dockSide === "output") === (side === "input") ? "solenoid-fc__socket--mated" : undefined;
@@ -83,8 +80,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // Shared with the table popup's per-column format row so the menus can't drift.
   const { unitGroups, unitGroupOrder, packFormatGroups } = useFcFormatOptions();
 
-  // Drag-to-dock changes node.format and socketDataType externally, so the controlled
-  // selects must resync or they show a stale value.
+  // Drag-to-dock changes node.format and socketDataType externally, so the controlled selects must resync.
   useEffect(() => {
     setInheritLocal(node.inheritFormat);
     setFormatLocal(node.effectiveFormat());
@@ -102,14 +98,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setTextAlignLocal(node.textAlign);
     setTextMdLocal(node.textMarkdown);
     setTextMonoLocal(node.textMono);
-    // Resync when the wiring changes these externally, e.g. a forwarding FC's locked unit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node.socketDataType, node.unit, node.format, node.forwarding, node.lockedByConvert]);
 
   function syncNode() {
-    const editor = getOwningEditor(node.id); // refresh FCs in this node's own graph (drill-in too)
+    const editor = getOwningEditor(node.id);
     if (editor) {
-      // Every FC, not just this one — a downstream forwarding FC's unit is locked to this.
+      // Every FC: a downstream forwarding FC's unit is locked to this one.
       for (const n of editor.getNodes()) {
         if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);
       }
@@ -117,8 +112,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     void processGraph();
   }
 
-  // `""` is the `—` (inherit) pick: the FC carries the upstream style through and keeps
-  // authoring its unit alone; any concrete style is a local override.
   function onFormatChange(f: FormatStyleId | "") {
     const inherit = f === "";
     node.inheritFormat = inherit;
@@ -128,7 +121,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
       setFormatLocal(f);
     }
     syncNode();
-    // The row count changes the chip height, so a docked FC must re-center after layout.
+    // Changes the card height, so a docked FC re-centers after layout.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -152,11 +145,8 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // `""` is the `—` (inherit) pick, shared with the number/date style dropdown: the FC
-  // carries the whole upstream text/logical display cluster through rather than its own.
   function onCaseChange(cs: TextCase | "" | "chip") {
-    // `chip` = render as a categorical color chip (B2.2); `""` = inherit; else a letter case.
-    // The three share the one text STYLE dropdown, so picking one clears the others.
+    // Chip, inherit and the letter cases share one style dropdown, so picking one clears the others.
     const isChip = cs === "chip";
     const inherit = cs === "";
     node.chip = isChip;
@@ -165,7 +155,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     setInheritLocal(inherit);
     if (!isChip && !inherit) { node.textCase = cs; setTextCaseLocal(cs); }
     syncNode();
-    // Chip / inherit collapse the B/I/size + advanced rows, changing the card height.
+    // Changes the card height, so a docked FC re-centers after layout.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -186,7 +176,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     node.lambdaView = v;
     setLambdaLocal(v);
     syncNode();
-    // These views change the host box height, so a docked FC must re-center after layout.
+    // Changes the host box height, so a docked FC re-centers after layout.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -216,7 +206,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // The advanced tier changes the chip height, so a docked FC must re-center after layout.
+  // Changes the card height, so a docked FC re-centers after layout.
   function toggleAdvanced() {
     node.advancedOpen = !node.advancedOpen;
     setAdvancedLocal(node.advancedOpen);
@@ -261,7 +251,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // Commit a final, clamped digit count (also normalizes the visible text).
   function commitDigits(d: number) {
     const lo = decimalMode === "sigfigs" ? 1 : 0;
     const clamped = clamp(Math.round(d), lo, 20);
@@ -271,10 +260,9 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // Commit only when it parses, so backspacing the last digit isn't blocked.
   function onDigitsInput(raw: string) {
     setDigitsText(raw);
-    if (raw === "") return; // transient empty — wait for more input or blur
+    if (raw === "") return;
     const d = parseInt(raw, 10);
     if (!Number.isFinite(d)) return;
     const lo = decimalMode === "sigfigs" ? 1 : 0;
@@ -284,7 +272,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  // An empty or invalid box falls back to 1 — 0 sig figs is meaningless.
+  // Empty or invalid falls back to 1: 0 sig figs is meaningless.
   function onDigitsBlur() {
     const d = parseInt(digitsText, 10);
     commitDigits(digitsText === "" || !Number.isFinite(d) ? 1 : d);
@@ -294,7 +282,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     if (mode === decimalMode) return;
     node.decimalMode = mode;
     setModeLocal(mode);
-    // sig figs needs ≥ 1; bump a 0 up so the value doesn't vanish.
     if (mode === "sigfigs" && decimalDigits < 1) commitDigits(1);
     syncNode();
   }
@@ -305,17 +292,12 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const socketAccent = SOCKET_COLORS[node.socketDataType];
   const accent = mismatch ? "#e06c2e" : socketAccent;
 
-  // A control outside the host socket's family is hidden, not disabled.
   const family = familyOf(node.socketDataType);
-  // While inheriting, the FC's own precision + advanced tier are moot — the whole
-  // display cluster rides in from upstream — so those rows collapse to the hint.
   const c0 = controlsFor(family, format);
   const c = (inheritFormat || chip) ? { ...c0, precision: false, advanced: false, customPattern: false } : c0;
   const inheritedHint = inheritFormat && node.inheritedAnnotation
     ? describeInheritedStyle(node.inheritedAnnotation, family) : "";
 
-  // The style row keeps the fixed ← → pair (the format applies behind and travels
-  // forward); the `—` pick adds the muted upstream-style hint below the dropdown.
   const hasUnit = unit !== "none";
   let unitLeft: "back" | "fwd" | null = null;
   let unitRight: "back" | "fwd" | null = null;
@@ -331,25 +313,19 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
       node={node}
       className="solenoid-fc"
       accentOverride={accent}
-      // The FC paints its own single-stroke accent ring — no multi-stroke seam,
-      // so it skips the frame SVG and keeps its real CSS border.
       frameless
     >
-      {/* Input socket (left) */}
       {inputPort && (
         <NodeSocket side="input" socketKey="in" nodeId={node.id} emit={emit} payload={inputPort.socket} className={matedClass("input")} />
       )}
-      {/* Output socket (right) */}
       {outputPort && (
         <NodeSocket side="output" socketKey="out" nodeId={node.id} emit={emit} payload={outputPort.socket} className={matedClass("output")} />
       )}
 
-      {/* Mismatch indicator — corner badge (no header to host it). */}
       {mismatch && (
         <span className="solenoid-fc__mismatch" title="The connected cable's unit doesn't match">!</span>
       )}
       {c.text ? (
-        /* Text: display-only case + bold / italic / size (non-destructive). */
         <>
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
@@ -413,7 +389,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
         </div>
         )}
-        {/* Advanced tier — alignment / markdown / monospace, all display-only. */}
         {c.advanced && advancedOpen && (
           <>
             <div className="solenoid-fc__row">
@@ -478,7 +453,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         )}
         </>
       ) : c.dateStyle ? (
-        /* Date socket: one date-style dropdown, no units. */
         <>
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
@@ -523,7 +497,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         )}
         </>
       ) : c.logical ? (
-        /* Logical socket: show-as (TRUE/FALSE · 1/0 · Yes/No · ✓/✗), display only. */
         <>
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
@@ -551,7 +524,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         )}
         </>
       ) : c.lambda ? (
-        /* Lambda socket: view-as (signature · KaTeX · highlighted · mono), display only. */
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
@@ -569,7 +541,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
       ) : c.chart ? (
-        /* Chart socket: text-scale multiplier for every size inside the figure. */
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
@@ -587,14 +558,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
       ) : !c.numberStyle && !c.complexStyle ? (
-        /* Structural socket (frame/cube): nothing formattable here. */
         <div
           className="solenoid-fc__row solenoid-fc__row--none"
           title="Nothing to format here. A table's columns are formatted in its popup."
         >—</div>
       ) : (
-        /* Number-ish socket: number format and unit, stacked for a narrow chip.
-           Complex gets the reduced style list (auto/decimal/scientific). */
         <>
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
@@ -645,8 +613,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         )}
         {c.precision && (
           <div className="solenoid-fc__row solenoid-fc__row--decimal">
-            {/* spacers matching the arrow gutters, so the controls line up with
-                the dropdowns above and below */}
+            {/* Spacers match the arrow gutters, so the controls line up with the dropdowns. */}
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
             <input
               type="number"
@@ -673,7 +640,6 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           </div>
         )}
-        {/* Custom pattern directly under the style rows — it IS a format. */}
         {c.customPattern && (
           <div className="solenoid-fc__row solenoid-fc__row--custom">
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
@@ -689,10 +655,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           </div>
         )}
-        {/* Advanced tier — MORE FORMATS, so it lives with the format cluster
-            (above the unit row: formats re-format freely downstream, units
-            lock — the two must not visually interleave). Rows are per-style
-            gated by formatModel (never disabled-but-visible). */}
+        {/* Above the unit row: formats re-format freely downstream while units lock, so the two must not interleave. */}
         {c.advanced && advancedOpen && (
           <>
             {groupingApplies(format) && (
@@ -748,9 +711,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             )}
           </>
         )}
-        {/* The expander closes the FORMAT cluster; the unit row sits below it.
-            The row itself is plain card (draggable) — only the small chevron
-            button captures the click. */}
+        {/* Plain card, so draggable; only the chevron button takes the click. */}
         {c.advanced && (
           <div className="solenoid-fc__more-row">
             <button

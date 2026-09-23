@@ -1,5 +1,4 @@
 // [[C76]] formulaPackDefault, [[C11]] socketBox12, [[C26]] opArgDistinct
-// Cards for the pack tool nodes — the domain logic lives in their node files.
 
 import {
   EmSpectrumNode as EmSpectrumNodeType,
@@ -122,8 +121,7 @@ function TriangleFigure({ t }: { t: Partial<TriangleSolved> }) {
 
 const TRIANGLE_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
 
-// The Equation design applied to the triangle: every part is ONE hero row, input
-// socket left, output socket right.
+// Every part is one hero row, input socket left and output right, as on the Equation card.
 export function TriangleSolverComponent({ data, emit }: NodeProps<TriangleSolverNodeType>) {
   const v = data.cachedValues;
   // The figure draws ONE triangle — index 0 when parts are broadcast lists.

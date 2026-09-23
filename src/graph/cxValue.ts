@@ -1,6 +1,4 @@
-// [[C17]]
-// A complex is a TAGGED OBJECT ([[D45]] maxRankMatrix), so `Array.isArray` means exactly one
-// thing everywhere. RETE-FREE ([[D19]] implReteFree), kernels shared with the IM* formulas ([[C17]] shareImpl).
+// [[C17]] shareImpl, [[D45]] maxRankMatrix, [[D19]] implReteFree
 
 import { solError, type SolError } from "./errorValue";
 
@@ -10,18 +8,11 @@ export function cx(re: number, im: number): Cx {
   return { __cx: true, re, im };
 }
 
-/** The one complex test ([[D45]] maxRankMatrix). Everything that must tell a complex from any other
- *  value routes here — never a structural array sniff. */
+/** Every complex test routes here, never a structural array sniff. */
 export function isCx(v: unknown): v is Cx {
   return typeof v === "object" && v !== null && (v as { __cx?: unknown }).__cx === true;
 }
 
-/** The ONE place that knows how a complex is spelled — "a + bi", "a - bi", "bi",
- *  "-bi", "i", "a", "0" — so the formatters can't drift. `hasBothParts` reports
- *  the two-term form, which the unit wrapper must parenthesize. */
-// `bothParts` forces the full `a + bi` even when a component is 0 (0 + 4i, 23 + 0i) —
-// the DISPLAY form. Left false, it drops a zero component (23, 4i), the Excel/coercion
-// form that `formatCx`, the `&` operator and cast-to-text serialize with.
 export function assembleCx(z: Cx, fmtNum: (n: number) => string, bothParts = false): { text: string; hasBothParts: boolean } {
   const { re, im } = z;
   if (Number.isNaN(re) || Number.isNaN(im)) return { text: "NaN", hasBothParts: false };
@@ -38,18 +29,14 @@ export function assembleCx(z: Cx, fmtNum: (n: number) => string, bothParts = fal
 const cxNumFmt = (digits: number) => (n: number) =>
   Number.isInteger(n) ? n.toString() : n.toFixed(digits).replace(/\.?0+$/, "");
 
-/** Excel/coercion form: drops a zero component (23, 4i). Round-trips with parseCx. */
 export function formatCx(z: Cx, digits = 4): string {
   return assembleCx(z, cxNumFmt(digits)).text;
 }
 
-/** Display form: always `a + bi`, both components shown (0 + 4i, 23 + 0i). */
 export function formatCxDisplay(z: Cx, digits = 4): string {
   return assembleCx(z, cxNumFmt(digits), true).text;
 }
 
-/** Parse a complex out of text: Excel's forms plus formatCx's spaced output, so
- *  the two round-trip; null when it isn't a complex (the caller picks the error). */
 export function parseCx(text: string): Cx | null {
   const s = text.trim();
   if (s === "") return null;
@@ -62,9 +49,6 @@ export function parseCx(text: string): Cx | null {
   if (m) return cx(Number(s), 0);
   return null;
 }
-
-// No error-classification in the kernels: the ops carry their own non-finite
-// forms (IMDIV by zero is cx(NaN, NaN)) rather than minting tagged errors.
 
 export function cxAdd(a: Cx, b: Cx): Cx { return cx(a.re+b.re, a.im+b.im); }
 export function cxSub(a: Cx, b: Cx): Cx { return cx(a.re-b.re, a.im-b.im); }
@@ -117,14 +101,12 @@ export function cxCot(z: Cx): Cx { return cxDiv(cxCos(z), cxSin(z)); }
 export function cxSech(z: Cx): Cx { return cxDiv(cx(1,0), cxCosh(z)); }
 export function cxCsch(z: Cx): Cx { return cxDiv(cx(1,0), cxSinh(z)); }
 
-/** Both roots of a·x² + b·x + c = 0 as the conjugate-ordered pair [x₁, x₂]; a = 0
- *  is a #DOMAIN! (a line, not a quadratic). */
 export function quadraticRoots(a: number, b: number, c: number): [Cx, Cx] | SolError {
   if (a === 0) return solError("#DOMAIN!", "a = 0 is a line, not a quadratic. Solve b·x + c = 0 directly");
   const disc = b * b - 4 * a * c;
   const s = Math.sqrt(Math.abs(disc)) / (2 * a);
-  const z = (v: number) => (v === 0 ? 0 : v); // kill -0 (it would display "-0")
+  const z = (v: number) => (v === 0 ? 0 : v); // Turns -0 into 0, which would otherwise display as "-0".
   const re = z(-b / (2 * a));
   if (disc >= 0) return [cx(z(re - s), 0), cx(z(re + s), 0)];
-  return [cx(re, z(-s)), cx(re, z(s))]; // the conjugate pair
+  return [cx(re, z(-s)), cx(re, z(s))];
 }

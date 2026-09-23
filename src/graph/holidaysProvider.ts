@@ -1,14 +1,11 @@
 // [[D32]] refreshOutsideRebuild
-// Nager.Date public-holiday API (keyless, CORS-open): a country + year → that year's
-// public holidays. The URL build + PARSE are pure and fixture-tested (widget rule 5);
-// the node owns the fetch/cache. Dates arrive as machine ISO (YYYY-MM-DD).
+// Nager.Date public holidays (keyless, CORS-open). URL builds and parses are pure; the node owns fetch and cache.
 import { type FrameValue, type FrameColumn } from "./frame";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
 export interface Holiday {
   /** Excel date serial (UTC midnight). */
   serial: number;
-  /** English name. */
   name: string;
   /** The country's own name for the day. */
   localName: string;
@@ -16,14 +13,12 @@ export interface Holiday {
   counties: string[];
 }
 
-/** The public-holidays endpoint for a year and an ISO 3166-1 alpha-2 country code. */
 export function holidaysUrl(year: number, country: string): string {
   const y = Math.trunc(year);
   return `https://date.nager.at/api/v3/PublicHolidays/${y}/${encodeURIComponent(country.trim().toUpperCase())}`;
 }
 
-/** Parse the response into holidays, in the API's order (already date-ascending). A
- *  malformed body, a non-array, or an undated row → dropped. */
+/** In the API's order, already date-ascending; a malformed body, a non-array or an undated row is dropped. */
 export function parseHolidays(text: string): Holiday[] {
   let data: unknown;
   try { data = JSON.parse(text); } catch { return []; }
@@ -46,16 +41,13 @@ export function parseHolidays(text: string): Holiday[] {
   return out;
 }
 
-/** The holidays that apply in `region` (a blank region keeps them all). A nationwide day
- *  (no counties) always applies; a subdivision day applies only when the region code is
- *  among its counties. */
+/** A blank region keeps every day; a nationwide day always applies, a subdivision day only when the region is listed. */
 export function filterHolidays(holidays: readonly Holiday[], region: string): Holiday[] {
   const r = region.trim();
   if (r === "") return [...holidays];
   return holidays.filter((h) => h.counties.length === 0 || h.counties.includes(r));
 }
 
-/** The Holidays frame: one row per holiday (date, English name, local name). */
 export function holidaysFrame(holidays: readonly Holiday[]): FrameValue {
   const columns: FrameColumn[] = [
     { name: "Date", type: "date", values: holidays.map((h) => h.serial) },
@@ -65,9 +57,7 @@ export function holidaysFrame(holidays: readonly Holiday[]): FrameValue {
   return { __frame: true, columns };
 }
 
-/** Whole days from `todaySerial` to the next holiday on or after today (today itself → 0),
- *  or null when none remain in the set. Both serials are UTC midnight, so the difference is
- *  a whole-day count. */
+/** Today itself is 0; null when none remain. Both serials are UTC midnight, so the difference is whole days. */
 export function daysToNextHoliday(holidays: readonly Holiday[], todaySerial: number): number | null {
   let best: number | null = null;
   for (const h of holidays) {
@@ -77,8 +67,7 @@ export function daysToNextHoliday(holidays: readonly Holiday[], todaySerial: num
   return best;
 }
 
-// Nager.Date's AvailableCountries (v3), captured 2026-09-06 — static reference data the
-// card's picker reads, so no fetch is spent on a list that turns over maybe once a year.
+// A bundled copy of Nager.Date's AvailableCountries (v3), so the picker spends no fetch on a list that rarely changes.
 const COUNTRY_TSV = `AD Andorra
 AG Antigua and Barbuda
 AI Anguilla

@@ -9,7 +9,6 @@ import { CONVERT_UNIT_DEFS, convertValue } from "./convertUnits";
 export { CONVERT_UNIT_DEFS, convertValue, CONVERT_CATEGORY_LABELS, type ConvertCategory, type ConvertUnitDef } from "./convertUnits";
 import { isUnitCell, fromUnit, withDisplay, unitError, type UnitCell } from "../unitValue";
 
-// The conversion math lives in dimension.ts ([[C8]] declareOnce); `category` only groups the dropdown.
 
 registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([id, d]) => [id, d.dim])));
 
@@ -19,7 +18,6 @@ export class ConvertNode extends ClassicPreset.Node {
     in: "From applies only to plain numbers. A value with a unit keeps its magnitude and is relabeled when the dimensions match, #UNIT! when they differ.",
   };
 
-  /** Runs the dimension algebra itself ([[D42]] perInputUnitBlind). */
   unitAware = true;
   label: string;
   fromUnit: string;
@@ -28,7 +26,6 @@ export class ConvertNode extends ClassicPreset.Node {
   outFormat: FormatStyle = "auto";
   cachedInput: number | number[] | UnitCell | (number | UnitCell)[] | null = null;
   cachedResult: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
-  // Drive the imposing-arrow markers (Convert dictates in an FC→Convert→FC chain, [[D40]] unitOnValue).
   imposesUp = false;
   imposesDown = false;
   width = 200;
@@ -45,14 +42,10 @@ export class ConvertNode extends ClassicPreset.Node {
     this.addOutput("out", numListOut("Out"));
   }
 
-  /** The toUnit as an FC unit id, so FC.refreshAnnotation treats Convert as a unit
-   *  forwarder; "none" when toUnit has no matching FC unit. */
   get unit(): string {
     return isFcUnit(this.toUnit) ? this.toUnit : "none";
   }
 
-  /** The arrows track whether each socket is wired, not whether an FC sits beside it
-   *  ([[D40]] unitOnValue). */
   syncUnitArrows(
     editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
   ): void {
@@ -69,20 +62,14 @@ export class ConvertNode extends ClassicPreset.Node {
     const x = (inputs.in?.[0] ?? null) as UnitOperand | UnitOperand[] | null;
     this.cachedInput = x;
     if (x === null) { this.cachedResult = null; return { out: null }; }
-    // A bad unit pick is the NODE's, not a per-cell condition, so an entire list
-    // becomes one #N/A.
     const from = CONVERT_UNIT_DEFS[this.fromUnit];
     const to   = CONVERT_UNIT_DEFS[this.toUnit];
-    // Incommensurable units are #N/A, not #UNIT!, so IFNA/ISNA still catch a bad
-    // Convert pick (and it matches Excel's CONVERT).
     if (from && to && !commensurable(from.dim, to.dim)) {
       const err = solError("#N/A", `Can't convert ${from.category} to ${to.category}: the units measure different things`);
       this.cachedResult = err;
       return { out: err };
     }
-    // Per-cell in a list ([[C24]] arraySemantics).
     const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
-    // Convert authors the unit and its display ([[D40]] unitOnValue; tree/specs/values/unit-flow.md).
     const toDim: Unit | undefined = to?.dim;
     const display = fcUnitToUnit(this.toUnit) ? this.toUnit : undefined;
     const convertCell = (v: UnitOperand): number | UnitCell | SolError => {

@@ -1,5 +1,4 @@
-// [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk (this module stays recharts-FREE)., [[C100]] chartIsAValue
-// Mechanics: tree/specs/canvas/react-flow-surface-contract.md.
+// [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk, [[C100]] chartIsAValue
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries } from "./chartCore";
@@ -9,9 +8,7 @@ import type { ChartValue, ScalePayload, OverlayPayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors, useChartColors } from "./chartCore";
-// The Gantt figure is its own lazy chunk (recharts-free); `ganttSvg` is a small pure
-// serializer, imported eagerly because the export provider must return a string
-// synchronously (captureChartSvgs runs at export time, not on a promise).
+// `ganttSvg` is imported eagerly: the export provider must return a string synchronously.
 import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 import { registerChartSvgProvider } from "../canvasCapture";
 import { useHostNodeId } from "./nodeContext";
@@ -34,16 +31,10 @@ const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ d
 const OverlayViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.OverlayView })));
 const GanttFigureInner = lazy(() => import("@solenoid/gantt-react").then((m) => ({ default: m.GanttFigure })));
 
-// A width the exported/serialized Gantt draws at, independent of the (possibly capped or
-// measured) on-screen size — the webpage export and Obsidian raster want the whole chart.
 const GANTT_EXPORT_W = 1000;
 
-// The cartesian ops that draw one child per named series; the rest stay single-series
-// (pie/radialbar/funnel plot the first series, the payload figures ignore `series`).
 const MULTI_SERIES_OPS = new Set<ChartShape>(["column", "bar", "line", "area", "scatter", "radar"]);
 
-// A blank box the chart's size so the card doesn't reflow (and sockets don't
-// re-measure) before recharts arrives; no spinner — it flashes too fast to read.
 function box(width: number | string, height: number): ReactNode {
   return <div style={{ width, height }} />;
 }
@@ -55,11 +46,8 @@ type ChartViewProps = {
   height: number;
   axes: boolean;
   opts?: ChartOptions;
-  /** Color bars/columns by value sign (win/loss). */
   signColors?: { pos: string; neg: string };
-  /** X-axis category labels (Frame col 0) — shown instead of the 1,2,3… index. */
   labels?: (string | number)[];
-  /** Display-layer text multiplier (an FC on the chart socket). */
   fontScale?: number;
 };
 
@@ -125,16 +113,12 @@ export function OverlayView(props: { payload: OverlayPayload; width: number; hei
   );
 }
 
-// The Gantt view: the grid + banded SVGs from `@solenoid/gantt-react`. On the canvas
-// Display (not virtualized) it registers a serializer keyed by its host node, so the
-// export paths (webpage, Obsidian raster) get a whole-chart SVG from `ganttSvg` instead
-// of scraping the largest DOM <svg> (canvasCapture's data-chart-svg-provider seam).
 export function GanttView({ payload, width, height, virtualize, fontScale }: {
   payload: GanttPayload; width: number; height: number; virtualize?: boolean; fontScale?: number;
 }) {
   const hostId = useHostNodeId();
   useEffect(() => {
-    if (!hostId || virtualize) return; // the popup is transient; the canvas owns the snapshot
+    if (!hostId || virtualize) return;
     return registerChartSvgProvider(hostId, () => ganttSvg(payload, { width: GANTT_EXPORT_W }));
   }, [hostId, virtualize, payload]);
   return (
@@ -144,21 +128,14 @@ export function GanttView({ payload, width, height, virtualize, fontScale }: {
   );
 }
 
-/** The ONE place that maps a chart value to a figure (a report embed keeps its own
- *  width-measured wrapper); empty → the muted em-dash box. */
 export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav, virtualize }: {
   value: ChartValue; width: number; height: number; axes?: boolean;
-  /** Composes with the value's own options.fontsize (10 = the built-in sizes). */
   fontScale?: number;
-  /** Row stepper for a drawn record card; surfaces that can reach the Record
-   *  node (Display, the chart popup via recordNav.ts) provide it. */
   recordNav?: (delta: number) => void;
-  /** The popup passes true so the Gantt windows its rows; the canvas Display caps them. */
   virtualize?: boolean;
 }) {
-  // The payload/matrix figures don't read options, so fold both factors here.
   const fscale = (fontScale ?? 1) * ((value.options?.fontsize ?? 10) / 10);
-  // Hook BEFORE any early return — a conditional hook here black-screens the app.
+  // Before any early return: a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
   if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
   if (value.op === "scale" && value.payload?.kind === "scale")
@@ -191,8 +168,6 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
   if (value.op === "gantt" && value.payload?.kind === "gantt")
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
-  // Composed/Bubble read the frame's numeric columns as series; a plain list (no series)
-  // falls back to the single-series column/scatter render.
   const hasSeries = !!value.series && value.series.length > 0;
   if (value.op === "composed") {
     if (hasSeries) return <ComposedView series={value.series!} labels={value.labels} width={width} height={height} opts={value.options} fscale={fscale} />;
@@ -205,9 +180,7 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 }
 
-/** The single-series path, shared with the matrix ops' no-matrix fallback. */
 function renderSeries(value: ChartValue, op: ChartShape, width: number, height: number, axes: boolean, fontScale?: number) {
-  // A frame with ≥ 2 numeric columns draws one series per column (with a legend).
   if (value.series && value.series.length >= 2 && MULTI_SERIES_OPS.has(op)) {
     return <MultiSeriesView op={op} series={value.series} labels={value.labels} width={width} height={height} axes={axes} opts={value.options} fontScale={fontScale} />;
   }
@@ -224,9 +197,6 @@ export function GaugeArc(props: { pct: number; track: string; size: number }) {
   );
 }
 
-/** The DIAL figure — a radial arc (Value read as a fraction of 1, clamped onto the fixed
- *  0→100% arc) with the true percent below. Shared by the Gauge node's card and the chart
- *  popup / Report embed, so both draw the same dial. */
 export function ScaleDial({ payload, width, size }: { payload: ScalePayload; width?: number; size?: number }) {
   const { track } = useChartColors();
   const v = typeof payload.value === "number" && Number.isFinite(payload.value) ? payload.value : null;
@@ -245,7 +215,7 @@ export function ScaleDial({ payload, width, size }: { payload: ScalePayload; wid
 }
 
 export function TornadoBars(props: { data: TornadoBar[]; grid: string; axis: string }) {
-  // 218 = TORNADO_W, a literal so reading it doesn't pull the lazy chunk eagerly.
+  // 218 is TORNADO_W, as a literal so reading it doesn't pull the lazy chunk.
   return (
     <Suspense fallback={box(218, Math.max(70, props.data.length * 22 + 16))}>
       <TornadoBarsInner {...props} />

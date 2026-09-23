@@ -1,8 +1,6 @@
 // [[C66]]
-// JS highlighting for the Script node's source. The tokenizer is lezer's real
-// JavaScript grammar (@lezer/javascript, the one CodeMirror ships); this module only
-// maps its tags onto the formula surface's `.fx-tokens` classes and re-emits every
-// character, so the highlighted <pre> mirrors the <textarea> exactly.
+// Script-node highlighting: lezer's JavaScript grammar mapped onto the `.fx-tokens` classes, re-emitting every
+// character so the highlighted <pre> mirrors the <textarea> exactly.
 import { parser } from "@lezer/javascript";
 import { highlightTree, tagHighlighter, tags as t } from "@lezer/highlight";
 
@@ -21,7 +19,6 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** Highlight JavaScript → HTML (classed spans). Every input char is preserved. */
 export function highlightJs(src: string): string {
   let out = "";
   let pos = 0;

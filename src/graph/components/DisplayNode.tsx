@@ -28,8 +28,7 @@ import { isSolError } from "../errorValue";
 import { recordNavTarget, stepRecordRow } from "./recordNav";
 import { nodeDisplayName } from "../catalogUtils";
 
-// Only for a Display with a DEFINITE size — measuring a content-driven card feeds
-// back (chart size → card size → …) and oscillates; overflow stays hidden for it.
+// Only for a definite size: measuring a content-driven card feeds back (chart size to card size) and oscillates.
 function MeasuredChart({ value, fontScale, recordNav }: { value: ChartValue; fontScale?: number; recordNav?: (delta: number) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 210, h: 130 });
@@ -55,11 +54,9 @@ function MeasuredChart({ value, fontScale, recordNav }: { value: ChartValue; fon
 
 export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
-  // Collapsed falls back to the compact preview — the form that reduces to a chip.
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const full = !collapsed;
-  // The hook must run UNCONDITIONALLY — guarding it behind `!collapsed` changes the
-  // per-render hook count with collapse (React #310).
+  // Unconditional: guarding it behind `!collapsed` changes the hook count with collapse (React #310).
   const manualSize = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
   const sized = !collapsed && !!manualSize;
 
@@ -74,25 +71,20 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
 
   const v = data.cachedValue;
   const isError = isSolError(v);
-  // The drawn record card carries its own pager when this Display can reach a
-  // steppable Record upstream (unwired Row, card view) — recordNav.ts.
   const recordId = isChartValue(v) && v.op === "record" ? recordNavTarget(data.id) : null;
   const recordStep = recordId ? (delta: number) => { void stepRecordRow(recordId, delta); } : undefined;
   const isFrame = isFrameValue(v);
   const isCube = isCubeValue(v);
-  // Object-valued figures must NOT reach the number formatter (fmt calls .toFixed).
+  // Object-valued figures must not reach the number formatter, which calls .toFixed.
   const isChart = isChartValue(v);
   const isMermaid = isMermaidValue(v);
   const isSvg = isSvgValue(v);
   const isLambda = isLambdaValue(v);
   const isTable = Array.isArray(v) && Array.isArray((v as unknown[])[0]);
-  // 2-D data and figures grow the card to fit; a scalar grows (capped) rather than
-  // clipping, and lists wrap as text.
   const grow = full && (isFrame || isCube || isTable || isChart || isMermaid || isSvg);
   const growScalar = full && !grow && !isError && !isLambda && v != null && !Array.isArray(v) && typeof v !== "object";
   const growClass = grow ? "solenoid-node--display-grow" : growScalar ? "solenoid-node--display-grow-scalar" : undefined;
 
-  // The resize floor for THIS content type; the grip reads it to clamp.
   const minSize = isChart ? { w: 230, h: 150 }
     : isMermaid ? { w: 200, h: 120 }
     : isSvg ? { w: 200, h: 120 }
@@ -103,15 +95,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     return () => nodeSizeStore.setMin(data.id, undefined);
   }, [data.id, minSize.w, minSize.h]);
 
-  // A chart / svg / scalar scales to the card; only a table/frame/cube actually
-  // scrolls, so only those need the sized-body wheel trap.
+  // Only a table, frame or cube scrolls, so only those need the sized-body wheel trap.
   const scrolls = isTable || isFrame || isCube;
 
-  // An EXPANDED frame / cube / table / list drops its chip (full mode omits it), so give
-  // it the same corner expand affordance every chart gets — a pop-out into its popup.
-  // It rides NodeShell's non-scrolling cornerBadge slot so it stays pinned when the
-  // body scrolls; charts keep their own in-body button. Coverage pinned by
-  // displayPopupCoverage.test.ts.
   const popKind = popOutKindFor(v);
   const expandBadge = full && popKind !== null
     ? <ValueExpandButton value={v} label={nodeDisplayName(data)} elem={popKind === "frame" ? undefined : nodeOutputElemFamily(data.id)} />
@@ -129,9 +115,6 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         !full ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={v} /></div>
         ) : (
-          // Every full chart (record included) gets the same expand affordance — the
-          // popup renders the value through the SAME ChartFigure path, so no op is left
-          // without a pop-out. Pinned by chartPopupCoverage.test.ts.
           <div style={{ position: "relative", width: sized ? "100%" : undefined, height: sized ? "100%" : undefined }}>
             {sized
               ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />

@@ -10,8 +10,6 @@ import { useDismissOnOutside } from "./components/useDismissOnOutside";
 import { resolveColor } from "./palette";
 import "./AppToolbar.css";
 
-/** The accent picker and theme toggle; both drive `appThemeStore`, which writes the CSS
- *  variables on <html>. */
 export function AppToolbar() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const accent = appThemeStore.getAccent();
@@ -110,7 +108,6 @@ export function AppToolbar() {
   );
 }
 
-/** Moon (currently dark → offers light) / sun (currently light → offers dark). */
 function ThemeGlyph({ mode }: { mode: string }) {
   return mode === "dark" ? (
     <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">

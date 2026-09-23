@@ -43,8 +43,7 @@ function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
   if (isArrayValue(v)) {
     const arr = v as (number | string)[] | (number | string)[][];
     const twoD = Array.isArray(arr[0]);
-    // Tinted from the origin SOCKET, not the first cell — the cable already knows
-    // its type, and a date list's serials look numeric to a cell scan.
+    // Tinted from the origin socket, not the first cell: a date list's serials look numeric to a cell scan.
     const family = nodeOutputElemFamily(annNodeId, outKey);
     return <ArrayChip value={arr} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
@@ -58,8 +57,6 @@ function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
   if (typeof v === "number") {
     return <span className="solenoid-cable-inspector__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
   }
-  // Tagged complex and united numbers have a text form — they fell through to
-  // the empty dash before.
   if (isCx(v) || isUnitCell(v)) {
     const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));
     return <span className="solenoid-cable-inspector__value">{formatListCell(v, one, ann)}</span>;
@@ -72,17 +69,11 @@ const sameSet = (a: readonly string[], b: readonly string[]) => {
   return bs.size === new Set(a).size && a.every((x) => bs.has(x));
 };
 
-/** The panel for exactly ONE selected cable, or one whole Conduit run. Conduits
- *  are WIRING, not computation, so it reports the ends of the RUN, not of the
- *  segment, and reads cableValueStore rather than computing anything. */
 export function CableInspector() {
   useSyncExternalStore(cableSelectionStore.subscribe, cableSelectionStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
-  // Renames + topology changes (a node label edit, a deleted endpoint).
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  // Live restyle when a source node's Format Controller changes.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
-  // X folds the panel to a chip; the SELECTION stays (deselect is a canvas click).
   const [collapsed, setCollapsed] = useState(false);
   const { shape } = useCableShape();
 
@@ -94,16 +85,10 @@ export function CableInspector() {
   const conn = editor.getConnections().find((c) => c.id === selectedIds[0]);
   if (!conn) return null;
 
-  // The whole run this cable belongs to: its own id alone for a plain cable,
-  // the full chain of segments when Conduits sit in between.
   const path = conduitPath(editor, conn);
 
-  // Beyond one cable, only a complete Conduit run is inspectable — that's what
-  // double-clicking a cable selects. Any other multi-selection is ambiguous.
   if (selectedIds.length > 1 && !sameSet(selectedIds, path.connIds)) return null;
 
-  // A ribbon bundles several lanes under one id, so a single From → To → Value
-  // would misrepresent it; a selected RUN is exempt, its ends being resolved.
   if (selectedIds.length === 1 && ribbonForConnection(editor, conn)) return null;
 
   const titleOf = (nodeId: string) => {
@@ -121,12 +106,9 @@ export function CableInspector() {
   const srcTitle = titleOf(origin.nodeId);
   const srcPort = outPortOf(origin);
 
-  // Every target receives the origin's output unchanged, so one row speaks for
-  // the whole run.
   const value = cableValueStore.get(origin.nodeId, origin.key);
 
-  // Static shape (columns + types) ahead of running anything, for a `frame` cable
-  // only; null when the walk can't resolve it, and the row then doesn't render.
+  // `frame` cables only; null when the walk can't resolve the shape, and the row then doesn't render.
   const srcSocket = editor.getNode(origin.nodeId)?.outputs[origin.key]?.socket;
   const isFrameCable = srcSocket instanceof SolenoidSocket && srcSocket.dataType === "frame";
   const frameShape = isFrameCable ? makeFrameShapeResolver(editor).outShape(origin.nodeId, origin.key) : null;
@@ -201,7 +183,6 @@ export function CableInspector() {
         </>
       )}
 
-      {/* One row per input the run reaches — a Conduit lane can fan out. */}
       {terminals.map((t, i) => (
         <div className="solenoid-cable-inspector__end" key={`${t.nodeId}::${t.key}`}>
           <span className="solenoid-cable-inspector__role">{i === 0 ? "To" : ""}</span>

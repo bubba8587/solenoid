@@ -1,12 +1,9 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[E10]] pickVsAggregateErrors
-// Flatten the WBS into the name-keyed DAG in topological order: a parent depends on its
-// children (its roll-up), a link onto a summary lands on every leaf beneath it (25-gantt.md § 3.1 rule 12).
 
 import { ScheduleError, type CalendarSpec, type LinkType, type PlanDependency, type PlanTask } from "./types";
 
 export const LINK_TYPES: readonly LinkType[] = ["FS", "SS", "FF", "SF"];
 
-/** Names match trimmed and case-insensitively, so spelling is the only thing that can fail. */
 export const nameKey = (name: string) => name.trim().toLowerCase();
 
 export interface FlatTask {
@@ -28,7 +25,6 @@ export interface FlatTask {
   actualStart: number | null;
   elapsed: boolean;
   calendar: Partial<CalendarSpec> | null;
-  /** As authored (a parent's own predecessors are kept for the DAG; its duration is not). */
   predecessors: PlanDependency[];
   row: number;
 }
@@ -39,15 +35,12 @@ export interface Edge {
   type: LinkType;
   lag: number;
   elapsed: boolean;
-  /** The authored link this edge came from; a summary-successor expansion shares one. */
   source: { from: string; to: string; type: LinkType; lag: number; elapsed: boolean };
 }
 
 export interface Graph {
   tasks: FlatTask[];
-  /** Authored edges, expanded onto leaves where the successor is a summary. */
   edges: Edge[];
-  /** Topological order over tasks (children before parents; predecessors before successors). */
   order: number[];
   byKey: Map<string, number>;
 }
@@ -61,7 +54,6 @@ function flatten(tasks: PlanTask[]): FlatTask[] {
     if (!name) throw new ScheduleError(`row ${row} has no task name`);
     const k = nameKey(name);
     if (seen.has(k)) throw new ScheduleError(`task "${name}" is named twice`, name);
-    // Effort-driven (rule 16): hours of work over units of assignment, when no duration is given.
     const hoursPerDay = 8;
     const fromWork = t.work != null && Number.isFinite(t.work) ? t.work / (Math.max(0.01, t.units ?? 1) * hoursPerDay) : null;
     const dur = t.duration == null ? (fromWork ?? 0) : t.duration;
@@ -88,7 +80,6 @@ function flatten(tasks: PlanTask[]): FlatTask[] {
   return out;
 }
 
-/** Every leaf beneath a task (the task itself when it is a leaf). */
 function leavesUnder(tasks: FlatTask[], i: number): number[] {
   const t = tasks[i];
   if (!t.summary) return [i];
@@ -117,7 +108,6 @@ export function buildGraph(plan: PlanTask[]): Graph {
     }
   }
 
-  // Kahn's order; a leftover names a member of the loop.
   const queue = tasks.map((_, i) => i).filter((i) => indeg[i] === 0);
   const order: number[] = [];
   const left = [...indeg];

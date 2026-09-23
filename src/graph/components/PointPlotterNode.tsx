@@ -9,7 +9,7 @@ import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 import { nodeDisplayName } from "../catalogUtils";
 
-// Live handle, graph recomputes on release — the XY Pad's interaction economy.
+// A live handle, and the graph recomputes on release (the XY Pad's interaction economy).
 
 const PAD_W = 196;
 const PAD_H = 140;

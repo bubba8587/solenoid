@@ -1,15 +1,6 @@
-// Console-only tooling for the backlog "Per-card CSS conversion" sweep, STEP 1 (the
-// census probe). For every catalog node type it mounts one card on the live editor,
-// walks the card's DOM, and classifies each element as either carrying a value / a
-// handler (a form control, a socket, or text) or being PAINT-ONLY (a purely decorative
-// div / svg that step 2 could move to a pseudo-element / background / mask). It removes
-// each card after measuring, so the canvas is left as it was found.
-//
-// Runs on the REAL dev page so the app's own component tree + CSS classes are what get
-// counted. Driven by scripts/card-css-census.mjs; results land in docs/dev-notes.md.
-// Charts/popups mount recharts lazily, so their figure interior is under-counted — the
-// census targets card CHROME (sockets, dividers, badges, chips, rings), which is the
-// step-2 conversion surface, not the plotted figure.
+// Console-only census probe (driven by scripts/card-css-census.mjs): mounts one card per catalog type on the live editor,
+// classifies each element as carrying a value or handler, or paint-only, and removes the card again.
+// Charts mount recharts lazily, so a figure interior is under-counted; the census targets card chrome.
 import { FLAT_CATALOG } from "./catalogUtils";
 import { getEditor, getView } from "./process";
 const frames = (n: number) =>
@@ -20,7 +11,7 @@ const frames = (n: number) =>
 
 export interface CardCensusRow {
   type: string;
-  root: string;          // the card root's tag.class (roots vary — see CLAUDE.md)
+  root: string;          // the card root's tag.class
   total: number;         // every element in the card subtree
   valueOrHandler: number;
   paintOnly: number;
@@ -28,9 +19,7 @@ export interface CardCensusRow {
   paintClasses: Record<string, number>;
 }
 
-// An element CARRIES SOMETHING (a value or a handler) when it is a form control, a
-// socket (a connection endpoint), editable, or shows text. Everything else on the card
-// is paint: structure and decoration.
+// Carries something: a form control, a socket, an editable element, or one showing text; everything else is paint.
 function carries(el: Element): boolean {
   const tag = el.tagName.toLowerCase();
   if (tag === "input" || tag === "select" || tag === "textarea" || tag === "button" || tag === "a" || tag === "img") return true;
@@ -78,8 +67,6 @@ async function censusOne(type: string, create: () => object): Promise<CardCensus
   }
 }
 
-/** Mount → measure → remove every catalog node type, one at a time. Returns the rows
- *  plus an aggregate paint-class histogram across all card types. */
 async function census(): Promise<{ rows: CardCensusRow[]; paintTotals: Record<string, number> }> {
   const rows: CardCensusRow[] = [];
   for (const [type, entry] of FLAT_CATALOG) {

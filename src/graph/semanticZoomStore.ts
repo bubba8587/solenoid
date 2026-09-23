@@ -1,4 +1,4 @@
-// [[C74]]
+// [[C74]] semanticZoomRawScale
 import { createNotifier } from "./storeKit";
 import { settingsStore } from "./settingsStore";
 
@@ -16,8 +16,6 @@ export const semanticZoomStore = {
   subscribe,
 };
 
-// A root-level class so plain CSS — not a React subscription in every node
-// component — does the swap.
 subscribe(() => {
   if (typeof document === "undefined") return; // node/test env
   document.documentElement.classList.toggle("solenoid-semantic-zoom", _far);

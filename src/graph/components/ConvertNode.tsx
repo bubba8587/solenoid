@@ -87,7 +87,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
 
   // Convert primacy ([[D40]] unitOnValue): adjacent FCs relock on a from/to change.
   function refreshFcs() {
-    const editor = getOwningEditor(node.id); // relock FCs in this node's own graph (drill-in too)
+    const editor = getOwningEditor(node.id);
     if (!editor) return;
     for (const n of editor.getNodes()) {
       if (n instanceof FormatControllerNode) n.refreshAnnotation(editor);

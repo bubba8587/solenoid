@@ -8,18 +8,11 @@ type AnyEditor = NodeEditor<{
   Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
 }>;
 
-// Resolves ONLY the annotation-tagged bare-degree case — a dimensioned angle is
-// already base RADIANS and takes data()'s unit-aware path. Must run BEFORE the
-// engine fetch so data() sees a fresh `_resolvedAngleMode`.
-
-/** True when this unit id denotes degrees; `grad` falls through to rad, since the
- *  toggle offers no gradian mode — a Convert bridges it. */
 function isDegreeUnit(unit: string): boolean {
   return unit === "deg";
 }
 
-/** Stamp every auto-mode trig MathFn's `_resolvedAngleMode` from its input's
- *  resolved unit. Returns only the nodes whose resolved mode CHANGED. */
+/** Returns only the nodes whose resolved mode changed. */
 export function resolveTrigModes(editor: AnyEditor): MathFXNode[] {
   const autos: MathFXNode[] = [];
   for (const n of editor.getNodes()) {

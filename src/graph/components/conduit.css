@@ -1,14 +1,6 @@
 /* [[C37]] observerOwnsSize, [[D17]] relaysTransparent. Mechanics: tree/specs/canvas/resizable-content-nodes.md, tree/specs/canvas/conduit-lane-faces.md. */
-/* Conduit: a single rotatable block that ribbons up to 8 "Any" cables. It keeps
-   a constant hit-body and overflows its visual (block + sockets) so the node's
-   top-left never shifts between the compressed and expanded states.
-   Sized by the component; styling + theming here. */
 
-/* The node box is a fixed 92 square so the top-left never moves between states, but
-   the block inside it is tiny — so the box must NOT be the hit target: an invisible
-   92-square would out-rank the cables, standoffs and canvas underneath it. Pointers
-   land on what is PAINTED (the shell shapes and the lane squares), nothing else.
-   pointer-events inherits, so every live descendant says `auto` for itself. */
+/* Pointers land only on what is painted (resizable-content-nodes spec); pointer-events inherits, so every live descendant says `auto` for itself. */
 .solenoid-conduit {
   position: relative;
   box-sizing: border-box;
@@ -23,9 +15,6 @@
   overflow: visible;
 }
 
-/* IDC-connector housing: a darker-gray shell with a lighter-gray border, hugging
-   the 2×N grid of square sockets (small padding so they read as a tight grid).
-   The shell is the block's grab surface — drag or click it to move or select. */
 .solenoid-conduit__block,
 .solenoid-conduit__block-border,
 .solenoid-conduit__handle {
@@ -39,32 +28,23 @@
 .solenoid-conduit__block        { fill: #464b54; }
 .solenoid-conduit__block-border { fill: #8a909c; }
 
-/* Handle: the shell's top band, the one strip no cable crosses, so it is the
-   reliable place to grab a block this small. A step lighter than the shell so it
-   reads as the graspable edge rather than more housing. */
+/* A step lighter than the shell, so it reads as the graspable edge. */
 .solenoid-conduit__handle { fill: #5b616c; }
 
-/* Pin-1 stripe: the red edge marker of a conduit cable, inset in the handle band.
-   Stays red regardless of selection so orientation reads at a glance. */
+/* Stays red regardless of selection, so orientation reads at a glance. */
 .solenoid-conduit__stripe { fill: #e0473a; pointer-events: auto; }
 
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block        { fill: #515761; }
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block-border { fill: #9aa1ad; }
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__handle       { fill: #6a7180; }
 
-/* Selected keeps the connector grays (the size change communicates selection);
-   the border picks up the accent and the shell gets a soft accent glow. */
+/* Selected keeps the connector grays; the border takes the accent and the shell a soft accent glow. */
 .solenoid-conduit--selected .solenoid-conduit__block-border { fill: var(--accent); }
 .solenoid-conduit--selected .solenoid-conduit__svg {
   filter: drop-shadow(0 0 6px var(--accent-mid));
 }
 
-/* Lane wrapper — positioned at the socket-square center, and it IS the socket:
-   the squares ARE the sockets, so the type glyph is hidden and this box paints
-   the dark-gray pin hole. Sized to --socket-size, the same box the RF Handle it
-   wraps takes, so the painted square and the measured cable endpoint coincide.
-   The rim is an inset ring, never a border — a layout border would push the
-   handle 1px off the square's center. */
+/* Sized to --socket-size, the box the RF Handle inside takes, so the painted square and the cable endpoint coincide; the rim is an inset ring, since a layout border would push the handle 1px off center. */
 .solenoid-conduit__lane {
   position: absolute;
   /* Explicit: the root is pointer-transparent and pointer-events INHERITS. */
@@ -76,10 +56,7 @@
   border-radius: 2px;
   cursor: crosshair;
 }
-/* Compressed: the bunched squares cover the whole block, so leaving them live means
-   every press starts a cable drag and the block can never be grabbed. Same specificity
-   as the rule above, so it MUST stay below it — never split the pair across files,
-   where the bundler's chunk order would decide the winner. */
+/* Same specificity as the rule above, so it must stay below it and in this file; across files, chunk order would pick the winner. */
 .solenoid-conduit__lane--inert {
   pointer-events: none;
 }
@@ -92,13 +69,7 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-/* ── Light mode ──────────────────────────────────────────────────────────────
-   The housing fills above are dark-theme grays; on the pale light-mode canvas a
-   dark shell reads as a blob. Use a lighter IDC-gray shell with a DARKER rim (in
-   dark mode the rim is a lighter highlight; here it's an outline for definition
-   against the bright canvas), and soften the recessed socket squares to a mid
-   gray so they still read as pin holes without going harsh-black. The pin-1
-   stripe stays red, and the toolbar already themes through CSS vars. */
+/* Light mode: a lighter shell with a darker rim, and mid-gray pin holes, so the block doesn't read as a blob on the pale canvas. */
 :root[data-theme="light"] .solenoid-conduit__block        { fill: #c5cad3; }
 :root[data-theme="light"] .solenoid-conduit__block-border { fill: #969db0; }
 :root[data-theme="light"] .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block        { fill: #b5bbc7; }
@@ -114,9 +85,6 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
-/* Inspector toolbar — visible when selected. Docked variant pins it to the
-   lower-left of the viewport (above the status bar), constant size at any
-   canvas zoom (it portals to document.body, outside the canvas transform). */
 .solenoid-conduit-toolbar {
   position: absolute;
   left: 50%;
@@ -144,11 +112,7 @@
   z-index: 60;
   transition: left 120ms ease;
 }
-/* The Navigator (OutlinePanel) expands to left:12px + width:248px. When it's
-   open, slide the bottom-left docked toolbars past it so they don't hide under
-   the panel. The panel sets `.solenoid-nav-open` on <body>. Desktop only — on
-   mobile the navigator is a near-full-width overlay and the toolbar keeps its
-   own lifted bottom-left spot (mobile.css). */
+/* Desktop only: slide past the open Navigator; on mobile it is a near-full-width overlay and the toolbar keeps its own spot (mobile.css). */
 html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
   left: 272px; /* 12 (panel left) + 248 (panel width) + 12 (gap) */
 }
@@ -168,9 +132,7 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
   justify-content: center;
 }
 
-/* ID header — mirrors .solenoid-node__header (2px accent border wrapping top +
-   sides, uppercase tinted text, inset bottom divider) so the toolbar reads as
-   the Conduit's "card". Accent = a softened variant of the pin-1 stripe red. */
+/* Mirrors .solenoid-node__header, so the toolbar reads as the Conduit's card; the accent is a softened pin-1 red. */
 .solenoid-conduit-toolbar__header {
   --conduit-accent: color-mix(in srgb, #e0473a 72%, var(--panel-bg));
   align-self: stretch;
@@ -178,8 +140,7 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-conduit-toolbar--docked {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  /* Pull over the toolbar's 6px padding + 1px border so the accent is the
-     outermost edge, exactly like the node-card header. */
+  /* Pulls over the toolbar's 6px padding and 1px border, so the accent is the outermost edge. */
   margin: -7px -7px 2px;
   padding: 5px 10px;
   border: 2px solid var(--conduit-accent);

@@ -1,7 +1,4 @@
 // [[B12]] losslessSaves, [[C30]] saveViaTextForm
-// A node's session `dataUrl` is written as a PLAIN file into `images/` beside the
-// doc and persisted as a doc-relative `assetPath`, so the save JSON never carries
-// base64. Desktop only — on web both hooks no-op and attach stays session-only.
 
 import {
   isDesktop,
@@ -16,7 +13,6 @@ import { documentStore } from "./documentStore";
 
 export const IMAGES_DIR = "images";
 
-// Duck-typed rather than importing the node class: only ImageNode carries BOTH fields.
 type ImageAssetNode = {
   id: string;
   label: string;
@@ -37,7 +33,6 @@ function imageNodes(): ImageAssetNode[] {
   return (editor.getNodes() as unknown[]).filter(isImageAssetNode);
 }
 
-// ── data: URL ↔ bytes ─────────────────────────────────────────────────────────
 
 const EXT_TO_MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
@@ -72,9 +67,7 @@ export function bytesToDataUrl(bytes: Uint8Array, mime: string): string {
   return `data:${mime};base64,${btoa(bin)}`;
 }
 
-// ── naming ────────────────────────────────────────────────────────────────────
 
-/** A safe plain filename: strip any path part + characters Windows refuses. */
 export function sanitizeName(name: string, fallback = "image"): string {
   const base = name.split(/[/\\]/).pop() ?? "";
   // eslint-disable-next-line no-control-regex
@@ -94,7 +87,6 @@ function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return true;
 }
 
-/** FNV-1a over the bytes — a short stable suffix for the collision fallback. */
 function contentHash(bytes: Uint8Array): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < bytes.length; i++) {
@@ -104,11 +96,8 @@ function contentHash(bytes: Uint8Array): string {
   return (h >>> 0).toString(16).padStart(8, "0");
 }
 
-// ── save hook ─────────────────────────────────────────────────────────────────
 
-/** Must be called BEFORE serializeGraph so the JSON carries the fresh assetPaths.
- *  Identical content reuses the existing file; a name owned by DIFFERENT content
- *  falls back to "name (2).ext" then a content-hash suffix. */
+/** Must run before serializeGraph, so the JSON carries the fresh assetPaths. */
 export async function bundleLocalImages(docPath: string): Promise<{ bundled: number; failed: number }> {
   let bundled = 0;
   let failed = 0;
@@ -147,10 +136,10 @@ export async function bundleLocalImages(docPath: string): Promise<{ bundled: num
           break;
         }
       }
-      if (!finalName) { failed++; continue; } // pathological — every candidate taken by different content
+      if (!finalName) { failed++; continue; }
       n.assetPath = `${IMAGES_DIR}/${finalName}`;
       bundled++;
-      void view?.rerenderNode(n.id); // the card's "not saved" hint clears
+      void view?.rerenderNode(n.id);
     } catch (e) {
       console.error(`[solenoid] couldn't bundle image "${n.fileName || n.label}"`, e);
       failed++;
@@ -159,19 +148,13 @@ export async function bundleLocalImages(docPath: string): Promise<{ bundled: num
   return { bundled, failed };
 }
 
-// ── load hook ─────────────────────────────────────────────────────────────────
 
-/** Called from the Image component's MOUNT, which covers doc load, paste and
- *  placeholder restore without a per-load-path hook. A missing file is not an
- *  error — the folder is the user's and files can move. */
 export async function hydrateImageAsset(node: unknown): Promise<void> {
   if (!isDesktop() || !isImageAssetNode(node)) return;
   const n = node;
   if (!n.assetPath || n.dataUrl || n.url) return;
   const docPath = documentStore.currentFilePath();
   if (!docPath) return;
-  // A saved document can carry any string here: a path that climbs out of the document's
-  // folder is never read (the same rule as a vault-relative read).
   if (!isInsideVault(n.assetPath)) return;
   try {
     const dir = await dirOfPath(docPath);

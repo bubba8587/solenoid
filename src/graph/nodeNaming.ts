@@ -1,20 +1,15 @@
 // [[C19]] namingModel
-// Shared by the live nodeNameStore and the pure textForm writer so both name nodes
-// by ONE algorithm.
+// Shared by nodeNameStore and the pure textForm writer, so both name nodes by one algorithm.
 
-/** Identifiers are the only names the text-form grammar can address unambiguously
- *  (`Name.output` connection refs, one name token per node line, no quoting). */
+/** Identifiers are the only names the text form can address unambiguously (`Name.output`, no quoting). */
 export const NAME_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-/** Strips a trailing "Node", matching the constant label each class passes to
- *  `super(...)`; falls back to the raw class name. */
 export function typePrefix(ctorName: string): string {
   const stripped = ctorName.replace(/Node$/, "");
   return stripped.length > 0 ? stripped : ctorName || "Node";
 }
 
-/** Returns the chosen name plus the checkpoint to store for the NEXT call, so a
- *  monotonic per-prefix counter never reuses a number even after names are freed. */
+/** Returns the next checkpoint too, so the per-prefix counter never reuses a number after names are freed. */
 export function nextAvailableName(
   prefix: string,
   taken: (name: string) => boolean,
@@ -29,7 +24,6 @@ export function nextAvailableName(
   return { name, next: n + 1 };
 }
 
-/** Lets a restored explicit name "claim" its number so later defaults skip past it. */
 export function counterCheckpoint(name: string): { prefix: string; next: number } | null {
   const m = /^(.*)_(\d+)$/.exec(name);
   if (!m) return null;

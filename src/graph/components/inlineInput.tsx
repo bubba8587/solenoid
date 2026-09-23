@@ -20,11 +20,9 @@ import { stopDragStart } from "../coarse";
 // Body-height estimate only; socket placement is measured per row ([[C11]] socketBox12).
 export const INPUT_ROW_PITCH = 28;
 
-/** Input-socket keys with an incoming cable, derived at render time (never cached in
- *  state) so any re-render picks up current graph state with no stale snapshot. */
+/** Derived at render time, never cached in state, so any re-render sees the current graph. */
 export function useConnectedInputs(nodeId: string): Set<string> {
-  // getOwningEditor, not getEditor: a node inside a drill-in must read its own graph's
-  // connections, or its wired rows render as unwired.
+  // getOwningEditor, not getEditor: a node inside a drill-in must read its own graph's connections.
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const conns = getOwningEditor(nodeId)?.getConnections() ?? [];
   const set = new Set<string>();
@@ -36,16 +34,15 @@ export function useConnectedInputs(nodeId: string): Set<string> {
 
 export type IncomingSource = { sourceId: string; sourceOutput: string; label: string };
 
-/** Who drives each input, not just THAT it's driven; derived at render time because
- *  the source label changes on rename, not only on connection changes. */
+/** Derived at render time because a source's label changes on rename, not only on connection changes. */
 export function useIncomingSources(nodeId: string): Map<string, IncomingSource> {
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  const editor = getOwningEditor(nodeId); // own graph inside a drill-in (see above)
+  const editor = getOwningEditor(nodeId);
   const map = new Map<string, IncomingSource>();
   for (const c of editor?.getConnections() ?? []) {
     if (c.target !== nodeId || typeof c.targetInput !== "string") continue;
     const src = editor?.getNode(c.source);
-    // Unlabeled → the catalog name ([[D22]] oneNamePerCard).
+    // An unlabeled source shows its catalog name ([[D22]] oneNamePerCard).
     const srcLabel = (src as { label?: string } | undefined)?.label?.trim();
     map.set(c.targetInput, {
       sourceId: c.source,
@@ -68,14 +65,13 @@ export function useDraftCommit<T>(
 ) {
   const [draft, setDraft] = useState(() => toText(committed));
   const canceled = useRef(false);
-  // Resync when the committed value changes underneath us (undo, external edit).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { setDraft(toText(committed)); }, [committed]);
   const onBlur = () => {
     if (canceled.current) { canceled.current = false; setDraft(toText(committed)); return; }
     const next = parse(draft);
     if (next === INVALID_DRAFT || Object.is(next, committed)) {
-      setDraft(toText(committed)); // revert / normalize ("5." → "5")
+      setDraft(toText(committed));
       return;
     }
     apply(next);
@@ -90,14 +86,11 @@ export function useDraftCommit<T>(
 // The title swallows the pointer (the caret needs it); the rest of the header stays the drag handle.
 const stopTitle = (e: { stopPropagation: () => void }) => e.stopPropagation();
 
-/** THE editable node-title state machine ([[C95]] commitOnEnter): only a commit writes
- *  `node.label`, then `onCommit` runs the node's side effect. Spread `inputProps` onto the
- *  editing <input>, `displayProps` onto the display; Group drives `begin()` itself. */
+/** Spread `inputProps` onto the editing <input> and `displayProps` onto the display; Group drives `begin()` itself. */
 export function useEditableLabel(node: { label: string }, onCommit?: () => void) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(node.label);
   const canceled = useRef(false);
-  // Resync to an external rename (undo, load) only while not mid-edit.
   useEffect(() => { if (!editing) setDraft(node.label); }, [node.label, editing]);
 
   const begin = () => { setDraft(node.label); canceled.current = false; setEditing(true); };
@@ -138,8 +131,7 @@ const parseNum = (t: string): number | undefined | typeof INVALID_DRAFT => {
   return Number.isFinite(n) ? n : INVALID_DRAFT;
 };
 
-// A gesture becomes a drag only past this threshold; under it pointerup is a no-op so
-// a plain click still focuses and places a caret.
+// Under this, pointerup is a no-op, so a plain click still focuses and places a caret.
 const SCRUB_MOVE_THRESHOLD = 4; // px
 const SCRUB_PX_PER_STEP = 6; // px of drag per unit step, at the unmodified rate
 
@@ -153,13 +145,11 @@ export function useNumberScrub(
   commitValue: (next: number) => void,
 ) {
   const dragRef = useRef<ScrubState | null>(null);
-  // The Escape listener is window-level because a drag blurs the input, so it needs its
-  // own ref to unbind when a drag is interrupted.
+  // Window-level Escape listener, since a drag blurs the input; its ref unbinds it when a drag is interrupted.
   const escRef = useRef<((e: KeyboardEvent) => void) | null>(null);
   useEffect(() => () => {
     if (escRef.current) window.removeEventListener("keydown", escRef.current);
-    // On an unmount MID-DRAG endDrag never runs; gated on THIS field owning the drag so
-    // an unrelated unmount can't strip the cursor class from an active scrub.
+    // An unmount mid-drag skips endDrag; gated on this field owning the drag, so an unrelated unmount can't strip an active scrub's cursor class.
     if (dragRef.current) {
       dragRef.current = null;
       document.body.classList.remove("solenoid-scrubbing");
@@ -172,7 +162,7 @@ export function useNumberScrub(
     if (escRef.current) { window.removeEventListener("keydown", escRef.current); escRef.current = null; }
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     document.body.classList.remove("solenoid-scrubbing");
-    if (!d || !d.dragging) return; // was a plain click — nothing to revert or commit
+    if (!d || !d.dragging) return;
     if (commit) {
       if (!Object.is(d.currentValue, committed)) commitValue(d.currentValue);
     } else {
@@ -205,7 +195,7 @@ export function useNumberScrub(
     const d = dragRef.current;
     if (!d) return;
     const dx = e.clientX - d.startX;
-    const dy = d.startY - e.clientY; // up = increase
+    const dy = d.startY - e.clientY;
     if (!d.dragging) {
       if (Math.hypot(dx, dy) < SCRUB_MOVE_THRESHOLD) return;
       d.dragging = true;
@@ -213,8 +203,7 @@ export function useNumberScrub(
       document.body.classList.add("solenoid-scrubbing");
     }
     const delta = Math.abs(dx) >= Math.abs(dy) ? dx : dy;
-    // Steps are counted first, THEN scaled — rounding the product would make Alt-fine a
-    // slower integer scrub instead of a 0.1 one; fine steps snap to the 0.1 grid.
+    // Count steps first, then scale: rounding the product would make Alt-fine a slow integer scrub instead of a 0.1 one.
     const mult = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
     const raw = d.startValue + Math.round(delta / SCRUB_PX_PER_STEP) * mult;
     const next = mult < 1 ? Math.round(raw * 10) / 10 : raw;
@@ -237,7 +226,6 @@ export function InlineNumberField({
 }: {
   value: number | undefined;
   onChange: (v: number | undefined) => void;
-  /** Shown (muted) when the field is empty. */
   placeholder?: string;
 }) {
   const field = useDraftCommit(value, numToText, parseNum, onChange);
@@ -265,21 +253,18 @@ export function InlineNumberField({
   );
 }
 
-/** A string-literal input framed by quote chrome — the `"` glyphs are decoration,
- *  never part of the value; display boxes drop them and use middots instead. */
 export function QuotedTextInput(props: {
   value: string;
   onChange: (v: string) => void;
   variant?: "inline" | "value";
   autoFocus?: boolean;
   placeholder?: string;
-  // When set, the field shows a resize grip.
+  /** When set, the field shows a resize grip. */
   nodeId?: string;
   /** A `<datalist>` id for type-ahead suggestions (the caller renders the list). */
   listId?: string;
 }) {
-  // The value variant is a MULTI-LINE textarea: a single-line <input> silently strips
-  // newlines on paste, flattening a multi-line literal.
+  // Multi-line textarea: a single-line <input> silently strips newlines on paste.
   return props.variant === "value"
     ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />
     : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} placeholder={props.placeholder} listId={props.listId} />;
@@ -311,16 +296,14 @@ function QuotedInlineInput({ value, onChange, autoFocus, placeholder, listId }: 
   );
 }
 
-// Max textarea height before it scrolls, so a big paste can't run the card off-screen.
 const VALUE_TEXTAREA_MAX = 200;
 
 function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; onChange: (v: string) => void; autoFocus?: boolean }) {
   const [draft, setDraft] = useState(value);
   const canceled = useRef(false);
   const ref = useRef<HTMLTextAreaElement>(null);
-  // Resync when the committed value changes underneath (undo, external edit).
   useEffect(() => { setDraft(value); }, [value]);
-  // Grow to content before paint, so there's no flicker.
+  // Before paint, so the grow never flickers.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -370,8 +353,7 @@ export function InlineTextField({
   return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} listId={listId} />;
 }
 
-/** A wildcard slot's literal, kept in whichever of the two maps fits. `Number(t)` and
- *  not `parseFloat`, so "12abc" is TEXT rather than 12. */
+/** `Number(t)`, not `parseFloat`, so "12abc" is text rather than 12. */
 export type AutoLiteral = number | string | undefined;
 const autoToText = (v: AutoLiteral) => (v == null ? "" : String(v));
 const parseAuto = (t: string): AutoLiteral => {
@@ -381,9 +363,6 @@ const parseAuto = (t: string): AutoLiteral => {
   return Number.isFinite(n) ? n : t;
 };
 
-/** ONE field for a WILDCARD value slot, which can hold a number or text: a
- *  numeric-looking entry commits as a number and anything else as text, with the quote
- *  chrome showing which landed — a SWITCH case of `12` is not a case of `"12"`. */
 export function InlineAutoField({
   num,
   text,
@@ -399,8 +378,6 @@ export function InlineAutoField({
   const committed: AutoLiteral = text !== undefined ? text : num;
   const field = useDraftCommit<AutoLiteral>(committed, autoToText, parseAuto, onChange);
   const quoted = typeof committed === "string";
-  // Drag-to-scrub is kept for the NUMERIC state, so a wildcard slot holding a number
-  // behaves like the number field it replaced.
   const scrub = useNumberScrub(
     num,
     (v) => field.setDraft(autoToText(v)),
@@ -408,8 +385,7 @@ export function InlineAutoField({
       onChange(next);
     },
   );
-  // Kept `type="text"`: a number input refuses a non-numeric draft outright, which is
-  // the whole point of this field.
+  // type="text": a number input refuses a non-numeric draft outright.
   const input = (
     <input
       type="text"
@@ -424,8 +400,7 @@ export function InlineAutoField({
       spellCheck={false}
     />
   );
-  // The chrome only flips on COMMIT, when the field is already blurred, so the input
-  // remounting here costs no focus.
+  // The chrome flips only on commit, when the field is already blurred, so this remount costs no focus.
   if (!quoted) return input;
   return (
     <span className="solenoid-node__quoted solenoid-node__quoted--inline">
@@ -436,22 +411,15 @@ export function InlineAutoField({
   );
 }
 
-/** Opted in by the VALUE SELECTORS, whose wildcard rows are value branches, and the cube
- *  builders, whose rows are cells. A wildcard SINK or relay (Display, Cast, Report) leaves
- *  it off and stays wire-only. */
 export interface AutoLiteralHost {
   autoLiterals?: boolean;
   stringLiterals?: Record<string, string>;
 }
 
 export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  // `anydata` takes the scalar literal too (a list/matrix only arrives by wire); a wildcard
-  // sink/relay stays wire-only by leaving `autoLiterals` off.
   return !!node.autoLiterals && (dt === "any" || dt === "anydata" || dt === "trueany");
 }
 
-/** Split a `"Foo (default X)"` socket label into label + placeholder, so the default
- *  reads as a muted cue in the box rather than parenthetical prose. */
 const DEFAULT_LABEL_RE = /^(.*?)\s*\(default\s+(.+?)\)\s*$/;
 export function splitDefaultLabel(label: string): { label: string; placeholder?: string } {
   const m = DEFAULT_LABEL_RE.exec(label);
@@ -459,8 +427,6 @@ export function splitDefaultLabel(label: string): { label: string; placeholder?:
   return { label: m[1], placeholder: m[2].replace(/^["']|["']$/g, "") };
 }
 
-/** Inline CSV editor for a 1-D LIST input — no quote chrome, which would signal a
- *  single string. coerceInputs parses the raw text per the socket's element type. */
 export function InlineCsvField({
   value,
   onChange,
@@ -495,32 +461,22 @@ export type InlineNode = {
   inputs: Record<string, InputPort | undefined>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
-  /** See `takesAutoLiteral` — the value selectors set it. */
   autoLiterals?: boolean;
 };
 
 type Props = {
   node: InlineNode;
   emit: Emit;
-  /** Restrict / reorder which input keys render. Defaults to all inputs. */
   keys?: string[];
-  /** Override the row label for a key (e.g. Logical's per-op labels). */
   labelFor?: (key: string, index: number) => string;
-  /** Optional hover tooltip per key (e.g. an Expression variable's description). */
   titleFor?: (key: string) => string | undefined;
-  /** Input keys rendered socket+label only (no inline field) — the value comes
-   *  from a cable, or an editor elsewhere in the node (e.g. a LAMBDA formula). */
+  /** Socket and label only: the value comes from a cable or an editor elsewhere on the card. */
   cableOnlyKeys?: ReadonlySet<string>;
-  /** Input keys whose label is a math expression (e.g. a LAMBDA's `f(r,c)`),
-   *  rendered with KaTeX so it reads as a proper function signature. */
   mathLabelKeys?: ReadonlySet<string>;
-  /** Type-ahead suggestions per string/CSV input key — rendered as a native `<datalist>`
-   *  the field points at, so typing offers matches but any value still commits (e.g. the
-   *  Time Zone nodes' IANA zone names). */
+  /** Rendered as a native `<datalist>`, so typing offers matches but any value still commits. */
   suggest?: Record<string, readonly string[]>;
 };
 
-/** A row label rendered as math (KaTeX), falling back to plain text. */
 function MathLabel({ text }: { text: string }) {
   const render = useKatexRender();
   const html = useMemo(() => {
@@ -536,15 +492,11 @@ function MathLabel({ text }: { text: string }) {
     : <span className="solenoid-node__io-label" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-/** Default renderer for a node's input rows; each dot centers on its own row, so rows
- *  can sit anywhere in the body with no fixed-offset assumption about the header. */
 export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys, suggest }: Props) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
   const literals = (node.literals ??= {});
-  // ONE datalist per card carries the union of every suggested key's options (they share
-  // it — the zone fields all suggest the same names); each suggested field points at it.
   const suggestId = suggest ? `sol-suggest-${node.id}` : undefined;
   const suggestOptions = suggest ? Array.from(new Set(Object.values(suggest).flat())) : [];
 
@@ -553,7 +505,6 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     .filter((e): e is [string, InputPort] => !!e[1]);
 
   const strLiterals = (node.stringLiterals ??= {});
-  // Column-name literals this node declares as frame-column pickers (B4): key → frame input.
   const pickerKeys = new Map(columnPickersOf(node).map((p) => [p.key, p.frameInput]));
 
   // A literal edit can move a derived socket type with no connection event ([[D16]] retypeReconciles).
@@ -586,8 +537,6 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     await processGraph(node.id);
   }
 
-  // Collapsed: ≥2 inputs aggregate into one pill, or the dots spill past the small
-  // node; a lone input centers on the display box, matching the output.
   if (collapsed) {
     if (entries.length >= 2) {
       return <CollapsedInputPill node={node} emit={emit} keys={entries.map(([k]) => k)} />;
@@ -613,10 +562,8 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
       {entries.map(([key, input], i) => {
         const socket = input.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
-        // A numeric list keeps its single-number field unless the node OPTS IN by declaring
-        // a stringLiterals key for it — then it types as a CSV list (Surface's Xs / Ys).
         const numlistCsv = dt === "numlist" && key in strLiterals;
-        // A combo only becomes a list when a cable brings one in, so both edit in place.
+        // A combo edits in place; it becomes a list only when a cable brings one.
         const isNumber = dt === "number" || (dt === "numlist" && !numlistCsv);
         const isStr    = dt === "string" || dt === "strcombo";
         const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist" || numlistCsv;

@@ -1,8 +1,4 @@
 // [[C98]] paletteMirrorsMenubar (the one menu model)
-// Context-menu TARGET resolution for the flow surface: React Flow says which
-// layer was hit (node / edge / pane); these resolve the app's finer targets — a
-// socket dot (or the nearest one within reach), a cable + its ribbon lanes, a
-// node with its standoff / pin / composite affordances.
 import type { NodeEditor } from "rete";
 import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget, NodeContextTarget } from "./components";
@@ -16,15 +12,12 @@ import { socketFlipStore } from "./socketFlipStore";
 import { unselectAllNodes as unselectAllNodesFromProcess } from "./canvasCommands";
 type Point = { clientX: number; clientY: number; target: EventTarget | null };
 
-/** An actively-edited field keeps the browser's own menu. */
 export function keepsNativeMenu(e: Point): boolean {
   const target = e.target as HTMLElement | null;
   const editable = target?.closest?.("textarea, input, [contenteditable='true']");
   return !!editable && editable === document.activeElement;
 }
 
-/** The socket under the pointer — or the nearest within a small radius, since the dot
- *  is ~12px and a press can land beside it. */
 export function socketTargetAt(container: HTMLElement, e: Point): SocketContextTarget | null {
   const target = e.target as HTMLElement | null;
   let socketEl = target?.closest?.("[data-socket-key][data-socket-side][data-node-id]") as HTMLElement | null;
@@ -46,8 +39,6 @@ export function socketTargetAt(container: HTMLElement, e: Point): SocketContextT
   };
 }
 
-/** Acts on the whole multi-selection when the clicked cable is part of it, else on just
- *  that cable; ribbons expand to their member lanes either way. Ghosts: no menu. */
 export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: string, e: Point): CableContextTarget | null {
   if (cableGhostStore.isGhost(clickedConnId)) return null;
   const conns = editor.getConnections();
@@ -74,7 +65,6 @@ export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: strin
   return { connIds, screenX: e.clientX, screenY: e.clientY };
 }
 
-/** No selection surgery on right-click: acts on the selection only if it contains the node. */
 export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e: Point): NodeContextTarget | null {
   const clickedNode = editor.getNode(clickedId);
   if (!clickedNode) return null;
@@ -83,7 +73,6 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
     .map((n) => n.id);
   const seedIds = selectedIds.includes(clickedId) ? selectedIds : [clickedId];
 
-  // Pinnable = a group or a real value node, but never a bundler / FC.
   const canPin =
     clickedNode instanceof GroupNode || (
       Object.keys((clickedNode as unknown as { outputs?: Record<string, unknown> }).outputs ?? {}).length > 0

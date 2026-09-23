@@ -9,9 +9,7 @@ import { DocumentChip } from "./DocumentChip";
 import { DiagramChip } from "./DiagramChip";
 import { isMermaidValue } from "../mermaidValue";
 
-/** The ONE chip registry for object kinds with a click affordance; null for
- *  everything else. describeValueKind is the TEXT net behind it for chip-less
- *  kinds — keep the two in sync when adding a kind. */
+/** Null for kinds with no chip; describeValueKind is the text net for chip-less kinds, so keep the two in sync when adding a kind. */
 export function valueChipFor(
   value: unknown,
   opts: { label?: string; pinNodeId?: string; size: "sm" | "md" },

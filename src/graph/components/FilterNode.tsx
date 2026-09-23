@@ -16,8 +16,7 @@ import type { DisplayValue } from "./valueDisplayFormat";
 import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
 
-// The frame Filter's condition rows minus the column picker — a list has no lanes, so a
-// row is just op + value. Kept rides the hero box; Dropped is the complement.
+// The frame Filter's rows minus the column picker, since a list has no lanes; Kept rides the hero box and Dropped is the complement.
 export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   const connected = useConnectedInputs(data.id);
   const [combine, setCombine] = useNodeField(data, "combine");

@@ -1,5 +1,4 @@
-// Model fuzzing: valid-shaped inputs per typed leaf source, driven through the targeted
-// recompute path; findings land in the Problems panel (problemsStore, origin "fuzz").
+// Model fuzzing: valid-shaped samples per leaf source; findings go to the Problems panel (origin "fuzz").
 import { ClassicPreset } from "rete";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { downstreamClosure } from "./graphCompute";
@@ -17,8 +16,6 @@ type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 
 const SAMPLES_PER_LEAF = 120;
 
-// Deterministic PRNG — a fixed seed makes a run reproducible, which is what makes a
-// "no findings" result trustworthy.
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -29,11 +26,10 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-/** Never fuzzes the TYPE — every sample is a finite number a user could plausibly type. */
 function sampleNumbers(rng: () => number, n: number): number[] {
   const out = [0, 1, -1, 0.0001, -0.0001, 100, -100, 1e6, -1e6, 1e-8];
   while (out.length < n) {
-    const magnitude = Math.pow(10, rng() * 8 - 2); // ~0.01 .. ~1e6
+    const magnitude = Math.pow(10, rng() * 8 - 2);
     const sign = rng() < 0.5 ? -1 : 1;
     out.push(sign * magnitude * (0.1 + rng() * 0.9));
   }
@@ -69,9 +65,6 @@ function findLeaves(editor: AnyEditor): Leaf[] {
 
 interface Badness { code: SolErrorCode; message: string }
 
-/** A bad SCALAR cell: a tagged error, or a leaked NaN/Infinity (guardFinite means a
- *  computation never yields a bare non-finite). `null` is first-class MISSING, never
- *  a defect. */
 function scalarBad(v: unknown): Badness | null {
   if (isSolError(v)) return { code: v.code, message: v.message };
   if (typeof v === "number") {
@@ -81,14 +74,12 @@ function scalarBad(v: unknown): Badness | null {
   return null;
 }
 
-/** Uses the SAME bounded head-plus-stride cap as errorValue's per-cell scan — this runs
- *  on every downstream node, every sample. */
 function badValue(v: unknown): Badness | null {
   const s = scalarBad(v);
   if (s) return s;
   if (Array.isArray(v)) {
     for (const i of sampledCellIndices(v.length)) {
-      const hit = badValue(v[i]); // recurse for matrix rows (same per-row bound)
+      const hit = badValue(v[i]);
       if (hit) return hit;
     }
     return null;
@@ -104,12 +95,9 @@ function badValue(v: unknown): Badness | null {
   return null;
 }
 
-/** Checked generically so this needs no per-node-class branch list. */
 const CACHE_FIELDS = ["cachedResult", "cachedValue", "cachedString", "cachedText", "cachedList", "cachedMatrix", "cachedHeaders"] as const;
 
 function inspectNode(node: unknown): Badness | null {
-  // An Expect node REJECTING a synthetic extreme isn't a model defect — the fuzzer feeds
-  // the very out-of-range values Expect exists to catch, so a finding here is circular.
   if (node instanceof ExpectNode) return null;
   const n = node as Record<string, unknown>;
   for (const field of CACHE_FIELDS) {
@@ -119,11 +107,8 @@ function inspectNode(node: unknown): Badness | null {
   return null;
 }
 
-// Codes a min/max bound can plausibly fix; structural failures (#REF!/#SHAPE!/#NAME?/
-// #SYNTAX!) aren't mechanical in this sense.
 const CLAMPABLE_CODES: ReadonlySet<SolErrorCode> = new Set(["#VALUE!", "#OVERFLOW!", "#DOMAIN!", "#DIV/0!", "#CONV!"]);
 
-/** The plausible splice point for a Clamp; undefined when nothing numeric is wired. */
 function firstNumericInput(node: unknown): { socketKey: string; label: string } | undefined {
   const inputs = (node as { inputs?: Record<string, { socket?: unknown; label?: string }> }).inputs ?? {};
   for (const [key, port] of Object.entries(inputs)) {
@@ -133,16 +118,10 @@ function firstNumericInput(node: unknown): { socketKey: string; label: string } 
   return undefined;
 }
 
-// The [min, max] arriving on a node's clamp-target input across every CLEAN sample.
-// Heuristic: a Clamp imposes only min/max, so it can't exclude an interior bad point.
 interface SafeRange { min: number; max: number }
 
-/** Which input to splice onto, plus the bounds to seed the Clamp with when the sweep
- *  captured a safe range. */
 export interface ClampSuggestion { socketKey: string; label: string; min?: number; max?: number }
 
-/** Bounded by the same head-plus-stride cap as the error scan — a source can output
- *  a big list. */
 export function collectFinite(v: unknown): number[] {
   if (typeof v === "number") return Number.isFinite(v) ? [v] : [];
   if (Array.isArray(v)) {
@@ -162,8 +141,6 @@ export function collectFinite(v: unknown): number[] {
   return [];
 }
 
-/** Read from the node's cache (or a source's `.value`) to observe what flows into a
- *  downstream node's clamp-target input. */
 function readNumericValues(node: unknown): number[] {
   if (!node) return [];
   const n = node as Record<string, unknown>;
@@ -180,8 +157,6 @@ export function extendSafeRange(acc: Map<string, SafeRange>, nodeId: string, val
   for (const x of vals) { if (x < e.min) e.min = x; if (x > e.max) e.max = x; }
 }
 
-/** Only a NON-DEGENERATE finite range yields bounds: a single-point range would pin
- *  the value and break the model. */
 export function boundsFromSafeRange(range: SafeRange | undefined): { min: number; max: number } | undefined {
   if (!range || !Number.isFinite(range.min) || !Number.isFinite(range.max) || range.min >= range.max) return undefined;
   return { min: range.min, max: range.max };
@@ -193,27 +168,20 @@ export interface FuzzRunSummary {
   findings: number;
 }
 
-/** Perturb every leaf source through a batch of samples, scan the downstream cone after
- *  each, restore the original value, and publish deduped findings. */
 export async function runModelFuzz(): Promise<FuzzRunSummary> {
   const editor = getEditor();
   if (!editor) return { leaves: 0, samples: 0, findings: 0 };
   const leaves = findLeaves(editor);
   const rng = mulberry32(0x5EED_F022);
   const found = new Map<string, { nodeId: string; code: SolErrorCode; message: string; suggestion?: ClampSuggestion }>();
-  // Per-node observed-safe input range, accumulated across every clean sample.
   const safeRanges = new Map<string, SafeRange>();
-  // (target::input) → the source feeding it; connections don't change mid-sweep.
   const inputSource = new Map<string, string>();
   for (const c of editor.getConnections()) inputSource.set(`${c.target}::${c.targetInput}`, c.source);
   let samples = 0;
 
-  // processGraph brackets itself, but those fast sub-passes drop the counter to 0 between
-  // samples and cancel the deferred reveal; an outer bracket keeps the curtain up.
+  // An outer bracket keeps the compute curtain up between the fast per-sample passes.
   beginCompute();
-  // The rebuild gate does two jobs: the manual-calc short-circuit exempts rebuilds (so a
-  // sampled recompute RUNS in manual mode), and AlertNode/Expect suppress their edge-detect
-  // fire (so a synthetic sample can't raise a real alert).
+  // The rebuild gate makes sampled passes run in manual-calc mode and keeps Alert and Expect from firing on samples.
   beginGraphRebuild();
   try {
     for (const leaf of leaves) {
@@ -245,7 +213,7 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
           }
         }
       } finally {
-        // Restore on EVERY exit path — a throw must not leave the graph holding a sample.
+        // Restore on every exit path, so a throw never leaves the graph holding a sample.
         (leaf.node as { value: number | string }).value = original;
         await processGraph(leaf.node.id);
       }
@@ -264,8 +232,6 @@ export async function runModelFuzz(): Promise<FuzzRunSummary> {
   return { leaves: leaves.length, samples, findings: findings.length };
 }
 
-/** Splice a Clamp onto the cable feeding `nodeId`'s `socketKey` input; no-op if unwired.
- *  `bounds` seeds its literals so the Clamp arrives CONFIGURED, not as a pass-through. */
 export async function insertClampBefore(
   nodeId: string,
   socketKey: string,
@@ -282,7 +248,6 @@ export async function insertClampBefore(
   if (!source) return false;
 
   const clamp = new ClampNode({ label: "Clamp" });
-  // An unwired min/max input reads its literal, so this makes the splice active.
   if (typeof bounds?.min === "number") clamp.literals.min = bounds.min;
   if (typeof bounds?.max === "number") clamp.literals.max = bounds.max;
   await editor.addNode(clamp);

@@ -1,15 +1,12 @@
 // [[C43]] oneFlowSurface, [[D17]] relaysTransparent
-// The traversal is asymmetric and depth-limited:
-//   hover origin      → all its cables + their destinations.
-//   hover destination → that cable + the origin only.
-//   a Conduit lane is transparent (one logical wire), followed through ONCE.
+// Asymmetric and depth-limited: hovering an origin lights all its cables and their destinations, hovering a
+// destination lights that cable and the origin; a Conduit lane is followed through once.
 
 import { dragSocketKey } from "./cableState";
 import { getOwningEditor } from "./activeGraph";
 
 type Side = "input" | "output";
 
-// Pair an `in_N` lane socket with its `out_N` sibling on a Conduit.
 function pairedLaneKey(
   inputs: Record<string, unknown>,
   outputs: Record<string, unknown>,
@@ -58,7 +55,6 @@ export function resolveSocketHighlights(
     const farSocketKey = startSide === "output" ? conn.targetInput : conn.sourceOutput;
     socketKeys.add(dragSocketKey(farNodeId, farSocketKey));
 
-    // If the far end is a Conduit lane, follow through ONCE — never further.
     const farNode = editor.getNode(farNodeId);
     if (!farNode) continue;
     const paired = pairedLaneKey(farNode.inputs, farNode.outputs, farSocketKey);

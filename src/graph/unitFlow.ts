@@ -24,39 +24,29 @@ function isFc(n: unknown): n is FcLike {
 }
 const isPassthrough = isPassthroughNode;
 const isPurePassthrough = isPurePassthroughNode;
-/** The explicit value-branch input keys (the selector's value rows, Display's `in`). */
 function valuePassKeys(n: unknown): string[] | null {
   return passInputKeys(n);
 }
-/** The ONE input key being passed RIGHT NOW (data-aware): a string = that branch,
- *  `null` = indeterminate (fall back to combine), `undefined` = no runtime pick. */
 const selectedKey = selectedPassInput;
 type FcAnnLike = { annotation: () => FormatAnnotation };
 function hasAnnotation(n: unknown): n is FcAnnLike {
   return typeof (n as Record<string, unknown> | null)?.annotation === "function";
 }
-/** An FC whose style dropdown may be set to `—` (inherit): it merges the format
- *  arriving at `in` with its own unit rather than publishing a fixed annotation. */
 type FcResolveLike = { resolveAnnotation: (inherited: FormatAnnotation | undefined) => FormatAnnotation };
 function hasResolveAnnotation(n: unknown): n is FcResolveLike {
   return typeof (n as Record<string, unknown> | null)?.resolveAnnotation === "function";
 }
-/** Per-OUTPUT producer annotation; undefined for a key means that output carries
- *  nothing, while node-level `annotation()` is the single-output form. */
 type FcAnnForLike = { annotationFor: (outKey: string) => FormatAnnotation | undefined };
 function hasAnnotationFor(n: unknown): n is FcAnnForLike {
   return typeof (n as Record<string, unknown> | null)?.annotationFor === "function";
 }
 
 type AnyPort = { socket?: { dataType?: SocketDataType } } | undefined;
-/** The element family a port DECLARES; null for a wildcard or a structural type
- *  (`frame`, `lambda`, …), which carries no format. Dates are their own family. */
 function portFamily(port: AnyPort): string | null {
   const dt = port?.socket?.dataType;
   return dt ? elementFamilyOf(dt) : null;
 }
 
-/** Branches must carry the SAME lock (unit + format) to pass it. */
 function combineAnnotations(anns: (FormatAnnotation | undefined)[]): FormatAnnotation | undefined {
   const real = anns.filter((a): a is FormatAnnotation => !!a);
   if (real.length === 0) return undefined;
@@ -66,23 +56,15 @@ function combineAnnotations(anns: (FormatAnnotation | undefined)[]): FormatAnnot
 }
 
 export type AnnotationResolver = {
-  /** The format+unit LOCKED on the value carried by this output socket, or undefined. */
   outAnnotation: (nodeId: string, outKey: string) => FormatAnnotation | undefined;
-  /** The locked annotation arriving on this input socket (its source's output). */
   inAnnotation: (nodeId: string, inKey: string) => FormatAnnotation | undefined;
-  /** The annotation of an FC DOWNSTREAM through pure passthroughs — an in-segment
-   *  FC locks the boxes behind it too; stops at the first transform/selector. */
   downstreamAnnotation: (nodeId: string, outKey: string) => FormatAnnotation | undefined;
 };
 
-/** An FC LOCKS its format+unit onto the value, a passthrough carries it across
- *  UNCHANGED, a transform carries the FORMAT alone and ONLY where it DECLARES a
- *  meaning-preserving op (formatCarry / [[D41]] formatFlowsDownstream), and Convert DROPS it. */
 export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   const memo = new Map<string, FormatAnnotation | null>();
   const visiting = new Set<string>();
 
-  // Index the connections ONCE: a per-hop getConnections() scan is O(boxes × cables).
   type AnyConn = ReturnType<AnyEditor["getConnections"]>[number];
   const byTarget = new Map<string, AnyConn[]>();
   const bySource = new Map<string, AnyConn[]>();
@@ -106,12 +88,7 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   function compute(nodeId: string, outKey: string): FormatAnnotation | undefined {
     const n = editor.getNode(nodeId);
     if (isConvert(n)) return undefined;
-    // A produced lock (a Triangle angle's °, an inverse-trig deg result) wins; when the
-    // op produces no lock for THIS output, fall through so a meaning-preserving op can
-    // still carry an input's format (abs / round of a percent).
     if (hasAnnotationFor(n)) { const produced = n.annotationFor(outKey); if (produced) return produced; }
-    // An FC that may inherit reads the format arriving at its `in`; a plain FC just
-    // publishes its own. `resolveAnnotation` covers both, so it wins where present.
     if (hasResolveAnnotation(n)) return n.resolveAnnotation(inAnnotation(nodeId, "in"));
     if (hasAnnotation(n)) return n.annotation();
     if (isPassthrough(n)) {
@@ -120,21 +97,12 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
       const keys = valuePassKeys(n);
       return keys ? combineAnnotations(keys.map((k) => inAnnotation(nodeId, k))) : firstInputAnnotation(nodeId);
     }
-    // A Conduit lane forwards in_i → out_i, handled here because the Conduit
-    // deliberately carries no passthrough() declaration.
     const lane = /^out_(\d+)$/.exec(outKey);
     if (lane && n && typeof n === "object" && Array.isArray((n as { cachedLane?: unknown }).cachedLane)) {
       return inAnnotation(nodeId, `in_${lane[1]}`);
     }
     return carriedFormat(n, nodeId, outKey);
   }
-  /** A TRANSFORM passes the display FORMAT on and NOTHING else ([[D41]] formatFlowsDownstream),
-   *  but ONLY where the node DECLARES it (formatCarry) — a transform with no declaration
-   *  for this output carries nothing, so the op that MEANS a new kind of value (mul, div,
-   *  count, a rate, a z-score) shows plain. Among the declared inputs the first wired,
-   *  annotated, same-element-family one wins; the unit is stripped — it is value-level
-   *  ([[D40]] unitOnValue), riding the `UnitCell` or breaking at the transform on its own. Two or
-   *  more date-styled operands are a SPAN, not a date (date − date), so they carry nothing. */
   function carriedFormat(
     n: ClassicPreset.Node | undefined,
     nodeId: string,
@@ -167,8 +135,6 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     return a;
   }
 
-  // An FC anywhere ahead in a pure-passthrough run locks every box in the run,
-  // including the ones BEHIND it; a transform or selector ends the segment.
   const dsMemo = new Map<string, FormatAnnotation | null>();
   const dsVisiting = new Set<string>();
   function downstreamAnnotation(nodeId: string, outKey: string): FormatAnnotation | undefined {
@@ -199,9 +165,6 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   return { outAnnotation, inAnnotation, downstreamAnnotation };
 }
 
-/** Walk UPSTREAM to the node that PRODUCED the value shown (through FCs, pure
- *  passthroughs and data-aware selectors), stopping at any transform, an
- *  indeterminate selector, or an ambiguous multi-branch one. */
 export function resolveValueOrigin(editor: AnyEditor, nodeId: string): string {
   const seen = new Set<string>();
   let id = nodeId;
@@ -209,7 +172,7 @@ export function resolveValueOrigin(editor: AnyEditor, nodeId: string): string {
     seen.add(id);
     const n = editor.getNode(id);
     if (!n) break;
-    let inKey: string | null = null; // null = "first connected input" (Display)
+    let inKey: string | null = null;
     if (isConvert(n)) break;
     if (isFc(n)) {
       inKey = "in";
@@ -223,12 +186,12 @@ export function resolveValueOrigin(editor: AnyEditor, nodeId: string): string {
         if (keys) {
           const connected = keys.filter((k) =>
             editor.getConnections().some((c) => c.target === id && c.targetInput === k));
-          if (connected.length !== 1) break; // ambiguous → the selector is the stop
+          if (connected.length !== 1) break;
           inKey = connected[0];
         }
       }
     } else {
-      break; // transform / source — this IS the origin
+      break;
     }
     const conn = editor.getConnections().find((c) =>
       c.target === id && (inKey === null || c.targetInput === inKey));
@@ -238,9 +201,7 @@ export function resolveValueOrigin(editor: AnyEditor, nodeId: string): string {
   return id;
 }
 
-// Annotations can change on ANY pass, so the resolver can't be cached on the
-// connection version; within ONE commit the graph is fixed, so it's shared for the
-// current microtask and rebuilt on the next tick.
+// Lives one microtask: annotations change on any pass, so never cache this on the connection version.
 let _sharedResolver: AnnotationResolver | null = null;
 let _sharedResolverEditor: AnyEditor | null = null;
 

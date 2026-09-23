@@ -22,28 +22,20 @@ import { CollapsedInputPill } from "./CollapsedInputPill";
 import "./nodeCard.css";
 import { dropInputCables } from "./cablePrune";
 
-/** A node with a variable number of input TUPLES: N sockets sharing one remove
- *  button, with optional fixed leading/trailing rows around them. A pair is the
- *  two-element case (Filter, SUMIFS, IFS…); Set Cell uses triplets. */
+/** N sockets per tuple sharing one remove button: a pair is the two-element case (Filter, SUMIFS, IFS), and Set Cell uses triplets. */
 export interface PairedExtensibleNode {
   id: string;
   inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
   literals?: Record<string, number>;
-  /** Ordered tuples of socket keys currently present, in row order. */
   valuePairKeys: () => string[][];
   addValuePair: () => void;
   /** Remove the tuple identified by its FIRST key. */
   removeValuePair: (aKey: string) => void;
-  /** One label per socket in a tuple, e.g. ["If", "Then"] or ["Value", "Row", "Column"]. */
   pairLabels: string[];
-  /** Inline TEXT literals for a string-socket half; numeric slots use `literals`. */
   stringLiterals?: Record<string, string>;
-  /** See `takesAutoLiteral` — a wildcard half takes a number OR text. */
   autoLiterals?: boolean;
 }
 
-/** `leadingKeys`/`trailingKeys` are fixed inputs before/after the pairs; each
- *  socket centers on its own row ([[C11]] socketBox12). */
 export function PairedExtensibleInputs({
   node, emit, leadingKeys, trailingKeys, rowNoun = "pair",
 }: {
@@ -51,7 +43,6 @@ export function PairedExtensibleInputs({
   emit: Emit;
   leadingKeys?: string[];
   trailingKeys?: string[];
-  /** The user-facing noun for a tuple in the add/remove controls ("pair", "row"). */
   rowNoun?: string;
 }) {
   const connected = useConnectedInputs(node.id);
@@ -149,7 +140,7 @@ export function PairedExtensibleInputs({
     <>
       {leading.length > 0 && <InlineInputs node={node} emit={emit} keys={leading} />}
       {pairs.map((keys, i) => (
-        // The remove button rides the tuple's first row, and only when >1 tuple.
+        // The remove button rides the tuple's first row, and only when there is more than one tuple.
         <div key={keys[0]} className="solenoid-node__pair-group">
           {keys.map((k, j) => field(
             k,
@@ -165,8 +156,7 @@ export function PairedExtensibleInputs({
       >
         Add {rowNoun[0].toUpperCase() + rowNoun.slice(1)}
       </button>
-      {/* The fallback's "N/A" is a state cue, not a typed value: no match with an
-          unset fallback yields #N/A. */}
+      {/* "N/A" is a state cue, not a typed value: no match with an unset fallback yields #N/A. */}
       {trailing.map((key) => field(key, node.inputs[key]?.label ?? key, undefined, "N/A"))}
     </>
   );

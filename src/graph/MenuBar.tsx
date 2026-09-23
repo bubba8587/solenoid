@@ -15,11 +15,10 @@ import { commandRecents } from "./commandRecents";
 import { OWN_WINDOW_CONTROLS, WindowControls } from "./WindowControls";
 import "./MenuBar.css";
 
-/** Renders only — the MODEL lives in `menuModel.ts`, shared with the Command Palette
- *  so every action is in both. */
+/** Renders only; the model is `menuModel.ts`, shared with the Command Palette. */
 
 export function MenuBar() {
-  // Subscribed for re-render only — the values are read inside buildMenus().
+  // For re-render only; buildMenus() reads the values.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   useSyncExternalStore(calcModeStore.subscribe, calcModeStore.version);
@@ -28,7 +27,6 @@ export function MenuBar() {
   const menus = buildMenus();
 
   const [open, setOpen] = useState<number | null>(null);
-  // Bridges the mobile app-bar button (in TopBar) to the sheet below.
   const mobileOpen = useSyncExternalStore(mobileMenuStore.subscribe, mobileMenuStore.get);
   const rootRef = useRef<HTMLDivElement>(null);
 

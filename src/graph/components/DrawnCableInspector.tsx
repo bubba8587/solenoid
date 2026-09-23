@@ -1,5 +1,4 @@
-// The panel for ONE selected drawn cable, in the cable inspector's corner and chrome.
-// The wired-cable CableInspector is untouched; selections are mutually exclusive.
+// [[C90]] drawnCablesAnnotate. The wired-cable CableInspector is untouched; the two selections are mutually exclusive.
 import { useSyncExternalStore } from "react";
 import {
   drawnCableStore, nearestOption, commitDrawn,

@@ -3,11 +3,7 @@ import {
   type ReactNode, type SelectHTMLAttributes,
 } from "react";
 
-/** A drop-in `<select>` that keeps its option list out of the DOM until hover/focus
- *  (both precede the event that opens the native picker, so the swap is unobservable;
- *  never unmounts while FOCUSED, which would break an open popup). The first render
- *  mounts the full list to measure and lock a min-width — a card is max-content sized,
- *  so the widest option is what holds it wide. */
+/** Options stay out of the DOM until hover or focus, which both precede the native picker, and never unmount while focused; the first render mounts them all to lock a min-width, since a max-content card is held wide by its widest option. */
 export function LazySelect({
   children, value, style, onPointerEnter, onPointerLeave, onFocus, onBlur, ...rest
 }: SelectHTMLAttributes<HTMLSelectElement>) {
@@ -15,16 +11,13 @@ export function LazySelect({
   const [hot, setHot] = useState(false);
   const [minWidth, setMinWidth] = useState<number | null>(null);
 
-  // Any change to the option set invalidates the width lock and re-measures.
   const sig = optionsSignature(children);
   const [measuredSig, setMeasuredSig] = useState<string | null>(null);
   const needMeasure = measuredSig !== sig;
   useLayoutEffect(() => {
     if (!needMeasure) return;
     const el = ref.current;
-    // The used width, not offsetWidth: that rounds to an integer, and a fractional
-    // max-content width then re-grows by the fraction on every hover swap. Round UP.
-    // 0 width = not laid out — stay armed rather than lock a bogus width.
+    // The used width, rounded up, not offsetWidth: an integer-rounded fractional width re-grows on every hover swap; 0 means not laid out, so stay armed.
     const w = el ? Math.ceil(parseFloat(getComputedStyle(el).width) || 0) : 0;
     if (w > 0) {
       setMeasuredSig(sig);
@@ -54,8 +47,6 @@ export function LazySelect({
   );
 }
 
-/** Walk the option tree (through optgroups/fragments/arrays), calling `fn` for
- *  each <option>'s (value, label). */
 function walkOptions(children: ReactNode, fn: (value: string, label: ReactNode) => void): void {
   Children.forEach(children, (child) => {
     if (!isValidElement(child)) return;
@@ -65,14 +56,12 @@ function walkOptions(children: ReactNode, fn: (value: string, label: ReactNode) 
   });
 }
 
-/** A cheap identity for the option set, so a changed list re-measures the lock. */
 function optionsSignature(children: ReactNode): string {
   let sig = "";
   walkOptions(children, (value, label) => { sig += `${value}|${String(label)};`; });
   return sig;
 }
 
-/** The option matching `value`, else the first — what a native select shows. */
 function selectedLabel(children: ReactNode, value: string): ReactNode {
   let match: ReactNode | undefined;
   let first: ReactNode | undefined;

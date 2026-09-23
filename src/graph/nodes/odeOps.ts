@@ -1,10 +1,6 @@
 // [[D19]] implReteFree, [[C17]] shareImpl
-// The caller supplies the derivative as a plain function.
 
-/** Integrate dy/dt = f(t, y) from t0 to t1 with the classic fixed-step RK4, returning the
- *  `steps + 1` sample points (t0 included). `steps` clamps to 1..100000. Returns null when
- *  a bound is non-finite, or when `f` yields null / a non-finite value, or the solution
- *  blows up — the caller surfaces that as an error. */
+/** Fixed-step RK4 answering `steps + 1` points (t0 included); null for a non-finite bound, a null or non-finite `f`, or a blow-up. */
 export function rk4(
   f: (t: number, y: number) => number | null,
   y0: number, t0: number, t1: number, steps: number,
@@ -30,7 +26,7 @@ export function rk4(
     if (k4 === null) return null;
     y = y + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
     t = t + h;
-    if (!Number.isFinite(y)) return null; // blow-up
+    if (!Number.isFinite(y)) return null;
     ts.push(t);
     ys.push(y);
   }

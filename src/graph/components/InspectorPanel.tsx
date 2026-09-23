@@ -1,4 +1,4 @@
-// [[C73]]
+// [[C73]] inspectorIsStatic
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 import { inspectorStore } from "../inspectorStore";
@@ -15,17 +15,11 @@ import { CloseIcon } from "./CloseIcon";
 import { descriptionHtml } from "../descriptionMd";
 import "./InspectorPanel.css";
 
-// The node Inspector: a right-docked panel (the pinned Report's chrome pattern
-// — fixed column between the measured chrome envelopes, canvas squeezed by
-// `html.sol-inspector-docked`) reading the ACTIVE surface's selected node; what it
-// shows is [[C73]] inspectorIsStatic. Selection has no push store (same as
-// SelectionActionsBar), so a light poll tracks it.
+// Selection has no push store (as with SelectionActionsBar), so a light poll tracks it.
 
 const POLL_MS = 150;
 
-// The Function Reference's generated rows, indexed by catalog type — the
-// Inspector READS the same derivation the Reference overlay renders (catalog +
-// nodeExcel merged in buildCatalog), never a second copy. Built lazily once.
+// The Inspector reads the same derivation the Reference overlay renders, never a second copy.
 let _frByType: Map<string, FnRefRow[]> | null = null;
 function frRowsFor(catalogType: string | null): FnRefRow[] {
   if (!catalogType) return [];
@@ -51,7 +45,6 @@ function socketRow(node: AnyNode, key: string, port: { label?: string; socket?: 
   return (
     <div key={key}>
       <div className="inspector-row">
-        {/* The REAL socket glyph (shape encodes type alongside color). */}
         <span className="inspector-sock">{port?.socket && <SocketComponent data={port.socket} />}</span>
         <span className="inspector-row__key">{port?.label ?? key}</span>
         <span className="inspector-row__meta">{t ? SOCKET_TYPE_LABELS[t] : ""}</span>
@@ -87,16 +80,13 @@ export function InspectorPanel() {
   const prevSel = useRef<AnyNode | null>(null);
   useEffect(() => {
     if (!open) return;
-    // Seed with the selection that already exists, so opening via the menu's
-    // (i) is not immediately retired by it on the first tick.
+    // Seed with the existing selection, so opening from the menu's (i) isn't retired by it on the first tick.
     prevSel.current = selectedNode();
     const t = setInterval(() => {
-      // Hold while the dev copy-edit freeze has an edit open: a re-render here can repaint the
-      // description's rendered markup over the raw text under the caret. Never set in prod.
+      // Hold while the dev copy-edit freeze has an edit open: a re-render could repaint rendered markup over the raw text under the caret.
       if (document.documentElement.classList.contains("sol-copyediting")) return;
       const sel = selectedNode();
-      // A NEW selection retires an explicit context-menu focus; until then the
-      // focused node outranks whatever selection the menu left behind.
+      // A new selection retires an explicit context-menu focus; until then the focused node outranks the selection the menu left.
       if (sel !== prevSel.current) {
         if (prevSel.current !== null || sel !== null) inspectorStore.clearFocus();
         prevSel.current = sel;

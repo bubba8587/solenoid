@@ -2,8 +2,7 @@
 import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { packFormulaSignature } from "./formulaExtensions";
 
-// Display-only parameter hints — arity is NOT enforced here, so a wrong entry only
-// mislabels. UPPERCASE names, optional args in [brackets], variadic tails as `…`.
+// Keys uppercase, params joined by ", ", optional args in [brackets], a variadic tail as `…`.
 export const FORMULA_SIGNATURES: Record<string, string> = {
   // ── logical / branching ──
   IF: "condition, then, [else]",
@@ -412,8 +411,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   CONCATLISTS: "list1, [list2], …",
   SHUFFLE: "list",
 
-  // ── Formula.js-backed names (no native impl — params per the library's own
-  //    signature, which is Excel's except where noted) ──
+  // ── Formula.js-backed names ──
   // math / trig
   ACOT: "x",
   ACOTH: "x",
@@ -544,9 +542,8 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   TBILLEQ: "settlement, maturity, discount",
   TBILLPRICE: "settlement, maturity, discount",
   TBILLYIELD: "settlement, maturity, pr",
-  // The D* database family is BLOCKED (LEGACY_ALIASES → aggregate + Frame Filter), so it
-  // carries no hint — a signature here would advertise a name the parser refuses.
-  // lookup / arrays (COLUMN/ROW are blocked — LEGACY_ALIASES → INDEX)
+  // No entry for a blocked name (the D* family, COLUMN, ROW): a hint would advertise a refused name.
+  // lookup / arrays
   COLUMNS: "array",
   ROWS: "array",
   CHOOSECOLS: "array, col1, …",
@@ -557,9 +554,6 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   XSTACK: "axis, array1, …",
 };
 
-/** A named placeholder signature synthesized from an impl's [min, max] arity, so a
- *  registration with no curated entry still hints "arg1, arg2, [arg3]" rather than a
- *  bare count. Required args are `argN`, optional ones `[argN]`, a variadic tail `…`. */
 export function genericSignature([min, max]: readonly [number, number]): string {
   if (max === 0) return "";
   const variadic = max >= 255;
@@ -570,15 +564,10 @@ export function genericSignature([min, max]: readonly [number, number]): string 
   return parts.join(", ");
 }
 
-/** The display hint for a function name (case-insensitive): the curated signature,
- *  else a named placeholder signature synthesized from the registered impl's arity,
- *  else null. A bare argument count ("2 args") is never returned. */
 export function signatureFor(name: string): string | null {
   const up = name.toUpperCase();
-  // A frame verb's "signature" is the redirect to its node.
   const frameNode = FRAME_SURFACE_NAMES[up];
   if (frameNode) return `frame verb — use the ${frameNode} node`;
-  // A node-only verb (Text Filter → List Filter) redirects the same way.
   const nodeVerb = NODE_SURFACE_NAMES[up];
   if (nodeVerb) return `use the ${nodeVerb} node`;
   const sig = FORMULA_SIGNATURES[up];
@@ -590,9 +579,6 @@ export function signatureFor(name: string): string | null {
   return null;
 }
 
-/** Split a curated signature into its comma-separated params for the param-hint bar.
- *  A prose redirect (the frame-verb "use the X node" form) is not a param list —
- *  returns null so the bar renders it as prose instead of a fake argument. */
 export function signatureParams(sig: string): string[] | null {
   if (sig === "") return [];
   if (sig.includes(" — ")) return null;

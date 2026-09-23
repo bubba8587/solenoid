@@ -1,7 +1,4 @@
-// [[B10]], [[C65]], [[C43]], [[C87]] groupsAreSubflows (toFlowNodes: parents first, relative members)
-// The headless graph model: a rete NodeEditor + DataflowEngine with coercion and
-// error guards installed, its edit verbs, and the projections React Flow reads.
-// The compute pass lives in graphCompute.ts (one definition for every caller).
+// [[B10]] reactFlowView, [[C65]] domOrderStacking, [[C43]] oneFlowSurface, [[C87]] groupsAreSubflows
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode } from "../schemes";
@@ -57,7 +54,6 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 
-  // One document at a time: a fresh build owns the addressable-name space.
   nodeNameStore.clear();
   const byId = new Map<string, SolenoidNode>();
   for (const sn of g.nodes) {
@@ -65,7 +61,6 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
     if (!Ctor) throw new Error(`Unknown node type "${sn.type}" (id ${sn.id}).`);
     const node = new Ctor({ ...sn.init }) as SolenoidNode;
     const anyNode = node as unknown as Record<string, unknown>;
-    // Inline literal maps restore ONLY onto declaring classes (persistence rule).
     if (sn.literals && "literals" in anyNode) anyNode.literals = { ...sn.literals };
     if (sn.stringLiterals && "stringLiterals" in anyNode) {
       anyNode.stringLiterals = { ...sn.stringLiterals };
@@ -86,9 +81,7 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
   return { editor, engine };
 }
 
-// ─── Edit verbs ───────────────────────────────────────────────────────────
 
-/** The lattice rule + no self-loop — the one connection gate. */
 export function canConnect(
   m: FlowModel,
   source: string,
@@ -105,7 +98,6 @@ export function canConnect(
   return !!(src && tgt);
 }
 
-/** Add a cable; a single-connection input evicts its existing cable first. */
 export async function connect(
   m: FlowModel,
   source: string,
@@ -135,7 +127,6 @@ export async function disconnect(m: FlowModel, connectionId: string): Promise<vo
   if (m.editor.getConnection(connectionId)) await m.editor.removeConnection(connectionId);
 }
 
-/** Remove nodes and their cables through the editor; names go too. */
 export async function removeNodes(m: FlowModel, ids: string[]): Promise<void> {
   const doomed = new Set(ids);
   for (const c of m.editor.getConnections()) {
@@ -148,7 +139,6 @@ export async function removeNodes(m: FlowModel, ids: string[]): Promise<void> {
   }
 }
 
-/** Instantiate a catalog entry at a canvas position. */
 export async function addNode(
   m: FlowModel,
   catalogType: string,
@@ -168,23 +158,18 @@ export function moveNode(m: FlowModel, id: string, position: { x: number; y: num
   if (node) node.position = { x: position.x, y: position.y };
 }
 
-// ─── React Flow projections ───────────────────────────────────────────────
-// RF-shaped without the RF dependency, so they stay testable in the node vitest env.
+// RF-shaped without importing RF, so these stay testable in the node vitest env.
 export type RFNodeLite = {
   id: string;
   type: "sol";
-  /** Relative to the group box for a member (RF sub-flow), else absolute. */
   position: { x: number; y: number };
   parentId?: string;
   zIndex: number;
   className?: string;
-  /** false pins a locked group in place (RF still resizes it); undefined defers to
-   *  the board-wide `nodesDraggable`. */
   draggable?: boolean;
   data: { node: SolenoidNode; version: number };
 };
 
-/** The group a node belongs to (groups don't nest). */
 export function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undefined {
   for (const g of m.editor.getNodes()) {
     if (g instanceof Nodes.GroupNode && g.members.includes(id)) return g;
@@ -192,9 +177,6 @@ export function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undef
   return undefined;
 }
 
-/** The MODEL keeps absolute positions (on the node); RF positions a member relative
- *  to its group (`parentId`), so the group's own drag tows it. Convert at the
- *  boundary only. */
 export function toFlowPosition(m: FlowModel, id: string, abs: { x: number; y: number }): { x: number; y: number } {
   const g = parentGroupOf(m, id);
   const gp = g ? (g as SolenoidNode).position : undefined;
@@ -210,26 +192,14 @@ export function fromFlowPosition(
   return gp ? { x: rel.x + gp.x, y: rel.y + gp.y } : { x: rel.x, y: rel.y };
 }
 
-/** Collapsed-group member hiding rides RF's own `className` — the wrapper's
- *  inline `visibility` belongs to RF (it stamps `visible` after measuring), so
- *  any imperative stamp gets overwritten; the class + `!important` rule
- *  (flow.css) is the one channel RF preserves. */
 export function nodeClassName(node: SolenoidNode): string | undefined {
   const cls = [];
   if (groupCollapseStore.isNodeHidden(node.id)) cls.push("sol-member-hidden");
-  // A Conduit's node box is a fixed 92 square around a much smaller block, so the box
-  // itself must not take pointers — the painted shell and lane squares do (conduit.css).
   if (node instanceof Nodes.ConduitNode) cls.push("sol-conduit-node");
-  // An OPEN group's interior is working canvas, not a drag handle: the wrapper goes
-  // pointer-transparent and only the header, edge bands, grip — and the body once the
-  // group is selected — take pointers (flow.css + GroupNode.css).
   if (node instanceof Nodes.GroupNode && !node.collapsed) cls.push("sol-group-open");
   return cls.length ? cls.join(" ") : undefined;
 }
 
-/** The rete surface's area-plane z-order (groups −2 < conduits −1 < nodes 0);
- *  without it a group's body sits level with its members and eats their
- *  pointer events. */
 export function nodeZIndex(node: SolenoidNode): number {
   if (node instanceof Nodes.GroupNode) return -2;
   if (node instanceof Nodes.ConduitNode) return -1;
@@ -250,7 +220,6 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
   for (const g of nodes) {
     if (g instanceof Nodes.GroupNode) for (const member of g.members) groupOf.set(member, g.id);
   }
-  // RF requires a parent before its children in the array.
   const ordered: SolenoidNode[] = [
     ...nodes.filter((n) => n instanceof Nodes.GroupNode),
     ...nodes.filter((n) => !(n instanceof Nodes.GroupNode)),

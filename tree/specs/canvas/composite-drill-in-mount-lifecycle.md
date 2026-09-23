@@ -53,9 +53,13 @@ Leaving a level (the breadcrumb, or Escape, which goes up one level) runs `leave
 Snapshot undo is per composite and lives on the drill stack, so it survives closing and reopening by design.
 
 - A record is `comp.snapshotInternal()` as JSON, taken after copying current positions into the composite. Records are merged within 400ms, skipped if identical to the current one, and capped at 50.
-- Undo and redo call `comp.restoreInternal()`, which tears down the whole internal graph before re-hydrating, under the rebuild gate.
+- Undo and redo call `comp.restoreInternal()`, which tears down the whole internal graph before re-hydrating, under the rebuild gate. One restore runs at a time, and the restore's own compute pass records nothing new, since its snapshot matches.
 - The pipe only sees topology. Edits made inside components (an op change, say) are caught through `compositePassStore`: whenever `comp.runSeq` has advanced, every internal card re-renders and a record is scheduled. `runSeq` counts this composite's `data()` runs, and nothing inside the subgraph can change without one, so it is the exact signal that the composite's internals changed. `compositePassStore` itself ticks after every `processGraph`, including passes that never touched this composite, so it is not a signal on its own.
 - Moves record too (the `afterMove` and `afterProgrammaticMove` hooks).
+
+## Deleting inside a level
+
+The drill-in's delete removes the selected cables first, then the selected nodes, and never deletes a boundary marker, since markers are the composite's ports; copy skips them the same way. It uses no ghost splicing and no rebuild gate.
 
 ## Document switches
 
@@ -63,7 +67,7 @@ Snapshot undo is per composite and lives on the drill stack, so it survives clos
 
 ## Shared behavior comes from shared modules
 
-Anything the drill-in shares with the main canvas comes from the same module, never a copy: `installFlowPinch`, `installTouchCardPan`, `installWheelZoom`, `FlowCableEdge`, `SolNodeAdapter`, `minimapFillForNode`, and the Tidy factory `makeArrangeFn` with `makeCleanupFn` ([[pointer-gestures]]). The drill-in's Tidy refits the view afterwards, except for a Tidy scoped to one group.
+Anything the drill-in shares with the main canvas comes from the same module, never a copy: `installFlowPinch`, `installTouchCardPan`, `installWheelZoom`, `FlowCableEdge`, `SolNodeAdapter`, `minimapFillForNode`, and the Tidy factory `makeArrangeFn` with `makeCleanupFn` ([[pointer-gestures]]). The drill-in's Tidy uses the same factory, because a bare ELK pass would move group bodies without their members, and it refits the view afterwards, except for a Tidy scoped to one group (the group header's Tidy, which lays out just its members).
 
 ## The breadcrumb
 
@@ -71,6 +75,14 @@ Anything the drill-in shares with the main canvas comes from the same module, ne
 
 1. Recompute always targets `stack[0]`, the ancestor in the main editor, so an edit any number of levels deep ripples outward correctly.
 2. A level's parent editor is the internal editor of `stack[i-1]` (the main editor at level 0). That is the editor a level reconciles its ports against when it closes.
+
+## Drill-in chrome
+
+- The drill-in's backdrop fills the region the main canvas occupies, above it and below the app chrome (header, status bar, the menu and Navigator), and is opaque, so drilling in swaps only the canvas surface while the app frame stays put.
+- The one drill-in-specific piece of chrome is the floating strip at the top left, below the app header and clear of the top-right menu: the breadcrumb (each crumb a quiet text button, the current one emphasized and inert) and the port-promotion buttons, on a sunken fill with an accent-tinted border as a state cue. Undo, delete, add, zoom and the rest are the real toolbar and keyboard pointed at the active graph.
+- The run-mode panel sits directly under the strip, because the top-right corner belongs to the Zoom pill and the Problems and Alerts HUDs. It mirrors the outer card's controls, and its head bar always shows the current run mode while the body folds.
+- While drilled in (`html.sol-drilled-in`) the main minimap hides and the drill-in's own shows; the Navigator stays folded, because its list still reads and acts on the main graph; and the covered main canvas stops painting (`visibility: hidden`, [[C75]] gpuTextureBudget).
+- On mobile the strip clears both top rows and the notch, stops before the right-anchored Fit and Lock pill, and stacks the crumbs above the port buttons; the run panel moves to the bottom left just above the bottom pill and starts collapsed; and the drill-in minimap is off.
 
 ## The canvas-substitution seam
 

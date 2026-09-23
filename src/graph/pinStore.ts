@@ -1,5 +1,4 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C30]] saveViaTextForm, [[C34]] classNameIsType
-// A pin holds the VALUE, never the node element. One pin per node.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -8,7 +7,7 @@ import { getOwningEditor } from "./activeGraph";
 
 export interface Pin {
   nodeId: string;
-  outputKey: string; // which output's value to show (the node's primary one)
+  outputKey: string;
 }
 
 let _pins: Pin[] = [];
@@ -18,7 +17,6 @@ export const pinStore = {
   list: (): readonly Pin[] => _pins,
   has: (nodeId: string): boolean => _pins.some((p) => p.nodeId === nodeId),
 
-  /** Pin a node's value, or unpin it if already pinned. */
   toggle(nodeId: string, outputKey: string): void {
     _pins = _pins.some((p) => p.nodeId === nodeId)
       ? _pins.filter((p) => p.nodeId !== nodeId)
@@ -35,10 +33,8 @@ export const pinStore = {
     if (_pins.length > 0) { _pins = []; notify(); }
   },
 
-  /** Serialize for SavedGraph (returns plain copies). */
   serialize: (): Pin[] => _pins.map((p) => ({ ...p })),
 
-  /** Replace the set (loadGraph, after id-remapping). */
   load(pins: Pin[]): void {
     _pins = pins.map((p) => ({ ...p }));
     notify();
@@ -48,8 +44,6 @@ export const pinStore = {
   version,
 };
 
-/** The ONE place resolving a node id → (nodeId, outputKey); a group has no single
- *  output and pins with an empty key. Matches the constructor NAME ([[C34]] classNameIsType). */
 export function pinNodeValue(nodeId: string): void {
   const node = getOwningEditor(nodeId)?.getNode(nodeId);
   if (!node) return;

@@ -1,5 +1,5 @@
-// Thermodynamics & Air pack. SI throughout: kelvin where the physics needs an
-// absolute temperature, °C only where the correlation is °C-native.
+// [[C51]] formulaNaming
+// SI throughout: kelvin where the physics needs an absolute temperature, °C only where the correlation is °C-native.
 
 import { IsaAtmosphereNode, AntoineNode, standardAtmosphere, antoinePressure, ANTOINE, type AntoineOp } from "../rete-nodes";
 import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
@@ -69,7 +69,6 @@ export const THERMO_FORMULAS: FormulaPackEntry[] = [
   ...THERMO_GAS, ...THERMO_HEAT, ...THERMO_AIR,
 ];
 
-// The pack's custom-logic nodes as formula functions ([[C51]] formulaNaming decision 4).
 const THERMO_PACK_FORMULAS: PackFormula[] = [
   {
     name: "STANDARDATMOSPHERE",

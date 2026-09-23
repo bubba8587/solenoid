@@ -1,12 +1,7 @@
-/* Floating align/distribute cluster — a contextual pill at the top-center of the
-   canvas (below the menu bar), shown only while ≥2 nodes are selected. Sits up top
-   so it never collides with the always-on command palette docked at the bottom.
-   Reuses the overlay-pill tokens the nav/zoom pills use so it reads as the same
-   family of floating chrome. */
+/* Top-center, so it never collides with the command palette docked at the bottom. */
 .solenoid-selbar {
   position: fixed;
-  /* Clear the header (menu bar 22px + toolbar 44px + accent border). */
-  /* 10px below the header envelope — see Header.tsx / tree/specs/canvas/layout-chrome.md. */
+  /* 10px below the header envelope (tree/specs/canvas/layout-chrome.md). */
   top: calc(var(--chrome-top, 66px) + 10px);
   left: 50%;
   transform: translateX(-50%);
@@ -25,8 +20,7 @@
 .solenoid-selbar__btn {
   width: 26px;
   height: 26px;
-  /* Borderless inside the pill — the container is the boundary, so the buttons
-     read as a tight cluster rather than double-ringed. */
+  /* Borderless inside the pill, so the buttons read as a tight cluster rather than double-ringed. */
   background: transparent;
   border: 1px solid transparent;
   color: var(--text);
@@ -38,8 +32,7 @@
   justify-content: center;
 }
 
-/* Hover only where a real pointer can hover — on touch :hover sticks after a tap
-   (same reasoning as the nav pill). */
+/* Hover only where a real pointer can hover: on touch :hover sticks after a tap. */
 @media (hover: hover) {
   .solenoid-selbar__btn:hover:not(:disabled) {
     background: var(--btn-hover);
@@ -52,8 +45,7 @@
   cursor: default;
 }
 
-/* Group divider drawn as its own element (not a border on a button — that would
-   shrink a button's content-box to an odd width and blur its icon). */
+/* Its own element: a border on a button would shrink its content box to an odd width and blur the icon. */
 .solenoid-selbar__divider {
   width: 1px;
   height: 18px;
@@ -61,10 +53,7 @@
   background: var(--panel-border);
 }
 
-/* Mobile: the top chrome is TWO rows (accent menu bar Row A ~30px + neutral tools
-   Row B 52px = 82px below the safe-area inset), so 56px sat INSIDE Row B and the
-   pill overlapped the toolbar. Drop below both rows, level with the nav pill
-   (mobile.css: .solenoid-nav is 92px + safe-area) so the floating chrome lines up. */
+/* Mobile: the top chrome is two rows (82px below the safe-area inset), so drop below both, level with the nav pill (mobile.css). */
 @media (max-width: 639px) {
   .solenoid-selbar {
     top: calc(env(safe-area-inset-top, 0px) + 92px);

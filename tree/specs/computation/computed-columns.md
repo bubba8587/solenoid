@@ -32,21 +32,23 @@ A name resolves in a fixed order: a column (or the column an explicit binding pi
 
 `@name` and `[Name]` only work inside a computed column. Anywhere else they are a `#REF!` saying so.
 
+**How a row read finds its row.** While a column computes, a row context is pushed around every evaluation, the inline formula and a wired LAMBDA's body alike, and popped after; contexts nest as a stack. `readRowCell` (`@name`) and `readWholeColumn` (`[Name]`) read the top of that stack, so even a zero-parameter LAMBDA can read `@price` with no binding. An `@name` read tries the explicit binding or the column of that name (this row's cell), then `row` and `rows`, then the definition's own environment (a LAMBDA's captures, read for this row), then the side value. A `[Name]` read returns the bound or named column whole, else the side value as it is, not indexed by row. On both paths a reserved name that reaches the side-value step is the reserved-name `#REF!`.
+
 ## Evaluating a column
 
 1. **Bind the variables.** For an inline formula, each bare variable binds to the whole column of that name, or to `row` / `rows`, or else becomes a side variable. For a LAMBDA, each parameter binds to this row's cell of the column with the same name ([[C50]] lambdaBindsByName), in any order. A name that collides with one of the surface's own input names is a whole-column `#REF!` telling the user to rename the variable or the column.
-2. **Find the side names.** Every `@name` that matches no column is a side name too, so the surface can grow an input for it.
+2. **Find the side names.** Every `@name` that matches no column is a side name too, so the surface can grow an input for it. The surface passes these as `rowRefs`: the row reads its definition does not already own, a LAMBDA's captures excluded. A bound `@name` reads its column instead, and a binding to a missing column is the same whole-column `#REF!` the variable spelling gets. Side names are listed in first-appearance order (`sideVars`), and the surface grows and prunes its side inputs from that list.
 3. **Run each row.** The row count is the longest column. For each row, a LAMBDA parameter bound to an error cell makes that row's result the error, the first such parameter in binding order, without running the body ([[D35]] errorInErrorOut). A whole-column binding passes its errors into the formula, where the function's own rule applies, and a blank reaches the formula as blank, so ISBLANK and IF can see it. Otherwise the formula or LAMBDA body runs with this row's context available to `@` reads. A LAMBDA that throws gives that row a `#VALUE!` carrying the message.
 4. **Tag each result** (`tagComputedCell`):
    - an error passes through;
-   - a number passes, except NaN, which becomes `#DOMAIN!` ([[D48]] classifyNonFinite); a surviving infinity is a real value;
+   - a number passes, except NaN, which becomes `#DOMAIN!` ([[D48]] classifyNonFinite); a surviving infinity is a real value, since the formula's operators have already classified overflow;
    - text, TRUE/FALSE and blank pass, and an undefined result is blank;
    - a list is `#SHAPE!` (one value per row);
    - anything else is `#VALUE!` ("each row must be a number, text, TRUE/FALSE or blank").
 
 Errors are per row: one bad row never blanks the column.
 
-**Side values.** A side value is fetched once per column and must be the same on every row. Read with `@name`, a side list must be row-aligned: a list whose length equals the row count reads its element for this row, a matrix is `#SHAPE!` ("a matrix has no single this-row value"), and a list of the wrong length is `#SHAPE!` naming both counts. A scalar reads the same on every row. Read bare, the side value arrives whole, so `SUM(list)` works.
+**Side values.** A side value is fetched once per column (`sideValue(name, kind)`, where `kind` says whether it was bound as a variable or reached from inside a row) and must be the same on every row. A column is found by its exact name, never by position. Read with `@name`, a side list must be row-aligned: a list whose length equals the row count reads its element for this row, a matrix is `#SHAPE!` ("a matrix has no single this-row value"), and a list of the wrong length is `#SHAPE!` naming both counts. A scalar reads the same on every row. Read bare, the side value arrives whole, so `SUM(list)` works.
 
 ## The column's type
 
@@ -58,7 +60,7 @@ The type is inferred from the computed cells (`inferColumn`). Cells alone can't 
 - a function whose registration declares `returns: "date"` gives a date;
 - IF gives a date when every branch it has is one.
 
-Anything else stays a number. The Computed Column node can also pin the type instead of inferring it (Number, Text, Date or Boolean).
+Anything else stays a number. The Computed Column node can also pin the type instead of inferring it (Number, Text, Date or Boolean). Its output type picker (`addAs`) defaults to Auto, which infers from the computed cells; Date is offered because inference cannot always reach it, since a date serial is indistinguishable from a number.
 
 ## Fx columns in Frame Input
 

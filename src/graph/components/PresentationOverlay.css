@@ -1,6 +1,4 @@
-/* Presenter mode hides the hideable app chrome; the class is toggled on <html>
-   while a presentation runs and removed on exit, so everything restores. The
-   canvas stays — it's the slide. */
+/* The class rides <html> while a presentation runs, so everything restores on exit; the canvas stays as the slide. */
 html.solenoid-presenting .solenoid-header,
 html.solenoid-presenting .solenoid-nav,
 html.solenoid-presenting .solenoid-statusbar,

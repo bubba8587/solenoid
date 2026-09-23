@@ -17,8 +17,7 @@ import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { getActiveView } from "../activeGraph";
 
-// One shared card for every figure node; the figure comes from ChartFigure, so a
-// node and a Report embed render identically.
+// One shared card for every figure node; the figure comes from ChartFigure, so a card and a Report embed render identically.
 
 type FigureNode = ClassicPreset.Node & {
   id: string;
@@ -47,7 +46,6 @@ function makeFigureComponent<N extends FigureNode>(
         {!collapsed && (has && cv
           ? <ChartFigure value={cv} width={figW} height={figHeight} />
           : <div className="solenoid-node__display-value solenoid-node__display-value--empty" title={err?.message}>{err ? err.code : "—"}</div>)}
-        {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
         {cv && (
           <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
             <ChartChip value={cv} />
@@ -78,8 +76,7 @@ export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>
   (p) => p?.kind === "calheat" && p.days.length > 0,
 );
 
-// The layout picker is a real component (it owns the useState hook); the figure card
-// itself is the shared one, with the toggle slotted above the inputs (the Gauge pattern).
+// A real component, since it owns a useState hook; the toggle slots above the inputs (the Gauge pattern).
 function ProportionControls({ data }: { data: ProportionNode }) {
   const [op, setOp] = useState<ProportionLayout>(data.op);
   async function pick(next: ProportionLayout) {

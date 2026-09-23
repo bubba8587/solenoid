@@ -1,8 +1,6 @@
-// Run with: npx tsx scripts/parity.ts
-// Lists Excel functions Solenoid genuinely doesn't have yet — the Excel-only gap,
-// minus entries intentionally out of scope (cell refs, OLAP, web, superseded
-// classics) and minus ones achievable by composing nodes (Filter → Reduce, etc.).
-// The gap self-heals: once a function is node-backed it leaves this list.
+// Lists the Excel functions Solenoid lacks, minus those out of scope (cell refs, OLAP, web, superseded
+// classics) and those reachable by composing nodes. A function leaves the list once a node backs it.
+//   npx tsx scripts/parity.ts
 
 import { EXCEL_GAP } from "../src/graph/nodeExcel";
 

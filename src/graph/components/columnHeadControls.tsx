@@ -4,13 +4,8 @@ import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
 
-// Both floating panels PORTAL to <body> and sit `position: fixed` under their anchor,
-// above the popup layer: the header lives in the grid's scroll container, which would
-// clip (and be reflowed by) anything rendered in place.
 
-/** Hang `panel` under `anchor` while open, clamped into the viewport, re-placed on any
- *  scroll or resize. Returns the style the panel carries: hidden until first placed,
- *  plus the popup's accent, which a portal would otherwise lose. */
+/** Hidden until first placed; carries the popup's accent, which a portal would otherwise lose. */
 export function useHangUnder(
   open: boolean,
   anchor: RefObject<HTMLElement | null>,
@@ -31,7 +26,6 @@ export function useHangUnder(
       const pad = 8;
       const wanted = align === "left" ? a.left : a.right - p.width;
       const left = Math.min(Math.max(wanted, pad), window.innerWidth - p.width - pad);
-      // Flip above the anchor when there is no room below.
       const below = a.bottom + 3;
       const top = below + p.height + pad > window.innerHeight ? Math.max(pad, a.top - 3 - p.height) : below;
       const accent = getComputedStyle(anchor.current!).getPropertyValue("--node-accent").trim();
@@ -58,8 +52,7 @@ const stopAll = {
   onPointerDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
 };
 
-/** Paintbrush + chevron: the column's Format Controller picks, in a dropdown panel.
- *  `picked` = this node made a pick for the column (state, so it earns the accent). */
+/** `picked`: this node made a pick for the column, so the button earns the accent. */
 export function ColumnFormatButton({ picked, children }: { picked: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -95,9 +88,7 @@ export function ColumnFormatButton({ picked, children }: { picked: boolean; chil
   );
 }
 
-/** A column's row-wise formula. The draft is the parent's (`value`/`onDraft`); blur or
- *  Enter commits, Escape reverts ([[C95]] commitOnEnter). While the field is focused the
- *  host's λ socket names list below it; picking one types the name at the caret. */
+/** The draft is the parent's (`value`, `onDraft`). */
 export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRevert }: {
   value: string;
   lambdaOptions: string[];

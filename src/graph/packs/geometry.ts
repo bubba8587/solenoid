@@ -83,8 +83,7 @@ function toDMS(n: number): string {
   return `${sign}${d}°${m}′${s}″`;
 }
 
-// Defined once and claimed by BOTH packs — the catalog builder dedupes by `type` and
-// records both owners. HYPOTENUSE is TwoInputMath's `hypot` op.
+// Claimed by both Geometry and Timesavers; the catalog builder dedupes by `type` and records both owners.
 export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   type: "twomath-hypot",
   label: TWO_INPUT_MATH_OP_META.hypot.label,
@@ -93,12 +92,10 @@ export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   create: () => new TwoInputMathNode({ op: "hypot" }),
 };
 
-// Which formulas file under which Add-menu subcategory.
 const CIRCLE_IDS = new Set(["geo-circle-area", "geo-circle-circum", "geo-ellipse-area"]);
 const SOLID_IDS = new Set(["geo-sphere-vol", "geo-sphere-area", "geo-cylinder-vol", "geo-cone-vol"]);
 const DISTANCE_IDS = new Set(["geo-distance-3d", "geo-cuboid-diag"]);
 
-// The formula delegates to the node's own `solveGivenParts` ([[C17]] shareImpl).
 const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "TRIANGLESOLVER",
@@ -139,15 +136,12 @@ export const GEOMETRY_PACK: Pack = {
         create: () => new TriangleSolverNode(),
       },
     },
-    // Menu placement is by SUBJECT; the arrays stay grouped by WAVE, which is how the
-    // tests slice them.
+    // Menu placement is by subject, but the arrays stay grouped by wave because the tests slice them that way.
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_FORMULAS.filter((f) => !CIRCLE_IDS.has(f.type) && !SOLID_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry"], GEOMETRY_SOLIDS.filter((f) => DISTANCE_IDS.has(f.type))),
     ...placeFormulas(["Packs", "Geometry", "Circles & Arcs"], [...GEOMETRY_FORMULAS.filter((f) => CIRCLE_IDS.has(f.type)), ...GEOMETRY_CIRCLES]),
     ...placeFormulas(["Packs", "Geometry", "Solids"], [...GEOMETRY_FORMULAS.filter((f) => SOLID_IDS.has(f.type)), ...GEOMETRY_SOLIDS.filter((f) => !DISTANCE_IDS.has(f.type))]),
   ],
-  // Format Controller contributions: units in an existing and a new group, plus a
-  // custom-logic number format.
   units: [
     { id: "turn", label: " turns", group: "angle" },
     { id: "px", label: " px", group: "geometry", groupLabel: "Geometry" },

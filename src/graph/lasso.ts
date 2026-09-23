@@ -1,12 +1,11 @@
 // [[C52]] visibleSelection
-// Lasso geometry — all in screen (container-relative) coords, Y-down.
+// Lasso geometry in screen (container-relative) coordinates, Y down.
 
 import { createToggleStore } from "./storeKit";
 
 export type Pt = { x: number; y: number };
 
-/** True while a lasso drag is in flight — the HTML-canvas renderer needs it because a
- *  lasso moves nothing, so its motion path never activates the cheap layer. */
+/** A lasso moves nothing, so the HTML-canvas renderer needs this to switch to its cheap layer. */
 export const lassoActiveStore = createToggleStore();
 
 // Positive = the path winds CLOCKWISE visually, since screen Y is flipped from math Y.
@@ -20,7 +19,6 @@ export function signedArea(pts: Pt[]): number {
   return s * 0.5;
 }
 
-// Ray casting — handles arbitrary closed polygons.
 export function pointInPolygon(p: Pt, pts: Pt[]): boolean {
   let inside = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
@@ -46,8 +44,7 @@ function segmentsIntersect(p1: Pt, p2: Pt, p3: Pt, p4: Pt): boolean {
   return t >= 0 && t <= 1 && u >= 0 && u <= 1;
 }
 
-// Catches the touch-mode overlap where no corner is inside the lasso — e.g. the
-// lasso drawn entirely within the node.
+// Catches the touch case where no corner is inside the lasso, such as a lasso drawn entirely within the node.
 export function polygonIntersectsBBox(poly: Pt[], corners: Pt[]): boolean {
   for (let i = 0; i < poly.length; i++) {
     const a = poly[i];

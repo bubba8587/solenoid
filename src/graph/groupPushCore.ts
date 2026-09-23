@@ -1,5 +1,4 @@
-// [[C85]] groupPushDeterministic: the pure push over plain boxes (no rete, no DOM).
-// Mechanics: tree/specs/canvas/group-expand-push.md.
+// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {
@@ -11,17 +10,17 @@ export interface PushBox {
 }
 
 export interface ExpandSpec {
-  x: number;     // group top-left (fixed across the toggle)
+  x: number;
   y: number;
-  preW: number;  // collapsed card size (the seam origin)
+  preW: number;
   preH: number;
-  postW: number; // expanded size
+  postW: number;
   postH: number;
 }
 
 export interface Satellite {
   side: "upstream" | "downstream";
-  alignCy: number; // preferred center-y on the rail (connected members' mean)
+  alignCy: number;
 }
 
 export interface Disp {
@@ -34,12 +33,10 @@ export interface Pt {
   y: number;
 }
 
-// How much a longer hop must save in connection length to win over a shorter
-// one when picking an anchor-aware clear direction.
 const ANCHOR_DISP_WEIGHT = 0.5;
 
-export const PUSH_GAP = 28;     // rail clearance from the expanded edge
-const RAIL_STACK_GAP = 12;      // spacing between stacked rail satellites
+export const PUSH_GAP = 28;
+const RAIL_STACK_GAP = 12;
 
 const span = (a0: number, a1: number, b0: number, b1: number) =>
   Math.min(a1, b1) - Math.max(a0, b0);
@@ -52,7 +49,6 @@ const rectsOverlap = (a: Rect, b: Rect) => xOverlap(a, b) > 0 && yOverlap(a, b) 
 
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
-/** The pairs that overlap now, as the `baseline` a push leaves alone. */
 export function overlappingPairs(boxes: readonly PushBox[]): Set<string> {
   const out = new Set<string>();
   for (let i = 0; i < boxes.length; i++) {
@@ -67,12 +63,10 @@ export function computeExpandPush(
   spec: ExpandSpec,
   obstacles: PushBox[],
   satellites: Map<string, Satellite>,
-  // Where each obstacle's cables to OTHER entities land — a box with anchors clears
-  // toward them instead of blindly right/down; rails still take precedence.
   anchors: Map<string, Pt[]> = new Map(),
 ): Map<string, Disp> {
-  const A: Rect = { x: spec.x, y: spec.y, w: spec.postW, h: spec.postH }; // expanded
-  const C: Rect = { x: spec.x, y: spec.y, w: spec.preW, h: spec.preH };   // collapsed card
+  const A: Rect = { x: spec.x, y: spec.y, w: spec.postW, h: spec.postH };
+  const C: Rect = { x: spec.x, y: spec.y, w: spec.preW, h: spec.preH };
   const dW = Math.max(0, spec.postW - spec.preW);
   const dH = Math.max(0, spec.postH - spec.preH);
   const disp = new Map<string, Disp>();
@@ -86,7 +80,6 @@ export function computeExpandPush(
     return d ? { x: b.x + d.dx, y: b.y + d.dy, w: b.w, h: b.h } : b;
   };
 
-  // Pre-existing user overlaps: baseline pairs the cascade must not try to separate.
   const exempt = new Set(obstacles.filter((b) => rectsOverlap(b, C)).map((b) => b.id));
   const baseline = overlappingPairs(obstacles);
 
@@ -123,25 +116,22 @@ export function computeExpandPush(
     }
     if (right) return clearRight;
     if (below) return clearDown;
-    return { dx: 0, dy: 0 }; // body-crosser with its center before both seams → residual
+    return { dx: 0, dy: 0 };
   };
 
-  // 1. Rails
   const railed = new Set<string>();
   for (const b of obstacles) {
     const sat = satellites.get(b.id);
     if (!sat || exempt.has(b.id)) continue;
     const s = clearShift(b);
     const collides = rectsOverlap(b, A);
-    if (!s.dx && !s.dy && !collides) continue; // expansion doesn't touch it → leave it
-    // Already on its correct side: it needs to get out of the way, not be re-placed.
+    if (!s.dx && !s.dy && !collides) continue;
     if (sat.side === "downstream" && s.dx > 0) continue;
     const tx = sat.side === "upstream" ? A.x - PUSH_GAP - b.w : A.x + A.w + PUSH_GAP;
     const ty = clamp(sat.alignCy - b.h / 2, A.y, Math.max(A.y, A.y + A.h - b.h));
     disp.set(b.id, { dx: tx - b.x, dy: ty - b.y });
     railed.add(b.id);
   }
-  // De-overlap each rail: stack downward in y order.
   for (const side of ["upstream", "downstream"] as const) {
     const rail = obstacles
       .filter((b) => railed.has(b.id) && satellites.get(b.id)!.side === side)
@@ -158,14 +148,12 @@ export function computeExpandPush(
     }
   }
 
-  // 2. Clear
   for (const b of obstacles) {
     if (railed.has(b.id) || exempt.has(b.id)) continue;
     const s = clearShift(b);
     if (s.dx || s.dy) disp.set(b.id, s);
   }
 
-  // 3. Residual
   for (const b of obstacles) {
     if (exempt.has(b.id)) continue;
     const m = moved(b);
@@ -178,7 +166,6 @@ export function computeExpandPush(
     disp.set(b.id, d);
   }
 
-  // 4. Cascade
   const axisPos = (b: PushBox, horizontal: boolean) =>
     horizontal ? b.x + b.w / 2 : b.y + b.h / 2;
   const queue = [...disp.keys()].sort((a, b2) => {
@@ -199,7 +186,6 @@ export function computeExpandPush(
       if (o.id === mid || exempt.has(o.id)) continue;
       if (baseline.has(pairKey(mid, o.id))) continue;
       if (!rectsOverlap(M, moved(o))) continue;
-      // Original order decides who yields: only push boxes that started ahead.
       if ((axisPos(o, horizontal) - axisPos(mBox, horizontal)) * dir < 0) continue;
       const O = moved(o);
       const cur = disp.get(o.id) ?? { dx: 0, dy: 0 };
@@ -221,10 +207,6 @@ export function computeExpandPush(
   return disp;
 }
 
-// Backstop under the heuristic pushes. Moves are ALWAYS +x or +y, hence monotonic and
-// terminating; `baseline` pairs are left alone. `pinned` boxes never move ([[D63]]
-// [[D63]] lockedGroupIsObstacle): the partner yields, two pinned boxes are skipped. Returns
-// extra displacements to add.
 export function separateOverlaps(
   boxes: PushBox[],
   baseline: Set<string> = new Set(),
@@ -243,13 +225,11 @@ export function separateOverlaps(
   let guard = 0;
   for (;;) {
     if (guard++ > 2000) break;
-    // Worst (largest-area) non-baseline overlap.
     let worst: { a: PushBox; b: PushBox; ox: number; oy: number } | null = null;
     let worstArea = 0;
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         if (baseline.has(pairKey(boxes[i].id, boxes[j].id))) continue;
-        // Two fixed obstacles can't resolve against each other — leave them be.
         if (pinned.has(boxes[i].id) && pinned.has(boxes[j].id)) continue;
         const a = at(boxes[i]);
         const b = at(boxes[j]);
@@ -262,8 +242,6 @@ export function separateOverlaps(
       }
     }
     if (!worst) break;
-    // A pinned box holds; otherwise the top-left box stays put, preserving the
-    // anchor corner.
     const ra = at(worst.a);
     const rb = at(worst.b);
     let mover: PushBox, other: PushBox;
@@ -272,9 +250,8 @@ export function separateOverlaps(
     else [mover, other] = ra.x + ra.y >= rb.x + rb.y ? [worst.a, worst.b] : [worst.b, worst.a];
     const m = at(mover);
     const o = at(other);
-    // Cheaper positive (down/right) shift to clear: right vs down.
-    const right = o.x + o.w + gap - m.x; // > 0 (they overlap)
-    const down = o.y + o.h + gap - m.y;  // > 0
+    const right = o.x + o.w + gap - m.x;
+    const down = o.y + o.h + gap - m.y;
     if (right <= down) bump(mover.id, right, 0);
     else bump(mover.id, 0, down);
   }

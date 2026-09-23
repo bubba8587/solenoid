@@ -1,5 +1,4 @@
-/* Absolutely centered in the menu bar regardless of how wide the left-hand
-   menus are, so the title reads as the document identity (Sheets / Figma). */
+/* Absolutely centered in the menu bar however wide the left menus are, so the title reads as the document identity. */
 .solenoid-menubar__center {
   position: absolute;
   left: 50%;
@@ -20,9 +19,7 @@
   max-width: 42vw;
 }
 
-/* The title sits on the accent menu bar, so name + caret use the ink (contrast)
-   color and an ink wash on hover, matching the menu tops. The dropdown below is
-   a normal surface popover. */
+/* On the accent menu bar, so name and caret take the ink color, with an ink wash on hover. */
 .solenoid-doctitle__name {
   font-family: inherit;
   font-size: 12.5px;
@@ -74,9 +71,7 @@
 }
 
 .solenoid-doctitle__menu {
-  /* Portaled to <body> (see DocumentTitle.tsx) so it escapes the app bar's
-     stacking context and clears the pin/alert HUD. Fixed; top/left come inline
-     from the trigger's measured rect. */
+  /* Portaled to <body> (DocumentTitle.tsx) to escape the app bar's stacking context; top and left come from the trigger's rect. */
   position: fixed;
   z-index: 200;
   min-width: 240px;
@@ -102,8 +97,6 @@
   padding: 6px 8px 4px;
 }
 
-/* Sub-head for a group of example templates: an accordion toggle, one step quieter
-   than the section head so the two-level hierarchy reads at a glance. */
 .solenoid-doctitle__group-head {
   display: flex;
   align-items: center;
@@ -169,12 +162,9 @@
 }
 .solenoid-doctitle__doc--current .solenoid-doctitle__doc-name { font-weight: 700; }
 .solenoid-doctitle__check { width: 12px; flex: none; color: var(--accent); }
-/* Accent in dark mode; dark-neutral in light mode like other light-mode chrome. */
 :root[data-theme="light"] .solenoid-doctitle__check { color: var(--text); }
 .solenoid-doctitle__doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Each document is a row: the open button flexes, with hover-revealed
-   duplicate / remove icon actions on the right. */
 .solenoid-doctitle__doc-row {
   display: flex;
   align-items: center;
@@ -184,8 +174,6 @@
 .solenoid-doctitle__doc-row .solenoid-doctitle__doc-open { flex: 1; min-width: 0; }
 .solenoid-doctitle__doc-row .solenoid-doctitle__doc-open:hover { background: none; }
 
-/* Inline rename input for a menu row (the pencil action) — fills the row like
-   the open button, accent-outlined like the title rename. */
 .solenoid-doctitle__doc-rename {
   flex: 1;
   min-width: 0;

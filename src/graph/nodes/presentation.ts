@@ -1,9 +1,6 @@
 import { ClassicPreset } from "rete";
 import { clamp } from "./mathUtils";
 
-// An ORDERED list of steps (title + explicit node-id set), stepped by pan/zoom only —
-// isolate/highlight/dim are separate mechanisms this deliberately doesn't touch.
-
 export interface PresentationStep {
   title: string;
   nodeIds: string[];
@@ -47,7 +44,6 @@ export class PresentationNode extends ClassicPreset.Node {
     }
   }
 
-  /** Swap a step with its neighbor (dir -1 = up, +1 = down) — the whole reorder UI. */
   moveStep(index: number, dir: -1 | 1): void {
     const j = index + dir;
     if (index < 0 || index >= this.steps.length || j < 0 || j >= this.steps.length) return;
@@ -60,7 +56,6 @@ export class PresentationNode extends ClassicPreset.Node {
     if (this.steps[index]) this.steps[index].title = title;
   }
 
-  /** Clamp + set the active step; returns the resulting index (0 when empty). */
   goTo(index: number): number {
     if (this.steps.length === 0) { this.activeIndex = 0; return 0; }
     this.activeIndex = clamp(index, 0, this.steps.length - 1);

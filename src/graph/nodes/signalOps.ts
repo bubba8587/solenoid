@@ -5,8 +5,6 @@ import { matSolve } from "./matrixOps";
 export type Cell = number | null | SolError;
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 
-/** Weighted least-squares polynomial fit through (x, y, w); returns the coefficients
- *  a0..ap, or null when the system is singular / under-determined. */
 function polyFitW(xs: readonly number[], ys: readonly number[], ws: readonly number[], degree: number): number[] | null {
   const p = degree + 1;
   if (xs.length < p) return null;
@@ -25,7 +23,6 @@ function polyFitW(xs: readonly number[], ys: readonly number[], ws: readonly num
   return matSolve(A, b);
 }
 
-/** Why a Savitzky–Golay call cannot run, or null when it can (the callers make it loud). */
 export function savgolProblem(n: number, window: number, order: number): string | null {
   const m = Math.max(1, Math.floor(window));
   if (m % 2 === 0) return "Window must be odd";
@@ -34,10 +31,6 @@ export function savgolProblem(n: number, window: number, order: number): string 
   return null;
 }
 
-/** Savitzky–Golay: at each position, a degree-`order` polynomial least-squares fit over a
- *  `window` (odd) of neighbours, evaluated there. Edges use the nearest full window
- *  evaluated off-centre (scipy's mode = "interp"). Blank / error cells are left out of the
- *  fits and stay blank in the output. */
 export function savgol(values: readonly Cell[], window: number, order: number): Cell[] {
   const n = values.length;
   const m = Math.max(1, Math.floor(window));
@@ -58,9 +51,6 @@ export function savgol(values: readonly Cell[], window: number, order: number): 
   });
 }
 
-/** Gaussian smoothing with a truncated kernel (4σ each side), reflect padding, like
- *  gaussian_filter1d's default; blank cells are skipped (normalised over the present
- *  weights) and stay blank themselves. */
 export function gaussianSmooth(values: readonly Cell[], sigma: number): Cell[] {
   const n = values.length;
   if (!(sigma > 0)) return values.map((v) => (isSolError(v) ? v : finite(v) ? v : null));
@@ -88,9 +78,6 @@ export function gaussianSmooth(values: readonly Cell[], sigma: number): Cell[] {
   });
 }
 
-/** LOWESS over positions 1..n: local linear fit with tricube weights over the nearest
- *  `frac·n` points, then `iterations` bisquare robustness passes (Cleveland 1979 — the
- *  statsmodels / R lowess default shape; R adds a delta speed-up we don't need). */
 export function lowess(values: readonly Cell[], frac = 2 / 3, iterations = 3): Cell[] {
   const idx: number[] = [], ys: number[] = [];
   values.forEach((v, i) => { if (finite(v)) { idx.push(i); ys.push(v); } });
@@ -129,9 +116,6 @@ export function lowess(values: readonly Cell[], frac = 2 / 3, iterations = 3): C
 export interface PeakOptions { height?: number; distance?: number; prominence?: number }
 export interface Peak { position: number; value: number; prominence: number }
 
-/** scipy.signal.find_peaks: strict local maxima (a flat top counts once, at its middle),
- *  filtered by minimum height, minimum prominence, then a greedy minimum distance
- *  (highest peaks win). Positions are 1-based. Blank / error cells break the signal. */
 export function findPeaks(values: readonly Cell[], opts: PeakOptions = {}): Peak[] {
   const n = values.length;
   const y = (i: number) => { const v = values[i]; return finite(v) ? v : NaN; };
@@ -140,13 +124,11 @@ export function findPeaks(values: readonly Cell[], opts: PeakOptions = {}): Peak
     const yi = y(i);
     if (Number.isNaN(yi) || !(yi > y(i - 1))) { i++; continue; }
     let j = i;
-    while (j + 1 < n && y(j + 1) === yi) j++; // plateau
+    while (j + 1 < n && y(j + 1) === yi) j++;
     if (j + 1 < n && yi > y(j + 1)) peaks.push((i + j) >> 1);
     i = j + 1;
   }
   let keep = peaks.filter((p) => opts.height === undefined || y(p) >= opts.height);
-  // prominence: the drop to the higher of the two base minima, each taken between the
-  // peak and the nearest higher point on that side (or the signal's end)
   const prominenceOf = (p: number): number => {
     const yp = y(p);
     let leftMin = yp;

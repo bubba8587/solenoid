@@ -1,15 +1,11 @@
 .solenoid-menubar {
-  /* Above the toolbar row so dropdowns paint over it (TopBar is positioned with
-     its own z-index, so it's a self-contained stacking context). */
+  /* Above the toolbar row, which is its own stacking context, so dropdowns paint over it. */
   position: relative;
   z-index: 2;
   display: flex;
   align-items: stretch;
   height: 22px;
-  /* Top inset pushes the menu below a phone's notch while the accent bar's
-     background fills the cutout area. env() is 0 without a safe area. */
   padding: env(safe-area-inset-top) 6px 0;
-  /* Accent bar with ink (contrast) text. */
   background: var(--accent);
   color: var(--accent-ink);
   border-bottom: 1px solid rgba(0, 0, 0, 0.18);
@@ -17,8 +13,6 @@
   font-size: 12px;
 }
 
-/* Mobile Row A brand (MenuBar.tsx) — the desktop top bar carries the wordmark,
-   so it's hidden here; mobile.css reveals it beside the doc name. */
 .solenoid-menubar__wordmark { display: none; }
 
 .solenoid-menubar__item {
@@ -36,7 +30,6 @@
   font-size: 12px;
   cursor: pointer;
 }
-/* Hover / open: a wash of the ink color, so it reads on light or dark accents. */
 .solenoid-menubar__top:hover {
   background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
 }

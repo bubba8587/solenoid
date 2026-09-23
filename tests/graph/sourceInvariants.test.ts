@@ -58,6 +58,8 @@ describe("[[D16]] retypeReconciles — a file that retypes sockets in place must
     "nodes/frame.ts": "SettleNode.setMode retypes its own INPUT socket per mode; its component (FrameNodes.tsx SettleComponent) calls reconcileTypesAfterEdit, and an input retype changes what the node ACCEPTS, not its output type — no downstream FC restale",
     "nodes/composite.ts": "port adoption synced by its own pass; the end-of-process settle runs reconcileFcTypes (process.ts)",
     "conduitTrace.ts": "conduit lane adoption — driven from the same central settle",
+    "nodes/date.ts": "DateTimeValue and Workdays swap their result socket in setOp; their components (DateNodes.tsx) call retypeOutputCables",
+    "nodes/finance.ts": "ReturnsNode.setOp returns `outputChanged`; its component (ReturnsNode.tsx) calls retypeOutputCables",
   };
 
   it("every socket-retyping file references the reconciler (or is sanctioned, with a reason)", () => {

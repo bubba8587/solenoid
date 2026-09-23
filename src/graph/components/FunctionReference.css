@@ -9,8 +9,6 @@
 }
 
 .fr-panel {
-  /* The panel's own semantic colors, dark-tuned here and re-tuned for light below —
-     the neutral chrome stays on the app tokens so palettes flow through. */
   --fr-link: #9ecbff;             /* node names: the add-to-canvas affordance */
   --fr-link-hover-bg: #1a2a3a;
   --fr-link-hover-border: #3a5a8a;
@@ -50,9 +48,7 @@
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-/* Holds the tab buttons. A flex row on desktop (no overflow); on mobile it
-   becomes a horizontal scroller so a narrow phone can reach every tab while the
-   close button stays pinned (see mobile.css). */
+/* On mobile a horizontal scroller, so a phone reaches every tab while the close stays pinned (mobile.css). */
 .fr-tabs__scroll {
   display: flex;
   align-items: stretch;
@@ -76,10 +72,7 @@
   color: var(--text-bright);
   border-bottom-color: var(--accent);
 }
-/* The tabs row is bottom-flush (padding 6px top / 0 bottom + the active-tab
-   underline sits at the band's bottom edge), so flex-centering the close lands it
-   low in the visible band. Absolute-center it in the band instead — exact, no
-   padding-fighting. (Few tabs on a wide panel, so taking it out of flow is safe.) */
+/* Absolute-centered: the tab row is bottom-flush, so flex-centering would land the close low. */
 .fr-tabs { position: relative; }
 .fr-tabs .fr-close {
   position: absolute;
@@ -89,7 +82,6 @@
   margin-block: auto;
 }
 
-/* Scroll container for the markdown tabs (Help / Notes). */
 .fr-doc-scroll {
   flex: 1;
   overflow: auto;
@@ -129,7 +121,6 @@
 .fr-search::placeholder { color: var(--text-muted); }
 .fr-search:focus { border-color: var(--text-muted); }
 
-/* Filter dropdowns (category / library) — grouped, pushed right. */
 .fr-filters {
   display: flex;
   flex-wrap: wrap;
@@ -150,8 +141,6 @@
 }
 .fr-select:hover { border-color: var(--text-muted); color: var(--text); }
 
-/* Column-visibility checkbox — a distinct control, set apart from the filter
-   pills by a thin inset divider (non-layout box-shadow, per the icon-button rule). */
 .fr-colcheck {
   display: inline-flex;
   align-items: center;
@@ -169,7 +158,6 @@
 .fr-colcheck input { cursor: pointer; margin: 0; accent-color: var(--accent); }
 
 .fr-close {
-  /* Flex-center the × glyph (see .sol-popup__close note) rather than baseline. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -217,9 +205,7 @@
 
 .fr-table {
   width: 100%;
-  /* min-width = the column-width sum for the CURRENT toggle state, so below it
-     the container scrolls horizontally instead of squashing columns, and above
-     it the columns stretch proportionally (Note never drops below its 360px). */
+  /* The column-width sum for the current toggle state: below it the container scrolls, above it columns stretch. */
   min-width: 717px;            /* Excel columns hidden: 357 fixed + 360 note */
   border-collapse: collapse;
   font-size: 12.5px;
@@ -233,7 +219,6 @@
 .fr-table col.col-packs   { width: 110px; }
 .fr-table col.col-dep     { width: 42px; }
 .fr-table col.col-parity  { width: 40px; }
-/* Capped, wrapping Notes column (see .fr-td-note white-space: normal). */
 .fr-table col.col-note    { width: 360px; }
 
 .fr-table thead th {
@@ -253,7 +238,6 @@
 .fr-table thead th.col-parity { text-align: center; }
 .fr-table thead th.col-dep { text-align: center; }
 
-/* Derived columns: pack, dependency flag. */
 .fr-td-packs { color: var(--text-muted); font-size: 11px; }
 .fr-td-dep   { text-align: center; color: var(--accent); }
 
@@ -271,7 +255,6 @@
   white-space: nowrap;
 }
 
-/* Group header row */
 .fr-group-row td {
   background: var(--surface-sunken);
   color: var(--text-muted);
@@ -283,7 +266,6 @@
   border-top: 1px solid var(--border-subtle);
 }
 
-/* Excel function name */
 .fr-td-excel {
   font-weight: 600;
   color: var(--text);
@@ -293,21 +275,18 @@
 .fr-td-excel--missing { color: var(--text-muted); }
 .fr-td-excel--sol-only { color: var(--text-muted); font-style: italic; font-weight: 400; }
 
-/* Syntax */
 .fr-td-syntax {
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 11.5px;
 }
 
-/* Solenoid node */
 .fr-td-sol {
   color: var(--fr-link);
   font-size: 12px;
 }
 .fr-td-sol--missing { color: var(--text-muted); }
 
-/* Parity */
 .fr-td-parity {
   text-align: center;
 }
@@ -326,7 +305,6 @@
   font-size: 13px;
 }
 
-/* Clickable node button in Solenoid column */
 .fr-sol-btn {
   display: inline-flex;
   align-items: center;
@@ -355,7 +333,6 @@
 }
 .fr-sol-btn:hover .fr-sol-btn__add { opacity: 1; }
 
-/* Note */
 .fr-td-note {
   color: var(--text-muted);
   font-size: 11.5px;
@@ -363,7 +340,6 @@
   white-space: normal;
   line-height: 1.4;
 }
-/* Empty state */
 .fr-empty {
   text-align: center;
   color: var(--text-muted);
@@ -372,9 +348,6 @@
   text-wrap-style: balance;
 }
 
-/* Socket Types tab — the floating socket legend's rows, given room to breathe:
-   the column centers in the overlay and the glyphs run two sizes up from the
-   floating legend's 14px (SVGs rescale crisply off their viewBox). */
 .fr-sockets {
   padding: 6px 6px 16px;
   max-width: 440px;
@@ -385,10 +358,7 @@
 .fr-sockets .solenoid-legend__dot svg { width: 18px; height: 18px; }
 .fr-sockets .solenoid-legend__dots { width: 66px; gap: 5px; }
 
-/* Row-expandable catalog descriptions: a row with one shows it on tap/click in
-   a full-width line beneath — the dense table stays dense, and touch (no
-   hover) reaches the same text the node's header tooltip carries. Tiny and
-   tightly wrapped on purpose. */
+/* A tap or click shows the description, so touch reaches the text the header tooltip carries. */
 .fr-row--expandable { cursor: pointer; }
 .fr-desc-row td {
   padding: 2px 10px 6px;

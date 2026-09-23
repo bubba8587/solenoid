@@ -22,11 +22,9 @@ export function FunctionReference() {
   const open = useSyncExternalStore(frStore.subscribe, frStore.get);
   const tab = useSyncExternalStore(frStore.subscribe, frStore.tab);
   const [search, setSearch] = useState("");
-  // One category value space: "All", a section groupKey, or "pack:<id>" (membership,
-  // so a pack's cross-woven nodes are found too, not just the Packs menu branch).
+  // "All", a section groupKey, or "pack:<id>" (membership, so a pack's cross-woven nodes are found too).
   const [category, setCategory] = useState("All");
   const [lib, setLib] = useState<"All" | LibraryTag>("All");
-  // The row whose catalog description is expanded beneath it (tap/click toggles).
   const [openDesc, setOpenDesc] = useState<string | null>(null);
   const [showExcel, setShowExcel] = useState(true);
 
@@ -206,8 +204,6 @@ export function FunctionReference() {
                       const rows = [
                         <tr
                           key={rowKey}
-                          // Tap/click toggles the catalog description under the
-                          // row — the table stays dense; touch reaches it too.
                           className={expandable ? "fr-row--expandable" : undefined}
                           onClick={expandable ? () => setOpenDesc(openDesc === rowKey ? null : rowKey) : undefined}
                         >

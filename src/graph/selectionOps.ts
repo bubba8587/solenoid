@@ -1,6 +1,4 @@
-// [[C52]]
-// Align / distribute / batch collapse over the selection. Uses the process.ts
-// singletons rather than Canvas-local refs, so it is callable from anywhere.
+// [[C52]] visibleSelection
 
 import type { View } from "./view";
 import { GroupNode } from "./rete-nodes";
@@ -26,8 +24,6 @@ function boxOf(view: View, id: string): Box | null {
   return measuredBox(view, id, getEditor() ?? undefined);
 }
 
-// A seed carries its group members and its whole standoff cluster, so moving one end
-// of a standoffed pair can't wrench it away from the bar.
 export function expandMoveSet(editor: Editor, seedIds: Iterable<string>): Set<string> {
   const clusterOf = new Map<string, string[]>();
   for (const c of standoffClusters()) for (const id of c) clusterOf.set(id, c);
@@ -47,8 +43,6 @@ export function expandMoveSet(editor: Editor, seedIds: Iterable<string>): Set<st
 
 type Move = { seedId: string; dx: number; dy: number };
 
-/** Translates every physical node EXACTLY ONCE: a node carried by two seeds follows the
- *  FIRST only, since deltas come from boxes captured up front and would drift. */
 async function applyMoves(editor: Editor, view: View, moves: Move[]): Promise<void> {
   const delta = new Map<string, { dx: number; dy: number }>();
   for (const { seedId, dx, dy } of moves) {
@@ -57,8 +51,7 @@ async function applyMoves(editor: Editor, view: View, moves: Move[]): Promise<vo
       if (!delta.has(id)) delta.set(id, { dx, dy });
     }
   }
-  // Translating a SELECTED node triggers rete's multi-drag group-follow, which compounds
-  // across per-node placement and corrupts the result — so drop the selection meanwhile.
+  // Drop the selection meanwhile: translating a selected node triggers the group-follow, which compounds per placement.
   const restore = editor.getNodes()
     .filter((n) => (n as { selected?: boolean }).selected === true)
     .map((n) => n.id);
@@ -83,8 +76,6 @@ async function settle(): Promise<void> {
 export type AlignKind = "left" | "right" | "top" | "bottom" | "center-h" | "center-v";
 export type Placed = { id: string; box: Box };
 
-/** Pure geometry: per-node deltas to align a set of boxes to the selection's own
- *  bounding-box edge/center (Figma/Illustrator semantics). Exported for tests. */
 export function alignDeltas(items: Placed[], kind: AlignKind): Move[] {
   const xMin = Math.min(...items.map((e) => e.box.x));
   const xMax = Math.max(...items.map((e) => e.box.x + e.box.w));
@@ -104,18 +95,8 @@ export function alignDeltas(items: Placed[], kind: AlignKind): Move[] {
   });
 }
 
-// Minimum gap distribute guarantees between adjacent edges. Matches Tidy's ELK node
-// spacing (`elk.spacing.nodeNode` ~38) so distribute and auto-arrange feel alike.
 export const DISTRIBUTE_GAP = 40;
 
-/** Pure geometry: per-node deltas to space boxes EVENLY (equal edge gaps) along one
- *  axis, guaranteeing no overlap plus at least DISTRIBUTE_GAP between neighbors.
- *  - If the leftmost→rightmost span already fits every box + a DISTRIBUTE_GAP gap,
- *    keep BOTH ends fixed and even out the interior (gap ≥ DISTRIBUTE_GAP).
- *  - Otherwise the boxes are too close/stacked to fit: anchor the leftmost and push
- *    each subsequent box out at exactly DISTRIBUTE_GAP, EXPANDING the run (the
- *    rightmost moves right) so nothing overlaps.
- *  Returns [] for fewer than 3 boxes. Exported for tests. */
 export function distributeDeltas(items: Placed[], axis: "h" | "v"): Move[] {
   if (items.length < 3) return [];
   const n = items.length;
@@ -129,13 +110,11 @@ export function distributeDeltas(items: Placed[], axis: "h" | "v"): Move[] {
   const span = lastEnd - firstStart;
   const required = totalSize + DISTRIBUTE_GAP * (n - 1);
   const fits = span >= required;
-  // Fit: even gap (≥ DISTRIBUTE_GAP) and the last box lands back on lastEnd, so
-  // leave it fixed. Expand: uniform DISTRIBUTE_GAP and the last box must move too.
   const gap = fits ? (span - totalSize) / (n - 1) : DISTRIBUTE_GAP;
   const stop = fits ? n - 1 : n;
 
   const moves: Move[] = [];
-  let cursor = firstStart + size(sorted[0].box) + gap; // leading edge of sorted[1]
+  let cursor = firstStart + size(sorted[0].box) + gap;
   for (let i = 1; i < stop; i++) {
     const { id, box } = sorted[i];
     const d = cursor - start(box);
@@ -145,8 +124,6 @@ export function distributeDeltas(items: Placed[], axis: "h" | "v"): Move[] {
   return moves;
 }
 
-/** Figma/Illustrator semantics: a manual gesture, deliberately NOT overlap-free —
- *  nodes already sharing the other axis land on top of each other. */
 export async function alignSelection(kind: AlignKind): Promise<void> {
   const editor = getEditor();
   const view = getView();
@@ -159,8 +136,6 @@ export async function alignSelection(kind: AlignKind): Promise<void> {
   await settle();
 }
 
-/** Distributes the GAPS between edges, not the centers: node heights vary so widely
- *  that equal-center spacing overlapped big nodes. Needs at least 3 nodes. */
 export async function distributeSelection(axis: "h" | "v"): Promise<void> {
   const editor = getEditor();
   const view = getView();
@@ -173,15 +148,13 @@ export async function distributeSelection(axis: "h" | "v"): Promise<void> {
   await settle();
 }
 
-// `collapsible={false}` stamps `.solenoid-node--no-chevron` on the card; no registry
-// exists outside the render tree, so the class is the only readable signal.
+// `collapsible={false}` stamps `.solenoid-node--no-chevron`, the only signal readable outside the render tree.
 function isCollapsible(el: HTMLElement): boolean {
   const inner = el.querySelector<HTMLElement>(".solenoid-node")
     ?? (el.classList.contains("solenoid-node") ? el : null);
   return !!inner && !inner.classList.contains("solenoid-node--no-chevron");
 }
 
-/** Silently skips groups/notes/conduits and chevron-less nodes. */
 export function collapseSelection(collapsed: boolean): void {
   const editor = getEditor();
   const view = getView();

@@ -30,14 +30,12 @@ function Seg<T extends string>({ value, onChange, options, className }: SegProps
   );
 }
 
-/** An ARGUMENT toggle, never bound to a field named `op` ([[C26]] opArgDistinct;
- *  DESIGN.md § Op pickers). Stops pointer/mouse-down so a press doesn't start a node drag. */
+/** Never bound to a field named `op` ([[C26]] opArgDistinct); stops pointer and mouse down so a press doesn't start a node drag. */
 export function SegToggle<T extends string>(props: SegProps<T>) {
   return <Seg {...props} />;
 }
 
-/** The family's OP picker in segmented shape: binds `op`, hoists and takes the accent
- *  like OpSelect ([[C26]] opArgDistinct; nodeCard.css). */
+/** Binds `op`, and hoists and takes the accent like OpSelect (DESIGN.md § Op pickers). */
 export function OpToggle<T extends string>(props: SegProps<T>) {
   return <Seg {...props} className={`solenoid-seg--op${props.className ? ` ${props.className}` : ""}`} />;
 }

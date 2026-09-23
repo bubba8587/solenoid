@@ -1,6 +1,4 @@
 // [[D42]]
-// Triangle Solver: any three parts (at least one side; angles in degrees) solve the
-// rest, plus area and perimeter.
 
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut, readInput } from "./shared";
@@ -24,8 +22,6 @@ const D2R = Math.PI / 180;
 const R2D = 180 / Math.PI;
 const EPS = 1e-9;
 
-/** Exactly three given parts, at least one a side; the ambiguous SSA case (two
- *  triangles fit) is an error rather than a silent pick. */
 export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {
   const sides = (["a", "b", "c"] as const).filter((k) => g[k] !== undefined);
   const angles = (["A", "B", "C"] as const).filter((k) => g[k] !== undefined);
@@ -41,7 +37,6 @@ export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {
   const t: TriangleGiven = { ...g };
 
   if (sides.length === 3) {
-    // SSS — law of cosines, largest angle last so rounding can't push acos out of range.
     const { a, b, c } = t as Required<Pick<TriangleGiven, "a" | "b" | "c">>;
     if (a + b <= c + EPS || b + c <= a + EPS || a + c <= b + EPS) {
       return solError("#DOMAIN!", "Those sides break the triangle inequality");
@@ -53,7 +48,6 @@ export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {
     const angleKey = angles[0];
     const oppositeSide = angleKey.toLowerCase() as "a" | "b" | "c";
     if (g[oppositeSide] === undefined) {
-      // SAS — the angle sits between the two given sides: its opposite side is the gap.
       const [s1, s2] = sides;
       const missing = oppositeSide;
       t[missing] = Math.sqrt(
@@ -61,7 +55,6 @@ export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {
       );
       fillBySines(t, missing, angleKey);
     } else {
-      // SSA — the angle is opposite one GIVEN side: law of sines, watch the ambiguity.
       const other = sides.find((k) => k !== oppositeSide)!;
       const sinOther = (g[other]! * Math.sin(g[angleKey]! * D2R)) / g[oppositeSide]!;
       if (sinOther > 1 + EPS) return solError("#DOMAIN!", "No triangle fits those parts");
@@ -79,7 +72,6 @@ export function solveTriangle(g: TriangleGiven): TriangleSolved | SolError {
       t[lastSide] = (g[oppositeSide]! * Math.sin(t[lastAngle]! * D2R)) / Math.sin(g[angleKey]! * D2R);
     }
   } else {
-    // ASA / AAS — two angles + one side: the third angle is forced, sines do the rest.
     const lastAngle = (["A", "B", "C"] as const).find((k) => t[k] === undefined)!;
     t[lastAngle] = 180 - sumGiven;
     fillBySines(t, sides[0], sides[0].toUpperCase() as "A" | "B" | "C");
@@ -94,16 +86,12 @@ function clamp1(x: number): number {
   return clamp(x, -1, 1);
 }
 
-/** With every angle known (or derivable) and one side/angle pair complete, fill
- *  the remaining sides and angles via the law of sines. */
 function fillBySines(t: TriangleGiven, knownSide: "a" | "b" | "c", knownAngle: "A" | "B" | "C"): void {
-  // Complete the angles first (two known → the third is forced).
   const angleKeys = ["A", "B", "C"] as const;
   const missingAngles = angleKeys.filter((k) => t[k] === undefined);
   if (missingAngles.length === 1) {
     t[missingAngles[0]] = 180 - angleKeys.reduce((s, k) => s + (t[k] ?? 0), 0);
   } else if (missingAngles.length === 2) {
-    // SAS: one more cosine-law angle off the known parts.
     const sides = ["a", "b", "c"] as const;
     const [a, b, c] = sides.map((k) => t[k]);
     if (a !== undefined && b !== undefined && c !== undefined) {
@@ -121,13 +109,10 @@ function fillBySines(t: TriangleGiven, knownSide: "a" | "b" | "c", knownAngle: "
 const PART_KEYS = ["a", "b", "c", "A", "B", "C"] as const;
 type PartKey = (typeof PART_KEYS)[number];
 
-/** Relative-tolerance agreement for the over-determined Check (sides and
- *  degrees both live on human scales, so one rule serves). */
 function agrees(got: number, given: number): boolean {
   return Math.abs(got - given) <= 1e-6 * Math.max(1, Math.abs(given));
 }
 
-/** The pure core both the scalar and the broadcast paths call. */
 export interface TriangleResult {
   values: Record<PartKey, number | SolError | null>;
   area: number | SolError | null;
@@ -136,10 +121,6 @@ export interface TriangleResult {
   solved: Set<PartKey>;
 }
 
-/** Solve one triangle from a set of given parts (numbers keyed by part; a part
- *  may also arrive as a per-cell SolError, which propagates). Exactly three
- *  parts → solve + Valid TRUE/FALSE; fewer → quiet passthrough; more → solve
- *  from the side-richest subset and Valid = do the extras agree. */
 export function solveGivenParts(given: TriangleGiven, cellErr?: SolError): TriangleResult {
   const values = {} as Record<PartKey, number | SolError | null>;
   for (const k of PART_KEYS) values[k] = null;
@@ -147,7 +128,6 @@ export function solveGivenParts(given: TriangleGiven, cellErr?: SolError): Trian
                 valid: boolean | SolError | null, solved: Set<PartKey> = new Set()): TriangleResult =>
     ({ values, area, perimeter, valid, solved });
 
-  // An errored given cell fails the WHOLE triangle, like every element-wise op.
   if (cellErr) {
     for (const k of PART_KEYS) values[k] = cellErr;
     return done(cellErr, cellErr, cellErr);
@@ -156,7 +136,7 @@ export function solveGivenParts(given: TriangleGiven, cellErr?: SolError): Trian
   const givenKeys = PART_KEYS.filter((k) => given[k] !== undefined);
   for (const k of givenKeys) values[k] = given[k]!;
 
-  if (givenKeys.length < 3) return done(null, null, null); // quiet passthrough
+  if (givenKeys.length < 3) return done(null, null, null);
 
   if (givenKeys.length === 3) {
     const r = solveTriangle(given);
@@ -168,7 +148,6 @@ export function solveGivenParts(given: TriangleGiven, cellErr?: SolError): Trian
     return done(r.area, r.perimeter, true, new Set(PART_KEYS.filter((k) => given[k] === undefined)));
   }
 
-  // Over-determined: solve from a side-rich three-part subset, then Valid = the rest agree.
   const subsets: PartKey[][] = [];
   for (let i = 0; i < givenKeys.length; i++)
     for (let j = i + 1; j < givenKeys.length; j++)
@@ -196,8 +175,7 @@ export function solveGivenParts(given: TriangleGiven, cellErr?: SolError): Trian
 type PartCell = number | SolError | null;
 type PartOut = PartCell | PartCell[];
 
-/** A dimensioned angle is base radians whatever its display unit — the solver wants
- *  degrees; anything else reads as the plain number the unit-blind path would give. */
+/** A dimensioned angle holds base radians whatever its display unit, and the solver wants degrees. */
 function readPart(k: PartKey, cell: unknown): unknown {
   if (!isUnitCell(cell)) return cell;
   return k === k.toUpperCase() && dimOf(cell).angle === 1 ? cell.value * R2D : displayMagnitudeOf(cell);
@@ -205,19 +183,14 @@ function readPart(k: PartKey, cell: unknown): unknown {
 
 export class TriangleSolverNode extends ClassicPreset.Node {
   label: string;
-  /** Per-part displayed value (given passthrough or solved) — a scalar, or a
-   *  list when parts are broadcast over parallel lists. */
   cachedValues: Record<string, PartOut> = {};
   cachedArea: PartOut = null;
   cachedPerimeter: PartOut = null;
   cachedValid: boolean | SolError | null | (boolean | SolError | null)[] = null;
-  /** Parts SOLVED (accent label), not given — from index 0 when broadcast. */
   solvedKeys: Set<string> = new Set();
   width = 240;
   height = 430;
 
-  /** The angle outputs CARRY the real `deg` FC unit per-output, so a trig node in Auto
-   *  mode picks them up; the sides stay unitless. */
   annotationFor(outKey: string): FormatAnnotation | undefined {
     return outKey === "A" || outKey === "B" || outKey === "C"
       ? { format: "auto", unit: "deg" }
@@ -227,7 +200,6 @@ export class TriangleSolverNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("TriangleSolver");
     this.label = init?.label ?? "Triangle Solver";
-    // Equation-family shape: every part is both input and output; numlist so lists broadcast.
     for (const k of PART_KEYS) {
       this.addInput(k, numListIn(k.toUpperCase() === k ? `${k} \u00b0` : k));
       this.addOutput(k, numListOut(k.toUpperCase() === k ? `${k} \u00b0` : k));
@@ -237,12 +209,9 @@ export class TriangleSolverNode extends ClassicPreset.Node {
     this.addOutput("valid", logicalComboOut("Valid"));
   }
 
-  /** Keeps `UnitCell` tags so an angle input in ANY angle unit (an FC's rad, grad) is
-   *  read in degrees; a side takes its display magnitude, as the unit-blind strip would. */
   unitAware = true;
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    // Parts are known only through their cables — wire-driven, like the Equation card.
     const raw = {} as Record<PartKey, number | number[] | null>;
     for (const k of PART_KEYS) {
       const v = readInput(inputs[k], null);
@@ -251,7 +220,6 @@ export class TriangleSolverNode extends ClassicPreset.Node {
     const listKeys = PART_KEYS.filter((k) => Array.isArray(raw[k]));
 
     if (listKeys.length === 0) {
-      // Scalar path — one triangle.
       const given: TriangleGiven = {};
       for (const k of PART_KEYS) if (typeof raw[k] === "number") given[k] = raw[k] as number;
       const r = solveGivenParts(given);
@@ -266,9 +234,6 @@ export class TriangleSolverNode extends ClassicPreset.Node {
       return out;
     }
 
-    // Broadcast path — a triangle per index. Length = the longest wired list; a
-    // scalar part broadcasts to every index, a short list pads with `null` (that
-    // part is absent for that index), a per-cell error propagates for that index.
     const len = Math.max(...listKeys.map((k) => (raw[k] as number[]).length));
     const valuesL = {} as Record<PartKey, PartCell[]>;
     for (const k of PART_KEYS) valuesL[k] = [];

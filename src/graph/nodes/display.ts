@@ -10,11 +10,9 @@ import { fireAlert } from "../alertStore";
 
 export class DisplayNode extends ClassicPreset.Node {
   label: string;
-  // `in` is an "any" socket, so the value may be a table, a text list or a Frame.
   cachedValue: number | number[] | number[][] | string | string[] | FrameValue | CubeValue | LambdaValue | SolError | null = null;
   unitSuffix: UnitSuffix = "none";
-  // A PURE passthrough: it adopts the input's type/unit/format and carries a
-  // downstream FC's lock across a run of Displays.
+  // Pure, so a downstream Format Controller's lock carries across a run of Displays.
   passthrough(): PassthroughSpec[] { return [{ output: "out", inputs: ["in"], combine: "single", pure: true }]; }
   width = 220;
   height = 150;
@@ -29,7 +27,7 @@ export class DisplayNode extends ClassicPreset.Node {
 
   data(inputs: { in?: unknown[] }) {
     const raw = inputs.in?.[0] ?? null;
-    // Display SEES errors (SEES_ERRORS): badge it here AND forward it downstream.
+    // Display sees errors (SEES_ERRORS): it badges the error and still forwards it.
     if (isSolError(raw)) {
       this.cachedValue = raw;
       return { out: raw };
@@ -37,8 +35,7 @@ export class DisplayNode extends ClassicPreset.Node {
     if (isFrameValue(raw) || isCubeValue(raw)) {
       this.cachedValue = raw;
     } else if (isLambdaValue(raw)) {
-      // Keep the VALUE — stringifying here would make the component's lambda branch
-      // (and so the FC's lambdaView) unreachable.
+      // Keep the value: stringifying it would make the component's lambda branch, and the FC's lambdaView, unreachable.
       this.cachedValue = raw;
     } else if (Array.isArray(raw)) {
       if (Array.isArray(raw[0])) this.cachedValue = raw as number[][];
@@ -51,14 +48,13 @@ export class DisplayNode extends ClassicPreset.Node {
   }
 }
 
-// The mode picks the trigger condition AND which input sockets are live.
 export type AlertMode = "range" | "equals" | "boolean" | "text";
 
 export const ALERT_MODE_KEYS: Record<AlertMode, string[]> = {
-  range:   ["value", "low", "high"], // value outside [low, high]
-  equals:  ["value", "target"],      // value exactly equals target
-  boolean: ["value"],                // value is TRUE (a real true or === 1, not any nonzero)
-  text:    ["text", "match"],        // text contains match
+  range:   ["value", "low", "high"],
+  equals:  ["value", "target"],
+  boolean: ["value"],
+  text:    ["text", "match"],
 };
 
 type AlertInputs = {
@@ -82,9 +78,6 @@ export class AlertNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = { text: "", match: "" };
   width = 190;
   height = 220;
-  // Edge-detect on the STATUS key, not a boolean, so range's LOW→HIGH re-fires;
-  // starting at NO_STATUS (and resetting on a mode change) makes a node born
-  // alerting fire once.
   private lastStatusKey = NO_STATUS;
   private lastEvalOp: AlertMode;
 
@@ -96,7 +89,7 @@ export class AlertNode extends ClassicPreset.Node {
     this.addInput("value",  numListIn("Value"));
     this.addInput("low",    numListIn("Low"));
     this.addInput("high",   numListIn("High"));
-    // key stays "target" (persisted literal key); the label is the neutral "Match".
+    // The key stays `target` because saves use it; the label is the neutral "Match".
     this.addInput("target", numListIn("Match"));
     this.addInput("text",   strIn("Text"));
     this.addInput("match",  strIn("Match"));
@@ -110,9 +103,6 @@ export class AlertNode extends ClassicPreset.Node {
     return { result };
   }
 
-  // Status code: 0 = calm. For "range", 1 = below Low, 2 = above High; other modes
-  // use 1 = triggered. A list yields a per-element status; null = a needed input is
-  // missing (unknown — never fires).
   private evaluate(inputs: AlertInputs): number | number[] | null {
     switch (this.condition) {
       case "range": {
@@ -120,8 +110,6 @@ export class AlertNode extends ClassicPreset.Node {
         const lo = scalarish(inputs.low, this.literals.low);
         const hi = scalarish(inputs.high, this.literals.high);
         if (v === null || lo === null || hi === null) return null;
-        // A per-cell error/missing rides through as a non-alerting cell; the cast
-        // keeps the status typed as numbers, per broadcast's own convention.
         return broadcast((x, l, h) => (x < l ? 1 : x > h ? 2 : 0), v, lo, hi) as number | number[] | null;
       }
       case "equals": {
@@ -133,22 +121,18 @@ export class AlertNode extends ClassicPreset.Node {
       case "boolean": {
         const v = scalarish(inputs.value, this.literals.value);
         if (v === null) return null;
-        // TRUE only — a real `true` or the socket's 1/0 coercion; a stray 5 is NOT
-        // a boolean true.
         return broadcast((x) => (((x as unknown) === true || x === 1) ? 1 : 0), v) as number | number[] | null;
       }
       case "text": {
         const text = readInput(inputs.text, this.stringLiterals.text ?? "");
         const match = readInput(inputs.match, this.stringLiterals.match ?? "");
         if (text === null || match === null) return null;
-        if (match === "") return 0; // nothing to look for → never triggered
+        if (match === "") return 0;
         return text.includes(match) ? 1 : 0;
       }
     }
   }
 
-  // Fires only when the alerting STATUS CHANGES (so LOW↔HIGH fires, LOW→LOW does
-  // not); a null result is unknown — it neither fires nor disturbs the baseline.
   private detectAndFire(result: number | number[] | null, inputs: AlertInputs) {
     if (result === null) return;
     const key = statusKey(result);
@@ -157,7 +141,7 @@ export class AlertNode extends ClassicPreset.Node {
     const prevKey = opChanged ? NO_STATUS : this.lastStatusKey;
     this.lastEvalOp = this.condition;
     this.lastStatusKey = key;
-    if (isGraphRebuilding()) return; // never fire mid load/seed
+    if (isGraphRebuilding()) return;
     if (alerting && key !== prevKey) {
       fireAlert({
         nodeId: this.id,
@@ -204,16 +188,12 @@ export class AlertNode extends ClassicPreset.Node {
   }
 }
 
-// A CONNECTED cable wins even when blank — the status is then unknown and never
-// fires; only an UNWIRED slot falls back to the card's literal ([[D33]] unwiredNotBlank).
 function scalarish(got: (number | number[])[] | undefined, lit: number | undefined): number | number[] | null {
   return readInput(got, lit ?? null);
 }
 
-// Distinct from any real status key (digits/commas), so a node born alerting fires.
 const NO_STATUS = "\u0000";
 
-// A stable key, so a CHANGE between alerting statuses (range's 1↔2) is detectable.
 function statusKey(result: number | number[]): string {
   return Array.isArray(result) ? result.join(",") : String(result);
 }
@@ -222,8 +202,6 @@ function isAlerting(result: number | number[]): boolean {
   return Array.isArray(result) ? result.some((x) => x !== 0) : result !== 0;
 }
 
-// Consolidated RAND/RANDBETWEEN: a 0–1 float by default, Bottom/Top for a range.
-
 export class RandBetweenNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "A fresh draw comes only from Recalculate. Changing a bound rescales the current draw.",
@@ -231,8 +209,7 @@ export class RandBetweenNode extends ClassicPreset.Node {
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { bound1: 0, bound2: 1 };
-  // The raw [0,1) roll re-rolls only when the recalc generation advances; bounds
-  // apply from live inputs on every data() call.
+  // The raw roll re-rolls only when the recalc generation advances; the bounds apply live on every call.
   private rawRoll = Math.random();
   private lastRollGen = -1;
   width = 180;
@@ -252,7 +229,6 @@ export class RandBetweenNode extends ClassicPreset.Node {
       this.rawRoll = Math.random();
       this.lastRollGen = gen;
     }
-    // A blank bound leaves the range undefined, so there is no number to draw.
     const bound1 = readInput(inputs.bound1, this.literals.bound1 ?? 0);
     const bound2 = readInput(inputs.bound2, this.literals.bound2 ?? 1);
     if (bound1 === null || bound2 === null) { this.cachedResult = null; return { result: null }; }

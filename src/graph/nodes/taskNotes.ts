@@ -1,4 +1,4 @@
-// [[E11]]
+// [[E11]], [[C38]] sinkRunButtonOnly, [[D62]] demoVaultResolution
 import { ClassicPreset } from "rete";
 import { dateIn, cubeOut, frameOut } from "./shared";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
@@ -18,10 +18,6 @@ import { cubeIn, frameOut as frameOutPort } from "./shared";
 import { fetchJson } from "../httpBridge";
 import { type Shape } from "../frameShape";
 
-// TaskNotes (Obsidian plugin) over its local HTTP API — the Obsidian bundle's item F.
-// One connection node, a provider select: Tasks → a cube, Calendar → a frame between two
-// dates, Stats → a { Status | Count } frame. The WebSource sync-background fetch pattern, so it rides the
-// C2 network gate; the provider switch reshapes the sockets (the op-card pattern).
 
 const INPUTS: Record<TaskNotesProvider, string[]> = { tasks: [], calendar: ["from", "to"], stats: [] };
 const OUTPUTS: Record<TaskNotesProvider, string[]> = {
@@ -51,10 +47,8 @@ export class TaskNotesNode extends ClassicPreset.Node {
 
   label: string;
   provider: TaskNotesProvider;
-  /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   width = 240; height = 200;
-  /** Read by the component; never persisted. */
   cachedTasks: TaskRecord[] | null = null;
   cachedEvents: FrameValue | null = null;
   cachedStats: TaskStats | null = null;
@@ -68,8 +62,6 @@ export class TaskNotesNode extends ClassicPreset.Node {
     this.applyProvider();
   }
 
-  /** The socket keys a switch to `next` would remove (inputs + outputs). Callers on a
-   *  live graph prune their cables BEFORE calling setProvider ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: TaskNotesProvider): { inputs: string[]; outputs: string[] } {
     return {
       inputs: INPUTS[this.provider].filter((k) => !INPUTS[next].includes(k)),
@@ -106,8 +98,6 @@ export class TaskNotesNode extends ClassicPreset.Node {
     let from = 0, to = 0;
     let have = true;
     if (this.provider === "calendar") {
-      // A wired blank date is "no window yet"; unwired = a year either side of today (show
-      // essentially everything, since the API needs a bounded window).
       const f = inputs.from ? inputs.from[0] : todaySerial() - 365;
       const t = inputs.to ? inputs.to[0] : todaySerial() + 365;
       have = typeof f === "number" && typeof t === "number" && Number.isFinite(f) && Number.isFinite(t);
@@ -119,8 +109,6 @@ export class TaskNotesNode extends ClassicPreset.Node {
         this._lastKey = key;
         connectionStore.setState(this.id, { status: "idle" });
       } else if (isDemoTaskNotes()) {
-        // The demo fake needs no network and no wait: the canned reply parses in this pass,
-        // so a seed computes on its first fetch ([[D62]] demoVaultResolution).
         this._lastKey = key;
         this.loadDemo();
       } else if (requestNetwork(this.id)) {
@@ -139,7 +127,6 @@ export class TaskNotesNode extends ClassicPreset.Node {
     connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
   }
 
-  /** The canned replies through the real parsers, synchronously. */
   private loadDemo(): void {
     if (this.provider === "tasks") {
       this.cachedTasks = parseTasksPage(DEMO_TASKS_JSON, 0).tasks;
@@ -180,16 +167,11 @@ export class TaskNotesNode extends ClassicPreset.Node {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      // A 401 means the plugin wants its bearer token.
       const friendly = /HTTP 401/.test(msg) ? "Token rejected. Paste the plugin's API token." : /Failed to fetch|ECONNREFUSED|error sending request|NetworkError|Couldn't fetch this URL/i.test(msg) ? "Can't reach TaskNotes. Install the plugin in the vault Obsidian has open, turn on its HTTP API, and check the port in Settings." : msg;
       connectionStore.setState(this.id, { status: "error", message: friendly });
     }
   }
 }
-
-// ─── WRITE TASKS (F6): rows → POST /api/tasks, or PUT /api/tasks/:id when the row carries
-// `path`. Run-button only ([[C38]] sinkRunButtonOnly): data() caches and emits the `plan` frame;
-// Preview reads the current tasks to mark unchanged rows; Run sends the rest.
 
 export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error";
 
@@ -199,20 +181,16 @@ export class WriteTasksNode extends ClassicPreset.Node {
     plan: "One row per input row: path, title, the action and the fields to send. Preview marks the rows that would not change.",
   };
   label: string;
-  /** Columns to send, comma-separated; "" = every writable column present. */
   stringLiterals: Record<string, string> = { keys: "" };
-  /** Never persisted (sink.ts) — always false on a fresh construction. */
   enabled = false;
   cachedCube: CubeValue | SolError | null = null;
   cachedPlan: FrameValue | SolError | null = null;
-  /** Per-row resolution from Preview (index → action), cleared when the input changes. */
   private resolved = new Map<number, string>();
   private planRows: TaskWritePlanRow[] = [];
   status: WriteTasksStatus = "idle";
   statusMessage = "";
   width = 262; height = 250;
 
-  /** The plan frame's columns are fixed ([[C8]] declareOnce). */
   frameShape(): Shape {
     return { columns: [
       { name: "path", type: "string" }, { name: "title", type: "string" },
@@ -231,7 +209,6 @@ export class WriteTasksNode extends ClassicPreset.Node {
     return (this.stringLiterals.keys ?? "").split(",").map((k) => k.trim()).filter(Boolean);
   }
 
-  // Caches only — never touches the network.
   data(inputs: { tasks?: (CubeValue | SolError | null)[] }): { plan: FrameValue | SolError | null } {
     const raw = inputs.tasks?.[0] ?? null;
     if (raw !== this.cachedCube) this.resolved = new Map();
@@ -246,7 +223,6 @@ export class WriteTasksNode extends ClassicPreset.Node {
   private apiUrl(): string { return settingsStore.get("taskNotesUrl"); }
   private headers(): Record<string, string> { return authHeaders(apiKeyStore.get(TASKNOTES_KEY_ID)); }
 
-  /** Read every update row's current task and mark the ones the payload wouldn't change. */
   async preview(): Promise<void> {
     if (this.status === "previewing" || this.status === "writing") return;
     if (!this.planRows.length) { this.status = "error"; this.statusMessage = "Nothing to write. Connect rows."; return; }
@@ -278,7 +254,6 @@ export class WriteTasksNode extends ClassicPreset.Node {
     }
   }
 
-  /** Call ONLY from the node's Run button; re-entrancy-guarded. */
   async run(): Promise<void> {
     if (this.status === "writing" || this.status === "previewing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
@@ -314,7 +289,6 @@ export class WriteTasksNode extends ClassicPreset.Node {
   }
 }
 
-/** The current task's value for a writable key, in the same JSON shape a payload uses. */
 function currentField(t: TaskRecord, key: string): unknown {
   switch (key) {
     case "title": return t.title;

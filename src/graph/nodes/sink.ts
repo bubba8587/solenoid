@@ -11,12 +11,9 @@ import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
 export type SinkStatus = "idle" | "writing" | "ok" | "error";
 
-/** A frame as CSV text (RFC 4180 via Papa Parse, the engine csv.ts reads back).
- *  CSV has no native types, so cells format as any other frame display. */
 export function frameToCsvText(f: FrameValue): string {
   const rows = frameRowCount(f);
   const fields = f.columns.map((c) => c.name);
-  // [[C103]] untrustedContentSeams
   const data = Array.from({ length: rows }, (_, i) =>
     f.columns.map((c) => {
       const shown = formatFrameCell(c.type, c.values[i] ?? null) ?? "";
@@ -26,9 +23,6 @@ export function frameToCsvText(f: FrameValue): string {
   return Papa.unparse({ fields, data });
 }
 
-/** JSON has native number/boolean/null, so only a date and an error cell become
- *  strings. A date is written as ISO (the form every reader infers as a date, so the
- *  round trip keeps the column's type); a serial with a time keeps it. */
 function cellToJsonValue(type: FrameColType, v: FrameCell): unknown {
   if (v === null) return null;
   if (isSolError(v)) return v.code;
@@ -38,8 +32,6 @@ function cellToJsonValue(type: FrameColType, v: FrameCell): unknown {
   return v;
 }
 
-/** Render a frame as an array of row records (column name → cell) — the same
- *  shape jsonToFrame's "array of records" branch reads back in. */
 export function frameToJsonText(f: FrameValue): string {
   const rows = frameRowCount(f);
   const records = Array.from({ length: rows }, (_, i) => {
@@ -50,9 +42,6 @@ export function frameToJsonText(f: FrameValue): string {
   return JSON.stringify(records, null, 2);
 }
 
-/** The format is an ARGUMENT of the one sink, not an op ([[C26]] opArgDistinct). Text writes a
- *  wired string verbatim (e.g. Schedule's `mspdi` Project XML), so the `in` socket is
- *  string-typed in that mode and frame-typed otherwise. */
 export type WriteFormat = "csv" | "json" | "text";
 
 export class WriteFileNode extends ClassicPreset.Node {
@@ -62,11 +51,8 @@ export class WriteFileNode extends ClassicPreset.Node {
   label: string;
   path: string;
   format: WriteFormat;
-  /** Never persisted ([[C38]] sinkRunButtonOnly): false on every construction. */
   enabled = false;
   cachedFrame: FrameValue | SolError | null = null;
-  /** The lazy upstream (a frame ref), or, in Text mode, the string to write. Read in
-   *  full only inside run(). */
   private cachedInput: FrameInput | string | SolError | null = null;
   status: SinkStatus = "idle";
   statusMessage = "";
@@ -80,9 +66,6 @@ export class WriteFileNode extends ClassicPreset.Node {
     this.addInput("in", this.format === "text" ? strIn("Text") : frameIn("Frame"));
   }
 
-  /** Switch the serialization format. Text uses a STRING input; CSV/JSON a FRAME input, so
-   *  crossing that boundary retypes the `in` socket. Returns true when it did, so a caller
-   *  on a live graph prunes the departing cable first ([[D10]] onePrunePath). */
   setFormat(next: WriteFormat): boolean {
     if (next === this.format) return false;
     const retype = (this.format === "text") !== (next === "text");
@@ -97,7 +80,6 @@ export class WriteFileNode extends ClassicPreset.Node {
   data(inputs: { in?: (FrameInput | string | SolError | null)[] }): Record<string, never> {
     const raw = inputs.in?.[0] ?? null;
     this.cachedInput = raw;
-    // Text mode caches the string as-is; cachedFrame only carries an error for the readout.
     if (this.format === "text") { this.cachedFrame = isSolError(raw) ? raw : null; return {}; }
     if (!isFrameRef(raw)) { this.cachedFrame = raw as FrameValue | SolError | null; return {}; }
     return (async () => { this.cachedFrame = await collectPreview(raw); return {}; })() as unknown as Record<string, never>;
@@ -110,8 +92,7 @@ export class WriteFileNode extends ClassicPreset.Node {
     return this.format === "json" ? "json" : this.format === "text" ? "txt" : "csv";
   }
 
-  /** The re-entrancy guard stays: the component's disabled state updates only after the
-   *  await, so two rapid clicks would race writes to the same file. */
+  /** Keep the re-entrancy guard: the button disables only after the await, so two quick clicks would race. */
   async run(): Promise<void> {
     if (this.status === "writing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
@@ -151,7 +132,6 @@ export class WriteFileNode extends ClassicPreset.Node {
     }
   }
 
-  /** Open a Save dialog to CHOOSE a path (no write) — populates `path`. */
   async browse(): Promise<void> {
     const picked = await pickSaveFilePath(`${(this.label || "output").trim()}.${this.defaultExt()}`, [this.defaultExt()]);
     if (picked) this.path = picked;

@@ -22,6 +22,8 @@ Each card caches its last result under a composite key built by `connectionStore
 - `nodeToken` is a per-card counter, 0 until first bumped.
 - `reference` is the card's own description of what it fetches, such as the trimmed URL, `url#t=<table>` for Import HTML, or `lat,lon,unit,pastDays,forecastDays` for Weather. An empty reference means the card has nothing to fetch; it goes idle and outputs null.
 
+A card keeps out of the reference whatever it can apply to the cached result: Geocode's picked match, Holidays' region and Currency's amount apply on each compute, so changing them reselects without a fetch.
+
 An ordinary `processGraph()`, such as one caused by editing an unrelated card, leaves all three parts unchanged, so the card answers from its cache with no network or disk access. A refresh changes exactly one part:
 
 - `refreshConnection(id)` bumps that card's token, so only that card fetches again. The card's refresh button and its auto-refresh timer both call it.
@@ -34,9 +36,11 @@ Both then run `processGraph()` outside any rebuild scope ([[D32]] refreshOutside
 A connection card's `data()` stays synchronous. On each run it:
 
 1. builds the key; if it equals the key of the last completed fetch (`lastKey`), it returns the cached result;
-2. asks the network gate (below); if the gate says no, it returns the cached result;
+2. asks the network gate (below); if the gate says no, it returns the cached result. A card records the key as fetched only once the fetch actually launches, so a pass the gate refused asks again on the next run;
 3. if no fetch for this key is already in flight (`inflightKey`), starts one without waiting for it;
 4. returns the cached result, which is stale or null until the fetch lands.
+
+Import HTML, Import XML and Local File are the exception: their `data()` is async and returns the in-flight promise for the current key (`inflight`), so a recompute waits for their read.
 
 When the fetch lands, the card stores the result and the key, and calls `scheduleConnectionRecalc()`. That runs one `processGraph()` on the next tick, so several sources resolving together coalesce into one recompute. A failed fetch also records its key, so the card does not retry until the key changes; this keeps a broken URL from hammering the network.
 
@@ -66,3 +70,12 @@ A document opened or imported from outside the app is **foreign**, and its conne
 - In the browser build, a cross-origin block surfaces as `CorsLikelyError`, whose message points the user at the desktop app.
 - A non-OK response throws `HTTP <status> <text>`.
 - A body is capped at `MAX_FETCH_BYTES`, 64 MB. An oversized `Content-Length` is refused before reading, and a streamed body aborts the moment it crosses the cap.
+
+## Service providers
+
+The four service cards call keyless, CORS-open public APIs, each through a provider module whose URL builders and response parsers are pure and fixture-tested, while the card owns the fetch and the cache. The currency and country pickers read bundled copies of the providers' own lists, so no call is spent on data that almost never changes.
+
+- **FX** (`fxProvider.ts`) uses Frankfurter's ECB reference rates, updated once per business day: `/v1/latest?base=X&symbols=Y` for spot, and `/v1/{start}..{end}?base=X&symbols=Y` for an inclusive ISO date range. A malformed body gives a null rate. A time series is sorted by date, and days with no rate (weekends, holidays) are absent rather than null. Every currency code is registered as a currency display unit, so the card's authored target-currency unit resolves at render.
+- **Holidays** (`holidaysProvider.ts`) uses Nager.Date (`/api/v3/PublicHolidays/{year}/{CC}`). Rows keep the API's date-ascending order, and an undated row is dropped. A nationwide day always applies, a subdivision day only when the chosen region is among its counties, and a blank region keeps every day. Days-to-next counts whole days between UTC-midnight serials: 0 for today, null when none remain.
+- **Geocode** (`geocodeProvider.ts`) uses Open-Meteo geocoding (English labels, up to 10 matches, best first). A pick is stored by its "City, Region, Country" label, never an index, since the API may reorder matches on a refresh, and a stored label that no longer matches falls back to the top match. Each match carries an IANA time zone (`""` when the API omits it) for Weather and Time Zone Convert.
+- **Weather** (`weatherProvider.ts`) uses the Open-Meteo forecast, which returns past (0 to 92 days) and future (1 to 16 days) daily rows and current conditions in one call. WMO weather codes map to short text, and the temperature columns carry the chosen °C or °F unit.

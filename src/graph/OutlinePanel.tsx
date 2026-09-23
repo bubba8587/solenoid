@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual, [[C85]] groupPushDeterministic (setGroupsCollapsed), [[D64]] oneSizeRead.
+// [[C88]] collapseIsVisual, [[C85]] groupPushDeterministic, [[D64]] oneSizeRead
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
@@ -21,14 +21,12 @@ import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
 import { nodeDisplayName, nodeName } from "./catalogUtils";
 
-/** Left-docked outline / navigator, mirroring canvas group membership and collapse
- *  state; Format Controllers are filtered out entirely. */
 
 type Cat = "group" | "input" | "display" | "other";
 type Row = {
   id: string;
   label: string;
-  type: string; // class-derived type/function name (matches the node hover hint)
+  type: string;
   color: string;
   selected: boolean;
   depth: number;
@@ -45,7 +43,6 @@ function colorOf(n: unknown, mode: "dark" | "light"): string {
   return themeAccent(base, mode);
 }
 
-// The catalog name, the same string the node header shows on hover.
 function typeOf(n: unknown): string {
   return nodeName(n as object) ?? "";
 }
@@ -53,9 +50,6 @@ function typeOf(n: unknown): string {
 function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {
   if (n instanceof GroupNode) return "group";
   if (n instanceof DisplayNode) return "display";
-  // An "input" is a SOURCE by EITHER measure: (1) structurally leaf — no input
-  // sockets but an output, so it shows before it's wired; or (2) nothing WIRED in
-  // while its output is wired onward, which drops the moment an input is wired.
   const io = n as { id: string; inputs?: Record<string, unknown>; outputs?: Record<string, unknown> };
   const noInputSockets = Object.keys(io.inputs ?? {}).length === 0;
   const hasOutputSockets = Object.keys(io.outputs ?? {}).length > 0;
@@ -77,8 +71,6 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   const wiredIn = new Set(conns.map((c) => c.target));
   const wiredOut = new Set(conns.map((c) => c.source));
 
-  // Position mode reads top→bottom in loose row bands, then left→right; ROW_BAND is
-  // intentionally GENEROUS so the order doesn't react to small y jitter.
   const labelOf = (n: (typeof nodes)[number]) => nodeDisplayName(n);
   const posOf = (n: (typeof nodes)[number]) => view?.position(n.id) ?? { x: 0, y: 0 };
   const ROW_BAND = 120;
@@ -130,7 +122,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   return { tree, flat };
 }
 
-/** Select + pan-to-center a node; shared with the palette's jump-to-node. */
+/** Shared with the palette's jump-to-node. */
 export async function focusNode(id: string) {
   const editor = getEditor();
   const view = getView();
@@ -157,8 +149,6 @@ function toggleGroup(id: string) {
   void setGroupsCollapsed(editor, view, [g], !g.collapsed);
 }
 
-// Routes through setGroupsCollapsed so the neighbor-push and expand sweep apply,
-// same as the single-group toggle.
 export function toggleAllGroups() {
   const editor = getEditor();
   const view = getView();
@@ -169,8 +159,7 @@ export function toggleAllGroups() {
   void setGroupsCollapsed(editor, view, groups, collapse);
 }
 
-/** Live group-collapse summary; reads the editor directly, so callers must
- *  subscribe to groupCollapseStore to re-render on changes. */
+/** Reads the editor directly: callers must subscribe to groupCollapseStore to re-render. */
 export function groupCollapseSummary(): { hasGroups: boolean; allCollapsed: boolean } {
   const editor = getEditor();
   if (!editor) return { hasGroups: false, allCollapsed: false };
@@ -201,8 +190,7 @@ export function OutlinePanel() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingFocus = useRef(false);
 
-  // buildState's poll signature ignores connections, so the inline lists need
-  // connectionVersionStore to refresh on wire/unwire.
+  // buildState's poll signature ignores connections, so the inline lists subscribe here.
   const connVersion = useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const [expandedConns, setExpandedConns] = useState<Set<string>>(new Set());
   const connCounts = useMemo(() => {
@@ -224,12 +212,10 @@ export function OutlinePanel() {
       return next;
     });
   const deleteConn = (id: string) => {
-    // The connectionremoved pipe bumps the version, which re-renders this list.
     void getEditor()?.removeConnection(id);
   };
 
-  // The focus runs in the effect below, AFTER the panel and its input have
-  // rendered, so Ctrl+F works even when the panel was collapsed.
+  // Focus runs in the effect below, after the panel renders, so Ctrl+F works on a collapsed panel.
   const requestSearch = useCallback(() => {
     pendingFocus.current = true;
     setOpen(true);
@@ -239,8 +225,6 @@ export function OutlinePanel() {
   useEffect(() => outlineSearch.register(requestSearch), [requestSearch]);
   // Re-registers on `open` change so the isOpen getter stays current.
   useEffect(() => registerChrome("navigator", { isOpen: () => open, setOpen }), [open]);
-  // Flags <body> so bottom-left screen-anchored popups shift right past the panel
-  // instead of hiding under it.
   useEffect(() => {
     document.body.classList.toggle("solenoid-nav-open", open);
     return () => document.body.classList.remove("solenoid-nav-open");
@@ -266,9 +250,7 @@ export function OutlinePanel() {
     let prev = "";
     const tick = () => {
       const next = buildState(appThemeStore.getMode(), sortMode);
-      // The sig is order-sensitive (join preserves array order), so a Position-mode
-      // re-sort caused by a node moving changes it → the list re-renders within a
-      // poll. No need to hash positions separately.
+      // Order-sensitive, so a Position-mode re-sort from a moved node changes it without hashing positions.
       const sig = next.tree.map((r) => `${r.id}:${r.depth}:${r.collapsed ? 1 : 0}:${r.selected ? 1 : 0}:${r.label}:${r.color}:${r.cat}`).join("|")
         + "#" + next.flat.map((r) => r.id).join(",");
       if (sig !== prev) { prev = sig; setState(next); }
@@ -289,21 +271,16 @@ export function OutlinePanel() {
     );
   }, [state, query, filters]);
 
-  // Plain click is a deliberate no-op (avoids jumpy recentering); double-click
-  // focuses, and the modifier clicks mirror canvas multi-select without recentering.
   const lastClicked = useRef<string | null>(null);
   const handleRowDoubleClick = (id: string) => {
     lastClicked.current = id;
     void focusNode(id);
   };
   const handleRowClick = (e: MouseEvent, id: string) => {
-    // IS_COARSE, not IS_MOBILE: a tablet reaches select mode from the top bar while
-    // IS_MOBILE is false there (the plain-click branch below is about double-click,
-    // which a tablet shares with the desktop pointer model).
+    // IS_COARSE, not IS_MOBILE: a tablet reaches select mode from the top bar while IS_MOBILE is false.
     const accumulate = e.ctrlKey || e.metaKey || (IS_COARSE && touchSelectStore.get());
     const range = e.shiftKey;
     if (!accumulate && !range) {
-      // Touch selects and jumps, since there is no double-click there.
       if (IS_MOBILE) { void focusNode(id); lastClicked.current = id; }
       return;
     }
@@ -377,7 +354,7 @@ export function OutlinePanel() {
             aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
             onClick={toggleAllGroups}
           >
-            {/* The glyph shows the ACTION: converging to collapse, diverging to expand. */}
+            {/* The glyph shows the action: converging to collapse, diverging to expand. */}
             <svg
               viewBox="0 0 16 16" width="14" height="14" fill="none"
               stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"
@@ -450,8 +427,6 @@ export function OutlinePanel() {
               style={{
                 paddingLeft: 8 + r.depth * 14,
                 ...(r.isGroup
-                  // A group reads as a CONTAINER: tint fill inside a full 1px border in
-                  // its own color — a FRAME, never an accent stripe (DESIGN.md).
                   ? {
                       background: hexToRgba(r.color, 0.24),
                       border: `1px solid ${hexToRgba(r.color, 0.55)}`,

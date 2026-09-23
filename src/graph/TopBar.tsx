@@ -18,13 +18,11 @@ import { groupCollapseStore } from "./groupCollapse";
 import "./TopBar.css";
 
 export function TopBar() {
-  // Re-render on group collapse/expand so the all-groups toggle's icon + title flip.
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   const { allCollapsed } = groupCollapseSummary();
   const { snap, toggleSnap } = useGridSnap();
   const [tidyOptsOpen, setTidyOptsOpen] = useState(false);
   const layoutGroupRef = useRef<HTMLDivElement>(null);
-  // Clickaway: a pointerdown outside the layout group (opener + popover live inside it) closes.
   useEffect(() => {
     if (!tidyOptsOpen) return;
     const onDown = (e: PointerEvent) => {

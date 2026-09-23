@@ -3,15 +3,12 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  /* Tight horizontal padding so the field reaches close to the card edges; the "="
-     prefix is flex-shrink:0 and stays put. */
   padding: 4px 4px;
-  /* Grows when the user drags the grip (shared --box-h, published by NodeCard). */
+  /* Grows with the grip's drag (--box-h, published by NodeCard). */
   min-height: var(--box-h, auto);
 }
 
-/* The actual formula field (the box with a border the user sees). It's the
-   offsetParent for the resize grip, so the grip seats in its corner. */
+/* The grip's offsetParent, so it seats in the field's corner. */
 .solenoid-expr__field {
   position: relative;
   flex: 1 1 auto;
@@ -40,8 +37,6 @@
   font-family: var(--font-mono);
   font-size: 11px;
   line-height: 18px;
-  /* No tint: a colorful (node-accent) outline instead, reusing the op-select border
-     idiom (1px, 4px radius). */
   background: transparent;
   border: 1px solid var(--node-accent, var(--accent));
   border-radius: 4px;
@@ -61,13 +56,10 @@
   font-style: italic;
 }
 
-/* Rendered (KaTeX) formula shown when not editing; click to edit. */
 .solenoid-expr__rendered {
   flex: 1;
   width: 0;
-  /* Content-sized down to one line (--box-h wins only after a resize drag); grows with
-     wrapped lines up to a cap. Column flex + justify-center vertically centers the text
-     between top and bottom, while the full-width block child below actually wraps. */
+  /* Content-sized down to one line (--box-h wins only after a resize); column flex centers the text while the full-width child wraps. */
   min-height: var(--box-h, 22px);
   max-height: 96px;
   display: flex;
@@ -76,7 +68,6 @@
   overflow-x: hidden;
   overflow-y: auto;
   padding: 2px 6px;
-  /* No tint: a colorful (node-accent) outline instead — the op-select border idiom. */
   background: transparent;
   border: 1px solid var(--node-accent, var(--accent));
   border-radius: 4px;
@@ -84,8 +75,7 @@
   cursor: text;
 }
 .solenoid-expr__raw {
-  /* Full-width block so pre-wrap can break it; min-width:0 defeats the flex-item
-     content floor that otherwise blocks wrapping and forces a sideways scroll. */
+  /* min-width 0 defeats the flex-item content floor that would block wrapping and force a sideways scroll. */
   width: 100%;
   min-width: 0;
   font-family: var(--font-mono);
@@ -99,8 +89,6 @@
   font-size: 11px;
 }
 
-/* Expand-to-popup button, top-right of the formula field (the grip sits bottom-
-   right). A FormulaField feature shared by Expression + LAMBDA. */
 .solenoid-expr__expand {
   position: absolute;
   top: 3px;
@@ -126,8 +114,7 @@
   color: #e06c2e;
 }
 
-/* Advisory (not an error — the node still computes): a wired lambda whose
-   declared params don't match this node's positional signature. */
+/* Advisory, not an error: the node still computes. */
 .solenoid-expr__lambda-hint {
   margin: 0 8px 4px;
   font-size: 10px;
@@ -135,16 +122,13 @@
   color: #e06c2e;
 }
 
-/* Variable hint under a LAMBDA-family formula. */
 .solenoid-lambda__hint {
   padding: 0 8px 3px;
   font-size: 10px;
   color: var(--text-muted);
 }
 
-/* Shown in place of the formula field when a wired Lambda supersedes it:
-   the live signature plus who sends it. Dashed border says "not editable
-   here — the content lives at the other end of the cable". */
+/* The dashed border says the content lives at the other end of the cable. */
 .solenoid-expr__override {
   display: flex;
   align-items: baseline;
@@ -172,8 +156,6 @@
   color: var(--text-muted);
 }
 
-/* Equation node — one hero row per variable (input socket left, output right).
-   The label sits as a small caption above the value box. */
 .solenoid-eq__var-row {
   margin: 4px 0;
 }

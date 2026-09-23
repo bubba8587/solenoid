@@ -18,11 +18,10 @@ const VIEW_OPTIONS = (Object.keys(SURFACE_VIEW_OP_META) as SurfaceViewOp[]).map(
   value: op, label: SURFACE_VIEW_OP_META[op].label,
 }));
 
-// Fills the wide card (240) minus body padding.
 const W = 218;
 const H = 190;
 
-// D-pad buttons stop pointer/mouse-down so a click can't start a node drag or selection.
+// The D-pad buttons stop pointer and mouse down, so a click can't start a node drag or selection.
 const ROT_BTN: CSSProperties = {
   width: 16, height: 16, padding: 0, display: "flex", alignItems: "center", justifyContent: "center",
   fontSize: 11, lineHeight: 1, cursor: "pointer", borderRadius: 3,
@@ -44,7 +43,6 @@ function RotBtn({ title, onClick, children }: { title: string; onClick: () => vo
   );
 }
 
-// A small house glyph (stroked, even 12px so it centers crisply — see the icon rule).
 const HomeIcon = () => (
   <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
     <path d="M2.5 8 L8 3 L13.5 8" />
@@ -72,7 +70,7 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
   }
 
   const rotate = (dYaw: number, dPitch: number) => {
-    // Both axes wrap fully (0–360) — pitch flips all the way over, not clamped.
+    // Both axes wrap fully (0 to 360): pitch flips all the way over, never clamped.
     data.literals.yaw = wrap360((data.literals.yaw ?? DEFAULT_YAW) + dYaw);
     data.literals.pitch = wrap360((data.literals.pitch ?? DEFAULT_PITCH) + dPitch);
     void processGraph(data.id);
@@ -106,7 +104,6 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
           </div>
         )}
       </div>
-      {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
       {cv && (
         <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
           <ChartChip value={cv} />

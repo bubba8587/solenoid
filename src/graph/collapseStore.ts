@@ -1,5 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
-// Per-node collapsed state. A collapsed node keeps its result box and socket dots.
+// [[B10]] reactFlowView, [[C40]] storesRegisterForget
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -9,7 +8,6 @@ const { notify, subscribe } = createNotifier();
 
 export const collapseStore = {
   get: (nodeId: string) => _collapsed.has(nodeId),
-  /** Forget a deleted node (noderemoved → forgetNode). */
   forget(nodeId: string) {
     if (_collapsed.delete(nodeId)) notify();
   },
@@ -24,8 +22,6 @@ export const collapseStore = {
     else _collapsed.delete(nodeId);
     notify();
   },
-  /** Drop every entry — loadGraph calls this so stale ids from the previous
-   *  graph can't leak into the new one. */
   clear() {
     if (_collapsed.size === 0) return;
     _collapsed.clear();

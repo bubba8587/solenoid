@@ -53,7 +53,6 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
       <ResultTypeToggle node={node} dim="combo" />
-      {/* cachedResult is value-polymorphic; ValueDisplay branches on each shape. */}
       <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
     </NodeShell>
   );

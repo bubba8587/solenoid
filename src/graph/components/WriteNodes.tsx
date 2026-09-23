@@ -192,7 +192,6 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     void listVaultFolders(vault).then((f) => { if (live) setFolders(f); });
     return () => { live = false; };
   }, [vault]);
-  // The Browse picker lists the vault's notes, same control as Import Obsidian.
   useEffect(() => {
     if (!pickerOpen) return;
     let live = true;

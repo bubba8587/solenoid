@@ -1,7 +1,4 @@
-// [[C26]], [[C63]], [[D5]], [[D6]]
-// Per OP family (a node class with an `op` field): what ops it has and how they
-// surface. The `{ }` marker is DERIVED, never declared. An ARGUMENT family is not
-// declared here at all (DESIGN.md § Op pickers; nodeOps.test.ts pins both directions).
+// [[C26]] opArgDistinct, [[C63]] oneRecordNode, [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
@@ -30,8 +27,6 @@ import {
   TwoInputMathNode, GCDNode, RoundNNode,
   TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
 } from "./nodes/scalar";
-// Families whose every op has its own hand-written leaf, via the node barrel — they
-// contribute no ops list, only their class (for `instanceof`).
 import {
   AggregateNode, ArgMinMaxNode, ArithmeticNode,
   BesselNode, BitwiseNode,
@@ -56,55 +51,28 @@ import {
 } from "./rete-nodes";
 
 
-/** How a family's ops surface in the Add menu; per-op leaves are earned
- *  deliberately, so `collapsed` is the default. */
 export type OpExposure = "collapsed" | "leaves";
 
 interface NodeOpsBase {
-  /** Catalog type of the leaf representing this family — the one that carries the
-   *  `{ }` marker when ops are hidden. */
   type: string;
-  /** Defaults to `collapsed`. */
   expose?: OpExposure;
-  /** The node class, matched by `instanceof` — a constructor-NAME match would
-   *  quietly break in a minified build. */
+  /** Matched by `instanceof`: a constructor-name match breaks in a minified build. */
   ctor: new (...a: never[]) => object;
-  /** Suppress the `{ }` marker while keeping every op searchable; the default is
-   *  derived (marked iff ops are hidden). */
   mark?: boolean;
-  /** Ops that already have a hand-written leaf of their own; machine-checked
-   *  against the catalog by `nodeOps.test.ts`. */
   leafOps?: string[];
 }
 
-/** A declaration either lists its ops AND can build them, or lists neither — an
- *  ops list with no `create` would produce a search row that cannot be added to
- *  the graph. */
 export type NodeOpsDecl = NodeOpsBase & (
   | { ops: Array<OpEntryDecl>; create: (op: string) => unknown }
   | { ops?: undefined; create?: undefined }
 );
 
-/** One op of a family; `fx` is the FORMULA name ([[C51]] formulaNaming Tier 3), declared where
- *  despacing the label would not yield it: a prose label (despacing a sentence
- *  collides — Coalesce/Fill's FILLINTERPOLATE) or a bare label whose family
- *  word lives in the card title (Running's SUM → RUNNINGSUM). */
 export interface OpEntryDecl { op: string; label: string; fx?: string; keywords?: string }
 
-/** Read an OP_META table into an op list — every table carries `label`, and `fx`
- *  rides along when declared. */
 function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntryDecl[] {
   return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}) }));
 }
 
-/** The Distribution node's op axis is the DISTRIBUTION; the curve/inverse pick
- *  is the `form` argument (an ArgSelect). Typing "norm.inv" or "weibull" still lands on
- *  the right pick — the Excel names ride in `keywords`, which scores at full
- *  weight and never renders. They used to sit in the LABEL, where four dotted
- *  spellings made one row 630px against a 94px median and, since the panel's
- *  columns size to their widest item, stretched the whole menu to 3× on the first
- *  keystroke. Each op's formula name (fx) is its primary Excel spelling — dotted,
- *  so despacing "Gamma" onto the GAMMA function can never happen. */
 const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) => ({
   op,
   label: DIST_SPECS[op].label,
@@ -113,49 +81,31 @@ const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) 
 }));
 
 
-/** The Rank & Percentile ops that have their own Add-menu leaf (the .INC forms
- *  and the four bare ops); shared by its three pair declarations below, which
- *  the leafOps test checks against the class as a whole. */
 const RANK_PERCENTILE_LEAF_OPS = [
   "large", "small", "rank-eq", "rank-avg", "percentile-inc", "quartile-inc", "percentrank-inc",
 ];
 
 export const NODE_OPS: NodeOpsDecl[] = [
-  // ── A chart TYPE is a thing you search for by name ──
   { type: "chart", ctor: ChartNode, ops: fromMeta(CHART_OP_META),
     create: (op) => new ChartNode({ op: op as never }) },
   { type: "sparkline", ctor: SparklineNode, ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
-  // A figure's drawing is likewise a thing you search for by name — "treemap",
-  // "kanban" — so each is an op row ("Proportion: Treemap"), like a chart type.
-  // (Gauge's Dial/Bar is NOT one of these — it's a view argument, `style`, not an op.)
   { type: "proportion", ctor: ProportionNode, ops: fromMeta(PROPORTION_OP_META),
     create: (op) => new ProportionNode({ op: op as never }) },
   { type: "record", ctor: RecordNode, ops: fromMeta(RECORD_OP_META),
     create: (op) => new RecordNode({ op: op as never }) },
-  // The 3-D surface and its flat contour twin: two views of one grid, one leaf each.
   { type: "surface", ctor: SurfaceNode },
-  // A distribution is likewise a thing you search for by name; its ops' formula
-  // names are the real Excel spellings (fx in DIST_OPS).
   { type: "distributions", ctor: DistributionsNode, ops: DIST_OPS,
     create: (op) => new DistributionsNode({ op: op as never }) },
 
-  // TAKE/DROP are one rank-preserving class (list, matrix or scalar); both ops have
-  // their own bare leaf, so neither becomes a "TAKE: Drop" colon row. The sign of the
-  // count is the direction, an argument.
   { type: "takedrop", ctor: TakeDropNode, ops: fromMeta(TAKEDROP_OP_META),
     create: (op) => new TakeDropNode({ op: op as never }), leafOps: ["take", "drop"] },
 
-  // ── Each op stands alone as a name ──
-  // Three parameterizations of one arithmetic progression, each with its own leaf.
   { type: "list-range", ctor: SeriesNode },
   { type: "list-fill", ctor: FillNode, ops: fromMeta(FILL_OP_META),
     create: (op) => new FillNode({ op: op as never }) },
   { type: "head", ctor: HeadNode, ops: fromMeta(HEAD_OP_META),
     create: (op) => new HeadNode({ op: op as never }) },
-  // Both ops have their own bare Add-menu leaf ("Keep Columns" / "Drop Columns"), so
-  // neither becomes a "Keep Columns: Drop" colon row; the decl still carries kind +
-  // op fx names for the accent and [[C18]] uniqueNameMap.
   { type: "xstack", ctor: StackNode, ops: fromMeta(STACK_OP_META),
     create: (op) => new StackNode({ op: op as never }) },
   { type: "by-axis", ctor: ByAxisNode, ops: fromMeta(BY_AXIS_OP_META),
@@ -175,12 +125,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },
   { type: "regex", ctor: RegexNode, ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
-  // Text Filter's ops are its CONDITION; as operations they would also claim
-  // formula names they can't own ("Contains" despaces onto CONTAINS).
-  // Contains / starts with / ends with are the predicate ARGUMENT, not four functions.
-  // (`contains` despaced onto the real CONTAINS function by coincidence, which is
-  // exactly the collision [[C26]] opArgDistinct warns an argument's op rows cause.) Searched words moved
-  // to the host leaf's keywords.
   { type: "sumifs", ctor: SumIfsNode, ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
   { type: "regression-steyx", ctor: RegressionNode, ops: fromMeta(REGRESSION_OP_META),
@@ -191,20 +135,16 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ForecastNode({ op: op as never }) },
   { type: "linest", ctor: LinestNode, ops: fromMeta(FIT_OP_META),
     create: (op) => new LinestNode({ op: op as never }) },
-  // Label already names both ops.
   { type: "iseven-isodd", ctor: IsEvenOddNode, ops: fromMeta(PARITY_OP_META),
     create: (op) => new IsEvenOddNode({ op: op as never }), leafOps: ["iseven", "isodd"] },
 
-  // `fromMeta` takes the NAME, dropping the dropdown's bare operator glyph.
   { type: "comparison", ctor: ComparisonNode, ops: fromMeta(COMPARISON_OP_META),
     create: (op) => new ComparisonNode({ op: op as never }) },
   { type: "is-test", ctor: IsTestNode, ops: fromMeta(IS_TEST_OP_META),
     create: (op) => new IsTestNode({ op: op as never }) },
-  // Label already names both ops, so the marker would only echo it.
   { type: "gcd-lcm", ctor: GCDNode, ops: fromMeta(GCD_OP_META),
     create: (op) => new GCDNode({ op: op as never }), leafOps: ["gcd", "lcm"] },
 
-  // ── Partially exposed: some ops already have leaves, the rest ride in search ──
   { type: "twomath-log", ctor: TwoInputMathNode, ops: fromMeta(TWO_INPUT_MATH_OP_META),
     leafOps: ["log", "atan2", "delta", "gestep", "hypot"],
     create: (op) => new TwoInputMathNode({ op: op as never }) },
@@ -212,8 +152,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
     leafOps: ["round", "roundup", "rounddown"],
     create: (op) => new RoundNNode({ op: op as never }) },
 
-  // ── Kind-only declarations: already listed op-by-op, so nothing to hide or add
-  // to search — these only say what the dropdown selects between (which tints it).
   { type: "reduce-sum", ctor: AggregateNode },
   { type: "arg-argmax", ctor: ArgMinMaxNode },
   { type: "arith-add", ctor: ArithmeticNode },
@@ -230,13 +168,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "cov-pop", ctor: CovarianceNode },
   { type: "date-add-edate", ctor: DateAddNode },
   { type: "date-epoch-from", ctor: EpochNode },
-  // Each op is the operation (Sharpe IS the card); fx rides in RETURNS_OP_META.
   { type: "returns", ctor: ReturnsNode, ops: fromMeta(RETURNS_OP_META),
     create: (op) => new ReturnsNode({ op: op as ReturnsOp }) },
   { type: "list-smooth", ctor: SmoothNode, ops: fromMeta(SMOOTH_OP_META),
     create: (op) => new SmoothNode({ op: op as SmoothOp }) },
-  // The day-count ops have Excel-name leaves; the DATEDIF units are hidden ops on
-  // the DATEDIF leaf, which is why that leaf hosts the declaration.
   { type: "date-datedif", ctor: DateDiffNode, ops: fromMeta(DATE_DIFF_OP_META),
     create: (op) => new DateDiffNode({ op: op as never }), leafOps: ["days", "days360", "yearfrac", "years"] },
   { type: "date-part-year", ctor: DatePartNode },
@@ -249,10 +184,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "math-ceiling", ctor: MRoundNode },
   { type: "matdet-mdeterm", ctor: MatDetNode },
   { type: "math-abs", ctor: MathFXNode },
-  // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
-  // have no leaf of their own, so each family leaf declares its pair and the
-  // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
-  // labels are family words, so the search names are declared here ([[D3]] overrideInPlace).
   { type: "stat-percentile", ctor: RankPercentileNode,
     ops: [{ op: "percentile-inc", label: "PERCENTILE.INC" }, { op: "percentile-exc", label: "PERCENTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,
@@ -293,24 +224,18 @@ export const NODE_OPS: NodeOpsDecl[] = [
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));
 
-/** The declaration for a catalog leaf type, if it hosts a family of ops. */
 export function opsFor(type: string): NodeOpsDecl | undefined {
   return BY_TYPE.get(type);
 }
 
-/** How this family is exposed (default: collapsed). */
 export function exposureOf(decl: NodeOpsDecl): OpExposure {
   return decl.expose ?? "collapsed";
 }
 
-/** The search-row label for one op ("Chart: Column"); the host label comes from the
- *  catalog, so a renamed node renames its ops too. */
 export function opSearchLabel(hostLabel: string, opLabel: string): string {
   return `${hostLabel}: ${opLabel}`;
 }
 
-// The op a family's primary leaf itself creates, DERIVED by constructing that leaf
-// rather than declared — a declaration could disagree with the code.
 const _primaryOp = new Map<string, string | null>();
 function primaryOpOf(host: NodeCatalogEntry): string | null {
   const hit = _primaryOp.get(host.type);
@@ -324,10 +249,8 @@ function primaryOpOf(host: NodeCatalogEntry): string | null {
   return op;
 }
 
-/** The ops of this family with no Add-menu leaf of their own — what search has to
- *  carry, and what makes the host show `{ }`. */
 export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op: string; label: string }> {
-  if (!decl.ops) return []; // every op has its own leaf: the menu is not this declaration's business
+  if (!decl.ops) return [];
   const own = new Set(decl.leafOps ?? []);
   if (!decl.leafOps) {
     const primary = primaryOpOf(host);
@@ -336,12 +259,6 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
   return decl.ops.filter((o) => !own.has(o.op));
 }
 
-/** A search-only row for an Excel function a leaf answers to under another name
- *  ("Table Size: ROWS") — the same "Host: Name" shape as a hidden op's row, so a
- *  user typing the Excel name sees it on the row they get, not just the host. When
- *  the host IS a function name the prefix only repeats itself ("AVERAGE: AVERAGEA",
- *  "LINEST: SLOPE"), so the row is the alias alone; the description still names
- *  the host (author, 2026-08-29). */
 export function excelEntry(host: NodeCatalogEntry, name: string): NodeCatalogEntry {
   const hostIsFunction = /^[A-Z][A-Z0-9.]*$/.test(host.label);
   return {
@@ -354,8 +271,6 @@ export function excelEntry(host: NodeCatalogEntry, name: string): NodeCatalogEnt
   };
 }
 
-/** The catalog entry for one op of a family — a generated leaf, or a search-only
- *  row when collapsed. */
 export function opEntry(
   decl: NodeOpsDecl & { create: (op: string) => unknown },
   host: NodeCatalogEntry,
@@ -366,12 +281,8 @@ export function opEntry(
     type: `${decl.type}__op-${op.op}`,
     label: opSearchLabel(host.label, op.label),
     create: () => decl.create(op.op),
-    // NOT the host's keywords: those describe the FAMILY, so inheriting them makes
-    // every sibling row match identically and the ops stop discriminating. The op's
-    // OWN keywords do ride along — that is where a family puts the per-op Excel
-    // spellings that must stay findable without bloating the visible label.
+    // Not the host's keywords, hiddenOps or ops mark ([[D6]] opRowDerivesFromHost); the op's own keywords ride along.
     keywords: op.keywords,
-    // NOT the host's ops-mark either — a row that IS one op has nothing folded up.
     hiddenOps: undefined,
     hideOpsMark: undefined,
   };

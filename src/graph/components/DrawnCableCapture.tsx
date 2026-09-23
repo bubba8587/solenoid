@@ -6,7 +6,6 @@ import { isPinching } from "../pointerGesture";
 import { IS_COARSE } from "../coarse";
 import "./drawnCableLayer.css";
 
-/** How far a press may travel and still count as a tap. */
 const TAP_SLOP = IS_COARSE ? 12 : 4;
 
 export function DrawnCableCapture({
@@ -21,8 +20,7 @@ export function DrawnCableCapture({
   zoom: () => number;
 }) {
   useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
-  // `down` lives only while the button is held (it drives the pan); `pressStart` outlives
-  // the release so the click that follows can apply the tap slop.
+  // `down` lives only while the button is held; `pressStart` outlives the release so the following click can apply the tap slop.
   const down = useRef<{ lastX: number; lastY: number } | null>(null);
   const pressStart = useRef<{ x: number; y: number } | null>(null);
   if (!drawModeStore.armed()) return null;
@@ -51,15 +49,12 @@ export function DrawnCableCapture({
           pressStart.current = { x: e.clientX, y: e.clientY };
           e.currentTarget.setPointerCapture?.(e.pointerId);
         }}
-        // Released = no longer panning, whether or not a click follows (a release that
-        // fires no click must not leave the next bare hover dragging the camera).
+        // Released means no longer panning, click or not, so a bare hover can't drag the camera next.
         onPointerUp={(e) => {
           down.current = null;
           e.currentTarget.releasePointerCapture?.(e.pointerId);
         }}
         onPointerCancel={() => { down.current = null; pressStart.current = null; }}
-        // Placing happens on CLICK: a PointerEvent's `detail` is always 0, so the
-        // double-click that ends a run is only legible here.
         onClick={(e) => {
           const start = pressStart.current;
           pressStart.current = null;
@@ -67,8 +62,7 @@ export function DrawnCableCapture({
           if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > TAP_SLOP) return;
           e.stopPropagation();
           if (!IS_COARSE && e.detail >= 2) { finishDrawing(); return; }
-          // Flow units per screen pixel from the zoom, so a repeat tap on the last point is
-          // dropped (toFlow snaps to the grid when snap is on, which would read as 0).
+          // Tap slop in flow units from the zoom, so a repeat tap on the last point is dropped (toFlow snaps to the grid, which would read as 0).
           drawModeStore.place(toFlow({ x: e.clientX, y: e.clientY }), TAP_SLOP / Math.max(1e-6, zoom()));
         }}
         onContextMenu={(e) => e.preventDefault()}

@@ -37,13 +37,11 @@ const MIN_H = 96;
 const FIELD_ROW_H = 22;
 const fieldsStripHeight = (n: number) => (n > 0 ? n * FIELD_ROW_H + 6 : 0);
 
-/** The base name (no folders, no `.md`) — the default title when a file is picked. */
 function baseName(rel: string): string {
   return (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
 }
 
-/** Desktop only for the file READ; a loaded save still shows the persisted body
- *  anywhere. */
+/** Desktop only for the file read; a loaded save shows the persisted body anywhere. */
 export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidianNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [color, setColor] = useState(data.color);
@@ -79,8 +77,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
   }, [files, search]);
 
-  // The same reconcile the Note's on-blur commit runs: re-derive the frontmatter
-  // sockets, then drop the cables a removed/retyped key stranded.
+  // The Note's on-blur reconcile: re-derive the frontmatter sockets, then drop the cables a removed or retyped key stranded.
   async function applyBody(content: string, sourcePath: string) {
     data.body = content;
     data.fileName = sourcePath;
@@ -120,7 +117,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minutes, desktop, data.fileName, vault]);
-  // "Refresh all connections" re-reads this note too (the file is read here, not in data()).
+  // "Refresh all connections" re-reads this note too: the file is read here, not in data().
   const gen = useSyncExternalStore(connectionStore.subscribe, connectionStore.gen);
   const seenGen = useRef(gen);
   useEffect(() => {
@@ -135,7 +132,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
   const fieldKeys = data.fieldKeys();
   const fieldValues = data.fieldValues();
-  // +1 for the always-present `path` row (the note's wireable identity, in + out).
+  // +1 for the always-present `path` row.
   const minH = MIN_H + fieldsStripHeight(fieldKeys.length + 1);
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -150,8 +147,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   }, [collapsed, fieldKeys.length, pickerOpen, data.height, data.width, body]);
 
   const templateVars = useMemo(() => data.templateVariables(), [data, body]);
-  // keepUnknown: like a Note, an imported note has no inputs, so a tag naming no
-  // frontmatter field stays literal on the card rather than rendering empty.
+  // keepUnknown: an imported note has no inputs, so a tag naming no frontmatter field stays literal rather than rendering empty.
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const tex = useKatexReady(); // math re-renders once KaTeX lands
@@ -191,7 +187,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {/* No header name: the note's body carries its own heading. */}
         <span className="sol-import__bar-spacer" />
         <button
           type="button"
@@ -299,8 +294,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
       )}
 
       <div className="solenoid-note__fields">
-        {/* The wireable identity: `path` out to index against a Vault Folder cube, or
-            wire a path IN to load that note instead of the picked one. */}
+        {/* `path` out indexes against a Vault Folder cube; a path wired in loads that note instead of the picked one. */}
         {data.inputs.path && data.outputs.path && (
           <div className="solenoid-note__field-row">
             <NodeSocket side="input" socketKey="path" nodeId={data.id} emit={emit} payload={data.inputs.path.socket} />

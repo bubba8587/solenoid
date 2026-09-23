@@ -3,12 +3,9 @@ import { useHostNodeId } from "./nodeContext";
 import { stopDragStart } from "../coarse";
 import type { MermaidValue } from "../mermaidValue";
 
-/** The compact "[Diagram]" chip a collapsed card shows for a Mermaid value; a click
- *  expands the host card, where the diagram draws full size (there is no diagram popup —
- *  the card IS the figure). */
+/** A click expands the host card, where the diagram draws full size; there is no diagram popup. */
 export function DiagramChip({ value, pinNodeId, size = "sm" }: {
   value: MermaidValue;
-  /** Node the click expands; defaults to the host from context. */
   pinNodeId?: string;
   size?: "sm" | "md";
 }) {

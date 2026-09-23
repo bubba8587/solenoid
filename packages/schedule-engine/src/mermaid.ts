@@ -1,10 +1,7 @@
 // [[C69]] ganttPackages, [[B1]] obsidianBet
-// Mermaid `gantt` source (the Obsidian path): exact dates per bar, never `after`, which
-// cannot carry a lag or a type.
 
 import type { ScheduleOutput } from "./types";
 
-/** Mermaid gantt escaping: a task name is a label, so the syntax characters go. */
 function label(s: string): string {
   return s.replace(/[:#;,]/g, " ").replace(/\s+/g, " ").trim() || "task";
 }
@@ -28,14 +25,13 @@ export function mermaidGantt(out: ScheduleOutput, formatIso: (serial: number) =>
     if (group !== null) lines.push(`    section ${label(group)}`);
     for (const i of idxs) {
       const t = out.tasks[i];
-      if (t.summary) continue; // a bracket has no Mermaid form; its children draw
+      if (t.summary) continue;
       const tags = [
         t.milestone ? "milestone" : "",
         t.complete >= 100 ? "done" : t.complete > 0 ? "active" : "",
         t.critical ? "crit" : "",
       ].filter(Boolean);
       const startIso = formatIso(t.start);
-      // Mermaid's end is exclusive, so a bar runs to the day after Finish.
       const span = t.milestone ? "0d" : formatIso(t.finish + 1);
       const indent = "  ".repeat(t.level);
       lines.push(`    ${indent}${label(t.name)} :${tags.length ? tags.join(", ") + ", " : ""}t${i}, ${startIso}, ${span}`);

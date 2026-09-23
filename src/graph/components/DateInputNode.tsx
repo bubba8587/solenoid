@@ -13,9 +13,7 @@ import { processGraph } from "../process";
 const FORMAT_EXAMPLES = ["today", "tomorrow", "yesterday", "next friday", "last monday", "in 3 days", "2 weeks ago", "15-Mar-2026", "2026-03-15"];
 const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOString().slice(0, 10);
 
-// The raw text is the stored truth: idle shows DD-MMM-YYYY ([[C44]] dateSerials), editing
-// shows what was typed, an ambiguous or unparseable entry stays put and flags red. The
-// calendar button drives the native picker; its ISO value flows in underneath.
+// The raw text is the stored truth: idle shows DD-MMM-YYYY ([[C44]] dateSerials), editing shows what was typed, and an ambiguous or unparseable entry stays put and flags red.
 export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>) {
   const nativeRef = useRef<HTMLInputElement>(null);
   // Mirrors the node ([[D54]] relativeDatesOptIn).
@@ -35,7 +33,6 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
   const infoBtnRef = useRef<HTMLButtonElement>(null);
   const infoPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(infoOpen, () => setInfoOpen(false), [infoBtnRef, infoPopRef]);
-  // Resync the draft to the source when it changes underneath us (undo, native pick, load).
   useEffect(() => { if (!editing) setDraft(raw); }, [raw, editing]);
 
   const commit = (text: string) => { data.stringLiterals.date = text; void processGraph(data.id); };

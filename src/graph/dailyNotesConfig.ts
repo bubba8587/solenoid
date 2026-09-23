@@ -1,18 +1,17 @@
 // [[B1]] obsidianBet
-// `.obsidian/daily-notes.json` — the core Daily notes plugin's config. Gives the Vault
-// Folder its default `nameFormat` (R3) when its folder IS the daily-notes folder, so a
-// daily note's file name parses into the `date` column. Pure JSON; graph/DOM-free.
+// The core Daily notes plugin's config: gives a Vault Folder over the daily-notes folder its default `nameFormat`, so a
+// daily note's file name parses into the `date` column. Pure JSON.
 
 export interface DailyNotesConfig {
-  /** Vault-relative folder daily notes live in ("" = vault root). */
+  /** Vault-relative; "" is the vault root. */
   folder: string;
-  /** Moment-token file-name format (Solenoid's formatDateSerial token set). */
+  /** Moment tokens, in formatDateSerial's token set. */
   format: string;
 }
 
 const DEFAULT: DailyNotesConfig = { folder: "", format: "YYYY-MM-DD" };
 
-/** Parse `.obsidian/daily-notes.json`; a malformed/absent body → the Obsidian defaults. */
+/** A malformed or absent body gives the Obsidian defaults. */
 export function parseDailyNotesConfig(text: string): DailyNotesConfig {
   let data: unknown;
   try { data = JSON.parse(text); } catch { return { ...DEFAULT }; }

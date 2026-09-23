@@ -1,6 +1,4 @@
-// [[C63]], [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
-// Structured-payload figures, so they render as plain CSS/SVG rather than going
-// through the lazy recharts chunk.
+// [[C63]] oneRecordNode, [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
 import { useLayoutEffect, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { titleIndexFor } from "../chartValue";
@@ -9,12 +7,9 @@ import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
 import "./chartCards.css";
 
-// A semantic state color, deliberately NOT a palette slot: a KPI trend reads
-// up=good / down=bad, not "teal".
+// A semantic state color, never a palette slot: a trend reads good or bad, not "teal".
 const POS = "#2fae7a";
 
-// Published as a CSS var the stylesheet's calc() sizes read, so one factor scales
-// every label.
 function fscaleStyle(fscale: number | undefined): React.CSSProperties | undefined {
   return fscale && fscale !== 1 ? ({ "--chart-fscale": fscale } as React.CSSProperties) : undefined;
 }
@@ -44,9 +39,6 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   );
 }
 
-// One card of labeled boxes on a CSS grid, placements resolved in the node. Shared:
-// the Frame Input popup's Form view (Source Off) renders through this exact component,
-// so the editable form and the Record figure are one look.
 export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
   return (
     <div className="sol-record" style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}>
@@ -71,21 +63,12 @@ export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][nu
 }
 
 const GALLERY_GAP = 6;
-// Track band: aim at `ideal`, compress to `min` before dropping a column, and
-// never stretch past `max` (a lone wide track reads as a stacked list). Three presets
-// (the `cardsize` option, gallery only); medium is the default band.
 const GALLERY_TRACK_BY_SIZE: Record<RecordSize, { ideal: number; min: number; max: number }> = {
   s: { ideal: 130, min: 110, max: 190 },
   m: { ideal: 170, min: 140, max: 260 },
   l: { ideal: 230, min: 190, max: 340 },
 };
 
-// Masonry gallery (see masonryLayout.ts): tracks justified to the measured
-// container, each card packed into the shortest column. Card heights are
-// text-driven, so they are measured from the DOM; the ResizeObserver re-packs
-// on container resizes, wrap changes, and fscale changes. Tiles stay hidden
-// until the first measurement at the final track width, so the mount never
-// paints a mispacked frame.
 function RecordGallery({ payload }: { payload: RecordPayload }) {
   const ref = useRef<HTMLDivElement>(null);
   const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -153,15 +136,11 @@ function NavChevron({ back }: { back?: boolean }) {
   );
 }
 
-// One field's display text (numbers formatted, empty → its hint or a dash) — the outline
-// shows text only, so a long value / image URL clamps to its line rather than drawing.
 function cellText(f: RecordPayload["cards"][number][number]): string {
   if (f.value === null) return f.hint ?? "—";
   return typeof f.value === "number" ? formatScalar(f.value) : f.value;
 }
 
-// List view: one indented outline block per record — the title field on its own line,
-// the remaining fields as "label: value" rows beneath it.
 function RecordList({ payload }: { payload: RecordPayload }) {
   return (
     <div className="sol-record-list">
@@ -183,12 +162,6 @@ function RecordList({ payload }: { payload: RecordPayload }) {
   );
 }
 
-// The record figure: the picked card, a gallery of cards, board lanes, or a list outline.
-// Height is content-driven (layouts vary), so the passed figure height is ignored.
-// `title` is the explicit options title (the label fallback stays off the figure,
-// matching the series charts); popup/report surfaces strip it — their header
-// already carries it. `onStep` puts the row pager ON the drawn card (the node
-// card only chips the chart), provided by surfaces that can reach the node.
 export function RecordCardView({ payload, width, fscale, title, onStep }: {
   payload: RecordPayload; width?: number; fscale?: number; title?: string; onStep?: (delta: number) => void;
 }) {
@@ -229,10 +202,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
       </div>
     );
   }
-  // Card view: the pager is a CONTROL, so a host box shorter than the card must
-  // never clip it away — the column fills a definite height and only the grid
-  // area gives. A host with no definite height (the unsized Display, the popup)
-  // resolves the 100% to auto and stays content-driven as before.
+  // The column fills a definite height and only the grid gives, so a short host never clips the pager away.
   return (
     <div className="sol-record-card" style={outer}>
       {titleLine}
@@ -266,8 +236,6 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
 
 export function BulletBar({ payload, width, fscale }: { payload: ScalePayload; width?: number; fscale?: number }) {
   const { value, target } = payload;
-  // A non-finite min/max from dirty upstream data makes every frac() NaN — a
-  // "NaN%" bar width and "NaN" labels.
   const min = Number.isFinite(payload.min) ? payload.min : 0;
   const max = Number.isFinite(payload.max) ? payload.max : min + 1;
   const span = max - min || 1;

@@ -1,8 +1,6 @@
-// Does a Format Controller keep its picks across a document reload? Loads a seed,
-// patches every FC's format (a date FC to a different date style, a number FC to
-// percent / 4 places / parens), lets the autosave land, reloads the current document
-// (Ctrl+Shift+L) and reads the FCs back. Dev server on :1420.
-//
+// Probes whether Format Controllers keep their picks across a document reload: patches every FC on a
+// seed (a date FC to another date style, a number FC to percent, 4 places, parens), waits for the
+// autosave, reloads (Ctrl+Shift+L) and reads them back. Needs the dev server on :1420.
 //   node scripts/fc-reload-probe.mjs [seed-id]
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
@@ -34,7 +32,6 @@ try {
   console.log(`${SEED}: ${fcs.length} FC(s)`);
   if (fcs.length === 0) process.exit(0);
 
-  // Patch: a date-family FC gets another date style; a number-family one percent/4/parens.
   const wanted = new Map();
   for (const fc of fcs) {
     const isDate = String(fc.format).startsWith("date_") || String(fc.socketDataType).startsWith("date");
@@ -45,9 +42,9 @@ try {
     await page.evaluate((id, f) => window.__spike.patch(id, f), fc.id, next);
     console.log(`  patched ${fc.id} (${fc.label}, ${fc.socketDataType}): ${JSON.stringify(fc)} -> ${JSON.stringify(next)}`);
   }
-  await wait(1600); // autosave debounce is 700ms
+  await wait(1600); // past the 700 ms autosave debounce
 
-  // The FC ids change on reload (persistence remaps), so match by host + label.
+  // FC ids change on reload, so match by host and label.
   const before = await page.evaluate((keys) =>
     (() => { const all = window.__spike.positions(); return all.filter((p) => p.type === "FormatControllerNode").map((p) => { const f = window.__spike.fields(p.id, keys); const host = all.find((q) => q.id === f.hostNodeId); return { id: p.id, label: `${host?.label ?? "?"}/${host?.type ?? "?"}`, ...f }; }); })(),
   KEYS);

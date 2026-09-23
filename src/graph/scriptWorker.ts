@@ -1,9 +1,6 @@
 // [[C66]]
-// The Script node's sandbox. A script is a pure map from its inputs to a value, so
-// the worker drops every I/O door from its global scope before the first call: no
-// network, no storage, no spawning. `import()` is syntax and cannot be removed;
-// containment here is against accidents, not a security boundary (the file's author
-// is the one who wrote the script).
+// The Script sandbox: the worker drops every I/O door (network, storage, spawning) before the first call. `import()`
+// can't be removed; this guards against accidents, not a hostile author.
 import { invokeScript } from "./nodes/scriptRun";
 
 type Scope = {

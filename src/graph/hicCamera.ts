@@ -1,10 +1,5 @@
 // [[C42]] htmlInCanvasRenderer
-// Pure 2-D camera for the HTML-in-Canvas renderer — the world↔screen transform
-// htmlCanvasRenderer reads (`scale`/`tx`/`ty`) and drives directly each frame.
-// No DOM dependency so it is fully unit-testable.
-//
-// Convention: screen = world * scale + (tx, ty). All "screen" values are in the
-// SAME space the caller feeds in (canvas-local CSS px).
+// screen = world × scale + (tx, ty), in canvas-local CSS px.
 
 import { clamp } from "./nodes/mathUtils";
 

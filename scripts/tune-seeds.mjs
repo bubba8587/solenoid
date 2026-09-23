@@ -1,13 +1,8 @@
-// Seed geometry tuner. Drives the running Vite dev server (port 1420) with
-// the system browser headless, calls the in-app hook window.__solenoidTuneSeed(id)
-// (seedTune.ts) for each seed — which loads it, runs the real per-group tidy →
-// autofit, then a whole-canvas Tidy (the same pass as pressing T), all with
-// painted DOM sizes — then patches the returned geometry (node x/y, group
-// width/height) back into src/graph/seedGraphs/<id>.json IN PLACE. Ids,
-// structure, and every other field are untouched; this is not a re-export
-// (serializeGraph would rewrite ids to names).
-//
-//   node scripts/tune-seeds.mjs             # all seeds
+// Tunes seed geometry: for each seed, calls window.__solenoidTuneSeed(id) on the running dev server
+// (per-group tidy, autofit, then a whole-canvas Tidy, with painted DOM sizes) and patches only node x/y
+// and group width/height back into src/graph/seedGraphs/<id>.json, leaving ids and every other field.
+// URL and CHROME point a worktree at its own server and browser; NO_SANDBOX=1 allows running as root.
+//   node scripts/tune-seeds.mjs                     # all seeds
 //   node scripts/tune-seeds.mjs cubes table-verbs   # a subset
 import fs from "node:fs";
 import path from "node:path";
@@ -15,11 +10,8 @@ import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
-// Defaults hit the main checkout's dev server with the system browser; a worktree tunes its
-// OWN edited seeds by pointing URL at its own dev server (and CHROME at any Chromium).
 const EDGE = browserPath();
 const URL = process.env.URL ?? "http://localhost:1420";
-// NO_SANDBOX=1 lets Chromium launch as root (a CI/container run); harmless on a normal desktop.
 const NO_SANDBOX = process.env.NO_SANDBOX === "1" || process.env.NO_SANDBOX === "true";
 const seedsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "graph", "seedGraphs");
 
@@ -35,8 +27,7 @@ const main = async () => {
 
     await page.goto(URL, { waitUntil: "networkidle2" });
     await page.waitForFunction(() => typeof window.__solenoidTuneSeed === "function", { timeout: 60000 });
-    // Let the startup seed load (cinematic reveal on a fresh profile) finish
-    // before the first tune replaces the graph mid-load.
+    // Let the startup seed finish loading before the first tune replaces the graph.
     await page.waitForSelector(".solenoid-node", { timeout: 60000 });
     await new Promise((r) => setTimeout(r, 4000));
 
@@ -45,9 +36,7 @@ const main = async () => {
     const ids = wanted.length ? wanted : all;
     for (const id of wanted) if (!all.includes(id)) throw new Error(`unknown seed "${id}" (have: ${all.join(", ")})`);
 
-    // Tune everything FIRST, write files at the END: the seed JSONs are
-    // Vite-watched imports, so writing one mid-run triggers an HMR full reload
-    // that destroys the page's execution context.
+    // Write files only at the end: the seeds are Vite-watched, so a mid-run write reloads the page.
     const results = new Map();
     for (const id of ids) {
       process.stdout.write(`tuning ${id} ... `);

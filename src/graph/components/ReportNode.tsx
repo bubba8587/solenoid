@@ -14,7 +14,6 @@ import { collapseStore } from "../collapseStore";
 import { cableValueStore } from "../cableValueStore";
 import "./ReportNode.css";
 
-/** One inline-ref INPUT row ([[C11]] socketBox12). */
 function ReportRefRow({ data, emit, refKey, label, value }: {
   data: ReportNodeType;
   emit: Emit;
@@ -34,27 +33,18 @@ function ReportRefRow({ data, emit, refKey, label, value }: {
   );
 }
 
-/** The Report's canvas card — a standard node. The body wires the template, the
- *  mail-merge records and each template variable; the hero box is the Document chip,
- *  which opens the full-screen editor (ReportOverlay). The real editing surface is
- *  that overlay, so this card is deliberately an anchor, not an editor. */
 export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
   const refKeys = data.refKeys();
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
-  // The live `document` output: a DocumentValue (an openable chip) or a #SYNTAX! error.
   const doc = useSyncExternalStore(cableValueStore.subscribe, () => cableValueStore.get(data.id, "document"));
   const err = isSolError(doc) ? doc : null;
 
   return (
     <NodeShell node={data} emit={emit}>
       {collapsed ? (
-        // Collapsed cleanly: the input rows fold away and every socket converges on one
-        // pill, so their cables survive; only the pill + the document chip remain.
         <CollapsedInputPill node={data} emit={emit} keys={Object.keys(data.inputs)} />
       ) : (
         <>
-          {/* The two STRUCTURAL inputs, each its own full row so their sockets read as
-              distinct wiring points — the mail-merge records sit under the template. */}
           <ReportRefRow data={data} emit={emit} refKey="template" label="Template" value={data.templateDoc} />
           <ReportRefRow data={data} emit={emit} refKey="records" label="Records" value={data.recordsValue} />
           {refKeys.length > 0 && <div className="solenoid-node__section-divider" />}
@@ -64,8 +54,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
           <div className="solenoid-node__section-divider" />
         </>
       )}
-      {/* Hero: the standard Document chip (opens the report) or the render error. The
-          `document` output socket centers on this box (NodeCard's --out-socket-top). */}
+      {/* The `document` output socket centers on this box (NodeCard's --out-socket-top). */}
       <div
         className={`solenoid-node__display-value${err ? " solenoid-node__display-value--error" : ""}`}
         style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}

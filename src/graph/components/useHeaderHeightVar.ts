@@ -1,10 +1,7 @@
 // [[B14]] oneDesignSystem
 import { useLayoutEffect, type RefObject } from "react";
 
-/** Publish the header's border-box height on the card as `--header-h`.
- *  Fractional when the layout height is — the frame divider must sit exactly on
- *  the seam, and offsetHeight's rounding would put it up to half a px off.
- *  Consumers: the frame SVG's header viewport, the corner badge's `top`. */
+/** Fractional when the layout height is: the frame divider must sit exactly on the seam, and offsetHeight's rounding would put it up to half a pixel off. */
 export function useHeaderHeightVar(headerRef: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const header = headerRef.current;

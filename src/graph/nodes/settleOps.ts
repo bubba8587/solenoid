@@ -1,10 +1,8 @@
 // [[D19]] implReteFree, [[C17]] shareImpl
-// Who pays whom in the fewest transfers: totals mode (`settleGroup`) and ledger mode (`settleLedger`) share the greedy `minTransfers` core. Linear, exact, no solver.
 
 export interface SettleRow {
   name: string;
   paid: number;
-  /** Optional weight of the share this person owes (1 = an equal share). */
   share?: number | null;
 }
 
@@ -15,9 +13,7 @@ export interface Transfer {
 }
 
 export interface Settlement {
-  /** Each person's balance: paid − fair share. Positive = is owed, negative = owes. */
   nets: number[];
-  /** Everyone's fair share (paid total × weight / Σ weights) — their true cost. Same order. */
   shares: number[];
   transfers: Transfer[];
 }
@@ -25,12 +21,8 @@ export interface Settlement {
 const round2 = (x: number) => Math.round(x * 100) / 100;
 const fin = (x: number) => (Number.isFinite(x) ? x : 0);
 
-/** The greedy core, shared by both modes: net balances in (positive = is owed), the fewest
- *  transfers out. The biggest creditor takes from the biggest debtor until one goes even;
- *  amounts round to cents. Ties keep input order (a stable sort), so the result is
- *  deterministic. */
 export function minTransfers(balancesIn: readonly { name: string; net: number }[]): Transfer[] {
-  // One balance per name: a name listed twice nets first, so nobody ever pays themselves.
+  // A name listed twice nets first, so nobody ever pays themselves.
   const byName = new Map<string, { name: string; net: number }>();
   for (const b of balancesIn) {
     const cur = byName.get(b.name);
@@ -53,9 +45,6 @@ export function minTransfers(balancesIn: readonly { name: string; net: number }[
   return transfers;
 }
 
-/** Settle the group. Shares come from the `share` weights when any row carries one (a blank
- *  weighs 1); otherwise everyone owes an equal share. In equal split every share is the same,
- *  so every Net (the fair share) matches. Amounts round to cents. */
 export function settleGroup(rows: readonly SettleRow[], opts: { weighted?: boolean } = {}): Settlement {
   const n = rows.length;
   const paidArr = rows.map((r) => fin(r.paid));
@@ -69,10 +58,6 @@ export function settleGroup(rows: readonly SettleRow[], opts: { weighted?: boole
   return { nets: nets.map(round2), shares: shares.map(round2), transfers };
 }
 
-/** One ledger row: an amount fronted by one or more payers, to be split EQUALLY among the
- *  beneficiaries. `payers` and `beneficiaries` are independent name sets (the group that
- *  pays need not be the group that owes). `beneficiaries: null` means "the whole group" —
- *  everyone who appears anywhere in the ledger. */
 export interface Expense {
   amount: number;
   payers: string[];
@@ -80,21 +65,13 @@ export interface Expense {
 }
 
 export interface LedgerSettlement {
-  /** The roster, in first-appearance order (payer before beneficiary, row by row). */
   people: string[];
-  /** Total each person fronted (external). Same order as `people`. */
   paid: number[];
-  /** Each person's fair share — their true cost. Same order as `people`. */
   shares: number[];
-  /** Balance: paid − share. Same order as `people`. */
   nets: number[];
   transfers: Transfer[];
 }
 
-/** Settle a ledger of expenses. Each expense credits its payers an equal split of the amount
- *  and debits its beneficiaries an equal split; sums land as per-person Paid and fair share,
- *  and the balance (paid − share) feeds the same greedy `minTransfers`. Equal-split only, no
- *  weights. */
 export function settleLedger(expenses: readonly Expense[]): LedgerSettlement {
   const order: string[] = [];
   const idx = new Map<string, number>();
@@ -104,8 +81,7 @@ export function settleLedger(expenses: readonly Expense[]): LedgerSettlement {
     return i;
   };
   const uniq = (names: string[]) => [...new Set(names)];
-  // Register every explicitly-named person first, so a "whole group" split (null
-  // beneficiaries) covers the full roster and not just who has been seen so far.
+  // Register every named person first, so a whole-group split covers the full roster, not just who has been seen so far.
   for (const e of expenses) { for (const p of e.payers) see(p); if (e.beneficiaries) for (const b of e.beneficiaries) see(b); }
   const paid = order.map(() => 0);
   const shares = order.map(() => 0);

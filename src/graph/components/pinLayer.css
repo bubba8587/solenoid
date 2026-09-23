@@ -1,6 +1,4 @@
-/* A section within .solenoid-hud-stack (which owns the fixed positioning and
-   right-alignment). Chips stretch to the section width; the trigger right-aligns
-   itself with margin-left:auto. */
+/* A section within .solenoid-hud-stack, which owns the fixed positioning and right alignment. */
 .solenoid-pin-layer {
   display: flex;
   flex-direction: column;
@@ -8,14 +6,12 @@
   pointer-events: none;
 }
 
-/* Collapsed: chips hidden, only the trigger button shows */
 .solenoid-pin-layer--collapsed .solenoid-pin,
 .solenoid-pin-layer--collapsed .solenoid-pin--group {
   display: none;
 }
 
-/* The always-visible collapse/expand toggle button — stays right-aligned
-   regardless of how wide the expanded chips make the layer. */
+/* Stays right-aligned however wide the expanded chips make the layer. */
 .solenoid-pin-layer__trigger {
   pointer-events: auto;
   position: relative;
@@ -39,7 +35,6 @@
   color: var(--accent);
 }
 
-/* Count badge shown when collapsed */
 .solenoid-pin-layer__count {
   position: absolute;
   top: -4px;
@@ -111,10 +106,7 @@
   font-size: 11.5px;
 }
 
-/* List/table/frame chips (ArrayChip/FrameChip) default to the accent color,
-   which is hard to read in the HUD. Override to neutral so a pinned chip reads
-   as clearly as the scalar values beside it. Covers single pins and the
-   group-readout rows (both sit under .solenoid-pin). */
+/* Chips default to the accent, hard to read in the HUD, so they go neutral here, in single pins and group-readout rows alike. */
 .solenoid-pin .solenoid-array-chip {
   color: var(--text);
   background: var(--surface-raised);
@@ -127,7 +119,6 @@
 
 .solenoid-pin__remove {
   flex: none;
-  /* Flex-center the ✕ glyph (see .sol-popup__close note) rather than baseline. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +135,6 @@
 }
 .solenoid-pin__remove:hover { opacity: 1; color: #e0524d; }
 
-/* Group pin: a header + a stack of readout rows (like a collapsed group). */
 .solenoid-pin--group {
   flex-direction: column;
   align-items: stretch;

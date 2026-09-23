@@ -1,6 +1,4 @@
 // [[C43]] oneFlowSurface, [[B10]] reactFlowView (the snapshot history)
-// Labels for snapshot undo: a snapshot stack has only the documents, so the label
-// is DERIVED by diffing consecutive snapshots.
 import type { SavedGraph, SavedNode, SavedConnection } from "../persistence";
 
 const nodeName = (n: SavedNode | undefined): string => n?.name || n?.type || "a node";
@@ -8,20 +6,12 @@ const nodeName = (n: SavedNode | undefined): string => n?.name || n?.type || "a 
 const connKey = (c: SavedConnection): string =>
   `${c.source}\u0000${c.sourceOutput}\u0000${c.target}\u0000${c.targetInput}`;
 
-// The identity/geometry fields are judged separately; everything else counts
-// as an edit. init.width/height are the card's MEASURED dims — they settle
-// after the baseline snapshot and drift with content, so they never count
-// (a user resize there reads as the "Edited document" fallback, cheap next to
-// every record shouting "Edited 5 nodes").
 function editBody(n: SavedNode): string {
   const { id: _id, name: _name, x: _x, y: _y, init, ...rest } = n;
   const { width: _w, height: _h, ...initRest } = (init ?? {}) as Record<string, unknown>;
   return JSON.stringify({ ...rest, init: initRest });
 }
 
-/** True when two snapshots differ only by the cards' measured init.width/height (which
- *  re-stamp after a restore mounts the cards); such a drift is not an edit, so recording
- *  it would truncate the redo tail for nothing. */
 export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
   if (prev.nodes.length !== next.nodes.length) return false;
   const strip = (g: SavedGraph) => JSON.stringify({
@@ -35,11 +25,6 @@ export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
   return strip(prev) === strip(next);
 }
 
-/** One human-readable line for what changed between two consecutive snapshots.
- *  A snapshot can carry several kinds of change at once (a paste adds nodes AND
- *  cables); the parts join into one line, most significant first. Moves are
- *  reported only when nothing else changed — they ride along with group tows
- *  and expand pushes, where they'd bury the real action. */
 export function describeGraphDelta(prev: SavedGraph, next: SavedGraph): string {
   const prevNodes = new Map(prev.nodes.map((n) => [n.id, n]));
   const nextNodes = new Map(next.nodes.map((n) => [n.id, n]));

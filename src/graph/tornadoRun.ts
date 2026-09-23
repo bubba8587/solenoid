@@ -1,6 +1,5 @@
 // [[D46]] freezeVolatilePerCalc
-// The graph-aware half of the Tornado node: node classes stay decoupled from the live
-// editor, which walking upstream connections and driving processGraph both need.
+// The graph-aware half of the Tornado node, so node classes stay decoupled from the live editor.
 import { getEditor, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
@@ -10,8 +9,7 @@ import type { TornadoNode, TornadoResult } from "./nodes/tornado";
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 type Leaf = { node: NumberInputNode | SliderInputNode; label: string };
 
-/** Upstream sources feeding `startId`; only Number/Slider inputs count, since nothing
- *  else is a perturbable "declared input". */
+/** Only Number and Slider inputs count: nothing else is a perturbable declared input. */
 export function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
   const incoming = new Map<string, string[]>();
   for (const c of editor.getConnections()) {
@@ -27,8 +25,7 @@ export function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
       seen.add(s);
       const node = editor.getNode(s);
       if (!node) continue;
-      // Stop at a Slider rather than chasing what feeds its min/max/step sockets —
-      // perturbing those would change the slider's RANGE, not its value.
+      // Stop at a Slider: perturbing what feeds its min, max or step would change its range, not its value.
       if (node instanceof NumberInputNode || node instanceof SliderInputNode) {
         const label = (node.label ?? "").trim() || (node instanceof SliderInputNode ? "Slider" : "Number");
         leaves.push({ node, label });
@@ -40,22 +37,16 @@ export function findUpstreamLeaves(editor: AnyEditor, startId: string): Leaf[] {
   return leaves;
 }
 
-/** One-at-a-time sweep: perturb each leaf to its low/high bound, re-read `tornado`
- *  after each recompute, restore the original; ranked by swing, biggest first. */
+/** One at a time: each leaf to its low and high bound, re-reading `tornado` after each recompute, then restored. */
 export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]> {
   const editor = getEditor();
   if (!editor) return [];
   const leaves = findUpstreamLeaves(editor, tornado.id);
   const results: TornadoResult[] = [];
 
-  // An outer bracket over the whole sweep keeps the compute counter ≥1; the per-pass
-  // brackets would drop it to 0 between perturbations and cancel the deferred reveal.
+  // An outer bracket keeps the compute counter up between perturbations, or the deferred reveal cancels.
   beginCompute();
-  // beginGraphRebuild exempts the manual-mode short-circuit (else every perturbation
-  // no-ops → all-zero swings, silently) AND suppresses Expect/Alert edge-detect so
-  // synthetic extremes can't raise real alerts; beginForceExact stops a sketch-sampled
-  // pass returning APPROXIMATE sensitivities. Restores sit in `finally` so a throw
-  // can't leave a real leaf pinned at an extreme.
+  // The rebuild gate lets passes run in manual mode and keeps Expect and Alert quiet; force-exact stops sketch sampling.
   beginGraphRebuild();
   calcModeStore.beginForceExact();
   try {
@@ -89,7 +80,7 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
         await processGraph(node.id);
         const lowResult = typeof tornado.cachedResult === "number" ? tornado.cachedResult : NaN;
 
-        // KEEP the leaf even when an extreme diverged (non-finite) — mark it.
+        // Keep a leaf even when an extreme diverged, and mark it.
         const diverged = !Number.isFinite(highResult) || !Number.isFinite(lowResult);
         results.push({
           nodeId: node.id, label, base,
@@ -110,8 +101,7 @@ export async function runTornado(tornado: TornadoNode): Promise<TornadoResult[]>
   return rankTornado(results);
 }
 
-/** RAW swing is the ranking key, NOT swing normalized by perturbation width; diverged
- *  leaves have no finite swing, so they surface marked at the TOP. */
+/** Ranked by raw swing, not swing per perturbation width; diverged leaves come first, marked. */
 export function rankTornado(results: TornadoResult[]): TornadoResult[] {
   const diverged = results.filter((r) => r.diverged);
   const finite = results.filter((r) => !r.diverged)

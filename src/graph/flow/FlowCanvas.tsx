@@ -1,8 +1,4 @@
 // [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C33]] saveBindsMain, [[C40]] storesRegisterForget, [[C89]] standoffsSolveLast, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead
-// THE app canvas: one editor/engine/view stack lives for the app's lifetime;
-// documents load through the REAL persistence/documentStore path; chrome talks
-// to it through the process.ts slots. The surface itself is FlowSurface, shared
-// with the composite drill-in.
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { NodeEditor } from "rete";
@@ -78,8 +74,6 @@ function getStack(): Stack {
     setViewport: (v) => handlers.setViewport(v),
     getContainer: () => handlers.getContainer(),
   });
-  // The topology pipe coalesces a rebuild into ONE commit
-  // (tree/specs/documents/graph-load-teardown-performance.md).
   let queued = false;
   const trySync = () => {
     if (isGraphRebuilding()) {
@@ -119,8 +113,7 @@ const MAIN_HOOKS: SurfaceHooks = {
     scheduleAutosave();
     flowHistory.schedule();
   },
-  // Position-only changes (nudge, group push, standoffs) never run
-  // processGraph, so they record here; load/undo rebuilds are guarded out.
+  // Position-only changes (nudge, group push, standoffs) never run processGraph, so they record here.
   afterProgrammaticMove: () => flowHistory.schedule(),
   afterNodeAdded: async (nodeId) => {
     await processGraph(nodeId, undefined, { topology: true });
@@ -134,7 +127,6 @@ const MAIN_HOOKS: SurfaceHooks = {
 function FlowCanvasInner() {
   const s = useMemo(getStack, []);
 
-  // Chrome contract (process.ts slots) + the document lifecycle, once.
   useEffect(() => {
     setUnselectAllNodes(() => {
       for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = false;
@@ -147,8 +139,6 @@ function FlowCanvasInner() {
       }
       s.handlers.syncSelection();
     });
-    // The single delete verb (RF's own deleteKeyCode is off): deleteSelection gates
-    // the removal and splices the ghost cable / Conduit lanes.
     setDeleteSelected(async () => {
       const doomed = s.editor.getNodes().some((n) => (n as { selected?: boolean }).selected);
       if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected()) return;
@@ -156,13 +146,10 @@ function FlowCanvasInner() {
       scheduleAutosave();
     });
 
-    // Docked FCs ride their host, driven through the view adapter (shared with the
-    // drill-in via repositionDockedFor).
     const repositionDockedTo = (hostId: string) =>
       repositionDockedFor(s.editor, s.view, s.handlers.getContainer(), hostId);
     setRepositionDocked(repositionDockedTo);
 
-    // Tidy + Cleanup over this surface's editor/view.
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor: s.editor,
@@ -175,8 +162,6 @@ function FlowCanvasInner() {
     setAutoArrange(arrangeFn);
     setCleanup(makeCleanupFn(s.editor, s.view, arrangeFn));
 
-    // FC ↔ neighbor unit-mismatch badges — rescanned on every cable change and
-    // annotation edit.
     const rescanMismatches = () => {
       for (const n of s.editor.getNodes()) {
         if (!(n instanceof FormatControllerNode)) continue;
@@ -200,8 +185,6 @@ function FlowCanvasInner() {
     };
     const unsubFmt = formatAnnotationStore.subscribe(rescanMismatches);
 
-    // The ONE settle after a bulk topology change (paste, unpack, load-adjacent
-    // sweeps).
     setBulkSettle(async (renderOnly?: Set<string>) => {
       reconcileFcTypes(s.editor, s.view);
       bumpConnectionVersion();
@@ -210,8 +193,6 @@ function FlowCanvasInner() {
       syncGroupCollapse(s.editor, s.view);
     });
 
-    // Standoff network: the pure solver, registered as the settle slot and driven
-    // on drags ([[C89]] standoffsSolveLast).
     let standoffSolving = false;
     const settleStandoffNetwork = (pinned: Set<string> = new Set(), opts?: SettleOpts) => {
       if (standoffSolving || standoffStore.isEmpty()) return;
@@ -223,7 +204,6 @@ function FlowCanvasInner() {
           if (b) boxes.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
         }
       }
-      // A position-locked group is pinned in the solve ([[D63]] lockedGroupIsObstacle).
       const disp = solveStandoffs(boxes, standoffStore.all(), withLockedGroupsPinned(s.editor, pinned), opts);
       if (disp.size === 0) return;
       standoffSolving = true;
@@ -236,17 +216,11 @@ function FlowCanvasInner() {
     setStandoffSettle(settleStandoffNetwork);
     s.standoffSettle = settleStandoffNetwork;
 
-    // Every LIVE cable change — including ones components make themselves —
-    // settles: FC retype reconcile, mismatch rescan, targeted recompute.
-    // Installed once for the app-lifetime stack.
     if (!s.cablePipeInstalled) {
       s.cablePipeInstalled = true;
       s.editor.addPipe((ctx) => {
         const t = (ctx as { type?: string }).type;
         if (t === "noderemoved" && !isGraphRebuilding()) {
-          // Live deletion ([[C40]] storesRegisterForget; a rebuild runs forgetAllNodes
-          // once instead): membership/collapse re-derive, and deleting an expanded
-          // group settles the pushes it caused.
           const n = (ctx as unknown as { data: SolenoidNode }).data;
           forgetNode(n.id);
           rebuildGroupMembership(s.editor);
@@ -276,25 +250,17 @@ function FlowCanvasInner() {
 
     if (!s.docInit) {
       s.docInit = true;
-      // Component-internal edits reach us here (processGraph's graphChanged);
-      // each settled change autosaves AND records an undo step.
       setGraphChanged(() => {
         scheduleAutosave();
         flowHistory.schedule();
       });
-      // Drawn-cable edits never run processGraph, so they record the same way here.
       setDrawnCommit(() => {
         scheduleAutosave();
         flowHistory.schedule();
       });
-      // loadGraph clears history at the end of every document load — for the
-      // snapshot history that IS the new document's baseline.
       setClearHistory(() => flowHistory.reset());
       void (async () => {
         const restored = await documentStore.restore();
-        // The Examples page deep-links a seed as /?seed=<id>. Open it as a NEW document
-        // (never clobbering restored ones), then strip the param so a reload or autosave
-        // doesn't keep minting fresh copies.
         const seedId = new URLSearchParams(window.location.search).get("seed");
         if (seedId && SEEDS[seedId]) {
           await documentStore.newFromTemplate(seedId);
@@ -314,9 +280,7 @@ function FlowCanvasInner() {
   );
   const paletteAlwaysOn = Boolean(paletteAlwaysOnSetting) && !IS_MOBILE;
 
-  // The app chrome renders BESIDE the surface, not inside it: the main wrapper is
-  // visibility:hidden under a drill-in, and toasts / dialogs / the palette must
-  // stay visible there.
+  // App chrome renders beside the surface, because the main wrapper is visibility:hidden under a drill-in.
   return (
     <>
       <FlowSurface stack={s} hooks={MAIN_HOOKS} />

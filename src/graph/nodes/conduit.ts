@@ -1,5 +1,5 @@
 // [[D17]] relaysTransparent, [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind, [[E6]] portOwnsSocket, [[D15]] wildcardsKeepRank, [[C27]] noDataInComponents
-// Mechanics: tree/specs/canvas/conduit-lane-faces.md. All CONDUIT_MAX_LANES lanes are declared up front (the engine and validator address any lane); the component renders the ones in use.
+// Mechanics: [[conduit-lane-faces]]. All CONDUIT_MAX_LANES lanes are declared up front, since the engine and validator address any lane.
 import { ClassicPreset } from "rete";
 import { trueAnySocket, MutableSocket } from "../sockets";
 
@@ -8,7 +8,6 @@ export const CONDUIT_MAX_LANES = 8;
 export const conduitInKey  = (i: number) => `in_${i}`;
 export const conduitOutKey = (i: number) => `out_${i}`;
 
-/** Lane index from a Conduit socket key (`in_3`→3, `out_0`→0), else -1. */
 export function conduitLaneOf(key: unknown, side: "in" | "out"): number {
   const prefix = side === "in" ? "in_" : "out_";
   if (typeof key !== "string" || !key.startsWith(prefix)) return -1;
@@ -18,8 +17,7 @@ export function conduitLaneOf(key: unknown, side: "in" | "out"): number {
 
 type ConnLike = { source: string; sourceOutput: string; target: string; targetInput: string };
 
-/** Ghost cables bridging each lane of a deleted Conduit; the generic 1-in/1-out splice
- *  can't express this for a multi-lane bundle. Pure — the caller applies the result. */
+/** The generic 1-in/1-out splice cannot bridge a multi-lane bundle. Pure: the caller applies the result. */
 export function conduitGhostSpecs(
   incoming: readonly ConnLike[],
   outgoing: readonly ConnLike[],
@@ -48,8 +46,7 @@ export function conduitGhostSpecs(
   return specs;
 }
 
-// Session-global counter: loading or pasting a numbered conduit bumps it past that number
-// so fresh ones never collide; an explicit n is returned as-is, duplicates allowed.
+// Session-global: loading or pasting a numbered conduit bumps the counter past its number, and an explicit n is returned as is.
 let _nextSeq = 1;
 function claimSeq(n?: number): number {
   if (n != null && Number.isFinite(n)) {
@@ -75,7 +72,6 @@ export class ConduitNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; angle?: number; seq?: number }) {
     super("Conduit");
     this.seq = claimSeq(init?.seq);
-    // A bare "Conduit" label takes the numbered form.
     this.label = init?.label && init.label !== "Conduit" ? init.label : `Conduit ${this.seq}`;
     this.angle = init?.angle ?? 0;
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
@@ -86,20 +82,18 @@ export class ConduitNode extends ClassicPreset.Node {
     }
   }
 
-  /** Bump rotation by `steps` × 45° (the quantised step), wrapped to [0, 360). */
   rotateBy(steps: number) {
     const next = (Math.round(this.angle / 45) + steps) * 45;
     this.angle = ((next % 360) + 360) % 360;
   }
 
-  /** Renumber. A derived label ("Conduit N") follows; a custom one is kept. */
   setSeq(n: number) {
     const derived = this.label === `Conduit ${this.seq}`;
     this.seq = claimSeq(n);
     if (derived) this.label = `Conduit ${this.seq}`;
   }
 
-  /** Fresh number for a pasted clone (copy carries `seq`, which must not dup). */
+  /** A pasted clone carries `seq`, which must not duplicate. */
   assignFreshSeq() {
     const derived = this.label === `Conduit ${this.seq}`;
     this.seq = claimSeq();

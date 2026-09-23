@@ -1,9 +1,6 @@
 // [[C89]] standoffsSolveLast (the seed rule), [[C84]] tidyTranslatesOnly
-// Console-only tooling: true group fit AND a faithful whole-canvas Tidy need the LIVE
-// app, since tidy/autofit measure painted DOM. Per group it lays out members + autofits
-// the box, then it runs a whole-canvas Tidy (the same pass as pressing T) so the shipped
-// geometry equals the tidied layout. scripts/tune-seeds.mjs patches the returned geometry
-// back in place — deliberately NOT a re-export, which would rewrite every hand-authored id.
+// Console-only: group fit and a whole-canvas Tidy measure painted DOM, so they need the live app. scripts/tune-seeds.mjs
+// patches the returned geometry in place, not as a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
 import { getEditor, getView } from "./process";
 import { autoArrange } from "./canvasCommands";
@@ -43,10 +40,7 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
   await sleep(2500);
   await frames(2);
 
-  // First, per-group and sequential, so each group's members are laid out and its
-  // box wraps their REAL painted sizes (expand-push displacements restore on
-  // re-collapse). This is the internal layout the whole-canvas pass then treats as
-  // a rigid unit.
+  // Per group first, so each box wraps real painted member sizes before the whole-canvas pass moves it as a unit.
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   for (const g of groups) {
     const wasCollapsed = g.collapsed;
@@ -66,14 +60,11 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
     }
   }
 
-  // Then a WHOLE-CANVAS Tidy — exactly what pressing T does: it places every loose
-  // node and every group (as a unit, groups shipped collapsed stay collapsed) so the
-  // baked layout equals the tidied one, not a hand-composed approximation.
+  // Then a whole-canvas Tidy, exactly what pressing T does, so the baked layout equals the tidied one.
   await autoArrange({ skipConfirm: true });
   await frames(2);
 
-  // Standoffs settle last, against the tidied positions (a note re-hangs off its
-  // group after the group's own move).
+  // Standoffs settle last, against the tidied positions.
   if (!standoffStore.isEmpty()) {
     settleStandoffs();
     await frames(2);

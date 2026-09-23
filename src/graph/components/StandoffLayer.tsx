@@ -43,9 +43,7 @@ import "./conduit.css"; // reuse the docked-toolbar chrome
 import "./StandoffLayer.css";
 import { CloseIcon } from "./CloseIcon";
 
-// Bars render UNDER the graph at z-index -3 (below expanded groups -2, conduits -1,
-// nodes 0). A bar slants to show perpendicular slack — the constrained axis is the line
-// between the anchors' boxes, not the drawn angle.
+// Bars render under the graph at z -3; a bar slants to show perpendicular slack, since the constrained axis is the line between the anchors' boxes, not the drawn angle.
 
 const BAR_WIDTH = 9;
 const HIT_WIDTH = 18;

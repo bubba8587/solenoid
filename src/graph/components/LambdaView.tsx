@@ -8,7 +8,6 @@ import type { LambdaView } from "../formatAnnotationStore";
 import "./FormulaEditor.css";
 import "./LambdaView.css";
 
-/** Plain-text source form: `λ(params) = expr` (signature alone when the body is empty). */
 export function lambdaSourceText(v: LambdaValue): string {
   const sig = `λ(${v.params.join(", ")})`;
   const expr = (v.expr ?? "").trim();
@@ -16,7 +15,7 @@ export function lambdaSourceText(v: LambdaValue): string {
 }
 
 export function LambdaValueView({ value, view }: { value: LambdaValue; view: LambdaView | undefined }) {
-  // Unconditional — hook order must not depend on the view.
+  // Unconditional: hook order must not depend on the view.
   const render = useKatexRender();
   const expr = (value.expr ?? "").trim();
 

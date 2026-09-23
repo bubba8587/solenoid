@@ -1,6 +1,4 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
-// The most-recent value per node output, keyed `${nodeId}:${outputKey}` (a COMBO
-// socket's cable color, the fallback card's preview, group readouts).
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -19,7 +17,6 @@ export const cableValueStore = {
     return _values.get(`${nodeId}:${outputKey}`);
   },
 
-  /** The colon in the key makes the node-id prefix unambiguous. */
   forget(nodeId: string) {
     const prefix = `${nodeId}:`;
     for (const k of _values.keys()) {

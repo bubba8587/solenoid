@@ -15,8 +15,7 @@ import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
 import { getActiveView, getActiveEditor, getOwningEditor } from "../activeGraph";
 
-// Boundary terminals for the Isolate overlay, rendered in the area's transformed plane
-// (canvas coords) so they pan/zoom with the graph.
+// Rendered in the transformed plane (canvas coords), so the terminals pan and zoom with the graph.
 
 type Pt = { x: number; y: number };
 
@@ -69,7 +68,6 @@ export function IsolateEndpoints() {
 
   const startDrag = (which: "entry" | "exit") => (e: React.PointerEvent) => {
     e.stopPropagation();
-    // One selection system ([[C52]] visibleSelection).
     isoEndpointSelect.set(which);
     unselectAllNodes();
     cableSelectionStore.set(null);
@@ -94,7 +92,6 @@ export function IsolateEndpoints() {
   );
   if (entry.length === 0 && exit.length === 0) return null;
 
-  // Focus bounding box (canvas coords).
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const id of focus) {
     const pos = view.position(id);

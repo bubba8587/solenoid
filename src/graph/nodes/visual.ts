@@ -1,4 +1,4 @@
-// [[C63]], [[B11]]
+// [[C63]], [[B11]], [[C8]] declareOnce
 import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
@@ -19,8 +19,6 @@ import type { FrameHint } from "../frameHint";
 import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type FrameColumn } from "../frame";
 import { isSolError } from "../errorValue";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
-
-// Terminal figures: each node emits a chart VALUE and is never a pass-through.
 
 export type SparklineOp = "line" | "column" | "winloss";
 
@@ -43,7 +41,6 @@ export class SparklineNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SparklineOp }) {
     super("Sparkline");
     this.label = init?.label ?? "";
-    // Normalize retired ops from old saves: "bar" → column, "area" → line.
     const raw = init?.op as string | undefined;
     this.op = raw === "bar" ? "column" : raw === "area" ? "line" : ((raw as SparklineOp) ?? "line");
     this.addInput("values", numListIn("Values"));
@@ -53,9 +50,6 @@ export class SparklineNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
     const raw = inputs.values?.[0] ?? null;
     this.cachedResult = raw;
-    // A blank, error or non-finite cell is a GAP, never a zero (a zero bar, or a win/loss
-    // "draw", would be a fabricated reading). `series` keeps the gaps in place; `values`
-    // (the 1-D summary) carries only the known numbers.
     const cells = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : null));
     const signed = this.op === "winloss" ? cells.map((n) => (n === null ? null : Math.sign(n))) : cells;
     const chart: ChartValue = {
@@ -77,7 +71,6 @@ export type ChartOp =
   | "pie" | "radar" | "radialbar" | "funnel" | "scatter"
   | "composed" | "bubble";
 
-// The card dropdown DERIVES from this table ([[C8]] declareOnce) — never hand-write a second list.
 export const CHART_OP_META = {
   column:    { label: "Column",   group: "Cartesian" },
   bar:       { label: "Bar",      group: "Cartesian" },
@@ -101,15 +94,11 @@ export class ChartNode extends ClassicPreset.Node {
   label: string;
   op: ChartOp;
   cachedResult: number | number[] | null = null;
-  // Named series from a frame's numeric columns; null unless ≥ 2 survive the label column
-  // (bubble stores its x/y/size columns here too).
   cachedSeries: { name: string; values: (number | null)[] }[] | null = null;
-  // X-axis category labels from a wired Frame's FIRST column (dates as dates, etc.).
   cachedLabels: (string | number)[] | null = null;
-  // The data feed arrives UNCOERCED so a list stays a list; data() branches on raw shape.
+  // Uncoerced, because coercion would widen a wired list into a single frame row.
   rawInputs: ReadonlySet<string> = new Set(["values"]);
   chartOptions: ChartOptions = {};
-  // The inline options text (used when the Options socket isn't wired).
   stringLiterals: Record<string, string> = {};
   width = 240;
   height = 240;
@@ -126,20 +115,14 @@ export class ChartNode extends ClassicPreset.Node {
     super("Chart (Recharts)");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
-    // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
-    // into a single ROW instead of leaving it a list.
     this.addInput("values", cubeAdoptIn("Data"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
   data(inputs: { values?: unknown[]; options?: string[] }): { chart: ChartValue } {
-    // A FRAME drives the figure: the numeric columns are named series (a legend at ≥ 2).
-    // Every non-finite cell becomes null IN PLACE, so row-indexed labels stay aligned.
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw0 = inputs.values?.[0] ?? null;
-    // A cube arrives raw (rawInputs) and draws its scalar columns; a list or table column
-    // has nothing to plot, so it is skipped (the lattice never lets a cube into a frame socket).
     const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0, "scalar") : raw0;
     const raw = isSolError(flat) ? null : flat;
     this.cachedLabels = null;
@@ -149,16 +132,10 @@ export class ChartNode extends ClassicPreset.Node {
       const cols = raw.columns;
       const asNums = (col: FrameColumn) => col.values.map(num);
       if (this.op === "bubble") {
-        // A point chart has NO category axis, so it bypasses the label rule: the first three
-        // NUMBER columns (col 0 included) are x / y / size. No labels, no legend.
         const pts = cols.filter((c) => c.type === "number").slice(0, 3).map((c) => ({ name: c.name, values: asNums(c) }));
         this.cachedSeries = pts.length > 0 ? pts : null;
         v = pts.length > 0 ? (pts[0].values as unknown as number[]) : null;
       } else if (this.op === "radar" && cols.length >= 2) {
-        // Radar reads the frame TRANSPOSED from the cartesian charts (chartRadarTranspose):
-        // the numeric COLUMNS are the spokes (axes) and each ROW is one overlaid polygon,
-        // named by column 0 — so a Decision-Matrix row scores across its criteria, not the
-        // reverse. Cartesian charts keep column-0-as-labels; only radar flips.
         const labelCol = cols[0];
         const numCols = cols.slice(1).filter((c) => c.type === "number");
         this.cachedLabels = numCols.map((c) => c.name);
@@ -167,20 +144,13 @@ export class ChartNode extends ClassicPreset.Node {
           values: numCols.map((c) => num(c.values[r])),
         }));
         v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
-        // 2+ rows overlay as a legend; a single row draws one polygon (values + labels).
         this.cachedSeries = series.length >= 2 ? series : null;
       } else if (cols.length >= 2) {
-        // Column 0 is ALWAYS the x-axis label column at ≥ 2 columns (a numeric col 0 —
-        // Year, an epoch — is a real axis; scatter promotes it to a coordinate x).
-        // formatFrameCell renders errors and date serials as label text.
         this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
-        // The series are the NUMBER-typed columns after the label; others are skipped.
         const series = cols.slice(1).filter((c) => c.type === "number").map((c) => ({ name: c.name, values: asNums(c) }));
         v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
-        // A legend/multi-series render only when 2+ numeric series survive.
         this.cachedSeries = series.length >= 2 ? series : null;
       } else {
-        // A one-column frame plots positionally, like a plain list.
         v = asNums(cols[0]) as unknown as number[];
       }
     } else if (Array.isArray(raw)) {
@@ -189,13 +159,9 @@ export class ChartNode extends ClassicPreset.Node {
       v = num(raw);
     }
     this.cachedResult = v;
-    // Only a real string configures the options — a wired SolError/number falls back to the
-    // inline literal, but a wired BLANK means "no styling given" and must not.
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
-    // Bubble's axes ARE two of the frame's columns, so they carry those column names
-    // unless the author labelled them; the size column is named by the tooltip.
     if (this.op === "bubble" && this.cachedSeries) {
       const [x, y] = this.cachedSeries;
       if (this.chartOptions.xlabel === undefined && x) this.chartOptions.xlabel = x.name;
@@ -215,12 +181,7 @@ export class ChartNode extends ClassicPreset.Node {
 }
 
 // ─── Merge Plots ──────────────────────────────────────────────────────────────
-// Overlay several charts on one plot. Every wired chart keeps its OWN mark kind and
-// the styling it carried (color, marker size, line width, fill alpha), so the merged
-// figure is a true composite, not a re-plot. Only x/y-plane charts overlay; a polar or
-// payload figure (pie, radar, gauge, sankey…) is refused with a #TYPE! naming the input.
 
-/** The chart ops that share one cartesian x-axis and can therefore overlay. */
 export const PLANAR_CHART_OPS = new Set<ChartValue["op"]>(["line", "area", "column", "bar", "scatter"]);
 
 export class MergePlotsNode extends ClassicPreset.Node {
@@ -229,12 +190,9 @@ export class MergePlotsNode extends ClassicPreset.Node {
   };
 
   label: string;
-  // Extensible-row keys are `p0`, `p1`… `nextInputId` keeps them unique across removals.
   nextInputId = 0;
   chartOptions: ChartOptions = {};
-  // The inline Options text (used when the Options socket isn't wired).
   stringLiterals: Record<string, string> = {};
-  // Either a merged figure or the #TYPE! refusal; the component renders whichever.
   cachedChart: ChartValue | SolError | null = null;
   width = 240;
   height = 240;
@@ -242,8 +200,6 @@ export class MergePlotsNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; valueKeys?: string[] }) {
     super("MergePlots");
     this.label = init?.label ?? "";
-    // Rebuild the EXACT plot rows on load/paste so saved cables realign; `valueKeys`
-    // carries every input key (the `options` string among them), so keep only plot rows.
     const plots = (init?.valueKeys ?? []).filter((k) => /^p\d+$/.test(k));
     if (plots.length) {
       for (const k of plots) this.addPlotWithKey(k);
@@ -261,7 +217,6 @@ export class MergePlotsNode extends ClassicPreset.Node {
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
   }
 
-  /** Every plot input key, in insertion order (excludes `options`). */
   plotKeys(): string[] {
     return Object.keys(this.inputs).filter((k) => /^p\d+$/.test(k));
   }
@@ -282,14 +237,12 @@ export class MergePlotsNode extends ClassicPreset.Node {
     let refusal: SolError | null = null;
     this.plotKeys().forEach((key, i) => {
       const cv = inputs[key]?.[0];
-      if (cv == null || !isChartValue(cv)) return; // empty row, or non-chart the socket wouldn't pass
+      if (cv == null || !isChartValue(cv)) return;
       if (!PLANAR_CHART_OPS.has(cv.op)) {
-        // The FIRST non-plot input refuses the whole merge, naming which one it is.
         refusal ??= solError("#TYPE!", `Plot ${i + 1} is a ${cv.op} chart, which has no x/y plane to overlay`);
         return;
       }
       const kind = cv.op as OverlaySeries["kind"];
-      // Styling inherited from the source chart's parsed options.
       const style = {
         color: cv.options?.color || undefined,
         markersize: cv.options?.markersize,
@@ -320,21 +273,19 @@ export class MergePlotsNode extends ClassicPreset.Node {
 
 // ─── Histogram ────────────────────────────────────────────────────────────────
 
-/** Count how many values fall in each of `k` equal-width bins over [min,max]. */
 export function histogramBins(vals: (number | null)[], k: number): number[] | SolError {
   const nums = vals.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
-  // Bins is a shape: 0, a negative or a non-number is a refusal, never a silent one bar.
   if (!Number.isFinite(k) || Math.floor(k) < 1) return solError("#DOMAIN!", "Bins must be 1 or more");
   const bins = clamp(Math.floor(k), 1, 100);
   if (nums.length === 0) return [];
   const min = iterMin(nums);
   const max = iterMax(nums);
   const counts = new Array<number>(bins).fill(0);
-  if (min === max) { counts[0] = nums.length; return counts; } // one spike
+  if (min === max) { counts[0] = nums.length; return counts; }
   const w = (max - min) / bins;
   for (const x of nums) {
     let idx = Math.floor((x - min) / w);
-    if (idx >= bins) idx = bins - 1; // closed last bin
+    if (idx >= bins) idx = bins - 1;
     if (idx < 0) idx = 0;
     counts[idx]++;
   }
@@ -350,17 +301,13 @@ export const HISTOGRAM_MODE_META = {
 const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>
   Array.isArray(raw) ? raw : raw == null ? [] : [raw];
 
-// One card, two modes ([[C60]] oneRunningNode-style combine): 1-D bins one list into columns;
-// 2-D pairs X/Y into a count grid drawn as a contour density plot. The `mode` selector
-// adds/removes the Y + Y-bins inputs; `bins` carries across as the X-bin count. The plain
-// count matrix is exposed via the WRAPTEXT-style HISTOGRAM2D formula, not a socket.
 export class HistogramNode extends ClassicPreset.Node {
   label: string;
   mode: HistogramMode;
   literals: Record<string, number> = { bins: 10, ybins: 10 };
   chartOptions: ChartOptions = {};
   stringLiterals: Record<string, string> = {};
-  cachedResult: number[] | null = null; // 1-D counts (null in 2-D)
+  cachedResult: number[] | null = null;
   cachedChart: ChartValue | null = null;
   width = 240;
   height = 240;
@@ -379,8 +326,6 @@ export class HistogramNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  /** Keys a switch to `next` would drop — the component prunes their cables BEFORE
-   *  `setMode` ([[D10]] onePrunePath). */
   keysDroppedByMode(next: HistogramMode): string[] {
     return next === "1d" ? ["y", "ybins"] : [];
   }
@@ -388,8 +333,7 @@ export class HistogramNode extends ClassicPreset.Node {
   setMode(next: HistogramMode): void {
     if (next === this.mode) return;
     this.mode = next;
-    // The `options` input trails the swap set, so drop and re-add it to keep the row order
-    // Values/X · bins · [Y · Y bins] · Options.
+    // Re-add Options so it stays the last row.
     if (this.inputs.options) this.removeInput("options");
     if (next === "2d") {
       if (!this.inputs.y) this.addInput("y", numListIn("Y"));
@@ -404,8 +348,7 @@ export class HistogramNode extends ClassicPreset.Node {
 
   data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue | SolError } {
     const xs = listOf(inputs.values?.[0] ?? null);
-    // Bins is a SHAPE, not styling — a wired blank empties the figure. Mirror to the card
-    // ONLY when unwired; writing a WIRED value into `literals` would overwrite and persist it.
+    // Mirror to the card only when unwired: a wired value written into `literals` would be saved.
     const kx = readInput(inputs.bins, this.literals.bins ?? 10);
     if (inputs.bins?.[0] === undefined && kx !== null) this.literals.bins = kx;
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
@@ -417,7 +360,6 @@ export class HistogramNode extends ClassicPreset.Node {
       if (inputs.ybins?.[0] === undefined && ky !== null) this.literals.ybins = ky;
       const h = kx === null || ky === null ? null : histogram2d(xs, ys, kx, ky);
       this.cachedResult = null;
-      // z[iy][ix] = count in x-bin ix, y-bin iy; edges are the axis coordinates.
       const z = h ? h.yEdges.map((_, j) => h.counts.map((col) => col[j])) : [];
       const payload: ContourPayload = { kind: "contour", xs: h?.xEdges ?? [], ys: h?.yEdges ?? [], z, levels: 10 };
       const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: this.chartOptions, title };
@@ -440,7 +382,6 @@ const DEFAULT_MERMAID = "graph TD\n  A[Start] --> B{Decision}\n  B -->|Yes| C[Do
 
 export class MermaidNode extends ClassicPreset.Node {
   label: string;
-  // The inline diagram source (used when the `source` socket isn't wired).
   stringLiterals: Record<string, string> = {};
   cachedSource = "";
   width = 260;
@@ -455,7 +396,6 @@ export class MermaidNode extends ClassicPreset.Node {
   }
 
   data(inputs: { source?: string[] }): { diagram: MermaidValue } {
-    // The diagram IS the source — a wired blank renders empty, not the card's text.
     const src = readInput(inputs.source, this.stringLiterals.source ?? "") ?? "";
     this.cachedSource = src;
     const diagram: MermaidValue = {
@@ -467,16 +407,8 @@ export class MermaidNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Gauge — a value on a fixed scale (Dial or Bar) ─────────────────────────────
-// One card, a style selector. DIAL reads Value as a fraction of 1 (0.75 → 75% on a
-// fixed 0→100% arc); BAR (the former Bullet graph) plots Value on a 0→Max track with a
-// Target tick. Emits a chart VALUE, not a pass-through, so a Report can embed the readout
-// (node-coverage records the contract).
+// ─── Gauge ─────────────────────────────────────────────────────────────────────
 export type GaugeStyle = "dial" | "bar";
-// Dial/Bar is an ARGUMENT (a view of the one "value on a scale" card), not an op:
-// nobody searches the Add menu for "dial" or "bar", and there is no formula surface.
-// So it is a `mode` selector picked with a SegToggle ([[C26]] opArgDistinct); `mode` is an
-// already-whitelisted init key, so nothing is added to the save format.
 export const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
   bar:  { label: "Bar" },
@@ -514,8 +446,6 @@ export class GaugeNode extends ClassicPreset.Node {
     this.addInput("options", strIn("Options"));
   }
 
-  /** The bar-only input keys a switch to `next` would remove — the component drops
-   *  their cables first ([[D10]] onePrunePath) before calling setOp. */
   keysDropped(next: GaugeStyle): string[] {
     return next === "dial" && this.mode === "bar" ? ["target", "max", "options"] : [];
   }
@@ -537,7 +467,6 @@ export class GaugeNode extends ClassicPreset.Node {
     let title: string;
     if (this.mode === "bar") {
       const target = readInput(inputs.target, this.literals.target ?? null);
-      // `max` is the track SCALE, so it keeps the card bound like a Slider; value/target are data.
       const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
       if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
       if (inputs.max?.[0] === undefined) this.literals.max = max;
@@ -577,7 +506,6 @@ export class KpiNode extends ClassicPreset.Node {
 
   data(inputs: { value?: number[]; prev?: number[]; options?: string[] }): { chart: ChartValue } {
     const value = readInput(inputs.value, this.literals.value ?? null);
-    // A wired blank `prev` shows NO comparison, never a compare against the card's number.
     const prev = readInput(inputs.prev, this.literals.prev ?? null);
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     if (inputs.prev?.[0] === undefined) this.literals.prev = prev ?? 0;
@@ -602,7 +530,6 @@ async function readFrameColumns(f: FrameInput | null): Promise<FrameColumn[]> {
   const fv = await readFrame(f);
   return isFrameValue(fv) ? fv.columns : [];
 }
-/** A column as display strings (a string column passes through; a date formats). */
 function colAsStrings(col: FrameColumn | undefined): string[] {
   if (!col) return [];
   return col.values.map((v) => {
@@ -610,8 +537,6 @@ function colAsStrings(col: FrameColumn | undefined): string[] {
     return c == null ? "" : String(c);
   });
 }
-/** A column coerced to numbers (numeric text parses); a blank, error or non-numeric cell is
- *  null — unknown, never 0 (value-semantics), so a figure leaves a gap instead of a zero. */
 function colAsNumbers(col: FrameColumn | undefined): (number | null)[] {
   if (!col) return [];
   return col.values.map((v) => {
@@ -625,8 +550,6 @@ const knownOnly = (xs: (number | null)[]): number[] => xs.filter((x): x is numbe
 
 // ─── Proportion ─────────────────────────────────────────────────────────────────
 
-// One card, a layout selector: TREEMAP nests each name/value as a rectangle sized by
-// value; WAFFLE fills a 10×10 grid by share. Both read a (label, value) frame — the
 export type ProportionLayout = "treemap" | "waffle";
 export const PROPORTION_OP_META = {
   treemap: { label: "Treemap" },
@@ -659,7 +582,6 @@ export class ProportionNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  // Sockets are identical for both layouts, so the switch only re-derives the figure.
   setOp(next: ProportionLayout): void {
     this.op = next;
   }
@@ -667,8 +589,7 @@ export class ProportionNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
-    // Waffle's single-column fallback is a harmless superset for the treemap too.
-    const values = colAsNumbers(cols[1] ?? cols[0]).map((x) => x ?? 0); // 0 draws nothing on a proportion
+    const values = colAsNumbers(cols[1] ?? cols[0]).map((x) => x ?? 0);
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: ProportionPayload = { kind: "proportion", layout: this.op, names, values };
     const chart: ChartValue = {
@@ -682,10 +603,6 @@ export class ProportionNode extends ClassicPreset.Node {
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
 
-/** The flows with every cycle-closing link removed, in first-edge order: a Sankey is a
- *  DAG (recharts' depth pass recurses forever on a loop). Blank, self and non-positive
- *  flows are skipped the way the figure skips them, so a loop through one of those never
- *  counts. `dropped` is how many links closed a cycle. */
 export function acyclicFlows(sources: string[], targets: string[], values: number[]): { sources: string[]; targets: string[]; values: number[]; dropped: number } {
   const out = { sources: [] as string[], targets: [] as string[], values: [] as number[], dropped: 0 };
   const adj = new Map<string, Set<string>>();
@@ -717,7 +634,6 @@ export class SankeyNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedPayload: SankeyPayload | null = null;
-  /** Flows dropped because they closed a loop (the card can say so). */
   droppedLoops = 0;
   width = 260;
   height = 220;
@@ -740,10 +656,8 @@ export class SankeyNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const raw = { sources: colAsStrings(cols[0]), targets: colAsStrings(cols[1]), values: colAsNumbers(cols[2]).map((x) => x ?? 0) }; // a blank flow carries nothing
+    const raw = { sources: colAsStrings(cols[0]), targets: colAsStrings(cols[1]), values: colAsNumbers(cols[2]).map((x) => x ?? 0) };
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    // A loop cannot be drawn; the flows that close one are dropped and the rest draw. When
-    // every real flow closed a loop there is nothing honest to draw.
     const { sources, targets, values, dropped } = acyclicFlows(raw.sources, raw.targets, raw.values);
     this.droppedLoops = dropped;
     const drawable = sources.some((s, i) => !!s && !!targets[i] && s !== targets[i] && values[i] > 0);
@@ -784,9 +698,6 @@ export class HeatmapCellNode extends ClassicPreset.Node {
 
 // ─── Surface (shaded 3-D plot) ──────────────────────────────────────────────────
 
-/** Normalize a Surface/Contour source to axes + heights via the shared gridAxes: a plain
- *  Z table plus optional Xs/Ys lists (unwired = the 1-based index). A figure shows nothing
- *  on a bad/blank axis, so a SolError or null from gridAxes collapses to an empty grid. */
 function surfaceAxes(zRaw: unknown, xsRaw: unknown, ysRaw: unknown): { xs: number[]; ys: number[]; z: (number | null)[][] } {
   const axes = gridAxes(zRaw, xsRaw, ysRaw);
   return axes != null && Array.isArray((axes as { z?: unknown }).z)
@@ -801,9 +712,6 @@ export const SURFACE_VIEW_OP_META = {
   contour: { label: "Flat", description: "The same table drawn flat: filled height bands with iso-lines." },
 } satisfies Record<SurfaceViewOp, { label: string; description: string }>;
 
-// ONE node, two views of one grid: the 3-D shaded surface and its flat
-// contour twin. The op swaps the view; Contour alone has the Levels input,
-// Surface alone the yaw/pitch literals (the component's D-pad).
 export class SurfaceNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     xs: "One X coordinate per column; unwired means 1, 2, 3…",
@@ -812,9 +720,7 @@ export class SurfaceNode extends ClassicPreset.Node {
 
   label: string;
   op: SurfaceViewOp;
-  // View angles (degrees) live in `literals` so they persist and the rotate buttons nudge them.
   literals: Record<string, number> = { yaw: 45, pitch: 45 };
-  // Typeable Xs / Ys: a CSV list on the card (the List Input mechanism), a cable wins.
   stringLiterals: Record<string, string> = { xs: "", ys: "" };
   cachedChart: ChartValue | null = null;
   width = 240;
@@ -838,8 +744,6 @@ export class SurfaceNode extends ClassicPreset.Node {
     this.height = this.op === "contour" ? 240 : 220;
   }
 
-  /** The op owns the Levels socket. Callers on a live graph prune its cables
-   *  BEFORE switching to the 3-D view ([[D10]] onePrunePath). */
   setOp(next: SurfaceViewOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -857,10 +761,9 @@ export class SurfaceNode extends ClassicPreset.Node {
     const ysRaw = inputs.ys === undefined ? undefined : (inputs.ys[0] ?? null);
     const { xs, ys, z } = surfaceAxes(inputs.z?.[0] ?? null, xsRaw, ysRaw);
     if (this.op === "contour") {
-      // Levels is a SHAPE, so a wired blank empties the figure rather than reusing the card's count.
       const levelsRaw = readInput(inputs.levels, this.literals.levels ?? 8);
       const levels = levelsRaw === null ? 0 : clamp(Math.round(levelsRaw), 2, 24);
-      // Mirror only when unwired — never clobber the typed literal with a wired value.
+      // Mirror only when unwired, so a wired value never overwrites the saved literal.
       if (inputs.levels?.[0] === undefined && levelsRaw !== null) this.literals.levels = levels;
       const payload: ContourPayload = { kind: "contour", xs, ys, z, levels };
       const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: {}, title: this.label || "Contour" };
@@ -878,14 +781,11 @@ export class SurfaceNode extends ClassicPreset.Node {
 }
 
 // ─── Column readers for the frame-fed figures ─────────────────────────────────
-/** A column's RAW numeric cells (dates stay serials — unlike colAsNumbers, which
- *  formats first and would turn a date into unparseable text). */
 function colAsRawNumbers(col: FrameColumn | undefined): (number | null)[] {
   if (!col) return [];
   return col.values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
 }
 
-/** Linear-interpolated quantile of a SORTED sample (Excel's PERCENTILE.INC). */
 export function quantileSorted(sorted: number[], p: number): number {
   if (sorted.length === 0) return NaN;
   const idx = (sorted.length - 1) * clamp(p, 0, 1);
@@ -925,7 +825,7 @@ export class WaterfallNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
-    const values = colAsNumbers(cols[1]); // a blank step is a gap the running total never crosses
+    const values = colAsNumbers(cols[1]);
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: WaterfallPayload = { kind: "waterfall", names, values, total: true };
     const chart: ChartValue = {
@@ -977,7 +877,6 @@ export class CandlestickNode extends ClassicPreset.Node {
       this.cachedChart = err;
       return { chart: err };
     }
-    // 5+ columns → col 0 is the date/label axis; exactly 4 → all four are OHLC.
     const hasDates = cols.length >= 5;
     const o = colAsNumbers(cols[hasDates ? 1 : 0]);
     const labels = hasDates ? colAsStrings(cols[0]) : o.map((_, i) => String(i + 1));
@@ -1000,9 +899,7 @@ export class CandlestickNode extends ClassicPreset.Node {
 }
 
 // ─── Boxplot ──────────────────────────────────────────────────────────────────
-// Received raw (like Chart) so a plain list doesn't widen into a 1-row frame.
 
-/** Five-number summary + outliers for one sample (Tukey 1.5·IQR whiskers). */
 export function boxplotStats(sample: (number | null)[]): { lo: number; q1: number; med: number; q3: number; hi: number; outliers: number[] } | null {
   const nums = sample.filter((v): v is number => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
   if (nums.length === 0) return null;
@@ -1097,7 +994,6 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    // The date column must stay SERIALS — colAsNumbers would format them into text first.
     const serials = colAsRawNumbers(cols[0]);
     const vals = colAsRawNumbers(cols[1]);
     const days: number[] = [], values: number[] = [];
@@ -1105,7 +1001,7 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
       const d = serials[i];
       if (d == null) continue;
       const val = vals[i];
-      if (val == null) continue; // a day without a value stays sunken, never a painted 0
+      if (val == null) continue;
       days.push(Math.floor(d));
       values.push(val);
     }
@@ -1127,7 +1023,6 @@ export { parseRecordLayout, recordImageSrc, type RecordPlacement };
 
 export type RecordOp = "card" | "gallery" | "board" | "list";
 
-// The card dropdown DERIVES from this table ([[C8]] declareOnce) — never hand-write a second list.
 export const RECORD_OP_META = {
   card:    { label: "Card" },
   gallery: { label: "Gallery" },
@@ -1135,17 +1030,14 @@ export const RECORD_OP_META = {
   list:    { label: "List" },
 } satisfies Record<RecordOp, { label: string }>;
 
-// The gallery size preset (`cardsize=s|m|l` option); the three sizes render in `chartCards`.
 function readCardSize(optStr: string | null): RecordSize | undefined {
   const m = optStr && /(?:^|;)\s*cardsize\s*=\s*([sml])\b/i.exec(optStr);
   return m ? (m[1].toLowerCase() as RecordSize) : undefined;
 }
-// The `clamp=on` option: line-clamp long values on gallery tiles (the popup still shows all).
 function readClamp(optStr: string | null): boolean {
   return !!optStr && /(?:^|;)\s*clamp\s*=\s*(on|true|yes|1)\b/i.test(optStr);
 }
 
-// Gallery/board draw at most this many cards; `payload.more` carries the rest.
 export const RECORD_CARD_CAP = 60;
 
 export class RecordNode extends ClassicPreset.Node {
@@ -1176,7 +1068,6 @@ export class RecordNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: RecordOp }) {
     super("Record");
     this.label = init?.label ?? "Record";
-    // Guard a stale op from an old save — fall back rather than crash.
     this.op = init?.op && init.op in RECORD_OP_META ? init.op : "card";
     this.addInput("frame", frameIn("Frame"));
     if (this.op === "card") this.addInput("row", numIn("Row"));
@@ -1186,8 +1077,6 @@ export class RecordNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  /** The op owns the Row and Group-by sockets. Callers on a live graph prune the
-   *  departing keys' cables BEFORE switching ([[D10]] onePrunePath). */
   setOp(next: RecordOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -1201,32 +1090,24 @@ export class RecordNode extends ClassicPreset.Node {
     const fv = await readFrame(inputs.frame?.[0] ?? null);
     const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
     const total = cols[0]?.values.length ?? 0;
-    // Row is which record to draw — a figure's datum: a wired blank or an
-    // out-of-range pick renders the boxes EMPTY, never an error out `chart`.
     let index = 0;
     if (this.op === "card") {
       const rowRaw = readInput(inputs.row, this.literals.row ?? 1);
       index = rowRaw === null ? 0 : Math.round(rowRaw);
       if (inputs.row?.[0] === undefined && total > 0) {
-        // Mirror the clamped pick only when unwired, so the pager and card agree.
         index = clamp(index, 1, total);
         this.literals.row = index;
       }
       if (index < 1 || index > total) index = 0;
     }
-    // Layout and Options are presentation: a wired blank means "none given" and
-    // must not reinstate the card's text (the ChartNode options contract).
     const layIn = readInput(inputs.layout, this.stringLiterals.layout ?? null);
     const layStr = typeof layIn === "string" ? layIn : null;
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
-    // Gallery tile size preset + value clamp (gallery only; other views ignore them).
     const size = readCardSize(optStr);
     const clampTiles = readClamp(optStr);
 
-    // The board's grouping column: a column reference, so a wired blank or an
-    // unmatched name draws nothing (never "one lane of everything").
     const byIn = this.op === "board" ? readInput(inputs.by, this.stringLiterals.by ?? "") : "";
     const byKey = typeof byIn === "string" ? byIn.trim().toLowerCase() : "";
     const byCol = this.op === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
@@ -1244,10 +1125,6 @@ export class RecordNode extends ClassicPreset.Node {
       return f;
     };
     const placed = layStr && layStr.trim() !== "" ? parseRecordLayout(layStr) : [];
-    // No layout → every column stacks (the board skips its own grouping column
-    // there — every card in a lane would repeat the lane's label). A layout
-    // stands on its own, so it can be drafted before the frame is wired
-    // (unmatched names keep their boxes).
     const stackCols = cols.filter((c) => !(this.op === "board" && c === byCol));
     const cardAt = (rowIdx: number | null): RecordField[] =>
       placed.length > 0
@@ -1335,7 +1212,6 @@ export class ChartBuilderNode extends ClassicPreset.Node {
   };
 
   label: string;
-  /** Shapes which option rows the card shows; serialization stays full-width. */
   target: ChartTargetId;
   literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = {};
@@ -1346,7 +1222,6 @@ export class ChartBuilderNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; target?: ChartTargetId }) {
     super("ChartBuilder");
     this.label = init?.label ?? "Chart Builder";
-    // Guard a stale target from an old save — fall back rather than crash.
     this.target = init?.target && init.target in CHART_BUILDER_TARGETS ? init.target : "column";
     this.addInput("title",     strIn("Title"));
     this.addInput("xlabel",    strIn("X label"));
@@ -1382,8 +1257,6 @@ export class ChartBuilderNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[]>) {
-    // Every field is PRESENTATION: a wired blank must NOT fall back to the card's value,
-    // or a blank cable silently reinstates styling the graph withheld.
     const str = (k: string) => readInput(inputs[k] as string[] | undefined, this.stringLiterals[k]) ?? undefined;
     const num = (k: string) => readInput(inputs[k] as number[] | undefined, this.literals[k]) ?? undefined;
     const out = serializeChartOptions({

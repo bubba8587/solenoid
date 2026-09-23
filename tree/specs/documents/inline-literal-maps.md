@@ -30,4 +30,28 @@ The `FLAT_CATALOG` sweep in `coerceInputs.test.ts` constructs every catalog entr
 
 ## Defaults are allowed
 
-A class that initializes a map with defaults, such as `literals = { rate: 0.05, … }`, is declaring an editable input with a starting value, which is exactly what the convention permits. A wildcard input row keeps its typed cell in exactly one of the two maps; the editor clears the other.
+A class that initializes a map with defaults, such as `literals = { rate: 0.05, … }`, is declaring an editable input with a starting value, which is exactly what the convention permits.
+
+## Which field a row edits
+
+An unwired input row's field is picked by its socket type, and the field decides which map it writes.
+
+In `InlineInputs` (the fixed rows of most cards):
+
+| Socket type | Field | Map |
+|---|---|---|
+| `number`, and `numlist` unless opted in | number field | `literals` |
+| `string`, `strcombo` | text field, or a column picker when the node declares that key as a Frame column picker | `stringLiterals` |
+| `strlist`, `datelist`, `logicallist`, an opted-in `numlist` | CSV field, with no quote marks, which would suggest one string | `stringLiterals` |
+| `any`, `anydata`, `trueany` on a node with `autoLiterals` | the auto field (below) | either |
+| anything else | none | none |
+
+A combo (`numlist`, `strcombo`) edits in place as a scalar; it becomes a list only when a cable brings one.
+
+In `ExtensibleInputs` (rows that can be added and removed), `string` and the list types `numlist`, `strlist`, `datelist`, `logicallist` get the text field, typed as CSV for a list. `anylist`, `anytable`, `table`, `frame`, `cube`, `logicalcombo`, `lambda` and `chart` rows are wire-only and show their row number, because a typed literal means nothing for them. A wildcard row is wire-only unless the node sets `autoLiterals`. Every other row gets the number field.
+
+## Wildcard slots
+
+A node opts its wildcard rows into typed literals with `autoLiterals` (`AutoLiteralHost`, `takesAutoLiteral`). The value selectors opt in, since their wildcard rows are value branches, and so do the Cube builders, whose rows are cells. A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The opt-in covers `any`, `anydata` and `trueany`; a list or a matrix still arrives only by wire.
+
+The auto field (`InlineAutoField`) holds a number or text. An entry that reads as a number (`Number(t)`, not `parseFloat`, so "12abc" is text) commits as a number into `literals`; anything else commits as text into `stringLiterals`, and the quote marks appear to show which landed, since a SWITCH case of `12` is not a case of `"12"`. The field keeps the number field's drag-to-scrub while it holds a number. Each commit deletes the key from both maps before writing one, so a wildcard slot lives in exactly one map and a reader never has to break a tie.

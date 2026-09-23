@@ -19,7 +19,6 @@ import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, 
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } from "./lookTokens";
 
-/** What Obsidian hands a property widget (read from the 1.13 source; not in the public API). */
 interface WidgetContext {
   app: App;
   key: string;
@@ -57,8 +56,6 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       columnTypes: readColumnTypes(stored.columnTypes),
       look: stored.look === true,
     };
-    // The app's stores keep nothing here (their `localStorage` is memory in this build): the
-    // vault's own data decides the palette and the accent.
     paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
     setAccentSlot(this.accent);
 
@@ -69,7 +66,6 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.renderPopups();
 
     this.registerEvent(this.app.workspace.on("css-change", syncTheme));
-    // A tab dragged out to a window of its own carries its chips with it.
     this.registerEvent(this.app.workspace.on("window-open", () => window.setTimeout(() => this.sweep(), 300)));
     this.registerEvent(this.app.workspace.on("layout-change", () => this.sweep()));
     this.registerEvent(this.app.workspace.on("window-open", (win) => this.wearLook(win.doc)));
@@ -89,26 +85,21 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     removePopupLayer();
   }
 
-  /** Every Obsidian window's document: the main one and each popped-out note. */
   private windows(): Set<Document> {
     const docs = new Set<Document>([document]);
     this.app.workspace.iterateAllLeaves((leaf) => docs.add(leaf.view.containerEl.ownerDocument));
     return docs;
   }
 
-  /** The Solenoid look is three classes on the body: the look, which every rule of it hangs
-   *  under, and the palette and accent, which pick its tokens. */
   wearLook(doc?: Document): void {
     const wear = [LOOK_CLASS, paletteClass(paletteStore.activeBase()), accentClass(this.accent)];
     for (const d of doc ? [doc] : this.windows()) {
       this.shedLook(d, wear);
-      // One class per call: Obsidian's `toggleClass` tests `instanceof Array`, which an array
-      // made in this window fails in another (the settings window, a popped-out note).
+      // One class per call: Obsidian's toggleClass tests instanceof Array, which an array from another window fails.
       for (const cls of wear) d.body.toggleClass(cls, this.look);
     }
   }
 
-  /** Every class of ours but `keep`, a stray one included. */
   private shedLook(doc: Document, keep: string[] = []): void {
     for (const cls of Array.from(doc.body.classList)) {
       if (cls.startsWith("solenoid-") && !keep.includes(cls)) doc.body.removeClass(cls);
@@ -125,13 +116,11 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     await this.saveData(this.data);
   }
 
-  /** A class swap on the body changes what the CSS says, and the graph view (a canvas) reads
-   *  its colors only when Obsidian says the CSS changed. */
+  /** The graph view is a canvas that re-reads its colors only when Obsidian says the CSS changed. */
   private announceCss(): void {
     this.app.workspace.trigger("css-change");
   }
 
-  /** The one popup layer, rendered in whichever window it currently lives in. */
   private renderPopups(): void {
     this.popups?.unmount();
     this.popups = createRoot(popupLayerRoot());
@@ -157,13 +146,11 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     await this.saveData(this.data);
   }
 
-  /** A frame property's picked column types: by property name, vault-wide, as Obsidian types a property. */
   private async setColumnTypes(key: string, types: ColumnTypes): Promise<void> {
     this.data.columnTypes = { ...this.data.columnTypes, [key]: { ...this.data.columnTypes?.[key], ...types } };
     await this.saveData(this.data);
   }
 
-  /** Mount app UI in its own shadow host under `el`. */
   mount(el: HTMLElement, className: string, node: ReactNode): ShadowRoot {
     this.sweep();
     const { host, root: shadow } = createShadowHost("span", className, el.ownerDocument);
@@ -175,9 +162,6 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     return shadow;
   }
 
-  /** Obsidian empties a container to re-render; what it dropped unmounts here. It also builds a
-   *  property row off-document and attaches it after `render` returns, so a host only counts as
-   *  dropped once it has been seen attached. */
   private sweep(): void {
     for (const m of this.mounts) {
       if (m.host.isConnected) { m.attached = true; adoptSheets(m.host); }
@@ -185,8 +169,6 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     }
   }
 
-  /** The note's own pane when it sits in the center area; else the center area (a property
-   *  shown in a sidebar would otherwise size its editor to the sidebar). */
   private paneOf(host: Element): HTMLElement | null {
     // A popped-out note has a center area of its own, in its own document.
     const center = host.ownerDocument.querySelector<HTMLElement>(".mod-root");
@@ -222,7 +204,6 @@ export default class SolenoidPropertiesPlugin extends Plugin {
             onColumnTypes={(types) => void this.setColumnTypes(ctx.key, types)}
           />);
         shadow.host.addEventListener("pointerdown", () => {
-          // The editor opens in the chip's own window: a popped-out note keeps its popup.
           if (homePopupLayer(shadow.host.ownerDocument)) this.renderPopups();
           openPopupsOver(this.paneOf(shadow.host));
         }, true);
@@ -232,8 +213,6 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   }
 }
 
-/** A scalar property is a plain field in Obsidian's own style: Enter or blur commits, Escape
- *  reverts, and text the family cannot read is marked and never written ([[C95]] commitOnEnter). */
 function scalarField(el: HTMLElement, kind: PropertyKind, value: unknown, ctx: WidgetContext): { focus(): void } {
   const input = el.createEl("input", { cls: "metadata-input metadata-input-text solenoid-scalar", type: "text" });
   let settled = scalarText(kind, value);
@@ -261,15 +240,12 @@ class SolenoidSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
-  /** The three rows, each drawn by hand: the palette row mounts the app's swatches. */
   private rows(): { name: string; render: (setting: Setting) => void }[] {
     return [
       {
         name: "Color palette",
         render: (setting) => {
-          // Settings is a window of its own.
           this.plugin.wearLook(setting.settingEl.ownerDocument);
-          // The app's Settings row, with the toolbar's accent picker stacked under the dropdown.
           setting.addDropdown((dropdown) => {
             for (const name of paletteStore.names()) dropdown.addOption(name, name);
             dropdown.setValue(paletteStore.activeBase());

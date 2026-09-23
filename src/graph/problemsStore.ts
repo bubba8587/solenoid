@@ -1,6 +1,4 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C39]] effectsEdgeTriggered
-// Log of tagged SolErrors + fuzz findings; the error sink fires per relay node, so
-// entries are origin-filtered and edge-detected.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -15,8 +13,6 @@ export interface ProblemEntry {
   message: string;
   origin: ProblemOrigin;
   time: number;
-  /** Fuzz only — seeds a Clamp on this input; `min`/`max` are the sweep's observed-safe
-   *  bounds, absent when it found no usable range. */
   suggestion?: { socketKey: string; label: string; min?: number; max?: number };
 }
 
@@ -29,25 +25,20 @@ const { notify, subscribe, version } = createNotifier();
 export const problemsStore = {
   list: (): readonly ProblemEntry[] => _entries,
 
-  /** Logs only at the error's TRUE ORIGIN — the sink fires for every relay node, so
-   *  one failure wired to N downstream nodes would otherwise log N rows. */
   reportLive(nodeId: string, err: SolError): void {
-    // Suppressed during a rebuild ([[C39]] effectsEdgeTriggered); the post-load settle runs outside it.
     if (isGraphRebuilding()) return;
     if (err.origin && err.origin.nodeId !== nodeId) return;
-    if (_lastLiveCode.get(nodeId) === err.code) return; // same failure, already logged
+    if (_lastLiveCode.get(nodeId) === err.code) return;
     _lastLiveCode.set(nodeId, err.code);
     const entry: ProblemEntry = { id: ++_seq, nodeId, code: err.code, message: err.message, origin: "compute", time: Date.now() };
     _entries = [entry, ..._entries].slice(0, MAX_ENTRIES);
     notify();
   },
 
-  /** Clears edge-detect state, not history, so a later RELAPSE of the same code logs. */
   clearLive(nodeId: string): void {
     _lastLiveCode.delete(nodeId);
   },
 
-  /** Wholesale replace: a fresh run supersedes the last rather than accumulating. */
   setFuzzFindings(findings: ReadonlyArray<Omit<ProblemEntry, "id" | "time" | "origin">>): void {
     const fresh: ProblemEntry[] = findings.map((f) => ({ ...f, id: ++_seq, time: Date.now(), origin: "fuzz" as const }));
     _entries = [...fresh, ..._entries.filter((e) => e.origin !== "fuzz")].slice(0, MAX_ENTRIES);
@@ -86,7 +77,6 @@ registerErrorSink((nodeId, err) => {
 registerNodeForget((nodeId) => problemsStore.removeForNode(nodeId));
 registerNodeForgetAll(() => problemsStore.clear());
 
-// Panel open state, lifted so the StatusBar badge can force the panel open.
 let _panelOpen = false;
 const panelNotifier = createNotifier();
 export const problemsPanelUi = {

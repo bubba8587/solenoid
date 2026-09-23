@@ -27,8 +27,7 @@ import { nodeDisplayName } from "../catalogUtils";
 import { dropInputCables } from "./cablePrune";
 import { IANA_ZONES } from "../timeZone";
 
-// Date nodes never format their own serials — ValueDisplay does it for any date-typed
-// output socket, so scalars and lists format consistently.
+// Date nodes never format their own serials: ValueDisplay does it for any date-typed output socket.
 
 const TODAY_NOW_OPS = (Object.keys(TODAY_NOW_OP_META) as TodayNowOp[]).map(op => ({
   value: op, label: TODAY_NOW_OP_META[op].label,
@@ -150,7 +149,7 @@ export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
     if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
       await dropInputCables(data.id, ["basis"]);
     }
-    setOp(next); // sets data.op + reconciles + recomputes (useNodeField)
+    setOp(next);
     setLabel(DATE_DIFF_OP_META[next].label);
     if (data.syncBasisInput()) await getActiveView()?.rerenderNode(data.id);
   }

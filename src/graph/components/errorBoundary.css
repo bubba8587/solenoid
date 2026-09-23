@@ -1,6 +1,4 @@
-/* Error-boundary surfaces. Deliberately plain: this renders when the app is
-   already broken, so it must not depend on anything clever. No gradients, no
-   faux-3D (DESIGN.md); the red is state, not decoration (Quiet Accent Rule). */
+/* Deliberately plain: this renders when the app is already broken, so it must not depend on anything clever. */
 
 .solenoid-errbound {
   font-family: inherit;
@@ -10,7 +8,6 @@
   border-radius: 6px;
 }
 
-/* Full-root failure: centered, scrollable, and readable on a phone. */
 .solenoid-errbound--app {
   position: fixed;
   inset: 24px;
@@ -43,8 +40,7 @@
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
-  /* Selectable: the app sets user-select:none broadly, and the whole point of
-     this panel is copying the text out. */
+  /* The app sets user-select none broadly, and this panel exists to copy the text out. */
   user-select: text;
   background: var(--canvas-bg, #111);
   border: 1px solid var(--panel-border, #333);
@@ -56,7 +52,6 @@
   gap: 8px;
 }
 
-/* One broken card, on the canvas, at node size. */
 .solenoid-errbound--node {
   display: flex;
   flex-direction: column;

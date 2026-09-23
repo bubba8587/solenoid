@@ -11,9 +11,7 @@ type PillNode = {
   inputs: Record<string, { socket: ClassicPreset.Socket } | undefined>;
 };
 
-/** Collapsed-node aggregate for ≥2 inputs: the sockets stay functional but hidden,
- *  stacked at one point behind a single pill the cables converge on. The stacked
- *  dot flashes are suppressed in CSS, so the pill draws the highlight instead. */
+/** The sockets stay functional but hidden, stacked behind one pill; their dot flashes are suppressed in CSS, so the pill draws the highlight. */
 export function CollapsedInputPill({
   node,
   emit,

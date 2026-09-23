@@ -1,9 +1,5 @@
 // [[B10]] reactFlowView, [[C43]] oneFlowSurface
-// The chrome → surface command slots (tree/specs/canvas/react-flow-surface-contract.md): the
-// mounted FlowSurface registers the implementation, the composite drill-in swaps
-// slots while it is open. Compute lives in process.ts; this is only routing.
 
-// Node and cable selections are mutually exclusive.
 let _unselectAllNodes: () => void = () => {};
 
 export function setUnselectAllNodes(fn: () => void) {
@@ -14,7 +10,6 @@ export function unselectAllNodes() {
   _unselectAllNodes();
 }
 
-// `autoArrange({ groupId })` lays out just that group's members.
 let _autoArrange: (opts?: { groupId?: string }) => Promise<void> = async () => {};
 
 export function setAutoArrange(fn: (opts?: { groupId?: string }) => Promise<void>) {
@@ -25,7 +20,6 @@ export function autoArrange(opts?: { groupId?: string; skipConfirm?: boolean }) 
   return _autoArrange(opts);
 }
 
-// One-shot graph cleanup: tidy groups, collapse them, tidy the top level, fit view.
 let _cleanup: () => Promise<void> = async () => {};
 
 export function setCleanup(fn: () => Promise<void>) {
@@ -36,7 +30,6 @@ export function cleanup() {
   return _cleanup();
 }
 
-// The same path Delete/Backspace takes, so keyboard-less chrome deletes identically.
 let _deleteSelected: () => Promise<void> = async () => {};
 
 export function setDeleteSelected(fn: () => Promise<void>) {
@@ -47,7 +40,6 @@ export function deleteSelected() {
   return _deleteSelected();
 }
 
-// Called when a host node resizes so docked Format Controllers follow their socket.
 let _repositionDocked: (hostId: string) => void = () => {};
 
 export function setRepositionDocked(fn: (hostId: string) => void) {
@@ -68,8 +60,6 @@ export function selectNode(id: string, accumulate: boolean) {
   _selectNode(id, accumulate);
 }
 
-/** Point Tidy / Cleanup at a substitute surface (the composite drill-in) while it is
- *  open; the returned restorer hands them back. */
 export function swapArrangeSlots(fns: { autoArrange: (opts?: { groupId?: string }) => Promise<void>; cleanup: () => Promise<void> }): () => void {
   const prevArrange = _autoArrange;
   const prevCleanup = _cleanup;
@@ -81,25 +71,18 @@ export function swapArrangeSlots(fns: { autoArrange: (opts?: { groupId?: string 
   };
 }
 
-/** Point the docked-FC reposition at a substitute surface (the composite drill-in) while
- *  it is open; the returned restorer hands it back. */
 export function swapRepositionDockedSlot(fn: (hostId: string) => void): () => void {
   const prev = _repositionDocked;
   _repositionDocked = fn;
   return () => { _repositionDocked = prev; };
 }
 
-/** Point the delete verb (the keyboard-less chrome button; the Delete KEY is already
- *  per-surface through RF's onBeforeDelete) at a substitute surface while it is open;
- *  the returned restorer hands it back. */
 export function swapDeleteSlot(fn: () => Promise<void>): () => void {
   const prev = _deleteSelected;
   _deleteSelected = fn;
   return () => { _deleteSelected = prev; };
 }
 
-/** Point the selection verbs at a substitute surface (the composite drill-in) while it is
- *  open; the returned restorer hands them back to the main canvas. */
 export function swapSelectionSlots(fns: {
   selectNode: (id: string, accumulate: boolean) => void;
   unselectAllNodes: () => void;
@@ -114,7 +97,7 @@ export function swapSelectionSlots(fns: {
   };
 }
 
-// MUST be called after every document load/rebuild, or Ctrl+Z unwinds the LOAD itself.
+// Must run after every document load or rebuild, or Ctrl+Z unwinds the load itself.
 let _clearHistory: () => void = () => {};
 
 export function setClearHistory(fn: () => void) {

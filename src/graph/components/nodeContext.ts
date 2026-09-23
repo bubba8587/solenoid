@@ -1,9 +1,7 @@
 // [[C77]] compositeIsSubgraph
 import { createContext, useContext } from "react";
 
-// Null outside a NodeShell — the intended "no Pin button there" behavior. Kept out of
-// nodeKit because nodeKit imports the chips, and that cycle would be live at eval.
+// Null outside a NodeShell (no Pin button there); kept out of nodeKit, which imports the chips, or the cycle is live at eval.
 export const NodeFormatContext = createContext<string | null>(null);
 
-/** The host node id for the subtree, or null outside a NodeShell. */
 export const useHostNodeId = (): string | null => useContext(NodeFormatContext);

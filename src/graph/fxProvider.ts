@@ -1,15 +1,12 @@
 // [[C51]] formulaNaming
-// Frankfurter (ECB reference rates, keyless + CORS-open, ~30 currencies, updated once
-// per business day). The URL build + PARSE are pure and fixture-tested (widget rule 5);
-// the node owns the fetch/cache and authors the target-currency unit on its output.
+// Frankfurter (ECB reference rates, keyless, CORS-open). URL builds and parses are pure; the node owns fetch and cache.
 import { type Unit } from "./dimension";
 import { registerDisplayUnits } from "./unitBridge";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
 export interface Currency { code: string; name: string; }
 
-// Frankfurter's /currencies (captured 2026-09-06) — the bundled picker list; a fetch
-// would spend a call on a set that turns over about never.
+// A bundled copy of Frankfurter's /currencies, so the picker spends no call on a list that almost never changes.
 const CURRENCY_TSV = `AUD Australian Dollar
 BRL Brazilian Real
 CAD Canadian Dollar
@@ -46,14 +43,11 @@ export const FX_CURRENCIES: Currency[] = CURRENCY_TSV.trim().split("\n").map((li
   return { code: line.slice(0, i), name: line.slice(i + 1) };
 });
 
-// Register every code as a currency-dimension display unit, so applyFcUnit(value, code)
-// authors a tagged cell AND the display id resolves at render — the same requirement
-// Convert unit ids carry (unitFlow: an unregistered author id falls back to the base-SI
-// symbol). usd/eur/gbp/jpy already ship in unitBridge; re-registering is harmless.
+// Registered as currency display units so an authored code resolves at render; an unregistered id would fall back to
+// the base-SI symbol ([[D40]] unitOnValue).
 const CURRENCY_UNIT: Unit = { dim: { currency: 1 }, scale: 1 };
 registerDisplayUnits(Object.fromEntries(FX_CURRENCIES.map((c) => [c.code.toLowerCase(), CURRENCY_UNIT])));
 
-/** The latest-rate endpoint for one From→To pair. */
 export function fxLatestUrl(from: string, to: string): string {
   const f = encodeURIComponent(from.trim().toUpperCase());
   const t = encodeURIComponent(to.trim().toUpperCase());
@@ -69,8 +63,7 @@ export interface FxRate {
   rate: number | null;
 }
 
-/** Parse the latest-rate response, pulling out the `to` rate. A malformed body → a null
- *  rate. Frankfurter's date is machine ISO (YYYY-MM-DD), never ambiguous. */
+/** A malformed body gives a null rate. */
 export function parseFxRate(text: string, to: string): FxRate {
   let data: unknown;
   try { data = JSON.parse(text); } catch { return { date: "", serial: NaN, rate: null }; }
@@ -80,20 +73,15 @@ export function parseFxRate(text: string, to: string): FxRate {
   return { date, serial: date ? parseDateToSerial(date) : NaN, rate: typeof r === "number" ? r : null };
 }
 
-/** The time-series endpoint for one From→To pair over an inclusive date range (ISO
- *  YYYY-MM-DD). Frankfurter: `/v1/{start}..{end}?base=X&symbols=Y`. */
 export function fxRangeUrl(from: string, to: string, start: string, end: string): string {
   const f = encodeURIComponent(from.trim().toUpperCase());
   const t = encodeURIComponent(to.trim().toUpperCase());
   return `https://api.frankfurter.dev/v1/${start}..${end}?base=${f}&symbols=${t}`;
 }
 
-/** One day of the time series. */
 export interface FxPoint { date: string; serial: number; rate: number; }
 
-/** Parse the time-series response into rows sorted by date, pulling each day's `to`
- *  rate. Days without the rate (weekends/holidays have no entry) and a malformed body
- *  yield an empty run rather than gaps of null. */
+/** Sorted by date; days with no rate (weekends, holidays) and a malformed body give no rows, never null gaps. */
 export function parseFxSeries(text: string, to: string): FxPoint[] {
   let data: unknown;
   try { data = JSON.parse(text); } catch { return []; }

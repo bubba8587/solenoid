@@ -12,8 +12,6 @@ const isOnValue = (s: string | undefined) => {
   return v === "on" || v === "true" || v === "1" || v === "yes";
 };
 
-/** A checkbox writing "on"/"off" into the options string, still a wireable input
- *  (a cable replaces the checkbox with its source). */
 function ToggleInputRow({ node, emit, socketKey, label }: {
   node: ShellNode & { stringLiterals: Record<string, string> };
   emit: Emit;
@@ -51,9 +49,6 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
   );
 }
 
-/** A wireable <select> writing its value into the options string (a cable replaces it with
- *  its source). `clearValue` is stored as "" so an untouched default doesn't clutter the
- *  serialized string. */
 function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
   node: ShellNode & { stringLiterals: Record<string, string> };
   emit: Emit;
@@ -123,8 +118,6 @@ const SELECT_KEYS: readonly {
       { value: "year", label: "Years" },
     ],
   },
-  // The Gantt figure's remaining view keys. The first option of each is the figure's own
-  // default and stores as "" (clearValue), so an untouched row adds nothing to the string.
   {
     key: "tiers", label: "Header rows", clearValue: "2",
     options: [{ value: "2", label: "Two rows" }, { value: "1", label: "One row" }],
@@ -152,19 +145,12 @@ const SELECT_KEYS: readonly {
 ];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 
-/** The chart-type dropdown shapes the form, but a WIRED or valued row stays
- *  visible (dimmed) so switching type never hides live state — and every set field
- *  serializes, so one builder can feed several chart types. */
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;
   const [target, setTarget] = useNodeField(data, "target");
   const connected = useConnectedInputs(data.id);
   const spec = CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column;
-  // The Gantt target's offered set narrows by its layout — the month calendar reads far
-  // fewer keys than the timeline. A layout change alters the serialized output, so the
-  // node re-renders and the form reshapes without any extra subscription.
   const accepted = new Set<string>(chartBuilderKeys(target, data.stringLiterals["layout"]));
-  // Wired or valued — stays on screen even when inert.
   const live = (k: ChartBuilderKey) =>
     connected.has(k) || (data.stringLiterals[k] ?? "") !== "" || data.literals[k] !== undefined;
   const acc = (keys: readonly ChartBuilderKey[]) => keys.filter((k) => accepted.has(k));

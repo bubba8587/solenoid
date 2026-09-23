@@ -1,11 +1,7 @@
-// Run with: npm run validate-graph <graph.txt|graph.json>
-// The strict validating reader as a CLI — the pre-apply gate for generated or
-// hand-written graphs (backlog "AI command palette"; the module is
-// src/graph/graphValidate.ts). Accepts either surface of the same document:
-// a text-form file (the "Name: Type key=... in<-Node.out" grammar) or a saved
-// JSON graph. Prints every issue with its line anchor and exits 1 if any —
-// silence + exit 0 means the permissive loader would apply this file with no
-// silent repairs and the live editor would accept every cable.
+// The strict validating reader (src/graph/graphValidate.ts) as a CLI, for a text-form or JSON graph.
+// Prints every issue with its line anchor and exits 1 if any; silence and exit 0 mean the loader would
+// apply the file with no silent repairs and the editor would accept every cable.
+//   npm run validate-graph <graph.txt|graph.json>
 
 import { readFileSync } from "node:fs";
 import { validateText, validateGraph, formatIssues, hardIssues } from "../src/graph/graphValidate";

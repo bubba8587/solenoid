@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages, [[C71]] noBarEditing, [[B14]] oneDesignSystem, [[C62]] paletteAllOrNone, [[C94]] formatFamilyGates
-// The figure's stylesheet: every color a design token (var(--…) resolves in inline SVG); type on
-// DESIGN.md's rungs in em of the root (12px × fontScale), so the text scale moves labels with the rows.
 
 export const ganttStyles = `
 .solenoid-gantt {

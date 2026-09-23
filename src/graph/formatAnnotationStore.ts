@@ -1,5 +1,4 @@
 // [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation, [[C40]] storesRegisterForget
-// Format Controller annotations: nodeId::socketKey → { format, unit } (tree/specs/values/format-model.md).
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { extremeSci } from "./components/format";
@@ -11,28 +10,25 @@ import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 export type FormatStyle =
   | "auto"
-  | "decimal"      // flexible: N places or N sig figs (decimalDigits/decimalMode)
-  | "integer"      // 1,235
-  | "percent"      // flexible: N places or N sig figs (decimalDigits/decimalMode)
-  | "fraction"     // 1/3
-  | "fraction_adv" // π/2, 3π/2, e/4 … (rational multiples of constants)
-  | "scientific"   // 1.23e+4
-  // currency is a UNIT, not a format ([[D47]] noMixCurrencies).
+  | "decimal"
+  | "integer"
+  | "percent"
+  | "fraction"
+  | "fraction_adv"
+  | "scientific"
   | "custom"
-  // Date styles — applied to a date serial via formatDateSerial.
-  | "date_dmy"     // 03-Jun-2026 (the app default)
-  | "date_iso"     // 2026-06-03
-  | "date_us"      // 6/3/2026
-  | "date_long"    // June 3, 2026
-  | "date_med"     // Jun 3, 2026
-  | "date_dow"     // Wed, Jun 3, 2026
-  | "time_24"      // 14:30
-  | "time_12"      // 2:30 PM
-  | "datetime"     // 2026-06-03 14:30
+  | "date_dmy"
+  | "date_iso"
+  | "date_us"
+  | "date_long"
+  | "date_med"
+  | "date_dow"
+  | "time_24"
+  | "time_12"
+  | "datetime"
   | "date_custom";
 
-// The `& {}` keeps the built-in union members in editor autocomplete while still
-// accepting any string (pack formats are registered at runtime).
+// `& {}` keeps the built-in members in autocomplete while accepting runtime pack format ids.
 export type FormatStyleId = FormatStyle | (string & {});
 
 export const FORMAT_STYLE_LABELS: Record<FormatStyle, string> = {
@@ -84,9 +80,6 @@ export function isDateStyle(style: FormatStyleId): boolean {
   return style.startsWith("date_") || style.startsWith("time_") || style === "datetime";
 }
 
-/** The date pattern a date-style annotation renders with, or null when the annotation is not a
- *  date style. The frame/cube cell renderers read it so a column's `format` changes its date
- *  cells (e.g. a Minutes-mode Schedule stamps `DD-MMM-YYYY HH:mm`). */
 export function dateAnnotationPattern(ann: FormatAnnotation): string | null {
   if (!isDateStyle(ann.format)) return null;
   return ann.format === "date_custom"
@@ -96,7 +89,6 @@ export function dateAnnotationPattern(ann: FormatAnnotation): string | null {
 
 export type DecimalMode = "places" | "sigfigs";
 
-// The ONE precision resolver ([[C94]] formatFamilyGates). Clamps: places 0–20, sig figs 1–21.
 function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode, useGrouping = true): string {
   if (decimalMode === "sigfigs") {
     const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
@@ -122,7 +114,6 @@ export function applyFormatStyle(
     case "fraction":     return toFraction(n);
     case "fraction_adv": return toFractionAdvanced(n);
     case "scientific": {
-      // Precision row: places d → d mantissa fraction digits; s sig figs → toExponential(s − 1).
       const d = decimalMode === "sigfigs"
         ? Math.max(0, Math.min(20, Math.round(decimalDigits) - 1))
         : Math.max(0, Math.min(20, Math.round(decimalDigits)));
@@ -130,7 +121,6 @@ export function applyFormatStyle(
     }
     case "custom":       return applyCustomPattern(n, customPattern ?? "0.00");
     default: {
-      // Not built-in — maybe a pack format (registered even for an inactive pack).
       const pf = _packFormats.get(style);
       return pf ? pf.apply(n) : autoFormat(n);
     }
@@ -138,7 +128,7 @@ export function applyFormatStyle(
 }
 
 function autoFormat(n: number): string {
-  const sci = extremeSci(n); // shared forced-scientific rule (format.ts)
+  const sci = extremeSci(n);
   if (sci !== null) return sci;
   if (Number.isInteger(n)) return n.toString();
   const s = parseFloat(n.toPrecision(6)).toString();
@@ -153,18 +143,14 @@ function toFraction(n: number, maxDen = 99): string {
   const whole = Math.floor(abs);
   const frac = abs - whole;
   if (frac < 1e-12) return `${neg ? "-" : ""}${whole}`;
-  // Best rational for the fractional part via continued-fraction convergents.
   const { num, den } = cfConvergent(frac, maxDen);
-  // Only render a fraction when it matches to high precision; otherwise show a decimal
-  // rather than coercing the value into an ugly approximation.
   if (!den || Math.abs(frac - num / den) > 1e-9) return autoFormat(n);
   const sign = neg ? "-" : "";
   return whole > 0 ? `${sign}${whole} ${num}/${den}` : `${sign}${num}/${den}`;
 }
 
-/** Best rational p/q ≈ x with q ≤ maxDen, via continued-fraction convergents. */
 function cfConvergent(x: number, maxDen: number): { num: number; den: number } {
-  let h0 = 0, h1 = 1, k0 = 1, k1 = 0; // numerator/denominator recurrences
+  let h0 = 0, h1 = 1, k0 = 1, k1 = 0;
   let b = x;
   for (let i = 0; i < 40; i++) {
     const a = Math.floor(b);
@@ -192,8 +178,8 @@ const FRACTION_CONSTANTS: ReadonlyArray<readonly [string, number]> = [
 function formatConstFraction(num: number, den: number, sym: string): string {
   const neg = num < 0;
   const p = Math.abs(num);
-  const top = `${p === 1 ? "" : p}${sym}`;          // "π", "3π"
-  const body = den === 1 ? top : `${top}/${den}`;    // "π/2", "3π/2", "2π"
+  const top = `${p === 1 ? "" : p}${sym}`;
+  const body = den === 1 ? top : `${top}/${den}`;
   return (neg ? "-" : "") + body;
 }
 
@@ -201,7 +187,7 @@ function toFractionAdvanced(n: number): string {
   if (!Number.isFinite(n)) return String(n);
   if (Math.abs(n) < 1e-12) return "0";
   const maxDen = 36;
-  const relTol = 1e-6; // catches ~6-significant-figure inputs like 1.570796 → π/2
+  const relTol = 1e-6;
   let best: { num: number; den: number; sym: string } | null = null;
   for (const [sym, c] of FRACTION_CONSTANTS) {
     const q = n / c;
@@ -209,7 +195,6 @@ function toFractionAdvanced(n: number): string {
     if (!den || num === 0) continue;
     const approx = Math.sign(q) * (num / den) * c;
     const err = Math.abs(approx - n) / Math.abs(n);
-    // Prefer the simplest (smallest-denominator) hit; arbitrary numbers won't converge.
     if (err < relTol && (!best || den < best.den)) {
       best = { num: Math.sign(q) * num, den, sym };
     }
@@ -218,7 +203,6 @@ function toFractionAdvanced(n: number): string {
 }
 
 function applyCustomPattern(n: number, pattern: string): string {
-  // Minimal Excel-ish custom number format: 0, #, ., comma grouping.
   const dp = pattern.match(/\.([0#]+)/)?.[1].length ?? 0;
   const useGrouping = pattern.includes(",");
   return n.toLocaleString(APP_LOCALE, {
@@ -244,18 +228,16 @@ export type UnitGroup =
 
 export type UnitAnnotation = {
   id: string;
-  label: string;     // display affix e.g. "°C", "$"
+  label: string;
   group: UnitGroup;
-  prefix?: boolean;  // render before the number (currencies: "$1,234")
+  prefix?: boolean;
 };
 
 export const UNIT_ANNOTATIONS: UnitAnnotation[] = [
   { id: "none",  label: "",      group: "none" },
-  // Angle
   { id: "deg",   label: "°",     group: "angle" },
   { id: "rad",   label: " rad",  group: "angle" },
   { id: "grad",  label: " grad", group: "angle" },
-  // Length
   { id: "m",     label: " m",    group: "length" },
   { id: "km",    label: " km",   group: "length" },
   { id: "cm",    label: " cm",   group: "length" },
@@ -263,49 +245,40 @@ export const UNIT_ANNOTATIONS: UnitAnnotation[] = [
   { id: "in",    label: "\"",    group: "length" },
   { id: "ft",    label: "'",     group: "length" },
   { id: "mi",    label: " mi",   group: "length" },
-  // Mass
   { id: "kg",    label: " kg",   group: "mass" },
   { id: "g",     label: " g",    group: "mass" },
   { id: "mg",    label: " mg",   group: "mass" },
   { id: "lb",    label: " lb",   group: "mass" },
   { id: "oz",    label: " oz",   group: "mass" },
-  // Temperature
   { id: "degC",  label: " °C",   group: "temperature" },
   { id: "degF",  label: " °F",   group: "temperature" },
   { id: "K",     label: " K",    group: "temperature" },
-  // Time
   { id: "s",     label: " s",    group: "time" },
   { id: "ms",    label: " ms",   group: "time" },
   { id: "min",   label: " min",  group: "time" },
   { id: "hr",    label: " hr",   group: "time" },
   { id: "day",   label: " day",  group: "time" },
-  // Area
   { id: "m2",    label: " m²",   group: "area" },
   { id: "km2",   label: " km²",  group: "area" },
   { id: "ha",    label: " ha",   group: "area" },
   { id: "ft2",   label: " ft²",  group: "area" },
   { id: "ac",    label: " ac",   group: "area" },
-  // Volume
   { id: "m3",    label: " m³",   group: "volume" },
   { id: "L",     label: " L",    group: "volume" },
   { id: "mL",    label: " mL",   group: "volume" },
   { id: "gal",   label: " gal",  group: "volume" },
-  // Speed
   { id: "ms1",   label: " m/s",  group: "speed" },
   { id: "kmh",   label: " km/h", group: "speed" },
   { id: "mph",   label: " mph",  group: "speed" },
-  // Data
   { id: "b",     label: " B",    group: "data" },
   { id: "kb",    label: " KB",   group: "data" },
   { id: "mb",    label: " MB",   group: "data" },
   { id: "gb",    label: " GB",   group: "data" },
   { id: "tb",    label: " TB",   group: "data" },
-  // Currency ([[D47]] noMixCurrencies: the display code is the identity)
   { id: "usd",   label: "$", group: "currency", prefix: true },
   { id: "eur",   label: "€", group: "currency", prefix: true },
   { id: "gbp",   label: "£", group: "currency", prefix: true },
   { id: "jpy",   label: "¥", group: "currency", prefix: true },
-  // Custom
   { id: "custom", label: "",     group: "custom" },
 ];
 
@@ -324,21 +297,18 @@ export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
   custom:      "Custom",
 };
 
-// Pack units/formats register for EVERY known pack ([[C79]] packActivationIsPresentation);
-// active-only filtering is in fcExtensions.ts.
-
 export interface PackUnit {
   id: string;
-  label: string;             // display affix, e.g. " psi"
-  group: string;             // an existing group id, or a new one (+ groupLabel)
-  groupLabel?: string;       // label for a brand-new group
-  prefix?: boolean;          // render before the number (currencies)
+  label: string;
+  group: string;
+  groupLabel?: string;
+  prefix?: boolean;
 }
 
 export interface PackFormat {
   id: string;
-  label: string;             // dropdown label
-  group?: string;            // dropdown optgroup label (default "Pack")
+  label: string;
+  group?: string;
   apply: (n: number) => string;
 }
 
@@ -346,7 +316,6 @@ const _packUnits = new Map<string, UnitAnnotation>();
 const _packUnitGroupLabels = new Map<string, string>();
 const _packFormats = new Map<string, { label: string; group: string; apply: (n: number) => string }>();
 
-/** Register a pack's FC units for resolution (idempotent by id). */
 export function registerPackUnits(units: PackUnit[]): void {
   for (const u of units) {
     _packUnits.set(u.id, { id: u.id, label: u.label, group: u.group as UnitGroup, prefix: u.prefix });
@@ -354,19 +323,16 @@ export function registerPackUnits(units: PackUnit[]): void {
   }
 }
 
-/** Register a pack's FC number formats for resolution (idempotent by id). */
 export function registerPackFormats(formats: PackFormat[]): void {
   for (const f of formats) {
     _packFormats.set(f.id, { label: f.label, group: f.group ?? "Pack", apply: f.apply });
   }
 }
 
-/** Resolved label for a unit-group id (built-in or pack-contributed). */
 export function unitGroupLabel(group: string): string {
   return UNIT_GROUP_LABELS[group as UnitGroup] ?? _packUnitGroupLabels.get(group) ?? group;
 }
 
-/** A pack-contributed format's dropdown label, if `id` is one. */
 export function packFormatLabel(id: string): string | undefined {
   return _packFormats.get(id)?.label;
 }
@@ -375,12 +341,10 @@ export function unitById(id: string): UnitAnnotation {
   return UNIT_ANNOTATIONS.find((u) => u.id === id) ?? _packUnits.get(id) ?? UNIT_ANNOTATIONS[0];
 }
 
-/** Is `id` a known unit annotation? (Used to map Convert units onto FC units.) */
 export function isFcUnit(id: string): boolean {
   return UNIT_ANNOTATIONS.some((u) => u.id === id) || _packUnits.has(id);
 }
 
-/** Two unit annotations are compatible if either is "none" or they share a group. */
 export function unitsCompatible(a: string, b: string): boolean {
   if (a === "none" || b === "none") return true;
   const ga = unitById(a).group;
@@ -398,7 +362,6 @@ export const TEXT_CASE_LABELS: Record<TextCase, string> = {
   proper: "Proper",
 };
 
-// The display box is right-aligned by default; this overrides it. Display-only.
 export type TextAlign = "left" | "center" | "right";
 
 export type LogicalStyle = "truefalse" | "binary" | "yesno" | "check";
@@ -410,7 +373,6 @@ export const LOGICAL_STYLE_LABELS: Record<LogicalStyle, string> = {
   check:     "✓ / ✗",
 };
 
-// Display only: the LambdaValue already carries its source, so nothing extra travels the cable.
 export type LambdaView = "signature" | "katex" | "syntax" | "mono";
 
 export const LAMBDA_VIEW_LABELS: Record<LambdaView, string> = {
@@ -420,10 +382,8 @@ export const LAMBDA_VIEW_LABELS: Record<LambdaView, string> = {
   mono:      "Monospace formula",
 };
 
-// Multiplies every text size inside a chart figure. 1 = the built-in sizes.
 export const CHART_FONT_SCALES: number[] = [0.8, 1, 1.25, 1.5, 2];
 
-/** Display-only boolean rendering (default = the Excel TRUE/FALSE form). */
 export function applyLogicalStyle(b: boolean, style?: LogicalStyle): string {
   switch (style) {
     case "binary": return b ? "1" : "0";
@@ -433,8 +393,6 @@ export function applyLogicalStyle(b: boolean, style?: LogicalStyle): string {
   }
 }
 
-// Negative style is a string transform (parens) plus a render hint: red is applied
-// by surfaces via annotationRendersNegativeRed, the string form stays minus/parens.
 export type NegativeStyle = "minus" | "paren" | "red" | "redparen";
 export type ScaleMode = "none" | "k" | "m" | "b";
 
@@ -456,36 +414,26 @@ const SCALE_SUFFIX: Record<ScaleMode, string> = { none: "", k: "K", m: "M", b: "
 export type FormatAnnotation = {
   format: FormatStyleId;
   customPattern?: string;
-  unit: string;       // id from UNIT_ANNOTATIONS, or a custom string
+  unit: string;
   customUnit?: string;
-  // Text-socket display options (non-destructive — display only).
   textCase?: TextCase;
   bold?: boolean;
   italic?: boolean;
-  textScale?: number; // font-size multiplier (1 = normal)
-  // Text advanced tier (all display-only; default undefined = current behavior).
-  textAlign?: TextAlign;    // overrides the box's right-aligned default
-  textMarkdown?: boolean;   // render the string as (inline) markdown
-  textMono?: boolean;       // render in the monospace face instead of sans
-  chip?: boolean;           // render the string as a categorical color chip (B2.2);
-                            // shares the text STYLE dropdown, exclusive with case this tranche
-  // Flexible "decimal" format params (digit count + places-vs-sig-figs).
+  textScale?: number;
+  textAlign?: TextAlign;
+  textMarkdown?: boolean;
+  textMono?: boolean;
+  chip?: boolean;
   decimalDigits?: number;
   decimalMode?: DecimalMode;
-  // Logical-socket show-as (display only).
   logicalStyle?: LogicalStyle;
-  // Lambda-socket view-as (display only).
   lambdaView?: LambdaView;
-  // Chart-socket text-scale multiplier (display only; 1 = built-in sizes).
   chartFontScale?: number;
-  // Advanced tier (number family).
-  grouping?: boolean;           // thousands separator (default true)
+  grouping?: boolean;
   negativeStyle?: NegativeStyle;
   scaleMode?: ScaleMode;
 };
 
-/** Red is a color the render layer applies on top — the formatted string already
- *  carries the minus/parens. */
 export function annotationRendersNegativeRed(ann: FormatAnnotation | undefined, n: unknown): boolean {
   return !!ann && typeof n === "number" && n < 0 &&
     (ann.negativeStyle === "red" || ann.negativeStyle === "redparen");
@@ -501,7 +449,7 @@ export function applyTextCase(s: string, c: TextCase | undefined): string {
 }
 
 const _store = new Map<string, FormatAnnotation>();
-// Per-node index so getForNode is O(1) — every value box calls it every render.
+// Indexed by node because every value box calls getForNode on every render.
 const _byNode = new Map<string, Map<string, FormatAnnotation>>();
 const { notify, subscribe, version } = createNotifier();
 
@@ -520,7 +468,6 @@ export const formatAnnotationStore = {
   get(nodeId: string, socketKey: string): FormatAnnotation | undefined {
     return _store.get(key(nodeId, socketKey));
   },
-  /** The annotation on any socket of a node (a node carries at most one FC). */
   getForNode(nodeId: string): FormatAnnotation | undefined {
     const inner = _byNode.get(nodeId);
     if (!inner) return undefined;
@@ -544,8 +491,6 @@ export const formatAnnotationStore = {
     _byNode.delete(nodeId);
     notify();
   },
-  /** Leaves the pack-contributed format/unit REGISTRATIONS alone — those are
-   *  extensions, not node state. */
   clearNodes(): void {
     if (_store.size === 0) return;
     _store.clear();
@@ -553,16 +498,12 @@ export const formatAnnotationStore = {
     notify();
   },
   subscribe,
-  /** Monotonic version for useSyncExternalStore snapshots. */
   version,
-  /** All annotations keyed by nodeId::socketKey. */
   snapshot(): ReadonlyMap<string, FormatAnnotation> {
     return _store;
   },
 };
 
-// FC node ids in a "unit mismatch" state (cabled to a socket annotated with an
-// incompatible unit group). Written by the Canvas connection pipe.
 const _mismatch = new Set<string>();
 const mismatchNotifier = createNotifier();
 
@@ -579,11 +520,8 @@ export const formatMismatchStore = {
   subscribe: mismatchNotifier.subscribe,
 };
 
-/** The format-model pipeline (tree/specs/values/format-model.md): scale-divide → style → scale suffix
- *  → unit affix → negative wrap. Parens wrap OUTSIDE the unit: ($1.2K). */
 export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): string {
   if (!Number.isFinite(n)) return String(n);
-  // Date styles render the value as a date serial; units don't apply.
   if (isDateStyle(ann.format)) {
     return formatDateSerial(n, dateAnnotationPattern(ann) ?? DEFAULT_DATE_FORMAT);
   }
@@ -606,27 +544,21 @@ export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): st
   return paren ? `(${out})` : out;
 }
 
-/** A style outside COMPLEX_FORMAT_STYLES falls back to `auto` (an annotation can survive
- *  a socket retype). Precision applies to BOTH components and the unit wraps the WHOLE
- *  value ("(3 + 2i) V", never "3 V + 2i V"). */
 export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {
   const style: FormatStyleId =
     (COMPLEX_FORMAT_STYLES as readonly string[]).includes(ann.format) ? ann.format : "auto";
   const { text, hasBothParts } = assembleCx(z, (n) =>
     style === "auto"
-      // `auto` keeps formatCx's own trim — the FC is annotating, not overriding.
       ? (Number.isInteger(n) ? n.toString() : n.toFixed(4).replace(/\.?0+$/, ""))
       : applyFormatStyle(n, style, ann.customPattern, ann.decimalDigits, ann.decimalMode, true),
-    true); // display form — always both parts, so the unit always wraps a two-term value
+    true);
   if (text === "NaN") return text;
   const unit = ann.unit === "custom" ? (ann.customUnit ?? "") : unitById(ann.unit).label;
   if (!unit) return text;
   const body = hasBothParts ? `(${text})` : text;
-  // A prefix unit ($) still leads, matching the number path.
   return ann.unit !== "custom" && unitById(ann.unit).prefix ? `${unit}${body}` : `${body}${unit}`;
 }
 
-/** Format a number using the annotation for a given socket, falling back to auto. */
 export function formatWithAnnotation(
   n: number,
   nodeId: string,

@@ -1,6 +1,6 @@
 // [[C26]] opArgDistinct
-// The legal `op=` tokens per node class, derived from the catalog. It is a whitelist
-// of KNOWN vocabularies: an ABSENT class must be skipped by callers, never rejected.
+// The legal `op=` tokens per node class, derived from the catalog: a whitelist of known vocabularies, so callers skip
+// an absent class, never reject it.
 
 import { NODE_OPS } from "./nodeOps";
 import { FLAT_CATALOG } from "./catalogUtils";
@@ -9,7 +9,7 @@ import { GROUP_BY_OP_META } from "./nodes/list";
 
 let _vocab: Map<string, Map<string, string>> | null = null;
 
-/** ctor name → (op → label). Lazily built and cached (the catalog is static). */
+/** Built lazily and cached; the catalog is static. */
 export function opVocabByCtor(): Map<string, Map<string, string>> {
   if (_vocab) return _vocab;
   const vocab = new Map<string, Map<string, string>>();

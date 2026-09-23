@@ -17,9 +17,6 @@ import { useDraftCommit } from "./inlineInput";
 import { describeNode, nodeName, nodeTypeName } from "../catalogUtils";
 import { descriptionText } from "../descriptionMd";
 
-// The header's hover blurb — the node's description as plain text. Tooltips render no
-// markup, so the description's markdown marks strip. (Not the title itself, which is
-// `node.label`; see the glossary's Node blurb / Header label entries.)
 function headerTooltip(node: object): string | undefined {
   const d = describeNode(node);
   return d ? descriptionText(d) : undefined;
@@ -42,11 +39,7 @@ import { describeValueKind } from "../valueKindLabel";
 import { valueChipFor } from "./ValueChip";
 import "./nodeCard.css";
 
-/** Shared building blocks for standard node components: socket mapping, the
- *  label header, op selects, and the value display box. */
 
-/** Render a string with leading/trailing whitespace as middots and "" as a dim
- *  placeholder — display only; the value and what's copied keep real whitespace. */
 function renderTextValue(s: string): ReactNode {
   if (s === "") return <span className="solenoid-node__text-empty">(empty)</span>;
   const lead = /^\s+/.exec(s)?.[0] ?? "";
@@ -61,15 +54,13 @@ function renderTextValue(s: string): ReactNode {
   );
 }
 
-/** Sanitized markdown → HTML for a text FC's "Markdown" option — the string is
- *  untrusted (it arrives in shared .solenoid files), so sanitize before injecting. */
+// The string is untrusted (it arrives in shared .solenoid files), so it is sanitized before injection.
 export function renderTextMarkdownHtml(s: string): string {
   return DOMPurify.sanitize(marked.parse(s, { async: false, gfm: true, breaks: true }) as string);
 }
 
 type Port = { socket: ClassicPreset.Socket; label?: string };
 
-/** Minimal structural shape NodeShell needs from a live node instance. */
 export type ShellNode = {
   id: string;
   label: string;
@@ -80,18 +71,13 @@ export type ShellNode = {
   outputs: Record<string, Port | undefined>;
 };
 
-/** Standard props every node component receives from the Rete preset. */
 export type NodeProps<N> = {
   data: N & { width?: number; height?: number };
   emit: Emit;
 };
 
-// The render-pipe emit rete's preset used to require. On the flow surface the
-// socket seam never calls it — a stub satisfies every component's contract.
 export type Emit = (ctx: unknown) => void;
 
-/** Controlled local state mirrored onto `node[key]`, recomputing the graph on
- *  change — the `useState` is what React tracks for controlled inputs/selects. */
 export function useNodeField<N extends object, K extends keyof N>(
   node: N,
   key: K,
@@ -101,8 +87,7 @@ export function useNodeField<N extends object, K extends keyof N>(
     (next: N[K]) => {
       node[key] = next;
       setVal(next);
-      // Some config feeds a DERIVED socket type (a Group By aggregate decides a
-      // resulting column's type), and no connection event fires here.
+      // Config can feed a derived socket type (a Group By aggregate's column type), and no connection event fires here.
       const id = (node as { id?: string }).id;
       const ed = id ? getOwningEditor(id) : null;
       const ar = id ? getOwningView(id) : null;
@@ -114,7 +99,6 @@ export function useNodeField<N extends object, K extends keyof N>(
   return [val, onChange];
 }
 
-/** Map a node's inputs or outputs to absolutely-positioned socket dots. */
 export function PortSockets({
   node,
   emit,
@@ -138,8 +122,7 @@ export function PortSockets({
 
 // ─── Multi-output rows ────────────────────────────────────────────────────────
 
-// A Cx rides RAW rather than pre-formatted: the display layer owns formatting,
-// so a docked FC's style/precision/unit can reach it.
+// A Cx rides raw so a docked FC's style, precision and unit reach it in the display layer.
 export type OutputRowValue = number | boolean | string | Cx | (number | boolean | string | Cx | SolError | null)[] | SolError | null;
 
 export type OutputRowDef = {
@@ -157,8 +140,7 @@ function MeasuredOutputRow({
   node: ShellNode;
   emit: Emit;
 }) {
-  // Per-SOCKET, exactly like a socketKey'd ValueDisplay. Selected per row, so an FC
-  // edit re-renders the rows it formats; must run before the early return below.
+  // Per socket, like a socketKey'd ValueDisplay; a hook, so it runs before the early return.
   const ann = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveDisplayAnnotation(node.id, rowKey));
   const port = node.outputs[rowKey];
   if (!port) return null;
@@ -207,8 +189,7 @@ export function InlineOutputRows({
   );
 }
 
-/** Character offset of the caret position under (x, y) within `root`'s text, or null
- *  when the point isn't over its text. */
+/** Null when the point isn't over `root`'s text. */
 function textOffsetAtPoint(root: HTMLElement, x: number, y: number): number | null {
   const doc = document as Document & {
     caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
@@ -231,25 +212,19 @@ function textOffsetAtPoint(root: HTMLElement, x: number, y: number): number | nu
   return null;
 }
 
-// Must match the display div's 4-line clamp (.solenoid-node__label-display) so
-// the editing textarea and the static title agree.
+// Must match the 4-line clamp on .solenoid-node__label-display.
 const LABEL_MAX_HEIGHT = 60;
 
-// The hover-revealed right-side hint (.solenoid-node__type-hint): the op-agnostic FAMILY
-// name (Series, Math FX), never the op — the op dropdown and the header carry that.
 function typeHint(node: ShellNode): string {
   return nodeTypeName(node as { constructor: { name: string } });
 }
 
-// Lucide "message-square" — matches NodeContextMenu's Add-comment icon.
 const CommentDot = () => (
   <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>
 );
 
-/** The corner indicator shown when a node has a comment thread. Mounted
- *  unconditionally by NodeShell; renders nothing when there is no thread. */
 function CommentIndicator({ nodeId }: { nodeId: string }) {
   const hasThread = useSyncExternalStore(commentStore.subscribe, () => commentStore.hasAny(nodeId));
   if (!hasThread) return null;
@@ -286,24 +261,16 @@ export function NodeShell({
   emit: Emit;
   children: ReactNode;
   leading?: ReactNode;
-  /** A small mark pinned to the card's top-right corner, clear of the header. */
   cornerBadge?: ReactNode;
   labelPlaceholder?: string;
   hideOutputSockets?: boolean;
-  /** Forwarded to NodeCard — false hides the collapse chevron (see NodeCard). */
   collapsible?: boolean;
-  /** Forwarded to NodeCard — collapse to a headerless square (Sparkline). */
   squareCollapse?: boolean;
-  /** Extra class on the card (e.g. a node-specific width override). */
   className?: string;
-  /** Forwarded to NodeCard — a header accent replacing the kind color. */
   accentOverride?: string;
-  /** The body content scales rather than scrolls (a chart/figure), so a sized card
-   *  should NOT trap the wheel (`nowheel`) — let it zoom/pan the canvas through. */
+  /** A figure body scales rather than scrolls, so a sized card must not trap the wheel (`nowheel`). */
   nonScrollingBody?: boolean;
 }) {
-  // Title edits commit on Enter/clickaway, never per keystroke — a committed
-  // rename ripples through processGraph, and that must not run mid-typing.
   const labelField = useDraftCommit<string>(
     node.label ?? "",
     (v) => v,
@@ -313,24 +280,17 @@ export function NodeShell({
   const [editing, setEditing] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-  // Pointer-down position on the title label, to tell a tap (→ edit) from a
-  // drag (→ move the node) in the click handler below.
   const labelDownPos = useRef<{ x: number; y: number } | null>(null);
-  // Text offset under the tap that opened edit mode; applied once the textarea mounts
-  // (autoFocus alone parks the caret at the start).
+  // Applied once the textarea mounts; autoFocus alone parks the caret at the start.
   const pendingCaret = useRef<number | null>(null);
 
-  // An explicit placeholder wins, else the catalog name — so a cleared title
-  // never collapses the header to a zero-height sliver.
   const effectivePlaceholder = labelPlaceholder ?? nodeName(node) ?? undefined;
 
-  // The SETTING, not the zoom state — changes only on a Settings click, so the
-  // full-graph re-render it triggers is fine; see the semantic div below.
+  // The setting, not the zoom state: the zoom crossing is pure CSS on the root class, so nodes never subscribe to zoom.
   const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
   const sized = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(node.id) !== undefined);
 
-  // useLayoutEffect (not useEffect): the height must settle BEFORE paint, in the
-  // same frame NodeCard measures --out-socket-top.
+  // useLayoutEffect: the height must settle before paint, in the frame NodeCard measures --out-socket-top.
   useLayoutEffect(() => {
     if (!editing) return;
     const el = taRef.current;
@@ -347,19 +307,13 @@ export function NodeShell({
     el.setSelectionRange(p, p);
   }, [editing]);
 
-  // Publish the header height as --header-h on every card (the frame SVG clips
-  // its accent cap + divider to it; the corner badge offsets by it).
   useHeaderHeightVar(headerRef);
 
   return (
     <NodeFormatContext.Provider value={node.id}>
       <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
-        {/* The label display's own title (the untruncated label) wins inside its
-            own bounds. */}
         <div className="solenoid-node__header" ref={headerRef} title={headerTooltip(node)}>
           {editing ? (
-            // A textarea can't ellipsize, so it's only mounted while editing;
-            // otherwise a clamped (2-line, ellipsis) display element stands in.
             <textarea
               ref={taRef}
               className="solenoid-node__label-input"
@@ -378,8 +332,7 @@ export function NodeShell({
             <div
               className="solenoid-node__label-display"
               title={node.label}
-              // Don't stop propagation — the whole header is rete's drag handle;
-              // edit mode opens only on a stationary tap (< HEADER_TAP_SLOP).
+              // No stopPropagation: the whole header is the drag handle.
               onPointerDown={(e) => { labelDownPos.current = { x: e.clientX, y: e.clientY }; }}
               onClick={(e) => {
                 const d = labelDownPos.current;
@@ -399,19 +352,12 @@ export function NodeShell({
           <div className="solenoid-node__corner-badge">{cornerBadge}</div>
         )}
         <CommentIndicator nodeId={node.id} />
-        {/* The socket positioning context: sockets and the box they align to are
-            both inside, so every socket `top` is header-independent. */}
         <div className="solenoid-node__content">
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
           <div className={sized && !nonScrollingBody ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
-          {/* One universal resizer per resizable node — drags the card width and
-              the body height (--box-h); the body's content fills/scrolls. */}
           {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}
         </div>
-        {/* Semantic-zoom simplified view, mounted only while the Settings toggle is
-            on; the per-zoom-crossing swap stays pure CSS via the root class, so
-            nodes never subscribe to zoom. */}
         {semanticZoomSetting && (
           <div className="solenoid-node__semantic" aria-hidden="true">
             <span>{node.label || effectivePlaceholder || ""}</span>
@@ -464,26 +410,17 @@ function PickSelect<T extends string>({ value, onChange, options, className }: P
   );
 }
 
-/** The family's OP picker: binds the node's `op`, whose values are the family's
- *  NODE_OPS ops (each a top-level formula function and an Add-menu row). Hoisted to
- *  the top of the body and edged in the accent by nodeCard.css (DESIGN.md § Op
- *  pickers). An argument never uses this — see ArgSelect. */
+/** The family's OP picker (DESIGN.md § Op pickers); an argument uses ArgSelect. */
 export function OpSelect<T extends string>(props: PickProps<T>) {
   return <PickSelect {...props} className="solenoid-node__select solenoid-node__select--op" />;
 }
 
-/** An ARGUMENT picker: a parameter of the node's one function (a sort order, an
- *  aggregator, a criterion comparator). Neutral, sits in its row, and its field is
- *  never named `op` (sourceInvariants [[C26]] opArgDistinct). */
+/** An argument picker; its field is never named `op` ([[C26]] opArgDistinct). */
 export function ArgSelect<T extends string>(props: PickProps<T>) {
   return <PickSelect {...props} className="solenoid-node__select" />;
 }
 
-// The copy-value glyph is the `sol-copy-icon` masked ::before in nodeCard.css.
 
-/** A string list rendered as categorical color chips (the Chip text style, B2.2): each
- *  distinct value takes a palette slot by first appearance, so the same value is the same
- *  color anywhere in the list. `null`/error cells render plainly. */
 function ChipList({ items, cased }: { items: (string | null | SolError)[]; cased: (s: string) => string }) {
   const idx = categoryColorIndex(items.map((v) => (v === null || isSolError(v) ? null : v)));
   return (
@@ -496,11 +433,6 @@ function ChipList({ items, cased }: { items: (string | null | SolError)[]; cased
   );
 }
 
-/**
- * The result/display box — null (empty), a list (preview), or a scalar.
- * `empty` overrides the placeholder; `render` overrides scalar formatting;
- * `toClipboard` overrides what gets copied.
- */
 export function ValueDisplay({
   value: rawValue,
   empty = "—",
@@ -513,27 +445,20 @@ export function ValueDisplay({
   empty?: ReactNode;
   render?: (v: number) => ReactNode;
   toClipboard?: (v: number) => string;
-  /** An editable source (List Input): its list chip opens the editor popup with these
-   *  overrides. The chip stays the box's own chip; a card never adds a second one. */
-  /** Show a list in full (all values, joined) instead of a chip — the Display
-   *  node, whose box scrolls/wraps when resized. */
+  /** Show a list in full (values joined) instead of a chip: the Display node. */
   full?: boolean;
-  /** The OUTPUT socket this box displays — set on multi-box cards so an FC wired
-   *  to ONE output formats only that box; single-box cards omit it. */
+  /** The output socket this box displays, so an FC wired to one output formats only its box. */
   socketKey?: string;
 }) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // These hooks must run UNCONDITIONALLY, BEFORE the object-kind early return
-  // below: the value can flip between scalar and object across renders, and a
-  // hook after the return changes the hook count → React #300 unmounts the node.
+  // Hooks before the object-kind early return: the value can flip kind across renders, and a changed hook count unmounts the node.
   const ctxNodeId = useContext(NodeFormatContext);
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
 
-  // Safety net: an object-valued kind can slip in through an `any`/cast, and must
-  // NOT reach the number/string path below (→ "[object Object]" or a .toFixed crash).
+  // An object value that slipped in through `any` must not reach the number and string path below.
   const kindChip = valueChipFor(rawValue, { size: "sm" });
   if (kindChip != null) {
     return (
@@ -547,19 +472,13 @@ export function ValueDisplay({
     return <div className="solenoid-node__display-value">{kindLabel}</div>;
   }
 
-  // A multi-box card names its socket so an FC on one hero row can't smear over
-  // its siblings; single-box cards keep the any-socket read.
   const ann = annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
 
-  // The DECLARED element family, never a cell scan — a scan can't see a date (a
-  // serial looks numeric) or an all-null list, so it would fall back to "numeric".
+  // The declared element family, never a cell scan: a date serial looks numeric and an all-null list has no cells.
   const elemFam = nodeOutputElemFamily(ctxNodeId);
   const isDate = elemFam === "date";
-  // A complex must resolve to a string HERE — after `ann`, before everything else
-  // — so box, chip and clipboard alike keep working and honour the FC.
+  // Resolve a complex to a string here, after `ann`, so box, chip and clipboard all honor the FC.
   const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCxDisplay(c));
-  // Typed off rawValue, not OutputRowValue: the raw box value also carries
-  // UnitCells (unwrapped on the next line), and a Cx never survives past here.
   const cxResolved: Exclude<typeof rawValue, Cx> = isCx(rawValue)
     ? cxFmt(rawValue)
     : Array.isArray(rawValue) && rawValue.some(isCx)
@@ -567,37 +486,27 @@ export function ValueDisplay({
       : rawValue as Exclude<typeof rawValue, Cx>;
   const value = dateFormatDisplay(unwrapUnitCells(cxResolved, ann), isDate, !!ann);
 
-  // An empty array is "nothing to show": render the faded placeholder, not an
-  // empty string — which has no line box and collapses the card below min height.
+  // An empty string has no line box and collapses the card below its min height, so an empty array shows the placeholder.
   const isEmpty = value === null || (Array.isArray(value) && value.length === 0);
   const isString = typeof value === "string";
-  const isLogical = typeof value === "boolean"; // renders TRUE/FALSE (Excel form)
+  const isLogical = typeof value === "boolean";
   const isList = Array.isArray(value);
-  // A list of text (strlist nodes) vs a list of numbers — both get a chip, but
-  // their clipboard / annotated-fallback formatting differs.
   const listIsString = isList && typeof (value as unknown[])[0] === "string";
 
-  // Joined-text vs. chip for a list (collapse-to-chip must win over a docked FC —
-  // see shouldRenderListInline).
   const listInline = shouldRenderListInline(full, !!ann);
 
   const fmtScalar = (v: number): string =>
     ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v);
 
-  // Text-socket display options (case + bold/italic/size) when the FC annotates
-  // a string node. Non-destructive: the underlying value is unchanged.
   const textStyle: React.CSSProperties | undefined = ann && isString ? {
     fontWeight: ann.bold ? 700 : undefined,
     fontStyle: ann.italic ? "italic" : "normal",
     fontSize: ann.textScale ? `${ann.textScale}px` : undefined,
-    // Only emit the key when mono is ON — a `fontFamily: undefined` in the spread
-    // would clobber the span's base sans and force mono on every annotated value.
+    // Only when on: a `fontFamily: undefined` in the spread would clobber the span's base sans.
     ...(ann.textMono ? { fontFamily: "var(--font-mono)" } : {}),
   } : undefined;
   const cased = (s: string): string => (ann ? applyTextCase(s, ann.textCase) : s);
 
-  // Errors render as a red #CODE! badge and propagate, so the chain of red boxes
-  // leads back to the source — the Excel trace model.
   if (isSolError(value)) {
     return (
       <div
@@ -617,8 +526,6 @@ export function ValueDisplay({
     if (isString) return cased(value as string);
     if (isLogical) return applyLogicalStyle(value as boolean, ann?.logicalStyle);
     if (listIsString) return (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ");
-    // A Format Controller annotation overrides a node's own custom render.
-    // null/error cells aren't FC-formattable, so they take the literal cell form.
     if (isList) return (value as (number | null | SolError)[]).map((v) =>
       (toClipboard && !ann && typeof v === "number") ? toClipboard(v) : formatListCell(v, fmtScalar, ann)
     ).join(", ");
@@ -647,14 +554,8 @@ export function ValueDisplay({
       style={{
         position: "relative",
         ...(isList ? { fontSize: full ? 14 : 13 } : {}),
-        // A formatted date ("15-Mar-2026") reads far longer than a number, so it
-        // renders a notch smaller than the number hero (18px) by default. An FC's
-        // own text-size annotation still wins (it sets fontSize on the span).
         ...(isDate && !isList ? { fontSize: 15 } : {}),
-        // Text alignment override (advanced tier); the box is right-aligned by default.
         ...(isString && ann?.textAlign ? { textAlign: ann.textAlign } : {}),
-        // Desktop selects text to copy; touch pans across it instead (the copy
-        // button covers copying), so don't let a drag grab a text selection.
         userSelect: IS_COARSE ? "none" : "text",
         cursor: isEmpty ? undefined : "text",
         paddingLeft: isEmpty ? undefined : 26,
@@ -667,11 +568,9 @@ export function ValueDisplay({
       {isEmpty ? empty
         : isString ? (
             ann?.chip ? (
-              // A scalar is its own first appearance → palette slot 0 (B2.2).
               <CategoryChip value={cased(value as string)} index={0} />
             ) : ann?.textMarkdown ? (
-              // Block markdown needs its own container — a <div> can't live inside
-              // the text <span>.
+              // A <div> can't live inside the text <span>.
               <div
                 className="solenoid-node__md"
                 style={{
@@ -693,18 +592,13 @@ export function ValueDisplay({
         : listIsString ? (
             ann?.chip ? <ChipList items={value as (string | null | SolError)[]} cased={cased} />
             : listInline ? (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ")
-            // `elem` matters MOST here: dateFormatDisplay turned a date list's
-            // serials into STRINGS, so the chip would otherwise sniff "text".
+            // dateFormatDisplay turned a date list's serials into strings, so without `elem` the chip would read "text".
             : <ArrayChip value={value as string[]} elem={elemFam} />)
         : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar, ann)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} />)
         : typeof value === "number" && Number.isNaN(value) ? (
-            // A residual NaN is dirty DATA, not an error — a quiet muted
-            // affordance, never error-red.
             <span className="solenoid-node__nan" title="Not a number: an undefined value in the data">NaN</span>
           )
         : annotationRendersNegativeRed(ann, value) ? (
-            // The FC's red negative style — the string already carries the
-            // minus/parens; only the color rides on top.
             <span style={{ color: "var(--sol-error)" }}>{fmtScalar(value as number)}</span>
           )
         : render && !ann ? render(value as number)

@@ -1,20 +1,15 @@
 // [[D19]] implReteFree, [[C17]] shareImpl
-// Three closed-form allocation modes, no general solver (each is exact: water-filling fixed point, fractional knapsack, proportional scale-up).
 
 export type AllocateMode = "budget" | "minTarget" | "minProportional";
 
 const sum = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0);
 const clampRange = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
-/** Non-negative weights; all-zero → equal weights (1 each) so a divide-by-Σw is safe. */
 function readWeights(weights: readonly number[]): number[] {
   const w = weights.map((x) => (Number.isFinite(x) && x > 0 ? x : 0));
   return sum(w) > 0 ? w : weights.map(() => 1);
 }
 
-/** Spend `budget` ∝ weight, each clamped to [min,max]; a clamp's residual redistributes
- *  among the still-free categories, iterated to a fixed point. Below Σmin → all mins
- *  (can't afford the floors); above Σmax → all maxes (surplus can't be spent in range). */
 export function allocateBudget(
   mins: readonly number[], maxs: readonly number[], weights: readonly number[], budget: number,
 ): number[] {
@@ -25,14 +20,13 @@ export function allocateBudget(
   const alloc = mins.slice();
   const fixed = new Array<boolean>(n).fill(false);
   let fixedSum = 0;
-  // Each pass fixes ≥ 1 category (or finishes), so ≤ n passes.
+  // Each pass fixes at least one category or finishes, so n + 1 passes always suffice.
   for (let pass = 0; pass <= n; pass++) {
     const free: number[] = [];
     for (let i = 0; i < n; i++) if (!fixed[i]) free.push(i);
     if (free.length === 0) break;
     const remaining = budget - fixedSum;
     const wFree = sum(free.map((i) => w[i]));
-    // A free block with no weight splits its share equally so it can still clamp/settle.
     const share = (i: number) => (wFree > 0 ? (remaining * w[i]) / wFree : remaining / free.length);
     let clamped = false;
     for (const i of free) {
@@ -45,9 +39,6 @@ export function allocateBudget(
   return alloc;
 }
 
-/** Least spend to reach a weighted-value target Σwᵢaᵢ ≥ target. Floors first, then buy
- *  the extra value from the highest-weight category (most value per dollar) up to its max,
- *  spilling to the next. Unreachable even at all maxes → best effort (returns those maxes). */
 export function allocateMinTarget(
   mins: readonly number[], maxs: readonly number[], weights: readonly number[], target: number,
 ): number[] {
@@ -68,8 +59,6 @@ export function allocateMinTarget(
   return alloc;
 }
 
-/** Least spend keeping aᵢ ∝ wᵢ above the floors: k = maxᵢ(minᵢ/wᵢ), aᵢ = clamp(k·wᵢ).
- *  A zero-weight category can't be proportional to 0, so it takes its floor. */
 export function allocateProportional(
   mins: readonly number[], maxs: readonly number[], weights: readonly number[],
 ): number[] {
@@ -85,8 +74,6 @@ export function allocateProportional(
   return alloc;
 }
 
-/** Dispatch. `amount` is the budget (budget mode) or the value target (minTarget); ignored
- *  by minProportional. Ranges are normalized so a `min > max` row doesn't misbehave. */
 export function allocate(
   mode: AllocateMode, mins: readonly number[], maxs: readonly number[], weights: readonly number[], amount: number,
 ): number[] {

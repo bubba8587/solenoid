@@ -12,8 +12,7 @@ import {
 } from "./touchActions";
 import "./MobileControls.css";
 
-/** Touch-only bottom action bar; buttons dim rather than disappear, so the bar never
- *  reflows and positions stay fixed. */
+/** Buttons dim rather than disappear, so the bar never reflows. */
 export function MobileControls() {
   // On desktop the poll would scan every node 5×/sec for an invisible control.
   const hasSelection = useHasSelection(IS_MOBILE);
@@ -22,8 +21,7 @@ export function MobileControls() {
   // Near the top, so the on-screen keyboard doesn't cover the menu's search field.
   const openAddMenu = () => addMenuRequest.open(window.innerWidth / 2, 96);
 
-  // Joins the measured `--chrome-bottom` envelope (chromeBottom.ts); the bar's
-  // height includes its safe-area padding, so the var carries the inset too.
+  // The bar's height includes its safe-area padding, so `--chrome-bottom` carries the inset too.
   const bottomRef = useBottomChrome<HTMLDivElement>();
 
   return (

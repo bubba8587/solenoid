@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
-// The time scale: a drawn day window, pixels per day and a two-tier header on serial math
-// (DHTMLX's tier normalization, the coarser tier snapped to the primary's pixels, rebuilt on serials).
 
 import type { GanttPayload, GanttViewOptions } from "./payload";
 import type { FrameScale, ScaleCell, ScaleTier } from "./frame";
@@ -23,8 +21,6 @@ import {
 
 export type Zoom = "day" | "week" | "month" | "quarter" | "year";
 
-/** px-per-day presets when zoom is fixed (not `fit`). Chosen so a column reads at a glance:
- *  a day cell wide enough for "31", a month cell for "September". */
 const PX_PER_DAY: Record<Zoom, number> = {
   day: 28,
   week: 12,
@@ -33,17 +29,14 @@ const PX_PER_DAY: Record<Zoom, number> = {
   year: 0.9,
 };
 
-/** Resolve the drawn window [from, to) in whole-day serials. `to` is exclusive. */
 export function resolveWindow(payload: GanttPayload): { from: number; to: number } {
   const v = payload.view;
   if (v.window) {
     return { from: Math.floor(v.window[0]), to: Math.floor(v.window[1]) + 1 };
   }
-  // Project span, padded to whole weeks either side so bars never touch the frame.
   let lo = Math.floor(payload.projectStart);
   let hi = Math.floor(payload.projectFinish);
   if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) {
-    // Degenerate (empty plan): a two-week window around today or the epoch.
     const anchor = Math.floor(payload.today ?? payload.projectStart ?? 0) || 0;
     lo = anchor;
     hi = anchor + 13;
@@ -51,29 +44,21 @@ export function resolveWindow(payload: GanttPayload): { from: number; to: number
   return { from: lo - 7, to: hi + 1 + 7 };
 }
 
-/** Approx days per cell for each tier, for the fit=page granularity choice. */
 const DAYS_PER_CELL: Record<Zoom, number> = { day: 1, week: 7, month: 30.4, quarter: 91.3, year: 365 };
-/** Minimum cell width (px) for a tier label to read at the export. */
 const MIN_FIT_CELL = 24;
 
-/** The effective zoom: an explicit preset, or the finest preset whose density the width
- *  affords when `fit`/absent. */
 export function resolveZoom(payload: GanttPayload, width: number): Zoom {
   const z = payload.view.zoom;
   const fitPage = payload.view.fit === "page";
-  // `fit=page` (export) overrides any zoom preset: pick the tier that fits the width.
   if (!fitPage && z && z !== "fit") return z;
   const { from, to } = resolveWindow(payload);
   const days = Math.max(1, to - from);
-  const want = width / days; // px-per-day the width affords
+  const want = width / days;
   const order: Zoom[] = ["day", "week", "month", "quarter", "year"];
   if (fitPage) {
-    // Export: the FINEST tier whose cells stay label-wide at the fill density, so a long plan
-    // still shows a detailed, legible axis (month over quarter, not one year label).
     for (const zoom of order) if (DAYS_PER_CELL[zoom] * want >= MIN_FIT_CELL) return zoom;
     return "year";
   }
-  // On-screen fit: the finest preset whose density the width affords (the shipped look).
   for (const zoom of order) if (PX_PER_DAY[zoom] <= want) return zoom;
   return "year";
 }
@@ -83,8 +68,6 @@ export function buildScale(payload: GanttPayload, width: number): FrameScale {
   const days = Math.max(1, to - from);
   const zoom = resolveZoom(payload, width);
 
-  // px-per-day: when the window fits the width (fit/absent zoom, or the fit=page export directive),
-  // stretch to fill; otherwise use the preset and let the caller scroll.
   const fit = payload.view.fit === "page" || !payload.view.zoom || payload.view.zoom === "fit";
   const pxPerDay = fit ? width / days : PX_PER_DAY[zoom];
 
@@ -93,7 +76,6 @@ export function buildScale(payload: GanttPayload, width: number): FrameScale {
   return { tiers, pxPerDay, from, to };
 }
 
-/** The lower (finer) tier for a zoom, plus the upper (coarser) one, coarsest first. */
 function twoTier(zoom: Zoom, scale: Band, view: GanttViewOptions): ScaleTier[] {
   const primary = primaryTier(zoom, scale, view);
   const upper = upperTier(zoom, scale, view);
@@ -112,7 +94,6 @@ function cell(from: number, to: number, scale: Band, label: string): ScaleCell {
   return { x, w, label };
 }
 
-/** The primary (finer) tier: days for day zoom, weeks for week, months for month, etc. */
 function primaryTier(zoom: Zoom, scale: Band, view: GanttViewOptions): ScaleTier {
   const cells: ScaleCell[] = [];
   const { from, to } = scale;
@@ -170,14 +151,11 @@ function primaryTier(zoom: Zoom, scale: Band, view: GanttViewOptions): ScaleTier
   return { cells };
 }
 
-/** The upper (coarser) tier, one step up from the primary; null when there is no natural coarser
- *  band (year zoom's coarser band would be a decade, which we skip). */
 function upperTier(zoom: Zoom, scale: Band, view: GanttViewOptions): ScaleTier | null {
   const cells: ScaleCell[] = [];
   const { from, to } = scale;
   switch (zoom) {
     case "day": {
-      // The coarser band over days names the month + year.
       let s = startOfMonth(from);
       while (s < to) {
         const c = civilFromSerial(s);
@@ -212,7 +190,6 @@ function upperTier(zoom: Zoom, scale: Band, view: GanttViewOptions): ScaleTier |
     case "quarter": {
       const fs = view.fiscal_start ?? 1;
       let s = startOfFiscalQuarter(from, fs);
-      // Walk to the fiscal-year start.
       s = fiscalYearStart(s, fs);
       while (s < to) {
         const { fiscalYear } = fiscalQuarter(s, fs);
@@ -234,18 +211,12 @@ function fiscalYearStart(serial: number, fiscalStart: number): number {
   return serialFromCivil(year, fiscalStart, 1);
 }
 
-/** Exposed for bars/links: the LEFT-edge x of a whole-day serial. */
 export function xOf(serial: number, scale: Band): number {
   return (serial - scale.from) * scale.pxPerDay;
 }
 
 const ONE_MINUTE = 1 / 1440;
 
-/** The last calendar day a task occupies for DRAWING and the Finish cell. In Days mode the
- *  finish is already the inclusive whole day. In Minutes mode the finish is a clock instant and
- *  the displayed day is the day of (finish − one minute), so a finish exactly at midnight
- *  (a whole-day serial) lands on the previous day (§ 6.5). The bar's exclusive right edge is
- *  this + 1. */
 export function drawnLastDay(finish: number, minutes?: boolean): number {
   return minutes ? Math.floor(finish - ONE_MINUTE) : Math.floor(finish);
 }

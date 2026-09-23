@@ -1,6 +1,5 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
-// Metric inputs throughout (kg, cm, years). Sex-specific equations ship as TWO presets
-// rather than one formula hiding a ±sign input.
+// Metric inputs throughout (kg, cm, years); a sex-specific equation ships as two presets, never a hidden ±sign input.
 
 import { HrZonesNode, hrZonesMatrix } from "../rete-nodes";
 import { placeFormulas, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
@@ -81,7 +80,6 @@ export const HEALTH_FORMULAS: FormulaPackEntry[] = [
   ...HEALTH_BODY, ...HEALTH_COMPOSITION, ...HEALTH_ENERGY, ...HEALTH_CARDIO, ...HEALTH_CLINICAL,
 ];
 
-// The MATRIX form of the node's frame ([[C15]] matricesInFormulas).
 const HEALTH_PACK_FORMULAS: PackFormula[] = [
   {
     name: "HEARTRATEZONES",

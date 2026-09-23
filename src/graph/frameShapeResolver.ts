@@ -1,12 +1,9 @@
-// [[C8]] declareOnce, [[D17]] relaysTransparent. Mechanics: tree/specs/values/type-propagation-on-in-place-socket-retype.md.
+// [[C8]] declareOnce, [[D17]] relaysTransparent
 import type { NodeEditor, ClassicPreset } from "rete";
 import type { Shape } from "./frameShape";
 import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";
 import { passthroughForOutput, type PassthroughSpec } from "./nodes/passthrough";
 import { frameShapeOf } from "./nodes/frameShapeHook";
-
-// The graph walk over the per-node `frameShape()` declarations (nodes/frameShapeHook.ts) —
-// node-agnostic, pure, no engine call, no IPC; `null` = unknown.
 
 type AnyEditor = NodeEditor<{
   Node: ClassicPreset.Node;
@@ -14,7 +11,6 @@ type AnyEditor = NodeEditor<{
 }>;
 
 export type FrameShapeResolver = {
-  /** The static shape on this OUTPUT socket, or null when it's unknown. */
   outShape: (nodeId: string, outKey: string) => Shape | null;
 };
 
@@ -40,20 +36,15 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
     return (byTarget.get(nodeId) ?? []).some((c) => c.targetInput === inKey);
   }
 
-  /** A misconfigured verb throws the same error a real run would; swallow it to "unknown",
-   *  mirroring how a bad config shows an error VALUE at runtime rather than crashing. */
   function safe(fn: () => Shape | null): Shape | null {
     try { return fn(); } catch { return null; }
   }
 
-  /** Column names + types, in order — the structural analogue of `agreeTypes`. */
   function sameShape(a: Shape, b: Shape): boolean {
     return a.columns.length === b.columns.length &&
       a.columns.every((c, i) => c.name === b.columns[i].name && c.type === b.columns[i].type);
   }
 
-  /** Resolved from the ONE `passthrough()` declaration rather than a second instanceof
-   *  list, so a new type-agnostic node needs no edit here; every WIRED branch must agree. */
   function passthroughShape(nodeId: string, spec: PassthroughSpec): Shape | null {
     if (spec.combine === "single") return inputShape(nodeId, spec.inputs[0]);
     if (spec.combine === "active") {
@@ -68,24 +59,15 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
   function compute(nodeId: string, outKey: string): Shape | null {
     const n = editor.getNode(nodeId) as unknown;
     return safe(() => {
-      // A Conduit lane forwards verbatim but declares no `passthrough()` — conduitTrace
-      // owns lane routing — so it is named here.
       if (n instanceof ConduitNode) {
         const lane = conduitLaneOf(outKey, "out");
         return lane < 0 ? null : inputShape(nodeId, conduitInKey(lane));
       }
-      // A node that declares BOTH — a rank-adopting passthrough AND its own frameShape —
-      // ADDS or reshapes columns while still forwarding the input's rank (ComputedColumn /
-      // Add Column over a cube, A′): its OWN columns win over the forwarded input shape.
       const hook = frameShapeOf(n);
       const pass = passthroughForOutput(n, outKey);
       const runHook = () => hook!(outKey, { inputShape: (k) => inputShape(nodeId, k), wired: (k) => isWired(nodeId, k) });
       if (hook && pass) return runHook();
-      // Otherwise a pure forwarder flows the input shape; skip this and a frame routed
-      // through a Display / IF / Expect loses its static shape and every verb downstream
-      // goes unknown.
       if (pass) return passthroughShape(nodeId, pass);
-      // Every producer declares its own columns; a node with neither declaration is unknown.
       return hook ? runHook() : null;
     });
   }
@@ -93,7 +75,7 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
   function outShape(nodeId: string, outKey: string): Shape | null {
     const key = `${nodeId}::${outKey}`;
     if (memo.has(key)) return memo.get(key)!;
-    if (visiting.has(key)) return null; // cycle guard
+    if (visiting.has(key)) return null;
     visiting.add(key);
     const s = compute(nodeId, outKey);
     visiting.delete(key);

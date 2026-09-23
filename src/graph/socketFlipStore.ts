@@ -1,6 +1,4 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
-// Per-node "sockets flipped" state; the flip mechanics (who reads it, what stays
-// semantic) are in tree/specs/canvas/react-flow-surface-contract.md.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -10,7 +8,6 @@ const { notify, subscribe } = createNotifier();
 
 export const socketFlipStore = {
   get: (nodeId: string) => _flipped.has(nodeId),
-  /** Forget a deleted node (noderemoved → forgetNode). */
   forget(nodeId: string) {
     if (_flipped.delete(nodeId)) notify();
   },
@@ -25,7 +22,6 @@ export const socketFlipStore = {
     else _flipped.delete(nodeId);
     notify();
   },
-  /** Drop every entry — loadGraph's rebuild clears so stale ids can't leak. */
   clear() {
     if (_flipped.size === 0) return;
     _flipped.clear();

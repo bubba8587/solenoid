@@ -1,9 +1,5 @@
-/* [[C75]], [[C78]] */
-/* The subgraph canvas fills the SAME region the main canvas occupies, sitting
-   ABOVE the main canvas (z-index 0) but BELOW the app chrome (Header/StatusBar z6,
-   NavMenu/OutlinePanel z5) — so drilling in swaps only the canvas surface and the
-   whole app frame (toolbar, minimap, status bar) stays put and follows you in.
-   Opaque so the main graph doesn't bleed through. */
+/* [[C75]] gpuTextureBudget, [[C78]] packLegibility */
+/* Fills the main canvas's region above it (z 0) and below the app chrome, so drilling in swaps only the canvas surface; opaque so the main graph can't bleed through. */
 .solenoid-composite-editor__backdrop {
   position: fixed;
   inset: 0;
@@ -12,8 +8,6 @@
   outline: none;
 }
 
-/* Breadcrumb — the top-left drilldown trail (Canvas ▸ A ▸ B). Each crumb is a
-   quiet text button; the deepest (current) crumb is emphasized and inert. */
 .solenoid-composite-editor__crumbs {
   display: flex;
   align-items: center;
@@ -120,11 +114,7 @@
   overflow: hidden;
 }
 
-/* Floating "you're in a subgraph" strip: breadcrumb + port-promotion actions.
-   Sits below the real app header (≈66px) at the top-left, clear of the top-right
-   NavMenu. It's the ONE piece of drill-in-specific chrome (the rest is the real
-   app frame); everything else — undo/redo, delete, add-node, zoom — is the real
-   toolbar + keyboard, now pointed at the active graph. */
+/* The one piece of drill-in-specific chrome; everything else is the real app frame pointed at the active graph. */
 .solenoid-composite-editor__strip {
   position: absolute;
   top: 74px;
@@ -134,8 +124,7 @@
   gap: 10px;
   padding: 4px 6px 4px 8px;
   background: var(--surface-sunken);
-  /* Accent-tinted border + faint accent glow: a quiet "you're in a subgraph"
-     state cue (accent = state, per DESIGN — not a decorative stripe). */
+  /* An accent edge as a state cue (DESIGN.md), not a decorative stripe. */
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18),
@@ -149,11 +138,7 @@
   flex-shrink: 0;
 }
 
-/* Run-mode / Solve / config panel inside the drill-in — top-LEFT, tucked directly
-   UNDER the breadcrumb strip. The top-right corner is taken by the Zoom pill / Problems
-   / Alerts HUDs, so it can't live there. Mirrors the outer card's controls so the
-   subgraph is configurable/solvable without leaving. Collapsible: a head bar always
-   shows (the current run mode), the body folds away — starts collapsed on mobile. */
+/* Top-left under the strip: the top-right corner belongs to the Zoom pill and the HUDs. */
 .solenoid-composite-editor__controls {
   position: absolute;
   top: 120px;
@@ -167,7 +152,6 @@
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
 }
-/* Collapsed → the panel shrinks to just the head pill. */
 .solenoid-composite-editor__controls--collapsed { width: auto; }
 .solenoid-composite-editor__controls-head {
   display: flex;
@@ -200,20 +184,15 @@
   overflow-y: auto;
 }
 
-/* While drilled in: hide the MAIN minimap (it floats at z-index 100 over the
-   backdrop and its viewport box tracks the main area) and show the DRILL-IN's own
-   minimap instead — both carry .solenoid-minimap, so scope the re-show to the one
-   rendered inside the drill-in host. */
+/* Both minimaps carry .solenoid-minimap, so the re-show is scoped to the one inside the drill-in host. */
 html.sol-drilled-in .solenoid-minimap { display: none; }
 html.sol-drilled-in .solenoid-composite-editor__host .solenoid-minimap { display: block; }
 
-/* The navigator list still reads (and its clicks act on) the MAIN graph, so keep
-   it folded until it's rerouted — better hidden than showing the outer graph. */
+/* The navigator still reads and acts on the main graph, so it stays folded while drilled in. */
 html.sol-drilled-in .solenoid-outline,
 html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
 
-/* Stop painting the covered main canvas ([[C75]] gpuTextureBudget). The drill-in host
-   also carries .sol-rf-appcanvas, hence the :not(). */
+/* The drill-in host also carries .sol-rf-appcanvas, hence the :not(). */
 html.sol-drilled-in .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { visibility: hidden; }
 
 .solenoid-composite-editor__loading {
@@ -222,22 +201,11 @@ html.sol-drilled-in .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { vi
   background: var(--canvas-bg);
 }
 
-/* ── Mobile (html.is-mobile, same convention as mobile.css): finger-sized targets
-      and keep the top-left chrome from blanketing the small canvas. The breadcrumb
-      strip clears the mobile header + notch and may wrap; the run-controls panel
-      moves to the BOTTOM-left (out of the crowded top) and starts COLLAPSED (set in
-      the component) so it's just a tappable bar until opened. ── */
-/* The breadcrumb strip must clear BOTH mobile top rows (accent ~30px + toolbar
-   52px = ~82px + notch); at 56px it hid UNDER them. And it shares that row-band
-   with the right-anchored Fit/Lock pill (.solenoid-nav, right:12px, ~110px wide),
-   so cap the width to stop before it. The breadcrumb takes the whole first row and
-   the port buttons wrap BELOW it — otherwise the two buttons squeezed the crumb
-   text to nothing on a narrow phone. Scaled down overall. */
+/* Mobile: the strip clears both top rows (about 82px plus the notch) and stops before the right-anchored Fit and Lock pill. */
 html.is-mobile .solenoid-composite-editor__strip {
   top: calc(88px + env(safe-area-inset-top));
   left: 8px;
-  /* Stack: breadcrumb row on top, the +Input/+Output buttons on their own row
-     below — a plain row squeezed the crumb text to nothing on a narrow phone. */
+  /* Crumbs on one row and the port buttons below; one row squeezed the crumbs to nothing on a narrow phone. */
   flex-direction: column;
   align-items: stretch;
   gap: 5px;
@@ -256,9 +224,7 @@ html.is-mobile .solenoid-composite-editor__btn {
   padding: 7px 14px;
   font-size: 13px;
 }
-/* The drill-in chrome lives on the z-index:4 backdrop, BELOW the app bars — so a
-   panel pinned to bottom:10px hid behind the ~86px bottom pill (it read as "not
-   present"). Sit it just above that pill; collapsed by default it's a small bar. */
+/* The backdrop sits below the app bars (z 4), so the panel rides just above the bottom pill or it hides behind it. */
 html.is-mobile .solenoid-composite-editor__controls {
   top: auto;
   bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
@@ -268,6 +234,5 @@ html.is-mobile .solenoid-composite-editor__controls {
 html.is-mobile .solenoid-composite-editor__controls-head { min-height: 40px; }
 html.is-mobile .solenoid-composite-editor__controls-body { max-height: 40vh; max-height: 40dvh; }
 
-/* The drill-in minimap is off on mobile — it overlapped other chrome and a phone
-   has no room for it (later than the desktop re-show rule, so this wins). */
+/* Off on mobile; this must come after the desktop re-show rule to win. */
 html.is-mobile .solenoid-composite-editor__host .solenoid-minimap { display: none; }

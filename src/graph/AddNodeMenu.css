@@ -13,19 +13,12 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
-  /* Shared overlay-chrome look (minimap / socket legend / cable inspector):
-     overlay bg + a thicker, more visible border, the modest overlay shadow. */
   background: var(--overlay-bg);
   border: var(--overlay-border-width) solid var(--overlay-border);
   border-radius: 6px 6px 0 0;
   border-bottom: none;
 }
 
-/* Shared panel chrome. A 2-column grid so paired rows share the same
-   column tracks (right-column items line up across every pair); columns
-   auto-size to their widest item — wasting a little width rather than
-   misaligning, and without hardcoding any label widths. Panels with no
-   pairs collapse to a single effective column. */
 .solenoid-add-menu__panel {
   display: flex;
   flex-direction: column;
@@ -34,20 +27,12 @@
   border-radius: 0 0 6px 6px;
   box-shadow: var(--overlay-shadow);
   min-width: 170px;
-  /* Cap matches the default tree's height (~12 items + the search field)
-     so the search-results panel is about the same size as the tree, for
-     visual consistency. min(…) keeps it from overflowing short screens.
-     Sized so the default 12-item tree fits without a scrollbar (the inner
-     __scroll's padding + this panel's border share the budget). */
   max-height: min(392px, 85vh);
   max-height: min(392px, 85dvh);
-  /* Clip here (radius + overflow:hidden) and scroll __scroll inside, so the
-     rounded bottom corner cleanly clips the native scrollbar. */
+  /* Clip here and scroll __scroll inside, so the rounded corner clips the native scrollbar. */
   overflow: hidden;
 }
 
-/* The scrolling grid — its native scrollbar is clipped by __panel's rounded
-   corner. 2-column grid so paired rows share column tracks. */
 .solenoid-add-menu__scroll {
   display: grid;
   grid-template-columns: auto auto;
@@ -59,7 +44,6 @@
   overflow-y: auto;
 }
 
-/* Fuzzy search field at the top of the menu. */
 .solenoid-add-menu__search {
   margin-bottom: 3px;
   width: 100%;
@@ -82,14 +66,10 @@
   font-size: 12px;
 }
 
-/* Singles, categories, search input span both columns; half items (pair
-   members, now rendered directly) auto-place into the two columns. */
 .solenoid-add-menu__scroll > *:not(.solenoid-add-menu__item--half) {
   grid-column: 1 / -1;
 }
 
-/* Submenu panel: JS positions it via inline `position: fixed` (so it
-   can clamp / flip against the viewport). CSS just handles the look. */
 .solenoid-add-menu__panel--submenu {
   border-radius: 6px;
   z-index: 201;
@@ -114,10 +94,7 @@
   background: var(--accent-soft);
 }
 
-/* Quick-wire: a leaf that can't wire to the dragged socket — grayed + inert (the
-   pick gate ignores it, so a click/Enter does nothing). Suppress the hover/active
-   fill so it never reads as pickable; opacity dims the label + any pack dot / accent
-   highlight along with it. */
+/* Quick-wire: a leaf that can't wire to the dragged socket is inert, so it gets no hover or active fill. */
 .solenoid-add-menu__item--incompatible {
   opacity: 0.3;
   cursor: not-allowed;
@@ -129,25 +106,18 @@
   background: transparent;
 }
 
-/* Subtle marker that a node came from an add-on pack (not built-in). A small
-   dim dot at the row's trailing edge — present but easy to ignore. */
-/* Marks a card that hosts ops with no Add-menu entry of their own. Sits between the
-   label and the pack dot, in the same dim ink and at the same weight as the label so
-   it reads as part of the name rather than as an added ornament. `▶` is reserved for
-   a category that really expands, so this must not be a triangle. */
+/* `▶` is reserved for a category that really expands, so this mark must never be a triangle. */
 .solenoid-add-menu__ops-mark {
   flex: 0 0 auto;
   margin-left: 0.35em;
   color: var(--text-dim);
   opacity: 0.7;
   letter-spacing: -0.06em;
-  /* Padding is always present so the hover highlight below adds no layout shift. */
+  /* Padding is always present, so the hover box below adds no layout shift. */
   padding: 0 3px;
   border-radius: 3px;
   cursor: help;
 }
-/* Hovering the marker itself (not the whole row) lifts it and boxes it, cueing the
-   tooltip that the node holds more than one operation. */
 .solenoid-add-menu__ops-mark:hover {
   opacity: 1;
   color: var(--text);
@@ -163,16 +133,10 @@
   opacity: 0.55;
 }
 
-/* User-input nodes: a rounded-rect highlight in the node-kind accent
-   (--item-accent), drawn as an inset pseudo so it hugs the word rather
-   than filling the whole row. Text stays aligned with the other items. */
 .solenoid-add-menu__item--accent {
   position: relative;
-  /* Own stacking context so the z-index:-1 highlight pseudo resolves
-     locally (above this item's area) instead of falling behind the panel
-     background — which hid it in the root menu. */
+  /* Own stacking context, so the z-index:-1 highlight pseudo resolves above this item instead of behind the panel background. */
   z-index: 0;
-  /* Same accent-tinted text the node header label uses. */
   color: color-mix(in srgb, var(--item-accent) var(--mix-ink), var(--text));
 }
 .solenoid-add-menu__item--accent::before {
@@ -183,7 +147,6 @@
   background: color-mix(in srgb, var(--item-accent) 22%, transparent);
   z-index: -1;
 }
-/* The pseudo owns the highlight; suppress the row-wide base hover/active fill. */
 .solenoid-add-menu__item--accent:hover,
 .solenoid-add-menu__item--accent.solenoid-add-menu__item--active {
   background: transparent;
@@ -193,8 +156,6 @@
   background: color-mix(in srgb, var(--item-accent) 38%, transparent);
 }
 
-/* Pair halves (rendered directly; auto-placed into the two grid columns).
-   Left-aligned like the unpaired items so columns line up. */
 .solenoid-add-menu__item--half {
   justify-content: flex-start;
 }

@@ -1,10 +1,4 @@
 // [[C68]] knapIsTheDocumentSyntax
-// Syntax highlight for a Report's source pane: Markdown structure (headings, list
-// markers, quotes, fences, emphasis, inline code, links) and, inside every `{{ … }}`
-// and `{% … %}` tag, Knap's own tokens on the formula surface's `.fx-tokens` classes
-// (keyword, filter, string, number, constant, variable, operator). A `{# … #}` comment
-// greys out whole. Output is HTML for the highlighted backdrop a transparent textarea
-// sits over, so EVERY character of the source is preserved (spans only), escaped first.
 
 const TAG_RE = /(\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}|\{#[\s\S]*?#\})/g;
 const HOLD = "\u0000";
@@ -16,12 +10,9 @@ const span = (cls: string, text: string) => `<span class="${cls}">${text}</span>
 
 const KEYWORDS = new Set(["if", "elseif", "else", "endif", "for", "in", "endfor", "set"]);
 const CONSTANTS = new Set(["true", "false", "null"]);
-// One token at a time, in precedence order; every char lands in exactly one match.
+// One token at a time, in precedence order; every character lands in exactly one match.
 const TAG_TOKEN_RE = /(\{\{|\}\}|\{%|%\}|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\d+(?:\.\d+)?|[A-Za-z_][A-Za-z0-9_]*|\s+|=>|[^\sA-Za-z0-9_"']+?)/g;
 
-/** A tag's inner HTML: delimiters and operators as `fx-op`, keywords `fx-kw`, the name
- *  after a `|` as `fx-fn`, quoted strings `fx-str`, numbers `fx-num`, `true`/`false`/`null`
- *  `fx-const`, any other identifier `fx-var`. */
 function highlightTag(tag: string): string {
   let out = "";
   let afterPipe = false;
@@ -44,7 +35,6 @@ function highlightTag(tag: string): string {
   return span("knap-tag", out);
 }
 
-// Inline Markdown on ESCAPED text (none of these markers are HTML-special).
 const INLINE_RE = /(`[^`\n]+`|\*\*[^*\n]+\*\*|__[^_\n]+__|\*[^*\n]+\*|_[^_\n]+_|!?\[\[[^\]\n]+\]\]|!?\[[^\]\n]*\]\([^)\n]*\))/g;
 function inline(text: string): string {
   return text.replace(INLINE_RE, (m) => {
@@ -55,8 +45,6 @@ function inline(text: string): string {
   });
 }
 
-/** Line-aware Markdown: fences hold everything as code; a heading line colors whole;
- *  list markers and quote marks color on their own; the rest gets inline marks. */
 function highlightMarkdown(text: string): string {
   let fenced = false;
   return text.split("\n").map((line) => {
@@ -73,9 +61,7 @@ function highlightMarkdown(text: string): string {
   }).join("\n");
 }
 
-/** The pane's backdrop HTML. Tags are lifted out first so Markdown's line rules see
- *  the prose around them, then dropped back in highlighted. Ends with a newline so the
- *  backdrop's height matches the textarea's when the source ends on an empty line. */
+/** Ends with a newline so the backdrop's height matches the textarea's when the source ends on an empty line. */
 export function highlightKnap(source: string): string {
   const tags: string[] = [];
   const held = source.replace(TAG_RE, (tag) => { tags.push(tag); return `${HOLD}${tags.length - 1}${HOLD}`; });

@@ -1,5 +1,4 @@
 // [[C11]]
-// Maps every node class to its React component — one row per node.
 
 import type { Emit } from "./components/nodeKit";
 import { ClassicPreset } from "rete";
@@ -455,7 +454,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [CubeRollupNode,        comp(CubeRollupComponent)],
   [GroupNode,             comp(GroupComponent)],
   [CompositeNode,         comp(CompositeComponent)],
-  // Boundary markers — rendered only inside the drill-in editor's own rete root.
   [CompositeInputNode,    comp(CompositeInputMarkerComponent)],
   [CompositeOutputNode,   comp(CompositeOutputMarkerComponent)],
   [ComplexFromNode,       comp(ComplexFromComponent)],
@@ -492,14 +490,12 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [TriangleSolverNode,    comp(TriangleSolverComponent)],
   [MolarMassNode,         comp(MolarMassComponent)],
   [PromoNode,             comp(PromoComponent)],
-  // Load-time stand-in for an unregistered saved type (pack off / renamed).
   [PlaceholderNode,       comp(PlaceholderComponent)],
   [ExpectNode,            comp(ExpectComponent)],
   [TornadoNode,           comp(TornadoComponent)],
 ];
 
-// Exact constructor first, then the ordered `instanceof` scan for subclasses that
-// reuse a base component — so entry order matters only for UNregistered subclasses.
+// Exact constructor first, then the ordered `instanceof` scan, so entry order matters only for unregistered subclasses.
 const componentByCtor = new Map<NodeCtor, AnyNodeComponent>(NODE_COMPONENTS);
 
 export function componentForNode(payload: object): AnyNodeComponent | null {

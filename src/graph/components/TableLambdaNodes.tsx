@@ -1,3 +1,4 @@
+// [[C50]] lambdaBindsByName
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   MapTableNode as MapTableNodeType,
@@ -27,8 +28,6 @@ export const FORMULA_KEYS = new Set(["lambda"]);
 
 type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, string>; lambdaSig?: LambdaSig };
 
-/** Formula editor bound to node.stringLiterals.formula; a wired LAMBDA value
- *  supersedes the inline text. */
 export function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
   const lambdaSrc = incoming.get("lambda");
@@ -52,8 +51,7 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
 
   if (lambdaSrc) {
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Params bind BY NAME ([[C50]] lambdaBindsByName), so a body variable that is one of this node's variables
-    // but isn't declared a param silently reads as a captured constant rather than binding.
+    // A body variable that is one of this node's variables but not a declared param reads as a captured constant, never a binding.
     const undeclared = node.lambdaSig && isLambdaValue(live) ? undeclaredConsumerVars(live.captured, node.lambdaSig) : [];
     return (
       <>

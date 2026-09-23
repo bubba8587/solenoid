@@ -1,10 +1,6 @@
-// Screenshot pass over every Chart op and the options each op reads. Loads the
-// chart-showcase seed and re-feeds ONE frame-fed Chart node (plus the list-fed radar)
-// per variant, so the ops that no seed carries still get a real render. The op comes
-// from the card's own two selects — the component holds `op` in React state, so an
-// external write would repaint the previous figure.
-//
-//   node scripts/chart-contact-sheet.mjs        (dev server on :1420)
+// Screenshots every Chart op with the options each op reads: loads the chart-showcase seed and re-feeds one
+// frame-fed Chart (plus the list-fed radar) per variant, so ops no seed carries still render. Needs :1420.
+//   node scripts/chart-contact-sheet.mjs
 //   OUT=<dir> HEADLESS=1 node scripts/chart-contact-sheet.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
@@ -17,10 +13,7 @@ const SEED = "chart-showcase";
 const ZOOM = 1.6;
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
-// The seed's frame-fed Chart node ("Bars + line (composed)", wired to the "Series frame"
-// FrameInput) is the universal stand-in: repoint the frame, pick the op. "Profile (radar)"
-// is fed a plain LIST, the only way to get a single-series radar. Node ids are minted per
-// load, so every label resolves to an id after each seed.
+// Node ids are minted per load, so resolve every label to an id again after each seed.
 const FRAME_LABEL = "Bars + line (composed)";
 const FRAME_SRC_LABEL = "Series frame";
 const LIST_LABEL = "Profile (radar)";
@@ -36,8 +29,6 @@ const FRAMES = {
     { name: "Region", type: "string", values: ["North", "South", "East", "West"] },
     { name: "Share", type: "number", values: [38, 27, 21, 14] },
   ],
-  // Radar reads a frame TRANSPOSED: the number columns are the spokes, each row a polygon.
-  // Price against Weight is the case `radarscale` exists for.
   radar: [
     { name: "Laptop", type: "string", values: ["Apex 14", "Nimbus 15", "Vertex 13"] },
     { name: "Speed", type: "number", values: [86, 74, 92] },
@@ -45,7 +36,6 @@ const FRAMES = {
     { name: "Battery", type: "number", values: [11, 14, 9] },
     { name: "Weight", type: "number", values: [1.4, 1.8, 1.2] },
   ],
-  // Bubble takes the first three NUMBER columns as x / y / size.
   bubble: [
     { name: "Spend", type: "number", values: [12, 25, 38, 47, 60, 72] },
     { name: "Return", type: "number", values: [18, 32, 29, 55, 48, 70] },
@@ -79,8 +69,7 @@ const SHOTS = [
   { op: "bubble",    fam: "Multi-series", variant: "base",           frame: "bubble", options: "" },
 ];
 
-/** The card's two selects: [0] the family filter, [1] the op. Hover first — LazySelect
- *  keeps its option list out of the DOM until the pointer arrives. */
+// Pick through the card's own selects: the component holds `op` in React state; hover first, since LazySelect renders options only then.
 async function pickSelect(page, nodeId, index, value) {
   const at = (nodeId, index) => {
     const card = document.querySelector(`.react-flow__node[data-id="${nodeId}"]`);
@@ -127,8 +116,7 @@ async function seedDoc(page) {
 async function shoot(page, shot, theme) {
   const nodeId = shot.list ? ids.list : ids.chart;
   const label = shot.list ? LIST_LABEL : FRAME_LABEL;
-  // Frame the card before touching its selects — the hover that arms a LazySelect is a real
-  // mouse move, so the select has to be on screen.
+  // Frame the card first: the hover that arms a LazySelect is a real mouse move.
   await page.evaluate((label, k) => window.__spike.zoomNode(label, k, 200, 160), label, ZOOM);
   await wait(500);
   if (!shot.list) {
@@ -142,7 +130,7 @@ async function shoot(page, shot, theme) {
   await wait(300);
   await page.evaluate((label, k) => window.__spike.zoomNode(label, k, 200, 160), label, ZOOM);
   await wait(500);
-  await page.mouse.move(6, 6); // hover styling must not land in the frame
+  await page.mouse.move(6, 6); // keeps hover styling out of the shot
   await wait(250);
 
   const clip = await page.evaluate((nodeId) => {
@@ -186,7 +174,7 @@ try {
         try {
           file = await shoot(page, shot, theme);
         } catch (err) {
-          // An HMR reload from a peer agent's save kills the context mid-run.
+          // An HMR reload from another agent's save can kill the context mid-run.
           console.log(`  retry ${shot.op}/${shot.variant}/${theme}: ${err.message}`);
           await wait(1500);
           try { await seedDoc(page); } catch { /* the reload may still be in flight */ }

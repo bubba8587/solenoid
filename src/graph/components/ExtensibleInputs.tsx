@@ -22,34 +22,27 @@ import { CollapsedInputPill } from "./CollapsedInputPill";
 import "./nodeCard.css";
 import { dropInputCables } from "./cablePrune";
 
-/** Variable-arity value inputs whose values can also be typed directly into the node. */
 export interface ExtensibleNode {
   id: string;
   inputs: Record<string, { socket: ClassicPreset.Socket; label?: string } | undefined>;
-  // One or the other: number rows bind to `literals`, string rows to `stringLiterals`.
+  // Number rows bind to `literals`, string rows to `stringLiterals`.
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
-  /** See `takesAutoLiteral` — a wildcard row takes a number OR text. */
   autoLiterals?: boolean;
   addValueInput: () => string;
   removeValueInput: (key: string) => void;
 }
 
-/** For an arbitrary number of DISTINCT in-node values; interchangeable inputs take a
- *  single multi-connection socket instead. Each input dot centers on its own row. */
+/** For distinct in-node values; interchangeable inputs take one multi-connection socket instead. */
 export function ExtensibleInputs({
   node, emit, leadingKeys, valueKeys, minRows = 1, addLabel = "Add",
 }: {
   node: ExtensibleNode;
   emit: Emit;
-  // Fixed inputs (no remove) rendered ABOVE the extensible rows — e.g. CHOOSE's `index`.
   leadingKeys?: string[];
-  // The removable value rows. Default: all inputs (List/Concat, where every input is one).
   valueKeys?: string[];
-  // The fewest rows the remove button leaves standing; an OPTIONAL group passes 0.
+  // The fewest rows the remove button leaves; an optional group passes 0.
   minRows?: number;
-  // The add-row button's text; names what a row IS on nodes where it isn't a plain value
-  // (Frame Input's rows are λ column-sources, so it reads "Add LAMBDA").
   addLabel?: string;
 }) {
   const connected = useConnectedInputs(node.id);
@@ -95,8 +88,6 @@ export function ExtensibleInputs({
     await processGraph();
   }
 
-  // Collapsed: ≥2 inputs aggregate into one pill (dots would spill past the small node);
-  // a lone input centers on the display box.
   if (collapsed) {
     if (allKeys.length >= 2) {
       return <CollapsedInputPill node={node} emit={emit} keys={allKeys} />;
@@ -128,12 +119,8 @@ export function ExtensibleInputs({
         if (!input) return null;
         const isConn = connected.has(key);
         const dt = input.socket instanceof SolenoidSocket ? input.socket.dataType : undefined;
-        // A list-typed row is typed as CSV in the same text field a string row uses.
         const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
-        // A container-typed row is WIRE-ONLY — a typed literal has no meaning for a
-        // list/table/frame operand. Logical operands are wire-only too, matching IfNode.
-        // A WILDCARD row is wire-only unless the node opts into auto literals: the number
-        // field is for number rows only, never a fallback (it forces the numeric keyboard).
+        // Container, logicalcombo, lambda and chart rows are wire-only, and so is a wildcard row unless the node opts into auto literals.
         const isWildcard = dt === "any" || dt === "anydata" || dt === "trueany";
         const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda" || dt === "chart"
           || (isWildcard && !takesAutoLiteral(node, dt));

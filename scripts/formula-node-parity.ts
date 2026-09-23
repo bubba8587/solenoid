@@ -1,35 +1,18 @@
 // [[D7]]
-// Run with: npx tsx scripts/formula-node-parity.ts
-// Measures the NODE ↔ FORMULA parity gap in both directions (author direction
-// 2026-07-14: the node set and the expression/equation formula language should
-// converge — the parity ratchet is [[C51]] formulaNaming / [[C18]] uniqueNameMap).
-// Companion to scripts/parity.ts
-// (which measures the EXCEL → Solenoid gap); this one measures Solenoid
-// against itself:
-//   A. catalog leaves whose Excel name is NOT dispatchable in a formula
-//      (a user types TEXTSPLIT(...) in an Expression → #NAME?, node exists);
-//   B. Solenoid-native node ops with no formula equivalent at all;
-//   C. formula-dispatchable names with no node home and no EXCEL_GAP entry
-//      (the uncurated legacy-alias surface Formula.js drags in).
-//
-// The measurement itself lives in `src/graph/formulaNodeParity.ts`, shared with
-// the RATCHET test that pins these gaps — this file is only the report.
+// Reports the node-to-formula parity gap (the measurement is src/graph/formulaNodeParity.ts, shared with
+// the ratchet test): A, Excel-named nodes whose name a formula can't call; B, native node ops with no
+// formula equivalent; C, formula names with no node and no EXCEL_GAP entry. scripts/parity.ts is Excel's gap.
+//   npx tsx scripts/formula-node-parity.ts
 
 import { measureParity, excelNamedGapNames } from "../src/graph/formulaNodeParity";
 import { EXCEL_IMPL_META } from "../src/graph/excelFunctions";
 import { initPackFormulas } from "../src/graph/formulaExtensions";
 
-// Register every pack's formula functions first — the app does this at startup
-// (main.tsx), so a measurement without them would report the custom-logic pack
-// nodes (TRIANGLESOLVER, MOLARMASS…) as gaps they no longer are.
+// Register pack formulas first, as main.tsx does, or pack nodes report as false gaps.
 initPackFormulas();
 
 const m = measureParity();
 
-// Report against the IN-SCOPE leaves, never `rows.length`: the catalog includes
-// sliders, notes, sinks and chrome that were never candidates for a formula name,
-// so x/646 understates coverage and answers a different question (author ruling,
-// 2026-08-01). Gap B is printed on its own line as the excluded population.
 const pct = m.inScope.length ? Math.round((m.covered.length / m.inScope.length) * 1000) / 10 : 100;
 console.log(`\n=== Node → formula: ${m.covered.length}/${m.inScope.length} in-scope leaves callable (${pct}%) ===`);
 console.log(`    excluded by design: ${m.nativeGap.length} non-function leaves (sources · sinks · UI · chrome · the verb surface) — gap B below`);

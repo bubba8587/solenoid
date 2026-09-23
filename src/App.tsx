@@ -36,17 +36,14 @@ import "./App.css";
 import "./graph/StatusBar.css";
 import "./mobile.css";
 
-// ?showcase[=<type>] swaps the whole app for the node-showcase harness. Read once at
-// module load, so entering/leaving is a reload.
+// URL routes are read once at module load, so entering or leaving one is a reload.
 const SHOWCASE_TYPE = new URLSearchParams(window.location.search).get("showcase");
 const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 
-// ?landing swaps the whole app for the landing page, the same way.
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
-// The marketing site's pathname routes (every path rewrites to index.html on Vercel),
-// read once at module load like the query-param routes above.
+// Every path rewrites to index.html on Vercel, so the site's pathname routes are read here.
 const SITE_PATH = window.location.pathname.replace(/\/+$/, "");
 const IS_OBSIDIAN = SITE_PATH === "/obsidian";
 const ObsidianPage = lazy(() => import("./graph/landing/ObsidianPage"));
@@ -104,7 +101,7 @@ function App() {
 }
 
 function MainApp() {
-  // Once per release, deferred so it lands after the cinematic load reveal.
+  // Deferred so it lands after the load reveal.
   useEffect(() => {
     const t = setTimeout(autoShowWhatsNewOnce, 1400);
     return () => clearTimeout(t);

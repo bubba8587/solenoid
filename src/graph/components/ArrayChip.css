@@ -1,8 +1,5 @@
 .solenoid-array-chip {
-  /* A chip carries its VALUE TYPE's color, not the node header accent — a per-type
-     modifier below sets --chip-accent (lists/tables gold, frames/cubes violet, charts
-     green), so a chip reads the same wherever it sits (a node body, a group readout,
-     a Report). The fallback keeps a modifier-less chip readable. */
+  /* A chip carries its value type's color, not the header accent, so it reads the same wherever it sits; the fallback keeps a modifier-less chip readable. */
   --chip-accent: var(--node-accent, var(--accent));
   flex: 0 0 auto;
   font-family: var(--font-mono);
@@ -19,11 +16,8 @@
   background: color-mix(in srgb, var(--chip-accent) 22%, transparent);
 }
 
-/* Per-type chip colors (retint with the palette via the --sock-* vars). */
 .solenoid-array-chip--array { --chip-accent: var(--sock-number); } /* lists + tables */
-/* Element-family tints (homogeneous containers only — set by ArrayChip when the
-   family is known; numeric keeps the default above). List vs table shades match
-   the corresponding socket colors. */
+/* Set only when the family is known; numeric keeps the default above. */
 .solenoid-array-chip--elem-string        { --chip-accent: var(--sock-strlist); }
 .solenoid-array-chip--elem-string-table  { --chip-accent: var(--sock-strtable); }
 .solenoid-array-chip--elem-date          { --chip-accent: var(--sock-datelist); }
@@ -32,13 +26,12 @@
 .solenoid-array-chip--elem-logical-table { --chip-accent: var(--sock-logicaltable); }
 .solenoid-array-chip--elem-complex       { --chip-accent: var(--sock-complexlist); }
 .solenoid-array-chip--elem-complex-table { --chip-accent: var(--sock-complextable); }
-.solenoid-array-chip--frame { --chip-accent: var(--sock-frame); }  /* frames */
-.solenoid-array-chip--cube  { --chip-accent: var(--sock-cube); }   /* cubes */
-.solenoid-array-chip--chart { --chip-accent: var(--sock-chart); }  /* charts */
+.solenoid-array-chip--frame { --chip-accent: var(--sock-frame); }
+.solenoid-array-chip--cube  { --chip-accent: var(--sock-cube); }
+.solenoid-array-chip--chart { --chip-accent: var(--sock-chart); }
 .solenoid-array-chip--document { --chip-accent: var(--sock-chart); } /* documents share the Special (chart) family */
 
-/* Compact variant for node result boxes — the chip sits under a grid preview,
-   so it reads as a small "open full grid" affordance rather than the headline. */
+/* The chip sits under a grid preview, so it reads as a small "open full grid" affordance, not the headline. */
 .solenoid-array-chip--sm {
   font-size: 10px;
   padding: 0 5px;

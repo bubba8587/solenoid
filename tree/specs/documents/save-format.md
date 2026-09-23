@@ -22,6 +22,7 @@ A document has three representations: the live graph (rete editor plus side stor
 | `src/graph/documentStore.ts`, `documentStoreCore.ts` | The document library and its localStorage persistence |
 | `src/graph/fileSession.ts`, `fileBridge.ts` | Disk save and open (desktop dialogs, browser download and upload) |
 | `src/graph/imageAssets.ts` | Image bytes written beside the file instead of into it |
+| `src/graph/saveTimeStore.ts` | The save-clock read seam node classes use |
 | `src/graph/nodes/placeholder.ts` | `PlaceholderNode`, the stand-in for an unknown type |
 | `src/graph/nodeCtorRegistry.ts` | `ctorRegistry()`, class name to constructor |
 
@@ -245,7 +246,7 @@ There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change
 
 `loadGraph` returns `true` on success and `false` when it refused or rolled back; in both failure cases the previous graph is on screen.
 
-1. **Structural gate.** `validateSavedGraph(g)` runs first. It requires an object with a numeric `v`, a `nodes` array whose entries are objects with string `id` and `type` and numeric-or-absent `x` and `y`, a `connections` array (when present) of objects with four string fields, and `standoffs` (when present) an array. Failure: sticky notice "Couldn't open this graph: *reason*. Your current work is unchanged." Unknown types and bad cables are not structural failures.
+1. **Structural gate.** `validateSavedGraph(g)` runs first, before anything is torn down, so a malformed file cannot fail partway through a rebuild after the user's graph is gone. It requires an object with a numeric `v`, a `nodes` array whose entries are objects with string `id` and `type` and numeric-or-absent `x` and `y`, a `connections` array (when present) of objects with four string fields, and `standoffs` (when present) an array. Failure: sticky notice "Couldn't open this graph: *reason*. Your current work is unchanged." Unknown types and bad cables are not structural failures.
 2. **Version gate**, as above.
 3. **Snapshot** the live graph with `serializeGraph()` for rollback.
 4. **Enter rebuild mode**: suspend autosave, `beginGraphRebuild()` (which suppresses live-creation behavior such as group absorb, and makes `isGraphRebuilding()` true).
@@ -255,8 +256,10 @@ There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change
 
 ### `rebuildGraph`
 
-1. **Curtain.** When `curtain` is allowed (the default) and the old plus new node and connection count exceeds 300, the "Loading graph" overlay shows before teardown, and teardown and build yield to a paint every 24 items to advance its progress bar. Undo and redo pass `curtain: false`.
-2. **Teardown.** Remove every connection, then every node. Then `forgetAllNodes()` clears every per-node store in one pass; close the report overlay, stop any presentation, and close any Composite drill-in.
+`rebuildGraph` assumes the graph passed the structural gate and that its caller holds the autosave suspension and the rebuild scope, because the rollback in step 6 calls it a second time inside the same scope.
+
+1. **Curtain.** When `curtain` is allowed (the default) and the old plus new node and connection count exceeds 300, the "Loading graph" overlay shows before teardown, and teardown and build yield to a paint every 24 items to advance its progress bar ([[graph-load-teardown-performance]]). Undo and redo pass `curtain: false`: a restore is a reload underneath, but it must feel like an edit, not a document open.
+2. **Teardown.** Remove every connection, then every node; each `noderemoved` undocks any Format Controller, so no extra cleanup is needed. Then `forgetAllNodes()` clears every per-node store in one pass. Close the report overlay and stop any presentation, so no overlay keyed to an outgoing node id keeps its chrome (the docked report's canvas squeeze) across a switch. Close any Composite drill-in, which would otherwise keep rendering a Composite from a graph that no longer exists; closing also unmounts its internal views and stops their timers.
 3. **Document-level state first**: set the document palette, report palette and `meta` (each `null` when absent), so node colors resolve through the right palette as nodes are built.
 4. **Placeholder sockets.** For each saved node whose `type` is not in the registry, `deriveMissingNodeSockets` collects the input keys its saved connections target and the output keys they leave from, each in first-seen order.
 5. **Construct** every node synchronously, in save order:
@@ -274,10 +277,10 @@ There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change
 12. **Side tables**, each remapped through the id map and filtered to live nodes: standoffs (skipped when either end is missing or both ends are the same node), drawn cables (loaded as is), pins, comments, frame formats.
 13. `rebuildGroupMembership(editor)` from the Groups' `members`.
 14. `processGraph()` computes every node.
-15. Fit the camera to the nodes (skipped for an empty graph), then `syncGroupCollapse` re-hides collapsed Groups' members.
-16. Two animation frames later, reposition every docked Format Controller against its host, once heights have settled.
+15. Fit the camera to the nodes (skipped for an empty graph, where `zoomAt` would produce a NaN transform), then `syncGroupCollapse` re-hides collapsed Groups' members.
+16. Two animation frames later, reposition every docked Format Controller against its host, once heights have settled (a Decimal chip lays out a frame late).
 
-The save-to-live id map from the last load is kept for tooling (`getLastLoadIdMap()`); the app never reads it.
+The saved-id to live-id map from the last load stays readable through `getLastLoadIdMap()`. `seedTune.ts` reads seed geometry back by saved id through it, and `aiReveal.ts` uses it to find the nodes an AI apply added.
 
 ### Unknown types: the Placeholder
 
@@ -289,7 +292,7 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 - Adopted socket types. A wildcard socket's settled type is derived from the wiring by step 10 on every load, never stored.
 - Derived display and runtime state, per the field classification above: `cached*` and `_*` fields and the `DELIBERATELY_TRANSIENT` list.
 - A node's measured size for most classes. `width` and `height` are captured in every node's `init`, but only size-owning classes (annotation frames, the Composite card, Groups, overlay hosts) read them back ([[C37]] observerOwnsSize); for other classes the saved values are inert and a fresh measure wins.
-- Image bytes. On desktop, `bundleLocalImages` writes each unsaved image into an `images/` folder beside the file (reusing a same-content file, else `name (2).ext` up to `(9)`, else a content-hash suffix) and records a document-relative `assetPath`; the Image card re-reads it on mount, refusing a path that climbs out of the folder. On the web an attached image stays session-only.
+- Image bytes. On desktop, `bundleLocalImages` runs before `serializeGraph`, so the JSON carries the fresh paths. It writes each unsaved image into an `images/` folder beside the file (reusing a same-content file, else `name (2).ext` up to `(9)`, else a content-hash suffix) and records a document-relative `assetPath`; the Image card re-reads it on mount, which covers a document load, a paste and a Placeholder restore with no hook per load path. A path that climbs out of the document's folder is never read, and a missing file is not an error, since the folder is the user's and files move. The card shows a "not saved" hint until its image is bundled. On the web an attached image stays session-only.
 - Selection, camera, undo history, open overlays, drill-in state, and the sink arm flag.
 - The document's own name, file path and clocks: these live on the library entry (`SolDoc`), not in the graph.
 
@@ -297,9 +300,9 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 
 `graphValidate.ts` is the strict counterpart to the forgiving loader: every condition the loader would repair or silently drop is an issue. It serves the AI palette (a candidate rewrite must be free of hard issues before it applies) and the CLI (`scripts/validate-graph.ts`, `scripts/run-graph.ts`). The interactive loader does not call it.
 
-`validateText(text)` reports every malformed line rather than stopping at the first: a missing separator, each line `parseNodeLine` rejects, duplicate names (salvage keeps the first), and invalid sidecar JSON. When the grammar is clean it reads the text with `readTextForm`; otherwise it salvages the parsable lines at `(0, 0)`. It then runs `validateGraph` and checks that every sidecar reference (`positions` keys, standoff ends, pins, comments, frame formats) names a real node.
+`validateText(text)` reports every malformed line rather than stopping at the first: a missing separator, each line `parseNodeLine` rejects, duplicate names (salvage keeps the first), and invalid sidecar JSON. When the grammar is clean it reads the text with `readTextForm`; otherwise it salvages the parsable lines at `(0, 0)`. It then runs `validateGraph` and checks that every sidecar reference (`positions` keys, standoff ends, pins, comments, frame formats) names a real node, since a misspelled name silently loses that entry on load.
 
-`validateGraph(g, lineOf?)` reports, each anchored to the node's line when known:
+`validateGraph(g, lineOf?)` reports, each anchored to the node's line when known (the line is null for a sidecar or whole-graph issue, and for a graph validated straight from JSON). An error is a condition the loader would repair or the editor refuse; a warning is legal to load and run but almost certainly unintended. Each node is judged against its own headless instance, never a per-class cache, because `init` can change the socket set (op-selected and row-driven sockets).
 
 | Check | Severity |
 |---|---|
@@ -308,12 +311,12 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 | an unknown type, with the nearest registry names | error |
 | the constructor throws on this `init` | error |
 | an `init` key the constructed instance does not carry (the whitelists, instance fields, literal and input keys, `valueKeys` for row-growing nodes and `internal` for Composites are accepted) | error |
-| an `op` outside the class's op vocabulary, when that vocabulary has two or more entries | error |
+| an `op` outside the class's op vocabulary, when that vocabulary has two or more entries (an unknown op constructs without complaint and then miscomputes; a single entry asserts too little) | error |
 | a `lit:` or `str:` key on a class that does not declare that map, or a value of the wrong JSON type | error |
 | a connection to or from an unknown node, to a missing input, or from a missing output (skipped when the instance has no sockets of that side) | error |
-| a connection `canConnect` refuses, with the reason phrased as the fix | error |
+| a connection `canConnect` refuses, with the reason phrased as the fix (the loader would drop it without a word) | error |
 | a single-cable input wired twice | error |
-| issues inside a Composite's `internal` subgraph, prefixed "inside the composite" | inherited |
+| issues inside a Composite's `internal` subgraph, prefixed "inside the composite"; the name check is skipped there (internal ids are not user names) and the version is checked once, on the outer graph | inherited |
 | a dependency cycle, listing the nodes (they compute as `#CIRC!`) | warning |
 
 Suggestions use Levenshtein distance within a budget of `max(2, ceil(len / 4))`, showing the two closest. `hardIssues` drops warnings; `formatIssues` renders `line N [name]: message`, or `graph: message` when there is no line.
@@ -330,9 +333,11 @@ The document library is the working store; files are exports and imports of one 
 
 **Switching documents.** Every `documentStore` verb that changes which document is on screen (`newBlank`, `newFromTemplate`, `open`, `saveAs`, `duplicate`, `importAsDocument`) first returns early if a rebuild is running, then captures the outgoing document ([[C36]] captureBeforeSwap). The sanctioned exceptions are `restore` (nothing live at startup), `remove` (capturing would resurrect the deleted edits) and `reloadCurrent` (gated on the load reveal instead). When the incoming document's load is refused, the library reverts `currentId` to the document still on screen, or, with nothing to revert to, adds and shows a blank "Untitled", so an autosave never writes one document's graph into another. Deleting the last document replaces it with a blank one. A fresh profile starts from the default seed.
 
+**Save clocks.** `saveTimeStore` is the leaf module node classes read the clocks through (`autosavedAt`, the current document's `updatedAt`, and `fileSavedAt`), since a node class cannot import `documentStore`. `documentStore` registers itself as its provider at load and bumps it on every library change; in a headless run nothing registers, so both read null.
+
 **Undo.** The undo history records `JSON.stringify(serializeGraph())` after each settled mutation; undo and redo restore with `loadGraph(snapshot, { curtain: false })`, put the camera back, and schedule an autosave.
 
 **Files on disk.** A file is the `SavedGraph` JSON (not the text form), written with `JSON.stringify(g, null, 2)` and a `.json` extension.
 
 - *Save* (`saveToDisk`) captures the current document, then on desktop resolves the destination (the bound `filePath`, or a save dialog for a new document or Save As), bundles images into it, serializes, stamps `savedAt` with the write instant, and writes through a `<path>.tmp` sibling renamed over the target (a direct write when the temp file is outside the granted scope). A new destination binds the document to the path and renames it to the file name. It then captures again (so the library copy carries the new `assetPath`s) and sets `fileSavedAt` to the same instant as `savedAt`. In the browser the file is offered as a download, with no image bundling.
-- *Open* (`openFromDisk`) parses the JSON (error notice when it is not JSON), applies `validateSavedGraph` (error notice when it fails), and adopts it with `importAsDocument(graph, fileName, path)`: the graph's `meta` is marked `foreign: true` with `networkAllowed` cleared, so a shared file cannot pre-grant network access; the new document takes the file name, binds to the path on desktop, and seeds both `updatedAt` and `fileSavedAt` from the file's `savedAt` when present. A load refused by the version gate reverts to the previous document.
+- *Open* (`openFromDisk`) parses the JSON (error notice when it is not JSON), applies `validateSavedGraph` (error notice when it fails), and adopts it with `importAsDocument(graph, fileName, path)`: the graph's `meta` is marked `foreign: true` with `networkAllowed` cleared, so a shared file cannot pre-grant network access; the new document takes the file name, binds to the path on desktop, and seeds both `updatedAt` and `fileSavedAt` from the file's `savedAt` when present. `saveToDisk` captures right before it writes, so at that instant the last autosave and the write coincide, and a document opened on another machine shows when its content was really saved rather than when it was imported. A load refused by the version gate reverts to the previous document.

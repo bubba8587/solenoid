@@ -1,17 +1,7 @@
-/* Minimap position — Settings ▸ View. Classes on <html> set by syncPerfClasses().
-   Default (neither class) is the bottom-right corner styled in Minimap.css. */
 html.minimap-hidden .solenoid-minimap { display: none; }
-/* Top: below the Zoom pill (NavMenu — top: 80px, ~34px tall) instead of the
-   bottom-right corner. */
 html.minimap-top .solenoid-minimap { top: 126px; bottom: auto; }
-/* Hide the canvas background dot grid — Settings ▸ View. */
 html.perf-no-grid-dots .react-flow__background { display: none; }
 
-/* Lock canvas = view-only. A node's chrome (sockets, fields, value box) and the
-   cable hit-paths take no pointer input, so a press / wheel over them falls
-   through to the area — pan and zoom stay live — but nothing can be wired,
-   selected, or edited. The node BODY drag is blocked by the guard (see Canvas
-   patchDragGuard). !important beats the touch selection-gating in socket.css. */
 .solenoid-canvas--locked .solenoid-node,
 .solenoid-canvas--locked .solenoid-node *,
 .solenoid-canvas--locked .solenoid-group,
@@ -20,15 +10,7 @@ html.perf-no-grid-dots .react-flow__background { display: none; }
   pointer-events: none !important;
 }
 
-/* Animated mode (cableFlowStore): beads ride each live cable from output to
-   input. A tiny dash + round cap = a bead; the long gap spaces them out; the
-   negative dashoffset drives them along the path (which is drawn source→target),
-   so flow direction reads as data leaving an output and arriving at an input.
-   The animation distance equals one dash period, so beads move at a constant
-   speed in px regardless of cable length, and the loop is seamless. */
 .solenoid-cable-flow {
-  /* Near-zero dash + round cap = a perfectly circular bead (diameter = stroke
-     width); the long gap spaces them out. */
   stroke-dasharray: 0.01 72;
   animation: solenoid-cable-flow 2.25s linear infinite;
 }
@@ -39,22 +21,8 @@ html.perf-no-grid-dots .react-flow__background { display: none; }
   .solenoid-cable-flow { animation: none; }
 }
 
-/* (Removed 2026-07-04) The entire gesture-time paint/quality-cut system (the
-   `.solenoid-canvas--panning` rules — flow-bead pause, box-shadow drop, conduit
-   drop-shadow + toolbar backdrop-filter removal, and the earlier AA reduction).
-   DOM mode now stays full-quality while panning; the HTML-in-canvas renderer is the
-   performance path when a graph is heavy enough to need one, so DOM mode no longer
-   trades visual fidelity for pan smoothness. Flow beads keep animating through a
-   pan (they used to freeze). The `--panning` class is no longer applied. */
 
-/* The minimap is now a custom React component (SolenoidMinimap) and styles
-   itself in Minimap.css — colored per-node, dark-theme container. */
 
-/* ─── Isolate (local view) ──────────────────────────────────────────────────
-   Non-focus node views recede and stop receiving pointer events. View-only:
-   positions, groups, and push records are untouched (see isolateStore). The
-   transition fades nodes OUT when isolation starts; removing the class on exit
-   snaps them back instantly, which reads fine. */
 .solenoid-isolate-dim {
   opacity: 0.08;
   pointer-events: none;

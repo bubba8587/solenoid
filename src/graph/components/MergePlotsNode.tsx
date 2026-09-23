@@ -13,7 +13,7 @@ import { isChartValue, type ChartValue } from "../chartValue";
 import type { SolError } from "../errorValue";
 import { nodeDisplayName } from "../catalogUtils";
 
-// Fills the wide card (240) minus body padding, matching Chart.
+// Fills the wide card (240) minus body padding, as Chart does.
 const W = 218;
 const H = 150;
 
@@ -47,9 +47,7 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
         ) : null}
       </div>
       <div className="solenoid-node__section-divider" />
-      {/* Options: a matplotlib-style string, or wire a Chart Builder (the field hides when wired). */}
       <InlineInputs node={data} emit={emit} keys={["options"]} />
-      {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
       {cv && <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>}
     </NodeShell>
   );

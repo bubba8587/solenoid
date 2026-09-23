@@ -14,22 +14,14 @@ export type Ast =
   | { t: "bool"; v: boolean }
   | { t: "name"; name: string }
   | { t: "call"; name: string; args: Ast[] }
-  // Postfix call on a computed value: `fn` is an arbitrary expression that must
-  // evaluate to a LambdaValue (unlike `call`, a NAME applied to args).
   | { t: "apply"; fn: Ast; args: Ast[] }
   | { t: "unary"; op: "-" | "+"; arg: Ast }
   | { t: "percent"; arg: Ast }
   | { t: "bin"; op: string; l: Ast; r: Ast }
-  // An OMITTED call argument — Excel's `IF(x,,y)` — evaluating to null (blank).
   | { t: "blank" }
-  // This-row reference, resolved via computedColumnCore's row context — NOT a
-  // variable: extractVariables skips it, so it never grows a socket.
   | { t: "atcol"; name: string }
-  // A WHOLE-column structured reference (tableRefSemantics) — not a variable either.
   | { t: "wholecol"; name: string };
 
-/** Identifier-shaped: printable as a bare `@name` / variable; anything else
- *  needs the bracket spelling. */
 const IDENT_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 // ─── Tokenizer ────────────────────────────────────────────────────────────────
@@ -39,7 +31,6 @@ function tokenize(src: string): Tok[] | null {
   const toks: Tok[] = [];
   let i = 0;
   const digit = (c: string) => c >= "0" && c <= "9";
-  // `λ` spells a wired LAMBDA socket's name (`λ1`), callable like any lambda binding.
   const idStart = (c: string) => /[A-Za-z_λ]/.test(c);
   const idChar = (c: string) => /[A-Za-z0-9_λ]/.test(c);
   while (i < src.length) {
@@ -54,7 +45,7 @@ function tokenize(src: string): Tok[] | null {
         while (j < src.length && digit(src[j])) j++;
       }
       const v = src.slice(i, j);
-      if (!/^(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v)) return null; // 1.2.3, 2e: not a number
+      if (!/^(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(v)) return null;
       toks.push({ k: "num", v });
       i = j;
       continue;
@@ -62,15 +53,13 @@ function tokenize(src: string): Tok[] | null {
     if (c === '"') {
       let j = i + 1;
       while (j < src.length && src[j] !== '"') j++;
-      if (j >= src.length) return null; // unterminated string
+      if (j >= src.length) return null;
       toks.push({ k: "str", v: src.slice(i + 1, j) });
       i = j + 1;
       continue;
     }
     if (idStart(c)) {
       let j = i + 1;
-      // A function name may be DOTTED (NORM.DIST): consume a `.` only when an
-      // identifier char follows, so trailing dots and decimals stay untouched.
       while (j < src.length && (idChar(src[j]) || (src[j] === "." && idChar(src[j + 1] ?? "")))) j++;
       toks.push({ k: "name", v: src.slice(i, j) });
       i = j;
@@ -82,8 +71,6 @@ function tokenize(src: string): Tok[] | null {
     if (c === "(" || c === ")") { toks.push({ k: "paren", v: c }); i++; continue; }
     if (c === ",") { toks.push({ k: "comma", v: "," }); i++; continue; }
     if (c === "[") {
-      // Structured reference (tableRefSemantics): `[Name]` = whole column, `[@Name]` = this row;
-      // the name is raw text up to `]`, which can't itself appear.
       let j = i + 1;
       let row = false;
       if (src[j] === "@") { row = true; j++; }
@@ -107,7 +94,7 @@ function tokenize(src: string): Tok[] | null {
       i = j;
       continue;
     }
-    return null; // unknown character
+    return null;
   }
   return toks;
 }
@@ -149,7 +136,7 @@ function parse(toks: Tok[]): Ast | null {
   function exp(): Ast | null {
     let l = percent();
     if (!l) return null;
-    while (isOp("^")) { eat(); const r = percent(); if (!r) return null; l = { t: "bin", op: "^", l, r }; } // left-assoc
+    while (isOp("^")) { eat(); const r = percent(); if (!r) return null; l = { t: "bin", op: "^", l, r }; } // Left-associative, as in Excel: 2^3^2 is 64.
     return l;
   }
   function percent(): Ast | null {
@@ -162,14 +149,12 @@ function parse(toks: Tok[]): Ast | null {
     if (isOp("-", "+")) { const op = eat().v as "-" | "+"; const arg = unary(); if (!arg) return null; return { t: "unary", op, arg }; }
     return primary();
   }
-  /** Parse "( args )" starting AT the open paren. Null on syntax error. */
+  /** Starts at the open paren. */
   function argList(): Ast[] | null {
     eat();
     const args: Ast[] = [];
     if (peek()?.v !== ")") {
       for (;;) {
-        // An OMITTED argument — a comma (or the closing paren) right where an
-        // expression should start — is a BLANK, Excel's `IF(x,,y)` form.
         if (peek()?.k === "comma" || (peek()?.k === "paren" && peek().v === ")")) {
           args.push({ t: "blank" });
         } else {
@@ -189,8 +174,6 @@ function parse(toks: Tok[]): Ast | null {
   function primary(): Ast | null {
     const base = primaryNoApply();
     if (!base) return null;
-    // Postfix application — `LAMBDA(x, x+1)(5)`, `f(2)(3)`: any further "(" after
-    // a complete primary applies its VALUE (which must be a lambda at runtime).
     let node = base;
     while (peek()?.k === "paren" && peek().v === "(") {
       const args = argList();
@@ -248,20 +231,15 @@ function parseExpr(expr: string): Ast | null {
   return parse(toks);
 }
 
-/** Parse a formula to its AST (null on a syntax error); equationSolve.ts
- *  rearranges this tree symbolically. */
 export function parseFormula(expr: string): Ast | null {
   return parseExpr(expr);
 }
 
-/** A human explanation for a parse failure, or null when nothing recognizable is
- *  wrong; literals are blanked first so a quoted "{" can't false-hit. */
 export function formulaSyntaxHint(expr: string): string | null {
   const s = expr.replace(/"[^"]*"?/g, '""').trim();
   if (/[{}]/.test(s)) return "Braces { } aren't formula syntax — remove them (array literals aren't supported; wire a List or Table input instead)";
   if (s.startsWith("=")) return "Drop the leading = — type just the formula body";
   if (/;/.test(s)) return "Separate arguments with commas, not semicolons";
-  // Brackets ARE syntax (tableRefSemantics) — only an unbalanced pair is diagnosable here.
   const openB = (s.match(/\[/g) ?? []).length;
   const closeB = (s.match(/\]/g) ?? []).length;
   if (openB !== closeB) return "Unclosed [ — a whole column is [Name], this row's cell is @[Name]";
@@ -273,8 +251,6 @@ export function formulaSyntaxHint(expr: string): string | null {
   return null;
 }
 
-// Bare names that resolve to a constant instead of becoming an input variable,
-// so `2*pi` evaluates rather than requesting a `pi` input.
 export const FORMULA_CONSTANTS: Record<string, number> = {
   pi:  Math.PI,
   tau: 2 * Math.PI,
@@ -285,25 +261,21 @@ function constantValue(name: string): number | undefined {
   return FORMULA_CONSTANTS[name.toLowerCase()];
 }
 
-/** Every DISPATCHABLE name (UPPERCASE), recomputed live against the registry
- *  generation because packs register after module load; what the editor OFFERS is
- *  the subset `advertisedFunctionNames()` returns. */
 let _names: string[] = [];
 let _namesGen = -1;
 export function formulaFunctionNames(): string[] {
   const gen = registryGeneration();
   if (gen === _namesGen) return _names;
   _names = Array.from(new Set([
-    ...FX_FUNCTION_NAMES, // flat AND namespaced-dotted (NORM.DIST, STDEV.S, …)
+    ...FX_FUNCTION_NAMES,
     ...Object.keys(EXCEL_IMPL_META),
     ...internalFunctionNames(),
-  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // [[C14]] currentExcelParity: eliminated stays eliminated on EVERY surface
+  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort();
   _namesGen = gen;
   return _names;
 }
 
 // ─── Variable extraction ──────────────────────────────────────────────────────
-// A bare dispatchable name in a lambda slot is an eta function, not a variable (etaOrEval).
 const isEtaName = (a: Ast): boolean =>
   a.t === "name" && constantValue(a.name) === undefined && !!resolveExcelFunction(a.name);
 
@@ -313,7 +285,6 @@ function collectNames(n: Ast, out: string[], seen: Set<string>, bound: ReadonlyS
       if (constantValue(n.name) === undefined && !bound.has(n.name) && !seen.has(n.name)) { seen.add(n.name); out.push(n.name); }
       break;
     case "call": {
-      // A LAMBDA literal binds its params, so they are never the host's variables.
       if (n.name.toUpperCase() === "LAMBDA" && n.args.length >= 1) {
         const inner = new Set(bound);
         for (const a of n.args.slice(0, -1)) if (a.t === "name") inner.add(a.name);
@@ -333,7 +304,6 @@ function collectNames(n: Ast, out: string[], seen: Set<string>, bound: ReadonlyS
   }
 }
 
-/** Variable names (first-appearance order) used in the formula. */
 export function extractVariables(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];
@@ -342,10 +312,6 @@ export function extractVariables(expr: string): string[] {
   return out;
 }
 
-/** Is the formula's result still a DATE? Static, from what is already declared: a date
- *  column read, a function whose `returns` is "date", and the ops that keep a date a
- *  date ([[D41]] formatFlowsDownstream: date ± days is a date, date − date is a span).
- *  Anything it cannot see through answers false, so the result stays a plain number. */
 export function exprYieldsDate(expr: string, isDateName: (name: string) => boolean): boolean {
   const ast = parseExpr(expr);
   if (!ast) return false;
@@ -361,7 +327,6 @@ export function exprYieldsDate(expr: string, isDateName: (name: string) => boole
       case "call": {
         const name = n.name.toUpperCase();
         if (EXCEL_IMPL_META[name]?.returns === "date") return true;
-        // IF passes its branches through: a date when every branch it has is one.
         if (name === "IF") {
           const branches = n.args.slice(1).filter((a) => a.t !== "blank");
           return branches.length > 0 && branches.every(isDate);
@@ -374,8 +339,6 @@ export function exprYieldsDate(expr: string, isDateName: (name: string) => boole
   return isDate(ast);
 }
 
-/** The names in CALL position (`λ1(…)`, `SUM(…)`) — a surface that binds lambdas by
- *  name reads this to know which of its bindings a formula calls. */
 export function calledNames(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];
@@ -392,15 +355,11 @@ export function calledNames(expr: string): string[] {
   return [...out];
 }
 
-// The column names read through the row context — not variables; this is the
-// dependency feed for a computed-column topo sort.
 function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = new Set()): void {
   switch (n.t) {
     case "atcol": if (!bound.has(n.name)) out.add(n.name); break;
     case "wholecol": if (!bound.has(n.name)) out.add(n.name); break;
     case "call": {
-      // A LAMBDA literal binds its params: `@x` inside LAMBDA(x, …) is the param's
-      // this-row read, never a side name the surface should grow a port for.
       if (n.name === "LAMBDA" && n.args.length >= 1) {
         const inner = new Set(bound);
         for (const a of n.args.slice(0, -1)) if (a.t === "name") inner.add(a.name);
@@ -416,7 +375,6 @@ function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = n
   }
 }
 
-/** The row-context column reads (`@name`, `@[name]`) in a formula. */
 export function rowRefNames(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];
@@ -425,8 +383,6 @@ export function rowRefNames(expr: string): string[] {
   return [...out];
 }
 
-/** The identifier-shaped `@name` reads — the set a Lambda node grows CAPTURE
- *  sockets for; bracketed references can never be variables, so they're excluded. */
 export function atColNames(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];
@@ -444,8 +400,6 @@ export function atColNames(expr: string): string[] {
   return [...out];
 }
 
-// Throws on a truly unknown name so the node surfaces an error rather than
-// computing silently wrong.
 function dispatch(name: string, ...args: unknown[]): unknown {
   const f = resolveExcelFunction(name);
   if (!f) throw new Error(`Unknown function: ${name}`);
@@ -453,18 +407,11 @@ function dispatch(name: string, ...args: unknown[]): unknown {
 }
 
 // ─── Array-aware evaluator (Expression's compute core) ───────────────────────
-// Broadcast-vs-aggregate is decided PER CALL SITE: a range-signature function
-// takes its array argument WHOLE, everything else broadcasts element-wise.
 
-/** Functions whose signature TAKES A RANGE — array args pass whole instead of
- *  mapping element-wise; anything unlisted broadcasts, and additions must be
- *  table-tested. */
 export const RANGE_FUNCTIONS = new Set<string>([
   "SUM", "SUMSQ", "SUMPRODUCT", "PRODUCT", "AVERAGE", "AVERAGEA", "AVEDEV", "DEVSQ",
   "MIN", "MINA", "MAX", "MAXA", "COUNT", "COUNTA", "COUNTBLANK",
   "MEDIAN", "MODE", "GEOMEAN", "HARMEAN", "TRIMMEAN",
-  // STDEVP/VARP are absent on purpose: they're [[C14]] currentExcelParity-blocked legacy spellings
-  // (LEGACY_ALIASES), so listing them here would only be deleted by the [[C14]] currentExcelParity gate.
   "STDEV", "STDEVA", "STDEVPA", "STDEV.S", "STDEV.P",
   "VAR", "VARA", "VARPA", "VAR.S", "VAR.P",
   "SKEW", "SKEW.P", "KURT", "LARGE", "SMALL",
@@ -473,92 +420,52 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC",
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
   "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC",
-  // whole-list integer functions; a holiday list is a whole argument of the workday trio
   "GCD", "LCM", "MULTINOMIAL",
   "NETWORKDAYS", "NETWORKDAYS.INTL", "WORKDAY", "WORKDAY.INTL",
   "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR",
   "AND", "OR", "XOR",
   "TEXTJOIN", "CONCAT",
-  // criteria + meta aggregators: range (+ criteria/selector) in, scalar out.
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE",
-  // cashflow functions take a whole list of cash flows; broadcast would be garbage
-  // (IRR / XIRR / MIRR are whole-arg natives now — `listArgs` routes them before this set).
   "NPV", "XNPV",
-  // Lookup functions take whole lookup + return lists (registered 1-D impls).
   "XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX",
-  // Statistical TESTS and the pairwise sums — whole samples in, ONE number out.
   "T.TEST", "F.TEST", "Z.TEST", "CHISQ.TEST",
   "SUMX2MY2", "SUMX2PY2", "SUMXMY2",
   "MODE.SNGL", "PROB", "SERIESSUM",
 ]);
 
 // ── Range-argument prep (the null/error aggregator policy) ────────────────────
-// Formula.js has no null-skip / error-propagate contract, so array args are fixed
-// first: an error PROPAGATES, a null is SKIPPED — with three carve-outs by shape.
 
-// COUNT-family sees the raw array — COUNTBLANK counts the nulls, COUNT/COUNTA
-// classify errors themselves (Excel: COUNT skips them, COUNTA counts them).
 const RANGE_RAW = new Set([
   "COUNT", "COUNTA", "COUNTBLANK",
-  // The criteria family reads blanks (a blank criterion matches a blank cell) and decides
-  // per cell what an error means, so its ranges arrive untouched.
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS", "MAXIFS", "MINIFS",
 ]);
-// Index-ALIGNED multi-range functions: a null drops its whole ROW across every
-// range, since per-array dropping would shear the pairing; the min-length zip on
-// ragged ranges IS the pad-with-null policy (padded rows would drop anyway).
 const RANGE_PAIRED = new Set([
   "SUMPRODUCT", "CORREL", "SPEARMAN", "KENDALL", "WILCOXON", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR", "XNPV",
-  // term-by-term / cell-for-cell definitions: these must stay index-aligned.
   "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "CHISQ.TEST", "PROB",
 ]);
-// T.TEST/F.TEST are NOT paired on purpose — two samples may differ in length.
-// POSITIONAL lookups answer in indices, so nulls stay put (a drop would shift
-// every match); errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
-// POSITIONAL-by-period lists: SERIESSUM's coefficients sit on powers, NPV's cash flows
-// on periods — a null-drop would shift every later one, so a blank contributes 0 in
-// place (the same policy the NPV node applies via cashPrep).
 const RANGE_ZERO_FILL = new Set(["SERIESSUM", "NPV"]);
 
-// Whole-list natives ([[C51]] formulaNaming Tier 3) take their 1-D args RAW: they are
-// position-preserving, so a null-drop would change the answer
-// (`REVERSE([1,null,3])`) and an error hoist would erase which cell it came from.
 function takesWholeArgs(name: string): boolean {
   return EXCEL_IMPL_META[name]?.listArgs === true && !ELIMINATED_FUNCTIONS.has(name);
 }
 
-// Whole-arg natives whose NODE deliberately accepts a missing scalar argument —
-// the exemptions to the blank-scalar-propagates rule at the call site.
 const NULLABLE_SCALARS_OK = new Set([
   "FILLVALUE", "COALESCE",
-  // The [[C15]] matricesInFormulas matrix tranche: optional args arrive as blanks and each registration
-  // decides blank-by-blank, which the generic blank guard would pre-empt.
   "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
-  // Tranche 2, same contract.
   "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY", "RANDDIST",
-  // Grid mode's omitted axes arrive as blanks (INTERPOLATE(table, , , FALSE) = index axes).
   "INTERPOLATE",
-  // The append ladder + grid selection/grow: blanks are dropped (stackers) or mean an
-  // omitted arg (EXPAND's Fill/cols), so each registration decides blank-by-blank.
   "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND",
-  // The lambda tranche: hosts validate their own arguments.
   "MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY",
-  // The regression quartet: blank xs / new_xs each mean an Excel default.
   "TREND", "GROWTH", "LINEST", "LOGEST",
-  // A blank criterion matches blank cells (Excel), so it must reach the kernel.
   "SUMIFS", "COUNTIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIF", "AVERAGEIF",
 ]);
 
-// Lambda HOSTS whose fn argument may be a bare function name (eta) — MAKEARRAY is
-// excluded, its (row, col) GENERATOR slot makes a bare scalar fn a real mistake.
 const ETA_HOSTS = new Set(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"]);
 
-// [[C14]] currentExcelParity gate: a BLOCKED spelling gets no range routing, derived from the blocklist
-// so the two can't drift apart.
 for (const blocked of ELIMINATED_FUNCTIONS) {
   RANGE_FUNCTIONS.delete(blocked);
   RANGE_POSITIONAL.delete(blocked);
@@ -566,9 +473,6 @@ for (const blocked of ELIMINATED_FUNCTIONS) {
 
 function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: unknown[] } {
   if (RANGE_RAW.has(name)) return { args: argv };
-  // POSITIONAL lookups skip the propagate-any-error scan: an error at an
-  // UNREFERENCED position must not poison the pick (Excel: INDEX(A1:A3, 1) still
-  // answers A1 when A2 is #DIV/0!).
   if (RANGE_POSITIONAL.has(name)) return { args: argv };
   for (const a of argv) {
     if (isArr(a)) {
@@ -596,12 +500,8 @@ function prepRangeArgs(name: string, argv: unknown[]): { error?: unknown; args: 
 }
 
 // ── Error-handling functions (IFERROR family) ─────────────────────────────────
-// These CATCH an error, so the call branch hands them the error instead of
-// short-circuiting on it.
 const ERROR_HANDLER_FUNCTIONS = new Set(["IFERROR", "IFNA", "ISERROR", "ISERR", "ISNA", "ERROR.TYPE"]);
 
-// Excel ERROR.TYPE numbers: the codes that SPLIT #NUM! all report as 6, and other
-// Solenoid-specific codes report as 3.
 const ERROR_TYPE_NUM: Record<string, number> = {
   "#DIV/0!": 2, "#VALUE!": 3, "#REF!": 4, "#NAME?": 5, "#N/A": 7,
   "#DOMAIN!": 6, "#OVERFLOW!": 6, "#CONV!": 6, "#NUM!": 6,
@@ -639,27 +539,19 @@ function applyErrorHandler(name: string, argv: unknown[]): unknown {
 
 const isArr = (v: unknown): v is unknown[] => Array.isArray(v);
 
-// An error the evaluator must PROPAGATE rather than compute with — a tagged
-// SolError or a Formula.js Error object; both flow up through operators untouched.
 const isErr = (v: unknown): boolean => isSolError(v) || v instanceof Error;
 
 const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
   isArr(v) ? v.map(f) : f(v);
 
 // ─── Rank-aware element-wise mapping ([[C15]] matricesInFormulas — the broadcast-rules table) ────────
-// The [[C15]] matricesInFormulas table implemented once for every element-wise surface;
-// `broadcastRules.test.ts` transcribes it row by row against THIS code.
 
 const isMatrix = (v: unknown): v is unknown[][] => isArr(v) && v.length > 0 && isArr(v[0]);
 const rankOf = (v: unknown): 0 | 1 | 2 => (isMatrix(v) ? 2 : isArr(v) ? 1 : 0);
-/** A tagged Cx anywhere in a rank ≤ 2 argument — the complex-containment test. */
 const containsCx = (a: unknown): boolean =>
   isCx(a) || (isArr(a) && a.some((v) => (isArr(v) ? v.some(isCx) : isCx(v))));
-/** Anything deeper than a matrix is not a value in this model. */
 const tooDeep = (v: unknown): boolean => isMatrix(v) && v.some((row) => row.some(isArr));
 
-/** B10/B11 — a 1×1 matrix and a 1-element list ARE their scalar, so a singleton
- *  broadcasts ([5]+[1,2,3] is [6,7,8]) rather than padding. */
 function collapseSingletonRank(v: unknown): unknown {
   if (isMatrix(v)) return v.length === 1 && v[0].length === 1 ? v[0][0] : v;
   if (isArr(v) && v.length === 1 && !isArr(v[0])) return v[0];
@@ -668,9 +560,6 @@ function collapseSingletonRank(v: unknown): unknown {
 
 const PAD = Symbol("pad");
 
-/** Map `cellFn` element-wise over operands of mixed rank ≤ 2 — this owns only
- *  SHAPE (alignment, singleton-axis broadcast, null pad), `cellFn` owns the
- *  per-cell semantics. */
 function mapCells(argv: unknown[], cellFn: (...ops: unknown[]) => unknown): unknown {
   if (argv.some(tooDeep)) return solError("#SHAPE!", "A value nested deeper than a 2-D matrix isn't a thing formulas compute on");
   const args = argv.map(collapseSingletonRank);
@@ -678,7 +567,6 @@ function mapCells(argv: unknown[], cellFn: (...ops: unknown[]) => unknown): unkn
   if (rank === 0) return cellFn(...args);
 
   if (rank === 1) {
-    // B2–B4: the existing zip — max length, null pad for the ragged tail.
     const len = args.reduce<number>((m, a) => (isArr(a) ? Math.max(m, a.length) : m), 0);
     const out: unknown[] = [];
     for (let i = 0; i < len; i++) {
@@ -688,8 +576,6 @@ function mapCells(argv: unknown[], cellFn: (...ops: unknown[]) => unknown): unkn
     return out;
   }
 
-  // B5–B9: rank 2 — a list reads as a ROW broadcasting down, a 1-row/1-column
-  // matrix broadcasts along its singleton axis, the rest aligns cell-for-cell.
   const mats = args.filter(isMatrix);
   const rows = Math.max(...mats.map((m) => m.length));
   const widthOf = (m: unknown[][]) => Math.max(...m.map((r) => r.length), 0);
@@ -707,7 +593,7 @@ function mapCells(argv: unknown[], cellFn: (...ops: unknown[]) => unknown): unkn
       const cj = colSingleton(a) ? 0 : j;
       return cj < row.length ? row[cj] : PAD;
     }
-    if (isArr(a)) return j < a.length ? a[j] : PAD; // a list is a row, broadcast down
+    if (isArr(a)) return j < a.length ? a[j] : PAD;
     return a;
   };
   const out: unknown[][] = [];
@@ -726,24 +612,18 @@ function broadcast2(l: unknown, r: unknown, f: (a: unknown, b: unknown) => unkno
   return mapCells([l, r], f as (...ops: unknown[]) => unknown);
 }
 
-// Scalar operator semantics — the settled P6 operator-parity table.
 function applyOp(op: string, a: unknown, b: unknown): unknown {
   if (isErr(a)) return a;
   if (isErr(b)) return b;
   if (a === null || b === null) return null;
-  // A tagged Cx routes to its own table BEFORE the numeric coercion below, which
-  // would concatenate the object into "[object Object]" garbage.
+  // Complex and lambda operands must be caught before the numeric coercion below.
   if (isCx(a) || isCx(b)) return applyCxOp(op, a, b);
-  // A LAMBDA operand is the same garbage class — a function has no arithmetic.
   if (isLambdaValue(a) || isLambdaValue(b)) {
     return solError("#TYPE!", "A LAMBDA isn't a value. Call it with (…) or pass it to MAP, REDUCE and the other helpers");
   }
-  // The logical↔number bridge: booleans compute as 1/0 in numeric contexts.
   const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
   const na = num(a), nb = num(b);
   const fin = (r: number): unknown => guardFinite(r, na, nb);
-  // Text never crosses into arithmetic on its own ([[D11]] noAutoCross): `"2"+3` is an
-  // error that names the fix, not JavaScript's "23".
   if ((op === "+" || op === "-" || op === "*" || op === "/" || op === "^")
       && (typeof na === "string" || typeof nb === "string")) {
     return solError("#VALUE!", "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE");
@@ -752,11 +632,9 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
     case "+": return fin((na as number) + (nb as number));
     case "-": return fin((na as number) - (nb as number));
     case "*": return fin((na as number) * (nb as number));
-    // Division by zero mints #DIV/0!, not Infinity (which renders as a blank).
     case "/": return nb === 0 && typeof na === "number" ? solError("#DIV/0!", "Division by zero") : fin((na as number) / (nb as number));
     case "^": return fin(Math.pow(na as number, nb as number));
     case "&": {
-      // numberToText's 15 sig digits keep `(0.1+0.2) & " kg"` at "0.3 kg".
       const s = (v: unknown): string =>
         typeof v === "boolean" ? (v ? "TRUE" : "FALSE")
         : typeof v === "number" ? numberToText(v)
@@ -774,7 +652,7 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
       const x = num(a), y = num(b);
       let cmp: number;
       if (typeof x === "number" && typeof y === "number") cmp = x < y ? -1 : x > y ? 1 : 0;
-      else if (typeof x === "string" && typeof y === "string") cmp = compareStrings(x, y); // byte order — see stringOrder.ts
+      else if (typeof x === "string" && typeof y === "string") cmp = compareStrings(x, y);
       else return solError("#TYPE!", "Cannot order values of different types; Cast one side first");
       switch (op) {
         case "<": return cmp < 0;
@@ -787,8 +665,6 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   }
 }
 
-// Complex gets no cross-family coercion (logical↔number is the lattice's only
-// bridge), so arithmetic and ordering answer a #TYPE! pointing at the IM* family.
 function applyCxOp(op: string, a: unknown, b: unknown): unknown {
   switch (op) {
     case "&": {
@@ -811,9 +687,6 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
   }
 }
 
-// [[C80]] blankArgIsExcelBlank — a BLANK slot reads as Excel's typed blank; an omitted
-// trailing argument stays `undefined` (the default). Declared per parameter, applied
-// once at the dispatch boundary for natives and Formula.js alike.
 type BlankType = "number" | "logical" | "text";
 const EXCEL_BLANK: Record<BlankType, unknown> = { number: 0, logical: false, text: "" };
 export const BLANK_ARG_TYPES: Record<string, Record<number, BlankType>> = {
@@ -827,24 +700,14 @@ function excelBlanks(name: string, args: Ast[], argv: unknown[]): unknown[] {
   return argv.map((v, i) => (args[i]?.t === "blank" && types[i] ? EXCEL_BLANK[types[i]] : v));
 }
 
-// Functions whose result DEPENDS ON a blank operand: `null` flows INTO them
-// (ISBLANK(null) is TRUE) while every other function propagates missing; errors
-// still short-circuit, and IF is listed so an `IF(x,,y)` branch can flow.
 const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISBOOLEAN", "ISREF", "N", "T", "TYPE", "IF", "CHOOSE"]);
 
-/** Broadcast a non-range function element-wise (scalars repeat, ragged args zip to
- *  the LONGEST and pad with `null`): per cell an error propagates first, else a
- *  missing propagates, except for the NULL_INSPECTING predicates. */
 function broadcastCall(name: string, argv: unknown[], blankSlots: readonly boolean[] = []): unknown {
-  // Overflow to ±Inf → #OVERFLOW!, NaN → #DOMAIN!; an ∞ from an ∞ INPUT passes.
   const call = (...args: unknown[]): unknown => {
     const r = dispatch(name, ...args);
     return typeof r === "number" ? guardFinite(r, ...args) : r;
   };
   const inspectsNull = NULL_INSPECTING.has(name);
-  // A scalar call keeps the per-cell contract: a blank VALUE is a blank answer
-  // ([[D36]] nullSkippedNotZero), unless the function inspects blanks. An empty argument
-  // slot is not a value: the function reads it ([[C80]] blankArgIsExcelBlank).
   if (!argv.some(isArr)) {
     return !inspectsNull && argv.some((v, i) => isMissing(v) && !blankSlots[i]) ? null : call(...argv);
   }
@@ -858,9 +721,6 @@ function broadcastCall(name: string, argv: unknown[], blankSlots: readonly boole
   });
 }
 
-/** Evaluate a LAMBDA-position argument: a BARE dispatchable name eta-expands to an
- *  eta LambdaValue, called with its MEANINGFUL arity only (a raw SQRT must not get
- *  MAP's (v, v2, v3, row, col) tuple); a same-named variable still wins. */
 function etaOrEval(a: Ast, env: Record<string, unknown>): unknown {
   if (a.t === "name" && !(a.name in env)
       && constantValue(a.name) === undefined && resolveExcelFunction(a.name)) {
@@ -874,7 +734,6 @@ function etaOrEval(a: Ast, env: Record<string, unknown>): unknown {
   return evalAst(a, env);
 }
 
-/** The names a LAMBDA body has bound as parameters, carried on its environment. */
 const LAMBDA_BOUND = Symbol("lambdaBound");
 
 function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
@@ -882,23 +741,18 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
     case "num": return Number(n.v);
     case "str": return n.v;
     case "bool": return n.v;
-    case "blank": return null; // an omitted argument IS the missing value
-    // The env fallback is the DEFINITION's own names, so `@list` reads a Lambda
-    // card's capture socket when no column matches (columns win inside readRowCell).
+    case "blank": return null;
     case "atcol": return readRowCell(n.name, () =>
       Object.prototype.hasOwnProperty.call(env, n.name) ? { hit: true, v: env[n.name] } : { hit: false });
-    // No env fallback — a bracketed name can never be a capture/variable.
     case "wholecol": return readWholeColumn(n.name);
     case "name": {
-      // A LAMBDA parameter shadows a constant of the same name (`LAMBDA(e, e+1)`).
       if ((env[LAMBDA_BOUND] as ReadonlySet<string> | undefined)?.has(n.name)) return env[n.name];
       const c = constantValue(n.name);
       return c !== undefined ? c : env[n.name];
     }
     case "unary": {
       const a = evalAst(n.arg, env);
-      // Per-cell contract: error propagates, missing stays missing (bare `-null` is
-      // -0 in JS, hence the guard), a Cx answers #TYPE!.
+      // The isMissing guard matters: `-null` is -0 in JavaScript.
       const f = (x: unknown) => (isSolError(x) ? x : isMissing(x) ? null
         : isCx(x) ? solError("#TYPE!", "Operators don't work on complex numbers. Use IMSUB(0, z) to negate")
         : (n.op === "-" ? -(x as number) : +(x as number)));
@@ -919,14 +773,11 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
       return applyOp(n.op, l, r);
     }
     case "apply": {
-      // The fn expression must yield a LambdaValue and a declared arity must match;
-      // an eta wrapper (params: []) takes what it's given.
       const fnVal = evalAst(n.fn, env);
       if (isErr(fnVal)) return fnVal;
       if (!isLambdaValue(fnVal)) {
         return solError("#VALUE!", "Only a LAMBDA can be called like a function");
       }
-      // An APPLY's arguments are lambda-position slots too, so they eta-expand.
       const argv = n.args.map((a) => etaOrEval(a, env));
       const sol = argv.find(isSolError);
       if (sol) return sol;
@@ -937,9 +788,6 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
     }
     case "call": {
       const name = n.name.toUpperCase();
-      // A call whose NAME is a lambda-valued binding applies the lambda; only
-      // LAMBDA params ever bind one, and the RAW name is checked (env is
-      // case-sensitive).
       const bound = env[n.name];
       if (isLambdaValue(bound)) {
         const argv = n.args.map((a) => evalAst(a, env));
@@ -950,9 +798,6 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
         }
         return bound.fn(...argv);
       }
-      // LAMBDA is the one SPECIAL FORM: its params and body must NOT be evaluated
-      // as expressions, so it precedes the generic evaluate-args-then-dispatch
-      // path; the value is the same tagged LambdaValue the LAMBDA node emits.
       if (name === "LAMBDA") {
         if (n.args.length < 1) return solError("#VALUE!", "LAMBDA needs a body: LAMBDA(param…, body)");
         const bodyAst = n.args[n.args.length - 1];
@@ -969,36 +814,20 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
         };
         return { __lambda: true, params, fn, expr: "" } satisfies LambdaValue;
       }
-      // A BLOCKED spelling must short-circuit before its args are shaped: the
-      // redirect stub ignores them, so a list arg would broadcast into a LIST of
-      // identical #NAME?s.
       const redirect = LEGACY_ALIASES[name];
       if (redirect) return solError("#NAME?", `Use ${redirect}`);
-      // A frame verb is a real name whose type can't flow here ([[C15]] matricesInFormulas) — #TYPE!
-      // naming the node, short-circuited for the same reason as the block above.
       const frameNode = FRAME_SURFACE_NAMES[name];
       if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node, or a Computed Column for row math`);
-      // A capability that became a NODE (not a frame verb): recognized, redirected. #NAME?
-      // like a legacy alias — the name simply isn't a formula function, it's a node.
       const nodeVerb = NODE_SURFACE_NAMES[name];
       if (nodeVerb) return solError("#NAME?", `Use the ${nodeVerb} node`);
-      // A genuinely unknown NAME(...) is a clean #NAME? here, not a per-cell throw
-      // that leaks as #ERROR! from broadcastCall's dispatch (A2 containment).
       if (!resolveExcelFunction(name)) return solError("#NAME?", `Unknown function ${name}`);
-      // In a lambda HOST's argument a bare dispatchable name is an eta LambdaValue,
-      // not an undefined variable (see etaOrEval).
       let argv = ETA_HOSTS.has(name)
         ? n.args.map((a) => etaOrEval(a, env))
         : n.args.map((a) => evalAst(a, env));
       argv = excelBlanks(name, n.args, argv);
-      // The IFERROR family must SEE the error, so it precedes the propagate check.
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
-      // A tagged error doesn't survive a trip through Formula.js, so surface it here.
       const sol = argv.find(isSolError);
       if (sol) return sol;
-      // [[C15]] matricesInFormulas containment: a matrix reaches a dispatch whole only through a declared
-      // `matrixArgs`; otherwise a range aggregate flattens row-major, a positional
-      // lookup or whole-list native answers #SHAPE!, and the rest broadcasts.
       if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
         if (RANGE_POSITIONAL.has(name)) {
           return solError("#SHAPE!", `${name} over a matrix isn't supported yet — wire the matrix through its node`);
@@ -1006,33 +835,22 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
         if (RANGE_FUNCTIONS.has(name)) {
           argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
         } else if (takesWholeArgs(name) || (EXCEL_IMPL_META[name] === undefined && !isInternalFunction(name))) {
-          // A whole-list native, or an undeclared FX name that would otherwise broadcast
-          // the matrix into per-cell #VALUE!s ([[D26]] hideMatrixFromVendor): one #SHAPE!.
           return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
         }
       }
-      // Same containment for a tagged Cx (declared `cxArgs` only), since Formula.js
-      // would silently stringify the object; exempt are the NULL_INSPECTING
-      // value-passers and the position-preserving whole-list natives.
       if (!EXCEL_IMPL_META[name]?.cxArgs && !NULL_INSPECTING.has(name) && !takesWholeArgs(name)
           && argv.some(containsCx)) {
         return solError("#TYPE!", `${name} doesn't compute on complex numbers — use the IM* family`);
       }
-      // A whole-list native gets its args exactly as they arrived, except a blank
-      // SCALAR propagates as unknown (Number(null) = 0 would fabricate an answer). An
-      // empty argument slot is the function's to read, as on the broadcast path.
       if (takesWholeArgs(name)) {
         if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a, i) => !isArr(a) && isMissing(a) && n.args[i]?.t !== "blank")) return null;
         return dispatch(name, ...argv);
       }
       if (RANGE_FUNCTIONS.has(name)) {
-        // Prepped args are CLONED because Formula.js mutates some in place
-        // (CHISQ.TEST), which would corrupt the upstream node's cached value.
+        // Clone: some Formula.js functions (CHISQ.TEST) mutate their arguments, which would corrupt the upstream cached value.
         const prep = prepRangeArgs(name, argv);
         if (prep.error !== undefined) return prep.error;
         const r = dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
-        // The flattened cells feed the ∞-input passthrough, so SUM over a
-        // first-class ∞ still answers ∞.
         return typeof r === "number"
           ? guardFinite(r, ...prep.args.flatMap((a) => (isArr(a) ? a : [a])))
           : r;
@@ -1044,13 +862,9 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
 
 export type ExprEvaluator = (env: Record<string, unknown>) => unknown;
 
-/** Compile a formula into an array-aware evaluator over a name→value environment;
- *  null on a parse error, a `#NAME?` SolError at eval time on an unknown function. */
 export function compileEvaluator(expr: string): ExprEvaluator | null {
   const ast = parseExpr(expr);
   if (!ast) return null;
-  // The final boundary: a top-level Formula.js Error normalizes to SolError (P5),
-  // and an UNAPPLIED lambda is not a value the graph can carry out.
   return (env) => {
     const r = evalAst(ast, env);
     if (isLambdaValue(r)) return solError("#VALUE!", "LAMBDA needs arguments. Use it inside MAP, REDUCE, BYROW, SCAN or MAKEARRAY");
@@ -1058,9 +872,6 @@ export function compileEvaluator(expr: string): ExprEvaluator | null {
   };
 }
 
-/** `compileEvaluator` with a POSITIONAL signature — args bind to `paramNames` in
- *  order, so the LAMBDA family shares the one evaluator while each host keeps its
- *  own iteration and argument order. */
 export function compilePositional(
   expr: string,
   paramNames: string[],
@@ -1102,7 +913,7 @@ function numLatex(v: string): string {
   return v;
 }
 
-// KaTeX's own operator names — the arc functions are \arcsin, never \asin.
+// KaTeX's own operator names: the arc functions are \arcsin, never \asin.
 const TRIG_TEX: Record<string, string> = {
   SIN: "\\sin", COS: "\\cos", TAN: "\\tan",
   SINH: "\\sinh", COSH: "\\cosh", TANH: "\\tanh",
@@ -1110,15 +921,14 @@ const TRIG_TEX: Record<string, string> = {
 };
 const CMP_TEX: Record<string, string> = { "=": "=", "<>": "\\ne", "<": "<", ">": ">", "<=": "\\le", ">=": "\\ge" };
 
-/** A string literal → KaTeX text mode: `\textquotedbl` is NOT a KaTeX command, so
- *  use literal quote chars inside `\text{}` and escape the LaTeX specials. */
+/** KaTeX has no `\textquotedbl`, so the quotes stay literal inside `\text{}`. */
 function texString(s: string): string {
   const esc = s.replace(/[\\{}$&#%_^~]/g, (c) => {
     switch (c) {
       case "\\": return "\\textbackslash{}";
       case "^":  return "\\textasciicircum{}";
       case "~":  return "\\textasciitilde{}";
-      default:   return `\\${c}`; // { } $ & # % _
+      default:   return `\\${c}`;
     }
   });
   return `\\text{"${esc}"}`;
@@ -1164,7 +974,6 @@ function tex(n: Ast, parent: number): string {
   }
 }
 
-/** Formula → LaTeX (for KaTeX), or null if it can't be parsed. */
 export function formulaToLatex(expr: string): string | null {
   const ast = parseExpr(expr);
   if (!ast) return null;
@@ -1176,8 +985,6 @@ export function formulaToLatex(expr: string): string | null {
 }
 
 // ─── Step-by-step evaluation ─────────────────────────────────────────────────
-// One human step per operation; numeric scalars only — raw JS semantics, NOT
-// evalAst's.
 
 const cleanNum = (v: number): string => {
   if (!Number.isFinite(v)) return String(v);
@@ -1198,16 +1005,12 @@ function applyBin(op: string, l: number, r: number): number {
     case ">": return l > r ? 1 : 0;
     case "<=": return l <= r ? 1 : 0;
     case ">=": return l >= r ? 1 : 0;
-    default: return NaN; // & (concat) etc. — not a numeric step
+    default: return NaN;
   }
 }
 
-/** One evaluation step: `latex` already reads "operands = result". */
 export type FormulaStep = { latex: string };
 
-/** Ordered steps + final value for `expr` under `vars`, or null when it can't be
- *  parsed or isn't a numeric scalar evaluation; an identical sub-expression is
- *  shown once. */
 export function evaluateSteps(expr: string, vars: Record<string, number>): { steps: FormulaStep[]; value: number } | null {
   const ast = parseExpr(expr);
   if (!ast) return null;
@@ -1226,15 +1029,15 @@ export function evaluateSteps(expr: string, vars: Record<string, number>): { ste
   const ev = (n: Ast): number => {
     switch (n.t) {
       case "num": return parseFloat(n.v);
-      case "blank": return 0; // numeric walk: an omitted argument reads as 0
+      case "blank": return 0;
       case "name": { const c = constantValue(n.name); return c !== undefined ? c : (vars[n.name] ?? 0); }
       case "bool": return n.v ? 1 : 0;
       case "str": ok = false; return NaN;
-      case "atcol": { ok = false; return NaN; } // no row context in a step trace
+      case "atcol": { ok = false; return NaN; }
       case "wholecol": { ok = false; return NaN; }
       case "unary": { const a = ev(n.arg); return n.op === "-" ? -a : a; }
       case "percent": return ev(n.arg) / 100;
-      case "apply": { ok = false; return NaN; } // the step-trace walk doesn't apply lambdas
+      case "apply": { ok = false; return NaN; }
       case "call": {
         const argv = n.args.map(ev);
         let value: number;

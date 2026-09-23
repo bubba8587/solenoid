@@ -1,6 +1,6 @@
 // [[C30]] saveViaTextForm
-// `navigator.clipboard` is undefined in a non-secure context and can reject, so
-// this falls back to execCommand; true ONLY when something actually copied.
+// `navigator.clipboard` is undefined outside a secure context and can reject, so this falls back to execCommand;
+// true only when something actually copied.
 export async function copyText(text: string): Promise<boolean> {
   try {
     if (typeof navigator !== "undefined" && navigator.clipboard) {

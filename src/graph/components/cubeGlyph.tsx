@@ -1,6 +1,5 @@
 // [[C11]] socketBox12
-// Cube socket glyph shared by the socket, the legend and the hover highlight: 240-unit paths
-// mapped onto the 12×12 box, deliberately OVERSIZED, so the socket SVG must paint overflow-visible.
+// 240-unit paths drawn deliberately oversized in the 12×12 box, so the socket SVG must paint overflow-visible.
 
 export const CUBE_FILL_PATH = "M223.007,60.529l0.038,119.008l-103.007,59.471l-103.045,-59.537l-0.038,-119.008l103.007,-59.471l103.045,59.537Z";
 const CUBE_SEAMS_PATH = "M120,120l87.206,-50.349m-87.206,50.349l-87.205,-50.346m87.205,50.346l-0.001,100.695";
@@ -12,11 +11,11 @@ const CUBE_SCALE = 0.056;
 export function cubeTransform(dy = 0): string {
   return `translate(6 ${6 + dy}) scale(${CUBE_SCALE}) translate(-120 -120)`;
 }
-// Source-space stroke; bumped down so the bigger scale doesn't thicken it.
+// Source-space stroke, thinned so the larger scale doesn't thicken it.
 const CUBE_STROKE_WIDTH = 26;
 
 export function CubeGlyphFaces({ fill, dy = 0 }: { fill: string; dy?: number }) {
-  // Seams/ring read the ancestor's `--socket-ring` so the cube darkens by the same step as every glyph.
+  // `--socket-ring` from the ancestor darkens the cube by the same step as every glyph.
   const stroke = "var(--socket-ring)";
   return (
     <g transform={cubeTransform(dy)}>

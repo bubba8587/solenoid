@@ -1,13 +1,4 @@
-// [[C65]], [[C11]]
-// React Flow port — Solenoid's cable as an RF custom edge: the FULL behavior
-// of the rete surface's ConnectionComponent (which this file replaces at
-// cutover): walk-router paths, type coloring, collapse-pill redirection,
-// ghost cables, conduit RIBBONS (trunk + rank-ordered fans, all three kinds),
-// ribbon-wide hover/selection, double-click run selection, separation pinning,
-// hit-stroke trims near conduit blocks, flow beads with cross-assembly phase.
-// Visible strokes are RF BaseEdges styled inline (RF's edge CSS would otherwise
-// recolor a selected path); the named hit path stays the ONE pointer target.
-// Not ported: the load-reveal draw-on animation (rete-holder based — ledger).
+// [[C65]] domOrderStacking, [[C11]] socketBox12, [[C91]] cableWalkRouter
 import { useContext, useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { FlowRevealContext } from "../flowSurface";
@@ -33,7 +24,6 @@ import { settingsStore } from "../settingsStore";
 import { ConduitNode } from "../rete-nodes";
 import { IS_COARSE, stopDragStart } from "../coarse";
 
-/** THE edge type of both surfaces. */
 export type SolFlowEdge = Edge<Record<string, unknown>, "cable">;
 
 const DEFAULT_COLOR = SOCKET_COLORS.number;
@@ -42,19 +32,14 @@ const RIBBON_COLOR = "#8a909c";
 const RIBBON_WIDTH = 7.2;
 const RIBBON_SPLIT = 24;
 
-// The marketing stages draw each cable on at mount (socket to socket, all at once,
-// linear). Honor reduced motion — read once; the flag never changes mid-session.
 const PREFERS_REDUCED_MOTION =
   typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-// After the cards pop in.
 const CABLE_DRAW = "sol-cable-draw 0.72s linear 0.28s both";
 
 const CABLE_HIT_W = IS_COARSE ? 28 : 20;
 const TRUNK_HIT_W = IS_COARSE ? 30 : 22;
 const FAN_HIT_W = IS_COARSE ? 24 : 14;
 
-// Beads flow continuously across an assembly: a segment's phase shifts by its
-// upstream length (mirrors ConnectionComponent).
 const FLOW_PERIOD = 72;
 const FLOW_DURATION = 2.25;
 const flowDelay = (upstreamPx: number) =>
@@ -71,8 +56,6 @@ function pathLength(d: string, a: { x: number; y: number }, b: { x: number; y: n
   }
 }
 
-// A compressed Conduit sits UNDER the cables — hit coverage (never the visible
-// path) is dashed short of block endpoints so the block stays clickable.
 const BLOCK_HIT_CLEAR = 14;
 function hitTrimDash(total: number, trimStart: number, trimEnd: number): string | undefined {
   if (!(total > 0) || (trimStart <= 0 && trimEnd <= 0)) return undefined;
@@ -81,7 +64,6 @@ function hitTrimDash(total: number, trimStart: number, trimEnd: number): string 
   return `0 ${a.toFixed(1)} ${Math.max(0, total - a - b).toFixed(1)} ${b.toFixed(1)}`;
 }
 
-// Per-connection path cache, keyed on the geometry feeding the solver.
 const _pathCache = new Map<string, { key: string; d: string }>();
 settingsStore.subscribe(() => _pathCache.clear());
 function cachedMainPath(
@@ -91,8 +73,6 @@ function cachedMainPath(
   ce: { x: number; y: number },
   sourceAngleDeg: number | null,
   targetAngleDeg: number | null,
-  // A flipped source's output leaves on its LEFT; a flipped target's input enters
-  // from its RIGHT — so the cable's stub direction follows the socket, no backwards hook.
   sourcePos: CablePosition,
   targetPos: CablePosition,
 ): string {
@@ -142,8 +122,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   } = props;
   const [hovered, setHovered] = useState(false);
   const revealStage = useContext(FlowRevealContext);
-  // Owning, not main: inside the flow drill-in this edge belongs to the
-  // composite's internal editor.
   const editor = getOwningEditor(source);
   const conn = {
     id,
@@ -154,9 +132,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   };
   const ribbon = editor ? ribbonForConnection(editor, conn) : null;
 
-  // Every store subscription is a PER-EDGE selector: a notify re-renders this edge
-  // only when its own derived value moved (a compute pass bumps cableValueStore
-  // for every cable; only a combo cable whose COLOR changes needs to repaint).
   const shape = useSyncExternalStore(cableShapeStore.subscribe, cableShapeStore.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
   const typeColor = useSyncExternalStore(
@@ -169,9 +144,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     () => ribbon !== null && ribbon.members.some((m) => cableSelectionStore.has(m.id)),
   );
   const ghost = useSyncExternalStore(cableGhostStore.subscribe, () => cableGhostStore.isGhost(id));
-  // The persisted user setting (app). The marketing stages also want beads, but must
-  // not touch the stored setting (the site shares the app's origin + localStorage), so
-  // a reveal stage forces them on locally — after the draw-on has finished.
+  // Marketing stages force beads on locally and never touch the stored setting, which the site shares through the app's origin and localStorage.
   const flowSetting = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
   const [revealBeads, setRevealBeads] = useState(false);
   useEffect(() => {
@@ -187,8 +160,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   const srcBlock = editor?.getNode(source) instanceof ConduitNode;
   const tgtBlock = editor?.getNode(target) instanceof ConduitNode;
-  // Conduit geometry moves ribbons AND the lane endpoints of a plain cable into a
-  // Conduit — an unribboned lane still re-anchors when the block expands.
   useSyncExternalStore(
     conduitLayoutStore.subscribe,
     () => (ribbon || srcBlock || tgtBlock ? conduitLayoutStore.version() : 0),
@@ -197,27 +168,19 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     ribbonHoverStore.subscribe,
     () => ribbon !== null && ribbonHoverStore.get() === ribbon.key,
   );
-  // A standalone cable watches only its OWN hover flag; ribbon members share appearance.
   const socketHovered = useSyncExternalStore(
     socketHoverCableStore.subscribe,
     () => (ribbon ? ribbon.members.some((m) => socketHoverCableStore.isHovered(m.id)) : socketHoverCableStore.isHovered(id)),
   );
-  // Own endpoints only (a Conduit rotation re-angles just its lanes).
-  // HOOKS END HERE — every hook stays above the isConnHidden return: collapsing a
-  // group (E) flips it mid-life, and a hook below it is React #300.
+  // Hooks end here: every hook stays above the isConnHidden return, because collapsing a group flips it mid-life (React #300).
   const sourceAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(source, conn.sourceOutput));
   const targetAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(target, conn.targetInput));
-  // A flipped endpoint's socket is on the opposite edge, so the stub must leave/enter
-  // that side. Own endpoints only (per-edge selector).
   const sourceFlipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(source));
   const targetFlipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(target));
-  // Evict on unmount so the path cache can't grow across create/delete churn.
   useLayoutEffect(() => () => { _pathCache.delete(id); }, [id]);
 
   if (groupCollapseStore.isConnHidden(id)) return null;
 
-  // An endpoint on a collapsed group's hidden member redirects to the group's
-  // edge pill, keyed by socket.
   const pillPoint = (p: { groupId: string; side: "left" | "right"; index: number } | undefined) => {
     if (!p) return undefined;
     const g = getOwningView(p.groupId)?.position(p.groupId);
@@ -301,7 +264,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     };
 
     if (ribbon.kind === "groupSource") {
-      // Bundle OUT of a collapsed group: its output pill IS the cap — no source fan.
       const tgtFace = ribbon.destKind === "conduit" ? conduitFacePoint(ribbon.targetId, "in") : null;
       if (ribbon.destKind === "group" || tgtFace) {
         const srcPill = cs;
@@ -367,9 +329,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
           </g>
         );
       }
-      // Destination not mounted yet (first frame) — fall through to normal.
     } else {
-      // Conduit-source ribbon (destination: another conduit, or a collapsed group).
       const srcFace = conduitFacePoint(ribbon.sourceId, "out");
       const tgtFace = ribbon.kind === "conduit" ? conduitFacePoint(ribbon.targetId, "in") : null;
       if (srcFace && (ribbon.kind === "group" || tgtFace)) {
@@ -449,14 +409,10 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
           </g>
         );
       }
-      // Conduit layout not published yet (first mount) — fall through to normal.
     }
   }
 
   // ── Plain cable ──
-  // Source output normally exits Right, target input enters Left; a flipped endpoint
-  // swaps to the opposite edge. (Ribbon/conduit branches above keep their own face
-  // geometry — no flippable node is a Conduit source today.)
   const sourcePos = sourceFlipped ? CablePosition.Left : CablePosition.Right;
   const targetPos = targetFlipped ? CablePosition.Right : CablePosition.Left;
   const pathD = cachedMainPath(id, shape, cs, ce, sourceAngleDeg, targetAngleDeg, sourcePos, targetPos);
@@ -466,9 +422,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     standoffStore.select(null);
     drawnCableStore.select(null);
     if (ghost) {
-      // Commit only a ghost whose endpoints are currently type-compatible. A mode-change
-      // ghost stays dashed and un-committable until its source fits the retyped socket
-      // again; a splice ghost is always compatible, so it commits as before.
       const ed = getOwningEditor(target) ?? getOwningEditor(source);
       const conn = ed?.getConnections().find((c) => c.id === id);
       const srcSock = conn ? ed?.getNode(conn.source)?.outputs?.[conn.sourceOutput]?.socket : undefined;
@@ -476,8 +429,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
       if (srcSock instanceof SolenoidSocket && tgtSock instanceof SolenoidSocket && srcSock.canConnectTo(tgtSock)) {
         cableGhostStore.commit(id);
         cableSelectionStore.set(null);
-        // A mode-change ghost did NOT feed while dashed (its node ignored the ghosted
-        // input), so recompute the target's cone now that the cable is live.
         void processGraph(target);
       }
       return;
@@ -503,14 +454,10 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   const hitDash = srcBlock || tgtBlock
     ? hitTrimDash(pathLength(pathD, cs, ce), srcBlock ? BLOCK_HIT_CLEAR : 0, tgtBlock ? BLOCK_HIT_CLEAR : 0)
     : undefined;
-  // The 0.72 idle value is mirrored by the gesture canvas — change together.
+  // The 0.72 idle value is mirrored by the gesture canvas; change them together.
   const cableOpacity = ghost ? 0.65 : activeHover || selected ? 0.9 : 0.72;
 
-  // Entrance draw-on (marketing stages only): reel the dash offset to zero so the stroke
-  // grows from the source socket to the target. `pathLength={1}` (spread by BaseEdge onto
-  // its path) normalizes the dash math to the path's OWN length, so it stays exact even
-  // while RF is still settling the handle positions — a fixed pixel length would stop
-  // short or overshoot. Skipped for ghosts (already dashed) and under reduced motion.
+  // `pathLength={1}` normalizes the draw-on dash to the path's own length, so it stays exact while RF settles the handles.
   const drawOn = revealStage && !ghost && !PREFERS_REDUCED_MOTION;
 
   return (

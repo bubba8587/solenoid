@@ -1,24 +1,8 @@
-// OS-dropdown precaution probe — settles "does a native <select> inside a node close
-// when the card is picked?" WITHOUT observing the native popup (which is OS chrome, not
-// DOM, so it is un-inspectable headed or headless). Instead it measures the two candidate
-// CAUSES a close would have, both DOM-observable:
-//   (a) simpleNodesOrder re-appends the picked node's element to the holder END on
-//       `nodepicked` (a DOM move that reparents the <select> → Chrome closes an open
-//       native popup on reparent). Measured as: after a card-body pick, is the node
-//       element now its parent's lastElementChild when it was not before?
-//   (b) our selection → React re-render REMOUNTS the <select> (a new DOM element → the
-//       popup dies with the old one). Measured with an expando marker: set select.__mark
-//       before the pick; if the post-pick <select> still carries it, React PRESERVED the
-//       element (re-render is NOT a closer); if gone, it remounted.
-//
-// Two modes, same two measurements:
-//   node scripts/dropdown-reorder-probe.mjs            DESKTOP: mouse pick, selectableNodes path.
-//   node scripts/dropdown-reorder-probe.mjs --mobile   MOBILE (html.is-mobile): touch tap,
-//       installTapSelect path. Emulates a mobile UA + coarse/touch pointer BEFORE load so
-//       IS_MOBILE (coarse.ts: IS_COARSE && IS_MOBILE_UA, both read once at module load) is
-//       true and main.tsx sets html.is-mobile. The pick is a touch tap on the card BODY
-//       (not the <select>, which would only open the control) → tapSelect selects on
-//       pointerup → the SAME nodepicked → simpleNodesOrder re-append the desktop path takes.
+// Probes whether picking a card would close a native <select> inside it, by measuring the two DOM
+// causes (the popup itself is OS chrome): (a) the pick re-appends the node element (simpleNodesOrder),
+// (b) React remounts the <select> (an expando marker survives or not). Needs the dev server on :1420.
+//   node scripts/dropdown-reorder-probe.mjs            desktop: a mouse pick on the card body
+//   node scripts/dropdown-reorder-probe.mjs --mobile   mobile: a touch tap (installTapSelect)
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
@@ -26,8 +10,6 @@ const EDGE = browserPath();
 const URL = "http://localhost:1420";
 const SEEDS = ["table-verbs", "chart-showcase", "zz-scratch-new-nodes"];
 const MOBILE = process.argv.includes("--mobile");
-// A mobile UA string ("Mobile") satisfies IS_MOBILE_UA's /Mobi/i fallback; coarse pointer
-// comes from touch emulation (setViewport hasTouch/isMobile).
 const MOBILE_UA =
   "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -41,10 +23,7 @@ async function main() {
     page.setDefaultTimeout(120000);
     const client = await page.target().createCDPSession();
     if (MOBILE) {
-      // Must precede goto: coarse.ts reads the flags once at module load. Override BOTH the
-      // UA string AND userAgentData.mobile — IS_MOBILE_UA reads `userAgentData?.mobile ?? regex`,
-      // and Chromium exposes userAgentData.mobile as `false` (a boolean, not undefined), so the
-      // `??` never reaches the regex; a UA string alone leaves the flag false.
+      // Before goto, and set userAgentData.mobile too: Chromium reports false, so IS_MOBILE_UA's `??` never reaches the UA regex.
       await client.send("Emulation.setUserAgentOverride", {
         userAgent: MOBILE_UA,
         userAgentMetadata: { platform: "Android", platformVersion: "13", architecture: "",
@@ -65,18 +44,15 @@ async function main() {
 
     console.log(`mode: ${MOBILE ? "MOBILE (touch tap, tapSelect)" : "DESKTOP (mouse pick)"}`);
     if (MOBILE) {
-      // Prove the app really entered mobile mode; the whole probe is meaningless otherwise.
       const flags = await page.evaluate(() => ({
         isMobile: document.documentElement.classList.contains("is-mobile"),
         coarse: window.matchMedia("(pointer: coarse)").matches,
-        // Report EXACTLY what IS_MOBILE_UA reads (userAgentData.mobile ?? regex), not the regex alone.
         uaMobile: navigator.userAgentData?.mobile ?? /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent),
       }));
       console.log(`  html.is-mobile=${flags.isMobile}  pointer:coarse=${flags.coarse}  ua-mobile=${flags.uaMobile}`);
       if (!flags.isMobile) { console.log("FAIL: emulation did not enter mobile mode (html.is-mobile absent)"); return; }
     }
 
-    // Find the first seed that puts a <select> inside a .solenoid-node.
     let seedUsed = null, target = null;
     for (const seed of SEEDS) {
       await page.evaluate((id) => window.__solenoidTuneSeed(id), seed);
@@ -86,7 +62,7 @@ async function main() {
           const sel = node.querySelector("select");
           if (sel) {
             const r = node.getBoundingClientRect();
-            // A body point NOT over the select (a pick there selects the card, not the control).
+            // Not over the select: a pick there opens the control instead of selecting the card.
             const sr = sel.getBoundingClientRect();
             const bodyY = sr.bottom + 8 < r.bottom ? sr.bottom + 8 : r.top + 6;
             return { ok: true, cx: Math.round(r.left + r.width / 2), bodyY: Math.round(bodyY),
@@ -100,9 +76,6 @@ async function main() {
     if (!target?.ok) { console.log("FAIL: no seed produced a <select> inside a node"); return; }
     console.log(`seed: ${seedUsed}  node body point: (${target.cx}, ${target.bodyY})`);
 
-    // Pin a STABLE identity on the target node + its select (survives a DOM reparent,
-    // so we track the SAME element across simpleNodesOrder's reorder). Record the target's
-    // index among ALL .solenoid-node in document order — a re-append sends it to LAST.
     const before = await page.evaluate(() => {
       const all = [...document.querySelectorAll(".solenoid-node")];
       let node = null, sel = null;
@@ -116,9 +89,6 @@ async function main() {
       };
     });
 
-    // The pick. DESKTOP: a real mousedown+up on the CARD BODY (bubbles to the node drag
-    // handler → pick; selection commits on pointerup). MOBILE: a touch tap on the same
-    // point → installTapSelect selects on pointerup (tapTouch && !tapMoved && !gestureMulti).
     if (MOBILE) {
       await client.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: target.cx, y: target.bodyY }] });
     } else {
@@ -146,7 +116,7 @@ async function main() {
         found: true,
         docIndex: all.indexOf(node), total: all.length,
         selPresent: !!sel,
-        selMarkSurvived: !!sel && sel.__psel === 0xBEEF, // true = same <select> element (React preserved it)
+        selMarkSurvived: !!sel && sel.__psel === 0xBEEF,
         selectedAfter: node.classList.contains("solenoid-node--selected"),
       };
     });

@@ -1,6 +1,4 @@
-/* Busy curtain for a heavy recompute. A light scrim (the graph stays visible — it's
-   busy, not gone) that captures all pointer/wheel events, with a centered spinner
-   card. Sits below the load overlay (z 200) and above the canvas chrome. */
+/* A light scrim, since the graph is busy, not gone; below the load overlay (z 200), above the canvas chrome. */
 .solenoid-compute-overlay {
   position: absolute;
   inset: 0;

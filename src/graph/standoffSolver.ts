@@ -1,4 +1,4 @@
-// [[C89]] standoffsSolveLast: the pure solver, the last word after every layout pass.
+// [[C89]] standoffsSolveLast
 import { Standoff, Box, anchorPoint, ANCHOR_DIR } from "./standoffs";
 
 export interface Disp {
@@ -15,7 +15,6 @@ export function solveStandoffs(
   pinned: Set<string> = new Set(),
   opts: { forceLock?: boolean } = {},
 ): Map<string, Disp> {
-  // forceLock makes every standoff rigid for THIS solve without mutating saved state.
   const forceLock = opts.forceLock === true;
   const disp = new Map<string, Disp>();
   if (standoffs.length === 0) return disp;

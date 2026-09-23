@@ -3,24 +3,19 @@
 import { solError, isSolError, type SolError } from "../errorValue";
 import { serialToJsDate, jsDateToSerial, parseDate, parseDateToSerial } from "./dateSerial";
 
-/** DATE(year, month, day): the year is LITERAL (26 is the year 26, never 1926 — the
- *  documented Excel deviation), 1–9999 else #DOMAIN!; month/day overflow carries. */
 export function dateFromParts(rawY: number, rawM: number, rawD: number): number | SolError {
   const year = Math.floor(rawY), month = Math.floor(rawM), day = Math.floor(rawD);
   if (year < 1 || year > 9999) return solError("#DOMAIN!", "Year must be between 1 and 9999");
-  // Date.UTC handles month/day overflow BUT remaps a 0–99 year to 1900–1999;
-  // shift that back (setUTCFullYear doesn't remap), keeping the overflow carry.
+  // Date.UTC carries month and day overflow but remaps a 0–99 year to 1900–1999; setUTCFullYear shifts it back without remapping.
   const d = new Date(Date.UTC(year, month - 1, day));
   if (year <= 99) d.setUTCFullYear(d.getUTCFullYear() - 1900);
   return jsDateToSerial(d);
 }
 
-/** TIME(hour, minute, second) as a fraction of a day, wrapping past 24 h (Excel). */
 export function timeFraction(h: number, m: number, s: number): number {
   return ((h * 3600 + m * 60 + s) % 86400) / 86400;
 }
 
-/** DATEVALUE: the whole day of a parsed date text; #AMBIGUOUS! surfaces, unparseable is #VALUE!. */
 export function parseDateOnly(text: string): number | SolError {
   const r = parseDate(text);
   if (isSolError(r)) return r;
@@ -28,10 +23,8 @@ export function parseDateOnly(text: string): number | SolError {
   return Math.floor(r);
 }
 
-/** TIMEVALUE: "14:30[:00][ pm]" → the 0–1 day fraction; a full datetime text keeps its fraction. */
 export function parseTimeOfDay(text: string): number | SolError {
-  // Do NOT route this through `new Date("1970-01-01T…")`: that reads zone-less
-  // text as LOCAL time while the getters read UTC, so the fraction varies by machine.
+  // Never route this through `new Date("1970-01-01T…")`, which reads zone-less text as local time, so the fraction would vary by machine.
   const m = /^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:\s*([AP])\.?M?\.?)?$/i.exec(text);
   if (m) {
     let h = Number(m[1]);
@@ -66,14 +59,11 @@ export function isoWeek(d: Date): number {
 
 export type WeekInfoOp = "weekday" | "weeknum" | "isoweeknum";
 
-/** WEEKDAY / WEEKNUM / ISOWEEKNUM of a serial. `rt` is Excel's return_type: WEEKDAY
- *  1 = 1 Sun…7 Sat, 2 = 1 Mon…7 Sun, 3 = 0 Mon…6 Sun; WEEKNUM 1 = Sunday-start weeks,
- *  2 = Monday-start; ISOWEEKNUM ignores it. */
 export function weekInfo(op: WeekInfoOp, serial: number, rt = 1): number {
   const d = serialToJsDate(serial);
   switch (op) {
     case "weekday": {
-      const dow = d.getUTCDay(); // 0=Sun
+      const dow = d.getUTCDay();
       if (rt === 2) return ((dow + 6) % 7) + 1;
       if (rt === 3) return (dow + 6) % 7;
       return dow + 1;
@@ -90,15 +80,13 @@ export function weekInfo(op: WeekInfoOp, serial: number, rt = 1): number {
 }
 
 export type DateDiffOp =
-  | "days" | "days360" | "yearfrac"          // day-count functions (basis input)
-  | "years" | "months" | "ym" | "md" | "yd"; // DATEDIF calendar components
+  | "days" | "days360" | "yearfrac"
+  | "years" | "months" | "ym" | "md" | "yd";
 
-/** The day-count ops take Excel's basis argument; the DATEDIF units don't. */
 export function dateDiffNeedsBasis(op: DateDiffOp): boolean {
   return op === "days360" || op === "yearfrac";
 }
 
-/** Excel's DATEDIF unit strings → the op; `null` for an unknown unit. */
 export function dateDiffOpForUnit(unit: string): DateDiffOp | null {
   switch (unit.trim().toUpperCase()) {
     case "D": return "days";
@@ -111,8 +99,6 @@ export function dateDiffOpForUnit(unit: string): DateDiffOp | null {
   }
 }
 
-/** DAYS (signed), DAYS360 / YEARFRAC under a basis, and the DATEDIF units. A DATEDIF
- *  unit over a reversed range is undefined → `null`. */
 export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): number | null {
   if (s > e && !dateDiffNeedsBasis(op) && op !== "days") return null;
   const sd = serialToJsDate(s), ed = serialToJsDate(e);
@@ -131,9 +117,6 @@ export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): numbe
     case "months": return (ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0);
     case "ym":     return ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
     case "md": {
-      // Excel's MD goes negative when the borrow crosses a short month (Jan 31 → Mar 1
-      // gives -2). Count from the start day advanced by the whole months, clamped to
-      // that month's length (31 Jan + 1 month = 28 Feb), so the days are never negative.
       if (eday >= sday) return eday - sday;
       const prevLen = new Date(Date.UTC(ey, em, 0)).getUTCDate(); // day 0 = last of previous month
       const anchor = Date.UTC(ey, em - 1, Math.min(sday, prevLen));
@@ -151,15 +134,14 @@ export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): numbe
       if (basis === 2) return days / 360;
       if (basis === 3) return days / 365;
       if (basis === 4) return thirty360(true) / 360;
-      return days / 365.25; // basis 1: actual/actual (approximation)
+      return days / 365.25;
     }
   }
 }
 
 export type EpochUnit = "s" | "ms";
-const EXCEL_EPOCH_1970 = 25569; // serial of 1970-01-01
+const EXCEL_EPOCH_1970 = 25569;
 
-/** Unix epoch (seconds or milliseconds since 1970-01-01 UTC) → date serial, and back. */
 export function epochToSerial(epoch: number, unit: EpochUnit): number {
   return EXCEL_EPOCH_1970 + epoch / (unit === "ms" ? 86400000 : 86400);
 }
@@ -168,7 +150,6 @@ export function serialToEpoch(serial: number, unit: EpochUnit): number {
 }
 
 export type DateTruncUnit = "day" | "week" | "week_sun" | "month" | "quarter" | "year";
-/** Excel's DATETRUNC-style unit strings and the pandas / lubridate spellings → the unit. */
 export function dateTruncUnitFor(text: string): DateTruncUnit | null {
   switch (text.trim().toLowerCase()) {
     case "d": case "day": case "days": return "day";
@@ -181,10 +162,6 @@ export function dateTruncUnitFor(text: string): DateTruncUnit | null {
   }
 }
 
-/** Floor a date serial to the start of its day / week (Mon, or Sun) / month / quarter /
- *  year (lubridate floor_date, pandas to_period, SQL DATE_TRUNC); `ceiling` answers the
- *  start of the NEXT period instead (ceiling_date) — except a value already on the
- *  boundary, which stays put in both directions. */
 export function dateTrunc(serial: number, unit: DateTruncUnit, ceiling = false): number {
   const d = serialToJsDate(serial);
   const y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate();

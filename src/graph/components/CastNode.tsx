@@ -1,4 +1,4 @@
-// Cast — universal data-type conversion (number / text / date / complex).
+// [[D16]] retypeReconciles
 import { useEffect, useState } from "react";
 import type { CastNode as CastNodeType } from "../rete-nodes";
 import { CAST_TARGET_META, castOutput, type CastTarget } from "../rete-nodes";
@@ -15,12 +15,11 @@ const CAST_TARGET_OPTIONS = (Object.keys(CAST_TARGET_META) as CastTarget[]).map(
   title: CAST_TARGET_META[value].title,
 }));
 
-/** In-place output-socket retype, so it must reconcile downstream FCs and cables. */
 export async function applyCastTarget(node: CastNodeType, target: CastTarget): Promise<void> {
   if (node.target === target) return;
   node.target = target;
 
-  // Active graph: a Cast inside a Composite drill-in retypes its OWN graph's cables.
+  // Active graph: a Cast inside a drill-in retypes its own graph's cables.
   const editor = getActiveEditor();
   const view = getActiveView();
   const out = node.outputs.result;

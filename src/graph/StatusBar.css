@@ -8,9 +8,6 @@
   align-items: center;
   gap: 14px;
   height: 19px;
-  /* Bottom inset keeps the strip's content clear of a phone's home indicator;
-     the bar's background still fills down to the screen edge. env() is 0 on
-     devices without a safe area, so desktop is unaffected. */
   padding: 0 10px env(safe-area-inset-bottom);
   background: var(--panel-bg);
   border-top: 1px solid var(--panel-border);
@@ -25,12 +22,10 @@
   align-items: center;
   gap: 7px;
   color: var(--text-dim);
-  /* Live counts — tabular so the row doesn't jitter as digits change (the
-     sans defaults to proportional figures; tnum is an opt-in). */
+  /* Tabular figures, so the row doesn't jitter as digits change. */
   font-variant-numeric: tabular-nums;
 }
 
-/* ─── Web-demo node budget (inline meter behind the node count) ───────────── */
 .solenoid-statusbar__budget {
   display: inline-block;
   width: 52px;
@@ -46,10 +41,8 @@
   background: var(--accent);
   transition: width 0.18s ease;
 }
-/* Caution: approaching the budget. */
 .solenoid-statusbar__counts--warn .solenoid-statusbar__budget-fill { background: #e0a100; }
 .solenoid-statusbar__counts--warn { color: var(--text); }
-/* Over the soft budget. */
 .solenoid-statusbar__counts--over .solenoid-statusbar__budget-fill { background: #e5484d; }
 .solenoid-statusbar__counts--over { color: #e5484d; font-weight: 600; }
 
@@ -74,14 +67,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Calc-mode indicator: a muted "Manual" label, or an actionable "Calculate" pill
-   (accent) when a manual-mode change left the graph stale. */
 .solenoid-statusbar__calc {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  /* Explicit height < the 19px bar so the pill floats clear of the bottom edge
-     (symmetric ~2.5px gap) instead of hugging it. */
+  /* Shorter than the 19px bar, so the pill floats clear of the bottom edge. */
   height: 14px;
   margin-right: 10px;
   padding: 0 8px;
@@ -100,9 +90,6 @@ button.solenoid-statusbar__calc--dirty {
   cursor: pointer;
 }
 
-/* Sketch-mode indicator: a quiet, non-actionable label (sibling to the calc
-   chip above) — color conveys the "not exact" state, per the Quiet Accent
-   Rule (DESIGN.md), the palette's "warning" token (#d9a93b). */
 .solenoid-statusbar__sketch {
   flex: 0 0 auto;
   margin-right: 10px;
@@ -111,7 +98,6 @@ button.solenoid-statusbar__calc--dirty {
   font-variant-numeric: tabular-nums;
 }
 
-/* Problems badge: same pill shape as the calc chip, tinted with the error token. */
 .solenoid-statusbar__problems {
   flex: 0 0 auto;
   display: inline-flex;
@@ -133,7 +119,6 @@ button.solenoid-statusbar__calc--dirty {
   background: color-mix(in srgb, var(--sol-error) 26%, transparent);
 }
 
-/* ─── Web-demo over-budget warning modal (one-time, on the crossing) ──────── */
 .solenoid-nbmodal {
   position: fixed;
   inset: 0;

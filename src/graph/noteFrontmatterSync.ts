@@ -1,12 +1,9 @@
 // [[B1]] obsidianBet
-// THE one place that drops cables stranded by a frontmatter re-sync, shared by
-// NoteComponent's on-blur commit and the Import node's file-load.
 
 import { getActiveEditor } from "./activeGraph";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 
-/** Returns true if a cable was dropped for a REMOVED output key (callers fold that
- *  into an undo entry); a retyped output keeps its cable if the input still accepts it. */
+/** True when a cable was dropped for a removed output key, which callers fold into an undo entry. */
 export async function dropStrandedFrontmatterCables(
   nodeId: string,
   removed: string[],

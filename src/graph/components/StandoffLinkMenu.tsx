@@ -22,8 +22,7 @@ export function StandoffLinkMenu({ target, onLink, onClose }: Props) {
   const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
-    // Capture-phase pointerdown: a press inside a card field stops mousedown at the
-    // flow wrapper (guardEditable), which never reaches a bubble document listener.
+    // Capture phase: a press inside a card field stops mousedown at the flow wrapper (guardEditable), so a bubble listener never hears it.
     function onDown(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }

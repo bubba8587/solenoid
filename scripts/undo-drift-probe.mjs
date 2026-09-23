@@ -1,13 +1,8 @@
-// Undo position-fidelity smoke (backlog 2026-08-27: "undo of a nudge leaves one node
-// 1px off"). Loads the getting-started seed on the REAL dev-server page, Ctrl+A →
-// ArrowRight → zoom change → Ctrl+Z, then diffs model positions against the pre-nudge
-// baseline. The zoom step matters: the post-restore FC re-dock re-measures at the
-// CURRENT camera, which is what flipped an un-quantized .5 rounding boundary
-// (fcDocking.ts computeDockedCanvasPos — the half-px offset snap is the fix this pins).
-// Node ids change across a loadGraph rebuild, so groups of same-labeled nodes compare
-// as position multisets.
-//
-//   node scripts/undo-drift-probe.mjs        (dev server on :1420)
+// Probes undo position fidelity: on the getting-started seed, Ctrl+A, ArrowRight, a zoom change, Ctrl+Z,
+// then compares model positions with the baseline. The zoom step matters because the FC re-dock after
+// the restore re-measures at the current camera. Node ids change on rebuild, so same-labeled nodes
+// compare as position multisets. Needs the dev server on :1420.
+//   node scripts/undo-drift-probe.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
@@ -26,7 +21,7 @@ try {
   await page.waitForFunction(() => !!window.__spike, { timeout: 20000 });
   await page.evaluate(() => window.__spike.seed("getting-started"));
   await page.waitForFunction(() => window.__spike.revealPhase() === "idle", { timeout: 20000 });
-  await wait(1200); // load RAFs + FC re-dock + history baseline settle
+  await wait(1200);
 
   const read = () => page.evaluate(() => window.__spike.positions());
   const baseline = await read();
@@ -35,13 +30,13 @@ try {
   await page.keyboard.down("Control"); await page.keyboard.press("KeyA"); await page.keyboard.up("Control");
   await wait(100);
   await page.keyboard.press("ArrowRight");
-  await wait(800); // past flowHistory's 400ms coalesce
+  await wait(800); // past flowHistory's 400 ms coalesce
 
   await page.evaluate(() => window.__spike.zoomNode("Format", 1.37));
   await wait(200);
 
   await page.keyboard.down("Control"); await page.keyboard.press("KeyZ"); await page.keyboard.up("Control");
-  await wait(1500); // restore + RAFs + re-dock
+  await wait(1500);
   const restored = await read();
 
   const groups = (rows) => {

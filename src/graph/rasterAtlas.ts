@@ -26,18 +26,16 @@ export interface AtlasLayout {
   usedH: number;
 }
 
-/** Gutter so a crop never bleeds a neighbor's edge pixels — drawElementImage
- *  anti-aliases the card edge into adjacent px. */
+/** drawElementImage anti-aliases a card edge into adjacent pixels, so a crop needs this gutter. */
 export const ATLAS_GUTTER = 2;
 
-/** Shelf-pack `items` tallest-first into a maxW×maxH region; an item larger than the
- *  whole atlas is scaled to fit alone, and leftovers come back in `unplaced`. */
+/** Shelf-packs tallest first; an item larger than the whole atlas is scaled to fit alone, leftovers go to `unplaced`. */
 export function packAtlas(items: AtlasItem[], maxW: number, maxH: number): AtlasLayout {
   const placements: AtlasPlacement[] = [];
   const unplaced: string[] = [];
   if (maxW < 1 || maxH < 1) return { placements, unplaced: items.map((i) => i.id), usedW: 0, usedH: 0 };
 
-  // Tallest-first (scaled height). Sort a copy — callers keep their order.
+  // Sort a copy: callers keep their order.
   const sized = items.map((it) => {
     const scale = Math.min(1, maxW / Math.max(1, it.w), maxH / Math.max(1, it.h));
     return { it, scale, w: Math.max(1, Math.round(it.w * scale)), h: Math.max(1, Math.round(it.h * scale)) };

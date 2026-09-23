@@ -1,6 +1,4 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit)
-/** Bridges the main React root to the CableFlourish component, which registers its
- *  trigger on mount. */
 let trigger: (() => void) | null = null;
 
 export const cableFlourishBridge = {

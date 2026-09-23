@@ -5,12 +5,12 @@ import { getActiveEditor, getActiveView } from "../activeGraph";
 import { dropInputCables } from "./cablePrune";
 import { INPUT_ROW_PITCH } from "./inlineInput";
 
-// Shared so the inline component and the popup grow the node identically.
+// Shared, so the inline component and the popup grow the node identically.
 export function computeExprHeight(varCount: number): number {
   return 188 + Math.max(varCount, 0) * INPUT_ROW_PITCH;
 }
 
-/** THE edit path for both the on-card field and the formula popup; no-op when locked. */
+/** The one edit path for the on-card field and the formula popup; a no-op when locked. */
 export async function applyExprChange(node: ExpressionNode, newExpr: string): Promise<void> {
   if (node.locked) return;
   node.expr = newExpr;
@@ -34,7 +34,6 @@ export function computeScriptHeight(varCount: number): number {
   return 240 + Math.max(varCount, 0) * INPUT_ROW_PITCH;
 }
 
-/** Mirrors applyExprChange: the parameter sockets re-derive from the source on commit. */
 export async function applyScriptChange(node: ScriptNode, src: string): Promise<void> {
   node.expr = src;
   const { removed } = node._rebuild();
@@ -52,12 +51,10 @@ export async function applyScriptChange(node: ScriptNode, src: string): Promise<
   await processGraph();
 }
 
-/** Seeds a sane size after a formula edit; the rendered card is content-driven. */
 export function computeEquationHeight(varCount: number): number {
   return 110 + (Math.max(varCount, 0) + 1) * 46;
 }
 
-/** Mirrors applyExprChange, plus the paired OUTPUT socket each variable owns. */
 export async function applyEquationChange(node: EquationNode, newExpr: string): Promise<void> {
   if (node.locked) return;
   node.expr = newExpr;
@@ -66,8 +63,7 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   const editor = getActiveEditor();
   const view = getActiveView();
 
-  // NOT dropInputCables: an Equation variable owns an OUTPUT socket too, so this is
-  // the one prune that covers both directions.
+  // Not dropInputCables: an Equation variable owns an output socket too, so this is the one prune that covers both directions.
   if (editor && removed.length > 0) {
     const conns = editor.getConnections().filter(
       (c) =>
@@ -86,7 +82,7 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   await processGraph();
 }
 
-/** LAMBDA re-derives sockets from BOTH fields: captured = variables − params. */
+/** Sockets re-derive from both fields: captured = variables − params. */
 export async function applyLambdaChange(
   node: LambdaNode,
   change: { expr?: string; params?: string },
@@ -108,8 +104,7 @@ export async function applyLambdaChange(
   await processGraph();
 }
 
-/** Targets the same element the rete-era `resize()` wrote to (the wrapper's first
- *  non-span child); width is left alone — only the vertical pin overflows. */
+/** The wrapper's first non-span child; width is left alone, since only the vertical pin overflows. */
 function clearPinnedHeight(view: NonNullable<ReturnType<typeof getActiveView>>, nodeId: string): void {
   const card = view.nodeElement(nodeId)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
   if (card) card.style.height = "";

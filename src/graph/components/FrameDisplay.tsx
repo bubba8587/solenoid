@@ -1,5 +1,4 @@
-// Compact frame preview — header names + up to 3×4 cells, then a chip. Mirrors
-// TableDisplay (same classes) so the collapse-to-chip CSS applies unchanged.
+// [[D41]] formatFlowsDownstream, [[E9]] errorsKeepOrigin
 import { useSyncExternalStore } from "react";
 import { FrameChip } from "./FrameChip";
 import { CategoryChip } from "./CategoryChip";
@@ -13,15 +12,11 @@ import { useHostNodeId } from "./nodeContext";
 import { frameFormatStore } from "../frameFormatStore";
 import { formatNumberWithAnnotation, applyLogicalStyle, applyTextCase, isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
-// A NaN cell is dirty DATA from an import, not the #N/A error, so it renders as a
-// literal "NaN".
 function isNanCell(v: FrameCell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
 export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
-  // A persisted format applies by column KIND, so a stale cross-type one left by a
-  // number↔date switch falls through to the type default rather than misrendering.
   if (ann) {
     if (type === "logical" && typeof v === "boolean") return applyLogicalStyle(v, ann.logicalStyle);
     if (typeof v === "number" && Number.isFinite(v) && (type === "date") === isDateStyle(ann.format)) {
@@ -39,39 +34,22 @@ export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: Forma
 export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
   frame: FrameValue | SolError | null;
   label?: string;
-  /** Socket hover-peek: a compact preview like `!full`, but with NO chip (read-only,
-   *  no popup). Pair with `previewRows` for the peek's row cap. */
   peek?: boolean;
-  /** Whose persisted per-column formats to read; defaults to the host node. A Report
-   *  embed passes the SOURCE frame node so it shows that frame's formats. */
   formatNodeId?: string;
-  /** When set, the chip opens the grid editable (Frame Input) and Save writes
-   *  back through this with the edited typed columns. */
   onSave?: (columns: FramePopupColumn[]) => void;
-  /** Literal-source editing (Frame Input): the editor seeds from / saves the RAW
-   *  text, deriving the typed value downstream. Takes precedence over `onSave`. */
   source?: FrameSourceColumn[];
   onSaveSource?: (columns: FrameSourceColumn[]) => void;
-  /** LIVE write-through for the column-source model — see tablePopupStore. */
   onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
-  /** Render the whole frame (no 3×4 cap, no chip). Default is the compact preview. */
   full?: boolean;
-  /** Override the compact row cap (default 3). */
   previewRows?: number;
-  /** Override the compact column cap (default 3). */
   previewCols?: number;
-  /** A wide table scrolls sideways; never vertically, so the chip stays in view. */
   scroll?: boolean;
-  /** The host's λ input keys — forwarded so the popup can offer the source select. */
   lambdaOptions?: string[];
-  /** Form-view field placement (the Record layout text, authored on the card). */
   formLayout?: string;
 }) {
-  // Subscribe so a format change in the popup re-renders this preview.
   const ctxNodeId = useHostNodeId();
   const hostNodeId = formatNodeId ?? ctxNodeId;
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
-  // A local pick overrides the format the column carried in ([[D41]] formatFlowsDownstream).
   const annFor = (col: { name: string; format?: FormatAnnotation }): FormatAnnotation | undefined =>
     (hostNodeId ? frameFormatStore.get(hostNodeId, col.name) : undefined) ?? col.format;
 
@@ -89,8 +67,6 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
     );
   }
   if (!frame || frame.columns.length === 0) {
-    // An EDITABLE input must never lose its chip: text that parses to nothing would blank
-    // the node to "—" and make it wholly uneditable (mirrors TableDisplay).
     if (onSave || source || onSaveSource || onCommitSource) {
       const stub: FrameValue = frame ?? { __frame: true, columns: [] };
       return (
@@ -105,12 +81,9 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
   const rows = frameRowCount(frame);
-  // Even "full" caps at 100 rows — a Display node is a card, not a data browser.
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, previewRows ?? 3);
   const maxC = full ? frame.columns.length : Math.min(frame.columns.length, previewCols ?? 3);
   const extraCols = !full && frame.columns.length > maxC;
-  // A string column set to the Chip style renders its cells as categorical color chips,
-  // keyed by the FULL column so colors are stable across the preview cut (B2.2).
   const chipCols = new Map<number, Map<string, number>>();
   frame.columns.forEach((c, j) => {
     if (c.type === "string" && annFor(c)?.chip) chipCols.set(j, categoryColorIndex(c.values as (string | null)[]));

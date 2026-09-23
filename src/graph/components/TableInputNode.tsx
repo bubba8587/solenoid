@@ -1,3 +1,4 @@
+// [[C58]] tableInputRawText, [[D16]] retypeReconciles
 import { useEffect, useState } from "react";
 import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
 import { processGraph } from "../process";
@@ -16,8 +17,7 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: string; title: 
   { value: "logical", label: "Bool", title: "TRUE / FALSE table" },
 ];
 
-/** Switch the element type in place (the List Input pattern): an in-place retype
- *  must drop the cables it can't feed and re-adapt downstream FCs itself. */
+/** An in-place retype drops the cables it can't feed and re-adapts downstream FCs itself. */
 async function applyTableType(node: TableInputNodeType, dt: TableElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   const editor = getActiveEditor();
@@ -27,8 +27,6 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
   await processGraph();
 }
 
-// A LITERAL source ([[C58]] tableInputRawText): the popup edits the RAW text cells, so a bad cell is
-// never coerced away — it derives to NaN and Source still shows what was typed.
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {
   const [dt, setDt] = useState<TableElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
@@ -55,8 +53,6 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
             data.tableText = rawCellsToText(cells);
             void processGraph(data.id);
           },
-          // A NUMBER table is a unit-taggable source (unitGranularity): the unit dropdown
-          // writes the homogeneous unit onto the node so it rides the value.
           ...(dt === "number"
             ? {
                 unitTaggable: true,

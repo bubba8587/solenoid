@@ -1,4 +1,5 @@
-// Probe: toggle the dev copy-edit freeze (Ctrl+Alt+E), click a string, screenshot.
+// Probes the dev copy-edit freeze: Ctrl+Alt+E, click a menu string, check the app did not react, screenshot.
+//   node scripts/copyedit-probe.mjs   (dev server on :1420)
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 import path from "node:path";
@@ -28,7 +29,6 @@ try {
   const frozen = await page.$(".sol-copyedit-badge");
   console.log("freeze badge:", !!frozen);
 
-  // Click the menu bar's "Data" entry to start an edit.
   const target = await page.evaluateHandle(() => {
     for (const el of document.querySelectorAll(".solenoid-menubar *")) {
       if (el.textContent?.trim() === "Data" && el.children.length === 0) return el;
@@ -45,7 +45,6 @@ try {
     return el ? { text: el.textContent, editable: el.getAttribute("contenteditable") } : null;
   });
   console.log("editing:", JSON.stringify(editing));
-  // Check the app did NOT react (no menu opened).
   const menuOpen = await page.evaluate(() => !!document.querySelector(".solenoid-menubar__dropdown, [class*=menubar-dropdown], [class*=menu-open]"));
   console.log("app menu opened (should be false):", menuOpen);
   await page.screenshot({ path: path.join(OUT, "copyedit-freeze.png") });

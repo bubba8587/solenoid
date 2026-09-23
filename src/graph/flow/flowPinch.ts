@@ -1,5 +1,4 @@
-// [[C92]] pinchUnvetoable: two fingers zoom no matter what is under them. Wrapper, [[D71]] zoomLatticeDiscreteOnly
-// CAPTURE, TOUCH events. Mechanics: tree/specs/canvas/pointer-gestures.md.
+// [[C92]] pinchUnvetoable, [[D71]] zoomLatticeDiscreteOnly
 import { boundZoom } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
@@ -12,7 +11,6 @@ export function installFlowPinch(
   },
 ): () => void {
   let start: { dist: number; cx: number; cy: number; vp: Viewport } | null = null;
-  // A pinch never selects ([[C92]]): swallow finger 1's click.
   let suppressClickUntil = 0;
 
   const measure = (e: TouchEvent) => {
@@ -31,8 +29,6 @@ export function installFlowPinch(
     dbg(`start:${e.touches.length}`);
     if (e.touches.length === 2) {
       const m = measure(e);
-      // Two contacts on one point (a palm, a stylus beside a finger) have no scale to
-      // track: arming would divide by zero and write a NaN camera.
       if (!(m.dist > 0)) { start = null; return; }
       start = { ...m, vp: opts.getViewport() };
       dbg(`armed:${JSON.stringify(start.vp)}`);
@@ -44,20 +40,13 @@ export function installFlowPinch(
   const touchMove = (e: TouchEvent) => {
     dbg(`move:${e.touches.length}:${start ? "armed" : "idle"}`);
     if (!start || e.touches.length !== 2) return;
-    // Ours now: RF's drag/pan/zoom handlers (bubble) never see the move.
     e.preventDefault();
     e.stopImmediatePropagation();
     const m = measure(e);
     if (!(m.dist > 0)) return;
     const rect = el.getBoundingClientRect();
-    // Bound, never snapped: the scale tracks the fingers continuously. Snapping here
-    // walks the canvas in 10% jumps mid-pinch, and there is no device test to gate on
-    // — two touch contacts ARE the gate, so a touchscreen laptop pinches smoothly too.
-    // The next discrete step (pill, wheel notch, fit) rounds back onto the lattice.
     const zoom = boundZoom(start.vp.zoom * (m.dist / start.dist));
     const eff = zoom / start.vp.zoom;
-    // The world point under the start centroid stays pinned; the pan follows
-    // the centroid.
     const sx = start.cx - rect.left;
     const sy = start.cy - rect.top;
     opts.setViewport({

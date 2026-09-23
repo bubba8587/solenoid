@@ -2,9 +2,7 @@
 import { useSeriesColors } from "./chartCore";
 import "./CategoryChip.css";
 
-/** A categorical color chip: the shared chart palette slot at `index` (first-appearance
- *  order, categoryColor.ts), so a value is the same color in a column and in a chart's
- *  series. Wash and ink per DESIGN.md § Quiet Accent. */
+/** The shared chart palette slot at `index` (first-appearance order, categoryColor.ts), so a value is the same color in a column and a chart. */
 export function CategoryChip({ value, index }: { value: string; index: number }) {
   const palette = useSeriesColors();
   const hue = palette[index % palette.length] ?? palette[0];

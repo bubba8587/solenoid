@@ -1,5 +1,4 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation
-// Pack registry + activation store (definitions live under src/graph/packs/).
 
 import { createNotifier } from "./storeKit";
 import { GEOMETRY_PACK } from "./packs/geometry";
@@ -16,7 +15,6 @@ import { SCIENTIFIC_PACK } from "./packs/scientific";
 import { DATA_SCIENCE_PACK } from "./packs/datascience";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
-// Re-export the authoring types so existing consumers keep one import site.
 export type { Pack, PackPlacement, FormulaPackEntry } from "./packs/packShared";
 
 export const BUILTIN_PACKS: Pack[] = [
@@ -34,8 +32,7 @@ export const BUILTIN_PACKS: Pack[] = [
   CHEMISTRY_PACK,
 ];
 
-// Node `type` → the pack id(s) claiming it: re-homes nodes already in NODE_CATALOG,
-// unlike `nodes`, which adds pack-only ones.
+// Re-homes nodes already in NODE_CATALOG, unlike `nodes`, which adds pack-only ones.
 export const NODE_PACK_TAGS: Record<string, string[]> = (() => {
   const out: Record<string, string[]> = {};
   for (const p of BUILTIN_PACKS) {
@@ -44,15 +41,13 @@ export const NODE_PACK_TAGS: Record<string, string[]> = (() => {
   return out;
 })();
 
-// Custom packs loaded from the user data folder. Stubbed for now.
+// Custom packs from the user data folder: not read yet (docs/backlog.md).
 export interface CustomPack extends Pack { source: string }
 
-/** Where users will drop custom packs. Shown in Settings; not yet read. */
 export function customPacksFolder(): string {
   return "<app data>/Solenoid/packs";
 }
 
-/** Stub — returns none until filesystem access and the pack format are settled. */
 export function loadCustomPacks(): CustomPack[] {
   return [];
 }
@@ -61,14 +56,12 @@ export function allPacks(): Pack[] {
   return [...BUILTIN_PACKS, ...loadCustomPacks()];
 }
 
-// A placement carrying its owning pack's identity — the catalog builder's input.
 export interface PlacedPackNode {
   packId: string;
   packName: string;
   placement: PackPlacement;
 }
 
-/** Pack node placements, optionally only from active packs. */
 export function packPlacements(opts: { activeOnly: boolean }): PlacedPackNode[] {
   if (!_initialised) initPacks();
   const packs = opts.activeOnly ? allPacks().filter((p) => _active.has(p.id)) : allPacks();
@@ -88,7 +81,6 @@ function persist() {
   catch { /* private mode / quota — non-fatal */ }
 }
 
-/** Read persisted pack activation (falling back to each pack's default). */
 export function initPacks(): void {
   let saved: string[] | null = null;
   try {
@@ -107,7 +99,6 @@ export const packsStore = {
     if (on === _active.has(id)) return;
     if (on) {
       _active.add(id);
-      // Transitively activate dependencies so the pack's nodes resolve.
       const seen = new Set<string>([id]);
       const queue = [...(allPacks().find((p) => p.id === id)?.dependsOn ?? [])];
       while (queue.length) {
@@ -119,7 +110,7 @@ export const packsStore = {
       }
     } else {
       _active.delete(id);
-      // Dependents are left active — harmless, and avoids surprise cascades.
+      // Dependents stay active, which is harmless and avoids surprise cascades.
     }
     persist();
     notify();

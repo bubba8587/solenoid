@@ -1,3 +1,4 @@
+// [[C25]] firstClassUnits, [[D42]] perInputUnitBlind
 import { ClassicPreset } from "rete";
 import { cubeIn, dateIn, dateListIn, strIn, numIn, frameOut, numOut, readInput } from "./shared";
 import { isCubeValue, isFrameValue, frameToCube, type CubeValue, type FrameValue, type CubeColumn, type CubeCell, type FrameCell } from "../frame";
@@ -11,10 +12,6 @@ import { Calendar } from "@solenoid/schedule-engine";
 import type { Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
-// The Earned Value node (Table verbs › Plan): a scheduled cube + its baseline + a status
-// date → an EVM summary. The math is the pure earnedValueOps; this class reads the cube
-// columns, joins the baseline by name, carries the Cost column's currency onto the money
-// columns ([[C25]] firstClassUnits), and returns the Summary frame plus SPI / CPI / EAC totals.
 
 const norm = (s: string) => s.trim().toLowerCase();
 const isText = (v: unknown): v is string => typeof v === "string";
@@ -23,13 +20,11 @@ function byName(c: CubeValue, ...names: string[]): CubeColumn | undefined {
   const set = new Set(names.map(norm));
   return c.columns.find((col) => set.has(norm(col.name)));
 }
-/** A cost/number cell's magnitude in its own display unit (a UnitCell) or as-is; blank → 0. */
 function magnitude(cell: CubeCell | undefined): number {
   if (isUnitCell(cell)) return displayMagnitudeOf(cell);
   return typeof cell === "number" && Number.isFinite(cell) ? cell : 0;
 }
 const dateOf = (cell: CubeCell | undefined): number | null => (typeof cell === "number" && Number.isFinite(cell) ? cell : null);
-/** The Cost column's unit, from the first united cell — null when the costs are bare numbers. */
 function unitOf(col: CubeColumn | undefined): ColumnUnit | undefined {
   const uc = col?.cells.find(isUnitCell);
   return uc ? { dim: uc.dim, ...(uc.display ? { display: uc.display } : {}) } : undefined;
@@ -53,8 +48,7 @@ export class EarnedValueNode extends ClassicPreset.Node {
   };
 
   label: string;
-  // The Cost column arrives as UnitCells, so the per-input unit strip must be OFF or the
-  // currency the money columns carry would be gone before data() runs ([[D42]] perInputUnitBlind).
+  // Keep the per-input unit strip off, or the Cost column's currency is gone before data() runs.
   unitAware = true;
   literals: Record<string, number> = { weekend_code: 1 };
   stringLiterals: Record<string, string> = { cost: "" };
@@ -72,7 +66,6 @@ export class EarnedValueNode extends ClassicPreset.Node {
     ] },
   };
 
-  /** The Summary frame is fixed-shape (Task + the EVM columns), so downstream pickers see it. */
   frameShape(outKey: string): Shape | null {
     if (outKey !== "frame") return null;
     return { columns: [{ name: "Task", type: "string" }, ...SUMMARY_COLS.map((n) => ({ name: n, type: "number" as const }))] };
@@ -110,7 +103,6 @@ export class EarnedValueNode extends ClassicPreset.Node {
     if (isSolError(sched)) return this.empty(sched);
     const scube = isCubeValue(sched) ? sched : isFrameValue(sched) ? frameToCube(sched) : null;
     if (!scube) return this.empty(null);
-    // A wired blank status is "no status yet"; unwired = today.
     const status = inputs.status ? inputs.status[0] : todaySerial();
     if (status == null || !Number.isFinite(status)) return this.empty(null);
 
@@ -138,7 +130,7 @@ export class EarnedValueNode extends ClassicPreset.Node {
       const name = String(taskCol.cells[i] ?? "").trim();
       if (!name) continue;
       const bi = baseIdx.get(norm(name));
-      // The baseline cost is the budget (BAC); without a baseline row, the schedule's own Cost.
+  
       const baseCost = bi != null && bCost ? magnitude(bCost.cells[bi]) : null;
       const cost = baseCost != null ? baseCost : (costCol ? magnitude(costCol.cells[i]) : 0);
       const complete = Math.max(0, Math.min(100, completeCol ? magnitude(completeCol.cells[i]) : 0));
@@ -148,9 +140,6 @@ export class EarnedValueNode extends ClassicPreset.Node {
       tasks.push({ name, cost, complete, plannedStart, plannedFinish, actualCost });
     }
 
-    // The planned fraction counts working days on the same calendar the schedule used, so a
-    // holiday inside a task's span doesn't count as planned progress (anchor is irrelevant to
-    // countBetween — it returns an index difference).
     const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
     const calendar = new Calendar(status, { workingDays: true, weekendCode, holidays: inputs.holidays?.[0] ?? undefined, precision: "days" });
     const { tasks: rowsM, totals } = earnedValue(tasks, status, (a, b) => calendar.countBetween(a, b));
@@ -172,7 +161,6 @@ export class EarnedValueNode extends ClassicPreset.Node {
         col("TCPI", rowsM.map((r) => r.tcpi)),
       ],
     };
-    // EAC is money, so it carries the unit on the scalar output too; the indices are ratios.
     const eacOut: FrameCell = costUnit ? (tagFrameCellUnit(totals.eac, costUnit) as FrameCell) : totals.eac;
     this.cachedResult = frame; this.cachedSpi = totals.spi; this.cachedCpi = totals.cpi; this.cachedEac = eacOut;
     return { frame, spi: totals.spi, cpi: totals.cpi, eac: eacOut };

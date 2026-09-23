@@ -20,27 +20,19 @@ import { compareStrings } from "../stringOrder";
 
 export type SlicerCell = number | string;
 
-// Cable Switch — a control multiplexer, not the logical SWITCH. Reuses the
-// ExtensibleInputs machinery so the input set round-trips through persistence (valueKeys).
-
 export class CableSwitchNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     out: "One mode routes the active input through unchanged, keeping its type and unit. Many mode collects the checked inputs into a cube of name and value rows.",
   };
   label: string;
-  /** Index (into the ordered inputs) of the live input. (Not `selected` — that's
-   *  rete's node-selection flag.) */
+  /** Not named `selected`, which is rete's node-selection flag. */
   activeIndex: number;
-  /** Per-input title (key → name), so a slot reads as a named choice. */
   titles: Record<string, string>;
-  /** Collect several inputs into a Cube instead of routing one. */
   multiSelect: boolean;
-  /** In multi mode, the checked input keys. */
   selectedKeys: string[];
   cachedValue: unknown = null;
   nextInputId = 0;
-  /** Type flips with the mode: `cube` in Many, `trueany` in One. Its own MutableSocket
-   *  instance, so a retype never touches a shared singleton. */
+  /** Its own MutableSocket instance, so a retype never touches a shared singleton. */
   readonly outSocket = new MutableSocket("trueany");
   width = 200; height = 220;
 
@@ -61,7 +53,6 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   private addInputWithKey(key: string): void {
-    // Adoptive per-row socket: the slot shows the wired cable's type.
     this.addInput(key, new ClassicPreset.Input(new AdoptiveSocket()));
     const n = parseInt(key.replace(/^v/, ""), 10);
     if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
@@ -74,33 +65,26 @@ export class CableSwitchNode extends ClassicPreset.Node {
   }
 
   removeValueInput(key: string): void {
-    // `activeIndex` is POSITIONAL, so dropping a slot ABOVE the live one shifts every
-    // later slot up and would silently re-point the output at the next input down.
-    // Follow the slot the user actually chose.
+    // `activeIndex` is positional, so removing a slot above the live one must shift it to follow the chosen slot.
     const idx = Object.keys(this.inputs).indexOf(key);
     this.removeInput(key);
     delete this.titles[key];
     this.selectedKeys = this.selectedKeys.filter((k) => k !== key);
     if (idx >= 0 && idx < this.activeIndex) this.activeIndex -= 1;
     const n = Object.keys(this.inputs).length;
-    // Removing the LIVE slot leaves the index on its neighbour; past the end, clamp.
     this.activeIndex = n ? clamp(this.activeIndex, 0, n - 1) : 0;
   }
 
-  /** A slot's display name: its title, else a 1-based positional fallback. */
   titleFor(key: string): string {
     const t = (this.titles[key] ?? "").trim();
     return t || `Input ${Object.keys(this.inputs).indexOf(key) + 1}`;
   }
 
-  /** One mode routes the ACTIVE input unchanged, so its type + unit ride through; Many
-   *  collects a Cube and is NOT a passthrough (syncOutputType owns that output). */
   passthrough(): PassthroughSpec[] {
     if (this.multiSelect) return [];
     return [{ output: "out", inputs: Object.keys(this.inputs), combine: "active", activeIndex: () => this.activeIndex }];
   }
 
-  /** Returns true if the type changed, so the caller retypes now-invalid downstream cables. */
   syncOutputType(): boolean {
     const want: SocketDataType = this.multiSelect ? "cube" : "trueany";
     if (this.outSocket.dataType === want) return false;
@@ -111,7 +95,6 @@ export class CableSwitchNode extends ClassicPreset.Node {
   data(inputs: Record<string, unknown[] | undefined>) {
     const keys = Object.keys(this.inputs);
     if (this.multiSelect) {
-      // Collect the checked inputs (in slot order) into a Cube: name + whole value.
       const chosen = keys.filter((k) => this.selectedKeys.includes(k));
       if (chosen.length === 0) { this.cachedValue = null; return { out: null }; }
       const cube = cubeFromColumns([
@@ -132,7 +115,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
 export class AngleDialNode extends ClassicPreset.Node {
   label: string;
   value: number;   // degrees, 0–359
-  step: number;    // snap increment
+  step: number;
   width  = 160;
   height = 175;
 
@@ -149,13 +132,8 @@ export class AngleDialNode extends ClassicPreset.Node {
   }
 }
 
-// `value` is an Excel date serial (whitelisted in extractInit); 0 = no date selected yet.
-
 export class DateInputNode extends ClassicPreset.Node {
   label: string;
-  // The raw source text is the truth (the Frame/Table date model): the card renders the
-  // coerced DD-MMM-YYYY but keeps exactly what was typed for editing, and never discards an
-  // unparseable entry. Round-trips via the generic stringLiterals spread.
   stringLiterals: Record<string, string>;
   width  = 180;
   height = 110;
@@ -169,24 +147,17 @@ export class DateInputNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Date serial"));
   }
 
-  /** The last day a RELATIVE phrase resolved to — the edge for the "it moved" Alert. Not persisted. */
   private lastRelativeSerial: number | null = null;
 
-  /** A relative phrase (today / next friday / in 3 days) is honoured only under the
-   *  Settings ▸ Data ▸ Relative dates opt-in — else it's unparseable like before. */
   static relativeAllowed(): boolean { return settingsStore.get("relativeDates"); }
 
   data(): { result: number | SolError | null } {
     const text = (this.stringLiterals.date ?? "").trim();
     const relative = isRelativeDateText(text) && DateInputNode.relativeAllowed();
-    // #AMBIGUOUS! surfaces downstream; unparseable text is a blank, a valid date its serial.
     const r = parseDate(text, relative ? { relative: true } : undefined);
     if (isSolError(r)) return { result: r };
     const serial = Number.isFinite(r) ? Math.floor(r) : null;
     if (relative && serial !== null) {
-      // Re-resolved on every pass (the value depends on "now"); when the DAY it lands on
-      // changes between calculations, say so — a moved date silently shifting a model is
-      // exactly what the opt-in warns about. Edge-detected on the resolved serial.
       if (this.lastRelativeSerial !== null && this.lastRelativeSerial !== serial && !isGraphRebuilding()) {
         const name = (this.label ?? "").trim() || "Date Input";
         fireAlert({
@@ -201,9 +172,6 @@ export class DateInputNode extends ClassicPreset.Node {
     return { result: serial };
   }
 }
-
-// Both dates are raw Excel serials living in `literals`, so they round-trip via the
-// generic literals spread (no INIT_FIELD_ORDER edit).
 
 export class DateRangeNode extends ClassicPreset.Node {
   label: string;
@@ -223,14 +191,10 @@ export class DateRangeNode extends ClassicPreset.Node {
   data(): { start: number | null; end: number | null } {
     let start = this.literals.start ?? 0;
     let end = this.literals.end ?? 0;
-    // A range runs forward: picked out of order, the two swap (the Slider's bound rule).
     if (start > 0 && end > 0 && start > end) [start, end] = [end, start];
     return { start: start > 0 ? start : null, end: end > 0 ? end : null };
   }
 }
-
-// X and Y are each in [0, 1] (fractions of the pad); `fx`/`fy` live in `literals` so
-// they round-trip through extractInit's spread.
 
 export class XYPadNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -256,16 +220,12 @@ export class XYPadNode extends ClassicPreset.Node {
   }
 }
 
-// `selectedValues` empty = every row passes through.
-
-/** The column's distinct, sorted, non-blank values — the Slicer's buttons. */
 function slicerUniques(values: readonly (FrameCell | null)[]): SlicerCell[] {
   const uniq = [...new Set(values.filter((v): v is SlicerCell => v !== null && v !== ""))];
   uniq.sort((a, b) => (typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b))));
   return uniq;
 }
 
-/** JS-side membership filter (the eager path): keep rows whose `col` value is selected. */
 function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: ReadonlySet<SlicerCell>): FrameValue {
   const rows = frameRowCount(frame);
   const keep: number[] = [];
@@ -278,27 +238,22 @@ function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: Reado
     columns: frame.columns.map((c) => ({
       ...c,
       values: keep.map((i) => c.values[i] ?? null),
-      raw: c.raw ? keep.map((i) => c.raw![i] ?? "") : undefined, // keep the source for surviving rows
+      raw: c.raw ? keep.map((i) => c.raw![i] ?? "") : undefined,
     })),
   };
 }
 
-// A FrameVerbNode (see nodes/frame.ts): emits a LAZY frame ref when its upstream is lazy,
-// so the row filter fuses into the chain instead of collecting the whole frame. It reads
-// only the schema (column names) + the one selected column for its buttons.
 export class SlicerNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "An empty selection passes every row through instead of none.",
   };
   label: string;
-  selectedColumn: string = "";          // "" → first column (auto)
-  selectedValues: SlicerCell[] = [];    // empty → all rows pass
+  selectedColumn: string = "";
+  selectedValues: SlicerCell[] = [];
   multiSelect    = false;
-  // Populated by data() for the component; not persisted.
   cachedColumns: string[] = [];
   cachedColumnType: FrameColType = "number";
   cachedUniqueValues: SlicerCell[] = [];
-  // FrameVerbNode lazy-emit state: `_ref` owns the current output handle, `_gen` guards passes.
   _ref?: FrameRef | null;
   _gen?: number;
   cachedResult: FrameValue | SolError | null = null;
@@ -328,8 +283,6 @@ export class SlicerNode extends ClassicPreset.Node {
     const raw = inputs.frame?.[0] ?? null;
     const gen = beginPass(this);
 
-    // ── Lazy upstream: read the schema + only the selected column, push the filter as a
-    //    verb so the whole frame never collects. ──
     if (isFrameRef(raw)) {
       const schema = await collectPreview(raw, 0);
       const colNames = isFrameValue(schema) ? schema.columns.map((c) => c.name) : [];
@@ -337,21 +290,18 @@ export class SlicerNode extends ClassicPreset.Node {
       const col = colName
         ? await materialize((async () => frameBackend().column(await flushRef(raw), colName))())
         : null;
-      // Write UI state only if this is still the latest pass (a newer one may have started
-      // during the awaits) — a stale write would flicker the buttons.
+      // Write UI state only from the latest pass, or a stale one flickers the buttons.
       if (gen === this._gen) {
         this.cachedColumns = colNames;
         if (col && !isSolError(col)) { this.cachedColumnType = col.type; this.cachedUniqueValues = slicerUniques(col.values); }
         else this.cachedUniqueValues = [];
       }
       if (col && isSolError(col)) return this.emitResult(gen, col);
-      // No column resolved, or "all" selected → forward the frame unchanged (no-op).
       if (!colName || this.selectedValues.length === 0) return this.emitResult(gen, await passFrame(raw));
-      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true })); // the buttons ARE the exact values (the eager path matches exactly too)
+      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true }));
       return this.emitResult(gen, await runFrameUnary(raw, { kind: "filterMulti", combine: "or", conditions }));
     }
 
-    // ── Eager path: a materialized frame (a raw Frame Input, or the JS oracle). ──
     const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
     this.cachedColumns = frame ? frame.columns.map((c) => c.name) : [];
     if (!frame || frame.columns.length === 0) { this.cachedUniqueValues = []; return this.emitResult(gen, frame); }
@@ -362,9 +312,6 @@ export class SlicerNode extends ClassicPreset.Node {
     return this.emitResult(gen, filterFrameByMembership(frame, col, new Set(this.selectedValues)));
   }
 }
-
-// Points persist as TEXT ("x, y" per line): the string is the stored truth, arrays
-// derive. Trimmed to 4 decimals so a drag doesn't bake float dust into the save.
 
 export function parsePoints(text: string | undefined): Array<[number, number]> {
   const out: Array<[number, number]> = [];
@@ -383,8 +330,6 @@ export function pointsToText(pts: ReadonlyArray<readonly [number, number]>): str
   return pts.map(([x, y]) => `${trimNum(x)}, ${trimNum(y)}`).join("\n");
 }
 
-/** The plotted points as a two-column frame (X, Y) — the correlated-output form (C5:
- *  index-aligned lists leave a node as ONE frame, never parallel list sockets). */
 export function pointsToFrame(pts: ReadonlyArray<readonly [number, number]>): FrameValue {
   return {
     __frame: true,
@@ -399,7 +344,6 @@ export class PointPlotterNode extends ClassicPreset.Node {
   label: string;
   pointsText = "";
   cachedResult: FrameValue | null = null;
-  /** Axis ranges for the pad's coordinate frame. */
   literals: Record<string, number> = { xmin: 0, xmax: 10, ymin: 0, ymax: 10 };
   width = 240;
   height = 280;
@@ -425,9 +369,6 @@ export class PointPlotterNode extends ClassicPreset.Node {
   }
 }
 
-/** Monotone cubic interpolator through (xs, ys) — xs strictly increasing, n ≥ 1.
- *  Flat beyond the endpoints. Fritsch–Carlson tangent limiting: the curve never
- *  overshoots between two points, so it behaves like a drawn envelope. */
 export function monotoneCubic(xs: number[], ys: number[]): (x: number) => number {
   const n = xs.length;
   if (n === 0) return () => NaN;
@@ -459,8 +400,6 @@ export function monotoneCubic(xs: number[], ys: number[]): (x: number) => number
   };
 }
 
-/** Control points sorted by x with exact-duplicate x's collapsed (last wins) —
- *  the spline needs strictly increasing x. */
 export function curvePoints(text: string | undefined): Array<[number, number]> {
   const sorted = [...parsePoints(text)].sort((a, b) => a[0] - b[0]);
   const out: Array<[number, number]> = [];
@@ -471,8 +410,7 @@ export function curvePoints(text: string | undefined): Array<[number, number]> {
   return out;
 }
 
-/** Pure, so the component can render output rows without calling node.data() — the
- *  coerceInputs wrapper expects an inputs record and throws on undefined. */
+/** Kept pure so the component can render output rows without calling node.data(). */
 export function sampleCurve(pointsText: string | undefined, xmin: number, xmax: number, samples: number): { values: number[]; xs: number[] } {
   const pts = curvePoints(pointsText);
   if (pts.length === 0) return { values: [], xs: [] };
@@ -488,8 +426,6 @@ export function sampleCurve(pointsText: string | undefined, xmin: number, xmax: 
   return { values, xs };
 }
 
-/** The sampled curve as a two-column frame — X (the axis) FIRST, then Value (C5:
- *  index-aligned outputs leave as one frame). */
 export function curveToFrame(xs: number[], values: number[]): FrameValue {
   return {
     __frame: true,
@@ -530,8 +466,6 @@ export class CurveNode extends ClassicPreset.Node {
     return { result: frame };
   }
 }
-
-// The grid persists as CSV text (tableText, like Table Input): blank cell = null.
 
 export function parsePaintGrid(text: string | undefined, rows: number, cols: number): (number | null)[][] {
   const lines = (text ?? "").split("\n");

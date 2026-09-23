@@ -7,7 +7,6 @@ import { NAME_RE, typePrefix, nextAvailableName } from "./nodeNaming";
 
 const SEPARATOR = "---";
 
-// The same algorithm the live nodeNameStore uses, against a local taken-set.
 function assignNames(nodes: SavedNode[]): Map<string, string> {
   const idToName = new Map<string, string>();
   const taken = new Set<string>();
@@ -28,14 +27,12 @@ function assignNames(nodes: SavedNode[]): Map<string, string> {
   return idToName;
 }
 
-// Kahn's, picking the alphabetically-smallest ready node; a leftover cycle is
-// appended alphabetically, so this never throws or hangs.
 function topoOrder(nodeIds: string[], connections: SavedConnection[], nameOf: (id: string) => string): string[] {
   const indeg = new Map<string, number>();
   for (const id of nodeIds) indeg.set(id, 0);
   const adj = new Map<string, string[]>();
   for (const c of connections) {
-    if (!indeg.has(c.source) || !indeg.has(c.target)) continue; // dangling ref — ignore
+    if (!indeg.has(c.source) || !indeg.has(c.target)) continue;
     indeg.set(c.target, (indeg.get(c.target) ?? 0) + 1);
     const arr = adj.get(c.source);
     if (arr) arr.push(c.target);
@@ -77,7 +74,6 @@ function canonicalEntries(obj: Record<string, unknown>): [string, unknown][] {
   return out;
 }
 
-// Field-token grammar, shared by writer + reader.
 const FIELD_KEY_RE = /^([A-Za-z_][A-Za-z0-9_:]*)(=|<-)/;
 
 function tokenizeFields(s: string): string[] {
@@ -112,9 +108,6 @@ function splitField(token: string): { key: string; op: "=" | "<-"; rest: string 
   return { key: m[1], op: m[2] as "=" | "<-", rest: token.slice(m[0].length) };
 }
 
-// A Note's frontmatter makes the source-output key USER text, so emit it bare only
-// when the tokenizer carries it intact (a dot is fine — the reader splits at the
-// FIRST one), else JSON-quote it. Only the output side needs this.
 const BARE_OUTPUT_RE = /^[^"\\ ]+$/;
 function outputToken(key: string): string {
   return BARE_OUTPUT_RE.test(key) ? key : JSON.stringify(key);
@@ -143,8 +136,6 @@ export function writeTextForm(g: SavedGraph): string {
     const init: Record<string, unknown> = { ...sn.init };
     if (typeof init.hostNodeId === "string") init.hostNodeId = nameOf(init.hostNodeId);
     if (Array.isArray(init.members)) init.members = (init.members as unknown[]).map((m) => (typeof m === "string" ? nameOf(m) : m));
-    // Presentation steps reference live node ids, so translate them to names or
-    // they point at dead ids after a reload.
     if (Array.isArray(init.steps)) {
       init.steps = (init.steps as Array<{ nodeIds?: unknown }>).map((s) => ({
         ...s,
@@ -191,14 +182,11 @@ export function writeTextForm(g: SavedGraph): string {
       ...(s.locked ? { locked: true } : {}),
     }));
   }
-  // No name-addressing: a drawn cable is pure canvas geometry, it names no node.
   if (g.drawnCables && g.drawnCables.length > 0) sidecar.drawnCables = g.drawnCables;
   if (g.pins && g.pins.length > 0) {
     sidecar.pins = g.pins.map((p) => ({ nodeId: nameOf(p.nodeId), outputKey: p.outputKey }));
   }
   if (g.comments && g.comments.length > 0) {
-    // Name-address the nodeId like pins/standoffs; the comment's own `id` is not a
-    // node reference.
     sidecar.comments = g.comments.map((c) => ({ ...c, nodeId: nameOf(c.nodeId) }));
   }
   if (g.frameFormats && g.frameFormats.length > 0) {
@@ -238,8 +226,6 @@ export function readTextForm(text: string): SavedGraph {
     names.add(p.name);
   }
 
-  // Names ARE the ids in the reconstructed SavedGraph, so `hostNodeId`/`members`
-  // inside `init` need no further translation.
   const nodes: SavedNode[] = parsed.map((p) => {
     const pos = (sidecar.positions?.[p.name] ?? { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean };
     const sn: SavedNode = {
@@ -317,7 +303,6 @@ export function parseNodeLine(line: string): {
       const dotIdx = valueStr.indexOf(".");
       if (dotIdx === -1) throw new Error(`textForm: malformed connection "${token}"`);
       const outRaw = valueStr.slice(dotIdx + 1);
-      // A JSON-quoted output key (see outputToken) decodes; bare passes through.
       const sourceOutput = outRaw.startsWith('"') ? (JSON.parse(outRaw) as string) : outRaw;
       conns.push({ targetInput: key, sourceName: valueStr.slice(0, dotIdx), sourceOutput });
     } else if (key.startsWith("lit:")) {

@@ -12,7 +12,7 @@ The Equation card holds one relation, `LHS = RHS`, and solves it for whichever v
 
 ## Parsing and sockets
 
-- The relation must have exactly one `=`. No `=` at the top reads "An equation needs one = sign, like V = I * R"; a second one reads "Use exactly one = sign"; a parse failure reads "Syntax error". These show as the card's in-card message.
+- The relation must have exactly one `=`. No `=` at the top reads "An equation needs one = sign, like V = I * R"; a second one reads "Use exactly one = sign"; a parse failure reads "Syntax error". `parseEquation` answers null for a syntax error and the message text for a shape problem; these show as the card's in-card message.
 - Every variable name in the relation gets an input socket and an output socket, both named after it. The card also has a `holds` output, labeled "Check". Editing the relation adds sockets for new names and returns the departing names so the caller drops their cables before removing the sockets ([[D10]] onePrunePath).
 - A variable is known only through its cable. The card declares no literal map, so a save or seed cannot plant a hidden known ([[C28]] literalsIffEditable).
 
@@ -50,7 +50,7 @@ Any other step (`ABS`, a function of several arguments) has no clean inverse, an
 **3. Numeric root-finding** (`solveNumeric`), the fallback when the unknown appears more than once or behind a step with no inverse. It works on scalar knowns only; with a list among the knowns it gives `#SHAPE!` "Numeric solving works on single values. With lists, this equation solves only where the algebra can be inverted". It uses no outside library: the residual is the compiled evaluator.
 
 1. Build a symmetric log grid: 0 and ±10ᵏ for k from −6 to 12, sorted.
-2. Walk the grid. A point where the residual is exactly 0 is a root. Between neighbors whose residuals change sign, bisect (up to 200 steps, until the bracket is within 10⁻¹² relative). A sign change can also be a pole, like 1/(x − 3) at 3, so the converged point counts only when its residual is within 10⁻⁶ of the larger bracket end.
+2. Walk the grid. A point where the residual is exactly 0 is a root. Between neighbors whose residuals change sign, bisect (up to 200 steps, until the bracket is within 10⁻¹² relative). A sign change can also be a pole, like 1/(x − 3) at 3, so the converged point counts as a root only when its residual is at most 10⁻⁶ times the largest of 1 and the two bracket ends' residuals: a true root drives the residual toward 0, while a pole's stays as large as the ends or larger. A non-finite residual during bisection abandons that bracket.
 3. Where the residual first becomes finite (`SQRT(x − 2)` below 2 is not), find the domain's edge by bisection, and bracket between the edge and the next grid point, so a root near a domain boundary is not missed.
 4. Bisect every bracket, and return the root closest to zero. Taking the first bracket in ascending order would pick the most negative root; a TVM rate residual also crosses zero where 1 + r < 0, and −290% interest is never the intended answer.
 5. With no root found, return `#SOLVE!` "No solution found between ±10¹². The equation may have no real root here".

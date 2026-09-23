@@ -1,5 +1,4 @@
-// [[C97]] rechartsLazyChunk: every recharts-using renderer, in the one module the app, [[C100]] chartIsAValue
-// never imports statically.
+// [[C97]] rechartsLazyChunk, [[C100]] chartIsAValue
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, type ScatterShapeProps, type SymbolsProps } from "recharts";
 import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";
@@ -10,15 +9,11 @@ import type { OverlayPayload } from "../chartValue";
 
 const LINE_DOT_R = 2;
 const SCATTER_DOT_R = 3;
-// The expand ⛶ button sits over the figure's top-right corner: every cartesian plot
-// leaves this much headroom so neither the button nor the top tick lands on the plot rect.
 const PLOT_TOP = 14;
-// All the labels fit while there are few enough of them; past that recharts thins them.
 const ALL_TICKS_UPTO = 12;
-// recharts' Scatter has no size prop: its default Symbols circle is a fixed 64 px² (r ≈ 4.5).
+// recharts' Scatter takes a symbol area in px², not a radius.
 const scatterDot = (r: number) => (p: ScatterShapeProps) => <Symbols {...(p as unknown as SymbolsProps)} type="circle" size={Math.PI * r * r} />;
 
-// formatScalar precision, not recharts' raw full-float. Point index is 1-based.
 function ChartTooltip({ active, payload, label }: {
   active?: boolean;
   payload?: { value?: number }[];
@@ -36,8 +31,7 @@ function ChartTooltip({ active, payload, label }: {
   );
 }
 
-// A non-primitive (a SolError past the series sanitizer) must be stringified —
-// React throws "Objects are not valid as a React child" and takes down the node.
+// An object value must become a string here, or React throws on it as a child.
 function tipValue(v: unknown): string {
   if (typeof v === "number") return formatScalar(v);
   if (v == null) return "";
@@ -47,7 +41,6 @@ function tipValue(v: unknown): string {
 
 const TIP = <Tooltip isAnimationActive={false} cursor={{ stroke: "rgba(128,128,128,0.5)", fill: "rgba(128,128,128,0.12)" }} content={<ChartTooltip />} />;
 
-// For polar/categorical charts, where an x-axis index is meaningless.
 function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value?: number }[] }) {
   if (!active || !payload || !payload.length) return null;
   const v = payload[0]?.value;
@@ -60,9 +53,6 @@ function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value
 const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} />;
 
 const RADIAN = Math.PI / 180;
-/** Slice labels can be user text (a Frame's category names): strip control characters,
- *  collapse whitespace, and cap the length so a long or hostile name can't smear across
- *  the figure or break its layout. */
 export function sanitizeChartLabel(raw: string, cap = 16): string {
   let clean = "";
   for (const ch of raw) {
@@ -74,8 +64,6 @@ export function sanitizeChartLabel(raw: string, cap = 16): string {
   return cps.length > cap ? `${cps.slice(0, cap - 1).join("").trimEnd()}…` : clean;
 }
 
-// Reads the datum off payload[0].payload so it works whether the x axis is a real
-// coordinate (dataKey "x") or the row index ("i").
 function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { payload?: { x?: number; i?: number; v?: number } }[] }) {
   if (!active || !payload || !payload.length) return null;
   const d = payload[0]?.payload;
@@ -91,9 +79,6 @@ function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { pay
 }
 const SCATTER_TIP = <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} content={<ScatterTooltip />} />;
 
-/** A numeric axis that really carries ROW INDICES: pinned to exactly [0, n−1], one tick
- *  per index while they fit, and padded so the first and last marks don't straddle the
- *  frame. An empty list (a real coordinate x) keeps recharts' own rounded "nice" domain. */
 function catDomain(indices: number[]): { domain?: [number, number]; ticks?: number[]; padding?: { left: number; right: number } } {
   const hi = indices.reduce((m, i) => Math.max(m, i), 0);
   if (hi <= 0) return {};
@@ -104,8 +89,6 @@ function catDomain(indices: number[]): { domain?: [number, number]; ticks?: numb
   };
 }
 
-/** The figure title strip every view draws above its chart; `titleHeight` reserves
- *  the same band out of the chart's own height. */
 const titleHeight = (fs: number) => Math.ceil(16 * fs);
 function ChartTitle({ text, fs }: { text: string; fs: number }) {
   const h = titleHeight(fs);
@@ -116,9 +99,6 @@ function ChartTitle({ text, fs }: { text: string; fs: number }) {
   );
 }
 
-/** One renderer for both the inline node charts and the expand popup; without
- *  `axes` it is a clean Sparkline. */
-/** recharts wants "auto" for an open bound. */
 function yDomainOf(opts: ChartOptions | undefined): [number | string, number | string] | undefined {
   return opts?.ymin !== undefined || opts?.ymax !== undefined ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] : undefined;
 }
@@ -132,11 +112,8 @@ export function ChartView({
   height: number;
   axes: boolean;
   opts?: ChartOptions;
-  /** Win/loss coloring: positive → pos, negative → neg, zero → grid. Bar ops only. */
   signColors?: { pos: string; neg: string };
-  /** X-axis category labels (Frame col 0), shown instead of 1,2,3… */
   labels?: (string | number)[];
-  /** Display-layer multiplier ON TOP of the options' own fontsize. */
   fontScale?: number;
 }) {
   const { grid, axis, viz } = useChartColors();
@@ -144,8 +121,7 @@ export function ChartView({
   const paint = (i: number) => seriesColors[i % seriesColors.length];
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
-  // A recharts `type="number"` index axis hands back INTERPOLATED fractional ticks
-  // (0.5, 1.5…), so round to the nearest datum and drop anything off the ends.
+  // A numeric index axis hands back fractional ticks (0.5, 1.5), so round to a datum.
   const tickFmt = (i: number | string) => {
     const n = Number(i);
     if (!Number.isFinite(n)) return "";
@@ -153,7 +129,6 @@ export function ChartView({
     if (labels) {
       const lab = labels[idx];
       if (lab == null || typeof lab === "object") return "";
-      // Snap a numeric label free of float noise so a "really 3" isn't "3.0000000004".
       return typeof lab === "number" ? axisTick(lab) : String(lab);
     }
     return idx >= 0 ? String(idx + 1) : "";
@@ -162,7 +137,7 @@ export function ChartView({
   const color = opts?.color || viz;
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
-  const showMarkers = opts?.marker ?? axes; // lines dot by default when axed
+  const showMarkers = opts?.marker ?? axes;
   const dotR = opts?.markersize ?? LINE_DOT_R;
   const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
   const fillAlpha = opts?.alpha ?? 0.25;
@@ -203,8 +178,6 @@ export function ChartView({
       </AreaChart>
     );
   } else if (op === "bar") {
-    // The 18px gutter fits index digits; real category labels need room for the
-    // WIDEST one (else "UltraSlim" prints as "im"), capped so bars keep the card.
     const catW = labels
       ? Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(Math.max(...series.map((d) => tickFmt(d.i).length)) * 5.2 * fs)))
       : 18;
@@ -218,16 +191,8 @@ export function ChartView({
       </BarChart>
     );
   } else if (op === "pie") {
-    // Category labels ride a hand-drawn two-segment leader (a radial stub, then a
-    // horizontal run to a fixed column per side) so every label on a side shares one x —
-    // no arc-following, and the line meets the text instead of stopping short. On by
-    // default when the frame supplies names; `pielabels=off` (or the Chart Builder
-    // toggle) turns them off, and then the pie fills the whole box. Names are sanitized +
-    // length-capped (untrusted text); vanishingly thin slices skip their label.
     const pieMode = opts?.pielabels ?? "outside";
     const labeled = !!labels && pieMode !== "off";
-    // Inside labels ride the slice, so only the small ones spill outside — the box barely
-    // shrinks. Outside labels need the full margin for their leaders.
     const pad = !labeled ? 6 : pieMode === "inside" ? Math.min(16, width * 0.07) : Math.min(30, width * 0.12);
     const r = Math.max(18, Math.min(width, chartH) / 2 - pad);
     const cap = width < 260 ? 10 : 16;
@@ -240,8 +205,6 @@ export function ChartView({
       const pct = p.percent ?? 0;
       if (!name || pct < 0.03) return null;
       const cos = Math.cos(-mid * RADIAN), sin = Math.sin(-mid * RADIAN);
-      // Inside: centre a backing-plated label on the slice, but a thin slice (< 6%) can't
-      // hold it, so it keeps the outside leader.
       if (pieMode === "inside" && pct >= 0.06) {
         const rr = outerR * 0.62;
         const x = cx + rr * cos, y = cy + rr * sin;
@@ -254,9 +217,9 @@ export function ChartView({
         );
       }
       const side = cos >= 0 ? 1 : -1;
-      const sx = cx + outerR * cos, sy = cy + outerR * sin;                // slice edge
-      const mx = cx + (outerR + stub) * cos, my = cy + (outerR + stub) * sin; // elbow
-      const colX = cx + (outerR + stub) * side;                            // shared column x
+      const sx = cx + outerR * cos, sy = cy + outerR * sin;
+      const mx = cx + (outerR + stub) * cos, my = cy + (outerR + stub) * sin;
+      const colX = cx + (outerR + stub) * side;
       return (
         <g>
           <polyline points={`${sx},${sy} ${mx},${my} ${colX},${my}`} stroke={grid} fill="none" />
@@ -278,16 +241,15 @@ export function ChartView({
       <RadarChart width={width} height={chartH} data={series} cx="50%" cy="50%" outerRadius="72%">
         {(opts?.grid ?? true) && <PolarGrid stroke={grid} />}
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
-        {/* Radial ticks print rotated ON the polygon; the tooltip carries the raw value. */}
+        {/* Radial tick text would print rotated on the polygon. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={yDomain} />
         {TIP}
-        {/* Palette-painted like every other categorical op (`color` is not offered for radar). */}
+        {/* The palette, never `color`. */}
         <Radar dataKey="v" stroke={paint(0)} fill={paint(0)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </RadarChart>
     );
   } else if (op === "radialbar") {
-    // Nothing else names a ring, so the legend is the only key: recharts reads each
-    // entry's `name`/`fill` off the chart DATA for a radial legend.
+    // recharts reads a radial legend's `name` and `fill` off the chart data.
     const rings = series.map((d, i) => ({ ...d, name: sanitizeChartLabel(tickFmt(d.i)), fill: paint(i) }));
     chart = (
       <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={rings} startAngle={90} endAngle={-270}>
@@ -309,17 +271,13 @@ export function ChartView({
       </FunnelChart>
     );
   } else if (op === "scatter") {
-    // An all-numeric first column places each dot at its REAL x, so the plot honours
-    // x spacing and order; category labels or a plain list keep the index x.
     const numericX = !!labels && series.length > 0 && series.every((d) => typeof labels![d.i] === "number");
     const scatterData = numericX ? series.map((d) => ({ i: d.i, x: Number(labels![d.i]), v: d.v })) : series;
-    // A row-index x is a CATEGORY axis wearing a number's clothes: pinned to [0, n−1] the
-    // points span the plot instead of huddling inside recharts' rounded-up nice domain.
     const catX = catDomain(numericX ? [] : series.map((d) => d.i));
     chart = (
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {/* allowDecimals=false stops recharts inventing fractional "nice" ticks. */}
+        {/* allowDecimals=false stops recharts inventing fractional ticks. */}
         {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {SCATTER_TIP}
@@ -351,14 +309,11 @@ export function ChartView({
   );
 }
 
-// Lists every series' value at the hovered index (the multi-series counterpart of
-// ChartTooltip); the swatch color comes from each recharts payload entry.
 function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
   active?: boolean;
   payload?: { name?: string; value?: number; color?: string; dataKey?: string; payload?: Record<string, number | null> }[];
   label?: number | string;
   tickFmt: (i: number | string) => string;
-  // Radar plots the per-axis-normalized `_n{j}`; show the RAW `s{j}` from the row instead.
   rawFromNorm?: boolean;
 }) {
   if (!active || !payload || !payload.length) return null;
@@ -381,11 +336,6 @@ function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
 }
 
 const LEGEND_H = 16;
-// The multi-series legend is a plain DOM row UNDER the plot, not recharts' <Legend>: recharts
-// reserves a strip inside the plot, lays it out against the x-axis rect (so it lands on the
-// xlabel) and re-reserves whenever its measured height differs (the click jump). A fixed-height
-// row below the SVG cannot collide, cannot move and adds no dead space (its height is taken
-// off the plot). Inset by the y-axis width so it centers on the plot area, i.e. on the xlabel.
 const MULTI_LEGEND_H = 18;
 
 function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, lines }: {
@@ -410,9 +360,6 @@ function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetR
   );
 }
 
-/** Multi-series cartesian render (column/bar/line/area/scatter/radar) with a legend —
- *  the C2 frame path: each numeric column after the label is one named series, colored
- *  from the palette (Options `color` is single-series only; the palette wins here). */
 export function MultiSeriesView({
   op, series, labels, width, height, axes, opts, fontScale,
 }: {
@@ -425,12 +372,10 @@ export function MultiSeriesView({
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
   const paint = (j: number) => colors[j % colors.length];
-  // Legend click spotlights one series (the rest dim); clicking it again clears.
   const [focus, setFocus] = useState<number | null>(null);
   const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
-  // Axis titles from the options (matches the single-series renderer, which had them).
   const xLabel = axes && opts?.xlabel
     ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis }
     : undefined;
@@ -456,17 +401,13 @@ export function MultiSeriesView({
   const showMarkers = opts?.marker ?? false;
   const dotR = opts?.markersize ?? LINE_DOT_R;
   const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
-  // Overlaid area fills stack, so a shared default would paint the pair into one mass;
-  // thinner fills keep both readable and let the overlap read as a blend.
   const fillAlpha = opts?.alpha ?? (op === "area" && series.length >= 2 ? 0.18 : 0.25);
   const yDomain = yDomainOf(opts);
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const chartH = height - titleH - MULTI_LEGEND_H; // the legend row below takes the rest
+  const chartH = height - titleH - MULTI_LEGEND_H;
   const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
-  // Horizontal bars put the categories on the y axis, so that axis is wider; radar has no
-  // axes at all, so its legend centers on the whole figure.
   const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? (yLabel ? 52 : 40) : yAxisW;
   const legend = (
     <SeriesLegend
@@ -503,12 +444,6 @@ export function MultiSeriesView({
       </BarChart>
     );
   } else if (op === "radar") {
-    // Radar spokes carry incommensurable units (a $ column beside /10 scores), so unless the
-    // author asked for a shared radius, normalize each spoke (data row) to [0,1] by its own
-    // MAX (÷max, not min/max) and plot `_n{j}`; proportional, so the weakest option keeps its
-    // real fraction of the axis rather than collapsing to the centre. A negative value plots
-    // at the centre (author's call: a radar has no sensible place for one). Raw `s{j}` stays
-    // on the row for the tooltip.
     const radarNorm = (opts?.radarscale ?? "axis") === "axis";
     const rData = !radarNorm ? data : data.map((row) => {
       const hi = series.reduce((m, _, j) => { const x = row[`s${j}`]; return x == null ? m : Math.max(m, x); }, 0);
@@ -522,14 +457,13 @@ export function MultiSeriesView({
       <RadarChart width={width} height={chartH} data={rData} cx="50%" cy="50%" outerRadius="68%">
         {(opts?.grid ?? true) && <PolarGrid stroke={grid} />}
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
-        {/* Radial ticks print rotated ON the polygons; the tooltip carries the raw value. */}
+        {/* Radial tick text would print rotated on the polygons. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} />
         {radarTip}
         {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
       </RadarChart>
     );
   } else if (op === "scatter") {
-    // Each series a cloud; a numeric label column places points at their real x.
     const numericX = !!labels && data.length > 0 && data.every((d) => typeof labels![d.i as number] === "number");
     const catX = catDomain(numericX ? [] : data.map((d) => d.i as number));
     chart = (
@@ -545,7 +479,6 @@ export function MultiSeriesView({
       </ScatterChart>
     );
   } else {
-    // column (the default cartesian) — grouped vertical bars.
     chart = (
       <BarChart width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
@@ -557,9 +490,7 @@ export function MultiSeriesView({
     );
   }
 
-  // Inside a card, rete's drag handler takes pointer capture on mousedown, which would
-  // deliver the click to the node instead of the legend item — so a press that starts on
-  // the legend never reaches rete (the same swallow every in-card control uses).
+  // rete's drag takes pointer capture on mousedown and would steal the legend's click.
   const legendPress = (e: SyntheticEvent) => {
     if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
   };
@@ -572,11 +503,6 @@ export function MultiSeriesView({
   );
 }
 
-/** Several charts overlaid on ONE cartesian plane (the Merge Plots node): each series
- *  draws in its OWN mark kind (line / area / column / bar / scatter) and keeps the color,
- *  marker size, line width and fill alpha it inherited from its source chart. Legend +
- *  click-to-spotlight match MultiSeriesView; a series with no inherited color takes the
- *  palette. */
 export function OverlayView({ payload, width, height, opts, fontScale }: {
   payload: OverlayPayload;
   width: number; height: number; opts?: ChartOptions; fontScale?: number;
@@ -615,7 +541,7 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
     <Legend
       verticalAlign="bottom" height={LEGEND_H} iconSize={8}
       wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
-      // Focus by dataKey (`s{j}`), not name — merged series names can collide.
+      // Focus by dataKey, never by name: merged series names can collide.
       onClick={(e) => { const j = Number(String((e as { dataKey?: unknown }).dataKey ?? "").replace(/^s/, "")); if (Number.isInteger(j)) setFocus((f) => (f === j ? null : j)); }}
       formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
     />
@@ -643,13 +569,12 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
         if (s.kind === "scatter") {
           return <Scatter key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={o} shape={scatterDot(s.markersize ?? SCATTER_DOT_R)} isAnimationActive={false} />;
         }
-        // column / bar — both draw as vertical bars so they share the x-axis.
         return <Bar key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
       })}
     </ComposedChart>
   );
 
-  // Same legend-press swallow as MultiSeriesView — rete's drag would otherwise eat the click.
+  // rete's drag would otherwise steal the legend's click.
   const legendPress = (e: SyntheticEvent) => {
     if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
   };
@@ -688,16 +613,13 @@ export function TreemapView({ names, values, width, height, fscale = 1 }: {
     .filter((d) => d.size > 0);
   if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   return (
-    // recharts 3.x: `content` must be a FUNCTION to receive each node's geometry —
-    // a static element renders once with no geometry and every rect collapses to 0×0.
+    // recharts 3 passes geometry only to a function `content`; an element collapses every cell to 0×0.
     <Treemap width={width} height={height} data={data} dataKey="size" isAnimationActive={false} content={(props) => <TreemapCell {...props} colors={colors} fscale={fscale} />}>
       {SLICE_TIP}
     </Treemap>
   );
 }
 
-// recharts needs numeric source/target indices into the nodes array, and its layout
-// assumes a DAG — cycles and self-loops are dropped.
 type SankeyNodeProps = {
   x?: number; y?: number; width?: number; height?: number;
   index?: number; payload?: { name?: string }; colors?: string[]; containerWidth?: number; fscale?: number;
@@ -738,7 +660,7 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
     const s = sources[i] ?? "";
     const t = targets[i] ?? "";
     const v = values[i] ?? 0;
-    if (!s || !t || s === t || !(v > 0)) continue; // skip blanks / self-loops / non-positive
+    if (!s || !t || s === t || !(v > 0)) continue;
     links.push({ source: idx(s), target: idx(t), value: v });
   }
   if (links.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
@@ -750,11 +672,8 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
       nodePadding={16}
       nodeWidth={10}
       link={{ stroke: grid, strokeOpacity: 0.5 }}
-      // Function form so each node receives its geometry (as with Treemap's content),
-      // and containerWidth passed through because recharts' node props omit it —
-      // without it every node reads as "right half" and left labels fly off-canvas.
+      // recharts' node props omit containerWidth; without it every label sits in the right half.
       node={(props) => <SankeyNodeShape {...props} colors={colors} containerWidth={width} fscale={fscale} />}
-      // Labels sit INWARD, so no wide outer gutter is needed.
       margin={{ top: 6, right: 10, bottom: 6, left: 10 }}
     >
       {SLICE_TIP}
@@ -762,12 +681,8 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
   );
 }
 
-// Each COLUMN is a series over the row index: column 0 bars, the rest lines.
-// One BAR series (column 0) plus a LINE per remaining series — the named columns of a
-// frame, the C2 replacement for the old Series matrix socket.
 export function ComposedView({ series, labels, width, height, opts, fscale = 1 }: {
   series: { name: string; values: (number | null)[] }[];
-  /** X-axis category labels (Frame col 0), as every other cartesian op reads them. */
   labels?: (string | number)[];
   width: number; height: number; opts?: ChartOptions; fscale?: number;
 }) {
@@ -795,7 +710,6 @@ export function ComposedView({ series, labels, width, height, opts, fscale = 1 }
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fscale, fill: axis } : undefined;
   const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fscale, fill: axis } : undefined;
   const title = opts?.title;
-  // The legend is its own row under the plot, as on every multi-series chart.
   const legendH = series.length > 1 ? MULTI_LEGEND_H : 0;
   const chartH = height - (title ? titleHeight(fscale) : 0) - legendH;
   const yAxisW = yLabel ? 40 : 26;
@@ -829,7 +743,6 @@ export function ComposedView({ series, labels, width, height, opts, fscale = 1 }
   );
 }
 
-// Nothing else on a bubble plot says which column is which: the tooltip names all three.
 function BubbleTooltip({ active, payload, names }: {
   active?: boolean;
   payload?: { payload?: { x?: number; y?: number | null; z?: number } }[];
@@ -853,8 +766,6 @@ function BubbleTooltip({ active, payload, names }: {
   );
 }
 
-// The first three NUMBER series are x / y / size columns, one dot per row (a frame's
-// first three number columns; a single column plots against itself).
 export function BubbleView({ series, width, height, opts, fscale = 1 }: {
   series: { name: string; values: (number | null)[] }[]; width: number; height: number; opts?: ChartOptions; fscale?: number;
 }) {
@@ -888,7 +799,7 @@ export function BubbleView({ series, width, height, opts, fscale = 1 }: {
   return <div style={{ width }}><ChartTitle text={title} fs={fscale} />{chart}</div>;
 }
 
-// `pct` is 0–100; `size` is the square drawn into, cropped to its top half by the caller.
+// `pct` is 0 to 100; the caller crops the `size` square to its top half.
 export function GaugeArc({ pct, track, size }: { pct: number; track: string; size: number }) {
   const { viz } = useChartColors();
   return (
@@ -913,19 +824,14 @@ export function GaugeArc({ pct, track, size }: { pct: number; track: string; siz
 
 const RISING = "#e0524d";
 const FALLING = "#4c8bf5";
-// A diverged leaf has no finite swing — muted full width, so it reads as "off the
-// chart" rather than as a magnitude comparable to the colored swings.
 const DIVERGED = "var(--text-dim)";
 
 export type TornadoBar = {
   label: string; offset: number; range: number; rising: boolean;
   diverged?: boolean;
-  // Carried so the readout can show the RAW swing against the perturbation width.
   outLow?: number; outHigh?: number; inLow?: number; inHigh?: number; basis?: "slider" | "number";
 };
 
-// Shows the basis (slider full-range vs number ±10%) so a wide bar isn't mistaken
-// for a like-for-like comparison against a narrow number nudge.
 function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { payload?: TornadoBar }[] }) {
   if (!active || !payload || !payload.length) return null;
   const d = payload[0]?.payload;
@@ -950,7 +856,6 @@ function TornadoTooltip({ active, payload }: { active?: boolean; payload?: { pay
   );
 }
 
-// Matches ChartNode's W; exported so the Suspense fallback reserves the same width.
 export const TORNADO_W = 218;
 
 export function TornadoBars({ data, grid, axis }: { data: TornadoBar[]; grid: string; axis: string }) {

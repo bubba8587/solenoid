@@ -1,14 +1,10 @@
 // [[D46]] freezeVolatilePerCalc
-// Seeded, deterministic Monte Carlo sampling, SCOPED to the composite subsystem — the
-// app's only sampler.
 
 import { uncertain, type UncertainNumber } from "./valueKinds";
 import { stdNormCDF } from "./nodes/mathUtils";
 
 export type DistributionKind = "normal" | "uniform";
 
-/** `spread` is the marker's `uncertainty`: a 1σ for normal, a ± half-width for uniform,
- *  so both read identically on the card. */
 export interface UncertaintySpec {
   kind: DistributionKind;
   spread: number;
@@ -17,8 +13,6 @@ export interface UncertaintySpec {
 export const DEFAULT_MC_SAMPLES = 500;
 export const DEFAULT_MC_SEED = 1;
 
-/** The same seed yields the identical [0,1) sequence on every platform, which is what
- *  makes a run reproducible. */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return function () {
@@ -30,24 +24,19 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-/** One standard-normal draw via Box–Muller from a uniform [0,1) generator. */
 export function sampleStandardNormal(rng: () => number): number {
   let u1 = rng();
-  while (u1 <= Number.EPSILON) u1 = rng(); // guard log(0) = -Inf
+  while (u1 <= Number.EPSILON) u1 = rng();
   const u2 = rng();
   return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
 }
 
-/** Draw one value for an uncertain input: normal(mean, spread) or
- *  uniform(mean−spread, mean+spread). A non-positive spread is a point value. */
 export function sampleUncertain(mean: number, spec: UncertaintySpec, rng: () => number): number {
   if (!(spec.spread > 0) || !Number.isFinite(mean)) return mean;
   if (spec.kind === "uniform") return mean + (rng() * 2 - 1) * spec.spread;
   return mean + sampleStandardNormal(rng) * spec.spread;
 }
 
-/** Mean ± sample sd, carrying the raw draws. Unbiased (N−1) variance for N ≥ 2; non-finite
- *  draws are dropped first so a per-iteration failure can't poison the summary. */
 export function summarizeSamples(draws: readonly number[]): UncertainNumber {
   const nums = draws.filter((d) => Number.isFinite(d));
   const n = nums.length;
@@ -60,8 +49,6 @@ export function summarizeSamples(draws: readonly number[]): UncertainNumber {
   return withDropped(uncertain(mean, Math.sqrt(variance), nums));
 }
 
-/** An empty or zero-range set yields a single full bucket, so the caller never divides
- *  by zero. */
 export function histogram(samples: readonly number[], bins = 12): { counts: number[]; min: number; max: number } {
   const nums = samples.filter((d) => Number.isFinite(d));
   if (nums.length === 0) return { counts: [0], min: 0, max: 0 };
@@ -73,25 +60,17 @@ export function histogram(samples: readonly number[], bins = 12): { counts: numb
   const span = max - min;
   for (const d of nums) {
     let idx = Math.floor(((d - min) / span) * b);
-    if (idx >= b) idx = b - 1; // the max value lands in the last bin
+    if (idx >= b) idx = b - 1;
     if (idx < 0) idx = 0;
     counts[idx]++;
   }
   return { counts, min, max };
 }
 
-// ─── Correlated inputs (@RISK / Crystal Ball "correlate assumptions") ──────────────
-// A Gaussian copula: draw standard normals with the requested correlation (Cholesky of
-// the matrix), map each to a uniform through Φ, then to its OWN marginal — so every
-// input keeps exactly the distribution it declared and only the dependence changes.
-// The entered number is the normal-score (Pearson) correlation; the Spearman rank
-// correlation it induces is (6/π)·asin(ρ/2), within 2 % of ρ across the range.
+// ─── Correlated inputs ─────────────────────────────────────────────────────────
 
 export interface CorrelationPair { a: string; b: string; rho: number }
 
-/** Parse the card's correlation text: `a ~ b = 0.7; c ~ d = -0.3` (`,` or `;` between
- *  pairs; labels or ids, resolved by the caller). Out-of-range or malformed entries are
- *  dropped and reported in `rejected`. */
 export function parseCorrelations(text: string): { pairs: CorrelationPair[]; rejected: string[] } {
   const pairs: CorrelationPair[] = [], rejected: string[] = [];
   for (const raw of text.split(/[;,]/)) {
@@ -105,10 +84,6 @@ export function parseCorrelations(text: string): { pairs: CorrelationPair[]; rej
   return { pairs, rejected };
 }
 
-/** Build the k×k correlation matrix for the ports in `ids` order (1 on the diagonal,
- *  the given pairs elsewhere, 0 otherwise) and make it positive-definite by shrinking
- *  the off-diagonals toward 0 until Cholesky succeeds (an inconsistent set is softened,
- *  never refused). Returns the Cholesky factor L (R = L·Lᵀ). */
 export function correlationCholesky(ids: readonly string[], pairs: readonly CorrelationPair[]): number[][] {
   const k = ids.length;
   const idx = new Map(ids.map((id, i) => [id, i]));
@@ -140,8 +115,6 @@ function cholesky(A: number[][]): number[][] | null {
   return L;
 }
 
-/** One correlated draw per spec (in `specs` order): correlated standard normals through
- *  the Cholesky factor, each mapped onto its own marginal. A non-positive spread is a point. */
 export function sampleCorrelated(
   specs: ReadonlyArray<{ mean: number; spec: UncertaintySpec }>,
   L: number[][],

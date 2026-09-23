@@ -1,6 +1,4 @@
 // [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C91]] cableWalkRouter
-// The cable being DRAGGED from a socket: the same router and type color as a
-// live cable (RF's default connection line is a plain bezier in a fixed color).
 import type { ConnectionLineComponentProps } from "@xyflow/react";
 import { useSyncExternalStore } from "react";
 import { getCablePath, intoSocket, Position as CablePosition } from "../cablePaths";
@@ -24,8 +22,6 @@ export function FlowConnectionLine({ fromNode, fromHandle, fromPosition, fromX: 
   const color = originColor(fromNode.id, fromHandle.id, side);
   const angle = fromHandle.id ? cableAngleStore.get(fromNode.id, fromHandle.id) : null;
   const fromX = intoSocket(fromEdgeX, fromPosition as unknown as CablePosition);
-  // Dragging from an OUTPUT the cable leaves rightward to the pointer; from an INPUT the
-  // pointer end is the source and the cable arrives leftward at the socket.
   const d = side === "output"
     ? getCablePath(shape, {
         sourceX: fromX, sourceY: fromY, sourcePosition: CablePosition.Right, sourceAngleDeg: angle,

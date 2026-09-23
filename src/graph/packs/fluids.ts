@@ -1,5 +1,5 @@
-// Fluid mechanics: pipe flow, pumps, and the aero/particle classics.
-// SI units throughout; g = 9.80665 m/s² baked where gravity appears.
+// [[C51]] formulaNaming
+// SI units throughout; g = 9.80665 m/s² baked in where gravity appears.
 
 import { ColebrookNode, PipeRoughnessNode, colebrookFriction, PIPE_ROUGHNESS } from "../rete-nodes";
 import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
@@ -69,7 +69,6 @@ export const FLUIDS_FORMULAS: FormulaPackEntry[] = [
   ...FLUIDS_BASE, ...FLUIDS_PIPE, ...FLUIDS_PUMPS, ...FLUIDS_AERO,
 ];
 
-// The pack's custom-logic nodes as formula functions ([[C51]] formulaNaming decision 4).
 const FLUIDS_PACK_FORMULAS: PackFormula[] = [
   {
     name: "COLEBROOK",

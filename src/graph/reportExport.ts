@@ -15,21 +15,13 @@ import { renderNoteMarkdown } from "./noteMarkdown";
 import { isFrameValue } from "./frame";
 import { frameToMarkdownTable } from "./obsidianMarkdown";
 
-// "Export as webpage" freezes a Report into ONE self-contained .html: everything
-// inlines as data URIs / literal markup, with no external references.
 
-// `=name!` is the highlighted form of a span (`{{ name | highlight }}`).
 const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
 
-/** Escape markdown-special characters in a frozen VALUE (not the surrounding
- *  prose), so re-parsing the substituted body can't reinterpret it as markup. */
 export function escapeMd(s: string): string {
   return s.replace(/([\\`*_[\]])/g, "\\$1");
 }
 
-/** The freeze step: every `` `=name` `` span becomes its CURRENT formatted value as
- *  escaped text; a name with no live value is left as its original span. A DOCUMENT
- *  ref (an embedded Note) is also left: the export renders it as a block. */
 export function freezeInlineRefs(
   nodeId: string,
   body: string,
@@ -40,7 +32,6 @@ export function freezeInlineRefs(
     if (!refKeys.includes(name)) return match;
     const value = refValue(name);
     if (value === undefined || isDocumentValue(value)) return match;
-    // A Frame embeds as its grid, a block of its own ([[C68]] knapIsTheDocumentSyntax).
     if (isFrameValue(value)) return `\n\n${frameToMarkdownTable(value)}\n\n`;
     const ann = resolveRefAnnotation(nodeId, name);
     const text = escapeMd(refPreview(value, ann));
@@ -52,11 +43,6 @@ function renderMarkdown(md: string): string {
   return DOMPurify.sanitize(renderNoteMarkdown(md));
 }
 
-/** The export's CSS. `accent` tints the title + heading rules ONLY when the doc
- *  declares a report palette — branding never alters an export that didn't ask. */
-/** Text that lands in the exported page's markup outside a sanitized body (a title, a card's
- *  name, a ref name): every user-typed string is escaped, so a name like <img onerror=…>
- *  is text in the viewer's browser, never markup. */
 export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
@@ -98,10 +84,6 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 `;
 }
 
-/** Node ids the report references — sources wired into its own refs plus any
- *  wired-in Note's (an embedded note's own charts belong too). Deliberately DIRECT
- *  wiring only, not the upstream closure: a chart belongs in the report when the
- *  user wired it in. */
 export function reportReferencedNodeIds(
   report: { id: string },
   connections: readonly { source: string; target: string }[],
@@ -114,9 +96,6 @@ export function reportReferencedNodeIds(
   return out;
 }
 
-/** Build the self-contained HTML document string; the caller captures the canvas
- *  image and renders the template body, passing both in, keeping this half
- *  synchronous and DOM-free. */
 export function buildReportExportHtml(
   report: ReportNode,
   opts: { canvasImage: string | null; body: string },
@@ -127,8 +106,6 @@ export function buildReportExportHtml(
 
   const bodyFrozen = freezeInlineRefs(report.id, opts.body, [...report.refKeys(), "template", "records"], (k) => report.refValue(k));
 
-  // A DOCUMENT-valued ref (a wired Note) is substituted INLINE as an embed block;
-  // splitting at the span keeps each surrounding markdown segment valid.
   const parts: string[] = [];
   const re = new RegExp(REF_RE);
   let last = 0;
@@ -136,7 +113,7 @@ export function buildReportExportHtml(
   while ((m = re.exec(bodyFrozen))) {
     const name = m[1];
     const value = report.refValue(name);
-    if (!isDocumentValue(value)) continue; // frozen already, or an unwired span
+    if (!isDocumentValue(value)) continue;
     parts.push(renderMarkdown(bodyFrozen.slice(last, m.index)));
     parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${escapeHtml(name)}</div>${renderMarkdown(parseNoteFrontmatter(value.body).body)}</div>`);
     last = m.index + m[0].length;
@@ -179,18 +156,14 @@ export function buildReportExportHtml(
 </html>`;
 }
 
-/** The whole export flow: capture the canvas image, build the document, and hand
- *  it to the save dialog (native on desktop, a browser download otherwise). */
 export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
-  // A formula in the body renders through KaTeX, so the chunk loads first (a no-op once cached).
   if (/\$/.test(report.body)) await import("./components/katexRender");
   try {
     const canvasImage = await captureCanvasImage();
     const html = buildReportExportHtml(report, { canvasImage, body: await report.renderedBody() });
     const name = `${(report.label?.trim() || "report").replace(/[^\w -]/g, "")}.html`;
     const chosen = await saveHtmlFileDialog(name, html);
-    // Desktop: null = canceled. Web: the download always fires (the helper
-    // returns null there too), so the toast must not key off the path.
+    // The web download fires and returns null too, so the toast must not key off the path.
     if (chosen || !isDesktop()) pushNotice(`Exported ${name}`, "info", 2500);
   } catch (e) {
     console.error("[solenoid] report export failed", e);

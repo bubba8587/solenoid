@@ -10,9 +10,8 @@ import { problemsStore, problemsPanelUi } from "./problemsStore";
 import { useBottomChrome } from "./chromeBottom";
 import { getActiveView, getActiveEditor } from "./activeGraph";
 
-/** Bottom status strip, polled a few times a second rather than wired to stores.
- *  The node-budget meter is WEB-DEMO only — the limit is the webview's, not the
- *  product's. */
+/** Polled a few times a second rather than wired to stores. The node-budget meter is web-demo only: the limit is
+ *  the webview's, not the product's. */
 
 // Stable for the session: Tauri injects its marker before any app code runs.
 const isWebDemo = !isDesktop();
@@ -31,7 +30,6 @@ function read(): Snapshot {
 
   let selection: string;
   if (selected.length === 0) selection = "Ready";
-  // Node TYPE, not the user-editable header title.
   else if (selected.length === 1) selection = nodeDisplayName(selected[0]);
   else selection = `${selected.length} selected`;
 
@@ -41,15 +39,14 @@ function read(): Snapshot {
 export function StatusBar() {
   const [snap, setSnap] = useState<Snapshot>(() => ({ nodes: 0, cables: 0, selection: "Ready", zoom: 100 }));
   const [modalOpen, setModalOpen] = useState(false);
-  // Edge-detected so the modal fires on the crossing, not on every add while over.
+  // Edge-detected, so the modal fires on the crossing, not on every add past it.
   const wasOver = useRef(false);
 
   useEffect(() => {
     let prev = "";
     const tick = () => {
       const s = read();
-      // Runs every tick, independent of the render gate below, and is suppressed
-      // during the load reveal so only EDITING past the line pops it.
+      // Runs every tick, outside the render gate, and is suppressed during the load reveal.
       if (isWebDemo) {
         const over = s.nodes > WEB_DEMO_NODE_BUDGET;
         if (over && !wasOver.current && !loadRevealStore.isActive()) setModalOpen(true);
@@ -66,8 +63,6 @@ export function StatusBar() {
   const ratio = WEB_DEMO_NODE_BUDGET > 0 ? snap.nodes / WEB_DEMO_NODE_BUDGET : 0;
   const level = ratio >= 1 ? "over" : ratio >= WEB_DEMO_NODE_WARN_RATIO ? "warn" : "ok";
 
-  // Manual mode only: "Manual" when up to date, an actionable "Calculate" when a
-  // suppressed change left the graph stale.
   useSyncExternalStore(calcModeStore.subscribe, calcModeStore.version);
   const manual = calcModeStore.isManual();
   const calcDirty = calcModeStore.dirty();
@@ -75,7 +70,6 @@ export function StatusBar() {
 
   const problemCount = useSyncExternalStore(problemsStore.subscribe, () => problemsStore.list().length);
 
-  // Joins the measured `--chrome-bottom` envelope (chromeBottom.ts).
   const bottomRef = useBottomChrome<HTMLDivElement>();
 
   return (

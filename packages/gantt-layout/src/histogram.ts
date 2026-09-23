@@ -1,13 +1,9 @@
 // [[C69]] ganttPackages
-// The resource histogram band: assignment units summed per day per resource across the window as
-// stacked columns, with a legend, a 1-unit capacity line and an over-allocation flag. Pure numbers.
 
 import type { GanttPayload } from "./payload";
 import type { FrameHistogram, HistoSegment } from "./frame";
 import { xOf, drawnLastDay } from "./scale";
 
-/** A brand-neutral categorical ramp for resources (reads on light and dark). Renderers may
- *  override; the SVG serializer uses it directly. */
 export const RESOURCE_RAMP = ["#4c78a8", "#f58518", "#54a24b", "#b279a2", "#ff9da6", "#9d755d", "#72b7b2", "#e45756"];
 
 const LEGEND_H = 18;
@@ -18,7 +14,6 @@ interface Scale { from: number; to: number; pxPerDay: number }
 
 export function buildHistogram(payload: GanttPayload, scale: Scale): FrameHistogram | undefined {
   const minutes = payload.view.minutes;
-  // Resources in first-seen order, from leaf (non-summary, non-milestone) tasks that carry one.
   const resources: string[] = [];
   const idxOf = new Map<string, number>();
   for (const t of payload.tasks) {
@@ -50,7 +45,7 @@ export function buildHistogram(payload: GanttPayload, scale: Scale): FrameHistog
   const legendH = LEGEND_H;
   const bodyTop = LEGEND_H;
   const unitH = BODY_H / maxUnits;
-  const capacityY = bodyTop + (BODY_H - unitH); // the y of 1 unit
+  const capacityY = bodyTop + (BODY_H - unitH);
 
   const segments: HistoSegment[] = [];
   for (let d = 0; d < days; d++) {
@@ -69,6 +64,6 @@ export function buildHistogram(payload: GanttPayload, scale: Scale): FrameHistog
     }
   }
 
-  const legend = resources.map((label, resourceIndex) => ({ resourceIndex, label, x: 0 })); // x set by renderer
+  const legend = resources.map((label, resourceIndex) => ({ resourceIndex, label, x: 0 }));
   return { resources, segments, maxUnits, capacityY, legend, legendH, bodyTop, bodyH: BODY_H, height: LEGEND_H + BODY_H + PAD };
 }

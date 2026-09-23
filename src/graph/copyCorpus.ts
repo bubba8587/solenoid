@@ -1,9 +1,6 @@
 // [[B14]] oneDesignSystem (DESIGN.md § Voice is the rule the corpus is linted against)
-// The one collector for every shipped UI string — help pages, catalog labels
-// and descriptions, tsx tooltip/aria/placeholder attributes, seed prose.
-// Two consumers, one walk: `uiCopy.test.ts` lints sentence units from it, and
-// `scripts/copy-inventory.ts` renders whole-string records for a hand-rewrite
-// pass. Node-only (reads the filesystem); never import from app code.
+// Collects every shipped UI string for `uiCopy.test.ts` and `scripts/copy-inventory.ts`.
+// Node-only (reads the filesystem): never import it from app code.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { flattenLeaves } from "./catalogSearch";
@@ -24,10 +21,7 @@ export type CopyKind =
   | "tsx-opt-desc"
   | "seed-string";
 
-/** One shipped string, whole and addressed. `id` is the stable handle the
- *  inventory round-trips on; `text` is verbatim (multiline for seed bodies and
- *  help files). tsx texts are the SOURCE substring, escapes included, so an
- *  exact old→new replace in the file is safe. */
+/** A tsx `text` is the source substring, escapes included, so an exact replace in the file is safe. */
 export type CopyRecord = {
   id: string;
   kind: CopyKind;
@@ -39,11 +33,8 @@ export type CopyRecord = {
   text: string;
 };
 
-/** One linted string, tagged with where it came from. */
 export type Unit = { src: string; text: string; opener: boolean };
 
-/** Sentence-ish split: the unit a copy rule judges (a rule keyed to a sentence's
- *  START needs the sentence, not the paragraph). */
 export function sentences(src: string, text: string): Unit[] {
   return text
     .split(/(?<=[.!?;])\s+/)
@@ -52,16 +43,8 @@ export function sentences(src: string, text: string): Unit[] {
     .map((s, i) => ({ src, text: s, opener: i === 0 }));
 }
 
-/** Copy carried by a title / aria-label / placeholder attribute on one line of
- *  TSX. Three shapes:
- *    - attr="…" — the plain literal;
- *    - attr={`… ${hole} …`} — a template: its STATIC segments are fixed copy,
- *      judged segment by segment;
- *    - attr={cond ? "…" : `…`} — a braced expression: EVERY double-quoted and
- *      backtick literal inside the braces is possible shipped copy.
- *  A segment shorter than 4 chars is punctuation glue and is skipped. A string
- *  assigned to a variable ABOVE the JSX (title={titleText}) is still invisible
- *  here — that one shape stays a human call. */
+/** A plain literal, a template's static segments, or every literal in a braced expression; segments under 4 chars
+ *  are skipped, and a string held in a variable above the JSX is not seen. */
 export function attrStrings(line: string): { kind: string; text: string }[] {
   const out: { kind: string; text: string }[] = [];
   const kinds = { title: "tooltip", "aria-label": "aria", placeholder: "placeholder" } as const;
@@ -78,7 +61,7 @@ export function attrStrings(line: string): { kind: string; text: string }[] {
       continue;
     }
     const expr = bracedExpr(rest);
-    if (expr === null) continue; // spans lines — out of scope, as before
+    if (expr === null) continue;
     for (const q of expr.matchAll(/"((?:[^"\\]|\\.)*)"/g)) push(kind, q[1]);
     for (const t of expr.matchAll(/`([^`]*)`/g)) {
       for (const seg of t[1].split(/\$\{[^}]*\}/)) push(kind, seg);
@@ -87,10 +70,7 @@ export function attrStrings(line: string): { kind: string; text: string }[] {
   return out;
 }
 
-/** The text between the `{` at s[0] and its matching `}`, skipping string
- *  literals so a brace inside a quoted string (a template's ${…} hole, a "}"
- *  in copy) can't end the walk early. Null when the expression doesn't close
- *  on this line. */
+/** Skips string literals, so a brace inside one can't end the walk; null when the braces don't close on this line. */
 export function bracedExpr(s: string): string | null {
   let depth = 0;
   for (let i = 0; i < s.length; i++) {
@@ -112,11 +92,7 @@ export function walkTsx(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-/** Option-table strings: `label:` / `title:` / `description:` string literals in
- *  object rows — every OpSelect and SegToggle option, the op-meta tables. These
- *  render as dropdown rows and tooltips but never appear as a `title=` JSX
- *  attribute, so the attribute collector cannot see them. Text is the SOURCE
- *  substring, escapes included, like attrStrings. */
+/** Option-table literals, which never appear as a JSX attribute. */
 export function optStrings(line: string): { key: "label" | "title" | "description"; text: string }[] {
   const out: { key: "label" | "title" | "description"; text: string }[] = [];
   for (const m of line.matchAll(/\b(label|title|description)\s*:\s*"((?:[^"\\]|\\.)*)"/g)) {
@@ -126,9 +102,7 @@ export function optStrings(line: string): { key: "label" | "title" | "descriptio
   return out;
 }
 
-/** Every non-test .ts/.tsx under `dir` that can carry option-table copy.
- *  nodeCatalog + packs are excluded: their labels/descriptions are the catalog
- *  records. */
+/** nodeCatalog and packs are skipped: their labels and descriptions are the catalog records. */
 export function walkCode(dir: string, acc: string[] = []): string[] {
   for (const name of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, name.name);
@@ -146,13 +120,10 @@ export function walkCode(dir: string, acc: string[] = []): string[] {
   return acc;
 }
 
-/** Every shipped string as a whole, addressed record. */
 export function collectCopyRecords(root = "."): CopyRecord[] {
   const out: CopyRecord[] = [];
   const at = (p: string) => join(root, p);
 
-  // The Reference overlay's Help / Notes / Socket Types tabs — one record per
-  // page (the file is the editing unit; the lint re-splits into lines).
   const helpDir = at(HELP_DIR);
   for (const name of readdirSync(helpDir).filter((n) => n.endsWith(".md"))) {
     out.push({
@@ -163,10 +134,7 @@ export function collectCopyRecords(root = "."): CopyRecord[] {
     });
   }
 
-  // Every node's Add-menu label and description (also the Function Reference's
-  // description column, and the node card's hover text). Values come from the
-  // built catalog, so pack entries are included; apply locates them by quoted
-  // source search, hence the nominal file.
+  // `file` is nominal: apply finds catalog strings by a quoted-source search.
   for (const { leaf } of flattenLeaves(buildCatalog(true))) {
     if (leaf.label) {
       out.push({ id: `catalog:${leaf.type}.label`, kind: "catalog-label", file: "src/graph/nodeCatalog.ts", text: leaf.label });
@@ -176,7 +144,6 @@ export function collectCopyRecords(root = "."): CopyRecord[] {
     }
   }
 
-  // Chrome strings: tooltips, accessible names, field placeholders.
   for (const p of walkTsx(at("src/graph"))) {
     const rel = p.startsWith(`${root}/`) ? p.slice(root.length + 1) : p;
     const src = readFileSync(p, "utf8");
@@ -193,9 +160,6 @@ export function collectCopyRecords(root = "."): CopyRecord[] {
     });
   }
 
-  // Option-table copy: dropdown rows and their tooltips, op-meta labels and
-  // descriptions. Inventory-only for now — the voice lint's corpus predates
-  // these and widening it is a sweep of its own (unitsFromRecords skips them).
   const OPT_KIND = { label: "tsx-opt-label", title: "tsx-opt-title", description: "tsx-opt-desc" } as const;
   for (const p of walkCode(at("src/graph"))) {
     const rel = p.startsWith(`${root}/`) ? p.slice(root.length + 1) : p;
@@ -213,8 +177,6 @@ export function collectCopyRecords(root = "."): CopyRecord[] {
     });
   }
 
-  // Seed-graph prose: every `body` / `label` / `text` string, addressed by its
-  // JSON path so an edit can be written back structurally.
   const seedDir = at(SEED_DIR);
   for (const name of readdirSync(seedDir).filter((n) => n.endsWith(".json"))) {
     const seed = JSON.parse(readFileSync(join(seedDir, name), "utf8")) as unknown;
@@ -234,9 +196,7 @@ export function collectCopyRecords(root = "."): CopyRecord[] {
   return out;
 }
 
-/** The lint's sentence units, derived from the records — same `src` formats the
- *  rules' `where` clauses key on (`help/x.md:12`, `catalog:type.desc`,
- *  `path:line.tooltip`, `seed/name`). */
+/** The `src` formats are what the copy rules' `where` clauses key on. */
 export function unitsFromRecords(records: CopyRecord[]): Unit[] {
   const out: Unit[] = [];
   for (const r of records) {
@@ -250,12 +210,12 @@ export function unitsFromRecords(records: CopyRecord[]): Unit[] {
       }
       case "catalog-label":
       case "catalog-desc":
-        out.push(...sentences(r.id, r.text)); // catalog:<type>.label / .desc
+        out.push(...sentences(r.id, r.text));
         break;
       case "tsx-opt-label":
       case "tsx-opt-title":
       case "tsx-opt-desc":
-        break; // inventory-only: not yet part of the lint corpus (see above)
+        break;
       case "tsx-tooltip":
       case "tsx-aria":
       case "tsx-placeholder": {
@@ -273,7 +233,6 @@ export function unitsFromRecords(records: CopyRecord[]): Unit[] {
   return out;
 }
 
-/** The full lint corpus. */
 export function uiStrings(): Unit[] {
   return unitsFromRecords(collectCopyRecords());
 }

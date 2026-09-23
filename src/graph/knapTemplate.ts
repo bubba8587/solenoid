@@ -1,13 +1,4 @@
 // [[C68]]
-// Knap (knap.md, Obsidian's template language) IS the document syntax: `{{ name }}`,
-// `{% if %}`, `{% for %}` and the standard filter set, rendered at compute time. A
-// Report's variables are its wired inputs (each root name mints a `trueany` input); a
-// Note's are its own frontmatter fields. In a Report a BARE `{{ name }}` embeds the
-// wired value as the canvas shows it (an FC-formatted scalar, a frame grid, a chart,
-// a KaTeX lambda, a Note block): it rewrites to the internal `` `=name` `` ref span
-// (noteInlineRefs.ts) BEFORE the render, and that span resolves by kind afterwards.
-// Any other use of the name — a filter, a loop, a condition, dot access — reads the
-// plain data form (`toTemplateValue`). Graph/DOM-free.
 
 import { createEngine, parse, standardFilters, type ASTNode, type Expression, type TemplateError } from "knap";
 import { type FrameValue, type CubeValue, type CubeCell, type FrameColType, isFrameValue, isCubeValue, frameRowCount } from "./frame";
@@ -23,14 +14,10 @@ import { isDateType, type SocketDataType } from "./sockets";
 
 const TAG_RE = /\{\{|\{%|\{#/;
 
-/** True when the body carries a Knap tag at all: a plain body skips the (async)
- *  render entirely, so a Note or Report without templating stays synchronous. A
- *  `{# comment #}` counts — the engine strips it, so the body is not plain. */
 export function hasKnapSyntax(body: string): boolean {
   return TAG_RE.test(body);
 }
 
-/** The name Knap resolves an identifier against: `author.name` reads `author`. */
 function rootOf(e: Expression & { type: "identifier" }): string {
   return e.path?.[0] ?? e.name.split(".")[0];
 }
@@ -74,10 +61,6 @@ function walkNodes(nodes: ASTNode[], locals: Set<string>, hit: (name: string, li
   }
 }
 
-/** Ordered, de-duplicated ROOT variable names a template reads from its host, in
- *  first-use order: `for` iterators, `loop` and `set` names are the template's own.
- *  A body with a syntax error still yields what parsed, so sockets don't vanish
- *  mid-edit. */
 export function extractKnapVariables(body: string): string[] {
   if (!hasKnapSyntax(body)) return [];
   const { ast } = parse(body);
@@ -96,19 +79,11 @@ export function extractKnapVariables(body: string): string[] {
   return [...first.entries()].sort((a, b) => a[1] - b[1]).map(([k]) => k);
 }
 
-/** `{{ name }}` (optional inner spaces) → `` `=name` ``, and `{{ name | highlight }}`
- *  → `` `=name!` `` (the tinted text form), for every `name` in `inputs`. Any other
- *  filter, a path or an expression leaves the tag to Knap, which then prints the
- *  DATA form. A name that is not an input is a template-local and stays a tag. */
 export function embedBareVariables(body: string, inputs: readonly string[]): string {
   if (inputs.length === 0 || !body.includes("{{")) return body;
   const wired = new Set(inputs);
-  // Walk the tags in order with the open `for` iterators as a stack (and `set` names
-  // once seen), so `{{ item }}` inside `{% for item in list %}` stays the loop's own.
   const shadow: string[] = [];
   const setNames = new Set<string>();
-  // A `{# … #}` comment matches first and returns verbatim, so a commented-out
-  // `{% for %}` never pushes an iterator the rest of the body would then shadow.
   return body.replace(/\{#[\s\S]*?#\}|\{%\s*([\s\S]*?)\s*%\}|\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g, (tag, block?: string, name?: string, hl?: string) => {
     if (block !== undefined) {
       const forM = /^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\b/.exec(block);
@@ -122,9 +97,6 @@ export function embedBareVariables(body: string, inputs: readonly string[]): str
   });
 }
 
-/** The names a template binds itself (`for` iterators, `loop`, `set` names), collected
- *  over the whole body; scope-free on purpose, so a Note that loops over a frontmatter
- *  list never parks its own iterator as an unknown tag. */
 function templateLocals(body: string): Set<string> {
   const out = new Set<string>();
   const { ast } = parse(body);
@@ -142,10 +114,7 @@ function templateLocals(body: string): Set<string> {
   return out;
 }
 
-// ─── Solenoid value → template value ─────────────────────────────────────────
 
-/** A date serial → ISO text, the form Knap's `date` filter parses; a serial with a
- *  time part keeps it. Not the FC's display format: the template picks one. */
 function serialToIso(serial: number): string {
   const whole = Number.isInteger(serial);
   return formatDateSerial(serial, whole ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
@@ -157,8 +126,6 @@ function cellValue(v: unknown, type?: FrameColType): unknown {
   return v ?? null;
 }
 
-/** Rows of `{column: value}`, the shape `{% for row in frame %}` and the `table`
- *  filter read; date columns arrive as ISO text. */
 export function frameToTemplateRows(f: FrameValue): Record<string, unknown>[] {
   const n = frameRowCount(f);
   const rows: Record<string, unknown>[] = [];
@@ -179,7 +146,6 @@ function cubeCell(cell: CubeCell, type?: FrameColType): unknown {
   return cellValue(cell, type);
 }
 
-/** A cube as rows whose cells may nest rows or lists. */
 export function cubeToTemplateRows(c: CubeValue): Record<string, unknown>[] {
   const n = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
   const rows: Record<string, unknown>[] = [];
@@ -191,10 +157,6 @@ export function cubeToTemplateRows(c: CubeValue): Record<string, unknown>[] {
   return rows;
 }
 
-/** A wired value as the plain data a template reads. `type` is the SOURCE socket's
- *  data type when known: it is the only way to tell a date serial from a number. A
- *  chart, picture or SVG has no data form and reads as null (a bare `{{ name }}`
- *  embeds it instead). */
 export function toTemplateValue(v: unknown, type?: SocketDataType | null): unknown {
   if (v === undefined || v === null) return null;
   if (isSolError(v)) return v.code;
@@ -214,26 +176,17 @@ export function toTemplateValue(v: unknown, type?: SocketDataType | null): unkno
   return v;
 }
 
-// ─── Render ──────────────────────────────────────────────────────────────────
 
 const engine = createEngine({ filters: standardFilters });
 
 export interface KnapRender {
   output: string;
-  /** Parse or runtime errors; the output is "" when any is present. */
   errors: TemplateError[];
 }
 
 const HOLD = "\u0001";
 const HOLD_RE = /\u0001(\d+)\u0001/g;
 
-/** An interpolation `{{ … }}` whose ROOT name is NOT a variable stays literal text
- *  through the render — bare (`{{ x }}`), dotted (`{{ record.name }}`) or filtered
- *  (`{{ x | upper }}`) alike — so a template NOTE reads as a template on the canvas
- *  and round-trips to the vault with its tags intact; only the fields it has fill in.
- *  The whole tag is parked verbatim behind an index sentinel and restored after the
- *  render. A loop or a condition on an unknown name still renders empty, as Knap does
- *  (a block region can't be parked without evaluating it). */
 function holdUnknownTags(body: string, known: ReadonlySet<string>): { src: string; held: string[] } {
   const held: string[] = [];
   const src = body.replace(/\{\{[\s\S]*?\}\}/g, (tag) => {
@@ -244,9 +197,6 @@ function holdUnknownTags(body: string, known: ReadonlySet<string>): { src: strin
   return { src, held };
 }
 
-/** Render a body against its variables. Never throws: a broken template reports
- *  through `errors`, with the line and column the editor can show. `keepUnknown`
- *  is the Note's mode (see holdUnknownTags). */
 export async function renderKnap(body: string, variables: Record<string, unknown>, opts?: { keepUnknown?: boolean }): Promise<KnapRender> {
   if (!hasKnapSyntax(body)) return { output: body, errors: [] };
   if (!opts?.keepUnknown) {
@@ -260,27 +210,18 @@ export async function renderKnap(body: string, variables: Record<string, unknown
 
 export interface KnapPage { name: string; body: string }
 
-/** The most pages one Report renders per compute; past it the rest are dropped. */
 export const MAX_PAGES = 500;
 
-/** Whether a mail merge of `total` records hit the page cap, and how many it drew. The Report
- *  overlay's stepper and the Write to Obsidian sink read this to say "500 of N" when truncated. */
 export function batchTruncation(total: number): { truncated: boolean; shown: number; total: number } {
   const truncated = total > MAX_PAGES;
   return { truncated, shown: truncated ? MAX_PAGES : total, total };
 }
 
-/** The mail merge: one page per record, the body rendered with `record` (the row's
- *  `{column: value}`) and `index` (1-based) beside the host's variables, named by
- *  `nameTemplate` rendered the same way (blank → the index). The first failing page's
- *  errors stop the batch. */
 export async function renderKnapPages(
   body: string, variables: Record<string, unknown>, records: Record<string, unknown>[], nameTemplate: string,
 ): Promise<{ pages: KnapPage[]; errors: TemplateError[]; total: number }> {
   const pages: KnapPage[] = [];
   const total = records.length;
-  // Names are file names: a second record rendering the same name gets " (2)", so a
-  // batch never writes two pages into one note (overwriting the first).
   const taken = new Set<string>();
   const uniq = (n: string) => { let k = n, i = 2; while (taken.has(k.toLowerCase())) k = `${n} (${i++})`; taken.add(k.toLowerCase()); return k; };
   for (let i = 0; i < Math.min(total, MAX_PAGES); i++) {
@@ -294,7 +235,6 @@ export async function renderKnapPages(
   return { pages, errors: [], total };
 }
 
-/** One line per error, `line:column message`, for an error value or the preview. */
 export function knapErrorText(errors: TemplateError[]): string {
   return errors.map((e) => `${e.line}:${e.column} ${e.message}`).join("\n");
 }

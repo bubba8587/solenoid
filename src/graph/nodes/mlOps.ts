@@ -8,9 +8,6 @@ export interface KMeansResult { labels: number[]; centers: number[][]; inertia: 
 
 const sqDist = (a: readonly number[], b: readonly number[]) => { let s = 0; for (let i = 0; i < a.length; i++) s += (a[i] - b[i]) ** 2; return s; };
 
-/** Lloyd's algorithm with k-means++ seeding, `nInit` restarts (a fixed seed, so a
- *  recalculation repeats itself — [[D46]] freezeVolatilePerCalc), the lowest-inertia run
- *  kept. Labels are 1-based cluster ids. */
 export function kmeans(points: readonly (readonly number[])[], k: number, opts: { seed?: number; nInit?: number; maxIter?: number } = {}): KMeansResult | null {
   const n = points.length;
   const kk = Math.round(k);
@@ -20,7 +17,6 @@ export function kmeans(points: readonly (readonly number[])[], k: number, opts: 
   const nInit = opts.nInit ?? 10, maxIter = opts.maxIter ?? 300;
   let best: KMeansResult | null = null;
   for (let run = 0; run < nInit; run++) {
-    // k-means++
     const centers: number[][] = [[...points[Math.floor(rng() * n)]]];
     const dist = new Array<number>(n).fill(Infinity);
     while (centers.length < kk) {
@@ -44,7 +40,7 @@ export function kmeans(points: readonly (readonly number[])[], k: number, opts: 
       const sums = centers.map(() => new Array<number>(d).fill(0)), counts = new Array<number>(kk).fill(0);
       for (let i = 0; i < n; i++) { counts[labels[i]]++; for (let j = 0; j < d; j++) sums[labels[i]][j] += points[i][j]; }
       for (let c = 0; c < kk; c++) {
-        if (counts[c] === 0) { centers[c] = [...points[Math.floor(rng() * n)]]; continue; } // an emptied cluster re-seeds
+        if (counts[c] === 0) { centers[c] = [...points[Math.floor(rng() * n)]]; continue; }
         centers[c] = sums[c].map((s) => s / counts[c]);
       }
     }
@@ -52,7 +48,6 @@ export function kmeans(points: readonly (readonly number[])[], k: number, opts: 
     for (let i = 0; i < n; i++) inertia += sqDist(points[i], centers[labels[i]]);
     if (!best || inertia < best.inertia) best = { labels: labels.map((l) => l + 1), centers: centers.map((c) => [...c]), inertia, iterations: iter };
   }
-  // relabel clusters by their first appearance so the same partition always reads the same
   if (best) {
     const seen = new Map<number, number>();
     const remap = best.labels.map((l) => { if (!seen.has(l)) seen.set(l, seen.size + 1); return seen.get(l)!; });
@@ -64,20 +59,14 @@ export function kmeans(points: readonly (readonly number[])[], k: number, opts: 
 }
 
 export interface PcaResult {
-  /** rows × components — the data in the new axes. */
   scores: number[][];
-  /** features × components — each column is a principal axis (unit length). */
   loadings: number[][];
-  /** Variance along each component (descending). */
   variance: number[];
-  /** Share of the total variance per component. */
   ratio: number[];
   means: number[];
   scales: number[];
 }
 
-/** Principal components from the covariance (or correlation, when `standardize`) matrix —
- *  centred like sklearn / prcomp; the largest-magnitude loading of each axis is positive. */
 export function pca(points: readonly (readonly number[])[], opts: { standardize?: boolean } = {}): PcaResult | null {
   const n = points.length;
   if (n < 2) return null;
@@ -98,24 +87,17 @@ export function pca(points: readonly (readonly number[])[], opts: { standardize?
   return { scores, loadings: eig.vectors, variance, ratio: variance.map((v) => (total > 0 ? v / total : 0)), means, scales };
 }
 
-// ─── Logistic regression (R glm(binomial) / statsmodels Logit: unregularized MLE by IRLS) ───
 export interface LogisticFit {
-  /** Intercept first, then one per feature column. */
   coefficients: number[];
   stdErrors: number[];
   z: number[];
   pValues: number[];
-  /** Fitted P(y = 1) per row, in input order. */
   probabilities: number[];
   logLikelihood: number;
   iterations: number;
   converged: boolean;
 }
 
-/** Iteratively reweighted least squares on [1 | X] against a 0/1 target; Wald standard
- *  errors from the final information matrix. `null` for a degenerate design (a constant
- *  target, no rows, more columns than rows) — perfectly separable data reaches the
- *  iteration cap with huge coefficients and `converged: false`, like glm's warning. */
 export function logisticFit(X: readonly (readonly number[])[], y: readonly number[], opts: { maxIter?: number; tol?: number } = {}): LogisticFit | null {
   const n = X.length;
   if (n === 0 || y.length !== n) return null;
@@ -145,7 +127,7 @@ export function logisticFit(X: readonly (readonly number[])[], y: readonly numbe
   const mu = eta.map(sigmoid);
   const w = mu.map((m) => Math.max(m * (1 - m), 1e-12));
   H = Array.from({ length: p }, (_, a) => Array.from({ length: p }, (_, b) => D.reduce((s, row, i) => s + w[i] * row[a] * row[b], 0)));
-  // diag of H⁻¹ by solving for each unit vector
+  // The diagonal of H⁻¹, one solve per unit vector.
   const stdErrors = Array.from({ length: p }, (_, j) => {
     const e = new Array<number>(p).fill(0); e[j] = 1;
     const col = matSolve(H, e);

@@ -1,12 +1,7 @@
 // [[C99]] chromeEnvelopeVars
 import { useLayoutEffect, useRef, type RefObject } from "react";
 
-/** Clamp a fixed-position context menu into the viewport: 8px side margins,
- *  and above the measured bottom chrome (`--chrome-bottom` — status bar /
- *  mobile action bar), so a menu opened near an edge never runs offscreen or
- *  under a bar. Runs in a layout effect (before paint), so the unclamped
- *  first position never flashes. Returns the ref the menu root must carry —
- *  the same ref the menus already use for outside-press dismissal. */
+/** A layout effect, so the unclamped first position never flashes; returns the ref the menu root must carry, the same one used for outside-press dismissal. */
 export function useMenuClamp<T extends HTMLElement>(x: number, y: number): RefObject<T | null> {
   const ref = useRef<T>(null);
   useLayoutEffect(() => {

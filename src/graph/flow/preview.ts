@@ -1,6 +1,4 @@
 // [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[D45]] maxRankMatrix
-// Crude value previews for the generic fallback card (SolFlowNode); the real
-// display pipeline lives in the node components.
 import { isSolError } from "../errorValue";
 import { isFrameRef } from "../frameBackend";
 
@@ -26,7 +24,6 @@ export function previewValue(v: unknown): string {
   }
   if (typeof v === "object") {
     const o = v as Record<string, unknown>;
-    // Containers spell their shape the way the chips do: rows × cols (× depth) Name.
     if (o.__frame && Array.isArray(o.columns)) {
       const cols = o.columns as { values?: unknown[] }[];
       return `${cols[0]?.values?.length ?? 0}×${cols.length} Frame`;

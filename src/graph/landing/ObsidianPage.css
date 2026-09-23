@@ -1,8 +1,4 @@
-/* ─── /obsidian route ─────────────────────────────────────────────────────────
-   Page-specific styles for the Obsidian + TaskNotes integration page. Layout,
-   header, hero, deep features, strip and footer are reused from LandingPage.css;
-   this file adds only the vignettes and blocks unique to this page. All colors
-   ride the theme vars, so light theme mirrors for free. */
+/* ─── /obsidian route ───────────────────────────────────────────────────────── */
 
 .obs-eyebrow {
   display: block;
@@ -45,7 +41,6 @@
   border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
-/* A muted output-value hint inside a node row (the socket carries the real type). */
 .obs-node-dim {
   color: var(--text-dim);
 }
@@ -118,10 +113,7 @@
   color: var(--accent);
 }
 
-/* A spotlight travels between the three cards (Obsidian -> Solenoid -> Excel and back),
-   the presenter-camera idea applied to the bridge. Gated on --anim, so reduced motion
-   keeps the static hub highlight above. The nodes are children 1/3/5 (the links are 2/4);
-   the keyframes cross-fade the accent highlight so the light appears to move. */
+/* The cards are children 1, 3 and 5 (the links are 2 and 4). */
 .sol-landing--anim .obs-flow__node {
   animation-duration: 6s;
   animation-timing-function: ease-in-out;
@@ -131,7 +123,6 @@
 .sol-landing--anim .obs-flow__node:nth-child(3) { animation-name: obs-flow-spot-b; }
 .sol-landing--anim .obs-flow__node:nth-child(5) { animation-name: obs-flow-spot-c; }
 
-/* Card 1 (Obsidian): lit at the cycle ends (positions 0 and back-to-0). */
 @keyframes obs-flow-spot-a {
   0% {
     border-color: color-mix(in srgb, var(--accent) 55%, transparent);
@@ -150,7 +141,6 @@
   }
 }
 
-/* Card 3 (Solenoid): lit on the way out (25%) and the way back (75%). */
 @keyframes obs-flow-spot-b {
   0%, 10% {
     border-color: var(--border-subtle);
@@ -179,7 +169,6 @@
   }
 }
 
-/* Card 5 (Excel): lit at the far end (50%). */
 @keyframes obs-flow-spot-c {
   0%, 35% {
     border-color: var(--border-subtle);
@@ -405,16 +394,12 @@
   .obs-arrow {
     transform: rotate(90deg);
   }
-  /* The YAML sample is pre-formatted and can be wider than a phone; let it scroll on
-     its own rather than push the page sideways. */
   .obs-yaml {
     max-width: 100%;
     overflow-x: auto;
   }
 }
 
-/* The plan table's cells are nowrap for the wide layout; on a phone let them wrap so
-   the whole table fits the column instead of overflowing. */
 @media (max-width: 560px) {
   .obs-table th,
   .obs-table td {

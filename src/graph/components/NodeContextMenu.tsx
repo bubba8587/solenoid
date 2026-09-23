@@ -5,8 +5,7 @@ import { inspectorStore } from "../inspectorStore";
 import "./SocketContextMenu.css";
 import { FocusIcon, LinkIcon, TetherIcon } from "./Icons";
 
-// The single right-click menu for a node / group body — a node's right-click has
-// one home, so new items land here rather than in a second menu.
+// A node's right-click has one home, so new items land here rather than in a second menu.
 
 // Lucide "pin" icon — https://lucide.dev/icons/pin
 const PinSvg = () => (
@@ -78,24 +77,15 @@ const UnpackSvg = () => (
 
 export type NodeContextTarget = {
   nodeId: string;
-  /** What Isolate acts on: the selection if the clicked node is part of it,
-   *  else just the clicked node. */
   seedIds: string[];
   screenX: number;
   screenY: number;
-  /** Whether this item carries a pinnable value (real value node, not a group). */
   canPin?: boolean;
-  /** The clicked node is a Composite — offers Edit contents / Unpack. */
   isComposite?: boolean;
-  /** The clicked node is a Group — offers Lock / Unlock position. */
   isGroup?: boolean;
-  /** A group's current position-lock state (drives the Lock ↔ Unlock label). */
   lockedPosition?: boolean;
-  /** The clicked node opts into socketFlipStore — offers Flip / Unflip sockets. */
   isFlippable?: boolean;
-  /** Its current flip state (drives the Flip ↔ Unflip label). */
   flipped?: boolean;
-  /** Present only when a Standoff link is on offer (exactly two selected). */
   standoff?: { aId: string; bId: string };
 };
 

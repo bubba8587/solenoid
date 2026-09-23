@@ -1,7 +1,5 @@
 // [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere (the marketing chrome)
-// Shared header, nav and footer for the marketing routes; a new page is a route entry
-// plus a page file. Routes are plain pathnames and navigation is ordinary anchors (a
-// full reload), which Vercel rewrites back to index.html.
+// Routes are plain pathnames and navigation is ordinary anchors (a full reload), which Vercel rewrites back to index.html.
 import { useSyncExternalStore, type ReactNode } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
@@ -12,7 +10,6 @@ export const GITHUB_URL = "https://github.com/bubba8587/solenoid";
 
 const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
 
-/** The desktop download's label for a user agent: the platform when a build exists for it. */
 export function downloadLabel(userAgent: string): string {
   if (/Android/i.test(userAgent)) return "Download";
   if (/Windows/i.test(userAgent)) return "Download for Windows";
@@ -20,7 +17,6 @@ export function downloadLabel(userAgent: string): string {
   return "Download";
 }
 
-/** The one desktop download button: every page's copy of it links the latest release. */
 export function DownloadLink({ primary }: { primary?: boolean }) {
   return (
     <a className={`sol-landing__cta${primary ? " sol-landing__cta--primary" : ""}`} href={RELEASES_URL} target="_blank" rel="noreferrer">
@@ -29,10 +25,10 @@ export function DownloadLink({ primary }: { primary?: boolean }) {
   );
 }
 
-// The home page is the overview, served under ?landing (root is the app itself).
+// The home page is served under ?landing, since the root is the app itself.
 export const HOME_HREF = "/?landing";
 
-// The primary nav, in order. The wordmark covers Home, so it stays out of this list.
+// The wordmark covers Home, so it stays out of this list.
 export const SITE_NAV: { href: string; label: string }[] = [
   { href: "/obsidian", label: "Obsidian" },
   { href: "/examples", label: "Examples" },
@@ -64,8 +60,6 @@ export function ThemeToggle() {
   );
 }
 
-/** The site header: wordmark to Home, the primary nav, GitHub, Open the app, theme.
- *  `current` is the active route's pathname, marked in the nav. */
 export function SiteHeader({ current }: { current?: string }) {
   return (
     <header className="sol-landing__top">
@@ -118,8 +112,6 @@ export function SiteFooter() {
   );
 }
 
-/** A deep-feature row: copy beside a scene, alternating side by `flip`. Shared by the
- *  landing and Obsidian pages. */
 export function Feature({
   title,
   flip,

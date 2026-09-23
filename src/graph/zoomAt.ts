@@ -2,19 +2,15 @@
 import { getNodesBounds, getViewportForBounds } from "@xyflow/react";
 import { floorZoom, MIN_ZOOM } from "./viewPresets";
 import type { View } from "./view";
-// Frame a set of nodes (React Flow's bounds + viewport math; never zooms IN past 1,
-// zoom floored to the snap step). Collapsed-group callers: tree/specs/canvas/group-collapse.md.
+// Never zooms in past 1; zoom floors to the snap step. Collapsed-group callers: tree/specs/canvas/group-collapse.md.
 
 type NodeLike = { id: string; width?: number; height?: number };
 
 export type ZoomView = Pick<View, "position" | "nodeElement" | "measured" | "container" | "pan" | "zoom">;
 
-/** RF's padding is a fraction of the framed bounds. */
 const FRAME_PADDING = 0.1;
 
-/** Measured → live → declared, the tier order of `measuredBox` ([[D64]] oneSizeRead): the
- *  class default must never outrank RF's measure, or a collapsed card frames at its
- *  expanded height. */
+/** The class default must never outrank RF's measure, or a collapsed card frames at its expanded height. */
 export function frameSize(surface: Pick<ZoomView, "measured" | "nodeElement">, node: NodeLike): { width: number; height: number } {
   const m = surface.measured?.(node.id);
   if (m && m.w > 0 && m.h > 0) return { width: m.w, height: m.h };

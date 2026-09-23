@@ -1,7 +1,5 @@
-// The pure distribution table behind the ONE Distribution node AND the distribution
-// formulas ([[C17]] shareImpl / capabilityParity): every CDF / PDF / PMF / tail / inverse lives
-// here once, on the mathUtils kernels. Must not import rete — excelFunctions.ts registers
-// NORM.DIST, BINOM.DIST, … straight on `DIST_SPECS[key].compute`.
+// [[C17]] shareImpl, [[C61]] oneDistributionNode, [[D19]] implReteFree
+// Must not import rete: excelFunctions.ts registers the distribution formulas straight on `DIST_SPECS[key].compute`.
 import {
   stdNormCDF,
   normSInv,
@@ -20,14 +18,8 @@ import {
 
 const { PI, exp, log, sqrt, abs } = Math;
 
-// Every probability distribution behind ONE card ([[C61]] oneDistributionNode): the `op` selector picks
-// the distribution, the `form` selector picks the curve (CDF / PDF / PMF / the
-// tails) or the inverse (quantile). An inverse form trades the x-style first
-// input for a probability; the parameter inputs are the distribution's own.
-
 export type DistForm = "cdf" | "pdf" | "pmf" | "2t" | "rt" | "inv" | "inv2t" | "invrt" | "sample" | "half";
 
-/** An inverse (quantile) form reads a probability; every other form reads an x. */
 export const isInverseForm = (form: string): boolean => form.startsWith("inv");
 
 export const DIST_FORM_META = {
@@ -50,7 +42,6 @@ export type DistKey =
 export interface DistSpec {
   label: string;
   group: "Continuous" | "Discrete";
-  /** Excel names, for the dropdown tooltip. */
   excel: string;
   forms: readonly DistForm[];  // first entry is the default
   xKey: string;
@@ -58,8 +49,7 @@ export interface DistSpec {
   xDefault: number;
   probLabel?: string;          // inverse-mode first-input label; default "Probability"
   params: ReadonlyArray<{ key: string; label: string; def: number }>;
-  /** The kernel: form + first value + params in declared order. `broadcast`
-   *  guards finiteness centrally; return null for a domain refusal. */
+  /** Params arrive in declared order; `broadcast` guards finiteness, and a domain refusal returns null. */
   compute: (form: DistForm, v: number, p: number[]) => number | null;
 }
 
@@ -115,8 +105,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       return form === "cdf" ? stdNormCDF(v) : exp(-v * v / 2) / sqrt(2 * PI);
     },
   },
-  // PHI and GAUSS are standard-normal FORMS (not distributions): PHI reuses the pdf
-  // form; GAUSS is Φ − ½, a half-area, and must not be labelled a CDF.
+  // GAUSS is Φ − ½, a half-area, so its form is `half` and must never be labelled a CDF.
   phi: {
     label: "φ (standard normal density)", group: "Continuous", excel: "PHI",
     forms: ["pdf"], xKey: "x", xLabel: "X", xDefault: 0,
@@ -265,7 +254,7 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
           cumP += pmf;
           if (cumP >= v) return k;
         }
-        return n; // nothing crosses alpha
+        return n;
       }
       return form === "pmf" ? binomPmf(v, nv, pv) : binomCdf(v, nv, pv);
     },
@@ -300,12 +289,9 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       if (form === "pmf") return hypgeomPmf(ki, ni, Mi, Ni);
       const lo = Math.max(0, ni + Mi - Ni);
       const hi = Math.min(ni, Mi);
-      // Invalid parameters have no distribution at all (a genuine blank).
       if (Ni <= 0 || Mi < 0 || ni < 0 || Mi > Ni || ni > Ni) return null;
       if (ki < lo) return 0;
       let sum = 0;
-      // Support ends at hi = min(n, M); k beyond it adds no probability, so the cumulative
-      // is 1 there — the same convention BINOM/POISSON use above their support, not a blank.
       for (let j = lo; j <= Math.min(ki, hi); j++) {
         const pmf = hypgeomPmf(j, ni, Mi, Ni);
         if (pmf === null) return null;
@@ -328,9 +314,6 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
   },
 };
 
-/** The form the switch lands on: the same form when the target has it, its
- *  natural sibling when one exists (PDF↔PMF across the continuous/discrete
- *  line, any inverse variant → plain Inverse), else the target's default. */
 export function formAfterSwitch(form: DistForm, next: DistKey): DistForm {
   const forms = DIST_SPECS[next].forms;
   if (forms.includes(form)) return form;
@@ -340,11 +323,6 @@ export function formAfterSwitch(form: DistForm, next: DistKey): DistForm {
   return forms[0];
 }
 
-/** The sampler behind the `sample` form: one draw by inverse-CDF from a uniform `u` in
- *  (0, 1). Distributions with a closed inverse use it; a continuous one without (Weibull,
- *  exponential) is inverted by bisection on its CDF; a discrete one (Poisson,
- *  hypergeometric, negative binomial) walks k upward until the CDF clears `u`. `null` for
- *  invalid parameters. */
 export function sampleQuantile(key: DistKey, u: number, params: number[]): number | null {
   const spec = DIST_SPECS[key];
   const uu = Math.min(1 - 1e-12, Math.max(1e-12, u));

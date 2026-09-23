@@ -69,8 +69,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
         emit={emit}
         titleFor={(k) => node.varDescriptions[k] || undefined}
       />
-      {/* An FC's view-as applies DOWNSTREAM, never to this source card; a plain div
-          rather than ValueDisplay, whose string path applies a docked FC's textScale. */}
+      {/* An FC's view-as applies downstream, never to this source card; a plain div, since ValueDisplay's string path applies a docked FC's textScale. */}
       {node.cachedValue
         ? <div className="solenoid-node__display-value">{formatLambda(node.cachedValue)}</div>
         : <ValueDisplay value={null} />}

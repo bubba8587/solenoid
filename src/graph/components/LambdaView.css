@@ -1,6 +1,4 @@
-/* Lambda view-as (FC lambdaView) — the non-default renderings of a flowing
-   LambdaValue in a value box. Formulas read left-to-right, so these views
-   left-align inside the (right-aligned-by-default) box. */
+/* Formulas read left to right, so these views left-align inside the right-aligned box. */
 .solenoid-lambda-view {
   text-align: left;
 }

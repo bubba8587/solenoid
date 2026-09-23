@@ -1,4 +1,4 @@
-// [[C90]] drawnCablesAnnotate. Mechanics: tree/specs/canvas/drawn-cables.md.
+// [[C90]] drawnCablesAnnotate
 import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 import { unselectAllNodes } from "./canvasCommands";
@@ -10,19 +10,14 @@ import { isDrawnArrows, hasAngleOverride, DRAWN_ANGLE_STEP } from "./drawnCableP
 
 export interface DrawnCable {
   id: string;
-  /** At least two, in draw order. */
   points: DrawnPoint[];
   shape: CableShape;
   arrows: DrawnArrows;
-  /** Canvas units, so it scales with the zoom like a wired cable. */
   width: number;
-  /** Multiple of ARROW_LEN / ARROW_HALF, independent of `width`. */
   headScale: number;
-  /** A palette slot id, resolved to a hex at render. */
   color: string;
 }
 
-/** The persisted form: ids are regenerated on load. */
 export type SavedDrawnCable = Omit<DrawnCable, "id">;
 
 export const DRAWN_DEFAULT_SHAPE: CableShape = "spline";
@@ -46,7 +41,6 @@ export const DRAWN_HEAD_SCALES: { value: number; label: string }[] = [
   { value: 2.2, label: "Huge" },
 ];
 
-/** The dial step, 45° only ([[C90]]); defined in drawnCablePath, re-exported here. */
 export { DRAWN_ANGLE_STEP };
 
 const WIDTH_MIN = 0.2;
@@ -60,7 +54,6 @@ function num(v: unknown, fallback: number, lo: number, hi: number): number {
   return typeof v === "number" && Number.isFinite(v) ? clamp(v, lo, hi) : fallback;
 }
 
-/** The listed option nearest `v`, so a hand-edited value still selects something. */
 export function nearestOption(options: readonly { value: number }[], v: number): number {
   let best = options[0].value;
   for (const o of options) if (Math.abs(o.value - v) < Math.abs(best - v)) best = o.value;
@@ -79,23 +72,18 @@ function normalizeDeg(deg: number): number {
   return m < 0 ? m + 360 : m;
 }
 
-// A pinned angle is stored in [0, 360) however it arrived (the dial normalizes; a loaded
-// or hand-typed -90 must read the same, or the history digest records a spurious edit).
 const clonePoint = (p: DrawnPoint): DrawnPoint =>
   hasAngleOverride(p) ? { x: p.x, y: p.y, angle: normalizeDeg(p.angle as number) } : { x: p.x, y: p.y };
 
-// Registered by the surface (autosave + an undo entry), like process.ts's graphChanged
-// hook, so this module never imports persistence or the history.
+// Registered by the surface, so this module never imports persistence or the history.
 let _commit: () => void = () => {};
 export function setDrawnCommit(fn: () => void) {
   _commit = fn;
 }
-/** Call after every settled edit to a drawn cable. */
 export function commitDrawn() {
   _commit();
 }
 
-/** Finish the armed run and record it. False when there was nothing to draw. */
 export function finishDrawing(): boolean {
   if (!drawModeStore.finish()) return false;
   _commit();
@@ -127,7 +115,6 @@ export const drawnCableStore = {
     notify();
   },
 
-  /** Select; selection is exclusive with nodes, wired cables and standoffs ([[C90]]). */
   selectOnly(id: string | null) {
     drawnCableStore.select(id);
     if (id === null) return;
@@ -136,7 +123,6 @@ export const drawnCableStore = {
     standoffStore.select(null);
   },
 
-  /** The point the panel's dial edits; null when none. */
   activePoint: () => _activePoint,
 
   setActivePoint(index: number | null) {
@@ -147,7 +133,6 @@ export const drawnCableStore = {
     notify();
   },
 
-  /** Null when fewer than two points. */
   add(points: readonly DrawnPoint[], init?: Partial<Omit<DrawnCable, "id" | "points">>): DrawnCable | null {
     if (points.length < 2) return null;
     const c: DrawnCable = {
@@ -212,12 +197,11 @@ export const drawnCableStore = {
   movePoint(id: string, index: number, to: DrawnPoint) {
     const c = find(id);
     if (!c || index < 0 || index >= c.points.length) return;
-    // Spread: a pinned `angle` must survive the drag.
     c.points[index] = { ...c.points[index], x: to.x, y: to.y };
     notify();
   },
 
-  /** Pin this point's heading, or `null` to hand it back to the derived chord. */
+  /** `null` releases the pin back to the derived chord heading. */
   setPointAngle(id: string, index: number, angle: number | null) {
     const c = find(id);
     if (!c || index < 0 || index >= c.points.length) return;
@@ -240,7 +224,7 @@ export const drawnCableStore = {
     notify();
   },
 
-  /** Insert a new point BEFORE `index` (1 … length-1), splitting the span that ends there. */
+  /** Inserts before `index` (1 to length − 1), splitting the span that ends there. */
   insertPoint(id: string, index: number, at: DrawnPoint) {
     const c = find(id);
     if (!c || index < 1 || index > c.points.length - 1) return;
@@ -249,8 +233,7 @@ export const drawnCableStore = {
     notify();
   },
 
-  /** Split the span after `index` at its midpoint (the last point splits the span before
-   *  it). Returns the new point's index, or null. */
+  /** Splits the span after `index` at its midpoint (the last point splits the span before it); returns the new index, or null. */
   splitAt(id: string, index: number): number | null {
     const c = find(id);
     if (!c || index < 0 || index >= c.points.length) return null;
@@ -261,7 +244,6 @@ export const drawnCableStore = {
     return before;
   },
 
-  /** Refused at two points. */
   removePoint(id: string, index: number) {
     const c = find(id);
     if (!c || c.points.length <= 2 || index < 0 || index >= c.points.length) return;
@@ -297,7 +279,6 @@ export const drawnCableStore = {
     }));
   },
 
-  /** Replace the set wholesale (graph load). Malformed entries are skipped. */
   load(saved: readonly unknown[]) {
     _cables = [];
     _selectedId = null;
@@ -330,7 +311,6 @@ registerNodeForgetAll(() => drawnCableStore.clear());
 let _armed = false;
 let _pending: DrawnPoint[] = [];
 let _cursor: DrawnPoint | null = null;
-// Two notifiers: the cursor moves at pointer rate and only the preview may re-render for it.
 const draw = createNotifier();
 const drawCursor = createNotifier();
 const both = () => { draw.notify(); drawCursor.notify(); };
@@ -353,7 +333,6 @@ export const drawModeStore = {
     both();
   },
 
-  /** Leave the tool, discarding anything half-drawn. */
   disarm() {
     if (!_armed && _pending.length === 0) return;
     _armed = false;
@@ -367,7 +346,6 @@ export const drawModeStore = {
     else drawModeStore.arm();
   },
 
-  /** A point within `minDist` of the previous one is a repeat tap and is dropped. */
   place(p: DrawnPoint, minDist = 0) {
     if (!_armed) return;
     const last = _pending[_pending.length - 1];
@@ -389,8 +367,6 @@ export const drawModeStore = {
     drawCursor.notify();
   },
 
-  /** Commit the run as a cable, leave the tool and select the new cable so its panel
-   *  opens. Null (and still armed) when there wasn't enough to draw. */
   finish(): DrawnCable | null {
     const c = drawnCableStore.add(_pending);
     if (!c) return null;

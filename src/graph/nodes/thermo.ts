@@ -1,11 +1,11 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C8]] declareOnce
-// Declared custom logic ([[C76]] formulaPackDefault): the formulation, never a transcribed table.
+// Compute from the formulation, never a transcribed table.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 
-// US Standard Atmosphere 1976, 0–86 km; base pressures derive from the layer table ([[C8]] declareOnce).
+// US Standard Atmosphere 1976, 0–86 km; base pressures derive from the layer table.
 // ISA's own constants: g₀ = 9.80665, M = 0.0289644 kg/mol, R* = 8.31432 J/(mol·K).
 
 const ISA_R_SPEC = 287.0531; // R*/M, J/(kg·K)
@@ -55,8 +55,7 @@ export function isaAtGeometric(z: number): IsaPoint {
   return isaAtGeopotential((EARTH_R * z) / (EARTH_R + z));
 }
 
-/** Shared by the node and the pack's STANDARDATMOSPHERE formula; the −2…86 km
- *  domain is checked on the GEOPOTENTIAL altitude, like the tables. */
+/** The −2…86 km domain is checked on the geopotential altitude, like the tables. */
 export function standardAtmosphere(z: number): IsaPoint | SolError {
   const h = (EARTH_R * z) / (EARTH_R + z);
   if (h < -2000 || h > ISA_TOP) {

@@ -1,16 +1,14 @@
-/* The shadow hosts, as Obsidian's document sees them; everything inside is the app's own CSS. */
+/* [[C107]] obsidianPlugin */
 .solenoid-property-chip {
   display: inline-flex;
   align-items: center;
   padding: 0 var(--size-4-1);
 }
 
-/* A scalar property's field: text the family cannot read is marked, and is never written. */
 .solenoid-scalar.is-invalid {
   color: var(--text-error);
 }
 
-/* The app's Settings palette row: the dropdown with the swatch legend stacked under it. */
 .setting-item-control.solenoid-settings-palette {
   flex-direction: column;
   align-items: flex-end;
@@ -21,8 +19,6 @@
   display: block;
 }
 
-/* The links row: a URL never breaks inside itself. On a phone the two stack, and the swatch
-   legend sits at the start like the full-width dropdown above it. */
 .setting-item-control.solenoid-settings-links {
   flex-wrap: wrap;
   gap: var(--size-4-2) var(--size-4-4);

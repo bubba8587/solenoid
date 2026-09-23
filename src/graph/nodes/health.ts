@@ -1,5 +1,4 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
-// Training-zone table: Karvonen (heart-rate reserve) bands with a resting HR, plain %-of-max without one.
 
 import { ClassicPreset } from "rete";
 import { numIn, frameOut, readInput } from "./shared";
@@ -15,14 +14,10 @@ const ZONES: Array<{ name: string; lo: number; hi: number }> = [
   { name: "Z5 Maximum", lo: 0.9, hi: 1 },
 ];
 
-/** The one domain rule, shared by the node and HEARTRATEZONES: a positive max,
- *  and any resting HR strictly between 0 and it. */
 export function hrZonesDomainOk(maxHr: number, restingHr: number | null): boolean {
   return maxHr > 0 && (restingHr === null || (restingHr > 0 && restingHr < maxHr));
 }
 
-/** The formula surface's matrix form of the frame — five [low, high] rows
- *  ([[C15]] matricesInFormulas). */
 export function hrZonesMatrix(maxHr: number, restingHr: number | null): number[][] | SolError {
   if (!hrZonesDomainOk(maxHr, restingHr)) {
     return solError("#DOMAIN!", "Needs max HR > 0 and resting HR below it");
@@ -57,9 +52,7 @@ export class HrZonesNode extends ClassicPreset.Node {
     super("HrZones");
     this.label = init?.label ?? "Heart-Rate Zones";
     this.addInput("age", numIn("Age"));
-    // Optional: a resting HR switches the bands to the Karvonen method.
     this.addInput("resting", numIn("Resting HR"));
-    // Optional: overrides the classic 220 − age (wire the pack's Tanaka node).
     this.addInput("max", numIn("Max HR"));
     this.addOutput("zones", frameOut("Zones"));
   }

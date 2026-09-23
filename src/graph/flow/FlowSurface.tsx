@@ -1,9 +1,4 @@
-// [[C43]], [[B10]]
-// THE React Flow surface, shared by the main canvas (FlowCanvas) and the composite
-// drill-in (FlowCompositeOverlay): one RF element, one set of handlers, gestures,
-// lasso, context menus, keyboard, add menu, HTML-in-Canvas layer and inspector over a
-// SurfaceStack. The hosts differ only through SurfaceHooks (what settles an edit,
-// which history answers undo, what Delete removes) and their own chrome.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ReactFlow,
@@ -121,34 +116,25 @@ registerFlowResizeGrip(FlowResizeGrip);
 
 const nodeTypes = { sol: SolNodeAdapter };
 const edgeTypes = { cable: FlowCableEdge };
-// Objects handed to <ReactFlow> live at module scope (RF's performance rule: a fresh
-// reference per render re-renders the flow).
+// Objects handed to <ReactFlow> live at module scope, because a fresh reference per render re-renders the flow.
 const SNAP_GRID: [number, number] = [DOT_SPACING, DOT_SPACING];
 const FIT_PADDING = 0.15;
 const PRO_OPTIONS = { hideAttribution: false };
 const MINIMAP_STYLE = { width: 182, height: 105 };
 const DELETE_KEYS = ["Backspace", "Delete"];
-// The cable renders its own named hit path (.solenoid-cable-hit) — RF's interaction
-// path would sit on top of it and eat context-menu targeting.
 const DEFAULT_EDGE_OPTIONS = { type: "cable" as const, interactionWidth: 0 };
 const MINIMAP_MASK = "color-mix(in srgb, var(--overlay-bg) 72%, transparent)";
-// RF paints a dot at (gap/2 − size/2) into each tile; this offset slides the pattern so
-// a dot sits on every multiple of DOT_SPACING — the lattice snapToGrid and the arrow
-// nudge use.
 const DOT_SIZE = 2;
 const DOT_OFFSET = DOT_SIZE / 2 - DOT_SPACING / 2;
 
-/** Late-bound component handlers, so a stack can exist before (and across) mounts. */
 export type SurfaceHandlers = {
   bumpNode(id: string): void;
   bumpConnections(): void;
-  /** Re-render every card (a completed composite pass). */
   bumpAllNodes(): void;
   moveNode(id: string, pos: { x: number; y: number }): void;
   setViewport(v: { x: number; y: number; zoom: number }): void;
   getContainer(): HTMLElement | null;
   syncTopology(): void;
-  /** Re-derive RF `selected` from the model flags (after a verb wrote them). */
   syncSelection(): void;
 };
 
@@ -169,51 +155,27 @@ export type SurfaceStack = FlowModel & {
   view: FlowView;
   handlers: SurfaceHandlers;
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
-  /** A host-level rebuild in progress (drill-in hydrate/restore) — no live-creation behaviors. */
   isRebuilding?: () => boolean;
   absorbPipeInstalled?: boolean;
 };
 
 export type SurfaceHooks = {
-  /** React Flow instance id: every internal id (pattern, marker, aria) derives from it,
-   *  so two mounted flows MUST differ. */
   rfId: string;
-  /** Extra wrapper classes (the drill-in host). */
   className?: string;
   history: { undo(): Promise<unknown>; redo(): Promise<unknown> };
   deleteSelected: () => Promise<void>;
-  /** A drag settled (position + size + membership are the host's to record). */
   afterMove: () => void;
-  /** A programmatic move landed (nudge, push, standoffs): record only. */
   afterProgrammaticMove: () => void;
-  /** A node was added from the Add menu and positioned. */
   afterNodeAdded: (nodeId: string) => void | Promise<void>;
   afterConnect?: () => void;
-  /** Render the standoff layer (a main-graph feature). */
   standoffs?: boolean;
-  /** Render the free-drawn cable layer + its tool (a main-graph feature: drawn
-   *  cables persist into SavedGraph, which is main-only — [[C33]] saveBindsMain). */
   drawnCables?: boolean;
-  /** The main canvas stands down while the drill-in owns the keyboard. */
   standsDownWhenDrilled?: boolean;
-  /** Skip the global canvas keyboard entirely — no F9, Ctrl+S/O, palette, nudge,
-   *  copy/paste, group verbs, or Delete key. The landing / showcase mounts run the
-   *  canvas for its gestures alone and want none of the app hotkeys. */
   noKeyboard?: boolean;
-  /** Suppress every right-click menu — the Add menu on the pane and the node /
-   *  edge / socket context menus (and the native menu with them). */
   noContextMenu?: boolean;
-  /** Lock this mount view-only (no drag / connect / select / delete), on top of
-   *  the global canvasLockStore. A landing scene card locks itself so it stays a
-   *  static, pre-computed showcase while the hero canvas stays live. */
   locked?: boolean;
-  /** No camera gestures either: no pan, no wheel/pinch zoom, and the page scrolls
-   *  over the card instead of the card eating the wheel. For a fixed illustration
-   *  (a landing scene) framed once by fitViewOnInit. Pair with `locked`. */
   staticView?: boolean;
-  /** Frame the graph once the first mounted cards have measured. */
   fitViewOnInit?: boolean;
-  /** Escape with nothing of the surface's own open (menu, isolate). */
   onEscape?: () => void;
 };
 
@@ -240,9 +202,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const screenMouseRef = useRef({ x: 0, y: 0 });
   const { setViewport, getViewport, screenToFlowPosition, getNodes } = useReactFlow();
   const storeApi = useStoreApi();
-  // RF's `fitView` prop resolves on the first setNodes, and this surface mounts EMPTY and
-  // fills after the host hydrates — so frame on the measured-nodes signal instead. The
-  // zoom floors to the snap step (fitView's own would land between steps).
   const nodesInitialized = useNodesInitialized();
   const fitDoneRef = useRef(false);
   useEffect(() => {
@@ -257,8 +216,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [nodesInitialized, getNodes, setViewport, storeApi]);
 
   const syncTopology = useCallback(() => {
-    // Survivors keep their OBJECT IDENTITY — RF's memo skips them, so adding
-    // one node re-renders one card, not the whole canvas.
     setNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]));
       return toFlowNodes(s).map((n) => {
@@ -287,13 +244,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     });
   }, [s]);
 
-  // Membership is RF's parentId: a rebuild (drop into / out of a group, resize,
-  // create) re-projects — identity-preserving, so only the re-parented cards re-render.
   useEffect(() => groupMembershipStore.subscribe(syncTopology), [syncTopology]);
 
-  // Member hiding follows the collapse store LIVE (a toggle changes no
-  // topology, so syncTopology never runs for it) — remap RF classNames,
-  // identity-preserving so untouched cards skip re-render.
   useEffect(
     () =>
       groupCollapseStore.subscribe(() => {
@@ -311,7 +263,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [],
   );
 
-  // Bind the late-bound handlers for this mount.
   useEffect(() => {
     s.handlers.bumpNode = (id) =>
       setNodes((ns) =>
@@ -322,9 +273,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.bumpAllNodes = () =>
       setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, version: n.data.version + 1 } })));
-    // A programmatic move lands in ABSOLUTE canvas units; a member's RF position is
-    // relative to its group, and a moved group re-bases every member (so a Tidy that
-    // translates members before their group still ends consistent).
     s.handlers.moveNode = (id, pos) => {
       const isGroup = s.editor.getNode(id) instanceof GroupNode;
       setNodes((ns) => {
@@ -360,9 +308,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     syncTopology();
   }, [s, setViewport, syncTopology]);
 
-  // A node created LIVE (Add menu, paste) inside an expanded group's box joins it — once
-  // the card has rendered, since containment needs its size. Loads/restores restore
-  // membership from the saved list instead. editor.addPipe cannot be removed: once per stack.
+  // editor.addPipe cannot be removed, so this pipe installs once per stack.
   useEffect(() => {
     if (s.absorbPipeInstalled) return;
     s.absorbPipeInstalled = true;
@@ -381,15 +327,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     });
   }, [s]);
 
-  // The chrome's "open the add menu here" request (command palette, top bar +, A).
-  // Registration nests: the drill-in's replaces main's while open and restores it.
   useEffect(
     () => addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY })),
     [],
   );
 
-  // Two fingers zoom, whatever they land on (flowPinch.ts); one touch finger
-  // on an UNSELECTED card pans (flowTouchPan.ts); the app's wheel curve.
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -398,10 +340,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       s.view.setTransform({ x: v.x, y: v.y, k: v.zoom });
       syncSemanticZoomFor(v.zoom);
     };
-    // Every editable is `nodrag`: RF's d3 drag listens on the node wrapper and its
-    // filter only knows the class, so a press-drag in a field (selecting text) would
-    // drag the card. Stopped in CAPTURE above the wrapper — focus and native text
-    // selection are default actions and still happen.
     const EDITABLE = "input, textarea, select, [contenteditable='true'], [contenteditable='']";
     const guardEditable = (e: Event) => {
       const t = e.target as HTMLElement | null;
@@ -409,8 +347,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     };
     el.addEventListener("mousedown", guardEditable, true);
     el.addEventListener("touchstart", guardEditable, { capture: true, passive: true });
-    // staticView: no camera gestures at all, and the page keeps its wheel/touch
-    // (so a landing card doesn't trap the scroll).
     const noop = () => {};
     const stat = hooksRef.current.staticView === true;
     const unPinch = stat ? noop : installFlowPinch(el, { getViewport, setViewport: drive });
@@ -425,9 +361,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     };
   }, [s, getViewport, setViewport]);
 
-  // noContextMenu: kill the context menu at the DOM in capture phase too, so a
-  // TOUCH long-press (which RF's onPaneContextMenu does not reliably see) can't
-  // raise the Add menu or the native menu on the demo canvas.
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el || !hooksRef.current.noContextMenu) return;
@@ -436,8 +369,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     return () => el.removeEventListener("contextmenu", eat, true);
   }, [s]);
 
-  // Isolate: view-only focus — positions snapshot on enter, restored on exit;
-  // receded nodes dim via the live RF elements.
   useEffect(() => {
     let wasActive = false;
     const snapshot = new Map<string, { x: number; y: number }>();
@@ -471,9 +402,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     return isolateStore.subscribe(apply);
   }, [s]);
 
-  // Shift-drag lasso — capture-phase on the wrapper, so RF's pane (pan, box
-  // selection) never sees the press; cable hits resolve through the live
-  // edge elements (view.connectionElement).
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -485,8 +413,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     });
   }, [s]);
 
-  // Context menus: RF says node / edge / pane; a socket (the dot straddles the card
-  // edge, so it can sit on either) resolves first on nodes and the pane.
   const onNodeContextMenu: NodeMouseHandler<SolFlowNode> = useCallback(
     (e, node) => {
       if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
@@ -517,13 +443,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const el = wrapperRef.current;
     const sock = el ? socketTargetAt(el, e) : null;
     if (sock) { setSocketCtx(sock); return; }
-    // Suppressed while isolating — no new nodes there.
     if (isolateStore.isActive()) return;
     setMenu({ screenX: e.clientX, screenY: e.clientY });
   }, []);
 
-  // The full canvas keyboard (F9, palette, nudge, copy/paste, group verbs,
-  // Ctrl+S/O…) over this surface's refs; Escape falls through to the host.
   useEffect(() => {
     const unKeys = hooksRef.current.noKeyboard
       ? () => {}
@@ -546,7 +469,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable) return;
-      // An open overlay (any modal / pop-up, add menu, isolate) takes it.
       if (keyUnderModal(e) || menuRef.current || isolateStore.isActive()) return;
       hooksRef.current.onEscape();
     };
@@ -559,8 +481,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   const onNodesChange = useCallback(
     (changes: NodeChange<SolFlowNode>[]) => {
-      // RF-driven moves (drags) land in the model's ABSOLUTE positions — a group first,
-      // so a member's absolute resolves against its group's new spot.
       const moved = changes
         .filter((ch): ch is Extract<NodeChange<SolFlowNode>, { type: "position" }> => ch.type === "position" && !!ch.position)
         .sort((a, b) => Number(!(s.editor.getNode(a.id) instanceof GroupNode)) - Number(!(s.editor.getNode(b.id) instanceof GroupNode)));
@@ -570,14 +490,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         const abs = ch.positionAbsolute ?? fromFlowPosition(s, ch.position!, parentId);
         moveNode(s, ch.id, abs);
       }
-      // RF's own measures (post-layout, free) feed the surface's DOM-free size source.
       for (const ch of changes) {
         if (ch.type === "dimensions" && ch.dimensions && ch.resizing === undefined) {
           s.view.setSize(ch.id, { w: ch.dimensions.width, h: ch.dimensions.height });
         }
       }
-      // A resize grip's own dimension changes (`resizing` set) stay out of RF state: the
-      // model sizes the card, RF measures it (FlowResizeGrip).
+      // A grip resize (`resizing` set) stays out of RF state: the model sizes the card and RF only measures it.
       const applied = changes.filter((ch) => !(ch.type === "dimensions" && ch.resizing !== undefined));
       setNodes((ns) => applyNodeChanges(applied, ns));
     },
@@ -586,22 +504,16 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onEdgesChange = useCallback((changes: EdgeChange<SolFlowEdge>[]) => {
     setEdges((es) => applyEdgeChanges(changes, es));
   }, []);
-  // RF's selection is THE selection: the editor payloads (chrome + components read
-  // `selected`) and the cable store (CableInspector, delete verbs, the edge's selected
-  // color) mirror it.
   const onSelectionChange = useCallback(
     ({ nodes: sel, edges: selEdges }: { nodes: SolFlowNode[]; edges: SolFlowEdge[] }) => {
       const ids = new Set(sel.map((n) => n.id));
       for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
       cableSelectionStore.replaceAll(selEdges.map((e) => e.id));
-      // Drawn-cable selection is exclusive with the graph's own (§ Standoffs' rule).
       if (ids.size > 0 || selEdges.length > 0) drawnCableStore.select(null);
     },
     [s],
   );
   useOnSelectionChange({ onChange: onSelectionChange });
-  // …and a cable selected on the app side (its hit path, run selection) is selected
-  // in RF too. Identity-preserving, so untouched edges skip re-render.
   useEffect(
     () =>
       cableSelectionStore.subscribe(() => {
@@ -618,13 +530,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       }),
     [],
   );
-  // Delete/Backspace is RF's key (input-gated there); the app's own delete removes the
-  // selection from the MODEL and RF state follows the topology pipe — so RF is told
-  // to remove nothing itself (it would also take a deleted group's members).
+  // RF is told to remove nothing: the app deletes from the model, and RF's own delete would also take a group's members.
   const onBeforeDelete: OnBeforeDelete<SolFlowNode, SolFlowEdge> = useCallback(async () => {
     if (computeOverlayStore.visible() || presentationStore.isActive() || modalOwnsKeyboard()) return false;
     if (hooksRef.current.standsDownWhenDrilled && compositeEditorStore.isOpen()) return false;
-    if (canvasLockStore.get()) return false; // view-only when locked
+    if (canvasLockStore.get()) return false;
     await hooksRef.current.deleteSelected();
     return false;
   }, []);
@@ -635,8 +545,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     ]);
   }, []);
   const onEdgeMouseLeave = useCallback(() => socketHighlightStore.setCableHover([]), []);
-  // Screen-space camera nudge, for the drawn-cable tool's own drag-to-pan: while its
-  // sheet is armed the pane never sees the press, so the tool moves the camera itself.
   const panBy = useCallback(
     (dx: number, dy: number) => {
       const v = getViewport();
@@ -663,8 +571,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [s, screenToFlowPosition],
   );
 
-  // A cable drag must commit a mid-edit field FIRST (blur), and lights the
-  // origin socket for the drag's duration.
   const onConnectStart = useCallback(
     (_e: unknown, params: { nodeId: string | null; handleId: string | null }) => {
       (document.activeElement as HTMLElement | null)?.blur?.();
@@ -679,8 +585,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     (event, state) => {
       setCableDragging(false);
       socketHighlightStore.setDrag([]);
-      // Quick-wire (a Setting, off by default): a cable dropped on the pane opens the
-      // Add menu pre-filtered to what the origin socket can take, and wires the pick.
       const handleId = state.fromHandle?.id ?? null;
       if (settingsStore.get("quickWire") && state.isValid === null && state.fromNode && handleId && !canvasLockStore.get()) {
         const side = state.fromHandle?.type === "source" ? "output" : "input";
@@ -702,14 +606,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   const isValidConnection: IsValidConnection<SolFlowEdge> = useCallback(
     (c) => {
-      if (canvasLockStore.get()) return false; // view-only when locked
+      if (canvasLockStore.get()) return false;
       if (!c.source || !c.target || !c.sourceHandle || !c.targetHandle) return false;
       return canConnect(s, c.source, c.sourceHandle, c.target, c.targetHandle);
     },
     [s],
   );
-  // The cable-change pipe (reconcile + rescan + targeted recompute) settles
-  // this, exactly as it settles component-driven cable changes.
   const onConnect = useCallback(
     (c: Connection) => {
       if (!c.sourceHandle || !c.targetHandle) return;
@@ -721,9 +623,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [s],
   );
 
-  // RF tows a group's members itself (they are its RF children); the MODEL's
-  // absolute member positions follow by the group's per-frame delta. Selected
-  // members are skipped (RF already moves the selection).
   const dragLastPos = useRef<Map<string, { x: number; y: number }>>(new Map());
   const onNodeDragStart: OnNodeDrag<SolFlowNode> = useCallback((_e, _node, dragged) => {
     dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
@@ -733,9 +632,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     (_e, _node, dragged) => {
       for (const n of dragged) {
         const model = s.editor.getNode(n.id);
-        // Collapsed too: RF tows the hidden member CHILDREN either way, and skipping
-        // the model here left members desynced from their group after a collapsed
-        // drag (the rete surface never gated this).
+        // Collapsed groups too: RF tows the hidden member children either way, so the model must follow.
         if (!(model instanceof GroupNode)) continue;
         const last = dragLastPos.current.get(n.id);
         if (!last) continue;
@@ -744,8 +641,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.view, model, dx, dy, true);
       }
       for (const n of dragged) dragLastPos.current.set(n.id, { ...n.position });
-      // Tow standoff-tied neighbors live, one solve per frame — only when a dragged node (or
-      // a member of a dragged group) is tied; ties are sparse, so a plain drag costs nothing.
       const tied = standoffStore.participants();
       const touchesTie = !standoffStore.isEmpty() && dragged.some((n) => {
         if (tied.has(n.id)) return true;
@@ -764,10 +659,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
   const onNodeDragStop: OnNodeDrag<SolFlowNode> = useCallback(
     (_e, _node, dragged) => {
-      // The exact settle on drop (the per-frame solves converge toward it).
       if (s.standoffSettle && !standoffStore.isEmpty()) s.standoffSettle(new Set(dragged.map((n) => n.id)));
-      // A node dropped with its center inside an expanded group joins it; dragged out,
-      // it leaves (exclusive + stable, see reconcileGroupMembership).
       let membershipTouched = false;
       for (const n of dragged) {
         if (s.editor.getNode(n.id) instanceof GroupNode) continue;
@@ -779,10 +671,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         syncGroupCollapse(s.editor, s.view);
       }
       for (const n of dragged) {
-        // A manual move invalidates any expand-time push record (a click never
-        // starts an RF drag, so every dragStop is a real move).
         groupPushStore.invalidateGroup(n.id);
-        // A dragged FC re-homes to the nearest socket, or releases its dock.
         const model = s.editor.getNode(n.id);
         if (model instanceof FormatControllerNode) {
           const el = wrapperRef.current;
@@ -830,8 +719,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
       await s.editor.addNode(node);
       const pos = screenToFlowPosition({ x: menu.screenX, y: menu.screenY });
-      // A node created from an INPUT drag meets the drop point with its OUTPUT
-      // edge, so it shifts left by its width once the card has rendered.
       const fromInput = menu.quickWire?.side === "input";
       await s.view.moveNode(node.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
       if (fromInput) {
@@ -859,7 +746,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
                 : new ClassicPreset.Connection(node, newKey, originNode, originKey);
             await s.editor.addConnection(conn as Parameters<typeof s.editor.addConnection>[0]);
           } catch {
-            // Incompatible after all — leave the node unwired.
           }
         }
       }
@@ -872,14 +758,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   const globalLocked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   const locked = hooks.locked || globalLocked;
-  // Cabling mode on the canvas root: socket.css grows every socket's catch zone and
-  // re-arms mobile's drop targets off this class, so the surface must wear it for the
-  // pickup → drop window (the rete connection plugin used to set it).
   const cabling = useSyncExternalStore(cableDragStore.subscribe, cableDragStore.get);
-  // SELECT mode (the mobile pill): taps toggle nodes in and out, background taps
-  // keep the selection. RF's store flag carries exactly those semantics, and
-  // pane-drag panning yields to the lasso (canvasLasso arms without Shift while
-  // the pill is on; flowTouchPan stands down likewise).
   const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   useEffect(() => {
     if (!IS_COARSE) return;
@@ -889,8 +768,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const themeMode = appThemeStore.getMode();
   const gridSnap = useSyncExternalStore(gridSnapStore.subscribe, gridSnapStore.get);
-  // A palette switch changes the accents minimapFillForNode computes; RF's MiniMap
-  // only recomputes when the callback identity changes, so the version is a dep.
+  // RF's MiniMap recomputes only when the callback identity changes, so the palette version is a dep.
   const paletteVersion = useSyncExternalStore(colorPaletteStore.subscribe, colorPaletteStore.version);
   const minimapNodeColor = useCallback(
     (n: SolFlowNode) => minimapFillForNode(n.data.node, themeMode).background,
@@ -942,8 +820,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         isValidConnection={isValidConnection}
         deleteKeyCode={locked || hooks.noKeyboard ? null : DELETE_KEYS}
         selectionKeyCode={null}
-        // The canvas keyboard nudges the SELECTION on the dot grid (RF's own arrow
-        // move needs a focused card and steps 5px) — one arrow handler, not two.
         disableKeyboardA11y
         zIndexMode="manual"
         zoomOnDoubleClick={false}
@@ -1036,7 +912,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onEditComposite={(id) => {
             const n = s.editor.getNode(id);
             if (!(n instanceof CompositeNode)) return;
-            // Open a fresh level from the canvas, drill one deeper when already editing.
             if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(n);
             else compositeEditorStore.open(n);
           }}
@@ -1047,7 +922,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           }}
           onToggleFlip={(id) => {
             socketFlipStore.toggle(id);
-            // Nudge the node so RF re-measures its moved handles and cables re-route.
             void (s.view as unknown as View).rerenderNode(id);
           }}
           onClose={() => setNodeCtx(null)}

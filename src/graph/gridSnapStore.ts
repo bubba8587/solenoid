@@ -2,15 +2,10 @@
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
-// The snap step IS the background dot spacing, so snap points land exactly on visible dots.
 
-/** Background dot spacing in world units; `syncSurfaceBackground` scales the tile from it. */
 export const DOT_SPACING = 24;
-/** Snap granularity: the visible dot grid (a dot sits on every multiple — FlowSurface
- *  offsets RF's Background pattern onto this lattice, the same one RF's snapToGrid uses). */
 export const GRID_SNAP_STEP = DOT_SPACING;
 
-/** Round a world coordinate to the nearest visible dot. */
 export function snapCoord(v: number): number {
   const r = Math.round(v / GRID_SNAP_STEP) * GRID_SNAP_STEP;
   return r === 0 ? 0 : r;
@@ -33,7 +28,6 @@ export const gridSnapStore = {
   subscribe,
 };
 
-/** Read the persisted snap setting. Call once at startup. */
 export function initGridSnap() {
   try { _on = localStorage.getItem(LS_KEY) === "1"; }
   catch { /* ignore */ }

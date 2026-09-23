@@ -1,6 +1,5 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
-// Constants are baked into each formula at CODATA 2018 precision. SI units throughout;
-// angles in radians (core Trigonometry convention).
+// CODATA 2018 constants baked into each formula; SI units; angles in radians.
 
 import { PhysicsConstantNode, EmSpectrumNode, emSpectrum, PHYS_CONSTANTS, type PhysConstOp } from "../rete-nodes";
 import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";

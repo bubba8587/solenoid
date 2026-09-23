@@ -1,6 +1,6 @@
 // [[C19]] namingModel
-// Node names + connectable endpoints for the connection dialog. Names are derived live,
-// never stored: header title + a 1-based index when shared; untitled falls back to type.
+// Node names and connectable endpoints for the connection dialog, derived live: the header title plus a 1-based index
+// when shared; an untitled node falls back to its type.
 import type { ClassicPreset } from "rete";
 
 import { SolenoidSocket, type SocketDataType } from "./sockets";
@@ -43,11 +43,9 @@ export type Endpoint = {
   nodeName: string;
   socketLabel: string;
   dataType?: SocketDataType;
-  /** "NodeName : SocketLabel" — used for fuzzy search and display. */
   text: string;
 };
 
-/** Every wireable endpoint on one side of the graph (Groups / FCs excluded). */
 export function listEndpoints(side: "output" | "input"): Endpoint[] {
   const editor = getActiveEditor();
   if (!editor) return [];
@@ -69,7 +67,6 @@ export function listEndpoints(side: "output" | "input"): Endpoint[] {
   return eps;
 }
 
-/** Resolve an endpoint by (nodeId, socketKey) on a side — for edit prefill. */
 export function findEndpoint(side: "output" | "input", nodeId: string, socketKey: string): Endpoint | undefined {
   return listEndpoints(side).find((e) => e.nodeId === nodeId && e.socketKey === socketKey);
 }
@@ -78,12 +75,11 @@ export type ConnRow = {
   id: string;
   dir: "in" | "out";          // relative to the queried node
   thisSocketLabel: string;    // the queried node's socket
-  otherNodeName: string;      // the connected node's display name
-  otherSocketLabel: string;   // the connected node's socket
+  otherNodeName: string;
+  otherSocketLabel: string;
 };
 
-/** From the queried node's point of view ("out" = its output feeds another's input);
- *  Group / Format Controller connections are skipped as internal plumbing. */
+/** From the queried node's side; Group and Format Controller connections are skipped as internal plumbing. */
 export function nodeConnections(nodeId: string): ConnRow[] {
   const editor = getActiveEditor();
   if (!editor) return [];

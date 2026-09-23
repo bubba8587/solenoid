@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax, [[D10]] onePrunePath.
+// [[C68]] knapIsTheDocumentSyntax, [[D10]] onePrunePath
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
@@ -11,8 +11,7 @@ import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { useEditableLabel } from "./inlineInput";
-// getActiveEditor/getActiveView, NOT getEditor/getView: a Note inside a composite
-// drill-in must prune/reconcile/refresh on its OWN graph.
+// getActiveEditor and getActiveView: a Note inside a drill-in must prune and refresh on its own graph.
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveEditor, getActiveView } from "../activeGraph";
@@ -37,8 +36,6 @@ import { useKatexReady } from "./katexLoader";
 
 type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
-// Grouped by rank — the override picker offers the five element families at the field's
-// CURRENT rank; glyphs reuse the Socket Legend vocabulary.
 const FIELD_TYPES_AT_RANK: FrontmatterFieldType[][] = [
   ["number", "string", "date", "logical", "complex"],
   ["list", "strlist", "datelist", "logicallist", "complexlist"],
@@ -56,10 +53,8 @@ function glyphFor(t: FrontmatterFieldType): SocketGlyph {
   return { kind: rankOfField(t) > 0 || t === "frame" || t === "cube" ? "square" : "circle", color: SOCKET_COLORS[t] };
 }
 
-/** A short, human-readable preview of a field's value for the row. */
 function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
   if (isSolError(value)) return value.code;
-  // Containers spell their shape the way the chips do: rows × cols (× depth) Name.
   if (t === "frame") {
     if (!isFrameValue(value)) return "Frame";
     return `${value.columns[0]?.values.length ?? 0}×${value.columns.length} Frame`;
@@ -85,33 +80,24 @@ function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
   return one(value as number | string | boolean | null);
 }
 
-// The body edit gets its OWN undo entry, pushed AFTER the cable removals: syncFields
 
-// Resize floors, no ceiling. The height floor GROWS by the fields strip (22px per
-// socket row + 6px strip padding) so a note can never shrink below its sockets.
 const NOTE_MIN_W = 160;
 const NOTE_MIN_H = 80;
 const FIELD_ROW_H = 22;
 const fieldsStripHeight = (n: number) => (n > 0 ? n * FIELD_ROW_H + 6 : 0);
 
-// Unconditional stop, for surfaces where a touch press must place the cursor rather
-// than start a drag; the READ body keeps coarse-aware stopDragStart so it can drag.
+// An unconditional stop, so a touch press places the cursor instead of starting a drag.
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-/** Marked renders a GFM task-list item as a DISABLED checkbox, and a disabled input
- *  fires no click. Strip `disabled` from the checkbox inputs — the only `<input>`
- *  marked emits — so the read view's boxes are tickable. Runs on already-sanitized
- *  HTML (post-DOMPurify), so it only ever sees marked's own markup. */
+/** A disabled input fires no click; this runs on sanitized HTML, so it sees only marked's own checkboxes. */
 function enableTaskCheckboxes(html: string, live: boolean): string {
-  if (!live) return html; // a Knap-rendered body's boxes map onto no source line
+  if (!live) return html;
   return html.replace(/<input\b[^>]*\btype="checkbox"[^>]*>/g, (tag) =>
     tag.replace(/\s+disabled(="[^"]*")?/g, ""),
   );
 }
 
 
-/** A `---`-fenced YAML block at the top of the body turns each key into a typed OUTPUT
- *  socket; those reconcile on BLUR, never per keystroke, so typing can't churn cables. */
 export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const [body, setBody] = useState(data.body);
@@ -119,10 +105,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const [editing, setEditing] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
-  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
   const title = useEditableLabel(data);
-  // Bumped whenever the frontmatter fields change (body commit / type override)
-  // to re-render the strip + markdown off the node's freshly-synced derived state.
   const [fieldsVersion, setFieldsVersion] = useState(0);
   const swatchRef = useRef<HTMLButtonElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
@@ -132,16 +115,13 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
-  // The body text last reconciled to sockets — lets a no-edit blur skip the heavy
-  // view.update + processGraph, whose mid-gesture re-render closed the mobile keyboard.
+  // A blur with no edit skips the heavy update, whose mid-gesture re-render closed the mobile keyboard.
   const lastSyncRef = useRef(data.body);
-  // Suppress an enter-edit click landing within a beat of a blur: on mobile the same
-  // tap that dismisses the keyboard falls through onto the read view and reopens it.
+  // On mobile the tap that dismisses the keyboard falls through onto the read view and would reopen it.
   const lastBlurRef = useRef(0);
   const startEdit = () => { if (Date.now() - lastBlurRef.current > 300) setEditing(true); };
 
-  // Runs on editor blur and after a type override, NEVER per keystroke. `force` is for
-  // the override path, which mutates fieldTypes rather than the body.
+  // `force` is for the type override, which changes fieldTypes rather than the body.
   async function commitFields(force = false) {
     if (!force && data.body === lastSyncRef.current) return;
     lastSyncRef.current = data.body;
@@ -151,8 +131,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setFieldsVersion((v) => v + 1);
     await view?.rerenderNode(data.id);
-    // A pure retype fires no connection event, so re-adapt downstream FCs by hand or
-    // they keep formatting by the OLD type.
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion(); // re-route cables whose source row shifted
     await processGraph();
@@ -165,14 +143,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   }
 
   const fieldKeys = data.fieldKeys();
-  // NOT data.data() — that's the installErrorGuards-wrapped version, which throws
-  // when called with no inputs (firstInputError runs outside its try/catch).
+  // Never data.data(): the error-guard wrapper throws when called with no inputs.
   const fieldValues = data.fieldValues();
-  // Height floor grows with the fields strip so a resize can never clip a socket row.
   const minNoteH = NOTE_MIN_H + fieldsStripHeight(fieldKeys.length);
 
-  // The body wrapper clips, so the `document` dot lives at the card root with a
-  // MEASURED top at the body's center (−6 for its own half-height).
+  // The body wrapper clips, so the `document` dot sits at the card root, measured to the body's center.
   const noteRootRef = useRef<HTMLDivElement>(null);
   const noteBodyRef = useRef<HTMLDivElement>(null);
   const [docDotTop, setDocDotTop] = useState<number | undefined>(undefined);
@@ -185,8 +160,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed, fieldKeys.length, data.height, data.width, body]);
 
-  // Manual width + height, like a Group: a fixed box the body fills and scrolls in.
-  // No history entry — just an autosave on release.
   const Grip = useFlowResizeGrip();
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(NOTE_MIN_W, size.width);
@@ -195,38 +168,26 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   }
   function onResizeEnd() {
     scheduleAutosave();
-    // The standoff solver MEASURES offsetWidth/Height, so defer a frame for the paint;
-    // pinning this note makes its partner re-align, not the reverse.
+  // The standoff solver measures offsetWidth and offsetHeight, so wait a frame for the paint.
     if (!standoffStore.isEmpty()) {
       requestAnimationFrame(() => settleStandoffs(new Set([data.id])));
     }
   }
 
-  // Derived LIVE from `body`, not `data.renderBody` — the RENDER is deliberately
-  // decoupled from the blur-driven socket-commit cycle, which would go stale.
-  // The template reads the fields last committed (blur), so the preview follows the
-  // YAML edits one commit behind, like the sockets do.
   const templateVars = useMemo(() => data.templateVariables(), [data, fieldsVersion]);
-  // keepUnknown: a Note has no inputs, so a tag naming no frontmatter field stays
-  // literal on the card (a template note reads as a template), never rendered empty.
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
-  // NOT trusted content — a body arrives in shared .solenoid files and marked does no
-  // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
-  const tex = useKatexReady(); // math re-renders once KaTeX lands
+  const tex = useKatexReady();
   const bodyHtml = useMemo(
     () => enableTaskCheckboxes(DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")), rendered === body),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [renderBody, rendered, body, tex],
   );
-  // The read body's task-list checkboxes index into it in document order (= source
-  // order, since a nested item's box still comes after its parent's).
+  // Checkbox order in the rendered body is source order: a nested item's box still follows its parent's.
   const renderedRef = useRef<HTMLDivElement>(null);
   function onRenderedClick(e: React.MouseEvent<HTMLDivElement>) {
     const target = e.target;
-    // A tick on a task checkbox toggles its source marker; it must NOT fall through
-    // to startEdit (which would swap in the textarea and drop the tap). The box is a
-    // native input, like the Boolean Input node's.
+    // A tick must not fall through to startEdit, which would swap in the textarea and drop the tap.
     if (target instanceof HTMLInputElement && target.type === "checkbox") {
       const boxes = renderedRef.current?.querySelectorAll('input[type="checkbox"]');
       const idx = boxes ? Array.prototype.indexOf.call(boxes, target) : -1;
@@ -235,9 +196,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         setBody(next);
         data.body = next;
         scheduleAutosave();
-        // view.update re-captures the note for the canvas renderer (a bare setBody
-        // leaves the OLD text showing there, same reason `pick` does it); processGraph
-        // refreshes the `document` output for any downstream sink.
+        // A bare setBody leaves the old text on the canvas renderer; view.update re-captures it.
         void getActiveView()?.rerenderNode(data.id);
         void processGraph(data.id);
       }
@@ -246,11 +205,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     startEdit();
   }
 
-  // Store the raw text live (autosave), but DON'T reconcile sockets per keystroke —
-  // that happens on blur (commitFields), so editing the YAML doesn't churn cables.
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
-  // view.update drives the pipe the HTML-canvas renderer re-captures on; a bare setColor
-  // re-renders only rete's root, leaving the canvas showing the OLD color.
+  // A bare setColor re-renders only rete's root, leaving the canvas renderer on the old color.
   function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
@@ -312,8 +268,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         )}
       </div>
       {fieldKeys.length > 0 && (
-        // OUTSIDE the overflow-clipped content so the dots straddle the right edge, and
-        // rendered even when COLLAPSED so the output sockets and their cables survive.
+        // Outside the clipped content so the dots straddle the edge; rendered collapsed too, so cables survive.
         <div className="solenoid-note__fields">
           {fieldKeys.map((key) => {
             const t = data.fieldType(key);
@@ -334,16 +289,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           })}
         </div>
       )}
-      {/* The `document` OUTPUT — the whole note as a DocumentValue for a document sink.
-          Always present, independent of the frontmatter fields. */}
+      {/* Always present, independent of the frontmatter fields. */}
       {data.outputs.document && (
         <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} top={docDotTop} />
       )}
       {!collapsed && (
-        /* Wrapper clips the scrolling body to the card's rounded base — a textarea
-           (or its scrollbar) can't be clipped by the note's own radius without an
-           overflow:hidden ancestor, and the note can't clip itself without eating
-           the selection ring. */
+        /* A textarea can't be clipped by the note's own radius without an overflow:hidden ancestor. */
         <div ref={noteBodyRef} className="solenoid-note__content">
           {editing ? (
             <textarea
@@ -354,16 +305,13 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               autoFocus
               onChange={(e) => onBody(e.target.value)}
               onBlur={() => { lastBlurRef.current = Date.now(); setEditing(false); void commitFields(); }}
-              // Unconditional stop, NOT the read body's stopDragStart — while editing a
-              // tap must place the cursor, and rete's drag would close the keyboard.
+              // Not stopDragStart: while editing a tap must place the cursor, and rete's drag would close the keyboard.
               onPointerDown={stop}
               onMouseDown={stop}
             />
           ) : templateErrors ? (
             <pre className="solenoid-note__rendered solenoid-note__template-error" onClick={startEdit} onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
           ) : renderBody.trim() ? (
-            // Plain markdown — a Note is output-only: its template reads its own
-            // fields, and no ref span is swapped. bodyHtml is already sanitized.
             <div
               ref={renderedRef}
               className="solenoid-note__rendered sol-md nowheel"
@@ -395,10 +343,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   );
 }
 
-/**
- * One frontmatter field row — the row is the socket dot's positioning context.
- * Exported so the Import-from-Obsidian card reuses the exact same row.
- */
 export function FieldRow({
   nodeId, emit, fieldKey, type, value, socket, onPickType,
 }: {
@@ -414,14 +358,9 @@ export function FieldRow({
   const btnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(open, () => setOpen(false), [btnRef, popRef]);
-  // Offer the four element families at this field's current dimensionality — its
-  // value already fixed scalar vs list; the override only swaps the element type. A
-  // frame field has no element-type to swap, so its glyph is inert (no picker).
   const canRetype = type !== "frame" && type !== "cube";
   const options = FIELD_TYPES_AT_RANK[rankOfField(type)] ?? [];
 
-  // An FC fed by this field formats the box BEHIND it — this row — so render its locked
-  // format/unit (the upstream half of FC unit-locking), else the raw preview.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const ann = formatAnnotationStore.get(nodeId, fieldKey);
   const preview =

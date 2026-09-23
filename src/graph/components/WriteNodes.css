@@ -1,5 +1,3 @@
-/* File sink nodes (Write File — CSV/JSON) — extends the .sol-conn shell from
-   ConnectionNodes.css with an arm/run row. */
 .sol-write__row {
   display: flex;
   align-items: center;
@@ -30,7 +28,6 @@
 .sol-write__run:hover:not(:disabled) { border-color: var(--node-accent, var(--accent)); }
 .sol-write__run:disabled { opacity: 0.4; cursor: default; }
 
-/* Browse the vault: a full-width button (the Import chooser's folder glyph + label). */
 .sol-write__browse {
   display: flex;
   align-items: center;

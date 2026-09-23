@@ -7,8 +7,6 @@ import {
 } from "../rete-nodes";
 import { placeFormulas, solError, isSolError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
 
-// A rearrangement group ships as ONE locked Equation preset, not several solved
-// forms.
 export const ELECTRICITY_BASE: FormulaPackEntry[] = [
   { type: "elec-ohms-law", label: "Ohm's Law", expr: "v = i * r", equation: true,
     description: "V = I·R, solved for whichever of the three you leave unwired. Wire all three and Check answers TRUE or FALSE",
@@ -108,7 +106,6 @@ function toSiPrefix(n: number): string {
   return `${Number((n / 1e-12).toPrecision(3))}p`;
 }
 
-// Each impl delegates to the core its node calls ([[C17]] shareImpl).
 const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "PARALLELCOMBINE",
@@ -144,7 +141,6 @@ const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
         return solError("#VALUE!", `Unknown property "${p}" — diameter, area, resistance, ampacity`);
       }
       const w = awgWire(n);
-      // Mirror the node: ampacity is blank outside the NEC table, never an error.
       if (isSolError(w)) return p === "ampacity" ? null : w;
       return w[p as keyof typeof w];
     },

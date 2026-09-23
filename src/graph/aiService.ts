@@ -1,6 +1,4 @@
-// [[B13]], [[C55]], [[C105]] apiKeysStayLocal
-// The AI palette's service layer ([[B13]] aiInScope/[[C55]] aiWholeDocRewrite). The cage rule: nothing here touches the
-// document — a validated rewrite only ever reaches the palette's approval diff.
+// [[B13]] aiInScope, [[C55]] aiWholeDocRewrite, [[C105]] apiKeysStayLocal
 
 import Anthropic from "@anthropic-ai/sdk";
 import { getAiKey } from "./aiKey";
@@ -10,13 +8,10 @@ import { validateText, formatIssues, hardIssues } from "./graphValidate";
 import { writeTextForm, readTextForm } from "./textForm";
 
 export const AI_MODEL = "claude-opus-5";
-/** Repair rounds after the first attempt — each feeds the validator's issues back. */
 const MAX_REPAIRS = 2;
 
 export type AiOutcome =
   | { kind: "answer"; text: string }
-  /** A validated rewrite; `newText` is CANONICAL (round-tripped through the
-   *  reader/writer) so the apply diff never shows formatting-only noise. */
   | { kind: "edit"; newText: string; warnings: string[] }
   | { kind: "error"; message: string };
 
@@ -51,7 +46,7 @@ function systemPrompt(): Anthropic.Beta.BetaTextBlockParam[] {
     {
       type: "text",
       text: groundingSpec(),
-      // The spec is byte-identical every call by construction — the cacheable prefix.
+      // The spec is byte-identical on every call by construction: the cacheable prefix.
       cache_control: { type: "ephemeral" },
     },
   ];
@@ -71,7 +66,6 @@ function textOf(message: Anthropic.Beta.BetaMessage): string {
     .join("");
 }
 
-/** Run one palette prompt against the model; `fetch` is injectable for tests. */
 export async function runAiPrompt(
   prompt: string,
   currentText: string,
@@ -80,12 +74,11 @@ export async function runAiPrompt(
   const apiKey = getAiKey();
   if (!apiKey) return { kind: "error", message: "No AI key is stored. Add one in Settings." };
 
-  // The demo key swaps only the transport — validator, repair rounds and
-  // canonicalization still run for real.
+  // The demo key swaps only the transport; validation, repair rounds and canonicalization still run.
   const fetchImpl = opts?.fetch ?? (apiKey === DEMO_KEY ? makeDemoFetch() : undefined);
   const client = new Anthropic({
     apiKey,
-    dangerouslyAllowBrowser: true, // the key is the user's own, stored on this device
+    dangerouslyAllowBrowser: true,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
 
@@ -124,7 +117,6 @@ export async function runAiPrompt(
       const { issues, graph } = validateText(candidate);
       const hard = hardIssues(issues);
       if (hard.length === 0 && graph) {
-        // Canonicalize through the real writer: semantic diffs only, byte-stable apply.
         const canonical = writeTextForm(readTextForm(candidate));
         return {
           kind: "edit",

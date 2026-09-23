@@ -1,9 +1,6 @@
 // [[C66]]
-// Main-thread client of the Script sandbox (`scriptWorker.ts`): one shared worker,
-// one in-flight call per request id, and the wall clock. A call past
-// SCRIPT_TIMEOUT_MS gets its answer here (the worker is stuck inside it, so only
-// terminating frees it); the other in-flight calls are innocent and re-run on the
-// replacement. Hosts without Workers (vitest) run the evaluator inline, untimed.
+// Main-thread client of the Script sandbox: one shared worker. A call past SCRIPT_TIMEOUT_MS is answered here and the
+// worker terminated; the other in-flight calls re-run on the replacement. Without Workers the evaluator runs inline.
 import { invokeScript, SCRIPT_TIMEOUT_MS, type ScriptOutcome } from "./nodes/scriptRun";
 
 type Req = { id: number; src: string; args: unknown[] };
@@ -25,8 +22,7 @@ function spawn(): Worker {
     const p = pending.get(e.data.id);
     if (p) settle(p, e.data.outcome);
   };
-  // The sandbox itself failed (a CSP forbidding eval, a bundling fault): every
-  // in-flight call gets the reason, and the next call tries a fresh worker.
+  // The sandbox itself failed: every in-flight call gets the reason, and the next call tries a fresh worker.
   w.onerror = (e) => {
     const message = e.message || "The script sandbox failed to start";
     for (const p of [...pending.values()]) settle(p, { ok: false, code: "#VALUE!", message });
@@ -57,8 +53,7 @@ function onTimeout(p: Pending): void {
 }
 
 export function executeScript(src: string, args: unknown[]): Promise<ScriptOutcome> {
-  // No Worker (headless, tests): clone like postMessage would, so a script that mutates
-  // its argument never edits the upstream node's cached value for every consumer.
+  // Clone as postMessage would, so a script mutating its argument never edits an upstream cached value.
   if (typeof Worker === "undefined") return invokeScript(src, structuredClone(args));
   return new Promise((resolve) => {
     worker ??= spawn();

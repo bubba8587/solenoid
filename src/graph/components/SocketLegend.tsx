@@ -8,8 +8,6 @@ import { IS_MOBILE } from "../coarse";
 import { registerChrome } from "../chromeToggle";
 import "./SocketLegend.css";
 
-// Circles = scalars, squares = arrays, grid = 2D; a group pairs the scalar with its
-// list/2D siblings under one type label.
 type Dot = {
   kind: "circle" | "square" | "grid" | "frame" | "cube" | "lambda" | "chart" | "document" | "ring" | "hollowSquare";
   color: string;
@@ -48,13 +46,12 @@ const GROUPS: LegendGroup[] = [
     { kind: "frame", color: SOCKET_COLORS.frame, tip: "Frame" },
     { kind: "cube", color: SOCKET_COLORS.cube,  tip: "Cube" },
   ] },
-  // The OBJECT family — non-lattice, identity-only values distinguished by glyph.
   { label: "Special", dots: [
     { kind: "lambda",   color: SOCKET_COLORS.lambda,   tip: "LAMBDA" },
     { kind: "chart",    color: SOCKET_COLORS.chart,    tip: "Chart" },
     { kind: "document", color: SOCKET_COLORS.document, tip: "Document" },
   ] },
-  // anycombo is deliberately NOT a row — as a legend entry it only restates the ladder.
+  // anycombo is deliberately not a row: as a legend entry it only restates the ladder.
   { label: "Any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
     { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
@@ -66,27 +63,26 @@ const GROUPS: LegendGroup[] = [
 
 export type SocketGlyph = Dot;
 
-/** Resolve any CSS color expression (incl. `var(--sock-*)`, palette-overridden) to a
- *  #rrggbb hex, so contrastInk picks the readable ink for the EXACT rendered color. */
+/** Resolves `var(--sock-*)`, palette overrides included, so contrastInk picks the ink for the exact rendered color. */
 function cssColorToHex(css: string): string {
   const probe = document.createElement("span");
   probe.style.color = css;
   probe.style.display = "none";
   document.body.appendChild(probe);
-  const rgb = getComputedStyle(probe).color; // "rgb(r, g, b)" / "rgba(...)"
+  const rgb = getComputedStyle(probe).color;
   probe.remove();
   const m = rgb.match(/[\d.]+/g);
   if (!m || m.length < 3) return "#888888";
   return "#" + m.slice(0, 3).map((n) => Math.round(Number(n)).toString(16).padStart(2, "0")).join("");
 }
 
-/** Resolved so the canvas measurer uses the SAME font the pill renders in. */
+/** The same font the pill renders in, for the canvas measurer. */
 function appFontFamily(): string {
   const v = getComputedStyle(document.documentElement).getPropertyValue("--font-sans").trim();
   return v || "system-ui, sans-serif";
 }
 let _measureCtx: CanvasRenderingContext2D | null = null;
-/** Text width via a shared canvas — one pass, so the pill sizes without a reflow flash. */
+/** A shared canvas measures in one pass, so the pill sizes without a reflow flash. */
 function measureTipText(text: string): number {
   if (_measureCtx === null) _measureCtx = document.createElement("canvas").getContext("2d");
   if (!_measureCtx) return text.length * 7; // headless fallback
@@ -98,7 +94,7 @@ function SocketTip({ label, color, anchor }: { label: string; color: string; anc
   const ink = contrastInk(cssColorToHex(color));
   const H = 20, PAD_X = 9, SW = 2.5;
   const W = Math.ceil(measureTipText(label)) + PAD_X * 2;
-  // Clamped so the pill never clips the viewport edge — the legend sits bottom-RIGHT.
+  // Clamped so the pill never clips the viewport edge; the legend sits bottom-right.
   const half = W / 2 + 4;
   const cx = Math.max(half, Math.min(anchor.left + anchor.width / 2, window.innerWidth - half));
   return createPortal(
@@ -123,12 +119,11 @@ function SocketTip({ label, color, anchor }: { label: string; color: string; anc
   );
 }
 
-/** A legend glyph + its instant hover pill (when the dot carries a `tip`). */
 export function SocketDot({ entry }: { entry: Dot }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const show = () => { const r = ref.current?.getBoundingClientRect(); if (r) setAnchor(r); };
-  // Set on the span so the glyph and its pill both inherit this fill's border shade.
+  // On the span, so the glyph and its pill both inherit this fill's border shade.
   const ringVar = /^var\(--sock-/.test(entry.color) ? entry.color.replace(/\)\s*$/, "-ring)") : undefined;
   return (
     <span
@@ -145,8 +140,7 @@ export function SocketDot({ entry }: { entry: Dot }) {
 }
 
 function SocketGlyphSvg({ entry }: { entry: Dot }) {
-  // viewBox is padded 1 unit per side so shapes reaching the 0/12 bounds never sit on the
-  // rendered edge — fractional device-pixel rounding otherwise clips the outermost row.
+  // viewBox padded 1 unit per side: fractional device-pixel rounding otherwise clips shapes on the 0 and 12 bounds.
   if (entry.kind === "square") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
@@ -175,7 +169,6 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
   }
   if (entry.kind === "cube") {
     return (
-      // The viewBox padding lets the oversized cube extend past the 12-box without clipping.
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
         <CubeGlyphFaces fill={entry.color} />
       </svg>
@@ -255,7 +248,6 @@ export function SocketLegend() {
     try { localStorage.setItem(LEGEND_LS_KEY, collapsed ? "1" : "0"); }
     catch { /* private mode / quota — non-fatal */ }
   }, [collapsed]);
-  // Chrome-toggle group: Tab folds/unfolds the legend with the other panels.
   useEffect(() => registerChrome("legend", { isOpen: () => !collapsed, setOpen: (o) => setCollapsed(!o) }), [collapsed]);
 
   return (
@@ -277,7 +269,6 @@ export function SocketLegend() {
   );
 }
 
-/** [[D13]] widenNeverNarrow in plain language, for the Reference overlay. */
 export function DimensionalityFlow() {
   return (
     <div className="solenoid-dimflow">
@@ -324,8 +315,6 @@ function DimStep({ dot, dim, name, sub }: { dot: Dot; dim: string; name: string;
   );
 }
 
-/** The socket-type rows on their own — on mobile the floating legend is hidden and the
- *  Reference overlay's Sockets tab is where they live. */
 export function SocketLegendRows() {
   return (
     <>

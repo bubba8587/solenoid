@@ -1,5 +1,4 @@
-// DEV-ONLY harness hooks for the renderer screenshot comparison workflow.
-// Tree-shaken out of production builds (import.meta.env.DEV guard).
+// Dev-only harness hooks for the renderer screenshot probes; tree-shaken out of production (import.meta.env.DEV).
 import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
 import { getEditor, getView, processGraph } from "./process";
@@ -11,7 +10,6 @@ if (import.meta.env.DEV) {
     seed: (id: string) => documentStore.newFromTemplate(id),
     // "idle" once the reveal has played; the screenshot harness waits on it.
     revealPhase: () => loadRevealStore.phase(),
-    // Frame one node (by label substring) at zoom k, top-left at screen (sx, sy).
     zoomNode: async (label: string, k = 1.7, sx = 260, sy = 200) => {
       const ed = getEditor(), vw = getView();
       if (!ed || !vw) return false;
@@ -24,8 +22,7 @@ if (import.meta.env.DEV) {
       return true;
     },
     nodeCount: () => getEditor()?.getNodes().length ?? 0,
-    // Retarget one node by id (frameText, stringLiterals, …) and recompute — the chart
-    // contact sheet re-feeds one Chart node instead of authoring a seed per variant.
+    // Retargets one node and recomputes, so the chart contact sheet re-feeds one Chart node per variant.
     patch: async (id: string, fields: Record<string, unknown>) => {
       const n = getEditor()?.getNode(id);
       if (!n) return false;
@@ -37,39 +34,32 @@ if (import.meta.env.DEV) {
       await processGraph();
       return true;
     },
-    // The table popup's per-column format pick, which `patch` can't reach (a store, not
-    // a node field) — the format-flow probe sets it on the AUTHORING node.
+    // A column format lives in a store, not a node field, so `patch` can't reach it; set on the authoring node.
     setColumnFormat: async (nodeId: string, column: string, ann: FormatAnnotation) => {
       frameFormatStore.set(nodeId, column, ann);
       await processGraph();
       return true;
     },
-    // The blank pick in that row: no entry, so the column keeps the format it carries in.
     clearColumnFormat: async (nodeId: string, column: string) => {
       frameFormatStore.delete(nodeId, column);
       await processGraph();
       return true;
     },
-    // Attach a docked Format Controller the way the socket menu does (the FC probes).
     attachFc: async (hostNodeId: string, socketKey: string, side: "input" | "output") => {
       const ed = getEditor(), vw = getView();
       if (!ed || !vw) return false;
       await attachFormatController(ed, vw, vw.container, { nodeId: hostNodeId, socketKey, side, screenX: 0, screenY: 0 });
       return true;
     },
-    // Read plain fields off a node (the reload probes compare a node before/after).
     fields: (id: string, keys: string[]): Record<string, unknown> | null => {
       const n = getEditor()?.getNode(id) as unknown as Record<string, unknown> | undefined;
       return n ? Object.fromEntries(keys.map((k) => [k, n[k]])) : null;
     },
-    // Group membership (the layout probe asserts members follow a dragged group).
     groups: () => (getEditor()?.getNodes() ?? [])
       .filter((n) => n.constructor.name === "GroupNode")
       .map((g) => ({ id: g.id, members: [...(g as unknown as { members: string[] }).members], collapsed: (g as unknown as { collapsed?: boolean }).collapsed ?? false })),
-    // Edge id → its two handles (the socket-box probe maps drawn cables to Handles).
     connections: () => (getEditor()?.getConnections() ?? []).map((c) =>
       ({ id: c.id, source: c.source, sourceOutput: c.sourceOutput, target: c.target, targetInput: c.targetInput })),
-    // Every node's model position — the undo/layout smoke diffs two of these.
     positions: () => {
       const ed = getEditor(), vw = getView();
       if (!ed || !vw) return null;
@@ -93,7 +83,6 @@ if (import.meta.env.DEV) {
       const t = vw.transform;
       return { world: { x: pos.x, y: pos.y }, screen: { x: Math.round(r.left), y: Math.round(r.top) }, t: { k: t.k, x: t.x, y: t.y } };
     },
-    // Nodes whose position*k+pan ≠ their actual DOM rect (mismatch sources).
     mismatches: () => {
       const ed = getEditor(), vw = getView();
       if (!ed || !vw) return [];

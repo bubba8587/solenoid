@@ -4,9 +4,6 @@ import { ConduitNode, conduitLaneOf, conduitInKey, conduitOutKey, CONDUIT_MAX_LA
 import { SolenoidSocket, MutableSocket, type SocketDataType } from "./sockets";
 import type { Schemes } from "./schemes";
 
-// A Conduit's lane sockets are all `any`, so typing a leaving value by its JS VALUE
-// is lossy (a date is a number, a frame an object). Tracing the lane back to its real
-// source keeps the type through the Conduit unchanged. Pure module — no React.
 
 export type TypedSource = {
   socket: ClassicPreset.Socket | undefined;
@@ -26,7 +23,7 @@ export function resolveTypedSource(
   depth = 0,
 ): TypedSource {
   const node = editor?.getNode(nodeId);
-  // depth cap guards against a Conduit loop (a #CIRC! graph) trapping the walk.
+  // The depth cap keeps a Conduit loop (a #CIRC! graph) from trapping the walk.
   if (node instanceof ConduitNode && depth < 16) {
     const lane = conduitLaneOf(outputKey, "out");
     if (lane >= 0) {
@@ -38,9 +35,7 @@ export function resolveTypedSource(
   return { socket: node?.outputs?.[outputKey]?.socket, source: nodeId, sourceOutput: outputKey };
 }
 
-/** Mutates each lane's MutableSocket in place and returns true if ANY type changed,
- *  so the caller can loop to a fixpoint; an unwired lane reverts to `any`. The
- *  caller owns re-render, recompute, and re-validating downstream cables/FCs. */
+/** Mutates each lane's MutableSocket in place and returns true if any type changed, so the caller loops to a fixpoint; the caller owns re-render, recompute and downstream re-validation. */
 function reconcileConduitTypesOnce(editor: NodeEditor<Schemes>): boolean {
   let changed = false;
   const conns = editor.getConnections();
@@ -61,11 +56,7 @@ function reconcileConduitTypesOnce(editor: NodeEditor<Schemes>): boolean {
   return changed;
 }
 
-// A Conduit is WIRING, not computation, so a clicked cable is one SEGMENT of a run:
-// `conduitPath` walks upstream to the real producer and downstream (fanning out) to
-// every real consumer.
 
-/** The subset of a rete connection the walk needs. */
 export interface PathConn {
   id: string;
   source: string;
@@ -74,20 +65,15 @@ export interface PathConn {
   targetInput: string;
 }
 
-/** A node + port the run terminates on. */
 export interface ConduitPathEnd {
   nodeId: string;
   key: string;
 }
 
 export interface ConduitPath {
-  /** Every cable on the run, upstream-first, the clicked one included. */
   connIds: string[];
-  /** Where the value is really produced — a Conduit only if its lane is unfed. */
   origin: ConduitPathEnd;
-  /** Every input the run really reaches — a Conduit only if its lane is unused. */
   terminals: ConduitPathEnd[];
-  /** Conduits the run passes THROUGH, upstream → downstream. */
   conduits: string[];
 }
 
@@ -96,14 +82,12 @@ interface PathEditor {
   getConnections(): ReadonlyArray<PathConn>;
 }
 
-// The `seen` set already breaks true cycles; this just caps pathological fan-out.
 const MAX_HOPS = 512;
 
 export function conduitPath(editor: PathEditor | null | undefined, conn: PathConn): ConduitPath {
   const conns = editor?.getConnections() ?? [];
   const isConduit = (id: string) => editor?.getNode(id) instanceof ConduitNode;
 
-  // Upstream is a plain chain — a Conduit input lane takes at most one cable.
   const climbed = new Set<string>([conn.id]);
   let head = conn;
   for (let hop = 0; hop < MAX_HOPS; hop++) {
@@ -113,14 +97,11 @@ export function conduitPath(editor: PathEditor | null | undefined, conn: PathCon
     const inKey = conduitInKey(lane);
     const via = head.source;
     const feed = conns.find((c) => c.target === via && c.targetInput === inKey);
-    // No feed → the lane is unwired and the Conduit itself IS the origin.
     if (!feed || climbed.has(feed.id)) break;
     climbed.add(feed.id);
     head = feed;
   }
 
-  // Downstream is a tree, walked from the ORIGIN cable rather than the clicked one,
-  // so every segment of a run resolves to the SAME run and no fan-out sibling hides.
   const connIds: string[] = [head.id];
   const seen = new Set<string>([head.id]);
   const conduits: string[] = [];
@@ -136,7 +117,6 @@ export function conduitPath(editor: PathEditor | null | undefined, conn: PathCon
     const outKey = conduitOutKey(lane);
     const outs = conns.filter((c) => c.source === cur.target && c.sourceOutput === outKey && !seen.has(c.id));
     if (outs.length === 0) {
-      // The lane dies inside the Conduit — nothing consumes it further on.
       terminals.push({ nodeId: cur.target, key: cur.targetInput });
       continue;
     }
@@ -152,8 +132,6 @@ export function conduitPath(editor: PathEditor | null | undefined, conn: PathCon
 }
 
 export function reconcileConduitTypes(editor: NodeEditor<Schemes>): boolean {
-  // A chain of Conduits settles in as many passes as it is deep; the cap sits well
-  // above any real chain and also bounds a #CIRC! loop.
   let anyChanged = false;
   for (let pass = 0; pass < 32; pass++) {
     if (!reconcileConduitTypesOnce(editor)) break;

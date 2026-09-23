@@ -1,4 +1,4 @@
-// [[C11]]
+// [[C11]] socketBox12, [[C37]] observerOwnsSize
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../canvasCommands";
@@ -10,20 +10,10 @@ import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, darkenAccent } from "../palette";
 
-// The whole node header is a drag surface; a pointer moving less than this many
-// px counts as a TAP, not a drag. Shared with nodeKit's title label.
+// Under this many px a header pointer is a tap, not a drag; shared with the title label.
 export const HEADER_TAP_SLOP = 4;
 
-/** The card's entire painted frame — body border, header accent cap, and the
- *  header/body divider — drawn as SVG strokes instead of CSS borders. Borders
- *  are width-snapped per element under the canvas zoom transform, so the three
- *  strokes cracked apart at their shared edges; SVG shapes rasterize at exact
- *  fractional geometry, so coincident edges stay coincident. Two sibling
- *  viewports (not one nested svg: absolutely-positioned svg keeps its intrinsic
- *  300×150 unless explicitly sized, and geometry properties on a nested svg
- *  proved unreliable): the full-card one strokes the body border; the second is
- *  CSS-sized to --header-h and clips the cap + divider to the header region.
- *  Geometry and colors live entirely in nodeCard.css. */
+/** SVG strokes, not CSS borders, so the frame can't subpixel-crack under zoom (DESIGN.md § Cards); two sibling viewports, since an absolutely positioned svg keeps its intrinsic 300×150 unless sized and geometry on a nested svg proved unreliable. */
 export function CardFrame() {
   return (
     <>
@@ -40,26 +30,17 @@ export function CardFrame() {
 
 type Props = {
   selected?: boolean;
-  // The live node instance: the card reports its measured DOM size back here so
-  // minimap silhouettes match the real cards, and derives the accent via nodeAccent.
   node?: { id: string; width: number; height: number };
   className?: string;
-  /** Override the accent color derived from nodeAccent. */
   accentOverride?: string;
-  /** When false, the node can't collapse and no chevron is shown. */
   collapsible?: boolean;
-  /** Collapse to a headerless SQUARE (Sparkline), expandable by double-click. */
   squareCollapse?: boolean;
-  /** Skip the CardFrame overlay — for cards that paint their own single-stroke
-   *  frame (the FC's accent ring) and so have no multi-stroke seam to unify. */
+  /** For cards that paint their own single-stroke frame (the FC's ring), so have no seam to unify. */
   frameless?: boolean;
   children: ReactNode;
 };
 
-/** Shared wrapper for every standard node body, with a CAPTURE-phase pointer
- *  handler that stops propagation for form-field targets — otherwise rete's
- *  per-node drag listener hijacks text-selection drag inside the input, and its
- *  native bubble listener fires before React's synthetic ones. */
+/** Capture phase: the node drag listener is native and fires before React's synthetic handlers, so a form field must stop it here. */
 export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, frameless = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const collapsed = useSyncExternalStore(
@@ -79,9 +60,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         tag === "TEXTAREA" ||
         tag === "SELECT" ||
         target.isContentEditable ||
-        // Any button — keep clicks from starting a rete node drag. The header
-        // chevron is exempt: the whole header is a drag surface, so its
-        // pointerdown must reach rete.
+        // Any button, except the chevron: its pointerdown must reach the header drag.
         !!target.closest("button:not(.solenoid-node__chevron)")
       );
     }
@@ -96,33 +75,25 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     };
   }, []);
 
-  // Publish the result box's vertical center as `--out-socket-top`, measured against
-  // .solenoid-node__content (where the sockets and input-pill anchor), so it is
-  // header-INDEPENDENT.
   function syncOutputSocketTop() {
     const el = ref.current;
     if (!el) return;
-    // First VISIBLE box: a collapsed node hides its figure (offsetParent null),
-    // and centering the output socket at 0 is the alternative.
+    // First visible box: a collapsed node hides its figure (offsetParent null).
     const boxes = el.querySelectorAll<HTMLElement>(
       ".solenoid-node__figure, .solenoid-node__display-value, .solenoid-node__value-input",
     );
     let box: HTMLElement | null = null;
     for (const b of boxes) { if (b.offsetParent !== null) { box = b; break; } }
     if (!box) { el.style.removeProperty("--out-socket-top"); return; }
-    // Sum offsetTop up the offsetParent chain to the content wrapper: a box wrapped in
-    // an intermediate POSITIONED element (Date Input's picker row is position:relative,
-    // to anchor its hidden native picker) is otherwise measured against that wrapper —
-    // ~0 — and the socket floats to the top of the card.
+    // Sum offsetTop up to the content wrapper: a box inside an intermediate positioned element (Date Input's picker row) would otherwise measure about 0.
     const content = el.querySelector<HTMLElement>(".solenoid-node__content");
     let top = box.offsetHeight / 2;
-    // Walk only when content is a real ancestor, so a missing wrapper degrades to the
-    // plain offsetTop rather than over-summing up to the card root.
+    // Walk only when content is a real ancestor, so a missing wrapper can't over-sum up to the card root.
     if (content) for (let n: HTMLElement | null = box; n && n !== content; n = n.offsetParent as HTMLElement | null) top += n.offsetTop;
     else top += box.offsetTop;
     el.style.setProperty("--out-socket-top", `${top}px`);
   }
-  // Runs after every commit — also covers the collapse toggle's re-layout.
+  // After every commit, which also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
 
   // A pinned inline `height` would keep the collapsed card full-height while empty.
@@ -130,8 +101,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     if (collapsed) ref.current?.style.removeProperty("height");
   }, [collapsed]);
 
-  // Report rendered size back to the node instance so the minimap silhouette
-  // matches reality — the minimap plugin re-renders on each node 'render'.
   useEffect(() => {
     const el = ref.current;
     if (!el || !node) return;
@@ -144,14 +113,10 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       if (w === node.width && h === node.height) return;
       node.width = w;
       node.height = h;
-      // Update LIVE during a resize drag so cables re-route; the grip drags off
-      // window listeners, so recreating this node's DOM here doesn't drop it.
-      // Owning view (not main): this card may live inside an open drill-in.
+      // Live during a resize drag so cables re-route; the grip drags off window listeners, so recreating this DOM doesn't drop it.
       void getOwningView(node.id)?.rerenderNode(node.id);
-      // A resize can shift this node's sockets — keep any docked FC aligned.
       repositionDockedNodes(node.id);
-      // If THIS node is a docked FC, re-center it on its host now that its real
-      // height is known — the pre-layout estimate is short, so it lands low.
+      // A docked FC re-centers on its host once its real height is known; the pre-layout estimate is short.
       const hostId = (node as { hostNodeId?: string }).hostNodeId;
       if (hostId) repositionDockedNodes(hostId);
     });
@@ -159,46 +124,31 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     return () => observer.disconnect();
   }, [node]);
 
-  // `node` is typed minimally here but is the live instance at runtime, so
-  // instanceof inside nodeAccent works.
-  // Re-render on theme change so the accent shift (light vs dark) is live.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
-  // An explicit override (the FC's mismatch orange / its own socket color) still gets
-  // theme-adjusted here; nodeAccent already returns a final theme-resolved hex.
+  // An override (the FC's mismatch orange, its socket color) still needs theme adjusting; nodeAccent is already resolved.
   const accent = accentOverride
     ? themeAccent(accentOverride, mode)
     : node ? nodeAccent(node as unknown as ClassicPreset.Node, mode) : undefined;
-  // The "inside a group" indicator: the color is published as a CSS var and the
-  // grouped class applies the treatment (yielding to selection).
   const groupColor = useSyncExternalStore(groupMembershipStore.subscribe, () => (node ? groupMembershipStore.color(node.id) : undefined));
 
-  // A persisted user size overrides the CSS width/height as an inline style; the
-  // drag itself lives in ResizeHandle.
   useSyncExternalStore(
     nodeSizeStore.subscribe,
     () => (node ? nodeSizeStore.get(node.id) : undefined),
   );
   const resizable = !!node && nodeResizable(node as unknown as ClassicPreset.Node);
-  // Wider default card for table/frame nodes; a manual size still wins.
   const wide = !collapsed && !!node && nodeWide(node as unknown as ClassicPreset.Node);
-  // Medium card for date-outputting nodes (roomier than standard); wide wins over it.
   const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as ClassicPreset.Node);
-  // Manual size is ignored while collapsed (collapse owns the layout then). A stored size
-  // is clamped to the CURRENT content's minimum: a Display sized for a scalar that now
-  // shows a chart must not draw the chart in a 40px box (the grip clamps only live drags).
+  // Clamped to the current content's minimum: the grip clamps only live drags, and a Display sized for a scalar may now show a chart.
   const stored = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
   const min = stored && node ? nodeSizeStore.getMin(node.id) : undefined;
   const size = stored && min ? { w: Math.max(stored.w, min.w), h: Math.max(stored.h, min.h) } : stored;
 
   const style: CSSProperties = {};
   if (accent) (style as Record<string, string>)["--node-accent"] = accent;
-  // Darker shade for the light-mode outside border (matches the group framing).
   if (accent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(accent);
   if (groupColor) (style as Record<string, string>)["--group-color"] = themeAccent(groupColor, mode);
   if (groupColor) (style as Record<string, string>)["--group-color-dark"] = darkenAccent(groupColor);
-  // Width sizes the card; height is published as a var the value box consumes —
-  // the card height stays content-driven so the header / rows are never hidden.
   if (size) {
     style.width = Math.round(size.w);
     (style as Record<string, string>)["--box-h"] = `${Math.round(size.h)}px`;
@@ -208,7 +158,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   function doToggle() {
     if (node) {
       collapseStore.toggle(node.id);
-      // Nudge the OWNING view (drill-in aware) so cable endpoints re-measure.
       void getOwningView(node.id)?.rerenderNode(node.id);
     }
   }
@@ -216,12 +165,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     e.stopPropagation();
     doToggle();
   }
-  // The chevron's pointerdown reaches rete on purpose (drag the node from the header),
-  // but that makes rete eat the synthesized `click` on a DESKTOP mouse — mousedown lands
-  // on the chevron, mouseup elsewhere, so `click` targets the card, not the button, and
-  // the toggle never fires (worked on touch, which drags differently — the regression that
-  // shipped mobile-tested). So detect a stationary tap on a WINDOW pointerup, which fires
-  // regardless of pointer capture, instead of relying on the button's own click.
+  // A desktop mouse press that reaches the drag loses its click to the card, so a stationary tap is detected on a window pointerup instead.
   function armChevronTap(e: React.PointerEvent) {
     const sx = e.clientX, sy = e.clientY;
     const onEnd = (ev: PointerEvent) => {
@@ -248,7 +192,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         `${!collapsible ? " solenoid-node--no-chevron" : ""}${className ? " " + className : ""}`
       }
       style={styleProp}
-      // Square-collapsed nodes hide the chevron, so double-click expands them.
       onDoubleClick={squareCollapse && collapsed ? toggleCollapse : undefined}
     >
       {!frameless && <CardFrame />}
@@ -258,9 +201,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
           className="solenoid-node__chevron"
           title={collapsed ? "Expand" : "Collapse"}
           aria-label={collapsed ? "Expand the node" : "Collapse the node"}
-          // Let the pointerdown reach rete so a drag from the chevron moves the node;
-          // arm a window-level tap detector that toggles only on a stationary release
-          // (robust to rete eating the click on a desktop mouse).
           onPointerDown={armChevronTap}
         />
       )}

@@ -260,11 +260,8 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 }
 
 // ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
-// The native <LazySelect> needs pointerdown/mousedown stopPropagation or the node-drag
-// re-render closes it mid-pick.
+// A native <LazySelect> needs pointerdown and mousedown stopPropagation, or the node-drag re-render closes it mid-pick.
 
-// One node for the data folder's files — the file EXTENSION picks the reader (.parquet
-// through the native engine, everything else CSV), so there is no format control.
 export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>) {
   const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
   const [files, setFiles] = useState<string[]>([]);
@@ -382,7 +379,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
           {PROVIDER_LIST.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
         </LazySelect>
         {preset.quickPicks && (
-          // Quick-picks fill the field (the ids are cryptic); reset to "" so it's re-pickable.
+          // Reset to "" after a pick, so the same quick-pick can be chosen again.
           <LazySelect className="sol-conn__select" value="" onChange={(e) => { if (e.target.value) commitInput(e.target.value); }} {...stopDrag}>
             <option value="">Common {preset.inputLabel.toLowerCase()}s…</option>
             {preset.quickPicks.map((q) => <option key={q.id} value={q.id}>{q.label} ({q.id})</option>)}
@@ -424,8 +421,6 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
 
 
 // ─── GEOCODE ─────────────────────────────────────────────────────────────────────
-// Place name → lat / lon / timezone; when several places match, a pick chooses which
-// (stored by label).
 export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // re-read matches when a fetch lands
   // The SAME pick the node computes, so the rows never disagree with the cables.
@@ -433,8 +428,6 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets className="solenoid-node--geocode">
-      {/* The Place input is a wireable socket row, not bare chrome — a Text Input or a
-          frame cell drives it exactly as a typed name does. */}
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
         {data.matches.length > 1 && (
@@ -465,8 +458,6 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
 }
 
 // ─── WEATHER ─────────────────────────────────────────────────────────────────────
-// Lat/lon come from Geocode's sockets or the typed fallbacks; the °C/°F toggle sets the
-// API unit and tags the temps downstream.
 const WEATHER_UNIT_OPTIONS: { value: "C" | "F"; label: string }[] = [
   { value: "C", label: "°C" },
   { value: "F", label: "°F" },
@@ -510,7 +501,6 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           onChange={(u) => { data.unit = u; void processGraph(); }}
         />
       </div>
-      {/* Lat/Lon are wireable socket rows — Geocode drives them, or the typed fallback does. */}
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
         {numField("Past days", past, setPast)}
@@ -538,7 +528,6 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
 }
 
 // ─── HOLIDAYS ──────────────────────────────────────────────────────────────────────
-// A country + year → the year's public holidays. The Dates output feeds NETWORKDAYS / WORKDAY.
 function todaySerial(): number {
   const d = new Date();
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
@@ -623,8 +612,6 @@ export function HolidaysComponent({ data, emit }: NodeProps<HolidaysNodeType>) {
 }
 
 // ─── CURRENCY / FX ─────────────────────────────────────────────────────────────────
-// Amount is a wireable number row; From/To are wireable currency dropdowns (a cable
-// overrides the pick). The Converted socket carries the target currency downstream.
 function CurrencyRow({ data, emit, socketKey, label }: {
   data: FxNodeType; emit: NodeProps<FxNodeType>["emit"]; socketKey: "from" | "to"; label: string;
 }) {
@@ -653,7 +640,6 @@ function CurrencyRow({ data, emit, socketKey, label }: {
   );
 }
 
-// A typeable date range row; a cable overrides it (↩ wired), mirroring CurrencyRow.
 function FxDateRow({ data, emit, socketKey, label }: {
   data: FxNodeType; emit: NodeProps<FxNodeType>["emit"]; socketKey: "from_date" | "to_date"; label: string;
 }) {
@@ -707,7 +693,7 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
   useAutoRefresh(data.id, minutes);
 
   const rate = data.cached?.rate ?? null;
-  // A preview off the typed amount; the socket carries the true (possibly wired) value.
+  // A preview off the typed amount; the socket carries the true, possibly wired, value.
   const preview = rate != null ? (data.literals.amount ?? 1) * rate : null;
   const seriesRows = data.cachedSeries?.length ?? 0;
   const frame = data.outputs.frame;
@@ -754,7 +740,6 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 // ─── VAULT FOLDER ────────────────────────────────────────────────────────────────
 // An Obsidian folder → one cube; the vault resolves per [[D62]] demoVaultResolution.
 const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
-// A labelled text field: the label carries the name, the box only the example.
 const FIELD_INPUT = { flex: 1, width: "auto", minWidth: 0 } as const;
 
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
@@ -770,7 +755,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const canRead = desktop || isDemoVaultPath(vault); // the demo vault reads with no filesystem
   useAutoRefresh(data.id, minutes);
   useEffect(() => { setFolder(data.folder); }, [data.folder]);
-  // The subfolder dropdown lists the vault's folders (same control as Write to Obsidian).
   useEffect(() => {
     let alive = true;
     void listVaultFolders(vault).then((f) => { if (alive) setFolders(f); });
@@ -780,7 +764,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
     setFolder(next);
     if (next !== data.folder) { data.folder = next; void processGraph(); }
   }
-  // One refresh: rescan the vault's folders, then re-read the notes.
   function refresh() {
     void listVaultFolders(vault).then(setFolders);
     void refreshConnection(data.id);
@@ -799,8 +782,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
 
   return (
     <NodeShell node={data} emit={emit}>
-      {/* Wireable folder / glob: the dots + a "wired" tag when a cable drives them, else
-          the card controls below stay the editor. */}
       <InlineInputs node={data} emit={emit} keys={["folder", "glob"]} cableOnlyKeys={VAULT_CABLE_ONLY} />
       <div className="sol-conn">
         {!canRead ? (
@@ -809,7 +790,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
           <>
             {vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
             <div className="sol-conn__vault">
-              {/* Which vault is a STATE: the bundled demo is a snapshot in a built app, so a Refresh re-reads the same notes. */}
+              {/* The bundled demo vault is a snapshot in a built app, so a Refresh re-reads the same notes. */}
               <div className="sol-conn__note" style={{ flex: 1 }}>{isDemoVaultPath(vault) ? "Demo vault" : "Obsidian vault"}{data.folder ? ` · ${data.folder}` : ""}</div>
               {openUrl && (
                 <button
@@ -836,8 +817,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               >
                 <option value="">Whole vault</option>
-                {/* A previously-picked folder that no longer lists still shows so the
-                    selection isn't silently lost. */}
+                {/* A picked folder that no longer lists still shows, so the selection isn't silently lost. */}
                 {folder && !folders.includes(folder) && <option value={folder}>{folder}</option>}
                 {folders.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
@@ -888,9 +868,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
 }
 
 // ─── TASKNOTES ────────────────────────────────────────────────────────────────────
-// The Obsidian plugin's local HTTP API. Provider select reshapes the sockets (Tasks → a
-// cube; Calendar → From/To + an events frame; Stats → five counts); the bearer token
-// lives in apiKeyStore like the Data Feed keys, the URL in Settings ▸ Obsidian.
 export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version);
   useSyncExternalStore(apiKeyStore.subscribe, apiKeyStore.version);

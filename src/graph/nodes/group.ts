@@ -4,7 +4,7 @@ import { ClassicPreset } from "rete";
 export class GroupNode extends ClassicPreset.Node {
   label: string;
   members: string[];      // the authoritative set ([[C86]] membershipByGesture)
-  color: string;          // palette SLOT id (resolved to a hex at render); header / outline color
+  color: string;
   collapsed: boolean;
   width: number;
   height: number;

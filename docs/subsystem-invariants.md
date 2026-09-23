@@ -45,6 +45,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | Spec | Subsystem | Main code |
 |---|---|---|
 | `../tree/specs/documents/save-format.md` | the saved document, the text form, loading | `persistence.ts`, `textForm.ts`, `graphValidate.ts` |
+| `../tree/specs/documents/table-popup.md` | the Table popup: modes, editing, write-back, the Form view, copy and export | `components/TablePopup.tsx`, `tablePopupStore.ts` |
 | `../tree/specs/documents/reports-and-notes.md` | Notes, Reports and Knap: the body syntax, rendering, mail merge, vault writes, export | `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` |
 | `../tree/specs/documents/addressable-model.md` | node names and name-addressed references | `nodeNameStore.ts`, `nodeNaming.ts` |
 | `../tree/specs/documents/per-doc-autosave-persistence.md` | per-document autosave slots | `documentStore.ts` |
@@ -72,6 +73,9 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/canvas/add-menu.md` | the Add menu tree, search rows and scoring | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` |
 | `../tree/specs/canvas/layout-chrome.md` | where every bar and floating overlay sits, and what its offsets derive from | `Header.tsx`, `chromeBottom.ts`, the chrome CSS |
 | `../tree/specs/canvas/touch-gestures.md` | the inventory of every pointer and touch gesture per device | `flow/*`, `pointerGesture.ts` |
+| `../tree/specs/canvas/palette-and-theme.md` | palettes, slots, the neutral chrome ramp, document and report palettes, the accent and light or dark theme | `palette.ts`, `appTheme.ts`, `themeVars.ts` |
+| `../tree/specs/canvas/command-palette.md` | the Command Palette: what it lists, search, and AI mode | `CommandPalette.tsx` |
+| `../tree/specs/canvas/outline-panel.md` | the Navigator list: tree, filters, sorting, focusing | `OutlinePanel.tsx` |
 
 ## Integrations
 

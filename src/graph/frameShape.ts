@@ -1,6 +1,4 @@
 // [[C8]] declareOnce, [[D17]] relaysTransparent
-// The static sibling of frameVerbs.ts: a Shape's columns must be exactly what a real
-// preview() reports. Nest/Unnest and Frame Lookup are out — not frame shapes at all.
 import { makeHeaders, type FrameColType, type FrameValue } from "./frame";
 import { solError } from "./errorValue";
 import type { FrameSchemaColumn } from "./frameBackend";
@@ -10,25 +8,17 @@ export type ShapeColumn = FrameSchemaColumn;
 
 export interface Shape {
   columns: ShapeColumn[];
-  /** The OUTPUT column count depends on the DATA: `columns` lists what is known
-   *  ahead of running, and more may appear at compute time. Absent = exact. */
   dynamic?: boolean;
 }
 
-/** The column NAMES of a static shape, in order — the shared column picker's option
- *  source (B4). Empty when the shape is unknown (`null`); a `dynamic` shape still lists
- *  the columns it knows (the picker keeps free-text open on top). Pure. */
 export function columnNamesOf(shape: Shape | null | undefined): string[] {
   return shape ? shape.columns.map((c) => c.name) : [];
 }
 
-/** A literal frame's shape (Frame Input, or any already-materialized FrameValue). */
 export function shapeOfFrameValue(f: FrameValue): Shape {
   return { columns: f.columns.map((c) => ({ name: c.name, type: c.type })) };
 }
 
-/** A zero-row frame of this shape: lets a producer whose columns never depend on ROW data
- *  declare its shape by running its OWN verb, instead of a second mirror of it that can drift. */
 export function emptyFrameOf(shape: Shape): FrameValue {
   return { __frame: true, columns: shape.columns.map((c) => ({ name: c.name, type: c.type, values: [] })) };
 }
@@ -39,7 +29,6 @@ function requireCol(s: Shape, name: string): ShapeColumn {
   return col;
 }
 
-/** One arm per `FrameOp` member, mirroring `applyVerb`'s switch kind for kind. */
 export function shapeOf(op: FrameOp, input: Shape): Shape {
   switch (op.kind) {
     case "select": {
@@ -56,7 +45,6 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       const unique = makeHeaders(proposed, proposed.length);
       return { columns: input.columns.map((c, i) => ({ ...c, name: unique[i] })) };
     }
-    // Row-only ops: the column set never changes.
     case "sort":
     case "distinct":
     case "head":
@@ -64,7 +52,6 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
     case "filterMulti":
     case "sliceRows":
       return input;
-    // Cell-rewriting ops keep the column set and types; an unknown target column is #REF!.
     case "fillBlanks":
       for (const c of op.columns) requireCol(input, c);
       return input;
@@ -77,7 +64,6 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       const keyOut: ShapeColumn[] = keyCols.map((c) => ({ name: c.name, type: c.type }));
       const aggOut: ShapeColumn[] = aggCols.map(({ spec, col }) => ({
         name: spec.as,
-        // min/max preserve the SOURCE column's type; every other agg is numeric.
         type: spec.op === "min" || spec.op === "max" ? col.type : "number",
       }));
       const out = [...keyOut, ...aggOut];
@@ -105,7 +91,6 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       if (valueNames.length === 0) throw solError("#VALUE!", "PIVOTBY needs at least one value field");
       const rowCols = rowFields.map((n) => requireCol(input, n));
       const keyNames = makeHeaders(rowFields, rowFields.length);
-      // The cross-tab width depends on the DATA and can't be known without running.
       return { columns: rowCols.map((c, k) => ({ name: keyNames[k], type: c.type })), dynamic: true };
     }
     case "window": {
@@ -113,18 +98,15 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       if (op.orderBy) requireCol(input, op.orderBy);
       const valCol = op.column ? requireCol(input, op.column) : null;
       const name = op.as.trim() || op.fn;
-      // lag / lead / first / last carry the value column's type; everything else is numeric.
       const type: FrameColType = valCol && (op.fn === "lag" || op.fn === "lead" || op.fn === "first" || op.fn === "last") ? valCol.type : "number";
       return { columns: [...input.columns.filter((c) => c.name !== name), { name, type }] };
     }
   }
 }
 
-/** Binary, so it is its own entry point, not a FrameOp member; mirrors joinFrames. */
 export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
   requireCol(left, opts.leftKey);
   requireCol(right, opts.rightKey);
-  // Semi/anti keep LEFT columns only (a filter, not a widening join).
   if (opts.how === "semi" || opts.how === "anti") {
     return { columns: left.columns.map((c) => ({ name: c.name, type: c.type })) };
   }
@@ -139,7 +121,6 @@ export function shapeOfJoin(left: Shape, right: Shape, opts: JoinOpts): Shape {
   return { columns: out };
 }
 
-/** Union by NAME; a shared name with conflicting types is a #TYPE!. */
 export function shapeOfAppend(shapes: readonly Shape[]): Shape {
   const names: string[] = [];
   const typeOf = new Map<string, FrameColType>();
@@ -155,7 +136,6 @@ export function shapeOfAppend(shapes: readonly Shape[]): Shape {
   return { columns: names.map((name) => ({ name, type: typeOf.get(name)! })) };
 }
 
-/** Always exactly one new numeric column — fully static, no data dependency. */
 export function shapeOfAddIndex(input: Shape, name: string): Shape {
   const nm = name.trim() || "Index";
   const unique = makeHeaders([nm, ...input.columns.map((c) => c.name)], 1 + input.columns.length);
@@ -167,8 +147,6 @@ export function shapeOfAddIndex(input: Shape, name: string): Shape {
   };
 }
 
-/** N = the max part count across ROWS, so this states only the untouched columns
- *  and flags the rest dynamic. */
 export function shapeOfSplitColumn(input: Shape, column: string, delimiter: string): Shape {
   if (delimiter === "") return input;
   const idx = input.columns.findIndex((c) => c.name === column);

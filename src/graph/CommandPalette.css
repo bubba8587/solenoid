@@ -4,10 +4,6 @@
   z-index: 300;
 }
 
-/* Docked (always-on) mode: the scrim doesn't blanket the canvas — only the palette
-   box itself is interactive, so the rest of the screen stays clickable. It also
-   yields to the modal band (Settings/help/shortcuts at 200): a docked bar is
-   ambient chrome, not an invoked overlay, so dialogs must cover it. */
 .solenoid-cmdpalette-scrim--persistent { pointer-events: none; z-index: 150; }
 .solenoid-cmdpalette-scrim--persistent .solenoid-cmdpalette { pointer-events: auto; }
 
@@ -72,7 +68,6 @@
   font-size: 11px;
 }
 
-/* Wraps the input so the sparkle can sit inside the field's right edge. */
 .solenoid-cmdpalette__field {
   position: relative;
   display: flex;
@@ -93,29 +88,16 @@
 }
 .solenoid-cmdpalette__input:focus { border-color: var(--accent); }
 .solenoid-cmdpalette__input::placeholder { color: var(--text-muted); }
-/* type="search" adds a native clear button + decoration on WebKit — hide them so
-   the field looks identical to the old type="text" box. */
+/* Hide WebKit's native clear button and decoration on type="search". */
 .solenoid-cmdpalette__input::-webkit-search-cancel-button,
 .solenoid-cmdpalette__input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
 
-/* ── AI mode ──────────────────────────────────────────────────────────────────
-   The sparkle switches the palette from running commands to asking the AI. It only
-   exists once an AI account is connected (Settings ▸ AI), so an unconnected app is
-   visually unchanged.
-
-   Filling the palette with the accent is a deliberate, narrow exception to the Quiet
-   Accent Rule, which permits a colored surface when it "is colored because something
-   about its state or type is being communicated". The whole point here is that Enter
-   now does something categorically different, and a small badge would be too quiet a
-   signal for a mode that reroutes the primary action. Flat accent + --accent-ink (the
-   app-wide readable-on-accent token, so it tracks a user-swapped accent and both
-   themes) — no gradient, no glow, nothing that reads as the AI-startup look. */
 .solenoid-cmdpalette__ai {
   position: absolute;
   top: 50%;
   right: 8px;
   transform: translateY(-50%);
-  /* 24px box + a 16px glyph: both even, so the icon centers on whole pixels. */
+  /* 24px box and a 16px glyph: both even, so the icon centers on whole pixels. */
   width: 24px;
   height: 24px;
   display: flex;
@@ -130,9 +112,7 @@
   transition: color 160ms ease, background-color 160ms ease;
 }
 .solenoid-cmdpalette__ai:hover { color: var(--text-bright); }
-/* Room for the button so a long query never runs under it. Keyed on a modifier the
-   field carries only when the button renders, so an app with no AI key keeps the
-   original symmetric padding. */
+/* Keyed on a modifier present only when the button renders, so an app without AI keeps the symmetric padding. */
 .solenoid-cmdpalette__field--ai .solenoid-cmdpalette__input { padding-right: 38px; }
 
 .solenoid-cmdpalette--ai .solenoid-cmdpalette__input,
@@ -144,8 +124,6 @@
 .solenoid-cmdpalette--ai .solenoid-cmdpalette__input::placeholder {
   color: color-mix(in srgb, var(--accent-ink) 62%, transparent);
 }
-/* Sub-surfaces are tints of the ink rather than new colors, so the whole panel
-   stays one accent field however the accent is swapped (the documentTitle pattern). */
 .solenoid-cmdpalette--ai .solenoid-cmdpalette__item:hover,
 .solenoid-cmdpalette--ai .solenoid-cmdpalette__item--active {
   background: color-mix(in srgb, var(--accent-ink) 14%, transparent);
@@ -159,10 +137,6 @@
   background: color-mix(in srgb, var(--accent-ink) 16%, transparent);
 }
 
-/* ── AI turn output ───────────────────────────────────────────────────────────
-   The panel above the prompt field carrying the turn's result. A NEUTRAL overlay
-   surface (the accent stays on the input, marking the mode); diff-line tints are
-   state colors per the Quiet Accent Rule — success = added, danger = removed. */
 .solenoid-cmdpalette__airesult {
   order: -1;
   margin-bottom: 4px;
@@ -188,8 +162,6 @@
   overflow-y: auto;
 }
 
-/* Status hues are the DESIGN.md literals (the codebase pattern — no app-wide
-   status vars; errorChip.css does the same), shared across both themes. */
 .solenoid-cmdpalette__aierror {
   color: #e0473a;
   font-size: 12px;
@@ -236,7 +208,6 @@
   cursor: pointer;
 }
 .solenoid-cmdpalette__aibtn:hover { background: var(--btn-hover); border-color: var(--btn-border-hover); }
-/* The one confirming action: accent-filled with the readable-on-accent ink. */
 .solenoid-cmdpalette__aibtn--apply {
   background: var(--accent);
   border-color: var(--accent);
@@ -244,11 +215,7 @@
 }
 .solenoid-cmdpalette__aibtn--apply:hover { background: var(--accent); filter: brightness(1.06); }
 
-/* ── AI-added node reveal (aiReveal.ts) ───────────────────────────────────────
-   New nodes from an applied AI edit settle in: fade + a small rise, staggered.
-   The class sits on rete's node holder; the animation runs on the CHILD card
-   root so the holder's translate positioning stays untouched. `backwards` fill
-   keeps a delayed node hidden until its turn. Short and functional. */
+/* The animation runs on the child card root, so the node wrapper's translate positioning stays untouched. */
 .solenoid-ainew > * {
   animation: solenoid-ainew-in 480ms ease var(--ainew-delay, 0ms) backwards;
 }
@@ -260,9 +227,7 @@
   .solenoid-ainew > * { animation: none; }
 }
 
-/* The transform between the two states. Short and functional per DESIGN.md's motion
-   rule — long enough to read as a change of mode, not a choreographed reveal. The
-   transition lives on the resting rules so it plays in BOTH directions. */
+/* The transition lives on the resting rules, so it plays in both directions. */
 .solenoid-cmdpalette__input,
 .solenoid-cmdpalette__results {
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
@@ -273,13 +238,8 @@
   .solenoid-cmdpalette__ai { transition: none; }
 }
 
-/* Mobile: the on-screen keyboard owns the bottom half of the viewport, so the
-   palette anchors to the TOP with the input first and results below it
-   (desktop keeps the Spotlight-style input-at-bottom). Rows get touch-sized
-   padding; keyboard-shortcut hints mean nothing without a keyboard. */
 html.is-mobile .solenoid-cmdpalette {
-  /* 92 = the mobile top-chrome bottom edge (82) + 10 gap — level with the nav
-     pill; see tree/specs/canvas/layout-chrome.md "Mobile stack" (hand-keyed, keep in sync). */
+  /* 92 = the mobile top-chrome edge (82) + 10, level with the nav pill; hand-keyed, keep in sync. */
   top: calc(env(safe-area-inset-top, 0px) + 92px);
   bottom: auto;
 }

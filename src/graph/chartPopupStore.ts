@@ -1,6 +1,4 @@
 // [[C100]] chartIsAValue
-// The currently-open chart popup. Must stay a module store: it is opened from
-// inside a node (rete's separate React root) but mounted once in App.
 import { createValueStore } from "./storeKit";
 import type { ChartShape } from "./components/chartView";
 import type { ChartOptions } from "./nodes/chartOptions";
@@ -8,23 +6,15 @@ import type { ChartValue } from "./chartValue";
 
 export interface ChartPopupState {
   title: string;
-  /** A full chart VALUE (the general path, every op) — when set, the series
-   *  fields below are ignored. */
+  /** When set, the series fields below are ignored. */
   value?: ChartValue;
-  /** The series path (Sparkline / Chart expand button): op + points. */
   op?: ChartShape;
-  /** Whether to draw gridlines + axes (Chart) or a clean sparkline. */
   axes?: boolean;
   series?: { i: number; v: number }[];
-  /** X-axis category labels (Frame col 0) — mirrors the inline chart. */
   labels?: (string | number)[];
-  /** matplotlib-style overrides (Chart only); undefined for a Sparkline. */
   opts?: ChartOptions;
-  /** Color bars/columns by value sign (Sparkline win/loss). */
   signColors?: { pos: string; neg: string };
-  /** Host node accent so the popup header matches the node it opened from. */
   accent?: string;
-  /** Host node id, when opened from a node body — enables the header Pin action. */
   pinNodeId?: string;
 }
 

@@ -18,8 +18,7 @@ export function NumberInputComponent({ data, emit }: NodeProps<NumberInputNodeTy
     (v) => { data.value = v; void processGraph(data.id); },
   );
 
-  // Drag-to-scrub, same gesture as the per-row inline literals — the drag engages
-  // only past the move threshold, so a plain click still focuses for typing.
+  // Drag-to-scrub engages only past the move threshold, so a plain click still focuses for typing.
   const apply = (v: number) => { data.value = v; void processGraph(data.id); };
   const scrub = useNumberScrub(
     data.value,

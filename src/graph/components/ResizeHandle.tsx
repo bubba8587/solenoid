@@ -1,22 +1,17 @@
 // [[C37]] observerOwnsSize
 import { useRef } from "react";
-// Owning accessors, not getEditor/getView — a node inside a composite drill-in isn't
-// in the MAIN editor, so the grip wouldn't render.
+// Owning accessors: a node inside a drill-in isn't in the main editor, so the grip wouldn't render.
 import { getOwningEditor, getActiveView } from "../activeGraph";
 import { useFlowResizeGrip } from "../flowSurface";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { scheduleAutosave } from "../persistence";
 import { nodeResizable } from "../rete-nodes";
 
-// Floors (canvas px). The card-width floor sits below the CSS default (180) on purpose;
-// the height floor bounds only the value box, so no card element can ever be hidden.
+// The width floor sits below the CSS default (180) on purpose; the height floor bounds only the value box.
 const MIN_CARD_W = 140;
 const MIN_BOX_H = 40;
 
-/** Width is applied to the card, height to the value box alone — card height stays
- *  content-driven so the header / rows are never covered. The grip reports the CARD's
- *  size, so the box follows the height delta from the drag's start. The size rides
- *  `nodeSizeStore`, the grip's own persisted channel ([[C37]] observerOwnsSize). */
+/** The grip reports the card's size, so the box follows the height delta from the drag's start; the size rides `nodeSizeStore` ([[C37]] observerOwnsSize). */
 export function ResizeHandle({ nodeId }: { nodeId: string }) {
   const Grip = useFlowResizeGrip();
   const start = useRef<{ cardH: number; boxH: number } | null>(null);
@@ -25,8 +20,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
   if (!resizable || !Grip) return null;
 
   const onResizeStart = (size: { width: number; height: number }) => {
-    // --box-h is the body's CSS height (its padding sits outside it); clientHeight is
-    // layout px, so no zoom division.
+    // --box-h is the body's CSS height (padding outside it); clientHeight is layout px, so no zoom division.
     const box = getActiveView()?.nodeElement(nodeId)?.querySelector<HTMLElement>(".solenoid-node__body");
     let boxH = size.height;
     if (box) {
@@ -63,5 +57,3 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
   );
 }
 
-// The corner-grip glyph is a masked ::before in nodeCard.css, shared with
-// .solenoid-field-resize so every resize affordance stays the same mark.

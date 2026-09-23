@@ -1,6 +1,3 @@
-/* The Pivot field editor — an Excel-style 2×2 field pane shown as a modal popup.
-   Reuses .sol-popup chrome (popupChrome.css); this file owns the field list, the
-   2×2 zone grid, and the draggable field chips. */
 
 .pivot-editor {
   width: 660px;
@@ -19,7 +16,6 @@
   overflow: auto;
 }
 
-/* ── Field list ─────────────────────────────────────────────────────────────── */
 .pivot-fields {
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -37,7 +33,6 @@
 .pivot-fields__hint { font-weight: 400; text-transform: none; letter-spacing: 0; }
 .pivot-fields__list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; }
 
-/* ── The 2×2 grid: Filters · Columns / Rows · Values ────────────────────────── */
 .pivot-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -56,7 +51,6 @@
   gap: 6px;
   transition: border-color 0.12s, background 0.12s;
 }
-/* Drag-over drop target — the popup's accent, like every other tinted thing here. */
 .pivot-zone--over {
   border-color: var(--node-accent, var(--accent));
   border-style: solid;
@@ -95,7 +89,6 @@
   padding: 2px 4px;
 }
 
-/* ── Field chips ────────────────────────────────────────────────────────────── */
 .pivot-chip {
   display: inline-flex;
   align-items: center;
@@ -111,9 +104,7 @@
   max-width: 100%;
 }
 .pivot-chip:active { cursor: grabbing; }
-/* A source field already placed in a zone is dimmed as a "used" cue — but 0.55 made
-   the NAME hard to read, and a configured pivot has most fields used, so most of the
-   list looked washed out. Keep a clear cue at a legible strength. */
+/* A clear but legible "used" cue: a configured pivot has most fields used, and 0.55 washed the list out. */
 .pivot-chip--used { opacity: 0.74; }
 .pivot-chip__glyph {
   display: inline-flex;
@@ -153,7 +144,6 @@
 }
 .pivot-chip__x:hover { color: var(--text); background: var(--surface-sunken); }
 
-/* ── Filters: a field chip that expands a value checklist ───────────────────── */
 .pivot-filter { display: flex; flex-direction: column; gap: 4px; width: 100%; }
 .pivot-filter__chip { width: 100%; box-sizing: border-box; }
 .pivot-filter__name {
@@ -195,7 +185,6 @@
 .pivot-filter__opt input { margin: 0; }
 .pivot-filter__opt span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ── Footer ─────────────────────────────────────────────────────────────────── */
 .pivot-editor__footer {
   display: flex;
   align-items: center;
@@ -203,9 +192,7 @@
   padding: 8px 14px;
   border-top: 1px solid var(--border);
 }
-/* Takes the popup's own accent, like the Table/Frame/Cube footer actions. The ink is
-   derived from that accent (popupCardVars) — the hardcoded #fff it replaced was
-   already wrong against a light accent. */
+/* Takes the popup's accent with the ink derived from it (popupCardVars), like the Table, Frame and Cube footer actions. */
 .pivot-editor__done {
   font-size: 12px;
   padding: 5px 14px;
@@ -217,10 +204,7 @@
 }
 .pivot-editor__done:hover { filter: brightness(1.06); }
 
-/* ── Mobile / touch ───────────────────────────────────────────────────────────
-   Phones: stack the 2×2 zone grid into one full-width column (side-by-side zones
-   are ~140px and unusable). Touch: enlarge the small chips, controls, and the
-   chip-remove ✕ so they're tappable. */
+/* Phones stack the zone grid into one column; touch enlarges the chips, controls and remove marks. */
 @media (max-width: 640px) {
   .pivot-editor { width: 96vw; }
   .pivot-grid { grid-template-columns: 1fr; }

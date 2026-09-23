@@ -586,6 +586,11 @@ scroll and expand/collapse beyond them are ephemeral React state, which the 1.4 
 first figure that would carry per-viewer state") already anticipated. New keys are added to
 `CHART_BUILDER_TARGETS`.
 
+**Payload edges** (`ganttPayload.ts`). A baseline is a second scheduled table joined back to the
+plan by task name; a baseline that is not a plan draws no ghost. An ambiguous or unreadable
+view-window bound is no window, since it is a view option, not a value. The shaded non-working
+spans extend 14 days beyond the plan on each side, so a padded window still reads right.
+
 **Export.** The Report embed is the live `ChartFigure`; the webpage export serializes *the
 single largest SVG* in a node's DOM (`nodeChartSvg`), which a grid-plus-banded-SVG figure
 defeats. So a headless `payload → standalone SVG string` serializer is a **second, pure

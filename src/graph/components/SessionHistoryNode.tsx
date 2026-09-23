@@ -17,8 +17,6 @@ function buildDigest(): string {
   return digestLabeled(flowHistory.records());
 }
 
-/** A live readout of the session's undo/redo stack — no sockets and no persisted
- *  state; a dashboard onto app history, not graph data. */
 export function SessionHistoryComponent({ data }: NodeProps<SessionHistoryNodeType>) {
   const [digest, setDigest] = useState(buildDigest);
   const [copied, setCopied] = useState(false);

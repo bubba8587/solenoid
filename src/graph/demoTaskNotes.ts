@@ -1,24 +1,17 @@
-// [[D62]]
-// Fake TaskNotes replies, the way [[C1]] demoVault fakes the vault: the marketing /obsidian page
-// forces them, and an app with no TaskNotes URL configured reads them while the "Use demo
-// vault" setting allows it ([[D62]] demoVaultResolution),
-// so the TaskNotes node shows a real Tasks cube (and events/stats) without a running
-// TaskNotes HTTP API. The node routes to these canned replies — parsed by the SAME
-// taskNotesApi parsers as the real API — instead of the network. Writes are never faked.
+// [[D62]] demoVaultResolution, [[C1]] demoVault
+// Canned TaskNotes replies, parsed by the real taskNotesApi parsers, for when no TaskNotes URL is set and the demo is
+// allowed, or the marketing page forces it. Writes are never faked.
 import { settingsStore } from "./settingsStore";
 
 let _forced = false;
 
-/** Pin the TaskNotes node to the canned demo replies (true), or clear it (false). */
 export function forceDemoTaskNotes(on: boolean): void { _forced = on; }
 
-/** Is the TaskNotes node reading the canned demo data instead of the network? */
 export function isDemoTaskNotes(): boolean {
   return _forced || (settingsStore.get("useDemoVault") && settingsStore.get("taskNotesUrl").trim() === "");
 }
 
-// Shaped exactly like a real `GET /api/tasks` page; the parser reads `.tasks` +
-// `.pagination`. Fixed dates so the demo is stable across sessions.
+// Shaped like a real `GET /api/tasks` page, with fixed dates so the demo is stable.
 export const DEMO_TASKS_JSON = JSON.stringify({
   tasks: [
     { path: "Tasks/Draft the vault README.md", title: "Draft the vault README", status: "in-progress", priority: "high", due: "2026-09-18", scheduled: "2026-09-16", timeEstimate: 90, totalTrackedTime: 55, projects: ["Docs"], contexts: ["writing"], tags: ["task"] },

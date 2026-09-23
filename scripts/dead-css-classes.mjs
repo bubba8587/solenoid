@@ -1,18 +1,8 @@
-// Static sweep for CSS class selectors NOTHING in the source emits — the shape of
-// breakage the React Flow port leaves behind. A removed render package took its DOM
-// with it (rete's classic preset wrapped every socket in .input-socket/.output-socket),
-// and the CSS keyed on those classes stopped matching in silence: no error, no failing
-// test, just an element that quietly renders as nothing.
-//
+// Lists CSS class selectors that nothing in the source emits (a removed renderer's classes match
+// silently). Buckets: A, no source mentions it; B, only class readers (census, tests) mention it;
+// C, a BEM suffix a template may compose at runtime, to check by hand. Substring matching counts a
+// class named in a comment as emitted, so A under-reports. Writes nothing.
 //   node scripts/dead-css-classes.mjs [srcDir]
-//
-// Three buckets, most damning first:
-//   A  no source file mentions it at all
-//   B  mentioned, but only by files that READ classes (census, tests) — never emitted
-//   C  a BEM suffix a template literal probably composes at runtime — verify by hand
-//
-// Substring matching, so a class named only in a COMMENT counts as emitted: bucket A
-// under-reports rather than crying wolf. Pure measurement; nothing is written.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 
@@ -29,8 +19,7 @@ const files = walk(ROOT);
 const cssFiles = files.filter((f) => extname(f) === ".css");
 const srcFiles = files.filter((f) => [".ts", ".tsx", ".js", ".jsx", ".html", ".md", ".json"].includes(extname(f)));
 
-// Every class token in a SELECTOR position. Comments and declaration bodies go first,
-// so a `.foo` inside a mask data-URI or a content string can't read as a selector.
+// Strip comments and declaration bodies first, so a `.foo` in a data URI or content string isn't a selector.
 const classesByFile = new Map();
 for (const f of cssFiles) {
   const selectorText = readFileSync(f, "utf8")
@@ -46,8 +35,6 @@ const srcText = new Map();
 for (const f of [...srcFiles, "index.html"]) {
   try { srcText.set(f, readFileSync(f, "utf8")); } catch { /* not there */ }
 }
-// A file that can put a class INTO the DOM. Anything else (census.ts, tests, docs) only
-// reads one, so a mention there is not evidence the class is ever emitted.
 const RENDERS = new Set(
   [...srcText]
     .filter(([f, t]) =>
@@ -56,7 +43,6 @@ const RENDERS = new Set(
     .map(([f]) => f),
 );
 
-// Namespaces the library writes into the DOM, not our source.
 const VENDOR = [/^react-flow/, /^xy-/, /^katex/, /^mermaid/, /^cm-/, /^hljs/, /^tippy/, /^rete/, /^recharts/, /^decorum/];
 const renderMention = (s) => [...srcText].some(([f, t]) => RENDERS.has(f) && t.includes(s));
 const composed = (cls) =>

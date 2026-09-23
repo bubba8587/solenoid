@@ -1,23 +1,16 @@
-/* Frame-input example hint — the TablePopup grid in MINIATURE (the surface a
-   frame chip opens), floating beside the socket: solid panel, sticky-style
-   corner + row-number column, sunken column heads with the popup's tinted-name
-   recipe, per-cell gridlines, mono cells. Extremely small on purpose: a glance
-   cue for "wire a frame shaped like this", not a surface to read. Sits in the
-   110–199 band: above the HUD, below modals (tree/specs/canvas/layout-chrome.md ladder). */
+/* [[D18]] frameLabelHint */
 .solenoid-frame-hint {
   position: fixed;
   z-index: 120;
-  pointer-events: none; /* a tooltip — never a hover target itself */
+  pointer-events: none;
   background: var(--overlay-bg);
   border: 1px solid var(--overlay-border);
   border-radius: 4px;
   box-shadow: var(--overlay-shadow);
-  overflow: hidden; /* clips the grid's corners to the panel radius */
+  overflow: hidden;
 }
 
 .solenoid-frame-hint table {
-  /* `separate` like the popup grid: each cell draws its own right+bottom
-     gridline; the panel border supplies the outer frame. */
   border-collapse: separate;
   border-spacing: 0;
   font-family: var(--font-mono);
@@ -33,8 +26,6 @@
 .solenoid-frame-hint td:last-child {
   border-right: none;
 }
-/* Column names — the popup's .table-popup__colhead--name recipe, with the FRAME
-   socket hue standing in for the node accent (the input has no node yet). */
 .solenoid-frame-hint__name {
   background: var(--surface-sunken);
   padding: 0 4px;
@@ -52,8 +43,6 @@
   text-align: right;
 }
 
-/* Footer strip below the sample rows — one muted word carries "this is an
-   example, not your data" (the grid's last-row border is the seam above it). */
 .solenoid-frame-hint__tag {
   padding: 1px 4px 2px;
   text-align: right;
@@ -63,15 +52,11 @@
   color: var(--text-muted);
 }
 
-/* Socket hover-peek — a live value rendered as a small, scaled-down Display floating
-   beside the socket. Same overlay chrome + band as the example hint; the value views
-   inside keep the app-neutral chrome (no --node-accent set here → their accent falls
-   back to --text-dim, DESIGN's Quiet Accent). Scaled from the top-left so the layer's
-   rect-based positioning stays exact; size-capped so a big frame stays a glance. */
+/* Scaled from the top-left, so the layer's rect-based positioning stays exact. */
 .solenoid-socket-peek {
   position: fixed;
   z-index: 120;
-  pointer-events: none; /* a tooltip — leaving the socket hides it, never a hover target */
+  pointer-events: none;
   transform: scale(0.8);
   transform-origin: top left;
   max-width: 260px;
@@ -82,13 +67,11 @@
   border-radius: 6px;
   box-shadow: var(--overlay-shadow);
 }
-/* The value views assume a node body's padding; give the peek its own so a bare
-   scalar/frame isn't flush to the border. */
+/* The value views assume a node body's padding. */
 .solenoid-socket-peek > * {
   padding: 4px 6px;
 }
 
-/* Inline variant — the Inspector renders the same mini-table in flow. */
 .solenoid-frame-hint--inline {
   position: static;
   z-index: auto;
@@ -97,7 +80,6 @@
   display: inline-block;
   margin: 2px 0 4px 16px;
 }
-/* In the Inspector it is a reference table to READ, not a hover cue — panel-scale type. */
 .solenoid-frame-hint--inline table {
   font-size: 11px;
 }

@@ -14,14 +14,12 @@ import "./NavMenu.css";
 const ZOOM_STEP = 1.4;
 
 async function zoomBy(delta: number) {
-  const view = getActiveView(); // zoom the graph you're looking at (drill-in too)
+  const view = getActiveView();
   if (!view) return;
   const { k, x, y } = view.transform;
   const next = clamp(k * delta, 0.1, 4);
   if (next === k) return;
-  // rete's zoom API takes an (ox, oy) ADDED to the transform after the scale change.
-  // Solving for "screen point (cx, cy) stays put":
-  //   newX = cx − (next / k) * (cx − x)   →   dx = (cx − x) * (1 − next/k)
+  // rete adds (ox, oy) after scaling; keeping screen point (cx, cy) fixed gives dx = (cx − x) * (1 − next/k).
   const rect = view.container.getBoundingClientRect();
   const cx = rect.width / 2;
   const cy = rect.height / 2;
@@ -29,20 +27,17 @@ async function zoomBy(delta: number) {
   await view.zoom(next, (cx - x) * ratio, (cy - y) * ratio);
 }
 
-// The chrome panels overlay the canvas, so a plain zoom-to-fit centers content under the
-// header / behind the side panels; fit into the free rectangle between the live rects.
+// Fit into the free rectangle between the live chrome rects, not under the header or behind side panels.
 function visibleInsets(c: DOMRect) {
   const q = (s: string) => document.querySelector(s) as HTMLElement | null;
-  // A display:none panel still answers getBoundingClientRect with an all-zero rect at
-  // (0,0), which reads as a real edge — null those out so a folded panel reserves nothing.
+  // A display:none panel reports an all-zero rect at (0,0), which would read as a real edge.
   const rect = (el: HTMLElement | null) => {
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return r.width === 0 && r.height === 0 ? null : r;
   };
   const M = 14; // breathing margin off each panel
-  // Mobile chrome is two full-width edges only: the side controls are small floating
-  // buttons, so reserving them would shrink the width wrongly.
+  // Mobile chrome is two full-width edges; its small floating side buttons reserve nothing.
   if (IS_MOBILE) {
     const topbar = rect(q(".solenoid-topbar"));
     const bar = rect(q(".solenoid-mobile-bar"));
@@ -69,14 +64,13 @@ function visibleInsets(c: DOMRect) {
   };
 }
 
-// Chrome-aware zoom-to-fit; Cleanup calls it so it frames the view like the Fit button.
+// Chrome-aware zoom-to-fit, also run by Cleanup.
 export async function fitAll() {
-  const view = getActiveView(); // fit the graph you're looking at (drill-in too)
+  const view = getActiveView();
   const editor = getActiveEditor();
   if (!view || !editor) return;
 
-  // Same geometry the minimap uses: hidden members dropped, a collapsed group sized to
-  // its compact rendered box.
+  // The minimap's geometry: hidden members dropped, a collapsed group at its compact box.
   const rects = collapsedAwareNodesRect();
   if (rects.length === 0) return;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -95,7 +89,6 @@ export async function fitAll() {
   const availW = Math.max(60, c.width - ins.left - ins.right);
   const availH = Math.max(60, c.height - ins.top - ins.bottom);
 
-  // Fit the box into the free region, with a little slack, clamped.
   const k = floorZoom(Math.min(availW / bw, availH / bh, 1.5) * 0.92);
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
@@ -106,12 +99,9 @@ export async function fitAll() {
   await view.pan(ax - cx * k, ay - cy * k);
 }
 
-/** These act on the viewport, not the document, so they stay on the canvas rather than
- *  moving into the TopBar. */
 export function NavMenu() {
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  // Fullscreen shows on any TOUCH-primary device (IS_COARSE, not IS_MOBILE) — no F11 key
-  // there — and is hidden where the browser can't do it, so it's never a dead button.
+  // Shown on any touch-primary device (IS_COARSE; no F11 there), and hidden where the browser can't go fullscreen.
   const showFullscreen = IS_COARSE && fullscreenSupported();
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {

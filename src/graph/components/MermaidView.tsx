@@ -1,18 +1,14 @@
-// [[C97]] rechartsLazyChunk (mermaid follows the same rule), [[C100]] chartIsAValue (the shared slot order)
+// [[C97]] rechartsLazyChunk (mermaid follows the same rule), [[C100]] chartIsAValue (the shared slot order), [[C103]] untrustedContentSeams
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, themeAccent } from "../palette";
 
-// mermaid is a heavy dep (d3/dagre), so it MUST stay dynamically imported — off the main
-// bundle and cold-start path.
 
-// Resolved through the ACTIVE palette + mode, so a palette switch re-colors series.
 const SERIES_SLOTS = [
   "blue", "gold", "teal", "pink", "green", "purple",
   "sky", "vermilion", "lime", "violet", "amber", "gray",
 ] as const;
 
-/** Read one CSS custom property off <html>, with a fallback if unset/SSR. */
 function readVar(name: string, fallback: string): string {
   if (typeof document === "undefined") return fallback;
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -35,7 +31,6 @@ function buildThemeVariables(mode: "dark" | "light"): Record<string, string | bo
     darkMode: mode === "dark",
     background: "transparent",
     fontFamily: "inherit",
-    // Structural trio — flowchart / class / state / ER node fills, borders, text.
     primaryColor: surface,
     primaryBorderColor: accent,
     primaryTextColor: text,
@@ -45,10 +40,8 @@ function buildThemeVariables(mode: "dark" | "light"): Record<string, string | bo
     tertiaryColor: sunken,
     tertiaryBorderColor: border,
     tertiaryTextColor: text,
-    // Edges + labels.
     lineColor: muted,
     textColor: text,
-    // Flowchart aliases some diagram types read directly.
     mainBkg: surface,
     nodeBorder: accent,
     nodeTextColor: text,
@@ -56,14 +49,12 @@ function buildThemeVariables(mode: "dark" | "light"): Record<string, string | bo
     clusterBorder: border,
     titleColor: text,
     edgeLabelBackground: surface,
-    // Sequence actors + notes.
     actorBkg: surface,
     actorBorder: accent,
     actorTextColor: text,
     noteBkgColor: sunken,
     noteBorderColor: accent,
     noteTextColor: text,
-    // Pie / categorical series.
     pieTitleTextColor: text,
     pieSectionTextColor: text,
     pieStrokeColor: border,
@@ -72,9 +63,6 @@ function buildThemeVariables(mode: "dark" | "light"): Record<string, string | bo
   };
 }
 
-// One mermaid module per session, re-initialized before every render since the theme can
-// change. The source is a wired socket or a literal that rides in any shared document, so the
-// render stays at Mermaid's strict security level.
 let _mermaidMod: Promise<typeof import("mermaid").default> | null = null;
 function loadMermaid(config: Record<string, unknown>): Promise<typeof import("mermaid").default> {
   if (!_mermaidMod) _mermaidMod = import("mermaid").then((m) => m.default);
@@ -85,7 +73,6 @@ function loadMermaid(config: Record<string, unknown>): Promise<typeof import("me
 let _renderSeq = 0;
 
 export function MermaidView({ source, className }: { source: string; className?: string }) {
-  // Mode, accent and palette switches all notify this store, so the diagram re-themes.
   const themeTick = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const hostRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,16 +85,13 @@ export function MermaidView({ source, className }: { source: string; className?:
       try {
         const config = {
           startOnLoad: false,
-          // strict (Mermaid's default): the source is a wired socket or a literal that rides in
-          // any shared document, so labels are text and click/href callbacks stay inert.
+          // strict: the source can ride in any shared document, so labels stay text and click and href callbacks stay inert.
           securityLevel: "strict",
           fontFamily: "inherit",
           theme: "base",
           themeVariables: buildThemeVariables(appThemeStore.getMode()),
         };
         const mermaid = await loadMermaid(config);
-        // Validate first so a syntax error surfaces as our own message rather than
-        // mermaid injecting its red error graphic into the page.
         await mermaid.parse(src);
         const { svg } = await mermaid.render(`sol-mermaid-${_renderSeq++}`, src);
         if (canceled) return;

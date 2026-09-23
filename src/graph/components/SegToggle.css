@@ -1,7 +1,4 @@
-/* Segmented button toggle — ONE segmented-button definition:
-   full-width in a stacked node body (Get Column / Add Column read-as), or the
-   inline-row variant (`--inline`) that fills the remaining row space (the FC's
-   places/sig-figs toggle). */
+/* The one segmented-button definition: full-width in a stacked body, or the inline-row variant (--inline) that fills the rest of a row. */
 .solenoid-seg {
   display: flex;
   width: 100%;
@@ -10,9 +7,7 @@
   width: auto;
   flex: 1 1 auto;
 }
-/* The RESTING look is neutral: SegToggle is an ARGUMENT control. Selection reads as
-   a tonal step (recessed field to raised fill), no color injection. OpToggle, the
-   family's op picker in this shape, layers the accent on top from nodeCard.css. */
+/* Neutral at rest, since SegToggle is an argument control; OpToggle layers the accent on top (nodeCard.css). */
 .solenoid-segbtn {
   flex: 1 1 auto;
   height: 22px;

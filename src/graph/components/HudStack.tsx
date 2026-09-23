@@ -6,8 +6,7 @@ import { ProblemsPanel } from "./ProblemsPanel";
 import { CommentsPanel } from "./CommentsPanel";
 import "./hudStack.css";
 
-/** The one screen-fixed stack that owns positioning for the right-side floating panels;
- *  each section renders nothing when empty, so the stack is invisible until used. */
+/** Owns positioning for the right-side floating panels; each section renders nothing when empty. */
 export function HudStack() {
   return createPortal(
     <div className="solenoid-hud-stack">

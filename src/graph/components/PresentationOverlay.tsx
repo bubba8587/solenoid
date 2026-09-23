@@ -6,8 +6,7 @@ import type { PresentationNode } from "../nodes/presentation";
 import { CloseIcon } from "./CloseIcon";
 import "./PresentationOverlay.css";
 
-// Drives the camera through a Presentation node's steps and hides the app chrome (restored
-// on exit) — the canvas itself is the slide (tree/specs/canvas/layout-chrome.md § Presenting).
+// The canvas itself is the slide (tree/specs/canvas/layout-chrome.md § Presenting).
 
 export function PresentationOverlay() {
   useSyncExternalStore(presentationStore.subscribe, presentationStore.version);

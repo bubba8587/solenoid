@@ -2,7 +2,7 @@
 aliases: ["Group expand push"]
 tags: [spec, canvas]
 ---
-<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows -->
+<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle -->
 
 # Spec: Group expand push
 
@@ -28,9 +28,9 @@ When several groups expand at once, they are processed in order of `x + y` of th
 
 For one group, the expanded box starts at the group's position with its full size; the collapsed card is the same corner with the card's size. The right and bottom edges of the card are the "seams" the expansion grows from.
 
-**Satellites.** A loose node wired to the group's members is a satellite. Count its cables into members (upstream) and out of members (downstream). The larger count decides its side: upstream nodes are feeders, downstream nodes are consumers. A node with equal counts has no side and is not a satellite. Its target height is the mean vertical center of the members it is wired to.
+**Satellites.** A loose node wired to the group's members is a satellite. Count its cables into members (upstream) and out of members (downstream). The larger count decides its side: upstream nodes are feeders, downstream nodes are consumers. A node with equal counts has no side and is not a satellite. Its target height is the mean vertical center of the members it is wired to, in world coordinates, corrected by however far this group has already moved within the batch, since members move physically only when the batch applies.
 
-**Anchors.** For every other box, its anchors are the centers of the entities its cables lead to. Each cable end resolves to a push entity: a member becomes its group, a docked FC becomes its host. Satellites and groups get no anchors, so a group always clears by geometry, never toward its cables.
+**Anchors.** For every other box, its anchors are the centers of the entities its cables lead to. Each cable end resolves to a push entity: a member becomes its group, a docked FC becomes its host. Satellites and groups get no anchors, so a group always clears by geometry, never toward its cables: a group chasing its connections would pile interconnected groups onto one spot when several expand at once.
 
 **Exempt boxes.** A box that already overlaps the collapsed card (the user parked it there) is never moved by these steps. Pairs of boxes that already overlap each other before the push are recorded as baseline pairs, and the cascade never tries to separate them.
 
@@ -49,7 +49,7 @@ Three more passes run over the same boxes, after every expanding group has had i
 
 1. **Standoff clusters move as one block** ([[C89]] standoffsSolveLast). For each cluster of boxes joined by standoffs, every member takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
 2. **Standoff solve.** `solveStandoffs` runs with `forceLock` over the moved boxes, with the expanding groups and any position-locked group pinned. Its corrections are added to the same totals, credited to every expanding group.
-3. **Overlap backstop.** `separateOverlaps` removes every overlap left among the boxes, treating each standoff cluster as one unit so it can't tear. It repeatedly takes the largest overlapping pair and moves the one further from the top-left (by `x + y`) right or down, whichever is cheaper, to clear by `PUSH_GAP`. Moves only ever go right or down, so it always finishes. Its baseline is every pair of units that overlapped before the push, with the expanding groups at their collapsed size (`overlappingPairs`), so an overlap the user made stays. Its moves are credited to every expanding group.
+3. **Overlap backstop.** `separateOverlaps` removes every overlap left among the boxes, treating each standoff cluster as one unit so it can't tear. It repeatedly takes the largest-area overlapping pair and moves the one further from the top-left (by `x + y`) right or down, whichever is cheaper, to clear by `PUSH_GAP`, so the top-left box keeps its anchor corner. A pinned box never moves and its partner yields; two pinned boxes are left alone. Moves only ever go right or down, so it always finishes. Its baseline is every pair of units that overlapped before the push, with the expanding groups at their collapsed size (`overlappingPairs`), so an overlap the user made stays. Its moves are credited to every expanding group.
 
 ## Records and restore
 
@@ -64,8 +64,8 @@ Each moved box gets a push record in memory (never saved; a reload keeps everyth
 `setGroupsCollapsed` is the one entry point for toggling. The group's chevron, the Outline panel and the collapse hotkey (Ctrl+Shift+E) all call it. It runs these steps:
 
 1. Measure the collapsed card size of each group about to expand, before the flip re-renders it at full size. These are the seam origins.
-2. Flip `collapsed`, recompute collapse state (`syncGroupCollapse`), wait for each group to re-render, and settle the cable endpoints (`settleCollapse`).
-3. On collapse: restore settled pushes, then re-solve standoffs with `forceLock`, because the shrink moved their anchors. On expand (with `groupPush` on): run the push.
+2. Flip `collapsed`, recompute collapse state (`syncGroupCollapse`), wait for each group to re-render so the footprints measured next are current, and settle the cable endpoints (`settleCollapse`).
+3. On collapse: restore settled pushes, then re-solve standoffs with `forceLock`, because the shrink moved their anchors (a no-op when the restores already landed everything in band). On expand (with `groupPush` on): run the push.
 4. Schedule an autosave.
 
 ELK (the automatic layout engine behind Tidy) is never used in this path.
@@ -82,7 +82,16 @@ The model stays absolute. Saves, Tidy, standoffs, the lasso and docking all read
 - `handlers.moveNode`, where moving a group re-bases every member, so a Tidy that moves members before their group still ends consistent;
 - `onNodesChange`, which applies RF-driven moves to the model, groups first.
 
-A membership change re-projects the nodes through the `groupMembershipStore` subscription. During a group drag, the model's member positions follow the group by its per-frame delta (`moveGroupMembers`). Selected members are skipped, because RF already moves them as part of the selection.
+A membership change re-projects the nodes through the `groupMembershipStore` subscription. During a group drag, the model's member positions follow the group by its per-frame delta (`moveGroupMembers`), collapsed groups included. Drag callers pass `skipSelected`, because RF already moves selected members as part of the selection; a programmatic push leaves it off.
+
+## Creating and fitting a group
+
+- **Group** (the `G` key, or the menu) wraps the current selection (`createGroupFromSelection`, `groupLogic.ts`). Nodes hidden inside a collapsed group are left out, since they already belong to one and a selection path such as Ctrl+A then G would otherwise absorb them ([[C52]] visibleSelection). The cable selection is cleared first, because a selected cable carried into the group-forming reflow garbles its rendering.
+- The box is the members' bounding box (through `measuredBox`) plus `GROUP_PAD` (24) on each side and `GROUP_HEADER` (34, matching GroupNode.css) on top, with integer dimensions: a fractional width or height puts the edge on a half-pixel and the selection ring drifts. Creation, the within-group Tidy and autofit share these two constants; if they disagreed, Cleanup's tidy-then-autofit cycle would drift the box a few pixels on every run.
+- The group's color is the palette slot of the most common node kind in the selection; a tie, or all kinds distinct, falls back to gray (`GROUP_DEFAULT_COLOR`). The members tint at once.
+- **Autofit** (the `F` key, or a double-press on the resize grip) wraps the box tightly around its current members with the same padding, clamped to the grip's own minimums (`GROUP_MIN_W` 140, `GROUP_MIN_H` 90) and to integers. `autofitGroupWithHistory` records one undo entry for position, size and members together, so both entry points undo as a single step, and then re-settles the standoffs as a rigid block, pinning the fitted group.
+- The group element stacks behind its members and behind member Conduits (−1), so a Conduit inside a group stays selectable ([[C65]] domOrderStacking).
+- **The position lock** is set only through `setGroupLocked`; its re-projection repaints the RF `draggable` flag and the header lock icon ([[D63]] lockedGroupIsObstacle). Every standoff solve pins every locked group and its members (`withLockedGroupsPinned`), since the solver works on raw endpoint ids and a member's standoff would otherwise slide the member out of the locked box.
 
 ## Who is a member
 
@@ -93,7 +102,7 @@ Membership changes only on an explicit gesture ([[C86]] membershipByGesture):
 - **A manual resize of the box** (`reconcileGroupBox`, from the grip drag). Every non-group node whose center is inside the new box joins, unless it already belongs to another group, and every member whose center is outside leaves.
 - **Creating a node inside a group** (`absorbIntoContainingGroup`, for live creation such as the Add menu or paste). The node joins the first expanded group whose rendered box contains it entirely, unless it is already a member of some group. During a load or seed rebuild, membership comes from the saved list instead.
 
-Groups don't nest: a group is never a member.
+Groups don't nest: a group is never a member. "Rendered box" means the group element's live size, falling back to the stored one, because a collapsed group draws as a small card and its stored size would absorb nodes dropped where the expanded box would be. Deleting a node drops its id from every member list.
 
 **Autofit does not change membership.** It wraps the box around the existing members, so `autofitGroupWithHistory` never runs `reconcileGroupBox`, which would absorb any bystander whose center the shrunk box happens to cover. It does run `rebuildGroupMembership`, which only refreshes the color markers from the unchanged list.
 

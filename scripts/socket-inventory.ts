@@ -1,14 +1,7 @@
-// Run with: npx tsx scripts/socket-inventory.ts [--md]
-//
-// Dumps EVERY port in the node catalog grouped by socket type — the source data
-// behind `docs/socket-reference.md`. Regenerate it after adding a node or
-// retyping a port, then update that doc's tables from this output.
-//
-// It instantiates each catalog entry exactly as `coerceInputs.test.ts` does
-// (`entry.create()` in a try/catch — constructability is that test's job, not
-// ours) and reads the DECLARED socket of each port. A fresh node has adopted
-// nothing, so an adoptive port reports its declared BASE, which is what the doc
-// documents.
+// Dumps every catalog port grouped by socket type, the source data for docs/socket-reference.md:
+// regenerate after adding a node or retyping a port. A fresh node has adopted nothing, so an adoptive
+// port reports its declared base, which is what the doc lists.
+//   npx tsx scripts/socket-inventory.ts [--md]
 
 import { FLAT_CATALOG } from "../src/graph/catalogUtils";
 import { AdoptiveSocket, SolenoidSocket, canConnect, SOCKET_TYPE_LABELS, type SocketDataType } from "../src/graph/sockets";
@@ -20,11 +13,9 @@ type Port = {
   side: "in" | "out";
   key: string;
   adoptive: boolean;
-  entries: number; // how many catalog presets share this class+port
+  entries: number;
 };
 
-/** Variadic rows (`v0`, `v1`, `cond2`…) collapse to one pattern — they are one
- *  extensible port role, not N distinct ports. */
 function portRole(key: string): string {
   const m = /^([A-Za-z_]+?)(\d+)$/.exec(key);
   return m ? `${m[1]}*` : key;

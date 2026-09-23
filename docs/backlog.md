@@ -33,6 +33,18 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node ([[C7]] authorRuled; `archive/1.4-plan.md` D3).
 
+## Found in the comment lift (verify against the code, then fix or rule)
+
+Suspected while reading code to lift its comments; none is confirmed yet.
+
+- [ ] **Frame verbs:** `reconcileFrames` drops a row with a non-finite key outright (neither matched nor skipped); `promoteHeaders` keeps `raw` unsliced, one row out of line with the values; `engine_column` matches a name untrimmed while `getColumn` trims.
+- [ ] **Node classes:** FindPeaks reads a wired blank minimum as "no minimum" ([[D33]] unwiredNotBlank); SeriesSum and tableLambda's `cell()` turn non-finite results into null ([[D48]] classifyNonFinite); CubeColumns reads `names` raw instead of through `readInput`; old-save shims survive despite [[B7]] preAlphaBreakFreely (Filter's "none" → "and", stale-op guards in Sets, Constant and ColorBlend).
+- [ ] **Formulas:** DIAGONAL's matrix branch is unreachable (a matrix answers `#SHAPE!` at dispatch); `signatureParams` splits a "use the X node" redirect as a parameter; `highlightFormula` doesn't treat a dot as a name character (NORM.S.DIST); `collectRowRefs` matches `LAMBDA` case-sensitively where `collectNames` uppercases; `interpolateLinear` may pick the later y at a duplicate x.
+- [ ] **Popups:** no opener passes `onSave` or `onSaveFrame`, so those two Table popup modes may be dead; `TablePopupState.literalSource` is set and never read.
+- [ ] **Canvas:** the HTML-in-Canvas graph snapshot still scrapes text, sliders and boxes for a Pixi renderer that no longer exists; only `snap.cables` is read.
+- [ ] **Scripts:** `scripts/op-exposure.ts` branches on a `NODE_OPS` "argument" kind nothing declares ([[C26]] opArgDistinct).
+- [ ] **For the author:** DESIGN.md still lists Table Coral for table and frame data, while `--sock-table` is gold; the AI-mode "quiet accent" rule in the Command Palette isn't in DESIGN.md; the Range kernel includes Stop on an author ruling whose reason was never recorded.
+
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
 - [ ] **The stack merge (author to rule):** Append and Bind Columns (Frames) sit beside XSTACK (lists and tables). [[E14]] frameVerbExcelNames says the Frame pair becomes VSTACK and HSTACK when the stack merge lands; [[C48]] appendLadder keeps one append node per rank, which reads as keeping them apart. Pick one and the other node gets reworded.
@@ -203,3 +215,9 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   splits camelCase (lower→upper), so `URLEncode` and `ESeries` don't gain the space/hyphen.
   Either teach `nodeTypeName` acronym/hyphen handling (a derivation tweak, author to okay)
   or accept "Url Encode" / "ESeries".
+
+## From the comment lift (rest partition)
+- [ ] **Voice lint over option tables.** `uiCopy.test.ts` skips the `tsx-opt-*` records `copyCorpus.ts` already
+  collects (dropdown rows, op-meta labels and descriptions); widen the lint to them, a sweep of its own.
+- [ ] **Custom packs.** Settings shows `customPacksFolder()`, but `loadCustomPacks()` is a stub returning none until
+  filesystem access and a pack format are settled.

@@ -1,6 +1,6 @@
 // [[C8]] declareOnce, [[D4]] noManualList
-// GENERATED from catalog metadata — never add a hand-maintained row here. The one
-// piece of standalone data is EXCEL_GAP (functions with no node), which self-heals.
+// Generated from catalog metadata: never add a hand-kept row. EXCEL_GAP (functions with no node) is the one standalone
+// list, and it self-heals.
 
 import { buildCatalog } from "./catalogUtils";
 import { EXCEL_GAP } from "./nodeExcel";
@@ -13,8 +13,8 @@ export interface FnRefRow {
   excel: string | null;        // null = a Solenoid-native node (no Excel function)
   syntax: string;
   nodeLabel: string | null;    // catalog label, or null when no node covers it
-  description?: string;        // the node's prose "what it does" (catalog description)
-  keywords?: string;           // the catalog's search keywords (library names ride here too)
+  description?: string;
+  keywords?: string;
   catalogType: string | null;
   location: string[];          // Add-menu path; [] for Excel-only gap rows
   packs: string[];
@@ -66,14 +66,12 @@ function indexCatalog(): Map<string, LeafInfo> {
   return idx;
 }
 
-// Pack ids that some other pack depends on.
 function dependedOnPacks(): Set<string> {
   const s = new Set<string>();
   for (const p of allPacks()) for (const d of p.dependsOn ?? []) s.add(d);
   return s;
 }
 
-/** Build the full Function Reference, generated from catalog/node metadata. */
 export function buildFunctionReference(): FnRefRow[] {
   const idx = indexCatalog();
   const dependedOn = dependedOnPacks();
@@ -130,7 +128,6 @@ export function buildFunctionReference(): FnRefRow[] {
   return rows;
 }
 
-/** Section groups in display order: Add-menu top-level categories, then the gap. */
 export function fnRefGroups(rows: FnRefRow[]): { key: string; label: string }[] {
   const seen = new Map<string, string>();
   for (const r of rows) if (!seen.has(r.groupKey)) seen.set(r.groupKey, r.groupLabel);
@@ -141,10 +138,7 @@ export function fnRefGroups(rows: FnRefRow[]): { key: string; label: string }[] 
   return keys.map((k) => ({ key: k, label: seen.get(k)! }));
 }
 
-// ─── Library tags (the Reference overlay's numpy / pandas / scipy / R / SQL / Excel filter) ──
-// Derived from the catalog prose + keywords, never hand-kept: a description that cites
-// `numpy.gradient`, `pandas ewm`, `scipy kruskal`, `R cor(…)`, `dplyr ntile`, `SQL OVER` tags
-// the row, so a refugee from that library can narrow the Reference to what they know.
+// Library tags derive from the catalog prose and keywords: a description citing `numpy.gradient` or `SQL OVER` tags the row.
 export const LIBRARY_TAGS = ["numpy", "pandas", "scipy", "R", "SQL", "Excel"] as const;
 export type LibraryTag = (typeof LIBRARY_TAGS)[number];
 
@@ -159,8 +153,7 @@ const LIB_PATTERNS: ReadonlyArray<[LibraryTag, RegExp]> = [
 
 /** The libraries a row cites; `Excel` when it has an Excel function or the prose names one. */
 export function libraryTags(row: Pick<FnRefRow, "excel" | "description" | "keywords" | "note">): LibraryTag[] {
-  // Descriptions are inline markdown (descriptionMd.ts); the code-span backticks
-  // must not break citation adjacency ("R `boxplot.stats`").
+  // Descriptions are inline markdown: code-span backticks must not break citation adjacency ("R `boxplot.stats`").
   const text = `${row.description ?? ""} ${row.keywords ?? ""} ${row.note ?? ""}`.replace(/`/g, "");
   const tags: LibraryTag[] = [];
   for (const [tag, re] of LIB_PATTERNS) if (re.test(text)) tags.push(tag);

@@ -1,4 +1,4 @@
-// [[D15]] wildcardsKeepRank, [[E7]] trueanyNeedsPassthrough. The mechanics: tree/specs/values/socket-lattice.md req. 8-9.
+// [[D15]] wildcardsKeepRank, [[E7]] trueanyNeedsPassthrough, [[E8]] waitForTypeSettle
 import type { ClassicPreset } from "rete";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
 import { getPassthrough, resolvePassthroughType, agreeTypes, type ProjectContext } from "./nodes/passthrough";
@@ -18,7 +18,6 @@ export interface AdoptEditor {
   getConnections(): ReadonlyArray<{ source: string; sourceOutput: string; target: string; targetInput: string }>;
 }
 
-/** A node's input socket type, or null when the key/socket is absent. */
 function inType(node: AdoptNode, key: string): SocketDataType | null {
   const s = node.inputs?.[key]?.socket;
   return s instanceof SolenoidSocket ? s.dataType : null;
@@ -27,8 +26,6 @@ function inType(node: AdoptNode, key: string): SocketDataType | null {
 function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<string> {
   const conns = editor.getConnections();
   const changed = new Set<string>();
-  /** What a `project` may consult beyond the socket type; built lazily, since only an
-   *  extraction out of a FRAME ever asks. */
   const contextFor = (node: AdoptNode): ProjectContext => ({
     shapeOf: (key) => {
       const feed = conns.find((c) => c.target === node.id && c.targetInput === key);
@@ -37,16 +34,13 @@ function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<str
     wired: (key) => conns.some((c) => c.target === node.id && c.targetInput === key),
   });
   for (const node of editor.getNodes()) {
-    // 1) Every adoptive INPUT takes the wired output's current type.
     for (const [key, inp] of Object.entries(node.inputs ?? {})) {
       const sock = inp?.socket;
       if (!(sock instanceof AdoptiveSocket)) continue;
       const feed = conns.find((c) => c.target === node.id && c.targetInput === key);
-      // Unwired reverts to the port's declared base, which may be narrower than `trueany`.
       let want: SocketDataType = sock.base;
       if (feed) {
         const out = editor.getNode(feed.source)?.outputs?.[feed.sourceOutput]?.socket;
-        // A rank-bearing base KEEPS its rank; only `trueany` adopts verbatim.
         if (out instanceof SolenoidSocket) want = adoptTypeForBase(sock.base, out.dataType);
       }
       if (sock.dataType !== want) {
@@ -54,10 +48,6 @@ function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<str
         changed.add(node.id);
       }
     }
-    // 2) OUTPUT policy comes from the node's passthrough() declaration, the ONE source
-    //    both this and unitFlow read.
-    // Branch votes: unwired and error-only sources ABSTAIN (null); a `trueany` vote means
-    // statically unknowable and VETOES the agreement.
     const voteOf = (k: string): SocketDataType | null => {
       const feed = conns.find((c) => c.target === node.id && c.targetInput === k);
       if (!feed) return null;
@@ -79,13 +69,9 @@ function reconcileOnce(editor: AdoptEditor, shapes: FrameShapeResolver): Set<str
   return changed;
 }
 
-/** Run the adoption pass to a fixpoint, returning every node whose socket type changed;
- *  never touches connections. */
 export function reconcileTrueAnyTypes(editor: AdoptEditor): Set<string> {
   const all = new Set<string>();
-  // One shape walk serves the whole fixpoint (spec req. 9).
   const shapes = makeFrameShapeResolver(editor as never);
-  // The cap guards a #CIRC! loop (spec req. 9).
   for (let pass = 0; pass < 32; pass++) {
     const changed = reconcileOnce(editor, shapes);
     if (changed.size === 0) break;
@@ -94,8 +80,6 @@ export function reconcileTrueAnyTypes(editor: AdoptEditor): Set<string> {
   return all;
 }
 
-/** THE entry point for "wiring changed, re-derive every socket type": alternates Conduit
- *  lanes and trueany adoption to a JOINT fixpoint, since each can feed the other. */
 export function settleWildcardTypes(editor: NodeEditor<Schemes>): { conduitChanged: boolean; adopted: Set<string> } {
   let conduitChanged = false;
   const adopted = new Set<string>();

@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages, [[C100]] chartIsAValue
-// layoutGantt(payload, opts) → RenderFrame: the one entry point composing scale, rows, bars,
-// links, shading and histogram at a given width. Pure: no DOM, no Date, no colors.
 
 import type { GanttPayload } from "./payload";
 import type { RenderFrame } from "./frame";
@@ -12,16 +10,11 @@ import { buildColumns } from "./columns";
 import { buildHistogram } from "./histogram";
 
 export interface LayoutOptions {
-  /** Timeline width in px (the grid pane is separate). Drives pxPerDay unless zoom is fixed. */
   width: number;
-  /** Total viewport height in px, when known (enables viewport culling with scrollTop). */
   height?: number;
   rowHeight?: number;
-  /** Grid pane width in px (informational; the frame's columns carry their own widths). */
   gridWidth?: number;
-  /** Vertical scroll offset in px — cull rows/bars/links above and below the viewport. */
   scrollTop?: number;
-  /** Viewport height in px for culling (falls back to `height`). */
   viewportHeight?: number;
 }
 
@@ -39,7 +32,6 @@ export function layoutGantt(payload: GanttPayload, opts: LayoutOptions): RenderF
   const headerHeight = scale.tiers.length * TIER_HEIGHT;
   const contentHeight = rows.length ? rows[rows.length - 1].y + rows[rows.length - 1].h : 0;
 
-  // Non-working shading rectangles across the whole row area.
   const shading = buildShading(payload, scale);
   const gridColumns = buildGridLines(scale);
   const todayX = payload.today != null && payload.view.today !== false ? xForSerial(payload.today, scale) : null;
@@ -65,7 +57,6 @@ export function layoutGantt(payload: GanttPayload, opts: LayoutOptions): RenderF
 
 export const TIER_HEIGHT = 22;
 
-/** Pixel x for a whole-day serial's LEFT edge within the timeline. */
 export function xForSerial(serial: number, scale: { from: number; pxPerDay: number }): number {
   return (serial - scale.from) * scale.pxPerDay;
 }

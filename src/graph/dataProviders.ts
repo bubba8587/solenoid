@@ -1,41 +1,27 @@
 // [[D32]] refreshOutsideRebuild
-// Provider presets for the Data connection node. Must stay pure + side-effect-free
-// so they unit-test without the network.
+// Pure and side-effect free, so the presets unit-test without the network.
 import { frameFromColumnar, type FrameValue } from "./frame";
 import { csvToFrame } from "./nodes/connection";
 
 export type ProviderId = "fred" | "alphavantage";
 
-/** Per-fetch refinements folded into the URL; all are in the cache key, so
- *  changing any of them re-fetches. */
 export type DataFeedOpts = { start?: string; end?: string; freq?: string };
 
 export interface ProviderPreset {
   id: ProviderId;
   label: string;
-  /** Whether a stored API key is required before a fetch can run. */
   needsKey: boolean;
-  /** apiKeyStore provider id (only set when needsKey). */
   keyProvider?: string;
-  /** Where to get a free key (shown in the node's "add key" state). */
   keyUrl?: string;
   inputLabel: string;
   placeholder: string;
-  /** Show start/end date fields — only when the provider filters by date in-URL. */
   supportsDateRange?: boolean;
-  /** Frequency options (undefined/[] = no control); `value: ""` = the provider's
-   *  own default. */
   frequencies?: ReadonlyArray<{ value: string; label: string }>;
-  /** Symbol/series quick-picks that fill the input field (the ids are cryptic). */
   quickPicks?: ReadonlyArray<{ id: string; label: string }>;
-  /** Build the fetch URL from the trimmed user input, (optional) key + refinements. */
   buildUrl(input: string, key: string, opts?: DataFeedOpts): string;
-  /** Parse the fetched text into a Frame. */
   parse(text: string): FrameValue;
 }
 
-/** FRED's keyed JSON route: `{observations: […]}` with "." for a gap → a
- *  two-column date/value frame. */
 export function parseFredObservations(text: string): FrameValue {
   const data = JSON.parse(text) as { observations?: Array<{ date?: string; value?: string }> };
   const obs = data.observations ?? [];
@@ -49,8 +35,7 @@ export function parseFredObservations(text: string): FrameValue {
   return frameFromColumnar({ date, value });
 }
 
-/** The KEYLESS FRED route (`fredgraph.csv`) is parsed here rather than through
- *  csvToFrame, which would turn the whole column to text on the first `.` gap. */
+/** Parsed here, not through csvToFrame, which would turn the whole column to text at the first `.` gap. */
 export function parseFredCsv(text: string): FrameValue {
   const lines = text.trim().split(/\r?\n/).filter((l) => l.length > 0);
   const header = (lines[0] ?? "date,value").split(",");
@@ -70,7 +55,6 @@ export function parseFredCsv(text: string): FrameValue {
   return frameFromColumnar({ [dateCol]: date, [valCol]: value });
 }
 
-/** Quick-picks that fill the Series ID field; any id can still be typed. */
 export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "UNRATE", label: "Unemployment rate" },
   { id: "CPIAUCSL", label: "CPI (inflation)" },
@@ -82,7 +66,6 @@ export const FRED_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "SP500", label: "S&P 500" },
 ];
 
-/** The same quick-fill for stocks/ETFs. */
 export const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "AAPL", label: "Apple" },
   { id: "MSFT", label: "Microsoft" },
@@ -93,7 +76,6 @@ export const AV_QUICK_PICKS: ReadonlyArray<{ id: string; label: string }> = [
   { id: "SPY", label: "S&P 500 ETF" },
 ];
 
-// FRED aggregates in-URL (fq/fam); AV uses separate TIME_SERIES_* functions.
 const FRED_FREQUENCIES = [
   { value: "", label: "As published" },
   { value: "Daily", label: "Daily" },
@@ -111,7 +93,6 @@ const AV_FREQUENCIES = [
 export const PROVIDERS: Record<ProviderId, ProviderPreset> = {
   fred: {
     id: "fred",
-    // KEYLESS by default via the public fredgraph.csv download — works out of the box.
     label: "FRED economic series, no key needed",
     needsKey: false,
     inputLabel: "Series ID",
@@ -136,15 +117,14 @@ export const PROVIDERS: Record<ProviderId, ProviderPreset> = {
     keyUrl: "https://www.alphavantage.co/support/#api-key",
     inputLabel: "Symbol",
     placeholder: "e.g. AAPL, MSFT",
-    // No URL date filter on AV's time-series endpoints — frequency only (via function).
     frequencies: AV_FREQUENCIES,
     quickPicks: AV_QUICK_PICKS,
-    // datatype=csv keeps parsing on the shared csvToFrame path (no bespoke JSON shape).
+    // datatype=csv keeps parsing on the shared csvToFrame path.
     buildUrl: (s, key, opts) => {
       const fn = opts?.freq === "weekly" ? "TIME_SERIES_WEEKLY"
         : opts?.freq === "monthly" ? "TIME_SERIES_MONTHLY"
         : "TIME_SERIES_DAILY";
-      // Weekly/monthly return full history already; daily stays compact (100 pts).
+      // Weekly and monthly return full history already; daily stays compact (100 points).
       const size = fn === "TIME_SERIES_DAILY" ? "&outputsize=compact" : "";
       return `https://www.alphavantage.co/query?function=${fn}&symbol=${encodeURIComponent(s.trim())}${size}&datatype=csv&apikey=${encodeURIComponent(key)}`;
     },

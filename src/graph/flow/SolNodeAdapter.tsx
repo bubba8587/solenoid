@@ -1,8 +1,4 @@
 // [[C43]] oneFlowSurface, [[B10]] reactFlowView
-// Renders the real node components inside RF nodes, each boundaried
-// (tree/specs/canvas/react-flow-surface-contract.md). `emit` is only ever consumed by
-// NodeSocket, which renders an RF Handle on this surface (flowSurface.ts), so a
-// stub satisfies the contract. SolFlowNode is the fallback for anything unregistered.
 import { memo, useEffect } from "react";
 import { useUpdateNodeInternals } from "@xyflow/react";
 import type { NodeProps, Node } from "@xyflow/react";
@@ -14,22 +10,20 @@ import type { SolenoidNode } from "../schemes";
 
 export type FlowNodeData = {
   node: SolenoidNode;
-  /** Bumped by the area adapter's `update("node", id)` — rete's re-render verb. */
+  /** Bumped by `view.rerenderNode(id)`. */
   version: number;
   [key: string]: unknown;
 };
-/** THE node type of both surfaces (RF generics: `<ReactFlow<SolFlowNode, SolFlowEdge>>`). */
 export type SolFlowNode = Node<FlowNodeData, "sol">;
 
 const stubEmit = (() => {}) as unknown as Emit;
 
 function SolNodeAdapterBase(props: NodeProps<SolFlowNode>) {
   const { id, data, selected } = props;
-  // Components read selection off the payload (rete convention).
+  // Components read selection off the node payload.
   (data.node as unknown as { selected?: boolean }).selected = !!selected;
   const updateNodeInternals = useUpdateNodeInternals();
-  // A version bump can mean swapped/retyped sockets (op change, FC retype,
-  // extensible rows) — have RF re-measure this node's handles.
+  // A version bump can mean swapped or retyped sockets, so RF re-measures this node's handles.
   useEffect(() => {
     updateNodeInternals(id);
   }, [id, data.version, updateNodeInternals]);

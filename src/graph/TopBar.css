@@ -1,11 +1,7 @@
 .solenoid-topbar {
-  /* Width reserved for the out-of-flow pinned trio when the bar wraps (tablet,
-     narrow — see the media query at the bottom of this file). Slightly generous:
-     over-reserving leaves a little slack, under-reserving would let a wrapped
-     row slide under the pinned cluster. */
+  /* Width reserved for the out-of-flow pinned trio when the bar wraps; over-reserving is safe, under-reserving slides a row under the trio. */
   --tablet-pinned-w: 140px;
-  /* Positioned by the Header (menu bar sits above it). Kept below the menu bar
-     in the stacking order so its dropdowns paint over the toolbar. */
+  /* Stacked below the menu bar, so the menu bar's dropdowns paint over the toolbar. */
   position: relative;
   z-index: 1;
   display: flex;
@@ -14,7 +10,6 @@
   height: 44px;
   padding: 0 12px;
   background: var(--panel-bg);
-  /* Hairline structural border plus a 2px accent highlight beneath it. */
   border-bottom: 1px solid var(--panel-border);
   box-shadow: 0 2px 0 0 var(--accent), var(--shadow-pop);
   user-select: none;
@@ -23,7 +18,7 @@
 .solenoid-topbar__mark {
   display: block;
   height: 28px;
-  /* Wordmark viewBox is 573×119; derive width from the fixed height. */
+  /* The wordmark's viewBox is 573×119. */
   aspect-ratio: 573 / 119;
   background-color: var(--wordmark-color);
   -webkit-mask-repeat: no-repeat;
@@ -34,9 +29,6 @@
   mask-size: contain;
 }
 
-/* The app-menu trigger — desktop hides it (the wordmark shows); mobile.css
-   reveals it. A round button (the surface pill) with the Solenoid mark masked
-   inside, so it reads as a tappable menu button, not a bare logo silhouette. */
 .solenoid-topbar__icon {
   display: none;
   align-items: center;
@@ -55,12 +47,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 .solenoid-topbar__icon:active { background: var(--btn-hover); }
-/* Navigator (outline) toggle — mobile only, like the app-menu icon above. Desktop
-   has its own floating open-pill, so hide this here; mobile.css reveals it. Without
-   this base hide it renders as a bare default button — a duplicate Navigator in the
-   desktop top bar. */
 .solenoid-topbar__nav { display: none; }
-/* The overflow dots inherit the bar's text color via currentColor. */
 .solenoid-topbar__icon {
   color: var(--text);
 }
@@ -72,8 +59,6 @@
   background: var(--panel-border);
 }
 
-/* Decorative art slot in the middle of the bar — fills the leftover space.
-   Drop an SVG/<img> in here later; min-width:0 lets it shrink on narrow bars. */
 .solenoid-topbar__art {
   flex: 1 1 auto;
   min-width: 0;
@@ -83,7 +68,6 @@
   overflow: hidden;
 }
 
-/* Sizing for an SVG/image placed in the art slot. */
 .solenoid-topbar__art-svg {
   display: block;
   height: 100%;
@@ -91,39 +75,26 @@
   object-fit: contain;
 }
 
-/* Pill cluster: groups circular icon buttons into one rounded container. The
-   pill carries the border/fill; the buttons inside are borderless (see the
-   base .solenoid-nav__btn) and fill on hover. (Accent swatch + theme toggle
-   stay distinct buttons, not pilled — they're deliberately separate.) */
 .solenoid-topbar__group {
   display: flex;
   align-items: center;
   gap: 2px;
-  /* No padding: the pill wraps the 28px buttons + its 1px border = 30px, the SAME
-     total size as the apptools pill — so every pill in the bar is one height. The
-     earlier 3px padding bloated this pill to 36px, reading as a bigger control than
-     its neighbors. */
+  /* No padding: the 28px buttons plus a 1px border make this pill 30px, the same height as the apptools pill. */
   padding: 0;
   background: var(--btn-bg);
   border: 1px solid var(--btn-border);
   border-radius: 999px;
 }
 
-/* The document name + caret in the app bar — mobile only (on desktop it's
-   centered in the menu bar). mobile.css reveals + styles it for the app bar. */
 .solenoid-topbar__doctitle {
   display: none;
 }
 
-/* ─── Tidy options popover ─────────────────────────────────────────────────────
-   The layout group anchors the popover under the Tidy button; see the z-slot in
-   tree/specs/canvas/layout-chrome.md. The header doesn't clip its dropdowns, so it overflows
-   down over the canvas like the menu-bar dropdown. */
+/* ─── Tidy options popover ─── */
 .solenoid-topbar__group--layout {
   position: relative;
 }
 
-/* A slim chevron opener beside the Tidy button, not a full 28px control. */
 .solenoid-topbar__tidy-opts {
   width: 18px;
   min-width: 18px;
@@ -157,18 +128,7 @@
   white-space: nowrap;
 }
 
-/* ─── Tablet touch actions ────────────────────────────────────────────────────
-   A tablet runs the DESKTOP chrome (IS_MOBILE is false there — iPadOS ships a
-   desktop UA on purpose), so it never gets the bottom action bar and had no
-   touch target for delete / group / select-mode / undo / the palette. The top
-   bar carries them instead, gated on `html.is-tablet` (set in main.tsx from
-   IS_TABLET = coarse && !mobile).
-
-   HEIGHT IS UNCHANGED — deliberately. The bar stays 44px inside the 66px header
-   envelope, because four overlays clear that envelope with hand-keyed offsets
-   (nav pill top:80, align pill top:76, HUD top:124, report dock top:66 — see
-   tree/specs/canvas/layout-chrome.md). Growing the bar would silently push the bar's bottom
-   edge under all four. These are ordinary 28px pill buttons in the existing row. */
+/* ─── Tablet touch actions ─── */
 .solenoid-topbar__group--tablet {
   display: none;
 }
@@ -176,63 +136,33 @@ html.is-tablet .solenoid-topbar__group--tablet {
   display: flex;
 }
 
-/* Dimmed = needs a selection. Still TAPPABLE (not `disabled`): the selection
-   state is polled at 200ms, so a hard-disabled button would swallow the first
-   tap after a fresh select. Matches the bottom bar's rule and its opacity. */
+/* Dimmed but still tappable: selection is polled at 200ms, so a disabled button would swallow the first tap after a select. */
 .solenoid-nav__btn--dim {
   opacity: 0.3;
 }
 
-/* ── Narrow (portrait): the bar WRAPS on a tablet ─────────────────────────────
-   The desktop bar doesn't fit a tablet in portrait. It wraps: fill the line,
-   push the overflow to the next one. Nothing is reordered and nothing is forced
-   onto a chosen row — an earlier version broke the line after the layout pills
-   whether or not more would have fit, which is a two-row SPLIT, not a wrap.
-
-   The one thing that can't just flow is the pinned trio (theme · Reference ·
-   Settings, all inside `.solenoid-apptools`): it must hold the top-right corner,
-   and an in-flow flex item can't — it goes wherever the line ends up. So it
-   leaves the flow entirely and the bar reserves its column with padding-right.
-   Everything else then wraps naturally into what's left, which is exactly the
-   normal wrap behaviour, just against a narrower line.
-
-   Reserving on EVERY line costs a little width on row 2. That is the price of
-   the corner staying put, and row 2 has the room.
-
-   Safe because the header height is MEASURED, not written down: Header.tsx
-   publishes `--chrome-top` and every top-anchored overlay offsets from it, so a
-   second row pushes them all down on its own. */
+/* ─── Narrow (portrait): the bar wraps on a tablet ─── */
 @media (max-width: 1100px) {
   html.is-tablet .solenoid-topbar {
     flex-wrap: wrap;
     height: auto;
     row-gap: 6px;
-    /* Left/top/bottom as the desktop bar; the right pad is the reserved column
-       for the out-of-flow pinned trio (its width + the normal 8px gap). */
     padding: 7px calc(12px + var(--tablet-pinned-w)) 7px 12px;
   }
-  /* Out of the flow so the corner is a corner. The bar is already
-     `position: relative`. */
   html.is-tablet .solenoid-topbar > .solenoid-apptools {
     position: absolute;
     top: 7px;
     right: 12px;
   }
-  /* The dividers separated groups along ONE row; across two they'd orphan at a
-     row edge. The pill outlines already do the separating. */
   html.is-tablet .solenoid-topbar > .solenoid-topbar__divider { display: none; }
 }
 
-/* A tablet is a touch device on the desktop layout, where buttons are sized for
-   a cursor. Widen the touch target without changing the LAID-OUT size: the pill
-   row must stay 30px tall to match every other pill in the bar, so the extra
-   reach comes from a pseudo-element, not from padding. */
 html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn {
   position: relative;
 }
 html.is-tablet .solenoid-topbar__group--tablet .solenoid-nav__btn::after {
   content: "";
   position: absolute;
-  /* 28px button + 8px top/bottom = a 44px tap target, the platform minimum. */
+  /* 28px button + 8px top and bottom = a 44px tap target, the platform minimum. */
   inset: -8px -2px;
 }

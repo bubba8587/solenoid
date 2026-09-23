@@ -10,24 +10,19 @@ import { stopDragStart } from "../coarse";
 import { elemFamilyOfCells } from "../valuePopup";
 import { cubeCellToken } from "./cubeCell";
 
-// The Cube Input's editing cells (tree/specs/documents/literal-input-editors.md): every commit patches the
-// records at the cell's path and the popup re-derives its stack from them.
 
-/** The view for the records list at `path` (a cube level). */
 export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
   const sub = path.length ? getAtPath(records, path) : records;
   const rows = Array.isArray(sub) ? (sub as CubeRecord[]) : [];
   return { kind: "cube", cube: recordsToCube(rows), label, path };
 }
 
-/** The view for a frame-shaped record list at `path` (an editable table level). */
 export function frameViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
   const sub = getAtPath(records, path);
   const rows = Array.isArray(sub) ? (sub as CubeRecord[]) : [];
   return { kind: "frame", frame: frameFromRecords(rows), label, path };
 }
 
-/** The view for a list cell at `path` (an editable list level). */
 export function listViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
   const sub = getAtPath(records, path);
   return { kind: "list", items: Array.isArray(sub) ? (sub as unknown[]) : [], label, path };
@@ -61,7 +56,6 @@ function InlineCell({ value, onCommit }: { value: unknown; onCommit: (text: stri
 const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
 const chipClass = (mod: "cube" | "frame" | "array") => `solenoid-array-chip solenoid-array-chip--${mod} solenoid-array-chip--sm`;
 
-/** One editable cell of a record at [row, key] under `path` (cube and table levels). */
 export function CubeEditCell({ edit, path, row, column }: {
   edit: CubeEditBinding;
   path: CubePath;
@@ -106,21 +100,17 @@ export function CubeEditCell({ edit, path, row, column }: {
   return <InlineCell value={value} onCommit={(text) => commitAt(edit, cellPath, parseCellText(text))} />;
 }
 
-/** One editable item of a list level at index `row` under `path`. */
 export function ListEditCell({ edit, path, row }: { edit: CubeEditBinding; path: CubePath; row: number }): ReactNode {
   const value = getAtPath(edit.records(), [...path, row]);
   return <InlineCell value={value} onCommit={(text) => commitAt(edit, [...path, row], parseCellText(text))} />;
 }
 
-/** The column keys of a record list, in first-seen order (the order the cube shows). */
 function keysOf(list: unknown[]): string[] {
   const keys: string[] = [];
   for (const r of list) if (r && typeof r === "object" && !Array.isArray(r)) for (const k of Object.keys(r)) if (!keys.includes(k)) keys.push(k);
   return keys;
 }
 
-/** An editable column header of a table / cube level: renaming the key on every row keeps
- *  its position. Enter/blur commits; Escape reverts. */
 export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; path: CubePath; column: string }): ReactNode {
   const rename = (next: string) => {
     const key = next.trim();
@@ -152,9 +142,6 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
   );
 }
 
-/** Footer controls for the current level: add / remove a row (a record, or a list item);
- *  a table or cube level also adds / removes a column (the last key on every row). New
- *  columns arrive as "Column N"; the header renames them. */
 export function CubeEditRows({ edit, view }: { edit: CubeEditBinding; view: DrillView }): ReactNode {
   const path = view.path ?? [];
   const records = edit.records();

@@ -1,14 +1,9 @@
-// [[C76]]
-// The Electricity pack's declared exceptions to the formula-preset default
-// ([[C76]] formulaPackDefault); registered always ([[C79]] packActivationIsPresentation).
+// [[C76]] formulaPackDefault, [[C79]] packActivationIsPresentation
 
 import { ClassicPreset } from "rete";
 import { listIn, numIn, numOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate } from "../valueKinds";
-
-// Parallel Combine: 1 / Σ(1/xᵢ). A list REDUCER, so it can't be a pre-set Expression —
-// the formula engine is strictly element-wise over lists.
 
 export class ParallelCombineNode extends ClassicPreset.Node {
   label: string;
@@ -30,11 +25,7 @@ export class ParallelCombineNode extends ClassicPreset.Node {
   }
 }
 
-/** The parallel combination 1/Σ(1/xᵢ) — the node's core, shared with the pack's
- *  PARALLELCOMBINE formula. Aggregator policy: per-cell SolError propagates,
- *  null (missing) is skipped; empty → null. A 0 element short-circuits the
- *  whole combination to 0 (a 0 Ω branch) — computing through 1/0 = ∞ would trip
- *  the finite guard. Reciprocals cancelling (−R with +R) is #DIV/0!. */
+/** A 0 element must short-circuit to 0 here: computing through 1/0 = ∞ would trip the finite guard. */
 export function parallelCombine(cells: readonly (number | null | SolError)[]): number | SolError | null {
   const prep = forAggregate([...cells]);
   if (prep.error) return prep.error;
@@ -47,8 +38,7 @@ export function parallelCombine(cells: readonly (number | null | SolError)[]): n
     : 1 / sum;
 }
 
-// Nearest IEC 60063 preferred value. E3–E24 are the published tables (they DEVIATE from
-// the geometric series); E48/E96 follow 10^(k/N) exactly, so they're generated.
+// E3–E24 are the published IEC 60063 tables, which deviate from the geometric series; only E48/E96 may be generated.
 
 export type ESeriesOp = "E3" | "E6" | "E12" | "E24" | "E48" | "E96";
 
@@ -70,13 +60,10 @@ export const E_SERIES: Record<ESeriesOp, number[]> = {
   E96: generated(96),
 };
 
-/** Nearest standard value in a series (log distance — 4.6k is "closer" to 4.7k
- *  than to 4.3k in ratio terms, which is what tolerance bands care about). */
 export function nearestESeries(value: number, series: ESeriesOp): number {
   const decade = Math.floor(Math.log10(value));
   let best = NaN;
   let bestDist = Infinity;
-  // Candidates from the adjacent decades too, so 9.8 can snap up to 10.
   for (const d of [decade - 1, decade, decade + 1]) {
     for (const m of E_SERIES[series]) {
       const cand = m * 10 ** d;
@@ -84,7 +71,7 @@ export function nearestESeries(value: number, series: ESeriesOp): number {
       if (dist < bestDist) { bestDist = dist; best = cand; }
     }
   }
-  // Kill float dust from m·10^d (4.7 * 10^3 → 4700.000000000001).
+  // Round away float dust: 4.7 * 10^3 is 4700.000000000001.
   return Number(best.toPrecision(12));
 }
 
@@ -124,9 +111,6 @@ export class ESeriesNode extends ClassicPreset.Node {
   }
 }
 
-// Diameter/resistance are exact definitions; ampacity is the NEC 310.16 copper 75 °C
-// column — a fact table, so gauges NEC doesn't list output blank rather than a guess.
-
 const AWG_AMPACITY_75C: Record<number, number> = {
   [-3]: 230, [-2]: 200, [-1]: 175, 0: 150, 1: 130, 2: 115, 3: 100,
   4: 85, 6: 65, 8: 50, 10: 35, 12: 25, 14: 20, 16: 18, 18: 14,
@@ -161,7 +145,7 @@ export class AwgNode extends ClassicPreset.Node {
     if (typeof n === "number") {
       const w = awgWire(n);
       if (isSolError(w)) {
-        diameter = area = resistance = w; // ampacity stays null, never an error
+        diameter = area = resistance = w;
       } else {
         ({ diameter, area, resistance, ampacity } = w);
       }
@@ -174,16 +158,13 @@ export class AwgNode extends ClassicPreset.Node {
   }
 }
 
-/** Ø mm, area mm², Ω/km (ρ_cu = 1.724e-8 Ω·m); ampacity only for the table's INTEGER
- *  gauges, else null. #DOMAIN! outside 4/0 (−3) … 40. Fractional n allowed. */
+/** Diameter in mm, area in mm², resistance in Ω/km (ρ_cu = 1.724e-8 Ω·m). */
 export function awgWire(n: number): { diameter: number; area: number; resistance: number; ampacity: number | null } | SolError {
   if (!(n >= -3 && n <= 40)) return solError("#DOMAIN!", "AWG runs 4/0 (enter -3) through 40");
   const d = 0.127 * 92 ** ((36 - n) / 39);
   const a = (Math.PI / 4) * d * d;
   return { diameter: d, area: a, resistance: 17.24 / a, ampacity: Number.isInteger(n) ? AWG_AMPACITY_75C[n] ?? null : null };
 }
-
-// The IEC 60062 color code: digit bands + multiplier → ohms, tolerance band → ±%.
 
 export const RESISTOR_DIGIT: Record<string, number> = {
   black: 0, brown: 1, red: 2, orange: 3, yellow: 4,
@@ -199,8 +180,6 @@ export const RESISTOR_TOL: Record<string, number> = {
   gold: 5, silver: 10,
 };
 
-/** ohms + tolerance for the chosen bands ("brown", "black", …). `five` reads a
- *  third digit band. */
 export function decodeResistor(
   d1: string, d2: string, d3: string, mult: string, tol: string, five: boolean,
 ): { ohms: number; tolerance: number } | SolError {
@@ -220,9 +199,7 @@ export function decodeResistor(
 
 export class ResistorCodeNode extends ClassicPreset.Node {
   label: string;
-  /** Band count: "4" (two digits) or "5" (three digits). */
   bands: "4" | "5";
-  /** Band color picks — persisted with the node (b3 read only in 5-band). */
   stringLiterals: Record<string, string> = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "gold" };
   cachedOhms: number | SolError | null = null;
   cachedTol: number | SolError | null = null;

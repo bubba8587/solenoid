@@ -1,6 +1,5 @@
 // [[C99]] chromeEnvelopeVars
-// Registry of collapsible canvas chrome so one hotkey toggles them as a group; a
-// module singleton, so Canvas's keydown and the panels stay decoupled.
+// Collapsible canvas chrome, so one hotkey toggles it as a group while Canvas and the panels stay decoupled.
 
 type ChromeToggle = { isOpen: () => boolean; setOpen: (open: boolean) => void };
 
@@ -19,7 +18,7 @@ export function toggleChrome(key: string): void {
 export function toggleAllChrome(): number {
   const toggles = [...registry.values()];
   if (toggles.length === 0) return 0;
-  const open = !toggles.some((t) => t.isOpen()); // any open → collapse; none open → expand
+  const open = !toggles.some((t) => t.isOpen());
   for (const t of toggles) t.setOpen(open);
   return toggles.length;
 }

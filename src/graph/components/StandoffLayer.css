@@ -1,5 +1,4 @@
 /* [[C89]] standoffsSolveLast, [[C65]] domOrderStacking */
-/* Standoff bars — pale arrangement constraints living under everything. */
 
 .solenoid-standoff-svg {
   position: absolute;
@@ -53,7 +52,6 @@
   stroke: rgba(80, 96, 122, 0.5);
 }
 
-/* Toolbar extras on top of the reused conduit-toolbar chrome. */
 
 .solenoid-standoff-toolbar__field {
   display: flex;

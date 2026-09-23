@@ -9,12 +9,9 @@ import type {
   ProportionPayload, QuiverPayload, ContourPayload,
 } from "../chartValue";
 
-// Canvas figure views: one DOM element regardless of data size, themed by reading the live
-// CSS vars at draw time (the components subscribe to appThemeStore so a flip redraws).
 
 type Ctx = CanvasRenderingContext2D;
 
-/** Supersampled 2D context: render above device resolution, let the browser downscale. */
 function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | null {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
@@ -27,7 +24,6 @@ function setupCanvas(canvas: HTMLCanvasElement, W: number, H: number): Ctx | nul
   return ctx;
 }
 
-/** Theme colors resolved once per draw, off the canvas's computed style. */
 function themeInk(canvas: HTMLCanvasElement) {
   const cs = getComputedStyle(canvas);
   const v = (name: string, fb: string) => cs.getPropertyValue(name).trim() || fb;
@@ -45,7 +41,6 @@ function themeInk(canvas: HTMLCanvasElement) {
 
 const TICK_FONT = "500 8.5px system-ui, sans-serif";
 
-/** Compact tick label: 3 significant digits, K/M/B above a thousand. */
 function fmtTick(n: number): string {
   const a = Math.abs(n);
   if (a >= 1e9) return `${trim3(n / 1e9)}B`;
@@ -57,7 +52,6 @@ function trim3(n: number): string {
   return String(Number(n.toPrecision(3)));
 }
 
-/** Left-axis gridlines + ticks over [lo, hi] mapped by sy; returns the plot-left x. */
 function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number) {
   ctx.font = TICK_FONT;
   ctx.textAlign = "right";
@@ -77,7 +71,6 @@ function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: n
   ctx.globalAlpha = 1;
 }
 
-/** Truncate a label to fit `max` px with an ellipsis. */
 function fitLabel(ctx: Ctx, s: string, max: number): string {
   if (ctx.measureText(s).width <= max) return s;
   let t = s;
@@ -85,7 +78,6 @@ function fitLabel(ctx: Ctx, s: string, max: number): string {
   return `${t}…`;
 }
 
-/** Padded value range (never zero-span). */
 function span(lo: number, hi: number): [number, number] {
   if (!Number.isFinite(lo) || !Number.isFinite(hi)) return [0, 1];
   if (lo === hi) return [lo - 1, hi + 1];
@@ -101,9 +93,6 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
   const ink = themeInk(canvas);
   const n = p.values.length;
   if (n === 0) return;
-  // Running totals: bar i spans [cum, cum + v]; the Total bar spans [0, sum].
-  // A null delta is a gap: the slot is kept (so labels stay aligned) but nothing is drawn and
-  // the running total does not move — an unknown step never reads as a zero one.
   const bars: Array<{ name: string; a: number; b: number; kind: "up" | "down" | "total" | "gap" }> = [];
   let cum = 0;
   for (let i = 0; i < n; i++) {
@@ -150,7 +139,6 @@ function drawWaterfall(canvas: HTMLCanvasElement, p: WaterfallPayload, W: number
       ctx.fillText(fitLabel(ctx, b.name, bw - 2), padL + i * bw + bw / 2, H - padB + 3);
     }
   }
-  // Zero line, over the bars so the baseline stays legible.
   ctx.strokeStyle = ink.text;
   ctx.globalAlpha = 0.5;
   ctx.lineWidth = 1;
@@ -166,8 +154,6 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
   const ink = themeInk(canvas);
   const n = Math.min(p.open.length, p.high.length, p.low.length, p.close.length);
   if (n === 0) return;
-  // A candle with any unknown of the four, or a high below its low, is a gap; a body that
-  // strays outside [low, high] is clamped into the wick.
   const candle = (i: number): { o: number; h: number; l: number; c: number } | null => {
     const o = p.open[i], h = p.high[i], l = p.low[i], c = p.close[i];
     if (o == null || h == null || l == null || c == null || h < l) return null;
@@ -197,7 +183,6 @@ function drawCandle(canvas: HTMLCanvasElement, p: CandlePayload, W: number, H: n
     ctx.fillStyle = col;
     ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1, Math.abs(yC - yO)));
   }
-  // First + last date under the axis (the card is too small for every tick).
   ctx.font = TICK_FONT;
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "top";
@@ -262,7 +247,6 @@ function drawBoxplot(canvas: HTMLCanvasElement, p: BoxplotPayload, W: number, H:
 
 // ─── Calendar heatmap ──────────────────────────────────────────────────────────
 
-/** Monday-first weekday index (0 = Mon … 6 = Sun) for a date serial. */
 function mondayIndex(serial: number): number {
   return (serialToJsDate(serial).getUTCDay() + 6) % 7;
 }
@@ -272,21 +256,19 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   if (!ctx) return;
   const ink = themeInk(canvas);
   if (p.days.length === 0) return;
-  // The window is capped at a year AND at what the box renders legibly, so a multi-year
-  // feed shows its most recent weeks instead of sub-pixel mush.
   const byDay = new Map<number, number>();
   for (let i = 0; i < p.days.length; i++) byDay.set(p.days[i], (byDay.get(p.days[i]) ?? 0) + (p.values[i] ?? 0));
   const dayList = [...byDay.keys()];
   const end = Math.max(...dayList);
   const dataStart = Math.min(...dayList);
   const padL = 14, padT = 11, padR = 1, padB = 1;
-  const MIN_CELL = 3.2; // px — below this the grid stops reading as days
+  const MIN_CELL = 3.2;
   const endMonday = end - mondayIndex(end);
   const spanStart = Math.max(dataStart, end - 365);
   const wantWeeks = (endMonday - (spanStart - mondayIndex(spanStart))) / 7 + 1;
   const maxWeeks = Math.max(4, Math.floor((W - padL - padR) / MIN_CELL));
   const weeks = Math.min(wantWeeks, maxWeeks);
-  const gridStart = endMonday - (weeks - 1) * 7; // a Monday, so columns stay week-aligned
+  const gridStart = endMonday - (weeks - 1) * 7;
   const start = Math.max(spanStart, gridStart);
   const truncated = dataStart < start;
 
@@ -297,7 +279,6 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   const cell = Math.min((W - padL - padR) / weeks, (H - padT - padB) / 7);
   const gap = cell > 6 ? 1 : 0.5;
 
-  // Truncation is state the reader must know — the data reaches further back than the grid.
   if (truncated) {
     ctx.font = TICK_FONT;
     ctx.fillStyle = ink.dim;
@@ -306,7 +287,6 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
     ctx.fillText(`last ${weeks} wk`, W - padR - 1, padT - 2);
   }
 
-  // Month labels along the top: at each week whose Monday enters a new month.
   ctx.font = TICK_FONT;
   ctx.fillStyle = ink.dim;
   ctx.textAlign = "left";
@@ -352,7 +332,6 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
   const vals = p.values.filter((v) => Number.isFinite(v) && v > 0);
   if (p.values.length === 0) return;
 
-  // Multiple categories split by share via largest-remainder, so counts always sum to 100.
   let counts: Array<{ n: number; color: string; name: string }> = [];
   const single = p.values.length === 1 && p.values[0] >= 0 && p.values[0] <= 1;
   if (single) {
@@ -378,7 +357,7 @@ function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, 
   let k = 0;
   for (const c of counts) {
     for (let j = 0; j < c.n && k < 100; j++, k++) {
-      const col = k % 10, row = 9 - Math.floor(k / 10); // fill bottom-up
+      const col = k % 10, row = 9 - Math.floor(k / 10);
       ctx.fillStyle = c.color;
       ctx.fillRect(ox + col * cell, oy + row * cell, cell - gap, cell - gap);
     }
@@ -428,7 +407,6 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
   if (maxMag === 0) maxMag = 1;
   const reach = Math.min(cw, ch) * 0.46;
 
-  // +v points UP on screen (plot convention), so canvas-y is negated.
   for (let iy = 0; iy < ny; iy++) for (let ix = 0; ix < nx; ix++) {
     const cx = pad + (ix + 0.5) * cw, cy = pad + (iy + 0.5) * ch;
     const u = p.u[iy]?.[ix], v = p.v[iy]?.[ix];
@@ -449,15 +427,13 @@ function drawQuiver(canvas: HTMLCanvasElement, p: QuiverPayload, W: number, H: n
     const hx = cx + len * cosA, hy = cy + len * sinA;
     const tx = cx - len * cosA, ty = cy - len * sinA;
     ctx.strokeStyle = col;
-    // Thinner shaft on small arrows — a full-width stroke on a 3px arrow reads as a blob.
     ctx.lineWidth = Math.max(0.7, Math.min(cw, ch) * 0.07 * (0.55 + 0.45 * t));
     ctx.lineCap = "round";
-    // The shaft stops at the head's base so it can't poke past the tip.
     const hl = Math.min(4.5, len * 0.55);
     if (hl >= 2.2) {
-      const bx = hx - hl * cosA, by = hy - hl * sinA; // head base on the shaft
+      const bx = hx - hl * cosA, by = hy - hl * sinA;
       ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(bx, by); ctx.stroke();
-      const wh = hl * 0.45; // half-width of the head base
+      const wh = hl * 0.45;
       ctx.fillStyle = col;
       ctx.beginPath();
       ctx.moveTo(hx, hy);
@@ -486,16 +462,13 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   if (!Number.isFinite(zmin)) return;
   if (zmin === zmax) zmax = zmin + 1;
 
-  // Real gutters: drawn over the filled bands the coordinate hints are illegible.
   const padL = 6, padR = 6, padT = 12, padB = 12;
   const xmin = Math.min(...xs), xmax = Math.max(...xs);
   const ymin = Math.min(...ys), ymax = Math.max(...ys);
   const sx = (v: number) => padL + ((v - xmin) / (xmax - xmin || 1)) * (W - padL - padR);
-  const sy = (v: number) => H - padB - ((v - ymin) / (ymax - ymin || 1)) * (H - padT - padB); // y up
+  const sy = (v: number) => H - padB - ((v - ymin) / (ymax - ymin || 1)) * (H - padT - padB);
   const tz = (v: number) => (v - zmin) / (zmax - zmin);
 
-  // Each cell subdivides into bilinear-shaded subquads; a cell with a missing corner stays
-  // blank, a hole like Surface.
   const SUB = 6;
   for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
     const z00 = z[iy]?.[ix], z10 = z[iy]?.[ix + 1], z01 = z[iy + 1]?.[ix], z11 = z[iy + 1]?.[ix + 1];
@@ -513,7 +486,6 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
     }
   }
 
-  // Iso-lines by marching squares, `levels` evenly spaced strictly inside the range.
   ctx.strokeStyle = "rgba(0,0,0,0.45)";
   ctx.lineWidth = 0.8;
   const levels = Math.max(2, p.levels | 0);
@@ -522,8 +494,7 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
     for (let iy = 0; iy < ny - 1; iy++) for (let ix = 0; ix < nx - 1; ix++) {
       const z00 = z[iy]?.[ix], z10 = z[iy]?.[ix + 1], z01 = z[iy + 1]?.[ix], z11 = z[iy + 1]?.[ix + 1];
       if (!fin(z00) || !fin(z10) || !fin(z01) || !fin(z11)) continue;
-      // Edge crossings (linear interpolation), edges: top (00→10), right (10→11),
-      // bottom (01→11), left (00→01) in grid space.
+      // Edges in grid space: top (00→10), right (10→11), bottom (01→11), left (00→01).
       const pts: Array<[number, number]> = [];
       const cross = (a: number, b: number, ax: number, ay: number, bx: number, by: number) => {
         if ((a - t) * (b - t) < 0) {
@@ -539,7 +510,6 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
       if (pts.length === 2) {
         ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); ctx.lineTo(pts[1][0], pts[1][1]); ctx.stroke();
       } else if (pts.length === 4) {
-        // Saddle: split by the cell-center value.
         const zc = (z00 + z10 + z01 + z11) / 4;
         const pairs = zc > t ? [[0, 1], [2, 3]] : [[0, 3], [1, 2]];
         for (const [a, b] of pairs) {
@@ -549,8 +519,6 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
     }
   }
 
-  // Corner coordinate hints, in the gutters (the card is too small for full axes):
-  // x range along the bottom, y max above the top-left.
   ctx.font = TICK_FONT;
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "bottom";
@@ -563,8 +531,6 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
 }
 
 // ─── React wrappers ────────────────────────────────────────────────────────────
-// Theme-subscribed and draw-on-layout; each view checks its own emptiness and falls back to
-// the standard em-dash placeholder.
 
 function useThemedCanvas(draw: (canvas: HTMLCanvasElement) => void) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);

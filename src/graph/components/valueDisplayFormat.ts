@@ -1,6 +1,4 @@
 // [[D40]] unitOnValue, [[D41]] formatFlowsDownstream. Mechanics: tree/specs/values/unit-flow.md.
-// The one annotation resolution every value surface asks through, plus cell/date/unit
-// rendering. A value is a DATE when its node's OUTPUT SOCKET says so, never by cell shape.
 
 import { isCx, formatCxDisplay, type Cx } from "../cxValue";
 import { getOwningEditor } from "../activeGraph";
@@ -15,20 +13,13 @@ import { dimEqual } from "../dimension";
 import { formatScalar } from "./format";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
-/**
- * The annotation that governs how this node's value RENDERS, asked the same way by
- * every surface: a DIRECTLY docked FC, else one CARRIED onto the output (an upstream
- * FC riding through passthroughs, or the node's own per-output declaration), else one
- * docked DOWNSTREAM through a run of passthroughs. `socketKey` names WHICH output on a
- * multi-box card; without it each output is asked in declaration order.
- */
 export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: string): FormatAnnotation | undefined {
   if (!nodeId) return undefined;
   const direct = socketKey
     ? formatAnnotationStore.get(nodeId, socketKey)
     : formatAnnotationStore.getForNode(nodeId);
   if (direct) return direct;
-  // Owning editor, not main: a node inside a Composite drill-in resolves its FC there.
+  // Owning editor, so a node inside a drill-in resolves its FC there.
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as
     (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
@@ -42,9 +33,6 @@ export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: stri
   return undefined;
 }
 
-/** One inline-output-row cell, honouring a resolved FC annotation: numbers via the
- *  annotation formatter, Cx likewise, text case and logical style applied; errors
- *  and null untouched. Multi-row cards resolve the annotation per SOCKET. */
 export type RowCell = number | boolean | string | Cx | SolError | null;
 export function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
@@ -65,8 +53,7 @@ export function formatRowValue(v: RowCell | RowCell[], ann?: FormatAnnotation): 
 
 export type DisplayValue =
   | number
-  // A tagged complex rides RAW into the value box — pre-formatting in a component would
-  // produce a fixed string no FC annotation can touch.
+  // A complex rides raw: pre-formatting it in a component would give a string no FC can touch.
   | Cx
   | (Cx | null | SolError)[]
   | UnitCell
@@ -81,9 +68,6 @@ export type DisplayValue =
   | SolError
   | null;
 
-/** Format ONE list element for the value box / clipboard: `null` for a missing cell,
- *  `#CODE!` for an error, and every other cell through `ann` when one is resolved —
- *  logical show-as, text case, complex and united cells included. */
 export function formatListCell(
   v: number | string | boolean | null | SolError | UnitCell | Cx,
   fmtNum: (n: number) => string,
@@ -101,15 +85,10 @@ export function formatListCell(
   return fmtNum(v);
 }
 
-/** An annotation that names no unit of its own — a FORMAT carried across a transform
- *  arrives stripped this way (unit is value-level, [[D41]] formatFlowsDownstream). */
 function annotationCarriesNoUnit(ann: FormatAnnotation): boolean {
   return ann.unit === "none" || (ann.unit === "custom" && !ann.customUnit);
 }
 
-/** The annotation a DIMENSIONED value renders with: when the annotation names no unit,
- *  the cell's own display unit survives and the annotation supplies the number style
- *  alone — a carried format must never strip a `$` off the value it formats. */
 export function annotationForValue(value: unknown, ann: FormatAnnotation | undefined): FormatAnnotation | undefined {
   if (!ann || !annotationCarriesNoUnit(ann)) return ann;
   const cell = isUnitCell(value)
@@ -118,11 +97,8 @@ export function annotationForValue(value: unknown, ann: FormatAnnotation | undef
   return cell?.display ? { ...ann, unit: cell.display, customUnit: "" } : ann;
 }
 
-// A `UnitCell` must be unwrapped before ValueDisplay's number/string branches: with an FC
-// docked, to the magnitude in its display unit; without one, to a "magnitude symbol" string.
 
-/** The magnitude of a dimensioned cell in `ann`'s display unit when commensurable, else the
- *  raw base-SI magnitude; the UNannotated case goes through `formatCellWithDisplay`. */
+/** Falls back to the raw base-SI magnitude when the units aren't commensurable. */
 function displayMagnitude(cell: UnitCell, ann: FormatAnnotation | undefined): number {
   const id = cell.display ?? (ann && ann.unit !== "none" && ann.unit !== "custom" ? ann.unit : undefined);
   if (id) {
@@ -132,8 +108,7 @@ function displayMagnitude(cell: UnitCell, ann: FormatAnnotation | undefined): nu
   return cell.value;
 }
 
-/** Render a dimensioned cell as "magnitude unit", preferring its authored `display` unit;
- *  the pure formatter can't do this — only the display layer reaches the FC unit registry. */
+/** Only the display layer reaches the FC unit registry, so the pure formatter can't do this. */
 function formatCellWithDisplay(cell: UnitCell, fmtNum: (n: number) => string): string {
   if (cell.display) {
     const u = fcUnitToUnit(cell.display);
@@ -146,7 +121,6 @@ function formatCellWithDisplay(cell: UnitCell, fmtNum: (n: number) => string): s
   return formatUnitCell(cell, fmtNum);
 }
 
-/** Replace any `UnitCell` in a display value with its render form; a no-op otherwise. */
 export function unwrapUnitCells(value: DisplayValue, ann: FormatAnnotation | undefined): DisplayValue {
   if (isUnitCell(value)) {
     return ann ? displayMagnitude(value, ann) : formatCellWithDisplay(value, formatScalar);
@@ -162,22 +136,18 @@ export function unwrapUnitCells(value: DisplayValue, ann: FormatAnnotation | und
   return value;
 }
 
-/** Date only, or date + time when the serial carries a time fraction (e.g. NOW()). */
 function fmtSerial(v: number): string {
   if (!Number.isFinite(v)) return "";
   const hasTime = Math.abs(v - Math.round(v)) > 1e-4;
   return formatDateSerial(v, hasTime ? DEFAULT_DATETIME_FORMAT : DEFAULT_DATE_FORMAT);
 }
 
-/** The concrete data type of the value a node DISPLAYS. A wildcard still on the socket
- *  after adoption means genuinely unknown, and is honoured rather than guessed past. */
+/** A wildcard still on the socket after adoption means unknown, and is honored rather than guessed past. */
 function displayedType(nodeId: string, outKey?: string): SocketDataType | undefined {
-  // An internal drill-in node lives in the internal editor, not main.
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as
     (Record<string, unknown> & { outputs?: Record<string, { socket?: unknown } | undefined> }) | undefined;
   if (!node) return undefined;
-  // `outKey` names WHICH socket to read on a multi-output card; never a traversal.
   const out = outKey ? node.outputs?.[outKey] : (node.outputs?.result ?? Object.values(node.outputs ?? {})[0]);
   const sock = out?.socket;
   return sock instanceof SolenoidSocket ? sock.dataType : undefined;
@@ -187,8 +157,7 @@ export function nodeOutputIsDate(nodeId: string | null): boolean {
   return nodeOutputElemFamily(nodeId) === "date";
 }
 
-/** The ELEMENT FAMILY the node's output socket DECLARES — the socket is the truth, never
- *  the cells; `undefined` (wildcard / non-family) is where a caller may scan cells. */
+/** `undefined` (a wildcard or no family) is the only case where a caller may scan cells. */
 export function nodeOutputElemFamily(nodeId: string | null, outKey?: string): ElemFamily | undefined {
   if (!nodeId) return undefined;
   const t = displayedType(nodeId, outKey);
@@ -198,38 +167,24 @@ export function nodeOutputElemFamily(nodeId: string | null, outKey?: string): El
   return fam === "number" || fam === "string" || fam === "logical" || fam === "complex" ? fam : undefined;
 }
 
-/** Turn numeric serials into date strings when the output socket is a date; a no-op once an
- *  FC annotation is present, since the FC formats dates itself. */
 export function dateFormatDisplay(value: DisplayValue, dateLike: boolean, hasAnnotation: boolean): DisplayValue {
   if (!dateLike || hasAnnotation) return value;
   if (typeof value === "number") {
     return Number.isFinite(value) ? fmtSerial(value) : value;
   }
-  // PER CELL, and never gated on cell 0. `dateLike` is the DECLARED family, so every
-  // cell here is a date cell; deciding the whole list's treatment from the first one
-  // meant a leading valid date turned every error and blank after it into "" — an
-  // #AMBIGUOUS! cell rendered as an empty cell, which is the one thing it must not do.
+  // Per cell, never decided from cell 0: a leading valid date must not turn a later error or blank into an empty cell.
   if (Array.isArray(value)) {
     return (value as (number | string | boolean | null | SolError)[]).map((v) => {
-      if (isSolError(v)) return v.code;   // an error cell keeps its #CODE!
-      if (v === null) return "";          // a blank stays blank
-      // A non-finite SERIAL is dirty data with no date to show — blank, per the pin.
+      if (isSolError(v)) return v.code;
+      if (v === null) return "";
+      // A non-finite serial is dirty data with no date to show, so it is blank.
       if (typeof v === "number") return Number.isFinite(v) ? fmtSerial(v) : "";
-      return v;                           // text/logical cells pass through
+      return v;
     });
   }
   return value;
 }
 
-/**
- * Should a list render INLINE (joined text) rather than as a chip?
- *  • expanded Display (`full === true`) → inline, so a resized box shows the list;
- *  • a normal node with an FC annotation (`full === undefined`) → inline, so the
- *    formatting is visible (the chip can't show it);
- *  • COLLAPSED Display (`full === false`) → NEVER inline (always a chip) — the
- *    collapse-to-chip behavior must win even when an FC is docked. Non-Display
- *    nodes never pass `full`, so it's `undefined` there.
- */
 export function shouldRenderListInline(full: boolean | undefined, hasAnnotation: boolean): boolean {
   return full === true || (full === undefined && hasAnnotation);
 }

@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "./catalogUtils";
 
-// Name→Ctor map DERIVED by calling every catalog factory once; built lazily and cached.
+// Derived by calling every catalog factory once, lazily, and cached.
 
 export type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
 
@@ -17,7 +17,7 @@ export function ctorRegistry(): Map<string, NodeCtor> {
       const ctor = inst.constructor as NodeCtor;
       if (!m.has(ctor.name)) m.set(ctor.name, ctor);
     } catch {
-      // A factory that can't construct standalone is skipped; it just won't round-trip.
+      // A factory that can't construct standalone is skipped; that type won't round-trip.
     }
   }
   _ctorByName = m;

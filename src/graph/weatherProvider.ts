@@ -1,6 +1,5 @@
-// Open-Meteo forecast (keyless, CORS-open): one call returns past + future daily rows
-// plus current conditions. The URL build + PARSE are pure and fixture-tested (widget
-// rule 5); the node owns the fetch/cache and the unit tagging.
+// [[D40]] unitOnValue
+// Open-Meteo forecast (keyless, CORS-open): past and future daily rows plus current conditions in one call.
 import { type FrameValue, type FrameColumn } from "./frame";
 import { parseDateToSerial } from "./nodes/dateSerial";
 import { columnUnitFromSpec } from "./unitColumn";
@@ -43,9 +42,7 @@ export interface WeatherResult {
 
 const EMPTY: FrameValue = { __frame: true, columns: [] };
 
-/** Parse the forecast response into a Daily frame (date, rain, temps, ET₀, condition)
- *  plus the current temp + condition. Temps carry the chosen °C/°F unit on their columns
- *  ([[D40]] unitOnValue) so it flows downstream. A malformed body → an empty frame. */
+/** Temperature columns carry the chosen °C or °F unit so it flows downstream; a malformed body gives an empty frame. */
 export function parseWeather(text: string, unit: TempUnit): WeatherResult {
   let data: unknown;
   try { data = JSON.parse(text); } catch { return { daily: EMPTY, nowTemp: null, nowCondition: "" }; }

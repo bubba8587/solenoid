@@ -36,13 +36,11 @@ function CheckRow({ label, checked, onChange }: { label: string; checked: boolea
 export function ExpectComponent({ data, emit }: NodeProps<ExpectNodeType>) {
   const connected = useConnectedInputs(data.id);
   const incoming = useIncomingSources(data.id);
-  // The checkboxes are CONTROLLED and the pass-through value never changes, so a node-only
-  // write wouldn't re-render — mirror to state here and write the node in the handler.
+  // The checkboxes are controlled and the pass-through value never changes, so a node-only write wouldn't re-render.
   const [checks, setChecks] = useState({
     checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,
     checkRange: data.checkRange, checkRegex: data.checkRegex, checkAllowed: data.checkAllowed,
   });
-  // Resync if the flags change externally (paste, load, undo).
   useEffect(() => {
     setChecks({
       checkNotNull: data.checkNotNull, checkUnique: data.checkUnique,

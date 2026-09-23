@@ -1,7 +1,5 @@
-// Run with: npm run ai-grounding [-- --out <file>]
-// CLI shell over the grounding-spec emitter (src/graph/aiGrounding.ts — one
-// emission, two consumers: this CLI and the palette's system prompt). Prints
-// to stdout; `--out` writes a file instead.
+// Prints the AI grounding spec (src/graph/aiGrounding.ts, which also feeds the palette's system prompt).
+//   npm run ai-grounding [-- --out <file>]
 
 import { writeFileSync } from "node:fs";
 import { buildGroundingSpec } from "../src/graph/aiGrounding";

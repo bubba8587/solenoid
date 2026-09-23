@@ -1,4 +1,4 @@
-// [[E11]], [[C103]] untrustedContentSeams
+// [[E11]], [[C103]] untrustedContentSeams, [[C1]] demoVault, [[C8]] declareOnce
 import { ClassicPreset } from "rete";
 import { frameOut, strListOut, strIn, numIn, numOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
@@ -26,11 +26,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { planFileToPlan, csvPlanToCube } from "../planImport";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
-// A connection node holds only a reference and fetches a Frame on refresh — the data
-// is never baked into the project file.
 
-/** First row = headers; per-column type inference keeps text columns as strings
- *  rather than NaN. */
 export function csvToFrame(text: string): FrameValue {
   const rows = parseCsvRows(text, { detectDelimiter: true });
   if (rows.length === 0) return { __frame: true, columns: [] };
@@ -38,11 +34,6 @@ export function csvToFrame(text: string): FrameValue {
   return frameFromCells(headers, rows.slice(1));
 }
 
-/** Parse JSON into a Frame (type-inferring, so text survives). Accepts:
- *  - array of records  [{a:1,b:"x"}, …]      → keys are columns (ordered union)
- *  - array of arrays   [[1,2],[3,4]]          → positional columns (Col1, Col2…)
- *  - array of scalars  [1,2,3]                → a single column
- *  - columnar object   { a:[1,2], b:["x"] }   → keys are columns */
 export function jsonToFrame(text: string): FrameValue {
   const data = JSON.parse(text);
   if (Array.isArray(data)) {
@@ -58,7 +49,6 @@ export function jsonToFrame(text: string): FrameValue {
   throw new Error("Unsupported JSON shape");
 }
 
-/** Pick CSV vs JSON from the content-type, the URL extension, then the text. */
 export function remoteTextToFrame(text: string, contentType: string, url: string): FrameValue {
   const looksJson =
     /json/i.test(contentType) ||
@@ -75,12 +65,10 @@ export class WebSourceNode extends ClassicPreset.Node {
   };
   label: string;
   url: string;
-  /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   cachedResult: FrameValue | null = null;
   width = 260; height = 200;
 
-  // Transient (never persisted); inflightKey guards against starting a fetch twice.
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
 
@@ -92,20 +80,16 @@ export class WebSourceNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  // SYNCHRONOUS by design: an async data() would sit on the engine's critical path, so
-  // every processGraph awaits the network and engine.reset() cancels the in-flight fetch.
   data(): { frame: FrameValue | null } {
     const ref = this.url.trim();
     const key = connectionStore.key(this.id, ref);
     if (key === this.lastKey) return { frame: this.cachedResult };
-    // Per-document network gate (C2): a foreign, un-allowed document fetches nothing.
     if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
       this.inflightKey = key;
-      // fetchFrame sets cachedResult + lastKey; the recompute then reads them.
       void this.fetchFrame(ref, key).then(() => scheduleConnectionRecalc());
     }
-    return { frame: this.cachedResult }; // stale/null until the fetch resolves
+    return { frame: this.cachedResult };
   }
 
   private async fetchFrame(ref: string, key: string): Promise<{ frame: FrameValue | null }> {
@@ -117,7 +101,6 @@ export class WebSourceNode extends ClassicPreset.Node {
     }
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      // Native HTTP on desktop (no CORS); the browser path surfaces a CORS hint.
       const { text: body, contentType } = await fetchText(ref);
       const frame = remoteTextToFrame(body, contentType, ref);
       this.cachedResult = frame;
@@ -131,7 +114,7 @@ export class WebSourceNode extends ClassicPreset.Node {
       return { frame };
     } catch (e) {
       this.cachedResult = null;
-      this.lastKey = key; // don't retry until gen/token/url changes (no network spam)
+      this.lastKey = key;
       const msg = e instanceof Error ? e.message : String(e);
       connectionStore.setState(this.id, { status: "error", message: msg });
       return { frame: null };
@@ -140,7 +123,6 @@ export class WebSourceNode extends ClassicPreset.Node {
 }
 
 // ─── Shared fetch + status (IMPORT nodes) ───────────────────────────────────────
-// The CALLER owns caching (lastKey / in-flight dedupe), as WebSource does.
 async function fetchParsed<T>(
   nodeId: string,
   url: string,
@@ -148,7 +130,7 @@ async function fetchParsed<T>(
   size: (v: T) => { rows: number; cols: number },
 ): Promise<T | null> {
   if (url === "") { connectionStore.setState(nodeId, { status: "idle" }); return null; }
-  if (!requestNetwork(nodeId)) return null; // [[C103]] untrustedContentSeams: not yet allowed for this document
+  if (!requestNetwork(nodeId)) return null;
   connectionStore.setState(nodeId, { status: "loading" });
   try {
     const { text, contentType } = await fetchText(url);
@@ -162,7 +144,6 @@ async function fetchParsed<T>(
   }
 }
 
-/** The first row becomes headers only when it's a `<thead>` / all-`<th>` row. */
 export function htmlTableToFrame(html: string, index1: number): FrameValue {
   if (typeof DOMParser === "undefined") throw new Error("HTML parsing needs a browser environment.");
   const doc = new DOMParser().parseFromString(html, "text/html");
@@ -178,13 +159,12 @@ export function htmlTableToFrame(html: string, index1: number): FrameValue {
   return frameFromCells(headers, body);
 }
 
-/** Each matched node's trimmed text, as a flat list. */
 export function xpathToList(html: string, query: string): string[] {
   if (typeof DOMParser === "undefined") throw new Error("XML parsing needs a browser environment.");
   const q = query.trim();
   if (q === "") return [];
   const doc = new DOMParser().parseFromString(html, "text/html");
-  // 7 = XPathResult.ORDERED_NODE_SNAPSHOT_TYPE (avoids referencing the global).
+  // 7 is XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, written as a literal so the global is never referenced.
   const res = doc.evaluate(q, doc, null, 7, null);
   const out: string[] = [];
   for (let i = 0; i < res.snapshotLength; i++) {
@@ -201,7 +181,7 @@ export class ImportHtmlNode extends ClassicPreset.Node {
   };
   label: string;
   url: string;
-  tableIndex: number; // 1-based which <table> on the page
+  tableIndex: number; // 1-based
   cachedResult: FrameValue | null = null;
   width = 260; height = 220;
   private lastKey: string | undefined;
@@ -217,7 +197,6 @@ export class ImportHtmlNode extends ClassicPreset.Node {
   }
 
   async data(): Promise<{ frame: FrameValue | null }> {
-    // The table index is part of the cache key so changing it re-parses.
     const key = connectionStore.key(this.id, `${this.url.trim()}#t=${this.tableIndex}`);
     if (key === this.lastKey) return { frame: this.cachedResult };
     if (this.inflightKey !== key || !this.inflight) {
@@ -243,7 +222,7 @@ export class ImportHtmlNode extends ClassicPreset.Node {
 export class ImportXmlNode extends ClassicPreset.Node {
   label: string;
   url: string;
-  query: string; // XPath
+  query: string;
   cachedResult: string[] | null = null;
   width = 260; height = 210;
   private lastKey: string | undefined;
@@ -279,34 +258,24 @@ export class ImportXmlNode extends ClassicPreset.Node {
   }
 }
 
-// ─── CSV CONNECTION (local folder) ──────────────────────────────────────────────
-// Desktop only (no filesystem in the browser). The cache key folds in folder + file
-// name, so re-pointing either re-reads.
-
-// [[C1]]
+// ─── LOCAL FILE (a file in the Settings target folder) ──────────────────────────
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
     plan: "A project plan: Project XML, GanttProject, Primavera XER, or a CSV with Predecessors like 3FS+2d. Tasks nest as the outline. Empty otherwise.",
   };
   label: string;
-  /** File name relative to the Settings target folder (not a full path). */
   fileName: string;
-  /** The plan cube beside the frame when the file is a project plan (MSPDI or a grammar CSV). */
   cachedPlan: CubeValue | null = null;
-  /** What the plan reader saw but could not model (MSPDI), for the status line. */
   planNotes: string[] = [];
-  /** Auto-refresh interval in minutes (0 = off) — see WebSourceNode. */
   refreshMinutes: number;
-  /** CSV holds a materialized Frame; Parquet holds the preview (its lazy handle is `ref`). */
   cachedResult: FrameValue | SolError | null = null;
   width = 260; height = 210;
 
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
   private inflight: Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> | undefined;
-  /** The Parquet handle backing `cachedResult`'s preview — owned by this node, dropped on
-   *  a refresh/re-point (or a switch to CSV), mirroring the verb nodes' `_ref`. */
+  /** Owned by this node: drop it with `dropFrameRef` before replacing or clearing it. */
   private ref: FrameRef | null = null;
 
   constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number }) {
@@ -322,7 +291,6 @@ export class LocalFileNode extends ClassicPreset.Node {
     return name.toLowerCase().endsWith(".parquet");
   }
 
-  /** A plan file by extension: Project XML, GanttProject, Primavera. */
   private static isPlanFile(name: string): boolean {
     return /\.(xml|gan|xer)$/i.test(name);
   }
@@ -343,7 +311,6 @@ export class LocalFileNode extends ClassicPreset.Node {
     const parquet = LocalFileNode.isParquet(name);
     this.cachedPlan = null;
     this.planNotes = [];
-    // Parquet errors flow as a #REF! value (downstream sees an error); CSV clears to null.
     const fail = (message: string, status: "idle" | "error" = "error") => {
       if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
       const out = status === "error" && parquet ? solError("#REF!", message) : null;
@@ -352,8 +319,6 @@ export class LocalFileNode extends ClassicPreset.Node {
       connectionStore.setState(this.id, { status, message });
       return { frame: out, plan: null };
     };
-    // Reading needs the desktop app, EXCEPT the bundled demo vault, which the web app
-    // reads through the in-memory FsProvider (CSV only — Parquet needs the native engine).
     if (parquet ? (!isDesktop() || !engineAvailable()) : (!isDesktop() && !isDemoVaultPath(folder))) {
       return fail(parquet ? "Desktop app (native engine) only" : "Desktop app only");
     }
@@ -362,8 +327,6 @@ export class LocalFileNode extends ClassicPreset.Node {
     connectionStore.setState(this.id, { status: "loading" });
     try {
       if (parquet) {
-        // The read never touches JS, so typed columns arrive intact (no inference step);
-        // a LAZY FrameRef off the fresh handle keeps a verb chain from re-uploading.
         const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
         if (this.ref) dropFrameRef(this.ref);
         const ref: FrameRef = { __frameRef: handle as FrameHandle, __plan: [] };
@@ -376,10 +339,8 @@ export class LocalFileNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
         return { frame: ref, plan: null };
       }
-      // A Parquet handle from a previous file is stale now — drop it.
       if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
       if (LocalFileNode.isPlanFile(name)) {
-        // A plan file: the plan cube, with the flat outline beside it on the frame socket.
         const text = await readFileText(folder, name);
         const plan = planFileToPlan(text);
         if (!plan) throw new Error("Not a Project XML, GanttProject or Primavera file");
@@ -393,7 +354,6 @@ export class LocalFileNode extends ClassicPreset.Node {
         });
         return { frame: plan.frame, plan: plan.cube };
       }
-      // Desktop parses in Rust so the file text never crosses IPC; web keeps the JS path.
       const frame = engineAvailable()
         ? await (async () => {
             const r = await readCsvFrame(folder, name);
@@ -402,7 +362,6 @@ export class LocalFileNode extends ClassicPreset.Node {
           })()
         : csvToFrame(await readFileText(folder, name));
       this.cachedResult = frame;
-      // A Smartsheet / Project CSV (row-number predecessors) is also a plan.
       this.cachedPlan = csvPlanToCube(frame);
       this.lastKey = key;
       connectionStore.setState(this.id, {
@@ -419,9 +378,6 @@ export class LocalFileNode extends ClassicPreset.Node {
 }
 
 // ─── GEOCODE (place name → lat / lon / timezone) ────────────────────────────────
-// Open-Meteo geocoding, keyless + CORS-open. The enabler node: feeds Weather and any
-// node that today wants hand-typed coordinates. Sync data() + one background fetch per
-// place (the WebSource pattern); ambiguity is a per-node label pick, default top match.
 export class GeocodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     place: "A place name, for example Boise or Paris.",
@@ -429,10 +385,8 @@ export class GeocodeNode extends ClassicPreset.Node {
   };
   label: string;
   stringLiterals: Record<string, string> = {};
-  /** The chosen match's label (ambiguity pick); "" = the top match. */
   pickedLabel = "";
   width = 240; height = 230;
-  // Transient: the last fetch's matches (for the card's pick list) + the fetch cache guard.
   matches: GeocodeMatch[] = [];
   private _lastFetchKey: string | undefined;
 
@@ -457,13 +411,11 @@ export class GeocodeNode extends ClassicPreset.Node {
         this.matches = [];
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
-        // Only commit the key once the fetch is actually launched, so a gated pass re-asks.
+        // Commit the key only once the fetch launches, so a gated pass asks again.
         this._lastFetchKey = key;
         void this.fetchMatches(place).then(() => scheduleConnectionRecalc());
       }
     }
-    // The pick is applied per compute (cheap, from the cached matches) so changing it
-    // re-selects without a re-fetch.
     const m = pickGeocodeMatch(this.matches, this.pickedLabel);
     return { lat: m?.lat ?? null, lon: m?.lon ?? null, timezone: m?.timezone ?? null, label: m?.label ?? null };
   }
@@ -484,10 +436,6 @@ export class GeocodeNode extends ClassicPreset.Node {
 }
 
 // ─── WEATHER (Open-Meteo forecast: a Daily frame + Now scalars) ─────────────────
-// The anchor widget. One call returns past_days + a 16-day forecast. Lat/lon come from
-// Geocode (or typed literals). The °C/°F toggle sets the API unit AND tags the temps
-// with that unit so it flows downstream like Convert ([[C25]] firstClassUnits). Reuses the
-// WebSource sync-background fetch pattern, so it rides the C2 network gate.
 export class WeatherNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     lat: "Latitude.",
@@ -500,10 +448,8 @@ export class WeatherNode extends ClassicPreset.Node {
   unit: TempUnit;
   pastDays: number;
   forecastDays: number;
-  /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   width = 240; height = 280;
-  /** Read by the component's output rows; never persisted. */
   cached: WeatherResult | null = null;
   private _lastKey: string | undefined;
 
@@ -521,8 +467,6 @@ export class WeatherNode extends ClassicPreset.Node {
     this.addOutput("condition", strOut("Condition"));
   }
 
-  // The daily frame's columns are FIXED ([[C8]] declareOnce), so downstream pickers know them
-  // before any fetch lands.
   frameShape(): Shape {
     return { columns: [
       { name: "Date", type: "date" }, { name: "Rain mm", type: "number" }, { name: "Rain %", type: "number" },
@@ -549,8 +493,6 @@ export class WeatherNode extends ClassicPreset.Node {
     const c = this.cached;
     const fcUnit = this.unit === "F" ? "degF" : "degC";
     return {
-      // Blank until the fetch lands (or after it fails; the card shows why), never a
-      // column-less frame that downstream pickers would read as a missing column.
       daily: c?.daily ?? null,
       temp: c?.nowTemp != null ? applyFcUnit(c.nowTemp, fcUnit) : null,
       condition: c?.nowCondition ?? null,
@@ -571,10 +513,6 @@ export class WeatherNode extends ClassicPreset.Node {
 }
 
 // ─── HOLIDAYS (Nager.Date: a year's public holidays as a frame + a date list) ────
-// A country + year → the year's public holidays. Nager.Date is keyless + CORS-open.
-// The Dates list feeds NETWORKDAYS / WORKDAY straight; the frame reads on a Report;
-// "days to next" drives a dashboard. An optional region keeps only the days that apply
-// in a subdivision. Reuses the WebSource sync-background fetch, so it rides [[C103]] untrustedContentSeams.
 export class HolidaysNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "One row per holiday: date, English name, local name.",
@@ -582,16 +520,11 @@ export class HolidaysNode extends ClassicPreset.Node {
     next: "Whole days until the next holiday, counting from today.",
   };
   label: string;
-  /** ISO 3166-1 alpha-2 country code (for example US, GB). */
   country: string;
-  /** Optional subdivision code (for example US-CA); blank = the whole country. */
   region: string;
-  /** The calendar year; 0 = the current year. */
   year: number;
-  /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   width = 240; height = 250;
-  /** Read by the component's output rows; never persisted. */
   cached: Holiday[] | null = null;
   private _lastKey: string | undefined;
 
@@ -607,15 +540,12 @@ export class HolidaysNode extends ClassicPreset.Node {
     this.addOutput("next", numOut("Days to next"));
   }
 
-  // The frame's columns are FIXED ([[C8]] declareOnce), so downstream pickers know them
-  // before any fetch lands.
   frameShape(): Shape {
     return { columns: [
       { name: "Date", type: "date" }, { name: "Name", type: "string" }, { name: "Local", type: "string" },
     ] };
   }
 
-  /** Today as a UTC-midnight Excel serial, matching the date column's convention. */
   private static todaySerial(): number {
     const d = new Date();
     return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
@@ -635,8 +565,6 @@ export class HolidaysNode extends ClassicPreset.Node {
         void this.fetchHolidays(year, country).then(() => scheduleConnectionRecalc());
       }
     }
-    // Region is applied per compute (cheap, from the cache) so changing it re-selects
-    // without a re-fetch, mirroring Geocode's pick.
     const applicable = filterHolidays(this.cached ?? [], this.region);
     return {
       frame: holidaysFrame(applicable),
@@ -661,10 +589,6 @@ export class HolidaysNode extends ClassicPreset.Node {
 }
 
 // ─── CURRENCY / FX (Frankfurter: convert an amount, forward the target currency) ──
-// The #1 googled conversion. Currency is a unit in the FC model, so the Converted output
-// is AUTHORED with the target currency via applyFcUnit — the same value-side path Convert
-// uses ([[C25]] firstClassUnits) — and every code is registered with the display bridge in
-// fxProvider. Amount applies per compute (no re-fetch); From/To key the fetch.
 export type FxMode = "spot" | "history";
 
 export const FX_MODE_META: Record<FxMode, { label: string }> = {
@@ -672,8 +596,6 @@ export const FX_MODE_META: Record<FxMode, { label: string }> = {
   history: { label: "History" },
 };
 
-// Spot inputs stay; History drops the roleless Amount and adds the date range (the
-// output is a rate series, so an amount has nothing to scale).
 const FX_INPUTS: Record<FxMode, string[]> = {
   spot:    ["amount", "from", "to"],
   history: ["from", "to", "from_date", "to_date"],
@@ -683,11 +605,9 @@ const FX_OUTPUTS: Record<FxMode, string[]> = {
   history: ["frame"],
 };
 
-/** A UTC-midnight Excel serial → ISO YYYY-MM-DD (Frankfurter's date grammar). */
 function fxSerialToIso(serial: number): string {
   return serialToJsDate(serial).toISOString().slice(0, 10);
 }
-/** Today ± days, ISO — the History range's default endpoints. */
 function isoDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 }
@@ -708,10 +628,8 @@ export class FxNode extends ClassicPreset.Node {
   mode: FxMode;
   literals: Record<string, number> = { amount: 1 };
   stringLiterals: Record<string, string> = { from: "", to: "", from_date: "", to_date: "" };
-  /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   width = 240; height = 250;
-  /** Read by the component's output rows; never persisted. */
   cached: FxRate | null = null;
   cachedSeries: FxPoint[] | null = null;
   private _lastKey: string | undefined;
@@ -744,14 +662,10 @@ export class FxNode extends ClassicPreset.Node {
     }
   }
 
-  /** History's frame columns are FIXED ([[C8]] declareOnce), so a Chart wired to it knows them
-   *  before any fetch lands. */
   frameShape(): Shape {
     return { columns: [{ name: "Date", type: "date" }, { name: "Rate", type: "number" }] };
   }
 
-  /** The keys a switch to `next` removes. Callers on a live graph prune their cables
-   *  BEFORE calling setMode ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: FxMode): { inputs: string[]; outputs: string[] } {
     return {
       inputs: FX_INPUTS[this.mode].filter((k) => !FX_INPUTS[next].includes(k)),
@@ -770,7 +684,6 @@ export class FxNode extends ClassicPreset.Node {
     this._lastKey = undefined;
   }
 
-  /** Last 90 days, but only for blank fields — a user's or saved value stands. */
   private seedDefaultRange(): void {
     if (!this.stringLiterals.to_date) this.stringLiterals.to_date = isoDaysFromNow(0);
     if (!this.stringLiterals.from_date) this.stringLiterals.from_date = isoDaysFromNow(-90);
@@ -800,7 +713,6 @@ export class FxNode extends ClassicPreset.Node {
     }
     const rate = this.cached?.rate ?? null;
     const converted = rate != null && typeof amount === "number" ? amount * rate : null;
-    // Author the target currency on the value, the same path Convert takes ([[C25]] firstClassUnits).
     const tagged = converted != null ? applyFcUnit(converted, to.toLowerCase()) : null;
     const asof = this.cached && Number.isFinite(this.cached.serial) ? this.cached.serial : null;
     return { converted: tagged, rate, asof };
@@ -828,8 +740,6 @@ export class FxNode extends ClassicPreset.Node {
     return { frame: this.seriesFrame() };
   }
 
-  /** A wired date (serial) wins; else the typed ISO literal; else today ± `dayOffset`. A
-   *  wired blank/error is unknown → "" (blanks the result, tree/specs/values/value-semantics.md). */
   private readDate(wired: unknown[] | undefined, literal: string | undefined, dayOffset: number): string {
     if (wired && wired.length > 0) {
       const s = wired[0];
@@ -879,12 +789,7 @@ export class FxNode extends ClassicPreset.Node {
 }
 
 // ─── VAULT FOLDER (an Obsidian folder of notes → ONE cube) ───────────────────────
-// Bundle 24 item A: one row per note, the Bases file.* built-ins + the frontmatter union,
-// with lists and nested tables riding in cube cells. Reads local files (desktop only, no
-// network gate); the parse + typing is the pure vaultCube core, the mdbase / types.json /
-// daily-notes sources are read here. Rows are never saved; reopening re-reads the vault.
 
-/** A file-name glob (`*.md`, `2026-*`) → a case-insensitive regex over the base name. */
 function nameGlobToRegExp(glob: string): RegExp {
   let re = "";
   for (const ch of glob) {
@@ -896,8 +801,6 @@ function nameGlobToRegExp(glob: string): RegExp {
   return new RegExp(`^${re}$`, "i");
 }
 
-/** The mdbase hints for a note, resolving which discovered collection contains it (the
- *  longest folder prefix wins) and matching its path within that collection. */
 function mdbaseHintFor(collections: Map<string, MdbaseCollection>, folder: string, vaultRelPath: string): TypeMap {
   if (collections.size === 0) return {};
   const readRootRel = folder && vaultRelPath.startsWith(`${folder}/`) ? vaultRelPath.slice(folder.length + 1) : vaultRelPath;
@@ -919,22 +822,14 @@ export class VaultFolderNode extends ClassicPreset.Node {
     cube: "One row per note: the file columns, then every frontmatter key, with lists and nested tables kept in the cells. Notes are never saved into the project file.",
   };
   label: string;
-  /** Vault-relative subfolder ("" = the whole vault). */
   folder: string;
-  /** A file-name glob to keep ("" = every note). */
   glob: string;
-  /** Add a `body` column carrying each note's markdown. */
   includeBody: boolean;
-  /** Moment-token file-name format → the `date` column (R3); "" = the daily-notes default
-   *  when the folder is the daily-notes folder, else no date. */
   nameFormat: string;
-  /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   width = 260; height = 240;
-  /** Read by the component's preview; never persisted. */
   cached: CubeValue | null = null;
   private _lastKey: string | undefined;
-  /** folder / glob the last data() resolved (wired input, else the card field) — load() reads these. */
   private _folder = "";
   private _glob = "";
 
@@ -954,7 +849,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
   data(inputs?: { folder?: (string | null)[]; glob?: (string | null)[] }): { cube: CubeValue | null } {
     const folder = (readInput(inputs?.folder, this.folder) ?? "").trim().replace(/^\/+|\/+$/g, "");
     const glob = (readInput(inputs?.glob, this.glob) ?? "").trim();
-    const vault = getVaultRoot(); // the one vault (singleVaultFromSetting; demo vault when set)
+    const vault = getVaultRoot();
     const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
     if (key !== this._lastKey) {
       this._lastKey = key;
@@ -977,10 +872,9 @@ export class VaultFolderNode extends ClassicPreset.Node {
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const vault = getVaultRoot().trim();
-      const folder = this._folder; // resolved in data() (wired input, else the card field)
+      const folder = this._folder;
       const readRoot = folder ? await joinPath(vault, ...folder.split("/")) : vault;
       const globRe = this._glob ? nameGlobToRegExp(this._glob) : null;
-      // Skip mdbase `_types` folders — those are schema files, not records.
       let files = (await listVaultMarkdownFiles(readRoot)).filter((p) => !p.split("/").includes("_types"));
       if (globRe) files = files.filter((p) => globRe.test(p.split("/").pop() ?? p));
 
@@ -1007,7 +901,6 @@ export class VaultFolderNode extends ClassicPreset.Node {
     }
   }
 
-  /** Every mdbase collection under `readRoot`, keyed by its folder (relative to readRoot). */
   private async discoverMdbase(readRoot: string, files: string[]): Promise<Map<string, MdbaseCollection>> {
     const folders = new Set<string>([""]);
     for (const f of files) {
@@ -1023,7 +916,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
       try {
         yamlText = await readVaultFile(readRoot, folder ? `${folder}/mdbase.yaml` : "mdbase.yaml");
       } catch {
-        continue; // not a collection
+        continue;
       }
       let typeTexts: string[] = [];
       try {
@@ -1038,7 +931,6 @@ export class VaultFolderNode extends ClassicPreset.Node {
     return out;
   }
 
-  /** A frame property's picked column types, from the Solenoid Properties plugin's data. */
   private async readColumnPicks(vault: string): Promise<PluginColumnTypes> {
     try {
       return parsePluginColumnTypes(await readVaultFile(vault, PLUGIN_DATA_PATH));

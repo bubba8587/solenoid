@@ -1,5 +1,5 @@
 // [[E9]] errorsKeepOrigin (an error chip flies to its origin)
-// Mirrors FrameDisplay so the collapse-to-chip CSS applies unchanged.
+// Mirrors FrameDisplay's classes, so the collapse-to-chip CSS applies unchanged.
 import { CubeChip } from "./CubeChip";
 import { cubeRowCount, isCubeValue, type CubeValue } from "../frame";
 import { cubeCellToken } from "./cubeCell";
@@ -11,12 +11,9 @@ import type { CubeEditBinding } from "../cubePopupStore";
 export function CubeDisplay({ cube, label, full, peek, edit }: {
   cube: CubeValue | SolError | null;
   label?: string;
-  /** A Cube Input's records seam: the chip opens the popup as an editor. */
   edit?: CubeEditBinding;
-  /** Render every column/row instead of the compact 3×3 preview. MUST switch tableLayout to
-   *  `auto` — a `fixed` width:100% table inside a `width:max-content` card sizes runaway. */
+  /** A full grid must use `tableLayout: auto`: a fixed full-width table in a max-content card grows without bound. */
   full?: boolean;
-  /** Socket hover-peek: a compact head-5 preview with NO chip (read-only, no popup). */
   peek?: boolean;
 }) {
   if (isSolError(cube)) {
@@ -36,7 +33,6 @@ export function CubeDisplay({ cube, label, full, peek, edit }: {
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
   const rows = cubeRowCount(cube);
-  // Cap rendered rows even when "full" — a Display card is not a browser.
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, peek ? 5 : 3);
   const maxC = full ? cube.columns.length : Math.min(cube.columns.length, 3);
   const extraCols = !full && cube.columns.length > maxC;

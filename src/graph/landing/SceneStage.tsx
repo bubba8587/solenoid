@@ -16,12 +16,8 @@ import { registerOwnedGraph } from "../activeGraph";
 import { whenConnectionsSettled, hasInflightConnections } from "../connectionStore";
 import { computeStack } from "./landingCompute";
 
-// ELK is loaded once, shared by every scene card (makeEnsureElk caches the instance).
 const ensureElk = makeEnsureElk(() => false);
 
-// A locked scene card ([[C2]] realCanvasScenes): a LOCAL stack, computed ONCE at build.
-// The build fn adds the scene's nodes/cables through the stack's editor/view, exactly
-// like any surface.
 
 function makeSceneStack(): SurfaceStack {
   const editor = new NodeEditor<Schemes>();
@@ -41,8 +37,7 @@ function makeSceneStack(): SurfaceStack {
     getContainer: () => handlers.getContainer(),
   });
   const s: SurfaceStack = { editor, engine, view, handlers };
-  // A locked card takes no edits, so the only topology change is the build itself:
-  // reflect it into RF state (no recompute here — computeStack does the one pass).
+  // A locked card's only topology change is the build; no recompute here, computeStack does the one pass.
   let queued = false;
   editor.addPipe((ctx) => {
     const t = (ctx as { type?: string }).type;
@@ -66,12 +61,7 @@ function makeSceneStack(): SurfaceStack {
 const NOOP = () => {};
 const ASYNC_NOOP = async () => {};
 
-// Resolve once every card has reported a real measured size (RF's onNodesChange
-// `dimensions` → view.setSize), or after a frame budget. ELK then lays out on the
-// cards' TRUE heights instead of the declared estimate — a content-sized card (a
-// Frame preview, a Note) renders taller than its constructor height, and a headless
-// layout that trusts the estimate stacks a neighbor into it. Cards must be COMPUTED
-// first: an unfilled Frame preview measures short.
+// ELK must lay out on measured heights of computed cards: a content-sized card renders taller than its constructor height.
 function waitForMeasured(stack: SurfaceStack, budget = 30): Promise<void> {
   return new Promise((resolve) => {
     let frames = 0;
@@ -95,19 +85,14 @@ export function SceneStage({
 }: {
   build: (s: SurfaceStack) => Promise<void>;
   className?: string;
-  /** Skip the headless ELK/Tidy pass — the build fn positions the nodes itself (for
-   *  a scene ELK can't arrange well, e.g. unwired cards that should sit side by side). */
+  /** The build fn positions the nodes itself, so the ELK/Tidy pass is skipped. */
   manualLayout?: boolean;
-  /** The scene reads a connection (a Vault Folder). Its first compute kicks off an
-   *  async read and returns empty, so wait for every in-flight read to land and
-   *  recompute before measuring — the headless-run pattern (whenConnectionsSettled). */
+  /** The scene reads a connection: wait for every in-flight read and recompute before measuring. */
   awaitConnections?: boolean;
 }) {
   const stack = useMemo(makeSceneStack, []);
   const rfId = useId();
-  // The scene lays out headlessly (ELK) AFTER mount, so the cards start stacked at the
-  // origin and move. Hold the entrance choreography until that has settled, or it would
-  // play at the wrong place — SceneInner flips this once the cards are framed.
+  // Held until the headless layout settles, or the entrance plays at the origin-stacked positions.
   const [ready, setReady] = useState(false);
 
   const hooks: SurfaceHooks = useMemo(
@@ -119,8 +104,7 @@ export function SceneStage({
       noContextMenu: true,
       standoffs: false,
       drawnCables: false,
-      // No fitViewOnInit: SceneInner frames AFTER the ELK layout has moved the cards,
-      // so the one-shot init fit can't fire on the pre-layout (origin-stacked) graph.
+      // No fitViewOnInit: the init fit would frame the pre-layout, origin-stacked graph.
       history: { undo: ASYNC_NOOP, redo: ASYNC_NOOP },
       deleteSelected: ASYNC_NOOP,
       afterMove: NOOP,
@@ -151,9 +135,6 @@ export function SceneStage({
   );
 }
 
-// Inside the provider, so it can frame with fitView once the real work has landed:
-// build the graph, reconcile the mutable sockets, lay it out headlessly with the
-// app's ELK/Tidy, compute the values once, then fit to the laid-out cards.
 function SceneInner({
   stack,
   build,
@@ -170,10 +151,7 @@ function SceneInner({
   onReady: () => void;
 }) {
   const { fitView } = useReactFlow();
-  // Make the scene's nodes resolvable by the render-time cross-node resolvers (output
-  // socket type → date formatting, docked FC → unit annotation). Without this a scene
-  // Display shows a date as its raw serial and a united result as base SI. Registered
-  // for the life of the mount; never the action target.
+  // Registered so render-time resolvers find the scene's nodes, or a Display shows raw serials and base SI.
   useEffect(() => registerOwnedGraph({ editor: stack.editor, view: stack.view }), [stack]);
   useEffect(() => {
     let cancelled = false;
@@ -181,15 +159,10 @@ function SceneInner({
       await build(stack);
       if (cancelled) return;
       reconcileFcTypes(stack.editor, stack.view);
-      // Compute BEFORE laying out: the cards then render their real content, so their
-      // measured heights (fed to ELK below) are the true card sizes, not empty stubs.
+      // Compute before layout, so the measured heights fed to ELK are real card sizes.
       await computeStack(stack, false);
       if (cancelled) return;
-      // A connection node's first compute returns empty and kicks off an async read;
-      // wait for every read to land, then recompute so the real value is present
-      // before measuring. Loop to a fixed point — a recompute can start a new read (a
-      // reader feeding another reader) — settling once more each time, until a compute
-      // starts nothing new.
+      // A recompute can start a new read (a reader feeding a reader), so settle to a fixed point.
       if (awaitConnections) {
         do {
           await whenConnectionsSettled();
@@ -201,7 +174,6 @@ function SceneInner({
       if (!manualLayout) {
         await waitForMeasured(stack);
         if (cancelled) return;
-        // Stamp each node's box from its rendered size so ELK reserves the real space.
         for (const n of stack.editor.getNodes()) {
           const b = measuredBox(stack.view, n.id, stack.editor);
           if (b) Object.assign(n as unknown as { width: number; height: number }, { width: b.w, height: b.h });
@@ -217,8 +189,7 @@ function SceneInner({
           });
         }
       }
-      // Two frames for the moved cards to re-measure, then frame them and start the
-      // entrance choreography (cards are now at their laid-out positions).
+      // Two frames for the moved cards to re-measure before framing and the entrance.
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           if (cancelled) return;

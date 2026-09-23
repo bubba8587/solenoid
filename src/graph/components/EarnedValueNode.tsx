@@ -19,7 +19,6 @@ function moneyText(v: OutputRowValue): OutputRowValue {
   return typeof n === "number" ? Math.round(n).toLocaleString() : v;
 }
 
-// Schedule + baseline + status in; the EVM Summary frame (hero) plus SPI / CPI / EAC totals.
 export function EarnedValueComponent({ data, emit }: NodeProps<EarnedValueNodeType>) {
   const frameOut = data.outputs.frame;
   return (

@@ -32,9 +32,7 @@
   color: var(--text);
 }
 
-/* The NODE menu's Inspector door, top-right corner — the description that used
-   to head this menu lives in the Inspector now; on touch this (i) is its only
-   entry. The menu gets right padding so the first item's text clears it. */
+/* The node menu's Inspector door, and on touch its only entry; the menu gets right padding so the first item clears it. */
 .solenoid-socket-ctx__info {
   position: absolute;
   top: 3px;
@@ -52,9 +50,7 @@
 }
 .solenoid-socket-ctx__info:hover { color: var(--text); background: var(--border-subtle); }
 
-/* Fixed, centered icon slot so a text-glyph icon ("⊙" / "⛓" / "⊷") and an SVG
-   icon (Pin) occupy the same box — otherwise the SVG's intrinsic width pushes its
-   row's label out of the column. */
+/* A fixed icon slot, so a text-glyph icon and an SVG icon occupy the same box; the SVG's intrinsic width would push its label out of the column. */
 .solenoid-socket-ctx__icon {
   display: inline-flex;
   align-items: center;
@@ -67,7 +63,6 @@
   flex-shrink: 0;
 }
 
-/* Items clear the (i) corner when it is present (node menu only). */
 .solenoid-socket-ctx:has(.solenoid-socket-ctx__info) .solenoid-socket-ctx__item {
   padding-right: 30px;
 }

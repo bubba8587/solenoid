@@ -1,22 +1,16 @@
 // [[C8]] declareOnce
-// Dev-only catalog/Excel-mapping check: WARNS, never throws, so a stale entry can't break
-// the app. Every declared Excel equivalence must resolve to a real catalog node.
 
 import { NODE_EXCEL } from "./nodeExcel";
 import { FLAT_CATALOG, classifyType, buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, CatalogCategory } from "./AddNodeMenu";
 
-// Flagged, never enforced — packs extend the catalog at runtime and may legitimately
-// push a category over.
-const MENU_MAX_ITEMS = 12;   // items shown in one (sub)menu before it feels long
-const MENU_MAX_DEPTH = 3;    // submenu nesting levels before navigation feels deep
+const MENU_MAX_ITEMS = 12;
+const MENU_MAX_DEPTH = 3;
 
 function isMenuCategory(e: CatalogEntry): e is CatalogCategory {
   return e.type === "category" && "children" in e;
 }
 
-// Built with EVERY pack so the check covers the full possible menu; counting is per ROW,
-// since the metric is the menu's visual length.
 function checkMenuShape(entries: CatalogEntry[], depth: number, trail: string): void {
   for (const e of entries) {
     if (!isMenuCategory(e)) continue;
@@ -50,7 +44,7 @@ export function validateCatalog(): void {
 
   let core = 0, matcher = 0;
   for (const [type, entry] of FLAT_CATALOG) {
-    if (entry.packs?.length) continue; // pack node — classified by its pack
+    if (entry.packs?.length) continue;
     if (classifyType(type) === "matcher") matcher++; else core++;
   }
   console.debug(`[catalog] built-ins: ${matcher} Excel matchers, ${core} core essentials`);

@@ -1,23 +1,15 @@
 // [[C69]] ganttPackages
-// Visible rows: the payload's WBS order minus rows under the collapse level (or a collapsed id),
-// with a section band before each run of a new `group` value.
 
 import type { GanttPayload } from "./payload";
 import type { FrameRow } from "./frame";
 
 export const DEFAULT_ROW_HEIGHT = 24;
-/** Left indent per nesting level, in px (the grid pane also uses this). */
 export const INDENT_PER_LEVEL = 16;
 
-/** Build the visible rows. Two collapse modes: the coarse `view.collapse` LEVEL (used by the
- *  headless serializer and tests), or an ephemeral set of collapsed summary ids (the interactive
- *  figure's per-row expand/collapse). When `collapsedIds` is given it takes over entirely and
- *  `view.collapse` is ignored, so the keyboard can expand past the option's floor. */
 export function buildRows(payload: GanttPayload, rowHeight: number, collapsedIds?: ReadonlySet<string>): FrameRow[] {
   const tasks = payload.tasks;
   const collapseLevel = payload.view.collapse;
   const groupBy = payload.view.group_by !== false && tasks.some((t) => t.group);
-  // A task is a parent (phase) when the next task nests one level deeper.
   const hasChildren = tasks.map((t, i) => i + 1 < tasks.length && tasks[i + 1].level > t.level);
 
   const out: FrameRow[] = [];
@@ -27,8 +19,6 @@ export function buildRows(payload: GanttPayload, rowHeight: number, collapsedIds
     y += r.h;
   };
 
-  // Ancestry stack (only consulted in the collapsedIds mode): a row is hidden when any ancestor
-  // is collapsed. In the level mode, a row deeper than the level is simply skipped.
   const stack: Array<{ level: number; collapsed: boolean }> = [];
   let lastGroup: string | undefined;
   for (let i = 0; i < tasks.length; i++) {
@@ -60,8 +50,6 @@ export function buildRows(payload: GanttPayload, rowHeight: number, collapsedIds
   return out;
 }
 
-/** The subset of rows overlapping a vertical viewport [top, top+height), plus a small buffer
- *  so a row scrolling in is already drawn. Returns index bounds into the full row list. */
 export function cullRows(rows: FrameRow[], top: number, height: number, bufferRows = 5): { start: number; end: number } {
   if (!rows.length) return { start: 0, end: 0 };
   const rowH = rows[0].h;

@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages, [[B11]] maximalMerge, [[C100]] chartIsAValue
-// The same GanttPayload drawn as a month grid, the timeline's sibling behind `layout=calendar`
-// (25-gantt.md § 6.3): plain numbers, sharing the serial math and the drawn-finish rule.
 
 import type { GanttPayload } from "./payload";
 import { resolveWindow, drawnLastDay } from "./scale";
@@ -8,7 +6,7 @@ import { civilFromSerial, startOfWeek, dayOfWeek, MONTH_NAMES_FULL, DAY_NAMES } 
 
 export interface CalCell {
   serial: number;
-  day: number; // 1..31
+  day: number;
   x: number;
   y: number;
   w: number;
@@ -30,7 +28,6 @@ export interface CalChip {
   critical: boolean;
   violated: boolean;
   late: boolean;
-  /** The task continues past this week's edge (draw a flat, not rounded, end). */
   clipLeft: boolean;
   clipRight: boolean;
 }
@@ -45,12 +42,11 @@ export interface CalMilestone {
 
 export interface CalMonthBlock {
   year: number;
-  month: number; // 1..12
+  month: number;
   label: string;
   x: number;
   y: number;
   w: number;
-  /** Header (title) band height and the weekday-row height, from the block top. */
   headerH: number;
   weekdayH: number;
   rowH: number;
@@ -58,21 +54,19 @@ export interface CalMonthBlock {
   cells: CalCell[];
   chips: CalChip[];
   milestones: CalMilestone[];
-  /** "+N more" overflow markers when a week has more lanes than the cap. */
   overflow: Array<{ x: number; y: number; count: number }>;
 }
 
 export interface CalendarFrame {
   width: number;
   height: number;
-  weekStart: number; // 0 = Sunday, 1 = Monday
+  weekStart: number;
   weekdayLabels: string[];
   months: CalMonthBlock[];
 }
 
 export interface CalendarOptions {
   width: number;
-  /** Max chip lanes drawn per week before an overflow marker; default 4. */
   laneCap?: number;
 }
 
@@ -91,7 +85,6 @@ export function layoutCalendar(payload: GanttPayload, opts: CalendarOptions): Ca
   const minutes = payload.view.minutes;
 
   const { from, to } = resolveWindow(payload);
-  // Whole weeks covering the window.
   const gridStart = startOfWeek(from, weekStart);
   const gridEnd = startOfWeek(to - 1, weekStart) + 6;
 
@@ -99,8 +92,6 @@ export function layoutCalendar(payload: GanttPayload, opts: CalendarOptions): Ca
   const weekendDays = new Set(payload.weekend.length ? payload.weekend : [0, 6]);
   const today = payload.today;
 
-  // Group weeks into month blocks by the month of each week's mid day (its 4th day), so every
-  // week belongs to exactly one month and adjacent months never duplicate a boundary week.
   interface WeekSpec { start: number; year: number; month: number; }
   const weekSpecs: WeekSpec[] = [];
   for (let ws = gridStart; ws <= gridEnd; ws += 7) {
@@ -151,7 +142,6 @@ function buildMonth(payload: GanttPayload, input: MonthInput, ctx: MonthCtx): Ca
   const { cellW, width, laneCap } = ctx;
   const gridY = ctx.y + MONTH_HEADER_H + WEEKDAY_H;
 
-  // First pass: lanes per week, to fix the row height for the whole month.
   const perWeek = weeks.map((wk) => planWeek(payload, wk.start, ctx));
   const maxLanes = Math.min(laneCap, Math.max(1, ...perWeek.map((w) => w.laneCount)));
   const rowH = DAY_NUM_H + maxLanes * LANE_H + 4;
@@ -181,7 +171,7 @@ function buildMonth(payload: GanttPayload, input: MonthInput, ctx: MonthCtx): Ca
     }
     const plan = perWeek[wi];
     for (const ch of plan.chips) {
-      if (ch.lane >= maxLanes) continue; // folded into the overflow marker
+      if (ch.lane >= maxLanes) continue;
       const t = payload.tasks[ch.taskIndex];
       chips.push({
         taskIndex: ch.taskIndex,
@@ -208,7 +198,6 @@ function buildMonth(payload: GanttPayload, input: MonthInput, ctx: MonthCtx): Ca
         critical: !!t.critical && payload.view.critical !== false,
       });
     }
-    // Overflow markers for lanes beyond the cap.
     const hidden = plan.chips.filter((c) => c.lane >= maxLanes);
     if (hidden.length) {
       const byCol = new Map<number, number>();
@@ -228,14 +217,13 @@ function buildMonth(payload: GanttPayload, input: MonthInput, ctx: MonthCtx): Ca
 interface PlannedChip { taskIndex: number; startCol: number; endCol: number; lane: number; clipLeft: boolean; clipRight: boolean; }
 interface PlannedMilestone { taskIndex: number; col: number; }
 
-/** Assign this week's task spans to lanes (greedy), and collect milestone dots. */
 function planWeek(payload: GanttPayload, weekStart: number, ctx: MonthCtx): { chips: PlannedChip[]; milestones: PlannedMilestone[]; laneCount: number } {
   const weekEnd = weekStart + 6;
   const spans: Array<{ taskIndex: number; startCol: number; endCol: number; clipLeft: boolean; clipRight: boolean }> = [];
   const milestones: PlannedMilestone[] = [];
 
   payload.tasks.forEach((t, taskIndex) => {
-    if (t.summary) return; // summaries are not drawn as calendar chips
+    if (t.summary) return;
     if (t.milestone) {
       const s = Math.floor(t.start);
       if (s >= weekStart && s <= weekEnd) milestones.push({ taskIndex, col: s - weekStart });
@@ -249,9 +237,8 @@ function planWeek(payload: GanttPayload, weekStart: number, ctx: MonthCtx): { ch
     spans.push({ taskIndex, startCol: from - weekStart, endCol: to - weekStart, clipLeft: s < weekStart, clipRight: e > weekEnd });
   });
 
-  // Greedy lane assignment by start column.
   spans.sort((a, b) => a.startCol - b.startCol || a.endCol - b.endCol);
-  const laneEnds: number[] = []; // last endCol occupied per lane
+  const laneEnds: number[] = [];
   const chips: PlannedChip[] = spans.map((sp) => {
     let lane = laneEnds.findIndex((end) => end < sp.startCol);
     if (lane < 0) { lane = laneEnds.length; laneEnds.push(sp.endCol); } else { laneEnds[lane] = sp.endCol; }

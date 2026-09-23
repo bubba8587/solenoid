@@ -34,7 +34,7 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
   Obsidian** (`obsidianMarkdown.ts` + `obsidianWrite.ts`): a Document → one overwritten `.md`
   (pipe tables, mermaid fences, `$$` math, rasterized chart PNGs, `![[asset]]` embeds),
-  Run-button only (`sinkRunButtonOnly`). Spec homes: `../node-coverage.md` § Connections &
+  Run-button only (`sinkRunButtonOnly`). Spec homes: `../node-coverage.md` § Connections and
   sinks / § Annotation, `../socket-reference.md` § `document`.
 - **Note frontmatter** → sockets (`noteFrontmatter.ts`, `FIELD_SOCKETS` in `annotation.ts`). A
   deliberate YAML subset: scalars, flow arrays, block lists, rows-of-inline-objects → a frame.

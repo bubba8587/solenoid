@@ -1,5 +1,3 @@
-/* Chrome (overlay, card, header, title, close, group framing) is shared — see
-   popupChrome.css (.sol-popup*). This file holds only table-specific bits. */
 .table-popup {
   width: min(1100px, 94vw);
 }
@@ -19,34 +17,25 @@
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 4px;
-  /* Own compositor layer so scrolling the grid doesn't re-rasterize the popup
-     overlay's backdrop-filter every frame (the scroll-lag fix; see Settings.css). */
+  /* Its own compositor layer, so scrolling doesn't re-rasterize the overlay's backdrop-filter every frame. */
   transform: translateZ(0);
   contain: paint;
 }
 
 .table-popup__grid {
-  /* `separate` (not `collapse`) so sticky cells keep their OWN borders: with
-     border-collapse, a sticky cell's border is painted in the table's coordinate
-     space and scrolls away, leaving a 1px seam of moving content beside the pinned
-     row-number column. Each cell draws only right+bottom gridlines (single 1px
-     lines); the scroll container's border supplies the outer frame. */
+  /* `separate`, not `collapse`: a collapsed sticky cell's border is painted in table space and scrolls away, leaving a seam. */
   border-collapse: separate;
   border-spacing: 0;
   font-family: var(--font-mono);
   font-size: 13px;
 }
 
-/* Sticky header row + index column so they stay put while scrolling. */
 .table-popup__grid thead th {
   position: sticky;
   top: 0;
   z-index: 2;
 }
-/* The "Freeze header" toggle OFF (settingsStore tablePopupFrozen): the header row and
-   the row-number first column scroll with the body. Equal/higher specificity than the
-   sticky rules above (and placed after them) so `static` wins without !important. The
-   summary footer keeps its own sticky behavior — it is a separate toggle. */
+/* Freeze header off: placed after the sticky rules at equal or higher specificity, so `static` wins without !important. */
 .table-popup__grid--unfrozen thead th,
 .table-popup__grid--unfrozen .table-popup__rowhead,
 .table-popup__grid--unfrozen thead th.table-popup__corner {
@@ -59,7 +48,6 @@
   font-weight: 500;
   font-size: 11px;
   text-align: center;
-  /* right+bottom only — see .table-popup__grid (separate borders for sticky). */
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   padding: 2px 6px;
@@ -71,11 +59,7 @@
   z-index: 1;
   min-width: 28px;
 }
-/* Frame column names — wider, left-aligned, accent-tinted to read as labels. The
-   min-width is the real fix for cramped headers: in edit mode the name is an
-   <input width:100%>, which contributes NO intrinsic width, so without this the
-   column collapses to the narrow numeric cell and the type toggle leaves room for
-   only a couple of characters. The min-width gives the name (and toggle) room. */
+/* The min-width matters: an editable name is an <input width:100%> with no intrinsic width, so the column would collapse. */
 .table-popup__colhead--name {
   text-align: left;
   font-weight: 600;
@@ -84,10 +68,7 @@
   min-width: 120px;
   padding: 3px 6px;
 }
-/* Top-left corner: sticky on BOTH axes — it gets top:0 from the `thead th` rule and
-   left:0 here. The selector is qualified (thead th.corner) so it out-specifies that
-   rule and its z-index actually wins; otherwise the scrolling header cells (z-index
-   2) paint over the pinned corner and it looks like it isn't sticking horizontally. */
+/* Qualified (thead th.corner) so its z-index out-specifies the `thead th` rule; otherwise the header cells paint over the corner. */
 .table-popup__grid thead th.table-popup__corner {
   position: sticky;
   left: 0;
@@ -98,7 +79,6 @@
   border-bottom: 1px solid var(--border);
   padding: 0;
 }
-/* The cell a drilled level was opened from, flashed on the way back up. */
 .table-popup__cell--return {
   animation: table-popup-return 1.2s ease-out;
 }
@@ -106,8 +86,6 @@
   from { box-shadow: inset 0 0 0 2px var(--accent); }
   to { box-shadow: inset 0 0 0 2px transparent; }
 }
-/* A NaN cell (dirty numeric data) — faint neutral tint + muted italic text, so it
-   reads as dirty data in place, not error-red and not a normal value. */
 .table-popup__cell--nan {
   background: color-mix(in srgb, var(--text-dim) 12%, transparent);
 }
@@ -118,7 +96,7 @@
 }
 .table-popup__input {
   width: 100%;
-  min-width: 72px; /* drives matrix column width; fills (no dead gap) when the header widens the column */
+  min-width: 72px;
   box-sizing: border-box;
   background: transparent;
   border: none;
@@ -129,9 +107,6 @@
   text-align: right;
   outline: none;
 }
-/* The edited cell, the format selects and the CSV box all ring in the POPUP's own
-   accent. An app-accent ring inside an accent-tinted card puts two unrelated hues on
-   one surface — the header says frame violet, the ring said gold. */
 .table-popup__input:focus {
   background: color-mix(in srgb, var(--node-accent, var(--accent)) 16%, transparent);
   box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent));
@@ -140,13 +115,7 @@
   color: var(--text);
   cursor: default;
 }
-/* A read-only cell renders as a plain-text <div>, not an <input readOnly> (the <input> is
-   ~2.5× the per-cell DOM cost — the popup-virtualize Finding). It reuses .table-popup__input
-   for identical font/size/alignment/padding + the type/error/nan variants; these overrides
-   restore the input's own behaviours a <div> lacks: fill the cell (width:100% needs a block
-   box), the readonly ink, and single-line clipping so a long value never wraps and grows the
-   row. A numeric column is pre-sized by colMinWidths so the text fits; a text column has no
-   fitted width, so it auto-sizes to its visible content instead of clipping at 120px. */
+/* A read-only cell is a <div>: these rules restore what an input does on its own (fill the cell, readonly ink, one clipped line). */
 .table-popup__input--ro {
   display: block;
   color: var(--text);
@@ -154,28 +123,18 @@
   white-space: nowrap;
   overflow: hidden;
 }
-/* An error VALUE in a cell wears the SHARED #CODE! treatment — `.sol-error-chip`
-   (errorChip.css) is the single source of truth for it, and the cell just adds the
-   class. This rule defines no new colour; it exists only to win specificity, since
-   the readonly rule above is [class][attr] and would repaint the code in body ink.
-   Font size stays the grid's 13px — the chip's 11.5px is calibrated for an inline
-   badge on a node card, not for a table cell. */
+/* Only wins specificity over the read-only rule; the look is `.sol-error-chip`'s, at the grid's 13px. */
 .table-popup__input.sol-error-chip,
 .table-popup__input.sol-error-chip[readonly] {
   color: var(--sol-error);
   font-size: 13px;
 }
-/* Text cells (string lists) read left-to-right and want room to breathe. */
 .table-popup__input--text {
   text-align: left;
   min-width: 120px;
   font-family: var(--font-sans);
 }
-/* Chip text style (B2.2) in an EDITABLE cell: the CategoryChip overlays the live
-   <input> while the cell is unfocused, matching the input's own padding so the pill
-   sits where the text would. pointer-events: none lets a click reach the input beneath
-   (which enters edit and hides the chip); the input's own text is painted transparent
-   under it. Same chipCols + CategoryChip as the read-only path, no second mechanism. */
+/* pointer-events: none lets a click reach the input under the chip, which enters edit and hides it. */
 .table-popup__cell--chip { position: relative; }
 .table-popup__chip-overlay {
   position: absolute;
@@ -188,8 +147,6 @@
   pointer-events: none;
 }
 
-/* The cell being edited, in a Date / Boolean column: the Form view's calendar or
-   checkbox on its right edge (CellEditAffix.tsx). The text keeps clear of it. */
 .table-popup__cell--affix { position: relative; }
 .table-popup__cell--affix .table-popup__input { padding-right: 26px; }
 .table-popup__affix {
@@ -213,8 +170,6 @@
   cursor: pointer;
 }
 .table-popup__affix-btn:hover { color: var(--node-accent, var(--accent)); }
-/* A Text cell's existing values (CellSuggest.tsx): portalled to <body>, fixed under
-   the cell and above the popup layer, like the header's format panel. */
 .table-popup__suggest {
   position: fixed;
   z-index: 9600;
@@ -257,8 +212,6 @@
   pointer-events: none;
 }
 
-/* Editable column-name inputs in the header row (frame editor) — sized to the
-   header cell and accent-tinted/bold to match the static .colhead--name look. */
 .table-popup__colhead-input {
   min-width: 0;
   width: 100%;
@@ -268,7 +221,6 @@
   color: color-mix(in srgb, var(--node-accent, var(--text)) 70%, var(--text));
 }
 
-/* Header cell in frame-edit mode: the number/text toggle + the name input. */
 .table-popup__colhead-edit {
   display: flex;
   align-items: center;
@@ -294,7 +246,6 @@
 }
 .table-popup__coltype:hover { border-color: var(--node-accent, var(--accent)); }
 
-/* A read-only frame header's name, beside its format button. */
 .table-popup__colhead-label {
   flex: 1 1 auto;
   min-width: 0;
@@ -302,8 +253,6 @@
   text-overflow: ellipsis;
 }
 
-/* Fx, the type cycle's last stop (literal-source frame editors): the column computes
-   from a formula. That is STATE, so it earns the popup's accent. */
 .table-popup__coltype--fx,
 .table-popup__coltype--fx:hover {
   font-size: 10px;
@@ -312,7 +261,6 @@
   border-color: var(--node-accent, var(--accent));
 }
 
-/* The header's format button: paintbrush + chevron. */
 .table-popup__fmtbtn {
   flex: 0 0 auto;
   height: 18px;
@@ -332,13 +280,9 @@
   cursor: pointer;
 }
 .table-popup__fmtbtn:hover { color: var(--text); border-color: var(--node-accent, var(--accent)); }
-/* This node picked a format for the column: state, so the brush takes the accent. */
 .table-popup__fmtbtn--picked { color: var(--node-accent, var(--accent)); }
 
-/* The brush's panel and the formula field's λ list PORTAL to <body>, fixed under their
-   anchor and above the popup layer (.sol-popup-overlay, 9500), still under the
-   transient SocketContextMenu (9999); columnHeadControls.tsx supplies left/top and
-   carries the popup's --node-accent across the portal. */
+/* Portalled to <body>: above the popup layer (9500), under the SocketContextMenu (9999); columnHeadControls.tsx sets left and top and carries --node-accent. */
 .table-popup__fmtpanel,
 .table-popup__lammenu {
   position: fixed;
@@ -374,8 +318,6 @@
 .table-popup__lamitem:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .table-popup__lamitem--on { background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, transparent); }
 
-/* An Fx column's formula on a second header row, an =-prefixed one-liner (one
-   definition per column, popup-local until Save). */
 .table-popup__exprrow {
   display: flex;
   align-items: center;
@@ -397,25 +339,14 @@
   padding: 1px 3px;
 }
 
-/* A COMPUTED column's cells: derived, read-only — quiet tint, no edit caret.
-   Color conveys state (the frame violet at low strength), not decoration. */
 .table-popup__cell--computed .table-popup__input {
   color: var(--text-dim);
   background: color-mix(in srgb, var(--sock-frame) 7%, transparent);
   cursor: default;
 }
 
-/* ── Visual-only column sort (columnSort.tsx) ─────────────────────────────────
-   The sort BUTTON is the only thing that sorts: the header cell around it is inert.
-   It is ALWAYS drawn on a sortable column, whatever the sort state: a double chevron
-   unsorted, an up chevron ascending, a down chevron descending. Neutral ink unsorted
-   (an affordance), the surface's accent once it carries a direction (state).
-
-   It sits on the header's right edge, absolutely positioned in room the header
-   reserves (--sortpad), so sorting never changes a column's width. The header <th> is
-   already `position: sticky` (a positioned element), so it's the containing block;
-   don't add `position: relative` — it would lose the specificity fight with the
-   sticky rule anyway. */
+/* ── Column sort (columnSort.tsx) ─────────────────────────────────────────────
+   The <th> is already sticky, so it is the containing block; adding `position: relative` would lose to the sticky rule. */
 .table-popup__sort {
   position: absolute;
   right: 2px;
@@ -429,12 +360,8 @@
   padding: 0;
   border: none;
   border-radius: 3px;
-  /* The chip behind the glyph is what makes it read as a button at rest. Translucent
-     black in dark theme; light theme flips it to translucent white, since a dark chip
-     carrying a dark glyph on a near-white header is a collision. */
+  /* Light theme flips this to translucent white: a dark chip under a dark glyph collides. */
   background: rgba(0, 0, 0, 0.45);
-  /* An active sort is STATE, so it earns color (the Quiet Accent Rule) — the
-     surface's own accent, like every other tinted thing in the popup. */
   color: var(--node-accent, var(--accent));
   cursor: pointer;
   z-index: 1;
@@ -443,7 +370,6 @@
 .table-popup__sort--off { color: var(--text-dim); }
 .table-popup__sort:hover { color: var(--text); }
 .table-popup__colhead--sortpad { padding-right: 18px; }
-/* A formula row makes the header two rows tall; the button stays on the first. */
 .table-popup__colhead:has(.table-popup__exprrow) .table-popup__sort { top: 12px; }
 
 @media (pointer: coarse) {
@@ -452,14 +378,8 @@
   .table-popup__colhead:has(.table-popup__exprrow) .table-popup__sort { top: 16px; }
 }
 
-/* ── Format-Controller dropdowns ──────────────────────────────────────────────
-   A frame's per-column picks live in the header brush's panel (above); a matrix
-   shows one pair side by side above the grid.
-   Qualified under `.table-popup` (not the bare class) so this out-specifies the
-   shared `.sol-popup select { font-family: inherit }` reset (popupChrome.css) —
-   otherwise `inherit` wins on specificity and resolves to `.table-popup__grid`'s
-   mono, rendering the format/unit picker text in the mono face instead of sans. The
-   brush panel is portalled out of `.table-popup`, so it qualifies the rule itself. */
+/* ── Format Controller dropdowns ──────────────────────────────────────────────
+   Qualified under `.table-popup` to out-specify popupChrome's `select { font-family: inherit }`, which would resolve to the grid's mono. The portalled brush panel qualifies itself. */
 .table-popup .table-popup__fmtselect,
 .table-popup__fmtpanel .table-popup__fmtselect {
   width: 100%;
@@ -474,8 +394,6 @@
   cursor: pointer;
   outline: none;
 }
-/* What the column carries in while the style dropdown reads blank — a reading, not a
-   pick, so it stays muted and never looks like the control's value. */
 .table-popup__fmthint {
   display: block;
   font-family: var(--font-sans);
@@ -491,8 +409,6 @@
 .table-popup__fmtselect:hover { border-color: var(--node-accent, var(--accent)); }
 .table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 
-/* Matrix: one format+unit pair for the whole sheet, above the grid (between the
-   popup header and the table). */
 .table-popup__matrix-fmt {
   display: flex;
   flex-wrap: wrap;
@@ -502,26 +418,22 @@
 }
 .table-popup__matrix-fmt .table-popup__fmtselect { width: auto; min-width: 110px; }
 
-/* Flow-arrow wrapper (the FC's ←/→ language): a control flanked by direction arrows.
-   Side-by-side in the matrix bar (natural width); fills the row in the brush panel. */
 .sol-fcflow {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
 }
-/* A locked (inherited) unit picker reads as read-only — dimmed, no hover affordance. */
 .sol-fcflow .table-popup__fmtselect:disabled {
   opacity: 0.65;
   cursor: default;
 }
 
-/* CSV view — the same data as a raw, editable text block. */
+/* ── CSV view ───────────────────────────────────────────────────────────────── */
 .table-popup__csv {
   display: block;
   box-sizing: border-box;
-  /* A textarea with width:auto uses its cols-based intrinsic width instead of
-     stretching, so set it explicitly to fill the body minus the side margins. */
+  /* A textarea at width:auto takes its cols-based width instead of stretching. */
   width: calc(100% - 28px);
   margin: 12px 14px;
   min-height: 120px;
@@ -543,10 +455,7 @@
 .table-popup__csv:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
 .table-popup__csv[readonly] { color: var(--text); }
 
-/* COMPUTED columns' values marked in place (CsvEditor.tsx): a mirror behind the
-   textarea paints the marks, the textarea sits over it transparent. The two must
-   share every metric that places a glyph — font, size, line-height, padding, border
-   width, white-space — or the marks drift off their text. */
+/* The mirror and the textarea must share every metric that places a glyph, or the marks drift off their text. */
 .table-popup__csvwrap {
   position: relative;
   margin: 12px 14px;
@@ -557,11 +466,7 @@
   margin: 0;
   background: transparent;
 }
-/* A sized popup is a flex column whose scroll region fills (popupChrome.css). The
-   wrapper stands where the textarea stood, so IT takes the fill; the textarea then
-   starts at the wrapper's full height as a plain block (never a flex item: a flexed
-   height ignores the inline one its own resize grip writes), capped at the fill so a
-   drag can't run it under the footer. */
+/* In a sized popup the wrapper takes the fill; the textarea stays a plain block, since a flexed height ignores the one its own grip writes. */
 .sol-popup--sized .table-popup__csvwrap {
   flex: 1 1 auto;
   min-height: 0;
@@ -592,7 +497,6 @@
   white-space: pre;
   color: transparent;
 }
-/* The same quiet frame-violet tint a computed column's grid cells wear. */
 .table-popup__csvmark {
   color: transparent;
   background: color-mix(in srgb, var(--sock-frame) 22%, transparent);
@@ -605,7 +509,6 @@
   color: var(--sol-error);
 }
 
-/* Form view: the dot beside a COMPUTED field's label (state, so the popup's accent). */
 .table-popup__form-box-fx {
   margin-right: 4px;
   color: var(--node-accent, var(--accent));
@@ -613,7 +516,6 @@
   overflow: visible;
 }
 
-/* Grid / CSV segmented toggle. */
 .table-popup__view {
   display: inline-flex;
   flex-shrink: 0;
@@ -640,7 +542,7 @@
   align-items: center;
   gap: 5px;
   flex-shrink: 0;
-  margin-right: 10px; /* room before the row/column buttons; nothing when they wrap under */
+  margin-right: 10px;
   font-size: 12px;
   color: var(--text-dim);
   cursor: pointer;
@@ -654,22 +556,20 @@
 
 .table-popup__dim-controls {
   display: flex;
-  flex-wrap: wrap; /* a phone-wide footer: the four wrap, none is cut off */
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .table-popup__footer {
   display: flex;
-  flex-wrap: wrap; /* narrow screens (mobile): buttons wrap instead of overflowing off the right edge */
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   padding: 0 14px 14px;
 }
 
-/* Grows to push Cancel/Save to the right on one line; when the row wraps it just
-   takes the slack on its line, so the action buttons stay together and reachable. */
 .table-popup__spacer { flex: 1 1 0; min-width: 0; }
-/* Cancel + Save wrap as ONE item, so a narrow card never strands Save on a line of its own. */
+/* Cancel and Save wrap as one item, so Save is never stranded on its own line. */
 .table-popup__actions { display: flex; gap: 8px; flex: 0 0 auto; margin-left: auto; }
 
 .table-popup__btn {
@@ -682,11 +582,7 @@
   color: var(--text);
   cursor: pointer;
 }
-/* The footer actions take the POPUP's own accent — the same one tinting its header —
-   not the app-wide accent, so Save/Done on a frame popup reads violet like the frame
-   it edits. Falls back to the app accent when the popup has no host node. The ink
-   comes from `--node-accent-ink` (popupCardVars), never `--accent-ink`: that one is
-   computed for the app accent's hue and would go dark on a dark accent. */
+/* The ink is `--node-accent-ink`, never `--accent-ink`, which is computed for the app accent and goes dark on a dark popup accent. */
 .table-popup__btn:hover { border-color: var(--node-accent, var(--accent)); }
 
 .table-popup__btn--primary {
@@ -698,10 +594,6 @@
 .table-popup__btn--primary:hover { filter: brightness(1.08); }
 .table-popup__btn:disabled { opacity: 0.45; pointer-events: none; }
 
-/* Touch devices: the footer's controls get SMALLER, so the row/column buttons and
-   Cancel/Save share one row under the view toggle (author 2026-09-22; measured in the
-   Obsidian rig's phone emulation: 24px buttons fit a 412px phone, a 360px one takes 10px
-   text and 4px gaps). Pairs with the wrapping footer above. */
 @media (pointer: coarse) {
   .table-popup__btn,
   .table-popup__view button {
@@ -727,16 +619,13 @@
   }
 }
 
-/* ── Mobile scaling pass ──────────────────────────────────────────────────────
-   Narrow phones: bigger fonts + taller, finger-sized cells and toggle; a roomier
-   column header; and a shorter grid so the header + grid + (wrapping) footer all
-   fit without the card running off the screen. */
+/* ── Mobile scaling ─────────────────────────────────────────────────────────── */
 @media (max-width: 640px) {
   .table-popup { width: 96vw; }
   .table-popup__grid-scroll { max-height: 42vh; max-height: 42dvh; margin: 10px; }
   .table-popup__grid { font-size: 14px; }
   .table-popup__input {
-    padding: 9px 8px; /* taller rows = easier to tap into */
+    padding: 9px 8px;
     font-size: 14px;
   }
   .table-popup__colhead,
@@ -751,14 +640,11 @@
   .table-popup__fmtbtn { height: 26px; padding: 0 7px; }
   .table-popup__colhead-input { font-size: 13px; padding: 4px 6px; }
   .table-popup__csv { font-size: 14px; margin: 10px; width: calc(100% - 20px); }
-  /* The marked CSV block: the wrapper owns the margin, and the mirror keeps the
-     textarea's metrics or its marks drift. */
   .table-popup__csvwrap { margin: 10px; }
   .table-popup__csv--over { margin: 0; width: 100%; }
   .table-popup__csvmirror-inner { font-size: 14px; }
 }
 
-/* Cube popup breadcrumb — drill path through nested cubes (CubePopup). */
 .cube-popup__crumbs {
   display: flex;
   flex-wrap: wrap;
@@ -781,14 +667,12 @@
 .cube-popup__crumb--here { color: var(--text); font-weight: 600; cursor: default; }
 .cube-popup__crumb-sep { color: var(--text-muted); }
 
-/* Touch: the drill-path breadcrumb links need tappable room. */
 @media (pointer: coarse) {
   .cube-popup__crumb { padding: 5px 8px; font-size: 13px; }
-  /* The Cube Input's nested-cell chips drill too; a 10px chip is not a finger target. */
   .table-popup__cell .solenoid-array-chip--sm { padding: 5px 10px; font-size: 13px; }
 }
 
-/* Form view: one record as stacked labeled fields (the record-entry editor). */
+/* ── Form view ──────────────────────────────────────────────────────────────── */
 .table-popup__form-scroll {
   margin: 12px 14px;
   max-height: 56vh;
@@ -812,13 +696,10 @@
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
-/* The record-card look, made editable: touching square boxes, label in the box,
-   the input as the box's value line (matches .sol-record in chartCards.css). */
 .table-popup__form-grid {
   display: grid;
   align-items: stretch;
-  /* The boxes' -1px overlap margins bleed 1px past the last row/column; this
-     padding absorbs it so the popup never grows a 1px scrollbar. */
+  /* Absorbs the boxes' -1px overlap bleed, so the popup never grows a 1px scrollbar. */
   padding: 0 1px 1px 0;
 }
 .table-popup__form-box {
@@ -831,7 +712,6 @@
   border: 1px solid var(--border);
   margin: 0 -1px -1px 0;
 }
-/* The focused box lifts over its overlapped neighbors so the accent edge draws whole. */
 .table-popup__form-box:focus-within {
   border-color: var(--node-accent, var(--accent));
   position: relative;
@@ -867,15 +747,11 @@
   margin: 2px 0;
   accent-color: var(--node-accent, var(--accent));
 }
-/* A date field: the text input with the calendar on its right edge (CellEditAffix). */
 .table-popup__form-box-date { position: relative; display: block; }
 .table-popup__form-box-date .table-popup__form-box-input { padding-right: 22px; }
 .table-popup__form-box-date .table-popup__affix { right: 0; }
 
-/* ── Summary footer (frame popups): one stat per column ───────────────────────
-   A sticky one-row tfoot pinned to the bottom, mirroring the format row's chrome
-   (sunken cells, sticky-left corner). Each cell is a stat picker + its value,
-   computed over the WHOLE dataset, read-only. */
+/* ── Summary footer ───────────────────────────────────────────────────────────── */
 .table-popup__sumfoot td,
 .table-popup__sumfoot th {
   position: sticky;
@@ -887,14 +763,11 @@
   padding: 3px 6px;
   vertical-align: middle;
 }
-/* The footer's left corner pins on both axes, one rung above the scrolling cells. */
 .table-popup__sumfoot th.table-popup__corner {
   left: 0;
   z-index: 3;
 }
-/* Stacked: the stat's word over its value. The visible picker is a text label sized to
-   itself; the real <select> is laid over it at zero opacity, absolutely positioned so it
-   contributes NO width — the column stays as wide as the data. */
+/* The real <select> sits over the label at zero opacity and absolutely positioned, so it adds no width. */
 .table-popup__statcell {
   min-width: 0;
   white-space: nowrap;

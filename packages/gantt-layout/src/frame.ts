@@ -1,13 +1,9 @@
 // [[C69]] ganttPackages, [[C100]] chartIsAValue
-// The RenderFrame `layoutGantt` emits: plain pixels in the timeline's own space (x from the
-// window's left edge, y from row 0), no DOM, no colors; the view and the SVG serializer both draw from it.
 
 import type { LinkType } from "./payload";
 
 export interface ScaleCell {
-  /** Left edge in px within the timeline. */
   x: number;
-  /** Width in px. */
   w: number;
   label: string;
 }
@@ -17,28 +13,21 @@ export interface ScaleTier {
 }
 
 export interface FrameScale {
-  /** Header tiers, coarsest first (e.g. months over days). */
   tiers: ScaleTier[];
   pxPerDay: number;
-  /** The drawn window, whole-day serials; `to` is exclusive (one past the last drawn day). */
   from: number;
   to: number;
 }
 
 export interface FrameRow {
   id: string;
-  /** Top of the row band in px. */
   y: number;
-  /** Row height in px. */
   h: number;
   level: number;
   summary: boolean;
   milestone: boolean;
-  /** A section band header row (from group_by), not a task. */
   section?: boolean;
-  /** This row has nested children (a phase). Drives aria-expanded and the disclosure caret. */
   hasChildren?: boolean;
-  /** The task's index into `payload.tasks`, or -1 for a section band. */
   taskIndex: number;
 }
 
@@ -48,26 +37,18 @@ export interface FrameBar {
   rowId: string;
   taskIndex: number;
   kind: BarKind;
-  /** Bar rectangle (or the diamond's bounding box for a milestone). */
   x: number;
   y: number;
   w: number;
   h: number;
-  /** Progress fill width in px (0 when none). */
   progressW: number;
   critical: boolean;
   violated: boolean;
   late: boolean;
-  /** A per-task passthrough color from the payload, if any. */
   color?: string;
-  /** Baseline ghost rect, when the payload carries a baseline for this task. */
   baseline?: { x: number; w: number };
-  /** Split-bar parts (out-of-sequence progress): each part's rect, in order, with a dotted gap
-   *  drawn between them. Absent: one contiguous bar (`x`/`w`). */
   segments?: Array<{ x: number; w: number }>;
-  /** X of the deadline day (a flag marker), when the task carries a Deadline. */
   deadlineX?: number;
-  /** The label text and where it sits relative to the bar. */
   label?: { text: string; x: number; anchor: "start" | "end"; inside: boolean };
 }
 
@@ -77,16 +58,13 @@ export interface FrameLink {
   type: LinkType;
   critical: boolean;
   violated: boolean;
-  /** Orthogonal polyline points [{x,y}...] through the timeline. */
   points: Array<{ x: number; y: number }>;
-  /** The arrowhead tip (last point) and the direction it points ("left" | "right"). */
   arrow: { x: number; y: number; dir: "left" | "right" };
 }
 
 export interface FrameShadeRect {
   x: number;
   w: number;
-  /** "weekend" | "holiday" — lets the view/serializer pick a shade if it wants to. */
   kind: "weekend" | "holiday";
 }
 
@@ -97,7 +75,6 @@ export interface HistoSegment {
   y: number;
   w: number;
   h: number;
-  /** > 1 unit for this resource on this day: an over-allocation. */
   over: boolean;
 }
 
@@ -105,7 +82,6 @@ export interface FrameHistogram {
   resources: string[];
   segments: HistoSegment[];
   maxUnits: number;
-  /** Y (within the band) of the 1-unit capacity line. */
   capacityY: number;
   legend: Array<{ resourceIndex: number; x: number; label: string }>;
   legendH: number;
@@ -117,7 +93,6 @@ export interface FrameHistogram {
 export interface GridColumn {
   key: "name" | "start" | "finish" | "duration" | "float" | "complete" | "predecessors";
   label: string;
-  /** Suggested column width in px. */
   width: number;
   align: "left" | "right";
 }
@@ -127,29 +102,17 @@ export interface RenderFrame {
   rows: FrameRow[];
   bars: FrameBar[];
   links: FrameLink[];
-  /** Non-working shading rectangles spanning the full row area. */
   shading: FrameShadeRect[];
-  /** Vertical grid lines at each primary-tier boundary, in px. */
   gridColumns: number[];
-  /** X of the today line, or null when hidden / outside the window. */
   todayX: number | null;
-  /** X of the status-date line, or null. */
   statusX: number | null;
-  /** Total drawn timeline width in px. */
   width: number;
-  /** Total content height in px (all rows). */
   contentHeight: number;
-  /** Header height in px (sum of tier heights). */
   headerHeight: number;
-  /** The grid columns for the tree pane (from view.columns). */
   columns: GridColumn[];
-  /** The resource histogram band, when `view.histogram` and the payload carries resources. */
   histogram?: FrameHistogram;
 }
 
-/** Theme colors the pure SVG serializer needs (it cannot read CSS variables). The React
- *  figure resolves these from the app's design tokens and passes them down; the serializer
- *  falls back to a light-theme-legible set when none are given. */
 export interface GanttColors {
   text: string;
   textDim: string;
@@ -157,31 +120,21 @@ export interface GanttColors {
   borderStrong: string;
   surface: string;
   gridLine: string;
-  /** Default bar fill + its progress-fill (darker) variant. */
   bar: string;
   barProgress: string;
-  /** Critical path bar + progress. */
   critical: string;
   criticalProgress: string;
-  /** Violated (negative float / broken link) accent. */
   violated: string;
-  /** Summary bracket. */
   summary: string;
-  /** Milestone diamond. */
   milestone: string;
-  /** Non-working shading + holiday shading. */
   weekend: string;
   holiday: string;
-  /** Today + status marker lines. */
   today: string;
   status: string;
-  /** Dependency arrow + baseline ghost. */
   link: string;
   baseline: string;
 }
 
-/** A light-theme-legible default, used when no colors are supplied (headless export tests,
- *  a serializer call with only a width). The React figure overrides every field. */
 export const DEFAULT_COLORS: GanttColors = {
   text: "#1a1a1a",
   textDim: "#6b7280",

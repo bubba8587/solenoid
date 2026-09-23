@@ -17,14 +17,9 @@ import { InterpolateNode } from "../nodes/stats";
 import { SurfaceNode, ChartNode } from "../nodes/visual";
 import { FrameInputNode, GroupByFrameNode, JoinNode } from "../nodes/frame";
 
-// The landing page's live canvas: an interactive FlowSurface over a LOCAL stack that
-// claims the process.ts globals ([[C2]] realCanvasScenes). A standalone route, so it
-// never contends with the main canvas for them.
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
 
-// A plain Z table of survey heights with holes; the coordinates ride beside it
-// (here unwired, so the axes count 1, 2, 3…). Grid Interpolate fills the blanks.
 const SURVEY_GRID = [
   "2,   , 6,   , 2",
   " , 11,   , 11, 5",
@@ -51,8 +46,6 @@ function makeLandingStack(): SurfaceStack {
     getContainer: () => handlers.getContainer(),
   });
   const s: SurfaceStack = { editor, engine, view, handlers };
-  // Recompute the graph when its topology changes, mirrored from the drill-in's
-  // trySync (no persistence: the landing page keeps nothing).
   let queued = false;
   editor.addPipe((ctx) => {
     const t = (ctx as { type?: string }).type;
@@ -100,7 +93,6 @@ async function buildDemoGraph(s: SurfaceStack) {
   await wire(interp, "result", contour, "z");
 }
 
-// ── Shared build helpers (add + place; wire) ──
 async function place(s: SurfaceStack, at: [ClassicPreset.Node, number, number][]) {
   for (const [node] of at) {
     await s.editor.addNode(asNode(node));
@@ -112,20 +104,18 @@ const connect = (s: SurfaceStack) =>
   (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
     s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
 
-// A small deterministic PRNG so the demo data is varied but stable across loads.
 function makeRng(seed: number): () => number {
   let s = seed >>> 0;
   return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
 }
 
-// ~30 expense rows across a handful of categories (Group By collapses them to the chart).
 function spendingText(): string {
   const rng = makeRng(7);
   const cats: [string, number, number][] = [
     ["Groceries", 45, 260], ["Dining", 16, 140], ["Transport", 8, 90],
     ["Utilities", 40, 180], ["Health", 15, 120], ["Fun", 20, 150], ["Shopping", 25, 200],
   ];
-  const rows = ["Rent, 1800"]; // the one big fixed line
+  const rows = ["Rent, 1800"];
   for (let i = 0; i < 29; i++) {
     const [name, lo, hi] = cats[Math.floor(rng() * cats.length)];
     rows.push(`${name}, ${Math.round(lo + rng() * (hi - lo))}`);
@@ -133,7 +123,6 @@ function spendingText(): string {
   return "category, amount\n" + rows.join("\n");
 }
 
-// 30 days of actuals wiggling around a rising, wavy target.
 function vsTargetText(): { actual: string; target: string } {
   const rng = makeRng(42);
   const a: string[] = [], t: string[] = [];
@@ -145,8 +134,6 @@ function vsTargetText(): { actual: string; target: string } {
   return { actual: "day, actual\n" + a.join("\n"), target: "day, target\n" + t.join("\n") };
 }
 
-// Raw expenses aggregated by category, then charted: Group By sums the amount per category
-// and the ChartNode reads column 0 as the x labels and the number column as the series.
 async function buildSpendingGraph(s: SurfaceStack) {
   await s.editor.clear();
   const expenses = new FrameInputNode({
@@ -165,8 +152,6 @@ async function buildSpendingGraph(s: SurfaceStack) {
   await wire(gb, "frame", chart, "values");
 }
 
-// Two tables (actuals and plan) joined on the month, then a two-series line: the wiring
-// story — separate sources combined into one chart.
 async function buildVsTargetGraph(s: SurfaceStack) {
   await s.editor.clear();
   const data = vsTargetText();
@@ -183,17 +168,12 @@ async function buildVsTargetGraph(s: SurfaceStack) {
   await wire(join, "frame", chart, "values");
 }
 
-// The scenes the landing hero swaps between: two everyday workbooks (an aggregation and a
-// join, each ending in a chart) and the grid-interpolate -> Surface showpiece.
 const LANDING_SCENES: { label: string; build: (s: SurfaceStack) => Promise<void> }[] = [
   { label: "Spending", build: buildSpendingGraph },
   { label: "Vs target", build: buildVsTargetGraph },
   { label: "3D surface", build: buildDemoGraph },
 ];
 
-// No document, no autosave, no undo stack on the landing page: the hooks that
-// would persist or record are no-ops; a topology change still recomputes through
-// the stack pipe above, and the demo rebuilds from the Reset button.
 const LANDING_HOOKS: SurfaceHooks = {
   rfId: "landing",
   history: { undo: async () => {}, redo: async () => {} },
@@ -209,14 +189,11 @@ const LANDING_HOOKS: SurfaceHooks = {
   standoffs: false,
   drawnCables: false,
   fitViewOnInit: true,
-  // A marketing demo: gestures only. No app hotkeys, no right-click menus.
   noKeyboard: true,
   noContextMenu: true,
 };
 
-// Inside the provider so it can reach fitView. FlowSurface frames the graph once
-// (fitViewOnInit); this re-frames after every Reset, once the rebuilt cards have
-// re-measured (two frames), so Reset restores the camera as well as the graph.
+// Re-frames after every Reset, two frames after the rebuilt cards re-measure, so Reset restores the camera too.
 function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: number }) {
   const { fitView } = useReactFlow();
   const firstRun = useRef(true);
@@ -235,7 +212,6 @@ function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: 
   return <FlowSurface stack={stack} hooks={LANDING_HOOKS} />;
 }
 
-// The page's ONE live canvas ([[C2]] realCanvasScenes); `build` is stable and module-level.
 export type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<void> };
 
 export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Promise<void>; scenes?: LiveScene[] }) {
@@ -250,7 +226,6 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
-  // Rebuild with `b`, recompute, then re-frame (LandingStage watches resetNonce).
   const rebuild = (b: (s: SurfaceStack) => Promise<void>) =>
     void b(stack)
       .then(() => computeStack(stack, true))

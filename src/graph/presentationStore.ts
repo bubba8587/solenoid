@@ -1,8 +1,6 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit)
 import { createNotifier } from "./storeKit";
 
-// Which Presentation node (if any) is RUNNING as a full-screen slideshow; the overlay
-// owns the running index + camera, the node just holds the ordered steps.
 
 let _nodeId: string | null = null;
 const { notify, subscribe, version } = createNotifier();

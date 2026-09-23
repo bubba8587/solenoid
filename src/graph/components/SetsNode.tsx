@@ -19,8 +19,7 @@ const OPS: ReadonlyArray<OpOption<SetOpAll>> = (Object.keys(SET_META) as SetOpAl
   group: SET_META[op].group,
 }));
 
-// An operation (list) ↔ relation (logical) switch swaps the result socket in place and
-// retypes downstream cables ([[E11]] controlDrivenRetype, [[D16]] retypeReconciles).
+// An operation (list) and relation (logical) switch swaps the result socket in place and retypes downstream cables.
 export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void> {
   if (node.op === op) return;
   const crossed = isSetRelationOp(node.op) !== isSetRelationOp(op);
@@ -38,7 +37,6 @@ export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void>
 
 export function SetsComponent({ data, emit }: NodeProps<SetNodeType>) {
   const [op, setOpState] = useState<SetOpAll>(data.op);
-  // Mirror external changes (undo/paste) back into local state.
   useEffect(() => { setOpState(data.op); }, [data.op]);
   const setOp = useCallback((v: SetOpAll) => { setOpState(v); void applySetOp(data, v); }, [data]);
   const meta = SET_META[op];

@@ -47,8 +47,7 @@ function ComposeRow({ nodeId, onAdded }: { nodeId: string; onAdded: () => void }
   );
 }
 
-/** The Comments HUD panel — node-anchored threads; like the other HUD layers it
- *  owns its state and its own registerChrome("comments") call. */
+/** Like the other HUD layers it owns its state and its own registerChrome("comments") call. */
 export function CommentsPanel() {
   const [collapsed, setCollapsed] = useState(true);
   const [composeFor, setComposeFor] = useState<string | null>(null);

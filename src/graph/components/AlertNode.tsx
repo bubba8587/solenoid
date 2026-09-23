@@ -15,7 +15,7 @@ const MODES: { value: AlertMode; label: string }[] = [
   { value: "text",    label: "Text contains" },
 ];
 
-// Neutral wording only — an Alert is a watch/notify, not a pass/fail, so no ✓/⚠.
+// Neutral wording: an Alert is a watch and notify, not a pass or fail.
 const STATUS: Record<AlertMode, { calm: string; met: (v: number) => string }> = {
   range:   { calm: "in range", met: (v) => (v === 1 ? "below" : "above") },
   equals:  { calm: "no match", met: () => "equal" },

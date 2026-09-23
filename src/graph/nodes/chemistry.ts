@@ -11,7 +11,7 @@ export interface ElementMeta {
   symbol: string;
   name: string;
   mass: number;    // g/mol
-  period: number;  // dropdown grouping
+  period: number;
 }
 
 const E = (n: number, symbol: string, name: string, mass: number, period: number): ElementMeta =>
@@ -82,8 +82,7 @@ export const ELEMENTS: ElementMeta[] = [
 export const ELEMENT_BY_SYMBOL: Map<string, ElementMeta> =
   new Map(ELEMENTS.map((e) => [e.symbol, e]));
 
-/** 18-column table cell for an atomic number: rows 1–7 the main body, 9–10 the
- *  detached f-block, row 8 the empty visual gap. Drives the picker's CSS grid. */
+/** Rows 1–7 are the main body, row 8 the visual gap, rows 9–10 the detached f-block. */
 export function elementCell(n: number): { row: number; col: number } {
   if (n === 1) return { row: 1, col: 1 };
   if (n === 2) return { row: 1, col: 18 };
@@ -101,8 +100,6 @@ export function elementCell(n: number): { row: number; col: number } {
   return { row: 7, col: n - 100 };                    // Rf … Og
 }
 
-/** Rank order: symbol exact > symbol prefix > name prefix > name substring >
- *  atomic number. Case-insensitive; an empty query matches all, in table order. */
 export function searchElements(query: string): ElementMeta[] {
   const q = query.trim().toLowerCase();
   if (!q) return ELEMENTS;
@@ -121,17 +118,11 @@ export function searchElements(query: string): ElementMeta[] {
   return scored.sort((x, y) => x[0] - y[0] || x[1].n - y[1].n).map(([, e]) => e);
 }
 
-// Grammar: formula = segment (('·'|'.'|'*') segment)*   (hydrate notation)
-//          segment = count? unit+
-//          unit    = (element | '(' unit+ ')' | '[' unit+ ']') count?
-// Counts may be decimal (nonstoichiometric occasionally written 0.5).
-
 export function molarMass(input: string): number | SolError {
   const s = input.replace(/\s+/g, "");
   if (!s) return solError("#VALUE!", "Type a chemical formula, such as H2O");
   let total = 0;
   for (const segRaw of s.split(/[·•*]|(?<=[)\]\d])\.(?=\d*[A-Z])/)) {
-    // A hydrate segment may open with a multiplier: CuSO4·5H2O.
     const m = /^(\d+(?:\.\d+)?)?(.*)$/.exec(segRaw)!;
     const mult = m[1] ? Number(m[1]) : 1;
     const seg = m[2];
@@ -145,7 +136,6 @@ export function molarMass(input: string): number | SolError {
   return total;
 }
 
-/** Parse units from `i` until end or the matching `close`; returns [mass, next index]. */
 function parseGroup(s: string, i: number, close: string): [number, number] | SolError {
   let mass = 0;
   while (i < s.length) {
@@ -166,8 +156,6 @@ function parseGroup(s: string, i: number, close: string): [number, number] | Sol
     let sym = em[1];
     let el = ELEMENT_BY_SYMBOL.get(sym);
     if (!el && sym.length === 2) {
-      // An unknown two-letter pair retries as one letter, so "NO"/"HF" read as two
-      // elements rather than a bad symbol.
       sym = sym[0];
       el = ELEMENT_BY_SYMBOL.get(sym);
       if (el) {
@@ -204,8 +192,6 @@ export class ElementNode extends ClassicPreset.Node {
     return { mass: el.mass, number: el.n };
   }
 
-  /** The mass output authors g/mol ([[D40]] unitOnValue, per-output `annotationFor`); the
-   *  atomic number stays unitless. */
   annotationFor(outKey: string): FormatAnnotation | undefined {
     return outKey === "mass" ? { format: "auto", unit: "custom", customUnit: " g/mol" } : undefined;
   }

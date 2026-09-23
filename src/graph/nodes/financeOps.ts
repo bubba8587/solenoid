@@ -1,5 +1,5 @@
 // [[C17]] shareImpl, [[D19]] implReteFree, [[D24]] prepByShape, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[D28]] tripwireVendorDrift, [[C44]] dateSerials, [[C24]] arraySemantics, [[D70]] nullNotEnoughData
-// Must not import `finance.ts` (cycle). Entry points take date serials; invalid input is `null`, never a throw or a fabricated number — each surface tags its own failure.
+// Must not import `finance.ts` (import cycle). Invalid input answers null, never a throw or a fabricated number; each surface tags its own failure.
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { solError, isSolError, type SolError } from "../errorValue";
 
@@ -7,7 +7,6 @@ export function coupAddMonths(d: Date, months: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, d.getUTCDate()));
 }
 
-/** The coupon period bracketing `settle`, walked back from maturity. */
 export function coupDates(settle: Date, maturity: Date, freq: number): { prev: Date; next: Date } {
   const step = 12 / freq;
   let next = new Date(maturity.getTime());
@@ -29,21 +28,15 @@ export function actualDays(d1: Date, d2: Date): number {
   return Math.round((d2.getTime() - d1.getTime()) / 86400000);
 }
 
-/** Days in the year for a day-count basis (0/4 = 30/360, 1 = actual, 2 = 360, 3 = 365). */
 export function basisDays(basis: number): number {
   if (basis === 3) return 365;
   if (basis === 1) return 365.25;
   return 360;
 }
 
-/** Basis 0 and 4 are the 30/360 conventions; every other basis counts real days. */
 const use30 = (basis: number) => basis === 0 || basis === 4;
 const dayCount = (basis: number, a: Date, b: Date) => (use30(basis) ? days30_360(a, b) : actualDays(a, b));
 
-/** The coupon period's day counts under a basis: `e` the whole period (Excel's
- *  COUPDAYS), `dsc` settlement→next coupon (COUPDAYSNC), `dsbs` previous
- *  coupon→settlement (COUPDAYBS). One definition — the COUP* family and DURATION's
- *  first-period fraction both read it, so they cannot drift apart. */
 export function coupPeriodDays(
   prev: Date, next: Date, settle: Date, freq: number, basis: number,
 ): { e: number; dsc: number; dsbs: number } {
@@ -61,8 +54,6 @@ export function coupPeriodDays(
 
 const VALID_FREQ = [1, 2, 4];
 
-/** Newton solve for the yield that prices a bond at `target`. Damped to a sane
- *  yield range so a bad price can't diverge. */
 export function solveYield(priceAt: (y: number) => number, target: number, couponRate: number): number {
   let yld = couponRate > 0 ? couponRate : 0.05;
   for (let i = 0; i < 100; i++) {
@@ -94,7 +85,6 @@ export function bondPrice(
   const N = bondCouponCount(next, maturity, freq);
   const C = couponRate / freq * 100;
   const y = yld / freq;
-  // One coupon period or less to maturity: Excel's PRICE switches to simple interest.
   if (N === 1) return (redemption + C) / (1 + (DSC / E) * y) - C * A / E;
   let dirty = redemption / Math.pow(1 + y, N - 1 + DSC / E);
   for (let k = 1; k <= N; k++) dirty += C / Math.pow(1 + y, k - 1 + DSC / E);
@@ -114,8 +104,6 @@ export function oddfPrice(
   if (settle >= firstCoupon) return bondPrice(settle, maturity, couponRate, yld, redemption, freq);
   const step = 12 / freq;
   const E = 360 / freq;
-  // Excel's quasi-coupon form (odd-long; a short odd first period is its NC=1 case): the
-  // first coupon accrues from ISSUE per quasi period. 30/360 only, like the rest of the family.
   const periods: [Date, Date][] = [];
   let d0 = new Date(firstCoupon.getTime());
   while (d0 > issue) { const prev = coupAddMonths(d0, -step); periods.unshift([prev, d0]); d0 = prev; }
@@ -128,8 +116,8 @@ export function oddfPrice(
   }
   const nextQC = periods.find(([, qe]) => qe > settle)![1];
   const DSC = days30_360(settle, nextQC);
-  const Nq = periods.filter(([qs]) => qs >= nextQC).length; // whole quasi periods left before the first coupon
-  const N = bondCouponCount(coupAddMonths(firstCoupon, step), maturity, freq); // coupons AFTER the first
+  const Nq = periods.filter(([qs]) => qs >= nextQC).length;
+  const N = bondCouponCount(coupAddMonths(firstCoupon, step), maturity, freq);
   const y = yld / freq, C = couponRate / freq * 100;
   let price = redemption / Math.pow(1 + y, N + Nq + DSC / E);
   price += C * sumDC / Math.pow(1 + y, Nq + DSC / E);
@@ -147,20 +135,16 @@ export function oddlPrice(
   const Nc = oddDays / E;
   const finalCF = redemption + couponRate / freq * 100 * Nc;
   if (settle >= lastInterest) {
-    // Excel's odd-last convention discounts the whole odd period with SIMPLE
-    // interest (1 + (DSC/E)·y), like PRICEMAT — never compounded.
     const DSC = days30_360(settle, maturity);
     const A = days30_360(lastInterest, settle);
     const price = finalCF / (1 + (DSC / E) * (yld / freq));
     return price - couponRate / freq * 100 * A / E;
   }
-  // Regular coupons between settlement and the last interest date, then the odd period.
   const { prev, next } = coupDates(settle, lastInterest, freq);
   const DSC = days30_360(settle, next);
   const A = days30_360(prev, settle);
   const N = bondCouponCount(next, lastInterest, freq);
   const y = yld / freq, C = couponRate / freq * 100;
-  // finalCF lands at maturity: N regular periods plus the odd Nc after `next`.
   let price = finalCF / Math.pow(1 + y, N - 1 + DSC / E + Nc);
   for (let k = 1; k <= N; k++) price += C / Math.pow(1 + y, k - 1 + DSC / E);
   price -= C * A / E;
@@ -193,7 +177,6 @@ export function vdbBookValue(cost: number, salvage: number, life: number, period
   return book;
 }
 
-/** VDB — depreciation between two periods. Null if the arguments are out of range. */
 export function vdb(
   cost: number, salvage: number, life: number, start: number, end: number, factor = 2,
 ): number | null {
@@ -204,8 +187,6 @@ export function vdb(
 
 export type CouponOp = "coupdaybs" | "coupdays" | "coupdaysnc" | "coupncd" | "couppcd" | "coupnum";
 
-/** The COUP* family. COUPNCD/COUPPCD return a date SERIAL; the rest return days
- *  or a count. Null when the dates are missing or the frequency isn't 1/2/4. */
 export function couponValue(
   op: CouponOp, settleSerial: number, maturitySerial: number, freq = 2, basis = 0,
 ): number | null {
@@ -228,10 +209,6 @@ export function couponValue(
   }
 }
 
-/** ACCRINT — accrued interest for a security paying periodic coupons, over the
- *  issue→settlement span. Period length E per basis: only actual/actual (1) measures the
- *  real period; 2 is actual/360 and 3 actual/365. Excel's first_interest and calc_method
- *  arguments aren't modeled. */
 export function accrint(
   issueSerial: number, settleSerial: number, rate: number, par = 1000, frequency = 2, basis = 0,
 ): number | null {
@@ -245,7 +222,6 @@ export function accrint(
   return par * (rate / freq) * (a / e);
 }
 
-/** ACCRINTM — accrued interest for a security that pays at maturity. */
 export function accrintM(
   issueSerial: number, settleSerial: number, rate: number, par = 1000, basis = 0,
 ): number | null {
@@ -259,20 +235,15 @@ export function accrintM(
 
 export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
 
-/** TBILLEQ / TBILLPRICE / TBILLYIELD on actual days over 360. `x` is the discount rate
- *  (TBILLEQ / TBILLPRICE) or the price per $100 (TBILLYIELD). */
 export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | null {
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
   if (maturitySerial <= settleSerial) return null;
   const dsm = Math.round(maturitySerial - settleSerial);
   switch (op) {
     case "tbillprice": return 100 * (1 - x * dsm / 360);
-    // A money-market yield on a 360-day basis; the 365 belongs to TBILLEQ's bond-equivalent basis.
     case "tbillyield": return ((100 - x) / x) * (360 / dsm);
     case "tbilleq": {
       if (dsm <= 182) return (365 * x) / (360 - x * dsm);
-      // Past 182 days Excel switches to the bond-equivalent (coupon-equivalent) yield: the
-      // semiannual-compounding price equation in closed form (SIA).
       const t = dsm / 365;
       const price = 1 - x * dsm / 360;
       return (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
@@ -282,9 +253,6 @@ export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number,
 
 export type SecurityDiscOp = "disc" | "intrate" | "received";
 
-/** DISC / INTRATE / RECEIVED — the discounted-security trio. `a` is the price
- *  (DISC) or the investment (INTRATE/RECEIVED); `b` the redemption (DISC/INTRATE)
- *  or the discount rate (RECEIVED). */
 export function securityDisc(
   op: SecurityDiscOp, settleSerial: number, maturitySerial: number, a: number, b: number, basis = 0,
 ): number | null {
@@ -298,15 +266,13 @@ export function securityDisc(
     case "intrate": return ((b - a) / a) * (bd / dsm);
     case "received": {
       const denom = 1 - b * dsm / bd;
-      return denom <= 0 ? null : a / denom; // Excel: #NUM!, never a fabricated 0
+      return denom <= 0 ? null : a / denom;
     }
   }
 }
 
 export type PriceDiscOp = "pricedisc" | "yielddisc";
 
-/** PRICEDISC / YIELDDISC. `rateOrPrice` is the discount rate (PRICEDISC) or the
- *  price (YIELDDISC). */
 export function priceDisc(
   op: PriceDiscOp, settleSerial: number, maturitySerial: number, rateOrPrice: number,
   redemption = 100, basis = 0,
@@ -323,8 +289,6 @@ export function priceDisc(
 
 export type PriceMatOp = "pricemat" | "yieldmat";
 
-/** PRICEMAT / YIELDMAT — a security paying interest at maturity. `yldOrPrice` is
- *  the yield (PRICEMAT) or the price (YIELDMAT). */
 export function priceMat(
   op: PriceMatOp, settleSerial: number, maturitySerial: number, issueSerial: number,
   rate: number, yldOrPrice: number, basis = 0,
@@ -334,14 +298,11 @@ export function priceMat(
   const settle = serialToJsDate(settleSerial);
   const maturity = serialToJsDate(maturitySerial);
   const issue = serialToJsDate(issueSerial);
-  // Excel's PRICEMAT/YIELDMAT span THREE periods: DIM (issue→maturity) for the total
-  // interest, DSM (settle→maturity) for discounting, A (issue→settle) for the accrued
-  // interest deducted from the price.
   const dim = dayCount(b, issue, maturity);
   const dsm = dayCount(b, settle, maturity);
   const a = dayCount(b, issue, settle);
   const B = b === 3 ? 365 : b === 1 ? actualDays(issue, coupAddMonths(issue, 12)) : 360;
-  const totalInterest = 100 * (1 + dim / B * rate); // 100 + DIM/B·rate·100
+  const totalInterest = 100 * (1 + dim / B * rate);
   const accrued = a / B * rate * 100;
   return op === "pricemat"
     ? totalInterest / (1 + dsm / B * yldOrPrice) - accrued
@@ -350,7 +311,6 @@ export function priceMat(
 
 export type DurationOp = "duration" | "mduration";
 
-/** DURATION (Macaulay) / MDURATION (modified), in years. */
 export function durationValue(
   op: DurationOp, settleSerial: number, maturitySerial: number,
   coupon: number, yld: number, freq = 2, basis = 0,
@@ -360,8 +320,6 @@ export function durationValue(
   if (!VALID_FREQ.includes(f)) return null;
   const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
   const { prev, next } = coupDates(settle, maturity, f);
-  // Fraction of the first coupon period still to run — Excel's DSC/E, day-counted
-  // per the basis (30/360 on the default basis 0, not actual days).
   const period = coupPeriodDays(prev, next, settle, f, b);
   if (period.e === 0) return null;
   const dsc = period.dsc / period.e;
@@ -383,8 +341,6 @@ export function durationValue(
 
 export type BondPriceOp = "price" | "yield";
 
-/** PRICE / YIELD for a regular coupon bond. `yldOrPrice` is the yield (PRICE) or
- *  the market price (YIELD). */
 export function bondPriceYield(
   op: BondPriceOp, settleSerial: number, maturitySerial: number,
   rate: number, yldOrPrice: number, redemption = 100, freq = 2,
@@ -401,10 +357,6 @@ export function bondPriceYield(
 
 export type OddCouponOp = "oddfprice" | "oddfyield" | "oddlprice" | "oddlyield";
 
-/** ODDFPRICE / ODDFYIELD / ODDLPRICE / ODDLYIELD. `flSerial` is the first-coupon
- *  date (the ODDF ops) or the last-interest date (the ODDL ops); `issueSerial` is
- *  only read by the ODDF ops. `yldOrPrice` is the yield for the *PRICE ops, the
- *  price for the *YIELD ops. */
 export function oddCoupon(
   op: OddCouponOp, settleSerial: number, maturitySerial: number, issueSerial: number,
   flSerial: number, rate: number, yldOrPrice: number, redemption = 100, freq = 2,
@@ -428,15 +380,12 @@ export function oddCoupon(
 
 // ─── Cash-flow prep + the IRR / XIRR solver ──────────────────────────────────
 
-/** Error first; then a null cash flow is 0, never dropped (RANGE_ZERO_FILL, [[D24]] prepByShape). */
 export function cashPrep(raw: (number | null | SolError)[] | null): { error?: SolError; nums: number[] } {
   if (!raw) return { nums: [] };
   for (const v of raw) if (isSolError(v)) return { error: v, nums: [] };
   return { nums: raw.map((v) => (typeof v === "number" ? v : 0)) };
 }
 
-/** Shared prep for the dated schedules: error first ([[D37]] errorBeatsMissing), null
- *  cash → 0 (cashPrep), null DATE → unknown. */
 export function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesRaw: (number | null | SolError)[]):
   { error?: SolError; blank?: boolean; values: number[]; dates: number[] } {
   const { error, nums: values } = cashPrep(valuesRaw);
@@ -446,19 +395,7 @@ export function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesR
   return { values, dates: datesRaw as number[] };
 }
 
-/** Newton solve for the rate where Σ vᵢ/(1+r)^eᵢ = 0 — the fast path behind BOTH IRR
- *  modes (`solveDiscountRate` falls back to bracketing when this returns `null`).
- *  Periodic IRR's exponents are the period indices, XIRR's are year fractions from the
- *  first date; that is the only difference between the two solves. `null` means Newton
- *  stalled (a flat derivative, or an overshoot it can't walk back) — NOT a verdict of
- *  no root, which only the bracket scan can pronounce.
- *
- *  The floor is load-bearing: below r = −1 a fractional exponent makes `Math.pow(negative, e)`
- *  NaN and an integer one flips the discount's sign every period, so an overshoot past it
- *  never walks back. A step that HITS the floor never counts as convergence, or a solve
- *  pinned there reads as a settled root of −0.9999. Convergence is RELATIVE because the
- *  root is unbounded: 0.05 and a runaway 31,000 are both real answers, and no one absolute
- *  epsilon serves both. */
+// Below r = −1 the discount turns NaN or flips sign every period, so Newton clamps here, and a clamped step never counts as convergence.
 const RATE_FLOOR = -0.9999;
 function newtonDiscountRate(values: readonly number[], exponents: readonly number[]): number | null {
   let r = 0.1;
@@ -470,7 +407,7 @@ function newtonDiscountRate(values: readonly number[], exponents: readonly numbe
       f  += values[k] / disc;
       df -= (values[k] * e) / (disc * (1 + r));
     }
-    if (Math.abs(df) < 1e-15) return null; // flat derivative — Newton can't proceed
+    if (Math.abs(df) < 1e-15) return null;
     const raw  = r - f / df;
     const next = Math.max(RATE_FLOOR, raw);
     if (next === raw && Math.abs(next - r) < 1e-12 * (1 + Math.abs(r))) return Number.isFinite(next) ? next : null;
@@ -486,15 +423,6 @@ const npvAtRate = (values: readonly number[], exponents: readonly number[], r: n
   return f;
 };
 
-/** Bracket-and-bisect fallback for the roots Newton can't reach from its fixed 0.1
- *  guess — chiefly one crowded against the floor (near r = −0.95), where the discount
- *  curve is so near-vertical that Newton's step either overshoots the floor or stalls.
- *  Scans 1+r on a LOG grid so the near-floor decade is sampled as densely as the rest,
- *  and out to r ≈ 1e7 so the tens-of-thousands runaway rates that are real answers here
- *  stay bracketed (a linear scan to 10 would quietly re-lose them). Returns the FIRST
- *  bracketed root scanning up from the floor, then bisects; `null` only when no sign
- *  change exists at all (a genuinely rate-less series). Runs solely on Newton failure,
- *  so it never overrides which of several roots Newton already picked. */
 function bracketDiscountRate(values: readonly number[], exponents: readonly number[]): number | null {
   const logLo = Math.log(1 + RATE_FLOOR), logHi = Math.log(1e7 + 1);
   const STEPS = 2000;
@@ -518,17 +446,11 @@ function bracketDiscountRate(values: readonly number[], exponents: readonly numb
   return null;
 }
 
-/** The rate where Σ vᵢ/(1+r)^eᵢ = 0 — ONE kernel behind the IRR node (both modes) AND the
- *  IRR / XIRR formulas ([[C17]] shareImpl): Newton first, bracket-and-bisect when it stalls;
- *  `null` means no root above the floor (each surface tags its own #CONV!). */
 export function solveDiscountRate(values: readonly number[], exponents: readonly number[]): number | null {
   const newton = newtonDiscountRate(values, exponents);
   return newton !== null ? newton : bracketDiscountRate(values, exponents);
 }
 
-/** MIRR over PERIODIC flows (blanks already zeroed by cashPrep): negatives discounted at
- *  the finance rate, positives compounded at the reinvest rate. Needs one of each sign
- *  (else #DIV/0!, Excel's code); an extreme series overflows to #OVERFLOW!. */
 export function mirr(cashflows: readonly number[], finrate: number, reinrate: number): number | SolError {
   const n = cashflows.length;
   let pvNeg = 0, fvPos = 0;
@@ -544,20 +466,12 @@ export function mirr(cashflows: readonly number[], finrate: number, reinrate: nu
 
 export interface AmortizationRow { period: number; payment: number; interest: number; principal: number; balance: number }
 
-/** The level-payment amortization table (Excel's PMT / IPMT / PPMT per period, R
- *  amort.table): payment is the constant PMT (sign convention: a positive pv is a loan
- *  received, so payment/interest/principal come back NEGATIVE like Excel), balance is the
- *  remaining principal after each period (→ −fv at the end). `type` 1 = payment at the
- *  start of the period. Empty for nper < 1 or a non-finite input. */
 export function amortizationSchedule(rate: number, nper: number, pv: number, fv = 0, type: 0 | 1 = 0): AmortizationRow[] {
   const n = Math.floor(nper);
   if (!Number.isFinite(rate) || !Number.isFinite(pv) || !Number.isFinite(fv) || !(n >= 1)) return [];
   let pmt: number;
   if (Math.abs(rate) < 1e-12) pmt = -(pv + fv) / n;
   else { const rN = Math.pow(1 + rate, n); pmt = -(pv * rN + fv) * rate / ((1 + rate * type) * (rN - 1)); }
-  // Excel's IPMT (numpy_financial's too): interest on the balance outstanding after k−1
-  // payments; with type 1 the payment lands first, so period 1 bears no interest and
-  // later periods' interest is discounted one period.
   const rbl = (k: number): number => Math.abs(rate) < 1e-12
     ? -(pv + pmt * (k - 1))
     : -(pv * Math.pow(1 + rate, k - 1) + pmt * (1 + rate * type) * (Math.pow(1 + rate, k - 1) - 1) / rate);
@@ -592,7 +506,6 @@ export const RETURNS_OP_META: Record<ReturnsOp, { label: string; fx: string; tak
 type RCell = number | null | SolError;
 const finite = (v: RCell): v is number => typeof v === "number" && Number.isFinite(v);
 
-/** Per-period log or simple return; a blank on either side yields a blank. */
 export function periodReturns(prices: readonly RCell[], log: boolean): RCell[] {
   const out: RCell[] = [];
   for (let i = 0; i < prices.length; i++) {
@@ -604,7 +517,6 @@ export function periodReturns(prices: readonly RCell[], log: boolean): RCell[] {
   return out;
 }
 
-/** Π(1 + r) − 1 so far; a blank return compounds as 0 but stays blank in place. */
 export function cumulativeReturns(returns: readonly RCell[]): RCell[] {
   let acc = 1;
   return returns.map((r) => {
@@ -615,7 +527,6 @@ export function cumulativeReturns(returns: readonly RCell[]): RCell[] {
   });
 }
 
-/** pₜ / running max − 1 (≤ 0); blanks stay blank and do not move the peak. */
 export function drawdowns(prices: readonly RCell[]): RCell[] {
   let peak = -Infinity;
   return prices.map((p) => {
@@ -635,7 +546,6 @@ export function maxDrawdown(prices: readonly RCell[]): number | SolError | null 
   return worst;
 }
 
-/** (p_last / p_first)^(periodsPerYear / periods elapsed) − 1 over the present prices. */
 export function cagr(prices: readonly RCell[], periodsPerYear = 1): number | SolError | null {
   const idx: number[] = [];
   for (let i = 0; i < prices.length; i++) { const v = prices[i]; if (isSolError(v)) return v; if (finite(v)) idx.push(i); }
@@ -674,7 +584,6 @@ export function sortinoRatio(returns: readonly RCell[], rf = 0, periodsPerYear =
   return s.downside === 0 ? solError("#DIV/0!", "Sortino: no return fell below the target") : (s.mean / s.downside) * Math.sqrt(periodsPerYear);
 }
 
-/** The Returns card's dispatcher — one op, one answer (list or scalar by RETURNS_OP_META). */
 export function returnsOp(op: ReturnsOp, series: readonly RCell[], rf = 0, periodsPerYear = 1): RCell[] | number | SolError | null {
   switch (op) {
     case "log":         return periodReturns(series, true);

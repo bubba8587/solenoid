@@ -1,5 +1,4 @@
-// A display annotation, distinct from the column's UNIT (a VALUE property that flows).
-// Keyed `${nodeId}::${columnName}`, so it survives column reorders but follows the name.
+// [[D41]] formatFlowsDownstream
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -63,11 +62,8 @@ export const frameFormatStore = {
 registerNodeForget((nodeId) => frameFormatStore.removeForNode(nodeId));
 registerNodeForgetAll(() => frameFormatStore.clear());
 
-/** The style dropdown's state for one column of the table popup's format row. */
 export interface ColumnFormatRow {
-  /** The dropdown's current value; `""` is the INHERIT pick (no local entry). */
   value: string;
-  /** What the column carries in, e.g. `← Decimal · 3 places`; absent when nothing does. */
   hint?: string;
 }
 
@@ -77,10 +73,6 @@ function styleValueOf(ann: FormatAnnotation, type: FrameColType): string {
   return ann.format;
 }
 
-/** The muted `← Decimal · 3 places` hint text for an inherited format, in the column
- *  row's own words — the SINGLE source shared by the frame column-format row and the
- *  docked FC's inherit hint (FormatControllerNode.describeInheritedStyle delegates here),
- *  so the two never drift. */
 export function describeAnnotation(ann: FormatAnnotation, type: FrameColType): string {
   if (type === "logical") return LOGICAL_STYLE_LABELS[ann.logicalStyle ?? "truefalse"];
   if (type === "string") return ann.chip ? "Chip" : TEXT_CASE_LABELS[ann.textCase ?? "none"];
@@ -91,9 +83,6 @@ export function describeAnnotation(ann: FormatAnnotation, type: FrameColType): s
   return `${label} · ${d} ${noun}${d === 1 ? "" : "s"}`;
 }
 
-/** No local entry means INHERIT: the dropdown reads blank and the hint names what
- *  arrived, so an upstream format is never silently replaced by a look-alike pick
- *  ([[D41]] formatFlowsDownstream). */
 export function columnFormatRow(
   local: FormatAnnotation | undefined,
   inherited: FormatAnnotation | undefined,

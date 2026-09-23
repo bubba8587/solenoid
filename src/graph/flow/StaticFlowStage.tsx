@@ -1,8 +1,4 @@
 // [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[B3]] sameNodeEverywhere
-// A minimal NON-INTERACTIVE flow surface (the ?showcase audit stage): real
-// components, real values, no pan/zoom/drag. Callers build their graph through the
-// stack's editor + view verbs like any other surface; the stage mirrors topology
-// into RF state.
 import { useCallback, useEffect, useState } from "react";
 import {
   ReactFlow,
@@ -139,7 +135,6 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
   );
 }
 
-/** The stage: mount once with a stack from `makeStaticStack()`. */
 export function StaticFlowStage({ stack, zoom = 1 }: { stack: StaticStack; zoom?: number }) {
   return (
     <ReactFlowProvider>

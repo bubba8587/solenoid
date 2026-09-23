@@ -1,17 +1,7 @@
 #!/usr/bin/env node
-// Scaffold a new Solenoid node. Generates the React component file (a
-// one-line makeNodeComponent factory call thanks to the node kit) and prints
-// the three snippets you paste by hand — the class, the component-registry
-// row, and the Add-menu catalog entry — because those land in specific
-// spots / categories that a script shouldn't guess.
-//
-// Usage:
+// Scaffolds a node: writes the component file (a makeNodeComponent call) and prints the class, registry
+// and catalog snippets to paste by hand, since where they land is a judgment call.
 //   node scripts/new-node.mjs <PascalName> [--template element|list|reduce] [--kind math|list|logic|...]
-//
-// Examples:
-//   node scripts/new-node.mjs Square                 # element-wise (numlist → broadcast)
-//   node scripts/new-node.mjs Dedupe --template list # list → list
-//   node scripts/new-node.mjs Range2 --template reduce --kind list
 
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -25,7 +15,7 @@ const flag = (k, d) => {
   const i = args.indexOf(`--${k}`);
   return i >= 0 && args[i + 1] ? args[i + 1] : d;
 };
-const template = flag("template", "element"); // element | list | reduce
+const template = flag("template", "element");
 const kind = flag("kind", "math");
 
 if (!name || !/^[A-Z][A-Za-z0-9]*$/.test(name)) {
@@ -37,10 +27,6 @@ const Klass = `${name}Node`;
 const Comp = `${name}Component`;
 const upper = name.toUpperCase();
 
-// ── Component file (the templated, low-value-to-handwrite part) ──────────────
-// A standard "inputs + value box" node is a one-line factory call. Nodes that
-// need an op <select>, a custom value render, or local state hand-write their
-// component against NodeShell instead (see e.g. ArithmeticNode, ContainsNode).
 const cachedField = template === "list" ? "cachedList" : "cachedResult";
 
 const componentSrc = `import type { ${Klass} } from "../rete-nodes";
@@ -57,7 +43,6 @@ if (existsSync(compPath)) {
 mkdirSync(dirname(compPath), { recursive: true });
 writeFileSync(compPath, componentSrc);
 
-// ── Class stub (paste into src/graph/rete-nodes.ts) ──────────────────────────
 const classByTemplate = {
   element: `export class ${Klass} extends ClassicPreset.Node {
   label: string;

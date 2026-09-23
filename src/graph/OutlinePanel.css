@@ -1,4 +1,3 @@
-/* Collapsed: a small top-left pill — navigator toggle + search, side by side. */
 .solenoid-outline__open-pill {
   position: absolute;
   top: calc(var(--chrome-top, 66px) + 14px);
@@ -7,8 +6,6 @@
   display: inline-flex;
   align-items: stretch;
   background: var(--panel-bg);
-  /* A button pill, not a panel — thin border (the thick overlay-border is reserved
-     for the usable panels; pills stay light). */
   border: 1px solid var(--panel-border);
   border-radius: 16px;
   box-shadow: var(--shadow-pop);
@@ -31,14 +28,11 @@
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
-/* Divider drawn as an inset shadow, NOT a border — a layout border-left would
-   shrink the second button's content box by 1px and shift its (centered) icon
-   half a pixel off. The shadow paints in the icon's left gap without moving it. */
+/* An inset shadow, not a border: a layout border would shrink the button's content box and shift its centered icon half a pixel. */
 .solenoid-outline__open-btn + .solenoid-outline__open-btn {
   box-shadow: inset 1px 0 0 var(--panel-border);
 }
 
-/* Expanded panel. */
 .solenoid-outline {
   position: absolute;
   top: calc(var(--chrome-top, 66px) + 14px);
@@ -50,7 +44,6 @@
   display: flex;
   flex-direction: column;
   background: var(--panel-bg);
-  /* Visible chrome border (overlay-border), soft shadow kept — see open-pill. */
   border: var(--overlay-border-width) solid var(--overlay-border);
   border-radius: 8px;
   box-shadow: var(--shadow-pop);
@@ -82,7 +75,6 @@
 }
 
 .solenoid-outline__collapse {
-  /* Flex-center the × glyph (see .sol-popup__close note) rather than baseline. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -101,7 +93,6 @@
   color: var(--accent);
 }
 
-/* Collapse / expand all groups — sits left of the close button. */
 .solenoid-outline__collapse-all {
   display: inline-flex;
   align-items: center;
@@ -142,7 +133,6 @@
   padding: 0 8px 8px;
 }
 
-/* Sort toggle row (Position | A–Z) — small, below the filters. */
 .solenoid-outline__sortrow {
   display: flex;
   align-items: center;
@@ -196,8 +186,7 @@
   flex: 1 1 auto;
   overflow-y: auto;
   padding: 0 6px 6px;
-  /* Own compositor layer + paint containment: scrolling the list repaints the
-     list, not the panel around it. */
+  /* Own layer and paint containment, so scrolling the list repaints only the list. */
   transform: translateZ(0);
   contain: paint;
 }
@@ -230,23 +219,17 @@
   background: var(--accent-soft);
   color: var(--accent);
 }
-/* Keep the selected highlight when hovered (and bump it slightly for feedback)
-   — otherwise the plain :hover outranks --sel and a just-selected row under the
-   cursor looks unselected until you move away. */
+/* Keep the selected highlight on hover, or the plain :hover outranks --sel and a just-selected row looks unselected. */
 .solenoid-outline__row--sel:hover {
   background: color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
 }
-/* Group rows carry their own color (set inline); keep hover from washing it. */
 .solenoid-outline__row--group {
   font-weight: 600;
 }
 .solenoid-outline__row--group:hover {
   background: inherit;
-  /* A translucent overlay instead of `filter: brightness()` — `filter` promotes
-     whichever row is hovered to its own layer, and during a scroll (hover hops
-     row to row every frame) that layer churn is what made group highlights lag.
-     An inset box-shadow lightens the inline group color with no layer. */
+  /* An inset overlay, not `filter: brightness()`: filter promotes the hovered row to a layer, and that churn lags a scroll. */
   box-shadow: inset 0 0 0 100vmax rgba(255, 255, 255, 0.08);
 }
 
@@ -279,8 +262,6 @@
   text-overflow: ellipsis;
 }
 
-/* Per-node connections toggle ("plug") — appears at the right of a node row
-   when it has connections; acts like a chevron without looking like one. */
 .solenoid-outline__plug {
   flex: 0 0 auto;
   display: inline-flex;
@@ -304,7 +285,6 @@
   line-height: 1;
 }
 
-/* Inline connection sublist below an expanded node row. */
 .solenoid-outline__conns {
   display: flex;
   flex-direction: column;
@@ -365,7 +345,6 @@
 .solenoid-outline__conn-btn--del:hover { color: #e26d6d; }
 .solenoid-outline__conn-btn svg { display: block; }
 
-/* Touch: connection action buttons are always visible (no hover). */
 @media (pointer: coarse) {
   .solenoid-outline__conn-btn { opacity: 0.8; }
   .solenoid-outline__plug { opacity: 1; }

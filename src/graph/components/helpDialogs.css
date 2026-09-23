@@ -1,5 +1,3 @@
-/* About Solenoid + What's New — one modal slot, mirroring the shortcuts overlay
-   chrome (neutral surface, accent only for state/action). */
 .solenoid-helpdlg {
   position: absolute;
   inset: 0;
@@ -18,8 +16,7 @@
   max-height: 84vh;
   max-height: 84dvh;
   overflow: auto;
-  /* Own compositor layer so scrolling doesn't re-rasterize the overlay's
-     backdrop-filter every frame (the scroll-lag fix; see Settings.css). */
+  /* Its own compositor layer, so scrolling doesn't re-rasterize the overlay's backdrop-filter every frame. */
   transform: translateZ(0);
   contain: paint;
   padding: 26px 26px 22px;
@@ -46,7 +43,6 @@
 }
 .solenoid-helpdlg__close:hover { background: var(--btn-hover); color: var(--accent); }
 
-/* ── About ── */
 .solenoid-helpdlg__about { text-align: center; }
 .solenoid-helpdlg__wordmark {
   font-size: 30px;
@@ -73,11 +69,9 @@
   font-size: 13px;
   line-height: 1.55;
   color: var(--text-dim);
-  /* Centered and only a few lines deep, so the block reads as a shape. */
   text-wrap-style: balance;
 }
 
-/* ── What's New ── */
 .solenoid-helpdlg__eyebrow {
   font-size: 11px;
   font-weight: 600;
@@ -134,7 +128,6 @@
 .solenoid-helpdlg__dot--on { background: var(--accent); }
 .solenoid-helpdlg__dot:hover { background: var(--text-dim); }
 
-/* ── Buttons (shared) ── */
 .solenoid-helpdlg__btn {
   padding: 7px 14px;
   font-size: 13px;

@@ -9,8 +9,6 @@ import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 import { nodeDisplayName } from "../catalogUtils";
 
-// A curve keeps ≥ 2 control points; the monotone spline through them draws live and
-// the node samples it into a list.
 
 const PAD_W = 196;
 const PAD_H = 110;
@@ -70,7 +68,7 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     void processGraph(data.id);
   };
   const removeAt = (i: number) => {
-    if (live.current.length <= 2) return; // a curve keeps at least its endpoints
+    if (live.current.length <= 2) return;
     update(live.current.filter((_, k) => k !== i));
     commit();
   };
@@ -79,7 +77,7 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     void processGraph(data.id);
   };
 
-  // Display only — the node's own sampling drives the outputs.
+  // Display only: the node's own sampling drives the outputs.
   const path = useMemo(() => {
     const sorted = sortByX(pts);
     if (sorted.length === 0) return "";

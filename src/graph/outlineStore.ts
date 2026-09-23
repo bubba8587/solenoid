@@ -1,6 +1,4 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit)
-/** Bridge for opening the Outline navigator focused on its search field;
- *  OutlinePanel registers the handler on mount. */
 let handler: (() => void) | null = null;
 
 export const outlineSearch = {

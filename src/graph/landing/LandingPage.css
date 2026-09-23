@@ -1,40 +1,24 @@
-/* [[C3]] */
-/* ─── Landing page (?landing) ─────────────────────────────────────────────────
-   A standalone scrollable document over the app's design tokens: dark workbench
-   chrome, hyperlegible type, quiet accent. The app root locks overflow, so the
-   page owns its own scroll via a fixed full-viewport wrapper. Every color rides
-   the theme vars, so light theme mirrors for free.
-
-   Motion: all entrance/loop animation is gated on `.sol-landing--anim` (set on
-   mount, only when reduced-motion is off), so content never depends on a
-   transition firing, and a `prefers-reduced-motion` media block double-guards. */
+/* [[C3]] brandGoldChrome */
+/* ─── Landing page (?landing) ───────────────────────────────────────────────── */
 
 .sol-landing {
   position: fixed;
   inset: 0;
   overflow-y: auto;
-  /* Guard against any child overflowing sideways on a phone; the page never scrolls
-     horizontally. Keeps the sticky header (this is the scroll container). */
+  /* The page never scrolls sideways on a phone; this wrapper is also the sticky header's scroll container. */
   overflow-x: hidden;
   background: var(--app-bg);
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 
-  /* The marketing pages lock their chrome to the brand coil gold regardless of the
-     accent the visitor has chosen in the app — the page is Solenoid's storefront, not
-     their workbench. Scoped to the wrapper so only chrome reading --accent retints;
-     the scene canvases' node and socket colors ride their own vars, untouched. */
   --accent: #f5b914;
   --accent-soft: rgba(245, 185, 20, 0.14);
   --accent-mid: rgba(245, 185, 20, 0.4);
   --accent-ink: #1a1a1a;
 }
 
-/* Light theme: the marketing page reads nearly white, brighter than the app's cooler
-   canvas gray. Scoped to the landing subtree (redefining --app-bg reaches both the
-   wrapper and the sticky header, which both paint it); cards stay lifted by their
-   borders and the slightly brighter --surface. The scene canvases keep --canvas-bg. */
+/* Redefining --app-bg on the landing subtree reaches both the wrapper and the sticky header, which both paint it. */
 :root[data-theme="light"] .sol-landing {
   --app-bg: #fdfdfe;
 }
@@ -43,13 +27,9 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 0 24px;
-  /* Anchor the decorative scene thread (absolute, full scroll height). */
   position: relative;
 }
 
-/* The scene thread: soft, socketless bezier cables joining each live canvas viewport to
-   the next. Behind the content (opaque scene cards hide it under themselves; it shows in
-   the gaps between them). Transparent gray, so it reads as a quiet connective line. */
 .sol-scene-thread {
   position: absolute;
   top: 0;
@@ -59,9 +39,7 @@
   overflow: visible;
 }
 
-/* Draw the thread only after the viewport cards have animated in — a delayed fade on the
-   container (not the paths, which recompute on scroll/resize and would restart). Reduced
-   motion skips the reveal entirely, so the thread is simply present. */
+/* The delayed fade sits on the container, because the paths recompute on scroll and resize and would restart it. */
 .sol-landing--anim .sol-scene-thread {
   animation: sol-thread-in 0.6s ease 0.85s both;
 }
@@ -78,10 +56,6 @@
   stroke-linecap: round;
 }
 
-/* Inline links in running copy (e.g. the Obsidian hero's TaskNotes / Knap links).
-   The nav, CTA, footer and wordmark anchors carry their own styles; this catches the
-   in-prose ones that would otherwise fall back to the UA blue that clashes with the
-   workbench. Accent, the page's one interactive color. */
 .sol-landing main p a {
   color: var(--accent);
   text-decoration: underline;
@@ -94,8 +68,6 @@
   text-decoration-color: var(--accent);
 }
 
-/* Keyboard focus. Chrome only (not the live scene stages, which carry the app's own
-   node focus): the accent ring the app uses for focus, kept off pointer clicks. */
 .sol-landing__nav a:focus-visible,
 .sol-landing__theme:focus-visible,
 .sol-landing__cta:focus-visible,
@@ -133,9 +105,7 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-/* The wordmark (it carries the coil mark) is masked (not <img>) so the
-   single-color art recolors per theme via --wordmark-color — same technique as
-   the app's top bar. */
+/* Masked, not an <img>, so the single-color art recolors per theme via --wordmark-color. */
 .sol-landing__wordmark {
   display: block;
   height: 28px;
@@ -166,13 +136,10 @@
   color: var(--text-bright);
 }
 
-/* The active route. Accent so the visitor can see where they are; the wordmark
-   covers Home, which is why it is not in the nav list. */
 .sol-landing__nav a.is-current {
   color: var(--accent);
 }
 
-/* "Open the app" reads as the one always-present way back into Solenoid. */
 .sol-landing__nav-app {
   color: var(--text-bright);
 }
@@ -210,8 +177,6 @@
   max-width: 620px;
 }
 
-/* The real socket legend rows (components/SocketLegend.css) in a landing panel:
-   the type palette is the product's signature, so it earns hero placement. */
 .sol-landing__hero-legend {
   flex-shrink: 0;
   width: 168px;
@@ -253,11 +218,6 @@
   margin-top: 24px;
 }
 
-/* The app's own button system (DESIGN §Buttons). Default is the neutral, recessive
-   button — sunken fill, 1px neutral border, lifting to --btn-hover / --border-strong.
-   The primary is the app's "confirming action": filled with the accent + its matching
-   ink, one per pair, so Open Solenoid reads as the app's commit button and Download
-   stays its neutral sibling. */
 .sol-landing__cta {
   display: inline-block;
   padding: 8px 18px;
@@ -293,8 +253,7 @@
   margin-top: 34px;
 }
 
-/* The live FlowSurface fills the stage (position:relative + a definite height);
-   the surface paints its own dot background. */
+/* The live FlowSurface needs position: relative and a definite height to fill the stage. */
 .sol-landing__stage {
   position: relative;
   height: clamp(360px, 56vh, 560px);
@@ -304,13 +263,10 @@
   background-color: var(--canvas-bg);
 }
 
-/* No minimap on the marketing hero — it's editor chrome. */
 .sol-landing__stage .react-flow__minimap {
   display: none;
 }
 
-/* A locked scene card: a real FlowSurface for one feature's nodes. Fixed height so
-   the surface fills it; no minimap (SceneStage locks it, this hides the chrome). */
 .sol-scene-stage {
   position: relative;
   height: 300px;
@@ -364,7 +320,6 @@
   color: var(--text);
 }
 
-/* The hero's scene switcher: a segmented pill group (the app's SegToggle look). */
 .sol-landing__stage-scenes {
   position: absolute;
   top: 10px;
@@ -438,8 +393,6 @@
   font-weight: 700;
 }
 
-/* The dimensionality explainer (the app's real Reference-overlay component) in
-   a landing panel. */
 .sol-landing__dimflow {
   margin-top: 16px;
   background: var(--surface);
@@ -512,9 +465,6 @@
   pointer-events: none;
 }
 
-/* Cables: the base stroke is the app's solid typed cable; the flow overlay is a
-   brighter dash marching along the same path, a landing-only "data is moving"
-   accent (the canvas itself never decorates cables). */
 .sol-cable {
   fill: none;
   stroke-width: 2.5px;
@@ -549,15 +499,10 @@
   box-shadow: var(--shadow-card);
 }
 
-/* Light mode frames the card in a darker shade of its own accent, matching the
-   real node's frame-body stroke (nodeCard.css: accent-dark in light, neutral in
-   dark). Keeps the scene card reading as a current React Flow node. */
 :root[data-theme="light"] .sol-mnode {
   border-color: color-mix(in srgb, var(--node-accent) 70%, #000);
 }
 
-/* The real header formula: accent tint at the themed strength, 2px accent edge
-   wrapping top + sides, inset hairline divider instead of a bottom border. */
 .sol-mnode__header {
   position: relative;
   margin: -1px -1px 0;
@@ -604,7 +549,6 @@
   white-space: nowrap;
 }
 
-/* A solved row: state feedback in the node's own accent (quiet, a tint). */
 .sol-mnode__row--solved {
   background: color-mix(in srgb, var(--node-accent) 14%, transparent);
   border-radius: 4px;
@@ -664,14 +608,10 @@
   padding: 2px 0 1px;
 }
 
-/* Chips reuse the app's ArrayChip.css classes; in a static scene they're
-   illustrations, not affordances. */
 .sol-mnode__chip {
   pointer-events: none;
 }
 
-/* Interactive-pad mock (Point Plotter / Curve): a sunken field like the real
-   pads. */
 .sol-mnode__pad {
   display: block;
   width: 100%;
@@ -708,7 +648,6 @@
   stroke-width: 1.5;
 }
 
-/* Note-frontmatter block (the Obsidian scene). */
 .sol-mnode__front {
   margin: 0 0 4px;
   padding: 5px 8px;
@@ -775,7 +714,6 @@
   background: color-mix(in srgb, var(--sock-table) var(--header-tint), var(--surface));
 }
 
-/* The camera: the selection-ring recipe (2px accent + accent-tinted glow). */
 .sol-cam__frame {
   position: absolute;
   left: 0;
@@ -917,8 +855,6 @@
   }
 }
 
-/* The nav grew past a phone's width: let the header wrap so the wordmark keeps its
-   row and the nav flows onto the next, and tighten the nav's own spacing. */
 @media (max-width: 640px) {
   .sol-landing__top {
     flex-wrap: wrap;
@@ -947,8 +883,6 @@
     font-size: 13.5px;
   }
 
-  /* The section rhythm is tuned for a wide page; halve it so a phone is not mostly
-     empty space between blocks. */
   .sol-landing__section {
     margin-top: 52px;
   }
@@ -967,7 +901,6 @@
     margin: 72px 0 56px;
   }
 
-  /* Full-width CTAs are an easier tap target than side-by-side pills at phone width. */
   .sol-landing__actions {
     gap: 8px;
   }
@@ -978,7 +911,6 @@
   }
 }
 
-/* Double-guard: even with the class set, the OS preference wins. */
 @media (prefers-reduced-motion: reduce) {
   .sol-landing--anim .sol-reveal {
     opacity: 1;

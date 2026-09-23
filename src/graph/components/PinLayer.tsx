@@ -26,8 +26,7 @@ import "./pinLayer.css";
 import { CloseIcon } from "./CloseIcon";
 import { getActiveEditor, getOwningEditor } from "../activeGraph";
 
-// Must mirror GroupNode's readout: a Display reads cachedValue, a generic member its
-// live output, falling back to cachedResult for LAMBDA-style nodes that cache there.
+// Mirrors GroupNode's readout: a Display reads cachedValue, a member its live output, else cachedResult (LAMBDA-style nodes cache there).
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
     return (getOwningEditor(t.displayId)?.getNode(t.displayId) as { cachedValue?: unknown } | undefined)?.cachedValue;
@@ -37,8 +36,7 @@ function readoutValue(t: RetainedTerminal): unknown {
   return (getOwningEditor(t.effNodeId)?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined)?.cachedResult ?? v;
 }
 
-// Mirrors ValueDisplay but standalone (no node/FC context); `label` titles the popup
-// an array/frame chip opens.
+// ValueDisplay without node or FC context; `label` titles the popup a chip opens.
 function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: string) {
   const ann = resolveDisplayAnnotation(annNodeId ?? null, outKey);
   if (isSolError(v)) {
@@ -51,8 +49,7 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
   if (isArrayValue(v)) {
     const arr = v as (number | string)[] | (number | string)[][];
     const twoD = Array.isArray(arr[0]);
-    // Family comes from the SOCKET, not the cells: a date list's serials sniff numeric
-    // and a leading blank sniffs as neither, so both tinted amber.
+    // Family from the socket, not the cells: a date list's serials sniff numeric and a leading blank sniffs as neither.
     const family = nodeOutputElemFamily(annNodeId ?? null, outKey);
     return <ArrayChip value={arr} label={label} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
@@ -63,8 +60,6 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
   if (typeof v === "number") {
     return <span className="solenoid-pin__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
   }
-  // Logicals, tagged complex and united numbers all have a text form — they fell
-  // through to the empty dash before.
   if (typeof v === "boolean" || isCx(v) || isUnitCell(v)) {
     const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));
     return <span className="solenoid-pin__value">{formatListCell(v, one, ann)}</span>;
@@ -80,8 +75,7 @@ const PinSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/** The pinned-values HUD section; <HudStack/> owns its placement, this renders only
- *  the section. */
+/** The pinned-values HUD section; <HudStack/> owns its placement. */
 export function PinLayer() {
   const [collapsed, setCollapsed] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -98,9 +92,7 @@ export function PinLayer() {
 
   useSyncExternalStore(pinStore.subscribe, pinStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
-  // Labels can change (rename) and nodes can appear/vanish — re-render on topology.
   useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
-  // Re-render on FC annotation changes so a pinned value restyles live.
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
 
   const pins = pinStore.list();
@@ -128,10 +120,9 @@ export function PinLayer() {
 
   const chips = pins.map((pin) => {
     const node = editor.getNode(pin.nodeId);
-    if (!node) return null; // safety — should be dropped on delete
+    if (!node) return null;
     const label = nodeDisplayName(node);
 
-    // A pinned GROUP shows the same readouts a collapsed group would.
     if (node instanceof GroupNode) {
       const rows = groupReadouts(editor, node);
       return (

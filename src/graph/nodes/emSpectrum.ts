@@ -1,5 +1,4 @@
 // [[C76]] formulaPackDefault, [[C17]] shareImpl
-// The classifier half of the Electromagnetism pack; the Wavelength ↔ Frequency equation node does the conversion.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, strOut, readInput } from "./shared";
@@ -7,7 +6,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 
 const C = 299792458; // m/s
 
-/** Wavelength in METERS; boundaries are the conventional ISO 21348-adjacent ones. */
+/** Takes a wavelength in meters; the band boundaries follow ISO 21348. */
 export function emBand(wavelengthM: number): string {
   const nm = wavelengthM * 1e9;
   if (wavelengthM >= 1) return "Radio";
@@ -38,7 +37,6 @@ export class EmSpectrumNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("EmSpectrum");
     this.label = init?.label ?? "EM Spectrum Band";
-    // Give either one; a wired/typed frequency wins when both are present.
     this.addInput("freq", numIn("Frequency Hz"));
     this.addInput("wavelength", numIn("Wavelength m"));
     this.addOutput("band", strOut("Band"));
@@ -62,8 +60,7 @@ export class EmSpectrumNode extends ClassicPreset.Node {
   }
 }
 
-/** Frequency WINS when both are given; null = no usable input, #DOMAIN! for a
- *  non-positive or non-finite frequency. Shared with the EMSPECTRUMBAND formula. */
+/** Frequency wins when both are given; null means no usable input, and a non-positive or non-finite frequency is #DOMAIN!. */
 export function emSpectrum(f: number | null, wl: number | null): { band: string; freq: number; wavelength: number } | SolError | null {
   const fq = typeof f === "number" ? f : typeof wl === "number" && wl > 0 ? C / wl : null;
   if (fq === null) return null;

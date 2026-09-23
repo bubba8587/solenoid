@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed
-// GanttProject `.gan` and Primavera XER read into the engine's task tree, and MSPDI write
-// (25-gantt.md § 3.3). Link types are two-letter strings inside; each border maps its own codes.
 
 import { child, children, text, type XmlNode } from "./xml";
 import { isoToSerial } from "./mspdi";
@@ -14,8 +12,6 @@ export interface ImportedPlanFile {
   unsupported: string[];
 }
 
-// GanttProject .gan: <task id name start duration complete> nested by element nesting;
-// <depend id type difference> under the PREDECESSOR (type 1=SS 2=FS 3=FF 4=SF; difference = lag in days).
 
 const GAN_LINK: Record<string, LinkType> = { "1": "SS", "2": "FS", "3": "FF", "4": "SF" };
 
@@ -23,7 +19,6 @@ function attr(node: XmlNode & { attrs?: Record<string, string> }, name: string):
   return node.attrs?.[name];
 }
 
-/** `.gan` files carry their data in ATTRIBUTES, so this reader re-parses tags for them. */
 function parseXmlWithAttrs(src: string): XmlNode & { attrs: Record<string, string>; children: Array<XmlNode & { attrs: Record<string, string> }> } {
   type N = XmlNode & { attrs: Record<string, string>; children: N[] };
   const root: N = { name: "", children: [], text: "", attrs: {} };
@@ -58,7 +53,6 @@ export function readGan(xml: string): ImportedPlanFile {
   const byId = new Map<string, PlanTask>();
   const links: Array<{ from: string; to: string; type: LinkType; lag: number }> = [];
   type N = typeof root;
-  // Names are the engine's keys; a file with two "Review" tasks gets "Review (2)".
   const seen = new Set<string>();
   const uniq = (n: string) => { let k = n, i = 2; while (seen.has(k.toLowerCase())) k = `${n} (${i++})`; seen.add(k.toLowerCase()); return k; };
   const readTask = (el: N, depth: number): PlanTask => {
@@ -88,7 +82,6 @@ export function readGan(xml: string): ImportedPlanFile {
     if (!to || !from) { unsupported.push(`a link to a missing task ${l.to}`); continue; }
     to.predecessors.push({ task: from.name, type: l.type, lag: l.lag });
   }
-  // GanttProject's calendar: <day-types> with a <default-week> of 0/1 flags; holidays as <date> under <calendars>.
   const cal: CalendarSpec = { workingDays: true, weekendCode: 1 };
   const cals = root.children.find((c) => c.name === "calendars") as N | undefined;
   if (cals) {
@@ -115,9 +108,6 @@ export function readGan(xml: string): ImportedPlanFile {
   return { title: attr(root, "name") ?? "", start: projectStart, calendar: cal, tasks, unsupported: [...new Set(unsupported)] };
 }
 
-// Primavera XER: %T table, %F fields, %R row (tab-separated). Tables: PROJECT, PROJWBS (the
-// hierarchy), TASK (task_code, task_name, wbs_id, target_drtn_hr_cnt, task_type, phys_complete_pct,
-// clndr_id), TASKPRED (pred_task_id, task_id, pred_type PR_FS…, lag_hr_cnt), CALENDAR.
 
 const XER_LINK: Record<string, LinkType> = { PR_FS: "FS", PR_SS: "SS", PR_FF: "FF", PR_SF: "SF" };
 
@@ -146,7 +136,6 @@ export function readXer(text: string): ImportedPlanFile {
   const wbs = tables.get("PROJWBS") ?? [];
   const taskRows = (tables.get("TASK") ?? []).filter((t) => !project || t.proj_id === project.proj_id);
   const preds = tables.get("TASKPRED") ?? [];
-  // The WBS tree: nodes keyed by wbs_id; tasks hang under their wbs_id.
   const nodes = new Map<string, PlanTask>();
   const roots: PlanTask[] = [];
   const wbsSorted = [...wbs].sort((a, b) => Number(a.seq_num ?? 0) - Number(b.seq_num ?? 0));
@@ -191,7 +180,6 @@ export function readXer(text: string): ImportedPlanFile {
     const lagHours = Number(p.lag_hr_cnt ?? 0) || 0;
     to.predecessors.push({ task: from.name, type: XER_LINK[p.pred_type] ?? "FS", lag: Math.round((lagHours / hoursPerDay) * 1000) / 1000 });
   }
-  // A WBS node with no children is just a label; drop it. A WBS with children is a summary.
   const prune = (list: PlanTask[]): PlanTask[] => list.filter((t) => !(t.children && t.children.length === 0 && !byTaskId.has(t.name))).map((t) => (t.children ? { ...t, children: prune(t.children) } : t)).filter((t) => !(t.children && t.children.length === 0));
   const tasks = prune(roots);
   const clndr = tables.get("CALENDAR")?.find((c) => c.clndr_id === project?.clndr_id);
@@ -199,7 +187,6 @@ export function readXer(text: string): ImportedPlanFile {
   return { title: project?.proj_short_name ?? "", start: xerDate(project?.plan_start_date) ?? null, calendar: cal, tasks, unsupported: [...new Set(unsupported)] };
 }
 
-/** The balanced `(…)` body whose opening paren sits at `open`, without the outer parens. */
 function parenBody(s: string, open: number): string {
   let depth = 0;
   for (let i = open; i < s.length; i++) {
@@ -209,21 +196,16 @@ function parenBody(s: string, open: number): string {
   return s.slice(open + 1);
 }
 
-/** P6's `clndr_data` blob: `(0||CalendarData()( (0||DaysOfWeek()( (0||1()()) (0||2()( (0||0(s|08:00|f|17:00)()) )) … ))
- *  (0||Exceptions()( (0||0(d|46023)()) … )) ))`. A weekday with no work times is off; an
- *  exception with no work times is a holiday (`d|` is the day serial, P6's epoch being Excel's).
- *  Work times become the intervals. Anything unparsable leaves the standard week. */
 function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
   const cal: CalendarSpec = { workingDays: true, weekendCode: 1 };
-  // The blob nests parens (each day holds its own `(0||0(s|..|f|..)())` groups), so a lazy
-  // regex stops at the first day's `))`; walk the balanced groups instead.
+  // The blob nests parens, so a lazy regex stops at the first day's `))`; walk the balanced groups instead.
   const daysAt = blob.indexOf("DaysOfWeek()(");
   if (daysAt >= 0) {
     const week = parenBody(blob, daysAt + "DaysOfWeek()".length);
     const off: number[] = [];
     let intervals: Array<[number, number]> | undefined;
     for (const m of week.matchAll(/\(0\|\|([1-7])\(\)\(/g)) {
-      const day = Number(m[1]) - 1; // P6: 1 = Sunday
+      const day = Number(m[1]) - 1;
       const body = parenBody(week, (m.index ?? 0) + m[0].length - 1);
       const times = [...body.matchAll(/s\|(\d{2}):(\d{2})\|f\|(\d{2}):(\d{2})/g)].map((w) => [Number(w[1]) * 60 + Number(w[2]), Number(w[3]) * 60 + Number(w[4])] as [number, number]);
       if (!times.length) off.push(day);
@@ -239,7 +221,7 @@ function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
   if (ex) {
     const hol: number[] = [];
     for (const m of ex[1].matchAll(/\(0\|\|\d+\(d\|(\d+)\)\(([\s\S]*?)\)\)/g)) {
-      if (/s\|\d{2}:\d{2}/.test(m[2])) continue; // a working exception, not a day off
+      if (/s\|\d{2}:\d{2}/.test(m[2])) continue;
       hol.push(Number(m[1]));
     }
     if (hol.length) cal.holidays = hol.sort((a, b) => a - b);
@@ -247,20 +229,16 @@ function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
   return cal;
 }
 
-/** `2026-02-02 08:00` → a whole-day serial. */
 function xerDate(s: string | undefined): number | null {
   if (!s) return null;
   return isoToSerial(s.replace(" ", "T"));
 }
 
-// MSPDI write: tasks by outline level, links as PredecessorLink with the codec's integer types,
-// durations in hours, dates at 08:00 / 17:00, the computed fields alongside so a reader sees the same schedule.
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const LINK_CODE: Record<LinkType, number> = { FF: 0, FS: 1, SF: 2, SS: 3 };
 
 export function writeMspdi(out: ScheduleOutput, opts: { title?: string; hoursPerDay?: number; formatIso: (serial: number) => string; minutes?: boolean; holidays?: readonly (number | null)[] }): string {
-  // The output's holidays are the ones inside the span; a file wants the whole calendar.
   const holidays = [...new Set((opts.holidays ?? out.holidays).filter((h): h is number => typeof h === "number" && Number.isFinite(h)).map((h) => Math.floor(h + 1e-9)))].sort((a, b) => a - b);
   const H = opts.hoursPerDay ?? 8;
   const stamp = (serial: number, end: boolean) => {
@@ -270,8 +248,6 @@ export function writeMspdi(out: ScheduleOutput, opts: { title?: string; hoursPer
       const mins = Math.round(frac * 1440);
       return `${opts.formatIso(day)}T${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}:00`;
     }
-    // Minutes mode: a finish on the stroke of midnight is the END of the previous day (the
-    // figure and the cells draw it there); a whole-day serial otherwise reads as its day.
     const onDay = opts.minutes && end && frac === 0 ? day - 1 : day;
     return `${opts.formatIso(onDay)}T${end ? "17:00:00" : "08:00:00"}`;
   };

@@ -1,10 +1,4 @@
-// [[C42]] htmlInCanvasRenderer.
-// Snapshot the LIVE graph into a plain drawable model — node cards
-// (world rect + kind color + scraped title/value + socket world positions) and
-// cables (socket-to-socket ends + angle hints). Reads the editor/view singletons
-// and the mounted DOM (geometry + text), like nodeScene.ts. Impure and defensive:
-// every read is guarded so a half-built graph yields a partial snapshot, never a
-// throw (the Pixi overlay must never crash the app beneath it).
+// [[C42]] htmlInCanvasRenderer
 
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -21,26 +15,19 @@ import { standoffStore, anchorPoint, type Box } from "./standoffs";
 
 export interface SnapSocket {
   key: string; side: "input" | "output"; x: number; y: number;
-  kind: GlyphKind; color: number; color2: number | null; // type glyph + color(s)
+  kind: GlyphKind; color: number; color2: number | null;
 }
-/** A positioned text run scraped from the real card (world coords, top-left).
- *  `boxed` runs are editable inputs → drawn with a field box; w/h are the run's
- *  element size (world units), used to size that box. */
 export interface SnapText {
   text: string; x: number; y: number; w: number; h: number;
   size: number; color: number; mono: boolean; bold: boolean; isTitle: boolean; boxed: boolean; chevron: boolean;
-  letterSpacing: number; // px (titles track at ~0.8px); 0 when "normal"
-  boxFill: number | null;   // for boxed runs: the input's real fill (neutral, not accent)
-  boxBorder: number | null; // and its real border color
-  align: "left" | "right" | "center"; // text-align within the box (display values right-align)
+  letterSpacing: number;
+  boxFill: number | null;
+  boxBorder: number | null;
+  align: "left" | "right" | "center";
 }
-/** A slider control (track + thumb); `frac` is the value position 0..1. */
 export interface SnapSlider { x: number; y: number; w: number; h: number; frac: number }
 export interface SnapCheckbox { x: number; y: number; size: number; checked: boolean }
-/** A chart/visual captured as serialized SVG, drawn as a GPU texture. */
 export interface SnapImage { x: number; y: number; w: number; h: number; svg: string }
-/** A generic "render this DOM box" decoration — buttons, pills, badges, swatches,
- *  dividers, quoted fields: a rounded rect (real bg/border/radius) + optional text. */
 export interface SnapBox {
   x: number; y: number; w: number; h: number; radius: number;
   fill: number | null; border: number | null; borderW: number;
@@ -49,19 +36,19 @@ export interface SnapBox {
 export interface SnapNode {
   id: string;
   x: number; y: number; w: number; h: number; headerH: number;
-  accent: number; // 0xRRGGBB — the node-kind accent (header tint / field strokes)
-  body: number;   // 0xRRGGBB
-  headerColor: number; // the real (accent-TINTED, not saturated) header background
-  border: number;      // the real card border color (grouped nodes adopt the group hue)
-  borderAlpha: number; // and its alpha (DOM uses ~0.78, not a hard outline)
-  texts: SnapText[]; // every text run the real card shows, at its real position
+  accent: number;
+  body: number;
+  headerColor: number;
+  border: number;
+  borderAlpha: number;
+  texts: SnapText[];
   sliders: SnapSlider[];
   checkboxes: SnapCheckbox[];
   decorations: SnapBox[];
   images: SnapImage[];
   isConduit: boolean;
-  hasChevron: boolean; // header shows a collapse chevron (false for --no-chevron nodes)
-  rotation: number; // radians (conduit body rotation; 0 otherwise)
+  hasChevron: boolean;
+  rotation: number;
   selected: boolean;
   sockets: SnapSocket[];
 }
@@ -72,10 +59,9 @@ export interface SnapCable {
   sx: number; sy: number; ex: number; ey: number;
   sourceAngleDeg: number | null;
   targetAngleDeg: number | null;
-  /** The endpoint's node is flipped: its socket sits on the opposite edge. */
   sourceFlipped: boolean;
   targetFlipped: boolean;
-  color: number; // source socket's data-type color (0xRRGGBB) — matches the DOM cable hue
+  color: number;
 }
 export interface SnapGroup {
   id: string; x: number; y: number; w: number; h: number; headerH: number;
@@ -102,8 +88,6 @@ function rgbaToNum(css: string | null | undefined): number | null {
   const c = parseColor(css);
   return c ? ((c.r & 255) << 16) | ((c.g & 255) << 8) | (c.b & 255) : null;
 }
-/** Alpha-composite a (possibly translucent) foreground over an opaque base and
- *  return a packed 0xRRGGBB. Pixi fills are opaque, so any alpha must be baked in. */
 function flatten(fg: RGBA, base: RGBA): number {
   const f = fg.a >= 0.999 ? fg : mixSrgb(base, fg, fg.a);
   return ((Math.round(f.r) & 255) << 16) | ((Math.round(f.g) & 255) << 8) | (Math.round(f.b) & 255);
@@ -114,8 +98,6 @@ function cssToNum(raw: string | null | undefined): number | null {
   if (!s) return null;
   return s.startsWith("#") ? hexToNum(s) : rgbaToNum(s);
 }
-/** Socket color by dataType — SOCKET_COLORS gives a `var(--sock-x)` expr; resolve
- *  it off the document root once and cache. Falls back to neutral gray. */
 function resolveSockColor(dataType: string | undefined): number {
   if (!dataType) return 0x7a8296;
   const expr = (SOCKET_COLORS as Record<string, string>)[dataType];
@@ -131,8 +113,6 @@ function resolveSockColor(dataType: string | undefined): number {
   return n;
 }
 
-// Curated set of text-bearing elements in a card; `input` reads .value, `select`
-// reads the chosen option (and gets a dropdown chevron).
 const TEXT_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: boolean }[] = [
   { sel: ".solenoid-node__label-display", title: true },
   { sel: ".solenoid-node__io-label" },
@@ -142,31 +122,24 @@ const TEXT_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: 
   { sel: ".solenoid-node__value-input", input: true },
   { sel: ".solenoid-node__select", select: true },
 ];
-// Markdown block tags for Notes (their text uses plain tags, not node classes).
 const NOTE_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: boolean }[] = [
   { sel: "h1", title: true }, { sel: "h2", title: true }, { sel: "h3" },
   { sel: "p" }, { sel: "li" }, { sel: "blockquote" }, { sel: "code" },
 ];
 
-/** Scrape every meaningful text run in a card with its world position, font size,
- *  color, and mono-ness — so the Pixi card reproduces the real text layout
- *  (multi-output rows, inputs, labels), not a single hardcoded title+value. */
 function scrapeTextRuns(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number, selectors = TEXT_SELECTORS): SnapText[] {
   const runs: SnapText[] = [];
   const pushRun = (te: HTMLElement, raw: string, title?: boolean, input?: boolean, select?: boolean) => {
     let text = raw.trim();
     if (!text) return;
     const r = te.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) return; // hidden
+    if (r.width === 0 && r.height === 0) return;
     const cs = getComputedStyle(te);
     const tt = cs.textTransform;
     if (tt === "uppercase") text = text.toUpperCase();
     else if (tt === "lowercase") text = text.toLowerCase();
     else if (tt === "capitalize") text = text.replace(/\b\w/g, (c) => c.toUpperCase());
-    const ls = parseFloat(cs.letterSpacing); // "normal" → NaN
-    // A run is "boxed" if it's an input/select OR its element paints a real box
-    // (a Display value is a framed surface, not a bare run). Capture the real
-    // neutral fill/border — never the warm kind accent.
+    const ls = parseFloat(cs.letterSpacing);
     const boxBw = parseFloat(cs.borderTopWidth) || 0;
     const bgC = parseColor(cs.backgroundColor);
     const hasBox = (bgC != null && bgC.a > 0.04) || boxBw > 0;
@@ -190,8 +163,6 @@ function scrapeTextRuns(card: HTMLElement, elRect: DOMRect, viewX: number, viewY
   };
   for (const { sel, title, input, select } of selectors) {
     for (const te of card.querySelectorAll<HTMLElement>(sel)) {
-      // A table/frame value display concatenates into one run if read whole — emit
-      // each cell at its own position instead (matches the DOM grid layout).
       if (!input && !select) {
         const table = te.querySelector("table");
         if (table) {
@@ -207,7 +178,6 @@ function scrapeTextRuns(card: HTMLElement, elRect: DOMRect, viewX: number, viewY
   return runs;
 }
 
-/** Slider controls (range inputs) → track + thumb position. */
 function scrapeSliders(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapSlider[] {
   const out: SnapSlider[] = [];
   for (const el of card.querySelectorAll<HTMLInputElement>(".solenoid-slider__range, input[type=range]")) {
@@ -220,18 +190,13 @@ function scrapeSliders(card: HTMLElement, elRect: DOMRect, viewX: number, viewY:
   return out;
 }
 
-// Small chrome elements rendered generically as a box (+ text). Disjoint from the
-// TEXT_SELECTORS so nothing double-renders.
 const DECO_SELECTORS = [
   ".solenoid-node__add-input", ".solenoid-node__add-row", ".solenoid-node__row-remove",
   ".solenoid-node__recalc-btn", ".solenoid-node__input-pill", ".solenoid-node__output-pill",
   ".solenoid-node__corner-badge", ".solenoid-node__corner-lock", ".solenoid-node__quoted",
   ".solenoid-node__section-divider", ".solenoid-swatchgrid__opt", ".solenoid-note__swatch",
-  // Segmented toggles + Format-Controller chrome (Cast / FC nodes). The FC's
-  // places/sig-figs toggle is the shared SegToggle now (".solenoid-seg button").
   ".solenoid-seg button", ".solenoid-fc__toggle",
   ".solenoid-fc__arrow", ".solenoid-fc__digits", ".solenoid-fc__pattern",
-  // Catch any remaining buttons generically (dedup'd against the above).
   "button",
 ];
 function toNumA(css: string): { num: number; a: number } | null {
@@ -267,10 +232,6 @@ function scrapeDecorations(card: HTMLElement, elRect: DOMRect, viewX: number, vi
       if (b) out.push(b);
     }
   }
-  // Generic color cells: the Heatmap (and inline swatch grids) paint a grid of
-  // class-less <div>s with an inline `background` color — no selector catches
-  // them. Grab small leaf elements that set a background inline, skipping chart
-  // and control containers (they own their own render path).
   for (const el of card.querySelectorAll<HTMLElement>('[style*="background"]')) {
     if (seen.has(el)) continue;
     if (el.querySelector("svg, canvas, input, select, .recharts-surface")) continue;
@@ -285,7 +246,6 @@ function scrapeDecorations(card: HTMLElement, elRect: DOMRect, viewX: number, vi
   return out;
 }
 
-/** Chart visuals (recharts SVG) → serialized SVG string + rect, drawn as a texture. */
 function scrapeImages(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapImage[] {
   const out: SnapImage[] = [];
   for (const svg of card.querySelectorAll<SVGElement>(".recharts-surface")) {
@@ -293,9 +253,6 @@ function scrapeImages(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: 
     if (r.width < 4 || r.height < 4) continue;
     try {
       const clone = svg.cloneNode(true) as SVGElement;
-      // Render at WORLD size with a viewBox so the DOM overlay scales it crisply at
-      // any zoom (it sits in a container scaled by the camera). Preserve the chart's
-      // own viewBox if it has one (recharts gauges use a 160-unit space, not px).
       if (!clone.getAttribute("viewBox")) clone.setAttribute("viewBox", `0 0 ${Math.round(r.width)} ${Math.round(r.height)}`);
       clone.setAttribute("width", String(r.width / k));
       clone.setAttribute("height", String(r.height / k));
@@ -309,7 +266,6 @@ function scrapeImages(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: 
   return out;
 }
 
-/** Checkbox controls → box + checked state. */
 function scrapeCheckboxes(card: HTMLElement, elRect: DOMRect, viewX: number, viewY: number, k: number): SnapCheckbox[] {
   const out: SnapCheckbox[] = [];
   for (const el of card.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) {
@@ -320,9 +276,6 @@ function scrapeCheckboxes(card: HTMLElement, elRect: DOMRect, viewX: number, vie
   return out;
 }
 
-/** Theme-faithful card colors sampled from a real mounted node (the DOM is still
- *  behind the overlay), so the synthetic scene + canvas background match the live
- *  theme instead of being hardcoded dark. Falls back to a dark default. */
 export function readThemeColors(): { body: number; title: number; value: number } {
   try {
     const card = document.querySelector<HTMLElement>(".solenoid-node");
@@ -338,20 +291,16 @@ export function readThemeColors(): { body: number; title: number; value: number 
   return { body: FALLBACK_BODY, title: 0xf3f5f8, value: 0xcfd6e4 };
 }
 
-/** Read the given graph + transform, or null if the editor/view aren't ready. */
 export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | null): GraphSnapshot | null {
   if (!view || !editor) return null;
   const t = view.transform ?? { k: 1, x: 0, y: 0 };
   const k = t.k > 0 ? t.k : 1;
 
-  _sockColorCache.clear(); // re-resolve CSS vars (theme may have changed since last open)
-  // The canvas background a card composites over — translucent fills (a Note's
-  // 30%-alpha tint) must be flattened onto it or they render far too saturated.
+  _sockColorCache.clear();
   const canvasEl = document.querySelector(".sol-rf-appcanvas .react-flow") ?? document.body;
   const canvasRGBA = parseColor(getComputedStyle(canvasEl).backgroundColor) ?? { r: 14, g: 16, b: 20, a: 1 };
   const nodes: SnapNode[] = [];
   const groups: SnapGroup[] = [];
-  // nodeId → side → socketKey → world point, for cable lookup.
   const lookup = new Map<string, { input: Map<string, SnapSocket>; output: Map<string, SnapSocket> }>();
   let bodyColor: number | null = null;
 
@@ -361,7 +310,6 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
       const el = view.nodeElement(node.id);
       if (!pos || !el) continue;
 
-      // Group containers render as translucent background rects behind cards.
       const groupEl = el.querySelector<HTMLElement>(".solenoid-group")
         ?? (el.classList.contains("solenoid-group") ? el : null);
       if (groupEl) {
@@ -371,7 +319,6 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
           const headerH = gHeader && gHeader.offsetHeight > 0 ? gHeader.offsetHeight : 34;
           const color = (gHeader ? rgbaToNum(getComputedStyle(gHeader).backgroundColor) : null) ?? 0x8a93a6;
           const border = (gHeader ? rgbaToNum(getComputedStyle(gHeader).borderTopColor) : null) ?? color;
-          // The group label CSS uppercases the title — apply it so the GPU label matches.
           let label = (node as { label?: string }).label || "";
           const gLabelEl = groupEl.querySelector<HTMLElement>(".solenoid-group__label");
           const gtt = gLabelEl ? getComputedStyle(gLabelEl).textTransform : "none";
@@ -383,54 +330,39 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
         continue;
       }
 
-      // Any node-like root: a regular node, a Note, or a Conduit (skip nothing).
       const ROOT_SEL = ".solenoid-node, .solenoid-note, .solenoid-conduit";
       const card = el.querySelector<HTMLElement>(ROOT_SEL)
         ?? (el.matches(ROOT_SEL) ? el : null);
       if (!card) continue;
-      // A collapsed group hides its members via visibility:hidden (they keep layout
-      // but don't paint). The DOM shows nothing, so neither should the GPU scene —
-      // and skipping here drops their cables too (the lookup entry is never built).
       if (getComputedStyle(card).visibility === "hidden") continue;
 
       const w = card.offsetWidth, h = card.offsetHeight;
       if (w <= 0 || h <= 0) continue;
-      // Flatten the (possibly translucent) fill onto the canvas — a Note tints at
-      // 30% alpha; dropping the alpha and filling opaque looks far too saturated.
       const ownRGBA = parseColor(getComputedStyle(card).backgroundColor);
       const ownBg = ownRGBA ? flatten(ownRGBA, canvasRGBA) : FALLBACK_BODY;
       if (bodyColor == null && card.classList.contains("solenoid-node")) bodyColor = ownBg;
-      // Notes/conduits have no node header; only nodes get the tinted header band.
       const headerEl = card.querySelector<HTMLElement>(".solenoid-node__header");
       const headerH = headerEl && headerEl.offsetHeight > 0 ? headerEl.offsetHeight : 0;
       const headerRGBA = headerEl ? parseColor(getComputedStyle(headerEl).backgroundColor) : null;
-      // The header composites over the card body, not the canvas.
       const headerColor = headerRGBA ? flatten(headerRGBA, ownRGBA ?? canvasRGBA) : ownBg;
 
       const accent = hexToNum(nodeAccent(node, appThemeStore.getMode()));
 
-      // Real card border — grouped nodes adopt the group hue at ~0.78 alpha, so it
-      // is NOT the kind accent. Capture color AND alpha (a hard outline reads heavy).
       const cardCs = getComputedStyle(card);
       const bc = parseColor(cardCs.borderTopColor || cardCs.borderColor || "");
       const borderW = parseFloat(cardCs.borderTopWidth || "1") || 1;
       const border = bc ? ((bc.r & 255) << 16) | ((bc.g & 255) << 8) | (bc.b & 255) : accent;
       const borderAlpha = bc && borderW > 0 ? bc.a : 0;
 
-      // Socket world positions, scraped from the dots and un-scaled into world space.
       const elRect = el.getBoundingClientRect();
       const isNode = card.classList.contains("solenoid-node");
       const texts = scrapeTextRuns(card, elRect, pos.x, pos.y, k, isNode ? TEXT_SELECTORS : NOTE_SELECTORS);
       if (isNode && headerH > 0) {
-        // Fall back to the node label as a header title run if none was scraped.
-        // Only when the card actually HAS a header band — headerless nodes (the
-        // Format Controller) would otherwise get a phantom title over their content.
         if (!texts.some((t) => t.isTitle)) {
           const label = (node as { label?: string }).label;
           if (label) texts.push({ text: label, x: pos.x + 9, y: pos.y + 6, w: 0, h: 0, size: 13, color: 0xf3f5f8, mono: false, isTitle: true, boxed: false, chevron: false, bold: true, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
         }
       } else if (!texts.length) {
-        // Note / conduit — show its raw content (their text uses other classes).
         const raw = (card.textContent ?? "").trim();
         if (raw) texts.push({ text: raw.slice(0, 120), x: pos.x + 9, y: pos.y + 7, w: 0, h: 0, size: 12, color: 0xcfd6e4, mono: false, isTitle: false, boxed: false, chevron: false, bold: false, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
       }
@@ -443,10 +375,6 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
         const key = se.getAttribute("data-socket-key");
         const sideAttr = se.getAttribute("data-socket-side");
         if (!key || (sideAttr !== "input" && sideAttr !== "output")) continue;
-        // React Flow anchors an edge at the HANDLE box's outer edge (right for a source,
-        // left for a target), not its center; measure the handle so the routed ends match.
-        // A flipped node's handles sit on the mirrored edge (FlowSocketHandle), so the
-        // anchor follows the VISUAL side, not the semantic one.
         const r = (se.querySelector<HTMLElement>(".react-flow__handle") ?? se).getBoundingClientRect();
         const onRight = (sideAttr === "output") !== socketFlipStore.get(node.id);
         const cx = onRight ? r.right : r.left, cy = r.top + r.height / 2;
@@ -469,10 +397,6 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
       }
       lookup.set(node.id, byKey);
 
-      // A Conduit's model position is the node-wrapper origin, but its body floats at a
-      // body-relative offset (and is rotated), so the model position is NOT where it paints
-      // — the GPU frame drew detached from its own sockets/cables. Use the conduit
-      // element's true rect so the frame centers on its sockets.
       let nx = pos.x, ny = pos.y, nw = w, nh = h;
       if (card.classList.contains("solenoid-conduit")) {
         const cr = card.getBoundingClientRect();
@@ -519,7 +443,6 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
     }
   } catch { /* connections unavailable — render nodes only */ }
 
-  // Standoffs — data-driven (not DOM): bar between the two ends' anchor points.
   const standoffs: SnapStandoff[] = [];
   try {
     const boxOf = new Map<string, Box>();

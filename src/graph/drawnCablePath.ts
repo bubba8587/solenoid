@@ -1,12 +1,10 @@
-// [[C90]] drawnCablesAnnotate.
-// Free-drawn cable geometry: one `getCablePath` span per pair of points, chained. Pure.
+// [[C90]] drawnCablesAnnotate
 import { getCablePath, Position } from "./cablePaths";
 import type { CableShape } from "./cableShape";
 
 export type DrawnPoint = {
   x: number;
   y: number;
-  /** Heading override, degrees CW from +X (the drawers' units). Unset = derived chord. */
   angle?: number;
 };
 
@@ -42,15 +40,10 @@ export function hasAngleOverride(p: DrawnPoint): boolean {
   return typeof p.angle === "number" && Number.isFinite(p.angle);
 }
 
-/** The 45° heading grid ([[C90]]): the dial's step AND the snap the derived chord rounds
- *  to, so an auto heading already sits where the dial would pin it. One home. */
 export const DRAWN_ANGLE_STEP = 45;
 
 const snapHeading = (deg: number) => Math.round(deg / DRAWN_ANGLE_STEP) * DRAWN_ANGLE_STEP;
 
-/** Forward tangent heading at every point: the override if pinned, else the chord through
- *  the neighbours SNAPPED to the 45° grid (matching the dial). Both spans at a point read
- *  the same value, so their end stubs are collinear and a joint never kinks. */
 export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
   const n = pts.length;
   const out: number[] = new Array<number>(n).fill(0);
@@ -66,16 +59,11 @@ export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
       headingOf(prev, next) ??
       (i + 1 < n ? headingOf(pts[i], pts[i + 1]) : null) ??
       (i > 0 ? headingOf(pts[i - 1], pts[i]) : null);
-    // The derived chord snaps to 45°; the fallback carries the prior point's (already
-    // snapped) heading, or 0 at the head of a degenerate run.
     out[i] = h === null ? (i > 0 ? out[i - 1] : 0) : snapHeading(h);
   }
   return out;
 }
 
-/** The whole run as one `d`. With a head length, the stroke stops at each head's BASE
- *  rather than running under it to the tip, or a thick stroke shows through the
- *  triangle's sides and its round cap pokes out past the point. */
 export function drawnCablePath(
   shape: CableShape,
   pts: readonly DrawnPoint[],
@@ -111,17 +99,15 @@ export function drawnCablePath(
       targetPosition: Position.Left,
       targetAngleDeg: heads[i + 1],
     });
-    // One subpath: a second `M` would break the joins.
     d += i === 0 ? seg : ` L${seg.slice(1)}`;
   }
   return d;
 }
 
-// Shorter than the drawers' DIR_LEAD (14) so the directional end stub stays visible.
+// Shorter than the drawers' DIR_LEAD (14), so the directional end stub stays visible behind the head.
 export const ARROW_LEN = 10;
 export const ARROW_HALF = 4.6;
 
-/** A filled triangle, tip at `tip`, pointing along `dirDeg`. */
 export function arrowHeadPath(
   tip: DrawnPoint,
   dirDeg: number,
@@ -136,7 +122,6 @@ export function arrowHeadPath(
   return `M ${tip.x},${tip.y} L ${bx + px},${by + py} L ${bx - px},${by - py} Z`;
 }
 
-/** Tip and pointing direction of each head. The start head points back out of the run. */
 export function drawnArrowHeads(
   pts: readonly DrawnPoint[],
   arrows: DrawnArrows,

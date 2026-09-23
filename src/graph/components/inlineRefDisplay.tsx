@@ -31,21 +31,15 @@ import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
 import { renderNoteMarkdown } from "../noteMarkdown";
 
-// The ONE rendering path for a `` `=name` `` inline ref: Note cards and the Report
-// overlay both go through InlineRefBody so a ref renders identically everywhere.
 
-/** Any node whose inline refs this module can render — NoteNode and ReportNode. */
 export interface RefValueHost {
   refValue(key: string): unknown;
 }
 
-// Matches a ref span's post-sanitization <code> text; mirrors noteInlineRefs.ts's
-// identifier grammar, kept in sync by inspection.
+// Mirrors noteInlineRefs.ts's identifier grammar; keep the two in step.
 const INLINE_REF_TEXT_RE = /^=([A-Za-z_][A-Za-z0-9_]*)(!?)$/;
 
-/** An FC docked to this ref input, else one reachable UPSTREAM through passthroughs
- *  (no `downstreamAnnotation` — a ref is a terminal consumer); a plain function, not
- *  a hook, so the static HTML export can freeze the same formatting. */
+/** A plain function, not a hook, so the static HTML export can freeze the same formatting. */
 export function resolveRefAnnotation(nodeId: string, refKey: string): FormatAnnotation | undefined {
   const editor = getOwningEditor(nodeId);
   const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
@@ -57,16 +51,12 @@ export function useRefAnnotation(nodeId: string, refKey: string): FormatAnnotati
   return resolveRefAnnotation(nodeId, refKey);
 }
 
-/** A short text preview of any ref value; frame/cube collapse to a word here (the
- *  inline prose span shows the real compact table). */
 export function refPreview(value: unknown, ann: FormatAnnotation | undefined): string {
   if (value === null || value === undefined) return "—";
   if (isSolError(value)) return value.code;
   if (typeof value === "boolean") return applyLogicalStyle(value, ann?.logicalStyle);
   if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
   if (typeof value === "string") return ann ? applyTextCase(value, ann.textCase) : value;
-  // A united or complex value reaches the ref RAW, so the annotation formats it here;
-  // a UnitCell resolves to its magnitude in the display unit and re-enters above.
   if (isUnitCell(value)) {
     const a = annotationForValue(value, ann);
     return refPreview(unwrapUnitCells(value, a), a);
@@ -87,15 +77,12 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   return String(value);
 }
 
-/** Plain-text form of a lambda — the inline preview + the KaTeX fallback. */
 function lambdaText(v: LambdaValue): string {
   const sig = `λ(${v.params.join(", ")})`;
   const expr = (v.expr ?? "").trim();
   return expr ? `${sig} = ${expr}` : sig;
 }
 
-/** A wired lambda as `f(params) = body` typeset with KaTeX, falling back to plain
- *  text when the body doesn't parse; an FC can pick another view, KaTeX is default. */
 function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView }) {
   const render = useKatexRender();
   if (view === "signature") {
@@ -123,8 +110,6 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
     } catch { return null; }
   })();
   if (!html) return <span className="solenoid-ref-inline">{lambdaText(value)}</span>;
-  // The "where" legend is prose, not math — plain text under the KaTeX, omitted
-  // when the lambda carries no descriptions.
   const desc = value.descriptions;
   const described = desc
     ? [...value.params, ...Object.keys(desc).filter((k) => !value.params.includes(k))].filter((k) => desc[k]?.trim())
@@ -146,8 +131,6 @@ function LambdaFormula({ value, view }: { value: LambdaValue; view?: LambdaView 
   );
 }
 
-/** A wired chart's plot sized to its CONTAINER — a fixed pixel width overflows a
- *  narrow report. Plot only; the caller supplies the title/collapse bar. */
 function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [w, setW] = useState(0);
@@ -161,7 +144,6 @@ function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number
     return () => ro.disconnect();
   }, []);
   const width = Math.min(w, 640);
-  // Cards (kpi/scale) render without a measured width; recharts figures wait for one.
   const cardOp = value.op === "kpi" || value.op === "scale";
   return (
     <span className="solenoid-ref-chartbody" ref={ref}>
@@ -177,7 +159,6 @@ function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number
   );
 }
 
-/** A collapsible titled block wrapping every Report embed; open by default. */
 export function CollapsibleFigure({ title, children, defaultOpen = true }: {
   title: string;
   children: ReactNode;
@@ -200,10 +181,6 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
   );
 }
 
-/** A wired document (a Note's, or another Report's) rendered as markdown. A Note's
- *  leading frontmatter block strips (the fields are sockets, not prose); its own
- *  `` `=x` `` spans substitute from the CARRIED refs map, and a name the map lacks
- *  (a Note's — Notes carry none) stays a literal span. */
 function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   const tex = useKatexReady();
   const html = useMemo(() => {
@@ -215,8 +192,6 @@ function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-/** A figure-class ref value (chart / diagram / table / cube / document) → its title +
- *  body; `rich` (the Report) previews taller and scrollable. Non-figure values → null. */
 function figureFor(
   value: unknown,
   refKey: string,
@@ -268,7 +243,6 @@ function figureFor(
     return {
       title: refKey,
       caption: null,
-      // Read the format off the SOURCE frame node, not the Report/Note host.
       body: <FrameDisplay frame={value} label={refKey} previewRows={rich ? 25 : 3} previewCols={rich ? 12 : 3} scroll={rich} formatNodeId={frameNodeId} />,
     };
   }
@@ -282,14 +256,11 @@ function figureFor(
 }
 
 export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; highlight?: boolean }) {
-  // Re-render after a recompute pass only when THIS ref's value moved.
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = useSyncExternalStore(cableValueStore.subscribe, () => node?.refValue(refKey));
   const ann = useRefAnnotation(nodeId, refKey);
 
-  // The node feeding this ref, so an embedded frame reads the per-column format set
-  // on THAT frame, not the Report/Note host.
   const srcNodeId = editor?.getConnections().find((c) => c.target === nodeId && c.targetInput === refKey)?.source;
 
   const fig = figureFor(value, refKey, !!collapsible, ann, srcNodeId);
@@ -306,8 +277,6 @@ export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nod
       </span>
     );
   }
-  // The `!` flag (`=name!`) tints only the inline text form — figures are block-level
-  // and an error already carries stronger styling.
   return (
     <span className={`solenoid-ref-inline${highlight ? " solenoid-ref-inline--hl" : ""}`}>
       {refPreview(value, ann)}
@@ -315,15 +284,13 @@ export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nod
   );
 }
 
-/** Swaps every `` `=name` `` code span for a live-value portal by DOM query AFTER
- *  the HTML is parsed — string-splitting the HTML would break marked's nesting. */
+/** By DOM query after parsing: splitting the HTML string would break marked's nesting. */
 export function InlineRefBody({
   nodeId, bodyHtml, className, collapsibleEmbeds, onClick, onPointerDown, onMouseDown,
 }: {
   nodeId: string;
   bodyHtml: string;
   className: string;
-  /** Report only: figure refs fold under a titled bar, frames preview taller. */
   collapsibleEmbeds?: boolean;
   onClick?: () => void;
   onPointerDown?: (e: React.PointerEvent) => void;
@@ -332,8 +299,7 @@ export function InlineRefBody({
   const htmlRef = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<{ el: HTMLElement; name: string; highlight: boolean }[]>([]);
 
-  // Set the HTML imperatively so React never owns these children — a React-owned
-  // subtree would be re-applied on the setSlots re-render and orphan the portals.
+  // Set imperatively: React-owned children would be re-applied on the setSlots re-render and orphan the portals.
   useLayoutEffect(() => {
     const root = htmlRef.current;
     if (!root) return;

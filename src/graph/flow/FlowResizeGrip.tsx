@@ -1,7 +1,4 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C37]] observerOwnsSize (tree/specs/canvas/resizable-content-nodes.md)
-// The corner resize grip: RF's NodeResizeControl wearing the app's grip mark. Sizes are
-// integers (a fractional size renders the selection ring 0.5px off). The resizer's own
-// dimension changes never reach RF state (FlowSurface drops them); the MODEL owns size.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C37]] observerOwnsSize
 import { useCallback, useRef } from "react";
 import { NodeResizeControl, type ResizeParams } from "@xyflow/react";
 import type { FlowResizeGripProps } from "../flowSurface";
@@ -11,10 +8,7 @@ const round = (p: ResizeParams) => ({ width: Math.round(p.width), height: Math.r
 export function FlowResizeGrip({
   className, style, minWidth, minHeight, onResizeStart, onResize, onResizeEnd, onDoubleClick, children,
 }: FlowResizeGripProps) {
-  // The callbacks handed to RF MUST keep their identity across renders: NodeResizeControl
-  // rebinds its d3 drag handler whenever they change, which drops an in-flight TOUCH
-  // gesture (the touchmove listener lives on the element; a mouse's lives on the window).
-  // Every resize step re-renders the card, so per-render arrows resized once and stopped.
+  // The callbacks handed to RF must keep their identity: NodeResizeControl rebinds its d3 drag on change, which drops an in-flight touch.
   const latest = useRef({ onResizeStart, onResize, onResizeEnd });
   latest.current = { onResizeStart, onResize, onResizeEnd };
   const start = useCallback((_e: unknown, p: ResizeParams) => latest.current.onResizeStart?.(round(p)), []);

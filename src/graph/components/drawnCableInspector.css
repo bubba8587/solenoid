@@ -1,9 +1,6 @@
-/* Rows layered onto the cable-inspector chrome (cableInspector.css owns the panel box,
-   its corner and the Navigator slide). Segments mirror the top bar's cable-shape
-   selector so "pick a cable shape" is one control everywhere. */
+/* Layered onto the cable-inspector chrome (cableInspector.css owns the box); the segments mirror the top bar's cable-shape selector. */
 
-/* More rows than the wired-cable panel, so it caps its height on a short window.
-   Scoped by the dialog label: cableInspector.css is shared. */
+/* Caps its height on a short window; scoped by the dialog label, since cableInspector.css is shared. */
 .solenoid-cable-inspector[aria-label="Drawn cable"] {
   max-height: calc(100dvh - var(--chrome-top, 66px) - var(--chrome-bottom, 19px) - 24px);
   overflow-y: auto;
@@ -177,7 +174,7 @@
   cursor: default;
 }
 
-/* Add / remove the active point (the finger's version of double-click and alt-click). */
+/* The finger's version of double-click and Alt-click. */
 .solenoid-drawn-inspector__pointbtn {
   display: inline-flex;
   align-items: center;

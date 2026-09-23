@@ -3,22 +3,17 @@ import { CABLE_SHAPES, useCableShape, type CableShape } from "./cableShape";
 import { useCableFlow } from "./cableFlowStore";
 import "./CableShapeSelector.css";
 
-// Schematic, not literal cable paths: exaggerated so the three shapes stay distinct at icon
-// size, over a near-square span so the diagonal reads ≈45°.
+// Schematic, exaggerated so the three shapes stay distinct at icon size; the near-square span makes the diagonal about 45°.
 const S = { x: 0, y: 0 };
 const T = { x: 32, y: 28 };
 const MID_X = (S.x + T.x) / 2;
 const SHAPE_ICON: Record<CableShape, string> = {
-  // Diagonal: one straight slanted segment.
   diagonal: `M ${S.x},${S.y} L ${T.x},${T.y}`,
-  // Spline: a single rounded corner — exit horizontal, sweep down into T (no S).
   spline: `M ${S.x},${S.y} C ${S.x + 16},${S.y} ${T.x},${T.y - 16} ${T.x},${T.y}`,
-  // Straight: crisp right-angle step (sharp 90° corners, no rounding).
   straight: `M ${S.x},${S.y} L ${MID_X},${S.y} L ${MID_X},${T.y} L ${T.x},${T.y}`,
 };
 
-/** Shared by the toolbar control and the collapsed Cable Inspector chip, so "a cable" is
- *  one drawing; the ring's hollow fills with `--icon-bg`, set on the host element. */
+/** Shared by the toolbar control and the Cable Inspector chip; the ring's hollow fills with `--icon-bg` from the host. */
 export function CableShapeIcon({ shape, className }: { shape: CableShape; className?: string }) {
   return (
     <svg className={className} viewBox="-7 -8 46 44" aria-hidden="true">

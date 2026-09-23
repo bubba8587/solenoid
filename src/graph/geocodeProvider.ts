@@ -1,6 +1,5 @@
 // [[D32]] refreshOutsideRebuild
-// Open-Meteo geocoding (keyless, CORS-open): a place name → coordinate matches. The
-// PARSE is pure + fixture-tested (widget rule 5); the node does the fetch/cache.
+// Open-Meteo geocoding (keyless, CORS-open). The parse is pure; the node owns fetch and cache.
 
 export interface GeocodeMatch {
   /** "City, Region, Country" — stable across refreshes, so it is how a pick is stored. */
@@ -11,14 +10,12 @@ export interface GeocodeMatch {
   timezone: string;
 }
 
-/** The search endpoint for a place name (English labels, up to 10 matches). */
 export function geocodeUrl(place: string): string {
   const q = encodeURIComponent(place.trim());
   return `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=10&language=en&format=json`;
 }
 
-/** Parse the geocoding response into matches, best first (the API already ranks). A
- *  malformed body or no results → []. */
+/** Best first, as the API ranks; a malformed body or no results gives []. */
 export function parseGeocode(text: string): GeocodeMatch[] {
   let data: unknown;
   try { data = JSON.parse(text); } catch { return []; }
@@ -37,8 +34,7 @@ export function parseGeocode(text: string): GeocodeMatch[] {
   return out;
 }
 
-/** The match a stored pick NAMES (by label — positional index would swap cities when
- *  the API reorders on a refresh), else the top match. */
+/** Matched by label, since an index would swap cities when the API reorders on a refresh; else the top match. */
 export function pickGeocodeMatch(matches: readonly GeocodeMatch[], pickedLabel: string): GeocodeMatch | null {
   if (matches.length === 0) return null;
   if (pickedLabel) {

@@ -1,6 +1,4 @@
-/* Element picker — search + the periodic table on the standard 18-column grid.
-   Chrome stays neutral (Quiet Accent Rule): cells are plain surfaces; color is
-   spent only on STATE — the node's current element and the best search match. */
+/* Quiet Accent: cells are plain surfaces, and color marks only state (the current element and the best match). */
 
 .el-picker__body {
   padding: 12px;
@@ -57,7 +55,6 @@
   outline-offset: -1px;
 }
 
-/* Phones: the 18-column grid shrinks to fit rather than overflowing. */
 @media (max-width: 560px) {
   .el-picker__table {
     grid-template-columns: repeat(18, minmax(14px, 1fr));
@@ -67,8 +64,7 @@
   .el-picker__cell { font-size: 9px; }
 }
 
-/* The Element card's opener — the op-select field look, minus the dropdown
-   chevron (it opens the picker popup, not a native menu). */
+/* The op-select field look minus the chevron: it opens the picker popup, not a native menu. */
 .el-picker__open {
   background-image: none;
   text-align: left;

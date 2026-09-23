@@ -1,24 +1,20 @@
 // [[C69]] ganttPackages, [[C44]] dateSerials, [[D36]] nullSkippedNotZero, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
-// A working calendar over whole-day serials in unit-index space: unit k is the k-th counted
-// working day (Days mode) or working minute (Minutes mode) from the anchor, k < 0 backwards.
 
 import type { CalendarSpec } from "./types";
 
 const SATURDAY = 6, SUNDAY = 0;
 const MINUTES_PER_DAY = 1440;
 
-/** Whole-day key of a serial; `+1e-9` absorbs float drift from serial↔ms round trips. */
+/** `+1e-9` absorbs float drift from serial↔ms round trips. */
 export function dayKey(serial: number): number {
   return Math.floor(serial + 1e-9);
 }
 
-/** Day of week of a serial: 0 = Sunday .. 6 = Saturday (serial 1 = 1900-01-01, a Monday;
- *  Excel's phantom 1900-02-29 is why the epoch offset is what it is). */
+/** Serial 1 is 1900-01-01, a Monday; Excel's phantom 1900-02-29 is why the epoch offset is what it is. */
 export function dayOfWeek(serial: number): number {
   return ((dayKey(serial) + 6) % 7 + 7) % 7;
 }
 
-/** The weekend days for an Excel WORKDAY.INTL code. */
 export function weekendDays(code: number | undefined): number[] {
   switch (Math.round(code ?? 1)) {
     case 1: return [SATURDAY, SUNDAY];
@@ -39,17 +35,14 @@ export function weekendDays(code: number | undefined): number[] {
   }
 }
 
-/** Project's default working day: 08:00–12:00 and 13:00–17:00, in minutes from midnight. */
 export const DEFAULT_INTERVALS: ReadonlyArray<readonly [number, number]> = [[480, 720], [780, 1020]];
 
-/** A working day of `hours` starting at 08:00, with Project's lunch hour when it fits. */
 export function intervalsForHours(hours: number): Array<[number, number]> {
   const minutes = Math.max(1, Math.round(hours * 60));
   if (minutes > 240 && minutes <= 480) return [[480, 720], [780, 780 + minutes - 240]];
   return [[480, Math.min(MINUTES_PER_DAY, 480 + minutes)]];
 }
 
-/** A stable key for a spec, so equal specs share one calendar (and one index space). */
 export function calendarKey(spec: CalendarSpec): string {
   return JSON.stringify([spec.workingDays, spec.weekendCode ?? 1, [...(spec.holidays ?? [])].filter((h): h is number => typeof h === "number").sort((a, b) => a - b), spec.precision ?? "days", spec.intervals ?? null]);
 }
@@ -58,12 +51,11 @@ export class Calendar {
   readonly working: boolean;
   readonly weekend: ReadonlySet<number>;
   readonly holidays: ReadonlySet<number>;
-  /** Units per working day: 1 in Days mode, the working minutes per day in Minutes mode. */
   readonly unitsPerDay: number;
   readonly minutes: boolean;
   private readonly intervals: ReadonlyArray<readonly [number, number]>;
   private readonly anchor: number;
-  /** forward[k] = serial of day index k (k ≥ 0); backward[j] = serial of day index -(j+1). */
+  /** forward[k] is the serial of day index k (k ≥ 0); backward[j] is day index -(j+1). */
   private readonly forward: number[] = [];
   private readonly backward: number[] = [];
 
@@ -90,7 +82,6 @@ export class Calendar {
     return !this.weekend.has(dayOfWeek(k)) && !this.holidays.has(k);
   }
 
-  /** The serial of DAY index k. */
   dayDate(k: number): number {
     if (k >= 0) {
       while (this.forward.length <= k) {
@@ -109,8 +100,6 @@ export class Calendar {
     return this.backward[j];
   }
 
-  /** Day index of the first counted day at or after `serial` (a typed date on a weekend
-   *  snaps forward, the WORKDAY convention). */
   dayIndexCeil(serial: number): number {
     const s = dayKey(serial);
     if (s >= this.dayDate(0)) {
@@ -127,14 +116,11 @@ export class Calendar {
     }
   }
 
-  /** Day index of the last counted day at or before `serial`. */
   dayIndexFloor(serial: number): number {
     const k = this.dayIndexCeil(serial);
     return this.dayDate(k) === dayKey(serial) ? k : k - 1;
   }
 
-  /** The serial of unit index k: a whole day in Days mode; in Minutes mode the START of
-   *  that working minute (day + clock fraction). */
   date(k: number): number {
     if (!this.minutes) return this.dayDate(k);
     const M = this.unitsPerDay;
@@ -143,7 +129,6 @@ export class Calendar {
     return this.dayDate(day) + this.clockOf(offset) / MINUTES_PER_DAY;
   }
 
-  /** The END of unit k (Minutes mode: the following clock minute; Days mode: the day). */
   dateEnd(k: number): number {
     if (!this.minutes) return this.dayDate(k);
     const M = this.unitsPerDay;
@@ -152,30 +137,25 @@ export class Calendar {
     return this.dayDate(day) + (this.clockOf(offset) + 1) / MINUTES_PER_DAY;
   }
 
-  /** Index of the first counted unit at or after `serial`. */
   indexCeil(serial: number): number {
     if (!this.minutes) return this.dayIndexCeil(serial);
     const dayIdx = this.dayIndexCeil(serial);
-    if (this.dayDate(dayIdx) !== dayKey(serial)) return dayIdx * this.unitsPerDay; // snapped to a later day: its first minute
+    if (this.dayDate(dayIdx) !== dayKey(serial)) return dayIdx * this.unitsPerDay;
     const clock = Math.round((serial - dayKey(serial)) * MINUTES_PER_DAY);
     const off = this.offsetCeil(clock);
     return off >= this.unitsPerDay ? (dayIdx + 1) * this.unitsPerDay : dayIdx * this.unitsPerDay + off;
   }
 
-  /** Index of the last counted unit at or before `serial` (a date-only serial in Minutes
-   *  mode means the END of that day: its last working minute). */
   indexFloor(serial: number): number {
     if (!this.minutes) return this.dayIndexFloor(serial);
     const dayIdx = this.dayIndexFloor(serial);
-    if (this.dayDate(dayIdx) !== dayKey(serial)) return (dayIdx + 1) * this.unitsPerDay - 1; // snapped to an earlier day: its last minute
+    if (this.dayDate(dayIdx) !== dayKey(serial)) return (dayIdx + 1) * this.unitsPerDay - 1;
     const clock = Math.round((serial - dayKey(serial)) * MINUTES_PER_DAY);
     if (clock === 0) return (dayIdx + 1) * this.unitsPerDay - 1;
     const off = this.offsetFloor(clock);
     return off < 0 ? dayIdx * this.unitsPerDay - 1 : dayIdx * this.unitsPerDay + off;
   }
 
-  /** Index of the last counted unit that STARTS at or before `serial` (a link's late-start
-   *  bound). Days: the day's own index; Minutes: the minute beginning at that clock time. */
   indexFloorStart(serial: number): number {
     if (!this.minutes) return this.dayIndexFloor(serial);
     const dayIdx = this.dayIndexFloor(serial);
@@ -191,20 +171,15 @@ export class Calendar {
     return dayIdx * this.unitsPerDay + last;
   }
 
-  /** The instant work on unit k is over: the next day in Days mode, the following clock
-   *  minute in Minutes mode. The successor of a task ending at unit k may begin at the first
-   *  unit at or after this instant on ITS calendar. */
   exclusiveEnd(k: number): number {
     return this.minutes ? this.dateEnd(k) : this.dayDate(k) + 1;
   }
 
-  /** Counted units from `a` to `b` inclusive of both ends, 0 when b < a. */
   countBetween(a: number, b: number): number {
     if (dayKey(b) < dayKey(a)) return 0;
     return Math.max(0, this.indexFloor(b) - this.indexCeil(a) + 1);
   }
 
-  /** Clock minute (from midnight) of working-minute offset `o` within a day. */
   private clockOf(o: number): number {
     let left = o;
     for (const [a, b] of this.intervals) {
@@ -215,8 +190,6 @@ export class Calendar {
     return last[1] - 1;
   }
 
-  /** Working-minute offset of the first working minute at or after clock minute c
-   *  (unitsPerDay when the day is over). */
   private offsetCeil(c: number): number {
     let acc = 0;
     for (const [a, b] of this.intervals) {
@@ -227,9 +200,6 @@ export class Calendar {
     return acc;
   }
 
-  /** Working-minute offset of the last working minute that ENDS at or before clock
-   *  minute c (−1 when the day has not started): a ceiling "by 15:00" allows the minute
-   *  14:59–15:00 and no later, and 17:00 is the end of the 16:59 minute. */
   private offsetFloor(c: number): number {
     let acc = 0;
     let last = -1;
@@ -242,7 +212,6 @@ export class Calendar {
     return last;
   }
 
-  /** The non-working spans [from, to] inside [a, b], merged. Empty in calendar mode. */
   nonWorkingSpans(a: number, b: number): Array<[number, number]> {
     const out: Array<[number, number]> = [];
     if (!this.working) return out;
@@ -256,7 +225,6 @@ export class Calendar {
     return out;
   }
 
-  /** The holidays inside [a, b], ascending. */
   holidaysBetween(a: number, b: number): number[] {
     return [...this.holidays].filter((h) => h >= dayKey(a) && h <= dayKey(b)).sort((x, y) => x - y);
   }

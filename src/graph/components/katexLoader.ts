@@ -1,6 +1,5 @@
 // [[C68]] knapIsTheDocumentSyntax
-// Lazy KaTeX loader: consumers get the renderer or null (raw text meanwhile). This
-// module must stay katex-free, or importing it drags katex into the main bundle.
+// This module must stay katex-free, or importing it drags katex into the main bundle.
 import { useSyncExternalStore } from "react";
 import type { KatexOptions } from "katex";
 
@@ -38,7 +37,6 @@ export function useKatexReady(): TexRenderer | null {
   return useSyncExternalStore(subscribe, snapshot);
 }
 
-/** Triggers the load and re-renders when katex arrives; null while loading. */
 export function useKatexRender(): TexRenderer | null {
   const r = useSyncExternalStore(subscribe, snapshot);
   load();

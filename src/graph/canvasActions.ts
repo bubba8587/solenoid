@@ -1,4 +1,4 @@
-// [[D17]] relaysTransparent (Insert Conduit), [[C89]] standoffsSolveLast (Link with Standoff).
+// [[D17]] relaysTransparent, [[C89]] standoffsSolveLast
 import type { View } from "./view";
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { Schemes, SolenoidNode } from "./schemes";
@@ -29,18 +29,12 @@ import { processGraph, beginGraphRebuild, endGraphRebuild, bulkSettle } from "./
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
-// One Conduit takes up to CONDUIT_MAX_LANES cables; a bigger selection is chunked
-// into several, each landing at its cables' midpoint centroid, 45°-snapped to the
-// mean flow direction.
 export async function insertConduitForCables(
   editor: NodeEditor<Schemes>,
   view: View,
   container: HTMLElement,
   target: CableContextTarget,
 ): Promise<void> {
-  // A socket on a collapsed group's hidden member still MEASURES at its expanded
-  // position, but its cable is drawn to the group-edge pill — so prefer the pill
-  // point, exactly like ConnectionComponent does.
   const socketCanvasPoint = (nodeId: string, key: string, side: "input" | "output") => {
     const pill = side === "output"
       ? groupCollapseStore.outPillFor(nodeId, key)
@@ -65,8 +59,6 @@ export async function insertConduitForCables(
     };
   };
 
-  // One LANE per unique source socket, not per cable: a fan-out rides the Conduit
-  // once and re-fans from its output.
   type Lane = { conns: SolenoidConnection[]; mid: Pt; dir: Pt };
   const laneBySource = new Map<string, { conns: SolenoidConnection[]; mids: Pt[]; dirs: Pt[] }>();
   for (const id of target.connIds) {
@@ -94,7 +86,6 @@ export async function insertConduitForCables(
     },
   }));
   if (lanes.length === 0) return;
-  // Lane 0 is the top row — order by visual position so spliced cables don't cross.
   lanes.sort((a, b) => a.mid.y - b.mid.y || a.mid.x - b.mid.x);
 
   cableSelectionStore.clear();
@@ -107,10 +98,6 @@ export async function insertConduitForCables(
     const dx = chunk.reduce((s2, it) => s2 + it.dir.x, 0);
     const dy = chunk.reduce((s2, it) => s2 + it.dir.y, 0);
     const angle = Math.round(((Math.atan2(dy, dx) * 180) / Math.PI) / 45) * 45;
-    // A Conduit renders BEHIND nodes, so a centroid landing on a node body would be
-    // invisible and unclickable — nudge below any coverer. Expanded groups are
-    // background boxes; collapsed ones are opaque obstacles, and their hidden
-    // members still measure, so skip those.
     for (let pass = 0; pass < 4; pass++) {
       let bumped = false;
       for (const n of editor.getNodes()) {
@@ -161,19 +148,14 @@ export async function insertConduitForCables(
   await processGraph();
 }
 
-// Anchors face each other along the dominant of 8 directions; the band defaults to
-// [gap, current distance] — "never closer than a gap, never farther than I placed it".
 export function linkStandoffBetween(
   editor: NodeEditor<Schemes>,
   view: View,
   t: { aId: string; bId: string },
 ): void {
-  // A standoff links top-level items only (subsystem-invariants, Standoffs): a group
-  // member rides its group. The menu gates this; a stale target must not slip past.
   for (const n of editor.getNodes()) {
     if (n instanceof GroupNode && (n.members.includes(t.aId) || n.members.includes(t.bId))) return;
   }
-  // The same size read the standoff SOLVER uses, so the band matches its boxes.
   const boxOf = (id: string): StandoffBox | null => measuredBox(view, id, editor);
   const ba = boxOf(t.aId);
   const bb = boxOf(t.bId);
@@ -193,21 +175,19 @@ export function linkStandoffBetween(
     { nodeId: t.bId, anchor: opposite },
     min,
     Math.max(dist, min),
-    true, // new standoffs lock to 45° by default; the toolbar can unlock
+    true,
   );
   standoffStore.select(s.id);
   unselectAllNodesFromProcess();
   cableSelectionStore.set(null);
-  settleStandoffs(); // apply the rigid 45° alignment right away
+  settleStandoffs();
   scheduleAutosave();
 }
 
-// Node deletion splices a ghost cable when a node has exactly one in + one out.
 export async function deleteSelection(
   editor: NodeEditor<Schemes>,
   view: View | null,
 ): Promise<void> {
-  // A selected drawn cable is its own deletion target (exclusive selection).
   const drawnSel = drawnCableStore.selected();
   if (drawnSel) {
     drawnCableStore.remove(drawnSel);
@@ -215,7 +195,6 @@ export async function deleteSelection(
     return;
   }
 
-  // A selected standoff is its own deletion target (exclusive selection).
   const standoffSel = standoffStore.selected();
   if (standoffSel) {
     standoffStore.remove(standoffSel);
@@ -225,16 +204,12 @@ export async function deleteSelection(
 
   const selectedCableIds = cableSelectionStore.ids();
   const selected = editor.getNodes().filter((n) => n.selected);
-  // Gate the WHOLE removal: the per-item `connectionremoved`/`noderemoved` sweeps are
-  // O((nodes+cables) × nodes), so a bulk delete hangs the tab — suppress them and run
-  // the equivalents ONCE below.
   const deletedIds: string[] = [];
   let deletedGroup = false;
   beginGraphRebuild();
   try {
     if (selectedCableIds.length > 0) {
       cableSelectionStore.clear();
-      // A Ribbon is one entity: any selected lane takes every lane with it.
       const doomed = new Set<string>();
       for (const id of selectedCableIds) {
         const conn = editor.getConnections().find((c) => c.id === id);
@@ -255,8 +230,6 @@ export async function deleteSelection(
       const incoming = editor.getConnections().filter((c) => c.target === node.id);
       const outgoing = editor.getConnections().filter((c) => c.source === node.id);
 
-      // Splice PER LANE: the generic 1-in/1-out path below can't see a multi-lane
-      // bundle, so without this a deleted Conduit drops every cable with no ghost.
       if (node instanceof ConduitNode) {
         const specs = conduitGhostSpecs(incoming, outgoing, editor.getConnections());
         for (const conn of [...incoming, ...outgoing]) await editor.removeConnection(conn.id);
@@ -272,7 +245,6 @@ export async function deleteSelection(
         continue;
       }
 
-      // 1 in + 1 out → leave a ghost cable; clicking it adopts it.
       const canSplice =
         incoming.length === 1 &&
         outgoing.length === 1 &&
@@ -313,8 +285,7 @@ export async function deleteSelection(
     endGraphRebuild();
   }
 
-  // The per-event settles were suppressed above — run the equivalents ONCE, in the
-  // order noderemoved/connectionremoved would.
+  // The per-event settles were suppressed above; run their equivalents once, in the order noderemoved and connectionremoved would.
   if (deletedIds.length || selectedCableIds.length) {
     for (const id of deletedIds) forgetNode(id);
     if (deletedIds.length) rebuildGroupMembership(editor);
@@ -349,7 +320,7 @@ export async function attachFormatController(
     side:       target.side,
   });
   await editor.addNode(fc as SolenoidNode);
-  fc.dockSelf(editor); // registers the dock (needs the id addNode assigned) — undocked, it lands at canvas (0,0)
+  fc.dockSelf(editor); // needs the id addNode assigned; undocked, it lands at canvas (0,0)
   const pos = computeDockedCanvasPos(view, container, fc.hostNodeId, fc.socketKey, fc.side, fc.width, fc.height);
   if (pos) await view.moveNode(fc.id, pos);
   await insertFcInline(editor, fc);

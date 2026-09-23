@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax.
+// [[C68]] knapIsTheDocumentSyntax
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";
@@ -19,7 +19,6 @@ import { useKnapRender, type KnapBatch } from "./useKnapRender";
 import { highlightKnap } from "../knapHighlight";
 import { standardFilterMetadata } from "knap";
 
-/** The filter cheat-sheet's rows: every standard filter with its example call. */
 const FILTERS = Object.entries(standardFilterMetadata)
   .map(([name, meta]) => ({ name, example: meta.example ?? name }))
   .sort((a, b) => a.name.localeCompare(b.name));
@@ -31,10 +30,6 @@ import { useKatexReady } from "./katexLoader";
 
 const NO_VARS: Record<string, unknown> = {};
 
-/** The Report's editing surface: markdown source + live preview. No WYSIWYG
- *  toolbar — that is the scope line the plan draws. Opened on a Note (plain or
- *  Obsidian) instead, the same panel shows the note read-only: a Document chip
- *  opens its source here whichever kind produced it. */
 export function ReportOverlay() {
   const nodeId = useSyncExternalStore(reportStore.subscribe, reportStore.openNodeId);
   const docked = useSyncExternalStore(reportStore.subscribe, reportStore.isDocked);
@@ -47,17 +42,14 @@ export function ReportOverlay() {
   const [body, setBody] = useState(node?.body ?? "");
   const [embedPickerOpen, setEmbedPickerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  // Mobile only: the split pane becomes Draft/Preview tabs; ignored on desktop.
   const [mobileTab, setMobileTab] = useState<"draft" | "preview">("draft");
   const embedBtnRef = useRef<HTMLButtonElement>(null);
   const embedPopRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(embedPickerOpen, () => setEmbedPickerOpen(false), [embedBtnRef, embedPopRef]);
 
-  // Reset the draft on nodeId ONLY, never node.body: onBody writes it live, so a
-  // body dependency would clobber lastSyncRef mid-typing and the sockets never mint.
+  // Reset on nodeId only: onBody writes node.body live, so a body dependency would clobber lastSyncRef mid-typing.
   const lastSyncRef = useRef(node?.body ?? "");
-  // The preview renders from a DEBOUNCED copy — re-parsing per keystroke tore down
-  // and remounted the whole rendered pane (scroll jumped, embeds re-mounted).
+  // Debounced: re-parsing per keystroke remounted the whole preview (the scroll jumped, embeds re-mounted).
   const [previewBody, setPreviewBody] = useState(node?.body ?? "");
   useEffect(() => {
     setBody(node?.body ?? "");
@@ -69,11 +61,7 @@ export function ReportOverlay() {
     const t = setTimeout(() => setPreviewBody(body), 250);
     return () => clearTimeout(t);
   }, [body]);
-  // The Knap render of the draft against the variables the graph last fed the node;
-  // `renderVersion` re-runs it after a commit recomputes them.
   const [renderVersion, setRenderVersion] = useState(0);
-  // With a template wired the source pane is the wired note's text, read-only;
-  // with records wired the preview is the merge's pages.
   const wiredTemplate = node?.templateDoc ?? null;
   const previewSource = node ? node.templateSource(wiredTemplate ? node.activeSource() : previewBody) : "";
   const batch = useMemo<KnapBatch | null>(
@@ -82,15 +70,12 @@ export function ReportOverlay() {
     [node, node?.records, node?.pageName, renderVersion],
   );
   const { text: rendered, errors: templateErrors, pages } = useKnapRender(previewSource, node?.templateVars ?? NO_VARS, renderVersion, batch);
-  // A merge previews ONE page at a time, stepped from the preview's header.
   const [pageIndex, setPageIndex] = useState(0);
   const pageCount = pages?.length ?? 0;
   const shownPage = pageCount ? Math.min(pageIndex, pageCount - 1) : 0;
-  // A merge past the page cap previews only the first pageCount of N records.
   const recordTotal = node?.records?.length ?? 0;
   const capped = recordTotal > pageCount;
   const previewText = pages ? (pages[shownPage]?.body ?? "") : rendered;
-  // The filters cheat-sheet: click a row to insert `| filter` at the cursor.
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterQuery, setFilterQuery] = useState("");
   const filtersBtnRef = useRef<HTMLButtonElement>(null);
@@ -107,15 +92,14 @@ export function ReportOverlay() {
     setRenderVersion((v) => v + 1);
   }
 
-  // Commit THEN close: syncRefs runs synchronously before commitBody's first await,
-  // so the sockets mint even though this doesn't await.
+  // No await needed: syncRefs runs synchronously before commitBody's first await, so the sockets still mint.
   function closeReport() {
     if (node) void commitBody();
     reportStore.close();
   }
   useEscapeToClose(closeReport, !!nodeId);
 
-  const tex = useKatexReady(); // math in the preview re-renders once KaTeX lands
+  const tex = useKatexReady();
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(renderNoteMarkdown(previewText || "")),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,8 +108,6 @@ export function ReportOverlay() {
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
 
-  // A Note's body is rendered exactly as its card renders it: frontmatter stripped,
-  // sanitized on every render (a body arrives in shared .solenoid files).
   const noteHtml = useMemo(
     () => note ? DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,7 +160,6 @@ export function ReportOverlay() {
 
   function onBody(v: string) { setBody(v); node!.body = v; scheduleAutosave(); }
 
-  /** Insert text at the source pane's cursor (or the end) and keep the caret after it. */
   function insertAtCursor(text: string) {
     const ta = sourceRef.current;
     const start = ta?.selectionStart ?? body.length;
@@ -193,8 +174,7 @@ export function ReportOverlay() {
     setFiltersOpen(false);
   }
 
-  // Mints the template-variable sockets. Must read node.body, not the `body` state, so any
-  // close path can call it without a stale closure — mobile has no textarea blur.
+  // Reads node.body, never the `body` state, so any close path can call it: mobile has no textarea blur.
   async function commitBody() {
     const current = node!.body;
     if (current === lastSyncRef.current) return;
@@ -215,13 +195,8 @@ export function ReportOverlay() {
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);
-  // Every Note stays insertable: placement is a bare `{{ name }}` tag like any value's.
   const embeddable = notes;
 
-  // Inserts a bare `{{ name }}` at the cursor (the note's ADDRESSABLE name — the
-  // identifier grammar), mints the input, and wires the note's Document output into
-  // it. From there it is an ordinary cable: the embed is a dependency the graph can
-  // see, prune, and recompute.
   async function addEmbed(id: string) {
     const note = editor?.getNode(id) as NoteNode | undefined;
     if (!note) return;
@@ -271,8 +246,6 @@ export function ReportOverlay() {
         <div className="report-header">
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
-            {/* Docked has no side-by-side split, so a tiny Draft/Preview toggle rides
-                the button row instead of the full-width tab bar (mobile keeps that). */}
             {docked && (
               <div className="report-viewtoggle" role="tablist">
                 <button
@@ -347,8 +320,7 @@ export function ReportOverlay() {
                 {exporting ? "Exporting…" : "Export"}
               </button>
             )}
-            {/* Dock to / undock from the right side of the page (desktop only —
-                CSS-hidden on mobile, where the report is already full-screen). */}
+            {/* Desktop only; on mobile the report is already full-screen. */}
             {chrome.dock && (
               <button
                 className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
@@ -357,7 +329,6 @@ export function ReportOverlay() {
                 aria-label={docked ? "Undock report" : "Dock report to the right"}
                 aria-pressed={docked}
               >
-                {/* Lucide panel-right — a box with a right-hand panel. */}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect width="18" height="18" x="3" y="3" rx="2" />
                   <path d="M15 3v18" />
@@ -370,7 +341,6 @@ export function ReportOverlay() {
           </div>
         </div>
 
-        {/* Mobile tab bar, CSS-hidden on desktop. */}
         <div className="report-tabs" role="tablist">
           <button
             type="button"
@@ -425,8 +395,6 @@ export function ReportOverlay() {
                     {capped && <span className="report-pages__cap">first {pageCount} of {recordTotal}</span>}
                   </>
                 )}
-                {/* The page-name template names each page — it lives beside the stepper
-                    that shows the names it produces, not in the crowded header. */}
                 <label className="report-page-name" title="Knap for each page's note name, with record and index. Blank names pages by index.">
                   <span>Page name</span>
                   <input
@@ -457,7 +425,6 @@ export function ReportOverlay() {
       </div>
   );
 
-  // Docked drops the backdrop so the canvas stays interactive.
   return docked ? panel : (
     <div className="report-backdrop" onPointerDown={() => closeReport()}>{panel}</div>
   );

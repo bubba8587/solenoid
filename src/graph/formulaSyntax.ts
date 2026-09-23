@@ -5,11 +5,7 @@ import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
 
-// A position-PRESERVING tokenizer: every character reaches the output, so the
-// highlighted <pre> mirrors the <textarea> and a half-typed formula never bails.
-
-// Can't be a module-level constant: packs register after load and the advertised
-// set shrinks when a pack is switched off.
+// Not a module-level constant: packs register after load, and switching a pack off shrinks the advertised set.
 let _fnSet = new Set<string>();
 let _fnSetSource: string[] | null = null;
 function fnSet(): Set<string> {
@@ -17,7 +13,7 @@ function fnSet(): Set<string> {
   if (names !== _fnSetSource) { _fnSet = new Set(names); _fnSetSource = names; }
   return _fnSet;
 }
-const CONST_SET = new Set(Object.keys(FORMULA_CONSTANTS)); // lowercase
+const CONST_SET = new Set(Object.keys(FORMULA_CONSTANTS));
 
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -26,22 +22,16 @@ const isDigit = (c: string) => c >= "0" && c <= "9";
 const isIdStart = (c: string) => /[A-Za-z_λ]/.test(c);
 const isIdChar = (c: string) => /[A-Za-z0-9_λ]/.test(c);
 
-/** The CSS class for an identifier: in CALL position `fx-fn` / `fx-frame` (a real
- *  name whose type can't flow through formulas, so never a typo) / `fx-unknown`;
- *  bare, `fx-const` or `fx-var`. */
 function identClass(word: string, isCall: boolean): string {
   if (isCall) {
     const up = word.toUpperCase();
     if (fnSet().has(up)) return "fx-fn";
-    // Frame verbs and node-only verbs (Text Filter → List Filter) both read as a
-    // recognized name on the wrong surface — the same violet, never the typo red.
     return FRAME_SURFACE_NAMES[up] || NODE_SURFACE_NAMES[up] ? "fx-frame" : "fx-unknown";
   }
   if (CONST_SET.has(word.toLowerCase())) return "fx-const";
   return "fx-var";
 }
 
-/** Highlight a formula → HTML (classed spans). Every input char is preserved. */
 export function highlightFormula(src: string): string {
   let out = "";
   let i = 0;
@@ -59,21 +49,17 @@ export function highlightFormula(src: string): string {
       }
       out += span("fx-num", src.slice(i, j)); i = j; continue;
     }
-    // An unterminated string literal colors through to the end (mid-type).
     if (c === '"') {
       let j = i + 1;
       while (j < src.length && src[j] !== '"') j++;
       const end = j < src.length ? j + 1 : j;
       out += span("fx-str", src.slice(i, end)); i = end; continue;
     }
-    // @name — the this-row reference: ONE token, colored like a variable.
     if (c === "@" && isIdStart(src[i + 1] ?? "")) {
       let j = i + 2;
       while (j < src.length && isIdChar(src[j])) j++;
       out += span("fx-var", src.slice(i, j)); i = j; continue;
     }
-    // Structured references (tableRefSemantics) are ONE token through the closing bracket,
-    // colored like the variables they behave as; left open mid-type, color runs on.
     if (c === "[" || (c === "@" && src[i + 1] === "[")) {
       let j = i + (c === "@" ? 2 : 1);
       let depth = 1;
@@ -97,13 +83,11 @@ export function highlightFormula(src: string): string {
     if ("+-*/^%&=<>".includes(c)) { out += span("fx-op", c); i++; continue; }
     if (c === "(" || c === ")") { out += span("fx-paren", c); i++; continue; }
     if (c === ",") { out += span("fx-comma", c); i++; continue; }
-    out += span("fx-err", c); i++; // unknown char — flagged (span() escapes it)
+    out += span("fx-err", c); i++;
   }
   return out;
 }
 
-/** The identifier word ending at the caret (for autocomplete), or null. A word
- *  must start with a letter/underscore (a number isn't an identifier). */
 export function tokenAtCaret(src: string, caret: number): { word: string; start: number } | null {
   let start = caret;
   while (start > 0 && isIdChar(src[start - 1])) start--;
@@ -114,8 +98,6 @@ export function tokenAtCaret(src: string, caret: number): { word: string; start:
 
 export type Suggestion = { name: string; kind: "fn" | "const" | "var"; hint?: string };
 
-/** Rank function names + constants + the node's own variables against the typed
- *  word (fuzzy, case-insensitive). Exact-prefix matches float to the top. */
 export function suggestFor(word: string, extraNames: string[] = [], limit = 8): Suggestion[] {
   if (!word) return [];
   const pool: Suggestion[] = [
@@ -127,13 +109,9 @@ export function suggestFor(word: string, extraNames: string[] = [], limit = 8): 
   const scored: Array<{ s: Suggestion; score: number }> = [];
   for (const s of pool) {
     const name = s.name.toLowerCase();
-    // A fully-typed match is dropped unless it's a function, where accepting still
-    // adds the `(`.
     if (name === q && s.kind !== "fn") continue;
     const fz = fuzzyScore(word, s.name);
     if (fz == null) continue;
-    // Prefix first, then fuzzy score, then kind — so a node variable outranks the
-    // long function list on a tie.
     const prefix = name.startsWith(q) ? 1000 : 0;
     const kindBonus = s.kind === "var" ? 3 : s.kind === "const" ? 2 : 0;
     scored.push({ s, score: prefix + fz + kindBonus });
@@ -146,9 +124,6 @@ export function suggestFor(word: string, extraNames: string[] = [], limit = 8): 
   });
 }
 
-/** The innermost function call the caret sits inside, or null at the top level;
- *  string literals are skipped and an anonymous `(` group still nests, so the
- *  enclosing named call keeps counting ITS OWN commas. */
 export function enclosingCall(src: string, caret: number): { name: string; argIndex: number } | null {
   const stack: Array<{ name: string | null; argIndex: number }> = [];
   let i = 0;
@@ -175,8 +150,7 @@ export function enclosingCall(src: string, caret: number): { name: string; argIn
   for (let k = stack.length - 1; k >= 0; k--) {
     const frame = stack[k];
     if (frame.name) {
-      // Only the TOP frame increments, so a named frame's count already excludes
-      // commas belonging to an inner anonymous group.
+      // Commas count only on the top frame, so this count already excludes an inner anonymous group's.
       return { name: frame.name, argIndex: frame.argIndex };
     }
   }

@@ -1,16 +1,8 @@
-/* ─── Site pages (/download, /examples) ────────────────────────────────────────
-   Content pages built on LandingPage.css: the wrapper, header, hero, section, CTA,
-   strip and footer are shared. This file adds the blocks unique to these pages.
-   All colors ride the theme vars, so light theme mirrors for free. */
-
-/* A hero with no side scene: copy alone, so it does not stretch to the space-between
-   layout the two-column hero uses. */
 .sol-landing__hero--solo {
   display: block;
   padding-bottom: 4px;
 }
 
-/* ── Download: the two build cards ── */
 .sol-get__grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -42,7 +34,6 @@
   text-wrap-style: pretty;
 }
 
-/* Push the action to the card's foot so the two cards' buttons line up. */
 .sol-get__card .sol-landing__actions {
   margin-top: auto;
   padding-top: 18px;
@@ -70,7 +61,6 @@
   font-weight: 600;
 }
 
-/* ── Examples: the gallery ── */
 .sol-gallery {
   margin-top: 52px;
 }
@@ -85,8 +75,6 @@
   gap: 12px;
 }
 
-/* Each tile is a link that deep-links its seed. Flat at rest; the border steps and the
-   "Open" hint fades in on hover, so the whole card reads as one target. */
 .sol-gallery__card {
   padding: 15px 16px;
   min-height: 58px;
@@ -130,13 +118,10 @@
   outline-offset: 3px;
 }
 
-/* Keyboard users get the hint too, since they cannot hover. */
 .sol-gallery__card:focus-visible .sol-gallery__card-open {
   opacity: 1;
 }
 
-/* Touch devices have no hover, so the Open hint would never show. Reveal it there and
-   give the tile a pressed state instead. */
 @media (hover: none) {
   .sol-gallery__card-open {
     opacity: 1;
@@ -148,7 +133,6 @@
   }
 }
 
-/* ── Packs ── */
 .sol-packs {
   margin-top: 52px;
 }
@@ -185,7 +169,6 @@
   color: var(--text-bright);
 }
 
-/* The on-by-default marker: a quiet accent pill, not a loud badge. */
 .sol-packs__badge {
   flex: 0 0 auto;
   padding: 1px 8px;

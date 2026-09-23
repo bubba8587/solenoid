@@ -8,12 +8,6 @@ import type { ChartValue } from "../chartValue";
 import { ganttPayloadFromSchedule } from "../ganttPayload";
 import { todaySerial } from "./schedule";
 
-// The Gantt figure node: a scheduled cube (or frame) in, a `chart` value of kind
-// "gantt" out. It computes NO dates of its own — a Schedule node upstream already
-// appended Start/Finish/Float/Critical, and ganttPayloadFromSchedule reads those
-// columns into the figure's data payload. Holidays + Weekend follow the Schedule
-// node's calendar vocabulary and only shade the non-working days. The card carries
-// the [Chart] chip; the figure draws in the Display, the popup and a Report.
 
 export class GanttNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -55,20 +49,16 @@ export class GanttNode extends ClassicPreset.Node {
     options?: string[];
   }): { chart: ChartValue | SolError | null } {
     const schedule = inputs.schedule?.[0] ?? null;
-    // Options parse the same string twice: the chart keys here, the gantt view keys
-    // inside ganttPayloadFromSchedule. A wired blank means "none given".
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
 
-    // A whole-graph scheduling failure arrives as one SolError on the cube; carry it through.
     if (isSolError(schedule)) { this.cachedChart = schedule; return { chart: schedule }; }
     if (!isCubeValue(schedule) && !isFrameValue(schedule)) { this.cachedChart = null; return { chart: null }; }
 
     const baseIn = inputs.baseline?.[0] ?? null;
     const baseline = isCubeValue(baseIn) || isFrameValue(baseIn) ? baseIn : null;
     const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
-    // Status is wire-only (a date socket, no literal): unwired = no status line.
     const statusIn = inputs.status ? inputs.status[0] : null;
     const statusDate = statusIn != null && Number.isFinite(statusIn) ? statusIn : null;
 

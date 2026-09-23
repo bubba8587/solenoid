@@ -1,14 +1,10 @@
 // [[C62]] paletteAllOrNone
-// A canvas can't evaluate `color-mix()` or `var(--…)`, so the renderer computes them here.
-// Keep this DOM-free — var() resolution needs getComputedStyle and stays the caller's job.
 
 export interface RGBA { r: number; g: number; b: number; a: number }
 
 const clamp255 = (n: number) => (n < 0 ? 0 : n > 255 ? 255 : n);
 const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
-/** Parse a hex or `rgb()`/`rgba()` color to RGBA (0–255, a 0–1); null for anything else,
- *  which the caller must resolve first. */
 export function parseColor(input: string): RGBA | null {
   const s = input.trim();
   if (s.startsWith("#")) return parseHex(s);
@@ -24,14 +20,12 @@ export function parseColor(input: string): RGBA | null {
     if (![r, g, b, a].every(Number.isFinite)) return null;
     return { r, g, b, a };
   }
-  // Chrome serializes any color-mix() result as `color(srgb …)`, so this MUST parse or
-  // header tints and group-tinted borders fall back to a flat body fill.
   const cm = /^color\(\s*srgb\s+([^)]+)\)$/i.exec(s);
   if (cm) {
     const parts = cm[1].split(/[/\s]+/).filter(Boolean);
     if (parts.length < 3) return null;
     const ch = (p: string) => p.endsWith("%") ? parseFloat(p) / 100 : parseFloat(p);
-    // ROUND: the serialized floats are truncated, so a bare multiply lands a byte low.
+    // Round: the serialized floats are truncated, so a bare multiply lands a byte low.
     const r = clamp255(Math.round(ch(parts[0]) * 255));
     const g = clamp255(Math.round(ch(parts[1]) * 255));
     const b = clamp255(Math.round(ch(parts[2]) * 255));
@@ -55,14 +49,11 @@ function parseHex(s: string): RGBA | null {
   return { r, g, b, a };
 }
 
-/** Serialize RGBA back to a canvas-ready `rgba()` string. */
 export function toCss(c: RGBA): string {
   const r = Math.round(clamp255(c.r)), g = Math.round(clamp255(c.g)), b = Math.round(clamp255(c.b));
   return `rgba(${r}, ${g}, ${b}, ${clamp01(c.a)})`;
 }
 
-/** Mix two colors in sRGB by weight `t` of `b`, matching `color-mix(in srgb, …)`: a
- *  component lerp of the GAMMA-ENCODED channels, not linear-light. */
 export function mixSrgb(a: RGBA, b: RGBA, t: number): RGBA {
   const u = clamp01(t);
   const v = 1 - u;
@@ -74,7 +65,6 @@ export function mixSrgb(a: RGBA, b: RGBA, t: number): RGBA {
   };
 }
 
-/** The cable flow tint — `color-mix(in srgb, base P%, #fff)`; white-ish if unparseable. */
 export function flowTint(base: string, basePercent: number): string {
   const c = parseColor(base) ?? { r: 200, g: 200, b: 200, a: 1 };
   const white: RGBA = { r: 255, g: 255, b: 255, a: 1 };

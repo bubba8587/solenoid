@@ -1,8 +1,4 @@
-/* Formula editor — a transparent <textarea> layered exactly over a highlighted
-   <pre>. The two MUST share identical text metrics (font, size, line-height,
-   padding, wrapping, tab-size) or the colored layer drifts from the caret. The
-   container owns the border/background; both layers are borderless and share the
-   same padding so their text boxes coincide. */
+/* The textarea and the <pre> must share identical text metrics (font, size, line-height, padding, wrapping, tab-size), or the colored layer drifts from the caret. */
 .fx-editor {
   position: relative;
   border: 1px solid var(--border);
@@ -45,14 +41,10 @@
 }
 .fx-editor__ta::placeholder { color: var(--text-muted); opacity: 1; }
 
-/* Token colors — variables use the number-socket amber (they become input
-   sockets), an unknown call / stray char reads as an error. Scoped to
-   `.fx-tokens` so any surface can paint highlightFormula() output (the editor's
-   <pre> and the FC's highlighted lambda view both carry the class). */
+/* Variables take the number-socket amber, since they become input sockets; scoped to `.fx-tokens` so any surface can paint highlightFormula() output. */
 .fx-tokens .fx-fn      { color: #4aa3df; font-weight: 600; }
 .fx-tokens .fx-unknown { color: #e0707a; }
-/* A frame verb: a REAL name whose data type can't flow through formulas — wears
-   the frame socket violet (color conveys type), distinct from the typo red. */
+/* A frame verb is a real name whose type can't flow through formulas, so it wears the frame violet, distinct from the typo red. */
 .fx-tokens .fx-frame   { color: var(--sock-frame); font-weight: 600; }
 .fx-tokens .fx-var     { color: #d9a521; }
 .fx-tokens .fx-const   { color: #b48cff; }
@@ -66,7 +58,6 @@
 .fx-tokens .fx-kw      { color: #b48cff; font-weight: 600; }
 .fx-tokens .fx-comment { color: var(--text-muted); font-style: italic; }
 
-/* Autocomplete menu — drops just below the field. */
 .fx-editor__menu {
   position: absolute;
   top: calc(100% + 3px);
@@ -111,8 +102,7 @@
   max-width: 260px;
 }
 
-/* Param-hint bar — the enclosing call's signature, caret's argument emphasized.
-   Sits where the menu would (mutually exclusive with it). */
+/* Sits where the menu would; the two are mutually exclusive. */
 .fx-editor__sigbar {
   position: absolute;
   top: calc(100% + 3px);

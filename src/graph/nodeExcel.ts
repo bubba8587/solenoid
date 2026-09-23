@@ -1,9 +1,6 @@
 // [[C51]] formulaNaming, [[C14]] currentExcelParity
-// The source of truth for each node's Excel equivalence, applied onto catalog leaves by
-// buildCatalog; pack nodes may instead declare `excel` inline on their entry.
 import type { ExcelEquiv } from "./AddNodeMenu";
 
-/** catalog node type -> the Excel function(s) it stands in for. */
 export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "accrued-interest": [
     { excel: "ACCRINT", syntax: "=ACCRINT(issue,settle,rate,par,freq,basis)", parity: false, note: "Supports all four day-count bases. Excel's first_interest and calc_method arguments aren't supported." },
@@ -269,7 +266,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "HSTACK", syntax: "=HSTACK(array1, array2, ...)", parity: true, note: "Takes any number of inputs. Ragged inputs pad with #N/A, like Excel, and a List counts as one row." },
     { excel: "XSTACK", syntax: "=XSTACK(axis, array1, array2, ...)", parity: false, note: "Solenoid: one function, axis first, \"v\" or \"h\"" },
   ],
-  // Keys MUST track the catalog types; a drift test catches stale ones.
   "bool-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: false, note: "The card is three-valued: a blank operand makes the answer blank. The formula follows Excel and skips it." }],
   "if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: false, note: "A blank condition gives a blank on the card; Excel reads it as FALSE." }],
   "not": [{ excel: "NOT", syntax: "=NOT(a)", parity: false, note: "The card keeps a blank blank; Excel reads it as FALSE and answers TRUE." }],
@@ -436,8 +432,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "stat-standardize": [{ excel: "STANDARDIZE", syntax: "=STANDARDIZE(x, μ, σ)", parity: true }],
   "switch": [{ excel: "SWITCH", syntax: "=SWITCH(expr, w1, t1, ...)", parity: false, note: "Fixed 3 cases; Excel is variadic" }],
-  // All three leaves ARE T.TEST (Excel splits by its `type` argument), and all three must
-  // say so or the parity measurement reads the other two as Solenoid-native.
+  // All three leaves are T.TEST; a leaf without the entry would measure as Solenoid-native.
   "t-test-paired": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 1)", parity: false, note: "Type 1 (paired), two-tailed only." }],
   "t-test-equal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 2)", parity: false, note: "Type 2 (pooled variance), two-tailed only. Halve the result for one tail." }],
   "t-test-unequal-var": [{ excel: "T.TEST", syntax: "=T.TEST(a, b, tails, 3)", parity: false, note: "Type 3 (Welch), two-tailed only." }],
@@ -477,7 +472,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "text-mid": [
     { excel: "MID", syntax: "=MID(text, start, chars)", parity: false },
   ],
-  // TEXT / VALUE / VALUETOTEXT live on Cast; their dedicated nodes are load-only.
   "cast": [
     { excel: "TEXT", syntax: "=TEXT(value, format)", parity: false, note: "Use Cast to Text with a format. Supports \"\", \"0\", \"0.00\", \"0.00%\" and date patterns like YYYY-MM-DD." },
     { excel: "VALUE", syntax: "=VALUE(text)", parity: false, note: "Cast to Number" },
@@ -540,16 +534,12 @@ export interface ExcelGapRow {
   note?: string;
 }
 
-/** Excel functions with no Solenoid node; the reference drops any entry whose name later
- *  becomes node-backed. */
 export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "SUBTOTAL", syntax: "=SUBTOTAL(fn, range)", category: "Math & Trig", superseded: true, note: "Use SUM or the matching aggregate; the hidden-row variants (101-111) are a cell-grid concept." },
   { excel: "AGGREGATE", syntax: "=AGGREGATE(fn, opts, range)", category: "Math & Trig", superseded: true, note: "Use the matching aggregate; the ignore-errors and hidden-rows options are cell-grid concepts." },
   { excel: "CEILING.PRECISE", syntax: "=CEILING.PRECISE(x, sig)", category: "Math & Trig", superseded: true, note: "Use CEILING.MATH; PRECISE differs only in ignoring the significance's sign." },
   { excel: "FLOOR.PRECISE", syntax: "=FLOOR.PRECISE(x, sig)", category: "Math & Trig", superseded: true, note: "Use FLOOR.MATH; PRECISE differs only in ignoring the significance's sign." },
   { excel: "ISO.CEILING", syntax: "=ISO.CEILING(x, sig)", category: "Math & Trig", superseded: true, note: "Use CEILING.MATH; ISO.CEILING is CEILING.PRECISE under its ISO name." },
-  // The *IFS family + singular COUNTIF/AVERAGEIF are node-backed (sumifs node) → NODE_EXCEL.
-  // Only SUMIF stays a gap: it is blocked (Formula.js mis-summed a numeric-string range).
   { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", superseded: true, note: "Use SUMIFS." },
   { excel: "ADDRESS", syntax: "=ADDRESS(row, col)", category: "Lookup & Reference", oos: true, note: "Returns a cell reference as text." },
   { excel: "AREAS", syntax: "=AREAS(reference)", category: "Lookup & Reference", oos: true, note: "Counts the areas in a cell reference." },
@@ -595,9 +585,6 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "BAHTTEXT", syntax: "=BAHTTEXT(number)", category: "Text", oos: true, note: "Spells a number as Thai currency text." },
   { excel: "DBCS", syntax: "=DBCS(text)", category: "Text", oos: true, note: "Converts East Asian half-width characters to full-width." },
   { excel: "PHONETIC", syntax: "=PHONETIC(reference)", category: "Text", oos: true, note: "Extracts Japanese phonetic (furigana) text." },
-  // The D* database family: filter with the Frame Filter node, then aggregate. Blocked
-  // on the formula surface like VLOOKUP/MATCH (LEGACY_ALIASES); every superseded row
-  // here must be a LEGACY_ALIASES key (functionReferenceLibs.test.ts pins it).
   { excel: "DAVERAGE", syntax: "=DAVERAGE(db, field, criteria)", category: "Database", superseded: true, note: "Use Frame Filter → AVERAGE." },
   { excel: "DCOUNT", syntax: "=DCOUNT(db, field, criteria)", category: "Database", superseded: true, note: "Use Frame Filter → COUNT." },
   { excel: "DCOUNTA", syntax: "=DCOUNTA(db, field, criteria)", category: "Database", superseded: true, note: "Use Frame Filter → COUNTA." },

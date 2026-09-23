@@ -1,7 +1,4 @@
-// [[D29]]
-// Parity tests for the Polars engine against the JS oracle (`frameVerbs.ts`).
-// Each test mirrors a verb's documented behavior on a small fixture. Verb fns are
-// exercised directly on `SolFrame`; source/preview/column/drop go through the store.
+// [[D29]] oneVerbCorpus
 use super::*;
 
 fn num(v: &[f64]) -> Vec<Cell> {
@@ -95,7 +92,7 @@ fn make_headers_matches_oracle() {
     assert_eq!(got, vec!["Col1".to_string(), "a".to_string(), "a2".to_string()]);
 }
 
-// ─── sample (sketch mode, #24) ──────────────────────────────────────────────────
+// ─── sample (sketch mode) ──────────────────────────────────────────────────────
 
 #[test]
 fn sample_under_n_is_unchanged_factor_one() {
@@ -144,7 +141,7 @@ fn engine_sample_command_registers_a_new_handle_and_leaves_the_source_intact() {
     assert_eq!(original[0].2.len(), 10);
 }
 
-// ─── native CSV read (#24 WS-E) ─────────────────────────────────────────────────
+// ─── native CSV read ───────────────────────────────────────────────────────────
 
 #[test]
 fn read_csv_infers_number_string_and_boolean_columns() {
@@ -174,7 +171,7 @@ fn read_csv_infers_number_string_and_boolean_columns() {
     assert_eq!(d[2].2, vec![Json::Bool(true), Json::Bool(false)]);
 }
 
-// ─── Parquet source (bundle 34) ─────────────────────────────────────────────────
+// ─── Parquet source ────────────────────────────────────────────────────────────
 
 #[test]
 fn parquet_round_trip_preserves_types_and_dates() {
@@ -354,7 +351,7 @@ fn engine_apply_many_ipc_matches_chained_engine_apply_calls() {
 }
 
 
-// ─── Oracle-key parity (B-1a): serde_json tagged tuples, byte-identical to JS ───
+// ─── Oracle-key parity: serde_json tagged tuples, byte-identical to JS ─────────
 
 #[test]
 fn row_key_is_byte_identical_to_js_json_stringify() {
@@ -402,12 +399,11 @@ fn row_key_float_formatting_matches_js() {
     assert_eq!(row_key_json(&cells, 0), "[[\"#\",1.5],[\"#\",0.1],[\"#\",-2]]");
 }
 
-// ─── Non-finite wire sentinel (B-1b): {"__nf":...} both directions ─────────────
+// ─── Non-finite wire sentinel: {"__nf":...} both directions ─────────────────────
 
 #[test]
 fn non_finite_crosses_the_wire_as_the_nf_sentinel() {
-    // Download direction: a cell holding Infinity/NaN serializes as the tagged
-    // sentinel, never a silent null (decided 2026-07-02 — Infinity is first-class).
+    // Download direction: a cell holding Infinity/NaN serializes as the tagged sentinel, never a silent null.
     assert_eq!(num_to_json(f64::INFINITY), serde_json::json!({"__nf": "inf"}));
     assert_eq!(num_to_json(f64::NEG_INFINITY), serde_json::json!({"__nf": "-inf"}));
     assert_eq!(num_to_json(f64::NAN), serde_json::json!({"__nf": "nan"}));
@@ -443,11 +439,11 @@ fn infinity_round_trips_through_a_frame() {
     ]);
 }
 
-// ─── Native CSV date inference (B-3; JS twin: frame.ts inferColumn/isDateCell) ──
+// ─── Native CSV date inference (JS twin: frame.ts inferColumn) ────────────────
 
 #[test]
 fn iso_date_serial_pins_match_the_js_epoch() {
-    // DATE(2026,3,15) = 46096 (the audit-29 pin in excelFunctions.ts).
+    // DATE(2026,3,15) = 46096.
     assert_eq!(parse_iso_date_serial("2026-03-15"), Some(46096.0));
     assert_eq!(parse_iso_date_serial("2026-03-15 12:00"), Some(46096.5));
     assert_eq!(parse_iso_date_serial("2026-03-15T06:00:00"), Some(46096.25));
@@ -515,14 +511,6 @@ fn engine_read_csv_infers_dates_end_to_end() {
 }
 
 // ─── The parity corpus ────────────────────────────────────────────────────────
-// One fixture set, both engines: every case in fixtures/frame-verbs also runs
-// through the JS oracle (frameVerbCorpus.test.ts). The fixtures ARE wire
-// payloads, so this runner deserializes them with the PRODUCTION types
-// (WireFrame / WireOp) — a fixture that parses on one side and not the other is
-// itself the parity failure, surfacing at load. Case inventory + shape sanity
-// (expect XOR expectError, unique names, whitelist ratchet) live on the JS
-// side; here every case must simply compute the same frame or refuse with the
-// same SolError code.
 
 #[derive(serde::Deserialize)]
 struct CorpusCase {
@@ -536,12 +524,7 @@ struct CorpusCase {
     expect_error: Option<String>,
 }
 
-/// Verbs with corpus fixtures but NO engine op: they run eagerly in the JS
-/// oracle on BOTH platforms (pivot — the full PIVOTBY spec is a deliberate
-/// materialization boundary; the stale engine variant was deleted, audit
-/// finding 34). The runner still asserts the engine indeed does NOT speak the
-/// op, so the list can't go stale: if `WireOp` ever gains the kind, the
-/// assertion fails and the verb joins the corpus proper.
+/// Verbs with corpus fixtures but no engine op; the runner asserts `WireOp` still refuses each, so the list cannot go stale.
 const ORACLE_ONLY_VERBS: &[&str] = &["pivot"];
 
 #[derive(serde::Deserialize)]

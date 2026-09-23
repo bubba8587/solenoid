@@ -18,9 +18,7 @@ const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).m
   title: INTERPOLATE_MODE_META[m].title,
 }));
 
-/** LIST and GRID carry different socket sets, so every cable on the node must be
- *  dropped first — removeInput/removeOutput is unsafe while a cable still references
- *  the socket. */
+/** LIST and GRID carry different socket sets, so every cable goes first: removing a socket a cable still references is unsafe. */
 export async function applyInterpolateMode(node: InterpolateNodeType, mode: InterpolateMode): Promise<void> {
   if (node.mode === mode) return;
   node.mode = mode;
@@ -38,7 +36,7 @@ export async function applyInterpolateMode(node: InterpolateNodeType, mode: Inte
 }
 
 export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeType>) {
-  // Local mirror so the toggle re-renders before the socket swap completes.
+  // A local mirror, so the toggle re-renders before the socket swap completes.
   const [mode, setMode] = useState<InterpolateMode>(data.mode);
   useEffect(() => { setMode(data.mode); }, [data.mode]);
   const [forecast, setForecast] = useState(data.forecast);

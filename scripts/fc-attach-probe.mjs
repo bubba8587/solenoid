@@ -1,8 +1,5 @@
-// The author's FC-reload case, replayed: script-tour → the "Friday the 13ths" Script →
-// its Display → attach an FC on the Display's output → pick the "Wed, Jun 3, 2026" date
-// style → autosave → reload the document → the FC must still say date_dow and the box
-// must render that style. Dev server on :1420.
-//
+// Probes an FC attached to a Script's Display (script-tour, "Friday the 13ths"): pick the date_dow style,
+// autosave, reload, and the FC must still hold date_dow and the box render it. Needs the dev server on :1420.
 //   node scripts/fc-attach-probe.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
@@ -53,7 +50,7 @@ try {
   await wait(500);
   fc = await fcOn(disp);
   console.log(`after pick: FC ${JSON.stringify(fc)}; box = "${await boxText(disp)}"`);
-  await wait(1600); // autosave
+  await wait(1600);
 
   await page.keyboard.down("Control"); await page.keyboard.down("Shift"); await page.keyboard.press("KeyL"); await page.keyboard.up("Shift"); await page.keyboard.up("Control");
   await wait(800);

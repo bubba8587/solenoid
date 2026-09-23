@@ -1,70 +1,36 @@
 /* [[C43]] oneFlowSurface, [[C11]] socketBox12. Mechanics: tree/specs/canvas/react-flow-surface-contract.md. */
-/* Shared visual chrome for every Solenoid node. Socket sizing lives in
-   socket.css (single source of truth via CSS variables). */
 
 .solenoid-node {
   background: var(--surface);
-  /* Transparent: keeps the original layout (content box, offsetWidth) while the
-     PAINT lives in the __frame SVG — see the frame block below. */
+  /* Layout only: the __frame SVG paints the border. */
   border: 1px solid transparent;
   border-radius: 6px;
-  /* Fixed width so every node is uniform. Without this, nodes shrink-to-
-     fit their max-content width and a type=number field (~180px+) stretches
-     input nodes wider than display-only ones. Width tiers below; heights stay
-     content-driven. min-width is the GENERAL floor: the fixed tiers already sit
-     at/above it, but the content-sized cases (a Display grown to a short result)
-     read against it so no card ever collapses to a sliver. */
   width: 180px;
   min-width: 180px;
   color: var(--text);
   font-size: 12px;
   transition: border-color 80ms ease, box-shadow 80ms ease;
-  /* The card body is the drag handle (rete's per-node pointerdown moves it), so
-     show the grab affordance; interactive children (inputs, selects, value text)
-     set their own cursor and win. Matches the group header / note card. */
   cursor: grab;
   user-select: none;
 }
 .solenoid-node:active { cursor: grabbing; }
 
-/* The card's painted frame — body border, header accent cap, header/body
-   divider — drawn by ONE SVG overlay so all three strokes rasterize in a
-   single pass. As CSS borders on the card + header (the old way), each stroke
-   was rounded to device pixels independently under the canvas zoom transform,
-   cracking the shared edges apart (the parked "header/body border seam" bug).
-   The card and header keep transparent borders at the ORIGINAL widths, so only
-   the paint moved; layout, offsets, and socket math are untouched. Geometry is
-   pure CSS via SVG-2 geometry properties; the nested __frame-head svg is sized
-   to --header-h and clips the cap + divider to the header region (a card that
-   never sets --header-h — no header — gets no cap and no divider). */
 .solenoid-node__frame {
   position: absolute;
-  /* Anchors to rete's holder = the card's border box, like the ring. An svg is
-     a REPLACED element: absolute + inset alone leaves it at its intrinsic
-     300×150, so the size must be explicit. --frame-outset covers cards that
-     are their OWN positioning context (iso endpoints, palette sample), where
-     100% is the padding box and the frame must reach back over the border. */
+  /* An svg is a replaced element, so absolute plus inset alone leaves it 300×150; --frame-outset reaches back over the border on cards that are their own positioning context. */
   top: calc(-1 * var(--frame-outset, 0px));
   left: calc(-1 * var(--frame-outset, 0px));
   width: calc(100% + 2 * var(--frame-outset, 0px));
   height: calc(100% + 2 * var(--frame-outset, 0px));
-  /* Visible, NOT hidden: the body rect cannot leave its own viewport, so a clip
-     here only shaves the outer half of a stroke that sits exactly ON the viewport
-     edge — measured as the bottom border washing out and the right border reading
-     a subpixel inside the card background. The HEAD viewport below still clips:
-     that is what ends the cap and divider at the header/body seam. */
+  /* Visible: a clip here shaves the outer half of strokes on the viewport edge; the head viewport does the clipping. */
   overflow: visible;
   z-index: 1; /* over the header's tinted bg; under chevron 2 / ring 6 / badges 7 */
   pointer-events: none;
 }
-/* The header viewport: same origin, cut to the header's height — its overflow
-   clip is what ends the accent rails and divider at the header/body seam. */
 .solenoid-node__frame-head {
   height: var(--header-h, 0px);
   overflow: hidden;
 }
-/* Body border: stroke centered half a width inside the card edge, so the
-   stroke's OUTER edge is the card's outer edge — same as the old real border. */
 .solenoid-node__frame-body {
   x: 0.5px;
   y: 0.5px;
@@ -76,8 +42,7 @@
   stroke-width: 1px;
   transition: stroke 80ms ease;
 }
-/* Accent cap: 2px stroke sharing the card's outer edge; the rect runs taller
-   than the header viewport so its bottom stroke and arcs never show. */
+/* Taller than the head viewport, so its bottom stroke and arcs are always clipped away. */
 .solenoid-node__frame-cap {
   x: 1px;
   y: 1px;
@@ -88,8 +53,6 @@
   stroke: var(--node-accent, transparent);
   stroke-width: 2px;
 }
-/* Header/body divider (was an inset shadow on the header): a 1px strip in the
-   header's last pixel, spanning between the cap's inner rails. */
 .solenoid-node__frame-divider {
   x: 2px;
   y: calc(100% - 1px);
@@ -97,67 +60,37 @@
   height: 1px;
   fill: var(--border);
 }
-/* Light mode frames the card in its accent-dark; a gray divider read as an
-   artifact against those accent edges, so it matches the frame color. */
 :root[data-theme="light"] .solenoid-node__frame-divider {
   fill: var(--node-accent-dark, var(--border));
 }
 
-/* Medium tier — date-OUTPUTTING nodes, whose formatted value ("15-Mar-2026", or a
-   longer custom format) reads wider than a number. Applied via nodeMedium() (see
-   kind.ts); the wide tier wins when both apply, and a manual resize overrides it. */
 .solenoid-node--medium {
   width: 210px;
 }
 
-/* Wide tier — nodes carrying 2D data (table/matrix or frame sockets) so grid and
-   named-column previews have room. Applied via nodeWide() (see kind.ts); a manual
-   resize sets an inline width that overrides this. */
 .solenoid-node--wide {
   width: 240px;
 }
 
-/* Geocode reads long strings at the 180px base — an IANA zone ("America/Boise") and a
-   full match label ("Boise, Idaho, United States") in both its picker and its output
-   rows. Matched to the wide tier its Weather partner already sits at, so the pair reads
-   as one set. */
 .solenoid-node--geocode {
   width: 240px;
 }
 
-/* Cast carries a 5-segment type selector (Number/Text/Date/Complex/Boolean) in a
-   full-width SegToggle; the base 180px card clips the last segments (they don't
-   wrap — see SegToggle.css). Wider so all five fit. */
 .solenoid-node--cast {
   width: 252px;
   min-width: 252px;
 }
 
-/* Display node in full (expanded) mode grows horizontally to fit a whole frame/
-   table rather than cramming it into the fixed card width. width: max-content
-   grows it to the content; the 180px floor (inherited intent from the base card)
-   keeps a SHORT result — a 2×2 table, a one-row frame — from collapsing to a
-   stub. Since content < 180 renders at 180 and content > 180 renders at exactly
-   max-content, no inline width is pinned, so there's no hair-overflow scrollbar.
-   (Historically this carried `min-width: max-content` to beat a too-small pinned
-   width from cleanup/auto-arrange; manual resize is disabled and displays aren't
-   width-pinned, so the floor is the live concern. If width-pinning returns, this
-   needs `max(180px, max-content)`.) */
 .solenoid-node.solenoid-node--display-grow {
   width: max-content;
   min-width: 180px;
 }
 
-/* A Display showing a SCALAR grows to fit the number (capped), then ellipsizes —
-   so a long value with decimals doesn't clip inside the fixed card. A manual
-   resize (inline width + --sized) overrides this. */
 .solenoid-node.solenoid-node--display-grow-scalar {
   width: max-content;
   min-width: 180px;
   max-width: 360px;
 }
-/* A manually-sized Display isn't width-capped — the user chose the width, so the
-   360px auto-grow ceiling (inline width can't beat a max-width) must lift. */
 .solenoid-node--sized.solenoid-node--display-grow-scalar {
   max-width: none;
 }
@@ -171,11 +104,6 @@
   stroke: var(--border-strong);
 }
 
-/* Selection ring is a pseudo-element overlay so it can sit ABOVE everything via
-   z-index — the header's accent border and (for groups) the dashed border slip
-   under an outline/box-shadow, but a raised element wins. It hugs the card edge
-   (inset:0 over the border box) and is a contrasting shade of the node's own
-   accent: lighter in dark mode, darker in light. */
 .solenoid-node--selected::after {
   content: "";
   position: absolute;
@@ -190,23 +118,16 @@
   box-shadow: 0 4px 14px color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-glow), transparent);
 }
 
-/* Light mode: frame the card in a darker shade of its own accent instead of a
-   neutral gray border (a gray ring around a colored header read as off). The
-   :not()s yield to the selection ring and the grouped-node treatment. */
 :root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped) .solenoid-node__frame-body {
   stroke: var(--node-accent-dark, var(--border-strong));
 }
-/* Hover must be a REAL step: --node-accent in light is raw−0.06V while the
-   resting accent-dark border is raw−0.07V — visually identical. Mix toward
-   black instead so rest → hover → selected ramps (0 → 12% → 20% black). */
+/* Mix toward black: in light mode --node-accent is visually identical to the resting accent-dark stroke, so hover needs a real step (0, 12%, 20% black). */
 :root[data-theme="light"] .solenoid-node:not(.solenoid-node--selected):not(.solenoid-node--grouped):hover .solenoid-node__frame-body {
   stroke: color-mix(in srgb, var(--node-accent, var(--border-strong)) 88%, #000);
 }
 
-/* Collapse chevron — top-left of the card, over the header. */
 .solenoid-node__chevron {
   position: absolute;
-  /* Manually centered on the fixed-height header band. */
   top: 9px;
   left: 5px;
   z-index: 2;
@@ -218,16 +139,12 @@
   padding: 0;
   border: none;
   background: transparent;
-  /* Accent-tinted but pulled toward the body text so it keeps contrast on the
-     tinted header — dark mode → toward light text, light mode → toward dark. */
   color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   cursor: pointer;
 }
 .solenoid-node__chevron:hover {
   filter: brightness(1.3);
 }
-/* The glyph is a masked ::before, not an inline <svg> — same vector, same
-   currentColor, two fewer DOM elements on every card. */
 .solenoid-node__chevron::before {
   content: "";
   width: 10px;
@@ -236,30 +153,18 @@
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 1l4 4-4 4' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 10px 10px no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 1l4 4-4 4' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 10px 10px no-repeat;
   transition: transform 100ms ease;
-  transform: rotate(90deg); /* expanded → points down */
+  transform: rotate(90deg);
 }
 .solenoid-node--collapsed .solenoid-node__chevron::before {
-  transform: rotate(0deg); /* collapsed → points right */
+  transform: rotate(0deg);
 }
 
-/* "Inside a group" treatment — no drop shadow, framed in the group's color.
-   A real 2px border (not an inset box-shadow ring, which seams at the rounded
-   corners) gives a clean thicker edge. The hover rule repeats the membership
-   color so the generic gray hover above doesn't recolor only the border (which
-   left a half-and-half edge). Placed after :hover / --selected so it wins on
-   hover but yields to selection (the :not() keeps it off a selected node). */
-/* The 2px border (and matching header overhang) applies whether or not the node
-   is selected, so selecting one — which only adds the ::after ring — doesn't
-   change its size. The membership color is then scoped to the unselected state. */
 .solenoid-node--grouped {
   border-width: 2px;
 }
-/* Widen the header overhang to match the 2px border so the type-accent header
-   still sits flush over it (membership color shows on the body, not the header). */
 .solenoid-node--grouped .solenoid-node__header {
   margin: -2px -2px 0;
 }
-/* The frame's body stroke follows the 2px layout border. */
 .solenoid-node--grouped .solenoid-node__frame-body {
   x: 1px;
   y: 1px;
@@ -272,28 +177,16 @@
 .solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
   stroke: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, transparent);
 }
-/* Light mode: frame in-group members in a darker shade of the group color, to
-   match the group's own darker-accent border. */
 :root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected) .solenoid-node__frame-body,
 :root[data-theme="light"] .solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {
   stroke: var(--group-color-dark, var(--border-strong));
 }
-/* Membership corner: a small solid triangle of the same group color tucked into
-   the lower-right, so a node reads as "in a group" at a glance even when the
-   framing border is subtle (shown whether or not the node is selected). It's a
-   full-card-sized overlay sharing the card's inset:0 + 8px radius (same geometry
-   the selection ring uses to hug the edge), then clip-path'd down to just the
-   corner triangle — so its rounded corner coincides exactly with the card's and
-   it sits flush against the accent border with no gray hairline between them. */
 .solenoid-node--grouped::before {
   content: "";
   position: absolute;
   inset: 0;
   border-radius: 6px;
-  /* Mix into the opaque card surface, NOT transparent: the translucent
-     membership border beneath composites over that same --surface, so an opaque
-     triangle of the identical shade sits flush over it with no double-alpha seam
-     at the corner (the artifact that showed in dark mode). */
+  /* Mix into the opaque --surface, not transparent, so the triangle sits flush over the translucent border with no double-alpha seam. */
   background: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, var(--surface));
   clip-path: polygon(100% 100%, 100% calc(100% - 15px), calc(100% - 15px) 100%);
   pointer-events: none;
@@ -303,36 +196,20 @@
   background: var(--group-color-dark, var(--border-strong));
 }
 
-/* Collapsed: hide every body child except the result/value box. Socket
-   dots (rendered as absolutely-positioned wrappers carrying
-   data-socket-side), the display/value boxes, and OUTPUT rows are exempt — a
-   multi-output node (TableInfo, SplitFrame, ComplexUnpack, …) collapses to its
-   output values rather than a blank box. Input rows still fold away. */
 .solenoid-node--collapsed .solenoid-node__body > *:not(.solenoid-node__display-value):not(.solenoid-node__value-input):not(.solenoid-node__quoted):not([data-socket-side]):not(.solenoid-node__input-pill):not(.solenoid-node__io-row--output):not(.solenoid-node__collapsed-only) {
   display: none;
 }
 
-/* A collapsed-only preview: a node renders it ALWAYS but it shows ONLY while
-   collapsed (the inverse of the fold rule above — the exemption keeps it from being
-   force-hidden, then this pair toggles it). Used by nodes with a bespoke collapsed
-   readout: Slicer's "X of N" summary, Sparkline's mini square. */
 .solenoid-node__collapsed-only { display: none; }
 .solenoid-node--collapsed .solenoid-node__collapsed-only {
   display: flex;
   align-items: center;
   justify-content: center;
 }
-/* A collapsed-only box that is ALSO a chip hero keeps the chip right-aligned (the
-   --chip rule's flex-end), which the centering above would otherwise override — so a
-   collapsed Chart/Gauge chip sits right like an expanded one, while bespoke minis
-   (dial arc, slicer summary) stay centered. */
 .solenoid-node--collapsed .solenoid-node__collapsed-only.solenoid-node__display-value--chip {
   justify-content: flex-end;
 }
 
-/* A collapsed table node drops its grid preview and shows just the chip — the
-   table analogue of a scalar node collapsing to its value box. The chip centers
-   in the narrow collapsed body instead of hugging the right edge. */
 .solenoid-node--collapsed .solenoid-table-display__grid {
   display: none;
 }
@@ -341,18 +218,9 @@
   margin-top: 0;
 }
 
-/* Square-collapse (Sparkline): minify to a headerless square. Hide the header,
-   shrink the card to a small square that holds just the mini figure. Two classes
-   beat the base .solenoid-node width. */
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__header {
   display: none;
 }
-/* The chevron is hidden until hover OR selection (so the square stays clean) —
-   it reappears top-left as the re-expand affordance. Selection is the explicit
-   touch path: tap selects, the chevron appears, tap it (previously this leaned
-   on tap-hover emulation). Note dblclick can NEVER fire inside the canvas
-   (capture-phase swallow — tree/specs/canvas/touch-gestures.md), so the chevron is the only
-   re-expand control. */
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__chevron {
   opacity: 0;
   transition: opacity 0.12s;
@@ -366,58 +234,34 @@
   min-width: 0;
 }
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__body {
-  /* Tight vertical padding (the mini spark fills the height); keep horizontal
-     room so it clears the edge sockets. */
   padding: 3px 8px;
   min-height: 26px;
   align-items: center;
   justify-content: center;
 }
-/* The mini spark is inert — no recharts tooltip / point highlights on hover, and
-   clicks pass through to the card so the double-click-to-expand still fires. */
 .solenoid-node--square-collapse.solenoid-node--collapsed .solenoid-node__collapsed-only {
   pointer-events: none;
 }
 
 .solenoid-node__header {
   position: relative;
-  /* Bottom padding is 5px + a 1px transparent border (not 6px + none): with
-     background-clip: padding-box below, that tucks the tint's bottom edge 1px
-     up, fully under the frame's divider. Same total height, so layout holds. */
+  /* 5px plus the 1px transparent bottom border (not 6px) tucks the padding-box tint under the frame's divider. */
   padding: 6px 10px 5px 22px; /* extra left room for the collapse chevron */
-  /* The accent cap and divider are PAINTED by the __frame SVG (one-pass
-     rasterization); the transparent borders + negative margins here only
-     reproduce the original layout, keeping the header's box on the card's
-     outer edge. */
+  /* Transparent borders and negative margins are layout only; the __frame SVG paints the cap and divider. */
   margin: -1px -1px 0;
   border: 2px solid transparent;
   border-bottom: 1px solid transparent;
   border-top-left-radius: 6px;
   border-top-right-radius: 6px;
-  /* Opaque accent-tinted header. Tint strength is themed (--header-tint) so the
-     pale-over-white light theme can push it harder. No accent → plain surface. */
   background: color-mix(in srgb, var(--node-accent, var(--surface)) var(--header-tint), var(--surface));
-  /* padding-box: the div's background edge and the SVG strokes rasterize
-     independently under zoom, so a border-box tint pokes a subpixel PAST the
-     strokes (a tinted halo outside the card). Clipped to the padding box the
-     tint ends at the strokes' INNER edges, with the strokes overlapping it by
-     their full width — rounding slack lands inside the card as a tint/surface
-     boundary instead of outside it. */
+  /* padding-box ends the tint at the strokes' inner edges, so zoom rounding never pokes a tinted halo outside the card. */
   background-clip: padding-box;
 }
-/* No chevron → reclaim the reserved left room so the title sits flush left. */
 .solenoid-node--no-chevron .solenoid-node__header {
   padding-left: 10px;
 }
 
 
-/* A small badge pinned to the card body's top-right corner — currently the lock
-   indicator on pack presets (the expand button moved into the formula field).
-   Stays OUTSIDE .solenoid-node__content (a sibling of it), so it anchors to the
-   card and isn't carried by the content wrapper. `top` clears the header: NodeShell
-   measures the header (clamps to 2 lines) and publishes its height as --header-h.
-   (The badge's top therefore still tracks the header — unlike sockets, which moved
-   into the header-independent content wrapper.) */
 .solenoid-node__corner-badge {
   position: absolute;
   top: calc(var(--header-h, 28px) + 3px);
@@ -430,22 +274,15 @@
   pointer-events: auto;
 }
 
-/* Lock: a quiet indicator, not a control. */
 .solenoid-node__corner-lock {
   color: var(--text-dim);
   opacity: 0.4;
 }
 
-/* The Display's value expand button reuses the shared expand-pill look but drops its
-   absolute offset — the corner-badge slot already positions it (and stays put over a
-   body that scrolls, unlike an in-body button). */
 .solenoid-node__corner-badge .solenoid-expr__expand {
   position: static;
 }
 
-/* Comment indicator (#14): a quiet round badge peeking out of the top-left
-   corner — mirrors cornerBadge's top-right slot without colliding with it.
-   Fixed offset (not header-relative): it marks the CARD, not a header detail. */
 .solenoid-node__comment-badge {
   position: absolute;
   top: -6px;
@@ -470,8 +307,6 @@
 }
 .solenoid-node__comment-badge:hover { opacity: 1; }
 
-/* Node type hint — appears in the right strip of the header on hover.
-   Uses the same 44px gap that the label-input already reserves for drag. */
 .solenoid-node__type-hint {
   position: absolute;
   right: 10px;
@@ -485,8 +320,6 @@
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  /* Accent-tinted but pulled toward the body text so it stays legible on the
-     (now more saturated) header in both themes. */
   color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 45%, var(--text));
   opacity: 0;
   pointer-events: none;
@@ -499,33 +332,22 @@
 }
 
 .solenoid-node__label-input {
-  /* Leave a reserved strip on the right of the header so the top-right
-     corner stays grabbable for dragging (NodeCard stops drag on form
-     fields, so the textarea itself isn't draggable). */
   width: calc(100% - 44px);
   overflow: hidden;
   resize: none;
   background: transparent;
   border: none;
   outline: none;
-  /* border-box + symmetric padding so the textarea's total height is exactly
-     content + padding = the same as the .solenoid-node__label-display div. The JS
-     sets height = scrollHeight; with content-box that double-counts the padding, so
-     the editing box differed from the display box by a few px and switching on focus
-     shifted every socket below. Must match the display's box exactly. */
+  /* border-box, so height = scrollHeight matches the display box exactly; a mismatch shifts every socket below on focus. */
   box-sizing: border-box;
-  /* Tint the label toward the accent, lightened for legibility. Falls
-     back to the original muted gray when no accent is set. */
   color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
   font-family: inherit;
   font-size: 10px;
   line-height: 1.3;
   font-weight: 600;
   letter-spacing: 0.05em;
-  /* While editing you see the RAW typed text (like every other draft field); the
-     Header-title case setting only transforms the display below, on blur. */
   text-transform: none;
-  padding: 3px 0; /* symmetric, matching .solenoid-node__label-display */
+  padding: 3px 0; /* must match .solenoid-node__label-display */
   display: block;
 }
 
@@ -533,15 +355,7 @@
   color: var(--text);
 }
 
-/* Static title (not editing): clamped to 4 lines with an ellipsis. Shares the
-   label-input's box (height/padding) so swapping in/out doesn't shift sockets;
-   its CASE is set by the Header-title case setting (html.hdr-case-* below), so the
-   raw text you type renders transformed once you blur. */
 .solenoid-node__label-display {
-  /* Shrink to the title text (not the full header) so it sits flush left and
-     leaves the reserved right strip for the type hint — mirrors group headers.
-     The whole header drags regardless (the label taps to edit, drags to move
-     the node), so this is layout only, not a draggability carve-out. */
   width: fit-content;
   max-width: calc(100% - 44px);
   color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
@@ -551,10 +365,6 @@
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  /* Symmetric vertical padding so the title is centered in the header — the same
-     effective box the editing textarea ends up with (its content-box height =
-     scrollHeight double-counts the padding, adding the matching space below). With
-     0 bottom padding the title sat low: 9px above (header 6 + label 3) vs 6px below. */
   padding: 3px 0;
   cursor: text;
   display: -webkit-box;
@@ -564,42 +374,19 @@
   word-break: break-word;
 }
 
-/* Header-title case (settingsStore `headerTitleCase`, global). The display block
-   above defaults to uppercase; these override it per the chosen mode. The editing
-   input stays `none` (raw). Group titles get the mirror of this in GroupNode.css. */
 html.hdr-case-as-typed .solenoid-node__label-display { text-transform: none; }
 html.hdr-case-proper .solenoid-node__label-display { text-transform: capitalize; }
 html.hdr-case-upper .solenoid-node__label-display { text-transform: uppercase; }
-/* The 0.08em tracking (and the input's 0.08em) is eyebrow-label spacing tuned for
-   all-caps; on lowercase it reads loose, so the non-upper modes tighten it. */
 html.hdr-case-as-typed .solenoid-node__label-display,
 html.hdr-case-proper .solenoid-node__label-display,
 html.hdr-case-as-typed .solenoid-node__label-input,
 html.hdr-case-proper .solenoid-node__label-input { letter-spacing: 0.01em; }
 
-/* The content wrapper — everything below the header. It is the SOCKET POSITIONING
-   CONTEXT (the nearest positioned ancestor for the sockets, pills and the value
-   box inside it), which is what makes socket `top` values header-independent: a
-   socket centered on the value box is measured relative to THIS box, so the header
-   growing/shrinking never moves it within the wrapper — the wrapper just slides
-   down and the browser carries the sockets along. rete's getElementCenter walks
-   up the offsetParent chain and adds this wrapper's offset back, so cable
-   endpoints stay correct.
-   A plain full-width block — no padding/margin, not a flex container — so the
-   body/rows measure cleanly against it. (It sits inside the card's 1px border, so
-   a left/right:-5 dot lands ~1px further inside than when sockets anchored to the
-   card's outer edge: uniform and negligible. Deliberately NOT corrected with a
-   negative margin, which would fight the display-grow max-content width.) */
 .solenoid-node__content {
   position: relative;
-  /* Horizontal offset of socket dots anchored to this wrapper. -6.5px centers them
-     on the card's OUTER edge: the wrapper sits inside the 1px border, so the dot
-     needs the extra out to straddle the edge (tuned live). The half-pixel is fine —
-     the dot is a real SVG shape, crisp on subpixel boundaries. Groups (no wrapper,
-     the -5 default) anchor to the card directly. */
+  /* -6.5px centers the dot on the card's outer edge from inside the 1px border; groups keep the -5 default. */
   --node-socket-x: -6.5px;
 }
-/* Match for the collapsed-input pill (shared with groups, so scope to content). */
 .solenoid-node__content .solenoid-node__input-pill { left: -7px; }
 
 .solenoid-node__body {
@@ -609,23 +396,11 @@ html.hdr-case-proper .solenoid-node__label-input { letter-spacing: 0.01em; }
   gap: 6px;
 }
 
-/* Semantic zoom (Settings toggle, very-far-out trigger — see semanticZoomStore.ts /
-   Canvas.tsx's syncSemanticZoomFor): body detail (labels, literal fields, values) is
-   a few sub-pixels tall at this scale anyway, so hide it — visibility, not display,
-   so socket geometry (the row measurements MeasuredSocketRow depends on) is
-   completely untouched and cables keep landing exactly where they already do. The
-   header title and the socket dots (siblings of __body, not inside it) stay the
-   simplified card's landmarks. */
+/* visibility, not display, so the socket row measurements stay untouched. */
 html.solenoid-semantic-zoom .solenoid-node__body {
   visibility: hidden;
 }
 
-/* The simplified stand-in drawn in the hidden body's place: the node NAME, large
-   and centered, so at far zoom a card reads as an identifiable block instead of a
-   blank rectangle. Transparent (dots + card bg show through), non-interactive, and
-   only laid out under the semantic-zoom root class. Anchored to the card via inset:0
-   (same as the selection ring). Overlays the tiny header too — that's fine, the
-   header text is sub-pixel at this zoom and the big name is the readable version. */
 .solenoid-node__semantic { display: none; }
 html.solenoid-semantic-zoom .solenoid-node__semantic {
   display: flex;
@@ -639,7 +414,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic {
 }
 html.solenoid-semantic-zoom .solenoid-node__semantic span {
   display: -webkit-box;
-  -webkit-line-clamp: 3; /* clamp a long name to 3 lines rather than overflow */
+  -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -654,9 +429,7 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 
 .solenoid-node__value-input {
   width: 100%;
-  /* type=number has a large intrinsic min-content width (spinners +
-     default sizing) that would otherwise force the node wider than the
-     168px min — min-width:0 lets it collapse to match display boxes. */
+  /* type=number has a wide intrinsic min-content width; min-width 0 lets it shrink to the card. */
   min-width: 0;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
@@ -669,11 +442,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   box-sizing: border-box;
 }
 
-/* Focus/hover rings inside a card take the CARD's accent, not the app's. The header
-   is already tinted with the node accent, so an app-accent ring put two unrelated
-   hues on one small surface (author 2026-07-27: "they really don't mix"). A node
-   with no accent falls back to the app accent, and app-level chrome — the command
-   palette, Settings, the Navigator, the accentless dialogs — is untouched. */
 .solenoid-node__value-input:focus {
   border-color: var(--node-accent, var(--accent));
 }
@@ -692,13 +460,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   box-sizing: border-box;
 }
 
-/* A hero box that holds a CHIP (chart, frame, cube, document, diagram, error) instead
-   of text. The plain box is a block whose 18px line box baseline-aligns an inline chip,
-   which lands it a few px low; that is why "center the chip" kept coming back as a
-   per-card inline style. This ONE rule makes the row a flex row: the chip centers on the
-   cross axis and sits at the end like a right-aligned value, and min-height keeps the
-   box the height of a text value box so chip cards line up with value cards. Cards
-   never restate this inline (sourceInvariants pins it). */
 .solenoid-node__display-value--chip {
   display: flex;
   align-items: center;
@@ -711,10 +472,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-weight: 400;
 }
 
-/* Markdown-rendered text value (a text FC's "Markdown" advanced option). Compact,
-   value-box-tuned (tight margins, em-relative header sizes so it scales with the
-   FC text size) — deliberately NOT the doc-oriented .sol-md. Font family/weight/
-   size come from the element's inline style; alignment from the container. */
 .solenoid-node__md { line-height: 1.35; }
 .solenoid-node__md > :first-child { margin-top: 0; }
 .solenoid-node__md > :last-child { margin-bottom: 0; }
@@ -738,10 +495,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   border-left: 2px solid var(--border-strong); color: var(--text-dim);
 }
 
-/* Residual NaN: dirty DATA (an undefined value in the source), NOT an error — an
-   error is a tagged SolError with the red #CODE! badge. A quiet NEUTRAL affordance:
-   muted text on a faint neutral tint, mono + italic so it reads as a state, not a
-   number, and deliberately not the error red nor an ArrayChip. Tooltip explains. */
 .solenoid-node__nan {
   color: var(--text-dim);
   background: color-mix(in srgb, var(--text-dim) 10%, var(--surface-sunken));
@@ -752,18 +505,12 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-style: italic;
 }
 
-/* Same dirty-data NaN affordance at a TABLE/FRAME cell (FrameDisplay / TableDisplay
-   tds): a faint neutral tint on the cell + muted italic text, so a NaN cell reads
-   as dirty data in place — not error-red, not a normal value. */
 .solenoid-nan-cell {
   background: color-mix(in srgb, var(--text-dim) 12%, transparent);
   color: var(--text-dim) !important;
   font-style: italic;
 }
 
-/* IS-check explanation panel: when an error value is wired in, the node shows
-   the code + producer message + the long ERROR_EXPLANATIONS text, making
-   ISERROR the place to read an error, not just test for one. */
 .solenoid-node__error-explain {
   margin-top: 6px;
   padding: 6px 8px;
@@ -795,9 +542,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   white-space: normal;
 }
 
-/* Error value: red Excel-style code badge (#DIV/0!, #N/A, …). Slightly smaller
-   than a number — codes are wider than digits — and centered, so it reads as a
-   state, not a value. */
 .solenoid-node__display-value--error {
   color: var(--sol-error);
   border-color: color-mix(in srgb, var(--sol-error) 55%, var(--border));
@@ -808,20 +552,12 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   letter-spacing: 0.04em;
 }
 
-/* Compute-result value boxes truncate to one line: the node width is fixed, so
-   a long number / string ellipsizes instead of wrapping the node taller. Nodes
-   that opt into manual resize (inputs, text, Display, lookups) are exempt and
-   wrap/fill instead (see --sized below). */
 .solenoid-node:not(.solenoid-node--resizable) .solenoid-node__display-value {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Manual resize grip — lives in the bottom-right corner INSIDE a node's value
-   box (display box or the main text input), not the card body. */
-/* Matches the Group resize grip (GroupNode.css .solenoid-group__resize): a 16px
-   box in the bottom-right corner, opacity 0.5 → 0.9 on hover. */
 .solenoid-node__resize-handle {
   position: absolute;
   right: 2px;
@@ -834,15 +570,13 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   color: var(--text-dim);
   opacity: 0.5;
   cursor: nwse-resize;
-  /* Above the group membership corner triangle (::before, z 5), which shares this
-     bottom-right corner and would otherwise paint over the grip. Below sockets (z 7). */
+  /* Above the membership triangle (z 5) that shares this corner; below sockets (z 7). */
   z-index: 6;
 }
 .solenoid-node__resize-handle:hover {
   opacity: 0.9;
   color: var(--node-accent, var(--accent));
 }
-/* The copy-value glyph (was the ClipboardIcon <svg>): masked ::before. */
 .sol-copy-icon {
   display: flex;
   align-items: center;
@@ -857,8 +591,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 17'%3E%3Cpath fill='%23000' stroke='%23000' stroke-width='0.85' stroke-linejoin='round' d='M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z'/%3E%3C/svg%3E") center / 13px 14px no-repeat;
 }
 
-/* The shared corner-grip mark (ResizeHandle + FieldResizeGrip), drawn as a
-   masked ::before instead of an inline <svg>. */
 .solenoid-node__resize-handle::before,
 .solenoid-field-resize::before,
 .sol-popup__resize::before {
@@ -870,8 +602,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M11 5 5 11M11 9l-2 2' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
 }
 
-/* Touch: pad the hit area out for a fingertip. (It only responds on a SELECTED
-   node — manipulation is gated on selection, same as dragging/wiring.) */
 @media (pointer: coarse) {
   .solenoid-node__resize-handle {
     right: 0;
@@ -881,15 +611,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   }
 }
 
-/* A manually-sized node: width is set on the card (inline), so the value box
-   fills it; height is published as --box-h and consumed by the box alone, while
-   the card height stays content-driven. That way the box grows/shrinks to the
-   chosen size and the card border follows it, but the header and any input rows
-   keep their natural height and are never hidden. */
-/* Universal resize: the BODY takes the chosen height (--box-h) and its main
-   content (the LAST child — the value box / grid / chart / text field) fills and
-   scrolls. Any leading rows keep their natural height; the header is above the
-   body so it's never covered. One rule for every content type — no per-type box. */
 .solenoid-node--sized .solenoid-node__body {
   height: var(--box-h);
 }
@@ -902,9 +623,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-/* The main text field (--value) fills the sized body. Scoped to --value so a
-   Concat's inline literal rows — which share the .quoted markup but aren't the
-   resized box — are left alone. */
 .solenoid-node--sized .solenoid-node__quoted--value {
   display: flex;
   width: 100%;
@@ -917,17 +635,12 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   height: 100%;
 }
 
-/* The universal grip is meaningless on a collapsed card (collapse owns the size
-   then — see NodeCard). */
 .solenoid-node--collapsed .solenoid-node__resize-handle {
   display: none;
 }
 
 .solenoid-node__io-row {
-  /* NOT a positioning context: input/output dots are absolutely positioned
-     against the .solenoid-node__content wrapper so they straddle the card edge
-     (shared x for every row) AND their `top` is header-independent. Their per-row
-     vertical center is measured in JS (see MeasuredSocketRow). */
+  /* Not a positioning context: sockets anchor to .solenoid-node__content, so every row shares one x and a header-independent top. */
   height: 22px;
   display: flex;
   align-items: center;
@@ -943,10 +656,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   flex: 0 0 auto;
 }
 
-/* A hero output box inside a measured socket row (Reconcile's frame + markdown
-   summary): a tall block, NOT the fixed-height label|value flex row — else it
-   overflowed the 22px height and overlapped the rows above. The socket dot still
-   measures onto the box center (it's absolutely positioned, unaffected by this). */
 .solenoid-node__io-row--hero {
   display: block;
   height: auto;
@@ -954,10 +663,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   padding: 0;
 }
 
-/* Composite output: label stacked ABOVE its hero value box (not beside it — a
-   full-height ValueDisplay box doesn't fit a 22px io-row and got pushed off the
-   card). The measured row holds only the box and grows to it, so the output dot
-   still centers on the box. */
 .solenoid-composite__output {
   margin-top: 8px;
 }
@@ -971,8 +676,6 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 }
 
 
-/* Inline literal field — shown on an input row when no cable is wired.
-   Compact so it fits the 22px row the absolute socket placement expects. */
 .solenoid-node__inline-input {
   flex: 1 1 auto;
   min-width: 0;
@@ -1000,29 +703,18 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   border-color: var(--node-accent, var(--accent));
 }
 
-/* Scrubbing (InlineNumberField's pointer-drag gesture): pins the cursor to a
-   vertical-resize glyph for the whole gesture, even as the pointer strays off
-   the field under pointer capture — an ordinary hover cursor would otherwise
-   flicker back to whatever's under the pointer mid-drag. Transient + drag-only,
-   not a resting affordance, so !important here is a drag-lock, not a style war. */
+/* !important is a drag-lock: under pointer capture the cursor would otherwise flicker to whatever is beneath. */
 body.solenoid-scrubbing,
 body.solenoid-scrubbing * {
   cursor: ns-resize !important;
 }
 
-/* Text-string inputs read as prose, not code — sans, left-aligned. Numbers keep
-   the mono font (their default above). */
 .solenoid-node__inline-input--text,
 .solenoid-node__value-input--text {
   font-family: var(--font-sans);
   text-align: left;
 }
 
-/* Quote-frame chrome for string literal inputs: static " … " framing the
-   editable field (the quotes are decoration, never part of the value), so a
-   lone or trailing space reads as the gap before the closing quote — Excel's
-   `" "`. The input auto-sizes to its content (size attr) so the quotes hug the
-   text. Used wherever a string literal is authored (StringInput, Concat rows). */
 .solenoid-node__quoted {
   position: relative;
   display: inline-flex;
@@ -1064,9 +756,6 @@ body.solenoid-scrubbing * {
   border-color: var(--node-accent, var(--accent));
 }
 
-/* Multi-line text value (the Text node's main field): a textarea that grows to
-   its content (auto-sized in JS), wrapping long lines and scrolling past the cap
-   instead of a single line that strips newlines and runs off the card. */
 .solenoid-node__quoted--multiline {
   display: block;
   width: 100%;
@@ -1087,10 +776,6 @@ body.solenoid-scrubbing * {
   padding: 4px 6px;
 }
 
-/* Inline string field (node input rows, e.g. TextSplit / Concat): fill the
-   remaining row width and scroll long text internally, rather than auto-sizing to
-   content (which left reserved space on the right and overflowed the card edge).
-   The --value variant keeps its content auto-size + resize grip. */
 .solenoid-node__quoted--inline {
   flex: 1 1 auto;
   min-width: 0;
@@ -1106,33 +791,20 @@ body.solenoid-scrubbing * {
   box-sizing: border-box;
 }
 
-/* Whitespace made visible in a string result box: leading/trailing spaces
-   render as middots, an empty string as a dim placeholder. Display-only —
-   the underlying/copied value keeps its real whitespace. */
 .solenoid-node__text-ws {
   color: var(--text-muted);
 }
 .solenoid-node__text-empty {
   color: var(--text-muted);
   font-style: italic;
-  /* Sentence-length state lines ("expose an input to sweep it") in a column as
-     narrow as a card — greedy wrapping stranded the last word on its own row. */
   text-wrap-style: balance;
 }
 
-/* Pill socket: collapsed aggregate of many inputs. Sits over the stacked
-   (functional) sockets; cables converge on it. pointer-events:none so a
-   cable drop passes through to a socket beneath. */
-/* SVG stadium drawn over the stacked sockets. Centered on (x=0, y=46) to
-   match COLLAPSED_PILL_SOCKET_TOP + 6. pointer-events:none so cable drops
-   pass through to a socket beneath. */
+/* pointer-events none, so a cable drop passes through to a socket beneath. */
 .solenoid-node__input-pill {
   position: absolute;
   left: -6px;
-  /* Center the 28px-tall pill exactly where the stacked sockets sit: on the display box
-     (--out-socket-top) or, on a card with no display box, at 50% of the content — the
-     same fallback NodeSocket uses, so pill and sockets never separate (a 46px fallback
-     hung off the bottom of a collapsed Chart Builder). */
+  /* The same --out-socket-top fallback NodeSocket uses, so pill and sockets never separate. */
   top: calc(var(--out-socket-top, 50%) - 14px);
   width: 12px;
   height: 28px;
@@ -1141,8 +813,6 @@ body.solenoid-scrubbing * {
   pointer-events: none;
 }
 
-/* Output equivalent (a hidden Conduit's bundled outputs leaving a collapsed
-   group): same stadium, mirrored to the group's right edge. */
 .solenoid-node__output-pill {
   position: absolute;
   right: -6px;
@@ -1153,10 +823,7 @@ body.solenoid-scrubbing * {
   pointer-events: none;
 }
 
-/* In pill mode the individual socket dots are hidden (the pill is the
-   visual), but the wrappers stay positioned + hittable so cables still
-   land and drops still work. The dot-shaped highlight flash is hidden
-   too — the pill draws its own pill-shaped highlight instead. */
+/* Dots hide by opacity, so their wrappers still take cables and drops. */
 .solenoid-node__pill-socket .solenoid-socket-dot {
   opacity: 0;
 }
@@ -1164,7 +831,6 @@ body.solenoid-scrubbing * {
   display: none;
 }
 
-/* Extensible inputs: per-row remove and the add button. */
 .solenoid-node__row-remove {
   flex: 0 0 auto;
   width: 16px;
@@ -1203,9 +869,6 @@ body.solenoid-scrubbing * {
   color: var(--text);
 }
 
-/* A condition/value (or when/then) pair group in a paired-extensible node. NO
-   positioning context (sockets anchor to .solenoid-node__content) — a faint rule
-   under each pair just visually groups its two rows. */
 .solenoid-node__pair-group {
   box-shadow: inset 0 -1px 0 var(--border);
   margin-bottom: 3px;
@@ -1215,14 +878,12 @@ body.solenoid-scrubbing * {
   margin-bottom: 0;
 }
 
-/* Visual separator between input rows and output rows in multi-output nodes. */
 .solenoid-node__section-divider {
   height: 1px;
   background: var(--border);
   margin: 4px 0;
 }
 
-/* Compact value shown to the right of the label in multi-output rows. */
 .solenoid-node__output-value {
   flex: 1 1 auto;
   text-align: right;
@@ -1235,9 +896,6 @@ body.solenoid-scrubbing * {
   padding-right: 2px;
 }
 
-/* Marker shown in place of the field when the input is cable-driven. Carries
-   the SOURCE node's label ("↩ Rate"), so it truncates rather than widening
-   the row when that label runs long (full text in the tooltip). */
 .solenoid-node__io-wired {
   flex: 0 1 auto;
   min-width: 0;
@@ -1250,7 +908,6 @@ body.solenoid-scrubbing * {
   font-style: italic;
 }
 
-/* Recalculate button (volatile nodes — RANDBETWEEN etc.). */
 .solenoid-node__recalc-btn {
   display: flex;
   align-items: center;
@@ -1282,9 +939,7 @@ body.solenoid-scrubbing * {
 .solenoid-node__select {
   width: 100%;
   background-color: var(--surface-sunken);
-  /* Inline SVG chevron — we draw our own so the native dropdown arrow
-     (which has a slightly-off white border in WebView2) doesn't show
-     through. The chevron color matches our muted text. */
+    /* Our own chevron: WebView2's native arrow shows an off-white border. */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
   background-repeat: no-repeat;
   background-position: right 8px center;
@@ -1293,7 +948,7 @@ body.solenoid-scrubbing * {
   color: var(--text-bright);
   font-family: inherit;
   font-size: 13px;
-  padding: 4px 24px 4px 8px; /* right padding leaves room for the chevron */
+  padding: 4px 24px 4px 8px;
   border-radius: 4px;
   outline: none;
   cursor: pointer;
@@ -1307,8 +962,6 @@ body.solenoid-scrubbing * {
   border-color: var(--node-accent, var(--accent));
 }
 
-/* A labeled control row (Pivot per-value funcs, totals depth, sort) — a left
-   label + a select that flexes to fill the remaining width. */
 .solenoid-node__field-row {
   display: flex;
   align-items: center;
@@ -1326,8 +979,6 @@ body.solenoid-scrubbing * {
   white-space: nowrap;
 }
 
-/* Pivot node face: a Configure button (opens the field-editor popup) + a one-line
-   summary of the current pivot config. */
 .solenoid-node__pivot-config {
   width: 100%;
   margin-top: 4px;
@@ -1353,9 +1004,6 @@ body.solenoid-scrubbing * {
   -webkit-box-orient: vertical;
 }
 
-/* Decision Matrix / Sensitivity — the small muted caption over each default toggle
-   (Normalize, Output). The per-criterion weight + Norm now live on the wired Weights
-   frame, so the on-card weight table and its header/read-only styles are gone. */
 .solenoid-node__dm-caption {
   margin-top: 4px;
   font-size: 10px;
@@ -1363,10 +1011,7 @@ body.solenoid-scrubbing * {
   color: var(--text-muted, #9aa0a6);
 }
 
-/* Native option list (the OS popup). Chromium / WebView2 paints the
-   popup background from the <select>'s computed background-color and
-   the <option> backgrounds. The popup container itself isn't styleable
-   beyond that — the outer frame is the OS's. */
+/* Chromium and WebView2 paint the OS option popup from these backgrounds; its outer frame is not styleable. */
 .solenoid-node__select option {
   background-color: var(--surface);
   color: var(--text-bright);
@@ -1379,39 +1024,23 @@ body.solenoid-scrubbing * {
   color: var(--text);
 }
 
-/* Jump-and-flash (Problems / Comments panels): a timed ring pulse on whichever
-   node root the class lands on — applies uniformly regardless of root type
-   (.solenoid-node / .solenoid-note / .solenoid-group / .solenoid-conduit), since
-   there's no shared wrapper class to hook (see CLAUDE.md). A full-perimeter glow,
-   not a directional stripe — same "tint the element itself" spirit as the rest
-   of the design system, just transient instead of permanent. */
 @keyframes solenoid-flash-pulse {
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sol-error) 0%, transparent); }
   15%, 55% { box-shadow: 0 0 8px 2px color-mix(in srgb, var(--sol-error) 55%, transparent); }
 }
-/* The class lands on rete's node wrapper (no radius of its own), so match the 4px
-   card corner — box-shadow follows border-radius — and blur the ring into a halo so
-   it hugs the rounded card instead of drawing a hard rectangle around it. */
+/* The class lands on the node wrapper, which has no radius of its own, so the halo borrows the card's. */
 .solenoid-node-flash {
   border-radius: 6px;
   animation: solenoid-flash-pulse 1s ease-in-out;
 }
 
-/* Mermaid node — a source textarea over a live SVG preview. The SVG scales to
-   the card width (mermaid emits its own intrinsic size); the textarea is the
-   same quiet monospace field as the Chart Options / formula inputs. The Record
-   node's layout textarea shares the field. */
 .solenoid-mermaid-source,
 .solenoid-record-layout {
   width: 100%;
-  /* Block, not the inline-block default: as an inline-level child the field
-     would add a line box's descender gap under itself, and the grip — anchored
-     to the wrapper — would hang below the field's own border. */
+  /* Block, not inline-block: an inline field adds a descender gap and the grip hangs below its border. */
   display: block;
   min-height: 64px;
-  /* The UA resizer drags correctly but paints a bright, heavy corner glyph that
-     no CSS retires (::-webkit-resizer paints BEHIND it, not over it) and that the
-     4px radius clips. FieldResizeGrip wears the app's own grip mark instead. */
+  /* The UA resizer paints a heavy glyph no CSS retires; FieldResizeGrip draws the app's own. */
   resize: none;
   box-sizing: border-box;
   padding: 5px 7px;
@@ -1425,8 +1054,6 @@ body.solenoid-scrubbing * {
   white-space: pre;
   overflow: auto;
 }
-/* Positioning context for FieldResizeGrip, which sits in the field's corner
-   where the UA resizer used to. */
 .solenoid-field-resizable {
   position: relative;
 }
@@ -1448,8 +1075,6 @@ body.solenoid-scrubbing * {
   opacity: 0.9;
   color: var(--node-accent, var(--accent));
 }
-/* Frame Input's Form layout: the hide mark sits in the box's top-right, the corner
-   the resize grip leaves free. Hiding keeps the text; the card offers it back. */
 .solenoid-layout-field {
   position: relative;
 }
@@ -1486,7 +1111,6 @@ body.solenoid-scrubbing * {
   font-style: italic;
   cursor: default;
 }
-/* Pager: prev/next around a mono "3 / 12" readout, right-aligned like a value. */
 .solenoid-record__pager {
   display: flex;
   align-items: center;
@@ -1525,16 +1149,11 @@ body.solenoid-scrubbing * {
   display: flex;
   justify-content: center;
   overflow: auto;
-  /* A diagram is a figure, not prose — don't let a drag select its SVG text
-     (same reasoning as the recharts rule in chartView.css). */
   user-select: none;
   -webkit-user-select: none;
 }
 .solenoid-mermaid svg { max-width: 100%; height: auto; }
-/* In a RESIZED Display the diagram scales to fill the box — override mermaid's
-   own inline max-width (its natural size, which otherwise caps it). The viewBox +
-   default preserveAspectRatio keeps it proportional (letterboxed). overflow
-   hidden on the container blocks a scrollbar re-trigger. */
+/* Overrides mermaid's inline max-width, so the diagram fills a resized Display box. */
 .solenoid-node--sized .solenoid-mermaid { overflow: hidden; }
 .solenoid-node--sized .solenoid-mermaid svg {
   max-width: none !important;
@@ -1550,23 +1169,8 @@ body.solenoid-scrubbing * {
   justify-content: flex-start;
 }
 
-/* ─── Op pickers (DESIGN.md § Op pickers) ───────────────────────────────────
-   A card's OP picker (OpSelect / OpToggle, always bound to the node's `op`) is the
-   one body control that spends the accent: a 2px edge at the --mix-emphasis rung
-   (an accent fill pulled far too much weight; a full-strength edge already means
-   FOCUS, see below). An ARGUMENT picker (ArgSelect / SegToggle) is a plain neutral
-   field and never reaches these rules; the two are different components, so no
-   attribute or family lookup decides which is which.
-
-   The 2px edge is paid for out of the PADDING, not the box: the neutral field's
-   1px border with 4px/8px padding becomes a 2px border with 3px/7px, so an op
-   picker occupies exactly the same space as a neutral one.
-
-   The op picker renders at the TOP of the card body, above the input rows
-   (author, 2026-08-05): the op names what the card does, so it reads before the
-   inputs it shapes. Enforced here as flex order so component JSX keeps its
-   natural order; requires the picker to be a DIRECT body child. Socket rows
-   measure offsetTop after layout, so cable endpoints follow the visual order. */
+/* ─── Op pickers (DESIGN.md § Op pickers) ─── */
+/* order -1 hoists only a direct body child; socket rows measure offsetTop after layout, so cables follow. */
 .solenoid-node__body > .solenoid-node__select--op {
   order: -1;
 }
@@ -1576,13 +1180,10 @@ body.solenoid-scrubbing * {
   /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
   padding: 3px 23px 3px 7px;
 }
-/* Focus outranks the resting edge: same width, full-strength accent. */
 .solenoid-node__select--op:focus {
   border-color: var(--node-accent, var(--accent));
 }
 
-/* OpToggle is the same picker in segmented shape: hoisted, accented on the pressed
-   segment. SegToggle.css defines the neutral argument look it starts from. */
 .solenoid-node__body > .solenoid-seg--op {
   order: -1;
 }

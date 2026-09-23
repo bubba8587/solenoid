@@ -1,6 +1,4 @@
 // [[C17]], [[C102]] gridFillThenForecast (fillBorderedGrid)
-// Numerical analysis helpers shared across statistical distribution nodes.
-// All functions are pure and domain-checked — return NaN for invalid inputs.
 
 // ─── Clamp ────────────────────────────────────────────────────────────────────
 export function clamp(v: number, lo: number, hi: number): number {
@@ -8,8 +6,7 @@ export function clamp(v: number, lo: number, hi: number): number {
 }
 
 // ─── Min / max over an iterable ───────────────────────────────────────────────
-// Use these on user data, never `Math.min(...arr)`: the spread form throws
-// RangeError past ~125k elements. Empty input gives ±Infinity, matching Math.min().
+// Use these on user data, never `Math.min(...arr)`, whose spread throws RangeError past about 125k elements.
 export function iterMin(it: Iterable<number>): number {
   let m = Infinity;
   for (const v of it) if (v < m) m = v;
@@ -23,7 +20,6 @@ export function iterMax(it: Iterable<number>): number {
 
 // ─── Gamma / Beta ─────────────────────────────────────────────────────────────
 
-// Natural log of the gamma function (Lanczos g=7 approximation).
 export function lnGamma(x: number): number {
   if (x <= 0) return Infinity;
   if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - lnGamma(1 - x);
@@ -38,8 +34,6 @@ export function lnGamma(x: number): number {
   return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
 }
 
-// Regularized lower incomplete gamma P(a, x) = γ(a,x)/Γ(a).
-// Series for x < a+1; continued fraction (Lentz) for x ≥ a+1.
 export function regularizedGamma(a: number, x: number): number {
   if (a <= 0 || x < 0) return NaN;
   if (x === 0) return 0;
@@ -67,8 +61,6 @@ export function regularizedGamma(a: number, x: number): number {
   }
 }
 
-// Regularized incomplete beta I_x(a, b) via Lentz continued fraction, using
-// I_x(a,b) = 1 - I_{1-x}(b,a) to stay in the convergent region.
 export function regularizedBeta(x: number, a: number, b: number): number {
   if (a <= 0 || b <= 0 || x < 0 || x > 1) return NaN;
   if (x === 0) return 0;
@@ -96,9 +88,6 @@ export function regularizedBeta(x: number, a: number, b: number): number {
 
 // ─── Normal distribution ──────────────────────────────────────────────────────
 
-// Standard normal CDF Φ(z) — W. J. Cody's rational Chebyshev algorithm (ACM TOMS 715,
-// the one R's pnorm runs): three ranges, relative error at double precision, exact 0.5
-// at z = 0, and a tail that stays accurate where an erf-based form underflows.
 const CODY_A = [2.2352520354606839287, 161.02823106855587881, 1067.6894854603709582, 18154.981253343561249, 0.065682337918207449113];
 const CODY_B = [47.20258190468824187, 976.09855173777669322, 10260.932208618978205, 45507.789335026729956];
 const CODY_C = [0.39894151208813466764, 8.8831497943883759412, 93.506656132177855979, 597.27027639480026226, 2494.5375852903726711, 6848.1904505362823326, 11602.651437647350124, 9842.7148383839780218, 1.0765576773720192317e-8];
@@ -134,12 +123,9 @@ function stdNormCDF(z: number): number {
     const xsq = Math.trunc(y * 16) / 16, del = (y - xsq) * (y + xsq);
     lower = Math.exp(-xsq * xsq * 0.5) * Math.exp(-del * 0.5) * temp;
   }
-  // `lower` is the tail mass beyond |z|: Φ(z) for z < 0, 1 − Φ(z) for z > 0.
   return z < 0 ? lower : 1 - lower;
 }
 
-// Inverse standard normal CDF: Peter Acklam's rational approximation (|ε| < 1.15e-9)
-// refined by one Halley step against the double-precision Φ above — full precision.
 export function normSInv(p: number): number {
   const x = normSInvAcklam(p);
   if (!Number.isFinite(x)) return x;
@@ -174,7 +160,6 @@ function normSInvAcklam(p: number): number {
 export { stdNormCDF };
 
 // ─── Generic inverse CDF via bisection ───────────────────────────────────────
-// Assumes cdf is monotone non-decreasing over [lo, hi].
 export function bisectionInv(
   cdf: (x: number) => number,
   p: number,
@@ -203,9 +188,6 @@ export function lnCombin(n: number, k: number): number {
   return lnFactorial(n) - lnFactorial(k) - lnFactorial(n - k);
 }
 
-/** Least-squares line through paired data — null when there are fewer than two
- *  points or the Xs have zero variance, so each surface tags its own error;
- *  ragged inputs use the min-length zip. */
 export function linearFit(
   xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
 ): { slope: number; intercept: number } | null {
@@ -225,7 +207,6 @@ export function linearFit(
   return { slope, intercept: yMean - slope * xMean };
 }
 
-/** `linearFit` plus R² in one pass; R² is 0 when Y has zero variance. */
 export function linearFitR2(
   xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
 ): { slope: number; intercept: number; r2: number } | null {
@@ -245,8 +226,6 @@ export function linearFitR2(
   return { slope, intercept: yMean - slope * xMean, r2 };
 }
 
-/** Exponential fit y = b·mˣ by least squares in log space; null when the ln(y)
- *  fit is undefined or any y ≤ 0. */
 export function expFit(
   xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
 ): { m: number; b: number } | null {
@@ -258,8 +237,6 @@ export function expFit(
   return { m: Math.exp(fit.slope), b: Math.exp(fit.intercept) };
 }
 
-/** `expFit` plus R² on the LOG scale (Excel LOGEST stats=TRUE); null under the
- *  same guard as `expFit` (any y ≤ 0 or an undefined ln(y) fit). */
 export function expFitR2(
   xs: ReadonlyArray<number>, ys: ReadonlyArray<number>,
 ): { m: number; b: number; r2: number } | null {
@@ -272,7 +249,6 @@ export function expFitR2(
 }
 
 // ─── Piecewise-linear interpolation ───────────────────────────────────────────
-// Lives here so the INTERPOLATE registration doesn't drag rete in.
 
 function bracket(axis: number[], x: number): [number, number, number] {
   const last = axis.length - 1;
@@ -284,11 +260,9 @@ function bracket(axis: number[], x: number): [number, number, number] {
     if (axis[mid] <= x) lo = mid; else hi = mid;
   }
   const x0 = axis[lo], x1 = axis[hi];
-  return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)]; // x1===x0: duplicated key, no gap
+  return [lo, hi, x1 === x0 ? 0 : (x - x0) / (x1 - x0)];
 }
 
-// Points are sorted by x, a duplicated x resolves to its first-seen y, a NaN query
-// stays NaN, and the ends clamp.
 export function interpolateLinear(xs: number[], ys: number[], queryXs: number[]): number[] {
   const n = Math.min(xs.length, ys.length);
   if (n === 0) return queryXs.map(() => NaN);
@@ -305,8 +279,6 @@ export function interpolateLinear(xs: number[], ys: number[], queryXs: number[])
 }
 
 // ─── Shared statistical-test implementations (ONE impl, two surfaces) ─────────
-// Node and formula both call these ([[C17]] shareImpl): Formula.js's T.TEST ignores
-// `tails`/`type` and its F.TEST returns the variance RATIO, not the p-value.
 import { solError, isSolError, type SolError } from "../errorValue";
 
 type StatCell = number | null | SolError;
@@ -321,47 +293,34 @@ export function arrSampleVar(arr: readonly number[]): number {
 }
 
 // ─── Continuous-distribution kernels ([[C17]] shareImpl) ──────────────────────────────
-// ONE home for the t / chi-squared / F / gamma CDFs and PDFs that Formula.js lacks.
-// The in-formula registrations (excelFunctions.ts) AND the Distribution node
-// (distribution.ts) both call these, so the two surfaces cannot drift — the CDFs also
-// back every inverse form via `bisectionInv`. Kept numerically identical to the three
-// hand-rolled copies they replaced (t/chisq/F/gamma parity is pinned cross-surface).
 
-/** Student-t CDF via the regularized incomplete beta. */
 export function tCDF(x: number, df: number): number {
   const z = df / (df + x * x);
   const betaCDF = regularizedBeta(z, df / 2, 0.5);
   return x >= 0 ? 1 - betaCDF / 2 : betaCDF / 2;
 }
 
-/** Student-t PDF. */
 export function tPDF(x: number, df: number): number {
   return Math.exp(lnGamma((df + 1) / 2) - lnGamma(df / 2)) /
     (Math.sqrt(df * Math.PI) * Math.pow(1 + (x * x) / df, (df + 1) / 2));
 }
 
-/** Chi-squared CDF (0 at or below the origin). */
 export function chiSqCDF(x: number, df: number): number {
   return x <= 0 ? 0 : regularizedGamma(df / 2, x / 2);
 }
 
-/** F-distribution CDF (0 at or below the origin). */
 export function fCDF(x: number, df1: number, df2: number): number {
   return x <= 0 ? 0 : regularizedBeta((x * df1) / (x * df1 + df2), df1 / 2, df2 / 2);
 }
 
-/** Gamma CDF with a SCALE parameter (Excel's β), 0 at or below the origin. */
 export function gammaCDF(x: number, alpha: number, beta: number): number {
   return x <= 0 ? 0 : regularizedGamma(alpha, x / beta);
 }
 
-/** Gamma PDF with a SCALE parameter (Excel's β), 0 at or below the origin. */
 export function gammaPDF(x: number, alpha: number, beta: number): number {
   return x <= 0 ? 0 : Math.exp((alpha - 1) * Math.log(x) - x / beta - alpha * Math.log(beta) - lnGamma(alpha));
 }
 
-/** Index-aligned pairs with the pairwise policy: first cell error propagates,
- *  a pair with a missing side is dropped, ragged tails truncate. */
 export function pairPresent(
   xsRaw: readonly StatCell[] | null,
   ysRaw: readonly StatCell[] | null,
@@ -381,8 +340,6 @@ export function pairPresent(
 
 export type TTestKind = "paired" | "equal-var" | "unequal-var";
 
-/** Two-tailed Student-t p-value for two samples, by test kind. Returns null when
- *  the test is undefined (short samples, zero variance, non-finite t/df). */
 export function tTestP(kind: TTestKind, a: readonly number[], b: readonly number[]): number | null {
   if (a.length < 2 || b.length < 2) return null;
   let t: number, df: number;
@@ -413,8 +370,6 @@ export function tTestP(kind: TTestKind, a: readonly number[], b: readonly number
   return Number.isFinite(p) ? clamp(p, 0, 1) : null;
 }
 
-/** Excel F.TEST: the TWO-TAILED p-value that the samples' variances differ —
- *  not the variance ratio (which is what Formula.js returns). */
 export function fTestP(a: readonly number[], b: readonly number[]): number | null {
   if (a.length < 2 || b.length < 2) return null;
   const v1 = arrSampleVar([...a]), v2 = arrSampleVar([...b]);
@@ -426,8 +381,6 @@ export function fTestP(a: readonly number[], b: readonly number[]): number | nul
   return Number.isFinite(p) ? p : null;
 }
 
-/** Excel PROB over a 1-D range: total probability of values in [lo, hi].
- *  Pairwise cell policy: an error propagates, a pair missing either side drops. */
 export function probBetween(
   range: readonly StatCell[] | null,
   probs: readonly StatCell[] | null,
@@ -446,15 +399,8 @@ export function probBetween(
 
 
 // ─── Bilinear lookup-table fill (INTERPOLATE grid mode) ──────────────────────
-// Lives here, not nodes/stats.ts, because the formula path must stay rete-free ([[D19]] implReteFree).
 import { fitSurface, type FitPoint } from "./surfaceFit";
 
-/** Normalize a grid's inputs to the ONE convention (coordinates ride beside the Z matrix,
- *  never inside it): `z` → a rectangular `(number|null)[][]` (a per-cell error / non-finite
- *  cell → null); an UNWIRED axis (`undefined`) is the 1-based index; a WIRED-blank axis
- *  (`null`) leaves the shape unknown → the whole result is null; a wired list must carry
- *  exactly one FINITE number per column (Xs) / row (Ys), else `#SHAPE!` on a count mismatch
- *  or `#VALUE!` on a non-finite entry. */
 export function gridAxes(z: unknown, xs: unknown, ys: unknown):
   { xs: number[]; ys: number[]; z: (number | null)[][] } | SolError | null {
   if (!Array.isArray(z) || z.length === 0) return null;
@@ -468,8 +414,8 @@ export function gridAxes(z: unknown, xs: unknown, ys: unknown):
     }),
   );
   const axis = (raw: unknown, n: number, name: "Xs" | "Ys"): number[] | SolError | null => {
-    if (raw === undefined) return Array.from({ length: n }, (_, i) => i + 1); // unwired → index
-    if (raw === null) return null; // wired blank → shape unknown, propagate
+    if (raw === undefined) return Array.from({ length: n }, (_, i) => i + 1);
+    if (raw === null) return null;
     const list = Array.isArray(raw) ? raw : [raw];
     const unit = name === "Xs" ? "columns" : "rows";
     if (list.length !== n) return solError("#SHAPE!", `${name} has ${list.length} values for ${n} ${unit}`);
@@ -487,33 +433,25 @@ export function gridAxes(z: unknown, xs: unknown, ys: unknown):
   return { xs: X, ys: Y, z: zg };
 }
 
-// Fill a grid's blank cells by bilinear interpolation over the closest all-known-corner
-// box, then (unless `forecast` is off) fill whatever is left from a surface fitted through
-// ALL known points. `xs`/`ys` are the coordinate of each column / row (see gridAxes) — the
-// coordinates ride BESIDE the matrix, never in a border row/column.
 export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], forecast = true): (number | null)[][] {
   const R = z.length;
   const C = R > 0 ? Math.max(...z.map((r) => r.length)) : 0;
   const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
-  // Rectangular working copy; a blank (null / non-finite) cell becomes `null`.
   const Z: (number | null)[][] = Array.from({ length: R }, (_, i) =>
     Array.from({ length: C }, (_, j) => { const v = z[i]?.[j]; return isKnown(v) ? v : null; }),
   );
   const out: (number | null)[][] = Z.map((r) => [...r]);
-  if (R < 1 || C < 1) return out; // nothing to fill
+  if (R < 1 || C < 1) return out;
 
-  const colXs = xs.map((v) => (v == null ? NaN : v)); // X of each column
-  const rowYs = ys.map((v) => (v == null ? NaN : v)); // Y of each row
+  const colXs = xs.map((v) => (v == null ? NaN : v));
+  const rowYs = ys.map((v) => (v == null ? NaN : v));
   const Ri = R, Ci = C;
 
-  // The coarse grid: columns/rows that carry ≥1 known value.
   const coarseCols: number[] = [];
   for (let j = 0; j < Ci; j++) if (!Number.isNaN(colXs[j]) && Z.some((row) => row[j] != null)) coarseCols.push(j);
   const coarseRows: number[] = [];
   for (let i = 0; i < Ri; i++) if (!Number.isNaN(rowYs[i]) && Z[i].some((v) => v != null)) coarseRows.push(i);
 
-  // Bracketing data lines, nearest first; null when the query sits past the data on
-  // that axis, so the cell can't be ENCLOSED.
   const sides = (lines: number[], coordOf: (k: number) => number, q: number): [number[], number[]] | null => {
     const lo = lines.filter((k) => coordOf(k) <= q).sort((a, b) => coordOf(b) - coordOf(a));
     const hi = lines.filter((k) => coordOf(k) >= q).sort((a, b) => coordOf(a) - coordOf(b));
@@ -521,7 +459,6 @@ export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], for
     return [lo, hi];
   };
 
-  // Every labeled known point, for pass 1's containment test and pass 2's fit.
   const knownPts: Array<{ x: number; y: number; i: number; j: number; z: number }> = [];
   for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
     const v = Z[i][j];
@@ -530,36 +467,28 @@ export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], for
     }
   }
 
-  // ── Pass 1 — bilinear interpolation for cells ENCLOSED by known data. ──
   for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
-    if (Z[i][j] != null) { out[i][j] = Z[i][j]; continue; } // known passes through
+    if (Z[i][j] != null) { out[i][j] = Z[i][j]; continue; }
     const qx = colXs[j], qy = rowYs[i];
-    if (Number.isNaN(qx) || Number.isNaN(qy)) continue; // unlabelled line → stays blank
+    if (Number.isNaN(qx) || Number.isNaN(qy)) continue;
     const rs = sides(coarseRows, (k) => rowYs[k], qy);
     const cs = sides(coarseCols, (k) => colXs[k], qx);
-    if (!rs || !cs) continue; // not enclosable → leave for the forecast pass
-    // The widening depth MUST stay capped: un-capped, scattered data rejects every
-    // box and the four nested loops exhaust O(lines⁴) combinations per cell.
+    if (!rs || !cs) continue;
+    // WIDEN must stay capped: uncapped, scattered data makes the four nested loops O(lines⁴) per cell.
     const WIDEN = 4;
     const [rLoC, rHiC] = [rs[0].slice(0, WIDEN), rs[1].slice(0, WIDEN)];
     const [cLoC, cHiC] = [cs[0].slice(0, WIDEN), cs[1].slice(0, WIDEN)];
-    // Widening past blank corners is what lets a hole interpolate across missing
-    // samples; the query stays inside the box, so this is pure interpolation.
     search:
     for (const rLo of rLoC) for (const rHi of rHiC) for (const cLo of cLoC) for (const cHi of cHiC) {
       const z00 = Z[rLo][cLo], z01 = Z[rLo][cHi], z10 = Z[rHi][cLo], z11 = Z[rHi][cHi];
       if (z00 == null || z01 == null || z10 == null || z11 == null) continue;
       const x0 = colXs[cLo], x1 = colXs[cHi], y0 = rowYs[rLo], y1 = rowYs[rHi];
-      // A CONTESTED box — one with other known data inside it — falls through to the
-      // surface fit rather than ignoring that nearer data.
       const xA = Math.min(x0, x1), xB = Math.max(x0, x1);
       const yA = Math.min(y0, y1), yB = Math.max(y0, y1);
       const degenRow = rLo === rHi, degenCol = cLo === cHi;
       let contested = false;
       for (const p of knownPts) {
-        if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
-        // A degenerate box is a SEGMENT on one row (or column): only known data on that
-        // same line contests it; data on other rows is not "inside" a row segment.
+        if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue;
         const hit =
           degenRow && !degenCol ? p.i === rLo && p.x > xA && p.x < xB :
           degenCol && !degenRow ? p.j === cLo && p.y > yA && p.y < yB :
@@ -576,7 +505,6 @@ export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], for
     }
   }
 
-  // ── Pass 2 — Forecast: fill what pass 1 left blank from a fitted surface. ──
   if (forecast) {
     const f = fitSurface(knownPts.map(({ x, y, z }): FitPoint => ({ x, y, z })));
     if (f) for (let i = 0; i < Ri; i++) for (let j = 0; j < Ci; j++) {
@@ -588,24 +516,18 @@ export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], for
   return out;
 }
 
-/** All complex roots of a polynomial given HIGHEST-degree-first coefficients
- *  (numpy.roots / R polyroot order), by Durand–Kerner iteration with a Newton polish.
- *  Leading zeros are dropped; a constant (degree 0) has no roots → []. Returns
- *  [re, im] pairs in no particular order, or null when the input is degenerate. */
 export function polyRoots(coeffs: readonly number[]): [number, number][] | null {
   let c = [...coeffs];
   while (c.length && c[0] === 0) c.shift();
   if (c.length === 0 || c.some((v) => !Number.isFinite(v))) return null;
   const n = c.length - 1;
   if (n === 0) return [];
-  const a = c.map((v) => v / c[0]); // monic
-  // evaluate p(z) and p'(z) at complex z by Horner
+  const a = c.map((v) => v / c[0]);
   const evalP = (zr: number, zi: number): [number, number] => {
     let pr = 1, pi = 0;
     for (let k = 1; k <= n; k++) { const nr = pr * zr - pi * zi + a[k]; const ni = pr * zi + pi * zr; pr = nr; pi = ni; }
     return [pr, pi];
   };
-  // initial guesses on a circle (Aberth's), radius from the coefficient bound
   const radius = 1 + Math.max(...a.slice(1).map(Math.abs));
   const roots: [number, number][] = Array.from({ length: n }, (_, k) => {
     const th = (2 * Math.PI * k) / n + 0.4;
@@ -616,7 +538,6 @@ export function polyRoots(coeffs: readonly number[]): [number, number][] | null 
     for (let i = 0; i < n; i++) {
       const [zr, zi] = roots[i];
       const [pr, pi] = evalP(zr, zi);
-      // denominator Π_{j≠i} (z_i − z_j)
       let dr = 1, di = 0;
       for (let j = 0; j < n; j++) {
         if (j === i) continue;
@@ -631,7 +552,6 @@ export function polyRoots(coeffs: readonly number[]): [number, number][] | null 
     }
     if (maxStep < 1e-15) break;
   }
-  // Newton polish (p / p′ by Horner) — DK converges linearly near multiple roots
   for (let i = 0; i < n; i++) {
     let [zr, zi] = roots[i];
     for (let k = 0; k < 4; k++) {
@@ -643,14 +563,12 @@ export function polyRoots(coeffs: readonly number[]): [number, number][] | null 
       const den = dr * dr + di * di;
       if (den === 0) break;
       const qr = (pr * dr + pi * di) / den, qi = (pi * dr - pr * di) / den;
-      if (!Number.isFinite(qr) || !Number.isFinite(qi) || Math.hypot(qr, qi) > 1e-3 * Math.max(1, Math.hypot(zr, zi))) break; // only polish, never wander
+      if (!Number.isFinite(qr) || !Number.isFinite(qi) || Math.hypot(qr, qi) > 1e-3 * Math.max(1, Math.hypot(zr, zi))) break; // Polish only: a step that would move the root far is refused.
       zr -= qr; zi -= qi;
     }
     roots[i] = [zr, zi];
   }
-  // clean: snap tiny imaginary parts / components relative to the root's size. A multiple
-  // root converges only linearly, leaving ~1e-9 residuals, so the imaginary snap is 1e-7:
-  // a double root reads as two reals (numpy.roots), not a conjugate pair.
+  // A multiple root converges only linearly (about 1e-9 residuals), so the imaginary snap is 1e-7 and a double root reads as two reals.
   return roots.map(([r, i]) => {
     const scale = Math.max(1, Math.hypot(r, i));
     return [Math.abs(r) < 1e-12 * scale ? 0 : r, Math.abs(i) < 1e-7 * scale ? 0 : i];

@@ -1,9 +1,5 @@
-// [[E11]]
-// World-space layer for the Input Switch's pending-reconnect ghosts (cablePendingStore):
-// a cable the One↔Many retype dropped, drawn dashed from the source `out` socket to the
-// input it will reattach to, until the output type fits that socket again. No rete
-// connection exists behind it, so it cannot be an RF edge; the endpoints come from RF's
-// measured handle bounds. Spec: tree/specs/canvas/react-flow-surface-contract.md § Ghost cables.
+// [[E11]] controlDrivenRetype. Spec: tree/specs/canvas/react-flow-surface-contract.md § Ghost cables.
+// No connection exists behind a ghost, so it can't be an RF edge; its endpoints come from RF's measured handle bounds.
 import { useSyncExternalStore } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { cablePendingStore, type PendingReconnect } from "../cableState";
@@ -16,8 +12,7 @@ import "./pendingCableLayer.css";
 
 type Pt = { x: number; y: number };
 
-/** A socket's centre in flow space from RF's measured handle bounds; null until measured
- *  or when the node is not on this surface. */
+/** Null until measured, or when the node is not on this surface. */
 function handleCentre(s: ReactFlowState, nodeId: string, side: "source" | "target", key: string): Pt | null {
   const n = s.nodeLookup.get(nodeId);
   const h = n?.internals.handleBounds?.[side]?.find((b) => b.id === key);

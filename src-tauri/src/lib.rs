@@ -8,18 +8,13 @@ mod ipc;
 #[cfg(target_os = "linux")]
 mod linux_webview;
 
-/// Open the webview devtools for the calling window. Reachable from the F12 /
-/// Ctrl+Shift+I hotkey in the web layer. Available because the `tauri` crate is
-/// built with the `devtools` feature (always on in debug, explicit for release).
+/// Needs the `tauri` crate's `devtools` feature (always on in debug, explicit for release).
 #[tauri::command]
 fn open_devtools(window: tauri::WebviewWindow) {
     window.open_devtools();
 }
 
-/// Paint the Windows 11 window border (the focused-frame accent Windows draws) with
-/// an explicit color, so it matches the app accent instead of the system accent. The
-/// web layer calls this from appTheme's apply() with the resolved accent RGB, and
-/// again whenever the accent / mode / palette changes. No-op off Windows 11.
+/// Paints the Windows 11 window border with the app accent (appTheme's apply() calls it on every accent, mode or palette change); a no-op off Windows 11.
 #[cfg(windows)]
 fn set_border_color(window: &tauri::WebviewWindow, r: u8, g: u8, b: u8) {
     use windows_sys::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_BORDER_COLOR};
@@ -45,8 +40,7 @@ fn set_window_border(window: tauri::WebviewWindow, r: u8, g: u8, b: u8) {
     let _ = (window, r, g, b);
 }
 
-/// Toggle the window between fullscreen and windowed. Bound to F11 in the web layer
-/// (the Tauri WebView2 shell doesn't give us Chrome's native F11). No-op on error.
+/// Bound to F11 in the web layer, because the WebView2 shell has no native F11.
 #[tauri::command]
 fn toggle_fullscreen(window: tauri::WebviewWindow) {
     let is = window.is_fullscreen().unwrap_or(false);
@@ -62,9 +56,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_decorum::init())
         .setup(|app| {
-            // Replace the native title bar with a transparent overlay one (custom
-            // controls + Windows Snap retained). The bar is styled in the web layer
-            // (themed to the accent); see TopBar / decorum CSS.
+            // A transparent overlay title bar (custom controls, Windows Snap kept), styled in the web layer.
             let main_window = app.get_webview_window("main").unwrap();
             #[cfg(not(target_os = "linux"))]
             main_window.create_overlay_titlebar().unwrap();

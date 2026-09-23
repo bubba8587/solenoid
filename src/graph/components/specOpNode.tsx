@@ -12,9 +12,7 @@ interface SpecOpNode<Op extends string> {
   setOp(next: Op): void;
 }
 
-/** The card for a spec-table op family (finance.ts § Spec-table op cards): a grouped op
- *  dropdown, the op's inputs, one result. The switch prunes the departing sockets'
- *  cables BEFORE the node reshapes ([[D10]] onePrunePath). */
+/** The switch prunes the departing sockets' cables before the node reshapes ([[D10]] onePrunePath). */
 export function makeSpecOpComponent<Op extends string, N extends SpecOpNode<Op> & ShellNode & InlineNode>(
   meta: Record<Op, { label: string; description: string; group: string }>,
 ) {

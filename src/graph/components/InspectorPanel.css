@@ -1,6 +1,4 @@
-/* The node Inspector's dock chrome mirrors the pinned Report's (a fixed right
-   column between the measured chrome envelopes; the canvas area squeezes left
-   via the root class). Geometry in vars so it stays tunable in one place. */
+/* Mirrors the pinned Report's dock (a fixed right column between the chrome envelopes); geometry in vars. */
 html.sol-inspector-docked {
   --inspector-w: 340px;
 }
@@ -13,10 +11,7 @@ html.sol-inspector-docked {
   width: var(--inspector-w, 340px);
   background: var(--surface);
   border-left: 1px solid var(--border-strong);
-  /* z below the header (6): the panel tucks under the opaque bars, so the shadow
-     can't spill over them. The dock-edge shadow is minimal on purpose — cards
-     scroll off the page under this edge, and the border alone reads flat there
-     (author call 2026-08-31). */
+  /* z below the header (6), so the dock shadow can't spill over the opaque bars. */
   box-shadow: var(--dock-shadow);
   z-index: 5;
   display: flex;
@@ -27,24 +22,20 @@ html.sol-inspector-docked:not(.is-mobile) .sol-rf-appcanvas:not(.solenoid-compos
 html.sol-inspector-docked:not(.is-mobile) .solenoid-nav { right: calc(12px + var(--inspector-w)); }
 html.sol-inspector-docked:not(.is-mobile) .solenoid-hud-stack { right: calc(12px + var(--inspector-w)); }
 html.sol-inspector-docked:not(.is-mobile) .solenoid-legend { right: calc(16px + var(--inspector-w)); }
-/* The command palette centers on the CANVAS, width following it a little — the
-   same re-center the report dock does. */
+/* The command palette re-centers on the canvas, as with the report dock. */
 html.sol-inspector-docked:not(.is-mobile) .solenoid-cmdpalette {
   left: calc((100vw - var(--inspector-w)) / 2);
   width: clamp(340px, calc((100vw - var(--inspector-w)) * 0.42), 480px);
 }
 
-/* Mobile: a full-width sheet between the chrome envelopes — a 340px side dock
-   has no room on a phone, and the canvas squeeze above stays off. The entry is
-   the node menu's (i); the top bar keeps no button there. */
+/* Mobile: a full-width sheet between the envelopes, entered from the node menu's (i); the canvas squeeze stays off. */
 html.is-mobile .inspector-panel {
   left: 0;
   width: auto;
   border-left: none;
   box-shadow: none; /* full-width sheet: no side edge to lift */
 }
-/* The floating HUD would ride above the full-width sheet; yield while open.
-   The align pill sits at z 7 and would too — the canvas it acts on is covered. */
+/* The HUD and the align pill (z 7) would ride above the sheet, so they yield while it is open. */
 html.is-mobile.sol-inspector-docked .solenoid-hud-stack { display: none; }
 html.is-mobile.sol-inspector-docked .solenoid-nav { display: none; }
 html.is-mobile.sol-inspector-docked .solenoid-selbar { display: none; }
@@ -110,7 +101,6 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   color: var(--text-dim);
   text-wrap-style: pretty;
 }
-/* Descriptions are inline markdown (descriptionMd.ts). */
 .inspector-desc code {
   font-family: var(--font-mono);
   font-size: 10.5px;

@@ -11,14 +11,7 @@ import { siteChrome } from "../siteChrome";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
 
-// The /obsidian route: a standalone document on the landing page's design tokens,
-// pitched at Obsidian users who have never opened Solenoid. It frames Solenoid as
-// the computation layer for a vault, with the Obsidian <-> Solenoid <-> Excel round
-// trip as the centerpiece. No live rete stage here; every vignette is static DOM+SVG.
-// Header, nav and footer come from siteNav.
 
-// The round trip: vault on the left, spreadsheets on the right, Solenoid computing
-// in the middle, data moving both ways. The centerpiece of the page's framing.
 function FlowScene() {
   return (
     <div className="obs-flow">
@@ -46,7 +39,6 @@ function FlowScene() {
   );
 }
 
-// A static write "plan": the frame a writer emits before Run, one row per change.
 function PlanScene() {
   return (
     <div className="obs-illus obs-illus--single">
@@ -70,12 +62,8 @@ export default function ObsidianPage() {
   useEffect(() => {
     document.title = "Solenoid · The computation layer for your vault";
   }, []);
-  // The whole page demonstrates the vault integration against the bundled demo vault,
-  // so every reader scene resolves to it regardless of the user's setting (never
-  // persisted). Set during render so it is in place before the scene children mount
-  // and read it; cleared on unmount. Plain-anchor navigation to the app reloads anyway.
-  // The Report/Note popup here is a read-only shop window: Export (to a webpage) and
-  // Dock (to the canvas) have nothing to act on off the app, so drop them.
+  // Forced during render, so the pin is in place before the scene children mount and read it; cleared on unmount.
+  // The popup here is a read-only shop window: Export and Dock have nothing to act on off the app.
   useMemo(() => {
     forceDemoVault(true);
     forceDemoTaskNotes(true);

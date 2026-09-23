@@ -21,9 +21,7 @@ export function PaymentBreakdownComponent({ data, emit }: NodeProps<PaymentBreak
   const [op, setOpState] = useState<PaymentBreakdownOp>(data.op);
   const [paymentTiming, setPaymentTiming] = useNodeField(data, "paymentTiming");
 
-  // The op reshapes sockets across the single↔range span, so it commits through the
-  // prune/reshape path (not useNodeField): drop departing cables, reshape, re-render,
-  // recompute (the AccruedInterest handoff).
+    // The op reshapes sockets across single and range, so it commits through the prune-and-reshape path, not useNodeField.
   async function pickOp(next: PaymentBreakdownOp) {
     if (next === data.op) return;
     const departing = data.keysDroppedBySwitch(next);

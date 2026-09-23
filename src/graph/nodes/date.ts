@@ -1,4 +1,4 @@
-// [[C44]], [[B11]], [[E11]], [[E13]]
+// [[C44]], [[B11]], [[E11]], [[E13]], [[C17]] shareImpl, [[D41]] formatFlowsDownstream
 import { ClassicPreset } from "rete";
 import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
 import { type SolError } from "../errorValue";
@@ -12,14 +12,11 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
-/** The whole-day key of a date serial, so a holiday matches regardless of
- *  time-of-day; `+1e-9` absorbs float drift from serial↔ms round-tripping. */
+/** `+1e-9` absorbs float drift from the serial↔ms round trip. */
 function dayKey(serial: number): number {
   return Math.floor(serial + 1e-9);
 }
 
-/** The set of holiday day-keys to skip (Excel's optional `[holidays]` argument on
- *  WORKDAY / NETWORKDAYS). Blanks / non-finite entries are ignored. */
 function holidaySet(holidays?: (number | null)[]): Set<number> {
   const s = new Set<number>();
   if (holidays) for (const h of holidays) if (typeof h === "number" && Number.isFinite(h)) s.add(dayKey(h));
@@ -101,8 +98,7 @@ export class DateConstructNode extends ClassicPreset.Node {
   }
 
   data(inputs: { year?: (number | number[])[]; month?: (number | number[])[]; day?: (number | number[])[] }): { result: BroadcastResult } {
-    // broadcastErr (not broadcast): an out-of-range year is a per-cell #DOMAIN!.
-    const result = broadcastErr(dateFromParts, // shared with the DATE formula
+    const result = broadcastErr(dateFromParts,
       readInput(inputs.year,  this.literals.year  ?? 2024),
       readInput(inputs.month, this.literals.month ?? 1),
       readInput(inputs.day,   this.literals.day   ?? 1));
@@ -129,7 +125,7 @@ export class TimeConstructNode extends ClassicPreset.Node {
   }
 
   data(inputs: { hour?: (number | number[])[]; minute?: (number | number[])[]; second?: (number | number[])[] }): { result: BroadcastResult } {
-    const result = broadcast(timeFraction, // shared with the TIME formula
+    const result = broadcast(timeFraction,
       readInput(inputs.hour,   this.literals.hour   ?? 0),
       readInput(inputs.minute, this.literals.minute ?? 0),
       readInput(inputs.second, this.literals.second ?? 0));
@@ -138,10 +134,7 @@ export class TimeConstructNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Parse text — ONE node (DATEVALUE / TIMEVALUE) ────────────────────────────
-// The two halves of reading a date/time out of text: the whole day, or the time
-// of day within it. Same single Text input; the op picks which half is returned
-// and retypes the output (date serial ↔ 0–1 fraction).
+// ─── Parse text (DATEVALUE / TIMEVALUE) ───────────────────────────────────────
 
 export type DateTimeValueOp = "date" | "time";
 
@@ -169,8 +162,6 @@ export class DateTimeValueNode extends ClassicPreset.Node {
     this.addOutput("result", this.op === "date" ? dateOut("Date") : numOut("Time fraction"));
   }
 
-  /** Retypes the output in place (date ↔ number) — the component must call
-   *  retypeOutputCables afterwards (no connection event fires on an in-place swap). */
   setOp(next: DateTimeValueOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -183,7 +174,6 @@ export class DateTimeValueNode extends ClassicPreset.Node {
 
   data(inputs: { text?: string[] }): { result: number | SolError | null } {
     const text = (readInput(inputs.text, this.stringLiterals.text ?? "") ?? "").trim();
-    // Blank in → blank out; unparseable non-empty text is a real #VALUE!.
     if (!text) { this.cachedResult = null; return { result: null }; }
     const result = this.op === "date" ? parseDateOnly(text) : parseTimeOfDay(text);
     this.cachedResult = result;
@@ -255,8 +245,6 @@ export class WeekInfoNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "weekday";
     this.label = init?.label ?? "";
     this.addInput("date",        dateComboIn("Date"));
-    // `return_type` is a MODE selector, not an operand — per-element return types
-    // are meaningless, so it stays scalar (same for basis / weekend_code).
     this.addInput("return_type", numIn("Return type"));
     this.addOutput("result", numListOut("Number"));
   }
@@ -265,15 +253,13 @@ export class WeekInfoNode extends ClassicPreset.Node {
     const rtRaw = readInput(inputs.return_type, this.literals.return_type ?? 1);
     if (rtRaw === null) { this.cachedResult = null; return { result: null }; }
     const rt = Math.floor(rtRaw);
-    const result = broadcast((serial) => weekInfo(this.op, serial, rt), inputs.date?.[0] ?? null); // shared with the formulas
+    const result = broadcast((serial) => weekInfo(this.op, serial, rt), inputs.date?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }
 }
 
 // ─── Date difference (DAYS / DAYS360 / YEARFRAC + the DATEDIF units) ──────────
-// DATEDIF "D" is deliberately not an op (it duplicates DAYS), though the formula
-// surface still dispatches all six unit strings.
 
 export const DATE_DIFF_OP_META = {
   days:     { label: "DAYS",     description: "Days between dates: `end − start`, signed. Excel: `DAYS`." },
@@ -306,8 +292,6 @@ export class DateDiffNode extends ClassicPreset.Node {
     this.syncBasisInput();
   }
 
-  /** Add/remove the basis input to match the op; the COMPONENT must drop any basis
-   *  cable first — removeInput under a live cable is unsafe. */
   syncBasisInput(): boolean {
     const needs = dateDiffNeedsBasis(this.op);
     const has = !!this.inputs.basis;
@@ -325,7 +309,6 @@ export class DateDiffNode extends ClassicPreset.Node {
       if (basisRaw === null) { this.cachedResult = null; return { result: null }; }
       basis = Math.floor(basisRaw);
     }
-    // Shared with the DAYS / DAYS360 / YEARFRAC / DATEDIF formulas.
     const result = broadcast((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
@@ -357,8 +340,6 @@ export class DateAddNode extends ClassicPreset.Node {
     this.addOutput("result", dateComboOut("Date"));
   }
 
-  /** EDATE / EOMONTH shift a date but the result is still a date, so Start's date style
-   *  carries; Months is a plain count (different family, dropped) ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["start"] }];
   }
@@ -368,13 +349,11 @@ export class DateAddNode extends ClassicPreset.Node {
     const d = serialToJsDate(s);
     const m = Math.floor(rawM);
     const y  = d.getUTCFullYear();
-    const mo = d.getUTCMonth() + m; // may overflow; Date.UTC handles it
-    // EDATE clamps to the target month's last day (Jan 31 + 1mo = Feb 28/29) —
-    // an unclamped day rolls the Date over into the next month.
+    const mo = d.getUTCMonth() + m;
     const lastDay = new Date(Date.UTC(y, mo + 1, 0)).getUTCDate();
     const serial = this.op === "edate"
       ? jsDateToSerial(new Date(Date.UTC(y, mo, Math.min(d.getUTCDate(), lastDay))))
-      : jsDateToSerial(new Date(Date.UTC(y, mo + 1, 0))); // day 0 = last day of month
+      : jsDateToSerial(new Date(Date.UTC(y, mo + 1, 0)));
     return serial;
     }, inputs.start?.[0] ?? null, readInput(inputs.months, this.literals.months ?? 0));
     this.cachedResult = result;
@@ -382,11 +361,7 @@ export class DateAddNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Workdays — ONE node (WORKDAY / NETWORKDAYS) ──────────────────────────────
-// The two directions of one working-day relation: WORKDAY solves the date N
-// working days out, NETWORKDAYS counts the working days between two dates.
-// Start, the weekend code and the holiday set are shared; the op swaps the
-// second input (Days ↔ End date) and retypes the output (date ↔ number).
+// ─── Workdays (WORKDAY / NETWORKDAYS) ─────────────────────────────────────────
 
 export type WorkdaysOp = "workday" | "networkdays";
 
@@ -404,7 +379,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
   label: string;
   op: WorkdaysOp;
   literals: Record<string, number> = {};
-  stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
+  stringLiterals: Record<string, string> = {};
   cachedResult: BroadcastResult = null;
   width = 180; height = 258;
 
@@ -416,16 +391,11 @@ export class WorkdaysNode extends ClassicPreset.Node {
     if (this.op === "workday") this.addInput("days", numListIn("Days"));
     else this.addInput("end", dateComboIn("End date"));
     this.addInput("weekend_code", numIn("Weekend"));
-    // `holidays` is a LIST PARAMETER — the whole set is consulted per result, so it
-    // is NOT an element-wise operand and stays a plain datelist.
     this.addInput("holidays",     dateListIn("Holidays"));
     this.addOutput("result", this.op === "workday" ? dateComboOut("Date") : numListOut("Working days"));
     this.seedLiterals();
   }
 
-  /** WORKDAY returns a date, so Start's date style carries; NETWORKDAYS returns a count
-   *  (a number output, so the date family is dropped by the family gate). One declaration
-   *  covers both ops ([[D41]] formatFlowsDownstream). */
   formatCarry(): FormatCarrySpec[] {
     return [{ output: "result", inputs: ["start"] }];
   }
@@ -435,16 +405,11 @@ export class WorkdaysNode extends ClassicPreset.Node {
     if (this.op === "workday") this.literals.days ??= 5;
   }
 
-  /** The key a switch to `next` would remove. Callers on a live graph prune its
-   *  cables BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: WorkdaysOp): string[] {
     if (next === this.op) return [];
     return next === "workday" ? ["end"] : ["days"];
   }
 
-  /** Swaps the second input AND retypes the output in place (date ↔ number) —
-   *  the component must call retypeOutputCables afterwards (no connection event
-   *  fires on an in-place socket swap). */
   setOp(next: WorkdaysOp): void {
     if (next === this.op) return;
     this.op = next;
@@ -458,7 +423,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
       if (!this.inputs.end) this.addInput("end", dateComboIn("End date"));
       if (out) { out.socket = numListOut("Working days").socket; out.label = "Working days"; }
     }
-    // Keep the second input beside Start: re-seat the shared tail keys.
+    // Re-insert the shared tail so the second input stays beside Start.
     const inputs = this.inputs as Record<string, unknown>;
     for (const k of ["weekend_code", "holidays"]) {
       const v = inputs[k];
@@ -473,7 +438,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
     if (codeRaw === null) { this.cachedResult = null; return { result: null }; }
     const code = Math.floor(codeRaw);
     const off  = weekendSet(code);
-    const hol  = holidaySet(inputs.holidays?.[0]); // dates to skip / not counted, alongside weekends
+    const hol  = holidaySet(inputs.holidays?.[0]);
     const result = this.op === "workday"
       ? broadcast((s, rawN) => {
           const n    = Math.floor(rawN);
@@ -555,7 +520,6 @@ export class DateTruncNode extends ClassicPreset.Node {
   };
   label: string;
   unit: DateTruncUnit = "month";
-  /** floor_date (start of this period) or ceiling_date (start of the next). */
   ceiling = false;
   cachedResult: BroadcastResult = null;
   width = 190; height = 190;
@@ -577,9 +541,6 @@ export class DateTruncNode extends ClassicPreset.Node {
 }
 
 // ─── TIME ZONE CONVERT ────────────────────────────────────────────────────────
-// "3pm ET in Tokyo": a datetime read in one zone, expressed in another. Pure Intl,
-// DST-correct (the offset is read at the instant). From/To take Geocode's time-zone
-// output or a typed IANA name.
 
 export class TimeZoneConvertNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -602,9 +563,6 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Converted"));
   }
 
-  /** The converted value is a wall-clock moment, so an undocked Display shows the full
-   *  datetime (2026-06-03 14:30), not a bare date or a serial; a docked FC still overrides
-   *  (composes with formatCarryPerOp — compute falls through when this produces a lock). */
   annotationFor(outKey: string): FormatAnnotation | undefined {
     return outKey === "result" ? { format: "datetime", unit: "none" } : undefined;
   }
@@ -613,7 +571,6 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
     const serial = readInput(inputs.datetime, NaN);
     const from = readInput(inputs.from, this.stringLiterals.from ?? "");
     const to = readInput(inputs.to, this.stringLiterals.to ?? "");
-    // Nothing to convert until every part is present — stay quiet rather than erroring.
     if (typeof serial !== "number" || !Number.isFinite(serial)
         || typeof from !== "string" || from.trim() === ""
         || typeof to !== "string" || to.trim() === "") {
@@ -627,8 +584,6 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
 }
 
 // ─── WORLD CLOCK ──────────────────────────────────────────────────────────────
-// A list of zones → the current local time in each, as a frame for a docked Report.
-// Recomputes with the graph; a live tick is the Tier-2 "Ticking Now" item.
 
 export class WorldClockNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -647,7 +602,6 @@ export class WorldClockNode extends ClassicPreset.Node {
     this.addOutput("clock", frameOut("World Clock"));
   }
 
-  // Fixed columns ([[C8]] declareOnce) so downstream pickers know them before a compute.
   frameShape(): Shape {
     return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
   }

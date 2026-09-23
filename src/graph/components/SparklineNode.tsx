@@ -18,8 +18,7 @@ const H = 56;
 
 export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version); // re-resolve on palette/theme change
-  // Mount only the visible figure of the live/minified pair — each is a full
-  // recharts tree, and animations are off globally so the remount is instant.
+  // Mount only the visible figure of the live and minified pair: each is a full recharts tree, and animations are off, so the remount is instant.
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const [op, setOp] = useNodeField(data, "op");
   const rawSeries = toSeries(data.cachedResult);

@@ -1,33 +1,27 @@
 // [[C16]] polarsEngine
-// The web layer's door to the native Rust engine (`src-tauri/src/ipc.rs`); callers
-// must gate on `engineAvailable()`. Rust returns failures SolError-shaped.
 import { isDesktop } from "./fileBridge";
 import { solError, isSolError, ERROR_EXPLANATIONS, type SolError, type SolErrorCode } from "./errorValue";
 import { perfEnabled, recordIpc } from "./perfProbe";
 
-// Cell count for the perf probe — deliberately not JSON.stringify; anything without
-// a frame payload is a handle/opts scalar, so 0.
+// Cell count for the perf probe, deliberately not JSON.stringify; a payload with no frame is a scalar, so 0.
 function estimateCells(args?: Record<string, unknown>): number {
   const cols = (args?.frame as { columns?: { values?: unknown[] }[] } | undefined)?.columns;
   if (Array.isArray(cols)) return cols.reduce((n, c) => n + (c.values?.length ?? 0), 0);
   return 0;
 }
 
-/** The native Rust engine only exists inside the desktop shell. */
 export function engineAvailable(): boolean {
   return isDesktop();
 }
 
-// The real code set, not a "starts with #" heuristic — a foreign or malformed code
-// from the boundary is coerced to #ERROR! rather than trusted.
+// The real code set, so a foreign or malformed code from the boundary becomes #ERROR! rather than being trusted.
 const CANONICAL_CODES: ReadonlySet<string> = new Set(Object.keys(ERROR_EXPLANATIONS));
 
 function isCanonicalCode(c: unknown): c is SolErrorCode {
   return typeof c === "string" && CANONICAL_CODES.has(c);
 }
 
-/** Coerce anything thrown across the IPC boundary to a tagged `SolError` with a
- *  CANONICAL code — Rust sets `__solError` itself, so its code must be re-validated. */
+/** Rust sets `__solError` itself, so its code must be re-validated. */
 export function toSolError(thrown: unknown): SolError {
   if (isSolError(thrown)) {
     return isCanonicalCode(thrown.code) ? thrown : solError("#ERROR!", thrown.message);
@@ -42,13 +36,10 @@ export function toSolError(thrown: unknown): SolError {
   return solError("#ERROR!", "IPC call failed");
 }
 
-// One dynamic import for the session, not one per IPC call; lazy so this module
-// stays Tauri-free at load.
+// One lazy dynamic import per session, so this module stays Tauri-free at load.
 let _core: Promise<typeof import("@tauri-apps/api/core")> | null = null;
 const tauriCore = () => (_core ??= import("@tauri-apps/api/core"));
 
-/** Call a Rust command; throws `#ERROR!` without the desktop engine, so guard with
- *  `engineAvailable()`. */
 export async function ipcInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   if (!engineAvailable()) {
     throw solError("#ERROR!", `IPC '${command}' called without the desktop engine`);
@@ -65,15 +56,12 @@ export async function ipcInvoke<T>(command: string, args?: Record<string, unknow
   }
 }
 
-/** Identity the native engine reports — mirrors `ipc::EngineInfo`. `initFrameBackend`
- *  selects the Polars frame backend when `backend` is "polars". */
 export interface EngineInfo {
   name: string;
   version: string;
   backend: string;
 }
 
-/** Round-trips the IPC boundary as a health check; null in the browser. */
 export async function enginePing(): Promise<EngineInfo | null> {
   if (!engineAvailable()) return null;
   return ipcInvoke<EngineInfo>("engine_ping");

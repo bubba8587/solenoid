@@ -8,21 +8,15 @@ import { useEditableLabel } from "./inlineInput";
 import { stopDragStart } from "../coarse";
 import "./FileLinkNode.css";
 
-/** The extension (lowercase, no dot) of a file name, or "" — drives the badge. */
 function extOf(name: string): string {
   const i = name.lastIndexOf(".");
   return i > 0 ? name.slice(i + 1).toLowerCase() : "";
 }
-/** A file name with its extension stripped — the auto-filled title. */
 function stemOf(name: string): string {
   const i = name.lastIndexOf(".");
   return i > 0 ? name.slice(0, i) : name;
 }
 
-/** A link to a file on disk: title, preview, and an Open button. No sockets — it
- *  carries nothing into the graph. Desktop stores the absolute path and opens the
- *  file in its OS app; on web an attach is session-only (the browser has no path),
- *  so Open works this session and only the name survives a reload. */
 export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
   const [path, setPath] = useState(data.path);
   const [fileName, setFileName] = useState(data.fileName);
@@ -37,8 +31,7 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
   useEffect(() => { setFileName(data.fileName); }, [data.fileName]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
-  // `name` is the display name, `p` the absolute path ("" on web). Writes data.label
-  // directly; the title hook resyncs its display off it when not editing.
+  // `p` is "" on web. Writes data.label directly; the title hook resyncs its display off it when not editing.
   function setLink(name: string, p: string) {
     setPath(p); data.path = p;
     setFileName(name); data.fileName = name;
@@ -75,10 +68,8 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
 
   const ext = extOf(fileName);
   const hasLink = !!fileName;
-  // What Open can act on right now: a desktop path, or a live web pick.
   const canOpen = desktop ? !!path : !!webFile;
-  // Web, reloaded onto a session-less link (or a desktop-saved doc opened on web):
-  // the name shows but there is nothing to open.
+  // Web, reloaded onto a session-only link (or a desktop-saved doc on web): the name shows, with nothing to open.
   const webStale = !desktop && hasLink && !webFile;
 
   return (

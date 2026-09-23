@@ -1,9 +1,8 @@
 // [[C28]] literalsIffEditable
-// The literal inputs' shared editing helpers (Table / Frame / List / Cube Input all edit
-// through the table popup; the Cube Input drills into the others). Pure: text ↔ records.
+// Shared editing helpers for the literal inputs (Table, Frame, List and Cube Input all edit through the table popup).
+// Pure: text to records and back.
 
-/** A cube's stored truth: JSON rows of records. A cell may be a scalar, a list of scalars,
- *  or a list of records (a nested table, or a nested cube when a record carries a list). */
+/** A cell is a scalar, a list of scalars, or a list of records (a nested table, or a nested cube). */
 export type CubeRecord = Record<string, unknown>;
 
 export const DEFAULT_CUBE_TEXT = `[
@@ -11,8 +10,7 @@ export const DEFAULT_CUBE_TEXT = `[
   { "name": "B", "tags": [], "n": 2 }
 ]`;
 
-/** Parse the stored text. Blank → no rows. Anything but a JSON array of objects is an error
- *  with the reason (the card shows it as #VALUE!). */
+/** Blank gives no rows; anything but a JSON array of objects is an error with its reason (shown as #VALUE!). */
 export function parseCubeRecords(text: string): { records: CubeRecord[] } | { error: string } {
   const t = text.trim();
   if (!t) return { records: [] };
@@ -24,16 +22,14 @@ export function parseCubeRecords(text: string): { records: CubeRecord[] } | { er
   return { records: v as CubeRecord[] };
 }
 
-/** Records → the stored text (two-space JSON, one record per line block). */
 export function cubeRecordsToText(records: readonly CubeRecord[]): string {
   return JSON.stringify(records, null, 2);
 }
 
 
-/** A path into the records: alternating row index and key, repeated per nesting level. */
+/** Alternating row index and key, repeated per nesting level. */
 export type CubePath = (number | string)[];
 
-/** Read the value at a path ([row, key, row, key, …]); undefined when absent. */
 export function getAtPath(records: readonly CubeRecord[], path: CubePath): unknown {
   let cur: unknown = records;
   for (const step of path) {
@@ -43,7 +39,6 @@ export function getAtPath(records: readonly CubeRecord[], path: CubePath): unkno
   return cur;
 }
 
-/** A copy of the records with `value` written at the path (creating rows/keys as needed). */
 export function setAtPath(records: readonly CubeRecord[], path: CubePath, value: unknown): CubeRecord[] {
   const next = structuredClone(records) as CubeRecord[];
   if (path.length === 0) return Array.isArray(value) ? (value as CubeRecord[]) : next;
@@ -58,8 +53,7 @@ export function setAtPath(records: readonly CubeRecord[], path: CubePath, value:
   return next;
 }
 
-/** Is a list of records frame-shaped (every value scalar) — the Frame editor's job — or
- *  cube-shaped (some value is a list / nested records) — the Cube editor drills instead. */
+/** Frame-shaped when every value is scalar; cube-shaped when some value is a list or nested records. */
 export function recordsShape(v: unknown): "frame" | "cube" | "list" | "scalar" | "empty" {
   if (v == null) return "scalar";
   if (!Array.isArray(v)) return typeof v === "object" ? "cube" : "scalar";
@@ -70,8 +64,7 @@ export function recordsShape(v: unknown): "frame" | "cube" | "list" | "scalar" |
   return nested ? "cube" : "frame";
 }
 
-/** A scalar typed into a cell → its value: numbers and booleans parse, blank is null,
- *  everything else stays text (a date stays its text; the cube's typing reads it). */
+/** Numbers and booleans parse, blank is null, everything else stays text. */
 export function parseCellText(text: string): unknown {
   const t = text.trim();
   if (t === "") return null;
@@ -80,7 +73,6 @@ export function parseCellText(text: string): unknown {
   return text;
 }
 
-/** A cell value → the text the editor shows (lists and records show as JSON). */
 export function cellTextOf(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "object") return JSON.stringify(v);

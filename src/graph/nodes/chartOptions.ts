@@ -1,5 +1,4 @@
-// [[C96]] chartOptionsAreMatplotlib: a flat `key=value;…` string in pyplot kwarg names;
-// unknown keys are ignored.
+// [[C96]] chartOptionsAreMatplotlib
 
 export interface ChartOptions {
   title?: string;
@@ -11,17 +10,10 @@ export interface ChartOptions {
   ymin?: number;
   ymax?: number;
   linewidth?: number;
-  // marker radius in px (matplotlib's markersize)
   markersize?: number;
   alpha?: number;
-  // matplotlib's font.size rcParam; render surfaces scale every text size by fontsize/10.
   fontsize?: number;
-  // Pie slice category labels: outside on a leader (the default when names are present),
-  // inside/on the slice with a backing plate, or off. Only ever carries an explicit choice.
   pielabels?: PieLabelMode;
-  // Radar radial scale: "axis" normalizes each spoke to [0,1] by its own max so no one axis
-  // (a dollar column beside /10 scores) swamps the rest, a negative plotting at the centre;
-  // "shared" keeps one raw radius.
   radarscale?: RadarScale;
 }
 
@@ -38,8 +30,6 @@ function toBool(v: string): boolean | undefined {
   return undefined;
 }
 
-/** off/outside/inside, with on→outside and center→inside as friendly aliases; a bare
- *  boolean on/off still works (an old save, or a plain toggle). */
 function toPieLabelMode(v: string): PieLabelMode | undefined {
   const s = v.trim().toLowerCase();
   if (s === "inside" || s === "center" || s === "on-chart") return "inside";
@@ -48,7 +38,6 @@ function toPieLabelMode(v: string): PieLabelMode | undefined {
   return b === undefined ? undefined : b ? "outside" : "off";
 }
 
-/** per-axis / shared, with normalize→axis and raw→shared as friendly aliases. */
 function toRadarScale(v: string): RadarScale | undefined {
   const s = v.trim().toLowerCase();
   if (s === "axis" || s === "normalize" || s === "normalized" || s === "independent") return "axis";
@@ -63,9 +52,6 @@ function toNum(v: string): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-/** Tolerant parse: whitespace trimmed, keys case-insensitive, booleans as
- *  on/off/true/false/1/0, `ylim=min,max` split into ymin/ymax (a bare side sets one
- *  bound), unrecognised keys skipped. */
 export function parseChartOptions(input: string | null | undefined): ChartOptions {
   const opts: ChartOptions = {};
   if (!input) return opts;
@@ -99,13 +85,12 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       }
       case "ymin":   { const n = toNum(val); if (n !== undefined) opts.ymin = n; break; }
       case "ymax":   { const n = toNum(val); if (n !== undefined) opts.ymax = n; break; }
-      default: break; // unrecognised matplotlib kwarg → ignored
+      default: break;
     }
   }
   return opts;
 }
 
-/** A resolved Chart Builder field set (wired value ?? inline literal per field). */
 export interface ChartBuilderFields {
   title?: string;
   xlabel?: string;
@@ -115,10 +100,7 @@ export interface ChartBuilderFields {
   marker?: string;
   pielabels?: string;
   radarscale?: string;
-  /** The Gantt's time-scale preset (`zoom=week`); read by the figure's own view parser. */
   zoom?: string;
-  // The rest of the Gantt figure's view keys (parseGanttViewOptions); each rides the
-  // options string under the same name the figure reads.
   layout?: string;
   tiers?: string;
   fit?: string;
@@ -132,7 +114,6 @@ export interface ChartBuilderFields {
   minutes?: string;
   window?: string;
   columns?: string;
-  // The Record figure's own option keys (readCardSize / readClamp in visual.ts).
   cardsize?: string;
   clamp?: string;
   ymin?: number | null;
@@ -143,8 +124,6 @@ export interface ChartBuilderFields {
   fontsize?: number | null;
 }
 
-/** Only set fields are emitted, so an untouched builder yields ""; the two Y bounds
- *  collapse into matplotlib's single `ylim=min,max`. */
 export function serializeChartOptions(f: ChartBuilderFields): string {
   const parts: string[] = [];
   const str = (k: string, v: string | undefined) => {
@@ -189,17 +168,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   return parts.join(";");
 }
 
-// Which option keys each figure's RENDERER actually reads; keep in sync with the render
-// layer when a view learns an option. The builder still SERIALIZES every set field — an
-// unread key is inert, and one builder can feed several charts, so narrowing is only which
-// fields the form OFFERS.
-//   • Each Chart-node op is its own target: line/area add marker + line width, pie adds
-//     pielabels (and drops the axes), the categorical slices keep only title/color/font.
-//   • Histogram renders through the column path → axes but no marker/line width.
-//   • The payload figures (KPI / Gauge / Proportion / Sankey) fold fontsize into their
-//     text scale; title flows to the figure title everywhere.
-//   • The canvas figures (Waterfall / Candlestick / Boxplot / Calendar Heatmap) read
-//     nothing but the title.
+// Update these key lists whenever a renderer learns or drops an option.
 
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "zoom"
@@ -207,9 +176,6 @@ export type ChartBuilderKey =
   | "cardsize" | "clamp"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
-// The Chart node's own ops are first-class targets so the form can show ONLY the options
-// that op reads (pielabels for Pie, line width for Line, none of that for Bar); the rest are
-// the standalone figure nodes. The `group` drives the target dropdown's two-level layout.
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter"
   | "pie" | "radar" | "radialbar" | "funnel"
@@ -223,8 +189,6 @@ const LINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "markersize", "alpha", "fontsize"];
-// The categorical ops (pie / radar / radial / funnel) paint from the palette — a single
-// `color` is inert, so it isn't offered.
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
 const RADAR_KEYS: readonly ChartBuilderKey[] = ["title", "grid", "radarscale", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
@@ -235,19 +199,10 @@ const AXED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
-// The hand-rolled Gantt figure (chart op "gantt", the Gantt node), not the Schedule
-// node's Mermaid text: every view key the figure's parser reads, so the builder can
-// drive it without the options string. The two layouts read DIFFERENT keys, so the
-// builder offers different sets (see chartBuilderKeys): the timeline honors the full
-// list; the month-calendar (layout=calendar) draws its own grid and ignores the scale,
-// bars, links and grid pane — it honors only critical, minutes, window (plus title +
-// fontsize + the layout switch itself), and outlines today / shades weekends / labels
-// its chips unconditionally, so those toggles are timeline-only too.
 const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"];
 const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "layout", "critical", "minutes", "window"];
-// The Record figure: title/fontsize plus its own gallery-tile keys (cardsize, clamp).
 const RECORD_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "cardsize", "clamp"];
 
@@ -279,9 +234,6 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])
   .map((id) => ({ id, ...CHART_BUILDER_TARGETS[id] }));
 
-/** Which option keys the builder OFFERS for a target, narrowed by any layout-like mode.
- *  Only the Gantt target splits today: its month-calendar layout reads a smaller set than
- *  the timeline, so offering the timeline's scale/bar/link options there would be inert. */
 export function chartBuilderKeys(target: ChartTargetId, layout: string | undefined): readonly ChartBuilderKey[] {
   if (target === "gantt" && (layout ?? "").trim().toLowerCase() === "calendar") return GANTT_CALENDAR_KEYS;
   return (CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column).keys;

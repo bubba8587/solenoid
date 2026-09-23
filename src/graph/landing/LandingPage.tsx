@@ -18,9 +18,6 @@ import {
 } from "./LandingScenes";
 import "./LandingPage.css";
 
-// A standalone route App.tsx swaps the whole app for under ?landing. The hero is the
-// ONE live stage; motion is gated on a `--anim` class set after mount, so content
-// never depends on a transition firing. Chrome comes from siteNav.
 
 export default function LandingPage() {
   const anim = useRevealAnim();

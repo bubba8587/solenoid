@@ -21,7 +21,6 @@ const AlertSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/** The fired-alerts HUD section, positioned by its parent <HudStack/>. */
 export function AlertLayer() {
   const [collapsed, setCollapsed] = useState(true);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -58,8 +57,7 @@ export function AlertLayer() {
   );
 
   const chips = events.map((ev) => {
-    // Only the leading label is kind-colored; match the label exactly first, since a
-    // label may itself contain a colon.
+    // Only the leading label is kind-colored; match it exactly first, since a label may contain a colon.
     const title = ev.message.startsWith(ev.label) ? ev.label : (ev.message.split(":")[0] ?? ev.message);
     const rest = ev.message.slice(title.length);
     return (

@@ -1,9 +1,7 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit)
-// Open/close state for the Add/Edit Connection dialog, mounted once in App.
 type Prefill = { nodeId: string; socketKey: string };
 
 export type ConnDialogReq = {
-  // When set, editing this connection (re-wires it: delete old + add new).
   editId?: string;
   src?: Prefill;
   tgt?: Prefill;
@@ -11,7 +9,7 @@ export type ConnDialogReq = {
 
 import { createValueStore } from "./storeKit";
 
-const core = createValueStore<ConnDialogReq>(); // null = closed
+const core = createValueStore<ConnDialogReq>();
 
 export const connectionDialog = {
   ...core,

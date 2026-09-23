@@ -1,6 +1,5 @@
 // [[C98]] paletteMirrorsMenubar (the one menu model)
-// ONE source of truth for the MenuBar dropdowns AND the Command Palette, so every menubar
-// action is a palette command by construction. `buildMenus()` re-reads store state per call.
+// One source for the MenuBar and the Command Palette, so every menubar action is a palette command by construction.
 import { appThemeStore } from "./appTheme";
 import { canvasLockStore } from "./canvasLock";
 import { frStore } from "./frStore";
@@ -26,9 +25,7 @@ import { gridSnapStore } from "./gridSnapStore";
 import { APP_LOCALE } from "./locale";
 import { drawModeStore } from "./drawnCables";
 
-// The public marketing site. Desktop has no address bar, so this is the only way there;
-// on web the current origin serves the same route (dev/preview/prod each land on their
-// own landing), so open that and fall back to the hosted site off-origin.
+// Desktop has no address bar, so this is the only way to the site; on web the current origin serves the same route.
 const HOSTED_SITE = "https://solenoid-ngc.vercel.app";
 function openWebsite(): void {
   const onOrigin = /^https?:$/.test(window.location.protocol);
@@ -40,7 +37,6 @@ export type MenuItem =
   | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean };
 export type Menu = { label: string; items: MenuItem[] };
 
-// A synthetic keydown, so the Canvas keyboard handler runs the real command.
 export function fireMenuKey(code: string, opts: { key?: string; ctrl?: boolean; shift?: boolean } = {}) {
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
@@ -68,13 +64,11 @@ export function buildMenus(): Menu[] {
         { label: "New Document", onClick: () => void documentStore.newBlank() },
         { label: "Open…", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
         { sep: true },
-        // Work autosaves continuously; Save writes the graph out to its .json file.
         { label: "Save", shortcut: "Ctrl+S", onClick: () => void saveToDisk() },
         { label: "Save As…", shortcut: "Ctrl+Shift+S", onClick: () => void saveToDisk({ forceDialog: true }) },
         { sep: true },
         { label: "Document properties…", onClick: () => docPropertiesPanel.open() },
         { sep: true },
-        // A full rebuild from the saved graph, which replays the cinematic load reveal.
         { label: "Reload document", shortcut: "Ctrl+Shift+L", onClick: () => void documentStore.reloadCurrent() },
         ...(isDesktop() ? ([{ sep: true }, {
           label: "Open documents folder",
@@ -165,7 +159,7 @@ export function buildMenus(): Menu[] {
         {
           label: "Automatic",
           checked: calcMode === "auto",
-          // Switching to Automatic catches up on everything suppressed while manual.
+          // Catches up on everything suppressed while manual.
           onClick: () => { if (calcModeStore.setMode("auto")) void requestRecalc(); },
         },
         {
@@ -176,7 +170,7 @@ export function buildMenus(): Menu[] {
         {
           label: "Sketch",
           checked: calcMode === "sketch",
-          // Sketch recomputes live, so catch up like switching to Automatic does.
+          // Sketch recomputes live, so it catches up like Automatic.
           onClick: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); },
         },
       ],

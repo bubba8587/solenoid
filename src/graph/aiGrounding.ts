@@ -1,6 +1,4 @@
 // [[B13]] aiInScope, [[C8]] declareOnce
-// The model-facing grounding spec for authoring graphs in the text form, GENERATED from
-// `nodeCatalog.ts` and the live classes — never hand-authored.
 
 import { ClassicPreset } from "rete";
 import { buildCatalog } from "./catalogUtils";
@@ -12,7 +10,7 @@ import { opVocabByCtor } from "./opVocab";
 import type { FilterOp } from "./frameVerbs";
 import type { FrameColType } from "./frame";
 
-// A Record over the UNION, so tsc enforces the condition-row op list stays complete.
+// A Record over the union, so tsc keeps the condition-row op list complete.
 const FILTER_OP_DOC: Record<FilterOp, string> = {
   gt: "greater than", gte: "at least", lt: "less than", lte: "at most",
   eq: "equals", neq: "not equal",
@@ -24,7 +22,6 @@ const FILTER_OP_DOC: Record<FilterOp, string> = {
 };
 const FRAME_COL_TYPES: Record<FrameColType, true> = { number: true, string: true, date: true, logical: true };
 
-// ─── Socket signature of a headless instance ────────────────────────────────────
 
 function sig(record: Record<string, unknown> | undefined, markMulti: boolean): string {
   const parts: string[] = [];
@@ -43,19 +40,16 @@ interface ClassInfo {
   variants: Array<{ leaf: NodeCatalogEntry; op: string | null; inputs: string; outputs: string }>;
   litKeys: string[];
   strKeys: string[];
-  /** Declares the map with no default keys; inline values are accepted on input-row keys. */
   litOpen: boolean;
   strOpen: boolean;
   initKeys: string[];
   hidden: boolean;
 }
 
-/** Emit the full spec; a fresh walk each call — `groundingSpec()` is the cached read. */
 export function buildGroundingSpec(): string {
   const classes = new Map<string, ClassInfo>();
   const order: string[] = [];
 
-  // Walk the full catalog (packs included), grouping leaves by class.
   function visit(entries: CatalogEntry[], path: string[]): void {
     for (const e of entries) {
       if (e.type === "category") {
@@ -68,14 +62,13 @@ export function buildGroundingSpec(): string {
         try {
           inst = leaf.create() as ClassicPreset.Node;
         } catch {
-          continue; // a factory that can't construct standalone has no authoring story
+          continue;
         }
         const anyInst = inst as unknown as Record<string, unknown>;
         const ctorName = inst.constructor.name;
         let info = classes.get(ctorName);
         if (!info) {
-          // extractInit reads OFF the instance, so a default instance names exactly the
-          // fields the class persists. width/height are geometry, carried by the sidecar.
+          // A default instance names exactly the fields the class persists; width and height are geometry, not authoring.
           const roundTrip = Object.keys(extractInit(inst)).filter((k) => k !== "width" && k !== "height");
           const hasLits = typeof anyInst.literals === "object" && anyInst.literals !== null;
           const hasStrs = typeof anyInst.stringLiterals === "object" && anyInst.stringLiterals !== null;
@@ -95,7 +88,7 @@ export function buildGroundingSpec(): string {
           classes.set(ctorName, info);
           order.push(ctorName);
         }
-        info.hidden = info.hidden && leaf.hidden === true; // hidden only if EVERY leaf is
+        info.hidden = info.hidden && leaf.hidden === true;
         info.variants.push({
           leaf,
           op: typeof anyInst.op === "string" ? (anyInst.op as string) : null,
@@ -108,7 +101,6 @@ export function buildGroundingSpec(): string {
 
   visit(buildCatalog(false), []);
 
-  // The registry's full vocabulary; catalog leaves can be a subset (hidden ops).
   const opsByCtor = new Map<string, Array<{ op: string; label: string }>>();
   for (const decl of NODE_OPS) {
     if (decl.ops) opsByCtor.set(decl.ctor.name, decl.ops.map((o) => ({ op: o.op, label: o.label })));
@@ -209,7 +201,7 @@ export function buildGroundingSpec(): string {
   let lastTop = "";
   for (const ctorName of order) {
     const info = classes.get(ctorName)!;
-    if (info.hidden) continue; // deprecated: loads, but must not be authored
+    if (info.hidden) continue;
     const top = info.path[0] ?? "Docs & Files";
     if (top !== lastTop) {
       w();
@@ -232,7 +224,6 @@ export function buildGroundingSpec(): string {
     if (info.strKeys.length > 0) inline.push(`str: ${info.strKeys.join(", ")}`);
     else if (info.strOpen) inline.push(`str: (input-row keys)`);
     if (inline.length > 0) w(`- inline: ${inline.join(" · ")}`);
-    // The registry's full list when the class has one, else the catalog leaves.
     const registryOps = opsByCtor.get(ctorName);
     if (registryOps && allSameSockets) {
       w(`- ops: ${registryOps.map((o) => `\`${o.op}\` (${o.label})`).join(", ")}`);
@@ -243,14 +234,11 @@ export function buildGroundingSpec(): string {
         w(`- ${opPart}${v.leaf.label}${sockets}`);
       }
     } else {
-      // A dropdown-only op family has no NODE_OPS entry, but the shared vocabulary
-      // derivation still knows its tokens.
       const vocab = opVocabByCtor().get(ctorName);
       if (vocab && vocab.size >= 2) {
         w(`- ops: ${[...vocab].map(([op, label]) => `\`${op}\` (${label})`).join(", ")}`);
       }
     }
-    // Ops with no Add-menu leaf of their own are still valid `op=` values.
     const hidden = info.variants.flatMap((v) => v.leaf.hiddenOps ?? []);
     const listed = new Set(info.variants.map((v) => v.op));
     for (const h of hidden.filter((h, i, a) => !listed.has(h.op) && a.findIndex((x) => x.op === h.op) === i)) {
@@ -262,12 +250,10 @@ export function buildGroundingSpec(): string {
   return out.join("\n");
 }
 
-// ─── Cached read for the in-app consumer ────────────────────────────────────────
 
 let _spec: string | null = null;
 
-/** Built once per session: the system prompt must be byte-identical across requests or the
- *  provider's prompt cache misses. */
+/** Built once per session: the system prompt must stay byte-identical across requests or the provider's prompt cache misses. */
 export function groundingSpec(): string {
   if (_spec === null) _spec = buildGroundingSpec();
   return _spec;

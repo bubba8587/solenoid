@@ -2,11 +2,9 @@
 import { useSyncExternalStore } from "react";
 import { settingsStore, type Settings } from "./settingsStore";
 import { useEscapeToClose } from "./components/useEscapeToClose";
-// Reuse Settings' segment-pill styles (`.solenoid-settings__segment/__segbtn`) so the
-// popover and the Settings rows can't drift; the file is fully scoped to those classes.
+// Reuses Settings' segment-pill styles so the popover and the Settings rows can't drift.
 import "./Settings.css";
 
-// Labels only, no sentences (DESIGN §7): the segment buttons carry the meaning.
 const TIDY_ROWS: ReadonlyArray<{
   key: "tidyDirection" | "tidyDensity" | "tidyWidthCap";
   label: string;
@@ -17,11 +15,9 @@ const TIDY_ROWS: ReadonlyArray<{
   { key: "tidyWidthCap", label: "Width cap", options: [["off", "Off"], ["2", "2"], ["3", "3"], ["4", "4"]] },
 ];
 
-/** The Tidy-knobs popover off the top-bar Tidy button. Mirrors Settings' segment rows,
- *  writing straight to `settingsStore` (both ELK call sites read them at layout time).
- *  Clickaway close is owned by the opener in TopBar; Escape closes here. */
+/** Writes straight to settingsStore, which both ELK call sites read at layout time. Clickaway close is owned by the
+ *  opener in TopBar; Escape closes here. */
 export function TidyOptionsPopover({ onClose }: { onClose: () => void }) {
-  // Re-render on a knob change so the active pill re-highlights.
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
   useEscapeToClose(onClose);
   return (

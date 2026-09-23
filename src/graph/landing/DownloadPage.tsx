@@ -5,7 +5,6 @@ import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 
-// The /download route: static DOM only; chrome comes from siteNav.
 
 export default function DownloadPage() {
   const anim = useRevealAnim();

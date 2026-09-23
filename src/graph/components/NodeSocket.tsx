@@ -1,4 +1,4 @@
-// [[C11]]
+// [[C11]] socketBox12
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore, useRef, useState, useLayoutEffect, useEffect, type ReactNode } from "react";
 import type { ClassicPreset } from "rete";
@@ -13,23 +13,17 @@ import { getActiveEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 import { SocketComponent, LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./SocketComponent";
 
-// Hover-intent delay before the example hint pops (tooltip-like; a cable drag
-// crossing sockets must not flash tables).
+// Hover intent, so a cable drag crossing sockets never flashes hints.
 const HINT_DELAY_MS = 300;
-// The live VALUE peek dwells a touch longer — it's a bigger surface and shouldn't
-// flash as the pointer crosses output sockets during ordinary work / cable routing.
 const PEEK_DELAY_MS = 400;
 
-/** The declared example hint for this input, if its node's class carries one. */
 function hintFor(side: Side, nodeId: string, socketKey: string): FrameHint | undefined {
   if (side !== "input") return undefined;
   const node = getActiveEditor()?.getNode(nodeId);
   return node ? frameHintFor(node, socketKey) : undefined;
 }
 
-// Every dataType SocketComponent draws as a rounded SQUARE (so the hover/lit highlight and
-// the ::before hit area mirror the dot instead of defaulting to a circle). Derived from the
-// SAME sets SocketComponent renders from — a combo/list/table can't drift into a round halo.
+// Derived from the sets SocketComponent draws from, so a square glyph never gets a round halo or hit area.
 const SQUARE_TYPES = new Set<string>([
   ...LIST_TYPES, ...TABLE_TYPES, ...Object.keys(COMBO_COLORS), "frame", "chart", "document",
 ]);
@@ -47,8 +41,6 @@ type Props = {
   className?: string;
 };
 
-/** Measures against the `.solenoid-node__content` offsetParent, which sits BELOW the
- *  header, so the returned `top` needs no re-measure when the header grows. */
 function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
@@ -61,8 +53,6 @@ function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | und
   return top;
 }
 
-/** The dot stays anchored to the card edge — the row must NOT become a positioning
- *  context. */
 export function MeasuredSocketRow({
   side, socketKey, nodeId, emit, payload, children, hero = false,
 }: {
@@ -72,16 +62,11 @@ export function MeasuredSocketRow({
   emit?: Emit;
   payload: ClassicPreset.Socket;
   children: ReactNode;
-  /** A tall box rather than a compact label|value row: drops the fixed 22px row height
-   *  so it can't overlap its neighbors. */
+  /** A tall box: drops the fixed 22px row height so it can't overlap its neighbors. */
   hero?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const top = useRowSocketTop(ref);
-  // Touch trigger for the frame-input example hint: the DOT scales with the
-  // canvas transform (a few px at overview zooms — no fingertip lands on it),
-  // so on touch the WHOLE ROW is the tap target. Form controls in the row keep
-  // their own tap meaning.
   const rowHintTap = (e: React.PointerEvent) => {
     if (e.pointerType === "mouse") return;
     if ((e.target as HTMLElement).closest("input, select, textarea, button, [contenteditable='true']")) return;
@@ -91,7 +76,6 @@ export function MeasuredSocketRow({
     frameHintStore.open({ kind: "example", hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
   };
   return (
-    // Output rows get a modifier so they SURVIVE collapse into the output values.
     <div ref={ref} onPointerUp={rowHintTap} className={"solenoid-node__io-row" + (side === "output" ? " solenoid-node__io-row--output" : "") + (hero ? " solenoid-node__io-row--hero" : "")}>
       {top !== undefined && (
         <NodeSocket
@@ -108,12 +92,10 @@ export function MeasuredSocketRow({
   );
 }
 
-/** The highlight flash over a socket dot — the same geometry as the glyph. */
 export function SocketLitRing({ shape }: { shape: "circle" | "square" | "cube" }) {
   return (
     <svg
       aria-hidden="true"
-      // Class lets pill contexts hide this dot-shaped flash and draw a pill instead.
       className="solenoid-socket-lit"
       style={{
         position: "absolute",
@@ -128,8 +110,7 @@ export function SocketLitRing({ shape }: { shape: "circle" | "square" | "cube" }
     >
       {shape === "cube"
         ? (
-          // Group opacity (never per-element), or the fill/stroke overlap doubles
-          // into a dark rim.
+          // Group opacity, never per element, or the fill and stroke overlap doubles into a dark rim.
           <g transform={cubeTransform(1)} opacity="0.35" style={{ mixBlendMode: "overlay" }}>
             <path d={CUBE_FILL_PATH} fill="white" stroke="white" strokeWidth="16" strokeLinejoin="round" strokeLinecap="round" />
           </g>
@@ -144,41 +125,26 @@ export function SocketLitRing({ shape }: { shape: "circle" | "square" | "cube" }
 
 export function NodeSocket({ side, socketKey, nodeId, payload, top, className }: Props) {
   const FlowSocket = useFlowSocket();
-  // A flipped node mirrors its sockets: inputs move to the right edge, outputs to the
-  // left. `data-socket-side` below stays the SEMANTIC side (DOM lookups resolve by the
-  // measured dot, not this attribute) — only the visual edge moves.
+  // `data-socket-side` stays the semantic side; only the visual edge moves (DOM lookups resolve by the measured dot).
   const flipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(nodeId));
   const visualSide: Side = flipped ? (side === "input" ? "output" : "input") : side;
-  // The 12px dot straddles the card edge: -5 for card/group-anchored sockets, while
-  // .solenoid-node__content sits 1px inside the border and sets --node-socket-x: -6px.
+  // -5 for card- and group-anchored sockets; .solenoid-node__content overrides the var (nodeCard.css).
   const x = "var(--node-socket-x, -5px)";
   const horizontal = visualSide === "input" ? { left: x } : { right: x };
-  // No explicit `top` → center on the value box via --out-socket-top, else 50% of the
-  // CONTENT wrapper — not the card, or a node with no value box centers over the header.
+  // 50% of the content wrapper, not the card, or a card with no value box centers over the header.
   const vertical =
     top === undefined
       ? { top: "var(--out-socket-top, 50%)", marginTop: -6 }
       : { top };
 
   const myKey = dragSocketKey(nodeId, socketKey);
-  // Own flag only: a hover/drag highlight change re-renders the sockets it touches,
-  // not every socket on the canvas.
+  // Own flag only, so a highlight change re-renders just the sockets it touches.
   const lit = useSyncExternalStore(socketHighlightStore.subscribe, () => socketHighlightStore.isHighlighted(myKey));
   const isSquare = payload instanceof SolenoidSocket && SQUARE_TYPES.has(payload.dataType);
   const isCube = payload instanceof SolenoidSocket && payload.dataType === "cube";
   const shape = isCube ? "cube" : isSquare ? "square" : "circle";
   const typeLabel = payload instanceof SolenoidSocket ? SOCKET_TYPE_LABELS[payload.dataType] : undefined;
 
-  // Socket hover overlay (frameHint.ts) — the MOUSE half: after a dwell, a floating
-  // layer pops beside the dot. A live VALUE peek for an OUTPUT socket or a WIRED input
-  // (the socket's value as a scaled-down Display), else the declared EXAMPLE hint for an
-  // unwired frame input — never both. The value peek arms ONLY when the value shows as a
-  // summary chip (isChipSummaryPeek) — a frame/cube/table/list/chart/diagram/lambda —
-  // whose content is hidden behind the chip; a scalar/string/error is already in full on
-  // the face, so peeking it would just repeat it. Leaving, pressing (a cable pick), unmount, or a
-  // wheel hides it. The dot has NO touch trigger: a touch press begins the cable pick,
-  // which captures the pointer, so the tap's up never reaches this wrapper — the touch
-  // trigger is the whole row (MeasuredSocketRow's example-hint path; tree/specs/canvas/touch-gestures.md).
   const hint = hintFor(side, nodeId, socketKey);
   const hintTimer = useRef<number | null>(null);
   const [peekShown, setPeekShown] = useState(false);
@@ -189,9 +155,6 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
   };
   useEffect(() => cancelHint, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // The socket's live value + the node whose formatting frames it: an output reads its
-  // own cached output; a wired input reads its SOURCE output (so units/formats match the
-  // producer). An unwired input has none.
   const resolvePeekValue = (): { value: unknown; nodeId: string } | null => {
     if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId };
     const conn = getActiveEditor()?.getConnections()
@@ -205,7 +168,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
     const el = e.currentTarget as HTMLElement;
     const peek = resolvePeekValue();
     const willValue = !!peek && isChipSummaryPeek(peek.value);
-    if (!willValue && !hint) return; // nothing to show — don't arm
+    if (!willValue && !hint) return;
     if (hintTimer.current !== null) clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => {
       hintTimer.current = null;
@@ -223,8 +186,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
       onPointerLeave={cancelHint}
       className={(className ?? "") + (lit ? " solenoid-socket--lit" : "")}
       style={{ position: "absolute", ...horizontal, ...vertical }}
-      // The hover overlay (example hint OR value peek) replaces the native type tooltip
-      // while it is up — both at once would overlap.
+      // The hover overlay replaces the native type tooltip while it is up.
       title={hint || peekShown ? undefined : typeLabel}
       onPointerDown={cancelHint}
       data-socket-key={socketKey}
@@ -233,9 +195,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
       data-socket-shape={isSquare ? "square" : "circle"}
     >
       {FlowSocket ? (
-        // Inside the RF tree the dot is an RF Handle (injected — no @xyflow
-        // import here). Outside it (a static render with no provider) the bare
-        // glyph draws with no wiring affordance.
+        // Outside the RF tree (a static render with no provider) the bare glyph draws with no wiring affordance.
         <FlowSocket side={side} socketKey={socketKey} payload={payload} shape={shape} lit={lit} flipped={flipped} />
       ) : (
         <SocketComponent data={payload} />

@@ -1,6 +1,5 @@
 // [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault
-// Test-only: instantiate a pack's pre-set Expression entry exactly the way the Add
-// menu would, so a typo'd formula string can't ship silently.
+// Test-only.
 
 import { ExpressionNode, EquationNode } from "../rete-nodes";
 import { parseEquation } from "../equationSolve";
@@ -22,8 +21,7 @@ export function evalFormula(
   e: FormulaPackEntry,
   inputs: Record<string, number | string | (number | string)[]>,
 ): unknown {
-  // Seed literals like the Add menu does (formulaNode), so an unprovided config variable
-  // takes its preset default (e.g. Fiscal Quarter's start = 1) rather than 0.
+  // Seed literals as the Add menu does, or an unprovided config variable reads 0 instead of its preset default.
   const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs, literals: e.literals });
   const env: Record<string, unknown[]> = {};
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];

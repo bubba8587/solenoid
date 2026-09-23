@@ -5,24 +5,17 @@ export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
 import { solError, type SolError } from "../errorValue";
 
-// Declared PARAMETERS stay unbound; every OTHER variable becomes an input socket and is
-// CAPTURED into the closure at compute time. No recursion, no lambdas returning lambdas.
-
 export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
 }
 
-/** A consumer's call signature; the first `required` vars are mandatory. A by-name
- *  consumer's params must be drawn from these names, order-free ([[C50]] lambdaBindsByName). */
+/** The first `required` vars are mandatory; a lambda's params are drawn from `vars` in any order ([[C50]] lambdaBindsByName). */
 export interface LambdaSig { vars: string[]; required: number }
 
-/** Human signature for the advisory, optional slots in brackets: `acc, x, [i]`. */
 export function formatLambdaSig(sig: LambdaSig): string {
   return sig.vars.map((v, i) => (i < sig.required ? v : `[${v}]`)).join(", ");
 }
 
-/** Consumer variables the lambda USED but did not DECLARE — by-name binding can't reach
- *  them, so they silently became captured constants (0); non-empty → the card advises. */
 export function undeclaredConsumerVars(captured: string[] | undefined, sig: LambdaSig): string[] {
   return (captured ?? []).filter((c) => sig.vars.includes(c));
 }
@@ -33,7 +26,6 @@ type Compiled = (...args: unknown[]) => unknown;
 
 export class LambdaNode extends ClassicPreset.Node {
   label: string;
-  /** Comma-separated parameter names, e.g. "x" or "acc, x". */
   params: string;
   expr: string;
   literals: Record<string, number> = {};
@@ -42,14 +34,11 @@ export class LambdaNode extends ClassicPreset.Node {
   width = 220;
   height = 212;
 
-  /** Prose per variable, kept OUT of the formula so KaTeX never renders it. */
   varDescriptions: Record<string, string> = {};
 
-  // Derived — recomputed by _rebuild() whenever expr/params change.
   captured: string[] = [];
   compiled: Compiled | null = null;
 
-  /** Params + captured, deduped — extractInit filters varDescriptions against it. */
   get varNames(): string[] {
     const params = this.paramList();
     return [...params, ...this.captured.filter((v) => !params.includes(v))];
@@ -70,13 +59,9 @@ export class LambdaNode extends ClassicPreset.Node {
     return this.params.split(",").map((s) => s.trim()).filter(Boolean);
   }
 
-  /** Returns { added, removed } so the caller drops cables for removed sockets BEFORE
-   *  removeInput (same contract as ExpressionNode._rebuild). */
   _rebuild(): { added: string[]; removed: string[] } {
     const params = this.paramList();
     const prev = new Set(this.captured);
-    // Free variables AND @names both grow a socket; at row-eval, columns/builtins win
-    // over the capture, and `row`/`rows` are builtins so they capture nothing.
     const next = [...new Set([...extractVariables(this.expr), ...atColNames(this.expr)])]
       .filter((v) => !params.includes(v) && v !== "row" && v !== "rows");
     const nextSet = new Set(next);
@@ -98,8 +83,6 @@ export class LambdaNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[]>): { result: LambdaValue | SolError | null } {
-    // A broken lambda emits a tagged error down its cable so the consumer's guard chains
-    // it; a blank lambda would silently no-op instead.
     const params = this.paramList();
     if (!params.every((p) => IDENT.test(p))) {
       this.cachedValue = null;
@@ -114,10 +97,8 @@ export class LambdaNode extends ClassicPreset.Node {
       return { result: solError("#SYNTAX!", hint ?? "The lambda body has a syntax error") };
     }
     const compiled = this.compiled;
-    // Captured values resolve NOW, so a consumer never reaches back into the graph.
     const capturedVals = this.captured.map((v) => readInput(inputs[v], this.literals[v] ?? 0));
-    // IDENTITY-STABLE output: consumers and the backend upload cache key memos on value
-    // identity, so an unchanged recompute must return the SAME LambdaValue object.
+    // An unchanged recompute must return the same LambdaValue object: consumers and the backend upload cache memo on identity.
     const descJson = JSON.stringify(this.varDescriptions);
     const last = this._lastBuild;
     if (
@@ -137,6 +118,5 @@ export class LambdaNode extends ClassicPreset.Node {
     return { result: value };
   }
 
-  /** What the last emitted LambdaValue was built from (identity memo). */
   private _lastBuild: { expr: string; params: string; descJson: string; capturedVals: unknown[] } | null = null;
 }

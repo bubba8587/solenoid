@@ -1,6 +1,4 @@
-// [[C89]] standoffsSolveLast. Mechanics: tree/specs/canvas/standoffs.md.
-// Direction is encoded by `a.anchor`: the axis points from a toward b, so
-// `min ≤ dot(Pb − Pa, axis) ≤ max` with positive min/max.
+// [[C89]] standoffsSolveLast
 
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 export type StandoffAnchor = "n" | "e" | "s" | "w" | "ne" | "nw" | "se" | "sw";
@@ -16,15 +14,12 @@ export interface Standoff {
   b: StandoffEnd;
   min: number;
   max: number;
-  /** The solver also pulls the perpendicular offset to 0 — a rigid 45° lock;
-   *  absent keeps the axis-band-only behaviour (the bar slants). */
   locked?: boolean;
 }
 
-/** Hard floor: nodes never sit closer than this along the axis. */
 export const STANDOFF_MIN = 30;
 
-const D = Math.SQRT1_2; // diagonal unit component
+const D = Math.SQRT1_2;
 
 export const ANCHOR_DIR: Record<StandoffAnchor, { x: number; y: number }> = {
   n: { x: 0, y: -1 },
@@ -48,16 +43,14 @@ export interface Box {
   h: number;
 }
 
-/** The attachment point an anchor names on a box (side midpoint or corner). */
 export function anchorPoint(box: Box, anchor: StandoffAnchor): { x: number; y: number } {
   const xs = anchor.includes("w") ? box.x : anchor.includes("e") ? box.x + box.w : box.x + box.w / 2;
   const ys = anchor.includes("n") ? box.y : anchor.includes("s") ? box.y + box.h : box.y + box.h / 2;
   return { x: xs, y: ys };
 }
 
-/** Nearest of the 8 anchors to a direction vector (used at creation). */
 export function anchorFromVector(dx: number, dy: number): StandoffAnchor {
-  const deg = (Math.atan2(dy, dx) * 180) / Math.PI; // -180..180, 0 = east, y-down
+  const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
   const sector = Math.round(deg / 45) * 45;
   switch (((sector % 360) + 360) % 360) {
     case 0: return "e";
@@ -67,12 +60,10 @@ export function anchorFromVector(dx: number, dy: number): StandoffAnchor {
     case 180: return "w";
     case 225: return "nw";
     case 270: return "n";
-    default: return "ne"; // 315
+    default: return "ne";
   }
 }
 
-/** Each array is a set of node ids joined transitively by standoffs — a cluster
- *  layout ops treat as one rigid block. Singletons are omitted. */
 export function standoffClusters(standoffs: readonly Standoff[] = _standoffs): string[][] {
   const adj = new Map<string, Set<string>>();
   const link = (a: string, b: string) => {
@@ -117,8 +108,6 @@ export const standoffStore = {
   version: () => _version,
   selected: () => _selectedId,
   isEmpty: () => _standoffs.length === 0,
-  /** Ties are SPARSE, so drag-time work gates on this: a node outside the set
-   *  can't tow anything and its move draws no bar. */
   participants(): ReadonlySet<string> {
     if (_participants === null || _participantsVersion !== _version) {
       _participants = new Set<string>();
@@ -141,14 +130,12 @@ export const standoffStore = {
     if (_selectedId === id) _selectedId = null;
     if (_standoffs.length !== before) notify();
   },
-  /** Drop every standoff touching a (deleted) node. */
   removeForNode(nodeId: string) {
     const before = _standoffs.length;
     _standoffs = _standoffs.filter((s) => s.a.nodeId !== nodeId && s.b.nodeId !== nodeId);
     if (_selectedId && !_standoffs.some((s) => s.id === _selectedId)) _selectedId = null;
     if (_standoffs.length !== before) notify();
   },
-  /** True if a standoff already links this pair (either direction). */
   hasPair(aId: string, bId: string) {
     return _standoffs.some(
       (s) =>
@@ -163,15 +150,12 @@ export const standoffStore = {
     s.max = Math.max(s.min, max);
     notify();
   },
-  /** Toggle the rigid 45° lock (perpendicular pulled to 0 by the solver). */
   setLocked(id: string, locked: boolean) {
     const s = _standoffs.find((x) => x.id === id);
     if (!s || !!s.locked === locked) return;
     s.locked = locked;
     notify();
   },
-  /** `anchor` is the side/corner the bar leaves a from; b takes the opposite so
-   *  the bar spans the pair. */
   setAxis(id: string, anchor: StandoffAnchor) {
     const s = _standoffs.find((x) => x.id === id);
     if (!s || s.a.anchor === anchor) return;
@@ -196,7 +180,6 @@ export const standoffStore = {
   },
 };
 
-// Bumped by Canvas whenever positions/sizes may have changed, so the layer re-measures.
 
 let _tick = 0;
 const _tickListeners = new Set<Listener>();
@@ -213,7 +196,6 @@ export const standoffLayoutTick = {
   },
 };
 
-// Canvas owns the editor/area and registers the real settle routine here.
 
 export type SettleOpts = { forceLock?: boolean };
 let _settle: (pinned?: Set<string>, opts?: SettleOpts) => void = () => {};
@@ -224,6 +206,5 @@ export function settleStandoffs(pinned?: Set<string>, opts?: SettleOpts) {
   _settle(pinned, opts);
 }
 
-// A deleted node's standoffs go with it; a wholesale rebuild clears in one pass.
 registerNodeForget((nodeId) => standoffStore.removeForNode(nodeId));
 registerNodeForgetAll(() => standoffStore.clear());

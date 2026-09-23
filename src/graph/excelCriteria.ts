@@ -1,9 +1,4 @@
 // [[C45]] excelComparisons
-// Excel's criteria grammar for the *IF / *IFS family, in one place: a comparison prefix
-// (=, <>, >, >=, <, <=), `?` / `*` wildcards with `~` as the escape (text only, folded
-// case), a date-shaped text against a serial column, a bare number or boolean, and a blank
-// criterion that matches blank cells. The card's condition rows carry an op + value pair
-// and reach the same cell test through `criterionMatches`.
 import { solError, isSolError, type SolError } from "./errorValue";
 import { parseDate } from "./nodes/dateSerial";
 import { compareStrings } from "./stringOrder";
@@ -12,10 +7,7 @@ export type CriterionOp = "eq" | "neq" | "gt" | "gte" | "lt" | "lte";
 
 export interface Criterion {
   op: CriterionOp;
-  /** The compared value: a number (a date serial included), a boolean, text, or null for
-   *  "blank". */
   value: number | boolean | string | null;
-  /** A wildcard pattern (text criteria with `*` / `?`), folded; only for eq / neq. */
   wild?: RegExp;
 }
 
@@ -35,9 +27,6 @@ function wildcardToRegex(pattern: string): RegExp | null {
 
 const unescape = (s: string) => s.replace(/~(.)/g, "$1");
 
-/** Parse one criterion against the range it is compared to. `numericRange` says the range
- *  holds numbers (dates are serials), so a date-shaped text compares as a serial; an
- *  ambiguous D/M text is #AMBIGUOUS! rather than a guess. */
 export function parseCriterion(raw: unknown, numericRange: boolean): Criterion | SolError {
   if (raw === null || raw === undefined) return { op: "eq", value: null };
   if (typeof raw === "number") return { op: "eq", value: raw };
@@ -70,9 +59,6 @@ function cmp(op: CriterionOp, c: number): boolean {
   }
 }
 
-/** Does one cell satisfy the criterion? Excel's rules: a blank criterion matches a blank cell
- *  (and "<>" a non-blank one); a number compares only with numbers; text compares folded, with
- *  wildcards; an error cell never matches. */
 export function criterionMatches(cell: unknown, crit: Criterion): boolean {
   if (isSolError(cell)) return false;
   const blank = cell === null || cell === undefined || cell === "";
@@ -82,7 +68,6 @@ export function criterionMatches(cell: unknown, crit: Criterion): boolean {
   if (typeof crit.value === "number") {
     if (typeof cell === "number") return cmp(crit.op, cell - crit.value);
     if (typeof cell === "boolean") return false;
-    // A numeric-looking text cell equals a number criterion in Excel's SUMIF; keep that one.
     const asNum = Number(cell);
     return typeof cell === "string" && cell.trim() !== "" && Number.isFinite(asNum) ? cmp(crit.op, asNum - crit.value) : crit.op === "neq";
   }
@@ -96,9 +81,6 @@ export function criterionMatches(cell: unknown, crit: Criterion): boolean {
 
 export type CriteriaKind = "sum" | "count" | "average" | "min" | "max";
 
-/** The *IFS aggregate over index-aligned ranges: `pairs` are (range, criterion) in order,
- *  `values` the summed / averaged / bounded range (null for COUNTIFS). Ranges zip on the
- *  shortest; an error cell in a MATCHED value cell is the answer (Excel). */
 export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[] | null, pairs: ReadonlyArray<[readonly unknown[], unknown]>): number | SolError | null {
   if (pairs.length === 0) return solError("#VALUE!", "At least one criteria range and criterion is needed");
   const crits: Criterion[] = [];
@@ -118,8 +100,6 @@ export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[]
     if (!values) continue;
     const v = values[i];
     if (isSolError(v)) return v;
-    // A numeric-text value cell contributes its number (Excel's AVERAGEIF over "10", "30"
-    // averages 20, never "1030"); other text is ignored.
     if (typeof v === "number" && Number.isFinite(v)) kept.push(v);
     else if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) kept.push(Number(v));
   }
@@ -127,7 +107,7 @@ export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[]
     case "count": return count;
     case "sum": return kept.reduce((a, b) => a + b, 0);
     case "average": return kept.length ? kept.reduce((a, b) => a + b, 0) / kept.length : solError("#DIV/0!", "No rows matched the criteria");
-    case "min": return kept.length ? kept.reduce((a, b) => Math.min(a, b)) : 0; // Excel: no match → 0
+    case "min": return kept.length ? kept.reduce((a, b) => Math.min(a, b)) : 0;
     case "max": return kept.length ? kept.reduce((a, b) => Math.max(a, b)) : 0;
   }
 }

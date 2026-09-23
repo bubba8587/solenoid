@@ -17,8 +17,7 @@ import { PlayIcon } from "./Icons";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-/** Each step is an explicit node-id set captured from the canvas SELECTION; stepping
- *  is pan/zoom only and must not touch isolate/highlight/dim. */
+/** Steps are node-id sets captured from the selection; stepping is pan and zoom only and must not touch isolate, highlight or dim. */
 export function PresentationComponent({ data }: NodeProps<PresentationNodeType>) {
   const [label, setLabel] = useState(data.label);
   const [color, setColor] = useState(data.color);

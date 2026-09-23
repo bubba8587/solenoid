@@ -1,6 +1,4 @@
 // [[C43]] oneFlowSurface, [[C40]] storesRegisterForget
-// Cable state that lives OUTSIDE rete's editor: cable selection, socket highlight, and
-// the two ghost-cable stores (tree/specs/canvas/react-flow-surface-contract.md § ghost cables).
 
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
@@ -26,7 +24,6 @@ export const cableSelectionStore = {
   has: (id: string) => _selectedConnIds.has(id),
   ids: () => [..._selectedConnIds],
   count: () => _selectedConnIds.size,
-  // Version snapshot for useSyncExternalStore (stable primitive getter).
   version: () => _selVersion,
   set: (id: string | null) => {
     cableSelectionStore.replaceAll(id ? [id] : []);
@@ -55,9 +52,7 @@ export const cableSelectionStore = {
   },
 };
 
-// Three independent highlight slots (drag, cable hover, socket hover); a socket is lit
-// if any slot holds it. Sharing one slot lets the socket's mouseleave clear the cable's
-// mouseenter as the pointer slides off a socket onto its cable.
+// Three highlight slots, because one shared slot lets a socket's mouseleave clear the cable's mouseenter as the pointer slides onto the cable.
 
 export function dragSocketKey(nodeId: string, key: string) {
   return `${nodeId}::${key}`;
@@ -76,8 +71,7 @@ function notifyHighlights() {
   for (const l of _hlListeners) l();
 }
 
-// Skip the notify on unchanged keys: setDrag fires on EVERY pointermove and each notify
-// re-renders every mounted socket/pill/group summary, janking drags on a big graph.
+// Skip the notify on unchanged keys: setDrag fires on every pointermove, and each notify re-renders every mounted socket.
 function sameKeys(cur: Set<string>, keys: string[]): boolean {
   if (cur.size !== keys.length) return false;
   for (const k of keys) if (!cur.has(k)) return false;
@@ -109,7 +103,6 @@ export const socketHighlightStore = {
   },
 };
 
-// Cable IDs highlighted because a SOCKET is hovered — only NodeSocket writes/clears it.
 
 const _shPropIds = new Set<string>();
 let _shPropVersion = 0;
@@ -135,8 +128,7 @@ export const socketHoverCableStore = {
   },
 };
 
-// A side set keyed by id, not a `.ghost` property on the connection object — rete
-// copies / serialises that object opaquely.
+// A side set keyed by id, because rete copies and serializes the connection object opaquely.
 
 const _ghostIds = new Set<string>();
 const _ghostListeners = new Set<Listener>();
@@ -154,7 +146,6 @@ export const cableGhostStore = {
     if (!_ghostIds.delete(id)) return;
     notifyGhost();
   },
-  // `.size` flips when membership changes so any subscriber re-renders.
   version: () => _ghostIds.size,
   subscribe: (l: Listener) => {
     _ghostListeners.add(l);
@@ -162,14 +153,10 @@ export const cableGhostStore = {
   },
 };
 
-// Pending-reconnect ghosts (Option B in the spec): a NON-connection ghost keyed by
-// source·output·target·input, re-materialised by `cablePendingReconnect.ts`. Persist NOTHING.
 export interface PendingReconnect {
-  /** Stable id from the four endpoint fields, so a re-mark of the same drop is idempotent. */
   id: string;
   source: string; sourceOutput: string;
   target: string; targetInput: string;
-  /** The target socket's label at drop time — the fallback match when the key changed. */
   label: string;
 }
 const _pending = new Map<string, PendingReconnect>();
@@ -188,14 +175,12 @@ export const cablePendingStore = {
     return id;
   },
   drop: (id: string): void => { if (_pending.delete(id)) notifyPending(); },
-  /** Both directions: a removed node's ghosts as a source AND as a target both die. */
   dropForNode: (nodeId: string): void => {
     let changed = false;
     for (const [id, p] of _pending) if (p.source === nodeId || p.target === nodeId) { _pending.delete(id); changed = true; }
     if (changed) notifyPending();
   },
   clear: (): void => { if (_pending.size) { _pending.clear(); notifyPending(); } },
-  // Membership-size version: every mark/drop changes it, so subscribers re-render.
   version: (): number => _pending.size,
   subscribe: (l: Listener): (() => void) => {
     _pendingListeners.add(l);

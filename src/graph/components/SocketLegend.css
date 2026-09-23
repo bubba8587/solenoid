@@ -1,7 +1,6 @@
 .solenoid-legend {
   position: absolute;
-  /* Sits above the minimap (105px tall + 11px gap + its own 11px gutter), same
-     width + right edge so the two stack as a tidy right-side column. */
+  /* Above the minimap (105px tall, 11px gap, its own 11px gutter), same width and right edge, so the two stack as one column. */
   bottom: calc(var(--chrome-bottom, 19px) + 129px);
   right: 16px;
   width: 147px;
@@ -15,22 +14,18 @@
   box-shadow: var(--overlay-shadow);
 }
 
-/* Minimap moved off the bottom-right corner (Top or Hide) — the legend drops
-   down to fill the freed space instead of floating with a gap underneath. It
-   lands where the minimap's bottom edge sat, clear of the status bar. */
+/* With the minimap moved off the corner (Top or Hide), the legend drops to where its bottom edge sat. */
 html.minimap-top .solenoid-legend,
 html.minimap-hidden .solenoid-legend {
   bottom: calc(var(--chrome-bottom, 19px) + 11px);
 }
 
-/* Expanded panel renders 15% smaller, anchored to its bottom-right corner. */
 .solenoid-legend:not(.solenoid-legend--collapsed) {
   transform: scale(0.85);
   transform-origin: bottom right;
 }
 
-/* Collapsed: the panel chrome disappears so only the launcher button shows —
-   otherwise the panel border + the button border read as a double ring. */
+/* Collapsed, the panel chrome disappears, or its border and the button's read as a double ring. */
 .solenoid-legend--collapsed {
   width: auto;
   min-width: 0;
@@ -54,8 +49,6 @@ html.minimap-hidden .solenoid-legend {
 }
 .solenoid-legend__toggle:hover { color: var(--text); }
 
-/* Collapsed launcher matches the other floating app buttons (apptools): a 28px
-   circle, single border, normal (text → accent on hover) highlight. */
 .solenoid-legend--collapsed .solenoid-legend__toggle {
   position: static;
   width: 28px;
@@ -98,10 +91,7 @@ html.minimap-hidden .solenoid-legend {
   margin-bottom: 0;
 }
 
-/* Label on the LEFT, swatches on the RIGHT: the label takes the free space and
-   the dots sit right-aligned in a fixed-width column, so the swatches form a
-   tidy right edge regardless of how many dots a group carries (up to 3:
-   scalar + list + matrix). */
+/* The dots sit right-aligned in a fixed-width column, so the swatches form a tidy right edge whatever a group carries (up to 3). */
 .solenoid-legend__dots {
   display: flex;
   align-items: center;
@@ -111,17 +101,13 @@ html.minimap-hidden .solenoid-legend {
   flex-shrink: 0;
 }
 
-/* Each glyph is wrapped so it can anchor its hover pill; inline-flex keeps it
-   sitting exactly as the bare SVG did inside the flex row. */
+/* inline-flex keeps the wrapped glyph sitting exactly as the bare SVG did. */
 .solenoid-legend__dot {
   display: inline-flex;
   align-items: center;
 }
 
-/* The hover pill: an SVG stadium, portaled to <body> and fixed to the viewport so
-   the legend's overflow never clips it. Positioned centered above the dot (the
-   inline `left`/`top` set the dot center; the translate lifts + centers the pill).
-   INSTANT — no transition, no delay — per the spec. */
+/* Portaled to <body> and fixed, so the legend's overflow never clips it; instant, with no transition or delay. */
 .solenoid-socktip {
   position: fixed;
   transform: translate(-50%, -100%);
@@ -145,13 +131,9 @@ html.minimap-hidden .solenoid-legend {
   text-wrap-style: pretty;
 }
 
-/* ── Mobile pass ────────────────────────────────────────────────────────────
-   On a phone the floating legend is gone entirely — the socket-type reference
-   lives in the Reference overlay's "Socket Types" tab instead (no corner to
-   spare, and the full-width bottom bar covered its old spot). */
+/* On a phone the floating legend is gone; the socket types live in the Reference overlay's Socket Types tab. */
 html.is-mobile .solenoid-legend { display: none; }
 
-/* ── Dimensionality flow explainer (Reference overlay → Socket Types tab) ──── */
 .solenoid-dimflow {
   max-width: 440px;
   margin-top: 22px;

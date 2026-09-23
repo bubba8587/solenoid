@@ -78,16 +78,13 @@ import {
   TimeZoneConvertNode, WorldClockNode,
 } from "./date";
 
-// Runs at call-time, so forward-referencing every class above is safe; never
-// relies on constructor.name (minification-proof).
+// Runs at call time, so forward references are safe; never relies on constructor.name, which minification breaks.
 
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
-  // The Composite node itself stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof ReportNode) return "document";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
-  // Charts wear the chart socket's green; the non-chart figures (a diagram, a builder, a
-  // readout, a record card) stay on the display gold.
+  // Charts take the chart socket's green; the non-chart figures stay on the display gold.
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
   if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";
   if (node instanceof QrCodeNode) return "chart";
@@ -98,7 +95,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ComplexUnaryNode || node instanceof ComplexBinaryNode ||
     node instanceof ComplexPowerNode || node instanceof QuadraticRootsNode || node instanceof PolyRootsNode
   ) return "complex";
-  // Nodes that EMIT the logical type read as logic, matching their output color.
+  // Nodes that emit a logical read as logic, matching their output color.
   if (
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
     node instanceof NotNode || node instanceof BetweenNode || node instanceof IsCloseNode ||
@@ -233,23 +230,16 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof EquationNode) return "math";
   if (node instanceof RegexNode) return "string";
   if (node instanceof GroupByNode) return "list";
-  // Arithmetic, MathFn, Clamp, MRound, RoundN
   return "math";
 }
 
-// The type-switchable literals and the FC recolor with their element type, so their
-// accent tracks the OUTPUT socket color, not the fixed kind color. Every accent
-// consumer (the card, the minimap, the html-canvas snapshot) MUST read this — reading
-// nodeKindOf directly freezes them on the kind color while the card recolors.
+// These recolor with their output socket, so every accent consumer (card, minimap, canvas snapshot) must read nodeAccent, never nodeKindOf.
 const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
   node instanceof ListInputNode || node instanceof TableInputNode || node instanceof FormatControllerNode ||
-  // Set's result socket swaps list↔logical per op, so the accent tracks it.
+  // Set's output swaps between list and logical per op.
   node instanceof SetsNode;
 
-/** The final, theme-resolved accent hex for a node. Socket colors are CSS vars a
- *  `<canvas>` can't read, so this resolves them (via socketVarHex) to the same concrete
- *  color appTheme bakes into the var — letting the minimap and the html-canvas snapshot
- *  paint the SAME accent the DOM card shows. */
+/** Resolves the socket CSS vars a <canvas> cannot read, so the minimap and canvas snapshot paint the accent the card shows. */
 export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): string {
   const kindAccent = themeAccent(NODE_KIND_ACCENTS[nodeKindOf(node)], mode);
   if (!SOCKET_DRIVEN_ACCENT(node)) return kindAccent;
@@ -260,14 +250,9 @@ export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): st
   return kindAccent;
 }
 
-// COARSE weights summed off nodecreated/noderemoved
-// recount — never a live DOM element count. Baseline 1 == one scalar card, tiers
-// calibrated so ~10 full charts ≈ the 100-unit default threshold.
 export function nodeDomWeight(node: ClassicPreset.Node): number {
-  // SVG Picker is a single <img> when idle; the heavy inline SVG mounts only on
-  // hover, which never coincides with the pan/zoom gesture this gate serves.
+  // An idle SVG Picker is one <img>; its inline SVG mounts only on hover, never during a pan or zoom.
   if (node instanceof SvgPickerNode) return 2;
-  // Full figures (a recharts subtree, a mermaid diagram): ten ≈ the default threshold.
   if (
     node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof HistogramNode ||
     node instanceof ProportionNode || node instanceof SankeyNode ||
@@ -278,8 +263,6 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
     node instanceof SparklineNode || node instanceof GaugeNode ||
     node instanceof ChartBuilderNode
   ) return 3;
-  // Detected from the OUTPUT sockets, so a new grid-emitting node counts with no
-  // class list.
   const grid = Object.values(node.outputs ?? {}).some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube");
@@ -288,19 +271,12 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
   return 1;
 }
 
-// The one source of truth for the resizable set.
 export function nodeResizable(node: ClassicPreset.Node): boolean {
-  // Resize is a DISPLAY-only affordance; every other node wraps/truncates at its
-  // content-driven size.
   return node instanceof DisplayNode;
 }
 
-// Detected from SOCKETS, so any new table/frame/cube/lambda node is wide automatically;
-// a manual resize still wins (inline width over the class).
 export function nodeWide(node: ClassicPreset.Node): boolean {
-  // Inline charts and drawing pads need the wide card to fit their fixed-width plot.
   if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
-  // Typed-source nodes: a formula or script line wants column width, not 180px.
   if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;
@@ -311,10 +287,6 @@ export function nodeWide(node: ClassicPreset.Node): boolean {
   });
 }
 
-// A formatted date reads far longer than a number ("15-Mar-2026", or a custom format
-// longer still), so a node that OUTPUTS a date gets the medium card — roomier than the
-// 180px standard, below the 240px wide tier. Socket-driven like nodeWide (any new date
-// node is medium automatically); the wide tier wins when both would apply (NodeCard).
 export function nodeMedium(node: ClassicPreset.Node): boolean {
   return Object.values(node.outputs ?? {}).some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;

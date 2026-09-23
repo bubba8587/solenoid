@@ -1,27 +1,15 @@
-/* Format Controller — ultra-compact docked annotation chip.
-   No header/title: just two side-by-side dropdowns (number format | unit),
-   sized to dock flush against a socket. Accent comes from the host socket's
-   data type via accentOverride (turns orange on unit mismatch). */
 
 .solenoid-fc {
   width: auto;
   min-width: 0;
-  /* The chip wears the NODE HEADER's accent ring (2px solid accent — the
-     header band treatment, author 2026-07-05; a body tint was tried and
-     rejected). Selection still overlays the standard node ring/glow, and the
-     hover override below keeps the accent from flicking to gray under the
-     generic node hover rule. Mismatch reads via accentOverride → orange ring
-     + corner badge. */
+  /* The node header's accent ring; the hover override below keeps it from flicking to gray under the generic node hover. */
   border: 2px solid var(--node-accent, var(--border));
 }
 .solenoid-fc:not(.solenoid-node--selected):hover {
   border-color: var(--node-accent, var(--border-strong));
 }
 
-/* A compact annotation chip has no label, no collapse — hide the chevron
-   NodeCard renders so it doesn't float over the dropdowns. */
-/* Docked: the mating socket sits on the host's own, so only the host's dot shows.
-   visibility (not display) keeps the box React Flow measures for the cable. */
+/* Docked, the mating socket sits on the host's own; visibility, not display, keeps the box React Flow measures for the cable. */
 .solenoid-fc__socket--mated {
   visibility: hidden;
 }
@@ -30,9 +18,7 @@
   display: none;
 }
 
-/* Row-leading direction arrows. Accent-tinted on the dark canvas where it reads
-   as a subtle colored cue; in light mode the darkened accent blends with the
-   near-black text into a muddy stroke, so fall back to a neutral gray. */
+/* Accent-tinted on the dark canvas; in light mode the darkened accent muddies against the text, so it falls back to gray. */
 .solenoid-fc__arrow {
   color: color-mix(in srgb, var(--node-accent, var(--text-dim)) 50%, var(--text));
 }
@@ -44,8 +30,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  /* Symmetric: every row carries a 9px arrow-or-spacer gutter on BOTH sides
-     (the ← → flow-arrow grid), so no extra right inset is needed. */
+  /* Every row carries a 9px arrow-or-spacer gutter on both sides, so no extra right inset is needed. */
   padding: 5px;
 }
 
@@ -53,7 +38,6 @@
   padding-top: 0;
 }
 
-/* Structural socket (frame/cube/chart/…): nothing formattable — a quiet dash. */
 .solenoid-fc__row--none {
   justify-content: center;
   min-width: 48px;
@@ -68,20 +52,16 @@
   padding: 3px 18px 3px 5px;
 }
 
-/* Stacked dropdowns (number format / unit, and the date dropdown) fill the row,
-   keeping the chip narrow — one dropdown wide instead of two side by side. */
 .solenoid-fc__select--wide {
   flex: 1 1 auto;
   min-width: 90px;
   max-width: none;
 }
 
-/* Flexible-decimal middle row: digit count + places/sig-figs toggle. */
 .solenoid-fc__row--decimal {
   padding-top: 0;
 }
-/* Aligns the digits input's left edge with the dropdowns: same width as the
-   FcArrow (9px) that leads the format/unit rows. */
+/* The FcArrow's 9px, so the digits input lines up with the dropdowns. */
 .solenoid-fc__arrow-spacer {
   flex: 0 0 auto;
   width: 9px;
@@ -92,7 +72,6 @@
   font-size: 11px;
   text-align: center;
 }
-/* The places/sig-figs toggle is the shared SegToggle (`solenoid-seg--inline`). */
 
 .solenoid-fc__pattern {
   flex: 1 1 0;
@@ -101,8 +80,6 @@
   text-align: left;
 }
 
-/* The `—` (inherit) pick's muted upstream-style hint, sitting tight under the style
-   dropdown in the column row's own words (← Decimal · 3 places). */
 .solenoid-fc__inherit-hint {
   padding-top: 0;
 }
@@ -125,7 +102,6 @@
   white-space: nowrap;
 }
 
-/* Text B / I toggle buttons. */
 .solenoid-fc__toggle {
   flex: 0 0 auto;
   width: 20px;
@@ -152,7 +128,6 @@
   padding: 3px 2px;
 }
 
-/* Advanced-tier grouping checkbox row. */
 .solenoid-fc__check {
   flex: 1 1 auto;
   display: flex;
@@ -169,10 +144,7 @@
   margin: 0;
 }
 
-/* The advanced-tier expander closes the FORMAT cluster (unit row sits below).
-   The ROW is plain card — draggable like any card area — and only the small
-   centered button captures the click. Bottom padding keeps the chevron off
-   the row edge. */
+/* The row is plain card, so draggable; only the small centered button takes the click. */
 .solenoid-fc__more-row {
   display: flex;
   justify-content: center;
@@ -194,7 +166,6 @@
   color: var(--text);
 }
 
-/* Lock icon beside a unit dropdown that's locked to the upstream FC's unit. */
 .solenoid-fc__lock {
   flex: 0 0 auto;
   display: inline-flex;
@@ -202,7 +173,6 @@
   color: var(--text-dim);
 }
 
-/* Mismatch badge — top-right corner, since there's no header to host it. */
 .solenoid-fc__mismatch {
   position: absolute;
   top: -6px;

@@ -1,22 +1,16 @@
 // [[C11]]
-// React Flow reads a cable endpoint
-// from the Handle's measured box, so the rule holds only if, on the real page, every
-// Handle box IS the glyph box at --socket-size and the drawn cable lands on that box
-// (RF's getHandlePosition: the rim point of a Left/Right handle, centered vertically).
-// Conduit lanes are exempt by spec — their tips come from conduitLaneOffset, not the
-// measured Handle (subsystem-invariants § Resizable-content nodes). The greppable half
-// lives in sourceInvariants.test.ts; this pins the half only a browser can see. Runs
-// the listed seeds at two zooms (a fractional zoom is where an unmeasured constant or
-// a transform would show up).
-//
-//   node scripts/socket-box-probe.mjs        (dev server on :1420)
+// Probes, at two zooms (one fractional), that every Handle's measured box is the glyph box at
+// --socket-size and that each plain cable's drawn ends sit on the rim of the handle React Flow measured.
+// Conduit lanes are exempt, since their tips come from conduitLaneOffset. sourceInvariants.test.ts pins
+// the greppable half. Needs the dev server on :1420.
+//   node scripts/socket-box-probe.mjs
 import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
 const CHROME = browserPath();
 const SEEDS = ["getting-started", "power-features", "unit-flow"];
 const ZOOMS = [1, 1.37];
-const TOL = 1.0; // screen px
+const TOL = 1.0;
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const browser = await puppeteer.launch({
@@ -48,7 +42,7 @@ try {
         let measured = 0;
         for (const h of handles) {
           const hr = h.getBoundingClientRect();
-          if (hr.width === 0 && hr.height === 0) continue; // hidden (collapsed group member)
+          if (hr.width === 0 && hr.height === 0) continue;
           measured++;
           const size = parseFloat(getComputedStyle(h).getPropertyValue("--socket-size")) || 12;
           const glyph = h.querySelector(".solenoid-socket-dot");
@@ -64,7 +58,6 @@ try {
           if (getComputedStyle(h).transform !== "none") bad.push(`${who}: handle has a transform`);
         }
 
-        // Plain cables: the drawn path's ends sit on the rim of the handle RF measured.
         const rimOf = (nodeId, handleId, type) => {
           const el = document.querySelector(
             `.react-flow__handle.${type}.sol-rf-handle-reset[data-nodeid="${nodeId}"][data-handleid="${handleId}"]`);
@@ -78,11 +71,11 @@ try {
           const e = document.querySelector(`.react-flow__edge[data-id="${c.id}"]`);
           if (!e) continue;
           const paths = e.querySelectorAll("path.react-flow__edge-path");
-          if (paths.length !== 1) continue; // ribbon (trunk + fans) — routed to conduit faces
+          if (paths.length !== 1) continue;
           const path = paths[0];
           const src = rimOf(c.source, c.sourceOutput, "source");
           const tgt = rimOf(c.target, c.targetInput, "target");
-          if (!src || !tgt) continue; // an end on a conduit lane / collapsed pill
+          if (!src || !tgt) continue;
           const ctm = path.getScreenCTM();
           const len = path.getTotalLength();
           const at = (l) => { const p = path.getPointAtLength(l).matrixTransform(ctm); return { x: p.x, y: p.y }; };

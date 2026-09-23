@@ -6,9 +6,6 @@ import { mulberry32 } from "../monteCarlo";
 import { getRecalcGen } from "../process";
 export { DIST_SPECS, DIST_FORM_META, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 
-// ─── The one Distribution node ────────────────────────────────────────────────
-/** The first socket follows the form: an x for the curves, a probability for the
- *  inverses, a count for `sample`. */
 function firstKeyFor(op: DistKey, form: DistForm): string {
   return form === "sample" ? "count" : isInverseForm(form) ? "prob" : DIST_SPECS[op].xKey;
 }
@@ -64,8 +61,6 @@ export class DistributionsNode extends ClassicPreset.Node {
     for (const p of spec.params) this.literals[p.key] ??= p.def;
   }
 
-  /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp ([[D10]] onePrunePath). */
   keysDroppedBySwitch(next: DistKey): string[] {
     const keep = new Set(inputKeysFor(next, formAfterSwitch(this.form, next)));
     return inputKeysFor(this.op, this.form).filter((k) => !keep.has(k));
@@ -83,8 +78,6 @@ export class DistributionsNode extends ClassicPreset.Node {
     this.height = 203 + 28 * this.spec.params.length;
   }
 
-  /** Crossing the forward/inverse line swaps the first input; callers prune the
-   *  departing key's cables first. */
   setForm(next: DistForm): void {
     if (next === this.form || !this.spec.forms.includes(next)) return;
     const before = firstKeyFor(this.op, this.form);
@@ -96,8 +89,6 @@ export class DistributionsNode extends ClassicPreset.Node {
     this.seedLiterals();
   }
 
-  /** The `sample` form's draws re-roll once per recalculation (getRecalcGen, like RAND) and
-   *  are otherwise stable, seeded from the node id so two cards don't share a stream. */
   private lastSampleGen = -1;
   private sampleSeed = 0;
 

@@ -2,7 +2,7 @@
 aliases: ["Conduit lane faces"]
 tags: [spec, canvas]
 ---
-<!-- [[D17]] relaysTransparent -->
+<!-- [[D17]] relaysTransparent, [[C95]] commitOnEnter -->
 
 # Spec: Conduit lane faces
 
@@ -36,7 +36,7 @@ The point is then rotated by the angle about the pivot, the center of the body s
 - A cable can arrive one frame before the component republishes its lane count, so the lane index is clamped to the last lane.
 - `conduitFacePoint` gives a ribbon trunk's attachment point: the pivot plus or minus the column offset along the angle, for the output or input face (see [[cable-rendering-knobs]]).
 
-The component publishes `{ angle, scale, selected, lanes }` to `conduitLayoutStore` whenever any of them changes, and clears it on unmount. Tips and trunks read that store. It also calls the view's `rerenderNode` when the angle, scale or lane count changes. That bumps React Flow's handle measurement, so the lane squares are drop targets where they are painted rather than at their collapsed positions.
+The component publishes `{ angle, scale, selected, lanes }` to `conduitLayoutStore` whenever any of them changes, and clears it on unmount. Tips and trunks read that store, so `lanes` and `scale` must ride along or the tips stall on the previous shape; `selected` rides along so that ribbons touching a selected Conduit separate into individual cables. It also calls the view's `rerenderNode` when the angle, scale or lane count changes. That bumps React Flow's handle measurement, so the lane squares are drop targets where they are painted rather than at their collapsed positions.
 
 ## Cable direction
 
@@ -45,10 +45,24 @@ For every one of the `CONDUIT_MAX_LANES` (8) lanes, the component writes the sna
 ## Lane count and expansion
 
 - The block shows as many lanes as the highest wired lane index plus one, counted in the Conduit's own graph (a Conduit inside a drill-in counts its drill-in cables). It always shows at least one lane, so a fresh Conduit has a socket to grab.
-- The block expands when it is selected, or while a cable is being dragged with the pointer within 140 px of it. During such a drag, if fewer than 8 lanes are used, one extra phantom lane appears to receive the new cable.
-- When the wired lane count changes, the graph recomputes so downstream nodes pick up the new lanes. It skips this during a graph rebuild, whose own final pass recomputes everything.
+- The block expands when it is selected, or while a cable is being dragged with the pointer within 140 px of it; the proximity check is per block, so only the Conduit a cable is aimed at expands. During such a drag, if fewer than 8 lanes are used, one extra phantom lane appears to receive the new cable.
+- When the wired lane count changes, the graph recomputes so downstream nodes pick up the new lanes. It skips this during a graph rebuild: the effect first fires as the Conduit mounts, which during a load is in the middle of adding nodes, before the engine is ready, and the rebuild's own final pass recomputes everything anyway.
 - The block renders behind the cables (`z-index: -1` on its node holder), so cables plug in over the squares.
 
-## Extending
+## The housing
 
-The toolbar's extend action adds a new Conduit in the same graph, with the same angle, 130 px further along the angle, and wires each used lane `out_i` to the new block's `in_i` (at least one lane).
+The block is drawn as an IDC connector: a gray shell around the grid of lane squares, drawn from the pivot and rotated with the block.
+
+- The grid stays centered on the pivot. The shell pads it by 2 × `scale` on every side (`SHELL_PAD`) and pokes up to hold the grab handle; its border is 1.25 wide and its corner radius is the smaller of half its width and 6 × `scale`.
+- The grab handle ([[resizable-content-nodes]]) is the shell's full-width top slice, with its top corners following the shell and its bottom edge flat, a 1 px hairline above the grid, a step lighter than the shell so it reads as the graspable edge.
+- A red pin-1 stripe, 3 tall and inset 2.5 inside the handle, marks the block's orientation. It stays red whether or not the block is selected.
+- Each lane square is the socket itself: the type glyph is hidden and the square paints a dark pin hole, sized to `--socket-size` (set inline as the base times `scale`) so the painted square and the React Flow Handle it wraps coincide. Its rim is an inset ring, because a layout border would push the Handle 1 px off center.
+- Selected, the block keeps its grays: the border takes the accent and the shell a soft accent glow, and the size change of the expansion signals the selection. In light mode the shell is a lighter gray with a darker rim and the pin holes a mid gray, so the block doesn't read as a dark blob on the pale canvas.
+
+## The toolbar
+
+The toolbar shows while the Conduit is selected, in the viewport-fixed dock ([[resizable-content-nodes]]).
+
+- Its header mirrors a card header, accented with a softened pin-1 red, and holds the Conduit's sequence number. The number commits on Enter or blur ([[C95]] commitOnEnter); a new number also renames a default "Conduit N" label, so the graph recomputes to refresh anything showing it.
+- **Extend** adds a new Conduit in the same graph, with the same angle, 130 px further along the angle, and wires each used lane `out_i` to the new block's `in_i` (at least one lane).
+- An angle dial sets the angle in 45° steps.

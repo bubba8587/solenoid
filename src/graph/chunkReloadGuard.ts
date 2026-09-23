@@ -1,16 +1,14 @@
 // [[C97]] rechartsLazyChunk (a stale lazy chunk after a deploy)
-// Loop-guard behind main.tsx's `vite:preloadError` handler: reload AT MOST once per
-// window, and if the timestamp can't be persisted don't auto-reload at all.
+// Reload at most once per window, and never auto-reload when the timestamp can't be persisted.
 
 export interface ReloadStore {
-  /** Read the last-reload timestamp (may throw in private mode). */
+  /** May throw in private mode. */
   get: () => string | null;
-  /** Persist the last-reload timestamp (may throw in private mode). */
+  /** May throw in private mode. */
   set: (value: string) => void;
 }
 
-/** Records the attempt when it returns true; false when already reloaded within
- *  `windowMs` or the store can't be read/written (the private-browsing fail-safe). */
+/** Records the attempt when it returns true. */
 export function shouldReloadForChunkError(
   now: number,
   store: ReloadStore,
@@ -20,13 +18,13 @@ export function shouldReloadForChunkError(
   try {
     last = Number(store.get() || 0);
   } catch {
-    return false; // can't read the guard (private mode) → don't risk a loop
+    return false;
   }
   if (Number.isFinite(last) && last > 0 && now - last < windowMs) return false;
   try {
     store.set(String(now));
   } catch {
-    return false; // can't persist the guard → don't reload, or it would loop
+    return false;
   }
   return true;
 }

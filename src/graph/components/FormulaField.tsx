@@ -5,22 +5,15 @@ import "./ExpressionNode.css";
 import { stopDragStart } from "../coarse";
 
 interface FormulaFieldProps {
-  /** Current formula text. */
   value: string;
-  /** Called on every edit (may be async). */
   onChange: (next: string) => void;
   placeholder?: string;
-  /** Wired/overridden: the local text renders dimmed and is not editable. */
   disabled?: boolean;
   disabledTitle?: string;
-  /** Pack preset: read-only, but at full strength with a lock mark — it IS the
-   *  intended content, not an override. */
+  /** Pack preset: read-only but at full strength with a lock mark, since it is the intended content, not an override. */
   locked?: boolean;
-  /** When set, the box never edits in place — clicking it calls onOpen. */
   onOpen?: () => void;
-  /** Optional element seated in the field's corner (e.g. a resize grip). */
   grip?: ReactNode;
-  /** Hide the leading "=" glyph — the Equation node's text contains its own =. */
   noPrefix?: boolean;
 }
 
@@ -34,12 +27,9 @@ export function FormulaField({
   const taRef = useRef<HTMLTextAreaElement>(null);
   const renderRef = useRef<HTMLDivElement>(null);
 
-  // The in-node preview is SYNTAX-HIGHLIGHTED text, not typeset math: it matches
-  // Excel's formula bar (and the edit textarea), stays width-stable in a small card,
-  // and makes the idle→edit swap seamless. The typeset KaTeX view lives in the popup.
+  // Syntax-highlighted, not typeset: it matches the formula bar and the edit textarea, stays width-stable, and makes the idle-to-edit swap seamless.
   const highlightHtml = useMemo(() => (value.trim() ? highlightFormula(value) : null), [value]);
 
-  // Auto-grow the textarea to its content, capped at ~3 lines.
   useEffect(() => {
     const el = taRef.current;
     if (!el) return;
@@ -62,7 +52,7 @@ export function FormulaField({
       title={disabled ? disabledTitle : undefined}
     >
       {!noPrefix && <span className="solenoid-expr__prefix">=</span>}
-      {/* The positioned box the grip sits in, so it lands in the FIELD's corner. */}
+      {/* The positioned box, so the grip lands in the field's corner. */}
       <div className="solenoid-expr__field">
         {editing && editable ? (
           <textarea

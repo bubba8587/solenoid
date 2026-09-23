@@ -1,4 +1,4 @@
-// [[C101]] onePatchPath
+// [[C101]] onePatchPath, [[C38]] sinkRunButtonOnly
 import { ClassicPreset } from "rete";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readInput } from "./shared";
 import { formatDateSerial } from "./dateSerial";
@@ -18,12 +18,7 @@ import { isCubeValue, type CubeValue, type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 
 import { getOwningEditor, getOwningView } from "../activeGraph";
-// obsidianWrite is imported lazily INSIDE run(): pulling its subtree eagerly through
-// the rete-nodes barrel creates an init cycle (…→ documentStore → persistence →
-// nodeCatalog → rete-nodes) that leaves catalog metadata undefined at eval time.
-
-// The `.md` write fires ONLY from the Run button, and `enabled` is kept OUT of
-// copyPaste's persistence whitelist so every load/paste/restore starts disarmed.
+// obsidianWrite is imported lazily inside run(), because an eager import closes an init cycle through the node barrel.
 
 export type ObsidianWriteStatus = "idle" | "writing" | "previewing" | "ok" | "error";
 export type WriteObsidianTarget = "auto" | "note" | "properties";
@@ -40,8 +35,6 @@ export const OBSIDIAN_TARGET_OPTIONS: ReadonlyArray<{ value: WriteObsidianTarget
   { value: "properties", label: "Properties", title: "Write the rows' columns as each note's frontmatter, a note-body column as its body" },
 ];
 
-/** The notes named in a cube (its path + name columns), so a string cell matching one
- *  serializes as a `[[link]]`. */
 function noteNamesOf(cube: CubeValue): Set<string> {
   const names = new Set<string>();
   for (const c of cube.columns) {
@@ -51,7 +44,6 @@ function noteNamesOf(cube: CubeValue): Set<string> {
   return names;
 }
 
-/** A cube column's Obsidian property-type name (for the .obsidian/types.json registration). */
 function obsidianTypeName(cube: CubeValue, key: string): string {
   const col = cube.columns.find((c) => c.name === key);
   if (col && col.cells.some((cell) => Array.isArray(cell))) return "multitext";
@@ -63,17 +55,11 @@ function obsidianTypeName(cube: CubeValue, key: string): string {
   }
 }
 
-/** Now as a local-wall-clock Excel serial (date + time of day). */
 function nowSerial(): number {
   const d = new Date();
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()) / 86400000 + 25569;
 }
 
-// Write to Obsidian is ONE vault sink (2026-09-11 merge): a wired Document writes a
-// note (overwrite / append / block), a wired cube of rows writes properties (each
-// column a frontmatter key, a `note-body` column the body). The Target dropdown picks,
-// or Auto follows the wired input. The write fires ONLY from Run, and `enabled` is out
-// of copyPaste's persistence whitelist so every load starts disarmed.
 export class WriteObsidianNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     in: "The Document to write as a note. Only Run writes; the node loads disarmed.",
@@ -82,25 +68,15 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     plan: "One row per note and property: the current value, the value to write, and what Run would do. Empty for a Note.",
   };
   label: string;
-  /** Vault-relative destination subfolder ("" = the vault root). A leading folder on
-   *  the `path` prepends to this. (Note target.) */
   subfolder: string;
-  /** overwrite | append | block (a managed marker block the writer owns). (Note target.) */
   mode: ObsidianWriteMode;
-  /** Link each written note back to a `Solenoid/<doc>` stub note (bundle D). Opt-in. (Note target.) */
   stamp: boolean;
-  /** Which behavior runs: auto (by the wired input), or forced to note / properties. */
   target: WriteObsidianTarget;
-  /** Append + register a key the note doesn't have yet. (Properties target.) */
   addMissing = true;
-  /** Also write a `<node>.base` beside the notes. (Properties target.) */
   writeBase = false;
-  /** Inline literals: `path` (the Note target) + `keys` (Properties: columns to write). */
   stringLiterals: Record<string, string> = { path: "", keys: "" };
-  /** Never persisted ([[C38]] sinkRunButtonOnly) — always false on a fresh construction. */
   enabled = false;
   cachedDoc: DocumentValue | SolError | null = null;
-  /** The path the last data() resolved (the wired `path`, else its literal). */
   private resolvedPath = "";
   cachedCube: CubeValue | SolError | null = null;
   cachedPlan: FrameValue | SolError | null = null;
@@ -108,11 +84,9 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   private _mdbaseCache = new Map<string, MdbaseCollection | null>();
   status: ObsidianWriteStatus = "idle";
   statusMessage = "";
-  /** The vault-relative path of the last note this card wrote (transient; Open in Obsidian). */
   lastWritten = "";
   width = 262; height = 280;
 
-  /** The `plan` output's columns (Properties target), for type propagation. */
   frameShape(): Shape {
     return { columns: [
       { name: "path", type: "string" }, { name: "key", type: "string" },
@@ -135,19 +109,17 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     this.addOutput("plan", frameOut("Plan"));
   }
 
-  /** Which behavior runs: the dropdown, else the wired input (a cube → properties). */
   resolveMode(): "note" | "properties" {
     if (this.target === "note") return "note";
     if (this.target === "properties") return "properties";
     return isCubeValue(this.cachedCube) && !isDocumentValue(this.cachedDoc) ? "properties" : "note";
   }
 
-  // Caches + plans only; never touches disk.
   data(inputs: { in?: (DocumentValue | SolError)[]; path?: (string | null)[]; rows?: (CubeValue | SolError | null)[] }): { plan: FrameValue | SolError | null } {
     this.cachedDoc = inputs.in?.[0] ?? null;
     this.resolvedPath = (readInput(inputs.path, this.stringLiterals?.path ?? "") ?? "").trim();
     const raw = inputs.rows?.[0] ?? null;
-    if (raw !== this.cachedCube) { // re-plan only when the cube changes (Preview mutates planRows)
+    if (raw !== this.cachedCube) { // re-plan only on a new cube, because Preview mutates planRows
       this.cachedCube = raw;
       if (isSolError(raw)) { this.cachedPlan = raw; this.planRows = []; }
       else if (!isCubeValue(raw)) { this.cachedPlan = null; this.planRows = []; }
@@ -156,9 +128,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     return { plan: this.cachedPlan };
   }
 
-  /** The note name + subfolder the current `path` resolves to (Note target: the card's
-   *  preview and what Run writes). A `folder/name` path splits: the last segment is the
-   *  name, the rest prepends to the node's subfolder. */
   renderedTarget(): { name: string; subfolder: string } {
     const parts = this.resolvedPath.split("/").filter(Boolean);
     const name = (parts.pop() ?? "").replace(/\.md$/i, "").trim();
@@ -166,8 +135,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     return { name, subfolder };
   }
 
-  /** ref name → source node id, walked from this sink's `in` through the producer's
-   *  ref inputs. Used only to rasterize a chart ref, which needs its live SVG. */
   private refSources(): Map<string, string> {
     const out = new Map<string, string>();
     const ed = getOwningEditor(this.id);
@@ -181,7 +148,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     return out;
   }
 
-  /** Call ONLY from the Run button (or headless --run); re-entrancy-guarded, desktop only. */
   async run(): Promise<void> {
     if (this.status === "writing" || this.status === "previewing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
@@ -193,7 +159,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     await this.runNote(vault);
   }
 
-  /** Preview: Properties resolves the plan against the notes; Note reports the target action. */
   async preview(): Promise<void> {
     if (this.status === "writing" || this.status === "previewing") return;
     const vault = getVaultRoot().trim();
@@ -234,8 +199,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
 
   private async runNote(vault: string): Promise<void> {
     const target = this.renderedTarget();
-    // A single-page write needs a name; a batch names each note by its page, so a blank
-    // name still writes (the label is the block name only).
     const name = (target.name || this.label || "note").replace(/\.md$/i, "").trim();
     const subfolder = target.subfolder;
     if (!name) { this.status = "error"; this.statusMessage = "Name the note"; return; }
@@ -252,11 +215,9 @@ export class WriteObsidianNode extends ClassicPreset.Node {
       this.status = "ok";
       if (res.pages === 0) { this.statusMessage = "The merge has no rows, so no note was written"; return; }
       this.lastWritten = res.file;
-      // A batch that hit the page cap carries the true record count; say "500 of N".
       const count = doc.total && doc.total > res.pages ? `${res.pages} of ${doc.total}` : `${res.pages}`;
       const what = res.pages > 1 ? `${count} notes${subfolder ? ` in ${subfolder}` : ""}` : res.file;
       this.statusMessage = res.assets > 0 ? `Wrote ${what} + ${res.assets} asset${res.assets === 1 ? "" : "s"}` : `Wrote ${what}`;
-      // D: link the note back to a Solenoid/<doc> stub note (best effort). A batch stamps nothing.
       if (this.stamp && res.pages === 1) {
         try {
           const { documentStore } = await import("../documentStore");
@@ -386,7 +347,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         }
         if (touched === 0) continue;
         let out = Object.keys(patch).length ? patchFrontmatter(text, patch).text : text;
-        if (newBody !== null) out = setBody(out, newBody); // the note-body column → the body
+        if (newBody !== null) out = setBody(out, newBody);
         try { await writeTextFilePath(await joinPath(vault, ...p.split("/")), out); wrote++; changed += touched; }
         catch (e) { failed++; if (failures.length < 3) failures.push(`${p}: ${e instanceof Error ? e.message : String(e)}`); }
       }
@@ -416,12 +377,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   }
 }
 
-// It IS a Note (extends NoteNode), reusing the frontmatter-socket machinery and
-// adding only a source path + read-only body, which persists so a loaded doc shows
-// the imported content on web too. Beyond a Note it exposes the source `path` as a
-// wireable value — out (index the imported note against a Vault Folder cube) and in
-// (drive which note loads from a value); the human title renders in the card body.
-
 const IMPORT_RESERVED: ReadonlySet<string> = new Set(["document", "path"]);
 
 export class ImportObsidianNode extends NoteNode {
@@ -429,9 +384,7 @@ export class ImportObsidianNode extends NoteNode {
     document: "The note's full text, frontmatter included.",
     path: "The note's vault-relative path. An incoming path loads that note instead of the picked one.",
   };
-  /** Vault-relative path of the source `.md` file ("" until one is picked). */
   fileName: string;
-  /** Minutes between automatic reloads from the vault, 0 = off — the component runs the timer. */
   refreshMinutes: number;
 
   constructor(init?: {
@@ -449,15 +402,12 @@ export class ImportObsidianNode extends NoteNode {
     });
     this.fileName = init?.fileName ?? "";
     this.refreshMinutes = Math.max(0, Math.round(init?.refreshMinutes ?? 0));
-    // The wireable identity: pick a note by hand, OR drive `path` from a cube row.
     this.addInput("path", strIn("Path"));
     this.addOutput("path", strOut("Path"));
   }
 
   protected reservedOutputs(): ReadonlySet<string> { return IMPORT_RESERVED; }
 
-  /** The vault's picked column types (the Solenoid Properties plugin's data), read beside the
-   *  note so `syncFields` types a frame's columns by them; none when the vault has none. */
   async loadColumnPicks(vault: string): Promise<void> {
     const { readVaultFile } = await import("../fileBridge");
     const { parsePluginColumnTypes, PLUGIN_DATA_PATH } = await import("../pluginColumnTypes");
@@ -465,17 +415,11 @@ export class ImportObsidianNode extends NoteNode {
     catch { this.columnPicks = {}; }
   }
 
-  /** The path a wired input last drove a load for — guards a reload loop once
-   *  `fileName` catches up (the VaultFolder `_lastKey` pattern). */
   private _wiredPath = "";
 
-  // Emit the source path beside the fields + document, so downstream can index the
-  // imported note. A wired `path` loads that note in the background (desktop only),
-  // replacing the picked file; unwired, the in-card picker is the source.
   data(inputs?: { path?: (string | null)[] }): ReturnType<NoteNode["data"]> {
     const wired = (readInput(inputs?.path, "") ?? "").trim();
-    // Dedupe on the RAW wired value (not fileName, which gains a `.md`): a stable input
-    // loads once, an unwire resets so a re-wire loads again.
+    // Dedupe on the raw wired value, not fileName (which gains `.md`), or a stable input reloads forever.
     if (!wired) {
       this._wiredPath = "";
     } else if (wired !== this._wiredPath && hasFs()) {
@@ -488,21 +432,16 @@ export class ImportObsidianNode extends NoteNode {
       : { ...base, path: this.fileName };
   }
 
-  /** Read the wired note from the vault and adopt it: body, source path (`.md`
-   *  included, matching a Vault Folder cube's `path`), name, and the frontmatter
-   *  sockets, then recompute. Mirrors the component's picker commit. */
   private async loadFromWire(path: string): Promise<void> {
     try {
       const vault = getVaultRoot().trim();
       const { readVaultFile, listVaultMarkdownFiles } = await import("../fileBridge");
-      // Resolve a full vault-relative path OR a bare note name — Obsidian resolves
-      // `[[Name]]` from anywhere in the vault, case-insensitively.
       const withMd = /\.md$/i.test(path) ? path : `${path}.md`;
       const files = await listVaultMarkdownFiles(vault);
       const base = (path.split("/").pop() ?? path).replace(/\.md$/i, "").toLowerCase();
       const rel = files.includes(withMd) ? withMd
         : files.find((f) => (f.split("/").pop() ?? f).replace(/\.md$/i, "").toLowerCase() === base) ?? null;
-      if (!rel || rel === this.fileName) return; // not found, or already loaded — keep the current body
+      if (!rel || rel === this.fileName) return;
       const content = await readVaultFile(vault, rel);
       this.body = content;
       this.fileName = rel;

@@ -1,8 +1,7 @@
 // [[C43]] oneFlowSurface: every render is boundaried (tree/specs/canvas/react-flow-surface-contract.md).
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
-/** `scope="app"` wraps the main React root; `scope="node"` wraps EACH rete node,
- *  whose own React root would otherwise blank the whole canvas when one throws. */
+/** `scope="node"` wraps each card, whose throw would otherwise blank the whole canvas. */
 type Props = { children: ReactNode; scope: "app" | "node"; label?: string };
 type State = { error: Error | null; info: string };
 
@@ -68,9 +67,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-/** Wrap a rete node component in a `scope="node"` boundary, MEMOISED BY COMPONENT
- *  TYPE: a fresh wrapper type per render would remount the card, losing focus
- *  mid-edit and re-running every effect. */
+/** Memoized by component type: a fresh wrapper type per render would remount the card, losing focus mid-edit and re-running every effect. */
 const wrapped = new WeakMap<object, unknown>();
 
 export function withNodeBoundary<T>(Comp: T | null): T | null {

@@ -29,8 +29,6 @@ export const dockedNodeStore = {
     }
     return result;
   },
-  /** Registry forget: the node may be the DOCKED FC or a HOST, and every relationship
-   *  it takes part in is dead either way. */
   removeForNode(nodeId: string): void {
     let changed = _store.delete(nodeId);
     for (const [id, rel] of [..._store]) {

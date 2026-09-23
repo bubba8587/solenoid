@@ -1,5 +1,4 @@
 // [[D19]] implReteFree, [[C17]] shareImpl, [[C61]] oneDistributionNode
-// scipy.stats.<dist>.fit / R fitdistrplus / @RISK "fit distribution": per family, MLE (or moment) parameters on the Distribution node's own parameterization (DIST_SPECS, so a fit plugs back into that card), log-likelihood, AIC, and the one-sample KS D for the ranking.
 import { lnGamma, regularizedBeta, regularizedGamma, stdNormCDF } from "./mathUtils";
 
 export type FitFamily = "normal" | "lognorm" | "expon" | "gamma" | "weibull" | "uniform" | "beta" | "poisson";
@@ -7,12 +6,10 @@ export const FIT_FAMILIES: readonly FitFamily[] = ["normal", "lognorm", "expon",
 
 export interface DistFit {
   family: FitFamily;
-  /** Parameter names in the Distribution node's order (e.g. mean, stdev). */
   paramNames: string[];
   params: number[];
   logLik: number;
   aic: number;
-  /** One-sample KS statistic against the fitted CDF (smaller = closer). */
   ks: number;
   n: number;
 }
@@ -30,7 +27,6 @@ function ksStat(sorted: readonly number[], cdf: (x: number) => number): number {
   return d;
 }
 
-/** Newton on the Weibull shape k (profile likelihood), scale from k. */
 function fitWeibull(x: readonly number[]): { k: number; lambda: number } | null {
   if (x.some((v) => v <= 0)) return null;
   const lx = x.map(Math.log), n = x.length, meanLx = mean(lx);
@@ -49,7 +45,6 @@ function fitWeibull(x: readonly number[]): { k: number; lambda: number } | null 
   return Number.isFinite(k) && Number.isFinite(lambda) && k > 0 ? { k, lambda } : null;
 }
 
-/** Gamma shape by Newton on the MLE equation ln(a) − ψ(a) = ln(mean) − mean(ln x). */
 function fitGamma(x: readonly number[]): { alpha: number; beta: number } | null {
   if (x.some((v) => v <= 0)) return null;
   const m = mean(x), s = Math.log(m) - mean(x.map(Math.log));
@@ -67,7 +62,6 @@ function fitGamma(x: readonly number[]): { alpha: number; beta: number } | null 
   return a > 0 ? { alpha: a, beta: m / a } : null;
 }
 
-/** Fit one family; `null` when the data can't support it (wrong support, too few points). */
 export function fitDistribution(data: readonly number[], family: FitFamily): DistFit | null {
   const x = data.filter((v) => Number.isFinite(v));
   const n = x.length;
@@ -137,7 +131,6 @@ export function fitDistribution(data: readonly number[], family: FitFamily): Dis
   }
 }
 
-/** Fit every family the data supports, best AIC first. */
 export function fitAll(data: readonly number[]): DistFit[] {
   const fits: DistFit[] = [];
   for (const f of FIT_FAMILIES) { const r = fitDistribution(data, f); if (r && Number.isFinite(r.aic)) fits.push(r); }

@@ -46,8 +46,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
   };
 
   return (
-    // Dial square-collapses to a mini arc; the bar keeps its width and collapses
-    // normally — the standard chevron, like every other node.
+    // The dial square-collapses to a mini arc; the bar collapses normally.
     <NodeShell node={data} emit={emit} {...(dial ? { squareCollapse: true } : {})}>
       <SegToggle value={mode} options={GAUGE_STYLE_OPTIONS} onChange={(s) => void pickMode(s)} />
       <InlineInputs node={data} emit={emit} />
@@ -65,8 +64,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
       ) : (
         <>
           {!collapsed && (payload ? <BulletBar payload={payload} /> : empty)}
-          {/* Collapsed → the standard hero box + [Chart] chip (opens the popup), like
-              Chart/Histogram — not a shrunken bar. */}
+          {/* Collapsed: the standard hero box and [Chart] chip, like Chart and Histogram. */}
           <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
             {payload && <ChartChip value={cv} />}
           </div>

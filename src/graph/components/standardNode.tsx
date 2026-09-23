@@ -11,14 +11,12 @@ import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
 import { nodeDisplayName } from "../catalogUtils";
 
-// Factories for the input-rows-then-one-result-box shape; a node needing more writes its
-// component against NodeShell directly.
+// Factories for the input-rows-then-one-result-box shape; a node needing more writes against NodeShell directly.
 type Displayable = unknown;
 
 /** `recalc` adds a volatile-node Recalculate button with the given tooltip. */
 type StandardOpts = { recalc?: string };
 
-/** Standard node: inline input rows + a value box reading `value(node)`. */
 export function makeNodeComponent<N extends ShellNode & InlineNode>(
   value: (node: N) => Displayable,
   opts: StandardOpts = {},
@@ -34,7 +32,6 @@ export function makeNodeComponent<N extends ShellNode & InlineNode>(
   };
 }
 
-/** Standard node with add/remove input rows (CONCAT, list literal, …). */
 export function makeExtensibleNodeComponent<N extends ShellNode & ExtensibleNode>(
   value: (node: N) => Displayable,
 ): (props: NodeProps<N>) => ReactNode {
@@ -50,10 +47,7 @@ export function makeExtensibleNodeComponent<N extends ShellNode & ExtensibleNode
 
 export type ToggleOptions<V extends string> = ReadonlyArray<{ value: V; label: string; title?: string }>;
 
-/** Standard node with ONE segmented toggle above the input rows (DIFF's Δ/%/∇, Normalize's
- *  0–1/z, …): `read` the current pick off the node, `write` the new one back — the node's
- *  own setter when a mode relabels a socket — and the graph recomputes. `table` renders
- *  the result as a grid instead of the value box. */
+/** `write` is the node's own setter when a mode relabels a socket; `table` renders the result as a grid instead of the value box. */
 export function makeToggleNodeComponent<N extends ShellNode & InlineNode, V extends string>(
   toggle: { read: (node: N) => V; write: (node: N, next: V) => void; options: ToggleOptions<V> },
   value: (node: N) => Displayable,

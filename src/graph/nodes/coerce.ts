@@ -1,12 +1,11 @@
-// Array-shape coercion: normalize whatever arrives to the shape a node wants.
-// (type-only import — erased at runtime, so no module cycle with errorValue)
+// [[D13]] widenNeverNarrow, [[C17]] shareImpl
+// Keep this import type-only, so no runtime cycle with errorValue can form.
 import type { SolError } from "../errorValue";
 import { matRows, matCols } from "./matrixOps";
 
 export type Mat = number[][];
 
-/** Raised when a value's dimensions can't be reduced to the shape a node needs; the
- *  error-value guard turns it into a #SHAPE! error, so it may propagate out of data(). */
+/** The guard matches this by `name`, so never rename it. */
 export class ShapeError extends Error {
   constructor(message: string) {
     super(message);
@@ -20,12 +19,6 @@ function is2D(v: number[] | Mat): v is Mat {
   return v.length > 0 && Array.isArray(v[0]);
 }
 
-/**
- * Promote anything numeric to a 2-D matrix. Widening only — never fails.
- *   number      → [[x]]            (1×1)
- *   number[]    → [[...]]          (1×N row, CSV orientation)
- *   number[][]  → unchanged
- */
 export function toMatrix(v: Numeric | null | undefined): Mat | null {
   if (v == null) return null;
   if (typeof v === "number") return [[v]];
@@ -33,8 +26,6 @@ export function toMatrix(v: Numeric | null | undefined): Mat | null {
   return is2D(v) ? v : [v as number[]];
 }
 
-/** Reduce anything numeric to a 1-D list: a scalar wraps, a 1×N or N×1 flattens, a
- *  genuine M×N table is a ShapeError (no unambiguous list in it). */
 export function toList(v: Numeric | null | undefined): number[] | null {
   if (v == null) return null;
   if (typeof v === "number") return [v];
@@ -46,7 +37,6 @@ export function toList(v: Numeric | null | undefined): number[] | null {
   throw new ShapeError(`Expected a list, got a ${m.length}×${m[0]?.length ?? 0} table`);
 }
 
-/** Reduce anything numeric to a single value; more than one element is a ShapeError. */
 export function toScalar(v: Numeric | null | undefined): number | null {
   if (v == null) return null;
   if (typeof v === "number") return v;
@@ -57,8 +47,6 @@ export function toScalar(v: Numeric | null | undefined): number | null {
 
 export type Cell = number | string | boolean | SolError | null;
 
-/** `toMatrix` over any element type: scalar → 1×1, list → single row (CSV
- *  orientation), matrix unchanged. */
 export function toAnyMatrix(v: unknown): Cell[][] | null {
   if (v == null) return null;
   if (Array.isArray(v)) {
@@ -68,11 +56,6 @@ export function toAnyMatrix(v: unknown): Cell[][] | null {
   return [[v as Cell]];
 }
 
-/** The row/column COUNTS of a matrix/list/scalar, read identically by the TableInfo
- *  node (COLUMNS/ROWS outputs) and the COLUMNS/ROWS formulas — the one shape math both
- *  share ([[C17]] shareImpl). A list is one ROW ([[D13]] widenNeverNarrow), a scalar is 1×1, a wired blank is unknown.
- *  A Frame carries its own real shape, so its caller (the node) special-cases it before
- *  reaching here; frames never flow through formulas. */
 export function matrixShape(v: unknown): { rows: number | null; cols: number | null } {
   const m = toAnyMatrix(v);
   return { rows: m ? matRows(m) : null, cols: m ? matCols(m) : null };

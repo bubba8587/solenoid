@@ -1,18 +1,14 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[B13]] aiInScope, [[C105]] apiKeysStayLocal
-// Per-provider API keys. Device-local: never bundled, never written into a saved
-// graph, never sent anywhere but the provider's own API.
 import { createNotifier } from "./storeKit";
 
 const LS_KEY = "solenoid.apiKeys";
 
-// No localStorage (node env, private mode) degrades to in-memory, never a throw.
 function load(): Record<string, string> {
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) return {};
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object") return {};
-    // Keep only string values (a corrupted blob shouldn't inject non-strings).
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
       if (typeof v === "string" && v) out[k] = v;
@@ -37,14 +33,12 @@ function persist() {
 export const apiKeyStore = {
   subscribe,
   version,
-  /** The stored key for a provider, or "" if unset. */
   get(provider: string): string {
     return keys[provider] ?? "";
   },
   has(provider: string): boolean {
     return !!keys[provider];
   },
-  /** Store (or, with a blank value, clear) a provider's key. Trims whitespace. */
   set(provider: string, key: string): void {
     const trimmed = key.trim();
     const next = { ...keys };

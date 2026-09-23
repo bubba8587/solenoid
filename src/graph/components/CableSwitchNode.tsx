@@ -2,8 +2,7 @@
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
-// getActiveEditor/getActiveView, NOT getEditor/getView: a drill-in Input Switch
-// must retype/prune/refresh on its OWN graph.
+// getActiveEditor and getActiveView, not getEditor and getView: a drill-in Input Switch retypes, prunes and refreshes on its own graph.
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveEditor, getActiveView } from "../activeGraph";
@@ -41,12 +40,10 @@ function Chevron({ back }: { back?: boolean }) {
   );
 }
 
-// The selected value is `any`, so render BY KIND like Display — never stringified;
-// figures/cubes that would overflow the narrow card show as a chip.
+// Rendered by kind like Display, never stringified; figures and Cubes that would overflow the card show as a chip.
 function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string; nodeId: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
-  // A display-value box so NodeCard measures it (--out-socket-top centers the
-  // output socket on it).
+  // A display-value box, so NodeCard measures it and centers the output socket on it.
   if (isCubeValue(value)) return <div className="solenoid-node__display-value solenoid-node__display-value--chip"><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;
   if (isChartValue(value)) return <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={value} label={label} /></div>;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
@@ -58,8 +55,7 @@ function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string;
   return <ValueDisplay value={value as number | number[] | string | string[] | null} />;
 }
 
-// A separate component so the title's useDraftCommit hook count stays stable as
-// rows are added and removed.
+// A separate component, so the title's useDraftCommit hook count stays stable as rows come and go.
 function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, checked, onSelect, onToggle, onRemove, canRemove }: {
   data: CableSwitchNodeType;
   emit: NodeProps<CableSwitchNodeType>["emit"];
@@ -80,8 +76,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
     (v) => {
       if (v.trim()) data.titles[keyName] = v;
       else delete data.titles[keyName];
-      // A title relabels the multi-select cube's `name` column, so multi mode must
-      // recompute; single mode only re-renders.
+      // A title relabels the multi-select Cube's `name` column, so Many mode recomputes; One mode only re-renders.
       if (data.multiSelect) void processGraph();
       else void getActiveView()?.rerenderNode(data.id);
     },
@@ -149,10 +144,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   function select(i: number) {
     data.activeIndex = i;
     setSelected(i);
-    // In One mode the output PASSES THROUGH the active input, so changing which input is
-    // active can move the output's derived type (e.g. cube → frame). No connection event
-    // fires on this path, so re-settle the wildcard types here — else the output socket
-    // keeps the old adopted type while the value has already switched (the reported bug).
+    // In One mode the output passes the active input through, so switching it can move the derived type (Cube to Frame) with no connection event; re-settle here.
     const ed = getActiveEditor();
     const view = getActiveView();
     if (ed && view) reconcileTypesAfterEdit(ed, view);
@@ -165,10 +157,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   async function setMode(many: boolean) {
     data.multiSelect = many;
     setMulti(many);
-    // Output is a Cube in Many mode, `any` in One — retype in place, so the downstream
-    // cables the new type can't feed are dropped by retypeOutputCables. Option B: ghost
-    // each dropped cable (cablePendingReconnect) and re-materialize it when the flip back
-    // makes the target socket compatible again (trueany fits every socket).
+    // Retyping drops downstream cables the new type can't feed; each is ghosted (cablePendingReconnect) and re-materializes when a flip back fits again.
     const changed = data.syncOutputType();
     const ed = getActiveEditor();
     const view = getActiveView();
@@ -194,8 +183,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   }
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
-    data.removeValueInput(key); // re-points activeIndex at the same slot it named
-    setSelKeys(data.selectedKeys); // removeValueInput drops the key from the selection
+    data.removeValueInput(key);
+    setSelKeys(data.selectedKeys);
     setSelected(data.activeIndex);
     await getActiveView()?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up

@@ -1,23 +1,16 @@
 // [[C59]] byteStringOrder (a UI list keeps natural order)
 import { useState } from "react";
 
-// A view control, NOT a transform: it reorders RENDERED rows only. Because the
-// data doesn't move, every consumer of a row index must keep using the SOURCE
-// index — `sortedOrder` returns source indices in display order.
+// A view control, not a transform: every consumer of a row index keeps using the source index, and `sortedOrder` returns source indices in display order.
 
 export type SortDir = "asc" | "desc";
-/** The active sort keys in PRIORITY order — `[0]` is primary, each later key breaks
- *  the ties the ones before it leave. Empty = unsorted. */
+/** Priority order: `[0]` is primary and each later key breaks the ties before it; empty is unsorted. */
 export type ColumnSort = ReadonlyArray<{ col: number; dir: SortDir }>;
 
-/** This column's direction, or null when it isn't part of the sort. */
 export function sortDirOf(sort: ColumnSort, col: number): SortDir | null {
   return sort.find((k) => k.col === col)?.dir ?? null;
 }
 
-/** The click cycle: unsorted → asc → desc → unsorted. MULTI-COLUMN (Excel's
- *  model): priority is the order keys were ADDED, and changing a column's
- *  direction keeps its place. */
 export function nextSort(sort: ColumnSort, col: number): ColumnSort {
   const i = sort.findIndex((k) => k.col === col);
   if (i < 0) return [...sort, { col, dir: "asc" }];
@@ -27,14 +20,11 @@ export function nextSort(sort: ColumnSort, col: number): ColumnSort {
   return sort.filter((_, j) => j !== i);
 }
 
-/** Click-cycle state for one grid. `resetKey` identifies WHICH grid is on screen;
- *  when it changes the sort drops, during RENDER — an effect would render the new
- *  grid once in the old grid's order first. */
+/** When `resetKey` changes the sort drops during render; an effect would first render the new grid in the old grid's order. */
 export function useColumnSort(resetKey?: unknown): {
   sort: ColumnSort;
   cycle: (col: number) => void;
-  /** Apply an old→new column-index map (see `remapSort`) — call on any structural
-   *  column change so a key can't re-attach to whatever slides into its index. */
+  /** Call on any structural column change, so a key can't re-attach to whatever slides into its index. */
   remap: (fn: (col: number) => number | null) => void;
   clear: () => void;
 } {
@@ -52,8 +42,7 @@ export function useColumnSort(resetKey?: unknown): {
   };
 }
 
-/** The sort under a structural column change: `fn` returns a column's new index or
- *  null (dropped); surviving keys keep their relative priority. */
+/** `fn` returns a column's new index, or null when it was dropped. */
 export function remapSort(sort: ColumnSort, fn: (col: number) => number | null): ColumnSort {
   const next: Array<{ col: number; dir: SortDir }> = [];
   for (const k of sort) {
@@ -63,12 +52,9 @@ export function remapSort(sort: ColumnSort, fn: (col: number) => number | null):
   return next;
 }
 
-/** A cell reduced to something comparable; `null` = nothing to sort on, and those
- *  sink to the bottom in BOTH directions (a spreadsheet keeps blanks last). */
+/** `null` is nothing to sort on, and sinks to the bottom in both directions. */
 export type SortKey = string | number | null;
 
-/** Alphanumeric reading of a cell: a number — or numeric-looking text, so a
- *  formatted "1,234" still sorts numerically — else text; a container sorts blank. */
 export function sortKeyOf(v: unknown): SortKey {
   if (v === null || v === undefined) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -79,17 +65,14 @@ export function sortKeyOf(v: unknown): SortKey {
     const n = Number(t.replace(/[,\s]/g, ""));
     return Number.isFinite(n) ? n : t;
   }
-  // A SolError sorts by its code, so the failures group together.
   const code = (v as { code?: unknown }).code;
   if (typeof code === "string") return code;
-  return null; // frame / cube / array cell — nothing scalar to sort on
+  return null;
 }
 
 function compareKeys(a: SortKey, b: SortKey): number {
-  if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1; // blanks last
-  // Type tier FIRST — all numbers before all text: comparing a mixed pair as text
-  // while numeric pairs compare numerically is intransitive, and an intransitive
-  // comparator lets Array.sort emit cycles.
+  if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1;
+  // Type tier first: comparing a mixed pair as text while numeric pairs compare as numbers is intransitive, and Array.sort then emits cycles.
   const an = typeof a === "number";
   if (an !== (typeof b === "number")) return an ? -1 : 1;
   if (an) return a - (b as number);
@@ -97,9 +80,7 @@ function compareKeys(a: SortKey, b: SortKey): number {
   return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 }
 
-/** Source row indices in display order — identity when unsorted, so a caller can
- *  map through it unconditionally. Rows equal on every key keep their source order
- *  by an explicit index tie-break, not by sort stability. */
+/** Identity when unsorted; rows equal on every key keep source order by an explicit index tie-break, not by sort stability. */
 export function sortedOrder(
   rowCount: number,
   sort: ColumnSort,
@@ -112,8 +93,8 @@ export function sortedOrder(
       const a = keyAt(ra, col);
       const b = keyAt(rb, col);
       if (a === null || b === null) {
-        if (a === b) continue;         // both blank on this key — let the next one decide
-        return a === null ? 1 : -1;    // blanks last regardless of direction
+        if (a === b) continue;
+        return a === null ? 1 : -1;
       }
       const c = compareKeys(a, b);
       if (c !== 0) return dir === "asc" ? c : -c;
@@ -122,9 +103,6 @@ export function sortedOrder(
   });
 }
 
-/** The column's ONE sort control, always drawn: the button cycles the sort and nothing
- *  else in the header does (author, 2026-09-19). Quiet while unsorted, the surface's
- *  accent once it carries a direction; the header reserves its room (`--sortpad`). */
 export function SortButton({ dir, onCycle, label }: {
   dir: SortDir | null;
   onCycle: () => void;

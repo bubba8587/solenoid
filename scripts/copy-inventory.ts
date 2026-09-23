@@ -1,30 +1,16 @@
-// Run with: npx tsx scripts/copy-inventory.ts extract [out.md]
-//           npx tsx scripts/copy-inventory.ts apply   [out.md]
-//
-// The hand-rewrite tool for shipped UI copy. `extract` writes EVERY shipped
-// string — catalog labels + descriptions, tsx tooltips / aria labels /
-// placeholders, seed prose, help pages — into one flat file to read straight
-// through and edit in place, plus a sidecar (<out>.orig.json) holding each
-// string as extracted. `apply` diffs the edited file against the sidecar and
-// writes only the changed strings back to their sources: seed strings are set
-// structurally by JSON path, help pages are rewritten whole, catalog strings
-// are located by their quoted form, and tsx strings are replaced verbatim in
-// their file. Anything ambiguous (string not found, or found more than once)
-// is SKIPPED and reported, never guessed. Corpus definition lives in
-// src/graph/copyCorpus.ts, shared with uiCopy.test.ts, so the inventory and
-// the voice lint always cover the same strings.
+// Hand-rewrite tool for shipped UI copy. `extract` writes every shipped string (catalog labels and
+// descriptions, tsx tooltips, aria labels and placeholders, seed prose, help pages) to one editable file
+// plus a sidecar (<out>.orig.json); `apply` writes back only the changed strings, and skips and reports
+// anything stale or ambiguous. The corpus is src/graph/copyCorpus.ts, shared with uiCopy.test.ts.
+// Records are framed `@@@ <id>` ... `@@@ end`; a text line starting with `@@@` is escaped with a backslash.
+//   npx tsx scripts/copy-inventory.ts extract [out.md]
+//   npx tsx scripts/copy-inventory.ts apply   [out.md]
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { collectCopyRecords, type CopyRecord } from "../src/graph/copyCorpus";
 
 const DEFAULT_OUT = "copy-inventory.md";
-
-// ─── Render / parse ────────────────────────────────────────────────────────────
-// Record framing: `@@@ <id>` opens a record, `@@@ end` closes it; the lines
-// between are the string, verbatim. Everything outside records (the preamble,
-// section headings) is ignored by parse. A text line that itself starts with
-// `@@@` is escaped with one leading backslash.
 
 const SECTION: Record<string, string> = {
   "catalog-label": "Catalog · node labels",
@@ -69,7 +55,6 @@ export function renderInventory(records: CopyRecord[]): string {
   return lines.join("\n");
 }
 
-/** id → edited text. Throws on an unterminated record. */
 export function parseInventory(md: string): Map<string, string> {
   const out = new Map<string, string>();
   const lines = md.split("\n");
@@ -92,11 +77,8 @@ export function parseInventory(md: string): Map<string, string> {
   return out;
 }
 
-// ─── Apply ─────────────────────────────────────────────────────────────────────
-
 export type ApplyOutcome = { id: string; status: "applied" | "skipped"; reason?: string };
 
-// Segments: `key` or `key[3]`, dot-separated (as built by collectCopyRecords).
 function jsonPathSegs(path: string): (string | number)[] {
   return path.split(".").flatMap((s) => {
     const m = /^([^[\]]+)((?:\[\d+\])*)$/.exec(s);
@@ -124,8 +106,6 @@ const countOccurrences = (hay: string, needle: string): number => {
   return n;
 };
 
-/** Write one edited record back to its source under `root`. Pure decision +
- *  fs write; ambiguity skips with a reason. */
 export function applyRecord(
   root: string,
   rec: CopyRecord,
@@ -139,7 +119,6 @@ export function applyRecord(
     const json = JSON.parse(readFileSync(file, "utf8")) as unknown;
     const loc = parentByJsonPath(json, rec.path!);
     if (!loc) return skip(`path ${rec.path} not found`);
-    // Staleness: the source must still hold the text this inventory extracted.
     if (loc.parent[loc.key] !== rec.text) return skip("source changed since extract; re-extract");
     loc.parent[loc.key] = edited;
     writeFileSync(file, `${JSON.stringify(json, null, 2)}\n`);
@@ -152,8 +131,6 @@ export function applyRecord(
     return { id, status: "applied" };
   }
   if (kind === "catalog-label" || kind === "catalog-desc") {
-    // Catalog values are runtime strings; locate the SOURCE by its quoted form
-    // (the repo quotes double, and JSON escaping matches for these strings).
     const oldQ = JSON.stringify(rec.text);
     const newQ = JSON.stringify(edited);
     const files = tsxSearchFiles ?? catalogSearchFiles(root);
@@ -165,8 +142,6 @@ export function applyRecord(
     writeFileSync(hits[0], src.replace(oldQ, newQ));
     return { id, status: "applied" };
   }
-  // tsx-*: the extracted text is a verbatim source substring; replace it in its
-  // file, but only when unambiguous and the edit can't break the quoting.
   const file = join(root, rec.file);
   if (/[`\n]/.test(edited) || (edited.includes('"') && !rec.text.includes('"'))) {
     return skip("edit adds quoting the attribute may not survive; edit by hand");
@@ -180,7 +155,6 @@ export function applyRecord(
 }
 
 function catalogSearchFiles(root: string): string[] {
-  // Catalog labels/descriptions live in nodeCatalog.ts and the pack modules.
   const packs = readdirSync(join(root, "src/graph/packs"))
     .filter((n) => n.endsWith(".ts") && !n.endsWith(".test.ts"))
     .map((n) => join(root, "src/graph/packs", n));
@@ -210,8 +184,6 @@ export function applyInventory(
   }
   return { outcomes, unchanged, unknown };
 }
-
-// ─── CLI ───────────────────────────────────────────────────────────────────────
 
 function main(): void {
   const [mode = "extract", out = DEFAULT_OUT] = process.argv.slice(2);

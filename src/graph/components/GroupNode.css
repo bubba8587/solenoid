@@ -1,5 +1,4 @@
 /* [[C88]] collapseIsVisual (summary rows), [[C65]] domOrderStacking */
-/* Group: a translucent framing container drawn behind its member nodes. */
 .solenoid-group {
   box-sizing: border-box;
   display: flex;
@@ -9,8 +8,6 @@
 }
 .solenoid-group * { box-sizing: border-box; }
 
-/* Solid colored header — thicker and larger type than a normal node header.
-   Most of its width is empty space, which is the group's drag handle. */
 .solenoid-group__header {
   position: relative;
   flex: 0 0 auto;
@@ -47,29 +44,19 @@
 .solenoid-group__chevron svg { transition: transform 100ms ease; transform: rotate(90deg); }
 .solenoid-group--collapsed .solenoid-group__chevron svg { transform: rotate(0deg); }
 
-/* Title: kept narrow so the bulk of the header stays a drag surface. */
 .solenoid-group__label {
-  /* Fill the header between chevron and swatch — same box whether it's the
-     display div or the edit textarea, so the truncation point and edit box line
-     up. min-width:0 lets it shrink so text-overflow can ellipsize. */
-  /* Size the label box to its TEXT (don't grow to fill): the textless remainder
-     of the header is then real drag surface, so the draggable area tracks what
-     the user sees — a short title leaves most of the header grabbable, a long
-     one leaves less (truncating at max-width so a sliver always stays). */
+  /* Sized to its text, so the textless rest of the header is real drag surface; max-width always leaves a sliver. */
   flex: 0 1 auto;
   width: auto;
   min-width: 0;
-  /* Narrower cap now that the right side holds two controls (tidy + swatch);
-     the auto right margin pushes that cluster flush to the edge and leaves the
-     gap as drag surface. */
+  /* The auto right margin pushes the tidy and swatch cluster flush right and leaves the gap as drag surface. */
   max-width: 68%;
   margin-right: auto;
   background: transparent;
   border: none;
   outline: none;
   resize: none;
-  /* Single line in the fixed-height header — wrapping with a tall line-height
-     pushed the first line above the top and clipped it. */
+  /* One line: wrapping with a tall line-height pushed the first line above the top and clipped it. */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -81,21 +68,15 @@
   text-transform: uppercase;
   cursor: text;
 }
-/* While editing, the textarea fills the header so there's room to type (the
-   shrink-to-text sizing above is only for the display title's drag surface), and
-   shows the RAW typed text — the Header-title case setting only transforms the
-   display title below, on blur (mirrors .solenoid-node__label-* in nodeCard.css). */
+/* While editing, the textarea fills the header and shows the raw text; the title case applies to the display only (as .solenoid-node__label-* in nodeCard.css). */
 textarea.solenoid-group__label { flex: 1 1 auto; text-transform: none; }
 html.hdr-case-as-typed .solenoid-group__label--display { text-transform: none; }
 html.hdr-case-proper .solenoid-group__label--display { text-transform: capitalize; }
 html.hdr-case-upper .solenoid-group__label--display { text-transform: uppercase; }
-/* Drop the caps tracking on lowercase, like the node label (nodeCard.css). */
 html.hdr-case-as-typed .solenoid-group__label,
 html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
 .solenoid-group__label::placeholder { color: currentColor; opacity: 0.6; }
 
-/* Tidy + color-swatch controls cluster on the header's right side. The label's
-   auto right margin does the pushing now, so neither needs margin-left:auto. */
 .solenoid-group__lock,
 .solenoid-group__tidy,
 .solenoid-group__swatch {
@@ -112,16 +93,14 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   opacity: 0.85;
 }
 .solenoid-group__tidy,
-.solenoid-group__swatch { margin-left: 2px; } /* small gap between header controls */
+.solenoid-group__swatch { margin-left: 2px; }
 .solenoid-group__lock:hover,
 .solenoid-group__tidy:hover,
 .solenoid-group__swatch:hover { opacity: 1; }
 
-/* Locked: the header stops advertising itself as a drag handle. */
 .solenoid-group--locked .solenoid-group__header { cursor: default; }
 .solenoid-group--locked .solenoid-group__header:active { cursor: default; }
 
-/* Positions the shared SwatchGrid popover under the header swatch. */
 .solenoid-group__palette {
   position: absolute;
   top: 36px;
@@ -129,7 +108,6 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   z-index: 5;
 }
 
-/* Translucent body with a dashed outline. */
 .solenoid-group__body {
   position: relative;
   flex: 1 1 auto;
@@ -139,23 +117,18 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   border-radius: 0 0 8px 8px;
 }
 
-/* Pointer surfaces of an OPEN group (its RF wrapper is pointer-transparent —
-   flow.css `.sol-group-open`): header, edge bands and grip always take the
-   pointer; the whole body re-arms once the group is selected. */
+/* An open group's RF wrapper is pointer-transparent (flow.css), so header, bands and grip take the pointer, and the body only once selected. */
 .sol-group-open .solenoid-group__header,
 .sol-group-open .solenoid-group__resize { pointer-events: auto; }
 .sol-group-open .solenoid-group--selected .solenoid-group__body { pointer-events: auto; }
 
-/* Invisible drag bands along the dashed edge, thick enough to grab. Anchored to the
-   body's PADDING box, so they outset 4px past the 2px border: the dashed line itself
-   and a small reach outside it are part of the grab target, not just the interior. */
+/* Anchored to the body's padding box, so they outset 4px past the 2px border and the dashed line itself is grabbable. */
 .solenoid-group__band { position: absolute; pointer-events: auto; }
 .solenoid-group__band--n { top: -4px; left: -4px; right: -4px; height: 18px; }
 .solenoid-group__band--s { bottom: -4px; left: -4px; right: -4px; height: 18px; }
 .solenoid-group__band--w { top: -4px; bottom: -4px; left: -4px; width: 18px; }
 .solenoid-group__band--e { top: -4px; bottom: -4px; right: -4px; width: 18px; }
 
-/* Bottom-right resize grip. */
 .solenoid-group__resize {
   position: absolute;
   right: 2px;
@@ -170,7 +143,6 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
 }
 .solenoid-group__resize:hover { opacity: 0.9; }
 
-/* Collapsed: a compact readout list replacing the dashed frame. */
 .solenoid-group__summary {
   flex: 0 0 auto;
   width: 100%;
@@ -207,7 +179,6 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Edge pill sockets — where external cables reconnect while collapsed. */
 .solenoid-group__pill {
   position: absolute;
   width: 10px;
@@ -224,13 +195,11 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   font-style: italic;
 }
 
-/* Selection ring matches normal nodes (same blue), wrapping the whole frame. */
 .solenoid-group--selected {
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
   border-radius: 8px;
 }
-/* Raised overlay ring (see nodeCard.css) so it sits above the group's own
-   dashed border instead of under it. */
+/* A raised overlay ring (as in nodeCard.css), so it sits above the group's own dashed border. */
 .solenoid-group--selected::after {
   content: "";
   position: absolute;
@@ -242,12 +211,6 @@ html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
   z-index: 6;
 }
 
-/* Collapsed-group edge pills (socket wrappers + the stadium pill) paint ABOVE
-   the selection ring overlay (z-index 6) — selecting a group must not cover
-   its connection points. */
-/* Align the stadium pill EXACTLY with the plain socket pills (a collapsed group can
-   show both). The socket sits at left/right:-5 (NodeSocket.tsx); both are 12px wide,
-   so the stadium must use the same -5 to share a center. (Base class stays -6 for
-   collapsed nodes, which share it.) */
+/* -5, the socket's own offset (NodeSocket.tsx), so the stadium shares a center with the plain socket pills; collapsed nodes keep -6. */
 .solenoid-group .solenoid-node__input-pill  { left: -5px; }
 .solenoid-group .solenoid-node__output-pill { right: -5px; }

@@ -3,136 +3,110 @@ aliases: ["Touch gestures"]
 tags: [spec, canvas]
 ---
 <!-- [[C93]] gestureByPointerType, [[C92]] pinchUnvetoable -->
-# Touch & pointer gestures — the input inventory
 
-**THE normative list of what every pointer gesture means, per device config.** Born
-2026-08-06 after two phantom-gesture incidents in one session: [[layout-chrome]]
-claimed a "canvas double-tap add" that never existed, and the real long-press-to-add
-went unrecorded because it rides the browser's native long-press → `contextmenu`
-synthesis with no greppable "longpress" anywhere. A gesture that exists only as an
-event-plumbing side effect is invisible to search; this file is where every gesture
-is written down. **Adding, removing, or regating a gesture updates this file in the
-same change.** The model is [[C93]] gestureByPointerType and [[C92]] pinchUnvetoable; deep mechanics stay in `../tree/specs/canvas/pointer-gestures.md`;
-this is the WHAT/WHERE map.
+# Spec: Touch gestures
 
-## Device configs (`coarse.ts` — derive, never duplicate)
+Serves [[C93]] gestureByPointerType (what a finger, a mouse and a pen each do) and [[C92]] pinchUnvetoable (a pinch always wins). It is the inventory of what every pointer gesture means on each device configuration, and where each one is handled. The mechanics of the listeners (event phases, the finger census, the claim tests) are in [[pointer-gestures]].
+
+Some gestures exist only as a side effect of event plumbing. Long-press to add, for example, is the browser's own long-press turning into a `contextmenu` event, and no code anywhere mentions "long-press". Such a gesture is invisible to search, so this inventory is where every gesture is written down. Adding, removing or regating a gesture updates this spec in the same change.
+
+## Device configurations
+
+The flags live in `coarse.ts`. Derive from them; never duplicate the tests.
 
 | Flag | Definition | Interaction model |
 |---|---|---|
-| `IS_COARSE` | `(pointer: coarse)` matches | touch-primary: bigger hit areas, touch actions in a bar |
-| `IS_MOBILE` | `IS_COARSE` AND mobile UA (mirrored to `html.is-mobile` by `main.tsx`) | mobile model: selection-gated nodes, bottom action bar |
-| `IS_TABLET` | `IS_COARSE` AND NOT mobile UA | DESKTOP interaction model + touch actions in the top bar |
+| `IS_COARSE` | `(pointer: coarse)` matches | Touch-primary: bigger hit areas, touch actions in a bar. |
+| `IS_MOBILE` | `IS_COARSE` and a mobile user agent (mirrored to `html.is-mobile` by `main.tsx`) | The mobile model: selection-gated nodes, the bottom action bar. |
+| `IS_TABLET` | `IS_COARSE` and not a mobile user agent | The desktop interaction model, with touch actions in the top bar. |
 
-"Request desktop site" flips the UA test — that is the user's opt-out lever from the
-mobile model; never gate on coarseness alone what must flip with it.
+"Request desktop site" flips the user-agent test, and that is the user's way out of the mobile model. Never gate on coarseness alone something that must flip with it.
 
-## The standing invariants (violations break gestures silently)
+## Standing rules
 
-- **Pinch listens in CAPTURE, pan/drag in BUBBLE.** `pointerGesture.ts` counts
-  contacts from window-capture listeners so no component `stopPropagation` can hide
-  a finger; `isPinching()` (≥2 FINGERS — mouse/pen never count) is the ONLY
-  definition. Never count raw pointers. Never move pan/drag to capture (they are
-  deliberately vetoable). Pinned by `pointerGesture.test.ts`.
-- **No palm rejection**, by author call — a precise editor, nobody rests a palm on
-  a node graph. A resting stylus is deliberately not half a pinch.
-- **A finger never selects on pointerdown** — selection lands via the tap's click (a
-  press can become a pan or a pinch; a pinch's click is swallowed by `flowPinch`'s
-  click guard). A one-finger drag on an UNSELECTED node PANS (`flowTouchPan.ts`).
-- **Mobile selection gating** (`socket.css`, gated `html.is-mobile`): an UNSELECTED
-  node/conduit/group/note makes every descendant inert (pan/pinch win); the card
-  itself stays tappable (that tap selects). Exceptions: the resize grip is always
-  live; every socket is live while a cable drags (`--cabling`).
-- **Double-click never zooms** — both surfaces pass `zoomOnDoubleClick={false}`.
-  Cable double-click is detected via the click's `detail` count in `onClick`
-  (`FlowCableEdge.tsx`), so the guard runs before the single-click select toggle. A
-  new "double-tap X" feature is a design smell here; prefer tap or long-press.
-- **`stopDragStart`** (`coarse.ts`): read-only node chrome and single-line fields
-  swallow pointerdown on desktop (no accidental node drag) but bubble on mobile (a
-  pan may start over them). Not for drag-interactive controls or textareas — those
-  keep a hard stop.
-- **A cable drag blurs the focused field first** (`onConnectStart` in FlowSurface) —
-  a mid-edit value commits before it is wired.
+Breaking any of these breaks gestures silently.
 
-## Gesture inventory
+- **Pinch listens in capture, pan and drag in bubble.** `pointerGesture.ts` counts contacts from window-capture listeners, so no component's `stopPropagation` can hide a finger. `isPinching()` (two or more fingers; a mouse or pen never counts) is the only definition. Never count raw pointers, and never move pan or drag to capture: they are vetoable on purpose. `pointerGesture.test.ts` pins this.
+- **No palm rejection**, by the author's call: this is a precise editor, and nobody rests a palm on a node graph. A resting stylus is deliberately not half a pinch.
+- **A finger never selects on pointerdown.** Selection lands through the tap's click, because a press can still become a pan or a pinch, and a pinch's click is swallowed by `flowPinch`'s click guard. A one-finger drag on an unselected card pans (`flowTouchPan.ts`).
+- **Mobile selection gating** (`socket.css`, under `html.is-mobile`). An unselected node, Conduit, group or note makes every descendant inert, so pan and pinch win; the card itself stays tappable, and that tap selects it. Two exceptions: the resize grip is always live, and every socket is live while a cable is being dragged (`--cabling`).
+- **Double-click never zooms.** Both surfaces pass `zoomOnDoubleClick={false}`. A cable double-click is detected from the click's `detail` count in `onClick` (`FlowCableEdge.tsx`), so the check runs before the single-click select toggle. A new "double-tap X" feature is a design smell here; prefer a tap or a long-press.
+- **`stopDragStart`** (`coarse.ts`). Read-only node chrome and single-line fields swallow `pointerdown` on desktop, so a click can't start a node drag, but let it bubble on mobile, so a pan can start over them. It is not for drag-interactive controls or textareas, which keep a hard stop.
+- **A cable drag blurs the focused field first** (`onConnectStart` in `FlowSurface`), so a mid-edit value commits before it is wired.
+
+## The inventory
 
 ### Canvas (empty space)
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| 1-finger / left-mouse drag | all | pan | RF pane drag (bubble, vetoable); on an unselected card `flowTouchPan.ts` |
-| 2-finger pinch | touch | zoom (capped) | `flowPinch.ts` (wrapper capture), `pointerGesture.ts` |
-| wheel / ctrl+wheel trackpad pinch | mouse | zoom (proportional, step-capped) | `flowWheel.ts` + `wheelZoomDelta` (`viewPresets.ts`) |
-| tap / click | all | clear cable/standoff/endpoint selection | `FlowSurface.tsx` `onPaneClick` |
-| **long-press** (touch) / right-click | all | **context menu routing: empty canvas → ADD MENU**; socket → socket menu (≤11px snap radius); cable → cable menu; node → node menu (headed by the node's catalog one-liner — the header tooltip's touch-reachable home). Two regates: suppressed entirely while ISOLATE is active, and the handler bails on the focused editable (the browser's own menu wins there) | `canvasContextMenu.ts` — ONE native `contextmenu` handler; touch long-press is the browser's own synthesis, there is no timer in our code |
-| double-tap / double-click | all | **nothing, by design** (`zoomOnDoubleClick={false}` — see invariants) | RF props |
+| One-finger or left-mouse drag | all | Pan. | RF pane drag (bubble, vetoable); on an unselected card, `flowTouchPan.ts` |
+| Shift + left-mouse drag; one-finger drag in touch-select mode | all | Lasso. Clockwise selects what it crosses, counterclockwise what it encloses. | `canvasLasso.ts` (wrapper capture) |
+| Two-finger pinch | touch | Zoom, bounded, never snapped mid-pinch. | `flowPinch.ts` (wrapper capture), `pointerGesture.ts` |
+| Wheel, or a Ctrl+wheel trackpad pinch | mouse | Zoom, proportional and capped per step. | `flowWheel.ts` and `wheelZoomDelta` (`viewPresets.ts`) |
+| Tap or click | all | Clear the cable, standoff and endpoint selection. | `onPaneClick` in `FlowSurface.tsx` |
+| Long-press (touch) or right-click | all | Context-menu routing: empty canvas opens the Add menu; a socket (snapped within 11px) its socket menu; a cable the cable menu; a node the node menu, headed by the node's catalog one-liner, which is the touch-reachable home of the header tooltip. Suppressed entirely while isolate is active, and skipped over a focused editable field, where the browser's own menu wins. | `canvasContextMenu.ts`: one native `contextmenu` handler. A touch long-press is the browser's own synthesis; there is no timer in our code. |
+| Double-tap or double-click | all | Nothing, by design (see the standing rules). | RF props |
 
-(Marquee/lasso selection exists but its trigger is not recorded here yet — verify in
-`canvasLasso.ts`/`touchSelectStore` before citing it anywhere.)
-
-Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add node….
+Other ways to add a node, none of them gestures: the mobile bar's ➕ button, the `A` key, and Insert ▸ Add node….
 
 ### Nodes
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| tap (up, ≤slop) | touch | select (via the tap's click — see invariants) | RF click selection + `flowTouchPan.ts` |
-| drag on card | mouse; touch only when SELECTED | move node (whole selection if member) | RF node drag (d3, bubble) |
-| stationary tap on header label (≤4px `HEADER_TAP_SLOP`) | all | edit title | `nodeKit.tsx` |
-| tap chevron (≤slop; drag passes through to node drag) | all | collapse/expand | `NodeCard.tsx` |
-| re-expand a square-collapsed Sparkline | all | the chevron, revealed on hover OR SELECTION (touch: tap selects → chevron appears → tap it); `NodeCard`'s `onDoubleClick` fallback also fires for mouse | `nodeCard.css` square-collapse rules |
-| drag resize grip | all (live even unselected on mobile) | resize | `ResizeHandle` |
+| Tap (released within the slop) | touch | Select, through the tap's click. | RF click selection and `flowTouchPan.ts` |
+| Drag on a card | mouse; touch only when selected | Move the node, and the whole selection if it is part of one. | RF node drag (d3, bubble) |
+| Stationary tap on the header label (within `HEADER_TAP_SLOP`, 4px) | all | Edit the title. | `nodeKit.tsx` |
+| Tap the chevron (within the slop; a drag passes through to the node drag) | all | Collapse or expand. | `NodeCard.tsx` |
+| Re-expand a square-collapsed Sparkline | all | The chevron, revealed on hover or selection (on touch, a tap selects, the chevron appears, and a second tap uses it); `NodeCard`'s `onDoubleClick` fallback also works for a mouse. | square-collapse rules in `nodeCard.css` |
+| Drag the resize grip | all (live even when unselected on mobile) | Resize. | `ResizeHandle` |
 
-### Sockets & cables
-
-| Gesture | Config | Action | Where |
-|---|---|---|---|
-| drag from socket | all (mobile: selected node, or any during `--cabling`) | pick/drop cable | RF Handle drag (`FlowSocketHandle`, `onConnect` in FlowSurface) |
-| hover dot (300ms intent) | mouse | frame-input EXAMPLE hint (unwired frame input only) | `NodeSocket.tsx` + `frameHint.ts` |
-| hover dot (400ms intent) | mouse | VALUE peek — an output socket or a wired input pops the socket's live value as a scaled-down Display beside it (`SocketValuePeek`, the frameHint layer's second payload kind); leave / wheel / cable-pick hides it. Never both with the example hint. Desktop pointer only (touch has no hover). | `NodeSocket.tsx` + `frameHint.ts` + `FrameHintLayer.tsx` |
-| tap the input ROW | touch | frame-input EXAMPLE hint — the INTENTIONAL touch trigger; next tap or 4s dismisses. The dot itself deliberately has none: a touch press on the dot begins the cable pick, which captures the pointer (the tap's up never reaches the dot), and the dot scales with the canvas transform anyway (a few px at overview zoom). | `MeasuredSocketRow` / `FrameHintLayer` |
-| long-press socket | touch | socket context menu | `canvasContextMenu.ts` |
-| touch hit areas | coarse | dot targets inflate to ~28px (Conduit sockets deliberately small so its body stays grabbable); every socket grows further while cabling (coarse −8px → −14px inset; a specificity bug once SHRANK it, fixed 2026-08-09) | `socket.css` |
-| click cable / tap | all | select cable (ribbons select the run) | `flow/FlowCableEdge.tsx` |
-| double-click cable | mouse | select the whole RUN (via click `detail` count, NOT onDoubleClick) | `flow/FlowCableEdge.tsx` |
-
-### Drawn cables — the armed draw tool (`components/DrawnCableCapture.tsx`)
-
-The tool is MODAL: while armed a full-window sheet sits over the pane, so these replace the
-canvas gestures above until it is disarmed. It owns pan itself (the sheet is a SIBLING of the
-pane). Finishing disarms and selects the new cable.
+### Sockets and cables
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| tap / click | all | place a point (only inside `TAP_SLOP`; a repeat tap on the last point is dropped) | `DrawnCableCapture.tsx` |
-| 1-finger / left-mouse drag | all | pan the camera, place nothing | `DrawnCableCapture.tsx` `panBy` |
-| 2-finger pinch | touch | zoom, place nothing (`flowPinch` listens in CAPTURE, through the sheet) | `flowPinch.ts` |
-| double-click | **mouse only** | finish (click `detail`; click 1 places the last point) | `DrawnCableCapture.tsx` |
-| right-click | mouse | finish (no click is raised, so it is handled on pointerdown) | `DrawnCableCapture.tsx` |
-| Undo / Finish / Cancel buttons | coarse | the touch way out — double-tap is NOT a finish gesture, and there is no Esc | the strip, at the THUMB end |
+| Drag from a socket | all (mobile: on a selected node, or any socket while `--cabling`) | Pick up and drop a cable. | RF Handle drag (`FlowSocketHandle`, `onConnect` in `FlowSurface`) |
+| Hover the dot (300ms intent) | mouse | Frame-input example hint, for an unwired frame input only. | `NodeSocket.tsx` and `frameHint.ts` |
+| Hover the dot (400ms intent) | mouse | Value peek: an output socket or a wired input shows its live value as a scaled-down Display beside it (`SocketValuePeek`, the frame-hint layer's second payload kind). Leaving, a wheel or a cable pick hides it. Never shown together with the example hint. Desktop only, since touch has no hover. It arms only when the value shows as a summary chip (`isChipSummaryPeek`: a Frame, Cube, table, list, chart, diagram or LAMBDA); a scalar, text or error is already on the card in full. An output peeks its own cached value; a wired input peeks its source's output, formatted by the source node; an unwired input has nothing to peek. While the peek is up the dot's native type tooltip is suppressed. | `NodeSocket.tsx`, `frameHint.ts` and `FrameHintLayer.tsx` |
+| Tap the input row | touch | Frame-input example hint, the intended touch trigger; the next tap or 4s dismisses it. The dot itself has none on purpose: a touch press on the dot begins a cable pick, which captures the pointer so the tap's release never reaches the dot, and the dot scales with the canvas anyway, down to a few pixels at overview zoom. | `MeasuredSocketRow` / `FrameHintLayer` |
+| Long-press a socket | touch | Socket context menu. | `canvasContextMenu.ts` |
+| Touch hit areas | coarse | Dot targets inflate to about 28px, except a Conduit's, which stay small so its body stays grabbable. Every socket grows further while cabling (from a −8px to a −14px inset on coarse pointers). | `socket.css` |
+| Click or tap a cable | all | Select the cable; a ribbon selects as one entity. | `flow/FlowCableEdge.tsx` |
+| Double-click a cable | mouse | Select the whole run, through the click's `detail` count, not `onDoubleClick`. | `flow/FlowCableEdge.tsx` |
 
-### Drawn cables — a finished cable (`components/DrawnCableLayer.tsx`)
+### Drawn cables: the armed draw tool (`components/DrawnCableCapture.tsx`)
 
-| Gesture | Config | Action | Where |
-|---|---|---|---|
-| tap the body | touch | select (via the tap's click) | `DrawnCableLayer.tsx` `onBodyClick` |
-| drag the body of an UNSELECTED cable | touch | **pan** (the body is pan surface until selected) | RF pane drag |
-| click / drag the body | mouse; touch only when SELECTED | select and move the whole cable (`nopan`) | `DrawnCableLayer.tsx` |
-| drag a point handle | all (handles show only when selected) | move the point, never pan (`nopan`); a second finger hands off to pinch | `DrawnCableLayer.tsx` |
-| tap / click a handle | all | make it the angle dial's active point | `DrawnCableLayer.tsx` |
-| alt-click a handle | mouse | remove the point (the panel's ✕ is the finger's version) | `DrawnCableLayer.tsx` / `DrawnCableInspector.tsx` |
-| double-click the body | mouse | insert a point on the nearest span (the panel's + is the finger's version) | `DrawnCableLayer.tsx` |
-| touch hit areas | coarse | hit band 40px; each handle gets an invisible ~44px ring behind its disc | `DrawnCableLayer.tsx` |
-
-### Chrome (bars, popups)
+The tool is modal: while it is armed, a full-window sheet sits over the pane, and these gestures replace the canvas gestures above until it is disarmed. The sheet is a sibling of the pane, so it owns panning itself. Finishing disarms the tool and selects the new cable.
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| touch action buttons | mobile: bottom bar; tablet: top bar | palette/undo/redo/select/group/delete (+ mobile ➕) | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
-| taps in popups/overlays | all | normal UI; `stopDragStart` guards chrome that sits over the canvas | per component |
+| Tap or click | all | Place a point, only within `TAP_SLOP`; a repeat tap on the last point is dropped. | `DrawnCableCapture.tsx` |
+| One-finger or left-mouse drag | all | Pan the camera; place nothing. | `DrawnCableCapture.tsx` `panBy` |
+| Two-finger pinch | touch | Zoom; place nothing. `flowPinch` listens in capture, so it works through the sheet. | `flowPinch.ts` |
+| Double-click | mouse only | Finish, from the click's `detail`; the first click places the last point. | `DrawnCableCapture.tsx` |
+| Right-click | mouse | Finish. No click is raised, so it is handled on pointerdown. | `DrawnCableCapture.tsx` |
+| Undo, Finish and Cancel buttons | coarse | The touch way out, at the thumb end of the strip. Double-tap is not a finish gesture, and there is no Esc. | the hint strip |
+
+### Drawn cables: a finished cable (`components/DrawnCableLayer.tsx`)
+
+| Gesture | Config | Action | Where |
+|---|---|---|---|
+| Tap the body | touch | Select, through the tap's click. | `onBodyClick` in `DrawnCableLayer.tsx` |
+| Drag the body of an unselected cable | touch | Pan; the body is pan surface until the cable is selected. | RF pane drag |
+| Click or drag the body | mouse; touch only when selected | Select and move the whole cable (`nopan`). | `DrawnCableLayer.tsx` |
+| Drag a point handle | all (handles show only when selected) | Move the point, never pan (`nopan`); a second finger hands off to the pinch. | `DrawnCableLayer.tsx` |
+| Tap or click a handle | all | Make it the angle dial's active point. | `DrawnCableLayer.tsx` |
+| Alt-click a handle | mouse | Remove the point; the panel's ✕ is the finger's version. | `DrawnCableLayer.tsx` / `DrawnCableInspector.tsx` |
+| Double-click the body | mouse | Insert a point on the nearest span; the panel's + is the finger's version. | `DrawnCableLayer.tsx` |
+| Touch hit areas | coarse | A 40px hit band; each handle gets an invisible ring of about 44px behind its disc. | `DrawnCableLayer.tsx` |
+
+### Chrome (bars and pop-ups)
+
+| Gesture | Config | Action | Where |
+|---|---|---|---|
+| Touch action buttons | mobile: bottom bar; tablet: top bar | Palette, undo, redo, select mode, group, delete, and on mobile ➕. Each action has one definition shared by both bars, which differ only in placement and size: undo is a synthetic Ctrl+Z through the canvas key handler and group runs the same `G` shortcut. The palette's glyph is Lucide's terminal (`>_`), since its search covers finding a node too; select mode's glyph is a dashed marquee. | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
+| Taps in pop-ups and overlays | all | Normal UI; `stopDragStart` guards chrome that sits over the canvas. | per component |
 
 ## Enforcement
 
-`pointerGesture.test.ts` (census + isPinching), `touchActions.test.ts` (mobile/tablet
-action drift-pin), `zoomSettle.test.ts` (gesture-exit settle), `frameHint.test.ts`
-(hint contract). The inventory itself is UNENFORCED — it is a map, kept true by the
-update-in-the-same-change rule above.
+`pointerGesture.test.ts` (the census and `isPinching`), `touchActions.test.ts` (the mobile and tablet action drift pin), `zoomSettle.test.ts` (the gesture-exit settle) and `frameHint.test.ts` (the hint contract). The inventory itself is not machine-checked: it is a map, kept true by updating it in the same change as the gesture.

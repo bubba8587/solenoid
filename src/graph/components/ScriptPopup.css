@@ -1,4 +1,3 @@
-/* Script editor popup — the roomy editing surface for the on-card source field. */
 .sol-popup.script-popup {
   width: min(680px, 92vw);
 }
@@ -10,7 +9,6 @@
   padding: 12px;
 }
 
-/* A larger reading size than the on-card field; the overlay layers inherit it. */
 .script-popup__body .sol-js-editor {
   font-size: 12.5px;
   line-height: 18px;
@@ -25,7 +23,6 @@
   color: #e06c2e;
 }
 
-/* The minimal boundary note, the formula popup's engine-note idiom. */
 .script-popup__note {
   padding: 6px 8px;
   font-size: 11px;

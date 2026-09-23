@@ -1,14 +1,10 @@
 // [[C69]] ganttPackages, [[D67]] grammarOnlyAtBorder
-// The predecessor grammar `<row><type><±lag><unit>` (`3FS+2d`) lives ONLY at the import border:
-// a row number resolves to a name here and never becomes an internal key (25-gantt.md § 6.1).
 
 import type { LinkType, PlanDependency } from "./types";
 import { LINK_TYPES } from "./graph";
 
 const TOKEN = /^\s*(\d+|[^,;]+?)\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(?:\.\d+)?)?\s*(e?d|w|wk|h)?\s*$/i;
 
-/** Parse one predecessor cell. `names` is the 1-based row → task name map; a token that is
- *  not a row number is taken as a task name (so a hand-typed name list works too). */
 export function parsePredecessorText(text: string, names: readonly string[]): { deps: PlanDependency[]; errors: string[] } {
   const deps: PlanDependency[] = [];
   const errors: string[] = [];
@@ -29,15 +25,11 @@ export function parsePredecessorText(text: string, names: readonly string[]): { 
     const unit = (unitRaw ?? "d").toLowerCase();
     if (unit === "w" || unit === "wk") lag *= 5;
     else if (unit === "h") lag /= 8;
-    // Sub-day lags survive (Minutes mode counts them; Days mode rounds at the edge, lagUnits);
-    // `ed` is an elapsed lag, calendar days.
     deps.push({ task, type: LINK_TYPES.includes(type) ? type : "FS", lag: Math.round(lag * 1000) / 1000, ...(unit === "ed" ? { elapsed: true } : {}) });
   }
   return { deps, errors };
 }
 
-/** The grid's text for a task's dependencies: names, with type and lag only when they
- *  differ from the FS/0 default ("Demolition, Framing SS+2"). */
 export function predecessorText(deps: readonly PlanDependency[]): string {
   return deps.map((d) => {
     const type = d.type === "FS" ? "" : ` ${d.type}`;

@@ -1,18 +1,7 @@
-// Run with: npx tsx scripts/op-exposure.ts
-//
-// Which OPS of a multi-op node class are individually reachable from the Add menu?
-//
-// A node class with an op selector is a navigation convenience for closely-related
-// operations — each op is its own function, and the author's intent is that they are
-// normally ALSO individually listed in the Add menu, so nobody has to know which card
-// hosts which op. This finds the ones that aren't, by instantiating every catalog leaf
-// and comparing the ops actually reachable against the class's op table.
-//
-// Three buckets in the output, and only the FIRST is necessarily a gap:
-//   • not fully exposed — the class has ops with no Add-menu entry of their own;
-//   • ambiguous — the op-table join was inconclusive; check by hand;
-//   • no op table — usually a CONFIG selector (a chart type, an element symbol, a
-//     physical constant), where a single leaf is correct.
+// Lists multi-op node classes whose ops are not each reachable as their own Add-menu row, by
+// instantiating every catalog leaf and comparing against the class's op table ([[C26]] opArgDistinct).
+// Buckets: not fully exposed (a gap); ambiguous (check by hand); no op table (usually a config selector).
+//   npx tsx scripts/op-exposure.ts
 
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -50,12 +39,7 @@ walk(buildCatalog(false));
     }
   }
 
-  // NODE_OPS is AUTHORITATIVE where it speaks — consult it before the
-  // table-content heuristic, which mis-joins classes whose op keys are a subset
-  // of an unrelated table (GroupByFrame's {"sum"} matched the 1-D
-  // GROUP_BY_OP_META). An ARGUMENT-kind family is declared a non-gap outright:
-  // its variants are parameters of the host (an aggregator, a condition), not
-  // operations that could deserve menu exposure (author ruling 2026-07-30).
+  // NODE_OPS before the table heuristic, which mis-joins a class whose op keys are a subset of an unrelated table.
   const declared = new Map<string, string[]>();
   const argumentKind = new Set<string>();
   for (const d of NODE_OPS) {

@@ -1,11 +1,7 @@
-/* Lower-left panel, shown only while exactly one cable is selected. Mirrors the
-   overlay chrome tokens used by the pins/legend so it reads as part of the same
-   HUD family. Fixed-position, rendered in the main React root. */
 .solenoid-cable-inspector {
   position: fixed;
   left: 16px;
-  /* Clear the status bar (the measured envelope) + the safe-area inset, so the
-     panel never overlays the footer counts/zoom strip. */
+  /* Clears the status bar (the measured envelope) and the safe-area inset. */
   bottom: calc(var(--chrome-bottom, 19px) + 12px + env(safe-area-inset-bottom));
   z-index: 110;
   width: 220px;
@@ -23,9 +19,7 @@
   transition: left 120ms ease;
 }
 
-/* Slide past the Navigator when it's open — same as the docked conduit / standoff
-   toolbars (OutlinePanel sets body.solenoid-nav-open; panel is left:12px + 248px
-   wide). Desktop only: on mobile the navigator is a near-full-width overlay. */
+/* Desktop only: slide past the open Navigator, as the docked Conduit and standoff toolbars do. */
 html:not(.is-mobile) body.solenoid-nav-open .solenoid-cable-inspector {
   left: 272px; /* 12 (panel left) + 248 (panel width) + 12 (gap) */
 }
@@ -35,16 +29,12 @@ html:not(.is-mobile) body.solenoid-nav-open .solenoid-cable-inspector {
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Mobile: the bottom action bar replaces the status bar as the thing to clear —
-   the measured envelope IS the bar (safe-area included); +39 clears the raised
-   FAB + gap (same lift as the docked conduit toolbar). */
+/* Mobile: the measured envelope is the bottom action bar; +39 clears the raised FAB, as the docked Conduit toolbar does. */
 html.is-mobile .solenoid-cable-inspector {
   bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
 }
 
-/* Collapsed: the panel folds to one square chip in the same corner, showing
-   the active cable-shape glyph (the exact drawing the toolbar's shape selector
-   uses). Click to unfold; the cable selection is untouched either way. */
+/* Collapsed: one square chip showing the active cable-shape glyph; the selection is untouched either way. */
 .solenoid-cable-inspector--chip {
   width: 34px;
   height: 34px;
@@ -93,8 +83,6 @@ html.is-mobile .solenoid-cable-inspector {
 }
 .solenoid-cable-inspector__close:hover { opacity: 1; color: var(--accent); }
 
-/* One end of the cable: role tag, node title, port, value — a single row that
-   wraps the value beneath if the line gets tight. */
 .solenoid-cable-inspector__end {
   display: flex;
   align-items: baseline;
@@ -135,8 +123,7 @@ html.is-mobile .solenoid-cable-inspector {
   font-size: 11px;
   font-weight: 500;
 }
-/* The Conduits a run threads through. They're wiring, not endpoints, so the row
-   sits back: smaller, dimmer, and chained with a thin arrow between names. */
+/* Conduits are wiring, not endpoints, so the via row sits back. */
 .solenoid-cable-inspector__via-list {
   display: flex;
   flex-wrap: wrap;
@@ -172,7 +159,7 @@ html.is-mobile .solenoid-cable-inspector {
 .solenoid-cable-inspector__value--empty { color: var(--text-muted, var(--text)); font-weight: 500; opacity: 0.7; }
 .solenoid-cable-inspector__value--error { color: var(--sol-error); font-weight: 700; font-size: 11.5px; }
 
-/* List/table/frame chips read better neutral here, same as in the pins HUD. */
+/* Chips read better neutral here, as in the pins HUD. */
 .solenoid-cable-inspector .solenoid-array-chip {
   margin-left: auto;
   color: var(--text);
@@ -180,8 +167,7 @@ html.is-mobile .solenoid-cable-inspector {
   border-color: var(--border-strong);
 }
 
-/* The value row sits under both ends, set off by a hairline so it reads as the
-   payload rather than a third endpoint. */
+/* A hairline sets the value row off, so it reads as the payload rather than a third endpoint. */
 .solenoid-cable-inspector__wire {
   display: flex;
   align-items: baseline;
@@ -191,9 +177,6 @@ html.is-mobile .solenoid-cable-inspector {
   border-top: 1px solid var(--overlay-border);
 }
 
-/* The static shape row — column name · type pairs, wrapping as needed. Sits right
-   under the wire row (which already carries the divider above it), no border of
-   its own. */
 .solenoid-cable-inspector__shape {
   display: flex;
   align-items: flex-start;
@@ -222,7 +205,6 @@ html.is-mobile .solenoid-cable-inspector {
   font-style: italic;
 }
 
-/* The ↓ between the two ends — a quiet directional cue, not a heavy divider. */
 .solenoid-cable-inspector__arrow {
   align-self: center;
   margin: -2px 0;

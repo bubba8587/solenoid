@@ -1,7 +1,4 @@
 // [[D30]], [[D31]]
-// The model-level compute pass: ONE definition, no view. processGraph (the app), the
-// headless runner and the seed tests run the same steps: invalidate, seed loops, fetch
-// every node ([[D30]] targetedEqualsFull). A composite's private engine seeds loops here too.
 import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
@@ -14,15 +11,11 @@ type Editor = NodeEditor<Schemes>;
 type Engine = DataflowEngine<Schemes>;
 
 export type NodeOutputs = Record<string, unknown>;
-/** node id → its outputs, or null when a newer pass cancelled the fetch. */
 export type PassValues = Map<string, NodeOutputs | null>;
 
 export const CIRC_MESSAGE =
   "This node is part of a circular dependency: the calculation feeds back into itself";
 
-// The TRUE members of every dependency loop (a self-loop or an SCC of 2+), NOT the nodes
-// downstream of one: seeding only these with #CIRC! leaves everything downstream computing
-// normally and showing the propagated error.
 export function loopMembers(editor: Editor): Set<string> {
   const ids = editor.getNodes().map((n) => n.id);
   const adj = new Map<string, string[]>();
@@ -40,7 +33,7 @@ export function loopMembers(editor: Editor): Set<string> {
   const stack: string[] = [];
   const members = new Set<string>(selfLoops);
   let counter = 0;
-  // Iterative Tarjan (recursion would blow the stack on big graphs).
+  // Iterative: recursion would overflow the stack on a large graph.
   for (const start of ids) {
     if (index.has(start)) continue;
     const work: Array<{ node: string; i: number }> = [{ node: start, i: 0 }];
@@ -78,7 +71,6 @@ export function loopMembers(editor: Editor): Set<string> {
   return members;
 }
 
-// Downstream closure over outgoing connections — the nodes a single value edit can affect.
 export function downstreamClosure(editor: Editor, startId: string): Set<string> {
   const out = new Map<string, string[]>();
   for (const c of editor.getConnections()) {
@@ -93,10 +85,7 @@ export function downstreamClosure(editor: Editor, startId: string): Set<string> 
   return seen;
 }
 
-/** Drop the caches a pass must recompute: the downstream cone of `changedId`, or
- *  everything (nothing under `keepCaches`, an additive pass over newly added nodes). Walks the cone by hand — `engine.reset(id)` recurses over outgoing
- *  connections with no visited set, so a cable cycle blows the stack before the
- *  #CIRC! seeding runs. Returns the cone, or null for a full reset. */
+// Never `engine.reset(id)`: it recurses with no visited set and overflows on a cable cycle.
 export function invalidate(editor: Editor, engine: Engine, changedId?: string, keepCaches = false): Set<string> | null {
   if (!changedId) { if (!keepCaches) engine.reset(); return null; }
   const cone = downstreamClosure(editor, changedId);
@@ -104,10 +93,6 @@ export function invalidate(editor: Editor, engine: Engine, changedId?: string, k
   return cone;
 }
 
-/** A dependency loop must be seeded BEFORE fetching: the pull engine resolves inputs
- *  recursively before calling data(), so a cycle would deadlock. Every member's cache
- *  entry and its value-box field (`cachedResult` / `cachedValue` / `cachedList`) take
- *  the #CIRC! error; the member never runs. */
 export function seedLoopErrors(editor: Editor, engine: Engine, loop: Set<string>, message = CIRC_MESSAGE): void {
   if (loop.size === 0) return;
   const circ = solError("#CIRC!", message);
@@ -127,10 +112,6 @@ export function seedLoopErrors(editor: Editor, engine: Engine, loop: Set<string>
   }
 }
 
-/** Fetch every node's outputs in editor order, skipping a node removed while an earlier
- *  fetch awaited. A fetch a newer pass cancelled lands as null, or under `stopOnCancel`
- *  ends the pass and answers null; any other failure propagates (the guards already
- *  turned real compute errors into SolError values). */
 export async function fetchAll(
   editor: Editor,
   engine: Engine,
@@ -153,9 +134,7 @@ export async function fetchAll(
   return out;
 }
 
-/** The whole headless pass: a fresh collect memo, trig modes, invalidate, seed loops, fetch all. */
 export async function computeAll(editor: Editor, engine: Engine, changedId?: string): Promise<PassValues> {
-  // A lazy frame materializes once per pass, never across passes, as in processGraph.
   clearCollectMemo();
   resolveTrigModes(editor);
   invalidate(editor, engine, changedId);

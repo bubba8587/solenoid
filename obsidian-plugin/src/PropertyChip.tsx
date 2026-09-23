@@ -13,7 +13,6 @@ import {
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
 
-/** A popup here wears its value TYPE's socket color: there is no launching node to inherit from. */
 function typeAccent(kind: PropertyKind): string | undefined {
   const token =
     kind.shape === "frame" ? "--sock-frame"
@@ -27,11 +26,9 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   label: string;
   initial: unknown;
   onChange: (next: unknown) => void;
-  /** A frame's picked column types for this property, and where a Save reports them. */
   columnTypes?: ColumnTypes;
   onColumnTypes?: (types: ColumnTypes) => void;
 }) {
-  // Obsidian skips re-rendering a focused property, so the chip tracks its own edits.
   const [yaml, setYaml] = useState<unknown>(initial);
   const latest = useRef<unknown>(initial);
   const [picked, setPicked] = useState<ColumnTypes>(columnTypes ?? {});
@@ -40,8 +37,6 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
     setYaml(next);
     onChange(next);
   };
-  // After a type switch the value may be anything: it shows and edits in this kind's shape, and
-  // only Save writes that shape to the note.
   const items = coerceYaml(kind, yaml) as unknown[];
   useSyncExternalStore(themeVersion.subscribe, themeVersion.get);
   const accent = typeAccent(kind);
@@ -90,8 +85,6 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
 
   if (kind.shape === "frame") {
     const source = frameSourceFromYaml(items, picked);
-    // An empty frame (what Obsidian leaves after a type switch) opens on one blank Text column
-    // and row: a 0×0 grid has nothing to type into. Text, so nothing typed is lost to a type.
     const editorSource = source.length ? source : [{ name: "", type: "string" as const, cells: [""] }];
     return (
       <FrameChip

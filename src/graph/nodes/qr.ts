@@ -4,10 +4,6 @@ import { chartOut, strIn, readInput } from "./shared";
 import { type ImageValue } from "../imageValue";
 import { buildQrPayload, qrModulesToSvg, svgDataUrl, type QrTemplate, type QrFields } from "../qrCode";
 
-// Text → a QR image on the `chart` socket ([[C100]] chartIsAValue); a template shapes the
-// payload (text/URL, Wi-Fi join, vCard). The `qrcode` encoder is a lazy import
-// ([[C97]] rechartsLazyChunk); the SVG build is the pure qrCode.ts.
-
 export class QrCodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     text: "The text or URL to encode.",
@@ -18,7 +14,6 @@ export class QrCodeNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = { wifiAuth: "WPA" };
   height = 200;
   width = 240;
-  /** Read by the component's preview; never persisted. */
   cachedResult: ImageValue | null = null;
   private _cache: { key: string; value: ImageValue | null } | null = null;
 

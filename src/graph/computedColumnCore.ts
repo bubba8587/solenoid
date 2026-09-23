@@ -1,17 +1,13 @@
-// [[C22]], [[C54]]
+// [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas
 import type { FrameValue, FrameColumn, FrameCell } from "./frame";
 import type { ExprEvaluator } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";
 import { isSolError, solError, type SolError } from "./errorValue";
 
-/** What defines the column's math: a compiled inline formula (with its
- *  extracted variables), or a LambdaValue (params play the variable role). */
 export type ComputedSpec =
   | { kind: "expr"; evaluator: ExprEvaluator; vars: string[] }
   | { kind: "lambda"; lam: LambdaValue };
 
-/** How one variable resolves. `col` is a ROW-bound column (λ params);
- *  `wholecol` is the whole column as a list (bare variables in an inline expr). */
 type Binding =
   | { kind: "col"; col: FrameColumn }
   | { kind: "wholecol"; col: FrameColumn }
@@ -19,26 +15,14 @@ type Binding =
   | { kind: "rows" }
   | { kind: "side"; value: unknown };
 
-// A dynamic row accessor is pushed around every evaluation (inline expr and a
-// wired λ's body alike), so a ZERO-param λ can read `@price` with no binding
-// ceremony; synchronous by construction, and nesting stacks cleanly.
 type RowFrame = {
-  /** Column / builtin resolution — a hit is authoritative. */
   strong: (name: string) => { hit: boolean; v?: unknown };
-  /** The surface's side value (or its miss error), this-row indexed. */
   side: (name: string) => unknown;
-  /** This-row read of an arbitrary value: a row-aligned list reads its
-   *  element (length-checked), a scalar reads the same every row. */
   at: (name: string, v: unknown) => unknown;
-  /** WHOLE-value resolution (`[Name]`): the column as a list, else the
-   *  surface's side value verbatim, else a miss #REF!. */
   whole: (name: string) => unknown;
 };
 const rowStack: RowFrame[] = [];
 
-/** Resolve a this-row reference (`@name`, `@[Name]`): `fallback` (the current
- *  definition's environment) is consulted after columns/builtins and before the
- *  surface's side values. */
 export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: unknown }): unknown {
   const top = rowStack[rowStack.length - 1];
   if (!top) return solError("#REF!", "@ reads the current row, so it only works inside a computed column");
@@ -50,8 +34,6 @@ export function readRowCell(name: unknown, fallback?: () => { hit: boolean; v?: 
   return top.side(key);
 }
 
-/** Resolve a WHOLE-column reference (`[Unit Price]` — the bracket form, for a
- *  name a variable can't spell): the column as a list, else the side value. */
 export function readWholeColumn(name: unknown): unknown {
   const top = rowStack[rowStack.length - 1];
   if (!top) return solError("#REF!", "[column] reads a whole table column, so it only works inside a computed column");
@@ -63,10 +45,6 @@ function withRow<T>(frame: RowFrame, f: () => T): T {
   try { return f(); } finally { rowStack.pop(); }
 }
 
-/** One computed cell, tagged: SolErrors pass, NaN is #DOMAIN! (op-level guards
- *  inside the evaluator already classified overflow — a surviving ±Inf is a
- *  definable infinity), a non-scalar result refuses (#SHAPE! — one value per
- *  row), undefined reads as blank. */
 export function tagComputedCell(v: unknown): FrameCell {
   if (isSolError(v)) return v;
   if (typeof v === "number") {
@@ -79,31 +57,17 @@ export function tagComputedCell(v: unknown): FrameCell {
 }
 
 export interface ComputeColumnOptions {
-  /** Names a variable may NOT take on this surface (its own port keys). */
   reserved?: readonly string[];
-  /** The surface's side-value lookup, called once per side variable — side
-   *  values are row-invariant by contract. `kind`: bound as a variable ("var")
-   *  vs reached by `@name`/`[Name]` from inside a row ("row"). */
   sideValue?: (name: string, kind: "var" | "row") => unknown;
-  /** Row-context reads the definition does NOT already own (λ captures excluded):
-   *  an @name here matching no column joins `sideVars`, and the port it grows
-   *  takes a ROW-ALIGNED list (length-checked) or a scalar read every row. */
   rowRefs?: readonly string[];
-  /** Explicit variable → column bindings: an aliased variable skips the by-name /
-   *  builtin / side-value ladder entirely, and a missing target is a whole-column
-   *  #REF!, never a silent fallback. */
   alias?: Record<string, string | undefined>;
 }
 
 export interface ComputedColumnResult {
   cells: FrameCell[];
-  /** The variables that bound to SIDE values, in first-appearance order —
-   *  the surface grows/prunes its side ports from this. */
   sideVars: string[];
 }
 
-/** Compute one column's cells over `f`, row by row. Returns the cells plus the
- *  side-variable list, or a whole-column SolError (a reserved name). */
 export function computeColumnCells(
   f: FrameValue,
   spec: ComputedSpec,
@@ -112,8 +76,6 @@ export function computeColumnCells(
   const params = spec.kind === "lambda" ? spec.lam.params : spec.vars;
   const reserved = opts.reserved ?? [];
 
-  // A λ PARAM binds this row's cell; a bare inline-expr VARIABLE binds the WHOLE
-  // column. Explicit picker bindings follow the same split.
   const colKind = spec.kind === "lambda" ? ("col" as const) : ("wholecol" as const);
   const bindings: Binding[] = [];
   const sideVars: string[] = [];
@@ -133,13 +95,8 @@ export function computeColumnCells(
       return solError("#REF!", `"${p}" is a reserved input name — rename the variable or the column`);
     }
     sideVars.push(p);
-    // A wired blank stays null (unknown, value-semantics "Reading an input"); the
-    // unwired default is the surface's to supply.
     bindings.push({ kind: "side", value: opts.sideValue?.(p, "var") });
   }
-  // An @name matching no column is a SIDE name too — the surface grows a port. A
-  // picked (aliased) name reads its column instead, and a missing target is the same
-  // whole-column #REF! the variable spelling gets.
   for (const p of opts.rowRefs ?? []) {
     if (p === "row" || p === "rows" || reserved.includes(p)) continue;
     const target = opts.alias?.[p];
@@ -152,13 +109,10 @@ export function computeColumnCells(
   }
 
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-  // Columns are indexed by EXACT name — a numeric name is a NAME, never a
-  // positional index; side values are cached (row-invariant by contract).
   let cursor = 0;
   const colByName = new Map(f.columns.map((c) => [c.name, c] as const));
   const sideCache = new Map<string, unknown>();
-  // The list validation is memoized per name — an O(list) scan per row would make
-  // an @-list read quadratic in rows.
+  // Memoized per name, since validating the list on every row would be quadratic.
   const atVerdict = new Map<string, { v: unknown; err: SolError | null }>();
   const at = (key: string, v: unknown): unknown => {
     if (!Array.isArray(v)) return v;
@@ -175,8 +129,6 @@ export function computeColumnCells(
     if (m.err) return m.err;
     return (v as unknown[])[cursor] ?? null;
   };
-  // A picked name resolves to its column before the by-name ladder (missing targets
-  // were refused above, so a lookup here always lands).
   const aliased = (key: string) => {
     const target = opts.alias?.[key];
     return target === undefined ? undefined : colByName.get(target);
@@ -207,8 +159,6 @@ export function computeColumnCells(
   const cells: FrameCell[] = [];
   for (let i = 0; i < rows; i++) {
     cursor = i;
-    // Frame cells are plain values — units live on the COLUMN (unitGranularity), so there is
-    // nothing to unwrap per cell.
     const rowCells = bindings.map((b) =>
       b.kind === "col" ? (b.col.values[i] ?? null)
       : b.kind === "wholecol" ? b.col.values

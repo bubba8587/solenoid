@@ -17,14 +17,13 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: s
   { value: "logical", label: "Bool", title: "TRUE or FALSE list" },
 ];
 
-/** Switch the list's element type in place ([[D16]] retypeReconciles). */
 export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
-  // Active graph: a List Input inside a Composite drill-in retypes its own graph's cables.
+  // Active graph: a List Input inside a drill-in retypes its own graph's cables.
   const editor = getActiveEditor();
   const view = getActiveView();
   if (editor && view) {
-    // The row INPUT sockets were retyped too, and retypeOutputCables only walks outputs.
+    // The row input sockets were retyped too, and retypeOutputCables only walks outputs.
     const inType = (node.valueSocket as SolenoidSocket).dataType;
     for (const c of [...editor.getConnections()]) {
       if (c.target !== node.id) continue;
@@ -39,7 +38,6 @@ export async function applyListType(node: ListInputNodeType, dt: ListElemType): 
 }
 
 export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>) {
-  // Local mirror so the toggle re-renders on change; the handler swaps the socket types.
   const [dt, setDt] = useState<ListElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
   return (

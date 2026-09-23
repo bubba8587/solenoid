@@ -3,8 +3,6 @@ import "./popupChrome.css";
 
 export type PopupMenuItem = { label: string; onClick: () => void; disabled?: boolean };
 
-/** The value popups live in a fixed overlay, not a rete node, so no drag-plane
- *  pointer dance is needed — `.sol-popup`'s own pointerdown already guards it. */
 export function PopupOverflowMenu({ items, label = "More actions" }: { items: PopupMenuItem[]; label?: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -12,7 +10,7 @@ export function PopupOverflowMenu({ items, label = "More actions" }: { items: Po
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      // composedPath: inside a shadow root (the Obsidian plugin) `target` is the host.
+      // Inside a shadow root (the Obsidian plugin) `target` is the host, so read the composed path.
       if (ref.current && !ref.current.contains((e.composedPath()[0] ?? e.target) as Node)) setOpen(false);
     };
     document.addEventListener("pointerdown", onDown, true);

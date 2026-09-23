@@ -2,15 +2,10 @@
 import { loadGraph } from "./persistence";
 import type { SavedGraph } from "./persistence";
 
-// Seeds are plain JSON in ./seedGraphs/ — the SAME shape serializeGraph produces,
-// plus three menu-only fields (`label`, `order`, `group`) that loadGraph ignores.
-// seeds.test.ts requires all three on every seed, so the fallbacks below are
-// load-safety only, not an authoring path.
 type SeedFile = SavedGraph & { label?: string; order?: number; group?: string; hidden?: boolean };
 const DEFAULT_ORDER = 1000;
 const DEFAULT_GROUP = "More";
 
-// Vite inlines every matching JSON at build time.
 const modules = import.meta.glob<SeedFile>("./seedGraphs/*.json", {
   eager: true,
   import: "default",
@@ -20,17 +15,15 @@ function idFromPath(path: string): string {
   return path.replace(/^.*\//, "").replace(/\.json$/, "");
 }
 
-// Fallback when the file declares no label.
+// Load safety only: seeds.test.ts requires a label, order and group on every seed.
 function labelFromId(id: string): string {
   return id.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 export type SeedId = string;
 
-// Insertion order IS the menu order (consumers map Object.entries).
+// Insertion order is the menu order (consumers map Object.entries).
 export const SEEDS: Record<string, { label: string; group: string; graph: SavedGraph }> = {};
-// The same seeds partitioned for the menu: groups appear in order of their
-// first (lowest-order) member, seeds in global order within each.
 export const SEED_GROUPS: { head: string; ids: SeedId[] }[] = [];
 const ordered = Object.entries(modules)
   .map(([path, mod]) => ({ id: idFromPath(path), mod, order: mod.order ?? DEFAULT_ORDER }))
@@ -44,11 +37,9 @@ for (const { id, mod } of ordered) {
   else SEED_GROUPS.push({ head: group, ids: [id] });
 }
 
-// The seed loaded on a fresh start (no autosave).
 export const DEFAULT_SEED_ID: SeedId =
   "getting-started" in SEEDS ? "getting-started" : Object.keys(SEEDS)[0] ?? "getting-started";
 
-/** Replace the current graph with the named seed. Returns false if unknown. */
 export async function clearAndLoadSeed(id: SeedId): Promise<boolean> {
   const seed = SEEDS[id];
   if (!seed) return false;

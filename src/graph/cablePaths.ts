@@ -1,4 +1,4 @@
-// [[C91]] cableWalkRouter. Mechanics: tree/specs/canvas/cable-rendering-knobs.md.
+// [[C91]] cableWalkRouter
 import type { CableShape } from "./cableShape";
 
 export enum Position {
@@ -12,7 +12,7 @@ type PathArgs = {
   sourceX: number;
   sourceY: number;
   sourcePosition: Position;
-  // Exit angle in degrees CW from +X; when supplied the cable leaves along it in every shape.
+  // Degrees clockwise from +X.
   sourceAngleDeg?: number | null;
   targetX: number;
   targetY: number;
@@ -22,13 +22,8 @@ type PathArgs = {
 
 type Pt = { x: number; y: number };
 
-/** How far a cable end reaches INTO its socket glyph. React Flow anchors an edge at the
- *  handle box's outer edge, which sits on a half-pixel; a stroke that merely abuts the
- *  glyph there leaves a lighter seam (two anti-aliased edges never sum to a solid pixel).
- *  2px is under every glyph, the hollow "any" ring's stroke band included. */
 export const SOCKET_OVERLAP = 2;
 
-/** A handle-edge endpoint pulled SOCKET_OVERLAP into the socket, against the stub direction. */
 export function intoSocket(x: number, position: Position): number {
   return position === Position.Right ? x - SOCKET_OVERLAP : position === Position.Left ? x + SOCKET_OVERLAP : x;
 }
@@ -55,8 +50,6 @@ function posExit(p: Position): Pt {
   }
 }
 
-// Outward exit direction at the source / inward travel direction at the
-// target: the angle hint when set, else the socket's cardinal side.
 function exitDir(args: PathArgs): Pt {
   return args.sourceAngleDeg != null
     ? unitDeg(args.sourceAngleDeg)
@@ -86,10 +79,9 @@ function getAngleBezierPath(args: PathArgs): string {
 }
 
 
-const DIR_LEAD = 14; // exit/entry stub — and the minimum visible staircase leg
+const DIR_LEAD = 14;
 
-// Heading indices stay UNWRAPPED through the walk math (e.g. -3 or 9) so adjacency is plain
-// integer succession; dirOfK wraps.
+// Heading indices stay unwrapped through the walk math, so adjacency is plain integer succession; dirOfK wraps.
 function compassIndex(d: Pt, div: number): number {
   const step = (2 * Math.PI) / div;
   return ((Math.round(Math.atan2(d.y, d.x) / step) % div) + div) % div;
@@ -99,8 +91,6 @@ function dirOfK(k: number, div: number): Pt {
   return { x: Math.cos(a), y: Math.sin(a) };
 }
 
-// Heading sequence for one canonical walk: kS →(−σ·b) →(+σ·(b+r+e)) →(−σ·e),
-// ending at the entry heading kS + σ·r.
 function buildHeads(kS: number, sigma: number, b: number, r: number, e: number): number[] {
   const heads = [kS];
   let h = kS;
@@ -112,7 +102,6 @@ function buildHeads(kS: number, sigma: number, b: number, r: number, e: number):
 
 const SOLVE_EPS = 0.01;
 
-// Even split is what centers a Z's diagonal between its two straight runs.
 function addToHeading(heads: number[], lens: number[], head: number, amount: number) {
   let n = 0;
   for (const h of heads) if (h === head) n++;
@@ -149,7 +138,7 @@ function solveWalk(
     addToHeading(heads, lens, lo, Math.max(0, along));
     return lens;
   }
-  const det = Math.sin((2 * Math.PI) / div); // cross of adjacent headings
+  const det = Math.sin((2 * Math.PI) / div);
   for (let j = lo; j < hi; j++) {
     const g = dirOfK(j + 1, div);
     const alpha = (rx * g.y - ry * g.x) / det;
@@ -172,23 +161,17 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   if (dist < STRAIGHT_THRESHOLD) return [S, T];
   const dS = exitDir(args);
   const dT = entryDir(args);
-  // Must shrink FASTER than the stub: k same-direction turns consume k·minLeg before any
-  // slack is distributed, so at close range a large minimum makes every walk unsolvable.
   const lead = Math.min(DIR_LEAD, dist / 4);
   const minLeg = Math.min(DIR_LEAD, dist / 8);
   const A: Pt = { x: S.x + dS.x * lead, y: S.y + dS.y * lead };
   const B: Pt = { x: T.x - dT.x * lead, y: T.y - dT.y * lead };
   const kS = compassIndex(dS, div);
   const kT = compassIndex(dT, div);
-  // Off-grid stubs (rotated connector arms between compass headings) pin
-  // their adjacent end leg open — see solveWalk.
   const gridS = dirOfK(kS, div);
   const gridT = dirOfK(kT, div);
   const offS = Math.abs(dS.x * gridS.y - dS.y * gridS.x) > 0.02;
   const offT = Math.abs(dT.x * gridT.y - dT.y * gridT.x) > 0.02;
   const D: Pt = { x: B.x - A.x, y: B.y - A.y };
-  // Continuous in the endpoints, so the rotation preference only flips at genuinely
-  // ambiguous (collinear head-on) configurations.
   const pref = dS.x * dy - dS.y * dx + (dx * dT.y - dy * dT.x) >= 0 ? 1 : -1;
   const cands: { sigma: number; r: number; b: number; e: number; turns: number }[] = [];
   for (const sigma of [pref, -pref]) {
@@ -199,10 +182,7 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
       }
     }
   }
-  // Stable sort: ties keep insertion order (preferred sigma first, then small b).
   cands.sort((p, q) => p.turns - q.turns);
-  // Halving the minimum only enlarges each walk's solvable set, so the retry terminates
-  // with the constraints intact.
   for (let m = minLeg; m >= 0.25; m /= 2) {
     // Length first ([[C91]] cableWalkRouter); the sort order only settles exact ties.
     let best: { heads: number[]; lens: number[]; total: number } | null = null;
@@ -226,11 +206,10 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
     pts.push(T);
     return pts;
   }
-  return [S, T]; // unreachable in practice: tiny-step walks absorb anything
+  return [S, T];
 }
 
-// The threshold must stay well under a pixel — a coarser one deletes real (tiny but
-// on-grid) vertices and skews the headings of their neighbors.
+// Must stay well under a pixel, or it deletes real vertices and skews their neighbors' headings off-grid.
 const DEDUP_EPS = 0.01;
 
 function ptsToPath(pts: Pt[]): string {
@@ -244,7 +223,6 @@ function ptsToPath(pts: Pt[]): string {
 
 const CORNER_RADIUS = 8;
 
-// Each corner radius caps at half the shorter adjacent leg, so rounds can never overlap.
 function roundedPtsToPath(pts: Pt[], radius: number): string {
   const clean: Pt[] = [];
   for (const p of pts) {
@@ -257,7 +235,7 @@ function roundedPtsToPath(pts: Pt[], radius: number): string {
       const vx = p.x - b.x, vy = p.y - b.y;
       const sinTurn = (ux * vy - uy * vx) / (Math.hypot(ux, uy) * Math.hypot(vx, vy));
       if (Math.abs(sinTurn) > 0.005 || ux * vx + uy * vy < 0) break;
-      clean.pop(); // b sits on a straight run — drop it
+      clean.pop();
     }
     clean.push(p);
   }

@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[C94]] formatFamilyGates
+// [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[C94]] formatFamilyGates, [[E6]] portOwnsSocket
 import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
@@ -8,8 +8,6 @@ import { isUnitCell, type UnitCell } from "../unitValue";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { SolenoidSocket, isDateType, isWildcardRung, type SocketDataType } from "../sockets";
 
-/** The first dimensioned cell in a scalar-or-list value — the lock-state probe:
- *  its presence means an upstream (FC / Convert / unit source) authored the unit. */
 function firstUnitCell(v: unknown): UnitCell | null {
   if (isUnitCell(v)) return v;
   if (Array.isArray(v) && !Array.isArray(v[0])) {
@@ -18,19 +16,16 @@ function firstUnitCell(v: unknown): UnitCell | null {
   return null;
 }
 
-// Each FC owns its socket instances, so setType never mutates a shared singleton.
 class MutableSocket extends SolenoidSocket {
   constructor(type: SocketDataType) { super(type); }
   setType(type: SocketDataType) {
-    // dataType is readonly in the type signature but we own this instance.
+    // Readonly in the type only; this instance belongs to one port.
     (this as unknown as { dataType: SocketDataType }).dataType = type;
   }
 }
 
 type FcEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
 
-// The concrete type on an output socket, resolved THROUGH passthrough wildcards, so
-// an FC on a Display fed by a Text input adapts to text, not number.
 function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, seen = new Set<string>()): SocketDataType {
   const key = `${nodeId}::${outKey}`;
   if (seen.has(key)) return "trueany";
@@ -77,31 +72,15 @@ export class FormatControllerNode extends ClassicPreset.Node {
   negativeStyle: NegativeStyle;
   scaleMode: ScaleMode;
   advancedOpen: boolean;
-  // The style dropdown's `—` pick: the FC carries the upstream display format through
-  // and authors its unit alone, so a second FC docked only for a unit no longer resets
-  // the style to Auto ([[D41]] formatFlowsDownstream).
   inheritFormat: boolean;
-  // The format arriving at `in` while inheriting — the muted hint the popup shows and the
-  // source of the carried style. Recomputed in refreshAnnotation; never serialized.
   inheritedAnnotation?: FormatAnnotation;
   socketDataType: SocketDataType = "trueany";
-  // Sockets this FC currently annotates — tracked so they clear when the wiring
-  // changes. Docking is positional only; the wiring decides all of this.
   private _written: Array<{ nodeId: string; socketKey: string }> = [];
-  // Unit inherited from the value flowing in; drives the → inward marker.
   forwarding = false;
-  // Unit dictated by a Convert this FC FEEDS; drives the ← ← marker.
   lockedByConvert = false;
-  // True whenever the unit dropdown is locked (forwarding OR lockedByConvert).
   unitLocked = false;
-  // Convert primacy: the FC must tag the value in the unit the downstream Convert
-  // will read it as, or the interpretation forks. Computed in refreshAnnotation.
   dictatedFromUnit = "";
-  // The FC re-displays / clash-checks incoming `UnitCell` tags, so they must survive
-  // the unit-blind boundary.
   unitAware = true;
-  // Initial docking-position estimates; NodeCard's ResizeObserver corrects them to
-  // the real rendered size after first paint.
   width = 116;
   height = 64;
 
@@ -174,7 +153,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.addOutput("out", new ClassicPreset.Output(this._outSock, "Out"));
   }
 
-  /** Call once AFTER editor.addNode — registration needs the id Rete assigns there. */
+  /** Call once after editor.addNode: registration needs the id Rete assigns there. */
   dockSelf(editor?: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>): void {
     if (this.hostNodeId) {
       dockedNodeStore.dock(this.id, {
@@ -189,21 +168,13 @@ export class FormatControllerNode extends ClassicPreset.Node {
     }
   }
 
-  /** Mirrors the type onto both sockets. The PICK (`format`) is never touched here: a
-   *  value typed only at run time (a Script output) passes through a wildcard and then
-   *  its construction-time family before the real type arrives, and re-defaulting on
-   *  each hop destroyed a saved date style. A pick outside the socket's family is inert
-   *  instead — `effectiveFormat()` falls back to the family default while it lasts. */
+  /** Never re-default `format` here: an off-family pick stays saved and is inert through effectiveFormat(). */
   private _applyType(dataType: SocketDataType): void {
     this.socketDataType = dataType;
     this._inSock.setType(dataType);
     this._outSock.setType(dataType);
   }
 
-  /** The style that actually applies: the pick when it fits the socket's family, else
-   *  the family default (a date socket on a number style would render a raw serial; a
-   *  number socket on a date style would render nonsense). A wildcard has no family, so
-   *  the pick stands. */
   effectiveFormat(): FormatStyleId {
     if (isWildcardRung(this.socketDataType)) return this.format;
     const isDate = isDateType(this.socketDataType);
@@ -212,8 +183,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
     return this.format;
   }
 
-  /** Adopt the concrete type this FC is attached to (docked host socket or cables),
-   *  resolving through passthrough wildcards; resets to the wildcard when none. */
   adaptTypeFromConnections(
     editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
   ): boolean {
@@ -236,14 +205,12 @@ export class FormatControllerNode extends ClassicPreset.Node {
         }
       }
     }
-    if (resolved === this.socketDataType) return false; // no change → don't churn renders
+    if (resolved === this.socketDataType) return false;
     this._applyType(resolved);
     this.refreshAnnotation(editor);
     return true;
   }
 
-  /** The annotation lives only while FC.in is connected, so breaking the cable
-   *  reverts the upstream's display; docking is irrelevant, only wiring matters. */
   refreshAnnotation(
     editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>,
   ): void {
@@ -252,8 +219,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
       if (c.target === this.id && c.targetInput === "in") { inSrcId = c.source; inSrcSock = c.sourceOutput; break; }
     }
 
-    // "Do I FEED a Convert?" is the one graph fact data() can't see — computed here,
-    // where the editor is at hand.
     this.dictatedFromUnit = "";
     {
       let nid = this.id, depth = 0;
@@ -273,13 +238,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
       }
     }
 
-    // Format ALWAYS lands on the box feeding this FC's input; the value carries its
-    // own unit, so this write only supplies the number FORMAT.
     const targets: Array<{ nodeId: string; socketKey: string }> = [];
     if (inSrcId) targets.push({ nodeId: inSrcId, socketKey: inSrcSock });
 
-    // Inherit pick: the display format arriving at `in` is what the FC carries through;
-    // stash it for the popup hint and re-clad it in this FC's own unit.
     this.inheritedAnnotation = this.inheritFormat && inSrcId
       ? sharedAnnotationResolver(editor).outAnnotation(inSrcId, inSrcSock)
       : undefined;
@@ -293,8 +254,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this._written = targets;
   }
 
-  /** The format+unit this FC LOCKS onto the value; `makeAnnotationResolver` carries
-   *  it forward so a downstream passthrough box needs no trailing FC of its own. */
   annotation(): FormatAnnotation {
     return {
       format:        this.effectiveFormat(),
@@ -320,12 +279,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
     };
   }
 
-  /** The annotation this FC actually contributes: its own, or — when the style dropdown
-   *  is set to `—` (inherit) and a format arrives at `in` — the upstream display format
-   *  re-clad in this FC's own unit. The unit is value-level ([[D40]] unitOnValue), so it is the
-   *  one axis the inherit pick keeps local; every display axis rides in from upstream
-   *  ([[D41]] formatFlowsDownstream). `makeAnnotationResolver` calls this in place of
-   *  `annotation()`. */
   resolveAnnotation(inherited: FormatAnnotation | undefined): FormatAnnotation {
     if (this.inheritFormat && inherited) {
       return { ...inherited, unit: this.unit, customUnit: this.customUnit };
@@ -333,7 +286,6 @@ export class FormatControllerNode extends ClassicPreset.Node {
     return this.annotation();
   }
 
-  /** A socket this FC currently annotates (the first, for mismatch checks). */
   annotatedSocket(): { nodeId: string; socketKey: string } | null {
     return this._written[0] ?? null;
   }
@@ -346,8 +298,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.socketKey = "";
   }
 
-  /** Forget the dock IDENTITY but keep the annotation; hostNodeId MUST be cleared or
-   *  a load-time dockSelf() resurrects the dock from the saved stale id. */
+  /** Clear hostNodeId, or a load-time dockSelf() resurrects the dock from the saved stale id. */
   releaseDock(): void {
     dockedNodeStore.undock(this.id);
     this.hostNodeId = "";
@@ -359,13 +310,9 @@ export class FormatControllerNode extends ClassicPreset.Node {
     const cell = firstUnitCell(val);
     const inherited = cell ? cell.display ?? fcUnitIdForUnit({ dim: cell.dim, scale: 1 }) : undefined;
     const dictated = this.dictatedFromUnit && isFcUnit(this.dictatedFromUnit) ? this.dictatedFromUnit : "";
-    // Dictation fills an UNAUTHORED dropdown only — an authored unit stands, and a
-    // real clash surfaces as the Convert's #UNIT! rather than a silent rewrite.
     if (dictated && this.unit === "none") this.unit = dictated;
     this.lockedByConvert = dictated !== "" && this.unit === dictated;
     this.forwarding = !!cell && !this.lockedByConvert;
-    // Forwarding mirrors the inherited unit unconditionally: a stale pick under a
-    // locked dropdown would read as a re-author in applyFcUnit.
     if (this.forwarding && inherited && isFcUnit(inherited) && this.unit !== inherited) this.unit = inherited;
     this.unitLocked = this.lockedByConvert || this.forwarding;
     return { out: applyFcUnit(val, this.unit, this.customUnit) };

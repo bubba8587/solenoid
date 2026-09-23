@@ -5,8 +5,7 @@ import { parsePaintGrid, paintGridToText } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
-// The Grid Painter's well: left-drag paints the brush value into cells,
-// right-drag (or Alt-drag) erases back to blank (null).
+// Left-drag paints the brush value into cells; right-drag or Alt-drag erases back to blank (null).
 
 const WELL_W = 208;
 const MAX_WELL_H = 160;
@@ -76,7 +75,6 @@ export function GridPainterComponent({ data, emit }: NodeProps<GridPainterNodeTy
     void processGraph(data.id);
   };
 
-  // Tint by |value| relative to the grid's own max.
   let maxAbs = 0;
   for (const row of grid) for (const v of row) if (v != null) maxAbs = Math.max(maxAbs, Math.abs(v));
 

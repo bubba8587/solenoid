@@ -1,6 +1,5 @@
 // [[C94]] formatFamilyGates
-// ONE scientific-notation rule for every display surface: |n| ≥ 1e12 (as Excel's
-// General does) or a nonzero |n| < 1e-4, where fixed decimals lie as "0.0000".
+// |n| ≥ 1e12 (as Excel's General does) or a nonzero |n| < 1e-4, where fixed decimals would lie as "0.0000".
 export function extremeSci(n: number): string | null {
   const a = Math.abs(n);
   if (!Number.isFinite(a)) return null;
@@ -11,7 +10,7 @@ export function extremeSci(n: number): string | null {
 export function formatScalar(n: number): string {
   // A throw during React render blacks out the app: a display formatter degrades.
   if (typeof n !== "number") return n == null ? "" : String(n);
-  // A residual NaN is DIRTY DATA: `#N/A` is a real tagged error, so never label it so.
+  // A residual NaN is dirty data; `#N/A` is a real tagged error, so never label it so.
   if (Number.isNaN(n)) return "NaN";
   if (!Number.isFinite(n)) return n > 0 ? "∞" : "-∞";
   const sci = extremeSci(n);

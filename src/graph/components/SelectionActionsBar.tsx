@@ -22,7 +22,6 @@ function selectedVisibleCount(): number {
   return n;
 }
 
-// Even-sized glyphs (DESIGN.md: icon-only buttons use even-sized icons).
 const AlignLeftIcon = () => (
   <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style={{ display: "block" }}>
     <rect x="2" y="2" width="1.4" height="12" rx="0.5" />

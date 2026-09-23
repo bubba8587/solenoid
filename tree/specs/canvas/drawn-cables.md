@@ -29,13 +29,13 @@ The layer's svg sits above every card (`z-index: 6`). Standoffs sit under the gr
 ## Geometry
 
 - The path is one `getCablePath` call per span between consecutive points, chained into one subpath: each later span's leading `M` is rewritten to `L`, because a second `M` would break the joins.
-- Every point hands both of its spans the same heading, so the drawers' end stubs are collinear and a joint never kinks. The heading is the point's pinned `angle` if it has one. Otherwise it is the chord from the previous point to the next (at an end, the chord to its only neighbor), snapped to the 45° grid (`drawnHeadings`).
-- Arrowheads are drawn paths, not SVG markers, with the tip on the endpoint. `ARROW_LEN` (10) stays under the drawers' `DIR_LEAD` (14), so the directional stub still shows behind the head.
+- Every point hands both of its spans the same heading, so the drawers' end stubs are collinear and a joint never kinks. The heading is the point's pinned `angle` if it has one. Otherwise it is the chord from the previous point to the next (at an end, the chord to its only neighbor), snapped to the 45° grid (`drawnHeadings`). A degenerate chord falls back to the previous point's heading, or 0 at the head of the run.
+- Arrowheads are drawn paths, not SVG markers, with the tip on the endpoint; the start head points back out of the run. `ARROW_LEN` (10) stays under the drawers' `DIR_LEAD` (14), so the directional stub still shows behind the head.
 - The stroke stops at a head's base, not its tip. The path is built with that endpoint pulled back by the head length, capped at half the end span. Otherwise a thick stroke shows through the triangle and its round cap pokes past the point.
 
 ## Per-point heading
 
-`DrawnPoint.angle` is an optional heading override in degrees clockwise from +X, the same convention as `AngleDial`. A pinned angle is stored normalized to [0, 360).
+`DrawnPoint.angle` is an optional heading override in degrees clockwise from +X, the same convention as `AngleDial`; unset means the derived chord. A pinned angle is stored normalized to [0, 360) however it arrived, because a loaded or hand-typed −90 must read the same as 270, or the history digest records a spurious edit.
 
 - The panel's dial edits the **active point**, which is set by clicking a handle or by the panel's point stepper.
 - The dial shows the live heading, pinned or derived. Auto releases the pin.
@@ -52,7 +52,8 @@ Affordances are sized for the screen and content for the canvas. Handles, the hi
 - Everything that can be grabbed carries the `nopan` class: the hit path while the cable is grabbable, and the handles always. React Flow's d3 pan listens to native touch and mouse events that React's `stopPropagation` never reaches, so `nopan` is what makes it stand down.
 - On touch, an unselected cable body is pan surface: a tap selects it through its click, and a drag pans (a finger never selects on pointerdown; see [[touch-gestures]]). A selected body drags the cable. A pinch in the middle of a drag aborts the drag.
 - With a mouse, pressing on the body selects and drags in one motion. Alt-click on a handle removes that point; double-click on the body inserts one.
-- The panel's `+` and `✕` buttons beside the point stepper are the finger's versions of insert and remove. `+` splits the span after the active point at its midpoint. A cable never drops below two points.
+- The panel's `+` and `✕` buttons beside the point stepper are the finger's versions of insert and remove. `+` splits the span after the active point at its midpoint (on the last point, the span before it). A mouse insert goes before a given index, from 1 to length − 1, splitting the span that ends there. A cable never drops below two points.
+- The panel's style pickers select the listed option nearest the cable's value, so a hand-edited value still selects something.
 
 ## Drawing mode
 
@@ -75,7 +76,7 @@ Insert ▸ Draw a cable in the menu bar is the only entry point, and it also app
 
 - Drawn-cable selection is exclusive with node, cable and standoff selection, in both directions. Arming the tool clears it.
 - `deleteSelection` deletes a selected drawn cable before anything else.
-- Every settled edit goes through `commitDrawn()`, which `FlowCanvas` registers as autosave plus `flowHistory.schedule()`. A drawn cable therefore gets undo entries like any graph edit, and the history digest labels them "Drew a cable", "Edited a drawn cable" and "Removed a drawn cable".
+- Every settled edit goes through `commitDrawn()`, which `FlowCanvas` registers as autosave plus `flowHistory.schedule()`, so `drawnCables.ts` never imports persistence or the history. A drawn cable therefore gets undo entries like any graph edit, and the history digest labels them "Drew a cable", "Edited a drawn cable" and "Removed a drawn cable".
 
 ## Saving and loading
 

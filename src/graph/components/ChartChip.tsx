@@ -5,14 +5,10 @@ import { readChipPopupStyle } from "./chipStyle";
 import type { ChartValue } from "../chartValue";
 import { stopDragStart } from "../coarse";
 
-/** The compact "[Chart]" chip, shown where a chart value can't be drawn full size;
- *  label only, with the full figure behind a click. */
 export function ChartChip({ value, label, pinNodeId, size = "sm" }: {
   value: ChartValue;
   label?: string;
-  /** Node the popup's Pin/Go-to acts on; defaults to the host from context. */
   pinNodeId?: string;
-  /** "sm" in node hero boxes; "md" matches the Frame/Cube chips in readout rows. */
   size?: "sm" | "md";
 }) {
   const ctxHostId = useHostNodeId();

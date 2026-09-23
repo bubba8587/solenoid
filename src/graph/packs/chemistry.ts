@@ -1,4 +1,5 @@
-// Lab units throughout: grams, moles, litres, kelvin where absolute.
+// [[C51]] formulaNaming
+// Lab units throughout: grams, moles, liters, kelvin where absolute.
 
 import { ElementNode, MolarMassNode, molarMass, ELEMENTS, ELEMENT_BY_SYMBOL } from "../rete-nodes";
 import { placeFormulas, solError, type Pack, type FormulaPackEntry, type PackFormula } from "./packShared";
@@ -47,7 +48,6 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
 
 export const CHEMISTRY_FORMULAS: FormulaPackEntry[] = [...CHEM_AMOUNTS, ...CHEM_EQUILIBRIA];
 
-// The pack's custom-logic nodes exposed as formula functions ([[C51]] formulaNaming decision 4).
 const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "ELEMENT",

@@ -1,30 +1,17 @@
 // [[C70]]
-// The passes. Every task has a calendar (rule 1) and its own integer index space on it: a
-// task with duration d occupies units [ES, EF) with EF = ES + d; a milestone occupies nothing
-// and sits at the end of the unit before ES (its predecessors' finish) or on the start. Links
-// cross calendars through INSTANTS (serials): a predecessor's exclusive end is mapped onto
-// the successor's calendar by the first unit at or after it; the lag counts on the
-// successor's calendar (rule 5), or in calendar days when elapsed. Late dates come back from
-// the project finish; a ceiling or a deadline caps them and shows as negative float rather
-// than moving anything (the one rule, § 4.1). A unit is a working day (Days mode) or a
-// working minute (Minutes mode). ALAP tasks take a third pass (rule 10); a started task's
-// remainder moves past the status date, split from its done part (rule 13).
 
 import { Calendar, calendarKey, dayKey } from "./calendar";
 import { buildGraph, type Edge, type FlatTask } from "./graph";
 import { diagnose } from "./diagnostics";
 import type { CalendarSpec, ScheduleInput, ScheduleLink, ScheduleOutput, ScheduledTask } from "./types";
 
-const LONG_TASK_DAYS = 44; // DCMA's "high duration" threshold
+const LONG_TASK_DAYS = 44;
 
 interface Pass {
   es: number[]; ef: number[]; ls: number[]; lf: number[];
-  /** The edge that set ES (null: the project start, a floor, a pin, or ALAP). */
   driver: (Edge | null)[];
   floored: boolean[];
-  /** Units scheduled (the span, gap included, once a remainder is split off). */
   dur: number[];
-  /** Split work: the done part ends at `doneEnd`, the rest starts at `restStart` (units). */
   split: (null | { doneEnd: number; restStart: number })[];
 }
 
@@ -33,8 +20,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
   const n = tasks.length;
   const project = new Calendar(input.start, input.calendar);
 
-  // One Calendar per distinct spec; a task's own spec layers over the project's. An elapsed
-  // task lives on the all-days calendar.
   const cache = new Map<string, Calendar>([[calendarKey(input.calendar), project]]);
   const calendarFor = (spec: CalendarSpec): Calendar => {
     const key = calendarKey(spec);
@@ -67,28 +52,22 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     dur: tasks.map((t, i) => units(i, t.duration)), split: new Array(n).fill(null),
   };
 
-  // ── Instants (cross-calendar link math) ─────────────────────────────────────
   const startAt = (i: number, k: number) => cals[i].date(k);
-  /** The instant work in units [.., k) on task i's calendar is over. */
   const endAfter = (i: number, k: number) => cals[i].exclusiveEnd(k - 1);
   const startInstant = (i: number): number => (tasks[i].summary ? Math.min(...tasks[i].children.map(startInstant)) : startAt(i, p.es[i]));
   const endInstant = (i: number): number => {
     if (tasks[i].summary) return Math.max(...tasks[i].children.map(endInstant));
     return p.dur[i] === 0 ? startInstant(i) : endAfter(i, p.ef[i]);
   };
-  /** Map an instant onto the successor's calendar: the first unit at or after it, plus the lag. */
   const ceilOn = (j: number, instant: number, e: Edge) =>
     e.elapsed ? cals[j].indexCeil(instant + e.lag) : cals[j].indexCeil(instant) + lagUnits(e);
-  /** How many of task i's units end at or before an instant (an exclusive-end bound). */
   const countBefore = (i: number, instant: number) => cals[i].indexCeil(instant);
-  /** The instant a lag BEFORE a unit's start / a unit boundary on task j's calendar. */
   const backLag = (j: number, unitIdx: number, e: Edge, ofStart: boolean): number => {
     if (e.elapsed) return (ofStart ? startAt(j, unitIdx) : endAfter(j, unitIdx)) - e.lag;
     const k = unitIdx - lagUnits(e);
     return ofStart ? startAt(j, k) : endAfter(j, k);
   };
 
-  /** The early start a link demands of its successor, for a successor of `dur` units. */
   const linkEarlyStart = (e: Edge, dur: number): number => {
     const j = e.to, i = e.from;
     switch (e.type) {
@@ -99,12 +78,10 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     }
   };
 
-  // ── Forward ─────────────────────────────────────────────────────────────────
   const forward = (alapFloor: (number | null)[]) => {
     for (const i of order) {
       const t = tasks[i];
       if (t.summary) {
-        // Roll-up: the span of the children on the summary's own calendar (rule 12).
         const s = Math.min(...t.children.map(startInstant)), en = Math.max(...t.children.map(endInstant));
         p.es[i] = project.indexCeil(s);
         p.ef[i] = Math.max(p.es[i], project.indexCeil(en));
@@ -135,15 +112,13 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
         const floor = cals[i].indexCeil(t.start);
         if (floor > es) { es = floor; driver = null; p.floored[i] = true; }
       }
-      if (t.actualStart != null) { es = cals[i].indexCeil(t.actualStart); driver = null; } // rule 13: the actual start pins
+      if (t.actualStart != null) { es = cals[i].indexCeil(t.actualStart); driver = null; }
       const floor = alapFloor[i];
       if (floor != null && floor > es) { es = floor; driver = null; }
       let ef = es + full;
       if (started && rest > 0 && sIdx != null) {
-        // The remaining part cannot happen before the status date (rule 13).
         const restStart = Math.max(es + done, sIdx + 1);
         if (restStart > es + done) {
-          // A done part of zero units is nothing to split off: the whole task moves.
           if (splitInProgress && done > 0) { p.split[i] = { doneEnd: es + done, restStart }; ef = restStart + rest; }
           else { es = restStart - done; ef = es + full; driver = null; }
         }
@@ -153,10 +128,8 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     }
   };
 
-  // ── Backward ────────────────────────────────────────────────────────────────
   const summaryLs = new Array<number>(n).fill(Infinity);
   const backward = () => {
-    // Every task's late finish starts at the project finish, expressed on its own calendar.
     const endAll = n ? Math.max(...order.map(endInstant)) : project.exclusiveEnd(-1);
     for (let i = 0; i < n; i++) p.lf[i] = Math.max(p.ef[i], countBefore(i, endAll));
     if (input.multipleCriticalPaths) {
@@ -169,8 +142,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
       if (t.finish != null) p.lf[i] = Math.min(p.lf[i], cals[i].indexFloor(t.finish) + 1);
       if (t.deadline != null) p.lf[i] = Math.min(p.lf[i], cals[i].indexFloor(t.deadline) + 1);
       if (t.summary) {
-        // A summary's late finish (from its FS/FF successors, its ceiling, its deadline) bounds
-        // every child's, mapped onto each child's calendar.
         const inst = endAfter(i, p.lf[i]);
         for (const c of t.children) p.lf[c] = Math.min(p.lf[c], countBefore(c, inst));
         p.ls[i] = p.lf[i] - p.dur[i];
@@ -179,7 +150,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
       p.ls[i] = p.lf[i] - p.dur[i];
       for (const e of inEdges[i]) {
         const from = e.from;
-        // The instant the predecessor must be done by, or must have started by.
         let boundEnd: number | null = null, boundStart: number | null = null;
         switch (e.type) {
           case "FS": boundEnd = backLag(i, p.ls[i], e, true); break;
@@ -188,7 +158,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
           case "SF": boundStart = backLag(i, p.lf[i], e, false); break;
         }
         if (tasks[from].summary && boundStart != null) {
-          // A summary's late START cannot be pushed onto one child; it narrows the summary's float.
           summaryLs[from] = Math.min(summaryLs[from], project.indexFloorStart(boundStart));
           continue;
         }
@@ -202,14 +171,12 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
   const none: (number | null)[] = new Array(n).fill(null);
   forward(none);
   backward();
-  // ALAP (rule 10): the task starts at its late start, then everything downstream follows.
   if (tasks.some((t) => t.alap && !t.summary)) {
     const floors = tasks.map((t, i) => (t.alap && !t.summary && !t.manual ? p.ls[i] : null));
     forward(floors);
     backward();
   }
 
-  // ── Float, critical, dates ──────────────────────────────────────────────────
   const days = (i: number, u: number) => (cals[i].minutes ? Math.round((u / U(i)) * 1000) / 1000 : u);
   const floatOf = (i: number) => Math.min(p.ls[i] - p.es[i], p.lf[i] - p.ef[i]);
   const totalDays = tasks.map((t, i) => (t.summary ? 0 : days(i, floatOf(i))));
@@ -222,7 +189,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     } else critical[i] = (totalDays[i] <= critLimitDays || t.alap) && t.complete < 100;
   }
   if (input.longestPath) {
-    // P6: critical = on a driving chain that ends at the project finish, whatever the float.
     const endAll = n ? Math.max(...order.map(endInstant)) : 0;
     const onPath = tasks.map(() => false);
     const walk = (i: number) => {
@@ -250,9 +216,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     if (t.summary) return startInstant(i);
     if (p.dur[i] === 0) {
       if (p.floored[i] || t.actualStart != null || !(p.es[i] > 0 && (inEdges[i].length || t.parent != null))) return startAt(i, p.es[i]);
-      // A milestone sits at its predecessors' finish: the end of the unit before ES on its own
-      // calendar, or a predecessor's own finish instant when that is later (another calendar's
-      // Saturday, say). Days mode shows the finish DAY (the exclusive end less one).
       let at = endOf(i, p.es[i] - 1);
       for (const e of inEdges[i]) if (e.type === "FS" && !e.lag) {
         const fin = endInstant(e.from) - (cals[i].minutes ? 0 : 1);
@@ -268,8 +231,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     return p.dur[i] === 0 ? startOf(i) : endOf(i, p.ef[i] - 1);
   };
 
-  // A milestone shown at its predecessors' finish (the end of the unit before its index) reads
-  // its early / late dates the same way; one shown at its own unit's start reads them as starts.
   const milestoneAt = (i: number, k: number, start: number) =>
     (k === p.es[i] ? start : start === startAt(i, p.es[i]) ? startAt(i, k) : endOf(i, k - 1));
   const out: ScheduledTask[] = tasks.map((t, i) => {
@@ -297,7 +258,6 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     };
   });
 
-  // Links, one per authored dependency (a summary-successor expansion collapses back).
   const seen = new Set<Edge["source"]>();
   const links: ScheduleLink[] = [];
   for (const e of edges) {

@@ -1,6 +1,5 @@
 // [[C43]] oneFlowSurface (.nokeys: the grid owns its keys), [[C54]] noPerCellFormulas (computed cells are skipped)
-// Pure keyboard movement for the table popup grid. `vi` is the VISUAL row (index into the
-// sorted visibleOrder), never the source row; `skip(vi, c)` marks a cell Tab hops over.
+// `vi` is the visual row (an index into the sorted visibleOrder), never the source row; `skip(vi, c)` marks a cell Tab hops over.
 
 export type GridKey =
   | "Enter" | "ShiftEnter"
@@ -8,8 +7,7 @@ export type GridKey =
   | "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight"
   | "Home" | "End";
 
-/** Classify a keydown into a grid move, or null to let the browser have it. Any modifier
- *  other than Shift (Ctrl/Meta/Alt) is not ours; Shift only picks the Enter/Tab variant. */
+/** Null lets the browser have the key; Ctrl, Meta and Alt are not ours, and Shift only picks the Enter or Tab variant. */
 export function gridKeyOf(e: {
   key: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean;
 }): GridKey | null {
@@ -29,9 +27,7 @@ export function gridKeyOf(e: {
 
 export type CellPos = { vi: number; c: number };
 
-/** The target cell for a move, or null to fall through to the browser's default (Tab off
- *  the last cell / Shift+Tab off the first). Enter/arrows/Home/End never return null — they
- *  clamp at the edges. Tab wraps across rows and skips `skip()` cells. */
+/** Null falls through to the browser's Tab (off the last cell, Shift+Tab off the first); Enter, arrows, Home and End clamp at the edges, and Tab wraps rows and skips `skip()` cells. */
 export function nextCell(
   key: GridKey,
   pos: CellPos,
@@ -54,8 +50,6 @@ export function nextCell(
     case "ShiftTab": {
       const dir = key === "Tab" ? 1 : -1;
       let nvi = vi, nc = c;
-      // Step one cell at a time, wrapping to the next/prev row, until a non-skip cell or
-      // off either end (null → the browser's default Tab moves focus out of the grid).
       for (;;) {
         nc += dir;
         if (nc >= cols) { nc = 0; nvi += 1; }

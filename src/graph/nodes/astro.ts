@@ -1,5 +1,4 @@
 // [[C76]] formulaPackDefault, [[C44]] dateSerials, [[D12]] dateValuedPortIsDateTyped
-// The NOAA Solar Calculator formulation; date serials and degrees at the sockets.
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, dateIn, dateOut, readInput } from "./shared";
@@ -101,8 +100,6 @@ export function sunTimes(serial: number, lat: number, lon: number): SunTimes {
   return { sunrise, sunset, dayLength: (haSunrise * 8) / 60 };
 }
 
-// Moon age from a reference new moon modulo the MEAN synodic month — good to
-// roughly ±half a day, so it is honest for calendars but not for eclipse work.
 
 const SYNODIC_MONTH = 29.530588853;
 const NEW_MOON_EPOCH_SERIAL = 36531.7597; // 2000-01-06 18:14 UTC as an Excel serial

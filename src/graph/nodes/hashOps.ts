@@ -158,7 +158,6 @@ export function hashText(text: string, algorithm: HashAlgorithm = "sha256"): str
   }
 }
 
-// Base64: UTF-8 text ↔ the standard alphabet with padding.
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 export function base64Encode(text: string): string {
   const bytes = utf8.encode(text);
@@ -185,7 +184,6 @@ export function base64Decode(text: string): string | null {
   try { return new TextDecoder("utf-8", { fatal: true }).decode(new Uint8Array(bytes)); } catch { return null; }
 }
 
-/** A fresh random v4 UUID (RFC 4122) from the platform CSPRNG. */
 export function uuidV4(): string {
   const b = new Uint8Array(16);
   globalThis.crypto.getRandomValues(b);

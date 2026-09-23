@@ -6,8 +6,6 @@ import { IS_MOBILE } from "../coarse";
 import { SEEDS, SEED_GROUPS } from "../seeds";
 import "./documentTitle.css";
 
-/** The current document's name + the documents menu — the home of the "file system";
- *  examples appear only as starting points, not as a working-graph picker. */
 export function DocumentTitle() {
   useSyncExternalStore(documentStore.subscribe, documentStore.version);
   const name = documentStore.currentName();
@@ -16,13 +14,11 @@ export function DocumentTitle() {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
   const [menuOpen, setMenuOpen] = useState(false);
-  // The example groups are an accordion: one open at a time keeps a long list of seeds
-  // from flooding the menu. Default to the first group ("Start here").
+  // An accordion, one group open at a time, so a long list of seeds can't flood the menu.
   const [openGroup, setOpenGroup] = useState<string | null>(SEED_GROUPS[0]?.head ?? null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rowDraft, setRowDraft] = useState("");
-  // Portaled to <body> to escape the app bar's stacking context, which otherwise traps
-  // the menu below the pin/alert HUD.
+  // Portaled to <body> to escape the app bar's stacking context, which traps the menu below the HUD.
   const [menuPos, setMenuPos] = useState<{ top: number; left?: number }>({ top: 0 });
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);

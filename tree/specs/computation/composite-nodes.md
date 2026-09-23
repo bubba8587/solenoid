@@ -204,7 +204,7 @@ Config: `goalSeek: { inputPortId, outputPortId, target, maxIterations?, toleranc
   - Secant: b = a + (1 if a is 0, else 0.001·|a|). Up to MAX steps while f(b) is finite: return b if within FTOL; stop if f(b) − f(a) is 0; c = clamp(b − f(b)(b − a)/(f(b) − f(a))); stop if c is non-finite; shift a ← b, b ← c. If the step |c − b| is below XTOL, return c when its residual is within FTOL, otherwise stop.
   - Bracketing fallback: with bounds, lo and hi are the bounds. Without, lo = x0 and hi = x0 + (1 if x0 is 0, else |x0|), then up to 60 expansions while f(hi) is non-finite or has the sign of f(lo): the span doubles and hi alternates between x0 + span and x0 − span. A non-finite f(lo), or a bracket never found, fails.
   - Bisection: up to 200 halvings; a non-finite midpoint residual fails; return the midpoint once its residual is within FTOL or the interval is below XTOL; after 200, return the midpoint.
-- Success: the solution is rounded to 12 significant digits. It goes to `goalSeekResult` and the driver marker's `solvedValue`, never onto the seed. One final pass runs with the driver at the solution; the outputs are that pass's values, except the target port, which carries the solved driver value (the achieved output would only equal the target).
+- Success: the solution is rounded to 12 significant digits, which strips the float tail but keeps a driver that needs many decimals (a monthly rate of 0.032173) intact; display rounding is the readout's job. It goes to `goalSeekResult` and the driver marker's `solvedValue`, never onto the seed, so the seed stays the user's starting guess. One final pass runs with the driver at the solution; the outputs are that pass's values, except the target port, which carries the solved driver value (the achieved output would only equal the target).
 - Failure: `#CONV!` with the message `Goal seek couldn't drive "<inputPortId>" to make "<outputPortId>" reach <target>`, stored in `goalSeekResult` and `solvedValue`. One pass runs with no override, and the target port carries the error ([[error-values]]).
 - The editor: Set (output), To value (target), By changing (exposed input), and under a disclosure Max iters, Tolerance and Bounds lo/hi; then Solution: `<driver label>` with the result. With no exposed input or no output it reads "expose a numeric input and output to goal-seek".
 
@@ -215,17 +215,24 @@ Config: `monteCarlo: { samples, seed, correlations? }` or null; the defaults are
 - The uncertain ports are the input ports whose marker has `uncertainty > 0`, in input-port order. Heavy when there is at least one. With none, one plain pass.
 - Draw count: `max(1, round(samples))`. RNG: `mulberry32((seed | 0) >>> 0)`, so a fixed seed gives the same draws on every platform and every Solve.
 - Each uncertain port's mean: the wired value when the port is exposed and has a wired value, else the seed, else the port default, else 0, through `coerceNumber`. If any mean is non-finite (a wired blank, error or text), every output is null and no draw runs.
-- Correlations: the text `a ~ b = 0.7; c ~ d = -0.3`, pairs separated by `;` or `,`. Each pair must match `<name> ~ <name> = <number>` with ρ in [−1, 1] and two different names, or it is dropped. Names resolve to an uncertain port by id or by trimmed label; unresolved and self pairs are dropped. With any pair left, the k × k matrix (1 on the diagonal, the pairs' ρ, 0 elsewhere) is factored by Cholesky; when it is not positive definite, the off-diagonals shrink toward 0 in steps of 0.05 until it is, and the identity is the last resort.
+- Correlations: the text `a ~ b = 0.7; c ~ d = -0.3`, pairs separated by `;` or `,`. Each pair must match `<name> ~ <name> = <number>` with ρ in [−1, 1] and two different names, or it is dropped. Names resolve to an uncertain port by id or by trimmed label; unresolved and self pairs are dropped. With any pair left, the k × k matrix (1 on the diagonal, the pairs' ρ, 0 elsewhere) is factored by Cholesky; when it is not positive definite, the off-diagonals shrink toward 0 in steps of 0.05 until it is, and the identity is the last resort. An inconsistent set of pairs is softened, never refused; the factorization treats a pivot at or below 1e-12 as not positive definite. This is a Gaussian copula: the correlated standard normals map onto each input's own marginal, so every input keeps exactly the distribution it declared and only the dependence between them changes. The entered ρ is the normal-score (Pearson) correlation; the Spearman rank correlation it induces is (6/π)·asin(ρ/2), within 2% of ρ across the range.
 - Per draw, in order: independent draws take each uncertain port in turn, normal as mean + z·spread with z from Box-Muller (two uniforms, cosine branch, a first uniform ≤ `Number.EPSILON` redrawn), uniform as mean + (2u − 1)·spread. Correlated draws take k standard normals, multiply by the factor, and map each onto its own marginal: normal as mean + z·spread, uniform as mean + (2Φ(z) − 1)·spread. One internal pass runs per draw with the draws as overrides.
 - Each output becomes `summarizeSamples` of its per-draw `coerceNumber` values: non-finite draws are dropped and counted in `dropped`; the mean, and the sample standard deviation (N − 1) for N ≥ 2 (0 for N = 1; NaN mean for N = 0), form an uncertain number `{ kind: "uncertain", value, error, samples, dropped? }`.
-- The editor lists each exposed input with a ± field (≤ 0 clears the spread) and a Normal/Uniform toggle; a 16-bin histogram of the first output with more than one sample; "`<kept>` of `<N>` draws" when any draw was dropped; and under a disclosure Samples (blank or < 1 resets to 500), Seed and Correlations. With no exposed input it reads "expose an input to give it an error bar". Opening the editor creates the config with defaults.
+- The editor lists each exposed input with a ± field (≤ 0 clears the spread) and a Normal/Uniform toggle; a 16-bin histogram of the first output with more than one sample (`histogram` ignores non-finite draws, gives one empty bucket when none is left and one full bucket when all draws are equal, and puts the maximum in the last bin); "`<kept>` of `<N>` draws" when any draw was dropped; and under a disclosure Samples (blank or < 1 resets to 500), Seed and Correlations. With no exposed input it reads "expose an input to give it an error bar". Opening the editor creates the config with defaults.
+
+#### The uncertain number
+
+An uncertain number (`UncertainNumber`, `valueKinds.ts`) is `{ kind: "uncertain", value, error, samples?, dropped? }`: `value ± error`, with `error` a non-negative 1σ (`uncertain()` stores `|error|`). It is scoped to the composite subsystem and is not threaded through general graph arithmetic; a numeric consumer reads the central `value` (`uncertainCenter`, `coerceNumber`).
+
+- `samples` holds the raw Monte Carlo draws behind a summary and powers the histogram. It is not part of the value's identity, so a hand-built `value ± error` omits it.
+- `dropped` counts the draws the summary could not use (an errored or blank pass), so the readout can say "200 of 500 draws" instead of a confident mean over a fraction.
+- The propagation ops (`addUncertain`, `subUncertain`, `mulUncertain`, `divUncertain`, each normalizing plain numbers through `asUncertain` with error 0) use first-order Gaussian propagation for independent variables, with no covariance term. A sum or difference adds the errors in quadrature. A product's error is `√((b·σa)² + (a·σb)²)` and a quotient's is `√((σa/b)² + (a·σb/b²)²)`, the forms that stay finite when a or b is 0; a zero denominator still gives ±Inf or NaN.
 
 ### Simulation
 
 Config: `simulationSteps` (default 10), `stopWhenPortId` (`""` = none), `stopWhenOp` (default `eq`), `stopWhenValue` (default 1).
 
-- Always heavy.
-- Loops are below.
+- Always heavy. How the loop runs is under Loops, below.
 
 ## Loops
 
@@ -240,7 +247,7 @@ A cable cycle inside a composite is detected with the same `loopMembers` as the 
 3. For each loop member, gather its cables from non-member sources and fetch those sources once through the engine. They are upstream of the loop and do not change between rounds.
 4. Order the members as `internalEditor.getNodes()` lists them.
 5. Rounds: `steps = max(1, round(simulationSteps))`. In each round, each member in order gets its static inputs plus, for each cable from another member, that member's latest output in a shared `state` map; a member that has not produced yet contributes nothing, so that input is unwired on the first round. The member's guarded `data()` is called directly and its result replaces its entry in `state`. This is Gauss-Seidel stepping: a member later in the order sees this round's values, an earlier one the previous round's. After each round a snapshot of every member's output is appended to the series.
-6. Stop when: when `stopWhenPortId` names an output whose marker has an incoming cable, the condition is checked after each round, and the halting round is kept in the series. If the marker is fed straight from a member, the value is read from `state`; otherwise the internal engine is reset, every member's current output is seeded into its cache, and the feeding node is fetched. `stopConditionMet(raw, op, value)` reads a logical as 1 or 0 and any other value through `Number`; `null`, `undefined` and non-finite values never stop. The ops are `gt`, `ge`, `lt`, `le`, `eq`, `ne`.
+6. Stop when: when `stopWhenPortId` names an output whose marker has an incoming cable, the condition is checked after each round, and the halting round is kept in the series. If the marker is fed straight from a member, the value is read from `state`; otherwise the internal engine is reset, every member's current output is seeded into its cache, and the feeding node is fetched. `stopConditionMet(raw, op, value)` reads a logical as 1 or 0 and any other value through `Number`; `null`, `undefined` and non-finite values never stop, so a missing or broken round never halts the run. The ops are `gt`, `ge`, `lt`, `le`, `eq`, `ne`.
 7. `simLastSteps` = rounds run. Fewer than `steps` means the condition stopped it.
 8. Seed every member's final output into the internal engine cache, so nodes downstream of the loop resolve through the normal pull.
 9. Outputs: a port whose marker is fed straight from a member gets the series of that member output, one entry per round (mirrored into the marker's `cachedResult`). Any other port is fetched once through the engine and gets its single final value.
@@ -269,10 +276,10 @@ All hold state is transient and never saved, so a loaded composite starts unsolv
 Every `data(inputs)`:
 
 1. Bump `runSeq`, sync port labels and marker socket types, and stamp the markers (`externallyWired`, `goalDriver`, clear `solvedValue` on non-drivers, `modeNote`, `goalTarget`). Stamps are topology and config only, so they stay current on a held pass.
-2. Resolve trig angle modes over the internal editor (`resolveTrigModes`), before any internal pull.
+2. Resolve trig angle modes over the internal editor (`resolveTrigModes`) before any internal pull, so an Auto-mode trig node inside reads its incoming unit instead of computing in radians.
 3. If the mode is heavy and differs from `_lastRunMode`, set `lastSolveKey = null`. Record the mode.
 4. Heavy, with `solveRequested`: run the mode on `{}` when `solveInsideOnly`, else on `inputs`; store the outputs in `cachedOutputs`; set `lastSolveKey = solveKey(inputs)` (always the real inputs, computed after the run); clear both request flags and `stale`; return the outputs.
-5. Heavy, `lastSolveKey === null`: set `cachedOutputs = {}`, `goalSeekResult = null` and every marker's `solvedValue = null`; mark stale; return `{}`.
+5. Heavy, `lastSolveKey === null`: set every output key to null in `cachedOutputs` (the engine refuses a result missing a key), clear `goalSeekResult` and every marker's `solvedValue`, mark stale, and return those blanks.
 6. Heavy otherwise: `stale = (solveKey(inputs) !== lastSolveKey)`; return `cachedOutputs` unchanged.
 7. Not heavy: run the mode on `inputs`, store and return; not stale.
 
@@ -367,7 +374,7 @@ A pack node that grows past one formula becomes a composite ([[C77]] compositeIs
 
 ## Refused and not built
 
-- A Group or a Composite in the selection is left out of a new composite, and so is a node hidden in a collapsed Group.
+- A Group or a Composite in the selection is left out of a new composite, and so is a node hidden in a collapsed Group, since absorbing it would silently pull it out of that Group.
 - Markers cannot be added from the Add menu, copied, or deleted from the drill-in.
 - A heavy composite never solves without Solve or Refresh.
 - By-Row caps at 500 rows. Scenarios, Data Table and Monte Carlo have no cap beyond their configuration.

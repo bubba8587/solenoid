@@ -1,16 +1,11 @@
 .solenoid-nav {
   position: absolute;
-  /* Vertical pill on the upper-right, clear of the full-width header. */
-  /* 14px below the header envelope (measured — Header.tsx publishes --chrome-top;
-     66px fallback = menu bar 22 + top bar 44). */
   top: calc(var(--chrome-top, 66px) + 14px);
   right: 12px;
   display: flex;
   flex-direction: row;
   gap: 3px;
-  /* 2px (not 3px) so the pill's outer height is 28 + 2·2 + 2·1 = 34px, matching the
-     navigator/search open-pill (32px buttons + 1px border) at the same top:80px — the
-     two floating pills then align on both edges instead of the zoom pill hanging 2px low. */
+  /* 2px, so the pill's outer height is 34px and aligns with the navigator open-pill on both edges. */
   padding: 2px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -23,8 +18,6 @@
 .solenoid-nav__btn {
   width: 28px;
   height: 28px;
-  /* Borderless inside the pill — the pill container is the boundary, so the
-     circles read as a tight cluster rather than double-ringed buttons. */
   background: transparent;
   border: 1px solid transparent;
   color: var(--text);
@@ -39,22 +32,13 @@
   justify-content: center;
 }
 
-/* Hover styling only where a real pointer can hover. On TOUCH, :hover STICKS after
-   a tap until you tap elsewhere, so the just-pressed button kept showing its hover
-   look and masked the real toggled state — the --on accent ring stayed hidden, or a
-   hover fill lingered after toggling OFF, until you tapped away (reported: "Snap to
-   Grid — the fill appears but the border only shows after tapping outside"). Gating
-   hover behind (hover: hover) makes the tap's resolved on/off state authoritative on
-   touch; the desktop cursor case is handled by the combined --on:hover rule below. */
+/* Hover only where a real pointer can hover: on touch :hover sticks after a tap and masks the toggled state. */
 @media (hover: hover) {
   .solenoid-nav__btn:hover {
     background: var(--btn-hover);
     color: var(--accent);
   }
-  /* A hovered ON button keeps its accent ring + fill. Plain :hover (a class + a
-     pseudo-class) outranks the single-class --on, so without this the ON border was
-     erased whenever the cursor sat on the button — the desktop half of the same bug.
-     Listing --on:hover makes the toggled state win regardless of hover. */
+  /* A hovered ON button keeps its ring and fill, because plain :hover outranks the single-class --on. */
   .solenoid-nav__btn--on:hover {
     border-color: var(--accent);
     background: var(--accent-soft);
@@ -69,8 +53,7 @@
 
 .solenoid-nav__seed-select {
   height: 28px;
-  /* Custom chevron (background-image) instead of the native arrow, which
-     ignores right-padding and crowds the pill's rounded end on Chrome/Win. */
+  /* A custom chevron, because the native arrow ignores right padding and crowds the rounded end on Chrome for Windows. */
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;

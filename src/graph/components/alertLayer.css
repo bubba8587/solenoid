@@ -1,6 +1,3 @@
-/* Fired-alerts HUD section — mirrors the pinned-values section (pinLayer.css):
-   a collapse button plus a stack of chips. A section within .solenoid-hud-stack,
-   which owns the fixed positioning. */
 .solenoid-alert-layer {
   display: flex;
   flex-direction: column;
@@ -8,13 +5,11 @@
   pointer-events: none;
 }
 
-/* Collapsed: chips hidden, only the trigger button shows. */
 .solenoid-alert-layer--collapsed .solenoid-alert {
   display: none;
 }
 
-/* The always-visible collapse/expand toggle — stays right-aligned regardless of
-   how wide the expanded chips make the section (matches the pin trigger). */
+/* Stays right-aligned however wide the expanded chips make the section. */
 .solenoid-alert-layer__trigger {
   pointer-events: auto;
   position: relative;
@@ -38,8 +33,7 @@
   color: var(--accent);
 }
 
-/* Count badge shown when collapsed — amber, matching the alert bell's warning tone
-   (an alert isn't necessarily bad, so not red). */
+/* Amber, not red: an alert isn't necessarily bad. */
 .solenoid-alert-layer__count {
   position: absolute;
   top: -4px;
@@ -48,9 +42,7 @@
   height: 14px;
   padding: 0 3px;
   background: #d9822b;
-  /* Ink on the fixed amber fill: a near-black shade of the badge's own hue, so it
-     reads at >4.5:1 and stays stable across themes (unlike --accent-ink, which
-     tracks the unrelated accent and can flip to white on a dark accent). */
+  /* A near-black shade of the badge's own hue, stable across themes; --accent-ink tracks the unrelated accent. */
   color: color-mix(in srgb, #d9822b 20%, #000);
   border-radius: 8px;
   font-size: 9px;
@@ -92,15 +84,13 @@
   font-size: 11px;
   font-weight: 600;
 }
-/* Kind conveyed by the leading label's color now (no per-chip icon) — info blue,
-   warning orange, critical red; the detail after it stays --text. */
+/* The kind shows in the label's color: info blue, warning orange, critical red. */
 .solenoid-alert__title {
   color: var(--alert-color, var(--text));
 }
 
 .solenoid-alert__remove {
   flex: none;
-  /* Flex-center the ✕ glyph rather than baseline (see .sol-popup__close). */
   display: inline-flex;
   align-items: center;
   justify-content: center;

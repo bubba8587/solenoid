@@ -1,8 +1,7 @@
 // [[C99]] chromeEnvelopeVars
 import { isDesktop } from "./fileBridge";
 
-/** iOS Safari exposes no Fullscreen API for arbitrary elements, so callers must hide
- *  the affordance rather than offer a dead button. */
+/** iOS Safari has no Fullscreen API for arbitrary elements, so callers hide the affordance. */
 export function fullscreenSupported(): boolean {
   if (isDesktop()) return true;
   return typeof document !== "undefined" && !!document.documentElement.requestFullscreen;
@@ -22,7 +21,7 @@ export function toggleFullscreen(): void {
   }
 }
 
-/** Tauri only — binding F11 on web desktop would preventDefault Chrome's native F11. */
+/** Tauri only: binding F11 on web would block the browser's own F11. */
 export function initFullscreenHotkey(): void {
   if (!isDesktop()) return;
   window.addEventListener("keydown", (e) => {

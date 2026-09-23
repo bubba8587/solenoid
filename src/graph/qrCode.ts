@@ -1,7 +1,5 @@
 // [[C97]] rechartsLazyChunk (the qrcode package is a lazy import too)
-// QR payload assembly + SVG rendering — PURE + fixture-tested (widget rule 5). The
-// encoding itself is the `qrcode` package, imported lazily in the node's compute path
-// so it stays out of the initial bundle; this module never imports it.
+// QR payload assembly and SVG rendering, pure. The `qrcode` encoder is imported lazily by the node, never here.
 
 export type QrTemplate = "text" | "wifi" | "vcard";
 
@@ -24,7 +22,7 @@ function escWifi(s: string): string {
   return s.replace(/([\\;,:"])/g, "\\$1");
 }
 
-/** The string a template encodes into the QR. An empty essential field → "" (no code). */
+/** An empty essential field gives "" (no code). */
 export function buildQrPayload(template: QrTemplate, f: Partial<QrFields>): string {
   if (template === "wifi") {
     const ssid = (f.ssid ?? "").trim();
@@ -44,9 +42,7 @@ export function buildQrPayload(template: QrTemplate, f: Partial<QrFields>): stri
   return (f.text ?? "").trim();
 }
 
-/** Render a QR module matrix to a crisp black-on-white SVG string. `data[i] & 1` is a
- *  dark module (the `qrcode` BitMatrix layout); `margin` is the quiet-zone width in
- *  modules (the spec's 4). Dark modules are one merged `<path>` to keep the markup small. */
+/** `data[i] & 1` is a dark module (the `qrcode` BitMatrix layout); `margin` is the quiet zone in modules. */
 export function qrModulesToSvg(size: number, data: Uint8Array, margin = 4): string {
   const dim = size + margin * 2;
   let path = "";
@@ -60,7 +56,7 @@ export function qrModulesToSvg(size: number, data: Uint8Array, margin = 4): stri
     + `<path d="${path}" fill="#000000"/></svg>`;
 }
 
-/** An SVG string as an inline data URL (utf8, not base64 — smaller for markup). */
+/** utf8, not base64: smaller for markup. */
 export function svgDataUrl(svg: string): string {
   return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

@@ -12,13 +12,10 @@ import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { RecordLayoutField } from "./RecordLayoutField";
 
-// Derived from RECORD_OP_META so the dropdown can't drift from the Add-menu rows ([[C8]] declareOnce).
 const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) as RecordOp[])
   .map((value) => ({ value, label: RECORD_OP_META[value].label }));
 
-// The op owns the Row / Group-by sockets, so a switch must drop the departing
-// keys' cables BEFORE the sockets go ([[D10]] onePrunePath) — removed silently, a cable would
-// live on invisibly.
+// A switch drops the departing keys' cables before the sockets go, or a cable would live on invisibly.
 async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void> {
   const departing: string[] = [];
   if (node.op === "card" && next !== "card") departing.push("row");
@@ -53,8 +50,6 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const total = payload?.total ?? 0;
   const index = payload?.index ?? 0;
 
-  // The pager is a discrete pick: it applies immediately (never per keystroke —
-  // there is no keystroke), and only drives the card literal when Row is unwired.
   function step(delta: number) {
     const next = Math.min(total, Math.max(1, (data.literals.row ?? 1) + delta));
     if (next === data.literals.row) return;
@@ -67,7 +62,6 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
     void processGraph(data.id);
   }
 
-  // Measured against the card so the layout socket lines up with the textarea.
   const layoutRef = useRef<HTMLDivElement>(null);
   const [layoutTop, setLayoutTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
@@ -79,8 +73,6 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const layoutPort = data.inputs.layout;
 
   const hasBoxes = !!payload && payload.cards.some((c) => c.length > 0);
-  // Per-op body rows; collapsed, the hand-rendered layout block is gone, so its
-  // socket folds into the row pills (the ChartNode `values` pattern).
   const keys = ["frame", ...(op === "card" ? ["row"] : op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
 
   return (
@@ -120,10 +112,6 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
           </button>
         </div>
       )}
-      {/* The card never draws the grid — squished at card width it reads as
-          noise. The hero box holds the chip (opens the popup at full size);
-          the drawn card lives wherever the chart output lands: a resizable
-          Display, a Report embed, the popup. */}
       {hasBoxes && cv
         ? <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>
         : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}

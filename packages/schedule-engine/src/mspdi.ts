@@ -1,6 +1,4 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed
-// MSPDI (Project XML, pj14) read into the engine's task tree; the file's own stored dates
-// ride along as `golden` so a fixture diffs against the engine (25-gantt.md § 3.2, § 3.3).
 
 import { parseXml, child, children, text, type XmlNode } from "./xml";
 import type { CalendarSpec, LinkType, PlanTask } from "./types";
@@ -13,7 +11,6 @@ export interface MspdiGolden {
   earlyFinish: number | null;
   lateStart: number | null;
   lateFinish: number | null;
-  /** Working days. */
   totalSlack: number | null;
   freeSlack: number | null;
   critical: boolean | null;
@@ -26,17 +23,13 @@ export interface MspdiPlan {
   calendar: CalendarSpec;
   tasks: PlanTask[];
   golden: MspdiGolden[];
-  /** Fields the reader saw but does not model (so a divergence is named, not hidden). */
   unsupported: string[];
 }
 
 const LINK_CODES: Record<string, LinkType> = { "0": "FF", "1": "FS", "2": "SF", "3": "SS" };
 
-/** Project's elapsed DurationFormat / LagFormat codes (em, eh, ed, ew, emo, e% and their
- *  estimated twins): the even codes. */
 const ELAPSED_FORMATS = [4, 6, 8, 10, 12, 14, 16, 18, 20, 36, 38, 40, 42, 44, 46, 48, 50, 52];
 
-/** `2026-01-05T08:00:00` → a whole-day serial (Project's day is what the cell shows). */
 export function isoToSerial(s: string | undefined): number | null {
   if (!s) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
@@ -44,7 +37,6 @@ export function isoToSerial(s: string | undefined): number | null {
   return Math.round(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) / 86400000) + 25569;
 }
 
-/** `PT8H0M0S` / `P2DT4H` → hours. */
 export function xsdDurationToHours(s: string | undefined): number | null {
   if (!s) return null;
   const m = /^-?P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/.exec(s.trim());
@@ -62,7 +54,6 @@ function readCalendar(root: XmlNode, unsupported: string[], wantUid?: string): C
   const list = cals ? children(cals, "Calendar") : [];
   let cal = list.find((c) => text(c, "UID") === uid) ?? (wantUid ? undefined : list.find((c) => text(c, "IsBaseCalendar") === "1") ?? list[0]);
   if (!cal) return { workingDays: true };
-  // A derived calendar inherits its base's week; its own WeekDays / Exceptions override.
   const baseUid = text(cal, "BaseCalendarUID");
   const base = baseUid && baseUid !== "-1" ? list.find((c) => text(c, "UID") === baseUid) : undefined;
   if (base && !child(cal, "WeekDays")) cal = { ...cal, children: [...base.children.filter((c) => c.name === "WeekDays"), ...cal.children] };
@@ -73,9 +64,8 @@ function readCalendar(root: XmlNode, unsupported: string[], wantUid?: string): C
   for (const day of wd ? children(wd, "WeekDay") : []) {
     const type = num(text(day, "DayType"));
     const working = flag(text(day, "DayWorking"));
-    if (type != null && type >= 1 && type <= 7 && working === false) off.push(type - 1); // DayType 1 = Sunday
+    if (type != null && type >= 1 && type <= 7 && working === false) off.push(type - 1);
     if (type === 0) {
-      // An exception (older files put them here): a non-working date range.
       const from = isoToSerial(text(child(day, "TimePeriod"), "FromDate")), to = isoToSerial(text(child(day, "TimePeriod"), "ToDate"));
       if (working === false && from != null && to != null) for (let s = from; s <= to; s++) holidays.push(s);
     }
@@ -98,18 +88,15 @@ function readCalendar(root: XmlNode, unsupported: string[], wantUid?: string): C
   return { workingDays: true, weekendCode: code, holidays, ...(intervals ? { intervals } : {}) };
 }
 
-/** `08:00:00` → minutes from midnight. */
 function clockMinutes(s: string | undefined): number | null {
   const m = s && /^(\d{1,2}):(\d{2})/.exec(s.trim());
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
-/** The WORKDAY.INTL code for a set of off days; an unrepresentable set falls back to
- *  Sat + Sun and is named in `unsupported`. */
 function weekendCodeFor(off: number[], unsupported: string[]): number {
   const key = [...new Set(off)].sort((a, b) => a - b).join(",");
   const table: Record<string, number> = { "0,6": 1, "0,1": 2, "1,2": 3, "2,3": 4, "3,4": 5, "4,5": 6, "5,6": 7, "0": 11, "1": 12, "2": 13, "3": 14, "4": 15, "5": 16, "6": 17 };
-  if (key === "") return 1; // no weekend named: Project's default calendar is Sat + Sun off
+  if (key === "") return 1;
   const code = table[key];
   if (code == null) { unsupported.push(`weekend pattern [${key}] is not a WORKDAY.INTL code`); return 1; }
   return code;
@@ -131,13 +118,12 @@ export function readMspdi(xml: string): MspdiPlan {
     const uid = text(el, "UID") ?? "";
     const name = (text(el, "Name") ?? "").trim() || `Task ${uid}`;
     const level = num(text(el, "OutlineLevel")) ?? 1;
-    if (level === 0 || text(el, "IsNull") === "1") continue; // the project summary row / a deleted row
+    if (level === 0 || text(el, "IsNull") === "1") continue;
     if (flag(text(el, "Active")) === false) { unsupported.push(`inactive task "${name}"`); continue; }
     if (child(el, "Recurring") && flag(text(el, "Recurring"))) unsupported.push(`recurring task "${name}"`);
     byUid.set(uid, name);
     const hours = xsdDurationToHours(text(el, "Duration")) ?? 0;
     const isMilestone = flag(text(el, "Milestone")) === true;
-    // An elapsed duration (the even DurationFormat codes, "ed") is stored in 24-hour days.
     const elapsedDuration = /^-?P.*T?.*$/.test(text(el, "Duration") ?? "") && ELAPSED_FORMATS.includes(num(text(el, "DurationFormat")) ?? -1);
     const durationDays = isMilestone && hours === 0 ? 0 : Math.ceil(hours / (elapsedDuration ? 24 : hoursPerDay) - 1e-9);
     const summary = flag(text(el, "Summary")) === true;
@@ -145,8 +131,6 @@ export function readMspdi(xml: string): MspdiPlan {
     const ct = num(text(el, "ConstraintType"));
     const cd = isoToSerial(text(el, "ConstraintDate"));
     const task: PlanTask = { name, duration: durationDays, predecessors: [], row: recs.length + 1 };
-    // Project's eight constraints onto the one rule ([[C70]] oneScheduleRule). 0 ASAP · 1 ALAP ·
-    // 2 MSO · 3 MFO · 4 SNET · 5 SNLT · 6 FNET · 7 FNLT.
     if (cd != null) {
       if (ct === 4) task.start = cd;
       else if (ct === 2) { task.start = cd; task.manual = true; }
@@ -174,11 +158,9 @@ export function readMspdi(xml: string): MspdiPlan {
       const type = LINK_CODES[text(link, "Type") ?? "1"] ?? "FS";
       const lagTenths = num(text(link, "LinkLag")) ?? 0;
       const lagFormat = num(text(link, "LagFormat"));
-      // Tenths of a minute → working days; an elapsed format (the even codes, "ed") is
-      // calendar time; 19 / 51 are percent lags, 20 / 52 elapsed percent lags.
       const elapsed = lagFormat != null && ELAPSED_FORMATS.includes(lagFormat);
       let lag = elapsed ? lagTenths / 10 / 60 / 24 : lagTenths / 10 / 60 / hoursPerDay;
-      if (lagFormat === 19 || lagFormat === 51 || lagFormat === 20 || lagFormat === 52) lag = lagTenths / 100 * (task.duration || 1); // percent lag
+      if (lagFormat === 19 || lagFormat === 51 || lagFormat === 20 || lagFormat === 52) lag = lagTenths / 100 * (task.duration || 1);
       task.predecessors.push({ task: puid, type, lag: Math.round(lag * 1000) / 1000, ...(elapsed ? { elapsed: true } : {}) });
     }
     recs.push({
@@ -192,7 +174,6 @@ export function readMspdi(xml: string): MspdiPlan {
       },
     });
   }
-  // Predecessor UIDs → names.
   for (const r of recs) {
     r.task.predecessors = r.task.predecessors.flatMap((p) => {
       const name = byUid.get(p.task);
@@ -200,7 +181,6 @@ export function readMspdi(xml: string): MspdiPlan {
       return [{ ...p, task: name }];
     });
   }
-  // Nest by OutlineLevel: a task at level L is a child of the nearest earlier task at L−1.
   const roots: PlanTask[] = [];
   const stack: Rec[] = [];
   for (const r of recs) {
@@ -210,14 +190,11 @@ export function readMspdi(xml: string): MspdiPlan {
     else roots.push(r.task);
     stack.push(r);
   }
-  // No StartDate: the earliest stored task start, else the serial epoch (never a bare 0 when
-  // a task start is known).
   const goldenStarts = recs.map((r) => r.golden.start).filter((v): v is number => v != null);
   const startSerial = start ?? (goldenStarts.length ? Math.min(...goldenStarts) : 0);
   return { title: text(root, "Title") ?? text(root, "Name") ?? "", start: startSerial, hoursPerDay, calendar, tasks: roots, golden: recs.map((r) => r.golden), unsupported: [...new Set(unsupported)] };
 }
 
-/** Slack is in tenths of a minute in MSPDI. */
 function slackDays(s: string | undefined, hoursPerDay: number): number | null {
   const v = num(s);
   return v == null ? null : Math.round(v / 10 / 60 / hoursPerDay);

@@ -1,10 +1,10 @@
+// [[C51]] formulaNaming
 import { IsInNode, TallyNode, isInMask, tallyPairs } from "../rete-nodes";
 import type { Pack, PackFormula } from "./packShared";
 
 const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
-// The pack's nodes as formula functions ([[C51]] formulaNaming decision 4); TALLY returns only the
-// COUNTS, since the node's frame can't cross the formula surface.
+// TALLY returns only the counts, because the node's frame cannot cross the formula surface.
 const SETS_PACK_FORMULAS: PackFormula[] = [
   {
     name: "ISIN",

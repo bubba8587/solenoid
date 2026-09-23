@@ -2,7 +2,7 @@
 
 The React 19 Gantt figure over `@solenoid/gantt-layout`. A tree grid beside a timeline, read-only:
 the schedule is edited in the source table, never on the chart. `GanttFigure` dispatches to a
-calendar month grid (`CalendarView`) when `view.layout === "calendar"` — the same payload, two
+calendar month grid (`CalendarView`) when `view.layout === "calendar"`: the same payload, two
 ways; both are exported.
 
 ## The contract
@@ -25,7 +25,7 @@ GanttFigure({
   resolve in inline SVG because the figure lives in the document, so the on-screen figure needs no
   color resolution; only the headless `ganttSvg` serializer (re-exported here) takes concrete
   colors, for a detached export.
-- **Cue vocabulary** — every state also carries a NON-color cue (WCAG 1.4.1), so the figure reads
+- **Cue vocabulary.** Every state also carries a non-color cue (WCAG 1.4.1), so the figure reads
   without relying on hue:
   - **hatch** (+ darker outline) = on the critical path
   - **dashed outline** = violated (negative float: a floor/pin the predecessors can't honor)
@@ -48,16 +48,43 @@ GanttFigure({
   collapse are ephemeral per-viewer state seeded from the `collapse` option; the option is only a
   floor the keyboard can open past.
 
+## How the figure lays out
+
+- **Panes.** The grid pane opens at its content width: the columns that fit within the smaller of
+  their natural width and 55% of the figure (at least 96 px), so there is no empty band and never a
+  clipped header. The splitter drags it from there. The pane never outgrows the figure: the
+  timeline keeps at least 80 px, and columns that no longer fit are dropped from the end, never
+  clipped. The name column always stays, even when it alone is too wide.
+- **Rows.** On the canvas the figure draws at most the first 60 rows (the Record precedent,
+  [[C63]] oneRecordNode); in the popup (`virtualize`) it draws a window around the scroll position
+  with a buffer of 6 rows, which works because every row has the same height. Links draw when
+  either end is in or near the drawn band. The two panes share one vertical scroll.
+- **Collapse.** Per-row collapse is ephemeral viewer state. It is seeded from `view.collapse`, so
+  every phase at or below that level starts collapsed, and a click or the keyboard toggles from
+  there.
+- **Keyboard.** Section bands are skipped by navigation. Right on an expanded phase steps to its
+  first child; Left on a leaf or a collapsed phase moves to the parent. The active row scrolls into
+  view in both panes and its bar into view horizontally, instantly rather than smoothly, so there
+  is nothing to gate on reduced motion. DOM focus moves onto the active row once it has rendered,
+  keyed only on the active row and the scroll offset, so an unrelated re-render never steals focus.
+- **Type.** Text sizes are DESIGN.md's rungs in em of the root, which is 12 px times `fontScale`,
+  so the text scale moves the labels with the rows.
+- **Hit testing.** The links overlay keeps pointer events, because its wide invisible hit paths
+  carry the hover; its empty regions pass clicks through since an unpainted SVG background
+  captures nothing. The drawn links and arrows themselves take no pointer events.
+- **The calendar view** scrolls vertically when the span runs to several months, and it ellipsizes
+  chip labels at about 6 px per character, matching the layout package's estimator.
+
 ## Option keys
 
 Persisted view state rides the node's `options` string (`key=value;…`, parsed by
 `parseGanttViewOptions` in the layout package):
 
-- `layout` — `gantt` (default) or `calendar` (the month grid, `CalendarView`)
-- `zoom` — `day` / `week` / `month` / `quarter` / `year` / `fit`; `fit=page` (export) fits the
+- `layout`: `gantt` (default) or `calendar` (the month grid, `CalendarView`)
+- `zoom`: `day` / `week` / `month` / `quarter` / `year` / `fit`; `fit=page` (export) fits the
   whole span to one width with the finest label-wide tier, overriding `zoom`
-- `minutes` — minutes-precision serials (a midnight finish draws on the previous day, § 6.5)
-- `histogram` — draw the resource band
+- `minutes`: minutes-precision serials (a midnight finish draws on the previous day, § 6.5)
+- `histogram`: draw the resource band
 - `tiers`, `window`, `collapse`, `week` (iso/us), `fiscal_start`, `columns`, and the boolean
   toggles `critical` / `baseline` / `arrows` / `today` / `status` / `weekends` / `group_by` / `labels`
 

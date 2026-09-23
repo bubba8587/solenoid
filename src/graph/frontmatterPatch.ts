@@ -1,36 +1,25 @@
-// Write Properties' pure core: patch a note's YAML frontmatter LINE-LEVEL over the raw
-// text — never parse-and-reserialize, so every untouched byte stays identical (the
-// write-safety story: [[C101]] onePatchPath, the ONE writer of a note's YAML). Everything renders
-// in Obsidian's own block style, so a note Solenoid wrote and one Obsidian's Properties
-// editor rewrote look the same. Graph/DOM-free.
+// [[C101]] onePatchPath
 import { yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
 import { formatDateSerial } from "./nodes/dateSerial";
 
-/** A value ready to render as YAML: a scalar, a scalar list, or rows of scalar objects. */
 export type YamlScalarV = string | number | boolean | null;
-/** A row's field: a scalar, or a list of scalars (written as a nested `- ` block). */
 export type YamlRowV = YamlScalarV | YamlScalarV[];
 export type YamlValue = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
 
 export interface PatchResult { text: string; }
 
 const FENCE = "---";
-// A top-level key line (indent 0): `key:` or `key: value`.
 const TOP_KEY = /^([A-Za-z0-9_][\w .-]*?):\s*(.*)$/;
 
-// ─── Cube cell → a YAML-ready value ─────────────────────────────────────────────
 const isWholeDay = (serial: number) => Math.abs(serial - Math.round(serial)) < 1e-6;
-// ISO date / datetime strings render UNQUOTED (yamlScalar would quote a leading-digit
-// string), so a date round-trips as a YAML date, not a quoted string.
+// yamlScalar would quote a leading-digit string, so ISO dates bypass it to stay YAML dates.
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_DT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/;
 function renderScalar(v: YamlScalarV): string {
   return typeof v === "string" && (ISO_DATE.test(v) || ISO_DT.test(v)) ? v : yamlScalar(v);
 }
 
-/** Normalize one cube cell to a YamlValue, honoring the column's date type and turning a
- *  string that names an existing note into a `[[Name]]` link. Nested frame/cube → rows. */
 export function cellToYaml(cell: CubeCell, colType: FrameColType | undefined, noteNames: ReadonlySet<string>): YamlValue {
   if (cell === null || cell === undefined) return null;
   if (isFrameValue(cell)) return frameRows(cell.columns.map((c) => ({ name: c.name, cells: c.values as CubeCell[], type: c.type })), noteNames);
@@ -60,7 +49,6 @@ function frameRows(cols: Col[], noteNames: ReadonlySet<string>): Record<string, 
     const row: Record<string, YamlRowV> = {};
     for (const c of cols) {
       const cell = c.cells[i] ?? null;
-      // A list cell inside a row stays a list (a flow sequence), never a comma string.
       row[c.name] = Array.isArray(cell) ? cell.map((x) => scalarToYaml(x as CubeCell, c.type, noteNames)) : scalarToYaml(cell, c.type, noteNames);
     }
     rows.push(row);
@@ -68,13 +56,10 @@ function frameRows(cols: Col[], noteNames: ReadonlySet<string>): Record<string, 
   return rows;
 }
 
-// ─── Rendering a key's YAML line(s) ─────────────────────────────────────────────
 function isRows(v: YamlValue): v is Record<string, YamlRowV>[] {
   return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null;
 }
 
-/** One row as block lines: the first field rides the `- `, the rest indent under it, and
- *  a list field is its own nested `- ` block. */
 function renderRow(row: Record<string, YamlRowV>): string[] {
   const out: string[] = [];
   for (const [k, val] of Object.entries(row)) {
@@ -89,7 +74,6 @@ function renderRow(row: Record<string, YamlRowV>): string[] {
   return out;
 }
 
-/** The line(s) a key + value render to (no trailing newline; caller joins). */
 export function renderKey(key: string, v: YamlValue): string[] {
   if (isRows(v)) return [`${key}:`, ...v.flatMap(renderRow)];
   if (Array.isArray(v)) {
@@ -99,15 +83,13 @@ export function renderKey(key: string, v: YamlValue): string[] {
   return [`${key}: ${renderScalar(v)}`];
 }
 
-// ─── The block scan: each top-level key's line range ─────────────────────────────
-// A key's span is its line plus every indented line below it, whatever their shape.
-interface KeySpan { start: number; end: number; scalar: boolean; } // indices into `interior`
+interface KeySpan { start: number; end: number; scalar: boolean; }
 
 function scanKeys(interior: string[]): Map<string, KeySpan> {
   const spans = new Map<string, KeySpan>();
   const starts: { key: string; line: number; rest: string }[] = [];
   for (let i = 0; i < interior.length; i++) {
-    if (/^\s/.test(interior[i])) continue; // an indented / block line, not a top key
+    if (/^\s/.test(interior[i])) continue;
     const m = TOP_KEY.exec(interior[i]);
     if (m) starts.push({ key: m[1].trim(), line: i, rest: m[2] });
   }
@@ -120,16 +102,12 @@ function scanKeys(interior: string[]): Map<string, KeySpan> {
   return spans;
 }
 
-/** Patch `text`'s frontmatter with `patch` (key → YamlValue), LINE-LEVEL: a present key's
- *  whole span (its line + indented block) is replaced; a missing key is appended before
- *  the closing fence; a note with no block gets one. */
 export function patchFrontmatter(text: string, patch: Record<string, YamlValue>): PatchResult {
   const keys = Object.keys(patch);
   if (keys.length === 0) return { text };
 
   const lines = text.split("\n");
 
-  // No top-of-file block → create one before the body.
   if (lines[0]?.trim() !== FENCE) {
     const rendered = keys.flatMap((k) => renderKey(k, patch[k]));
     const block = [FENCE, ...rendered, FENCE, ""].join("\n");
@@ -140,7 +118,6 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
     if (lines[i].trim() === FENCE) { close = i; break; }
   }
   if (close === -1) {
-    // Unterminated fence — treat as no block (don't touch the body); render a fresh one.
     const rendered = keys.flatMap((k) => renderKey(k, patch[k]));
     return { text: [FENCE, ...rendered, FENCE, "", ...lines].join("\n") };
   }
@@ -148,7 +125,6 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   const interior = lines.slice(1, close);
   const spans = scanKeys(interior);
 
-  // Which interior lines get replaced, and by what; plus keys to append.
   const replacements = new Map<number, { end: number; lines: string[] }>();
   const appends: string[] = [];
   for (const key of keys) {
@@ -160,7 +136,6 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
     }
   }
 
-  // Rebuild the interior, keeping every untouched line byte-identical.
   const out: string[] = [];
   for (let i = 0; i < interior.length; i++) {
     const r = replacements.get(i);
@@ -173,19 +148,13 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   return { text: rebuilt.join("\n") };
 }
 
-// ─── The write PLAN (path · key · before · after · action) ───────────────────────
-// Built pure from the cube in data(); Preview fills `before` + resolves the action.
 
-/** File.* columns Write Properties never writes back (they describe the file, not the note). */
 export const BUILTIN_READONLY = new Set([
   "path", "name", "folder", "ext", "size", "created", "modified", "links", "embeds", "date",
 ]);
 
-/** The reserved cube property whose value is the note's BODY (not a frontmatter key) —
- *  the round-trip partner of Vault Folder's include-body `note-body` column. */
 export const NOTE_BODY = "note-body";
 
-/** Split a note into its frontmatter block (fences included, or "") and the body below. */
 function splitFrontmatter(text: string): { fm: string; body: string } {
   const lines = text.split("\n");
   if (lines[0]?.trim() !== FENCE) return { fm: "", body: text };
@@ -194,21 +163,16 @@ function splitFrontmatter(text: string): { fm: string; body: string } {
       return { fm: lines.slice(0, i + 1).join("\n"), body: lines.slice(i + 1).join("\n").replace(/^(\r?\n)+/, "") };
     }
   }
-  return { fm: "", body: text }; // unterminated fence — treat as no block
+  return { fm: "", body: text };
 }
 
-/** Replace the note's body below its frontmatter, keeping the frontmatter block
- *  byte-identical (a note with no block becomes just the body). */
 export function setBody(text: string, newBody: string): string {
   const { fm } = splitFrontmatter(text);
   if (fm === "") return newBody;
-  // One trailing newline whatever the cell carried (a Vault Folder body ends in one already),
-  // so a read → write → read cycle is a fixed point; a CRLF note stays CRLF.
   const nl = text.includes("\r\n") ? "\r\n" : "\n";
   return `${fm.replace(/\r$/, "")}${nl}${nl}${newBody.replace(/(\r?\n)+$/, "")}${nl}`;
 }
 
-/** A one-line display of a body for the plan. */
 function bodySnippet(body: string): string {
   const t = body.trim();
   if (t === "") return "(empty)";
@@ -216,7 +180,6 @@ function bodySnippet(body: string): string {
   return first.length > 40 ? `${first.slice(0, 40)}…` : first;
 }
 
-/** What writing `newBody` as the note's body would do, and the current body (a snippet). */
 export function resolveBody(text: string, newBody: string): { action: "unchanged" | "update"; before: string } {
   const { body } = splitFrontmatter(text);
   return { action: body.trim() === newBody.trim() ? "unchanged" : "update", before: bodySnippet(body) };
@@ -227,22 +190,16 @@ export type PlanAction = "pending" | "add" | "update" | "unchanged" | "unreadabl
 export interface PlanRow {
   path: string;
   key: string;
-  /** The normalized value to write. */
   value: YamlValue;
-  /** A one-line display of `value`. */
   after: string;
-  /** The note's current value, filled by Preview (else ""). */
   before: string;
   action: PlanAction;
   reason?: string;
 }
 
-/** The keys Write Properties will write: the `keys` CSV if given, else every column that
- *  isn't `path` or a read-only file.* built-in. */
 export function writableKeys(cube: CubeValue, keysCsv: string): string[] {
   const present = new Set(cube.columns.map((c) => c.name));
   const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
-  // `note-body` is the body, never a frontmatter key — planPropertyWrites handles it apart.
   if (listed.length > 0) return listed.filter((k) => present.has(k) && k !== "path" && k !== NOTE_BODY);
   return cube.columns.map((c) => c.name).filter((k) => k !== "path" && k !== NOTE_BODY && !BUILTIN_READONLY.has(k));
 }
@@ -250,7 +207,6 @@ export function writableKeys(cube: CubeValue, keysCsv: string): string[] {
 const colType = (cube: CubeValue, name: string): FrameColType | undefined =>
   cube.columns.find((c) => c.name === name)?.type;
 
-/** A one-line display of a normalized value for the plan's after/before cells. */
 export function displayValue(v: YamlValue): string {
   if (v === null) return "";
   if (Array.isArray(v)) {
@@ -260,8 +216,6 @@ export function displayValue(v: YamlValue): string {
   return renderScalar(v);
 }
 
-/** One plan row per (note × writable key). `path` names the note; a row with no `path`
- *  cell is skipped. `noteNames` turns matching string cells into `[[Name]]` links. */
 export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: ReadonlySet<string>): PlanRow[] {
   const pathCol = cube.columns.find((c) => c.name === "path");
   if (!pathCol) return [];
@@ -276,8 +230,6 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
       rows.push({ path: p, key: c.key, value, after: displayValue(value), before: "", action: "pending" });
     }
   }
-  // The `note-body` column writes each note's BODY (not frontmatter) — one row per note
-  // whose cell is a string; selected when `keys` is blank or names it.
   const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
   const bodyCol = cube.columns.find((c) => c.name === NOTE_BODY);
   if (bodyCol && (listed.length === 0 || listed.includes(NOTE_BODY))) {
@@ -292,9 +244,6 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
   return rows;
 }
 
-/** Resolve what writing `value` to `key` would do to `text`, and the note's CURRENT value
- *  (a display string) — Preview + Run read this without writing. `add` (key absent),
- *  `unchanged` (the rendered lines already match), or `update`. */
 export function resolveKey(text: string, key: string, value: YamlValue): { action: "add" | "unchanged" | "update"; before: string } {
   const lines = text.split("\n");
   if (lines[0]?.trim() !== FENCE) return { action: "add", before: "" };
@@ -313,7 +262,6 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
   return { action: same ? "unchanged" : "update", before };
 }
 
-/** The plan rows → the `plan` frame (path · key · before · after · action). */
 export function propertyPlanFrame(rows: readonly PlanRow[]): FrameValue {
   return {
     __frame: true,

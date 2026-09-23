@@ -25,8 +25,7 @@ const TYPE_LABEL: Record<SocketDataType, string> = {
 };
 const typeName = (t?: SocketDataType) => (t ? TYPE_LABEL[t] : "—");
 
-// Conduit lanes are plumbing, not destinations — 8 per block swamp the list, so they're
-// hidden unless the user opts in.
+// Conduit lanes are plumbing, not destinations, and 8 per block swamp the list, so they hide unless opted in.
 const isPlumbing = (nodeId: string) => {
   const name = (getEditor()?.getNode(nodeId) as { constructor?: { name?: string } } | undefined)
     ?.constructor?.name;
@@ -47,12 +46,12 @@ function EndpointCombo({
   const all = useMemo(() => {
     let eps = listEndpoints(side);
     const sel = value ? `${value.nodeId} ${value.socketKey}` : "";
-    // The selected endpoint survives every filter (same rule as the open-only one below).
+    // The selected endpoint survives every filter.
     if (!showConduits) {
       eps = eps.filter((e) => `${e.nodeId} ${e.socketKey}` === sel || !isPlumbing(e.nodeId));
     }
     if (!openOnly) return eps;
-    // "Open" = no existing cable on that socket; the current pick is always kept.
+    // "Open" means no cable on that socket yet.
     const used = new Set<string>();
     for (const c of getEditor()?.getConnections() ?? []) {
       used.add(side === "input" ? `${c.target}\u0000${c.targetInput}` : `${c.source}\u0000${c.sourceOutput}`);
@@ -65,12 +64,12 @@ function EndpointCombo({
   const [query, setQuery] = useState(value?.text ?? "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  // Sync the field text only when a value is set — clearing to null would wipe typing.
+  // Only when a value is set: clearing to null would wipe the typing.
   useEffect(() => { if (value) setQuery(value.text); }, [value]);
 
   const results = useMemo(() => {
     const q = query.trim();
-    // Selected and the box still shows its text → list everything (browse).
+    // Selected and the box still shows its text, so list everything (browse).
     if (!q || (value && q === value.text)) return all;
     return all
       .map((e) => ({ e, s: fuzzyScore(q, e.text) }))
@@ -106,7 +105,7 @@ function EndpointCombo({
               type="button"
               key={`${e.nodeId}:${e.socketKey}`}
               className={`conn-dialog__opt${i === active ? " conn-dialog__opt--active" : ""}`}
-              // mousedown (not click) so it fires before the input's blur.
+              // mousedown, so it fires before the input's blur.
               onMouseDown={(ev) => { ev.preventDefault(); pick(e); }}
             >
               <span className="conn-dialog__opt-node">{e.nodeName}</span>
@@ -126,13 +125,11 @@ export function ConnectionDialog() {
   const [src, setSrc] = useState<Endpoint | null>(null);
   const [tgt, setTgt] = useState<Endpoint | null>(null);
   const [openOnly, setOpenOnly] = useState(false);
-  // Conduit lanes are noise for most wiring tasks — hidden by default.
   const [showConduits, setShowConduits] = useState(false);
   const initedFor = useRef<ConnDialogReqRef>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(!!req, dialogRef);
 
-  // Initialize from the request (edit prefill, or socket prefill, or blank).
   useEffect(() => {
     if (!req) { initedFor.current = null; return; }
     if (initedFor.current === req) return;
@@ -177,7 +174,7 @@ export function ConnectionDialog() {
     const tgtNode = editor.getNode(tgt.nodeId);
     if (!srcNode || !tgtNode) return;
     if (req?.editId) { try { await editor.removeConnection(req.editId); } catch { /* gone */ } }
-    // Single-connection inputs: replace whatever's already on the target.
+      // Single-connection inputs: replace whatever is already on the target.
     for (const c of editor.getConnections().filter((c) => c.target === tgt.nodeId && c.targetInput === tgt.socketKey)) {
       try { await editor.removeConnection(c.id); } catch { /* gone */ }
     }
@@ -206,7 +203,7 @@ export function ConnectionDialog() {
         </div>
 
         <label className="conn-dialog__label">From (output)</label>
-        {/* No autofocus on touch — the keyboard would cover the dialog. */}
+        {/* No autofocus on touch: the keyboard would cover the dialog. */}
         <EndpointCombo side="output" value={src} onChange={setSrc} placeholder="Search a node's output…" autoFocus={!IS_COARSE} openOnly={openOnly} showConduits={showConduits} />
 
         <div className="conn-dialog__arrow" aria-hidden="true">↓</div>
@@ -232,5 +229,4 @@ export function ConnectionDialog() {
   );
 }
 
-// Identity tag for the init guard (the request object reference).
 type ConnDialogReqRef = ReturnType<typeof connectionDialog.get>;

@@ -2,7 +2,6 @@
 import { useSyncExternalStore } from "react";
 import { createNotifier } from "./storeKit";
 
-// "Animated mode": every live cable carries a stream of beads flowing output → input.
 
 const LS_KEY = "solenoid.cableFlow";
 
@@ -21,7 +20,6 @@ export const cableFlowStore = {
   subscribe,
 };
 
-/** Read the persisted flow setting. Call once at startup. */
 export function initCableFlow() {
   try { _on = localStorage.getItem(LS_KEY) === "1"; }
   catch { /* ignore */ }

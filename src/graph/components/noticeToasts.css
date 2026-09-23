@@ -34,7 +34,6 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Tone: warn and error get a full colored border; info is the default neutral. */
 .solenoid-notice--warn  { border-color: #c07820; }
 .solenoid-notice--error { border-color: #c04040; }
 
@@ -72,9 +71,7 @@
   opacity: 1;
 }
 
-/* Mobile: clear the bottom action bar instead — the measured envelope is the
-   bar (safe-area included); +39 clears the raised FAB + gap (same lift as the
-   cable inspector / docked conduit toolbar). */
+/* Mobile: the measured envelope is the bottom action bar; +39 clears the raised FAB, as the cable inspector does. */
 html.is-mobile .solenoid-notices {
   bottom: calc(var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom))) + 39px);
 }

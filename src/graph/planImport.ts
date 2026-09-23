@@ -1,17 +1,13 @@
-// [[C69]], [[C70]], [[C71]]
-// A plan file → the tasks CUBE the Schedule node reads. MSPDI (Project XML) nests by
-// outline level; a Smartsheet / Project CSV carries the `3FS+2d` predecessor grammar,
-// which is resolved to task names HERE, at the border, and never lives in a cell
-// (25-gantt.md § 6.1). Pure: no I/O, no rete.
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing, [[D67]] grammarOnlyAtBorder
+// A plan file into the tasks cube the Schedule node reads; predecessor grammar (`3FS+2d`) resolves to task names
+// here, at the border, and never lives in a cell (docs/v2.0/25-gantt.md § 6.1). Pure: no I/O, no rete.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from "./frame";
 import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, predecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
 
 export interface ImportedPlan {
   cube: CubeValue;
-  /** The flat view of the same plan, for the frame socket. */
   frame: FrameValue;
-  /** The project start the file carries (MSPDI), else null. */
   start: number | null;
   calendar: CalendarSpec | null;
   title: string;
@@ -22,8 +18,7 @@ export interface ImportedPlan {
 const PRED_HEADERS = ["predecessors", "predecessor", "depends on", "after"];
 const GRAMMAR_TOKEN = /^\s*\d+\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(\.\d+)?\s*(e?d|w|wk|h)?)?\s*$/i;
 
-/** A Predecessors cell is FS/0 names as a list cell; anything typed or lagged is a
- *  nested Task · Type · Lag table (the cube ruling: never a grammar string in a cell). */
+/** Plain FS/0 dependencies are a list of names; anything typed or lagged is a nested Task · Type · Lag table. */
 function predecessorCell(deps: PlanDependency[]): CubeCell {
   if (deps.length === 0) return [];
   if (deps.every((d) => d.type === "FS" && d.lag === 0 && !d.elapsed)) return deps.map((d) => d.task);
@@ -35,9 +30,7 @@ function predecessorCell(deps: PlanDependency[]): CubeCell {
   ]);
 }
 
-/** The engine's task tree as a nested cube: Task · Duration · Predecessors [· Start ·
- *  Finish · Deadline · Manual · Complete] · Tasks (the children, when any row has some).
- *  Optional columns appear only when some row uses them. */
+/** Optional columns appear only when some row uses them. */
 export function planToCube(tasks: PlanTask[]): CubeValue {
   const has = (f: (t: PlanTask) => boolean) => tasks.some(f);
   const cols: Array<{ name: string; cells: CubeCell[]; type?: "string" | "number" | "date" | "logical" }> = [
@@ -45,8 +38,6 @@ export function planToCube(tasks: PlanTask[]): CubeValue {
     { name: "Duration", cells: tasks.map((t) => (t.children?.length ? null : t.duration)), type: "number" },
     { name: "Predecessors", cells: tasks.map((t) => predecessorCell(t.predecessors)) },
   ];
-  // Start / Finish are the floor / ceiling, and the pinned dates when Manual is TRUE (the
-  // one rule: the same two columns, read differently under the flag).
   if (has((t) => t.start != null)) cols.push({ name: "Start", cells: tasks.map((t) => t.start ?? null), type: "date" });
   if (has((t) => t.finish != null)) cols.push({ name: "Finish", cells: tasks.map((t) => t.finish ?? null), type: "date" });
   if (has((t) => t.deadline != null)) cols.push({ name: "Deadline", cells: tasks.map((t) => t.deadline ?? null), type: "date" });
@@ -63,7 +54,6 @@ export function planToCube(tasks: PlanTask[]): CubeValue {
   return cubeFromColumns(cols);
 }
 
-/** True when the text is an MSPDI document (a `<Project` root). */
 export function isMspdiText(text: string): boolean {
   return /^\s*(<\?xml[^>]*>\s*)?(<!--[\s\S]*?-->\s*)*<Project[\s>]/.test(text);
 }
@@ -73,8 +63,6 @@ export function mspdiToPlan(text: string): ImportedPlan {
   return { cube: planToCube(plan.tasks), frame: planToFrame(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
 }
 
-/** Any plan file by its text: Project XML, GanttProject `.gan`, or Primavera XER. Null when
- *  the text is none of them. */
 export function planFileToPlan(text: string): ImportedPlan | null {
   if (isMspdiText(text)) return mspdiToPlan(text);
   if (isGanText(text) || isXerText(text)) {
@@ -103,12 +91,10 @@ export function csvPlanToCube(f: FrameValue): CubeValue | null {
     if (c === pred) return { name: "Predecessors", cells: cells.map((s) => predecessorCell(parsePredecessorText(s, names).deps)) };
     return { name: c.name, cells: [...c.values], type: c.type };
   });
-  // Ragged safety: every column the same length.
   for (const c of cols) while (c.cells.length < rows) c.cells.push(null);
   return cubeFromColumns(cols);
 }
 
-/** The flat frame beside the plan cube: nesting dropped, dependencies as grid text. */
 export function planToFrame(tasks: PlanTask[]): FrameValue {
   const flat: Array<{ t: PlanTask; level: number }> = [];
   const walk = (list: PlanTask[], level: number) => { for (const t of list) { flat.push({ t, level }); if (t.children?.length) walk(t.children, level + 1); } };

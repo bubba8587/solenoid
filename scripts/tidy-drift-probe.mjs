@@ -24,7 +24,7 @@ try {
   await page.waitForFunction(() => !!window.__spike, { timeout: 20000 });
 
   const tidy = async () => {
-    await page.mouse.click(30, 960); await wait(100);           // focus the pane, clear selection
+    await page.mouse.click(30, 960); await wait(100);
     await page.keyboard.press("t"); await wait(300);
     const confirm = await page.evaluate(() => !!document.querySelector(".solenoid-confirm__overlay"));
     if (confirm) { await page.keyboard.press("Enter"); await wait(200); }

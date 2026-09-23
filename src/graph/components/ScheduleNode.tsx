@@ -26,8 +26,7 @@ function diagnosticsSummary(data: ScheduleNodeType): OutputRowValue {
   return n === 0 ? "none" : `${n} finding${n === 1 ? "" : "s"}`;
 }
 
-// Tasks in, four outputs: the schedule cube (hero), Project finish, Diagnostics and the
-// gantt source — the last three as labeled rows so each keeps its own socket dot.
+// The last three outputs are labeled rows, so each keeps its own socket dot.
 export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
   const [precision, setPrecision] = useNodeField(data, "precision");

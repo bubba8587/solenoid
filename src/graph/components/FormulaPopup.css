@@ -1,5 +1,4 @@
-/* Chrome (overlay, card, header, title, close, group framing) is shared — see
-   popupChrome.css (.sol-popup*). This file holds only formula-specific bits. */
+/* The shared chrome is popupChrome.css (.sol-popup*); this file holds only the formula-specific parts. */
 .formula-popup {
   width: min(880px, 94vw);
 }
@@ -22,8 +21,7 @@
   padding: 14px;
 }
 
-/* The rendered equation — the whole point of the popup: roomy, centered, in
-   display mode so fractions and roots get their full vertical extent. */
+/* Display mode, so fractions and roots get their full vertical extent. */
 .formula-popup__render {
   display: flex;
   align-items: center;
@@ -93,11 +91,9 @@
   cursor: default;
 }
 
-/* The highlighted formula editor fills the edit row in place of the bare textarea. */
 .formula-popup__edit-row .fx-editor { flex: 1; min-width: 0; max-height: 180px; }
 .formula-popup__edit-row .fx-editor__ta { min-height: 30px; }
 
-/* ── Step-by-step evaluation ─────────────────────────────────────────────── */
 .formula-popup__steps {
   margin-top: 14px;
   padding-top: 12px;
@@ -150,7 +146,6 @@
   border-radius: 6px;
   overflow-x: auto;
 }
-/* Number each step quietly down the left. */
 .formula-popup__steplist {
   counter-reset: step;
 }
@@ -195,8 +190,6 @@
 }
 .formula-popup__engine-note strong { color: var(--text); font-weight: 600; }
 
-/* Per-variable explanations (Expression / Equation): the name typeset via KaTeX,
-   an editable prose description that stays OUT of the formula. Legend + editor. */
 .formula-popup__vars {
   margin-top: 10px;
   padding: 8px;

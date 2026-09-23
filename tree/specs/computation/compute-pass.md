@@ -2,7 +2,7 @@
 aliases: ["Compute pass and the input boundary"]
 tags: [spec, computation]
 ---
-<!-- [[C23]] calcModes, [[D30]] targetedEqualsFull, [[D31]] onlyCalcModeSkips, [[D32]] refreshOutsideRebuild, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[D13]] widenNeverNarrow, [[D11]] noAutoCross -->
+<!-- [[C23]] calcModes, [[D30]] targetedEqualsFull, [[D31]] onlyCalcModeSkips, [[D32]] refreshOutsideRebuild, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[D13]] widenNeverNarrow, [[D11]] noAutoCross, [[D27]] oneBroadcast, [[C17]] shareImpl -->
 
 # Spec: Compute pass and the input boundary
 
@@ -69,8 +69,8 @@ A targeted pass is correct only for a change whose effect flows solely through c
 
 1. **Calc-mode gate.** If the mode is manual, `opts.force` is not set and no rebuild scope is open, the call marks the graph dirty and returns without computing. This is the only gate that drops a pass ([[D31]] onlyCalcModeSkips). A load, seed or paste runs inside a rebuild scope, so an opened document computes even in manual mode.
 2. **Single flight.** If a pass is already running, the call sets a rerun flag (and a forced-rerun flag when `opts.force` is set) and returns. Passes never nest: a nested pass would share and corrupt the per-pass state (the engine cache, the collect memo, the loop set). Components that call `processGraph` from a mount or render effect during a pass are the usual source.
-3. **Run.** Increments the compute-overlay counter (`beginCompute`), runs the pass body, clears the dirty flag on completion, and in a `finally` clears the in-flight flag and decrements the counter (`endCompute`).
-4. **Drain.** If a rerun was requested, runs exactly one more full pass, `processGraph()` with `{ force: true }` when any coalesced request was forced. A full pass is a superset of any targeted request that was coalesced, so the arguments of coalesced calls are dropped.
+3. **Run.** Increments the compute-overlay counter (`beginCompute`), runs the pass body, clears the dirty flag on completion, and in a `finally` clears the in-flight flag and decrements the counter (`endCompute`). The overlay (`computeOverlayStore.ts`) is a "Computing…" curtain that blocks interaction, so a multi-second pass can't interleave with a pan, drag or add. It appears only once a pass has run for 150 ms (`REVEAL_DELAY`) and then stays at least 350 ms (`MIN_VISIBLE`) so it never flashes; a pass that ends before the reveal cancels it, and a new pass cancels a pending hide.
+4. **Drain.** If a rerun was requested, runs exactly one more full pass, `processGraph()` with `{ force: true }` when any coalesced request was forced (otherwise the manual-mode gate would swallow a coalesced F9). A full pass is a superset of any targeted request that was coalesced, so the arguments of coalesced calls are dropped. The drain runs after the in-flight flag clears, so it never nests, and a component effect whose dependencies did not change fires nothing, so the drain cannot queue itself forever.
 
 ### The pass body (`runGraphPass`)
 
@@ -81,8 +81,8 @@ A targeted pass is correct only for a change whose effect flows solely through c
 5. **Invalidate.** Targeted: compute the cone and delete each member's cache entry by hand, never `engine.reset(id)`. Full: `engine.reset()`. Additive: nothing.
 6. **Loop set.** A targeted or additive pass without `topology` reuses the module's cached loop set (computing it once if absent); every other pass recomputes and caches it. Then `seedLoopErrors` over that set.
 7. **Fetch** (`fetchAll` with `stopOnCancel`). For each node in `editor.getNodes()` order: skip it if it has left the editor since the list was taken (a node removed while an earlier fetch awaited), otherwise `await engine.fetch(id)`. On a targeted pass, before overwriting the stored value, it records the node as a sink when it has no output keys, and as changed when any output differs by identity (`!==`) from what `cableValueStore` holds for it. Then `cableValueStore.setNodeOutputs(id, outputs)`. A `Cancelled` rejection ends the pass silently (no render, no hooks); any other rejection propagates.
-8. `cableValueStore.bump()`: cable value readouts re-read.
-9. **Render.** Full pass: every node. Additive: only the `renderOnly` set. Targeted: a node in the cone renders when its own outputs changed, or when it is a sink fed directly by a changed node. Nodes outside the cone never render. Object outputs are fresh references on each run, so the cutoff mostly prunes scalar chains. All selected nodes re-render concurrently through `view.rerenderNode`.
+8. `cableValueStore.bump()`: cable value readouts re-read. The store holds the latest value per output, keyed `nodeId:outputKey` (the colon makes the node-id prefix unambiguous for `forget`), and serves a combo socket's cable color, the fallback card's preview and the group readouts.
+9. **Render.** Full pass: every node. Additive: only the `renderOnly` set. Targeted: a node in the cone renders when its own outputs changed, or when it is a sink fed directly by a changed node. Nodes outside the cone never render. Object outputs are fresh references on each run, so the cutoff mostly prunes scalar chains. All selected nodes re-render concurrently through `view.rerenderNode`, which is safe because each card is its own React root.
 10. With `window.__solenoidPerf = true`, logs one line per pass: mode, node and cable counts, compute and render time, IPC calls, and the five slowest nodes over half a millisecond (per-node time comes from the error guard).
 11. `compositePassStore.notify()` (an open drill-in re-renders its internal cards), then the registered graph-changed hook (`setGraphChanged`; the canvas uses it to schedule an autosave and an undo step).
 
@@ -101,6 +101,10 @@ A targeted pass is correct only for a change whose effect flows solely through c
 
 `bulkSettle(renderOnly?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly)`.
 
+### The perf probe (`perfProbe.ts`)
+
+The probe is inert unless `window.__solenoidPerf = true`. The error guard then times each node's `data()` through promise settlement (`recordNode`, keyed by node id with its class name), so an async node's IPC round trip lands in its row, and `ipcBridge` times each engine IPC call (`recordIpc`, keyed by command, with a cheap payload-size estimate). `processGraph` clears the per-pass buffer at `beginPass()`, reads the slowest nodes with `passTopNodes(n)`, and takes an IPC delta from two `ipcSnapshot()`s. From the devtools console, `window.__solenoidStats()` prints the cumulative node and IPC tables, sorted by total time, and `window.__solenoidStatsReset()` clears them.
+
 ## Calc modes and the dirty flag (`calcModeStore.ts`)
 
 The store holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `forceExact` depth counter. It imports nothing but the notifier, so `process.ts` can import it one way.
@@ -109,7 +113,7 @@ The store holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `f
 - `setMode(m)` returns `false` and does nothing when `m` is the current mode. Otherwise it sets the mode, clears `dirty` when `m` is `"auto"` or `"sketch"`, persists, notifies, and returns `true`. The store never runs a pass; the caller owes the catch-up recompute. The Calculate menu calls `requestRecalc()` when switching to Automatic or Sketch returns `true`, and nothing when switching to Manual.
 - `markDirty()` sets `dirty` (notifying only on a transition); `processGraph` calls it when the manual gate drops a pass. `clearDirty()` clears it (notifying only on a transition); every completed pass calls it.
 - `sketchActive()` is true when the mode is `"sketch"` and `forceExact` is 0. The frame layer checks it before running a verb: while it is true a large frame is sampled down to `SKETCH_SAMPLE_ROWS` (10,000) rows and additive results are scaled back up and stamped `__approx`. Outside the frame layer, sketch computes exactly like automatic.
-- `beginForceExact()` and `endForceExact()` bracket a pass that must run on full data while sketch stays selected. The counter never drops below zero.
+- `beginForceExact()` and `endForceExact()` bracket a pass that must run on full data while sketch stays selected. The bracket is a depth counter, not a boolean, so an overlapping second forced call can't clear the first one's bracket early. The counter never drops below zero.
 - The status bar shows, in manual mode only, a plain "Manual" label when the graph is current and an actionable "Calculate" button (running `requestRecalc()`) when `dirty` is set.
 
 | State | Edit | F9 | Switch to auto or sketch | Switch to manual |
@@ -173,9 +177,14 @@ On each call with `inputs`:
 1. **Short-circuit.** Unless the node's constructor name is in `SEES_ERRORS` (`IFErrorNode`, `IsTestNode`, `ConduitNode`, `CableSwitchNode`, `DisplayNode`, `NoteNode`, `ReportNode`, `ChartNode`), the guard scans each input array's top-level values for a `SolError` (`firstInputError`). On the first one found it returns error-out without calling `data()`. Errors inside a list, matrix or Frame cell do not short-circuit; the node handles those per cell.
 2. **Run.** Calls the wrapped `data(inputs)`. A synchronous throw, or a rejected promise, becomes error-out of the converted error: a thrown `SolError` is itself, an error whose `name` is `"ShapeError"` becomes `#SHAPE!` with its message, anything else becomes `#ERROR!` with the message "This node failed to compute: …".
 3. **Tag the result.** On success, every output value is passed through origin tagging: an untagged top-level `SolError` gets `origin: { nodeId, nodeName }`; untagged errors in a one-dimensional array's cells and in a Frame's column cells get the same plus `rowIndex`, in a copy. An origin already present is never overwritten ([[E9]] errorsKeepOrigin). When nothing needed tagging the original object is returned. Then the result is reported to the error sinks.
-4. **Error-out.** Tags the error with this node as origin if it has none (with `inputSlot` set to the input key that carried it, when it came from an input), sets every current output key to the tagged error, sets `cachedResult` to it when the node has that property, reports it to the sinks, and returns the outputs.
+4. **Error-out.** Tags the error with this node as origin if it has none (with `inputSlot` set to the input key that carried it, when it came from an input), sets every current output key to the tagged error, sets `cachedResult` (and a figure card's `cachedChart`) to it and `cachedPayload` to `null` where the node has those properties, reports it to the sinks, and returns the outputs.
 
-Error sinks (`registerErrorSink`; the Problems store registers one) receive at most one report per node per call: the first error found on the node's own outputs by `findCellError`, a bounded scan of the head and a stride sample of each container ([[error-values]], "Per-cell errors surface through a bounded scan"), or `null` when the outputs are clean, which re-arms the sink's edge detection. The Problems store logs only at an error's origin node, and not while a rebuild scope is open.
+Error sinks (`registerErrorSink`; the Problems store registers one) receive at most one report per node per call: the first error found on the node's own outputs by `findCellError`, a bounded scan of the head and a stride sample of each container ([[error-values]], "Per-cell errors surface through a bounded scan"), or `null` when the outputs are clean, which re-arms the sink's edge detection. The Problems store (`problemsStore.ts`) is one such sink:
+
+- It logs only at an error's origin node, since the sink fires for every relay and one failure wired to N nodes would otherwise log N rows. It logs nothing while a rebuild scope is open; the settle after a load runs outside the scope.
+- It is edge-detected per node: the same code on the same node logs once, and a clean report (`null`) clears only that detection state, not the history, so a later relapse logs again.
+- Entries are newest first, capped at 200. Fuzz findings (`setFuzzFindings`) replace the previous fuzz run wholesale rather than accumulating, and each may carry a suggestion that seeds a Clamp on an input, with the sweep's observed-safe `min` and `max` when it found a usable range.
+- Deleting a node removes its entries, and a rebuild clears the store. `problemsPanelUi` holds the panel's open state outside the panel, so the status bar badge can open it.
 
 With the perf probe on, the guard records each node's `data()` time, measured through promise settlement.
 
@@ -191,7 +200,7 @@ Coercion turns each arriving value into the shape of the rung the consuming sock
 4. **Coerce.** A key in the node's `rawInputs` set passes unchanged. A key in `noWidenInputs` gets element coercion only (below). Every other key gets full coercion, applied to each value in the input array.
 5. **Inject typed list literals.** For each input key of the node whose coerced array is empty or absent (unwired), whose socket `dataType` is `strlist`, `datelist` or `logicallist` (or `numlist` when the node's `stringLiterals` has that key), and whose `stringLiterals[key]` is non-blank text: the input becomes `[parseListLiteral(text, dataType)]`. A wired cable always wins over the literal.
 6. **Call** the node's own `data(coerced)`.
-7. **Stamp Frame formats.** On the result (after it resolves, for an async node), each output that is an eager `FrameValue` gets this node's per-column format picks from `frameFormatStore`: a column whose stored pick differs from its current `format` is shallow-copied with the pick; columns without a pick keep what arrived. The stamped frame is memoized on the input frame's identity and the store's version, so a frame that did not change keeps its identity across passes ([[D41]] formatFlowsDownstream, [[unit-flow]]).
+7. **Stamp Frame formats.** On the result (after it resolves, for an async node), each output that is an eager `FrameValue` gets this node's per-column format picks from `frameFormatStore`: a column whose stored pick differs from its current `format` is shallow-copied with the pick; columns without a pick keep what arrived. A stamped column is a shallow copy, never a mutation, since the arriving frame is a cached value shared with every other consumer. The stamped frame is memoized on the input frame's identity and the store's version, so a frame that did not change keeps its identity across passes; the backend's upload cache and every node's own identity memo depend on that ([[D41]] formatFlowsDownstream, [[unit-flow]]).
 
 ### Full coercion, per rung
 
@@ -217,8 +226,10 @@ Details the table compresses:
 - **The logical and number bridge.** On the number-family rungs (`number`, `list`, `numlist`, `table`) every boolean, at any depth, becomes 1 or 0 before shaping. On the logical-family rungs every number, at any depth, becomes `value !== 0`, and `NaN` becomes `null` (unknown, not true). `null` passes both ways. This is the only cross-family conversion coercion performs ([[D11]] noAutoCross).
 - **Singleton collapse.** A one-element array becomes its element on the scalar and combo rungs listed above; the check is only the outer length, so a one-row matrix collapses to its row. A strict list rung keeps a one-element list and wraps a lone scalar, so a combo to list round trip is lossless. The complex scalar is a tagged object, not an array, so it never collapses apart.
 - **Widening.** A value only moves up in rank ([[D13]] widenNeverNarrow): a scalar or list widens into `table` as one row (CSV orientation; a column takes a Transpose), and into `frame` and `cube` the same way. Narrowing happens only where a combo or scalar rung collapses a singleton; a real narrowing failure throws `ShapeError`, which the guard renders as `#SHAPE!` ([[D35]] errorInErrorOut). An empty list reaching `number` is `#SHAPE!` ("Expected a single value, got 0"); reaching `list` or `table` it stays empty.
+- **The shape helpers** (`nodes/coerce.ts`). `toMatrix` only widens and never fails: a number is 1×1, a list one row, a matrix unchanged. `toList` wraps a scalar, flattens a 1×N or N×1 matrix and throws `ShapeError` on a real M×N table. `toScalar` flattens and throws `ShapeError` on more than one element. `toAnyMatrix` is `toMatrix` for any element type. `matrixShape(v)` is the one row and column count that the Table Info node's outputs and the COLUMNS and ROWS formulas share ([[C17]] shareImpl): a list is one row, a scalar is 1×1, and a wired blank is unknown (`null`). A Frame has its own real shape, so the node handles it before calling this, and Frames never reach formulas. The error guard recognizes `ShapeError` by its `name`.
 - **Frame and Cube construction.** `frameFromRows(rows)` makes one column per position of the widest row, headers `Col1`, `Col2`, … and column types inferred from the cells. A `FrameValue` arriving at `frame` passes unchanged. `toCube` passes a Cube, converts a Frame with `frameToCube`, and builds from rows otherwise.
-- **Rungs without widening.** The typed matrix rungs other than `table` (`strtable`, `datetable`, `complextable`, `logicaltable`) and `anytable` do not widen at arrival; the node widens with `toAnyMatrix` itself. `any` does not collapse a singleton.
+- **Rungs without widening.** The typed matrix rungs other than `table` (`strtable`, `datetable`, `complextable`, `logicaltable`) and `anytable` do not widen at arrival; the node widens with `toAnyMatrix` itself. `any` does not collapse a singleton. `anycombo` and `anydata` get no element coercion and no widening, so a scalar stays a scalar; on `anydata` a matrix flows whole, because the formula evaluator owns the rank semantics ([[D27]] oneBroadcast).
+- **Why the strict list rungs wrap a lone value.** Without the wrap, a node's `for...of` over the input throws on a number and walks a string one character at a time.
 
 **Unit-cell coercion** (kept-unit inputs whose value is a `UnitCell` or an array directly holding one): shapes by rank without the numeric coercers, which would reject a cell object.
 
@@ -245,11 +256,11 @@ A key in `rawInputs` skips coercion entirely (the unit boundary and the lazy col
 The text is parsed as one CSV line (a quoted field keeps an embedded comma), each field trimmed, empty fields dropped. Per rung:
 
 - `numlist`, `list`: a finite number, or `null` for a field that is not one.
-- `datelist`: `parseDate` of each field; an ambiguous date stays its `#AMBIGUOUS!` error, an unparseable one is `null`.
-- `logicallist`: `yes`, `y`, `t` are true; `no`, `n`, `f` are false (case-insensitive); anything else goes through `coerceLogical` (TRUE, FALSE, 1, 0), else `null`.
+- `datelist`: `parseDate` of each field; an unparseable one is `null`. An ambiguous date such as `02-03-2026` stays its `#AMBIGUOUS!` error, because it is a question to the user, and a blank would answer it silently.
+- `logicallist`: `yes`, `y`, `t` are true; `no`, `n`, `f` are false (case-insensitive); anything else goes through `coerceLogical` (TRUE, FALSE, 1, 0), else `null`. The extra spellings live only in the literal parser (`parseBoolText`), because widening `coerceLogical` would change how every wired value coerces.
 - `strlist`: the fields as text.
 
-An unparseable field is `null` in place, never dropped, so later positions do not shift. Literal maps are restored on load only onto classes that declare them ([[inline-literal-maps]]); `coerceInputs.test.ts` fails when a catalog node with a typeable list input does not declare `stringLiterals`.
+An unparseable field is `null` in place, never dropped (which would shift later positions) and never `false` (which would assert a value nobody typed). Literal maps are restored on load only onto classes that declare them ([[inline-literal-maps]]); `coerceInputs.test.ts` fails when a catalog node with a typeable list input does not declare `stringLiterals`.
 
 ## What `data()` receives
 

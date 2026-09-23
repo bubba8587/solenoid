@@ -1,9 +1,7 @@
 // [[B14]] oneDesignSystem (DESIGN.md modal rules)
 import { useEffect, useRef } from "react";
 
-/** Close an overlay on window-level Escape; `onClose` is read through a ref so an inline
- *  callback doesn't re-bind the listener every render. `capture: true` registers on the
- *  capture phase AND swallows the browser default — the two always travel together. */
+/** `onClose` is read through a ref, so an inline callback doesn't re-bind the listener; `capture: true` both registers on the capture phase and swallows the browser default. */
 export function useEscapeToClose(
   onClose: () => void,
   active = true,

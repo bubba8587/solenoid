@@ -1,18 +1,14 @@
 // [[C103]] untrustedContentSeams
-// "Which layer did you click?" for the SVG Picker node. Kept DOM-agnostic (the tiny
-// `SvgLike` surface) so it unit-tests with no jsdom.
+// "Which layer did you click?" for the SVG Picker node, DOM-agnostic (`SvgLike`) so it tests without jsdom.
 
-// Name-bearing attributes in priority order, so a readable human label beats a
-// machine id when an authoring tool wrote both.
+// Priority order, so a readable label beats a machine id when a tool wrote both.
 const NAME_ATTRS = ["inkscape:label", "data-name", "aria-label", "id"] as const;
 
-/** The minimal element surface the resolver walks — satisfied by DOM `Element`. */
 export interface SvgLike {
   getAttribute(name: string): string | null;
   parentElement: SvgLike | null;
 }
 
-/** The first present, non-blank name attribute on an element, or null. */
 export function elementName(el: SvgLike): string | null {
   for (const attr of NAME_ATTRS) {
     const v = el.getAttribute(attr);
@@ -21,8 +17,7 @@ export function elementName(el: SvgLike): string | null {
   return null;
 }
 
-/** Itself if named, else the nearest named ancestor, stopping at and EXCLUDING
- *  `root`; null when nothing up the chain is named. */
+/** Stops at and excludes `root`. */
 export function resolveLayer<T extends SvgLike>(target: T, root: T): { el: T; name: string } | null {
   let el: T | null = target;
   while (el && el !== root) {
@@ -33,9 +28,7 @@ export function resolveLayer<T extends SvgLike>(target: T, root: T): { el: T; na
   return null;
 }
 
-/** Whether the SOURCE text still names `name` on some element (the same attributes the
- *  resolver reads), so a persisted pick never outlives the picture it was made on. Text-level
- *  on purpose: the headless graph has no DOM. */
+/** Text-level, since the headless graph has no DOM, so a saved pick never outlives the picture it was made on. */
 export function sourceHasLayer(source: string, name: string): boolean {
   if (!name) return false;
   const re = /\b(?:inkscape:label|data-name|aria-label|id)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
@@ -43,7 +36,6 @@ export function sourceHasLayer(source: string, name: string): boolean {
   return false;
 }
 
-/** Just the resolved layer name (see resolveLayer), or null. */
 export function resolveLayerName(target: SvgLike, root: SvgLike): string | null {
   return resolveLayer(target, root)?.name ?? null;
 }

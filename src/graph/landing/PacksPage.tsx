@@ -5,10 +5,8 @@ import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 
-// The /packs route. Static DOM; chrome from siteNav.
 
-// Names, group heads, descriptions and the on-by-default flag must match the pack
-// definitions (src/graph/packs); grouped by the Settings ▸ Packs accordion.
+// Names, group heads, descriptions and the on-by-default flag must match the pack definitions (src/graph/packs).
 const PACKS: { head: string; items: { name: string; description: string; on?: boolean }[] }[] = [
   {
     head: "Everyday",

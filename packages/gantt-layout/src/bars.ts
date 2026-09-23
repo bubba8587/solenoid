@@ -1,17 +1,11 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[D66]] daysMinutesModes
-// Bar geometry (rect, diamond, bracket, progress fill, baseline ghost, ellipsized label); an
-// inclusive finish draws to finish + 1. Pure numbers; colors are the view's.
 
 import type { GanttPayload, GanttTask } from "./payload";
 import type { FrameRow, FrameBar, FrameScale } from "./frame";
 import { xOf, drawnLastDay } from "./scale";
 
-/** Bar height as a fraction of the row, leaving a gap above and below. */
 const BAR_FRACTION = 0.52;
-/** A milestone diamond's half-diagonal as a fraction of the row height. */
 const DIAMOND_FRACTION = 0.34;
-/** Average glyph advance as a fraction of the em, for the ellipsis estimator (monospace-ish,
- *  deliberately generous so a label never overflows its measured room). */
 const GLYPH_EM = 0.6;
 
 export interface Cull {
@@ -21,7 +15,7 @@ export interface Cull {
 
 export function buildBars(payload: GanttPayload, rows: FrameRow[], scale: FrameScale, cull?: Cull): FrameBar[] {
   const out: FrameBar[] = [];
-  const fontPx = 12; // label font size the estimator assumes; the view scales with fontScale
+  const fontPx = 12;
   for (const row of rows) {
     if (row.section || row.taskIndex < 0) continue;
     if (cull && (row.y + row.h < cull.top || row.y > cull.top + cull.height)) continue;
@@ -38,7 +32,7 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
 
   const minutes = payload.view.minutes;
   const startX = xOf(t.start, scale);
-  const endX = xOf(drawnLastDay(t.finish, minutes) + 1, scale); // inclusive finish → exclusive draw edge
+  const endX = xOf(drawnLastDay(t.finish, minutes) + 1, scale);
   const w = Math.max(endX - startX, 1);
 
   const base: FrameBar = {
@@ -57,7 +51,6 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
   };
 
   if (t.milestone) {
-    // A diamond centered on the start day's midpoint; the bounding box is square on the row.
     const half = Math.round(rowH * DIAMOND_FRACTION);
     const cx = xOf(t.start + 0.5, scale);
     base.kind = "milestone";
@@ -66,13 +59,9 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
     base.w = half * 2;
     base.h = half * 2;
   } else if (t.summary) {
-    // A bracket: a thin top rail with legs dropping the full bar height at each end (drawn by
-    // the view/serializer). Keep the full height so the legs are unmistakable; no progress fill.
     base.y = yTop;
     base.h = barH;
   } else if (t.segments && t.segments.length > 1) {
-    // A split bar (out-of-sequence progress): draw each part, a dotted gap between them, and no
-    // separate progress overlay (the split itself conveys the actual/remaining parts).
     base.segments = t.segments.map(([s, f]) => {
       const sx = xOf(s, scale);
       const ex = xOf(drawnLastDay(f, minutes) + 1, scale);
@@ -83,22 +72,18 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
     base.progressW = t.complete > 0 ? Math.round(w * Math.min(100, Math.max(0, t.complete)) / 100) : 0;
   }
 
-  // Baseline ghost, when the payload carries one for this task.
   if (payload.view.baseline !== false && t.baselineStart != null && t.baselineFinish != null) {
     const bx = xOf(t.baselineStart, scale);
     const bEnd = xOf(t.baselineFinish + 1, scale);
     base.baseline = { x: bx, w: Math.max(bEnd - bx, 1) };
   }
 
-  // Deadline flag at the end of the deadline day ([[C70]] oneScheduleRule: a flag, never a move).
   if (t.deadline != null) {
     base.deadlineX = xOf(t.deadline + 1, scale);
   }
 
-  // Label: to the right of the bar (or left of a milestone/near the right frame). Ellipsize
-  // to an assumed room; the real view re-measures, but a headless SVG needs a decent guess.
   if (payload.view.labels !== false) {
-    const room = 240; // px of assumed label room beyond the bar
+    const room = 240;
     const text = ellipsize(t.name, room, fontPx);
     const nearRightEdge = base.x + base.w + estimateWidth(text, fontPx) > (scale.to - scale.from) * scale.pxPerDay;
     base.label = nearRightEdge
@@ -109,12 +94,10 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
   return base;
 }
 
-/** A monospace-ish width estimate for a string at a font size, in px. */
 export function estimateWidth(text: string, fontPx: number): number {
   return text.length * fontPx * GLYPH_EM;
 }
 
-/** Trim `text` with a trailing ellipsis until it fits `maxPx` at `fontPx`. */
 export function ellipsize(text: string, maxPx: number, fontPx: number): string {
   if (estimateWidth(text, fontPx) <= maxPx) return text;
   const per = fontPx * GLYPH_EM;

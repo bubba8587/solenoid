@@ -1,17 +1,11 @@
 // [[C30]] saveViaTextForm, [[B12]] losslessSaves
-// The load path's risky decisions as pure functions; keep it rete/DOM/storage-free.
 
-// Bump in lockstep with SavedGraph.v. Exactly ONE format exists at a time: the loader
-// refuses any other version — newer for forward safety, older because there is no
-// backward migration (pre-alpha).
 export const CURRENT_SAVE_VERSION = 2;
 
 export type ValidationResult = { ok: true } | { ok: false; reason: string };
 
 const fail = (reason: string): ValidationResult => ({ ok: false, reason });
 
-/** Structural validation, run BEFORE the destructive load clears the current graph. Only
- *  the "right kind of object at all" gate — unknown types and bad cables are load-time. */
 export function validateSavedGraph(data: unknown): ValidationResult {
   if (typeof data !== "object" || data === null) return fail("not a graph object");
   const g = data as Record<string, unknown>;
@@ -46,8 +40,6 @@ export function validateSavedGraph(data: unknown): ValidationResult {
   return { ok: true };
 }
 
-// An unregistered node type loads as a PLACEHOLDER rather than dropping it and its cables;
-// its socket layout is unknown, so synthesize exactly the keys the saved cables reference.
 
 export interface SavedConnectionLike {
   source: string;
@@ -56,7 +48,6 @@ export interface SavedConnectionLike {
   targetInput: string;
 }
 
-/** Per unknown id, the socket keys its saved connections reference, in first-seen order. */
 export function deriveMissingNodeSockets(
   unknownIds: Set<string>,
   connections: SavedConnectionLike[],
@@ -80,13 +71,10 @@ export function deriveMissingNodeSockets(
   return out;
 }
 
-// Always write the OLDER slot and read the NEWER valid one, so a write that fails partway
-// can never corrupt the only good copy. `seq` is monotonic; `null` = empty or unreadable.
 
 export function chooseWriteSlot(seqA: number | null, seqB: number | null): "a" | "b" {
   if (seqA === null) return "a";
   if (seqB === null) return "b";
-  // Ties (same ms) go to 'a' deterministically.
   return seqB < seqA ? "b" : "a";
 }
 
@@ -97,11 +85,8 @@ export function chooseReadSlot(seqA: number | null, seqB: number | null): "a" | 
   return seqB > seqA ? "b" : "a";
 }
 
-/** The node-id references a node (or a Placeholder's savedInit) carries: an FC's host,
- *  a Group's members, a Presentation's steps. */
 export interface NodeRefs { hostNodeId?: unknown; members?: unknown; steps?: unknown }
 
-/** Rewrite saved ids to fresh ones; members and step ids that name no live node drop. */
 export function remapNodeRefs(target: NodeRefs, idMap: ReadonlyMap<string, string>, isLive: (id: string) => boolean): void {
   const remap = (ids: unknown[]) =>
     ids.map((m) => (typeof m === "string" ? idMap.get(m) ?? m : m)).filter((m): m is string => typeof m === "string" && isLive(m));

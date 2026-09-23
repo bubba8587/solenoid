@@ -33,13 +33,13 @@ where `P_a` and `P_b` are the anchor points. This is an axis band: only distance
 
 Select exactly two linkable items, right-click one of them, and choose "Link with Standoff" (`linkStandoffBetween` in `canvasActions.ts`). The item must not already be linked to the other.
 
-1. The anchor faces along whichever of the eight directions is closest to the line from a's center to b's center (`anchorFromVector`); b takes the opposite anchor.
+1. The anchor faces along whichever of the eight directions is closest to the line from a's center to b's center (`anchorFromVector`, by angle, with 0° east and y pointing down); b takes the opposite anchor.
 2. The band starts at `min` = `STANDOFF_MIN` (30) and `max` = the current distance along the axis (or 30, if that is smaller). The code asks for `min(PUSH_GAP, distance)`, which is always below the floor, so the floor sets it.
 3. The new standoff is locked, becomes the selection (clearing node and cable selection), and is settled right away, so the pair snaps into alignment.
 
 ## The solver runs last
 
-`solveStandoffs` (`standoffSolver.ts`) is pure and unit-tested. It takes plain boxes, the standoffs, a set of pinned ids and an optional `forceLock`, and returns a displacement per box.
+`solveStandoffs` (`standoffSolver.ts`) is pure and unit-tested. The canvas registers the live settle routine that drives it (`setStandoffSettle`). It takes plain boxes, the standoffs, a set of pinned ids and an optional `forceLock`, and returns a displacement per box.
 
 - It is iterative projection: up to 48 rounds, each correcting every active standoff in turn, stopping once no correction exceeds 0.25px.
 - Each correction splits evenly between the two ends. If one end is pinned, the other takes all of it. A standoff with both ends pinned is skipped.
@@ -50,7 +50,7 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 
 | Pass | When and how |
 |---|---|
-| Live drag | Only when a dragged item (or a member of a dragged group) is linked. Once per animation frame during the drag, and once more exactly on drop, with the dragged items pinned. Band only, never `forceLock`, so an unlocked slant survives a drag. Programmatic moves never trigger it. |
+| Live drag | Only when a dragged item (or a member of a dragged group) is linked; ties are sparse, so a plain drag costs nothing (`standoffStore.participants()` gates the work). Once per animation frame during the drag, and once more exactly on drop, with the dragged items pinned. Band only, never `forceLock`, so an unlocked slant survives a drag. Programmatic moves never trigger it. |
 | Group expand | Inside `runExpandPushes`. After the push heuristics, each cluster moves as one block: every member takes the cluster's largest displacement, so a lone push isn't pulled partway back. Then a `forceLock` solve, with its corrections folded into the push records so a later collapse restores them too ([[group-expand-push]]). |
 | Group collapse | After the pushes are restored, a `forceLock` re-solve, because the shrink moved the anchors. |
 | Autofit | `autofitGroupWithHistory` re-solves with `forceLock`, pinning the fitted group. |
@@ -71,7 +71,7 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 
 ## Drawing and selection
 
-`StandoffLayer` draws the bars in an SVG inside React Flow's `<ViewportPortal>`, so they move with the camera. The main canvas mounts it (the host's `standoffs` hook); the layer redraws on standoff changes, on layout ticks (`standoffLayoutTick`) and on collapse changes.
+`StandoffLayer` draws the bars in an SVG inside React Flow's `<ViewportPortal>`, so they move with the camera. The main canvas mounts it (the host's `standoffs` hook); the layer redraws on standoff changes, on layout ticks (`standoffLayoutTick`, which the canvas bumps whenever positions or sizes may have changed, so the layer re-measures) and on collapse changes.
 
 - Each bar is a 9px line between the two anchor points of the items' live boxes, with a small cap circle at each end. A wider invisible line (18px) is the hit target.
 - **Stacking.** [[C65]] places the bars at −3 in the stacking ladder, below groups (−2), Conduits (−1) and ordinary nodes (0). `nodeZIndex` in `flowModel.ts` stamps the nodes (groups −2, Conduits −1, the rest 0); the standoff SVG sets its own `z-index: -3` in `StandoffLayer.css`. Both sit in the viewport's stacking context, so a card dragged over a bar covers it even though the viewport portal comes after the node layer in the DOM.

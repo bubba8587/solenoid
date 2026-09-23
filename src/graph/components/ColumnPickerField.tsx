@@ -7,9 +7,7 @@ import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { columnNamesOf } from "../frameShape";
 import { stopDragStart } from "../coarse";
 
-/** The shared column-name field: tree/specs/values/type-propagation-on-in-place-socket-retype.md
- *  (column pickers). Writes the SAME string literal the plain field does; renders only for
- *  an UNWIRED socket. */
+/** Column pickers: tree/specs/values/type-propagation-on-in-place-socket-retype.md; writes the same string literal the plain field does, and renders only for an unwired socket. */
 export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeholder }: {
   nodeId: string;
   frameInput: string;
@@ -17,8 +15,7 @@ export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeho
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
-  // Resolve ONCE per wiring change, never per keystroke: the memo depends only on the
-  // connection version (+ ids), so typing (which only moves the draft) never re-walks.
+  // Resolve once per wiring change: the memo depends only on the connection version and ids, so typing never re-walks.
   const connVersion = useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
   const columns = useMemo(() => {
     const editor = getOwningEditor(nodeId);

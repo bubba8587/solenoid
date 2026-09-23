@@ -1,10 +1,8 @@
 // [[C91]] cableWalkRouter
-// Pure geometry — no DOM/React/store. Cable paths are absolute M/L/C/Q `d` strings,
-// comma- or space-separated, flattened once to a polyline.
+// Pure geometry. Cable paths are absolute M/L/C/Q `d` strings, flattened once to a polyline.
 
 export interface Pt { x: number; y: number }
 
-/** Tokenize a path `d`; only M/L/C/Q/Z appear in our paths. */
 function tokenize(d: string): Array<string | number> {
   const out: Array<string | number> = [];
   const re = /([MLCQZmlcqz])|(-?\d*\.?\d+(?:e[-+]?\d+)?)/gi;
@@ -27,8 +25,7 @@ function quadAt(t: number, p0: Pt, p1: Pt, p2: Pt): Pt {
   return { x: a * p0.x + b * p1.x + c * p2.x, y: a * p0.y + b * p1.y + c * p2.y };
 }
 
-/** Flatten an absolute-M/L/C/Q `d` into a polyline, sampling curves into `curveSegs`
- *  segments each; [] for an empty or garbage string. */
+/** Curves sample into `curveSegs` segments each; [] for an empty or garbage string. */
 export function parsePathPoints(d: string, curveSegs = 18): Pt[] {
   const t = tokenize(d);
   const pts: Pt[] = [];
@@ -37,7 +34,7 @@ export function parsePathPoints(d: string, curveSegs = 18): Pt[] {
   const num = (): number => (typeof t[i] === "number" ? (t[i++] as number) : NaN);
   while (i < t.length) {
     const cmd = t[i] as string;
-    if (typeof cmd !== "string") { i++; continue; } // stray number — skip
+    if (typeof cmd !== "string") { i++; continue; }
     i++;
     if (cmd === "M") {
       cur = { x: num(), y: num() };
@@ -59,7 +56,7 @@ export function parsePathPoints(d: string, curveSegs = 18): Pt[] {
     } else if (cmd === "Z" || cmd === "z") {
       if (pts.length) pts.push(pts[0]);
     }
-    // lowercase relative commands don't appear in our cables — ignored.
+    // Lowercase relative commands never appear in cable paths.
   }
   return pts.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
 }

@@ -20,8 +20,7 @@ const ProblemsSvg = ({ size = 14 }: { size?: number }) => (
   </svg>
 );
 
-/** Every tagged #CODE! error the graph has hit, plus fuzz findings. Carries its own
- *  collapsed state + registerChrome call — HudStack is hardcoded, not a generic API. */
+/** Carries its own collapsed state and registerChrome call, since HudStack is hardcoded, not a generic API. */
 export function ProblemsPanel() {
   const [collapsed, setCollapsed] = useState(true);
   const [codeFilter, setCodeFilter] = useState<string | null>(null);

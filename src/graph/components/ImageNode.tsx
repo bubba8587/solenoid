@@ -13,20 +13,17 @@ import "./ImageNode.css";
 const MIN_H = 60;
 const MAX_H = 800;
 
-/** The header bar is the drag handle, so its inputs/buttons must stop pointerdown.
- *  Label/URL/height/attachment all ride the emitted ImageValue, so each commit
- *  recomputes the downstream cone. */
+/** The header bar is the drag handle, so its inputs and buttons stop pointerdown; every field rides the emitted ImageValue, so each commit recomputes downstream. */
 export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
   const [url, setUrl] = useState(data.url);
   const [dataUrl, setDataUrl] = useState(data.dataUrl);
   const [height, setHeight] = useState(data.height);
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const fileRef = useRef<HTMLInputElement>(null);
-  // The label becomes ImageValue.title, so a commit recomputes the downstream cone.
   const title = useEditableLabel(data, () => { void processGraph(data.id); });
 
   useEffect(() => { setUrl(data.url); }, [data.url]);
-  // Asset hydration sets data.dataUrl AFTER mount — sync it in.
+  // Asset hydration sets data.dataUrl after mount.
   useEffect(() => { setDataUrl(data.dataUrl); }, [data.dataUrl]);
   useEffect(() => { void hydrateImageAsset(data); }, [data]);
   useEffect(() => { setHeight(data.height); }, [data.height]);
@@ -36,8 +33,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
   function commitValue() { void processGraph(data.id); }
 
-  // A URL takes over as the source and drops any local attachment, bundled-file
-  // binding included — the asset stays on disk, the node just stops pointing at it.
+  // A URL drops any local attachment, bundled-file binding included; the asset stays on disk, the node just stops pointing at it.
   function onUrl(v: string) {
     setUrl(v); data.url = v;
     if (dataUrl) { setDataUrl(""); data.dataUrl = ""; }
@@ -45,7 +41,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
     scheduleAutosave();
   }
 
-  // An empty/invalid entry reverts to the current height instead of snapping to MIN_H.
+  // An empty or invalid entry reverts to the current height instead of snapping to MIN_H.
   const heightField = useDraftCommit<number>(
     height,
     (v) => String(v),
@@ -57,8 +53,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
     (h) => { setHeight(h); data.height = h; scheduleAutosave(); void processGraph(data.id); },
   );
 
-  // dataUrl is transient ([[D50]] everyFieldClassified); assetPath resets so the new
-  // attachment gets its own bundle slot.
+  // dataUrl is transient ([[D50]] everyFieldClassified); assetPath resets so the new attachment gets its own bundle slot.
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // allow re-attaching the same file
@@ -120,8 +115,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
           </svg>
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
-        {/* The bar is a positioning context and isn't overflow-clipped, so the dot
-            straddles the card edge and stays reachable when collapsed. */}
+        {/* A positioning context that isn't overflow-clipped, so the dot straddles the card edge and stays reachable when collapsed. */}
         {data.outputs.image && (
           <NodeSocket side="output" socketKey="image" nodeId={data.id} emit={emit} payload={data.outputs.image.socket} />
         )}
