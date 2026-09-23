@@ -217,3 +217,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Stores and popups:** `nodeNameStore.claim` on a named id leaves a stale reverse entry; the Table popup sort
   reads `"0x1F"` as 31; `commentStore.update` accepts an `author` patch; seed JSONs still carry old literal copies
   in `init` (harmless; a `tune-seeds` pass drops them).
+- [ ] **Documents:** the first Solve of a heavy composite holding a live card uses cached data and needs a second
+  Solve (make Solve wait on in-flight fetches); check that Tauri's window close fires `pagehide` (else drafts need
+  an `onCloseRequested` flush); an SVG value exports as text, frame spans ignore per-column formats; vault asset
+  embeds resolve by bare file name.
