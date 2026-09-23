@@ -12,6 +12,7 @@ import { solveStandoffs } from "./standoffSolver";
 import { scheduleAutosave } from "./persistence";
 import { settingsStore } from "./settingsStore";
 import { dockedNodeStore } from "./dockedNodeStore";
+import { unselectAllNodes, selectNode } from "./canvasCommands";
 import { measuredBox } from "./nodeSize";
 
 
@@ -369,6 +370,15 @@ export function restoreSettledPushes(editor: Editor, view: View): void {
   if (moved) scheduleAutosave();
 }
 
+// [[C52]] visibleSelection: a member hidden by the collapse leaves the selection.
+function dropHiddenFromSelection(editor: Editor): void {
+  const selected = editor.getNodes().filter((n) => (n as { selected?: boolean }).selected === true);
+  if (!selected.some((n) => groupCollapseStore.isNodeHidden(n.id))) return;
+  const keep = selected.filter((n) => !groupCollapseStore.isNodeHidden(n.id)).map((n) => n.id);
+  unselectAllNodes();
+  keep.forEach((id, i) => selectNode(id, i > 0));
+}
+
 // ─── The one toggle entry point ────────────────────────────────────────────────
 
 export async function setGroupsCollapsed(
@@ -385,6 +395,7 @@ export async function setGroupsCollapsed(
 
   for (const g of changed) g.collapsed = collapse;
   syncGroupCollapse(editor, view);
+  if (collapse) dropHiddenFromSelection(editor);
   await Promise.all(changed.map((g) => view.rerenderNode(g.id)));
   for (const g of changed) settleCollapse(view, g.id, g.members, !collapse);
 

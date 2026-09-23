@@ -6,6 +6,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { setGroupsCollapsed } from "../../src/graph/groupPush";
+import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 import { autofitGroupWithHistory, createGroupFromSelection, GROUP_PAD, GROUP_HEADER } from "../../src/graph/groupLogic";
 
 // ─── Expand-push record staleness across a Tidy ─────────────────────────────────
@@ -282,5 +283,34 @@ describe("autofit and group creation", () => {
     expect(aView.position).toEqual({ x: 1024, y: 1058 });
     expect(bView.position).toEqual({ x: 1400, y: 1058 });
     expectNoOverlaps({ fresh: freshView, by: byView, old: oldView });
+  });
+});
+
+describe("collapse and the selection ([[C52]] visibleSelection)", () => {
+  it("a member hidden by the collapse leaves the selection; a visible card stays", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const m = new DisplayNode();
+    const loose = new DisplayNode();
+    for (const node of [m, loose]) await editor.addNode(node as never);
+    const g = new GroupNode({ members: [m.id], width: 300, height: 200 });
+    await editor.addNode(g as never);
+    addView(g.id, 0, 0, groupView(g));
+    addView(m.id, 24, 58, () => ({ w: 180, h: 80 }));
+    addView(loose.id, 2000, 0, () => ({ w: 180, h: 80 }));
+    const sel = (n: object) => n as { selected?: boolean };
+    const restore = swapSelectionSlots({
+      unselectAllNodes: () => { for (const n of editor.getNodes()) sel(n).selected = false; },
+      selectNode: (id, acc) => { for (const n of editor.getNodes()) sel(n).selected = n.id === id || (acc && sel(n).selected === true); },
+    });
+    try {
+      sel(m).selected = true;
+      sel(loose).selected = true;
+      await setGroupsCollapsed(editor, view, [g], true);
+      expect(sel(m).selected).toBe(false);
+      expect(sel(loose).selected).toBe(true);
+    } finally {
+      restore();
+    }
   });
 });

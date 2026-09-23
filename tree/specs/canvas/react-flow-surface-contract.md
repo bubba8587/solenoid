@@ -168,7 +168,7 @@ An overlay drawn in graph coordinates renders inside RF's `<ViewportPortal>`, wh
 RF's selection is the selection. `useOnSelectionChange` mirrors it into the model's `selected` flags, which chrome and components read off the node payload, and into the cable store (`cableSelectionStore`, read by the Cable inspector, the delete verbs and the edge's selected color). The other direction holds too: a cable selected on the app side (its hit path, a run selection) is selected in RF, and the update keeps object identity so untouched edges skip re-rendering.
 
 - Node and cable selection are mutually exclusive with each other in the chrome's verbs, and drawn-cable, standoff and isolate-endpoint selection are each exclusive with all the rest.
-- Every selection surface reaches only what the user can see ([[C52]] visibleSelection): Ctrl+A selects every node not hidden in a collapsed group and not receded by isolate, and creating a group from the selection skips hidden members.
+- Every selection surface reaches only what the user can see ([[C52]] visibleSelection): Ctrl+A selects every node not hidden in a collapsed group and not receded by isolate, and creating a group from the selection skips hidden members. Collapsing a group drops its hidden members from the selection (`setGroupsCollapsed`), and entering isolate drops the receded cards (`isolate.ts`), so Delete, nudge and copy never act on an invisible card.
 - In touch-select mode (see [[pointer-gestures]]) RF's multi-selection flag is held and pane-drag panning yields to the lasso.
 
 ## Context menus
