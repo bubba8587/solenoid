@@ -17,6 +17,8 @@ export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
   const strip = (g: SavedGraph) => JSON.stringify({
     ...g,
     nodes: g.nodes.map((n) => {
+      // A group's size is the user's (grip, autofit); a card's is a measure re-stamped after every restore.
+      if (n.type === "GroupNode") return n;
       const { init, ...rest } = n;
       const { width: _w, height: _h, ...initRest } = (init ?? {}) as Record<string, unknown>;
       return { ...rest, init: initRest };

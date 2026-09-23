@@ -20,7 +20,7 @@ import {
   conduitLaneOffset,
   conduitLayoutStore,
 } from "../ribbonCable";
-import { processGraph, isGraphRebuilding } from "../process";
+import { processGraph, isGraphRebuilding, notifyGraphChanged } from "../process";
 import { cableDragStore, connectionVersionStore, conduitAngleStore, bumpConduitAngle } from "../graphSignals";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { useFlowSocket } from "../flowSurface";
@@ -87,6 +87,7 @@ export function ConduitComponent({ data }: Props) {
   const setAngle = (v: number) => {
     node.angle = snap45(v);
     bumpConduitAngle();
+    notifyGraphChanged();
   };
 
   // setSeq also renames a derived "Conduit N" label, so recompute to refresh consumers.

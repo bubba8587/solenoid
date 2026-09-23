@@ -1,4 +1,4 @@
-// [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[D64]] oneSizeRead.
+// [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[D64]] oneSizeRead, [[C112]] noOverlapsEver.
 import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
@@ -10,13 +10,12 @@ import { ConduitNode, FormatControllerNode, GroupNode } from "./rete-nodes";
 import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
 import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
-import { pushForGrownGroups, translateEntityBy } from "./groupPush";
-import { separateOverlaps, PUSH_GAP, type PushBox } from "./groupPushCore";
+import { pushForGrownGroups, settleOverlaps } from "./groupPush";
 import { socketFlipStore } from "./socketFlipStore";
 import { collapseStore } from "./collapseStore";
-import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
+import { standoffStore, standoffClusters, settleStandoffs, liveStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
-import { syncGroupCollapse, settleCollapse } from "./groupCollapse";
+import { syncGroupCollapse, settleCollapse, groupCollapseStore } from "./groupCollapse";
 import { fitAll } from "./NavMenu";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
@@ -264,7 +263,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
       const boxOf = (id: string) => measuredBox(view, id, editor);
-      for (const cluster of standoffClusters(standoffStore.all())) {
+      for (const cluster of standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden))) {
         if (!cluster.every((id) => looseTargetIds.has(id))) continue;
         const boxes = cluster
           .map((id) => [id, boxOf(id)] as const)
@@ -532,26 +531,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    if (!withinGroup) {
-      const lockedBoxes: PushBox[] = [];
-      for (const n of editor.getNodes()) {
-        if (n instanceof GroupNode && n.lockedPosition) {
-          const b = measuredBox(view, n.id, editor);
-          if (b) lockedBoxes.push({ id: n.id, x: b.x, y: b.y, w: b.w, h: b.h });
-        }
-      }
-      if (lockedBoxes.length > 0) {
-        const freeBoxes: PushBox[] = [];
-        for (const n of layoutTargets) {
-          const b = measuredBox(view, n.id, editor);
-          if (b) freeBoxes.push({ id: n.id, x: b.x, y: b.y, w: b.w, h: b.h });
-        }
-        const pinned = new Set(lockedBoxes.map((b) => b.id));
-        const disp = separateOverlaps([...lockedBoxes, ...freeBoxes], undefined, PUSH_GAP, pinned);
-        for (const [id, d] of disp) translateEntityBy(editor, view, id, d.dx, d.dy);
-      }
-    }
-
     for (const n of layoutTargets) {
       const card = view.nodeElement(n.id)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
       if (!card || !card.classList.contains("solenoid-node")) continue;
@@ -598,6 +577,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
       for (const h of hosts) repositionDockedTo(h);
       settleStandoffs(undefined, { forceLock: true });
+      if (!opts?.skipPush) {
+        settleOverlaps(editor, view, new Set(withinGroup ? [withinGroup.id] : layoutTargets.map((n) => n.id)));
+      }
       // fitAll, never a raw zoomAt: zoomAt centers in the full container and lands content under the docked panels.
       if (!withinGroup && selectedIds.length === 0) {
         await new Promise<void>((r) => requestAnimationFrame(() => r()));

@@ -7,6 +7,7 @@ import { setEditorRefs } from "../../src/graph/process";
 import { setActiveGraph } from "../../src/graph/activeGraph";
 import { isolateStore } from "../../src/graph/isolateStore";
 import { isolateSelection, isolateNodes } from "../../src/graph/isolate";
+import { swapSelectionSlots } from "../../src/graph/canvasCommands";
 
 // Isolate resolves through the ACTIVE editor so the focus-set works inside a
 // composite drill-in too (the drill-in node cards read the same global
@@ -58,5 +59,23 @@ describe("isolate resolves through the active graph", () => {
     setActiveGraph({ editor: sub, view: fakeView });
     expect(isolateNodes(["s3"])).toBe(true);
     expect([...(isolateStore.get() ?? [])]).toEqual(["s3"]);
+  });
+});
+
+describe("isolate and the selection ([[C52]] visibleSelection)", () => {
+  it("a receded card leaves the selection; a focused one stays", () => {
+    const nodes: FakeNode[] = [{ id: "a", selected: true }, { id: "b", selected: true }];
+    const ed = fakeEditor(nodes);
+    setActiveGraph({ editor: ed, view: fakeView });
+    const restore = swapSelectionSlots({
+      unselectAllNodes: () => { for (const n of nodes) n.selected = false; },
+      selectNode: (id, acc) => { for (const n of nodes) n.selected = n.id === id || (acc && n.selected === true); },
+    });
+    try {
+      expect(isolateNodes(["a"])).toBe(true);
+      expect(nodes.map((n) => n.selected)).toEqual([true, false]);
+    } finally {
+      restore();
+    }
   });
 });

@@ -180,6 +180,7 @@ export function linkStandoffBetween(
   standoffStore.select(s.id);
   unselectAllNodesFromProcess();
   cableSelectionStore.set(null);
+  drawnCableStore.select(null);
   settleStandoffs();
   scheduleAutosave();
 }

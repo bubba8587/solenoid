@@ -2,7 +2,7 @@
 aliases: ["Standoffs"]
 tags: [spec, canvas]
 ---
-<!-- [[C89]] standoffsSolveLast, [[C65]] domOrderStacking -->
+<!-- [[C89]] standoffsSolveLast, [[C65]] domOrderStacking, [[C112]] noOverlapsEver -->
 
 # Spec: Standoffs
 
@@ -57,6 +57,8 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 | Tidy | A final `forceLock` settle after layout. |
 | Toolbar edits | A band, lock or angle change settles at once. |
 
+Every layout pass in the table except the live drag and toolbar edits then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band.
+
 ## Tidy and clusters
 
 Tidy lays out each cluster of loose items as a single ELK super-node (`makeArrangeFn` in `tidyArrange.ts`; `FlowCanvas` only wires it in). ELK is the automatic layout engine behind Tidy.
@@ -81,7 +83,7 @@ Without qualifying clusters none of this runs, so a graph with no standoffs tidi
 
 ## Known gaps
 
-- An end hidden inside a collapsed group makes the standoff dormant: the bar is hidden and the constraint is skipped.
+- A linked item dragged into a group stays linked, so a member can be an end after all. An end hidden inside a collapsed group makes the standoff dormant: the bar is hidden, and every solve and cluster reads `liveStandoffs`, which leaves it out.
 - A cluster whose members aren't all in the loose layout falls back to the `forceLock` settle instead of the super-node path.
 - Standoff edits don't record undo steps of their own.
 - Tidy and Cleanup edge cases under heavy overlap have not been fully tested.

@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast
+// [[C85]] groupPushDeterministic, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver
 import { measuredSize } from "./nodeSize";
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
@@ -6,12 +6,13 @@ import type { Schemes } from "./schemes";
 import { GroupNode } from "./rete-nodes";
 import { moveGroupMembers, withLockedGroupsPinned } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
-import { computeExpandPush, separateOverlaps, overlappingPairs, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
-import { standoffStore, standoffClusters, Box as StandoffBox } from "./standoffs";
+import { computeExpandPush, separateAll, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
+import { standoffStore, standoffClusters, liveStandoffs, Box as StandoffBox } from "./standoffs";
 import { solveStandoffs } from "./standoffSolver";
 import { scheduleAutosave } from "./persistence";
 import { settingsStore } from "./settingsStore";
 import { dockedNodeStore } from "./dockedNodeStore";
+import { unselectAllNodes, selectNode } from "./canvasCommands";
 import { measuredBox } from "./nodeSize";
 
 
@@ -81,11 +82,9 @@ function buildWorld(editor: Editor, view: View, expandedIds: Set<string>): World
     const p = view.position(n.id);
     if (!p) continue;
     if (n instanceof GroupNode) {
-      const m = expandedIds.has(n.id) ? null : measuredSize(view, n.id);
-      const el = view.nodeElement(n.id);
-      // [[D64]] exception: an expanding group is read at its STORED size mid-render.
-      const w = expandedIds.has(n.id) ? n.width : m?.w ?? (el?.offsetWidth || n.width);
-      const h = expandedIds.has(n.id) ? n.height : m?.h ?? (el?.offsetHeight || n.height);
+      const { w, h } = n.collapsed && !expandedIds.has(n.id)
+        ? collapsedCardSize(view, n)
+        : { w: n.width, h: n.height };
       boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
     } else {
       if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
@@ -199,6 +198,12 @@ function collapsedCardSize(view: View, g: GroupNode): { w: number; h: number } {
 
 // ─── Expand: run the core per group over one shared box world ─────────────────
 
+function lockedGroupIds(editor: Editor): Set<string> {
+  const out = new Set<string>();
+  for (const n of editor.getNodes()) if (n instanceof GroupNode && n.lockedPosition) out.add(n.id);
+  return out;
+}
+
 function runExpandPushes(
   editor: Editor,
   view: View,
@@ -208,11 +213,7 @@ function runExpandPushes(
 ): void {
   const expandedIds = new Set(changed.map((g) => g.id));
   const world = buildWorld(editor, view, expandedIds);
-  const before = new Map<string, PushBox>();
-  for (const [id, b] of world.boxes) {
-    const pre = preSizes.get(id);
-    before.set(id, { id, x: b.x, y: b.y, w: pre?.w ?? b.w, h: pre?.h ?? b.h });
-  }
+  const locked = lockedGroupIds(editor);
 
   const order = [...changed].sort((a, b) => {
     const pa = world.boxes.get(a.id);
@@ -231,7 +232,7 @@ function runExpandPushes(
     const obstacles = [...world.boxes.values()].filter((b) => b.id !== g.id);
     const sats = satellitesFor(editor, view, g, world);
     const anchors = buildAnchors(editor, world, sats);
-    const disp = computeExpandPush(spec, obstacles, sats, anchors);
+    const disp = computeExpandPush(spec, obstacles, sats, anchors, locked);
     for (const [id, d] of disp) {
       const b = world.boxes.get(id)!;
       b.x += d.dx;
@@ -247,7 +248,7 @@ function runExpandPushes(
   }
 
   if (!standoffStore.isEmpty()) {
-    for (const cluster of standoffClusters(standoffStore.all())) {
+    for (const cluster of standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden))) {
       let lead: Disp = { dx: 0, dy: 0 };
       let leadMag = 0;
       for (const id of cluster) {
@@ -261,7 +262,7 @@ function runExpandPushes(
       for (const id of cluster) for (const g of attribution.get(id) ?? []) groups.add(g);
       for (const id of cluster) {
         const b = world.boxes.get(id);
-        if (!b) continue;
+        if (!b || locked.has(id)) continue;
         const t = totals.get(id) ?? { dx: 0, dy: 0 };
         const ddx = lead.dx - t.dx;
         const ddy = lead.dy - t.dy;
@@ -276,7 +277,7 @@ function runExpandPushes(
     const plain = new Map<string, StandoffBox>(
       [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
     );
-    const settle = solveStandoffs(plain, standoffStore.all(), withLockedGroupsPinned(editor, expandedIds), { forceLock: true });
+    const settle = solveStandoffs(plain, liveStandoffs(groupCollapseStore.isNodeHidden), withLockedGroupsPinned(editor, expandedIds), { forceLock: true });
     for (const [id, d] of settle) {
       const b = world.boxes.get(id);
       if (!b) continue;
@@ -292,50 +293,22 @@ function runExpandPushes(
     }
   }
 
-  {
-    const unitOf = new Map<string, string>();
-    const unitMembers = new Map<string, string[]>();
-    if (!standoffStore.isEmpty()) {
-      let ci = 0;
-      for (const cl of standoffClusters(standoffStore.all())) {
-        const ids = [...cl].filter((id) => world.boxes.has(id));
-        if (ids.length < 2) continue;
-        const uid = `__cluster${ci++}`;
-        for (const id of ids) unitOf.set(id, uid);
-        unitMembers.set(uid, ids);
-      }
-    }
-    const unitsOf = (boxes: Map<string, PushBox>): PushBox[] => {
-      const units: PushBox[] = [];
-      for (const [uid, ids] of unitMembers) {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const id of ids) {
-          const b = boxes.get(id)!;
-          minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
-          maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
-        }
-        units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
-      }
-      for (const b of boxes.values()) {
-        if (!unitOf.has(b.id)) units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
-      }
-      return units;
-    };
-    for (const [uid, d] of separateOverlaps(unitsOf(world.boxes), overlappingPairs(unitsOf(before)))) {
-      for (const id of unitMembers.get(uid) ?? [uid]) {
-        const b = world.boxes.get(id);
-        if (!b) continue;
-        b.x += d.dx;
-        b.y += d.dy;
-        const t = totals.get(id) ?? { dx: 0, dy: 0 };
-        t.dx += d.dx;
-        t.dy += d.dy;
-        totals.set(id, t);
-        const due = attribution.get(id) ?? new Set<string>();
-        for (const g of changed) due.add(g.id);
-        attribution.set(id, due);
-      }
-    }
+  const backstop = separateAll([...world.boxes.values()], {
+    clusters: standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden)),
+    fixed: locked,
+    prefer: expandedIds,
+  });
+  for (const [id, d] of backstop) {
+    const b = world.boxes.get(id)!;
+    b.x += d.dx;
+    b.y += d.dy;
+    const t = totals.get(id) ?? { dx: 0, dy: 0 };
+    t.dx += d.dx;
+    t.dy += d.dy;
+    totals.set(id, t);
+    const due = attribution.get(id) ?? new Set<string>();
+    for (const g of changed) due.add(g.id);
+    attribution.set(id, due);
   }
 
   for (const [id, t] of totals) {
@@ -397,6 +370,15 @@ export function restoreSettledPushes(editor: Editor, view: View): void {
   if (moved) scheduleAutosave();
 }
 
+// [[C52]] visibleSelection: a member hidden by the collapse leaves the selection.
+function dropHiddenFromSelection(editor: Editor): void {
+  const selected = editor.getNodes().filter((n) => (n as { selected?: boolean }).selected === true);
+  if (!selected.some((n) => groupCollapseStore.isNodeHidden(n.id))) return;
+  const keep = selected.filter((n) => !groupCollapseStore.isNodeHidden(n.id)).map((n) => n.id);
+  unselectAllNodes();
+  keep.forEach((id, i) => selectNode(id, i > 0));
+}
+
 // ─── The one toggle entry point ────────────────────────────────────────────────
 
 export async function setGroupsCollapsed(
@@ -413,12 +395,14 @@ export async function setGroupsCollapsed(
 
   for (const g of changed) g.collapsed = collapse;
   syncGroupCollapse(editor, view);
+  if (collapse) dropHiddenFromSelection(editor);
   await Promise.all(changed.map((g) => view.rerenderNode(g.id)));
   for (const g of changed) settleCollapse(view, g.id, g.members, !collapse);
 
   if (collapse) {
     restoreSettledPushes(editor, view);
     settleStandoffsOverWorld(editor, view, new Set(changed.map((g) => g.id)));
+    settleOverlapsAfterPaint(editor, view, new Set(changed.map((g) => g.id)));
   } else if (settingsStore.get("groupPush")) {
     runExpandPushes(editor, view, changed, preSizes);
   }
@@ -431,6 +415,23 @@ function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string
   const plain = new Map<string, StandoffBox>(
     [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
   );
-  const disp = solveStandoffs(plain, standoffStore.all(), withLockedGroupsPinned(editor, pinned), { forceLock: true });
+  const disp = solveStandoffs(plain, liveStandoffs(groupCollapseStore.isNodeHidden), withLockedGroupsPinned(editor, pinned), { forceLock: true });
   for (const [id, d] of disp) translatePushed(editor, view, id, d.dx, d.dy);
+}
+
+/** Separates every overlap among the top-level boxes; `prefer` holds still where it can. */
+export function settleOverlaps(editor: Editor, view: View, prefer: ReadonlySet<string> = new Set()): void {
+  const world = buildWorld(editor, view, new Set());
+  const disp = separateAll([...world.boxes.values()], {
+    clusters: standoffClusters(liveStandoffs(groupCollapseStore.isNodeHidden)),
+    fixed: lockedGroupIds(editor),
+    prefer,
+  });
+  for (const [id, d] of disp) translatePushed(editor, view, id, d.dx, d.dy);
+  if (disp.size) scheduleAutosave();
+}
+
+/** Two frames later, so React Flow has measured whatever the op just resized. */
+export function settleOverlapsAfterPaint(editor: Editor, view: View, prefer: ReadonlySet<string> = new Set()): void {
+  requestAnimationFrame(() => requestAnimationFrame(() => settleOverlaps(editor, view, prefer)));
 }

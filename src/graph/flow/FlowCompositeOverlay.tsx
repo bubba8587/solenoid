@@ -20,6 +20,8 @@ import { cableSelectionStore } from "../cableState";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
+import { rebuildGroupMembership } from "../groupMembership";
+import { syncGroupCollapse } from "../groupCollapse";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
 import { IS_MOBILE } from "../coarse";
 import "../components/compositeEditor.css";
@@ -161,6 +163,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         n.position = { ...pos };
       }
       s.rebuilding = false;
+      rebuildGroupMembership(comp.internalEditor);
+      syncGroupCollapse(comp.internalEditor, s.view as unknown as View);
       s.handlers.syncTopology();
       setReady(true);
       setActiveGraph({

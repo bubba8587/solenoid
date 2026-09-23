@@ -12,7 +12,7 @@ Collapsing a group shrinks it to a small card that shows the group's results as 
 
 ## What collapse hides
 
-`recomputeGroupCollapse()` (`groupCollapse.ts`) rebuilds the collapse state for every collapsed group at once. `syncGroupCollapse` calls it.
+`recomputeGroupCollapse(editor)` (`groupCollapse.ts`) rebuilds the collapse state for every collapsed group of one editor at once. `syncGroupCollapse` calls it. The store is shared, but each editor's entries are kept apart, so a drill-in's recompute never clears the main canvas's hidden members or pills, and the drill-in computes its own groups once it has hydrated.
 
 - **Hidden nodes.** Every member is hidden, along with any FC docked to a member (the group's "extended members"). A docked FC collapses with its host, and everything downstream treats it exactly like a member.
 - **Hidden cables.** A cable is hidden only when both ends are hidden in the same collapsed group. A cable that crosses the group's edge stays visible and is redirected to a pill on the card: outbound cables to a pill on the right, next to that value's readout row, and inbound cables to a pill on the left, one per member input. A cable between two different collapsed groups stays visible and runs between both groups' pills.
@@ -46,7 +46,7 @@ A member whose outputs all feed members only is hidden with no row. Members alre
 `flyToNode.ts` serves every "go to this node" caller: the pins and alerts HUD, the cable inspector and Presentation. It is drill-in aware: a node inside an open composite moves the drill-in's camera.
 
 - **Resolve a visible target.** A node hidden in a collapsed group has no visible element, so framing it would target a stale point near (0,0) and jump the view off-screen. Before framing, `resolveVisibleTarget` walks up from the node to its group for as long as the target is still hidden.
-- **Frame a collapsed group by its rendered size.** `zoomAt` frames `node.width` / `node.height` whenever they are defined, but a collapsed group still carries its expanded dimensions. So a collapsed group is passed as a sizeless reference (only its id), and `zoomAt` falls back to the rendered element's size. Plain nodes pass the real node.
+- **Frame a collapsed group by its rendered size.** `zoomAt` sizes each node through `frameSize`: React Flow's measure, then the rendered element, and the stored `width` / `height` only last, since a collapsed group still carries its expanded dimensions. A collapsed group is also passed as a sizeless reference (only its id), so even that last tier cannot frame it at its expanded size. Plain nodes pass the real node.
 - `flashNode` flashes the same resolved target, so a node inside a collapsed group lights up its group card.
 
 The minimap draws from React Flow's own node set, with colors from `minimapFillForNode`. The fit-all math in `NavMenu` uses `collapsedAwareNodesRect`, which sizes collapsed groups the same way.

@@ -61,7 +61,7 @@ A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`.
 - `moveNode`, `rerenderNode`, `rerenderCables` and `onRender` (per-card re-render events, which the HTML-in-Canvas layer uses to re-capture);
 - `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[D64]] oneSizeRead).
 
-Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). The model layer stamps it on every add path, so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
+Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). An add path sets it right after `addNode` (`flowModel.addNode` before, most others through `view.moveNode` after), so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
 
 `view.moveNode(nodeId, …)` is async and never lands in the same paint as a React commit. If a size change would need a matching position change in the same frame, restructure so it doesn't ([[resizable-content-nodes]]).
 
@@ -71,7 +71,7 @@ Positions are always absolute canvas coordinates, never RF's parent-relative one
 
 `flow/flowModel.ts` builds the headless model: a rete `NodeEditor` and `DataflowEngine` with the coercion and error guards installed, its edit verbs, and the projections RF reads. The projections are RF-shaped without importing RF, so they stay testable in the node test environment.
 
-- `addConnection` is the one connection gate: the socket lattice rule plus no self-loop. A single-connection input evicts its existing cable first.
+- `canConnect` / `connect` are the user's connection gate: the socket lattice rule plus no self-loop, and a single-connection input evicts its existing cable first. RF's connect and quick-wire go through them. Programmatic rewires (paste, ghosts, Conduit insert, the FC splice) still call `editor.addConnection` directly and rely on their own sources being valid.
 - Removing nodes removes their cables through the editor, and their names go too.
 - `toFlowNodes` lists parents before their children, as RF requires.
 
@@ -168,7 +168,7 @@ An overlay drawn in graph coordinates renders inside RF's `<ViewportPortal>`, wh
 RF's selection is the selection. `useOnSelectionChange` mirrors it into the model's `selected` flags, which chrome and components read off the node payload, and into the cable store (`cableSelectionStore`, read by the Cable inspector, the delete verbs and the edge's selected color). The other direction holds too: a cable selected on the app side (its hit path, a run selection) is selected in RF, and the update keeps object identity so untouched edges skip re-rendering.
 
 - Node and cable selection are mutually exclusive with each other in the chrome's verbs, and drawn-cable, standoff and isolate-endpoint selection are each exclusive with all the rest.
-- Every selection surface reaches only what the user can see ([[C52]] visibleSelection): Ctrl+A selects every node not hidden in a collapsed group and not receded by isolate, and creating a group from the selection skips hidden members.
+- Every selection surface reaches only what the user can see ([[C52]] visibleSelection): Ctrl+A selects every node not hidden in a collapsed group and not receded by isolate, and creating a group from the selection skips hidden members. Collapsing a group drops its hidden members from the selection (`setGroupsCollapsed`), and entering isolate drops the receded cards (`isolate.ts`), so Delete, nudge and copy never act on an invisible card.
 - In touch-select mode (see [[pointer-gestures]]) RF's multi-selection flag is held and pane-drag panning yields to the lasso.
 
 ## Context menus
@@ -194,7 +194,7 @@ The gates run in this order:
 5. A key whose target has a `.nokeys` ancestor returns, except F9 ([[pointer-gestures]]).
 6. F9 recomputes. It stays live while typing, presenting, drilled in and under a modal, where it is the only remaining recompute path.
 7. The armed draw tool is modal: outside a field and without Ctrl or Cmd, Escape disarms it, Enter finishes the run and Backspace drops the last point, before the palette and isolate can claim those keys.
-8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, autofit, expand and collapse), while the view keys (palette, isolate, chrome, Tab, F9) keep working.
+8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, composite create, autofit, expand and collapse, `[` and `]` rotation, undo and redo), and the Add menu does not open from any entry point, while the view keys (palette, isolate, chrome, Tab, F9) keep working.
 
 Bare keys, outside a field and without a modifier:
 
@@ -258,7 +258,7 @@ Isolate is a view-only focus: the focus set shows and every other card recedes. 
 - `isolateStore` holds the focus set (null when not isolating), a mode label for the Isolate pill ("Where used"), and `isVisible(id)`, true when not isolating or when the node is in the set. The endpoint selection on the isolate overlay is exclusive with node, cable and standoff selection.
 - `isolate.ts` resolves through the active editor, so isolate works in a drill-in. It always expands to whole entities: a group brings its members and a node brings its docked FCs. Isolate chain (`isolateChainOf`) takes the connected chain both up- and downstream, seeded with group members so a group's own cables are walked, then re-expanded for anything reached. Where-used (`isolateWhereUsed`) takes only the downstream stream from one node; it dims the same way, so the pill's label is what tells the two apart.
 - The overlay's boundary analysis (`isolateBoundary.ts`) finds the entries (an outside output feeding a focused input, drawn on the left) and the exits (a focused output feeding an outside input, drawn on the right).
-- Receded cards fade out when isolation starts, snap back instantly on exit, and take no pointer events (canvas.css). Positions, groups and push records are untouched. The Add menu is suppressed while isolating, and Escape exits.
+- Receded cards fade out when isolation starts and take no pointer events. The dim is the `sol-isolate-dim` class from `flowModel.nodeClassName`, re-stamped when the isolate store notifies, like `sol-member-hidden`: RF rebuilds a wrapper's className on every selection change, so a class written on the element directly would drop, and its `pointer-events` rule is `!important` over RF's inline style (canvas.css). Positions, groups and push records are untouched: a move made while isolating stays. The Add menu is suppressed while isolating, and Escape exits.
 
 ## Undo history
 
@@ -269,7 +269,7 @@ Undo is a snapshot history (`flow/flowHistory.ts`, [[B10]] reactFlowView). Every
 - **Limits.** At most `MAX_DEPTH` (80) entries and `MAX_BYTES` (16 MiB, counted as two bytes per JSON character), since on a large document whole-document snapshots reach tens of megabytes. The oldest entries go first; the current one always stays.
 - **Restoring.** A restore runs without the load curtain and keeps the camera where it was, so an undo feels like an edit, and then schedules an autosave, since the restored state is now the document. One restore runs at a time. Undo first flushes a pending debounced record.
 - **The baseline.** `reset()` is the `setClearHistory` slot: `loadGraph`'s own end-of-load clear seeds the new document's baseline, labeled "Opened". Restores skip it, so an undo never wipes the stack.
-- **Labels.** `describeGraphDelta` (`flowHistoryDigest.ts`) derives each entry's label by diffing it against the one before. The parts join with "; ", most significant first: Added, Removed, Connected and Disconnected (a single cable reads "A → B"), Renamed, then Edited, each naming a single node or counting several. Measured `init.width` and `init.height` never count as an edit, so a resize reads as the "Edited document" fallback. Moves are reported only when nothing else changed, since they ride along with group tows and expand pushes. Failing all of those, the label is "Changed standoffs", "Drew a cable", "Removed a drawn cable", "Edited a drawn cable" or "Edited document". `records()` lists the applied transitions, oldest first and without the baseline, for Session History.
+- **Labels.** `describeGraphDelta` (`flowHistoryDigest.ts`) derives each entry's label by diffing it against the one before. The parts join with "; ", most significant first: Added, Removed, Connected and Disconnected (a single cable reads "A → B"), Renamed, then Edited, each naming a single node or counting several. A card's `init.width` and `init.height` are measures re-stamped after every restore, so a change to them alone records nothing (`sameIgnoringDims`). A group's are the user's, so a grip resize or autofit records an entry, labeled with the "Edited document" fallback. A redo first flushes a pending edit, as undo does, so the edit is kept. Moves are reported only when nothing else changed, since they ride along with group tows and expand pushes. Failing all of those, the label is "Changed standoffs", "Drew a cable", "Removed a drawn cable", "Edited a drawn cable" or "Edited document". `records()` lists the applied transitions, oldest first and without the baseline, for Session History.
 
 A composite drill-in keeps its own per-composite history ([[composite-drill-in-mount-lifecycle]]).
 

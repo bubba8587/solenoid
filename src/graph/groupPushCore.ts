@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle
+// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle, [[C112]] noOverlapsEver
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {
@@ -49,7 +49,7 @@ const rectsOverlap = (a: Rect, b: Rect) => xOverlap(a, b) > 0 && yOverlap(a, b) 
 
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
-export function overlappingPairs(boxes: readonly PushBox[]): Set<string> {
+function overlappingPairs(boxes: readonly PushBox[]): Set<string> {
   const out = new Set<string>();
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
@@ -64,6 +64,7 @@ export function computeExpandPush(
   obstacles: PushBox[],
   satellites: Map<string, Satellite>,
   anchors: Map<string, Pt[]> = new Map(),
+  fixed: ReadonlySet<string> = new Set(),
 ): Map<string, Disp> {
   const A: Rect = { x: spec.x, y: spec.y, w: spec.postW, h: spec.postH };
   const C: Rect = { x: spec.x, y: spec.y, w: spec.preW, h: spec.preH };
@@ -80,7 +81,7 @@ export function computeExpandPush(
     return d ? { x: b.x + d.dx, y: b.y + d.dy, w: b.w, h: b.h } : b;
   };
 
-  const exempt = new Set(obstacles.filter((b) => rectsOverlap(b, C)).map((b) => b.id));
+  const exempt = new Set(obstacles.filter((b) => fixed.has(b.id) || rectsOverlap(b, C)).map((b) => b.id));
   const baseline = overlappingPairs(obstacles);
 
   const clearShift = (b: PushBox): Disp => {
@@ -207,54 +208,96 @@ export function computeExpandPush(
   return disp;
 }
 
+/** Places boxes top-left first (pinned ones before all); each moves right or down until it clears every box placed before it. */
 export function separateOverlaps(
   boxes: PushBox[],
-  baseline: Set<string> = new Set(),
   gap = PUSH_GAP,
-  pinned: Set<string> = new Set(),
+  pinned: ReadonlySet<string> = new Set(),
 ): Map<string, Disp> {
+  const order = [...boxes].sort((a, b) =>
+    (pinned.has(a.id) ? 0 : 1) - (pinned.has(b.id) ? 0 : 1) || (a.x + a.y) - (b.x + b.y));
+  const placed: Rect[] = [];
   const disp = new Map<string, Disp>();
-  const at = (b: PushBox): Rect => {
-    const d = disp.get(b.id);
-    return d ? { x: b.x + d.dx, y: b.y + d.dy, w: b.w, h: b.h } : b;
-  };
-  const bump = (id: string, dx: number, dy: number) => {
-    const d = disp.get(id) ?? { dx: 0, dy: 0 };
-    disp.set(id, { dx: d.dx + dx, dy: d.dy + dy });
-  };
-  let guard = 0;
-  for (;;) {
-    if (guard++ > 2000) break;
-    let worst: { a: PushBox; b: PushBox; ox: number; oy: number } | null = null;
-    let worstArea = 0;
-    for (let i = 0; i < boxes.length; i++) {
-      for (let j = i + 1; j < boxes.length; j++) {
-        if (baseline.has(pairKey(boxes[i].id, boxes[j].id))) continue;
-        if (pinned.has(boxes[i].id) && pinned.has(boxes[j].id)) continue;
-        const a = at(boxes[i]);
-        const b = at(boxes[j]);
-        const ox = xOverlap(a, b);
-        const oy = yOverlap(a, b);
-        if (ox > 0 && oy > 0 && ox * oy > worstArea) {
-          worstArea = ox * oy;
-          worst = { a: boxes[i], b: boxes[j], ox, oy };
+  for (const b of order) {
+    const r: Rect = { x: b.x, y: b.y, w: b.w, h: b.h };
+    if (!pinned.has(b.id)) {
+      for (let guard = 0; guard < 10000; guard++) {
+        let hit: Rect | null = null;
+        let hitArea = 0;
+        for (const o of placed) {
+          const ox = xOverlap(r, o), oy = yOverlap(r, o);
+          if (ox > 0 && oy > 0 && ox * oy > hitArea) { hitArea = ox * oy; hit = o; }
         }
+        if (!hit) break;
+        const right = hit.x + hit.w + gap - r.x;
+        const down = hit.y + hit.h + gap - r.y;
+        if (right <= down) r.x += right;
+        else r.y += down;
       }
+      if (r.x !== b.x || r.y !== b.y) disp.set(b.id, { dx: r.x - b.x, dy: r.y - b.y });
     }
-    if (!worst) break;
-    const ra = at(worst.a);
-    const rb = at(worst.b);
-    let mover: PushBox, other: PushBox;
-    if (pinned.has(worst.a.id)) { mover = worst.b; other = worst.a; }
-    else if (pinned.has(worst.b.id)) { mover = worst.a; other = worst.b; }
-    else [mover, other] = ra.x + ra.y >= rb.x + rb.y ? [worst.a, worst.b] : [worst.b, worst.a];
-    const m = at(mover);
-    const o = at(other);
-    const right = o.x + o.w + gap - m.x;
-    const down = o.y + o.h + gap - m.y;
-    if (right <= down) bump(mover.id, right, 0);
-    else bump(mover.id, 0, down);
+    placed.push(r);
   }
-  for (const [id, d] of [...disp]) if (d.dx === 0 && d.dy === 0) disp.delete(id);
   return disp;
+}
+
+export interface SeparateAllOpts {
+  /** Boxes that move as one rigid unit (standoff clusters). */
+  clusters?: ReadonlyArray<Iterable<string>>;
+  /** Never move (position-locked groups). */
+  fixed?: ReadonlySet<string>;
+  /** Hold still while anything else can yield (what the op just placed). */
+  prefer?: ReadonlySet<string>;
+  gap?: number;
+}
+
+/** Afterwards no two boxes overlap, bar two fixed ones. */
+export function separateAll(boxes: readonly PushBox[], opts: SeparateAllOpts = {}): Map<string, Disp> {
+  const { fixed = new Set<string>(), prefer = new Set<string>(), gap = PUSH_GAP } = opts;
+  const byId = new Map(boxes.map((b) => [b.id, b]));
+  const unitOf = new Map<string, string>();
+  const unitMembers = new Map<string, string[]>();
+  let ci = 0;
+  for (const cl of opts.clusters ?? []) {
+    const ids = [...cl].filter((id) => byId.has(id) && !unitOf.has(id));
+    if (ids.length < 2) continue;
+    const uid = `__cluster${ci++}`;
+    for (const id of ids) unitOf.set(id, uid);
+    unitMembers.set(uid, ids);
+  }
+  const units: PushBox[] = [];
+  const fixedU = new Set<string>();
+  const preferU = new Set<string>();
+  for (const [uid, ids] of unitMembers) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const id of ids) {
+      const b = byId.get(id)!;
+      minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+      if (fixed.has(id)) fixedU.add(uid);
+      if (prefer.has(id)) preferU.add(uid);
+    }
+    units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
+  }
+  for (const b of boxes) {
+    if (unitOf.has(b.id)) continue;
+    units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
+    if (fixed.has(b.id)) fixedU.add(b.id);
+    if (prefer.has(b.id)) preferU.add(b.id);
+  }
+  const first = separateOverlaps(units, gap, new Set([...fixedU, ...preferU]));
+  const shifted = units.map((u) => {
+    const d = first.get(u.id);
+    return d ? { ...u, x: u.x + d.dx, y: u.y + d.dy } : u;
+  });
+  const second = separateOverlaps(shifted, gap, fixedU);
+  const out = new Map<string, Disp>();
+  for (const u of units) {
+    const a = first.get(u.id), b = second.get(u.id);
+    const dx = (a?.dx ?? 0) + (b?.dx ?? 0);
+    const dy = (a?.dy ?? 0) + (b?.dy ?? 0);
+    if (dx === 0 && dy === 0) continue;
+    for (const id of unitMembers.get(u.id) ?? [u.id]) out.set(id, { dx, dy });
+  }
+  return out;
 }

@@ -26,10 +26,10 @@ import { CableFlourish } from "../components/CableFlourish";
 import { SocketLegend, ConfirmDialog, NoticeToasts } from "../components";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { reconcileFcTypes } from "../fcReconcile";
-import { syncGroupCollapse } from "../groupCollapse";
+import { syncGroupCollapse, groupCollapseStore } from "../groupCollapse";
 import { FormatControllerNode, GroupNode } from "../rete-nodes";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
-import { standoffStore, setStandoffSettle, type SettleOpts } from "../standoffs";
+import { standoffStore, setStandoffSettle, liveStandoffs, type SettleOpts } from "../standoffs";
 import { solveStandoffs } from "../standoffSolver";
 import { withLockedGroupsPinned } from "../groupLogic";
 import { measuredBox } from "../nodeSize";
@@ -196,15 +196,16 @@ function FlowCanvasInner() {
     let standoffSolving = false;
     const settleStandoffNetwork = (pinned: Set<string> = new Set(), opts?: SettleOpts) => {
       if (standoffSolving || standoffStore.isEmpty()) return;
+      const live = liveStandoffs(groupCollapseStore.isNodeHidden);
       const boxes = new Map<string, { x: number; y: number; w: number; h: number }>();
-      for (const st of standoffStore.all()) {
+      for (const st of live) {
         for (const end of [st.a, st.b]) {
           if (boxes.has(end.nodeId)) continue;
           const b = measuredBox(s.view, end.nodeId, s.editor);
           if (b) boxes.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
         }
       }
-      const disp = solveStandoffs(boxes, standoffStore.all(), withLockedGroupsPinned(s.editor, pinned), opts);
+      const disp = solveStandoffs(boxes, live, withLockedGroupsPinned(s.editor, pinned), opts);
       if (disp.size === 0) return;
       standoffSolving = true;
       try {

@@ -26,7 +26,6 @@ import {
   type Viewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ClassicPreset } from "rete";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";
 import { registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
@@ -246,22 +245,22 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   useEffect(() => groupMembershipStore.subscribe(syncTopology), [syncTopology]);
 
-  useEffect(
-    () =>
-      groupCollapseStore.subscribe(() => {
-        setNodes((ns) => {
-          let changed = false;
-          const next = ns.map((n) => {
-            const cls = nodeClassName(n.data.node);
-            if ((n.className ?? undefined) === cls) return n;
-            changed = true;
-            return { ...n, className: cls };
-          });
-          return changed ? next : ns;
+  useEffect(() => {
+    const restamp = () =>
+      setNodes((ns) => {
+        let changed = false;
+        const next = ns.map((n) => {
+          const cls = nodeClassName(n.data.node);
+          if ((n.className ?? undefined) === cls) return n;
+          changed = true;
+          return { ...n, className: cls };
         });
-      }),
-    [],
-  );
+        return changed ? next : ns;
+      });
+    const offCollapse = groupCollapseStore.subscribe(restamp);
+    const offIsolate = isolateStore.subscribe(restamp);
+    return () => { offCollapse(); offIsolate(); };
+  }, []);
 
   useEffect(() => {
     s.handlers.bumpNode = (id) =>
@@ -328,7 +327,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [s]);
 
   useEffect(
-    () => addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY })),
+    () => addMenuRequest.register((screenX, screenY) => { if (!canvasLockStore.get()) setMenu({ screenX, screenY }); }),
     [],
   );
 
@@ -371,30 +370,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   useEffect(() => {
     let wasActive = false;
-    const snapshot = new Map<string, { x: number; y: number }>();
     const apply = () => {
       const active = isolateStore.isActive();
-      for (const n of s.editor.getNodes()) {
-        s.view.nodeElement(n.id)?.classList.toggle("solenoid-isolate-dim", active && !isolateStore.isVisible(n.id));
-      }
       if (active && !wasActive) {
-        snapshot.clear();
-        const focus: Schemes["Node"][] = [];
-        for (const n of s.editor.getNodes()) {
-          if (!isolateStore.isVisible(n.id)) continue;
-          const pos = s.view.position(n.id);
-          if (pos) snapshot.set(n.id, { ...pos });
-          focus.push(n);
-        }
-        if (focus.length) {
-          void zoomAt(s.view, focus);
-        }
-      } else if (!active && wasActive) {
-        for (const [id, pos] of snapshot) {
-          if (s.view.hasNode(id)) void s.view.moveNode(id, pos);
-        }
-        snapshot.clear();
-        scheduleAutosave();
+        const focus = s.editor.getNodes().filter((n) => isolateStore.isVisible(n.id));
+        if (focus.length) void zoomAt(s.view, focus);
       }
       wasActive = active;
     };
@@ -443,7 +423,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const el = wrapperRef.current;
     const sock = el ? socketTargetAt(el, e) : null;
     if (sock) { setSocketCtx(sock); return; }
-    if (isolateStore.isActive()) return;
+    if (isolateStore.isActive() || canvasLockStore.get()) return;
     setMenu({ screenX: e.clientX, screenY: e.clientY });
   }, []);
 
@@ -739,14 +719,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             ? firstCompatibleSocketKey(node, originSocket, side)
             : null;
         if (newKey && originNode) {
-          try {
-            const conn =
-              side === "output"
-                ? new ClassicPreset.Connection(originNode, originKey, node, newKey)
-                : new ClassicPreset.Connection(node, newKey, originNode, originKey);
-            await s.editor.addConnection(conn as Parameters<typeof s.editor.addConnection>[0]);
-          } catch {
-          }
+          // connect, not addConnection: it evicts the cable already in a single-connection input.
+          if (side === "output") await connect(s, originId, originKey, node.id, newKey);
+          else await connect(s, node.id, newKey, originId, originKey);
         }
       }
 

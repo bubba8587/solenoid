@@ -5,6 +5,7 @@ import { getActiveEditor } from "./activeGraph";
 import { GroupNode, FormatControllerNode } from "./rete-nodes";
 import type { SolenoidNode } from "./schemes";
 import { chainClosure, isolateStore } from "./isolateStore";
+import { unselectAllNodes, selectNode } from "./canvasCommands";
 
 type AnyEditor = NonNullable<ReturnType<typeof getEditor>>;
 
@@ -29,12 +30,21 @@ function expandEntities(editor: AnyEditor, ids: Set<string>): Set<string> {
   return out;
 }
 
+/** Receded cards leave the selection, so no verb acts on a card the user can't see. */
+function enter(editor: AnyEditor, focus: Set<string>, mode?: string): void {
+  isolateStore.set(focus, mode);
+  const selected = [...selectedIds(editor)];
+  if (selected.every((id) => focus.has(id))) return;
+  unselectAllNodes();
+  selected.filter((id) => focus.has(id)).forEach((id, i) => selectNode(id, i > 0));
+}
+
 export function isolateNodes(ids: Iterable<string>): boolean {
   const editor = getActiveEditor();
   if (!editor) return false;
   const seed = new Set(ids);
   if (seed.size === 0) return false;
-  isolateStore.set(expandEntities(editor, seed));
+  enter(editor, expandEntities(editor, seed));
   return true;
 }
 
@@ -45,7 +55,7 @@ export function isolateChainOf(ids: Iterable<string>): boolean {
   if (seed0.size === 0) return false;
   const seed = expandEntities(editor, seed0);
   const edges = editor.getConnections().map((c) => ({ source: c.source, target: c.target }));
-  isolateStore.set(expandEntities(editor, chainClosure(edges, seed)));
+  enter(editor, expandEntities(editor, chainClosure(edges, seed)));
   return true;
 }
 
@@ -53,7 +63,7 @@ export function isolateWhereUsed(nodeId: string): boolean {
   const editor = getActiveEditor();
   if (!editor) return false;
   const downstream = downstreamClosure(editor, nodeId);
-  isolateStore.set(expandEntities(editor, downstream), "Where used");
+  enter(editor, expandEntities(editor, downstream), "Where used");
   return true;
 }
 

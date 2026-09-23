@@ -23,8 +23,9 @@ html.perf-no-grid-dots .react-flow__background { display: none; }
 
 
 
-.solenoid-isolate-dim {
+/* !important: RF stamps pointer-events inline on every selectable wrapper. */
+.react-flow__node.sol-isolate-dim {
   opacity: 0.08;
-  pointer-events: none;
+  pointer-events: none !important;
   transition: opacity 150ms ease;
 }

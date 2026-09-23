@@ -1,6 +1,9 @@
-// [[C52]]
+// [[C52]], [[D63]] lockedGroupIsObstacle
 import { describe, it, expect } from "vitest";
-import { alignDeltas, distributeDeltas, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
+import { NodeEditor } from "rete";
+import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
+import { GroupNode, DisplayNode } from "../../src/graph/rete-nodes";
+import type { Schemes } from "../../src/graph/schemes";
 
 const box = (id: string, x: number, y: number, w: number, h: number): Placed =>
   ({ id, box: { x, y, w, h } });
@@ -114,5 +117,20 @@ describe("distributeDeltas (equal gaps, first/last fixed)", () => {
     const items = [box("a", 0, 0, 20, 20), box("b", 90, 0, 20, 20), box("c", 300, 0, 20, 20)];
     const moves = distributeDeltas(items, "h");
     expect(moves.map((m) => m.seedId)).toEqual(["b"]); // ends untouched
+  });
+});
+
+describe("expandMoveSet", () => {
+  it("never carries a position-locked group; its members still move on their own", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const m = new DisplayNode();
+    await editor.addNode(m as never);
+    const g = new GroupNode({ members: [m.id] });
+    g.lockedPosition = true;
+    await editor.addNode(g as never);
+    expect([...expandMoveSet(editor, [g.id])]).toEqual([]);
+    expect([...expandMoveSet(editor, [m.id])]).toEqual([m.id]);
+    g.lockedPosition = false;
+    expect(new Set(expandMoveSet(editor, [g.id]))).toEqual(new Set([g.id, m.id]));
   });
 });

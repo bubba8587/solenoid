@@ -8,7 +8,7 @@ import {
 } from "../knapTemplate";
 import { isFrameRef, readFrame } from "../frameBackend";
 import { solError, type SolError } from "../errorValue";
-import { getActiveView, getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
 
@@ -107,7 +107,7 @@ export class ReportNode extends ClassicPreset.Node {
         for (const k of added) if (!this.inputs[k]) this.addInput(k, trueAnyIn(k));
         await dropInputCables(this.id, removed);
         for (const k of removed) if (this.inputs[k]) this.removeInput(k);
-        await getActiveView()?.rerenderNode(this.id);
+        await getOwningView(this.id)?.rerenderNode(this.id);
       })();
     });
   }

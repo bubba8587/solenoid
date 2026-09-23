@@ -4,6 +4,7 @@ import { NodeEditor, ClassicPreset } from "rete";
 import { GroupNode, FormatControllerNode, DisplayNode, NumberInputNode } from "../../src/graph/rete-nodes";
 import { recomputeGroupCollapse, groupCollapseStore, groupReadouts } from "../../src/graph/groupCollapse";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
+import { resolveVisibleTarget } from "../../src/graph/flyToNode";
 import type { Schemes } from "../../src/graph/schemes";
 
 type Editor = NodeEditor<Schemes>;
@@ -44,6 +45,13 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(groupCollapseStore.isNodeHidden(outside.id)).toBe(false);
   });
 
+  it("flying to a hidden docked FC frames its group card", async () => {
+    const { editor, host, fc, group } = await build();
+    dock(fc.id, host.id);
+    recomputeGroupCollapse(editor);
+    expect(resolveVisibleTarget(editor, fc.id)).toBe(group.id);
+  });
+
   it("an undocked FC outside the group stays visible", async () => {
     const { editor, fc } = await build();
     recomputeGroupCollapse(editor);
@@ -73,5 +81,20 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].displayId).toBe(disp.id);
     expect(rows[0].effNodeId).toBe(fc.id);
+  });
+});
+
+describe("collapse state is per editor", () => {
+  it("a drill-in's recompute leaves the main canvas's hidden members alone", async () => {
+    const main = await build();
+    const drill = await build();
+    drill.group.collapsed = false;
+    recomputeGroupCollapse(main.editor);
+    recomputeGroupCollapse(drill.editor);
+    expect(groupCollapseStore.isNodeHidden(main.host.id)).toBe(true);
+    expect(groupCollapseStore.isNodeHidden(drill.host.id)).toBe(false);
+    main.group.collapsed = false;
+    recomputeGroupCollapse(main.editor);
+    expect(groupCollapseStore.isNodeHidden(main.host.id)).toBe(false);
   });
 });

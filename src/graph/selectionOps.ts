@@ -1,4 +1,4 @@
-// [[C52]] visibleSelection
+// [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle
 
 import type { View } from "./view";
 import { GroupNode } from "./rete-nodes";
@@ -29,7 +29,8 @@ export function expandMoveSet(editor: Editor, seedIds: Iterable<string>): Set<st
   for (const c of standoffClusters()) for (const id of c) clusterOf.set(id, c);
   const toMove = new Set<string>();
   const queue: string[] = [];
-  const enqueue = (id: string) => { if (!toMove.has(id)) { toMove.add(id); queue.push(id); } };
+  const locked = (id: string) => { const n = editor.getNode(id); return n instanceof GroupNode && n.lockedPosition; };
+  const enqueue = (id: string) => { if (!toMove.has(id) && !locked(id)) { toMove.add(id); queue.push(id); } };
   for (const id of seedIds) enqueue(id);
   while (queue.length) {
     const id = queue.pop()!;
