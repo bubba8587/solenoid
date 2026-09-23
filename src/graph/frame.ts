@@ -496,10 +496,12 @@ export function flatCubeToFrame(c: CubeValue, only?: readonly string[] | "scalar
   const rows = cubeRowCount(c);
   return {
     __frame: true,
-    columns: cols.map((col) => ({
-      ...typedColumn(col.name, col.cells.map((v) => (isUnitCell(v) ? v.value : v)), rows, col.type ?? null),
-      ...(col.format ? { format: col.format } : {}),
-    })),
+    columns: cols.map((col) => {
+      // Cells in one unit read in it; cells that disagree read as base SI with no unit.
+      const { mags, unit } = col.cells.some(isUnitCell) ? matrixCellsFromList(col.cells) : { mags: col.cells, unit: undefined };
+      const typed = typedColumn(col.name, unit ? mags : col.cells.map((v) => (isUnitCell(v) ? v.value : v)), rows, col.type ?? null);
+      return { ...typed, ...(unit && typed.type === "number" ? { unit } : {}), ...(col.format ? { format: col.format } : {}) };
+    }),
   };
 }
 

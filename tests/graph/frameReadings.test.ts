@@ -10,7 +10,7 @@ import { isUnitCell, READINGS_ADD, type UnitCell } from "../../src/graph/unitVal
 import { cubeFromColumns, frameToCube, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
 import { GetColumnNode } from "../../src/graph/nodes/frame";
-import { AggregateNode } from "../../src/graph/nodes/list";
+import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const frame = (...columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
@@ -163,5 +163,34 @@ describe("Get Column into Aggregate", () => {
     expect(isSolError(sum) && sum.code).toBe("#UNIT!");
     const avg = new AggregateNode({ op: "avg" }).data({ list: [list()] }).result as UnitCell;
     expect(avg.display).toBe("degC");
+  });
+});
+
+describe("SUMIFS reads the column in its unit", () => {
+  const ifs = (op: string, f: unknown) => {
+    const s = new SumIfsNode({ op: op as never });
+    s.stringLiterals.values = "t"; s.stringLiterals.column0 = "k"; s.stringLiterals.value0 = "a";
+    return s.data({ frame: [f] }).result;
+  };
+
+  it("a km column sums to km, not to metres", () => {
+    const r = ifs("sumifs", temps("km")) as UnitCell;
+    expect(r.value).toBe(46000);
+    expect(r.display).toBe("km");
+  });
+
+  it("readings have no SUMIFS; AVERAGEIFS is a reading", () => {
+    const sum = ifs("sumifs", temps("degC"));
+    expect(isSolError(sum) && sum.code).toBe("#UNIT!");
+    const avg = ifs("averageifs", temps("degC")) as UnitCell;
+    expect(avg.value).toBeCloseTo(23 + 273.15, 9);
+    expect(avg.display).toBe("degC");
+  });
+
+  it("a cube (a vault table) keeps its column's unit on the way in", () => {
+    const avg = ifs("averageifs", frameToCube(temps("degC"))) as UnitCell;
+    expect(avg.display).toBe("degC");
+    expect(avg.value).toBeCloseTo(23 + 273.15, 9);
+    expect(isSolError(ifs("sumifs", frameToCube(temps("degC"))))).toBe(true);
   });
 });

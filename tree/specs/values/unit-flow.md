@@ -68,7 +68,7 @@ The unit-aware twin of `forAggregate`, run first by a list reducer:
 
 The reducer re-tags its result with `tagDim` from the returned `dim` and `display`. Over an affine display the Aggregate node answers as a formula does: SUM of two or more readings is `#UNIT!` and its bare numbers are deltas (`[20 °C, 5]` sums to 25 °C); every other op reads a bare number as a reading (MIN of `[25 °C, 20]` is 20 °C); AVERAGE, MIN, MAX and MEDIAN are readings, and the spreads (STDEV, AVEDEV, PTP, IQR, MAD, SEM) are deltas in the base unit.
 
-The frame and cube verbs follow the same rule over a °C or °F column, on both engines (`aggUnitPlan` in `frameVerbs.ts`, [[frame-verbs]]): GROUPBY, PIVOTBY and Cube Rollup refuse a sum, product or share of readings as `#UNIT!` in every cell of that column, keep the averages and picks as readings, and turn the spreads into kelvin deltas (VAR a squared one); Window refuses a running, rolling or group sum, a share and a percent change, and makes `diff` a delta.
+The frame and cube verbs follow the same rule over a °C or °F column, on both engines (`aggUnitPlan` in `frameVerbs.ts`, [[frame-verbs]]): GROUPBY, PIVOTBY and Cube Rollup refuse a sum, product or share of readings as `#UNIT!` in every cell of that column, keep the averages and picks as readings, and turn the spreads into kelvin deltas (VAR a squared one); Window refuses a running, rolling or group sum, a share and a percent change, and makes `diff` a delta. The SUMIFS card reads its Values column in that column's unit (a km column sums to km) and refuses a SUMIFS of readings; a Cube input keeps a column's unit when its cells share one (`flatCubeToFrame`).
 
 ### Column and matrix units
 
