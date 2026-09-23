@@ -7,6 +7,7 @@ import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadra
 import { isSolError, solError, type SolError } from "../errorValue";
 import { dimEval, dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { isUnitCell, tagDim, unitError, type UnitCell } from "../unitValue";
+import { readInDeclaredUnit } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimEqual, isDimensionless } from "../dimension";
 
 type Val = number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
@@ -87,6 +88,8 @@ export class EquationNode extends ClassicPreset.Node {
   cachedError: string | null = null;
   cachedValues: Record<string, Val> = {};
   varDescriptions: Record<string, string> = {};
+  /** A preset's input units: the equation reads that variable's number in this unit ([[C25]] firstClassUnits). */
+  varUnits: Record<string, string> = {};
   cachedHolds: boolean | (boolean | SolError | null)[] | SolError | null = null;
   solvedFor: string | null = null;
 
@@ -99,12 +102,13 @@ export class EquationNode extends ClassicPreset.Node {
   width = 240;
   height = 220;
 
-  constructor(init?: { label?: string; expr?: string; locked?: boolean; varDescriptions?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; locked?: boolean; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> }) {
     super("Equation");
     this.label = init?.label ?? "Equation";
     this.expr = init?.expr ?? "";
     this.locked = init?.locked ?? false;
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
+    if (init?.varUnits) this.varUnits = { ...init.varUnits };
     this.addOutput("holds", logicalComboOut("Check"));
     this._rebuild();
   }
@@ -177,7 +181,7 @@ export class EquationNode extends ClassicPreset.Node {
     const unknowns: string[] = [];
     for (const v of this.varNames) {
       if (inputs[v] !== undefined && inputs[v].length > 0) {
-        env[v] = inputs[v][0];
+        env[v] = this.varUnits[v] ? readInDeclaredUnit(inputs[v][0], this.varUnits[v]) : inputs[v][0];
       } else {
         unknowns.push(v);
       }

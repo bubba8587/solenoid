@@ -136,3 +136,20 @@ export function fcUnitIdForUnit(u: Unit): string | undefined {
 
 setDisplayScaleResolver((id) => fcUnitToUnit(id)?.scale ?? null);
 setDisplayOffsetResolver((id) => fcUnitToUnit(id)?.offset ?? null);
+
+/** A formula preset's input read in its declared unit ([[C25]] firstClassUnits): a bare number is
+ *  taken as already in it, a dimensioned cell converts, and another dimension is #UNIT!. */
+export function readInDeclaredUnit(v: unknown, unitId: string): unknown {
+  const u = fcUnitToUnit(unitId);
+  if (!u) return v;
+  const label = UNIT_ANNOTATIONS.find((a) => a.id === unitId)?.label.trim() ?? unitId;
+  const one = (c: unknown): unknown => {
+    if (!isUnitCell(c) || dimEqual(c.dim, DIMENSIONLESS)) return isUnitCell(c) ? c.value : c;
+    if (!dimEqual(c.dim, u.dim)) return unitError(`This input reads in ${label}; convert it first.`);
+    return (c.value - (u.offset ?? 0)) / u.scale;
+  };
+  if (!Array.isArray(v)) return one(v);
+  const out = v.map((c) => (Array.isArray(c) ? c.map(one) : one(c)));
+  const err = out.flat().find(isSolError);
+  return err ?? out;
+}

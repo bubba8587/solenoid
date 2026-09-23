@@ -8,7 +8,7 @@ import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell, isAffineDisplay, tagDim, fromUnit, type UnitCell } from "../unitValue";
-import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
+import { fcUnitToUnit, displayMagnitudeOf, readInDeclaredUnit } from "../unitBridge";
 import { dimEval, affineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
 
@@ -139,9 +139,11 @@ export class ExpressionNode extends ClassicPreset.Node {
   evaluator: ExprEvaluator | null = null;
   ast: Ast | null = null;
   varDescriptions: Record<string, string> = {};
+  /** A preset's input units: the formula reads that variable's number in this unit ([[C25]] firstClassUnits). */
+  varUnits: Record<string, string> = {};
   lastResultRank: 1 | 2 = 1;
 
-  constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number>; varDescriptions?: Record<string, string>; varUnits?: Record<string, string> }) {
     super("Expression");
     this.label = init?.label ?? "Expression";
     this.expr  = init?.expr  ?? "";
@@ -149,6 +151,7 @@ export class ExpressionNode extends ClassicPreset.Node {
     this.resultAs = init?.resultAs ?? "number";
     if (init?.literals) this.literals = { ...init.literals };
     if (init?.varDescriptions) this.varDescriptions = { ...init.varDescriptions };
+    if (init?.varUnits) this.varUnits = { ...init.varUnits };
 
     this.addOutput("result", resultOut("Result", "combo", this.resultAs));
     this._rebuild();
@@ -194,7 +197,15 @@ export class ExpressionNode extends ClassicPreset.Node {
     }
     try {
       const rawEnv: Record<string, unknown> = {};
-      for (const v of this.varNames) rawEnv[v] = readInput(inputs[v], this.literals[v] ?? 0);
+      for (const v of this.varNames) {
+        const raw = readInput(inputs[v], this.literals[v] ?? 0);
+        const u = this.varUnits[v];
+        rawEnv[v] = u ? readInDeclaredUnit(raw, u) : raw;
+        if (isSolError(rawEnv[v])) {
+          this.cachedResult = rawEnv[v]; this.cachedError = null;
+          return { result: rawEnv[v] };
+        }
+      }
       let dr: Dim | null = null;
       let shown: { id: string; unit: Unit; k: number | null; point: 0 | 1 | null } | null = null;
       if (this.ast && this.varNames.some((v) => !isDimensionless(envDim(rawEnv[v])))) {
