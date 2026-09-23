@@ -30,6 +30,23 @@ describe("built-in packs", () => {
     }
   });
 
+  it("no two preset types carry the same formula, across every pack ([[B11]] maximalMerge)", () => {
+    // A pack that wants another pack's preset places the same entry (HYPOTENUSE's pattern), never a copy.
+    const byExpr = new Map<string, string>();
+    const dupes: string[] = [];
+    for (const p of BUILTIN_PACKS) {
+      for (const { entry } of p.nodes ?? []) {
+        const expr = (entry.create() as { expr?: unknown }).expr;
+        if (typeof expr !== "string") continue;
+        const key = expr.replace(/\s/g, "");
+        const prev = byExpr.get(key);
+        if (prev !== undefined && prev !== entry.type) dupes.push(`${prev} = ${entry.type}`);
+        byExpr.set(key, entry.type);
+      }
+    }
+    expect(dupes).toEqual([]);
+  });
+
   it("dependsOn references existing pack ids", () => {
     const ids = new Set(BUILTIN_PACKS.map((p) => p.id));
     for (const p of BUILTIN_PACKS) {

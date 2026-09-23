@@ -65,7 +65,7 @@ export const TIMESAVERS_PACK: Pack = {
   id: "timesavers",
   group: "Everyday",
   name: "Common Excel Timesavers",
-  description: "Conveniences that aren't single Excel functions: rolling aggregates, weighted stats, list utilities, percent change, CAGR, text cleanup, Spell Number.",
+  description: "Conveniences that aren't single Excel functions: weighted stats, list utilities, percent change, CAGR, text cleanup, date helpers, time zones, Spell Number, QR codes.",
   builtin: true,
   defaultActive: true,
   nodes: [
