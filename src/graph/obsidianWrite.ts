@@ -15,6 +15,23 @@ const EXT_MIME: Record<string, string> = { png: "image/png", jpeg: "image/jpeg",
 
 const MIN_RASTER_W = 640;
 
+/** Case-insensitive, because the vault may sit on a case-insensitive filesystem. */
+function claimName(stem: string, ext: string, taken: Set<string>): string {
+  let k = stem;
+  for (let i = 2; taken.has(`${k}.${ext}`.toLowerCase()); i++) k = `${stem} (${i})`;
+  taken.add(`${k}.${ext}`.toLowerCase());
+  return k;
+}
+
+/** `#`, `^`, `[`, `]` and `|` end or redirect a wikilink target, so an embedded file cannot carry them. */
+const linkSafe = (s: string) => s.replace(/[#^[\]|]/g, "");
+
+export function imageMarkdown(alt: string, url: string): string {
+  const a = alt.replace(/[\r\n]+/g, " ").replace(/([\\[\]])/g, "\\$1");
+  const u = url.replace(/[ ()<>]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `![${a}](${u})`;
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -117,10 +134,12 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   const pages = doc.pages ?? [{ name: opts.name, body: doc.body }];
   const sinkName = sanitizeName(opts.name, "note");
   let base = sinkName;
+  const takenNotes = new Set<string>();
+  const takenAssets = new Set<string>();
 
   async function writeAsset(refName: string, bytes: Uint8Array, ext: string): Promise<string> {
     if (assetParts.length) await ensureDir(assetDir);
-    const fileName = `${base}-${sanitizeName(refName)}.${ext}`;
+    const fileName = `${claimName(linkSafe(`${base}-${sanitizeName(refName)}`), ext, takenAssets)}.${ext}`;
     await writeBinaryFilePath(await joinPath(assetDir, fileName), bytes);
     assetCount++;
     return `![[${fileName}]]`;
@@ -130,7 +149,7 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
     if (isImageValue(value)) {
       const img = value as ImageValue;
       const alt = img.alt ?? img.title ?? name;
-      if (/^https?:/i.test(img.src)) return `![${alt}](${img.src})`;
+      if (/^https?:/i.test(img.src)) return imageMarkdown(alt, img.src);
       const parsed = dataUrlToBytes(img.src);
       if (!parsed) return "";
       const ext = Object.entries(EXT_MIME).find(([, m]) => m === parsed.mime)?.[0] ?? "png";
@@ -156,7 +175,7 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   const mode = opts.mode ?? "overwrite";
   let first = "";
   for (const [i, page] of pages.entries()) {
-    base = sanitizeName(page.name, doc.pages ? `${sinkName}-${i + 1}` : sinkName);
+    base = claimName(sanitizeName(page.name, doc.pages ? `${sinkName}-${i + 1}` : sinkName), "md", takenNotes);
     const md = await assembleDocumentMarkdown({ ...doc, body: page.body }, resolveRef);
     const notePath = await joinPath(noteDir, `${base}.md`);
     let existing: string | null = null;
