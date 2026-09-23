@@ -162,6 +162,24 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const area = run("a * a", km) as UnitCell;
     expect(magnitudeOf(area)).toBeCloseTo(25e6, 3); // 25 km² in base m²
   });
+  it("°C follows the Arithmetic card: a reading ± a delta is a reading, two readings subtract to a delta", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const t20 = applyFcUnit(20, "degC"), t30 = applyFcUnit(30, "degC");
+    const run = (expr: string) => new ExpressionNode({ expr }).data({ a: [t20 as never], b: [t30 as never] }).result;
+    const warm = run("a + 5") as UnitCell;
+    expect(warm.display).toBe("degC");
+    expect(displayMagnitudeOf(warm)).toBeCloseTo(25, 9);
+    const mean = run("(a + b) / 2") as UnitCell;
+    expect(displayMagnitudeOf(mean)).toBeCloseTo(25, 9);
+    const diff = run("b - a") as UnitCell;
+    expect(diff.display).toBeUndefined();
+    expect(magnitudeOf(diff)).toBeCloseTo(10, 9); // 10 K
+    expect(run("a > 25")).toBe(false);
+    expect((run("a * 2") as { code?: string }).code).toBe("#UNIT!");
+    expect((run("b / a") as { code?: string }).code).toBe("#UNIT!");
+    expect(run("(b - a) / (b - a)")).toBe(1);
+  });
   it("inputs in different units still compute in base SI", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const r = new ExpressionNode({ expr: "a + b" }).data({ a: [applyFcUnit(1, "km") as never], b: [applyFcUnit(500, "m") as never] }).result;

@@ -154,7 +154,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 
 ## Expression
 
-`dimEval` (`unitDimExpr.ts`) sets the result dimension. A dimensionless argument adopts, under `+` and in the dimension-preserving functions alike (ROUND's digits, MIN(5 km, 3)). When every united input reads in ONE linear display unit, the formula runs on the displayed numbers: `5 km + 3` is 8 km, `5 km > 3000` is FALSE and `5 km & "x"` is "5x", as on Arithmetic and Comparison. A result `k` powers of that unit converts back by scale^k. Mixed units, a derived form, or an affine °C/°F run on base SI. Machine-checked: `unitWiring.test.ts`.
+`dimEval` (`unitDimExpr.ts`) sets the result dimension. A dimensionless argument adopts, under `+` and in the dimension-preserving functions alike (ROUND's digits, MIN(5 km, 3)). When every united input reads in ONE linear display unit, the formula runs on the displayed numbers: `5 km + 3` is 8 km, `5 km > 3000` is FALSE and `5 km & "x"` is "5x", as on Arithmetic and Comparison. A result `k` powers of that unit converts back by scale^k. Mixed units or a derived form run on base SI. An affine unit (°C, °F) follows `arithmeticCell`: the formula runs on the readings, and its slope in them (every reading shifted by one) decides the answer. A slope of 1 is a reading (`a + 5`, `(a + b) / 2`), 0 is a delta in the base unit (`b - a`), and anything else is `#UNIT!` (`a * 2`, `b / a`). Machine-checked: `unitWiring.test.ts`.
 
 ## LAMBDA hosts over a 1-D list
 
