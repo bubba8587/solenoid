@@ -309,6 +309,8 @@ function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<stri
   switch (node.t) {
     case "num": return { w: 0, list: false, konst: Number(node.v) };
     case "name": return { w: points.has(node.name) ? 1 : 0, list: lists.has(node.name), konst: null };
+    case "atcol": return { w: points.has(node.name) ? 1 : 0, list: false, konst: null };
+    case "wholecol": return { w: points.has(node.name) ? 1 : 0, list: true, konst: null };
     case "unary": {
       const a = sub(node.arg);
       if (isSolError(a)) return a;

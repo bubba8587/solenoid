@@ -127,7 +127,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 - a `SolError`, a real dimensional conflict (`#UNIT!`: meters plus seconds, SIN of a length, comparing incommensurable quantities, two currency codes);
 - `null`, indeterminate (a non-constant exponent, a LAMBDA call, IF branches that disagree). The caller drops the unit rather than guessing; no error is raised.
 
-**Leaves.** Numbers, logicals, text, a blank argument, and `@`-row and whole-column references are dimensionless, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity). A name reads `env` and `codes`. Unary `±` and `%` keep the argument's dimension. A computed-lambda application is indeterminate, since its body is not visible.
+**Leaves.** Numbers, logicals, text, a blank argument, and `@`-row and whole-column references are dimensionless, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity); the affine pass alone reads a reading column's references as readings ([[computed-columns]] § Units). A name reads `env` and `codes`. Unary `±` and `%` keep the argument's dimension. A computed-lambda application is indeterminate, since its body is not visible.
 
 **Operators.**
 

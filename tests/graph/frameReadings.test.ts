@@ -7,9 +7,9 @@ import { lowerForEngine } from "../../src/graph/frameBackend";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import { isUnitCell, READINGS_ADD, type UnitCell } from "../../src/graph/unitValue";
-import { cubeFromColumns, frameToCube, type FrameColumn, type FrameValue } from "../../src/graph/frame";
+import { cubeFromColumns, frameToCube, frameSourceToText, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
-import { GetColumnNode } from "../../src/graph/nodes/frame";
+import { GetColumnNode, ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
 import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
@@ -192,5 +192,44 @@ describe("SUMIFS reads the column in its unit", () => {
     expect(avg.display).toBe("degC");
     expect(avg.value).toBeCloseTo(23 + 273.15, 9);
     expect(isSolError(ifs("sumifs", frameToCube(temps("degC"))))).toBe(true);
+  });
+});
+
+describe("a computed column over readings classifies as Expression does", () => {
+  const two = frame(
+    { name: "lo", type: "number", values: [20, 18], unit: unit("degC") },
+    { name: "hi", type: "number", values: [26, 30], unit: unit("degC") },
+  );
+  const add = (expr: string) => {
+    const n = new ComputedColumnNode({ expr });
+    n.stringLiterals.name = "out";
+    return col(n.data({ frame: [two] } as never).frame as FrameValue, "out").values;
+  };
+  const refused = (vs: unknown[]) => vs.every((v) => isSolError(v) && v.code === "#UNIT!");
+
+  it("a sum of two readings, or a reading scaled, is #UNIT! in every row", () => {
+    expect(refused(add("@lo + @hi"))).toBe(true);
+    expect(refused(add("@lo * 2"))).toBe(true);
+    expect(refused(add("SUM(hi)"))).toBe(true);
+  });
+
+  it("a difference, a midpoint and a reading plus a number compute", () => {
+    expect(add("@hi - @lo")).toEqual([6, 12]);
+    expect(add("(@lo + @hi) / 2")).toEqual([23, 24]);
+    expect(add("[@lo] + 5")).toEqual([25, 23]);
+  });
+
+  it("a Frame Input formula column is held to the same rule", () => {
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "lo", type: "number", cells: ["20"], unit: "degC" },
+        { name: "hi", type: "number", cells: ["26"], unit: "degC" },
+        { name: "bad", type: "number", cells: [], expr: "@lo + @hi" },
+        { name: "mid", type: "number", cells: [], expr: "(@lo + @hi) / 2" },
+      ]),
+    });
+    const out = n.data({}).frame as FrameValue;
+    expect(refused(col(out, "bad").values)).toBe(true);
+    expect(col(out, "mid").values).toEqual([23]);
   });
 });
