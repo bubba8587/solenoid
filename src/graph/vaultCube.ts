@@ -67,7 +67,7 @@ function extractEmbeds(text: string): string[] {
   for (const m of text.matchAll(EMBED)) out.push(linkTarget(m[1]));
   return uniqueInOrder(out);
 }
-function extractInlineTags(body: string): string[] {
+export function extractInlineTags(body: string): string[] {
   const out: string[] = [];
   for (const m of body.matchAll(INLINE_TAG)) out.push(m[1]);
   return out;

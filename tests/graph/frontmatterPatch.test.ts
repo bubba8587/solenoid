@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody } from "../../src/graph/frontmatterPatch";
+import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags } from "../../src/graph/frontmatterPatch";
+import { notesToCube } from "../../src/graph/vaultCube";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { isFrameValue } from "../../src/graph/frame";
@@ -219,6 +220,19 @@ describe("review pins: a list inside a row", () => {
     const { parse } = await import("yaml");
     const back = parse(renderKey("steps", v).join("\n")) as { steps: { tags: unknown }[] };
     expect(back.steps.map((r) => r.tags)).toEqual([["x", "y"], []]);
+  });
+});
+
+describe("writing Vault Folder's tags back", () => {
+  it("leaves out a tag only the body holds, so a round trip copies no inline tag into the frontmatter", () => {
+    const note = "---\ntags:\n  - home\n---\nSome #idea and #home here.\n";
+    const cube = notesToCube([{ path: "a.md", text: note }], { mdbaseFor: () => ({}), obsidian: {} });
+    const cell = cube.columns.find((c) => c.name === "tags")!.cells[0];
+    expect(cell).toEqual(["home", "idea"]);
+    const value = frontmatterTags(note, cellToYaml(cell, "string", NO_NAMES));
+    expect(value).toEqual(["home"]);
+    expect(resolveKey(note, "tags", value).action).toBe("unchanged");
+    expect(frontmatterTags(note, ["home", "idea", "new"])).toEqual(["home", "new"]);
   });
 });
 

@@ -2,6 +2,8 @@
 import { yamlKey, yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
 import { formatDateSerial } from "./nodes/dateSerial";
+import { parseNoteFrontmatter } from "./noteFrontmatter";
+import { extractInlineTags } from "./vaultCube";
 
 export type YamlScalarV = string | number | boolean | null;
 export type YamlRowV = YamlScalarV | YamlScalarV[];
@@ -290,6 +292,17 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
   const rendered = renderKey(key, value, span.head);
   const same = existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]);
   return { action: same ? "unchanged" : "update", before };
+}
+
+/** Vault Folder's `tags` column is Bases' `file.tags`, which folds in the body's inline tags. Writing it back leaves
+ *  out a tag only the body holds, so a round trip never copies inline tags into the frontmatter. */
+export function frontmatterTags(text: string, value: YamlValue): YamlValue {
+  if (!Array.isArray(value)) return value;
+  const parsed = parseNoteFrontmatter(text);
+  const own = parsed.fields.find((f) => f.key === "tags")?.value;
+  const fmTags = new Set((Array.isArray(own) ? own : own == null ? [] : [own]).map(String));
+  const inline = new Set(extractInlineTags(parsed.body));
+  return (value as YamlScalarV[]).filter((t) => typeof t !== "string" || fmTags.has(t) || !inline.has(t));
 }
 
 export function propertyPlanFrame(rows: readonly PlanRow[]): FrameValue {

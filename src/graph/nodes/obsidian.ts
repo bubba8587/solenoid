@@ -11,7 +11,7 @@ import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, r
 import { settingsStore } from "../settingsStore";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { connectionStore, trackInflight, scheduleConnectionRecalc } from "../connectionStore";
-import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
+import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, frontmatterTags, displayValue, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
 import { mdbaseSchemaFor, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
@@ -296,6 +296,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         catch { for (const r of rows) { r.action = "unreadable"; r.before = ""; r.reason = undefined; } continue; }
         for (const r of rows) {
           if (r.key === NOTE_BODY) { const { action, before } = resolveBody(text, r.value as string); r.before = before; r.action = action; r.reason = undefined; continue; }
+          if (r.key === "tags") { r.value = frontmatterTags(text, r.value); r.after = displayValue(r.value); }
           const { action, before } = resolveKey(text, r.key, r.value);
           r.before = before;
           r.action = action === "add" && !this.addMissing ? "unchanged" : action;
@@ -331,15 +332,16 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         let newBody: string | null = null;
         for (const r of rows) {
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
-          const { action } = resolveKey(text, r.key, r.value);
+          const value = r.key === "tags" ? frontmatterTags(text, r.value) : r.value;
+          const { action } = resolveKey(text, r.key, value);
           if (action === "add" && !this.addMissing) continue;
           if (action === "unchanged") continue;
           if (sch) {
-            if (sch.required.includes(r.key) && r.value === null) continue;
+            if (sch.required.includes(r.key) && value === null) continue;
             const c = sch.constraints[r.key];
-            if (c && validateAgainst(r.value, c)) continue;
+            if (c && validateAgainst(value, c)) continue;
           }
-          patch[r.key] = r.value;
+          patch[r.key] = value;
           touched++;
           const typeName = action === "add" && cube ? obsidianTypeName(cube, r.key) : null;
           if (typeName) newTypes.set(r.key, typeName);
