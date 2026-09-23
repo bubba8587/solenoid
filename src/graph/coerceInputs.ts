@@ -1,7 +1,7 @@
 // [[C25]], [[D43]], [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";
+import { declaredTypeOf, elementFamilyOf, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
@@ -25,11 +25,6 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 ]);
 
 export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
-
-function coercionType(socket: unknown): SocketDataType | undefined {
-  if (socket instanceof AdoptiveSocket) return socket.base;
-  return socket instanceof SolenoidSocket ? socket.dataType : undefined;
-}
 
 function parseBoolText(p: string): boolean | null {
   const t = p.trim().toLowerCase();
@@ -227,7 +222,7 @@ export function wrapNodeData(node: NodeLike) {
       const keepUnits = keepAllUnits || (passKeys?.has(key) ?? false);
       const arr = keepUnits || !Array.isArray(raw) ? raw : (raw.map(stripUnitCells) as unknown[]);
       const socket = node.inputs?.[key]?.socket;
-      const dt = coercionType(socket);
+      const dt = declaredTypeOf(socket);
       if (!dt || !Array.isArray(arr)) { coerced[key] = arr; continue; }
       if (rawInputs?.has(key)) { coerced[key] = arr; continue; }
       if (noWiden?.has(key)) { coerced[key] = arr.map((v) => coerceValueNoWiden(dt, v)); continue; }
@@ -238,7 +233,7 @@ export function wrapNodeData(node: NodeLike) {
       for (const key of Object.keys(node.inputs)) {
         if ((coerced[key]?.length ?? 0) > 0) continue;
         const socket = node.inputs[key]?.socket;
-        const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        const dt = declaredTypeOf(socket);
         if (!dt || !(TYPEABLE_LIST.has(dt) || (dt === "numlist" && key in lits))) continue;
         const csv = lits[key];
         if (csv != null && csv.trim() !== "") coerced[key] = [parseListLiteral(csv, dt)];

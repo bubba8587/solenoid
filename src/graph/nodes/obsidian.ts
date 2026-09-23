@@ -452,7 +452,10 @@ export class ImportObsidianNode extends NoteNode {
       const { removed, retyped } = this.syncFields();
       const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
       await dropStrandedFrontmatterCables(this.id, removed, retyped);
-      await getOwningView(this.id)?.rerenderNode(this.id);
+      const view = getOwningView(this.id);
+      await view?.rerenderNode(this.id);
+      const editor = getOwningEditor(this.id);
+      if (editor && view && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
       scheduleConnectionRecalc();
     } catch { /* unreadable (moved / renamed / off-desktop) — keep the current body */ }
   }
