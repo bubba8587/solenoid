@@ -85,8 +85,24 @@ describe("dimensional AST interpretation — functions", () => {
     expect(evalExpr("IF(c, a, b)", { c: {}, a: LENGTH, b: LENGTH })).toEqual(LENGTH);
     expect(evalExpr("IF(c, a, b)", { c: {}, a: LENGTH, b: TIME })).toBeNull();
   });
-  it("an unknown function is indeterminate (drops the unit)", () => {
+  it("a bound LAMBDA's call is indeterminate: its body is not visible", () => {
     expect(evalExpr("MYSTERYFN(a)", { a: LENGTH })).toBeNull();
+  });
+  it("any other function reads plain numbers: a unit going in is #UNIT!", () => {
+    expect(isSolError(evalExpr("FACT(a)", { a: LENGTH }))).toBe(true);
+    expect(evalExpr("FACT(3)")).toEqual({});
+    expect(evalExpr("a + RAND()", { a: LENGTH })).toEqual(LENGTH);
+    expect(evalExpr("FACT(a ^ n)", { a: LENGTH, n: {} })).toBeNull();
+  });
+  it("the declared tables: spreads, squares, picks, criteria and branches", () => {
+    expect(evalExpr("STDEV(a)", { a: LENGTH })).toEqual(LENGTH);
+    expect(evalExpr("VAR(a)", { a: LENGTH })).toEqual({ length: 2 });
+    expect(evalExpr("LARGE(a, 2)", { a: LENGTH })).toEqual(LENGTH);
+    expect(isSolError(evalExpr("LARGE(a, b)", { a: LENGTH, b: LENGTH }))).toBe(true);
+    expect(evalExpr('SUMIFS(a, b, ">1")', { a: MASS, b: LENGTH })).toEqual(MASS);
+    expect(evalExpr("IFERROR(a, b)", { a: LENGTH, b: LENGTH })).toEqual(LENGTH);
+    expect(evalExpr("CHOOSE(i, a, b)", { i: {}, a: LENGTH, b: TIME })).toBeNull();
+    expect(evalExpr('TEXT(a, "0.0")', { a: LENGTH })).toEqual({});
   });
 });
 

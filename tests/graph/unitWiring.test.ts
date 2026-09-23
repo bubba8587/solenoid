@@ -198,6 +198,46 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(code(run("SUM(a)", list))).toBe("#UNIT!");
     expect(magnitudeOf(run("MAX(a) - MIN(a)", list) as UnitCell)).toBeCloseTo(10, 9); // 10 K
   });
+  it("a function outside the unit tables is loud on a unit, and plain beside one", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const run = (expr: string, a: unknown) => new ExpressionNode({ expr }).data({ a: [a as never] }).result;
+    const t20 = applyFcUnit(20, "degC"), km = applyFcUnit(5, "km");
+    const kept = run("a + RAND() * 0", t20) as UnitCell;
+    expect(kept.display).toBe("degC");
+    expect(displayMagnitudeOf(kept)).toBeCloseTo(20, 9);
+    expect((run("a + FACT(3)", km) as UnitCell).display).toBe("km");
+    expect(displayMagnitudeOf(run("a + FACT(3)", km) as UnitCell)).toBeCloseTo(11, 9);
+    expect((run("FACT(a)", km) as { code?: string }).code).toBe("#UNIT!");
+    expect(run("FACT(3) + 1", km)).toBe(7);
+  });
+  it("°C through the declared tables: spreads, picks and criteria", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const run = (expr: string, a: unknown) => new ExpressionNode({ expr }).data({ a: [a as never] }).result;
+    const code = (v: unknown) => (v as { code?: string }).code;
+    const list = [applyFcUnit(20, "degC"), applyFcUnit(30, "degC")];
+    const sd = run("STDEV(a)", list) as UnitCell;
+    expect(sd.display).toBeUndefined();
+    expect(magnitudeOf(sd)).toBeCloseTo(Math.SQRT2 * 5, 9); // 7.07 K
+    const top = run("LARGE(a, 1)", list) as UnitCell;
+    expect(top.display).toBe("degC");
+    expect(displayMagnitudeOf(top)).toBeCloseTo(30, 9);
+    expect(displayMagnitudeOf(run('AVERAGEIF(a, ">0")', list) as UnitCell)).toBeCloseTo(25, 9);
+    expect(code(run('SUMIF(a, ">0")', list))).toBe("#UNIT!");
+    const fl = [applyFcUnit(50, "degF"), applyFcUnit(68, "degF")];
+    expect(magnitudeOf(run("VAR(a)", fl) as UnitCell)).toBeCloseTo(50, 9); // 162 °F² is 50 K²
+    const kmList = [applyFcUnit(1, "km"), applyFcUnit(3, "km")];
+    expect(displayMagnitudeOf(run("MEDIAN(SORT(a))", kmList) as UnitCell)).toBeCloseTo(2, 9);
+  });
+  it("readings in different offset units still classify: °C + °F is #UNIT!", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const run = (expr: string) => new ExpressionNode({ expr })
+      .data({ a: [applyFcUnit(20, "degC") as never], b: [applyFcUnit(68, "degF") as never] }).result;
+    expect((run("a + b") as { code?: string }).code).toBe("#UNIT!");
+    expect(magnitudeOf(run("b - a") as UnitCell)).toBeCloseTo(0, 9); // 68 °F is 20 °C
+    expect(magnitudeOf(run("(a + b) / 2") as UnitCell)).toBeCloseTo(293.15, 9);
+  });
   it("inputs in different units still compute in base SI", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const r = new ExpressionNode({ expr: "a + b" }).data({ a: [applyFcUnit(1, "km") as never], b: [applyFcUnit(500, "m") as never] }).result;

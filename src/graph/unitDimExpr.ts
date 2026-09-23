@@ -4,8 +4,9 @@ import type { Ast } from "./excelFormula";
 import {
   type Dim, DIMENSIONLESS, dimMul, dimDiv, dimPow, dimEqual, isDimensionless,
 } from "./dimension";
-import { unitError } from "./unitValue";
+import { unitError, READINGS_ADD } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
+import { resolveExcelFunction } from "./excelFunctions";
 
 export type DimResult = Dim | SolError | null;
 
@@ -20,15 +21,47 @@ const DIMENSIONLESS_FNS = new Set([
 ]);
 
 const RESULT_DIMLESS_FNS = new Set([
-  "COUNT", "COUNTA", "ISNUMBER", "ISBLANK", "ISERROR", "SIGN",
-  "LEN", "EXACT",
+  "COUNT", "COUNTA", "COUNTBLANK", "COUNTIF", "COUNTIFS", "ISNUMBER", "ISBLANK", "ISERROR",
+  "ISERR", "ISNA", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISEVEN", "ISODD", "SIGN",
+  "LEN", "EXACT", "TEXT", "FIXED", "DOLLAR", "CONCAT", "CONCATENATE", "TEXTJOIN",
+  "AND", "OR", "NOT", "XOR", "ROWS", "COLUMNS", "MATCH", "XMATCH", "RANK", "RANK.EQ",
+  "RANK.AVG", "TYPE", "SKEW", "SKEW.P", "KURT", "CORREL", "PEARSON",
 ]);
+
+/** Spreads keep the dimension; over °C they are a difference. */
+const SPREAD_FNS = new Set(["STDEV", "STDEV.S", "STDEV.P", "STDEVP", "STDEVA", "STDEVPA", "AVEDEV"]);
 
 const PRESERVE_FNS = new Set([
   "ABS", "MIN", "MAX", "MEDIAN", "SUM", "AVERAGE", "AVG",
   "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR",
-  "INT", "TRUNC", "MOD",
+  "INT", "TRUNC", "MOD", "GEOMEAN", "HARMEAN", ...SPREAD_FNS,
 ]);
+
+/** Square the shared dimension. VAR and DEVSQ are squared spreads, a difference² over °C. */
+const SQUARE_FNS = new Set(["VAR", "VAR.S", "VAR.P", "VARP", "DEVSQ", "SUMSQ"]);
+const SQUARED_SPREAD_FNS = new Set(["VAR", "VAR.S", "VAR.P", "VARP", "DEVSQ"]);
+
+/** Answer one of the first argument's values; every other argument is a plain number. */
+const PICK_SCALAR_FNS = new Set([
+  "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE",
+  "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL", "INDEX",
+]);
+const PICK_LIST_FNS = new Set(["SORT", "UNIQUE", "TAKE", "DROP", "FILTER", "TRANSPOSE"]);
+
+/** Criteria aggregates: the dimension of the value argument; criteria ranges are compared, not carried. */
+const CRITERIA_VALUE_ARG: Record<string, (argc: number) => number> = {
+  SUMIF: (n) => (n > 2 ? 2 : 0), AVERAGEIF: (n) => (n > 2 ? 2 : 0),
+  SUMIFS: () => 0, AVERAGEIFS: () => 0, MAXIFS: () => 0, MINIFS: () => 0,
+};
+const CRITERIA_SUMS = new Set(["SUMIF", "SUMIFS"]);
+
+/** The answer is one of these arguments, as IF's is one of its branches. */
+function branchArgs(fn: string, argc: number): number[] | null {
+  if (fn === "IF") return argc > 2 ? [1, 2] : [1];
+  if (fn === "IFERROR" || fn === "IFNA") return [0, 1];
+  if (fn === "CHOOSE") return Array.from({ length: Math.max(0, argc - 1) }, (_, i) => i + 1);
+  return null;
+}
 
 const ANGLE_DIM: Dim = { angle: 1 };
 function isAngleOrScalar(d: Dim): boolean {
@@ -79,7 +112,11 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
   }
 
   if (PRESERVE_FNS.has(fn)) return requireSame(argDims, fn);
-  if (fn === "PRODUCT") return multiplyAll(argDims);
+  if (SQUARE_FNS.has(fn)) {
+    const d = requireSame(argDims, fn);
+    return isDim(d) ? dimPow(d, 2) : d;
+  }
+  if (fn === "PRODUCT" || fn === "SUMPRODUCT") return multiplyAll(argDims);
 
   if (fn === "SQRT") {
     const a = argDims[0] ?? DIMENSIONLESS;
@@ -93,18 +130,43 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
     if (isSolError(base)) return base;
     return isDimensionless(base) ? DIMENSIONLESS : null;
   }
-  if (fn === "IF") {
-    const a = argDims[1] ?? DIMENSIONLESS;
-    const b = argDims[2];
-    if (a === null) return null;
-    if (isSolError(a)) return a;
-    if (b === undefined) return a;
-    if (b === null) return null;
-    if (isSolError(b)) return b;
-    return dimEqual(a, b) ? a : null;
+  const branches = branchArgs(fn, argDims.length);
+  if (branches) {
+    let acc: Dim | null = null;
+    for (const i of branches) {
+      const a = argDims[i] ?? DIMENSIONLESS;
+      if (a === null) return null;
+      if (isSolError(a)) return a;
+      if (acc === null) acc = a;
+      else if (!dimEqual(acc, a)) return null;
+    }
+    return acc ?? DIMENSIONLESS;
   }
 
-  return null;
+  if (PICK_SCALAR_FNS.has(fn) || PICK_LIST_FNS.has(fn)) {
+    for (const a of argDims) if (isSolError(a)) return a;
+    for (const a of argDims.slice(1)) {
+      if (isDim(a) && !isDimensionless(a)) return unitError(`${fn} needs a plain number beside its values.`);
+    }
+    return argDims[0] ?? DIMENSIONLESS;
+  }
+
+  const valueArg = CRITERIA_VALUE_ARG[fn];
+  if (valueArg) {
+    for (const a of argDims) if (isSolError(a)) return a;
+    return argDims[valueArg(argDims.length)] ?? DIMENSIONLESS;
+  }
+
+  // A bound LAMBDA's body is not visible, as for a computed application.
+  if (fn === "LAMBDA" || !resolveExcelFunction(fn)) return null;
+  // Any other function reads plain numbers: a unit going in would be dropped, so it is loud.
+  let indeterminate = false;
+  for (const a of argDims) {
+    if (a === null) { indeterminate = true; continue; }
+    if (isSolError(a)) return a;
+    if (!isDimensionless(a)) return unitError(`${fn} doesn't carry units.`);
+  }
+  return indeterminate ? null : DIMENSIONLESS;
 }
 
 function constNum(node: Ast): number | null {
@@ -234,6 +296,7 @@ export function formulaResultDim(node: Ast, env: DimEnv): Dim | null {
 type Aff = { w: number; list: boolean; konst: number | null };
 const AFFINE_ERR = "Convert the temperature to kelvin first: an offset unit can't take ×, ÷ or ^.";
 const affErr = (): SolError => unitError(AFFINE_ERR);
+const sumErr = (): SolError => unitError(READINGS_ADD);
 const ZERO: Aff = { w: 0, list: false, konst: null };
 
 /** The result is the reading one argument already is (MIN of readings is a reading). */
@@ -294,18 +357,29 @@ function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<stri
         if (ws.some((w) => w !== ws[0])) return affErr();
         return { w: ws[0] ?? 0, list: false, konst: null };
       }
+      if (SPREAD_FNS.has(fn) || SQUARED_SPREAD_FNS.has(fn)) {
+        const ws = args.filter((a) => a.konst === null).map((a) => a.w);
+        return ws.some((w) => w !== ws[0]) ? affErr() : ZERO;
+      }
       if (fn === "SUM") {
-        if (args.some((a) => a.list && a.w !== 0)) return affErr();
+        if (args.some((a) => a.list && a.w !== 0)) return sumErr();
         return { w: args.reduce((s, a) => s + a.w, 0), list: false, konst: null };
       }
-      if (AFF_FIRST.has(fn)) {
+      if (AFF_FIRST.has(fn) || PICK_SCALAR_FNS.has(fn) || PICK_LIST_FNS.has(fn)) {
         if (args.slice(1).some((a) => a.w !== 0)) return affErr();
-        return { w: args[0]?.w ?? 0, list: args[0]?.list ?? false, konst: null };
+        return { w: args[0]?.w ?? 0, list: !PICK_SCALAR_FNS.has(fn) && (args[0]?.list ?? false), konst: null };
       }
-      if (fn === "IF") {
-        const a = args[1] ?? ZERO, b = args[2];
-        if (b !== undefined && a.w !== b.w) return affErr();
-        return { w: a.w, list: a.list || (b?.list ?? false), konst: null };
+      const valueArg = CRITERIA_VALUE_ARG[fn];
+      if (valueArg) {
+        const v = args[valueArg(args.length)] ?? ZERO;
+        if (CRITERIA_SUMS.has(fn)) return v.w !== 0 ? sumErr() : ZERO;
+        return { w: v.w, list: false, konst: null };
+      }
+      const branches = branchArgs(fn, args.length);
+      if (branches) {
+        const bs = branches.map((i) => args[i] ?? ZERO);
+        if (bs.some((b) => b.w !== bs[0].w)) return affErr();
+        return { w: bs[0]?.w ?? 0, list: bs.some((b) => b.list), konst: null };
       }
       return args.some((a) => a.w !== 0) ? affErr() : ZERO;
     }
@@ -329,5 +403,5 @@ export function affineWeight(node: Ast, points: ReadonlySet<string>, lists: Read
   if (isSolError(r)) return r;
   if (Math.abs(r.w - 1) < 1e-12) return 1;
   if (Math.abs(r.w) < 1e-12) return 0;
-  return affErr();
+  return r.w > 1 ? sumErr() : affErr();
 }

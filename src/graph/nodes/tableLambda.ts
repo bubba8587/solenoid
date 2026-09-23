@@ -139,7 +139,7 @@ function retagFold(
 ): Cell | UnitCell {
   if (typeof out !== "number" || dr === null || isSolError(dr) || isDimensionless(dr)) return out;
   if (u && point === 1) return fromUnit(out, u, elem.display) as UnitCell;
-  if (u && point === 0) return tagDim(out * u.scale, dr);
+  if (u && point === 0) return tagDim(out * u.scale ** (dimPowerOf(dr, elem.dim) ?? 1), dr);
   const display = dimEqual(dr, elem.dim) ? elem.display : undefined;
   const k = u ? dimPowerOf(dr, elem.dim) : null;
   if (u && k === null) return unitError("The fold's result unit can't be read back from the list's unit.");

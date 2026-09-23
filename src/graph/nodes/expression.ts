@@ -7,7 +7,7 @@ import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, t
 import { fxErrorToSol } from "../excelFunctions";
 import { isSolError, solError } from "../errorValue";
 import { isCx } from "../cxValue";
-import { isUnitCell, tagDim, fromUnit, type UnitCell } from "../unitValue";
+import { isUnitCell, isAffineDisplay, tagDim, fromUnit, type UnitCell } from "../unitValue";
 import { fcUnitToUnit, displayMagnitudeOf } from "../unitBridge";
 import { dimEval, affineWeight, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { type Dim, type Unit, DIMENSIONLESS, isDimensionless, dimEqual, dimPowerOf } from "../dimension";
@@ -55,6 +55,11 @@ function sharedDisplay(values: unknown[]): { id: string; unit: Unit } | null {
     if (isUnitCell(c) && !isDimensionless(c.dim) && !dimEqual(c.dim, unit.dim)) return null;
   }
   return { id, unit };
+}
+
+function allReadings(values: unknown[]): boolean {
+  const cells = values.flat(2).filter((c): c is UnitCell => isUnitCell(c) && !isDimensionless(c.dim));
+  return cells.length > 0 && cells.every((c) => isAffineDisplay(c.display));
 }
 
 function toShown(v: unknown): unknown {
@@ -211,18 +216,19 @@ export class ExpressionNode extends ClassicPreset.Node {
         // An affine one (°C) is a point scale: `affineWeight` says whether the answer is
         // a reading, a difference in the base unit, or #UNIT!.
         const sd = sharedDisplay(this.varNames.map((v) => rawEnv[v]));
+        const united = this.varNames.filter((v) => !isDimensionless(envDim(rawEnv[v])));
+        // Readings in different offset units (°C and °F) run in base SI, but still classify.
+        let point: 0 | 1 | null = null;
+        if (sd ? sd.unit.offset : allReadings(united.map((v) => rawEnv[v]))) {
+          const w = affineWeight(this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))));
+          if (isSolError(w)) {
+            this.cachedResult = w; this.cachedError = null;
+            return { result: w };
+          }
+          point = w;
+        }
         if (sd) {
           const k = dr === null || isDimensionless(dr) ? null : dimPowerOf(dr, sd.unit.dim);
-          let point: 0 | 1 | null = null;
-          if (sd.unit.offset) {
-            const united = this.varNames.filter((v) => !isDimensionless(envDim(rawEnv[v])));
-            const w = affineWeight(this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))));
-            if (isSolError(w)) {
-              this.cachedResult = w; this.cachedError = null;
-              return { result: w };
-            }
-            point = w;
-          }
           if (dr === null || isDimensionless(dr) || k !== null) shown = { ...sd, k, point };
         }
       }
@@ -241,7 +247,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         const tag = (c: number): number | UnitCell => {
           if (!sh || sh.k === null) return tagDim(c, d);
           if (sh.point === 1) return fromUnit(c, sh.unit, sh.id) as UnitCell;
-          if (sh.point === 0) return tagDim(c * sh.unit.scale, d);
+          if (sh.point === 0) return tagDim(c * sh.unit.scale ** sh.k, d);
           return tagDim(c * sh.unit.scale ** sh.k, d, sh.k === 1 ? sh.id : undefined);
         };
         result = Array.isArray(result)
