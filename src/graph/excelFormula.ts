@@ -877,10 +877,11 @@ export function compilePositional(
 ): ((...args: unknown[]) => unknown) | null {
   const evaluate = compileEvaluator(expr);
   if (!evaluate) return null;
+  const bound = new Set(paramNames);
   return (...args: unknown[]) => {
-    const env: Record<string, unknown> = {};
+    const env: Record<string | symbol, unknown> = { [LAMBDA_BOUND]: bound };
     for (let i = 0; i < paramNames.length; i++) env[paramNames[i]] = args[i];
-    return evaluate(env);
+    return evaluate(env as Record<string, unknown>);
   };
 }
 

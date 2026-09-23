@@ -274,7 +274,7 @@ Formula.js reports failures as `Error` objects. Inside a formula they stay `Erro
 
 `compileEvaluator(expr)` parses once and returns `(env) => value`, or null on a syntax error. The returned evaluator answers `#VALUE!` "LAMBDA needs arguments…" when the result is an unapplied `LambdaValue`, and otherwise returns `normalizeFxResult(result)`. Array results are returned as they are; each host cleans cells itself.
 
-`compilePositional(expr, paramNames)` wraps `compileEvaluator` with positional binding: argument `i` binds to `paramNames[i]` in a fresh environment. The LAMBDA node and the table-lambda nodes use it.
+`compilePositional(expr, paramNames)` wraps `compileEvaluator` with positional binding: argument `i` binds to `paramNames[i]` in a fresh environment, and the names are bound the way a LAMBDA's parameters are, so a LAMBDA node parameter named `e` shadows the constant exactly as `LAMBDA(e, e+1)` does. The LAMBDA node and the table-lambda nodes use it.
 
 ## Complex numbers
 

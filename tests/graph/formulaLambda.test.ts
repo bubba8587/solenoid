@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
+import { compileEvaluator, compilePositional, extractVariables } from "../../src/graph/excelFormula";
 import { isLambdaValue } from "../../src/graph/lambdaValue";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "../../src/graph/nodes/tableLambda";
 import { GroupByNode, RunningNode } from "../../src/graph/nodes/list";
@@ -30,6 +30,11 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
   it("a parameter shadows a constant of the same name", () => {
     expect(ev("LAMBDA(e, e + 1)(5)")).toBe(6);
     expect(ev("e")).toBeCloseTo(Math.E);
+  });
+
+  it("a positional parameter (the LAMBDA node's) shadows a constant the same way", () => {
+    expect(compilePositional("e + 1", ["e"])!(5)).toBe(6);
+    expect(compilePositional("pi * r", ["r"])!(1)).toBeCloseTo(Math.PI);
   });
 });
 
