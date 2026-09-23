@@ -137,9 +137,10 @@ field       = init-field | num-literal | str-literal | connection
 init-field  = key "=" json
 num-literal = "lit:" key "=" json-number
 str-literal = "str:" key "=" json-string
-connection  = input-key "<-" source-name "." output
+connection  = key "<-" source-name "." output
 output      = bare-output | json-string
-key         = [A-Za-z_][A-Za-z0-9_:]*
+key         = bare-key | json-string
+bare-key    = [A-Za-z_][A-Za-z0-9_:]*
 bare-output = one or more characters, none of which is a space, `"` or `\`
 ```
 
@@ -147,9 +148,9 @@ Reading rules (`parseNodeLine`):
 
 - The name is everything before the first `": "` (colon then space); a line without one is malformed. The type is the text up to the next space.
 - The rest is split into tokens at spaces that are outside a JSON string. Inside a string, a backslash escapes the next character. Runs of spaces are allowed; tabs are not separators.
-- Each token must start with a key followed by `=` or `<-`, or the line is malformed. A key may contain `:` only as part of the `lit:` and `str:` prefixes in practice; the key regex allows it anywhere.
+- Each token must start with a key followed by `=` or `<-`, or the line is malformed. A bare key may contain `:` only as part of the `lit:` and `str:` prefixes in practice; the regex allows it anywhere. A quoted key is taken as is: `"lit:x"=1` is an `init` field, never a literal, and a quoted key on a connection takes no prefix.
 - `key=value` parses `value` with `JSON.parse`. A `lit:` key goes to `literals`, a `str:` key to `stringLiterals`, anything else to `init`. Values must be valid JSON: `label=Months` is an error, `label="Months"` is correct.
-- `input<-Source.output` splits at the first `.` after `<-`. The source name therefore cannot contain a dot (names never do), while the output key can. An output that starts with `"` is decoded as a JSON string; otherwise it is taken verbatim. Input keys are never quoted, so an input key must match the key pattern.
+- `input<-Source.output` splits at the first `.` after `<-`. The source name therefore cannot contain a dot (names never do), while the output key can. An output that starts with `"` is decoded as a JSON string; otherwise it is taken verbatim. An input key off the bare pattern is JSON-quoted, like any other key.
 - Empty lines in the header are skipped. The header ends at the first line that is exactly `---`; a document without one is refused.
 - Two lines with the same name are refused.
 
@@ -160,6 +161,7 @@ Writing rules (`writeTextForm`), which make two writes of an unchanged graph byt
 - **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `bindings`), then every other key sorted. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key.
 - **Values** are `JSON.stringify` output: compact, no spaces outside strings, numbers in shortest round-trip form, newlines in strings as `\n`.
 - **References become names.** In `init`, `hostNodeId` (a Format Controller's host), every entry of `members` (a Group), and every entry of each `steps[].nodeIds` (a Presentation) is rewritten from id to name. A reference to an id not in the save is written unchanged.
+- **Keys.** An `init`, `lit:`, `str:` or input key is written bare when it matches `[A-Za-z_][A-Za-z0-9_]*` and JSON-quoted otherwise (`lit:"rate.annual"=2`, `"λ1"<-Rate.value`), since socket keys can be user text: a formula variable may hold `.` or `λ`, a Knap variable `-` ([[B12]] losslessSaves). `tests/graph/textFormCatalog.test.ts` carries every catalog node, with a cable on every socket, through the text form.
 - **Output keys** are written bare when they contain no space, `"` or `\`, and JSON-quoted otherwise (a Note's frontmatter keys are user text).
 - An empty graph has no node lines, so the document starts with `---`.
 
