@@ -485,7 +485,7 @@ export class ImportObsidianNode extends NoteNode {
     const view = getOwningView(this.id);
     await view?.rerenderNode(this.id);
     const editor = getOwningEditor(this.id);
-    if (editor && view && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
+    if (editor && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
     scheduleConnectionRecalc();
   }
 }

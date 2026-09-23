@@ -12,13 +12,13 @@ import { compositeEditorStore, compositePassStore } from "../compositeEditorStor
 import { getEditor, getView, processGraph } from "../process";
 import { swapSelectionSlots, swapArrangeSlots, swapDeleteSlot, swapRepositionDockedSlot } from "../canvasCommands";
 import { repositionDockedFor } from "../fcDocking";
-import { setActiveGraph } from "../activeGraph";
+import { setActiveGraph, type EditScope } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { deleteSelection as deleteSelectionIn } from "../canvasActions";
-import { reconcileFcTypes } from "../fcReconcile";
+import { settleCableChange } from "../cableSettle";
 import { forgetNode } from "../nodeStoreRegistry";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
@@ -43,6 +43,9 @@ type DrillStack = {
   rebuilding: boolean;
   isRebuilding: () => boolean;
   history: { stack: string[]; index: number; timer: ReturnType<typeof setTimeout> | null };
+  afterCableChange: () => void;
+  /** Bulk edits gate on `rebuilding`; the topology pipe's sync then recomputes. */
+  scope: EditScope;
 };
 
 type DrillHolder = { __flowDrill?: DrillStack };
@@ -66,6 +69,13 @@ function getDrillStack(comp: CompositeNode): DrillStack {
     rebuilding: true,
     isRebuilding: () => s.rebuilding,
     history: { stack: [], index: -1, timer: null },
+    // The topology pipe below recomputes from the breadcrumb root once per burst.
+    afterCableChange: () => {},
+    scope: {
+      begin: () => { s.rebuilding = true; },
+      end: () => { s.rebuilding = false; },
+      settle: async () => settleCableChange(comp.internalEditor, view as unknown as View),
+    },
   };
   let queued = false;
   const trySync = () => {
@@ -186,6 +196,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       setActiveGraph({
         editor: comp.internalEditor,
         view: s.view as unknown as View,
+        scope: s.scope,
       });
       restoreSelection = swapSelectionSlots({
         unselectAllNodes: () => {
@@ -297,16 +308,10 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     scheduleAutosave();
   }
 
-  const deleteSelection = useCallback(() => deleteSelectionIn(comp.internalEditor, s.view as unknown as View, {
-    mainLayers: false,
-    keeps: isBoundaryMarker,
-    begin: () => { s.rebuilding = true; },
-    end: () => { s.rebuilding = false; },
-    settle: async () => {
-      reconcileFcTypes(comp.internalEditor, s.view as unknown as View);
-      syncGroupCollapse(comp.internalEditor, s.view as unknown as View);
-    },
-  }), [comp, s]);
+  const deleteSelection = useCallback(
+    () => deleteSelectionIn(comp.internalEditor, s.view as unknown as View, { ...s.scope, mainLayers: false, keeps: isBoundaryMarker }),
+    [comp, s],
+  );
 
   const historyStep = useCallback(
     async (redo: boolean) => {

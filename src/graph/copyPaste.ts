@@ -2,10 +2,9 @@
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
 import { dockedNodeStore } from "./dockedNodeStore";
-import { beginGraphRebuild, endGraphRebuild, bulkSettle, processGraph } from "./process";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { getCtorRegistry } from "./ctorProvider";
-import { getActiveEditor, getActiveView, isSubgraphActive } from "./activeGraph";
+import { getActiveEditor, getActiveView, editScopeFor } from "./activeGraph";
 import { collapseStore } from "./collapseStore";
 import { socketFlipStore } from "./socketFlipStore";
 import { nodeNameStore } from "./nodeNameStore";
@@ -243,7 +242,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   const editor = getActiveEditor();
   const view = getActiveView();
   if (!editor || !view) return;
-  const subgraph = isSubgraphActive();
+  const scope = editScopeFor(editor);
 
   const originX = canvasX + PASTE_OFFSET;
   const originY = canvasY + PASTE_OFFSET;
@@ -286,7 +285,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   }
 
   unselectAllNodes();
-  beginGraphRebuild();
+  scope.begin();
   try {
     await Promise.all(toAdd.map(async ({ clone, x, y }) => {
       await editor.addNode(clone);
@@ -321,12 +320,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       if (fc.hostNodeId && typeof fc.dockSelf === "function") fc.dockSelf(editor);
     }
   } finally {
-    endGraphRebuild();
+    scope.end();
   }
-
-  if (subgraph) {
-    await processGraph();
-    return;
-  }
-  await bulkSettle(new Set(toAdd.map((b) => b.clone.id)));
+  await scope.settle(new Set(toAdd.map((b) => b.clone.id)));
 }

@@ -17,6 +17,7 @@ import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 import { computeDockedCanvasPos, insertFcInline, removeFcInline } from "./fcDocking";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
+import { dockedNodeStore } from "./dockedNodeStore";
 import {
   standoffStore, settleStandoffs, anchorPoint, anchorFromVector,
   OPPOSITE_ANCHOR, ANCHOR_DIR, type Box as StandoffBox,
@@ -25,7 +26,8 @@ import { drawnCableStore, commitDrawn } from "./drawnCables";
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
-import { processGraph, beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
+import { processGraph } from "./process";
+import { MAIN_EDIT_SCOPE, type EditScope } from "./activeGraph";
 import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
@@ -186,26 +188,24 @@ export function linkStandoffBetween(
 }
 
 /** What differs between the surfaces that share the delete verb ([[C43]] oneFlowSurface). */
-export type DeleteScope = {
+export type DeleteScope = EditScope & {
   /** Drawn cables and standoffs exist on the main canvas alone. */
   mainLayers: boolean;
   /** Nodes Delete never removes (a drill-in's boundary markers, which are its ports). */
   keeps?: (n: SolenoidNode) => boolean;
-  begin: () => void;
-  end: () => void;
-  /** The one settle after the gate, standing in for the suppressed per-event settles. */
-  settle: () => Promise<void>;
 };
 
-export const MAIN_DELETE_SCOPE: DeleteScope = {
-  mainLayers: true,
-  begin: beginGraphRebuild,
-  end: endGraphRebuild,
-  settle: () => bulkSettle(),
-};
+export const MAIN_DELETE_SCOPE: DeleteScope = { ...MAIN_EDIT_SCOPE, mainLayers: true };
 
 const dockedFc = (n: SolenoidNode): n is FormatControllerNode & SolenoidNode =>
   n instanceof FormatControllerNode && !!n.hostNodeId;
+
+/** The selection plus every FC docked to a doomed node, at any depth: a docked FC is part of its host's entity. */
+export function deleteSet(editor: NodeEditor<Schemes>): Set<string> {
+  const ids = new Set(editor.getNodes().filter((n) => n.selected).map((n) => n.id));
+  for (const id of ids) for (const d of dockedNodeStore.getDockedTo(id)) if (editor.getNode(d.id)) ids.add(d.id);
+  return ids;
+}
 
 export async function deleteSelection(
   editor: NodeEditor<Schemes>,
@@ -228,10 +228,11 @@ export async function deleteSelection(
     }
   }
 
+  const doomedIds = deleteSet(editor);
   const selectedCableIds = cableSelectionStore.ids();
   // A docked FC goes before its host, so its unsplice sees the host's wiring intact.
   const selected = editor.getNodes()
-    .filter((n) => n.selected && !scope.keeps?.(n))
+    .filter((n) => doomedIds.has(n.id) && !scope.keeps?.(n))
     .sort((a, b) => Number(dockedFc(b)) - Number(dockedFc(a)));
   const deletedIds: string[] = [];
   let deletedGroup = false;
@@ -342,12 +343,19 @@ export async function deleteCables(
   await processGraph();
 }
 
+/** An FC never docks onto another FC, from the socket menu or a drag. */
+export function canAttachFc(editor: NodeEditor<Schemes>, nodeId: string): boolean {
+  const host = editor.getNode(nodeId);
+  return !!host && !(host instanceof FormatControllerNode);
+}
+
 export async function attachFormatController(
   editor: NodeEditor<Schemes>,
   view: View,
   container: HTMLElement,
   target: SocketContextTarget,
 ): Promise<void> {
+  if (!canAttachFc(editor, target.nodeId)) return;
   const fc = new FormatControllerNode({
     hostNodeId: target.nodeId,
     socketKey:  target.socketKey,
