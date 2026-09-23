@@ -90,6 +90,6 @@ specific item.
   C65 (the standoff depth isn't set anywhere; labeled), C95, C1, C45 (ordering is case-sensitive), C48,
   C51, C61, C72, D10, D20, D22, B16.
 - **Open:** node candidates the spec writers flagged in the drawn-cable rulings are unmoved.
-  `literal-input-editors.md`'s were settled as spec content (2026-09-24): the text-is-truth rule is
+  `../tree/specs/documents/literal-input-editors.md`'s were settled as spec content (2026-09-24): the text-is-truth rule is
   [[C58]]'s and List Input's is [[C28]]'s, both cited; the one-row column header is a layout ruling. Still without a spec: the node families (`node-coverage.md`
   stands in).
