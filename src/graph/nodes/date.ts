@@ -5,7 +5,7 @@ import { type SolError } from "../errorValue";
 import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
 import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
-import { serialToJsDate, jsDateToSerial } from "./dateSerial";
+import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./dateSerial";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
@@ -67,10 +67,7 @@ export class TodayNowNode extends ClassicPreset.Node {
   }
 
   data() {
-    const now = new Date();
-    const serial = this.op === "today"
-      ? jsDateToSerial(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())))
-      : jsDateToSerial(now);
+    const serial = wallClockSerial(new Date(), this.op === "today");
     this.cachedResult = serial;
     return { result: serial };
   }

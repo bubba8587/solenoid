@@ -570,7 +570,7 @@ describe("NOW/TODAY return serials in formulas (audit finding 9)", () => {
     const t = ev("TODAY()");
     expect(typeof t).toBe("number");
     expect(Number.isInteger(t)).toBe(true);
-    expect(ev("YEAR(TODAY())")).toBe(new Date().getUTCFullYear());
+    expect(ev("YEAR(TODAY())")).toBe(new Date().getFullYear());
   });
 
   it("NOW() is a number with a time fraction and NOW()+1 is numeric", () => {

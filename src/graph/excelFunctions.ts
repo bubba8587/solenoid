@@ -1,7 +1,7 @@
 // [[C14]], [[D4]], [[E12]], [[E14]], [[C22]], [[D20]] declareContract (EXCEL_IMPL_META), [[D24]] prepByShape, [[D25]] blockedFailFast (LEGACY_ALIASES), [[E10]] pickVsAggregateErrors
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
-import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
+import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate } from "./excelCriteria";
 import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
@@ -1206,11 +1206,8 @@ registerInternal("DATEDIF",  (start, end, unit) => {
   if (typeof flat === "function") registerInternal("NETWORKDAYS", swapNeg(flat));
   if (typeof intl === "function") registerInternal("NETWORKDAYS.INTL", swapNeg(intl));
 }
-registerInternal("TODAY", () => {
-  const n = new Date();
-  return jsDateToSerial(new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())));
-});
-registerInternal("NOW", () => jsDateToSerial(new Date()));
+registerInternal("TODAY", () => wallClockSerial(new Date(), true));
+registerInternal("NOW", () => wallClockSerial(new Date()));
 registerInternal("TEXT", (value, fmt) => {
   const fxText = (FX as unknown as { TEXT: (...a: unknown[]) => unknown }).TEXT;
   const f = toStr(fmt);
