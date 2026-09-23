@@ -225,3 +225,9 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   top-level `SavedGraph` maps keyed by id, and load keeps only main-editor ids, so they likely drop on reload
   ([[B12]]). The closed-drill-in pipe gate (`DrillStack.open`) has no test: open, close, then edit and Unpack
   around the composite in the app.
+- [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
+  electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
+  result dimensions (escape velocity with r in km, sensible heat, dBm, pH, Newton cooling `EXP(-kk*t)`). Forecast
+  (ETS) needs a confidence socket (D73); FORECAST.ETS ignores `data_completion` and `aggregation` (parity note);
+  DECOMPOSE, FUZZYMATCH, RANDDIST, SHARPE/SORTINO and REGEX case options unchecked against their cards; Antoine
+  has no per-substance range check.

@@ -32,7 +32,11 @@ specific item.
   reload, wrap and undo; one delete path for main canvas and drill-in; paste works from a snapshot.
 - **Tests:** a `vi.mock` file outside ISOLATED fails `sourceInvariants.test.ts`; the flaky shared-pool failures
   are gone.
-- **Open:** 29 inbox items await the author. A DTE tool patch (processed outbox items leave a review card in the
+- **Late merges:** the webpage export escapes values after rendering and embeds images; open drafts flush before a
+  switch, save or close (`draftFlush.ts`); composite inner cards keep size, collapse and flip (`savedNodeBody.ts`);
+  Thermo presets declare their input units (`readInDeclaredUnit`); Triangle Solver solves in one unit; FIXED rounds
+  like ROUND.
+- **Open:** 30 inbox items await the author. A DTE tool patch (processed outbox items leave a review card in the
   inbox; a node dragged into `outbox/` stays a node) is stashed, not applied, pending the author's go.
 
 ### SESSION DIGEST (2026-09-23: decisions, specs and code comments lined up; author away)
