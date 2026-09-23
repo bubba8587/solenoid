@@ -457,6 +457,15 @@ describe("reportPaletteStore (report/export-only, parallel to the canvas palette
     expect(resolveColor("gold")).toBe(canvasBefore); // canvas untouched
   });
 
+  it("drops an override that is not a #rrggbb hex, so a shared file cannot write markup into the exported page's stylesheet ([[C103]] untrustedContentSeams)", () => {
+    const evil = "red; } </style><script>alert(1)</script><style>";
+    reportPaletteStore.setReportPalette({ overrides: { sky: evil, gold: "#ff00ff" } });
+    expect(reportPaletteStore.resolve("sky")).not.toContain("<");
+    expect(reportPaletteStore.reportPalette()).toEqual({ overrides: { gold: "#ff00ff" } });
+    paletteStore.setDocPalette({ overrides: { sky: evil } });
+    expect(paletteStore.docPalette()).toBeUndefined();
+  });
+
   it("a report base pin resolves through that palette's slots", () => {
     reportPaletteStore.setReportPalette({ base: "Muted" });
     expect(reportPaletteStore.resolve("gold")).toBe(BUILTIN_PALETTES.Muted.gold);

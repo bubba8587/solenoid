@@ -12,39 +12,76 @@ import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
 import { APP_LOCALE } from "./locale";
 import { renderNoteMarkdown } from "./noteMarkdown";
-import { isFrameValue } from "./frame";
-import { frameToMarkdownTable } from "./obsidianMarkdown";
+import { isFrameValue, formatFrameCell, type FrameValue } from "./frame";
+import { isImageValue } from "./imageValue";
+import { substituteRefCodes, escapeHtml } from "./noteInlineRefs";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 
 
 const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
 
-export function escapeMd(s: string): string {
-  return s.replace(/([\\`*_[\]])/g, "\\$1");
+const IMAGE_SRC_RE = /^(https?:\/\/|data:image\/(png|jpeg|gif|webp|svg\+xml);base64,)/i;
+
+export function frameToHtmlTable(frame: FrameValue): string {
+  const cols = frame.columns;
+  if (cols.length === 0) return "";
+  const rows = cols.reduce((m, c) => Math.max(m, c.values.length), 0);
+  const cell = (c: FrameValue["columns"][number], i: number) => {
+    const f = formatFrameCell(c.type, (c.values[i] ?? null) as never);
+    return escapeHtml(f === null || f === undefined ? "" : String(f));
+  };
+  const head = `<tr>${cols.map((c) => `<th>${escapeHtml(c.name)}</th>`).join("")}</tr>`;
+  const body = Array.from({ length: rows }, (_, i) => `<tr>${cols.map((c) => `<td>${cell(c, i)}</td>`).join("")}</tr>`);
+  return `<table><thead>${head}</thead><tbody>${body.join("")}</tbody></table>`;
 }
 
-export function freezeInlineRefs(
-  nodeId: string,
-  body: string,
-  refKeys: string[],
-  refValue: (key: string) => unknown,
-): string {
-  return body.replace(REF_RE, (match, name: string, hl: string) => {
-    if (!refKeys.includes(name)) return match;
-    const value = refValue(name);
-    if (value === undefined || isDocumentValue(value)) return match;
-    if (isFrameValue(value)) return `\n\n${frameToMarkdownTable(value)}\n\n`;
-    const ann = resolveRefAnnotation(nodeId, name);
-    const text = escapeMd(refPreview(value, ann));
-    return hl === "!" && text !== "" ? `==${text}==` : text;
-  });
+/** The export's markup for one span's value; null leaves the span (an unwired fixed input). Values are escaped here, after the markdown render, so their text never reads as markdown or HTML. */
+export function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined): { html: string; block?: boolean } | null {
+  if (value === undefined) return null;
+  if (isFrameValue(value)) return { html: frameToHtmlTable(value), block: true };
+  if (isImageValue(value) && IMAGE_SRC_RE.test(value.src)) {
+    const h = Number.isFinite(value.height) && value.height > 0 ? ` height="${Math.round(value.height)}"` : "";
+    return { html: `<img class="report-export__image" src="${escapeHtml(value.src)}" alt="${escapeHtml(value.alt ?? value.title ?? "")}"${h} />` };
+  }
+  const text = escapeHtml(refPreview(value, ann));
+  return { html: highlight && text !== "" ? `<mark class="sol-md__hl">${text}</mark>` : text };
+}
+
+export function exportFileName(label: string | undefined): string {
+  return `${(label ?? "").trim().replace(/[^\w -]/g, "").trim() || "report"}.html`;
 }
 
 function renderMarkdown(md: string): string {
   return DOMPurify.sanitize(renderNoteMarkdown(md));
 }
 
-export function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+/** A document value splits the body and renders as its own block, its spans resolved from its own refs as on screen. */
+export function exportBodyHtml(
+  body: string,
+  refKeys: readonly string[],
+  refValue: (key: string) => unknown,
+  annotation: (key: string) => FormatAnnotation | undefined,
+  render: (md: string) => string = renderMarkdown,
+): string {
+  const renderSegment = (md: string) => substituteRefCodes(render(md), (name, hl) =>
+    refKeys.includes(name) ? frozenRefHtml(refValue(name), hl, annotation(name)) : null);
+  const parts: string[] = [];
+  const re = new RegExp(REF_RE);
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(body))) {
+    const name = m[1];
+    if (!refKeys.includes(name)) continue;
+    const value = refValue(name);
+    if (!isDocumentValue(value)) continue;
+    parts.push(renderSegment(body.slice(last, m.index)));
+    const embedded = substituteRefCodes(render(parseNoteFrontmatter(value.body).body), (n) =>
+      n in value.refs ? { html: escapeHtml(refPreview(value.refs[n], undefined)) } : null);
+    parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${escapeHtml(name)}</div>${embedded}</div>`);
+    last = m.index + m[0].length;
+  }
+  parts.push(renderSegment(body.slice(last)));
+  return parts.join("\n");
 }
 
 export function buildExportCss(branded: boolean, accent: string): string {
@@ -80,6 +117,7 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 .report-export__chart-label { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: #9aa0a6; margin-bottom: 8px; }
 .report-export__embed { margin: 14px 0; padding: 12px 16px; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 8px; }
 .report-export__embed-name { font-size: 11.5px; font-weight: 600; color: #9aa0a6; margin-bottom: 6px; }
+.report-export__image { max-width: 100%; vertical-align: middle; }
 .report-export__snapshot { max-width: 100%; border: 1px solid #2d2d2d; border-radius: 8px; }
 `;
 }
@@ -104,22 +142,12 @@ export function buildReportExportHtml(
   const allNodes = editor?.getNodes() ?? [];
   const names = nodeDisplayNames(allNodes);
 
-  const bodyFrozen = freezeInlineRefs(report.id, opts.body, [...report.refKeys(), "template", "records"], (k) => report.refValue(k));
-
-  const parts: string[] = [];
-  const re = new RegExp(REF_RE);
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(bodyFrozen))) {
-    const name = m[1];
-    const value = report.refValue(name);
-    if (!isDocumentValue(value)) continue;
-    parts.push(renderMarkdown(bodyFrozen.slice(last, m.index)));
-    parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${escapeHtml(name)}</div>${renderMarkdown(parseNoteFrontmatter(value.body).body)}</div>`);
-    last = m.index + m[0].length;
-  }
-  parts.push(renderMarkdown(bodyFrozen.slice(last)));
-  const bodyHtml = parts.join("\n");
+  const bodyHtml = exportBodyHtml(
+    opts.body,
+    [...report.refKeys(), "template", "records"],
+    (k) => report.refValue(k),
+    (k) => resolveRefAnnotation(report.id, k),
+  );
 
   const noteIds = new Set(allNodes.filter((n): n is NoteNode => n instanceof NoteNode).map((n) => n.id));
   const refIds = reportReferencedNodeIds(report, editor?.getConnections() ?? [], noteIds);
@@ -161,7 +189,7 @@ export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
   try {
     const canvasImage = await captureCanvasImage();
     const html = buildReportExportHtml(report, { canvasImage, body: await report.renderedBody() });
-    const name = `${(report.label?.trim() || "report").replace(/[^\w -]/g, "")}.html`;
+    const name = exportFileName(report.label);
     const chosen = await saveHtmlFileDialog(name, html);
     // The web download fires and returns null too, so the toast must not key off the path.
     if (chosen || !isDesktop()) pushNotice(`Exported ${name}`, "info", 2500);

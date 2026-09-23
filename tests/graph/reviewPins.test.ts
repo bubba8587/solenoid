@@ -341,7 +341,7 @@ describe("review pins: Cube Rollup over a cube child; Write JSON dates", () => {
 
 describe("review pins: the exported webpage", () => {
   it("escapes a user-typed title or name into text", async () => {
-    const { escapeHtml } = await import("../../src/graph/reportExport");
+    const { escapeHtml } = await import("../../src/graph/noteInlineRefs");
     expect(escapeHtml('<img src=x onerror="alert(1)">')).toBe("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
     expect(escapeHtml("Q3 & beyond")).toBe("Q3 &amp; beyond");
   });

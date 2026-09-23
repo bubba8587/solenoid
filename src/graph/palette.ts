@@ -753,7 +753,7 @@ export const paletteStore = {
     _docOverrides = {};
     if (p?.overrides) {
       for (const [k, v] of Object.entries(p.overrides)) {
-        if (isPaletteSlot(k) && typeof v === "string") _docOverrides[k] = v;
+        if (isPaletteSlot(k) && isHex(v)) _docOverrides[k] = v;
       }
     }
     recompute();
@@ -782,7 +782,7 @@ export const reportPaletteStore = {
     _reportOverrides = {};
     if (p?.overrides) {
       for (const [k, v] of Object.entries(p.overrides)) {
-        if (isPaletteSlot(k) && typeof v === "string") _reportOverrides[k] = v;
+        if (isPaletteSlot(k) && isHex(v)) _reportOverrides[k] = v;
       }
     }
     recomputeReport();
