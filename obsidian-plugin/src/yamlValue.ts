@@ -2,7 +2,7 @@
 import { parseDateToSerial, noteDateSerial, noteDateText } from "../../src/graph/nodes/dateSerial";
 import { parseCellText } from "../../src/graph/literalEditors";
 import { parseCx } from "../../src/graph/cxValue";
-import { type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
+import { guessNoteColumnType, type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
 
 export type Family = "number" | "string" | "date" | "logical" | "complex";
 export type Shape = "scalar" | "list" | "matrix" | "frame" | "cube";
@@ -175,22 +175,13 @@ export function readColumnTypes(raw: unknown): Record<string, ColumnTypes> {
   return out;
 }
 
-function guessColumnType(values: unknown[]): FrameColType {
-  const present = values.filter((v) => v !== null && v !== undefined && v !== "");
-  if (present.length === 0) return "string";
-  if (present.every((v) => typeof v === "boolean")) return "logical";
-  if (present.every((v) => typeof v === "number")) return "number";
-  if (present.every((v) => fitsFamily(v, "date"))) return "date";
-  return "string";
-}
-
 export function frameSourceFromYaml(value: unknown, picked: ColumnTypes = {}): FrameSourceColumn[] {
   const records = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
   return keys.map((name) => {
     const values = records.map((rec) => (isScalar(rec[name]) ? rec[name] : null));
-    return { name, type: picked[name] ?? guessColumnType(values), cells: values.map(rawCell) };
+    return { name, type: picked[name] ?? guessNoteColumnType(values, (v) => fitsFamily(v, "date")), cells: values.map(rawCell) };
   });
 }
 

@@ -108,18 +108,19 @@ The field types are a subset of the socket data types with identical names, so t
 | number (plain) | the number (non-finite becomes null) | `number` |
 | `true` / `false` | logical | `logical` |
 | plain `YYYY-MM-DD` | rounded date serial | `date` |
+| plain `YYYY-MM-DDTHH:mm`, with optional seconds and fraction and no zone (Obsidian's Date & time) | the date-time serial | `date` |
 | plain complex text with an imaginary part (`3+4i`, `-2i`) | the text | `complex` |
 | any quoted scalar | the text, always | `string` |
 | other text, null or empty | the text or null | `string` |
-| sequence of scalars | a list. All present items dates gives `datelist`; any complex (numbers allowed beside them) gives `complexlist`; otherwise the first non-null item decides (`logicallist`, `list`, `strlist`); empty or all null gives `list` | list types |
+| sequence of scalars | a list. All present items dates gives `datelist`; any complex (numbers allowed beside them) gives `complexlist`; all logical gives `logicallist`; all numbers or dates gives `list`; any other mix gives `strlist`, never typed by its first item; empty or all null gives `list` | list types |
 | sequence whose every item is a sequence of scalars | a rectangular matrix (short rows padded with null), typed like a list of all its cells, lifted to rank 2 | `table`, `strtable`, `datetable`, `logicaltable`, `complextable` |
 | sequence whose every item is a map of scalars, scalar lists or nested row lists | rows | `frame`, or `cube` when any row value is a list |
 | a bare `{{ … }}` or `{% … %}` (YAML reads it as a flow map whose key is a map; the field is flagged `knapUnquoted`) | `#SYNTAX!` "Knap vars in frontmatter require quoted "{{var}}" syntax" on a `string` socket | `string` |
 | any other map | null | `string` |
 
-A non-scalar item inside an otherwise scalar sequence is kept as its YAML text. In a row, a plain ISO date stays as the text written; the column's type decides what it becomes.
+A non-scalar item inside an otherwise scalar sequence is kept as its YAML text. In a row, a plain ISO date or date-time stays as the text written; the column's type decides what it becomes. The date shapes are `noteDateSerial` in `nodes/dateSerial.ts`, and dates are written back by `noteDateText` (the day, or the day and time when it has one); the plugin reads and writes with the same pair.
 
-A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else the first non-null cell's type (`logical`, `number`, `string`). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
+A **frame** field builds a Frame (`rowsToFrame`). Columns are the row keys in first-appearance order, a missing key is a null cell, a list cell keeps its first scalar and a nested table cell becomes null. A column's type is the plugin's pick when present, else `date` when every present cell in that column read as an ISO date (`dateColumns`), else `logical` or `number` when every present cell is one, else `string` (`guessNoteColumnType` in `frame.ts`, which the Obsidian plugin also guesses with). Every cell passes through `coerceFrameCell` with its source text kept as `raw`, so a cell the type cannot read shows NaN over its text ([[D72]] pluginSaveWritesSourceText). A **cube** field is built by `recordsToCube`, which keeps a list value as a list cell. The row shape, `{ name: value }`, is the Script node's, so what one emits the other reads.
 
 ### Type pins
 

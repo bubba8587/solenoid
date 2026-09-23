@@ -16,7 +16,7 @@ import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../kn
 import { solError, type SolError } from "../errorValue";
 import { getActiveView, getOwningEditor } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
-import { isFrameValue, recordsToCube, coerceFrameCell, type FrameValue, type FrameColumn, type FrameColType, type CubeValue } from "../frame";
+import { isFrameValue, recordsToCube, coerceFrameCell, guessNoteColumnType, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
 import type { ImageValue } from "../imageValue";
@@ -68,17 +68,6 @@ function reshapePin(
 }
 
 /** A plain ISO date is still text here; the reader's `dateColumns` names the date columns. */
-function frameColType(cells: FrontmatterScalar[], isDate: boolean): FrameColType {
-  if (isDate) return "date";
-  for (const v of cells) {
-    if (v === null) continue;
-    if (typeof v === "boolean") return "logical";
-    if (typeof v === "number") return "number";
-    return "string";
-  }
-  return "string";
-}
-
 /** Every cell crosses coerceFrameCell with its text kept as `raw`, so a type that cannot read a cell shows NaN over the text ([[D72]]). */
 function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = [], picks: ColumnPicks = {}): FrameValue {
   const names: string[] = [];
@@ -91,7 +80,8 @@ function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = []
       const first = v[0] ?? null;
       return typeof first === "object" ? null : first;
     });
-    const type = picks[name] ?? frameColType(cells, dateColumns.includes(name));
+    const isDate = dateColumns.includes(name);
+    const type = picks[name] ?? guessNoteColumnType(cells, () => isDate);
     const raw = cells.map((c) => (c === null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
     return { name, type, values: raw.map((r) => coerceFrameCell(type, r)), raw };
   });

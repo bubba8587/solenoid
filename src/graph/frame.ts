@@ -330,6 +330,16 @@ function cellToBool(v: unknown): boolean {
   return String(v).trim().toLowerCase() === "true";
 }
 
+/** A note frame column's type from its YAML cells: one family throughout, else text ([[B17]] typedValueModel). The app and the Obsidian plugin guess with this one. */
+export function guessNoteColumnType(values: ReadonlyArray<unknown>, isDate: (v: unknown) => boolean): FrameColType {
+  const present = values.filter((v) => v !== null && v !== undefined && v !== "");
+  if (present.length === 0) return "string";
+  if (present.every((v) => typeof v === "boolean")) return "logical";
+  if (present.every((v) => typeof v === "number")) return "number";
+  if (present.every(isDate)) return "date";
+  return "string";
+}
+
 export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameColumn {
   let recovered: ColumnUnit | undefined;
   if (cells.some(isUnitCell)) {
