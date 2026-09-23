@@ -6,7 +6,7 @@ import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } fr
 import { resolveTrigModes } from "../trigMode";
 import { settleWildcardTypes } from "../trueAnyAdopt";
 import { reconcileFcTypes } from "../fcReconcile";
-import { extractInit } from "../copyPaste";
+import { savedNodeBody, restoreNodeState, type SavedNodeBody } from "../savedNodeBody";
 import { installErrorGuards, isSolError, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
@@ -45,12 +45,9 @@ export interface CompositeOutputPort {
   internalNodeId: string;
 }
 
-export interface CompositeSavedNode {
+/** The main save's node minus `name`, which stays out until [[composite-inner-names]] is ruled. */
+export interface CompositeSavedNode extends SavedNodeBody {
   id: string;
-  type: string;
-  init: Record<string, unknown>;
-  literals?: Record<string, number>;
-  stringLiterals?: Record<string, string>;
   x?: number;
   y?: number;
 }
@@ -341,6 +338,7 @@ export class CompositeNode extends ClassicPreset.Node {
       }
       built.set(sn.id, node);
       this._savedIds.set(node.id, sn.id);
+      restoreNodeState(node.id, sn);
       // Guard after addNode, outside the coercion wrapper, so a ShapeError thrown while narrowing lands in the guard as #SHAPE!.
       await this.internalEditor.addNode(node as SolenoidNode);
       installErrorGuards(node);
@@ -399,24 +397,10 @@ export class CompositeNode extends ClassicPreset.Node {
     if (!this.isHydrated) return this._pending!;
     const sid = (id: string) => this.savedInternalId(id);
     const nodes: CompositeSavedNode[] = this.internalEditor.getNodes().map((n) => {
-      const anyN = n as unknown as Record<string, unknown>;
-      if (n instanceof PlaceholderNode) {
-        const ph: CompositeSavedNode = { id: sid(n.id), type: n.missingType, init: mapNodeRefs(n.savedInit, sid) };
-        if (n.savedLiterals) ph.literals = { ...n.savedLiterals };
-        if (n.savedStringLiterals) ph.stringLiterals = { ...n.savedStringLiterals };
-        const p = this.internalPositions[n.id];
-        if (p) { ph.x = p.x; ph.y = p.y; }
-        return ph;
-      }
-      const sn: CompositeSavedNode = { id: sid(n.id), type: n.constructor.name, init: mapNodeRefs(extractInit(n), sid) };
+      const body = savedNodeBody(n);
       // `value` is the last injected input, not state, so it stays out of the save.
-      if (n instanceof CompositeInputNode) delete sn.init.value;
-      if (anyN.literals && typeof anyN.literals === "object") {
-        sn.literals = { ...(anyN.literals as Record<string, number>) };
-      }
-      if (anyN.stringLiterals && typeof anyN.stringLiterals === "object") {
-        sn.stringLiterals = { ...(anyN.stringLiterals as Record<string, string>) };
-      }
+      if (n instanceof CompositeInputNode) delete body.init.value;
+      const sn: CompositeSavedNode = { id: sid(n.id), ...body, init: mapNodeRefs(body.init, sid) };
       const pos = this.internalPositions[n.id];
       if (pos) { sn.x = pos.x; sn.y = pos.y; }
       return sn;

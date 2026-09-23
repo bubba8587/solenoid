@@ -286,6 +286,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         }),
       );
     syncTopology();
+    // A drill stack outlives its surface; unmounted, its view must not drive dead React state.
+    return () => { Object.assign(s.handlers, idleHandlers()); };
   }, [s, setViewport, syncTopology]);
 
   // editor.addPipe cannot be removed, so this pipe installs once per stack.

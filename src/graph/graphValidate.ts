@@ -11,6 +11,7 @@ import {
   type SocketDataType,
 } from "./sockets";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
+import type { CompositeSavedNode } from "./nodes/composite";
 
 export interface GraphIssue {
   line: number | null;
@@ -151,12 +152,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     if (internal && Array.isArray(internal.nodes) && Array.isArray(internal.connections)) {
       const sub: SavedGraph = {
         v: CURRENT_SAVE_VERSION,
-        nodes: (internal.nodes as Array<{ id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string>; x?: number; y?: number }>).map((n) => {
-          const mapped: SavedNode = { id: n.id, type: n.type, x: n.x ?? 0, y: n.y ?? 0, init: n.init ?? {} };
-          if (n.literals) mapped.literals = n.literals;
-          if (n.stringLiterals) mapped.stringLiterals = n.stringLiterals;
-          return mapped;
-        }),
+        nodes: (internal.nodes as CompositeSavedNode[]).map((n): SavedNode => ({ ...n, x: n.x ?? 0, y: n.y ?? 0, init: n.init ?? {} })),
         connections: internal.connections as SavedConnection[],
       };
       for (const si of validateGraph(sub)) {

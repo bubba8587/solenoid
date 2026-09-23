@@ -4,16 +4,13 @@ import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
-import { extractInit } from "./copyPaste";
+import { savedNodeBody, restoreNodeState, type SavedNodeBody } from "./savedNodeBody";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
-import { nodeSizeStore } from "./nodeSizeStore";
 import { forgetAllNodes } from "./nodeStoreRegistry";
-import { collapseStore } from "./collapseStore";
-import { socketFlipStore } from "./socketFlipStore";
 import { standoffStore, type StandoffEnd } from "./standoffs";
 import { drawnCableStore, type SavedDrawnCable } from "./drawnCables";
 import { nodeNameStore } from "./nodeNameStore";
@@ -37,18 +34,11 @@ import { zoomAt } from "./zoomAt";
 const SWITCH_CURTAIN_MIN_WORK = 300;
 
 
-export interface SavedNode {
+export interface SavedNode extends SavedNodeBody {
   id: string;
-  type: string;
   name?: string;
   x: number;
   y: number;
-  init: Record<string, unknown>;
-  literals?: Record<string, number>;
-  stringLiterals?: Record<string, string>;
-  size?: { w: number; h: number };
-  collapsed?: boolean;
-  flipped?: boolean;
 }
 
 export interface SavedConnection {
@@ -96,43 +86,14 @@ function buildRawSavedGraph(): SavedGraph | null {
 
   const nodes: SavedNode[] = editor.getNodes().map((n) => {
     const pos = view.position(n.id) ?? { x: 0, y: 0 };
-    if (n instanceof PlaceholderNode) {
-      const sn: SavedNode = {
-        id: n.id,
-        type: n.missingType,
-        name: nodeNameStore.ensure(n.id, n.missingType),
-        x: Math.round(pos.x),
-        y: Math.round(pos.y),
-        init: { ...n.savedInit },
-      };
-      if (n.savedLiterals) sn.literals = { ...n.savedLiterals };
-      if (n.savedStringLiterals) sn.stringLiterals = { ...n.savedStringLiterals };
-      const sz = nodeSizeStore.get(n.id);
-      if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
-      if (collapseStore.get(n.id)) sn.collapsed = true;
-      if (socketFlipStore.get(n.id)) sn.flipped = true;
-      return sn;
-    }
-    const anyN = n as unknown as Record<string, unknown>;
-    const sn: SavedNode = {
+    const body = savedNodeBody(n);
+    return {
       id: n.id,
-      type: n.constructor.name,
-      name: nodeNameStore.ensure(n.id, n.constructor.name),
+      name: nodeNameStore.ensure(n.id, body.type),
       x: Math.round(pos.x),
       y: Math.round(pos.y),
-      init: extractInit(n),
+      ...body,
     };
-    if (anyN.literals && typeof anyN.literals === "object") {
-      sn.literals = { ...(anyN.literals as Record<string, number>) };
-    }
-    if (anyN.stringLiterals && typeof anyN.stringLiterals === "object") {
-      sn.stringLiterals = { ...(anyN.stringLiterals as Record<string, string>) };
-    }
-    const sz = nodeSizeStore.get(n.id);
-    if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
-    if (collapseStore.get(n.id)) sn.collapsed = true;
-    if (socketFlipStore.get(n.id)) sn.flipped = true;
-    return sn;
   });
 
   const connections: SavedConnection[] = editor.getConnections().map((c) => ({
@@ -311,9 +272,7 @@ async function rebuildGraph(
     }
     idMap.set(sn.id, node.id);
     nodeNameStore.claim(node.id, sn.name, sn.type);
-    if (sn.size) nodeSizeStore.set(node.id, { ...sn.size });
-    if (sn.collapsed) collapseStore.set(node.id, true);
-    if (sn.flipped) socketFlipStore.set(node.id, true);
+    restoreNodeState(node.id, sn);
     created.push(node);
     toBuild.push({ node, x: sn.x ?? 0, y: sn.y ?? 0 });
   }

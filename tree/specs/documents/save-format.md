@@ -81,7 +81,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 
 Groups are not a side table. A Group is an ordinary node (`GroupNode`) whose `init.members` lists member node ids; group membership in the live model is rebuilt from those lists on load.
 
-A Composite's subgraph is not a side table either. It rides inside the Composite's `init.internal` as `{ nodes: [{ id, type, init, literals?, stringLiterals?, x?, y? }], connections: [...] }`, alongside `init.inputPorts` and `init.outputPorts` (each port names the internal boundary marker it feeds by `internalNodeId`). Internal ids are saved ids that survive a round trip ([[composite-nodes]]); the text form does not translate them.
+A Composite's subgraph is not a side table either. It rides inside the Composite's `init.internal` as `{ nodes: [{ id, type, init, literals?, stringLiterals?, size?, collapsed?, flipped?, x?, y? }], connections: [...] }` (a main-canvas node without `name`), alongside `init.inputPorts` and `init.outputPorts` (each port names the internal boundary marker it feeds by `internalNodeId`). Internal ids are saved ids that survive a round trip ([[composite-nodes]]); the text form does not translate them.
 
 ## Capturing a node's `init`
 
