@@ -8,6 +8,8 @@ import { packsStore, BUILTIN_PACKS } from "../../src/graph/packs";
 import type { Pack } from "../../src/graph/packs/packShared";
 import { NODE_OPS } from "../../src/graph/nodeOps";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
+import { CATALOG_TO_EXCEL } from "../../src/graph/excelToCatalog";
+import { LEGACY_ALIASES } from "../../src/graph/excelFunctions";
 
 // Search against the REAL catalog tree (active entries only, as the menu does).
 const leaves = flattenLeaves(buildCatalog(true));
@@ -229,5 +231,54 @@ describe("Excel-alias rows never repeat a name a card already wears", () => {
   it("no card lists the same Excel name twice", () => {
     const dupes = Object.entries(NODE_EXCEL).filter(([, eqs]) => new Set(eqs.map((e) => e.excel)).size !== eqs.length).map(([t]) => t);
     expect(dupes).toEqual([]);
+  });
+});
+
+// Common queries, Excel names and card names, each with the card it must land on first.
+describe("Add-menu search — the top hit for common queries", () => {
+  const TOP: [string, string][] = [
+    ["sum", "reduce-sum"], ["average", "reduce-avg"], ["if", "if"], ["xlookup", "lookup-xlookup"],
+    ["vlookup", "lookup-xlookup"], ["hlookup", "lookup-xlookup"], ["match", "lookup-xmatch"],
+    ["index", "list-index"], ["unique", "list-unique"], ["countif", "sumifs__excel-COUNTIF"], ["sumif", "sumifs"],
+    ["concat", "text-concat"], ["today", "date-today"], ["round", "roundn-round"], ["len", "text-len"],
+    ["trim", "text-trim"], ["npv", "npv"], ["irr", "irr"], ["lambda", "lambda-make"],
+    ["transpose", "table-transpose"], ["number input", "number-input"], ["list input", "list-input"],
+    ["note", "note"], ["join", "join"], ["convert", "convert"], ["median", "reduce-median"],
+    ["stdev", "reduce-stdev"], ["std dev", "reduce-stdev"], ["standard deviation", "reduce-stdev"],
+    ["regex", "regex"], ["switch", "switch"], ["choose", "choose"], ["sequence", "list-sequence"],
+    ["random", "randbetween"], ["group by", "group-by-frame"], ["histogram", "histogram"],
+    ["slope", "regression-steyx__op-slope"], ["intercept", "regression-steyx__op-intercept"],
+    ["rsq", "correl-correl__op-rsq"], ["steyx", "regression-steyx"],
+    ["floor.precise", "math-floor"], ["ceiling.precise", "math-ceiling"], ["iso.ceiling", "math-ceiling"],
+    ["dsum", "reduce-sum"], ["daverage", "reduce-avg"], ["dget", "lookup-xlookup"],
+  ];
+  it.each(TOP)("%s → %s", (q, type) => {
+    expect(types(q, 1)).toEqual([type]);
+  });
+
+  it("every card and row label finds a row with that label first", () => {
+    const misses = leaves.filter(({ leaf }) => search(leaf.label)[0]?.label !== leaf.label)
+      .map(({ leaf }) => `${leaf.label} → ${search(leaf.label)[0]?.label}`);
+    // RAND's own type is "randbetween", so the host outranks its RANDBETWEEN alias row; both place the same card.
+    expect(misses).toEqual(["RANDBETWEEN → RAND"]);
+  });
+
+  it("a retired Excel name lands on the card that answers to its replacement", () => {
+    const answering = (name: string) => leaves.filter(({ leaf }) => (CATALOG_TO_EXCEL.get(leaf.type) ?? []).includes(name)).map(({ leaf }) => leaf.type);
+    const misses: string[] = [];
+    for (const [legacy, target] of Object.entries(LEGACY_ALIASES)) {
+      const hosts = answering(target);
+      // A name a row already wears ("Sparkline: Column") keeps its own row first.
+      if (!hosts.length || leaves.some(({ leaf }) => leaf.label.split(": ").pop()!.toUpperCase() === legacy)) continue;
+      const top = search(legacy)[0]?.type.split("__")[0];
+      if (!top || !hosts.includes(top)) misses.push(`${legacy} → ${top} (want ${hosts.join(", ")})`);
+    }
+    expect(misses).toEqual([]);
+  });
+
+  it("SLOPE, INTERCEPT and RSQ belong to the cards whose ops compute them", () => {
+    expect(CATALOG_TO_EXCEL.get("regression-steyx")).toEqual(expect.arrayContaining(["SLOPE", "INTERCEPT"]));
+    expect(CATALOG_TO_EXCEL.get("correl-correl")).toContain("RSQ");
+    expect(CATALOG_TO_EXCEL.get("linest")).not.toEqual(expect.arrayContaining(["SLOPE"]));
   });
 });

@@ -181,7 +181,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
           return;
         }
         // Match the produced character: `[` and `]` sit on different physical keys across layouts.
-        if (!locked && (e.key === "[" || e.key === "]")) {
+        if ((e.key === "[" || e.key === "]") && !locked) {
           if (rotateSelection(e.key === "]" ? 1 : -1) > 0) { e.preventDefault(); return; }
         }
         switch (e.code) {

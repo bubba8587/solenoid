@@ -663,7 +663,7 @@
   cursor: pointer;
   font: inherit;
 }
-.cube-popup__crumb:hover { background: var(--hover-bg, rgba(127,127,127,0.15)); }
+.cube-popup__crumb:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .cube-popup__crumb--here { color: var(--text); font-weight: 600; cursor: default; }
 .cube-popup__crumb-sep { color: var(--text-muted); }
 

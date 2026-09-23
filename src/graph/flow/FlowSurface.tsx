@@ -327,7 +327,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [s]);
 
   useEffect(
-    () => addMenuRequest.register((screenX, screenY) => { if (!canvasLockStore.get()) setMenu({ screenX, screenY }); }),
+    // A locked canvas adds nothing, so the Add menu doesn't open on it.
+    () => addMenuRequest.register((screenX, screenY) => {
+      if (!canvasLockStore.get() && !hooksRef.current.locked) setMenu({ screenX, screenY });
+    }),
     [],
   );
 
@@ -423,7 +426,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const el = wrapperRef.current;
     const sock = el ? socketTargetAt(el, e) : null;
     if (sock) { setSocketCtx(sock); return; }
-    if (isolateStore.isActive() || canvasLockStore.get()) return;
+    if (isolateStore.isActive() || canvasLockStore.get() || hooksRef.current.locked) return;
     setMenu({ screenX: e.clientX, screenY: e.clientY });
   }, []);
 

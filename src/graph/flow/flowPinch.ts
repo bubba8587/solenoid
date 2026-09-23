@@ -23,22 +23,17 @@ export function installFlowPinch(
     };
   };
 
-  const dbg = (m: string) => (window as unknown as { __pinchLog?: string[] }).__pinchLog?.push(m);
-
   const touchStart = (e: TouchEvent) => {
-    dbg(`start:${e.touches.length}`);
     if (e.touches.length === 2) {
       const m = measure(e);
       if (!(m.dist > 0)) { start = null; return; }
       start = { ...m, vp: opts.getViewport() };
-      dbg(`armed:${JSON.stringify(start.vp)}`);
     } else if (e.touches.length > 2) {
       start = null;
     }
   };
 
   const touchMove = (e: TouchEvent) => {
-    dbg(`move:${e.touches.length}:${start ? "armed" : "idle"}`);
     if (!start || e.touches.length !== 2) return;
     e.preventDefault();
     e.stopImmediatePropagation();

@@ -1,5 +1,6 @@
 // [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost, [[C19]] namingModel
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
+import { LEGACY_ALIASES } from "./excelFunctions";
 import { fuzzyScore, fieldScore, tokenWordScore, withinOneEdit } from "./fuzzy";
 import { opsFor, opEntry, excelEntry } from "./nodeOps";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
@@ -43,6 +44,15 @@ function bareName(label: string): string {
   return label.replace(/\s*\([^)]*\)\s*$/, "").trim().toUpperCase();
 }
 
+const LEGACY_BY_TARGET = new Map<string, string[]>();
+for (const [legacy, target] of Object.entries(LEGACY_ALIASES)) {
+  LEGACY_BY_TARGET.set(target, [...(LEGACY_BY_TARGET.get(target) ?? []), legacy]);
+}
+
+function legacyNamesOf(names: string[]): string[] {
+  return [...new Set(names.flatMap((n) => LEGACY_BY_TARGET.get(n) ?? []))];
+}
+
 function typeWords(type: string): string {
   return type.replace(/[-_]/g, " ");
 }
@@ -60,7 +70,11 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const keywords = leaf.keywords ?? "";
   const haystack = dashes(`${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`);
   const bare = stripGlyphPrefix(leaf.label);
-  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")}`)
+  const colon = leaf.label.indexOf(": ");
+  const opName = colon > 0 && leaf.type.includes("__") ? leaf.label.slice(colon + 2) : null;
+  // A retired Excel spelling (MATCH, FLOOR.PRECISE) finds the card that answers to its replacement.
+  const legacy = legacyNamesOf([...excelNames, bare, ...(opName ? [opName] : [])]);
+  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")} ${legacy.join(" ")}`)
     .toLowerCase().split(WORD_SEP).filter(Boolean);
   let s = 0;
   for (const token of dashes(query).toLowerCase().split(WORD_SEP)) {
@@ -72,8 +86,7 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   }
   const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   if (bare && bare !== leaf.label) fields.push(bare);
-  const colon = leaf.label.indexOf(": ");
-  if (colon > 0 && leaf.type.includes("__")) fields.push(leaf.label.slice(colon + 2));
+  if (opName) fields.push(opName);
   let bonus = 0;
   for (const f of fields) {
     const fs = f.trim() ? fieldScore(query, f) : null;
@@ -82,6 +95,10 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   for (const name of excelNames) {
     const fs = fieldScore(query, name);
     if (fs !== null) bonus = Math.max(bonus, fs - 10);
+  }
+  for (const name of legacy) {
+    const fs = fieldScore(query, name);
+    if (fs !== null) bonus = Math.max(bonus, fs - 20);
   }
   const q = dashes(query).toLowerCase().trim();
   if (q.length >= 4 && [leaf.label, bare, ...excelNames].some((n) => withinOneEdit(q, n.toLowerCase()))) bonus = Math.max(bonus, 200);

@@ -85,6 +85,29 @@ function overrideToText(v: unknown): string {
   return v === undefined || v === null ? "" : String(v);
 }
 
+function ScenarioField({ value, placeholder, toText, parse, apply }: {
+  value: unknown;
+  placeholder?: string;
+  toText: (v: unknown) => string;
+  parse: (t: string) => unknown;
+  apply: (v: unknown) => void;
+}) {
+  const field = useDraftCommit(value, toText, parse, apply);
+  return (
+    <input
+      className="solenoid-node__inline-input"
+      value={field.draft}
+      placeholder={placeholder}
+      onChange={(e) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+      spellCheck={false}
+    />
+  );
+}
+
 function ScenarioTable({ node }: { node: CompositeNodeType }) {
   const exposed = node.inputPorts.filter((p) => p.exposure === "exposed");
   const recompute = () => { void processGraph(node.id); };
@@ -103,25 +126,20 @@ function ScenarioTable({ node }: { node: CompositeNodeType }) {
           </div>
           {node.scenarios.map((s) => (
             <div key={s.id} style={{ display: "grid", gridTemplateColumns: cols, gap: 6, alignItems: "center" }}>
-              <input
-                className="solenoid-node__inline-input"
+              <ScenarioField
                 value={s.name}
-                onChange={(e) => { node.renameScenario(s.id, e.target.value); recompute(); }}
-                onPointerDown={stopDragStart}
-                onMouseDown={(e) => e.stopPropagation()}
-                spellCheck={false}
+                toText={(v) => String(v ?? "")}
+                parse={(t) => t}
+                apply={(v) => { node.renameScenario(s.id, String(v)); recompute(); }}
               />
               {exposed.map((p) => (
-                <input
+                <ScenarioField
                   key={p.id}
-                  className="solenoid-node__inline-input"
-                  defaultValue={overrideToText(s.overrides[p.id])}
+                  value={s.overrides[p.id]}
                   placeholder="—"
-                  onBlur={(e) => { node.setScenarioOverride(s.id, p.id, parseOverride(e.target.value)); recompute(); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-                  onPointerDown={stopDragStart}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  spellCheck={false}
+                  toText={overrideToText}
+                  parse={parseOverride}
+                  apply={(v) => { node.setScenarioOverride(s.id, p.id, v); recompute(); }}
                 />
               ))}
               <button

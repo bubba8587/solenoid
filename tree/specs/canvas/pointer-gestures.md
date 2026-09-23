@@ -91,7 +91,7 @@ The flag stands in for both Shift (the lasso) and Ctrl (accumulate), which a pho
 - A window lasso takes a card when all four of its corners are inside.
 - A crossing lasso takes a card when any corner is inside, when the lasso lies wholly inside the card, or when the lasso's edges cross the card's box.
 
-The outline updates on every move, but matching is coalesced to one pass per frame, since `pointermove` fires at the mouse's poll rate. An unchanged match skips the reselect, because unselecting and reselecting re-renders every selected card. A pinch that starts mid-drag cancels the lasso.
+The outline updates on every move, but matching is coalesced to one pass per frame, since `pointermove` fires at the mouse's poll rate. An unchanged match skips the reselect, because unselecting and reselecting re-renders every selected card. A pinch that starts mid-drag cancels the lasso, and so do a `pointercancel`, the window losing focus, Escape and the surface unmounting: a lasso the browser never finishes ends unapplied, so its outline and `lassoActiveStore` (which holds the HTML-in-canvas layer's rebuilds) never stick.
 
 **Releasing.** The last pending frame is flushed and cables are matched too, only now, since sampling every cable's path is too heavy per frame. Each `.solenoid-cable-hit` path is sampled about every 12 screen px, capped at 64 samples so a very long cable stays cheap, and a ribbon is judged as one unit and selected whole; ghost cables are skipped. A crossing lasso takes a cable with any sample inside, a window lasso one with every sample inside. The stopped `pointerdown` still yields a `click` on release, which RF's pane would use to clear the selection, so the lasso swallows that one click and no more.
 
@@ -113,6 +113,7 @@ Locking is CSS plus React Flow props, and both surfaces apply both halves.
 
 - The wrapper gets `.solenoid-canvas--locked`, which sets `pointer-events: none !important` on node and group chrome and on cable hit paths (`canvas.css`). Presses and wheels fall through to the pane, so pan and zoom stay live, but nothing can be wired, selected or edited.
 - The surface passes `nodesDraggable`, `nodesConnectable` and `elementsSelectable` as `!locked`.
+- The Add menu does not open on a locked surface, from the A key, the menu bar, the pane's right-click or a dropped cable, since a pick would add a card. For the same reason `[` and `]` rotate nothing and Ctrl+Shift+G makes no composite while locked, beside the keys the contract's gate list names.
 
 Keep the class on both surfaces. Without it, a locked drill-in would leave its fields and sockets editable. The keyboard half of locking is in [[react-flow-surface-contract]]: the keys that move, add or remove stand down, and the view keys stay live.
 

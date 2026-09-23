@@ -596,8 +596,13 @@ describe("[[C27]] noDataInComponents — components never call node.data()", () 
   // comments record exactly this). Components extract a pure helper instead.
   it("no component source calls .data(", () => {
     const offenders: string[] = [];
-    const componentsDir = path.join(SRC, "components");
-    for (const file of walk(componentsDir)) {
+    // The components floor: components/, flow/ and the top-level .tsx chrome.
+    const floor = [
+      ...walk(path.join(SRC, "components")),
+      ...walk(path.join(SRC, "flow")).filter((f) => f.endsWith(".tsx")),
+      ...fs.readdirSync(SRC).filter((f) => f.endsWith(".tsx")).map((f) => path.join(SRC, f)),
+    ];
+    for (const file of floor) {
       const hits = codeLines(file)
         .map((l, i) => ({ l, i }))
         .filter(({ l }) => /\.data\(/.test(l));
@@ -907,6 +912,51 @@ describe("[[C95]] commitOnEnter — no raw text field commits per keystroke", ()
         const open = lines.slice(Math.max(0, i - 12), i + 1).join(" ");
         if (tag === "input" && /type=["'](checkbox|radio|range|color|file|date)/.test(open)) return;
         bad.push(`${rel(file)}:${i + 1}`);
+      });
+    }
+    expect(bad, "route the edit through useDraftCommit; onChange must not recompute the graph").toEqual([]);
+  });
+
+  // The same, one or two local calls deep: `onChange={(e) => onFlags(e.target.value)}` where onFlags recomputes.
+  it("no <input> or <textarea> onChange reaches processGraph through a local function", () => {
+    const bad: string[] = [];
+    for (const file of walk(SRC).filter((p) => p.endsWith(".tsx"))) {
+      const src = fs.readFileSync(file, "utf8");
+      const lines = src.split("\n");
+      const bodies = new Map<string, string>();
+      lines.forEach((line, i) => {
+        const m = line.match(/^\s*(?:function\s+(\w+)\s*\(|const\s+(\w+)\s*=\s*(?:\([^)]*\)|\w+)\s*=>)/);
+        const name = m?.[1] ?? m?.[2];
+        if (!name) return;
+        let depth = 0, end = i;
+        for (let j = i; j < Math.min(lines.length, i + 40); j++) {
+          for (const ch of lines[j]) depth += ch === "{" ? 1 : ch === "}" ? -1 : 0;
+          end = j;
+          if (depth <= 0 && (j > i || /[{}]/.test(lines[j]) || /;\s*$/.test(lines[j]))) break;
+        }
+        bodies.set(name, lines.slice(i, end + 1).join("\n"));
+      });
+      const recomputes = (text: string, depth: number): boolean => {
+        if (/processGraph\(/.test(text)) return true;
+        if (depth === 0) return false;
+        for (const call of text.matchAll(/\b(\w+)\(/g)) {
+          const body = bodies.get(call[1]);
+          if (body && body !== text && recomputes(body, depth - 1)) return true;
+        }
+        return false;
+      };
+      lines.forEach((line, i) => {
+        const h = line.match(/onChange=\{(.*)\}\s*$/);
+        if (!h) return;
+        let tag = "";
+        for (let j = i; j >= Math.max(0, i - 12); j--) {
+          const m = lines[j].match(/<([A-Za-z][\w.]*)\b/);
+          if (m) { tag = m[1]; break; }
+        }
+        if (tag !== "input" && tag !== "textarea") return;
+        const open = lines.slice(Math.max(0, i - 12), i + 1).join(" ");
+        if (tag === "input" && /type=["'](checkbox|radio|range|color|file|date)/.test(open)) return;
+        if (recomputes(h[1], 2)) bad.push(`${rel(file)}:${i + 1}`);
       });
     }
     expect(bad, "route the edit through useDraftCommit; onChange must not recompute the graph").toEqual([]);

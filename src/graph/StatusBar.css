@@ -85,7 +85,7 @@
 }
 button.solenoid-statusbar__calc--dirty {
   background: var(--accent);
-  color: var(--accent-contrast, #fff);
+  color: var(--accent-ink);
   font-weight: 600;
   cursor: pointer;
 }

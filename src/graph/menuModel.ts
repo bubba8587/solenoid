@@ -6,7 +6,6 @@ import { frStore } from "./frStore";
 import { shortcutsStore } from "./shortcutsStore";
 import { outlineSearch } from "./outlineStore";
 import { requestRecalc } from "./process";
-import { autoArrange, cleanup } from "./canvasCommands";
 import { calcModeStore } from "./calcModeStore";
 import { refreshAllConnections } from "./connectionStore";
 import { runModelFuzz } from "./modelFuzz";
@@ -37,17 +36,13 @@ export type MenuItem =
   | { label: string; shortcut?: string; onClick?: () => void; disabled?: boolean; checked?: boolean };
 export type Menu = { label: string; items: MenuItem[] };
 
+/** Presses a canvas key as a real keyboard would: down on the document, where React Flow's Delete listens (the event
+ *  bubbles on to the canvas keyboard on window), and up a task later. Without the release RF's key trackers keep the
+ *  synthetic key as held, and a later Ctrl-click no longer multi-selects. */
 export function fireMenuKey(code: string, opts: { key?: string; ctrl?: boolean; shift?: boolean } = {}) {
-  window.dispatchEvent(
-    new KeyboardEvent("keydown", {
-      code,
-      key: opts.key ?? "",
-      ctrlKey: !!opts.ctrl,
-      shiftKey: !!opts.shift,
-      bubbles: true,
-      cancelable: true,
-    }),
-  );
+  const init = { code, key: opts.key ?? "", ctrlKey: !!opts.ctrl, shiftKey: !!opts.shift, bubbles: true, cancelable: true };
+  document.dispatchEvent(new KeyboardEvent("keydown", init));
+  setTimeout(() => document.dispatchEvent(new KeyboardEvent("keyup", init)), 0);
 }
 
 export function buildMenus(): Menu[] {
@@ -109,8 +104,8 @@ export function buildMenus(): Menu[] {
         { label: mode === "dark" ? "Light theme" : "Dark theme", onClick: () => appThemeStore.toggleMode() },
         { label: "Lock canvas", checked: locked, onClick: () => canvasLockStore.toggle() },
         { sep: true },
-        { label: "Tidy", shortcut: "T", onClick: () => autoArrange() },
-        { label: "Cleanup", shortcut: "C", onClick: () => cleanup() },
+        { label: "Tidy", shortcut: "T", onClick: () => fireMenuKey("KeyT") },
+        { label: "Cleanup", shortcut: "C", onClick: () => fireMenuKey("KeyC") },
         { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },

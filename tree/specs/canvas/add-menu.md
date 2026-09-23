@@ -92,7 +92,7 @@ Both kinds are views of the host leaf ([[D6]] opRowDerivesFromHost): they spread
 Two texts are built from the row, and both are deliberately wider than what the menu renders:
 
 - The **haystack**: label, description, Excel names, category path, the type with `-` and `_` read as spaces, and `keywords`.
-- The **word list**: the words of the label, the label with any leading op glyph stripped ("+ Add" becomes "Add"), the type words, `keywords`, the category path and the Excel names. Words split on anything that is not a letter, digit or dot, so a hyphenated query ("k-means") lands word by word.
+- The **word list**: the words of the label, the label with any leading op glyph stripped ("+ Add" becomes "Add"), the type words, `keywords`, the category path, the Excel names and the row's **retired names**: every `LEGACY_ALIASES` name whose replacement is one of the row's Excel names, its stripped label or its op name (MATCH on XMATCH, FLOOR.PRECISE on FLOOR, DSUM on SUM). The formula surface refuses those names with "Use X", so the menu lands them on X's card. Words split on anything that is not a letter, digit or dot, so a hyphenated query ("k-means") lands word by word.
 
 En and em dashes in either text, and in the query, read as plain hyphens, so "savitzky-golay" finds a keyword spelled with an en dash.
 
@@ -107,7 +107,8 @@ On top of the word total, the row gets the best **whole-query bonus** from its f
 
 - the label; the label followed by the category path; the type words; `keywords`; the label with its op glyph stripped (without the strip, "Add Column" would outrank the Add card for "add");
 - for a generated `Host: Name` row, the part after the colon, so an exact hit on an op's name ranks like an exact hit on a leaf's own label;
-- each Excel name, scored 10 lower so an exact label still wins a tie.
+- each Excel name, scored 10 lower so an exact label still wins a tie;
+- each retired name, scored 20 lower, so a row that wears the name itself ("Sparkline: Column" for COLUMN) keeps first place.
 
 Finally, when the whole query has 4 or more characters and is within one edit of the label, the stripped label or an Excel name, the bonus is at least 200. A typo of the name itself ("sunm" for SUM) therefore outranks a row that only carries the corrected word somewhere in its type or keywords (IMSUM's `cx-binary-sum`).
 

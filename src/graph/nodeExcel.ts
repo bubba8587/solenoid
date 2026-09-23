@@ -76,6 +76,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "correl-correl": [
     { excel: "CORREL", syntax: "=CORREL(x, y)", parity: true },
     { excel: "PEARSON", syntax: "=PEARSON(x, y)", parity: true, note: "PEARSON = CORREL" },
+    { excel: "RSQ", syntax: "=RSQ(ys, xs)", parity: true },
   ],
   "coupon-coupdaybs": [{ excel: "COUPDAYBS", syntax: "=COUPDAYBS(settle,maturity,freq,basis)", parity: false, note: "Days from the coupon-period start to settlement; frequency 1/2/4, all four bases." }],
   "coupon-coupdays": [{ excel: "COUPDAYS", syntax: "=COUPDAYS(settle,maturity,freq,basis)", parity: false, note: "Days in the coupon period containing settlement; frequency 1/2/4, all four bases." }],
@@ -243,10 +244,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "ispmt": [{ excel: "ISPMT", syntax: "=ISPMT(rate, per, nper, pv)" }],
   "linest": [
-    { excel: "INTERCEPT", syntax: "=INTERCEPT(ys, xs)", parity: false, note: "Use LINEST's Intercept output." },
     { excel: "LINEST", syntax: "=LINEST(ys, xs)", parity: false, note: "Returns slope, intercept and R² as a List. Excel returns a 2×5 array." },
-    { excel: "RSQ", syntax: "=RSQ(ys, xs)", parity: false, note: "Use LINEST's R² output." },
-    { excel: "SLOPE", syntax: "=SLOPE(ys, xs)", parity: false, note: "Use LINEST's Slope output." },
     { excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Gives m, b and R² as three outputs. Excel returns an array." },
   ],
   "lambda-make": [{ excel: "LAMBDA", syntax: "=LAMBDA(param, ..., calculation)", parity: false, note: "Works with MAP, BYROW, REDUCE and MAKEARRAY. Variables that aren't parameters become inputs, like LET. No recursion, and no LAMBDAs of LAMBDAs." }],
@@ -402,7 +400,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "REGEXEXTRACT", syntax: "=REGEXEXTRACT(text, pattern, [return_mode])", parity: false, note: "The Regex node's three extract ops match Excel's return_mode 0, 1 and 2." },
     { excel: "REGEXREPLACE", syntax: "=REGEXREPLACE(text, pattern, replacement, [occurrence])", parity: false, note: "A blank or 0 Occurrence replaces every match; n replaces only the nth." },
   ],
-  "regression-steyx": [{ excel: "STEYX", syntax: "=STEYX(ys, xs)", parity: true }],
+  "regression-steyx": [
+    { excel: "STEYX", syntax: "=STEYX(ys, xs)", parity: true },
+    { excel: "SLOPE", syntax: "=SLOPE(ys, xs)", parity: true },
+    { excel: "INTERCEPT", syntax: "=INTERCEPT(ys, xs)", parity: true },
+  ],
   "reshape-tocol": [{ excel: "TOCOL", syntax: "=TOCOL(array)", parity: false, note: "ignore_empty and scan_by_column flags not supported" }],
   "reshape-torow": [{ excel: "TOROW", syntax: "=TOROW(array)", parity: false, note: "ignore_empty flag not supported" }],
   "reshape-wrapcols": [{ excel: "WRAPCOLS", syntax: "=WRAPCOLS(vector, wrap_count, [pad_with])", parity: true, note: "An empty Fill pads with #N/A, like Excel. Set Fill for a custom pad." }],

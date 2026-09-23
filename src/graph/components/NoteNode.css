@@ -171,7 +171,7 @@
   color: var(--text-muted);
 }
 .solenoid-note__field-val--error {
-  color: var(--error, #d33);
+  color: var(--sol-error);
 }
 .solenoid-note__field-picker {
   position: absolute;
