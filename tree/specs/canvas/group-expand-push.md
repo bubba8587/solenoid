@@ -2,7 +2,7 @@
 aliases: ["Group expand push"]
 tags: [spec, canvas]
 ---
-<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle -->
+<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle, [[C112]] noOverlapsEver -->
 
 # Spec: Group expand push
 
@@ -12,11 +12,11 @@ A collapsed group draws as a small card. Expanding it back to full size would co
 
 ## The world the push works on
 
-The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush` and `separateOverlaps` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
+The push runs over plain boxes, with no rete or DOM, so the core (`computeExpandPush`, `separateOverlaps` and `separateAll` in `groupPushCore.ts`) is pure and unit-tested (`groupPushCore.test.ts`, `layoutInvariants.test.ts`). `groupPush.ts` builds the boxes and applies the result.
 
 - **Movable boxes** are every group plus every loose node: a node that is in no group and is not a docked Format Controller (FC).
 - A loose node's box is widened by the width of any FC docked to its output side (FC width plus 8), because the docked FC has no box of its own.
-- A group being expanded is read at its stored full size, since its element may still be mid-render. Other groups use their measured size.
+- An expanded group is read at its stored size, which is exactly the size it renders at; React Flow's measure lags a resize by a frame. A collapsed group is read at its card size.
 - A group moves with its members; a loose node moves with any FC docked to it.
 - All passes read and write the same in-memory boxes, and the totals are applied once at the end, because `view.moveNode` is async and the DOM would show stale positions between passes.
 
@@ -32,7 +32,7 @@ For one group, the expanded box starts at the group's position with its full siz
 
 **Anchors.** For every other box, its anchors are the centers of the entities its cables lead to. Each cable end resolves to a push entity: a member becomes its group, a docked FC becomes its host. Satellites and groups get no anchors, so a group always clears by geometry, never toward its cables: a group chasing its connections would pile interconnected groups onto one spot when several expand at once.
 
-**Exempt boxes.** A box that already overlaps the collapsed card (the user parked it there) is never moved by these steps. Pairs of boxes that already overlap each other before the push are recorded as baseline pairs, and the cascade never tries to separate them.
+**Exempt boxes.** A position-locked group is never moved by these steps ([[D63]] lockedGroupIsObstacle), and neither is a box that already overlaps the collapsed card (the user parked it there). Pairs of boxes that already overlap each other before the push are recorded as baseline pairs, and the cascade never tries to separate them. The backstop below separates all of these anyway.
 
 The steps, in order:
 
@@ -47,9 +47,11 @@ The steps, in order:
 
 Three more passes run over the same boxes, after every expanding group has had its push:
 
-1. **Standoff clusters move as one block** ([[C89]] standoffsSolveLast). For each cluster of boxes joined by standoffs, every member takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
+1. **Standoff clusters move as one block** ([[C89]] standoffsSolveLast). For each cluster of boxes joined by standoffs, every member except a locked group takes the largest displacement any member received, and the cluster's contributing groups become the union of its members'. A lone push is therefore not pulled partway back.
 2. **Standoff solve.** `solveStandoffs` runs with `forceLock` over the moved boxes, with the expanding groups and any position-locked group pinned. Its corrections are added to the same totals, credited to every expanding group.
-3. **Overlap backstop.** `separateOverlaps` removes every overlap left among the boxes, treating each standoff cluster as one unit so it can't tear. It repeatedly takes the largest-area overlapping pair and moves the one further from the top-left (by `x + y`) right or down, whichever is cheaper, to clear by `PUSH_GAP`, so the top-left box keeps its anchor corner. A pinned box never moves and its partner yields; two pinned boxes are left alone. Moves only ever go right or down, so it always finishes. Its baseline is every pair of units that overlapped before the push, with the expanding groups at their collapsed size (`overlappingPairs`), so an overlap the user made stays. Its moves are credited to every expanding group.
+3. **Overlap backstop** ([[C112]] noOverlapsEver). `separateAll` removes every overlap left among the boxes, with no exemptions: an overlap the user made before the expand is separated too. Each standoff cluster is one unit, so it can't tear. Locked groups are fixed; the expanding groups are preferred, so they hold still while a partner can yield. Its moves are credited to every expanding group.
+
+`separateAll` runs `separateOverlaps` twice. The first pass pins the fixed and the preferred units; the second pins only the fixed ones, clearing any overlap the first had to leave between two pinned units. `separateOverlaps` repeatedly takes the largest-area overlapping pair and moves the one further from the top-left (by `x + y`) right or down, whichever is cheaper, to clear by `PUSH_GAP`, so the top-left box keeps its anchor corner. A pinned box never moves and its partner yields; two pinned boxes are left alone. Moves only ever go right or down, so it always finishes. Afterwards only two fixed units can still overlap.
 
 ## Records and restore
 
@@ -61,11 +63,11 @@ Each moved box gets a push record in memory (never saved; a reload keeps everyth
 
 ## Entry points
 
-`setGroupsCollapsed` is the one entry point for toggling. The group's chevron, the Outline panel and the collapse hotkey (Ctrl+Shift+E) all call it. It runs these steps:
+`setGroupsCollapsed` is the one entry point for toggling. The group's chevron, the Outline panel and the collapse hotkey (`E`) all call it. It runs these steps:
 
 1. Measure the collapsed card size of each group about to expand, before the flip re-renders it at full size. These are the seam origins.
 2. Flip `collapsed`, recompute collapse state (`syncGroupCollapse`), wait for each group to re-render so the footprints measured next are current, and settle the cable endpoints (`settleCollapse`).
-3. On collapse: restore settled pushes, then re-solve standoffs with `forceLock`, because the shrink moved their anchors (a no-op when the restores already landed everything in band). On expand (with `groupPush` on): run the push.
+3. On collapse: restore settled pushes, then re-solve standoffs with `forceLock`, because the shrink moved their anchors (a no-op when the restores already landed everything in band). Two frames later, once React Flow has measured the cards, `settleOverlapsAfterPaint` runs the no-overlap pass, preferring the collapsed groups: a restore can land a card on one placed while the group was open. On expand (with `groupPush` on): run the push.
 4. Schedule an autosave.
 
 ELK (the automatic layout engine behind Tidy) is never used in this path.
@@ -86,10 +88,10 @@ A membership change re-projects the nodes through the `groupMembershipStore` sub
 
 ## Creating and fitting a group
 
-- **Group** (the `G` key, or the menu) wraps the current selection (`createGroupFromSelection`, `groupLogic.ts`). Nodes hidden inside a collapsed group are left out, since they already belong to one and a selection path such as Ctrl+A then G would otherwise absorb them ([[C52]] visibleSelection). The cable selection is cleared first, because a selected cable carried into the group-forming reflow garbles its rendering.
+- **Group** (the `G` key, or the menu) wraps the current selection (`createGroupFromSelection`, `groupLogic.ts`). A selected member of another group leaves that group, since membership is exclusive. The new box may cover cards outside the selection; the no-overlap pass pushes them off it. Nodes hidden inside a collapsed group are left out, since they already belong to one and a selection path such as Ctrl+A then G would otherwise absorb them ([[C52]] visibleSelection). The cable selection is cleared first, because a selected cable carried into the group-forming reflow garbles its rendering.
 - The box is the members' bounding box (through `measuredBox`) plus `GROUP_PAD` (24) on each side and `GROUP_HEADER` (34, matching GroupNode.css) on top, with integer dimensions: a fractional width or height puts the edge on a half-pixel and the selection ring drifts. Creation, the within-group Tidy and autofit share these two constants; if they disagreed, Cleanup's tidy-then-autofit cycle would drift the box a few pixels on every run.
 - The group's color is the palette slot of the most common node kind in the selection; a tie, or all kinds distinct, falls back to gray (`GROUP_DEFAULT_COLOR`). The members tint at once.
-- **Autofit** (the `F` key, or a double-press on the resize grip) wraps the box tightly around its current members with the same padding, clamped to the grip's own minimums (`GROUP_MIN_W` 140, `GROUP_MIN_H` 90) and to integers. `autofitGroupWithHistory` records one undo entry for position, size and members together, so both entry points undo as a single step, and then re-settles the standoffs as a rigid block, pinning the fitted group.
+- **Autofit** (the `F` key, or a double-press on the resize grip) wraps the box tightly around its current members with the same padding, clamped to the grip's own minimums (`GROUP_MIN_W` 140, `GROUP_MIN_H` 90) and to integers. `autofitGroupWithHistory` records one undo entry for position, size and members together, so both entry points undo as a single step, then re-settles the standoffs as a rigid block, pinning the fitted group, and runs the no-overlap pass preferring it, since a box that grows can land on a neighbor. A locked group keeps its corner: the members move to it instead ([[D63]] lockedGroupIsObstacle).
 - The group element stacks behind its members and behind member Conduits (−1), so a Conduit inside a group stays selectable ([[C65]] domOrderStacking).
 - **The position lock** is set only through `setGroupLocked`; its re-projection repaints the RF `draggable` flag and the header lock icon ([[D63]] lockedGroupIsObstacle). Every standoff solve pins every locked group and its members (`withLockedGroupsPinned`), since the solver works on raw endpoint ids and a member's standoff would otherwise slide the member out of the locked box.
 

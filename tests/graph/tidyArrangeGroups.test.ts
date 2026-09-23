@@ -1,4 +1,4 @@
-// [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic
+// [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C85]] groupPushDeterministic, [[C112]] noOverlapsEver
 import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
@@ -125,6 +125,9 @@ function makeFakeView() {
     async rerenderCables() {},
     async rerenderNode() { /* re-render — nothing to do headless */ },
     transform: { k: 1, x: 0, y: 0 },
+    container: { clientWidth: 1200, clientHeight: 800 },
+    async pan() {},
+    async zoom() {},
   };
   return { view: view as unknown as FakeViewHandle, addView };
 }
@@ -258,6 +261,24 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
       const b = boxOf(view, id);
       expect(overlaps(g, b), `${id} overlaps the group box`).toBe(false);
     }
+  });
+
+  it("a selection Tidy never leaves its cards on an unselected neighbor", async () => {
+    const { editor, view, arrangeFn, src, sink, group } = await buildScene();
+    // The selected pair straddles the group; stacked around their old center, they land on it.
+    view.fakes.get(src.id)!.position = { x: 300, y: 60 };
+    view.fakes.get(sink.id)!.position = { x: 300, y: 700 };
+    (src as { selected?: boolean }).selected = true;
+    (sink as { selected?: boolean }).selected = true;
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const top = [src.id, sink.id, group.id].map((id) => boxOf(view, id));
+    for (let i = 0; i < top.length; i++) {
+      for (let j = i + 1; j < top.length; j++) {
+        expect(overlaps(top[i], top[j]), `${top[i].id} overlaps ${top[j].id}`).toBe(false);
+      }
+    }
+    expect(editor.getNodes().length).toBe(5);
   });
 
   it("a position-locked group stays put and nothing lands on it", async () => {

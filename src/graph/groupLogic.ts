@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[C87]] groupsAreSubflows, [[C52]] visibleSelection
+// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[C87]] groupsAreSubflows, [[C52]] visibleSelection, [[C112]] noOverlapsEver
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
@@ -13,6 +13,7 @@ import { scheduleAutosave } from "./persistence";
 import { settleStandoffs } from "./standoffs";
 import { measuredBox } from "./nodeSize";
 import { getOwningEditor } from "./activeGraph";
+import { settleOverlaps } from "./groupPush";
 
 export const GROUP_DEFAULT_COLOR = "gray";
 
@@ -72,6 +73,12 @@ export async function createGroupFromSelection(editor: Editor, view: View): Prom
     .getNodes()
     .filter((n) => n.selected && !(n instanceof GroupNode) && !groupCollapseStore.isNodeHidden(n.id));
   if (sel.length === 0) return null;
+  const selIds = new Set(sel.map((n) => n.id));
+  for (const g of editor.getNodes()) {
+    if (g instanceof GroupNode && g.members.some((m) => selIds.has(m))) {
+      g.members = g.members.filter((m) => !selIds.has(m));
+    }
+  }
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of sel) {
@@ -94,13 +101,14 @@ export async function createGroupFromSelection(editor: Editor, view: View): Prom
   rebuildGroupMembership(editor);
   await view.moveNode(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
   sendGroupToBack(view, group.id);
+  settleOverlaps(editor, view, new Set([group.id]));
   return group.id;
 }
 
 export type GroupGeom = { x: number; y: number; width: number; height: number };
 
 export async function autofitGroupBox(
-  _editor: Editor, view: View, group: GroupNode,
+  editor: Editor, view: View, group: GroupNode,
 ): Promise<{ before: GroupGeom; after: GroupGeom } | null> {
   const gv = view.position(group.id);
   if (!gv) return null;
@@ -122,6 +130,12 @@ export async function autofitGroupBox(
     width:  Math.round(Math.max(GROUP_MIN_W, (maxX - minX) + GROUP_PAD * 2)),
     height: Math.round(Math.max(GROUP_MIN_H, (maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER)),
   };
+  if (group.lockedPosition) {
+    // [[D63]] lockedGroupIsObstacle: the lock holds the corner, so the members come to it.
+    moveGroupMembers(editor, view, group, gv.x - after.x, gv.y - after.y);
+    after.x = gv.x;
+    after.y = gv.y;
+  }
 
   group.width = after.width;
   group.height = after.height;
@@ -136,6 +150,7 @@ export async function autofitGroupWithHistory(editor: Editor, view: View, group:
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, view);
   settleStandoffs(new Set([group.id]), { forceLock: true });
+  settleOverlaps(editor, view, new Set([group.id]));
   scheduleAutosave();
 }
 

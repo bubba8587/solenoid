@@ -1,4 +1,4 @@
-// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle
+// [[C85]] groupPushDeterministic, [[D63]] lockedGroupIsObstacle, [[C112]] noOverlapsEver
 import { clamp } from "./nodes/mathUtils";
 
 export interface PushBox {
@@ -49,7 +49,7 @@ const rectsOverlap = (a: Rect, b: Rect) => xOverlap(a, b) > 0 && yOverlap(a, b) 
 
 const pairKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
-export function overlappingPairs(boxes: readonly PushBox[]): Set<string> {
+function overlappingPairs(boxes: readonly PushBox[]): Set<string> {
   const out = new Set<string>();
   for (let i = 0; i < boxes.length; i++) {
     for (let j = i + 1; j < boxes.length; j++) {
@@ -64,6 +64,7 @@ export function computeExpandPush(
   obstacles: PushBox[],
   satellites: Map<string, Satellite>,
   anchors: Map<string, Pt[]> = new Map(),
+  fixed: ReadonlySet<string> = new Set(),
 ): Map<string, Disp> {
   const A: Rect = { x: spec.x, y: spec.y, w: spec.postW, h: spec.postH };
   const C: Rect = { x: spec.x, y: spec.y, w: spec.preW, h: spec.preH };
@@ -80,7 +81,7 @@ export function computeExpandPush(
     return d ? { x: b.x + d.dx, y: b.y + d.dy, w: b.w, h: b.h } : b;
   };
 
-  const exempt = new Set(obstacles.filter((b) => rectsOverlap(b, C)).map((b) => b.id));
+  const exempt = new Set(obstacles.filter((b) => fixed.has(b.id) || rectsOverlap(b, C)).map((b) => b.id));
   const baseline = overlappingPairs(obstacles);
 
   const clearShift = (b: PushBox): Disp => {
@@ -209,7 +210,6 @@ export function computeExpandPush(
 
 export function separateOverlaps(
   boxes: PushBox[],
-  baseline: Set<string> = new Set(),
   gap = PUSH_GAP,
   pinned: Set<string> = new Set(),
 ): Map<string, Disp> {
@@ -229,7 +229,6 @@ export function separateOverlaps(
     let worstArea = 0;
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
-        if (baseline.has(pairKey(boxes[i].id, boxes[j].id))) continue;
         if (pinned.has(boxes[i].id) && pinned.has(boxes[j].id)) continue;
         const a = at(boxes[i]);
         const b = at(boxes[j]);
@@ -257,4 +256,65 @@ export function separateOverlaps(
   }
   for (const [id, d] of [...disp]) if (d.dx === 0 && d.dy === 0) disp.delete(id);
   return disp;
+}
+
+export interface SeparateAllOpts {
+  /** Boxes that move as one rigid unit (standoff clusters). */
+  clusters?: ReadonlyArray<Iterable<string>>;
+  /** Never move (position-locked groups). */
+  fixed?: ReadonlySet<string>;
+  /** Hold still while anything else can yield (what the op just placed). */
+  prefer?: ReadonlySet<string>;
+  gap?: number;
+}
+
+/** Afterwards no two boxes overlap, bar two fixed ones. */
+export function separateAll(boxes: readonly PushBox[], opts: SeparateAllOpts = {}): Map<string, Disp> {
+  const { fixed = new Set<string>(), prefer = new Set<string>(), gap = PUSH_GAP } = opts;
+  const byId = new Map(boxes.map((b) => [b.id, b]));
+  const unitOf = new Map<string, string>();
+  const unitMembers = new Map<string, string[]>();
+  let ci = 0;
+  for (const cl of opts.clusters ?? []) {
+    const ids = [...cl].filter((id) => byId.has(id) && !unitOf.has(id));
+    if (ids.length < 2) continue;
+    const uid = `__cluster${ci++}`;
+    for (const id of ids) unitOf.set(id, uid);
+    unitMembers.set(uid, ids);
+  }
+  const units: PushBox[] = [];
+  const fixedU = new Set<string>();
+  const preferU = new Set<string>();
+  for (const [uid, ids] of unitMembers) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const id of ids) {
+      const b = byId.get(id)!;
+      minX = Math.min(minX, b.x); minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.w); maxY = Math.max(maxY, b.y + b.h);
+      if (fixed.has(id)) fixedU.add(uid);
+      if (prefer.has(id)) preferU.add(uid);
+    }
+    units.push({ id: uid, x: minX, y: minY, w: maxX - minX, h: maxY - minY });
+  }
+  for (const b of boxes) {
+    if (unitOf.has(b.id)) continue;
+    units.push({ id: b.id, x: b.x, y: b.y, w: b.w, h: b.h });
+    if (fixed.has(b.id)) fixedU.add(b.id);
+    if (prefer.has(b.id)) preferU.add(b.id);
+  }
+  const first = separateOverlaps(units, gap, new Set([...fixedU, ...preferU]));
+  const shifted = units.map((u) => {
+    const d = first.get(u.id);
+    return d ? { ...u, x: u.x + d.dx, y: u.y + d.dy } : u;
+  });
+  const second = separateOverlaps(shifted, gap, fixedU);
+  const out = new Map<string, Disp>();
+  for (const u of units) {
+    const a = first.get(u.id), b = second.get(u.id);
+    const dx = (a?.dx ?? 0) + (b?.dx ?? 0);
+    const dy = (a?.dy ?? 0) + (b?.dy ?? 0);
+    if (dx === 0 && dy === 0) continue;
+    for (const id of unitMembers.get(u.id) ?? [u.id]) out.set(id, { dx, dy });
+  }
+  return out;
 }

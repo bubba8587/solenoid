@@ -2,7 +2,7 @@
 aliases: ["Standoffs"]
 tags: [spec, canvas]
 ---
-<!-- [[C89]] standoffsSolveLast, [[C65]] domOrderStacking -->
+<!-- [[C89]] standoffsSolveLast, [[C65]] domOrderStacking, [[C112]] noOverlapsEver -->
 
 # Spec: Standoffs
 
@@ -56,6 +56,8 @@ The solver runs as the last step after every pass that affects layout ([[C89]] s
 | Autofit | `autofitGroupWithHistory` re-solves with `forceLock`, pinning the fitted group. |
 | Tidy | A final `forceLock` settle after layout. |
 | Toolbar edits | A band, lock or angle change settles at once. |
+
+Every layout pass in the table except the live drag and toolbar edits then ends with the no-overlap pass ([[C112]] noOverlapsEver). It moves each standoff cluster as one unit, so it never breaks a band.
 
 ## Tidy and clusters
 

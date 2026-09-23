@@ -2,7 +2,7 @@
 aliases: ["Auto-arrange / Tidy"]
 tags: [spec, canvas]
 ---
-<!-- [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead, [[C89]] standoffsSolveLast, [[C8]] declareOnce -->
+<!-- [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead, [[C89]] standoffsSolveLast, [[C8]] declareOnce, [[C112]] noOverlapsEver -->
 
 # Spec: Auto-arrange / Tidy
 
@@ -13,7 +13,7 @@ Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK
 ## Entry points
 
 - **Tidy** runs from the top-bar Tidy button, View ▸ Tidy in the menu bar, or the `T` key. It lays out the selection if there is one, otherwise the whole canvas. A selection that lies entirely inside one group becomes a within-group Tidy of that group. Above `TIDY_CONFIRM_THRESHOLD` layout units (docked FCs and group members do not count) it asks for confirmation first. The count uses the same predicate as `layoutTargets`, or the dialog would misstate the scope.
-- **Group Tidy** is the button in a group's header. It runs a within-group arrange (`arrangeFn({ groupId })`), waits two animation frames so the deferred docked-FC snap-back lands, then autofits the box to its members.
+- **Group Tidy** is the button in a group's header. It runs a within-group arrange (`arrangeFn({ groupId })`), waits two animation frames so the deferred docked-FC snap-back lands, then autofits the box to its members. A locked group keeps its corner through the autofit: its members move to it instead.
 - **Cleanup** runs from View ▸ Cleanup or the `C` key. Above `TIDY_CONFIRM_THRESHOLD` units it asks for confirmation first.
 - The composite drill-in has its own arrange (`FlowCompositeOverlay.tsx`) that reads the same Tidy settings.
 
@@ -91,11 +91,10 @@ The selection is cleared for the layout and restored afterwards, because transla
 1. Cluster followers move to their offsets from the new leader position.
 2. The anchor shift moves every layout target.
 3. Each laid-out group's members move by the group's net delta.
-4. Global Tidy only: locked groups are pushed apart from the new arrangement (see Position-locked groups).
-5. The pin-drop loop clears inline sizes (see Cards stay content-sized).
-6. Within a group: the box grows to wrap its members, and may push its neighbors (see Growing a group).
-7. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.translate` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
-8. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
+4. The pin-drop loop clears inline sizes (see Cards stay content-sized).
+5. Within a group: the box grows to wrap its members, and may push its neighbors (see Growing a group).
+6. Autosave is scheduled, the selection is restored, and a Tidy of a selection zooms to it. Scheduling here is enough: `view.translate` schedules nothing, and the autosave debounce reads positions when it flushes, so the deferred settle below is still captured.
+7. One frame later, so the sockets have rendered at the new host positions before they are measured, docked FCs snap back onto their hosts; standoffs settle with `forceLock`, so a cluster is pulled back into a rigid block rather than merely band-satisfied; the no-overlap pass runs ([[C112]] noOverlapsEver, skipped under Cleanup's `skipPush`, whose own top-level Tidy runs it), preferring the layout targets (or the group, within a group), so a selection Tidy that lands on an unselected card pushes that card aside and a tidied card on a locked group moves off it; and a whole-canvas Tidy waits one more frame and then fits the view with `fitAll`. Never a raw `zoomAt`, which centers in the full container and lands content under the docked panels.
 
 ## Cards stay content-sized
 
@@ -107,7 +106,7 @@ A group with `GroupNode.lockedPosition` set (persisted through `INIT_FIELD_ORDER
 
 - It is dropped from `layoutTargets`, so global Tidy never places it or carries its members.
 - Cleanup skips it in its member tidy, autofit and collapse steps. It stays exactly where it was pinned.
-- After a global Tidy, every locked box is fed to `separateOverlaps` (`groupPushCore.ts`) as a pinned obstacle. A pinned box never moves and its partner yields. Displacement only grows along +x and +y, so the pass terminates, and once clear a re-run changes nothing. Any tidied card that overlaps a locked box is shifted off it through `translateEntityBy`, which tows a pushed group's members and a pushed host's docked FCs.
+- The final no-overlap pass holds every locked box fixed, so any tidied card that lands on one yields, moving right or down. A pushed group tows its members and a pushed host its docked FCs.
 - Its own header Tidy button still works; the lock only fixes the box's corner.
 - The lock also wins over a Standoff band. Every `solveStandoffs` call site pins locked groups (`withLockedGroupsPinned`), so a locked standoff end holds and the whole correction falls on the other end.
 
@@ -119,7 +118,7 @@ After laying out its members, a within-group Tidy grows the box to wrap them: `w
 
 If the box grew by more than half a pixel, `tidyArrange.ts` calls `pushForGrownGroups` (`groupPush.ts`). It uses the same `runExpandPushes` engine as expanding a collapsed group, with the pre-grow size as `preSizes`, so neighbors are shoved off the grown edges. It passes `record: false`: a Tidy is a deliberate manual action, so the displacement is permanent. No restore record is written, and pushed neighbors stay put when the group later collapses. A neighbor that already had an expand-push record from before now counts as manually moved, so it does not snap back either. The push only runs when the `groupPush` setting is on.
 
-Cleanup passes `skipPush: true` to its per-group arranges, because it runs its own autofit, collapse and top-level re-tidy right after. A selection or whole-canvas Tidy never pushes, because it moves groups as whole units and leaves their interiors alone.
+Cleanup passes `skipPush: true` to its per-group arranges, because it runs its own autofit, collapse and top-level re-tidy right after. A selection or whole-canvas Tidy runs no grow push, because it moves groups as whole units and leaves their interiors alone; only the final no-overlap pass moves what it lands on.
 
 ## Cleanup
 
