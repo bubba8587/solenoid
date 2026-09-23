@@ -12,7 +12,7 @@ import { FormatControllerNode } from "./formatController";
 import { ExpressionNode } from "./expression";
 import { ScriptNode } from "./script";
 import { EquationNode } from "./equation";
-import { GroupByNode } from "./list";
+import { GroupListsNode } from "./list";
 import { RegexNode } from "./text";
 import { ComparisonNode, BooleanOpNode, NotNode, BetweenNode, IsCloseNode, IfNode, IFErrorNode, IsTestNode, IsEvenOddNode, NaNode, ChooseNode, SwitchNode, IfsNode } from "./logic";
 import { ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode, QuadraticRootsNode, PolyRootsNode } from "./complex";
@@ -232,7 +232,7 @@ export function explicitKindOf(node: ClassicPreset.Node): NodeKind | null {
   if (node instanceof ExpressionNode) return "math";
   if (node instanceof EquationNode) return "math";
   if (node instanceof RegexNode) return "string";
-  if (node instanceof GroupByNode) return "list";
+  if (node instanceof GroupListsNode) return "list";
   return null;
 }
 

@@ -22,7 +22,7 @@ const DATA_DEPENDENT_FRAME_PRODUCERS: Record<string, string> = {
   LocalFileNode: "the columns come from the opened file",
   CubeRollupNode: "the carried-over columns are re-inferred from the cube's cells",
   OutliersNode: "the Value column's type is inferred from the input list's cells",
-  GroupByNode: "the Key column's type is inferred from the grouped values",
+  GroupListsNode: "the Key column's type is inferred from the grouped values",
   TallyNode: "the Value column's type is inferred from the tallied values",
 };
 

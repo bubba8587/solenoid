@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator, extractVariables } from "../../src/graph/excelFormula";
 import { isLambdaValue } from "../../src/graph/lambdaValue";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "../../src/graph/nodes/tableLambda";
-import { GroupByNode, RunningNode } from "../../src/graph/nodes/list";
+import { GroupListsNode, RunningNode } from "../../src/graph/nodes/list";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas lambda tranche: the language feature, node-equals-formula ────────────
@@ -106,7 +106,7 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
 
   it("GROUPBY — first-seen groups, VALUE-keyed, lambda per group's value list", () => {
     const k = ["a", "b", "a", "b"], v = [1, 2, 3, 4];
-    const node = new GroupByNode({ agg: "sum" });
+    const node = new GroupListsNode({ agg: "sum" });
     // The node emits one Key/Value frame now (C5); the GROUPBY formula still spills [key, value] rows.
     const cols = node.data({ keys: [k], values: [v] }).result!.columns;
     const fx = ev("GROUPBY(k, v, LAMBDA(g, SUM(g)))", { k, v }) as unknown[][];
@@ -114,7 +114,7 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
     expect(fx.map((r) => r[1])).toEqual(cols[1].values); // aggregated Value
     expect(cols.map((c) => c.name)).toEqual(["Key", "Value"]);
     // A wired blank keys list → null frame (propagate).
-    expect(new GroupByNode().data({ keys: [null as unknown as unknown[]], values: [v] }).result).toBeNull();
+    expect(new GroupListsNode().data({ keys: [null as unknown as unknown[]], values: [v] }).result).toBeNull();
   });
 });
 

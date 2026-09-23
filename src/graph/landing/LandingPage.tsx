@@ -94,7 +94,7 @@ export default function LandingPage() {
 
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
-              Filter, Sort, Join, Group By, Append, Distinct, Pivot and Unpivot. The desktop
+              Filter, Sort, Join, GROUPBY, Append, Distinct, Pivot and Unpivot. The desktop
               build runs them on Rust and Polars, fast enough for million-row tables.
             </p>
           </Feature>

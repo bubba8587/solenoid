@@ -324,7 +324,7 @@
       "y": -647,
       "init": {
         "label": "3 · Spending pivot",
-        "body": "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** (the frame verb, native Polars on desktop) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
+        "body": "# GROUPBY as a pivot table\nA **Slicer** drops the income rows, then **GROUPBY** (the frame verb, native Polars on desktop) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second GROUPBY counts transactions.",
         "color": "gold",
         "width": 380,
         "height": 200,
@@ -452,7 +452,7 @@
       "y": 518,
       "init": {
         "label": "4 · Net worth",
-        "body": "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt, and the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
+        "body": "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt, and the split holds in any account order. **GROUPBY** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
         "color": "violet",
         "width": 380,
         "height": 230,
@@ -1402,7 +1402,7 @@
       "y": 2458,
       "init": {
         "label": "9 · New in 1.2",
-        "body": "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left, and its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **Group By** can sum it properly.",
+        "body": "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left, and its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **GROUPBY** can sum it properly.",
         "color": "gold",
         "width": 400,
         "height": 200,

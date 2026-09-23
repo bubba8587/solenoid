@@ -42,7 +42,7 @@ export function opVocabByCtor(): Map<string, Map<string, string>> {
     add("CubeRollupNode", op, meta.label);
   }
   for (const [op, meta] of Object.entries(GROUP_BY_OP_META)) {
-    add("GroupByNode", op, meta.label);
+    add("GroupListsNode", op, meta.label);
   }
 
   _vocab = vocab;

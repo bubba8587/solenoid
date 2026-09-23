@@ -1896,7 +1896,7 @@ function groupByAggregate(vals: number[], op: GroupByOp): number {
   }
 }
 
-export class GroupByNode extends ClassicPreset.Node {
+export class GroupListsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "Pairs with Keys by position. Rows beyond the shorter list are ignored.",
     result: "One row per unique key: Key (adopting the keys input's element type) and the aggregated Value.",

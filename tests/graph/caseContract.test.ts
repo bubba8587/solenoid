@@ -53,7 +53,7 @@ describe("identity ops are case-sensitive (keys are identity)", () => {
     expect(distinctRows(f).columns[0].values).toEqual(["us", "US"]);
   });
 
-  it("Group By groups them apart", () => {
+  it("GROUPBY groups them apart", () => {
     const out = groupByFrame(f, ["k"], [{ op: "count", column: "k", as: "n" }]);
     expect(out.columns[0].values).toEqual(["us", "US"]);
     expect(out.columns[1].values).toEqual([2, 1]);

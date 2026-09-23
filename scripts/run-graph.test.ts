@@ -26,16 +26,16 @@ describe("run-graph (headless CLI)", () => {
     expect(out["SUM"]).toEqual({ result: 1200 + 1550 + 1340 + 1810 });
   });
 
-  it("routes Join and Group By (Polars-backed on desktop) through the JS oracle correctly, with lazy handles resolved before printing", async () => {
+  it("routes Join and GROUPBY (Polars-backed on desktop) through the JS oracle correctly, with lazy handles resolved before printing", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const out = await runGraph(tableVerbs as any);
 
-    const grouped = (out["Group By Rep → SUM(Amount)"] as { frame: FrameValue }).frame;
+    const grouped = (out["GROUPBY Rep → SUM(Amount)"] as { frame: FrameValue }).frame;
     expect(isFrameValue(grouped)).toBe(true); // not a "jsf:N" ref string — actually materialized
     const rep = grouped.columns.find((c) => c.name === "Rep")!;
     const amount = grouped.columns.find((c) => c.name === "Amount")!;
     const byRep = Object.fromEntries(rep.values.map((r, i) => [r, amount.values[i]]));
-    // The seed's Group By carries totalDepth 1 (B-4b) — the grand total row
+    // The seed's GROUPBY carries totalDepth 1 (B-4b) — the grand total row
     // RE-AGGREGATES the source through the no-colFields pivot path.
     expect(byRep).toEqual({ Ada: 230, Bo: 125, Cy: 200, "Grand Total": 555 });
 

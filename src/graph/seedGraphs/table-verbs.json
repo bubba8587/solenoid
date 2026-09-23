@@ -179,7 +179,7 @@
       "x": 843,
       "y": 1290,
       "init": {
-        "label": "Group By Rep → SUM(Amount)",
+        "label": "GROUPBY Rep → SUM(Amount)",
         "agg": "sum",
         "totalDepth": 1
       },

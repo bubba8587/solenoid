@@ -47,7 +47,7 @@ A standard card is `NodeShell` (`nodeKit.tsx`) around `NodeCard` (`NodeCard.tsx`
 - **Semantic zoom.** While the Settings toggle is on, the shell mounts a stand-in showing the node's name large; the swap at the zoom threshold is pure CSS on a root class, so cards never subscribe to the zoom.
 - `nonScrollingBody` marks a figure card whose body scales rather than scrolls, so a sized card does not trap the wheel.
 
-`useNodeField(node, key)` is the hook for a discrete pick: local state mirrored onto `node[key]`, then a recompute and `reconcileTypesAfterEdit`, since a config value can move a derived socket type (a Group By aggregate's column type) with no connection event.
+`useNodeField(node, key)` is the hook for a discrete pick: local state mirrored onto `node[key]`, then a recompute and `reconcileTypesAfterEdit`, since a config value can move a derived socket type (a GROUPBY aggregate's column type) with no connection event.
 
 ## Card chrome
 

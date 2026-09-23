@@ -124,10 +124,10 @@ fc("fc-out", "disp-out", "currency_usd", GRP_CASH);
 // ─── C · Spending pivot (expenses only) ─────────────────────────────────────────
 note("note-pivot", 40, -600,
   "3 · Spending pivot",
-  "# Group By as a pivot table\nA **Slicer** drops the income rows, then **Group By** (the frame verb, native Polars on desktop) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second Group By counts transactions.",
+  "# GROUPBY as a pivot table\nA **Slicer** drops the income rows, then **GROUPBY** (the frame verb, native Polars on desktop) collapses the rest to one row per **Category**. The grouped-table chip opens it; **Get Column** pulls the totals out for the chart (absolute spend) and a second GROUPBY counts transactions.",
   "gold", 380, 200);
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
-// The frame Group By is one relational verb over the frame, then Get Column
+// The frame GROUPBY is one relational verb over the frame, then Get Column
 // pulls the lists the chart/sparkline need. Coords in the TUNED frame.
 n("gbf-spend","GroupByFrameNode", 900, -150, { label: "Spend by category", agg: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
 n("col-ptotal","GetColumnNode", 1230,  60, { label: "Category totals", readAs: "number" }, { stringLiterals: { name: "Amount" } });
@@ -152,7 +152,7 @@ c("col-pcnt","values","spark-cnt","values");
 // ─── D · Accounts / net worth ───────────────────────────────────────────────────
 note("note-acct", 40, 560,
   "4 · Net worth",
-  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt, and the split holds in any account order. **Group By** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
+  "# Assets − liabilities\nLiabilities are stored as negative balances, so net worth is **SUM(Balance)**. **SUMIFS** splits by sign straight off the accounts frame: `Balance > 0` for assets, `< 0` for debt, and the split holds in any account order. **GROUPBY** (the frame verb) collapses accounts to one row per **Type** for the chart; the class-totals chip opens the grouped table. The gauge tracks the goal slider and the alert watches the emergency fund.",
   "violet", 380, 230);
 n("col-bal", "GetColumnNode", 60,  860, { label: "Balance", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("red-nw",  "AggregateNode",   340,  820, { label: "Net worth", op: "sum" });
@@ -160,7 +160,7 @@ n("disp-nw", "DisplayNode",  620,  800, { label: "Net worth" });
 n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0 } });
 n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
 n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
-// SUMIFS (conditional aggregate over one frame) + the frame Group By
+// SUMIFS (conditional aggregate over one frame) + the frame GROUPBY
 // (keys+values through GetColumn). Coords in the TUNED frame.
 n("sumif-assets","SumIfsNode", 1250, 1110, { label: "Assets (Balance > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
 n("sumif-liab", "SumIfsNode",  1050, 1680, { label: "Debt (Balance < 0)", op: "sumifs", condConfig: { "0": { op: "lt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
@@ -352,7 +352,7 @@ function frameText(cols) {
 }
 note("note-v12", 40, 1960,
   "9 · New in 1.2",
-  "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left, and its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **Group By** can sum it properly.",
+  "# Bridge, calendar, fill-down\nThe **Waterfall** walks the month from income down to what's left, and its Total bar is computed, never typed. The **Calendar** tints each January day by its spend, streaks and splurges at a glance. Below, a report-shaped table names each **Category** only once; **Fill Down** carries the name through the blanks so **GROUPBY** can sum it properly.",
   "gold", 400, 200);
 n("fi-bridge", "FrameInputNode", 60, 2240, {
   label: "Monthly budget bridge",

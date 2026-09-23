@@ -77,7 +77,7 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 ## Tier 3 — out of character or already covered by composition (recorded so nobody re-asks)
 
 - `apply`/`map`/`reduce`/`scan` → MAP / BYROW / REDUCE / SCAN exist. `cut` → Bin. `scale` →
-  Normalize z. `paste` → CONCAT/TEXTJOIN. `table`/`value_counts` → Group By / Group Lists.
+  Normalize z. `paste` → CONCAT/TEXTJOIN. `table`/`value_counts` → GROUPBY / Group Lists.
   `crosstab` → PIVOTBY. `melt`/`pivot_wider` → Unpivot / PIVOTBY. `separate`/`unite` →
   Split/Merge Columns. `fill`/`drop_na`/`replace_na` → Fill Down / Drop Blank Rows / Replace.
   `lag`/`lead`/`diff`/`pct_change`/`cumsum`/`rolling`/`ewm` → Shift / DIFF / Running / EWMA

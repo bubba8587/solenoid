@@ -252,7 +252,7 @@ export { ScriptComponent } from "./ScriptNode";
 export { EquationComponent } from "./EquationNode";
 
 export { RegexComponent } from "./RegexNode";
-export { GroupByComponent } from "./GroupByNode";
+export { GroupListsComponent } from "./GroupListsNode";
 export { SocketContextMenu } from "./SocketContextMenu";
 export type { SocketContextTarget } from "./SocketContextMenu";
 export { CableContextMenu } from "./CableContextMenu";

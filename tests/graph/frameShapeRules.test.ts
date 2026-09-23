@@ -247,7 +247,7 @@ describe("a wired config socket makes the shape unknown", () => {
     }
   });
 
-  it("Group By reads the typed keys, and goes unknown once Group by or Aggregate is wired", async () => {
+  it("GROUPBY reads the typed keys, and goes unknown once Group by or Aggregate is wired", async () => {
     const g = new GroupByFrameNode();
     g.stringLiterals.keys = "Region";
     g.stringLiterals.column = "Qty";

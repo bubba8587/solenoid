@@ -83,7 +83,7 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
   // [[D21]] noExcelNameClash: a node NAME must never coincide with a core Excel function name —
   // a bare "Columns" reads as COLUMNS() (the count), so the relational leaves are named for the
   // op: "Keep Columns" / "Drop Columns". A general "dispatches?" check can't run here — some node
-  // labels ARE the node-form of the like-named function (Group By ↔ GROUPBY) and legitimately
+  // labels ARE the node-form of the like-named function (Sort ↔ SORT) and legitimately
   // dispatch. The misread hazard is a leaf whose label is a bare STRUCTURAL/count function doing
   // something else, so those are denylisted by name (ROWS/COLUMNS the origin, author 2026-08-25).
   const COUNT_FNS = new Set(["ROWS", "COLUMNS", "ROW", "COLUMN"]);

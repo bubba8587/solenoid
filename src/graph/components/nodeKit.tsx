@@ -87,7 +87,7 @@ export function useNodeField<N extends object, K extends keyof N>(
     (next: N[K]) => {
       node[key] = next;
       setVal(next);
-      // Config can feed a derived socket type (a Group By aggregate's column type), and no connection event fires here.
+      // Config can feed a derived socket type (a GROUPBY aggregate's column type), and no connection event fires here.
       const id = (node as { id?: string }).id;
       const ed = id ? getOwningEditor(id) : null;
       const ar = id ? getOwningView(id) : null;

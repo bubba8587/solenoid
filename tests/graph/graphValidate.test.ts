@@ -149,7 +149,7 @@ describe("validateGraph — semantics", () => {
     expect(issue?.message).toContain("`sum`");
   });
 
-  it("flags a bad aggregate op on Group By (dropdown-only vocabulary)", () => {
+  it("flags a bad aggregate op on GROUPBY (dropdown-only vocabulary)", () => {
     const { issues } = validateText(`G: GroupByFrameNode op="average"\n---\n{}`);
     const issue = issues.find((i) => i.message.includes('unknown op "average"'));
     expect(issue?.message).toContain("Ops: sum, avg");

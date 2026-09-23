@@ -6,7 +6,7 @@ import {
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
-  FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupByNode,
+  FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupListsNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
@@ -606,7 +606,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "list-contains", label: "CONTAINS", description: "`TRUE` if the list contains the value, any element type, keyed by value. Excel: `ISNUMBER(MATCH(value,range,0))`.", create: () => new ContainsNode() },
         ],
       },
-      { type: "list-groupby", label: "Group Lists", description: "Groups a key list and a parallel value list, one aggregate per key, as a Key, Value frame. Whole tables use Group By. Excel: `GROUPBY`, 1D.", create: () => new GroupByNode(), parity: false },
+      { type: "group-lists", label: "Group Lists", description: "Groups a key list and a parallel value list, one aggregate per key, as a Key, Value frame. Whole tables use GROUPBY. Excel: `GROUPBY`, 1D.", create: () => new GroupListsNode(), parity: false },
       {
         type: "category", label: "Rank", description: "Rank, percentile, and distribution queries.",
         children: [

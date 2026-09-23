@@ -174,7 +174,7 @@ export class CubeColumnsNode extends ClassicPreset.Node {
   }
 }
 
-// Reuses aggregateGroup so a roll-up and a Group By agree on every op's edge cases.
+// Reuses aggregateGroup so a roll-up and a GROUPBY agree on every op's edge cases.
 
 export class CubeRollupNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
