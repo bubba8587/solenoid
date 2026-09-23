@@ -1,4 +1,4 @@
-// [[D16]] retypeReconciles, [[E3]] adoptKeepsCables
+// [[D16]] retypeReconciles, [[D15]] wildcardsKeepRank
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { NoteNode } from "../../src/graph/nodes/annotation";
