@@ -181,7 +181,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
           return;
         }
         // Match the produced character: `[` and `]` sit on different physical keys across layouts.
-        if (e.key === "[" || e.key === "]") {
+        if (!locked && (e.key === "[" || e.key === "]")) {
           if (rotateSelection(e.key === "]" ? 1 : -1) > 0) { e.preventDefault(); return; }
         }
         switch (e.code) {
@@ -189,7 +189,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
             e.preventDefault(); return;
           case "KeyA":
-            addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
+            if (!locked) addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
             e.preventDefault(); return;
           case "KeyG":
             if (!locked && editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
@@ -212,7 +212,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             toggleChrome("navigator"); e.preventDefault(); return;
           case "BracketLeft":
           case "BracketRight":
-            if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {
+            if (!locked && rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {
               e.preventDefault(); return;
             }
             break;
@@ -231,7 +231,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (e.code === "KeyG" && e.shiftKey) {
         const editor = editorRef.current;
         const view = viewRef.current;
-        if (editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
+        if (!locked && editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
           void createCompositeFromSelection(editor, view);
         }
         e.preventDefault(); return;
@@ -265,7 +265,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         e.preventDefault(); return;
       }
       const history = historyRef.current;
-      if (!history) return;
+      if (!history || locked) return;
       // withGraphRebuild settles once instead of once per restored cable.
       if (e.code === "KeyZ" && !e.shiftKey) { void withGraphRebuild(() => history.undo()); e.preventDefault(); return; }
       if (e.code === "KeyZ" &&  e.shiftKey) { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }

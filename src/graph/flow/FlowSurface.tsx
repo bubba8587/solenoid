@@ -328,7 +328,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [s]);
 
   useEffect(
-    () => addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY })),
+    () => addMenuRequest.register((screenX, screenY) => { if (!canvasLockStore.get()) setMenu({ screenX, screenY }); }),
     [],
   );
 
@@ -424,7 +424,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const el = wrapperRef.current;
     const sock = el ? socketTargetAt(el, e) : null;
     if (sock) { setSocketCtx(sock); return; }
-    if (isolateStore.isActive()) return;
+    if (isolateStore.isActive() || canvasLockStore.get()) return;
     setMenu({ screenX: e.clientX, screenY: e.clientY });
   }, []);
 
