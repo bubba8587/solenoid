@@ -228,6 +228,7 @@ fn num_to_json(n: f64) -> Json {
             ERR_DOMAIN_BITS => return serde_json::json!({"__err": "#DOMAIN!"}),
             ERR_OVERFLOW_BITS => return serde_json::json!({"__err": "#OVERFLOW!"}),
             ERR_DIV0_BITS => return serde_json::json!({"__err": "#DIV/0!"}),
+            ERR_UNIT_BITS => return serde_json::json!({"__err": "#UNIT!"}),
             _ => return serde_json::json!({"__nf": "nan"}),
         }
     }
@@ -370,6 +371,8 @@ pub struct WireAgg {
     op: String,
     #[serde(rename = "as")]
     as_name: String,
+    #[serde(rename = "readingScale", default)]
+    reading_scale: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -420,6 +423,8 @@ pub enum WireOp {
         as_name: String,
         #[serde(default)]
         n: Option<f64>,
+        #[serde(rename = "readingScale", default)]
+        reading_scale: Option<f64>,
     },
     #[serde(rename = "fillBlanks")]
     FillBlanks { columns: Vec<String>, dir: String },
@@ -832,6 +837,7 @@ fn lazy_window(
     column: Option<&str>,
     as_name: &str,
     n: Option<f64>,
+    reading_scale: Option<f64>,
 ) -> Result<Plan, IpcError> {
     require_in(&plan.names, partition_by)?;
     if let Some(o) = order_by { require_in(&plan.names, std::slice::from_ref(&o.to_string()))?; }
@@ -941,6 +947,11 @@ fn lazy_window(
         "first" => over(vraw().first()),
         "last" => over(vraw().last()),
         other => return Err(IpcError::new("#VALUE!", format!("unknown window function \"{other}\""))),
+    };
+    let expr = match (reading_scale, func) {
+        (Some(_), "cumsum" | "rolling_sum" | "group_sum" | "share" | "pct_change") => unit_error_column(),
+        (Some(s), "diff") => scale_finite(expr, s),
+        _ => expr,
     };
     let out_ty = match func {
         "lag" | "lead" | "first" | "last" => col_ty.unwrap_or(SolType::Number),
@@ -1289,6 +1300,26 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
 const ERR_DOMAIN_BITS: u64 = 0x7ff8_0000_0000_0d01;
 const ERR_OVERFLOW_BITS: u64 = 0x7ff8_0000_0000_0f02;
 const ERR_DIV0_BITS: u64 = 0x7ff8_0000_0000_0d03;
+const ERR_UNIT_BITS: u64 = 0x7ff8_0000_0000_0e04;
+
+// ─── Readings on an offset scale (°C, °F), as the oracle's `readingPlan` ────────
+// The engine sees no units, so the op names the column's reading scale. A refused op is
+// #UNIT! in every cell; a spread is a delta, scaled to kelvin per power.
+fn unit_error_column() -> Expr {
+    lit(f64::from_bits(ERR_UNIT_BITS))
+}
+fn scale_finite(e: Expr, k: f64) -> Expr {
+    when(e.clone().is_finite()).then(e.clone() * lit(k)).otherwise(e)
+}
+fn readings_agg(e: Expr, op: &str, scale: Option<f64>) -> Expr {
+    let Some(s) = scale else { return e };
+    match op {
+        "sum" | "product" | "percentof" => unit_error_column(),
+        "stdev" | "stdevp" => scale_finite(e, s),
+        "var" | "varp" => scale_finite(e, s * s),
+        _ => e,
+    }
+}
 
 fn guard_agg_expr(r: Expr, src: Expr) -> Expr {
     let domain = lit(f64::from_bits(ERR_DOMAIN_BITS));
@@ -1514,6 +1545,7 @@ fn group_by_lazy_plan(
         if preserves && src_ty == SolType::Logical {
             e = e.neq(lit(0.0));
         }
+        e = readings_agg(e, &a.op, a.reading_scale);
         agg_exprs.push(e.alias(agg_names[i].as_str()));
         out_types.push(if preserves { src_ty } else { SolType::Number });
     }
@@ -2049,8 +2081,8 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
             let (lf, names, types) = group_by_lazy_plan(plan.lf, &plan.names, &plan.types, keys, aggs)?;
             Ok(Plan { lf, names, types })
         }
-        WireOp::Window { partition_by, order_by, order_dir, func, column, as_name, n } => {
-            lazy_window(plan, partition_by, order_by.as_deref(), order_dir.as_deref(), func, column.as_deref(), as_name, *n)
+        WireOp::Window { partition_by, order_by, order_dir, func, column, as_name, n, reading_scale } => {
+            lazy_window(plan, partition_by, order_by.as_deref(), order_dir.as_deref(), func, column.as_deref(), as_name, *n, *reading_scale)
         }
         WireOp::FillBlanks { columns, dir } => lazy_fill_blanks(plan, columns, dir),
         WireOp::ReplaceValues { column, find, replace_with, mode } => lazy_replace_values(plan, column, find, replace_with, mode),

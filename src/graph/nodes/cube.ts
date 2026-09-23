@@ -2,8 +2,10 @@
 import { ClassicPreset } from "rete";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } from "./shared";
 import { parseCubeRecords, DEFAULT_CUBE_TEXT } from "../literalEditors";
-import { cubeFromColumns, recordsToCube, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, typedColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell, type FrameColType } from "../frame";
-import { aggregateGroup, type AggOp } from "../frameVerbs";
+import { cubeFromColumns, recordsToCube, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, typedColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameColumn, type FrameCell, type FrameColType } from "../frame";
+import { aggregateGroup, aggUnitPlan, type AggOp } from "../frameVerbs";
+import { matrixCellsFromList, tagFrameCellUnit } from "../unitColumn";
+import type { ColumnUnit } from "../unitValue";
 import { solError, isSolError, type SolError } from "../errorValue";
 
 function literalCell(node: { literals: Record<string, number>; stringLiterals: Record<string, string> }, key: string): CubeCell {
@@ -174,7 +176,13 @@ export class CubeColumnsNode extends ClassicPreset.Node {
   }
 }
 
-// Reuses aggregateGroup so a roll-up and a GROUPBY agree on every op's edge cases.
+// Reuses aggregateGroup and aggUnitPlan so a roll-up and a GROUPBY agree on every op's edge cases and units.
+
+/** The rows agree on one unit, or the column carries none ([[D43]] unitByGranularity). */
+function rolledNumberColumn(name: string, rolled: readonly unknown[]): FrameColumn {
+  const { mags, unit } = matrixCellsFromList(rolled);
+  return { name, type: "number", values: mags as FrameCell[], ...(unit ? { unit } : {}) };
+}
 
 export class CubeRollupNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -220,17 +228,19 @@ export class CubeRollupNode extends ClassicPreset.Node {
     const nested = cube.columns[nestedIdx];
     const rows = cubeRowCount(cube);
     const flatVals: FrameCell[][] = flatCols.map(() => []);
-    const rolled: FrameCell[] = [];
+    const rolled: unknown[] = [];
     let textRolled = false;
     for (let i = 0; i < rows; i++) {
       flatCols.forEach((fc, k) => flatVals[k].push((fc.cells[i] ?? null) as FrameCell));
       const cell = nested.cells[i];
       let type: FrameColType | undefined;
+      let unit: ColumnUnit | undefined;
       const values: FrameCell[] | SolError | null = isFrameValue(cell)
         ? (() => {
             const fc = cell.columns.find((c) => c.name === col);
             if (!fc) return solError("#REF!", `column "${col}" not found in nested frame`);
             type = fc.type;
+            unit = fc.unit;
             return fc.values;
           })()
         : isCubeValue(cell)
@@ -239,13 +249,17 @@ export class CubeRollupNode extends ClassicPreset.Node {
               if (!cc) return solError("#REF!", `column "${col}" not found in nested cube`);
               if (cc.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) return solError("#SHAPE!", `column "${col}" holds nested cells; roll up a flat column`);
               type = cc.type;
-              return cc.cells as FrameCell[];
+              // A cube cell carries its own base-SI unit; read the column in one unit, as a Frame does.
+              const { mags, unit: u } = matrixCellsFromList(cc.cells);
+              unit = u;
+              return mags as FrameCell[];
             })()
           : null;
       if (values === null) { rolled.push(null); continue; }
-      const r = isSolError(values) ? values : aggregateGroup(values, this.agg, type);
+      const plan = aggUnitPlan(this.agg, unit);
+      const r = isSolError(values) ? values : plan.cell(aggregateGroup(values, this.agg, type));
       if (typeof r === "string") textRolled = true;
-      rolled.push(r);
+      rolled.push(plan.unit ? tagFrameCellUnit(r, plan.unit) : r);
     }
     const names = makeHeaders([...flatCols.map((c) => c.name), outName], flatCols.length + 1);
     const result: FrameValue = {
@@ -254,7 +268,7 @@ export class CubeRollupNode extends ClassicPreset.Node {
         ...flatCols.map((_, k) => ({ ...inferColumn(names[k], flatVals[k]), name: names[k] })),
         textRolled
           ? typedColumn(names[flatCols.length], rolled, rolled.length, "string")
-          : { name: names[flatCols.length], type: "number", values: rolled },
+          : rolledNumberColumn(names[flatCols.length], rolled),
       ],
     };
     this.cachedResult = result;

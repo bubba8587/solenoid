@@ -729,6 +729,80 @@
      }
     ]
    }
+  },
+  {
+   "name": "readings in °F: a stdev delta in kelvin, then a filter on it, fused",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        22.5,
+        26,
+        30,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [
+       "k"
+      ],
+      "aggs": [
+       {
+        "column": "t",
+        "op": "stdevp",
+        "as": "spread",
+        "readingScale": 0.5555555555555556
+       }
+      ]
+     },
+     {
+      "kind": "filter",
+      "column": "spread",
+      "op": "gt",
+      "value": 1
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a"
+      ]
+     },
+     {
+      "name": "spread",
+      "type": "number",
+      "values": [
+       1.3671132463179076
+      ]
+     }
+    ]
+   }
   }
  ]
 }

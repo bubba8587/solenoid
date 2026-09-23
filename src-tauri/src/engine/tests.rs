@@ -319,7 +319,7 @@ fn apply_ops_group_by_mid_chain() {
     let ops = vec![
         WireOp::GroupBy {
             keys: vec!["k".into()],
-            aggs: vec![WireAgg { column: "v".into(), op: "sum".into(), as_name: "total".into() }],
+            aggs: vec![WireAgg { column: "v".into(), op: "sum".into(), as_name: "total".into(), reading_scale: None }],
         },
         WireOp::Sort { by: "total".into(), dir: "desc".into() },
     ];
