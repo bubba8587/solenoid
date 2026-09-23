@@ -83,7 +83,7 @@ export function molarMass(input: string): number | SolError {
   const s = input.replace(/\s+/g, "");
   if (!s) return solError("#VALUE!", "Type a chemical formula, such as H2O");
   let total = 0;
-  for (const segRaw of s.split(/[·•*]|(?<=[)\]\d])\.(?=\d*[A-Z])/)) {
+  for (const segRaw of hydrateSegments(s)) {
     const m = /^(\d+(?:\.\d+)?)?(.*)$/.exec(segRaw)!;
     const mult = m[1] ? Number(m[1]) : 1;
     const seg = m[2];
@@ -95,6 +95,24 @@ export function molarMass(input: string): number | SolError {
     total += mult * mass;
   }
   return total;
+}
+
+/** Splits at `·`, `•`, `*`, and at a `.` that starts a hydrate (CuSO4.5H2O). A `.` inside a segment's
+ *  leading multiplier is a decimal point, so CaSO4·0.5H2O and CaSO4.0.5H2O are half a water. */
+function hydrateSegments(s: string): string[] {
+  const out: string[] = [];
+  let start = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    const inMultiplier = /^\d+$/.test(s.slice(start, i));
+    const hydrateDot = ch === "." && !inMultiplier && /[)\]\d]/.test(s[i - 1] ?? "") && /^\d*(?:\.\d+)?[A-Z]/.test(s.slice(i + 1));
+    if (ch === "·" || ch === "•" || ch === "*" || hydrateDot) {
+      out.push(s.slice(start, i));
+      start = i + 1;
+    }
+  }
+  out.push(s.slice(start));
+  return out;
 }
 
 function parseGroup(s: string, i: number, close: string): [number, number] | SolError {

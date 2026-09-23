@@ -98,6 +98,12 @@ describe("Molar mass parser", () => {
     expect(mm("CuSO4·5H2O")).toBeCloseTo(249.69, 1);
     expect(mm("CuSO4*5H2O")).toBeCloseTo(249.69, 1);
     expect(mm("CuSO4.5H2O")).toBeCloseTo(249.69, 1);
+    expect(mm("Na2CO3.10H2O")).toBeCloseTo(286.14, 1);
+  });
+
+  it("a decimal hydrate multiplier is half a water, not five", () => {
+    expect(mm("CaSO4·0.5H2O")).toBeCloseTo(145.14, 1);
+    expect(mm("CaSO4.0.5H2O")).toBeCloseTo(145.14, 1);
   });
 
   it("errors: unknown element, unbalanced brackets, junk", () => {
