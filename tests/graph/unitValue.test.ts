@@ -261,6 +261,18 @@ describe("affine temperatures (review pins)", () => {
     expect(isSolError(arithmeticCell("pow", degC(20), 2))).toBe(true);
     expect(isUnitCell(arithmeticCell("mul", fromUnit(20, U("K"), "K"), 2))).toBe(true); // kelvin is linear
   });
+  it("Aggregate follows the same rule: a spread or a sum of readings is a delta", async () => {
+    const { AggregateNode } = await import("../../src/graph/nodes/list");
+    const agg = (op: string, list: unknown[]) => new AggregateNode({ op: op as never }).data({ list: [list as never] }).result;
+    const sd = agg("stdev", [degC(20), degC(30)]) as UnitCell;
+    expect(sd.display).toBeUndefined();
+    expect(magnitudeOf(sd)).toBeCloseTo(Math.SQRT2 * 5, 9); // 7.07 K, never −266 °C
+    expect((agg("sum", [degC(20), degC(30)]) as UnitCell).display).toBeUndefined();
+    const avg = agg("avg", [degC(20), degC(30)]) as UnitCell;
+    expect(avg.display).toBe("degC");
+    expect(magnitudeOf(avg)).toBeCloseTo(298.15, 9); // 25 °C is a reading
+    expect((agg("sum", [degC(20), 5]) as UnitCell).display).toBe("degC"); // a reading plus a delta
+  });
 });
 
 describe("the Arithmetic card's unit path classifies a non-finite result (review pin)", () => {

@@ -16,7 +16,7 @@ import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
-import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
+import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, type UnitCell } from "../unitValue";
 import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
@@ -1717,6 +1717,9 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   }
 }
 
+/** The dimension-preserving ops whose answer is a spread, not a reading. */
+const AFFINE_SPREAD_OPS: ReadonlySet<ReduceOp> = new Set(["stdev", "stdev_p", "avedev", "ptp", "iqr", "mad", "sem"]);
+
 export class AggregateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "Blank cells are skipped, not counted as zero. One error cell makes the whole result that error.",
@@ -1756,10 +1759,14 @@ export class AggregateNode extends ClassicPreset.Node {
     const dim = prep.dim;
     const result = aggregate(this.op, arr);
     if (isSolError(result)) { this.cachedResult = result; return { result }; }
+    // An affine display (°C) drops where the answer is a delta, as arithmeticCell drops it
+    // for two absolute readings: a spread, or a sum of two or more readings.
     const resultDim = aggregateResultDim(this.op, dim, arr.length);
+    const delta = isAffineDisplay(prep.display) && (AFFINE_SPREAD_OPS.has(this.op)
+      || (this.op === "sum" && (inputs.list?.[0] ?? []).filter(isUnitCell).length > 1));
     const tagged: number | UnitCell | null =
       result !== null && !isDimensionless(dim)
-        ? tagDim(result, resultDim, dimEqual(resultDim, dim) ? prep.display : undefined)
+        ? tagDim(result, resultDim, dimEqual(resultDim, dim) && !delta ? prep.display : undefined)
         : result;
     this.cachedResult = tagged;
     return { result: tagged };
