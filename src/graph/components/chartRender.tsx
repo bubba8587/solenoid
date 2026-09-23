@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, pieSlices, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { OverlayPayload } from "../chartValue";
 import { ChartTitle, titleHeight } from "./chartTitle";
@@ -183,6 +183,7 @@ export function ChartView({
       </BarChart>
     );
   } else if (op === "pie") {
+    const slices = pieSlices(series);
     const pieMode = opts?.pielabels ?? "outside";
     const labeled = !!labels && pieMode !== "off";
     const pad = !labeled ? 6 : pieMode === "inside" ? Math.min(16, width * 0.07) : Math.min(30, width * 0.12);
@@ -192,7 +193,7 @@ export function ChartView({
     const font = 9 * fs;
     const pieLabel = (p: { cx?: number; cy?: number; midAngle?: number; outerRadius?: number; index?: number; percent?: number; payload?: unknown }) => {
       const cx = p.cx ?? 0, cy = p.cy ?? 0, mid = p.midAngle ?? 0, outerR = p.outerRadius ?? 0, index = p.index ?? 0;
-      const rowI = (p.payload as { i?: number } | undefined)?.i ?? series[index]?.i ?? index;
+      const rowI = (p.payload as { i?: number } | undefined)?.i ?? slices[index]?.i ?? index;
       const name = sanitizeChartLabel(tickFmt(rowI), cap);
       const pct = p.percent ?? 0;
       if (!name || pct < 0.03) return null;
@@ -221,9 +222,9 @@ export function ChartView({
     };
     chart = (
       <PieChart width={width} height={chartH}>
-        <Pie data={series} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}
+        <Pie data={slices} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}
              label={labeled ? pieLabel : undefined} labelLine={false}>
-          {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
+          {slices.map((d) => <Cell key={d.i} fill={paint(d.i)} />)}
         </Pie>
         {SLICE_TIP}
       </PieChart>
