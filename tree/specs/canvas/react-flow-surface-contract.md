@@ -31,7 +31,7 @@ A `SurfaceStack` is a flow model plus its `view` and a set of `SurfaceHandlers`.
 | `rfId` | The RF instance id; distinct per mounted flow. |
 | `className` | Extra wrapper classes (the drill-in host). |
 | `history` | The undo and redo this surface answers. |
-| `deleteSelected` | What Delete removes. |
+| `deleteSelected` | What Delete removes: the shared `deleteSelection` verb under the host's `DeleteScope` (below). |
 | `afterMove` | A drag settled; the host records position, size and membership. |
 | `afterProgrammaticMove` | A programmatic move landed (nudge, push, standoffs); record only. |
 | `afterNodeAdded` | A node was added from the Add menu and positioned. |
