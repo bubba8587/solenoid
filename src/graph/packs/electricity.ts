@@ -91,13 +91,15 @@ export const ELECTRICITY_FORMULAS: FormulaPackEntry[] = [
 function toSiPrefix(n: number): string {
   if (!Number.isFinite(n)) return String(n);
   if (n === 0) return "0";
+  // Round first so 999.96 picks the k step and reads "1k", not "1000".
+  n = Number(n.toPrecision(3));
   const steps: Array<[number, string]> = [
     [1e12, "T"], [1e9, "G"], [1e6, "M"], [1e3, "k"], [1, ""],
     [1e-3, "m"], [1e-6, "µ"], [1e-9, "n"], [1e-12, "p"],
   ];
   const abs = Math.abs(n);
   for (const [factor, prefix] of steps) {
-    if (abs >= factor * 0.999999999999) {
+    if (abs >= factor) {
       return `${Number((n / factor).toPrecision(3))}${prefix}`;
     }
   }

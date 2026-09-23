@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ELECTRICITY_FORMULAS } from "../../../src/graph/packs/electricity";
+import { ELECTRICITY_FORMULAS, ELECTRICITY_PACK } from "../../../src/graph/packs/electricity";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { ResistorCodeNode } from "../../../src/graph/nodes/electrical";
 import { decodeResistor } from "../../../src/graph/nodes/electricalOps";
@@ -116,5 +116,20 @@ describe("Resistor color code", () => {
     n.bands = "5";
     n.stringLiterals = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "brown" };
     expect(n.data()).toEqual({ ohms: 10000, tolerance: 1 });
+  });
+});
+
+describe("SI-prefix format", () => {
+  const si = ELECTRICITY_PACK.formats!.find((f) => f.id === "siprefix")!.apply;
+  it("reads at 3 significant figures", () => {
+    expect(si(4700)).toBe("4.7k");
+    expect(si(0.0022)).toBe("2.2m");
+    expect(si(-150000)).toBe("-150k");
+    expect(si(1)).toBe("1");
+  });
+  it("a value that rounds up to the next step takes that step's prefix", () => {
+    expect(si(999.96)).toBe("1k");
+    expect(si(999999.7)).toBe("1M");
+    expect(si(0.99996)).toBe("1");
   });
 });
