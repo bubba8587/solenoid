@@ -30,17 +30,17 @@
     "ai-prompt": "tsx scripts/ai-prompt.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.125.0",
+    "@anthropic-ai/sdk": "^0.128.0",
     "@fontsource-variable/atkinson-hyperlegible-mono": "^5.3.0",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@formulajs/formulajs": "4.6.1",
     "@lezer/common": "^1.5.2",
     "@lezer/highlight": "^1.2.3",
-    "@lezer/javascript": "^1.5.4",
+    "@lezer/javascript": "^1.5.5",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-fs": "^2.5.2",
-    "@tauri-apps/plugin-http": "2.5.9",
+    "@tauri-apps/plugin-http": "2.6.1",
     "@tauri-apps/plugin-opener": "^2.5.5",
     "@types/katex": "^0.16.8",
     "@types/papaparse": "^5.5.2",
@@ -51,8 +51,8 @@
     "elkjs": "^0.12.0",
     "katex": "^0.18.5",
     "knap": "^0.6.0",
-    "marked": "^18.0.11",
-    "mermaid": "^11.17.2",
+    "marked": "^18.0.14",
+    "mermaid": "^12.0.0",
     "papaparse": "^5.7.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.8",
@@ -65,22 +65,25 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4",
+    "@tauri-apps/cli": "^2.11.5",
     "@types/dompurify": "^3.0.5",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
-    "@webgpu/types": "^0.1.72",
+    "@webgpu/types": "^0.1.74",
     "esbuild": "^0.28.2",
     "estree-walker": "3.0.3",
     "magic-string": "0.30.21",
     "obsidian": "^1.13.1",
     "postcss": "8.5.28",
-    "puppeteer-core": "^25.10.0",
+    "puppeteer-core": "^25.11.0",
     "rollup-plugin-license": "^3.7.1",
     "typescript": "~7.0.2",
     "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
+  },
+  "overrides": {
+    "lodash-es": "^4.18.1"
   }
 }
