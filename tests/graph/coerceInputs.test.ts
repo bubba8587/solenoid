@@ -20,6 +20,7 @@ import { TextTransformNode } from "../../src/graph/nodes/text";
 import { ComplexUnaryNode, cx } from "../../src/graph/nodes/complex";
 import { NotNode } from "../../src/graph/nodes/logic";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
+import { applyFcUnit } from "../../src/graph/unitBridge";
 import { ListLengthNode, ListInputNode, ListIndexNode } from "../../src/graph/nodes/list";
 
 const MAR_2026 = parseDateToSerial("2026-03-20");
@@ -446,5 +447,14 @@ describe("coerceInputs — text on a number port is #TYPE!, never a parsed numbe
     expect(run("number", true)).toBe(1);
     expect(run("number", null)).toBe(null);
     expect(run("numlist", [1, null])).toEqual([1, null]);
+  });
+});
+
+describe("coerceInputs — the rank rule ignores units (socket-lattice spec req. 4)", () => {
+  it("a united singleton collapses on a combo port exactly as a plain one does", () => {
+    const add = () => { const n = new ArithmeticNode({ op: "add" } as never); wrapNodeData(n as never); return n; };
+    const km = applyFcUnit(5, "km");
+    expect(Array.isArray(add().data({ a: [[5]], b: [[5]] } as never).result)).toBe(false);
+    expect(Array.isArray(add().data({ a: [[km]], b: [[km]] } as never).result)).toBe(false);
   });
 });

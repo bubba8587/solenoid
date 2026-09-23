@@ -83,8 +83,6 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
     case "list":
     case "anylist":
       return isUnitCell(v) ? [v] : v;
-    case "numlist":
-      return v;
     case "table":
       return toAnyMatrix(v);
     case "frame":
@@ -93,9 +91,16 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
     case "cube":
       return toCube(v);
     default:
-      return v;
+      // The rank rule does not depend on whether the value carries a unit.
+      return COLLAPSING.has(dataType) ? collapseSingleton(v) : v;
   }
 }
+
+/** The rungs `coerceValue` collapses a singleton on (socket-lattice req. 4). */
+const COLLAPSING: ReadonlySet<SocketDataType> = new Set([
+  "numlist", "logical", "logicalcombo", "string", "date", "complex",
+  "strcombo", "datecombo", "complexcombo", "anydata", "anycombo",
+]);
 
 function collapseSingleton(v: unknown): unknown {
   return Array.isArray(v) && v.length === 1 ? v[0] : v;
