@@ -34,3 +34,5 @@ tools/dte.py
 *.ics
 # Vendored DTE rule text: its citations are DTE's tree, not this one.
 dte-rules/*
+# The author's Obsidian config for the tree vault (git-ignored, local).
+.obsidian
