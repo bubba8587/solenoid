@@ -284,7 +284,7 @@ A composite drill-in keeps its own per-composite history ([[composite-drill-in-m
 
 `FlowCanvas` owns one editor, engine and view stack for the app's lifetime. Documents load through the real persistence and `documentStore` path, and chrome reaches the canvas through the `process.ts` slots. Once, at startup, it registers the delete verb, the docked-FC reposition, Tidy and Cleanup, the bulk settle (`settleCableChange` plus a pass, the one settle after a bulk topology change such as paste or unpack), the standoff settle (the pure solver, with locked groups pinned) and the per-node forget pipe. Its stack's `afterCableChange` is the targeted recompute.
 
-- A live node deletion re-derives membership and collapse, and deleting an expanded group restores the pushes it caused ([[C40]] storesRegisterForget; a rebuild runs the forget-all pass once instead).
+- A live node deletion re-derives membership and collapse, and deleting an expanded group restores the pushes it caused (`settleNodeRemoved`, shared with the drill-in; [[C40]] storesRegisterForget). Under a rebuild gate it does nothing: a whole-graph rebuild runs the forget-all pass once instead, and a bulk edit forgets only what it truly deleted, since Wrap as Composite and Unpack relocate nodes with their ids.
 - A `/?seed=<id>` link (from the Examples page) opens that seed as a new document, then strips the parameter, so a reload or an autosave doesn't keep minting copies.
 - The app chrome (toasts, dialogs, the palette) renders beside the surface, not inside it, because the main wrapper is `visibility: hidden` under a drill-in ([[C75]] gpuTextureBudget).
 

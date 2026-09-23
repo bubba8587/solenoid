@@ -6,7 +6,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { cableSelectionStore } from "../cableState";
-import { deleteSelection } from "../canvasActions";
+import { deleteSelection, settleNodeRemoved } from "../canvasActions";
 import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
 import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, isGraphRebuilding } from "../process";
@@ -25,17 +25,13 @@ import { CableFlourish } from "../components/CableFlourish";
 import { SocketLegend, ConfirmDialog, NoticeToasts } from "../components";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { settleCableChange } from "../cableSettle";
-import { syncGroupCollapse, groupCollapseStore } from "../groupCollapse";
-import { GroupNode } from "../rete-nodes";
+import { groupCollapseStore } from "../groupCollapse";
 import { standoffStore, setStandoffSettle, liveStandoffs, type SettleOpts } from "../standoffs";
 import { solveStandoffs } from "../standoffSolver";
 import { withLockedGroupsPinned } from "../groupLogic";
 import { measuredBox } from "../nodeSize";
 import { translateEntityBy } from "../groupPush";
 import { repositionDockedFor } from "../fcDocking";
-import { forgetNode } from "../nodeStoreRegistry";
-import { rebuildGroupMembership } from "../groupMembership";
-import { restoreSettledPushes } from "../groupPush";
 import { setDrawnCommit } from "../drawnCables";
 import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
@@ -202,12 +198,8 @@ function FlowCanvasInner() {
       s.nodePipeInstalled = true;
       s.editor.addPipe((ctx) => {
         const t = (ctx as { type?: string }).type;
-        if (t === "noderemoved" && !isGraphRebuilding()) {
-          const n = (ctx as unknown as { data: SolenoidNode }).data;
-          forgetNode(n.id);
-          rebuildGroupMembership(s.editor);
-          syncGroupCollapse(s.editor, s.view);
-          if (n instanceof GroupNode) restoreSettledPushes(s.editor, s.view);
+        if (t === "noderemoved") {
+          settleNodeRemoved(s.editor, s.view, (ctx as unknown as { data: SolenoidNode }).data, isGraphRebuilding());
         }
         return ctx;
       });

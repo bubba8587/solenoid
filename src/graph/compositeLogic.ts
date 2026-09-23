@@ -9,6 +9,7 @@ import { groupCollapseStore } from "./groupCollapse";
 import { cableSelectionStore } from "./cableState";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { ctorRegistry } from "./nodeCtorRegistry";
+import { forgetNode } from "./nodeStoreRegistry";
 import { measuredBox } from "./nodeSize";
 import { getOwningEditor, editScopeFor } from "./activeGraph";
 
@@ -47,7 +48,7 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
   const composite = new CompositeNode({ label: "Composite" });
 
   const scope = editScopeFor(editor);
-  scope.begin(); // relocated, not deleted
+  scope.begin(); // relocated, not deleted: the gate keeps their stores
   try {
     // rete requires a node's connections removed before the node.
     for (const c of [...internalConns, ...incoming, ...outgoing]) {
@@ -209,6 +210,8 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
   } finally {
     scope.end();
   }
+  // The gate held the pipe's forget; the members were relocated, only the composite is gone.
+  forgetNode(compositeId);
   await scope.settle();
   return true;
 }

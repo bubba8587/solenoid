@@ -5,8 +5,7 @@ import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { FlowSurfaceContext } from "../flowSurface";
 import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode, GroupNode } from "../rete-nodes";
-import { restoreSettledPushes } from "../groupPush";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getView, processGraph } from "../process";
@@ -17,7 +16,7 @@ import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
-import { deleteSelection as deleteSelectionIn } from "../canvasActions";
+import { deleteSelection as deleteSelectionIn, settleNodeRemoved } from "../canvasActions";
 import { settleCableChange } from "../cableSettle";
 import { forgetNode } from "../nodeStoreRegistry";
 import { isolateStore } from "../isolateStore";
@@ -91,15 +90,8 @@ function getDrillStack(comp: CompositeNode): DrillStack {
   };
   comp.internalEditor.addPipe((ctx) => {
     const t = (ctx as { type?: string }).type;
-    // [[C40]] storesRegisterForget: a restore re-hydrates under fresh ids, so a removed id never comes back and is forgotten even mid-rebuild.
     if (t === "noderemoved") {
-      const n = (ctx as unknown as { data: SolenoidNode }).data;
-      forgetNode(n.id);
-      if (!s.rebuilding) {
-        rebuildGroupMembership(comp.internalEditor);
-        syncGroupCollapse(comp.internalEditor, view as unknown as View);
-        if (n instanceof GroupNode) restoreSettledPushes(comp.internalEditor, view as unknown as View);
-      }
+      settleNodeRemoved(comp.internalEditor, view as unknown as View, (ctx as unknown as { data: SolenoidNode }).data, s.rebuilding);
     }
     if (
       t === "nodecreated" || t === "noderemoved" ||
@@ -323,8 +315,10 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       if (target < 0 || target >= h.stack.length) return;
       h.index = target;
       s.rebuilding = true;
+      const replaced = s.editor.getNodes().map((n) => n.id);
       try {
         await comp.restoreInternal(JSON.parse(h.stack[target]), ctorRegistry());
+        for (const id of replaced) forgetNode(id);
         for (const [id, pos] of Object.entries(comp.internalPositions)) {
           const n = s.editor.getNode(id);
           if (n) n.position = { ...pos };
