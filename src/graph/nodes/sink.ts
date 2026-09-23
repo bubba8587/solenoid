@@ -13,7 +13,7 @@ export type SinkStatus = "idle" | "writing" | "ok" | "error";
 
 export function frameToCsvText(f: FrameValue): string {
   const rows = frameRowCount(f);
-  const fields = f.columns.map((c) => c.name);
+  const fields = f.columns.map((c) => neutralizeFormulaCell(c.name));
   const data = Array.from({ length: rows }, (_, i) =>
     f.columns.map((c) => {
       const shown = formatFrameCell(c.type, c.values[i] ?? null) ?? "";

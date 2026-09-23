@@ -1,5 +1,5 @@
 // [[C58]] tableInputRawText, [[D41]] formatFlowsDownstream, [[D4]] noManualList
-import { neutralizeFormulaCell } from "../csvSafety";
+import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyText } from "../clipboard";
 import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
@@ -69,17 +69,15 @@ function cell(c: string, cellType: CellType): string {
   if (cellType === "string") return c;
   return c.trim();
 }
+// Every column type is guarded: a mixed list typed by its first cell, or a unit cell's `-5 km`, is text in a numeric column.
 function csvField(c: string, cellType: CellType, escapeFormulas = false): string {
-  let out = cell(c, cellType);
-  if (escapeFormulas && cellType === "string") out = neutralizeFormulaCell(out);
-  if (/[",\n\r]/.test(out)) return `"${out.replace(/"/g, '""')}"`;
-  return out;
+  return csvText(cell(c, cellType), escapeFormulas);
 }
 function toCSV(grid: string[][], cellType: CellType, columnTypes?: CellType[], escapeFormulas = false): string {
   return grid.map((row) => row.map((c, j) => csvField(c, typeAt(j, cellType, columnTypes), escapeFormulas)).join(",")).join("\n");
 }
-function listToText(grid: string[][], cellType: CellType): string {
-  return grid.flat().map((c) => cell(c, cellType)).join(", ");
+function listToText(grid: string[][], cellType: CellType, escapeFormulas = false): string {
+  return grid.flat().map((c) => (escapeFormulas ? neutralizeFormulaCell(cell(c, cellType)) : cell(c, cellType))).join(", ");
 }
 function mdCell(s: string): string {
   return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
@@ -552,7 +550,7 @@ export function TablePopup() {
     const order = inSortOrder ? sortOrder : Array.from({ length: viewRows }, (_, i) => i);
     if (state!.list) {
       const line = displayRowAt(0);
-      return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType);
+      return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType, !editable);
     }
     const body = toCSV(order.map((r) => displayRowAt(r, as)), cellType, columnTypes, !editable);
     return hasHeaderLine
