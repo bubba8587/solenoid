@@ -13,7 +13,7 @@ import { forgetNode } from "./nodeStoreRegistry";
 import { rebuildGroupMembership } from "./groupMembership";
 import { restoreSettledPushes } from "./groupPush";
 import { CONDUIT_PIVOT } from "./ribbonCable";
-import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
+import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 import { computeDockedCanvasPos, insertFcInline, removeFcInline } from "./fcDocking";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
@@ -185,6 +185,18 @@ export function linkStandoffBetween(
   drawnCableStore.select(null);
   settleStandoffs();
   scheduleAutosave();
+}
+
+/**
+ * Every surface's `noderemoved` settle ([[C40]] storesRegisterForget). Under a rebuild gate a removal may be a
+ * relocation (Wrap as Composite keeps the node and its stores), so the gated edit forgets what it really deleted.
+ */
+export function settleNodeRemoved(editor: NodeEditor<Schemes>, view: View, node: SolenoidNode, gated: boolean): void {
+  if (gated) return;
+  forgetNode(node.id);
+  rebuildGroupMembership(editor);
+  syncGroupCollapse(editor, view);
+  if (node instanceof GroupNode) restoreSettledPushes(editor, view);
 }
 
 /** What differs between the surfaces that share the delete verb ([[C43]] oneFlowSurface). */

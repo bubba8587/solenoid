@@ -32,7 +32,7 @@ Cable changes also settle through the surface's cable-change pipe, which the dri
 
 On mount, `FlowDrillInner`:
 
-1. raises the rebuild gate (`s.rebuilding = true`) and hydrates the composite's internal graph;
+1. raises the rebuild gate (`s.rebuilding = true`) and hydrates the composite's internal graph, which docks its Format Controllers and settles wildcard and FC types ([[composite-nodes]]; an undo restore hydrates too, so it comes back settled the same way);
 2. gives each internal node its saved position from `comp.internalPositions`, or, for a node with none, a slot on a fallback grid four columns wide (260 × 160 apart);
 3. lowers the gate and syncs the topology once;
 4. registers the level as the active graph (`setActiveGraph({ editor, view, scope })`), so chrome acts on it and every bulk edit of it runs under its edit scope;
@@ -67,7 +67,7 @@ The drill-in deletes through the main canvas's verb, `deleteSelection`, with its
 
 Delete, paste, Wrap as Composite and Unpack all run under the level's `EditScope` (`s.scope`): `begin` raises `s.rebuilding`, which holds the topology sync, the cable settle and group absorption; `settle` runs `settleCableChange` over the internal editor once; the queued topology sync then re-syncs React Flow and recomputes from `stack[0]`. None of them raises the main canvas's rebuild gate or runs its `bulkSettle`, which would recompute the whole main graph. It never deletes a boundary marker, since markers are the composite's ports, and it never touches the main canvas's drawn cables or standoffs; copy skips markers the same way.
 
-The topology pipe also carries the per-node forget ([[C40]] storesRegisterForget): every `noderemoved` forgets the node's stores, even under the rebuild gate, since an undo restore re-hydrates under fresh ids and a removed id never returns. Outside the gate it also rebuilds group membership, re-syncs collapse, and restores a deleted group's pushes.
+The topology pipe also carries the per-node settle, `settleNodeRemoved` (`canvasActions.ts`), the same one the main canvas's pipe runs ([[C40]] storesRegisterForget): outside the gate a `noderemoved` forgets the node's stores, rebuilds group membership, re-syncs collapse, and restores a deleted group's pushes. Under the gate it does nothing, because a gated removal may be a relocation: Wrap as Composite and Unpack move node objects between editors with their ids, so their docks, names and collapse state must survive. The gated edit forgets what it really removed: Delete forgets its deleted ids, Unpack forgets the composite, and an undo restore forgets every id it replaced (the restore re-hydrates under fresh ids, so a replaced id never returns).
 
 ## Document switches
 

@@ -155,18 +155,17 @@ export class FormatControllerNode extends ClassicPreset.Node {
   }
 
   /** Call once after editor.addNode: registration needs the id Rete assigns there. */
-  dockSelf(editor?: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>): void {
-    if (this.hostNodeId) {
-      dockedNodeStore.dock(this.id, {
-        hostNodeId: this.hostNodeId,
-        socketKey:  this.socketKey,
-        side:       this.side,
-      });
-      if (editor) {
-        this.adaptTypeFromConnections(editor);
-        this.refreshAnnotation(editor);
-      }
-    }
+  dockSelf(editor: NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>): void {
+    // [[B12]] losslessSaves: a saved host that no longer exists leaves a free FC, not a dock onto nothing.
+    if (this.hostNodeId && !editor.getNode(this.hostNodeId)) this.releaseDock();
+    if (!this.hostNodeId) return;
+    dockedNodeStore.dock(this.id, {
+      hostNodeId: this.hostNodeId,
+      socketKey:  this.socketKey,
+      side:       this.side,
+    });
+    this.adaptTypeFromConnections(editor);
+    this.refreshAnnotation(editor);
   }
 
   /** Never re-default `format` here: an off-family pick stays saved and is inert through effectiveFormat(). */

@@ -87,6 +87,8 @@ export type NodeContextTarget = {
   isFlippable?: boolean;
   flipped?: boolean;
   standoff?: { aId: string; bId: string };
+  /** A locked canvas: the items that edit the graph or its layout stay out. */
+  viewOnly?: boolean;
 };
 
 type Props = {
@@ -156,7 +158,7 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       </button>
       {target.isComposite && onEditComposite &&
         item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
-      {target.isComposite && onUnpackComposite &&
+      {target.isComposite && !target.viewOnly && onUnpackComposite &&
         item(<UnpackSvg />, "Unpack composite", () => onUnpackComposite!(target.nodeId))}
       {item(<FocusIcon size={13} />, "Isolate", () => onIsolate(target.seedIds))}
       {item(<LinkIcon size={13} />, "Isolate chain", () => onIsolateChain(target.seedIds),
@@ -167,10 +169,10 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&
         item(<TetherIcon size={13} />, "Link with Standoff", () => onLinkStandoff!(target.standoff!))}
-      {target.isFlippable && onToggleFlip &&
+      {target.isFlippable && !target.viewOnly && onToggleFlip &&
         item(<FlipSvg />, target.flipped ? "Unflip sockets" : "Flip sockets", () => onToggleFlip!(target.nodeId),
           "Swap the inputs and outputs to the opposite sides")}
-      {target.isGroup && onToggleLock && (
+      {target.isGroup && !target.viewOnly && onToggleLock && (
         target.lockedPosition
           ? item(<UnlockSvg />, "Unlock position", () => onToggleLock!(target.nodeId),
               "Let the group be dragged again and included in Tidy / Cleanup")

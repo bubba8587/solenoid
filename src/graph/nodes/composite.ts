@@ -5,6 +5,7 @@ import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } from "../sockets";
 import { resolveTrigModes } from "../trigMode";
 import { settleWildcardTypes } from "../trueAnyAdopt";
+import { reconcileFcTypes } from "../fcReconcile";
 import { extractInit } from "../copyPaste";
 import { installErrorGuards, isSolError, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
@@ -22,6 +23,7 @@ import { connectionStore } from "../connectionStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 import { PlaceholderNode } from "./placeholder";
+import { FormatControllerNode } from "./formatController";
 import { deriveMissingNodeSockets, remapNodeRefs, mapNodeRefs, type NodeRefs } from "../persistenceCore";
 
 export type PortTier = "basic" | "advanced";
@@ -373,6 +375,9 @@ export class CompositeNode extends ClassicPreset.Node {
       if (mapped) p.internalNodeId = mapped.id;
     }
     this._hydrating = false;
+    // Wildcard types first, or a docked FC adapts to the wildcard (the main load's order).
+    settleWildcardTypes(this.internalEditor);
+    for (const n of this.internalEditor.getNodes()) if (n instanceof FormatControllerNode) n.dockSelf(this.internalEditor);
     this.settleInternalTypes();
   }
 
@@ -814,8 +819,9 @@ export class CompositeNode extends ClassicPreset.Node {
 
   markInternalEdit(): void { this.internalEditSeq++; }
 
+  /** Every internal cable change settles here, opened in a drill-in or not ([[D16]] retypeReconciles). */
   settleInternalTypes(): boolean {
-    settleWildcardTypes(this.internalEditor);
+    reconcileFcTypes(this.internalEditor, null);
     return this.adoptBoundaryTypes();
   }
 

@@ -10,6 +10,7 @@ import { dockedNodeStore } from "./dockedNodeStore";
 import { isFlippableNode } from "./flippableNodes";
 import { socketFlipStore } from "./socketFlipStore";
 import { unselectAllNodes as unselectAllNodesFromProcess } from "./canvasCommands";
+import { canAttachFc } from "./canvasActions";
 type Point = { clientX: number; clientY: number; target: EventTarget | null };
 
 export function keepsNativeMenu(e: Point): boolean {
@@ -39,8 +40,14 @@ export function socketTargetAt(container: HTMLElement, e: Point): SocketContextT
   };
 }
 
-export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: string, e: Point): CableContextTarget | null {
-  if (cableGhostStore.isGhost(clickedConnId)) return null;
+/** The Attach Format Controller menu, or null: it adds a node, so a locked canvas never offers it. */
+export function socketMenuFor(editor: NodeEditor<Schemes>, sock: SocketContextTarget | null, locked: boolean): SocketContextTarget | null {
+  return sock && !locked && canAttachFc(editor, sock.nodeId) ? sock : null;
+}
+
+/** Null on a locked canvas: every cable item edits, and resolving the target would select the cable. */
+export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: string, e: Point, locked = false): CableContextTarget | null {
+  if (locked || cableGhostStore.isGhost(clickedConnId)) return null;
   const conns = editor.getConnections();
   const expand = (id: string): string[] => {
     const conn = conns.find((c) => c.id === id);
@@ -65,7 +72,7 @@ export function cableTargetFor(editor: NodeEditor<Schemes>, clickedConnId: strin
   return { connIds, screenX: e.clientX, screenY: e.clientY };
 }
 
-export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e: Point): NodeContextTarget | null {
+export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e: Point, locked = false): NodeContextTarget | null {
   const clickedNode = editor.getNode(clickedId);
   if (!clickedNode) return null;
   const selectedIds = editor.getNodes()
@@ -94,6 +101,7 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
   );
   let standoff: { aId: string; bId: string } | undefined;
   if (
+    !locked &&
     linkableSel.length === 2 &&
     linkableSel.some((n) => n.id === clickedId) &&
     !standoffStore.hasPair(linkableSel[0].id, linkableSel[1].id)
@@ -106,5 +114,5 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
   const lockedPosition = isGroup ? clickedNode.lockedPosition : undefined;
   const isFlippable = isFlippableNode(clickedNode);
   const flipped = isFlippable ? socketFlipStore.get(clickedId) : undefined;
-  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, isGroup, lockedPosition, isFlippable, flipped, standoff };
+  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, isGroup, lockedPosition, isFlippable, flipped, standoff, viewOnly: locked };
 }
