@@ -35,7 +35,7 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
-import { toFlowNodes, toFlowEdges, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
+import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowModel";
 import type { FlowView } from "./flowView";
 import { processGraph } from "../process";
@@ -215,28 +215,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [nodesInitialized, getNodes, setViewport, storeApi]);
 
   const syncTopology = useCallback(() => {
-    setNodes((prev) => {
-      const prevById = new Map(prev.map((n) => [n.id, n]));
-      return toFlowNodes(s).map((n) => {
-        const old = prevById.get(n.id);
-        if (
-          old &&
-          old.position.x === n.position.x &&
-          old.position.y === n.position.y &&
-          old.parentId === n.parentId &&
-          old.zIndex === n.zIndex &&
-          old.className === n.className &&
-          old.draggable === n.draggable
-        ) {
-          return old;
-        }
-        return {
-          ...n,
-          selected: old?.selected ?? false,
-          data: { ...n.data, version: old?.data.version ?? 0 },
-        };
-      });
-    });
+    setNodes((prev) => mergeFlowNodes(prev, toFlowNodes(s)));
     setEdges((prev) => {
       const prevById = new Map(prev.map((e) => [e.id, e]));
       return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e);

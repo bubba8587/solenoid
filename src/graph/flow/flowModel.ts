@@ -244,6 +244,32 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
   });
 }
 
+type MergedNode = Omit<RFNodeLite, "type" | "zIndex"> & { type?: string; zIndex?: number; selected?: boolean };
+
+/** Keeps the object of every unchanged node, so RF's memo skips it. RF's selection wins for a node it already holds; a node it hasn't seen takes the model's flag, since a paste selects its clones before RF has them. */
+export function mergeFlowNodes<T extends MergedNode>(prev: readonly T[], next: readonly RFNodeLite[]): T[] {
+  const prevById = new Map(prev.map((n) => [n.id, n]));
+  return next.map((n) => {
+    const old = prevById.get(n.id);
+    if (
+      old &&
+      old.position.x === n.position.x &&
+      old.position.y === n.position.y &&
+      old.parentId === n.parentId &&
+      old.zIndex === n.zIndex &&
+      old.className === n.className &&
+      old.draggable === n.draggable
+    ) {
+      return old;
+    }
+    return {
+      ...n,
+      selected: old ? old.selected ?? false : n.data.node.selected === true,
+      data: { ...n.data, version: old?.data.version ?? 0 },
+    } as unknown as T;
+  });
+}
+
 export function toFlowEdges(m: FlowModel): RFEdgeLite[] {
   return m.editor.getConnections().map((c) => ({
     id: c.id,
