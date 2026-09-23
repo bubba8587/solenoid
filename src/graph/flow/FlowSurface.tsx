@@ -26,7 +26,6 @@ import {
   type Viewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { ClassicPreset } from "rete";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";
 import { registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
@@ -720,14 +719,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             ? firstCompatibleSocketKey(node, originSocket, side)
             : null;
         if (newKey && originNode) {
-          try {
-            const conn =
-              side === "output"
-                ? new ClassicPreset.Connection(originNode, originKey, node, newKey)
-                : new ClassicPreset.Connection(node, newKey, originNode, originKey);
-            await s.editor.addConnection(conn as Parameters<typeof s.editor.addConnection>[0]);
-          } catch {
-          }
+          // connect, not addConnection: it evicts the cable already in a single-connection input.
+          if (side === "output") await connect(s, originId, originKey, node.id, newKey);
+          else await connect(s, node.id, newKey, originId, originKey);
         }
       }
 
