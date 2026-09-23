@@ -55,7 +55,7 @@ const TASK_HOURS_NAMES = ["hours", "hours per day"];
 const TASK_HOLIDAY_NAMES = ["holidays", "days off"];
 const WORK_NAMES = ["work", "effort", "work (h)", "hours of work"];
 const UNITS_NAMES = ["units", "assignment", "fte"];
-const ACTIVE_NAMES = ["active", "included"];
+export const ACTIVE_NAMES = ["active", "included"];
 const REPEAT_NAMES = ["repeat", "occurrences", "times"];
 const EVERY_NAMES = ["every", "every (days)", "interval", "period"];
 // The duration fallback skips every column the schedule reads by name.
@@ -164,6 +164,11 @@ function readBool(cell: CubeCell | undefined): boolean {
   return false;
 }
 
+/** An Active cell that is set and false leaves its row, and the row's subtree, out of the schedule. */
+export function isInactive(cell: CubeCell | undefined): boolean {
+  return cell != null && cell !== "" && !readBool(cell);
+}
+
 interface Level {
   cube: CubeValue;
   cols: {
@@ -204,8 +209,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     const name = String(task.cells[i] ?? "").trim();
     if (!name) throw solError("#VALUE!", `Schedule: row ${i + 1} has no task name`);
     names.push(name);
-    const activeCell = cols.active?.cells[i];
-    const off = activeCell != null && activeCell !== "" && !readBool(activeCell);
+    const off = isInactive(cols.active?.cells[i]);
     inactive.push(off);
     if (off) { childLevels.push(null); continue; }
     const kidCell = children?.cells[i];
