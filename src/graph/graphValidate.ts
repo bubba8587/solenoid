@@ -330,8 +330,8 @@ export function validateText(text: string): TextValidation {
       v: typeof sidecar.v === "number" ? sidecar.v : CURRENT_SAVE_VERSION,
       nodes: salvage.map((p) => {
         const sn: SavedNode = { id: p.name, type: p.type, name: p.name, x: 0, y: 0, init: p.init };
-        if (Object.keys(p.literals).length > 0) sn.literals = p.literals;
-        if (Object.keys(p.stringLiterals).length > 0) sn.stringLiterals = p.stringLiterals;
+        if (p.hasLiterals) sn.literals = p.literals;
+        if (p.hasStringLiterals) sn.stringLiterals = p.stringLiterals;
         return sn;
       }),
       connections: salvage.flatMap((p) =>

@@ -133,10 +133,11 @@ A document in the text form is a header of node lines, a separator line of exact
 
 ```
 node-line   = name ": " type { " " field }
-field       = init-field | num-literal | str-literal | connection
+field       = init-field | num-literal | str-literal | empty-map | connection
 init-field  = key "=" json
 num-literal = "lit:" key "=" json-number
 str-literal = "str:" key "=" json-string
+empty-map   = "lit:{}" | "str:{}"
 connection  = key "<-" source-name "." output
 output      = bare-output | json-string
 key         = bare-key | json-string
@@ -158,7 +159,7 @@ Writing rules (`writeTextForm`), which make two writes of an unchanged graph byt
 
 - **Names.** Nodes are named in array order: a node's saved `name` is kept when it is a valid identifier not already taken; otherwise it gets the next free default `<Prefix>_<n>`, where the prefix is the type with a trailing `Node` removed (`Filter_1`, `Filter_2`) and `n` counts up per prefix from 1, skipping taken names. This is the same algorithm as the live `nodeNameStore` (`nodeNaming.ts`).
 - **Line order.** Topological: Kahn's algorithm over the connections, always emitting the ready node whose name sorts first (plain JavaScript string comparison, so uppercase sorts before lowercase). Nodes left in a cycle follow, sorted by name. Connections naming a node that is not in the save are ignored for ordering.
-- **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `bindings`), then every other key sorted. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key.
+- **Field order on a line.** Name, type, then `init` fields: first the keys of `INIT_FIELD_ORDER` in that order, then `INIT_EXTRA_FIELD_ORDER` (`funcs`, `filterExclude`, `condConfig`, `fieldTypes`, `titles`, `selectedKeys`, `varDescriptions`, `bindings`), then every other key sorted. `undefined` values are dropped. Then `lit:` keys sorted, then `str:` keys sorted, then incoming connections sorted by target input key. A map the node declares but holds empty is written as `lit:{}` or `str:{}` in its place, so the load keeps it empty; without it the constructor's defaults would come back, turning a cleared slot on IF or SWITCH into a typed 0 ([[B12]] losslessSaves). An absent map (a hand-written seed) still takes the defaults.
 - **Values** are `JSON.stringify` output: compact, no spaces outside strings, numbers in shortest round-trip form, newlines in strings as `\n`.
 - **References become names.** In `init`, `hostNodeId` (a Format Controller's host), every entry of `members` (a Group), and every entry of each `steps[].nodeIds` (a Presentation) is rewritten from id to name. A reference to an id not in the save is written unchanged.
 - **Keys.** An `init`, `lit:`, `str:` or input key is written bare when it matches `[A-Za-z_][A-Za-z0-9_]*` and JSON-quoted otherwise (`lit:"rate.annual"=2`, `"λ1"<-Rate.value`), since socket keys can be user text: a formula variable may hold `.` or `λ`, a Knap variable `-` ([[B12]] losslessSaves). `tests/graph/textFormCatalog.test.ts` carries every catalog node, with a cable on every socket, through the text form.

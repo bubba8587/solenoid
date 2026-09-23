@@ -76,6 +76,8 @@ function canonicalEntries(obj: Record<string, unknown>): [string, unknown][] {
 
 const FIELD_KEY_RE = /^([A-Za-z_][A-Za-z0-9_:]*)(=|<-)/;
 const BARE_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const EMPTY_LIT = "lit:{}";
+const EMPTY_STR = "str:{}";
 
 // Socket keys can be user text (a formula variable `rate.annual`, `λ1`, a Knap `{{ a-b }}`), so any key off the bare pattern is JSON-quoted.
 function keyToken(key: string): string {
@@ -178,9 +180,12 @@ export function writeTextForm(g: SavedGraph): string {
     }
     for (const [k, v] of canonicalEntries(init)) parts.push(`${keyToken(k)}=${JSON.stringify(v)}`);
 
+    // A declared map left empty is written as `lit:{}`, or the load would bring back the class defaults the user cleared.
+    if (sn.literals && Object.keys(sn.literals).length === 0) parts.push(EMPTY_LIT);
     for (const k of Object.keys(sn.literals ?? {}).sort()) {
       parts.push(`lit:${keyToken(k)}=${JSON.stringify(sn.literals![k])}`);
     }
+    if (sn.stringLiterals && Object.keys(sn.stringLiterals).length === 0) parts.push(EMPTY_STR);
     for (const k of Object.keys(sn.stringLiterals ?? {}).sort()) {
       parts.push(`str:${keyToken(k)}=${JSON.stringify(sn.stringLiterals![k])}`);
     }
@@ -248,6 +253,8 @@ export function readTextForm(text: string): SavedGraph {
     init: Record<string, unknown>;
     literals: Record<string, number>;
     stringLiterals: Record<string, string>;
+    hasLiterals: boolean;
+    hasStringLiterals: boolean;
     conns: Array<{ targetInput: string; sourceName: string; sourceOutput: string }>;
   };
   const parsed: Parsed[] = nodeLines.map((line) => parseNodeLine(line));
@@ -268,8 +275,8 @@ export function readTextForm(text: string): SavedGraph {
       y: pos.y ?? 0,
       init: p.init,
     };
-    if (Object.keys(p.literals).length > 0) sn.literals = p.literals;
-    if (Object.keys(p.stringLiterals).length > 0) sn.stringLiterals = p.stringLiterals;
+    if (p.hasLiterals) sn.literals = p.literals;
+    if (p.hasStringLiterals) sn.stringLiterals = p.stringLiterals;
     if (pos.size) sn.size = pos.size;
     if (pos.collapsed) sn.collapsed = true;
     if (pos.flipped) sn.flipped = true;
@@ -314,6 +321,8 @@ export function parseNodeLine(line: string): {
   init: Record<string, unknown>;
   literals: Record<string, number>;
   stringLiterals: Record<string, string>;
+  hasLiterals: boolean;
+  hasStringLiterals: boolean;
   conns: Array<{ targetInput: string; sourceName: string; sourceOutput: string }>;
 } {
   const colonIdx = line.indexOf(": ");
@@ -329,7 +338,11 @@ export function parseNodeLine(line: string): {
   const stringLiterals: Record<string, string> = {};
   const conns: Array<{ targetInput: string; sourceName: string; sourceOutput: string }> = [];
 
+  let hasLiterals = false;
+  let hasStringLiterals = false;
   for (const token of tokenizeFields(fieldsStr)) {
+    if (token === EMPTY_LIT) { hasLiterals = true; continue; }
+    if (token === EMPTY_STR) { hasStringLiterals = true; continue; }
     const { map, key, op, rest: valueStr } = splitField(token);
     if (op === "<-") {
       const dotIdx = valueStr.indexOf(".");
@@ -339,12 +352,14 @@ export function parseNodeLine(line: string): {
       conns.push({ targetInput: key, sourceName: valueStr.slice(0, dotIdx), sourceOutput });
     } else if (map === "lit") {
       literals[key] = JSON.parse(valueStr) as number;
+      hasLiterals = true;
     } else if (map === "str") {
       stringLiterals[key] = JSON.parse(valueStr) as string;
+      hasStringLiterals = true;
     } else {
       init[key] = JSON.parse(valueStr);
     }
   }
 
-  return { name, type, init, literals, stringLiterals, conns };
+  return { name, type, init, literals, stringLiterals, hasLiterals, hasStringLiterals, conns };
 }

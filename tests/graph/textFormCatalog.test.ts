@@ -78,6 +78,25 @@ describe("[[B12]] losslessSaves: every catalog node survives the text form with 
     expect(broken).toEqual([]);
   });
 
+  it("a literal map the user emptied stays empty instead of reviving the class defaults", () => {
+    const broken: string[] = [];
+    for (const [type, entry] of FLAT_CATALOG.entries()) {
+      let n: ClassicPreset.Node;
+      try { n = entry.create() as ClassicPreset.Node; } catch { continue; }
+      const a = n as unknown as AnyNode;
+      if (typeof a.literals !== "object" && typeof a.stringLiterals !== "object") continue;
+      if (typeof a.literals === "object") a.literals = {};
+      if (typeof a.stringLiterals === "object") a.stringLiterals = {};
+      const why = roundTrip(n);
+      if (why) { broken.push(`${type}: ${why}`); continue; }
+      const back = readTextForm(writeTextForm({ v: CURRENT_SAVE_VERSION, nodes: [savedNodeOf(n, "S")], connections: [] })).nodes[0];
+      const b = rebuildFrom(n, back) as unknown as AnyNode;
+      if (typeof a.literals === "object" && !isDeepStrictEqual(b.literals, {})) broken.push(`${type}: literals revived ${JSON.stringify(b.literals)}`);
+      if (typeof a.stringLiterals === "object" && !isDeepStrictEqual(b.stringLiterals, {})) broken.push(`${type}: stringLiterals revived ${JSON.stringify(b.stringLiterals)}`);
+    }
+    expect(broken).toEqual([]);
+  });
+
   it("socket keys typed by the user: dotted and λ formula variables, Knap variables", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const { TemplateNode } = await import("../../src/graph/nodes/text");
