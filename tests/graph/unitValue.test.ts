@@ -275,6 +275,24 @@ describe("affine temperatures (review pins)", () => {
   });
 });
 
+describe("Math's dimension-preserving ops act on the displayed reading ([[C25]] firstClassUnits)", () => {
+  const run = async (op: string, v: unknown) => {
+    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
+    return new MathFXNode({ op: op as never }).data({ in: [v as never] }).result as UnitCell;
+  };
+  it("ABS(-5 km) is 5 km, INT(1.7 km) is 1 km, INT(20.5 °C) is 20 °C", async () => {
+    const { applyFcUnit, displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const abs = await run("abs", applyFcUnit(-5, "km"));
+    expect(abs.display).toBe("km");
+    expect(displayMagnitudeOf(abs)).toBeCloseTo(5, 9);
+    const int = await run("int", applyFcUnit(1.7, "km"));
+    expect(displayMagnitudeOf(int)).toBeCloseTo(1, 9);
+    const t = await run("int", applyFcUnit(20.5, "degC"));
+    expect(t.display).toBe("degC");
+    expect(displayMagnitudeOf(t)).toBeCloseTo(20, 9);
+  });
+});
+
 describe("the Arithmetic card's unit path classifies a non-finite result (review pin)", () => {
   it("(-5 km) ^ 0.5 is #DOMAIN!, never a NaN-valued unit cell", async () => {
     const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
