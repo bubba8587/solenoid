@@ -199,3 +199,21 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   collects (dropdown rows, op-meta labels and descriptions); widen the lint to them, a sweep of its own.
 - [ ] **Custom packs.** Settings shows `customPacksFolder()`, but `loadCustomPacks()` is a stub returning none until
   filesystem access and a pack format are settled.
+
+## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
+- [ ] **Units:** a native-engine `#UNIT!` cell decodes with the generic engine message, not `READINGS_ADD`; `var` of a
+  km column drops the unit (should be km²); `IF(c, a, 0)` drops a unit; a LAMBDA computed column and REDUCE/BYROW
+  over frame columns aren't °C-classified; Cast to Text drops a unit; Convert with an unknown unit id says `#OVERFLOW!`;
+  text reaching a date, string or logical port through a wildcard passes silently.
+- [ ] **Engines:** `PolarsBackend.join`'s unit key transform has no corpus case; the fuzzer skips error cells, the error
+  filter, date `asof` and `readingScale`; `gridAxes`/`fillGrid` spread rows into `Math.max(...)` (stack on huge tables).
+- [ ] **Formulas vs Excel:** `IF("text")` is truthy, `CHAR(256)` answers, `SEQUENCE(-1)` is `[]`, `WRAPROWS(x, 0.5)`
+  rounds to 1, `0^-1` is `#OVERFLOW!` (Excel `#DIV/0!`); a random Script re-rolls per recompute, not per F9.
+- [ ] **Frames:** PIVOTBY's value sort treats a text min/max as blank; Cube Rollup takes the numeric path for an
+  untyped nested column.
+- [ ] **Charts and schedule:** a huge typo'd Duration (1e9 days) hangs the calendar build; Funnel and Radial with
+  negatives, a Bar gauge with a negative Max, `histogramBins` edge rounding; the Gantt reads true-like text more
+  narrowly than the Schedule.
+- [ ] **Stores and popups:** `nodeNameStore.claim` on a named id leaves a stale reverse entry; the Table popup sort
+  reads `"0x1F"` as 31; `commentStore.update` accepts an `author` patch; seed JSONs still carry old literal copies
+  in `init` (harmless; a `tune-seeds` pass drops them).

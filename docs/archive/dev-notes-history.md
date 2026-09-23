@@ -1,6 +1,53 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-23 (the 09-22b digest, verbatim).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-24 (the 09-22d and 09-22c digests, verbatim).
+
+---
+
+## Sweep 2026-09-24 — session digests 2026-09-22d and 2026-09-22c (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-22d: fixing what the rebuild specs found; author away)
+
+- **What stands:** the backlog section "Found writing the rebuild specs" is empty; each item was fixed or
+  ruled, and its spec says what the code now does. Every round ran tsc, the full vitest suite, `dte validate`
+  and, when the engine changed, `cargo test --lib`.
+- **Two engines, one answer:** units ride through the desktop's native verbs (schema shadows in
+  `PolarsBackend`), Join and Nest Join compare unit keys as quantities (`joinKeyTransform`, #UNIT! across
+  dimensions), a join keeps every column's unit and format, Window reads NaN as blank on both engines,
+  and share / pct_change agree on blanks. A parity fuzz (every corpus case re-run with NaN, infinities, blanks
+  and -0 added, prepended, or with every cell blank) found one more break, NaN order keys in the ranks, now
+  fixed. The generator lives in the session scratchpad, not the repo.
+- **Formulas:** LAMBDA parameters shadow variables but never a constant (a parameter named `e` is refused, [[D77]] constantsAlwaysWin), a blank scalar argument gives a blank answer
+  while an empty argument slot does not, arithmetic on text is #VALUE! with advice, malformed numbers are
+  lexed as errors.
+- **Documents:** composites re-save byte-identical (saved ids), `seedStore.ts` and `SavedGraph.seedId` are
+  gone, the save version is one constant, a Placeholder's references follow renames. Reports export and write
+  to Obsidian what the card shows (format picks, highlights, frames as tables, frontmatter stripped); an empty
+  merge writes nothing; a blank page name numbers off the sink's name.
+- **Canvas:** Composed and Bubble honor the axis options the Chart Builder offers; the pointer census drops
+  stranded fingers (a primary touch or a window blur); expand push leaves the user's own overlaps alone;
+  standoffs draw under nodes.
+- **Ruled, not changed:** a one-element list collapsing on scalar rungs is D13's design, and Frames and Cubes
+  crossing the unit boundary untouched is the design (compute-pass spec). E14's stack-merge line stands (the
+  merge hasn't landed).
+
+### SESSION DIGEST (2026-09-22c: DTE and specs, merged and made rebuildable; author present)
+
+- **What stands:** the tree has one node per decision. Merged into survivors: D8→D7, D44→D45, E3→D15,
+  C56→C26, D2→C1, C12→C11, and the seven HTML-in-Canvas tuning nodes D55–D61→C42 (their knobs now live in
+  `../tree/specs/canvas/html-in-canvas.md`). C52's audit half became C108 auditDefaultsToFix. Every unratified node below
+  ring A was rewritten for plain reading; the Why no longer restates the Decision.
+- **The rebuild test:** five new specs cover the computational core, written from the code: `compute-pass`,
+  `formula-language`, `computed-columns`, `frame-verbs`, `save-format`. Every other spec was rewritten, and
+  the thin ones (conduit faces, input-cable pruning, live connections, stores) now state behavior.
+  `subsystem-invariants.md` is one table; the docs that held pieces of these specs point at them.
+- **Nodes corrected against code:** C60 (Running has no mode toggle), C63 (Record's views are ops), C62,
+  C65 (the standoff depth isn't set anywhere; labeled), C95, C1, C45 (ordering is case-sensitive), C48,
+  C51, C61, C72, D10, D20, D22, B16.
+- **Open:** node candidates the spec writers flagged in the drawn-cable rulings are unmoved.
+  `../tree/specs/documents/literal-input-editors.md`'s were settled as spec content (2026-09-24): the text-is-truth rule is
+  [[C58]]'s and List Input's is [[C28]]'s, both cited; the one-row column header is a layout ruling. Still without a spec: the node families (`node-coverage.md`
+  stands in).
 
 ---
 
