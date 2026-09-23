@@ -221,3 +221,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   Solve (make Solve wait on in-flight fetches); check that Tauri's window close fires `pagehide` (else drafts need
   an `onCloseRequested` flush); an SVG value exports as text, frame spans ignore per-column formats; vault asset
   embeds resolve by bare file name.
+- [ ] **Composite inner state:** pins, comments, frame column formats and standoffs on a card inside a composite are
+  top-level `SavedGraph` maps keyed by id, and load keeps only main-editor ids, so they likely drop on reload
+  ([[B12]]). The closed-drill-in pipe gate (`DrillStack.open`) has no test: open, close, then edit and Unpack
+  around the composite in the app.
