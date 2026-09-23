@@ -3,6 +3,7 @@ import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type 
 import { noteDateSerial } from "./nodes/dateSerial";
 import { typeAtRank } from "./sockets";
 import { parseCx } from "./cxValue";
+import { fencedLines } from "./managedBlock";
 
 
 export type FrontmatterFieldType =
@@ -220,18 +221,14 @@ export function toggleTaskMarker(body: string, index: number): string {
   }
   const marker = /^(\s*[-*+]\s+)\[([ xX])\](?=\s|$)/;
   let count = -1;
-  let fence: string | null = null;
+  const fenced = fencedLines(lines.slice(start));
   let prevBlank = true, prevItem = false;
   for (let i = start; i < lines.length; i++) {
     const line = lines[i];
-    const f = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
-    if (f) {
-      if (fence === null) fence = f[1][0];
-      else if (f[1][0] === fence) fence = null;
+    if (fenced[i - start]) {
       prevBlank = false; prevItem = false;
       continue;
     }
-    if (fence !== null) continue;
     const blank = line.trim() === "";
     const indentedCode: boolean = !blank && /^(?: {4,}|\t)/.test(line) && prevBlank && !prevItem;
     const m = indentedCode ? null : marker.exec(line);

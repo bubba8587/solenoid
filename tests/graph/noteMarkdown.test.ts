@@ -59,6 +59,8 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
     expect(renderNoteMarkdown("a\n%% solenoid:begin x %%\nmanaged\n%% solenoid:end %%\nb")).toBe("<p>a<br>managed<br>b</p>\n");
     expect(renderNoteMarkdown("A line ^abc-123\nnext")).toBe("<p>A line<br>next</p>\n");
     expect(renderNoteMarkdown("```\n%% kept %% ^kept\n```")).toContain("%% kept %% ^kept");
+    expect(renderNoteMarkdown("````\n```\n%% kept %%\n````")).toContain("%% kept %%");
+    expect(renderNoteMarkdown("~~~\n```\n%% kept %%\n~~~")).toContain("%% kept %%");
     expect(renderNoteMarkdown("x^2 stays")).toContain("x^2 stays");
   });
 
