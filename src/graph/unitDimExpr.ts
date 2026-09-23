@@ -46,12 +46,13 @@ const PICK_SCALAR_FNS = new Set([
   "LARGE", "SMALL", "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC", "QUARTILE",
   "QUARTILE.INC", "QUARTILE.EXC", "MODE", "MODE.SNGL", "INDEX",
 ]);
-const PICK_LIST_FNS = new Set(["SORT", "UNIQUE", "TAKE", "DROP", "FILTER", "TRANSPOSE"]);
+const PICK_LIST_FNS = new Set(["SORT", "UNIQUE", "TAKE", "DROP", "FILTER", "TRANSPOSE", "CHOOSEROWS", "CHOOSECOLS"]);
 
-/** Criteria aggregates: the dimension of the value argument; criteria ranges are compared, not carried. */
+/** Criteria aggregates and lookups: the dimension of the value argument; keys and criteria are compared, not carried. */
 const CRITERIA_VALUE_ARG: Record<string, (argc: number) => number> = {
   SUMIF: (n) => (n > 2 ? 2 : 0), AVERAGEIF: (n) => (n > 2 ? 2 : 0),
   SUMIFS: () => 0, AVERAGEIFS: () => 0, MAXIFS: () => 0, MINIFS: () => 0,
+  XLOOKUP: () => 2, VLOOKUP: () => 1, HLOOKUP: () => 1, LOOKUP: (n) => (n > 2 ? 2 : 1),
 };
 const CRITERIA_SUMS = new Set(["SUMIF", "SUMIFS"]);
 

@@ -146,8 +146,9 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 | preserve the shared dimension | ABS, MIN, MAX, MEDIAN, SUM, AVERAGE, AVG, ROUND, ROUNDUP, ROUNDDOWN, MROUND, CEILING, FLOOR, INT, TRUNC, MOD, GEOMEAN, HARMEAN, and the spreads STDEV(.S/.P/A/PA), STDEVP, AVEDEV | mixed dimensions are `#UNIT!` |
 | square the shared dimension | VAR(.S/.P), VARP, DEVSQ, SUMSQ | mixed dimensions are `#UNIT!` |
 | PRODUCT, SUMPRODUCT | | multiply the argument dimensions |
-| pick from the first argument | LARGE, SMALL, PERCENTILE(.INC/.EXC), QUARTILE(.INC/.EXC), MODE(.SNGL), INDEX, SORT, UNIQUE, TAKE, DROP, FILTER, TRANSPOSE | the first argument's dimension; a dimensioned other argument is `#UNIT!` |
+| pick from the first argument | LARGE, SMALL, PERCENTILE(.INC/.EXC), QUARTILE(.INC/.EXC), MODE(.SNGL), INDEX, SORT, UNIQUE, TAKE, DROP, FILTER, TRANSPOSE, CHOOSEROWS, CHOOSECOLS | the first argument's dimension; a dimensioned other argument is `#UNIT!` |
 | criteria aggregates | SUMIF, AVERAGEIF (the sum range, else the range), SUMIFS, AVERAGEIFS, MAXIFS, MINIFS (the first argument) | the value range's dimension; the criteria ranges are compared, not carried |
+| lookups | XLOOKUP (the return array), VLOOKUP, HLOOKUP (the table), LOOKUP (the result vector, else the lookup vector) | the returned range's dimension; the key is compared, not carried |
 | SQRT | | halves the exponents |
 | POWER | | only the exponent's dimension is visible, not its value, so it is determinable only for a dimensionless base |
 | IF, IFERROR, IFNA, CHOOSE | | the answer is one of the branches (IF's then and else, IFERROR's value and fallback, CHOOSE's options): their shared dimension, or indeterminate when they disagree, not a conflict |
