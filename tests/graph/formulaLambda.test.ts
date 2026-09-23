@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, compilePositional, extractVariables } from "../../src/graph/excelFormula";
 import { isLambdaValue } from "../../src/graph/lambdaValue";
+import { LambdaNode } from "../../src/graph/nodes/lambda";
 import { MapTableNode, ByAxisNode, ReduceLambdaNode, ScanLambdaNode, MakeArrayNode } from "../../src/graph/nodes/tableLambda";
 import { GroupByNode, RunningNode } from "../../src/graph/nodes/list";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
@@ -30,6 +31,11 @@ describe("LAMBDA parameters and eta names are not the host's variables", () => {
   it("a parameter shadows a constant of the same name", () => {
     expect(ev("LAMBDA(e, e + 1)(5)")).toBe(6);
     expect(ev("e")).toBeCloseTo(Math.E);
+  });
+
+  it("a parameter named twice is refused, not silently bound to the last argument", () => {
+    expect(code(ev("LAMBDA(x, x, x + 1)(1, 2)"))).toBe("#VALUE!");
+    expect(code(new LambdaNode({ params: "x, x", expr: "x + 1" }).data({}).result)).toBe("#NAME?");
   });
 
   it("a positional parameter (the LAMBDA node's) shadows a constant the same way", () => {

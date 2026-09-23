@@ -803,6 +803,7 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
         const params: string[] = [];
         for (const a of n.args.slice(0, -1)) {
           if (a.t !== "name") return solError("#VALUE!", "LAMBDA parameters must be plain names");
+          if (params.includes(a.name)) return solError("#VALUE!", `LAMBDA parameter ${a.name} appears twice`);
           params.push(a.name);
         }
         const fn = (...args: unknown[]): unknown => {

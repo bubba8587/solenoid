@@ -89,6 +89,11 @@ export class LambdaNode extends ClassicPreset.Node {
       this.cachedError = "Bad parameter name";
       return { result: solError("#NAME?", "A lambda parameter name isn't a valid identifier") };
     }
+    if (new Set(params).size !== params.length) {
+      this.cachedValue = null;
+      this.cachedError = "A parameter appears twice";
+      return { result: solError("#NAME?", "A lambda parameter name appears twice") };
+    }
     if (!this.compiled) {
       this.cachedValue = null;
       const hint = this.expr.trim() ? formulaSyntaxHint(this.expr) : null;
