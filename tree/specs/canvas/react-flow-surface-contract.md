@@ -182,6 +182,7 @@ RF reports which layer a right-click hit (node, edge or pane), and `canvasContex
 - **Cable menu.** It acts on the whole multi-selection when the clicked cable is part of it, else on just that cable; ribbons expand to their member lanes either way. A ghost cable gets no menu.
 - **Node menu.** There is no selection surgery on right-click: the menu acts on the selection only if it contains the clicked node, else on that node alone. It offers Pin for a group or a node with outputs that is not a Conduit or a Format Controller; Link with Standoff when exactly two linkable nodes are selected, one of them the clicked node, and they are not already linked (linkable excludes Conduits, FCs, group members and docked nodes; see [[standoffs]]); Flip for a flippable node; and Lock position for a group.
 - **Pane menu.** The Add menu; suppressed while isolating.
+- **Locked canvas.** Every menu above stands down or goes view-only; the list is under the canvas keyboard's gate 8.
 
 ## The canvas keyboard
 
@@ -196,7 +197,7 @@ The gates run in this order:
 5. A key whose target has a `.nokeys` ancestor returns, except F9 ([[pointer-gestures]]).
 6. F9 recomputes. It stays live while typing, presenting, drilled in and under a modal, where it is the only remaining recompute path.
 7. The armed draw tool is modal: outside a field and without Ctrl or Cmd, Escape disarms it, Enter finishes the run and Backspace drops the last point, before the palette and isolate can claim those keys.
-8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, Wrap as Composite (Ctrl+Shift+G), autofit, expand and collapse, `[` and `]` rotation, undo and redo). The menu bar, palette and touch commands press these same keys (`fireMenuKey`), so menu Tidy and Cleanup stand down through this gate too. The Add menu does not open from any entry point: the `A` key, the menu bar and toolbar `+` (both through `addMenuRequest`), and the pane's right-click menu. The view keys (palette, isolate, chrome, Tab, F9) keep working.
+8. A locked canvas is view-only: the keys that move, add or remove stand down (Delete, nudge, paste, Tidy, Cleanup, group create, Wrap as Composite (Ctrl+Shift+G), autofit, expand and collapse, `[` and `]` rotation, undo and redo). The menu bar, palette and touch commands press these same keys (`fireMenuKey`), so menu Tidy and Cleanup stand down through this gate too. The Add menu does not open from any entry point: the `A` key, the menu bar and toolbar `+` (both through `addMenuRequest`), and the pane's right-click menu. The other right-click menus follow the same line (`canvasContextMenu.ts`): a socket opens no menu (its one item, Attach Format Controller, adds a node), a cable opens none (Insert Conduit and Delete both edit, and resolving the target would select the cable), and the node menu is view-only, dropping Unpack composite, Link with Standoff, Flip sockets and Lock position while Inspector, Edit contents, Isolate, Where used, Pin value and Add comment stay. The view keys (palette, isolate, chrome, Tab, F9) keep working.
 
 Bare keys, outside a field and without a modifier:
 

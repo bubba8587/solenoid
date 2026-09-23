@@ -64,7 +64,7 @@ import {
   type CableContextTarget,
   type NodeContextTarget,
 } from "../components";
-import { keepsNativeMenu, socketTargetAt, cableTargetFor, nodeTargetFor } from "../canvasContextMenu";
+import { keepsNativeMenu, socketTargetAt, socketMenuFor, cableTargetFor, nodeTargetFor } from "../canvasContextMenu";
 import { computeOverlayStore } from "../computeOverlayStore";
 import { presentationStore } from "../presentationStore";
 import {
@@ -72,7 +72,6 @@ import {
   linkStandoffBetween,
   deleteCables,
   attachFormatController,
-  canAttachFc,
 } from "../canvasActions";
 import { isolateNodes, isolateChainOf, isolateWhereUsed } from "../isolate";
 import { commentsPanelUi } from "../commentStore";
@@ -391,9 +390,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       if (keepsNativeMenu(e)) return;
       e.preventDefault();
       const el = wrapperRef.current;
-      const sock = el ? socketTargetAt(el, e) : null;
-      if (sock && canAttachFc(s.editor, sock.nodeId)) { setSocketCtx(sock); return; }
-      const t = nodeTargetFor(s.editor, node.id, e);
+      const locked = canvasLockStore.get() || !!hooksRef.current.locked;
+      const sock = socketMenuFor(s.editor, el ? socketTargetAt(el, e) : null, locked);
+      if (sock) { setSocketCtx(sock); return; }
+      const t = nodeTargetFor(s.editor, node.id, e, locked);
       if (t) setNodeCtx(t);
     },
     [s],
@@ -403,7 +403,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
       if (keepsNativeMenu(e)) return;
       e.preventDefault();
-      const t = cableTargetFor(s.editor, edge.id, e);
+      const t = cableTargetFor(s.editor, edge.id, e, canvasLockStore.get() || !!hooksRef.current.locked);
       if (t) setCableCtx(t);
     },
     [s],
@@ -413,12 +413,14 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     if (keepsNativeMenu(e)) return;
     e.preventDefault();
     const el = wrapperRef.current;
+    const locked = canvasLockStore.get() || !!hooksRef.current.locked;
     const sock = el ? socketTargetAt(el, e) : null;
     if (sock) {
-      if (canAttachFc(s.editor, sock.nodeId)) setSocketCtx(sock);
+      const menuFor = socketMenuFor(s.editor, sock, locked);
+      if (menuFor) setSocketCtx(menuFor);
       return;
     }
-    if (isolateStore.isActive() || canvasLockStore.get() || hooksRef.current.locked) return;
+    if (isolateStore.isActive() || locked) return;
     setMenu({ screenX: e.clientX, screenY: e.clientY });
   }, [s]);
 
