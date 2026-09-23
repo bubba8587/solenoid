@@ -307,9 +307,9 @@ A key is quoted when it is empty, contains any of `:#[]{}",'|>%@` or a backtick,
 
 The overlay's Export button writes one self-contained `.html` file (`reportExport.ts`), through the native save dialog on desktop or a download on web. There is no PDF export, and no markdown export from the overlay; the vault write is the markdown path.
 
-1. Load KaTeX first when the Report's body contains `$`.
-2. Capture a canvas snapshot image (`captureCanvasImage`).
-3. Take `renderedBody()` (a mail merge joins its pages with the page rule; a merge with no rows exports an empty body under the title).
+1. Take `renderedBody()` (a mail merge joins its pages with the page rule; a merge with no rows exports an empty body under the title).
+2. Load KaTeX when that body or a wired document's body contains `$`, so a template's or an embed's math renders rather than exporting as pending source.
+3. Capture a canvas snapshot image (`captureCanvasImage`).
 4. Split the body at each span whose name is an input and whose value is a document (`exportBodyHtml`). Each embedded document renders as a `report-export__embed` block headed by the escaped input name, with its frontmatter stripped and its own spans replaced by the escaped `refPreview` of its `refs` (a name its `refs` lack stays a span), as on screen.
 5. Render each other segment to sanitized HTML, then **freeze** every rendered span (`<code>=name</code>`, `substituteRefCodes`) whose name is a variable input, `template` or `records` (`frozenRefHtml`). The value is escaped after the render, so its text never reads as markdown or HTML. A span whose value is unknown (an unwired fixed input) is left as a span. A Frame becomes an HTML table (replacing its paragraph when it stands alone), an image with a web or attached (`data:image`) source an `<img>`, and any other value its `refPreview` text with the resolved annotation; a highlighted span (`=name!`) wraps the text in a highlight. A chart freezes to its title; its figure appears in the export's Charts section. A span inside a fenced code block is not a rendered span and stays literal, as on screen.
 6. Append a **Charts** section with the largest SVG (over 40 by 40 px) on every node wired directly into the Report or into a Note wired into it, serialized from the live canvas with computed styles baked in, each labeled with its node's display name. That is a chart's figure, and also a Mermaid diagram or an SVG Picker's figure. Then a **Canvas snapshot** section with the image.

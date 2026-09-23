@@ -185,10 +185,12 @@ export function buildReportExportHtml(
 }
 
 export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
-  if (/\$/.test(report.body)) await import("./components/katexRender");
   try {
+    const body = await report.renderedBody();
+    const embeds = report.refKeys().map((k) => report.refValue(k)).filter(isDocumentValue);
+    if (body.includes("$") || embeds.some((d) => d.body.includes("$"))) await import("./components/katexRender");
     const canvasImage = await captureCanvasImage();
-    const html = buildReportExportHtml(report, { canvasImage, body: await report.renderedBody() });
+    const html = buildReportExportHtml(report, { canvasImage, body });
     const name = exportFileName(report.label);
     const chosen = await saveHtmlFileDialog(name, html);
     // The web download fires and returns null too, so the toast must not key off the path.
