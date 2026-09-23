@@ -6,6 +6,29 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-23: decisions, specs and code comments lined up; author away)
+
+- **What stands:** each fact has one home. Rulings and reasons live in `tree/decisions/`, mechanics in
+  `tree/specs/`, and code keeps only one-sentence line constraints ([[C57]] commentMinimalism). About 14,000
+  comment lines left roughly 820 files, comment-only (verified token-for-token against the parse tree); what
+  they said landed in a spec or node first. tsc, the full vitest suite, `dte validate` and `coverage --check`
+  are green.
+- **Tree:** C72 merged into B11 and C104 into C103; D73 nodeCoversFormula split out of C17; new C109
+  linuxOwnWindowControls and D74 webkitgtkNoNodeLayers give the Linux window chrome its reasons. About 30
+  nodes gained a Why or a correction from the lift, each with a History line. E14 keeps its stack-merge line:
+  Append and Bind Columns still sit beside XSTACK, and the E14 vs C48 question is in the backlog for the author.
+- **Specs:** `format-model`, `value-semantics`, `layout-chrome` and `touch-gestures` moved into the vault and
+  are cited as wikilinks. New: `table-popup`, `palette-and-theme`, `command-palette`, `outline-panel`. Nearly
+  every other spec was restructured for reading in Obsidian with no fact dropped. Stale
+  "subsystem-invariants §" pointers across docs now name the spec itself.
+- **Tests:** the suite runs in about 15s instead of about 100s. `vitest.config.ts` splits a shared project
+  (`isolate: false`, reset by `tests/setup/sharedWorker.ts`) from a short isolated list of files that need
+  a fresh module graph.
+- **Code fixes riding along:** the Composed chart draws its legend below the plot like Scatter; the
+  HTML-in-Canvas renderer draws `anycombo` as a split square like the DOM socket.
+- **Open:** the backlog section "Found in the comment lift" lists suspected bugs the comment writers noticed;
+  none is fixed yet.
+
 ### SESSION DIGEST (2026-09-22d: fixing what the rebuild specs found; author away)
 
 - **What stands:** the backlog section "Found writing the rebuild specs" is empty; each item was fixed or
@@ -28,8 +51,8 @@ specific item.
   stranded fingers (a primary touch or a window blur); expand push leaves the user's own overlaps alone;
   standoffs draw under nodes.
 - **Ruled, not changed:** a one-element list collapsing on scalar rungs is D13's design, and Frames and Cubes
-  crossing the unit boundary untouched is the design (compute-pass spec). **For the author:** E14's line
-  "Append / Bind Columns become VSTACK / HSTACK when the stack merge lands" reads stale.
+  crossing the unit boundary untouched is the design (compute-pass spec). E14's stack-merge line stands (the
+  merge hasn't landed).
 
 ### SESSION DIGEST (2026-09-22c: DTE and specs, merged and made rebuildable; author present)
 
@@ -45,29 +68,5 @@ specific item.
   C65 (the standoff depth isn't set anywhere; labeled), C95, C1, C45 (ordering is case-sensitive), C48,
   C51, C61, C72, D10, D20, D22, B16.
 - **Open:** node candidates the spec writers flagged (sections of `../tree/specs/documents/literal-input-editors.md`,
-  the drawn-cable rulings) are unmoved. Still without a spec: the Table popup and the node families
-  (`node-coverage.md` stands in); `tree/specs/values/format-model.md` is a spec living in docs/.
-
-### SESSION DIGEST (2026-09-22b: the connective-core copy pass; author present, reviewing samples)
-
-- **What stands:** the shipped copy is free of em dashes and `uiCopy.test.ts` enforces it over every genre,
-  seeds included (DESIGN.md §7 now says so). Help tabs (`help.md`, `data-model.md`, `notes.md`), catalog
-  descriptions, Inspector Excel notes, socket docs, tooltips and error messages along the computed-column,
-  socket-lattice, unit-flow and type-propagation paths are rewritten in the author's register: short, plain,
-  Excel names where they help, no wiring narration.
-- **Facts corrected, not just reworded** (each verified against code): the help tab said a format resets at
-  the first transform (it carries through meaning-preserving ops, [[D41]]); Saving said examples replace the
-  canvas (they open as new documents) and only newer formats are refused (older are too); six Excel notes
-  (ISNA, ISERR, ISTEXT/ISNONTEXT, MINVERSE, CONCAT/CONCATENATE) and the CONCAT description misdescribed the
-  node; XLOOKUP's advice named Build Frame for pairing two lists (Frame from Lists does); node-coverage put
-  `anydata` below `anytable` and said a computed column's formula sees only scalars.
-- **Specs** `error-values`, `unit-flow`, `type-propagation…`, `socket-lattice`, `literal-input-editors` are
-  restructured into sections; every spec header drops the "Lifted from subsystem-invariants" line.
-  `mental-model.md`, `tree/specs/values/value-semantics.md`, `glossary.md` and all of `node-coverage.md` are reworked; build
-  history goes to git.
-- **DTE:** about 70 AI-made nodes reworded with rules unchanged, each with a History line; every `*Origin:*`
-  paragraph and duplicate `*Why:*` label is gone; 56 bare rule names became `[[ID]]` wikilinks. Human-held
-  nodes (A ring, B7, C80) were not touched; author quotes stay verbatim.
-- **Open:** the before/after log for the author lives outside the repo (session scratchpad). The trailing
-  parenthetical rule still covers only catalog, socket docs and Excel notes (279 sentence-level hits in seeds
-  and catalog, mostly legitimate glosses).
+  the drawn-cable rulings) are unmoved. Still without a spec: the node families (`node-coverage.md`
+  stands in).

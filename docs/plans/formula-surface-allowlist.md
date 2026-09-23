@@ -18,7 +18,7 @@ owns. Written by A2 2026-08-25, plan-only, no code touched. Line numbers verifie
 ## Read first
 `CLAUDE.md`; the formula-surface rule nodes ([[C17]] shareImpl and its siblings, [[D26]] hideMatrixFromVendor); `docs/formulajs-divergences.md`
 (why each `registerInternal` override exists — read before deleting a fallthrough);
-`docs/subsystem-invariants.md` § error values.
+`tree/specs/values/error-values.md`.
 
 ## The problem (grounded)
 

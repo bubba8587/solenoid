@@ -51,8 +51,7 @@ mdbase 1.0 ([[C67]] mdbaseCeiling).
   `$HOME/**/*.{json,csv,md}`; (2) the vault root is the app-wide `obsidianVault` setting; (3)
   **no file watcher** exists (`21-collaboration.md` Stage 0 is its home); (4) live sources are
   *connection* nodes (`nodes/connection.ts`: cache token `<globalGen>:<nodeToken>:<reference>`,
-  background fetch, `refreshConnection`, `refreshMinutes` — `../subsystem-invariants.md` § Live
-  connections); (5) the vault walk (`fileBridge.ts`) skips dot-folders, depth 6; (6) a frame
+  background fetch, `refreshConnection`, `refreshMinutes` — `../../tree/specs/computation/live-connections.md`); (5) the vault walk (`fileBridge.ts`) skips dot-folders, depth 6; (6) a frame
   column is number / string / logical / date only — lists and nested objects need a **cube**
   (`CubeCell`), and the lattice refuses a cube at a `frame` socket (`sockets.ts`); (7) the
   composite **Monte Carlo** run mode samples SCALAR ports and summarises scalar outputs;

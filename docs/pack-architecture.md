@@ -84,7 +84,7 @@ restriction and promotion are one piece of metadata, not two.
 ## Errors
 
 In a composite pack, an internal error has to **propagate cleanly to the boundary output**
-(error values: `subsystem-invariants.md` § Error values). How a restriction violation should
+(error values: `tree/specs/values/error-values.md`). How a restriction violation should
 read to the user (a typed error out the socket, versus the node flagging the offending input
 locally) is still open, tracked in the backlog.
 

@@ -4,7 +4,7 @@ Living document, kept at **module granularity** (one line per concern, not one
 line per node file — there are ~300 of those and the registry is the real
 index). Update when a new module or concern lands, in the same commit.
 
-Mechanics and gotchas live in `docs/subsystem-invariants.md`; rules and rulings in the
+Mechanics and gotchas live in the specs under `tree/specs/` (indexed by `docs/subsystem-invariants.md`); rules and rulings in the
 decision tree (`tree/decisions/`, see `docs/dte.md`); the running log in `docs/dev-notes.md`.
 This file is the map.
 
@@ -125,9 +125,9 @@ src/
 | `flow/FlowSocketHandle.tsx` | The RF `<Handle>` each socket renders through (measurement + cable anchoring); lights the socket a dragged cable would land on (`useConnection`) |
 | `flow/FlowResizeGrip.tsx` | The corner resize grip: RF `NodeResizeControl` wearing the app's grip mark; the model keeps the size (FlowSurface drops the resizer's own dimension changes) |
 | `flowSurface.ts` | The injection seam: node components ask for the RF `Handle` (`useFlowSocket`) and the resize grip (`useFlowResizeGrip`); the flow chunk injects both so shared component code never imports @xyflow/react |
-| `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see subsystem-invariants § Pointer gestures) |
+| `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see `tree/specs/canvas/pointer-gestures.md`) |
 | `flow/flowHistory.ts` + `flow/flowHistoryDigest.ts` (+tests) | Snapshot undo — THE undo: debounced full-graph snapshots + `describeGraphDelta` labels |
-| `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion, run controls and the per-composite snapshot history; registers the active graph and swaps the select / arrange slots while open (see subsystem-invariants § Composite drill-in mount lifecycle) |
+| `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion, run controls and the per-composite snapshot history; registers the active graph and swaps the select / arrange slots while open (see `tree/specs/canvas/composite-drill-in-mount-lifecycle.md`) |
 | `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
 | `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
@@ -137,7 +137,7 @@ src/
 | `canvasActions.ts` | The graph actions those menus/keys invoke: `deleteSelection` (ghost-splicing bulk delete), `insertConduitForCables` (lane-bundled Conduit splice), `linkStandoffBetween`, `deleteCables`, `attachFormatController` |
 | `canvasGeometry.ts` | Screen ↔ canvas coordinate helpers (`getSocketScreenCenter`, `screenToCanvas`) shared by FC docking + quick-wire placement |
 | `fcDocking.ts` | FC docking: `findDockTarget` (canvas-unit snap), `computeDockedCanvasPos`/`dockedRenderedDims`, and the inline splice/unsplice (`insertFcInline`/`removeFcInline`) |
-| `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureElk` (lazy elkjs), `elkTidyLayout` (the direct ELK call — symmetric FIXED_POS ports, port-id edges), `makeArrangeFn` (the group/standoff/docked-FC-aware layout — see subsystem-invariants "Auto-arrange / Tidy"), `makeCleanupFn` |
+| `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureElk` (lazy elkjs), `elkTidyLayout` (the direct ELK call — symmetric FIXED_POS ports, port-id edges), `makeArrangeFn` (the group/standoff/docked-FC-aware layout — see `tree/specs/canvas/auto-arrange-tidy.md`), `makeCleanupFn` |
 | `storeKit.ts` | The module-singleton store kit (`createNotifier` / `createToggleStore` / `createValueStore`) every app-wide store builds on (see Conventions) |
 | `pointerGesture.ts` | THE two-finger gesture definition: window-capture contact census, `isPinching()` (≥2 fingers) — what the pinch-priority rule stands on |
 | `historyDigest.ts` | Human-readable session-history text (`digestLabeled` over flowHistory's labeled records) |
@@ -467,7 +467,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `architecture.md` | living | (this file) module map |
 | `glossary.md` | living | the invented vocabulary |
 | `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `tree/decisions/` |
-| `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
+| `subsystem-invariants.md` | living | the index of every spec under `tree/specs/` (the mechanics, one per subsystem) |
 | `tree/specs/canvas/layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `tree/specs/canvas/touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
@@ -508,5 +508,5 @@ rationale, point-in-time research, the dev-notes history) is indexed in
   Function Reference are generated, never hand-listed.
 - **Stable ids** from `crypto.randomUUID()`; loads remap ids.
 - Rendering/measurement gotchas (socket boxes, measured rows, async
-  `area.moveNode`, pointer-event traps): `docs/subsystem-invariants.md`
-  § React Flow surface contract and § Pointer gestures.
+  `area.moveNode`, pointer-event traps): `tree/specs/canvas/react-flow-surface-contract.md`
+  and `tree/specs/canvas/pointer-gestures.md`.

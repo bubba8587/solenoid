@@ -796,7 +796,7 @@ was studied; the fixture directory is the contract.
 ## 9. What stands in the tree (the landed ledger, 2026-09-12)
 
 **Built** (three agents in one session; the mechanics are in `../node-coverage.md` § Schedule /
-§ Gantt, `../subsystem-invariants.md` § React Flow surface contract (figure payload + SVG
+§ Gantt, `../../tree/specs/canvas/react-flow-surface-contract.md` (figure payload + SVG
 provider seam) and § Pointer gestures (`nokeys`)):
 - `packages/schedule-engine` — § 6.1's cube contract (names, nesting as WBS, list or nested
   Task · Type · Lag predecessors), § 4.1's one rule, FS/SS/FF/SF with lag and lead, milestones,

@@ -3,15 +3,15 @@
 The bundle set authored 2026-07-03 from the completed feature walk (verdicts
 inline in `../archive/scope-features.md` + `../archive/future-directions.md`).
 **Most of the original bundles are BUILT**; their plan docs are deleted or archived (git history
-has the text — the shipped mechanics live in `subsystem-invariants.md` and the
-per-subsystem specs). Residual open items from built bundles live in
+has the text — the shipped mechanics live in the
+per-subsystem specs under `../../tree/specs/`). Residual open items from built bundles live in
 `../backlog.md` / `../deferrals.md`.
 
 ## Live bundles
 
 **05 — Units by dimensionality (FC A4)** SHIPPED 2026-07-12/13 and archived to
 `../archive/units-format-controller.md` (live truth: `formatModel.ts`,
-subsystem-invariants "Unit flow", [[D43]] unitByGranularity).
+`tree/specs/values/unit-flow.md`, [[D43]] unitByGranularity).
 
 | Bundle | What | Status / gate |
 |---|---|---|

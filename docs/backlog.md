@@ -100,7 +100,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Collapsed stadium pill hover preview** — a collapsed node's input pill shows a hover
   preview listing EVERY cable item (name + value), not just the first. Author's extension to
   consider with it: a special Conduit → bundled cable → Cube node (the bundle's lanes land as one
-  cube). Design first (DESIGN.md, `subsystem-invariants.md` § Conduit faces); stage after the
+  cube). Design first (DESIGN.md, `tree/specs/canvas/conduit-lane-faces.md`); stage after the
   Obsidian track.
 - [ ] **Linux desktop: tooltips are very large and appear very fast** (author 2026-09-21, not urgent). Lead:
   every tooltip is a native `title` (469 of them, no tooltip component), and WebKitGTK hands those to GTK, so

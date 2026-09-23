@@ -42,7 +42,7 @@ Turn on `onlyRenderVisibleElements`; every DOM reader (HIC snapshot, docked-FC p
 standoff `offsetWidth`, lasso rects, cable endpoints) falls back to Step 1's metric for
 unmounted cards. Groups (RF sub-flows) need parents mounted when a child is visible — RF
 handles it; verify. Fit-before-paint follows (load lands on the framed camera instead of
-jumping). Perf probe: the load/undo timings in subsystem-invariants § Graph load stay green.
+jumping). Perf probe: the load/undo timings in `tree/specs/documents/graph-load-teardown-performance.md` stay green.
 
 ## Step 3 — HIC painted from a worker
 

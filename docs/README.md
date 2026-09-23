@@ -180,10 +180,9 @@ results get retried and settled rulings relapse.
   socket change):** [[C43]] oneFlowSurface; `../tree/specs/canvas/react-flow-surface-contract.md` first;
   `tree/specs/canvas/touch-gestures.md` for gestures.
 - **Choosing a socket type for a port, or "why won't this cable connect?":**
-  `socket-reference.md` (the per-variant tables) + subsystem-invariants "Socket
-  lattice".
-- **Touching the FC / formats / units:** `tree/specs/values/format-model.md` + subsystem-invariants
-  "Unit flow" + [[D43]] unitByGranularity (units granularity).
+  `socket-reference.md` (the per-variant tables) + `../tree/specs/values/socket-lattice.md`.
+- **Touching the FC / formats / units:** `tree/specs/values/format-model.md` +
+  `../tree/specs/values/unit-flow.md` + [[D43]] unitByGranularity (units granularity).
 - **Touching frames/the engine:** `glossary.md` + [[C16]] polarsEngine/arraySemantics + the
   `frameVerbs.ts` oracle and cargo parity tests.
 - **A visual/UI change:** `../DESIGN.md` (the design-system rulebook) first, always.

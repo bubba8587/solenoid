@@ -124,7 +124,7 @@ superseded, or restating what a test already pins.
 - Several agents on this repo at once: one test run at a time, a one-line claim in
   `docs/agent-coordination.md`, the Lead merges ([[C83]] parallelAgents). Solo session: claim nothing.
 - A black screen: every render is boundaried — ask for the copied error text first, don't hunt
-  blind (subsystem-invariants § React Flow surface contract).
+  blind (`tree/specs/canvas/react-flow-surface-contract.md`).
 
 ### Commit style
 Short imperative summary, blank line, brief body if needed — match the existing log.

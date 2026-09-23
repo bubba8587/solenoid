@@ -11,6 +11,7 @@ export const COMBO_PAIRS: Record<string, [string, string]> = {
   datecombo: ["date", "datelist"],
   complexcombo: ["complex", "complexlist"],
   logicalcombo: ["logical", "logicallist"],
+  anycombo: ["any", "anylist"],
 };
 
 export function socketGlyphKind(dataType: string | undefined): GlyphKind {

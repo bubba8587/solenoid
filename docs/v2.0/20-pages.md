@@ -32,7 +32,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
 
 - **A node carries `page: string`** (a page id; default page for every existing seed). It is
   VISUAL state → it lives in the text form's sidecar block beside `positions`, never inline in
-  the per-node line (subsystem-invariants § Addressable model). New top-level `pages:
+  the per-node line (`tree/specs/documents/addressable-model.md`). New top-level `pages:
   [{id, name, order}]` in `SavedGraph` — add to BOTH `writeTextForm` and `readTextForm`
   ([[C30]] saveViaTextForm) or it is silently dropped on every save.
 - **Groups, standoffs, docked FCs, conduits are single-page**: a group's members share its

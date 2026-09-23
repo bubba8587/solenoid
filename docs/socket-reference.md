@@ -870,8 +870,7 @@ this rung exists. There is no element conversion, because the family is unknown.
 rank-≤2 wildcard (anydataWildcard), added by matricesInFormulas so a formula variable can take a matrix.
 What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
 matrices-only endpoint is the decision, permanently.
-**Dot:** the anycombo split square with a small rank-2 cross in its lower half
-(author call 2026-07-29 — the old full-square cross read as noise).
+**Dot:** hollow gray square, outline only (`SocketComponent.tsx`, `hicSocketGlyph.ts` `hollowSquare`).
 **Ports:** Expression's formula variables (the matricesInFormulas lift). The result output is
 NOT this type — it keeps its `resultAs` family and reconciles its RANK to the
 computed value (combo rung for a scalar/list result, the family's matrix rung

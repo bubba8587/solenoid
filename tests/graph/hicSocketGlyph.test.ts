@@ -14,7 +14,7 @@ describe("socketGlyphKind", () => {
     }
   });
   it("combos → split", () => {
-    for (const t of ["numlist", "strcombo", "datecombo", "complexcombo", "logicalcombo"]) {
+    for (const t of ["numlist", "strcombo", "datecombo", "complexcombo", "logicalcombo", "anycombo"]) {
       expect(socketGlyphKind(t)).toBe("split");
     }
   });
