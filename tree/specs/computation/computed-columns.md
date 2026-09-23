@@ -62,6 +62,10 @@ The type is inferred from the computed cells (`inferColumn`). Cells alone can't 
 
 Anything else stays a number. The Computed Column node can also pin the type instead of inferring it (Number, Text, Date or Boolean). Its output type picker (`addAs`) defaults to Auto, which infers from the computed cells; Date is offered because inference cannot always reach it, since a date serial is indistinguishable from a number.
 
+## Units
+
+A row formula reads each cell as its bare number, and the new column's unit is only the one authored for it (a `Name (unit)` name, or the Fx column's unit picker). One rule reads the source units: a formula over columns of readings on an offset scale (°C, °F) is classified as Expression classifies it (`affineWeight`, [[unit-flow]], [[C25]] firstClassUnits), with a name, `@` read or `[Name]` read of such a column as a reading. A sum of readings, or a reading scaled or divided, makes every cell of the column `#UNIT!` (`readingsRefusal` in `nodes/frame.ts`); a difference, a midpoint or a reading plus a number computes. A formula that is a LAMBDA is not classified.
+
 ## Fx columns in Frame Input
 
 - **Storage.** A computed column is a column of the Frame Input's source text with an `expr` field (the JSON form of `frameText`). It stores the formula alone; there are no cells to store ([[C54]] noPerCellFormulas, [[C28]] literalsIffEditable). A Number Fx column can carry a unit, picked in the popup, which becomes the column's `ColumnUnit`.

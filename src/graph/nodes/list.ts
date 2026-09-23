@@ -13,7 +13,7 @@ import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logic
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
-import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
+import { passesFilter, requireTextColumn, requireTextList, readingScaleOf, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, unitError, READINGS_ADD, type UnitCell } from "../unitValue";
@@ -1084,8 +1084,10 @@ export class SumIfsNode extends ClassicPreset.Node {
     const prep = forAggregate(kept);
     if (prep.error) return finish(prep.error);
     const nums = prep.nums;
-    const dim: Dim = vcol.unit ? vcol.unit.dim : DIMENSIONLESS;
-    const tag = (n: number): number | UnitCell => (isDimensionless(dim) ? n : tagDim(n, dim));
+    // The cells are as typed in the column's unit; readings have no sum, as SUMIFS in a formula ([[C25]]).
+    const cu = vcol.unit;
+    if (this.op === "sumifs" && readingScaleOf(cu) !== undefined) return finish(unitError(READINGS_ADD));
+    const tag = (n: number): number | UnitCell => (cu ? tagFrameCellUnit(n, cu) as number | UnitCell : n);
     switch (this.op) {
       case "sumifs":     return finish(tag(nums.reduce((a, b) => a + b, 0)));
       case "averageifs": return finish(nums.length ? tag(nums.reduce((a, b) => a + b, 0) / nums.length) : solError("#DIV/0!", "No rows matched the criteria"));

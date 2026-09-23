@@ -3639,6 +3639,772 @@
      }
     ]
    }
+  },
+  {
+   "name": "readings: cumsum is #UNIT! in every row, since readings have no sum",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: rolling_sum is #UNIT! in every row, since readings have no sum",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "rolling_sum",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1,
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: group_sum is #UNIT! in every row, since readings have no sum",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "group_sum",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: share is #UNIT! in every row, since a reading can't be divided",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "share",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: pct_change is #UNIT! in every row, since a reading can't be divided",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "pct_change",
+    "column": "t",
+    "as": "out",
+    "readingScale": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings in °F: diff is a delta in kelvin",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "diff",
+    "column": "t",
+    "as": "out",
+    "readingScale": 0.5555555555555556
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       5,
+       null,
+       null,
+       1.9444444444444446
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings: a rolling average stays a reading, unscaled",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "x",
+        "x",
+        "x",
+        "y",
+        "y"
+       ]
+      },
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        50,
+        59,
+        null,
+        68,
+        71.5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "d",
+    "orderDir": "asc",
+    "fn": "rolling_avg",
+    "column": "t",
+    "as": "out",
+    "readingScale": 0.5555555555555556,
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "x",
+       "x",
+       "x",
+       "y",
+       "y"
+      ]
+     },
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       50,
+       59,
+       null,
+       68,
+       71.5
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       54.5,
+       null,
+       null,
+       69.75
+      ]
+     }
+    ]
+   }
   }
  ]
 }

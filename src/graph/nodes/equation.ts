@@ -212,7 +212,7 @@ export class EquationNode extends ClassicPreset.Node {
           return finish(null);
         }
         if (dl !== null && dr !== null && dl.code !== undefined && dr.code !== undefined && dl.code !== dr.code) {
-          this.cachedHolds = unitError(`Can't equate ${dl.code} and ${dr.code} — different currencies, no exchange rate.`);
+          this.cachedHolds = unitError(`Can't equate ${dl.code} and ${dr.code}: they are different currencies with no exchange rate.`);
           return finish(null);
         }
       }

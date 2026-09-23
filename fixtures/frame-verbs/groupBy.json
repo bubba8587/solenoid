@@ -1894,6 +1894,284 @@
      }
     ]
    }
+  },
+  {
+   "name": "readings on an offset scale: sum and product are #UNIT! in every group, the averages and picks stay readings, count is plain",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        22.5,
+        26,
+        30,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "t",
+      "op": "sum",
+      "as": "sum",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "product",
+      "as": "product",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "avg",
+      "as": "avg",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "min",
+      "as": "min",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "max",
+      "as": "max",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "median",
+      "as": "median",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "mode",
+      "as": "mode",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "count",
+      "as": "count",
+      "readingScale": 1
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "sum",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     },
+     {
+      "name": "product",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       },
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     },
+     {
+      "name": "avg",
+      "type": "number",
+      "values": [
+       22.833333333333332,
+       30
+      ]
+     },
+     {
+      "name": "min",
+      "type": "number",
+      "values": [
+       20,
+       30
+      ]
+     },
+     {
+      "name": "max",
+      "type": "number",
+      "values": [
+       26,
+       30
+      ]
+     },
+     {
+      "name": "median",
+      "type": "number",
+      "values": [
+       22.5,
+       30
+      ]
+     },
+     {
+      "name": "mode",
+      "type": "number",
+      "values": [
+       20,
+       30
+      ]
+     },
+     {
+      "name": "count",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "readings in °F: a spread is a delta in kelvin, var a squared one, and a one-reading group has no sample spread",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        22.5,
+        26,
+        30,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "t",
+      "op": "stdev",
+      "as": "stdev",
+      "readingScale": 0.5555555555555556
+     },
+     {
+      "column": "t",
+      "op": "stdevp",
+      "as": "stdevp",
+      "readingScale": 0.5555555555555556
+     },
+     {
+      "column": "t",
+      "op": "var",
+      "as": "var",
+      "readingScale": 0.5555555555555556
+     },
+     {
+      "column": "t",
+      "op": "varp",
+      "as": "varp",
+      "readingScale": 0.5555555555555556
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "stdev",
+      "type": "number",
+      "values": [
+       1.6743649370393634,
+       null
+      ]
+     },
+     {
+      "name": "stdevp",
+      "type": "number",
+      "values": [
+       1.3671132463179076,
+       0
+      ]
+     },
+     {
+      "name": "var",
+      "type": "number",
+      "values": [
+       2.803497942386832,
+       null
+      ]
+     },
+     {
+      "name": "varp",
+      "type": "number",
+      "values": [
+       1.8689986282578879,
+       0
+      ]
+     }
+    ]
+   }
   }
  ]
 }

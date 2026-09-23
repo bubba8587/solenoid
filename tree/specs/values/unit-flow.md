@@ -68,6 +68,8 @@ The unit-aware twin of `forAggregate`, run first by a list reducer:
 
 The reducer re-tags its result with `tagDim` from the returned `dim` and `display`. Over an affine display the Aggregate node answers as a formula does: SUM of two or more readings is `#UNIT!` and its bare numbers are deltas (`[20 °C, 5]` sums to 25 °C); every other op reads a bare number as a reading (MIN of `[25 °C, 20]` is 20 °C); AVERAGE, MIN, MAX and MEDIAN are readings, and the spreads (STDEV, AVEDEV, PTP, IQR, MAD, SEM) are deltas in the base unit.
 
+The frame and cube verbs follow the same rule over a °C or °F column, on both engines (`aggUnitPlan` in `frameVerbs.ts`, [[frame-verbs]]): GROUPBY, PIVOTBY and Cube Rollup refuse a sum, product or share of readings as `#UNIT!` in every cell of that column, keep the averages and picks as readings, and turn the spreads into kelvin deltas (VAR a squared one); Window refuses a running, rolling or group sum, a share and a percent change, and makes `diff` a delta. The SUMIFS card reads its Values column in that column's unit (a km column sums to km) and refuses a SUMIFS of readings; a Cube input keeps a column's unit when its cells share one (`flatCubeToFrame`).
+
 ### Column and matrix units
 
 - A `ColumnUnit` is `{ dim, display? }`: one unit for a homogeneous Frame column, with the cells as bare magnitudes in that display unit (the derived form when `display` is absent). `sameColumnUnit` compares both fields.
@@ -125,7 +127,7 @@ A new algebra op sets `unitAware = true`. A new numeric-matrix input is re-carri
 - a `SolError`, a real dimensional conflict (`#UNIT!`: meters plus seconds, SIN of a length, comparing incommensurable quantities, two currency codes);
 - `null`, indeterminate (a non-constant exponent, a LAMBDA call, IF branches that disagree). The caller drops the unit rather than guessing; no error is raised.
 
-**Leaves.** Numbers, logicals, text, a blank argument, and `@`-row and whole-column references are dimensionless, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity). A name reads `env` and `codes`. Unary `±` and `%` keep the argument's dimension. A computed-lambda application is indeterminate, since its body is not visible.
+**Leaves.** Numbers, logicals, text, a blank argument, and `@`-row and whole-column references are dimensionless, since a Frame's unit lives on the column, not the cell ([[D43]] unitByGranularity); the affine pass alone reads a reading column's references as readings ([[computed-columns]] § Units). A name reads `env` and `codes`. Unary `±` and `%` keep the argument's dimension. A computed-lambda application is indeterminate, since its body is not visible.
 
 **Operators.**
 

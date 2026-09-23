@@ -3,7 +3,8 @@ import { ClassicPreset } from "rete";
 import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
-import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
+import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
+import { affineWeight } from "../unitDimExpr";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
@@ -52,7 +53,7 @@ import {
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
-import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
+import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
 
 function runVerb<T>(fn: () => T): T | SolError {
@@ -104,6 +105,28 @@ function computedColumnType(
   if (type !== "number" || !definition) return type;
   const isDateName = (n: string) => f.columns.find((c) => c.name === (alias[n] ?? n))?.type === "date";
   return exprYieldsDate(definition, isDateName) ? "date" : type;
+}
+
+/** A row formula over readings on an offset scale (°C) is classified as Expression's is
+ *  ([[C25]] firstClassUnits): a sum of readings, or a reading scaled or divided, is #UNIT!.
+ *  The result's unit stays the authored one. */
+function readingsRefusal(definition: string, f: FrameValue, alias: Record<string, string | undefined> = {}): SolError | null {
+  const isReading = (n: string) => isAffineDisplay(f.columns.find((c) => c.name === (alias[n] ?? n))?.unit?.display);
+  if (!f.columns.some((c) => isAffineDisplay(c.unit?.display))) return null;
+  const ast = parseFormula(definition);
+  if (!ast) return null;
+  const names = new Set<string>();
+  const walk = (n: Ast): void => {
+    if (n.t === "name" || n.t === "atcol" || n.t === "wholecol") { if (isReading(n.name)) names.add(n.name); }
+    else if (n.t === "call") n.args.forEach(walk);
+    else if (n.t === "apply") { walk(n.fn); n.args.forEach(walk); }
+    else if (n.t === "unary" || n.t === "percent") walk(n.arg);
+    else if (n.t === "bin") { walk(n.l); walk(n.r); }
+  };
+  walk(ast);
+  if (names.size === 0) return null;
+  const w = affineWeight(ast, names, names);
+  return isSolError(w) ? w : null;
 }
 
 function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string): CubeValue {
@@ -271,6 +294,8 @@ export class FrameInputNode extends ClassicPreset.Node {
           continue;
         }
         if (!bare && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
+        const refused = lam ? null : readingsRefusal(c.expr!, frame);
+        if (refused) { fill(i, refused); continue; }
         const r = computeColumnCells(
           frame,
           lam
@@ -2497,7 +2522,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     );
     if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
     this._reconcileSideSockets(computed.sideVars);
-    const values = computed.cells;
+    const refused = wired ? null : readingsRefusal(this.expr, f, this.bindings);
+    const values = refused ? computed.cells.map(() => refused) : computed.cells;
     const colType: FrameColType = this.addAs === "auto"
       ? computedColumnType(name, values, f, wired ? wired.expr : this.expr, this.bindings)
       : colTypeForAddAs(this.addAs);
