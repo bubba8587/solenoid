@@ -3,8 +3,8 @@ import {
   cubeFromColumns, recordsToCube,
   type CubeValue, type CubeCell, type FrameColType,
 } from "./frame";
-import { parseNoteFrontmatter, isoDateText, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
-import { parseDate } from "./nodes/dateSerial";
+import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
+import { parseDate, noteDateText } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 import type { PluginColumnTypes, ColumnPicks } from "./pluginColumnTypes";
 
@@ -290,7 +290,7 @@ function scalarKindOfValue(v: FrontmatterScalar): ScalarKind {
 /** A date the reader turned into a serial, read under a text type, is the ISO text written. */
 function datesToText(value: FrontmatterValueLoose | undefined): FrontmatterValueLoose | undefined {
   const one = (v: unknown): unknown =>
-    Array.isArray(v) ? v.map(one) : typeof v === "number" ? isoDateText(v) : v;
+    Array.isArray(v) ? v.map(one) : typeof v === "number" ? noteDateText(v) : v;
   return one(value) as FrontmatterValueLoose | undefined;
 }
 
