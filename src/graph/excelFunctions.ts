@@ -1230,7 +1230,10 @@ registerInternal("TEXT", (value, fmt) => {
 });
 registerInternal("DOLLAR", (value, decimals) => {
   const out = (FX as unknown as { DOLLAR: (...a: unknown[]) => unknown }).DOLLAR(value, decimals);
-  return typeof out === "string" && out.startsWith("$(") ? `($${out.slice(2)}` : out;
+  if (typeof out !== "string") return out;
+  if (out.startsWith("$(")) return `($${out.slice(2)}`;
+  // A negative that rounds to zero still takes the negative form: DOLLAR(-0.004) is ($0.00).
+  return out.startsWith("-$") ? `(${out.slice(1)})` : out;
 });
 registerInternal("VALUE", (x) => {
   if (typeof x === "number") return x;

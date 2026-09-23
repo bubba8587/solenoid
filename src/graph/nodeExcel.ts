@@ -454,7 +454,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "CONCAT", syntax: "=CONCAT(text1, text2, ...)", parity: false, note: "Each row takes one piece of text. For a whole List, use TEXTJOIN." },
     { excel: "CONCATENATE", syntax: "=CONCATENATE(text1, ...)", parity: false, note: "Each row takes one piece of text. For a whole List, use TEXTJOIN." },
   ],
-  "text-dollar": [{ excel: "DOLLAR", syntax: "=DOLLAR(number)", parity: false, note: "Formats as \"$1,234.56\"; optional decimals input" }],
+  "text-dollar": [{ excel: "DOLLAR", syntax: "=DOLLAR(number, [decimals])" }],
   "text-exact": [{ excel: "EXACT", syntax: "=EXACT(text1, text2)", parity: false }],
   "text-find-find": [
     { excel: "FIND", syntax: "=FIND(find_text, within)", parity: false },

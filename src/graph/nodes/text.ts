@@ -1124,14 +1124,7 @@ export class FormatDollarNode extends ClassicPreset.Node {
   }
 
   data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((n: number, d: number) => {
-      const dd = Math.trunc(d);
-      const mag = dd < 0 ? Math.round(Math.abs(n) * 10 ** dd) / 10 ** dd : Math.abs(n);
-      const rounded = mag.toFixed(Math.max(0, dd));
-      const parts = rounded.split(".");
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      return (n < 0 ? "-$" : "$") + parts.join(".");
-    },
+    const result = broadcastCells((n: number, d: number) => resolveExcelFunction("DOLLAR")!(n, d) as string,
       readInput(inputs.number,   this.literals.number   ?? 0),
       readInput(inputs.decimals, this.literals.decimals ?? 2));
     this.cachedText = result;

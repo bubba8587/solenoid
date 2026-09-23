@@ -113,7 +113,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(new TextReplaceNode().data({ text: [["abcd", "wxyz"]], start: [2], num_chars: [2], new_text: ["-"] }).result)
       .toEqual(["a-d", "w-z"]);
     expect(new FixedNode().data({ number: [[1234.5, 2]], decimals: [1] }).result).toEqual(["1,234.5", "2.0"]);
-    expect(new FormatDollarNode().data({ number: [[1.5, -2]], decimals: [2] }).result).toEqual(["$1.50", "-$2.00"]);
+    expect(new FormatDollarNode().data({ number: [[1.5, -2]], decimals: [2] }).result).toEqual(["$1.50", "($2.00)"]);
   });
 
   it("FIXED/DOLLAR round LEFT of the point on a negative decimals count (Excel)", () => {
@@ -121,11 +121,11 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     // =FIXED(12345.678, -2) = "12,300", =DOLLAR(12345.678, -2) = "$12,300".
     expect(new FixedNode().data({ number: [12345.678], decimals: [-2] }).result).toBe("12,300");
     expect(new FormatDollarNode().data({ number: [12345.678], decimals: [-2] }).result).toBe("$12,300");
-    // Sign is preserved through the left-rounding. FIXED matches Excel; DOLLAR keeps our
-    // leading-minus convention (Excel/Formula.js use accounting parens "$(12,300)") — a
-    // pre-existing, separately-pinned choice, not part of the decimals fix.
+    // Sign is preserved through the left-rounding; DOLLAR's negative is Excel's accounting form, as in the formula ([[C17]] shareImpl).
     expect(new FixedNode().data({ number: [-12345.678], decimals: [-2] }).result).toBe("-12,300");
-    expect(new FormatDollarNode().data({ number: [-12345.678], decimals: [-2] }).result).toBe("-$12,300");
+    expect(new FormatDollarNode().data({ number: [-12345.678], decimals: [-2] }).result).toBe("($12,300)");
+    expect(new FormatDollarNode().data({ number: [-0.004], decimals: [2] }).result).toBe("($0.00)");
+    expect(new FormatDollarNode().data({ number: [1.005], decimals: [2] }).result).toBe("$1.01");
     expect(new SpellNumberNode().data({ value: [[1, 2]] }).result).toEqual(["one", "two"]);
   });
 
