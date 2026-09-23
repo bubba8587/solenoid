@@ -32,7 +32,7 @@ Cable changes also settle through the surface's cable-change pipe, which the dri
 
 On mount, `FlowDrillInner`:
 
-1. raises the rebuild gate (`s.rebuilding = true`) and hydrates the composite's internal graph;
+1. raises the rebuild gate (`s.rebuilding = true`) and hydrates the composite's internal graph, which docks its Format Controllers and settles wildcard and FC types ([[composite-nodes]]; an undo restore hydrates too, so it comes back settled the same way);
 2. gives each internal node its saved position from `comp.internalPositions`, or, for a node with none, a slot on a fallback grid four columns wide (260 × 160 apart);
 3. lowers the gate and syncs the topology once;
 4. registers the level as the active graph (`setActiveGraph({ editor, view, scope })`), so chrome acts on it and every bulk edit of it runs under its edit scope;
