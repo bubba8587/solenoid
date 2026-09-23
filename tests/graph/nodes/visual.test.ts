@@ -731,6 +731,20 @@ describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
     expect((all.chart as { payload?: unknown }).payload).toBeDefined(); // a self-loop is skipped, not a cycle
   });
 
+  it("repeated From → To flows merge into one summed flow before drawing", async () => {
+    const { SankeyNode } = await import("../../../src/graph/nodes/visual");
+    const n = new SankeyNode();
+    const out = await n.data({ frame: [{ __frame: true, columns: [
+      { name: "From", type: "string", values: ["Salary", "Salary", "Bonus", "Salary"] },
+      { name: "To", type: "string", values: ["Rent", "Food", "Savings", "Rent"] },
+      { name: "Value", type: "number", values: [1000, 300, 500, 200] },
+    ] } as never] });
+    const p = (out.chart as { payload?: { sources: string[]; targets: string[]; values: number[] } }).payload!;
+    expect(p.sources).toEqual(["Salary", "Salary", "Bonus"]);
+    expect(p.targets).toEqual(["Rent", "Food", "Savings"]);
+    expect(p.values).toEqual([1200, 300, 500]);
+  });
+
   it("histogramBins refuses a bins count below 1 or not a number", () => {
     const err = histogramBins([1, 2, 3], 0);
     expect((err as { code?: string }).code).toBe("#DOMAIN!");

@@ -603,6 +603,21 @@ export class ProportionNode extends ClassicPreset.Node {
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
 
+export function mergeFlows(sources: string[], targets: string[], values: number[]): { sources: string[]; targets: string[]; values: number[] } {
+  const at = new Map<string, number>();
+  const out = { sources: [] as string[], targets: [] as string[], values: [] as number[] };
+  for (let i = 0; i < sources.length; i++) {
+    const key = `${sources[i] ?? ""}\u0000${targets[i] ?? ""}`;
+    const j = at.get(key);
+    if (j !== undefined) { out.values[j] += values[i] ?? 0; continue; }
+    at.set(key, out.values.length);
+    out.sources.push(sources[i] ?? "");
+    out.targets.push(targets[i] ?? "");
+    out.values.push(values[i] ?? 0);
+  }
+  return out;
+}
+
 export function acyclicFlows(sources: string[], targets: string[], values: number[]): { sources: string[]; targets: string[]; values: number[]; dropped: number } {
   const out = { sources: [] as string[], targets: [] as string[], values: [] as number[], dropped: 0 };
   const adj = new Map<string, Set<string>>();
@@ -656,7 +671,7 @@ export class SankeyNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const raw = { sources: colAsStrings(cols[0]), targets: colAsStrings(cols[1]), values: colAsNumbers(cols[2]).map((x) => x ?? 0) };
+    const raw = mergeFlows(colAsStrings(cols[0]), colAsStrings(cols[1]), colAsNumbers(cols[2]).map((x) => x ?? 0));
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const { sources, targets, values, dropped } = acyclicFlows(raw.sources, raw.targets, raw.values);
     this.droppedLoops = dropped;
