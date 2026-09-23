@@ -5,6 +5,22 @@ export function clamp(v: number, lo: number, hi: number): number {
   return v < lo ? lo : v > hi ? hi : v;
 }
 
+// ─── ROUND / ROUNDUP / ROUNDDOWN ─────────────────────────────────────────────
+export type RoundMode = "round" | "roundup" | "rounddown";
+
+/** Excel's rounding: digits truncate, the scaled value reads at 15 significant digits so 1.005 is 1.005 and not 1.00499…, halves go away from zero. */
+export function roundDigits(v: number, digits: number, mode: RoundMode = "round"): number {
+  const d = Math.trunc(digits);
+  const scale = Math.pow(10, Math.abs(d));
+  if (!Number.isFinite(scale)) return d > 0 ? v : 0;
+  const raw = d >= 0 ? Math.abs(v) * scale : Math.abs(v) / scale;
+  if (!Number.isFinite(raw)) return v;
+  const m = Number(raw.toPrecision(15));
+  const r = mode === "round" ? Math.round(m) : mode === "roundup" ? Math.ceil(m) : Math.floor(m);
+  if (r === 0) return 0;
+  return Math.sign(v) * (d >= 0 ? r / scale : r * scale);
+}
+
 // ─── Min / max over an iterable ───────────────────────────────────────────────
 // Use these on user data, never `Math.min(...arr)`, whose spread throws RangeError past about 125k elements.
 export function iterMin(it: Iterable<number>): number {

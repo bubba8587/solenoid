@@ -27,6 +27,18 @@ const num = (v: unknown): number => {
   return v as number;
 };
 
+describe("ROUND family and POWER share the node's kernels (FX is wrong)", () => {
+  it("ROUNDUP reads 0.1 + 0.2 as 0.3, and POWER(0, 0) is 1 like ^ and the Arithmetic node", () => {
+    expect(call("ROUNDUP", 0.1 + 0.2, 1)).toBe(0.3);
+    expect(call("POWER", 0, 0)).toBe(1);
+  });
+  it("FX still rounds binary noise up and refuses 0^0 (tripwire)", () => {
+    const fx = FX as unknown as Record<string, (...a: number[]) => unknown>;
+    expect(fx.ROUNDUP(0.1 + 0.2, 1)).toBe(0.4);
+    expect(fx.POWER(0, 0)).toBeInstanceOf(Error);
+  });
+});
+
 describe("MOD — Excel result takes the DIVISOR's sign (FX is wrong)", () => {
   it("our impl matches Excel across sign combinations", () => {
     expect(num(call("MOD", 10, -3))).toBeCloseTo(-2, 9); // divisor negative → negative

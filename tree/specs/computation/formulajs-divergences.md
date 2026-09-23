@@ -14,6 +14,8 @@ Deliberate differences from Excel itself (not from Formula.js) are in [[formula-
 
 - **MOD** takes the divisor's sign, as Excel does: `MOD(10, -3)` is -2, where Formula.js gives -1. A zero divisor is `#DIV/0!`, and so is a blank one, which reads as 0.
 - **QUOTIENT** by zero is `#DIV/0!`; Formula.js returns null.
+- **ROUNDUP, ROUNDDOWN**: Formula.js scales and rounds the raw binary value, so `ROUNDUP(0.1+0.2, 1)` is 0.4 where Excel answers 0.3. All three rounding names run `roundDigits`, the ROUND card's kernel, which reads the scaled value at 15 significant digits and truncates a fractional digits count.
+- **POWER(0, 0)** is 1, the answer of `^` and the Arithmetic card ([[C46]] consistencyOverQuirks); Formula.js answers `#NUM!`.
 - **ATAN2**: Excel's `ATAN2(x, y)` is `atan2(y, x)`, x first. Formula.js computes `atan2(x, y)`.
 - **LN, LOG10, SQRTPI, ASIN, ACOS, ACOSH, ATANH** outside their domain answer `#DOMAIN!` ("Input is outside this function's domain"). Formula.js silently returns null for some of them.
 

@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate } from "./excelCriteria";
-import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -326,6 +326,8 @@ export function wholeArgNames(): string[] {
 
 export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ROUND:       { returns: "number", arity: [2, 2], family: "rounding" },
+  ROUNDUP:     { returns: "number", arity: [2, 2], family: "rounding" },
+  ROUNDDOWN:   { returns: "number", arity: [2, 2], family: "rounding" },
   SQRT:        { returns: "number", arity: [1, 1], family: "scalar-math" },
   STANDARDIZE: { returns: "number", arity: [3, 3], family: "statistics" },
   YEAR:        { returns: "number", arity: [1, 1], family: "datetime" },
@@ -466,6 +468,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   VALUE:       { returns: "number", arity: [1, 1], family: "text" },
   NUMBERVALUE: { returns: "number", arity: [1, 3], family: "text" },
   MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
+  POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   CONVERT:     { returns: "number", arity: [3, 3], family: "scalar-math" },
@@ -746,12 +749,6 @@ const badNum = (...xs: number[]) => xs.some(Number.isNaN);
 const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 const VALUE = (fn: string) => solError("#VALUE!", `${fn} needs a number`);
 
-/** Rounds half away from zero, as Excel does; `Math.round` rounds half up, so ROUND(-2.5, 0) would be -2. */
-function excelRound(n: number, digits: number): number {
-  const f = Math.pow(10, digits);
-  return (Math.sign(n) * Math.round(Math.abs(n) * f)) / f;
-}
-
 export function excelRank(value: number, ref: ReadonlyArray<number>, avg = false): number | SolError {
   if (Number.isNaN(value)) return VALUE("RANK");
   const above = ref.filter((x) => x > value).length;
@@ -789,10 +786,12 @@ export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number
   return quartile(nums, q, false) ?? solError("#DOMAIN!", "QUARTILE needs at least one number");
 }
 
-registerInternal("ROUND", (x, d) => {
-  const n = toNum(x), digits = optNum(d, 0);
-  return badNum(n, digits) ? VALUE("ROUND") : excelRound(n, digits);
-});
+for (const [name, mode] of [["ROUND", "round"], ["ROUNDUP", "roundup"], ["ROUNDDOWN", "rounddown"]] as const) {
+  registerInternal(name, (x, d) => {
+    const n = toNum(x), digits = optNum(d, 0);
+    return badNum(n, digits) ? VALUE(name) : roundDigits(n, digits, mode);
+  });
+}
 registerInternal("SQRT", (x) => {
   const n = toNum(x);
   if (Number.isNaN(n)) return VALUE("SQRT");
@@ -923,6 +922,10 @@ const num1 = (fn: string, f: (x: number) => number | SolError) =>
 registerInternal("MOD", (a, b) => {
   const x = toNum(a), y = optNum(b, 0);
   return badNum(x, y) ? VALUE("MOD") : y === 0 ? solError("#DIV/0!", "Division by zero") : x - y * Math.floor(x / y);
+});
+registerInternal("POWER", (a, b) => {
+  const x = toNum(a), y = toNum(b);
+  return badNum(x, y) ? VALUE("POWER") : Math.pow(x, y);
 });
 registerInternal("QUOTIENT", (a, b) => {
   const x = toNum(a), y = toNum(b);

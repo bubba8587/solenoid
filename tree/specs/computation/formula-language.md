@@ -437,7 +437,8 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 ### Math
 
-- **ROUND** rounds half away from zero, as Excel does (`ROUND(-2.5, 0)` is −3), and a blank digits argument is 0.
+- **ROUND**, **ROUNDUP** and **ROUNDDOWN** run the ROUND card's kernel, `roundDigits` (`nodes/mathUtils.ts`). ROUND rounds half away from zero, as Excel does (`ROUND(-2.5, 0)` is −3). The digits count truncates toward zero, and the scaled value is read at 15 significant digits before it rounds, as Excel reads it, so binary noise never tips a result: `ROUND(1.005, 2)` is 1.01 and `ROUNDUP(0.1+0.2, 1)` is 0.3. A blank digits argument is 0.
+- **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[C46]] consistencyOverQuirks).
 - **LOG2** answers blank for x at or below 0, the node's quiet-blank convention, rather than `#DOMAIN!`. **HYPOTENUSE(x, y)** answers blank when either is blank.
 - **ERF.PRECISE** and **ERFC.PRECISE** are Excel's single-argument forms, identical to ERF and ERFC, and delegate to them.
 - **CONVERT** runs the unit system on the Convert node's unit keys ([[formulajs-divergences]]).
