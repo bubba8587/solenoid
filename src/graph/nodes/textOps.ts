@@ -130,6 +130,18 @@ export function spellNumber(n: number): string | SolError {
   return neg ? `negative ${words}` : words;
 }
 
+/** Excel's PROPER: a letter after any non-letter (digit, underscore, apostrophe) is capitalized, every other letter lowercased. */
+export function properCase(t: string): string {
+  let out = "";
+  let afterLetter = false;
+  for (const ch of t) {
+    const letter = /\p{L}/u.test(ch);
+    out += letter ? (afterLetter ? ch.toLowerCase() : ch.toUpperCase()) : ch;
+    afterLetter = letter;
+  }
+  return out;
+}
+
 export function reverseText(t: string): string {
   return [...t].reverse().join("");
 }

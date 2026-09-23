@@ -172,6 +172,26 @@ describe("number → text in string contexts — numberToText's 15-sig-digit con
   });
 });
 
+describe("PROPER, MID, REPT, UNICHAR, UNICODE — the text cards' answers, Excel's answers (FX is wrong)", () => {
+  it("PROPER capitalizes after any non-letter", () => {
+    expect(call("PROPER", "76BudGet")).toBe("76Budget");
+    expect(call("PROPER", "o'neil 2nd")).toBe("O'Neil 2Nd");
+  });
+  it("MID of length 0 is empty, REPT truncates its count, UNICHAR and UNICODE cover the astral planes", () => {
+    expect(call("MID", "abc", 2, 0)).toBe("");
+    expect(call("REPT", "ab", 2.9)).toBe("abab");
+    expect(call("UNICHAR", 128512)).toBe("😀");
+    expect(call("UNICODE", "😀")).toBe(128512);
+  });
+  it("FX still gets them wrong (tripwires)", () => {
+    expect(fx.PROPER("76BudGet")).not.toBe("76Budget");
+    expect(fx.MID("abc", 2, 0)).toBeInstanceOf(Error);
+    expect(() => fx.REPT("ab", 2.9)).toThrow();
+    expect(fx.UNICHAR(128512)).not.toBe("😀");
+    expect(fx.UNICODE("😀")).not.toBe(128512);
+  });
+});
+
 describe("VALUE — strict like Excel: unparseable text is #VALUE!, not FX's silent 0", () => {
   it("parses numbers, $, thousands commas, %, (parens) negative", () => {
     expect(num(call("VALUE", "1,234.57"))).toBeCloseTo(1234.57, 9);

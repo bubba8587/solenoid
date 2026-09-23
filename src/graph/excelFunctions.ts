@@ -14,7 +14,7 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -499,6 +499,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   REPT:       { returns: "string", arity: [2, 2], family: "text" },
   SUBSTITUTE: { returns: "string", arity: [3, 4], family: "text" },
   REPLACE:    { returns: "string", arity: [4, 4], family: "text" },
+  UNICHAR:    { returns: "string", arity: [1, 1], family: "text" },
+  UNICODE:    { returns: "number", arity: [1, 1], family: "text" },
   EXACT:      { returns: "logical", arity: [2, 2], family: "text" },
   FIND:       { returns: "number", arity: [2, 3], family: "text" },
   SEARCH:     { returns: "number", arity: [2, 3], family: "text" },
@@ -826,14 +828,37 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
 });
 
 const TEXT_ARG_POSITIONS: Record<string, number[]> = {
-  LEFT: [0], RIGHT: [0], MID: [0], UPPER: [0], LOWER: [0], PROPER: [0],
-  TRIM: [0], REPT: [0], REPLACE: [0, 3],
+  LEFT: [0], RIGHT: [0], UPPER: [0], LOWER: [0],
+  TRIM: [0], REPLACE: [0, 3],
   EXACT: [0, 1], FIND: [0, 1], SEARCH: [0, 1],
 };
 for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
 }
+registerInternal("MID", (text, start, len) => {
+  const t = toStr(text), s = Math.trunc(toNum(start)), n = Math.trunc(toNum(len));
+  if (badNum(s, n)) return VALUE("MID");
+  if (s < 1 || n < 0) return solError("#VALUE!", "MID starts at 1 or later and takes 0 or more characters");
+  return t.slice(s - 1, s - 1 + n);
+});
+registerInternal("PROPER", (text) => properCase(toStr(text)));
+registerInternal("REPT", (text, times) => {
+  const t = toStr(text), n = Math.trunc(toNum(times));
+  if (Number.isNaN(n)) return VALUE("REPT");
+  if (n < 0) return solError("#VALUE!", "REPT can't repeat text a negative number of times");
+  if (t.length * n > 32767) return solError("#VALUE!", "REPT's result would pass 32,767 characters, Excel's text limit");
+  return t.repeat(n);
+});
+registerInternal("UNICHAR", (code) => {
+  const c = Math.trunc(toNum(code));
+  if (!(c >= 1 && c <= 0x10ffff) || (c >= 0xd800 && c <= 0xdfff)) return solError("#VALUE!", "UNICHAR needs a code point from 1 to 1114111");
+  return String.fromCodePoint(c);
+});
+registerInternal("UNICODE", (text) => {
+  const c = toStr(text).codePointAt(0);
+  return c === undefined ? solError("#VALUE!", "UNICODE needs at least one character") : c;
+});
 registerInternal("SUBSTITUTE", (text, old, neu, instance) => {
   const t = toStr(text), o = toStr(old), n = toStr(neu);
   if (o === "") return t;

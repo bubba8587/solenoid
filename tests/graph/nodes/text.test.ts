@@ -86,6 +86,7 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
 
   it("a scalar operand still yields a SCALAR — the widening is additive", () => {
     expect(new TextTransformNode({ op: "upper" }).data({ text: ["abc"] }).result).toBe("ABC");
+    expect(new TextTransformNode({ op: "proper" }).data({ text: ["76BudGet a_b"] }).result).toBe("76Budget A_B");
     expect(new TextLenNode().data({ text: ["hello"] }).result).toBe(5);
     expect(new TextSliceNode({ op: "left" }).data({ text: ["hello"], n: [2] }).result).toBe("he");
     expect(new SubstituteNode().data({ text: ["a-b"], old_text: ["-"], new_text: ["+"] }).result).toBe("a+b");
