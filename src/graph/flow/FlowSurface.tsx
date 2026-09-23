@@ -72,6 +72,7 @@ import {
   linkStandoffBetween,
   deleteCables,
   attachFormatController,
+  canAttachFc,
 } from "../canvasActions";
 import { isolateNodes, isolateChainOf, isolateWhereUsed } from "../isolate";
 import { commentsPanelUi } from "../commentStore";
@@ -84,6 +85,8 @@ import { modalOwnsKeyboard, keyUnderModal } from "../modalGuard";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { isGraphRebuilding } from "../process";
+import { installCableSettlePipe, rescanUnitMismatches, type CableSettleStack } from "../cableSettle";
+import { formatAnnotationStore } from "../formatAnnotationStore";
 import { canvasLockStore } from "../canvasLock";
 import { installLassoSelection, type LassoState } from "../canvasLasso";
 import { installFlowPinch } from "./flowPinch";
@@ -156,7 +159,7 @@ export type SurfaceStack = FlowModel & {
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
   isRebuilding?: () => boolean;
   absorbPipeInstalled?: boolean;
-};
+} & CableSettleStack;
 
 export type SurfaceHooks = {
   rfId: string;
@@ -305,6 +308,13 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     });
   }, [s]);
 
+  useEffect(() => installCableSettlePipe(s), [s]);
+
+  useEffect(
+    () => (s.afterCableChange ? formatAnnotationStore.subscribe(() => rescanUnitMismatches(s.editor)) : undefined),
+    [s],
+  );
+
   useEffect(
     // A locked canvas adds nothing, so the Add menu doesn't open on it.
     () => addMenuRequest.register((screenX, screenY) => {
@@ -382,7 +392,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       e.preventDefault();
       const el = wrapperRef.current;
       const sock = el ? socketTargetAt(el, e) : null;
-      if (sock) { setSocketCtx(sock); return; }
+      if (sock && canAttachFc(s.editor, sock.nodeId)) { setSocketCtx(sock); return; }
       const t = nodeTargetFor(s.editor, node.id, e);
       if (t) setNodeCtx(t);
     },
@@ -404,10 +414,13 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     e.preventDefault();
     const el = wrapperRef.current;
     const sock = el ? socketTargetAt(el, e) : null;
-    if (sock) { setSocketCtx(sock); return; }
+    if (sock) {
+      if (canAttachFc(s.editor, sock.nodeId)) setSocketCtx(sock);
+      return;
+    }
     if (isolateStore.isActive() || canvasLockStore.get() || hooksRef.current.locked) return;
     setMenu({ screenX: e.clientX, screenY: e.clientY });
-  }, []);
+  }, [s]);
 
   useEffect(() => {
     const unKeys = hooksRef.current.noKeyboard

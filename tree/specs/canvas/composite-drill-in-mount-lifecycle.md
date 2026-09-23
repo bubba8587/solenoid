@@ -26,6 +26,8 @@ The cached pipe watches the internal editor for `nodecreated`, `noderemoved`, `c
 3. recomputes, targeting the root of the breadcrumb (`stack[0]`, the ancestor that lives in the main editor);
 4. schedules an autosave and an undo record.
 
+Cable changes also settle through the surface's cable-change pipe, which the drill stack opts into with an empty `afterCableChange`: FC and wildcard types, the unit-mismatch rescan and collapse settle per cable, and this pipe's sync does the one recompute ([[react-flow-surface-contract]]). Both pipes hold while `s.rebuilding` is up.
+
 ## Opening a level
 
 On mount, `FlowDrillInner`:
@@ -33,7 +35,7 @@ On mount, `FlowDrillInner`:
 1. raises the rebuild gate (`s.rebuilding = true`) and hydrates the composite's internal graph;
 2. gives each internal node its saved position from `comp.internalPositions`, or, for a node with none, a slot on a fallback grid four columns wide (260 × 160 apart);
 3. lowers the gate and syncs the topology once;
-4. registers the level as the active graph (`setActiveGraph({ editor, view })`);
+4. registers the level as the active graph (`setActiveGraph({ editor, view, scope })`), so chrome acts on it and every bulk edit of it runs under its edit scope;
 5. swaps the chrome's command slots to this level: selection, Tidy and Cleanup, the touch delete button, and docked-FC repositioning ([[react-flow-surface-contract]]);
 6. records a first undo snapshot if the history is empty.
 
@@ -59,7 +61,11 @@ Snapshot undo is per composite and lives on the drill stack, so it survives clos
 
 ## Deleting inside a level
 
-The drill-in deletes through the main canvas's verb, `deleteSelection`, with its own `DeleteScope` ([[react-flow-surface-contract]]): the same ghost splicing, Conduit ghosts and FC unsplice, gated by `s.rebuilding`. It never deletes a boundary marker, since markers are the composite's ports, and it never touches the main canvas's drawn cables or standoffs; copy skips markers the same way.
+The drill-in deletes through the main canvas's verb, `deleteSelection`, with its own `DeleteScope` ([[react-flow-surface-contract]]): the same ghost splicing, Conduit ghosts, FC unsplice and host-takes-its-FCs.
+
+## Bulk edits inside a level
+
+Delete, paste, Wrap as Composite and Unpack all run under the level's `EditScope` (`s.scope`): `begin` raises `s.rebuilding`, which holds the topology sync, the cable settle and group absorption; `settle` runs `settleCableChange` over the internal editor once; the queued topology sync then re-syncs React Flow and recomputes from `stack[0]`. None of them raises the main canvas's rebuild gate or runs its `bulkSettle`, which would recompute the whole main graph. It never deletes a boundary marker, since markers are the composite's ports, and it never touches the main canvas's drawn cables or standoffs; copy skips markers the same way.
 
 The topology pipe also carries the per-node forget ([[C40]] storesRegisterForget): every `noderemoved` forgets the node's stores, even under the rebuild gate, since an undo restore re-hydrates under fresh ids and a removed id never returns. Outside the gate it also rebuilds group membership, re-syncs collapse, and restores a deleted group's pushes.
 
@@ -90,9 +96,9 @@ Anything the drill-in shares with the main canvas comes from the same module, ne
 
 `activeGraph.ts` is the extension point for any surface that takes over the canvas: the drill-in today, possibly a focus or scratch surface later.
 
-- On mount the surface calls `setActiveGraph({ editor, view })`; on unmount, `setActiveGraph(null)`. Subscribers (`subscribeActiveGraph`) are notified on each change, and `isSubgraphActive()` reports whether an override is set.
+- On mount the surface calls `setActiveGraph({ editor, view, scope })`; on unmount, `setActiveGraph(null)`. `editScopeFor(editor)` gives a bulk edit the override's scope when it edits the override's editor, and the main canvas's otherwise. Subscribers (`subscribeActiveGraph`) are notified on each change, and `isSubgraphActive()` reports whether an override is set.
 - Chrome reads `getActiveEditor` / `getActiveView`, and per-node code reads `getOwningEditor` / `getOwningView`, never `getEditor`. Keyboard shortcuts, copy and paste, context menus, the command palette, Tidy, selection, zoom, fit, lock and the minimap then follow the surface with no further wiring.
 - `getEditor()` / `getView()` stay bound to the main graph, because persistence reads them; pointing them at the override would autosave the substituted surface over the document ([[C33]] saveBindsMain).
-- `getOwningEditor(id)` checks the override first, then the main editor, then any graph registered with `registerOwnedGraph`, then the internal editors of closed composites at any depth, so a node in a composite nobody has open (a `data()`-time prune, say) still finds its graph; only then does it fall back to the main editor. Owned graphs are locked auxiliary canvases (the landing scene cards) whose nodes need to resolve at render time but which are never the action target. Several can be live at once, so they are a set. `getOwningView` mirrors this.
+- `getOwningEditor(id)` checks the override first, then the main editor, then any graph registered with `registerOwnedGraph`, then the internal editors of closed composites at any depth, so a node in a composite nobody has open (a `data()`-time prune, say) still finds its graph; only then does it fall back to the main editor. Owned graphs are locked auxiliary canvases (the landing scene cards) whose nodes need to resolve at render time but which are never the action target. Several can be live at once, so they are a set. `getOwningView` mirrors the first three steps and then returns null: no surface shows a node in a closed composite, and the main view would pan to, move or measure an id it doesn't hold. A caller that settles the model anyway passes the null on (`reconcileFcTypes` takes a null view and re-renders nothing).
 
 Nested levels need no stack in `activeGraph.ts`, because drilling replaces rather than piles up: drilling deeper unmounts the current level (its cleanup clears the override) and mounts the deeper one (which sets it again). The breadcrumb lives in `compositeEditorStore`; `_override` holds only the current surface. Grow `_override` into a push and pop stack only if a feature ever needs two live action targets at once.

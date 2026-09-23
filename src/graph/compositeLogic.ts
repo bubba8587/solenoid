@@ -7,10 +7,10 @@ import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } fro
 import { installErrorGuards } from "./errorValue";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableSelectionStore } from "./cableState";
-import { beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
+import { dockedNodeStore } from "./dockedNodeStore";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { measuredBox } from "./nodeSize";
-import { getOwningEditor } from "./activeGraph";
+import { getOwningEditor, editScopeFor } from "./activeGraph";
 
 type Editor = NodeEditor<Schemes>;
 
@@ -21,9 +21,12 @@ function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: 
 export async function createCompositeFromSelection(editor: Editor, view: View): Promise<string | null> {
   // A lingering cable selection must not ride into the relocation reflow.
   cableSelectionStore.set(null);
-  const sel = editor.getNodes().filter(
+  const ids = new Set(editor.getNodes().filter(
     (n) => n.selected && !(n instanceof GroupNode) && !(n instanceof CompositeNode) && !groupCollapseStore.isNodeHidden(n.id),
-  );
+  ).map((n) => n.id));
+  // A docked FC is part of its host's entity, so it moves in with the host.
+  for (const id of ids) for (const d of dockedNodeStore.getDockedTo(id)) ids.add(d.id);
+  const sel = editor.getNodes().filter((n) => ids.has(n.id));
   if (sel.length === 0) return null;
 
   let minX = Infinity, minY = Infinity;
@@ -43,7 +46,8 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
 
   const composite = new CompositeNode({ label: "Composite" });
 
-  beginGraphRebuild(); // relocated, not deleted
+  const scope = editScopeFor(editor);
+  scope.begin(); // relocated, not deleted
   try {
     // rete requires a node's connections removed before the node.
     for (const c of [...internalConns, ...incoming, ...outgoing]) {
@@ -116,11 +120,11 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
     await editor.addNode(composite as SolenoidNode);
     await view.moveNode(composite.id, { x: minX, y: minY });
   } finally {
-    endGraphRebuild();
+    scope.end();
   }
 
   // beginGraphRebuild suppressed the per-cable settle, so run it once here.
-  await bulkSettle();
+  await scope.settle();
   return composite.id;
 }
 
@@ -144,7 +148,8 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
   );
 
   cableSelectionStore.set(null);
-  beginGraphRebuild();
+  const scope = editScopeFor(editor);
+  scope.begin();
   try {
     for (const c of outerConns) await editor.removeConnection(c.id);
     // Never remove nodes from the internal editor: that fires noderemoved at a drill-in history that never saw them created, which throws.
@@ -202,9 +207,9 @@ export async function unpackComposite(editor: Editor, view: View, compositeId: s
 
     await editor.removeNode(compositeId);
   } finally {
-    endGraphRebuild();
+    scope.end();
   }
-  await bulkSettle();
+  await scope.settle();
   return true;
 }
 

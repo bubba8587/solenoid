@@ -1,6 +1,5 @@
 // [[B10]], [[C43]], [[C25]]
-// Host → FC → FC, delete the MIDDLE FC: the graph must keep computing (a docked FC whose
-// host is deleted must not leave the engine fetching a node it no longer has).
+// A docked FC is part of its host's entity, so deleting a host takes the FCs docked on it.
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { NodeEditor } from "rete";
@@ -38,7 +37,7 @@ async function attach(editor: NodeEditor<Schemes>, hostNodeId: string, socketKey
 }
 
 describe("Host → FC → FC, delete the middle FC", () => {
-  it("keeps computing and re-homes nothing onto the deleted host", async () => {
+  it("takes the FC docked on it and keeps computing", async () => {
     const { editor, view } = makeGraph();
     const host = new NumberInputNode({ value: 42 });
     await editor.addNode(host);
@@ -51,13 +50,26 @@ describe("Host → FC → FC, delete the middle FC", () => {
     fc1.selected = true;
     await deleteSelection(editor, view);
     expect(editor.getNode(fc1.id)).toBeUndefined();
-    for (const c of editor.getConnections()) {
-      expect(editor.getNode(c.source), `dangling source ${c.source}`).toBeDefined();
-      expect(editor.getNode(c.target), `dangling target ${c.target}`).toBeDefined();
-    }
+    expect(editor.getNode(fc2.id)).toBeUndefined();
+    expect(editor.getConnections()).toEqual([]);
     await processGraph();
-    expect(cableValueStore.get(fc2.id, "out")).toBe(42);
-    expect(dockedNodeStore.get(fc2.id)?.hostNodeId ?? "").not.toBe(fc1.id);
+    expect(cableValueStore.get(host.id, "value")).toBe(42);
+  });
+});
+
+describe("deleting a host alone", () => {
+  it("takes its docked FCs at any depth, so no FC is left docked to a missing host", async () => {
+    const { editor, view } = makeGraph();
+    const host = new NumberInputNode({ value: 5 });
+    await editor.addNode(host);
+    const fc1 = await attach(editor, host.id, "value");
+    const fc2 = await attach(editor, fc1.id, "out");
+
+    host.selected = true;
+    await deleteSelection(editor, view);
+    expect(editor.getNodes()).toEqual([]);
+    expect(dockedNodeStore.get(fc1.id)).toBeUndefined();
+    expect(dockedNodeStore.get(fc2.id)).toBeUndefined();
   });
 });
 

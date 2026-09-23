@@ -77,7 +77,7 @@ A hidden port skips step 2. An override of `null` is used as `null`.
 - `syncPortLabels()` copies each marker's current label onto its port record and the card socket's label. A cleared marker label becomes `Input` or `Output`, the marker card's placeholder. A port whose marker is missing keeps its label. It runs at the start of every `data()` and when a drill-in level is left.
 - The markers' sockets are per-instance `MutableSocket`s, outside the `trueany` adoption fixpoint, and display only. At every `data()`, `syncMarkerSocketTypes()` sets each input marker's `value` output to the card input socket's current type, and each output marker's `value` input to the type of the internal socket that feeds it (`trueany` when unwired).
 - `adoptBoundaryTypes()` sets each output port's card socket to the `dataType` of the internal socket feeding its marker, or `trueany` when unwired or the marker is missing, and returns whether any type changed. Adoption never removes an outer cable.
-- `settleInternalTypes()` runs `settleWildcardTypes(internalEditor)` and then `adoptBoundaryTypes()`. It runs at the end of `hydrate()`, after each internal connection change outside hydrate, and once at the end of make-from-selection. The main canvas's own connection-pipe settle never reaches the internal editor, so this is the only settle it gets.
+- `settleInternalTypes()` runs `settleWildcardTypes(internalEditor)` and then `adoptBoundaryTypes()`. It runs at the end of `hydrate()`, after each internal connection change outside hydrate, and once at the end of make-from-selection. The main canvas's cable-change settle never reaches the internal editor. The drill-in's does, from the first time the composite is opened ([[react-flow-surface-contract]]); before that this is the only settle it gets.
 
 ## The boundary markers
 
@@ -296,13 +296,13 @@ Each branch publishes the staleness to `compositeStaleStore` (a set of stale ids
 `createCompositeFromSelection(editor, view)` runs on Ctrl+Shift+G (Cmd on macOS) over the focused surface's editor when any node is selected; the Composite catalog description names the shortcut.
 
 1. Clear the cable selection.
-2. The members are the selected nodes that are not a Group, not a Composite and not hidden inside a collapsed Group. None, or no measurable box, returns null.
+2. The members are the selected nodes that are not a Group, not a Composite and not hidden inside a collapsed Group, plus every FC docked to one of them, since a docked FC is part of its host's entity and keeps its dock inside. None, or no measurable box, returns null.
 3. The origin is the minimum x and y over the members' measured boxes.
 4. Classify every cable: internal (both ends members), incoming (target is a member), outgoing (source is a member).
-5. Inside a graph rebuild scope: remove all three sets of cables from the outer editor; move each member instance (not a copy) from the outer editor into the new composite's internal editor, recording its position relative to the origin in `internalPositions`; re-add the internal cables inside.
+5. Inside the surface's edit scope (`editScopeFor`: the main canvas's rebuild gate, or an open drill-in's own): remove all three sets of cables from the outer editor; move each member instance (not a copy) from the outer editor into the new composite's internal editor, recording its position relative to the origin in `internalPositions`; re-add the internal cables inside.
 6. For each incoming cable, separately: create a `CompositeInputNode` labeled `<target label or class name> · <target input label or key>`, add it and install its guard, cable it to the member's input, place it 220 left of the member, add an exposed basic input port on it, and cable the outer source to that port on the card. Two cables into the selection give two ports even from one source.
 7. For each outgoing cable, separately: create a `CompositeOutputNode` labeled `<source label or class name> · <source output label or key>`, cable the member's output to it, place it 80 right of the member's right edge (member width, or 220 when unknown), add an output port, and cable that port to the outer target. One member output feeding two outer targets gives two ports.
-8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the rebuild scope and run one `bulkSettle()` (a full pass).
+8. Settle internal types, add the composite to the outer editor, and move it to the origin. Close the scope and run its settle once (`bulkSettle()` on the main canvas, a full pass).
 
 The new composite is labeled `Composite`, in `single` mode, and returns its id.
 
@@ -316,7 +316,7 @@ The new composite is labeled `Composite`, in `single` mode, and returns its id.
 4. Re-add every internal cable that touches no marker.
 5. Collapse each input port: for every outer cable into the port and every internal cable out of its marker, add one cable from the outer source to the internal target.
 6. Collapse each output port: the internal cable into its marker, joined to each outer cable out of the port.
-7. Remove the card, close the scope, run one `bulkSettle()`.
+7. Remove the card, close the scope, and run its settle once.
 
 Any re-added cable the editor refuses is dropped silently. What only the boundary held is gone after unpack: marker seeds, port defaults, Monte Carlo spreads, the run mode and its config. An unwired input that relied on a seed arrives unwired.
 

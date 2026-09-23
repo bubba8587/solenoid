@@ -11,6 +11,9 @@ import { CompositeNode } from "../../src/graph/nodes/composite";
 import { NumberInputNode } from "../../src/graph/nodes/input";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { DisplayNode } from "../../src/graph/nodes/display";
+import { FormatControllerNode } from "../../src/graph/nodes/formatController";
+import { insertFcInline } from "../../src/graph/fcDocking";
+import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 
 // A bare NodeEditor + DataflowEngine, wrapped exactly like Canvas wraps the
 // real one (coercion inner, error guards outer) — mirrors errorIntegration.
@@ -103,6 +106,27 @@ describe("createCompositeFromSelection", () => {
     // and check the arithmetic still lands (3 + 4 = 7), unchanged by extraction.
     const dispOut = await engine.fetch(disp.id) as { out: unknown };
     expect(dispOut.out).toBe(7);
+  });
+
+  it("takes a selected host's docked FC along, since the FC is part of its host's entity", async () => {
+    const { editor } = makeEditor();
+    const num = new NumberInputNode({ value: 3 });
+    const disp = new DisplayNode();
+    for (const n of [num, disp]) await editor.addNode(n);
+    await connect(editor, num, "value", disp, "in");
+    const fc = new FormatControllerNode({ hostNodeId: num.id, socketKey: "value", side: "output" });
+    await editor.addNode(fc);
+    fc.dockSelf(editor);
+    await insertFcInline(editor, fc);
+    (num as unknown as { selected: boolean }).selected = true;
+
+    const { view } = makeFakeView(new Map([[num.id, { x: 0, y: 0 }], [fc.id, { x: 100, y: 0 }], [disp.id, { x: 300, y: 0 }]]));
+    const compositeId = await createCompositeFromSelection(editor, view);
+    const composite = editor.getNode(compositeId!) as unknown as CompositeNode;
+    expect(editor.getNode(fc.id)).toBeUndefined();
+    expect(composite.internalEditor.getNode(fc.id)).toBeDefined();
+    expect(dockedNodeStore.get(fc.id)?.hostNodeId).toBe(num.id);
+    dockedNodeStore.clear();
   });
 
   it("a selection with no crossing cables produces a composite with no ports", async () => {

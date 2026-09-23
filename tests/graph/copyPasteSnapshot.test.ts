@@ -16,6 +16,7 @@ import { insertFcInline } from "../../src/graph/fcDocking";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { copySelected, copySet, pasteClipboard } from "../../src/graph/copyPaste";
 import { mergeFlowNodes, toFlowNodes } from "../../src/graph/flow/flowModel";
+import { setActiveGraph } from "../../src/graph/activeGraph";
 
 let editor: NodeEditor<Schemes>;
 
@@ -93,6 +94,39 @@ describe("paste", () => {
     expect(host.selected || fc.selected).toBe(false);
     expect(dockedNodeStore.get(fcClone.id)?.hostNodeId).toBe(hostClone.id);
     expect(editor.getConnections().some((c) => c.source === hostClone.id && c.target === fcClone.id)).toBe(true);
+  });
+});
+
+describe("paste inside a drill-in", () => {
+  it("gates and settles through the drill-in's own scope, never the main canvas's", async () => {
+    const drill = new NodeEditor<Schemes>();
+    const drillView = {
+      position: (id: string) => drill.getNode(id)?.position,
+      moveNode: async (id: string, p: { x: number; y: number }) => { const n = drill.getNode(id); if (n) n.position = { ...p }; },
+      rerenderNode: async () => {},
+      nodeElement: () => null,
+      hasNode: (id: string) => !!drill.getNode(id),
+    } as unknown as View;
+    const calls: string[] = [];
+    let settled: Set<string> | undefined;
+    const scope = {
+      begin: () => { calls.push("begin"); },
+      end: () => { calls.push("end"); },
+      settle: async (renderOnly?: Set<string>) => { calls.push("settle"); settled = renderOnly; },
+    };
+    const src = await add(new NumberInputNode({ value: 3 }));
+    src.selected = true;
+    copySelected();
+    setActiveGraph({ editor: drill, view: drillView, scope });
+    try {
+      await pasteClipboard(0, 0);
+    } finally {
+      setActiveGraph(null);
+    }
+    expect(calls).toEqual(["begin", "end", "settle"]);
+    expect(drill.getNodes()).toHaveLength(1);
+    expect([...settled!]).toEqual([drill.getNodes()[0].id]);
+    expect(editor.getNodes()).toHaveLength(1);
   });
 });
 

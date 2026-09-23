@@ -9,9 +9,8 @@ import { cableSelectionStore } from "../cableState";
 import { deleteSelection } from "../canvasActions";
 import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
-import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, markBulkTopoDirty, isGraphRebuilding } from "../process";
+import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, isGraphRebuilding } from "../process";
 import { setUnselectAllNodes, setSelectNode, setDeleteSelected, setClearHistory, setAutoArrange, setCleanup, setRepositionDocked } from "../canvasCommands";
-import { bumpConnectionVersion } from "../graphSignals";
 import { setCtorRegistryProvider } from "../ctorProvider";
 import { flowHistory } from "./flowHistory";
 import { installInputCoercion } from "../coerceInputs";
@@ -25,10 +24,9 @@ import { CommandPalette } from "../CommandPalette";
 import { CableFlourish } from "../components/CableFlourish";
 import { SocketLegend, ConfirmDialog, NoticeToasts } from "../components";
 import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
-import { reconcileFcTypes } from "../fcReconcile";
+import { settleCableChange } from "../cableSettle";
 import { syncGroupCollapse, groupCollapseStore } from "../groupCollapse";
-import { FormatControllerNode, GroupNode } from "../rete-nodes";
-import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
+import { GroupNode } from "../rete-nodes";
 import { standoffStore, setStandoffSettle, liveStandoffs, type SettleOpts } from "../standoffs";
 import { solveStandoffs } from "../standoffSolver";
 import { withLockedGroupsPinned } from "../groupLogic";
@@ -51,7 +49,8 @@ type Stack = {
   view: FlowView;
   handlers: SurfaceHandlers;
   docInit: boolean;
-  cablePipeInstalled?: boolean;
+  nodePipeInstalled?: boolean;
+  afterCableChange: (cable: { source?: string; target?: string }) => void;
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
 };
 
@@ -98,7 +97,15 @@ function getStack(): Stack {
   });
   setEditorRefs(editor, engine, view);
   setCtorRegistryProvider(ctorRegistry);
-  _stack = { editor, engine, view, handlers, docInit: false };
+  const afterCableChange = (cable: { source?: string; target?: string }) => {
+    if (cable.target && editor.getNode(cable.target)) {
+      void processGraph(cable.target, undefined, { topology: true });
+      if (cable.source && editor.getNode(cable.source)) void view.rerenderNode(cable.source);
+    } else {
+      void processGraph(undefined, undefined, { topology: true });
+    }
+  };
+  _stack = { editor, engine, view, handlers, docInit: false, afterCableChange };
   return _stack;
 }
 
@@ -162,35 +169,9 @@ function FlowCanvasInner() {
     setAutoArrange(arrangeFn);
     setCleanup(makeCleanupFn(s.editor, s.view, arrangeFn));
 
-    const rescanMismatches = () => {
-      for (const n of s.editor.getNodes()) {
-        if (!(n instanceof FormatControllerNode)) continue;
-        const mine = n.annotatedSocket();
-        if (!mine) { formatMismatchStore.setMismatch(n.id, false); continue; }
-        const myAnn = formatAnnotationStore.get(mine.nodeId, mine.socketKey);
-        if (!myAnn || myAnn.unit === "none") { formatMismatchStore.setMismatch(n.id, false); continue; }
-        let hasMismatch = false;
-        for (const conn of s.editor.getConnections()) {
-          const srcKey = `${conn.source}::${conn.sourceOutput}`;
-          const tgtKey = `${conn.target}::${conn.targetInput}`;
-          const myKey = `${mine.nodeId}::${mine.socketKey}`;
-          const other = srcKey === myKey ? tgtKey : tgtKey === myKey ? srcKey : null;
-          if (!other) continue;
-          const sep = other.lastIndexOf("::");
-          const otherAnn = formatAnnotationStore.get(other.slice(0, sep), other.slice(sep + 2));
-          if (otherAnn && !unitsCompatible(myAnn.unit, otherAnn.unit)) { hasMismatch = true; break; }
-        }
-        formatMismatchStore.setMismatch(n.id, hasMismatch);
-      }
-    };
-    const unsubFmt = formatAnnotationStore.subscribe(rescanMismatches);
-
     setBulkSettle(async (renderOnly?: Set<string>) => {
-      reconcileFcTypes(s.editor, s.view);
-      bumpConnectionVersion();
-      rescanMismatches();
+      settleCableChange(s.editor, s.view);
       await processGraph(undefined, renderOnly);
-      syncGroupCollapse(s.editor, s.view);
     });
 
     let standoffSolving = false;
@@ -217,8 +198,8 @@ function FlowCanvasInner() {
     setStandoffSettle(settleStandoffNetwork);
     s.standoffSettle = settleStandoffNetwork;
 
-    if (!s.cablePipeInstalled) {
-      s.cablePipeInstalled = true;
+    if (!s.nodePipeInstalled) {
+      s.nodePipeInstalled = true;
       s.editor.addPipe((ctx) => {
         const t = (ctx as { type?: string }).type;
         if (t === "noderemoved" && !isGraphRebuilding()) {
@@ -227,23 +208,6 @@ function FlowCanvasInner() {
           rebuildGroupMembership(s.editor);
           syncGroupCollapse(s.editor, s.view);
           if (n instanceof GroupNode) restoreSettledPushes(s.editor, s.view);
-        }
-        if (t === "connectioncreated" || t === "connectionremoved") {
-          if (!isGraphRebuilding()) {
-            reconcileFcTypes(s.editor, s.view);
-            bumpConnectionVersion();
-            rescanMismatches();
-            const cable = (ctx as unknown as { data: { source?: string; target?: string } }).data;
-            if (cable.target && s.editor.getNode(cable.target)) {
-              void processGraph(cable.target, undefined, { topology: true });
-              if (cable.source && s.editor.getNode(cable.source)) void s.view.rerenderNode(cable.source);
-            } else {
-              void processGraph(undefined, undefined, { topology: true });
-            }
-            syncGroupCollapse(s.editor, s.view);
-          } else {
-            markBulkTopoDirty();
-          }
         }
         return ctx;
       });
@@ -271,7 +235,6 @@ function FlowCanvasInner() {
         }
       })();
     }
-    return () => unsubFmt();
   }, [s]);
 
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
