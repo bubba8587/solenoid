@@ -1,6 +1,6 @@
 // [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
 import { createNotifier } from "./storeKit";
-import { serializeGraph, loadGraph, type SavedGraph } from "./persistence";
+import { serializeGraph, loadGraph, loadRefusal, type SavedGraph } from "./persistence";
 import { isGraphRebuilding } from "./process";
 import { loadRevealStore } from "./loadReveal";
 import { chooseWriteSlot, chooseReadSlot, CURRENT_SAVE_VERSION } from "./persistenceCore";
@@ -354,6 +354,12 @@ export const documentStore = {
 
   async importAsDocument(graph: SavedGraph, name: string, filePath?: string): Promise<void> {
     if (isGraphRebuilding()) return;
+    // A file the load gates refuse could never open, so it never becomes a library entry.
+    const refusal = loadRefusal(graph);
+    if (refusal) {
+      pushNotice(refusal, "error", 0);
+      return;
+    }
     if (!this.captureCurrent()) return;
     const prevId = _lib.currentId;
     graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined };

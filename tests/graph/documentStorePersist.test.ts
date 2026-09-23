@@ -128,6 +128,16 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     expect(stored.every((s) => s.doc?.fileSavedAt === undefined)).toBe(true);
     expect(stored.some((s) => (s.doc?.updatedAt ?? 0) >= t0)).toBe(true); // adoption time, not zero
   });
+
+  it("a file the version gate refuses leaves no library entry and keeps the previous document current", async () => {
+    documentStore.saveAs("Keeper");
+    const keeper = documentStore.list().find((m) => m.name === "Keeper")!;
+    const before = documentStore.list().length;
+    await documentStore.importAsDocument({ v: 1, nodes: [], connections: [] } as never, "Ancient");
+    expect(documentStore.list().some((m) => m.name === "Ancient")).toBe(false);
+    expect(documentStore.list().length).toBe(before);
+    expect(documentStore.currentId()).toBe(keeper.id);
+  });
 });
 
 // ─── [[C32]] autosaveSlotOrder — slot freshness is a PREFIX read, so `seq` must come first ────
