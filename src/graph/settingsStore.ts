@@ -1,6 +1,6 @@
 // [[D54]]
 // Persisted app-wide settings, a module singleton so any React root can read them.
-// A new toggle = `Settings` + `DEFAULTS` + a SETTINGS_SCHEMA entry.
+// A new toggle = `Settings` + `DEFAULT_SETTINGS` + a SETTINGS_SCHEMA entry.
 
 import { createNotifier, createToggleStore } from "./storeKit";
 
@@ -64,7 +64,7 @@ export interface Settings {
   relativeDates: boolean;
 }
 
-const DEFAULTS: Settings = {
+export const DEFAULT_SETTINGS: Settings = {
   groupPush: true,
   tidyAlign: "center",
   tidyDirection: "right",
@@ -271,7 +271,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
   },
 ];
 
-let _settings: Settings = { ...DEFAULTS };
+let _settings: Settings = { ...DEFAULT_SETTINGS };
 const { notify, subscribe, version } = createNotifier();
 
 function persist() {
@@ -316,7 +316,7 @@ subscribe(syncPerfClasses);
 export function initSettings(): void {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    if (raw) _settings = { ...DEFAULTS, ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) _settings = { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<Settings>) };
   } catch { /* ignore malformed */ }
   syncPerfClasses();
 }

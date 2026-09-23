@@ -1,5 +1,6 @@
 // [[D34]], [[D35]], [[E9]]
 import { describe, it, expect } from "vitest";
+import { nodeDisplayName } from "../../src/graph/catalogUtils";
 import { solError, isSolError, firstInputError, installErrorGuards, type SolError } from "../../src/graph/errorValue";
 import { ArithmeticNode, MathFXNode, CombinatoricsNode } from "../../src/graph/nodes/scalar";
 import { IFErrorNode, IsTestNode } from "../../src/graph/nodes/logic";
@@ -129,7 +130,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     const err = out.result as SolError;
     expect(isSolError(err)).toBe(true);
     expect(err.origin?.nodeId).toBe(n.id);
-    expect(err.origin?.nodeName).toBe("Arithmetic");
+    expect(err.origin?.nodeName).toBe(nodeDisplayName(n));
     expect(err.origin?.inputSlot).toBeUndefined();
   });
 
@@ -140,7 +141,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     const out = n.data({}) as { result: unknown };
     const err = out.result as SolError;
     expect(err.origin?.nodeId).toBe(n.id);
-    expect(err.origin?.nodeName).toBe("Arithmetic");
+    expect(err.origin?.nodeName).toBe(nodeDisplayName(n));
   });
 
   it("tags an untagged input error with the input slot it arrived on", () => {
@@ -161,7 +162,7 @@ describe("SolError origin (provenance Tier 1)", () => {
     const relayed = (downstream.data({ a: [minted as unknown as number], b: [2] }) as { result: SolError }).result;
 
     expect(relayed.origin?.nodeId).toBe(producer.id); // still the original producer
-    expect(relayed.origin?.nodeName).toBe("Arithmetic");
+    expect(relayed.origin?.nodeName).toBe(nodeDisplayName(producer));
   });
 
   it("tags a per-cell error inside a list result with its row index", () => {

@@ -19,6 +19,7 @@ index.html
 .github
 .impeccable
 src/vite-env.d.ts
+tests/setup
 src-tauri/Cargo.toml
 src-tauri/build.rs
 src-tauri/tauri.conf.json

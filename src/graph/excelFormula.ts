@@ -1019,9 +1019,10 @@ function evalAst(n: Ast, env: Record<string | symbol, unknown>): unknown {
         return solError("#TYPE!", `${name} doesn't compute on complex numbers — use the IM* family`);
       }
       // A whole-list native gets its args exactly as they arrived, except a blank
-      // SCALAR propagates as unknown (Number(null) = 0 would fabricate an answer).
+      // SCALAR propagates as unknown (Number(null) = 0 would fabricate an answer). An
+      // empty argument slot is the function's to read, as on the broadcast path.
       if (takesWholeArgs(name)) {
-        if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a) => !isArr(a) && isMissing(a))) return null;
+        if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a, i) => !isArr(a) && isMissing(a) && n.args[i]?.t !== "blank")) return null;
         return dispatch(name, ...argv);
       }
       if (RANGE_FUNCTIONS.has(name)) {

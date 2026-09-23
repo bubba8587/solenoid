@@ -2,6 +2,10 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "../../src/graph/excelFunctions";
+import { initPackFormulas } from "../../src/graph/formulaExtensions";
+
+// The declarations are checked with pack formulas registered, as the app runs.
+initPackFormulas();
 import {
   ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
   ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode, RunningNode, RUNNING_OP_META,

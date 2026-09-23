@@ -3,6 +3,12 @@ import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { despace } from "../../src/graph/formulaNodeParity";
 import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "../../src/graph/excelFunctions";
+import { initPackFormulas, packFormulaNames } from "../../src/graph/formulaExtensions";
+
+// Pack formulas register at startup, as in the app; their node coverage is each pack's
+// own audit (auditFormulaPack), so the curated core surface below leaves them out.
+initPackFormulas();
+const PACK_NAMES = new Set(packFormulaNames());
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "../../src/graph/AddNodeMenu";
 
 const isCategory = (e: CatalogEntry): e is CatalogCategory => e.type === "category";
@@ -77,7 +83,7 @@ describe("formula ↔ node capability parity (curated surface)", () => {
     const nodes = nodeNames();
     const uncovered = Object.keys(EXCEL_IMPL_META)
       .map((n) => n.toUpperCase())
-      .filter((n) => !nodes.has(n) && !(n in FRAME_SURFACE_NAMES) && !(n in FORMULA_NODE_ALIAS));
+      .filter((n) => !PACK_NAMES.has(n) && !nodes.has(n) && !(n in FRAME_SURFACE_NAMES) && !(n in FORMULA_NODE_ALIAS));
     expect(
       uncovered,
       `Curated formula functions with NO node — either give them a node, or (if the capability ` +

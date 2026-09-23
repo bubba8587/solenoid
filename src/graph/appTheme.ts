@@ -15,6 +15,7 @@ let _mode: ThemeMode = "dark";
 const { notify, subscribe, version } = createNotifier();
 
 function apply() {
+  if (typeof document === "undefined") return; // no page to theme (a headless run)
   const root = document.documentElement;
   const hex = resolveColor(_accent);
   for (const [name, value] of Object.entries(themeVars(_accent, _mode))) {

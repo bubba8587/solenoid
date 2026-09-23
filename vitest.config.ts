@@ -6,6 +6,20 @@ import { defineConfig } from "vitest/config";
 // coerce, unit conversion), all exercisable without the UI.
 import path from "node:path";
 
+const ALL = ["tests/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}", "packages/**/*.test.{ts,tsx}"];
+// Files that call vi.mock (a mocked module must not reach another file), stub a
+// global before importing the app (the import itself must see the stub), or read the
+// bundled demo vault (another file's unawaited load can leave it half-imported).
+const ISOLATED = [
+  "tests/graph/coerceInputs.test.ts",
+  "tests/graph/demoVault.test.ts",
+  "tests/graph/documentStorePersist.test.ts",
+  "tests/graph/lazyChain.test.ts",
+  "tests/graph/nodes/sink.test.ts",
+  "tests/graph/obsidianWriteBatch.test.ts",
+  "tests/graph/polarsBackend.test.ts",
+];
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -17,7 +31,15 @@ export default defineConfig({
   esbuild: { keepNames: true },
   test: {
     environment: "node",
-    include: ["tests/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}", "packages/**/*.test.{ts,tsx}"],
     maxWorkers: 4,
+    // Transformed modules persist across runs (in node_modules/.vite), so a rerun skips most transforms.
+    fsModuleCache: true,
+    // Re-importing the node catalog per file was most of the run, so files share each
+    // worker's module cache; tests/setup/sharedWorker.ts undoes a file's global edits.
+    // A file that mocks a module would leak the mock, so it runs isolated.
+    projects: [
+      { extends: true, test: { name: "shared", isolate: false, setupFiles: ["tests/setup/sharedWorker.ts"], include: ALL, exclude: ISOLATED } },
+      { extends: true, test: { name: "isolated", include: ISOLATED } },
+    ],
   },
 });

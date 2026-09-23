@@ -71,6 +71,9 @@ function ensureLoaded(): Promise<Map<string, string>> {
       }
       _files = map;
       return map;
+    }, (e: unknown) => {
+      _loading = null; // a failed load (a dropped chunk) retries on the next read
+      throw e;
     });
   }
   return _loading;

@@ -114,7 +114,7 @@ const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
       const r = solveGivenParts(given as TriangleGiven);
       return keys.map((k) => r.values[k]);
     },
-    returns: "number", rank: "list", arity: [3, 6],
+    returns: "number", rank: "list", listArgs: true, arity: [3, 6],
     signature: "a, b, c, A°, B°, C° — any 3 incl. a side; returns all six",
   },
 ];
