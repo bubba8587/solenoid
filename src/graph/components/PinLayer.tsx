@@ -128,7 +128,7 @@ export function PinLayer() {
       return (
         <div key={pin.nodeId} className="solenoid-pin solenoid-pin--group" onClick={() => flyToNode(pin.nodeId)} title="Go to this group">
           <div className="solenoid-pin__group-head">
-            <span className="solenoid-pin__label">{(node.label ?? "").trim() || "Group"}</span>
+            <span className="solenoid-pin__label">{(node.label ?? "").trim() || "Node Group"}</span>
             {removeBtn(label, pin.nodeId)}
           </div>
           <div className="solenoid-pin__rows">
