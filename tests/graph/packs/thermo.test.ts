@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { THERMO_FORMULAS } from "../../../src/graph/packs/thermo";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { IsaAtmosphereNode, AntoineNode } from "../../../src/graph/nodes/thermo";
-import { isaAtGeopotential, isaAtGeometric, ANTOINE, antoinePressure, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
+import { isaAtGeopotential, isaAtGeometric, standardAtmosphere, ANTOINE, antoinePressure, type AntoineOp } from "../../../src/graph/nodes/thermoOps";
 import { isSolError } from "../../../src/graph/errorValue";
 import { formulaNode } from "../../../src/graph/packs/packShared";
 import { applyFcUnit } from "../../../src/graph/unitBridge";
@@ -134,6 +134,16 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect((evalPackFormula('ANTOINE("water", 100)') as number) / 101325).toBeCloseTo(1, 2);
     const bad = evalPackFormula('ANTOINE("mercury", 25)');
     expect(isSolError(bad) && bad.code).toBe("#NAME?");
+  });
+});
+
+describe("Standard Atmosphere domain", () => {
+  it("accepts down to −5 km, as the 1976 tables do, and refuses below", () => {
+    const low = standardAtmosphere(-4900);
+    expect(isSolError(low)).toBe(false);
+    expect((low as { T: number }).T).toBeGreaterThan(288.15);
+    const under = standardAtmosphere(-5100);
+    expect(isSolError(under) && under.code).toBe("#DOMAIN!");
   });
 });
 
