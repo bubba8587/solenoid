@@ -44,6 +44,15 @@ describe("CubeRollupNode", () => {
     expect(out.columns.find((c) => c.name === "Name")?.values).toEqual(["Cabinet", "Bracket"]);
   });
 
+  it("rolls a text column's min up to its alphabetical first, typed as text ([[D76]] textMinMax)", () => {
+    const node = new CubeRollupNode({ agg: "min" });
+    node.stringLiterals = { nested: "Lines", column: "Part", as: "FirstPart" };
+    const out = node.data({ cube: [productsCube({ hinge: 2, panel: 10 })] }).frame as FrameValue;
+    const col = out.columns.find((c) => c.name === "FirstPart")!;
+    expect(col.type).toBe("string");
+    expect(col.values).toEqual(["Hinge", "Hinge"]);
+  });
+
   it("ripples a leaf part's price change through to every assembly that uses it", () => {
     const before = rollup(productsCube({ hinge: 2, panel: 10 }));
     const after = rollup(productsCube({ hinge: 5, panel: 10 })); // Hinge price 2 → 5

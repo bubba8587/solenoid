@@ -350,9 +350,10 @@ function varianceOf(nums: readonly number[], sample: boolean): number | null {
   return ss / (sample ? n - 1 : n);
 }
 
-export function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
+export function aggregateGroup(values: FrameCell[], op: AggOp, type?: FrameColType): FrameCell {
   if (op === "count") return values.filter((v) => v !== null).length;
   if (op === "percentof") return null;
+  if (type === "string" && (op === "min" || op === "max")) return textExtreme(values, op);
   const prep = forAggregate(values.map((v) => (typeof v === "boolean" ? (v ? 1 : 0) : v)));
   if (prep.error) return prep.error;
   const nums = prep.nums;
@@ -361,6 +362,19 @@ export function aggregateGroup(values: FrameCell[], op: AggOp): FrameCell {
   const r = rawAggregate(nums, op);
   if (r === undefined) throw solError("#NAME?", `Unknown aggregation "${op}"`);
   return guardAgg(r, nums);
+}
+
+// [[D76]] textMinMax: code-unit order ([[C59]] byteStringOrder), blanks and "" skipped.
+function textExtreme(values: readonly FrameCell[], op: "min" | "max"): FrameCell {
+  let best: string | null = null;
+  for (const v of values) {
+    if (isSolError(v)) return v;
+    if (v === null) continue;
+    const t = String(v);
+    if (t === "") continue;
+    if (best === null || (op === "min" ? compareStrings(t, best) < 0 : compareStrings(t, best) > 0)) best = t;
+  }
+  return best;
 }
 
 function guardAgg(r: number | null, inputs: readonly number[]): FrameCell {
@@ -412,7 +426,7 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
   }));
   const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => {
     const preserves = spec.op === "min" || spec.op === "max";
-    let values = keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op));
+    let values = keyOrder.map((k) => aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op, col.type));
     if (preserves && col.type === "logical") {
       values = values.map((v) => (typeof v === "number" ? v !== 0 : v));
     }
@@ -1045,7 +1059,7 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   const cellValue = (v: number, rset: number[], cset: number[]): FrameCell => {
     const here = collect(v, rset, cset);
     if (here.length === 0) return null;
-    if (funcs[v] !== "percentof") return aggregateGroup(here, funcs[v]);
+    if (funcs[v] !== "percentof") return aggregateGroup(here, funcs[v], valCols[v].type);
     const num = sumGroup(here);
     if (isSolError(num)) return num;
     let dr = rset, dc = cset;
@@ -1089,7 +1103,7 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   for (const co of colOut) for (let v = 0; v < V; v++) { rawHeaders.push(colHeader(co, v)); bodySpecs.push({ co, v }); }
   const bodyNames = makeHeaders(rawHeaders, rawHeaders.length);
   const bodyColumns: FrameColumn[] = bodySpecs.map(({ co, v }, bi) => ({
-    name: bodyNames[bi], type: "number",
+    name: bodyNames[bi], type: valCols[v].type === "string" && (funcs[v] === "min" || funcs[v] === "max") ? "string" : "number",
     ...(valCols[v].unit && UNIT_KEEPING_AGGS.has(funcs[v]) ? { unit: valCols[v].unit } : {}),
     values: rowOut.map((ro) => cellValue(v, ro.span, co.span)),
   }));

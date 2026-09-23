@@ -1311,8 +1311,9 @@ fn group_agg_expr(column: &str, src_ty: SolType, op: &str) -> Expr {
         return match op {
             "sum" => lit(0.0),
             "product" => lit(1.0),
-            // min and max keep the source type, so their blank is a text blank.
-            "min" | "max" => lit(NULL).cast(DataType::String),
+            // [[D76]] textMinMax: byte order equals the oracle's code-unit order ([[C59]] byteStringOrder).
+            "min" => col(column).filter(col(column).neq(lit(""))).min(),
+            "max" => col(column).filter(col(column).neq(lit(""))).max(),
             _ => lit(NULL).cast(DataType::Float64),
         };
     }
