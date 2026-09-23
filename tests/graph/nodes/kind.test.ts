@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeKindOf } from "../../../src/graph/nodes/kind";
 import { NumberInputNode, BooleanInputNode } from "../../../src/graph/nodes/input";
-import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode } from "../../../src/graph/nodes/visual";
+import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode } from "../../../src/graph/nodes/visual";
+import { GanttNode } from "../../../src/graph/nodes/gantt";
 import { TornadoNode } from "../../../src/graph/nodes/tornado";
 import { SvgPickerNode } from "../../../src/graph/nodes/annotation";
 import { BuildFrameNode } from "../../../src/graph/nodes/frame";
@@ -95,5 +96,13 @@ describe("nodeAccent", () => {
     const before = nodeAccent(n, "dark");
     n.setDataType("string");
     expect(nodeAccent(n, "dark")).not.toBe(before);
+  });
+});
+
+describe("chart cards wear the chart green", () => {
+  it("the chart figures and the Chart Builder are the chart kind", () => {
+    for (const n of [new ChartNode(), new SankeyNode(), new KpiNode(), new GanttNode(), new ChartBuilderNode(), new GaugeNode()]) {
+      expect(nodeKindOf(n), n.constructor.name).toBe("chart");
+    }
   });
 });
