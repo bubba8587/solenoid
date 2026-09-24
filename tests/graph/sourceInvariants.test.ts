@@ -928,11 +928,11 @@ describe("[[D64]] oneSizeRead — the movement stack reads sizes through measure
         const code = line.replace(/\/\/.*$/, "");
         if (!/offset(Width|Height)\b/.test(code)) return;
         if (/void el\.offsetWidth/.test(code)) return; // the reflow kick, not a size read
-        if (/\[\[D64\]\] exception:/.test((raw[i - 1] ?? "") + (raw[i - 2] ?? ""))) return; // a two-line read shares one marker
+        if (/measuredBox exception:/.test((raw[i - 1] ?? "") + (raw[i - 2] ?? ""))) return; // a two-line read shares one marker
         bad.push(`${f}:${i + 1}`);
       });
     }
-    expect(bad, "read the size through measuredBox (nodeSize.ts), or sanction the line with `// [[D64]] exception: <reason>`").toEqual([]);
+    expect(bad, "read the size through measuredBox (nodeSize.ts), or sanction the line with `// measuredBox exception: <reason>`").toEqual([]);
   });
 });
 

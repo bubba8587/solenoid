@@ -10,6 +10,12 @@ Serves [[D28]] tripwireVendorDrift. Formula.js is the vendored library that back
 
 Deliberate differences from Excel itself (not from Formula.js) are in [[formula-language]] under *Function notes*.
 
+## Overrides and tripwires
+
+**MUST:** where Formula.js gives a different answer from Excel, Solenoid registers an override that gives Excel's answer, backed by the same implementation as the node ([[C17]] shareImpl). Each divergence is pinned in both directions: a test that the override is right, and a tripwire that Formula.js is still wrong. A Formula.js update that changes either answer then fails the suite and forces a fresh look.
+
+Without the tripwire, a vendor update that fixes or changes a function passes silently, and the override either shadows a fix or starts diverging in a new way. The first divergence list lived in a sweep script that was later lost and had to be rebuilt from notes, so the evidence lives in the suite, with the per-name reasons below.
+
 ## Scalar math
 
 - **MOD** takes the divisor's sign, as Excel does: `MOD(10, -3)` is -2, where Formula.js gives -1. A zero divisor is `#DIV/0!`, and so is a blank one, which reads as 0.

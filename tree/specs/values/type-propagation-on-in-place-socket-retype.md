@@ -84,6 +84,16 @@ The FC's own type-adapt walk doesn't read it: `concreteTypeOfOutput` walks upstr
 
 **Passthrough alone is the wrong tool when the forwarded value crosses a unit granularity** ([[D43]] unitByGranularity). Keeping tags would carry per-item `UnitCell`s into a matrix, which the model forbids. So the rank-crossing nodes (WRAPROWS, WRAPCOLS, and the stackers, whose `anytable` rows accept a list) are `unitAware = true` and reduce each input themselves: `matrixCellsFromList` gives bare magnitudes plus the one shared unit, tagged with `withMatrixUnit`. In coerceInputs, `unitAware` wins over the passthrough keep-tags branch, so the two work together.
 
+### A trueany output declares its passthrough
+
+**MUST:** a class with a `trueany` output either declares `passthrough()` or is listed with the reason its type resolves another way: the FC is the resolver, Conduit lanes resolve through `conduitTrace`, composite boundary ports sync in their own pass, and XLOOKUP and NA are unknowable. A forwarder that skips the declaration leaves its output `trueany` forever, so downstream FCs can't key a family and a date serial silently shows as its raw number.
+
+### Relays are transparent
+
+**MUST:** a value relay (a Conduit lane, a passthrough chain, an IF with one wired branch) is transparent to static resolution. A cable leaving it resolves its type, unit annotation and frame shape from the originating source's socket, through chains and reverting on disconnect, never from the relay's own untyped lane. A Conduit run is identified by its origin, so every segment of one run resolves to the same run, and provenance readings (the Cable inspector's "From") and run-wide actions can't differ by which segment was clicked.
+
+When a relay answered from its own untyped lane, downstream column pickers went empty and formula column references silently failed to resolve through a passthrough, with no error anywhere.
+
 Machine-checked by `passthroughSystem.test.ts`, `trueAnyAdopt.test.ts` and `matrixUnitPolicy.test.ts`.
 
 ## Frame shape is declared per producer (`nodes/frameShapeHook.ts`)

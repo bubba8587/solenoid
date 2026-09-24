@@ -85,6 +85,8 @@ A family's **hidden ops** (`hiddenOps`) are the ops with no leaf of their own: e
 
 Both kinds are views of the host leaf ([[D6]] opRowDerivesFromHost): they spread the host and replace only what must differ. Both are generated at search time and never inserted into the tree, so code that walks the catalog does not count them as extra nodes. Neither carries the host's `keywords`, and neither carries the host's hidden-op list or its `{ }` mark, since a row that is one op has nothing folded up. A hidden-op row does carry the op's own `keywords`.
 
+**MUST:** a hidden-op row is built from the host leaf plus the op's own declaration (`opEntry` spreading `...host`), never as a second hand-written catalog entry, and what the row must not inherit is named at that call site. Why: every property the leaf owns (label stem, pack, accent, description) has to follow the leaf automatically, or the menu and the card drift apart ([[C8]] declareOnce); the exceptions belong in the same function rather than a parallel table. The exception list blocks the host's `keywords`, not the op's own: blocking every `keywords` value once pushed per-op Excel spellings into the visible label.
+
 ## Scoring a row
 
 `scoreLeaf(query, row)` returns a score, higher is better, or null when the row does not match. `searchLeaves` drops the nulls and sorts the rest best first.

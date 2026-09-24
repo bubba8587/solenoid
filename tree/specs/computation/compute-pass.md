@@ -47,6 +47,14 @@ Seeding must happen after invalidation and before any fetch: the engine resolves
 
 The headless runner (`scripts/run-graph.ts`) calls `computeAll`. The app's pass (`processGraph`) runs `invalidate` and `fetchAll` with its own bookkeeping, described below. A composite's private engine resets fully and fetches only its output markers, with the same `loopMembers` and `seedLoopErrors`.
 
+### The targeted pass equals the full pass
+
+**MUST:** `downstreamClosure(editor, startId)` is exactly the set of nodes a full pass would recompute differently: the start node and everything that depends on it, through branches and joins, stopping at cycles, no more and no less. Cycles are handled the same way too: the targeted pass seeds `#CIRC!` on exactly the members of each loop, as the full pass does, instead of recursing until the stack overflows.
+
+**MUST:** the pass has one definition, the functions above. `processGraph`, the headless runner and the seed tests all run it, and no second copy of the walk or the loop seeding may exist. The composite's marker-only pull is the one different pass shape.
+
+Recomputing too much only wastes time. Recomputing too little is the dangerous half: a node left outside the set keeps showing its previous answer, with no error, beside fresh values ([[C23]] calcModes).
+
 ## The app pass (`processGraph`)
 
 `process.ts` holds the main editor, engine and view (`setEditorRefs`, `getEditor`, `getEngine`, `getView`) and runs the app's pass:
@@ -122,6 +130,10 @@ The store holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `f
 | manual, clean | dirty set, no pass | forced exact pass, stays clean | dirty cleared, catch-up pass | no-op |
 | manual, dirty | stays dirty, no pass | forced exact pass, dirty cleared | dirty cleared, catch-up pass | no-op |
 
+### Only the calc-mode gate skips a pass
+
+**MUST:** the calc mode and the dirty flag form the real state machine in the table above. In manual mode an edit marks the graph dirty instead of computing; switching to automatic or sketch clears the pending flag and the caller owes the catch-up recompute, since the store never runs a pass; an unavailable `localStorage` falls back to in-memory state, never to a graph that quietly stops recomputing. The entry-order gate is the only thing that drops a pass. A graph that has stopped recomputing looks exactly like one that doesn't need to, so the transitions have direct tests (`calcModeStore.test.ts`).
+
 `requestRecalc()` increments the recalc generation, calls `beginForceExact()`, runs `processGraph(undefined, undefined, { force: true })`, and calls `endForceExact()` in a `finally`. So F9 always computes, in any mode, on full data, and re-rolls every volatile node.
 
 ## Volatile nodes and the recalc generation
@@ -158,7 +170,11 @@ What an open scope suppresses:
 | Outward effects: Alert firing, Expect violations, a relative Date Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[C39]] effectsEdgeTriggered: a load must not replay old alerts |
 | The Conduit's lane-change recompute | `ConduitComponent.tsx` | the rebuild's own settle covers it |
 
-A live-data refresh (`refreshConnection`, `refreshAllConnections`, a background load landing) runs its pass outside any rebuild scope, so an Alert on fresh data still fires ([[D32]] refreshOutsideRebuild). The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
+### A refresh never runs inside a rebuild scope
+
+**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[C39]] effectsEdgeTriggered), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
+
+The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
 
 ## The per-node wrappers
 

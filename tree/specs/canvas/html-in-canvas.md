@@ -26,6 +26,14 @@ The layer makes pan and zoom cheap on a big graph. During a gesture it hides Rea
 
 A lasso never enters the gesture: it moves no camera, so the swap would only show a stale snapshot.
 
+### The GPU texture budget
+
+A live canvas under a full-viewport opaque overlay stops painting: the composite drill-in sets `visibility: hidden` on the app canvas it covers, and any future surface that covers the canvas owes the same. It must be `visibility`, not `display: none`, because while the drill-in is open the covered canvas is still asked to re-render and re-measure cards, and measuring needs a real layout box.
+
+The layer gives the viewport a `will-change: transform` layer for the length of a gesture on fine pointers only, never on coarse ones (the gate is `IS_COARSE`, not `IS_MOBILE`). On a coarse pointer only the small DOM-only elements are promoted, each on its own and capped at 1024px (`PROMOTE_MAX`).
+
+Why: the browser does not reliably drop a hidden subtree from raster, so a covered canvas keeps its layers and textures in memory, two surfaces' worth on a mobile GPU, where the canvas bounding box times the device pixel ratio can already overrun the maximum texture size on its own. A tablet runs the desktop UI on a mobile-class GPU, and a viewport-sized layer fails tile allocation there, so the gate is the pointer type rather than the device class. The desktop shell's WebKitGTK budget is the same idea per engine ([[layout-chrome#The desktop window frame (the Tauri shell)]]).
+
 ## Capture
 
 Each card's live element is cloned into the canvas (`layoutSubtree`) and captured with the WICG API. Capture keeps running while the layer is idle, so a fresh snapshot is ready for the next gesture.

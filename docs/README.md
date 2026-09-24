@@ -47,6 +47,9 @@ is parked there.
   override instead of falling through to Formula.js. Read before deleting an
   override or widening the fallthrough; the library being wrong is the whole
   reason the override exists.
+- **`../tree/specs/floors/engineering.md`** — the cross-cutting code-hygiene rules: overrides on
+  the declaration, generated name lists, one implementation per gating metric, `every` for
+  completeness, the rete-free formula path, lazy heavy libraries.
 - **`upstream-formulajs.md`** — the subset of those divergences that are genuine
   Formula.js bugs, written up as ready-to-paste upstream issues (author submits).
 - **`pack-architecture.md`** — the pack authoring guide (framework BUILT); the settled

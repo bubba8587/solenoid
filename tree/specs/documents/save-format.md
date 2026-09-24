@@ -28,7 +28,11 @@ A document has three representations: the live graph (rete editor plus side stor
 
 ## The persisted type is the class name
 
-A node's `type` is its JavaScript `constructor.name` (for example `NumberInputNode`), and loading resolves `type` through `ctorRegistry()` ([[C34]] classNameIsType). The registry is built once, lazily, by calling every factory in `FLAT_CATALOG` and mapping each instance's `constructor.name` to its constructor; the first class registered under a name wins, and a factory that throws is skipped (its type then loads as a Placeholder). Production builds must keep class names: `vite.config.ts` pins `build.minify: "esbuild"` with `esbuild.keepNames: true`. No two catalog classes may share a name.
+A node's `type` is its JavaScript `constructor.name` (for example `NumberInputNode`), and loading resolves `type` through `ctorRegistry()` ([[C34]] classNameIsType). The registry is built once, lazily, by calling every factory in `FLAT_CATALOG` and mapping each instance's `constructor.name` to its constructor; the first class registered under a name wins, and a factory that throws is skipped (its type then loads as a Placeholder). The class name is also a dispatch key elsewhere (`SEES_ERRORS`, group collapse, pins).
+
+**MUST:** production builds keep class names. Vite 8 defaults to the Oxc minifier, which has no keepNames equivalent, so `vite.config.ts` pins `build.minify: "esbuild"` with `esbuild.keepNames: true`. **MUST:** no two catalog classes share a name.
+
+Why: the class name is the saved identity ([[B12]] losslessSaves). A mangled name breaks every load. Two classes sharing a name are worse, because the registry keeps the first one registered: saves of the other class silently rebuild as the winner, with different sockets, plausible wiring and the wrong computation. The Placeholder path fires only for an absent type, and a collision looks exactly like a match.
 
 Every constructor accepts one optional `init` object and must rebuild the node's full configuration from it. `PlaceholderNode` is not in the catalog; only the loader builds one.
 
@@ -102,13 +106,27 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
 
 Literal values never enter `init`: they live only in `SavedNode.literals` and `stringLiterals`, restored after construction. A literal key can share a name with an init field (Pad Text's `width` input beside its card `width`, a Script parameter named `label`), so one flat namespace would let either overwrite the other. A constructor may still accept a literal key in its `init` to seed a catalog preset or a hand-written text form; the saved map wins on load.
 
-The capture must be a fixed point: `extractInit(new Ctor(extractInit(n)))` equals `extractInit(n)`, and every value must survive `JSON.parse(JSON.stringify(v))`. A `Map`, `Set`, class instance, `NaN` or `Infinity` breaks the second rule silently, because the text form stringifies each field (`Infinity` becomes `null`).
+### The capture is a fixed point, and plain JSON
 
-Every own field of a catalog node is classified ([[D50]] everyFieldClassified): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly).
+**MUST:** for every catalog node, `extractInit(new Ctor(extractInit(n)))` equals `extractInit(n)`: what a save captures, a load re-applies, and the next save captures again identically, including non-default booleans and changed literal maps. **MUST:** every captured value survives `JSON.parse(JSON.stringify(v))`.
+
+Why: a field that is captured but not re-applied drops on reload, and nothing catches it ([[B12]] losslessSaves). The JSON half closes a second blind spot: the text form stringifies each field, so a `Map`, `Set`, class instance, `NaN` or `Infinity` (which becomes `null`) silently empties in the saved file while the live-object round trip still passes.
+
+### Every field is persisted or deliberately transient
+
+Every own field of a catalog node is classified ([[D50]] everyFieldClassified): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
+
+Why: the round-trip sweep above proves that captured fields survive, but it can't see a field the whitelist never captured: both sides omit it identically, so the test passes while the user's setting silently resets on every reload. The first triage found exactly that: `asofDirection`, the direction dropdown of an as-of Join, reset to "backward" on every save, reload and paste.
 
 Table Input and the paint grid store the raw typed text (`tableText`) as the saved truth; the matrix is derived from it on compute, and blank lines survive in every position ([[C58]] tableInputRawText).
 
 ## Capturing the graph: `serializeGraph()`
+
+### Saving binds the main graph
+
+**MUST:** the composite drill-in substitutes the editor, area and history through the `activeGraph.ts` seam for canvas operations only. `getEditor()`, serialization, autosave and load always resolve the main graph, so a save taken while drilled in serializes the document, not the open subgraph. Why: getting this wrong is total, silent data loss ([[B12]] losslessSaves). An autosave during a drill-in would write the composite's internal subgraph over the document, and the file would still be valid, so nothing would flag it.
+
+### Every save passes through the text form
 
 `serializeGraph()` always reads the main graph through `getEditor()` and `getView()`, never the surface a Composite drill-in has made active ([[C33]] saveBindsMain). It returns `null` when no editor exists. Otherwise it returns `readTextForm(writeTextForm(raw))` ([[C30]] saveViaTextForm), where `raw` is built by `buildRawSavedGraph`:
 
@@ -116,7 +134,9 @@ Table Input and the paint grid store the raw typed text (`tableText`) as the sav
 - A `PlaceholderNode` is written as the node it stands for: `type` is its `missingType`, `init` is a copy of its `savedInit`, and its saved literal maps are copied back ([[C35]] unknownViaPlaceholder).
 - `connections` from the editor, then `standoffs`, `pins`, `comments`, `frameFormats` from their stores, keeping the entries whose nodes are all in the main editor (`savedSideTables`, which a composite's `snapshotInternal` also runs over its internal editor), `drawnCables` from its store, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
 
-The round trip through the text form renames every `id` to the node's name, orders nodes topologically, and canonicalizes field order. Any top-level field that `writeTextForm` or `readTextForm` does not carry is deleted from every save, so a new `SavedGraph` field must be added to both.
+The round trip through the text form renames every `id` to the node's name, orders nodes topologically, and canonicalizes field order. **MUST:** every save passes through the text form, so every top-level `SavedGraph` field is written by `writeTextForm` and read back by `readTextForm`; a new field is added to both. Why: a field that either direction omits is deleted from every save, and autosave then writes the lossy result over the good copy ([[B12]] losslessSaves). That happened to `comments` and `reportPalette`: `buildRawSavedGraph` built them and the round trip dropped them, losing real data on every save until the gap was found.
+
+The line order is by dependency, never canvas position (the writing rules below), so a git diff shows only what an edit touched; canvas order would reshuffle the file on every drag.
 
 ## The text form
 

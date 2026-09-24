@@ -41,6 +41,47 @@ Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides w
 11. **Each port owns its mutable socket.** `MutableSocket` (the FC, Conduit lanes) and `AdoptiveSocket` instances are per port, never module-level, so a retype on one card never lands on another; the reconcile pass finds adoptive ports by `instanceof`. An `AdoptiveSocket` reverts to its `base` when unwired, and a base narrower than `trueany` keeps the port restricted to that rung while it still adopts the wired concrete type. [[E6]] portOwnsSocket.
 12. **A new socket type is a derived edit.** Extend the product; the sweep picks it up. Hand-writing its pairs is the failure mode this spec exists to prevent. [[D14]] derivedSocketTypes.
 
+## Rules and their reasons
+
+### Date-valued ports are date-typed
+
+**MUST:** a socket whose value is a date uses the date family (`date`, `datecombo`, `datelist`, `datetable`), never `number` or `numlist` on the grounds that a serial is numerically a number (req. 7). A wildcard rung is not a violation, since it has committed to no family.
+
+A date serial and a plain number are the same `number` at runtime, so once a date rides a numeric port nothing downstream can tell them apart: Cast's date-aware text conversion, the FC's date styles and the type-default display all read the socket, not the number. The date family also brings the typeable date-list editor, which is why such a port declares `stringLiterals` too ([[inline-literal-maps]]).
+
+*Exception:* a port whose label only mentions time while holding a count or an index ("Start period", "Days", "Coupon rate") is a number and stays one. The guard anchors on a label ending in date or dates for exactly this reason. **Removed by:** port semantics declared directly instead of inferred from the label.
+
+### New socket types are derived
+
+**MUST:** a new socket type is added by extending the family × rank product (req. 12). Cross-type dimensional edges are explicit in `accepts()` (req. 5) and swept exhaustively by test; a new type never needs its pairs written by hand. Hand-listed pairs grow with the square of the variant count, and a hand-kept list drifts from the rule it copies.
+
+### The wildcard ladder keeps rank
+
+**MUST:** the untyped ladder is `any` (scalar) → `anycombo` (scalar or list) → `anylist` (list) → `anytable` (matrix) → `anydata` (up to a matrix) → `trueany` (anything). The strict rungs, `anylist` and `anytable`, keep their rank and adopt only the wired element family; the elastic rungs, `any`, `anycombo` and `anydata`, adopt the wired type as is; every rung keeps its base on a family-less wire (req. 8, `adoptTypeForBase`, `RANK_BASES` in the sweep).
+
+**MUST:** adoption (`trueAnyAdopt.ts`) resolves a type without disconnecting anything, and the adopted type is never saved; it is worked out again from the wiring after load (req. 9).
+
+A wildcard that forgot its rank would let a list-shaped port take a matrix, and any untyped hop would become a way around [[D13]] widenNeverNarrow. Adoption is a reading of the current wiring, not something the user authored: dropping cables would destroy work to satisfy a guess, and saving the guess would freeze a type the wiring no longer implies. `trueany` draws as the hollow ring. INDEX takes its element family from its container, including a Frame column when `frameShapeResolver` can know it ahead of time; a Cube cell stays `trueany`, because a Cube is the one container whose cells can differ within a column.
+
+### anydata, the formula-variable wildcard
+
+`anydata` is the socket for a value that may be a scalar, a list or a matrix of any element type and passes on exactly as it arrived. Every formula variable uses it.
+
+**MUST:**
+- As an input it accepts every value of rank 2 or less and the smaller wildcards (`any`, `anylist`, `anycombo`, `anytable`), and refuses Frames, Cubes and the object family (req. 5).
+- It never changes what it is given: a scalar stays a scalar and a list stays a list.
+- As an output it connects wherever `anycombo` does; its actual shape is known only at run time, with the same accepted risk.
+- A formula surface's variable and side sockets are `anydata`: Expression variables, and Computed Column side inputs (a side value can be a whole list, as in `SUM(list)`, or a row-aligned list read with `@name`).
+- The result socket keeps its family instead. The `resultAs` combo socket serves results of rank 1 or less; a matrix result swaps to the same family's matrix socket and reconciles through `retypeOutputCables` ([[type-propagation-on-in-place-socket-retype]]). Downstream FCs keep their family, and the socket never lies about rank.
+
+Its two neighbors each fail a formula variable. `trueany` accepts everything and doesn't change its input, because it exists to carry a value somewhere unchanged, but it also accepts Frames, Cubes and objects, which must never enter a formula ([[C15]] matricesInFormulas). `anytable` (Any Matrix) turns every scalar or list wired into it into a matrix, so a variable would see `5` as a 1×1 matrix, breaking every function that expects a scalar or a list and changing every downstream rank. `anydata` is the one that doesn't change its input and still keeps Frames, Cubes and objects out; `anycombo` can't do it, because it refuses the matrices [[C15]] admits. The result socket isn't `anydata`, because that would give up the family FCs key on (`familyOf` is none) for a rank the matrix sockets already spell.
+
+### Each port owns its socket instance
+
+**MUST:** every `MutableSocket` or `AdoptiveSocket` port gets its own fresh instance, never a shared module-level one (req. 11). The `staticTrueAny*` / `trueAnySocket` singleton is outside the rule: it is a plain immutable `SolenoidSocket`, so the sweep never sees it.
+
+A shared mutable socket means wiring a date into one card retypes another card's port, which then coerces its input under the wrong type and answers a believable number the user can't trace. The Input Switch's shared `valueSocket` did exactly this.
+
 ## The API
 
 - `accepts(inT, outT)` is the one directional primitive. `canConnect(out, inp)` and `SolenoidSocket.canConnectTo(input)` are its directional forms, used by the connection guard. `areCompatible` and `isCompatibleWith` are symmetric and serve only non-connection uses such as legend and highlight grouping.

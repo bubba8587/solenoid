@@ -162,6 +162,10 @@ Local File reads a Microsoft Project XML (MSPDI), GanttProject `.gan` or Primave
 
 In the cube, a task whose dependencies are all FS with lag 0 gets a list of names; any typed, lagged or elapsed dependency makes the cell a nested Task, Type, Lag (and Elapsed) table. Optional columns (Start, Finish, Deadline, Manual, Complete, Actual start, ALAP, Elapsed, Weekend, Hours, Holidays, Project, Tasks) appear only when some task uses them. A field the reader cannot model is named in `unsupported` and shown on the card as "Not carried over: …", never dropped and never a new column ([[D68]] importUnsupportedIsNamed). The per-format rules (link codes, constraint mapping, calendars) are in the schedule-engine README.
 
+### Link grammar stays at the border
+
+Inside the engine a predecessor is a structured record keyed by task name (`{task, type, lag}`). The `3FS+2d` link grammar, the vendors' integer link-type codes (MSPDI, .gan and XER each number them differently), and row numbers or UIDs are parsed at each importer and never become an internal key or a stored string. An importer is a parser to that one record shape, and an exporter renders from it. Three vendors number link types three different ways, and a row number breaks as soon as the table is sorted or filtered, while a name survives both; the author also ruled out lists stored as strings inside a cell ([[C70]] oneScheduleRule). **Reopen if:** a plan needs links to tasks that have no name; ids would then be minted, and they would still not be row numbers.
+
 ## The Gantt figure
 
 The Gantt node reads a scheduled table and emits a `chart` value of kind `gantt`. Its sockets, its column reading and its title are in [[chart-figures]] § Gantt; its inputs are `schedule`, `baseline`, `holidays`, `weekend_code` (default 1), `status` and `options`. It computes no dates, and it reads the computed columns by name, so a Filter or Sort between Schedule and Gantt still draws.
@@ -205,6 +209,10 @@ There is no bar editing: edits happen in the table ([[C71]] noBarEditing). It is
 ## Dates and precision
 
 Dates are Excel serials with a fractional day, zone-less local days. The engine converts a serial to integer working-day or working-minute indices once at the boundary, never compares two serials directly, and never constructs a `Date` ([[D65]] serialsNeverDate), which removes the daylight-saving bug class. The ISO date-times and `xsd:duration` strings at the MSPDI boundary are parsed by hand; no Temporal is needed.
+
+### Integer serials, never a Date
+
+The schedule engine and the Gantt layout compute on day serials with integer arithmetic and never construct a JS `Date`. A serial converts once, at the border (import and display), and serials are never compared as floating-point numbers. Minutes mode works in whole minutes within the day, still on the serial. Every Gantt library surveyed has the daylight-saving off-by-an-hour class of bug, because it schedules with `Date`; integer serials can't have it. This is [[C44]] dateSerials applied where it matters most. **Reopen if:** a time-zone-aware schedule is wanted; the border would then grow a time zone, and the engine still wouldn't.
 
 Precision is an engine mode, chosen on the card, never a display snap ([[D66]] daysMinutesModes):
 

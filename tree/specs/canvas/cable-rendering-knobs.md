@@ -121,6 +121,8 @@ The remaining discontinuities are inherent:
 
 Property tests in `cablePaths.test.ts` check the invariants by machine, plus continuity under simulated 0.5 px drags: a large jump is allowed only between routes of equal length. Keep them passing when touching the router.
 
+Why one walk router: the heuristic routers it replaced (`getDiagonalPath`, `getSmoothStepPath`, `withAngleLeads`) needed fallbacks, and the fallbacks produced kinks. Constraints that hold by construction leave nothing to fall back from. **Reopen if:** cables need obstacle avoidance, which no walk family provides.
+
 ## Spline
 
 The spline is one cubic curve (`getAngleBezierPath`) whose control arms, of length `max(40, dist × 0.4)`, lie along the exit and entry directions (the angle hint, or the socket's cardinal side). The curve leaves each socket exactly along its direction and may bend right away; there is no rigid straight lead. It collapses to a straight line under the same Euclidean `dist < 15` test, so a target that merely lines up on one axis with the source (for example, directly below an east-facing Conduit) still gets a curve.

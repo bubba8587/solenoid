@@ -170,7 +170,7 @@ export function moveGroupMembers(
 
 function groupRenderedSize(view: View, g: GroupNode): { w: number; h: number } {
   const el = view.nodeElement(g.id);
-  // [[D64]] exception: containment wants the RENDERED box, falling back to the stored one.
+  // measuredBox exception: containment wants the RENDERED box, falling back to the stored one.
   return { w: el?.offsetWidth || g.width, h: el?.offsetHeight || g.height };
 }
 

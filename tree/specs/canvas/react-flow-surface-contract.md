@@ -87,6 +87,8 @@ A group is an RF parent node, and each member sets `parentId` to it. The model k
 - During a group drag, the model's member positions follow the group by its per-frame delta, collapsed groups included, since RF tows hidden member children either way. Selected members are skipped, because RF already moves them as part of the selection.
 - A node created live (the Add menu, paste) inside an expanded group's box joins it once the card has rendered, since containment needs its size. The pipe that does this is installed once per stack, because `editor.addPipe` cannot be removed, and it stands down during a rebuild.
 
+Why: RF's own parenting gives towing and stacking for free, but everything else in the app (saves, Tidy, standoffs, the lasso, docking) reads absolute positions, and each would need its own conversion. One seam costs less than a relative model everywhere. **Reopen if:** RF drops sub-flows, or the model goes relative for some other reason.
+
 The full rules are in [[group-expand-push]].
 
 ## An open group's interior is working canvas
@@ -109,6 +111,22 @@ A Conduit gets the same treatment: its node box is a fixed 92 square around a mu
 - **A node wrapper's inline `visibility`.** RF writes `visible` onto `.react-flow__node` after measuring, so any imperative visibility write there is silently overwritten. Per-node hide and show rides RF's `className` instead (`flowModel.nodeClassName` plus an `!important` rule in flow.css). Hiding the members of a collapsed group is the standing example ([[group-collapse]]). The surface re-stamps the classes whenever the collapse store notifies, because a collapse toggle changes no topology and `syncTopology` never runs for it.
 - **Stacking.** Each node's stacking is its RF `zIndex`, from `flowModel.nodeZIndex`: groups −2, Conduits −1, everything else 0 ([[C65]] domOrderStacking). Without it a group's body sits level with its members and takes their pointer events.
 - **Card sizes.** A grip resize (`resizing` set on the dimension change) stays out of RF state: the model sizes the card and RF only measures it. RF's own measures feed the DOM-free size source.
+
+### Stacking
+
+RF stacks nodes by their `zIndex`, and the area-plane ladder is that data, not DOM order: standoff bars lowest, groups at −2 and Conduits at −1 (stamped by `nodeZIndex` in `flowModel.ts`), ordinary nodes at 0. The fixed lifts (isolate endpoints, an open group picker, the selected cable) stay explicit z-index writes. The standoff layer's depth is its own CSS (`StandoffLayer.css`, `z-index: -3`), since it renders in RF's viewport portal rather than as a node.
+
+Why: a group's body has to sit below its members, or it catches their pointer events, and RF's own model for that is `zIndex`. Selecting a node never moves its DOM element, so selection can't close a native popup inside a card; the `pointerdown` swallow on form controls exists only to prevent a drag. **Reopen if:** cards visibly stack wrongly after selection, or a control needs the last-selected card on top, which RF's `zIndex` model does not give.
+
+### Node width and height
+
+**MUST:** `node.width` and `node.height` mirror the node's measured size. NodeCard's ResizeObserver overwrites both with the rendered pixels on every layout, and the minimap silhouette and the cable geometry read them.
+
+- Both persist for every node, but only the declared size-owner classes read `init.width` and `init.height` back on load: the surfaces the user sizes by dragging (the annotation frames, the composite card, groups and the overlay hosts). For every other class the saved values are inert, and the class default plus a fresh measure win.
+- A class with a resize gesture either reads the init back or routes its size through `nodeSizeStore`, as Display's grip does (its own persisted channel, `sn.size`).
+- No other class may start reading the init.
+
+Why: a field with two jobs drifts silently, and this one can drift either way. A new resizable class that forgets to read the init back loses the user's drag on reload ([[B12]] losslessSaves); a compute class that starts reading it freezes an old measured size into its layout. Layout math reads sizes through `measuredBox()` ([[auto-arrange-tidy#Size reads]]).
 
 ## The dot grid
 
@@ -148,6 +166,14 @@ The socket box is always exactly 12×12 ([[C11]] socketBox12): `display: block; 
 - A Conduit's socket tips come from `conduitLaneOffset`, not from the measured handle ([[conduit-lane-faces]]).
 - The card adapter (`SolNodeAdapter`) calls RF's `updateNodeInternals` whenever a card's version bumps, since a bump can mean swapped or retyped sockets. Its `emit` is a stub, because on this surface only `NodeSocket` consumes it and `NodeSocket` renders an RF Handle.
 
+### The socket box and its row
+
+**MUST:** every socket renders as a fixed 12×12 box (`display:block; line-height:0`) inside its own measured row, and its vertical position comes from measuring that row: never a fixed constant, and never a `transform`. When a card has two or more sockets on one side, each gets its own row: `InlineInputs`, `InlineOutputRows` or `MeasuredSocketRow`, or a card's own measured row (as the Equation card's `EquationVarRow` and `EquationOutRow` are). `NodeShell` lays out output sockets only, and only as bare dots; a card that declares inputs renders them itself.
+
+Why: RF places a cable's endpoint by measuring the Handle box that wraps the socket. A `transform` or an unmeasured constant makes that measurement report the wrong spot, so the cable ends beside the dot instead of on it. A socket with no row of its own gets no position of its own: `NodeSocket` falls back to `--out-socket-top, 50%`, so every dot on that side lands on the same pixel, one visible handle with the rest stacked under it, and nothing throws (Geocode once shipped four outputs on one point, and Weather two inputs with no dot to plug into).
+
+**Exception, the Conduit's lane squares:** each lane square is the socket itself, sized to the lane geometry (`--socket-size`, the base square times the collapse scale, with a 9px fallback) and rotated with the block, and its cable tip is computed from `conduitLaneOffset`, never measured ([[conduit-lane-faces]]). The measured box exists so RF's handle measurement lands on the dot, and a Conduit's tips never read that measurement. **Removed by:** a Conduit cable tip that reads RF's handle box.
+
 ## Flipped sockets
 
 A node can flip its sockets to the opposite side, inputs on the right and outputs on the left.
@@ -164,6 +190,12 @@ A node can flip its sockets to the opposite side, inputs on the right and output
 ## World-coordinate overlays
 
 An overlay drawn in graph coordinates renders inside RF's `<ViewportPortal>`, which RF places inside the transformed viewport after the edge and node layers. Every surface mounts `PendingCableLayer`; `StandoffLayer` and `DrawnCableLayer` mount only when the host's `standoffs` / `drawnCables` hooks are on, which only the main canvas does. A sibling of `<ReactFlow>` would paint in screen space and not move with the camera. The armed drawn-cable tool is the exception: its capture sheet is screen-space, and because the pane never sees its presses, it pans the camera itself through a screen-space nudge on the surface ([[drawn-cables]]).
+
+## Semantic zoom
+
+The far-zoom simplification (the class `html.solenoid-semantic-zoom`, with plain CSS doing the swap; what a card shows is in [[components]]) switches on the raw CSS scale, at a threshold of 0.3 (`SEMANTIC_ZOOM_SCALE`), never folded with the device pixel ratio. The surface being zoomed owns the toggle: `syncSemanticZoomFor` runs from that surface's viewport drivers.
+
+Why: folding the pixel ratio in was tried and measured worse. It made the switch trip at a different apparent zoom on each display, and legibility depends on apparent size. At 0.3 a 200px card draws at about 60px, where its body text is unreadable but the card is still a clear block. The threshold is conservative, applying only to a far overview a user can actually reach.
 
 ## Selection
 
