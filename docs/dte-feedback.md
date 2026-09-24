@@ -191,7 +191,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     one decision. Suggest a way to mark a change as editorial (a `--editorial` flag on a commit-level
     record, or one line in a tree-wide log) so History stays about the decision.
 22. **`retire --superseded-by` rewrites the ID but keeps the old name.** Superseding D11 noAutoCross by
-    C10 socketLattice turned `[[D11]] noAutoCross` into `[[C10]] noAutoCross`, a pair that names the wrong
+    C10 socketLattice turned the D11 citation (`[[`D11`]] noAutoCross`) into `[[C10]] noAutoCross`, a pair that names the wrong
     leaf, and a line citing both became `[[C10]] socketLattice, [[C10]] noAutoCross`. Thirty files needed a
     follow-up script (rename the pair, drop the repeat), and dropping a repeat inside prose left empty
     brackets to clean by hand. The rewrite should write the winner's name and collapse a citation the
