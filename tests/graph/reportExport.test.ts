@@ -43,6 +43,27 @@ describe("exportBodyHtml freezes spans after the markdown render", () => {
     expect(out).toContain("Pic");
   });
 
+  it("embeds an SVG value as its figure, sanitized, and an empty one as its text", () => {
+    const svg = { __svg: true, height: 120, title: "Plan", source: '<svg viewBox="0 0 10 10"><script>alert(1)</script><rect onclick="x()" width="5" height="5"/><a href="https://e.com"><path d="M0 0"/></a></svg>' };
+    const out = body("`=s`", { s: svg });
+    expect(out).toContain('<div class="report-export__svg" style="height:120px"><svg viewBox="0 0 10 10"><rect width="5" height="5"/>');
+    expect(out).not.toMatch(/script|onclick|e\.com/);
+    expect(out).not.toContain("<p>");
+    expect(body("`=s`", { s: { __svg: true, height: 80, source: "", title: "Plan" } })).toContain("Plan");
+  });
+
+  it("formats a Frame's cells by the column's own format, and a pick on the source card beats it", () => {
+    const dec = (n: number) => ({ format: "decimal", unit: "none", decimalDigits: n, decimalMode: "places" }) as const;
+    const frame = { __frame: true, columns: [
+      { name: "a", type: "number", values: [1.23456], format: dec(1) },
+      { name: "b", type: "number", values: [2.5] },
+      { name: "c", type: "number", values: [0.1 + 0.2] },
+    ] };
+    const out = exportBodyHtml("`=f`", ["f"], () => frame, () => undefined, md,
+      (key, column) => (key === "f" && column === "b" ? dec(2) : undefined));
+    expect(out).toContain("<td>1.2</td><td>2.50</td><td>0.3</td>");
+  });
+
   it("renders a wired document as its own block, its spans resolved from its own refs", () => {
     const doc = makeDocument("---\na: 1\n---\nInner `=v` and `=gone`", { v: "<b>" });
     const out = body("Before\n\n`=d`\n\nAfter", { d: doc });
