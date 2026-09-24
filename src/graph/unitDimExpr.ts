@@ -4,7 +4,7 @@ import type { Ast } from "./excelFormula";
 import {
   type Dim, DIMENSIONLESS, dimMul, dimDiv, dimPow, dimEqual, isDimensionless,
 } from "./dimension";
-import { unitError, READINGS_ADD, READINGS_SCALE } from "./unitValue";
+import { unitError, READINGS_ADD, READINGS_SCALE, READINGS_FOLD } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
 import { resolveExcelFunction } from "./excelFunctions";
 
@@ -197,6 +197,40 @@ function constNum(node: Ast): number | null {
 
 export type CodeEnv = Record<string, string>;
 
+// ─── LAMBDA hosts ─────────────────────────────────────────────────────────────
+// A host binds each parameter of its lambda to an argument's element (MAP, a fold's
+// value), to the whole argument (BYROW's row), or to a plain number (MAKEARRAY's index).
+
+export type Lam = { params: string[]; body: Ast };
+type HostParam = { arg: number; whole: boolean } | null;
+type Host = { lamArg: number; params: HostParam[]; fold: boolean };
+
+function hostOf(fn: string, argc: number): Host | null {
+  const el = (arg: number): HostParam => ({ arg, whole: false });
+  switch (fn) {
+    case "REDUCE": case "SCAN": return argc === 3 ? { lamArg: 2, params: [el(0), el(1)], fold: true } : null;
+    case "BYROW": case "BYCOL": return argc === 2 ? { lamArg: 1, params: [{ arg: 0, whole: true }], fold: false } : null;
+    case "MAP": return argc >= 2 ? { lamArg: argc - 1, params: Array.from({ length: argc - 1 }, (_, i) => el(i)), fold: false } : null;
+    case "MAKEARRAY": return argc === 3 ? { lamArg: 2, params: [null, null], fold: false } : null;
+    default: return null;
+  }
+}
+
+/** A written LAMBDA, or a bare function name a host calls with `arity` arguments (`REDUCE(0, a, MAX)`). */
+function lambdaOf(n: Ast | undefined, arity: number, isVar: (name: string) => boolean): Lam | null {
+  if (!n) return null;
+  if (n.t === "call" && n.name.toUpperCase() === "LAMBDA" && n.args.length >= 1) {
+    const ps = n.args.slice(0, -1);
+    const params = ps.flatMap((p) => (p.t === "name" ? [p.name] : []));
+    return params.length === ps.length ? { params, body: n.args[n.args.length - 1] } : null;
+  }
+  if (n.t === "name" && !isVar(n.name) && resolveExcelFunction(n.name.toUpperCase())) {
+    const params = Array.from({ length: arity }, (_, i) => `#${i}`);
+    return { params, body: { t: "call", name: n.name, args: params.map((name): Ast => ({ t: "name", name })) } };
+  }
+  return null;
+}
+
 type Op = { dim: Dim; code?: string };
 type OpResult = Op | SolError | null;
 
@@ -220,9 +254,14 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
       return opEval(node.arg, env, codes);
     case "percent":
       return opEval(node.arg, env, codes);
-    case "apply":
-      return null;
+    case "apply": {
+      const lam = lambdaOf(node.fn, node.args.length, (n) => n in env);
+      return lam ? applyDim(lam, node.args.map((a) => opEval(a, env, codes)), env, codes) : null;
+    }
     case "call": {
+      const host = hostOf(node.name.toUpperCase(), node.args.length);
+      const lam = host && lambdaOf(node.args[host.lamArg], host.params.length, (n) => n in env);
+      if (host && lam) return hostDim(node.args, host, lam, env, codes);
       const d = callDim(node.name, node.args.map((a) => {
         const r = opEval(a, env, codes);
         return r === null || isSolError(r) ? r : r.dim;
@@ -273,6 +312,35 @@ function opEval(node: Ast, env: DimEnv, codes: CodeEnv): OpResult {
   }
 }
 
+/** The body's dimension with each parameter bound to its argument's; an unbound parameter is dimensionless. */
+function applyDim(lam: Lam, args: OpResult[], env: DimEnv, codes: CodeEnv): OpResult {
+  const inner: DimEnv = { ...env };
+  const innerCodes: CodeEnv = { ...codes };
+  for (const [i, p] of lam.params.entries()) {
+    const a = args[i] ?? { dim: DIMENSIONLESS };
+    if (a === null || isSolError(a)) return a;
+    inner[p] = a.dim;
+    if (a.code === undefined) delete innerCodes[p]; else innerCodes[p] = a.code;
+  }
+  return opEval(lam.body, inner, innerCodes);
+}
+
+/** A fold's accumulator adopts the element's dimension when it starts dimensionless, as under `+`;
+ *  a step that changes the accumulator's dimension is indeterminate. */
+function hostDim(args: Ast[], host: Host, lam: Lam, env: DimEnv, codes: CodeEnv): OpResult {
+  const vals = args.map((a, i) => (i === host.lamArg ? { dim: DIMENSIONLESS } : opEval(a, env, codes)));
+  for (const v of vals) if (v === null || isSolError(v)) return v;
+  const bound = host.params.map((p): Op => (p ? vals[p.arg] as Op : { dim: DIMENSIONLESS }));
+  if (host.fold) {
+    const [acc, elem] = bound;
+    const start: Op = isDimensionless(acc.dim) ? elem : acc;
+    const step = applyDim(lam, [start, elem], env, codes);
+    if (step === null || isSolError(step)) return step;
+    return dimEqual(step.dim, start.dim) ? step : null;
+  }
+  return applyDim(lam, bound, env, codes);
+}
+
 export function dimEval(node: Ast, env: DimEnv, codes: CodeEnv = {}): DimResult {
   const r = opEval(node, env, codes);
   return r === null || isSolError(r) ? r : r.dim;
@@ -309,11 +377,43 @@ const AFF_FIRST = new Set(["ABS", "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CE
 const isLiteral = (n: Ast | undefined): boolean =>
   !n || n.t === "str" || n.t === "bool" || n.t === "blank" || constNum(n) !== null;
 
-function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<string>): Aff | SolError {
-  const sub = (n: Ast) => affEval(n, points, lists);
+/** The columns and variables that are readings, and the names a lambda binds. */
+type AffScope = { points: ReadonlySet<string>; lists: ReadonlySet<string>; locals: ReadonlyMap<string, Aff>; fns: ReadonlyMap<string, Lam> };
+
+function affApply(lam: Lam, args: Aff[], scope: AffScope): Aff | SolError {
+  const locals = new Map(scope.locals);
+  lam.params.forEach((p, i) => locals.set(p, args[i] ?? ZERO));
+  return affEval(lam.body, { ...scope, locals });
+}
+
+/** A fold must answer the accumulator's kind each step; a literal seed beside readings is a reading. */
+function affHost(fn: string, args: Ast[], host: Host, lam: Lam, scope: AffScope): Aff | SolError {
+  const vals: Aff[] = [];
+  for (const [i, a] of args.entries()) {
+    const r = i === host.lamArg ? ZERO : affEval(a, scope);
+    if (isSolError(r)) return r;
+    vals.push(r);
+  }
+  const bound = host.params.map((p): Aff => (p ? { w: vals[p.arg].w, list: p.whole && vals[p.arg].list, konst: null } : ZERO));
+  if (!host.fold) {
+    const body = affApply(lam, bound, scope);
+    return isSolError(body) ? body : { w: body.w, list: true, konst: null };
+  }
+  const [acc, elem] = bound;
+  const start: Aff = { w: isLiteral(args[0]) && elem.w !== 0 ? elem.w : acc.w, list: false, konst: null };
+  const step = affApply(lam, [start, elem], scope);
+  if (isSolError(step)) return step;
+  if (Math.abs(step.w - start.w) > 1e-12) return step.w > 1 ? sumErr() : unitError(READINGS_FOLD);
+  return { w: start.w, list: fn === "SCAN", konst: null };
+}
+
+function affEval(node: Ast, scope: AffScope): Aff | SolError {
+  const { points, lists, locals, fns } = scope;
+  const sub = (n: Ast) => affEval(n, scope);
+  const isVar = (n: string) => locals.has(n) || points.has(n) || lists.has(n);
   switch (node.t) {
     case "num": return { w: 0, list: false, konst: Number(node.v) };
-    case "name": return { w: points.has(node.name) ? 1 : 0, list: lists.has(node.name), konst: null };
+    case "name": return locals.get(node.name) ?? { w: points.has(node.name) ? 1 : 0, list: lists.has(node.name), konst: null };
     case "atcol": return { w: points.has(node.name) ? 1 : 0, list: false, konst: null };
     case "wholecol": return { w: points.has(node.name) ? 1 : 0, list: true, konst: null };
     case "unary": {
@@ -351,12 +451,17 @@ function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<stri
     }
     case "call": {
       const fn = node.name.toUpperCase();
+      const host = hostOf(fn, node.args.length);
+      const hosted = host && lambdaOf(node.args[host.lamArg], host.params.length, isVar);
+      if (host && hosted) return affHost(fn, node.args, host, hosted, scope);
       const args: Aff[] = [];
       for (const a of node.args) {
         const r = sub(a);
         if (isSolError(r)) return r;
         args.push(r);
       }
+      const named = locals.has(node.name) ? undefined : fns.get(node.name);
+      if (named) return affApply(named, args, scope);
       if (RESULT_DIMLESS_FNS.has(fn)) return ZERO;
       if (AFF_SELECT.has(fn)) {
         // A bare constant beside readings is a reading (MIN(a, 30)); the rest must agree.
@@ -393,6 +498,16 @@ function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<stri
       return args.some((a) => a.w !== 0) ? affErr() : ZERO;
     }
     case "apply": {
+      const lam = lambdaOf(node.fn, node.args.length, isVar);
+      if (lam) {
+        const args: Aff[] = [];
+        for (const a of node.args) {
+          const r = sub(a);
+          if (isSolError(r)) return r;
+          args.push(r);
+        }
+        return affApply(lam, args, scope);
+      }
       for (const a of node.args) {
         const r = sub(a);
         if (isSolError(r)) return r;
@@ -407,8 +522,10 @@ function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<stri
 
 /** The point weight of a formula over affine inputs: 1 is a reading, 0 a delta or a
  *  plain number, `#UNIT!` for anything an offset scale can't answer. */
-export function affineWeight(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<string> = new Set()): 0 | 1 | SolError {
-  const r = affEval(node, points, lists);
+export function affineWeight(
+  node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<string> = new Set(), fns: ReadonlyMap<string, Lam> = new Map(),
+): 0 | 1 | SolError {
+  const r = affEval(node, { points, lists, locals: new Map(), fns });
   if (isSolError(r)) return r;
   if (Math.abs(r.w - 1) < 1e-12) return 1;
   if (Math.abs(r.w) < 1e-12) return 0;

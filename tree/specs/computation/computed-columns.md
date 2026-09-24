@@ -64,7 +64,7 @@ Anything else stays a number. The Computed Column node can also pin the type ins
 
 ## Units
 
-A row formula reads each cell as its bare number, and the new column's unit is only the one authored for it (a `Name (unit)` name, or the Fx column's unit picker). One rule reads the source units: a formula over columns of readings on an offset scale (°C, °F) is classified as Expression classifies it (`affineWeight`, [[unit-flow]], [[C25]] firstClassUnits), with a name, `@` read or `[Name]` read of such a column as a reading. A sum of readings, or a reading scaled or divided, makes every cell of the column `#UNIT!` (`readingsRefusal` in `nodes/frame.ts`); a difference, a midpoint or a reading plus a number computes. A formula that is a LAMBDA is not classified.
+A row formula reads each cell as its bare number, and the new column's unit is only the one authored for it (a `Name (unit)` name, or the Fx column's unit picker). One rule reads the source units: a formula over columns of readings on an offset scale (°C, °F) is classified as Expression classifies it (`affineWeight`, [[unit-flow]], [[C25]] firstClassUnits), with a name, `@` read or `[Name]` read of such a column as a reading. A sum of readings, or a reading scaled or divided, makes every cell of the column `#UNIT!` (`readingsRefusal` in `nodes/frame.ts`); a difference, a midpoint or a reading plus a number computes. A LAMBDA is read through its body, whether it is the column's whole definition (a wired λ, or a Frame Input column that is only `λ1`), called by name (`λ1(@lo, @hi)`), or written inline: each parameter takes the kind of the column or argument it binds to.
 
 ## Fx columns in Frame Input
 

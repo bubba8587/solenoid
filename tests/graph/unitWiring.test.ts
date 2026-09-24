@@ -215,6 +215,25 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     const mixed = new ExpressionNode({ expr: "IF(c, a, b)" }).data({ a: [km as never], b: [applyFcUnit(2, "s") as never], c: [true as never] }).result;
     expect(isUnitCell(mixed)).toBe(false);
   });
+  it("a LAMBDA host reads its lambda's body: REDUCE, MAP and BYROW over a united list", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const run = (expr: string, a: unknown) => new ExpressionNode({ expr }).data({ a: [a as never] }).result;
+    const code = (v: unknown) => (v as { code?: string }).code;
+    const kms = [applyFcUnit(1, "km"), applyFcUnit(3, "km")];
+    const total = run("REDUCE(0, a, LAMBDA(acc, v, acc + v))", kms) as UnitCell;
+    expect(total.display).toBe("km");
+    expect(displayMagnitudeOf(total)).toBeCloseTo(4, 9);
+    expect(displayMagnitudeOf(run("MAX(MAP(a, LAMBDA(v, v * 2)))", kms) as UnitCell)).toBeCloseTo(6, 9);
+    expect(isUnitCell(run("REDUCE(1, a, LAMBDA(acc, v, acc * v))", kms))).toBe(false);
+    const temps = [applyFcUnit(20, "degC"), applyFcUnit(30, "degC")];
+    const top = run("REDUCE(0, a, MAX)", temps) as UnitCell;
+    expect(top.display).toBe("degC");
+    expect(displayMagnitudeOf(top)).toBeCloseTo(30, 9);
+    expect(code(run("REDUCE(0, a, LAMBDA(acc, v, acc + v))", temps))).toBe("#UNIT!");
+    expect(code(run("MAX(MAP(a, LAMBDA(v, v * 2)))", temps))).toBe("#UNIT!");
+    expect(displayMagnitudeOf(run("LAMBDA(x, x + 1)(a)", applyFcUnit(1, "km")) as UnitCell)).toBeCloseTo(2, 9);
+  });
   it("a function outside the unit tables is loud on a unit, and plain beside one", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");

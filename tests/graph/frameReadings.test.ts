@@ -11,6 +11,7 @@ import { cubeFromColumns, frameToCube, frameSourceToText, type FrameColumn, type
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
 import { GetColumnNode, ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
 import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
+import { compileLambda } from "../../src/graph/nodes/tableLambda";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const frame = (...columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
@@ -219,6 +220,30 @@ describe("a computed column over readings classifies as Expression does", () => 
     expect(add("[@lo] + 5")).toEqual([25, 23]);
   });
 
+  it("a LAMBDA's parameters take its arguments' kind, inline or through a host", () => {
+    expect(add("LAMBDA(x, y, (x + y) / 2)(@lo, @hi)")).toEqual([23, 24]);
+    expect(refused(add("LAMBDA(x, x * 2)(@lo)"))).toBe(true);
+    expect(add("REDUCE(@lo, hi, LAMBDA(a, v, MAX(a, v)))")).toEqual([30, 30]);
+    expect(add("REDUCE(0, hi, MAX)")).toEqual([30, 30]);
+    expect(refused(add("REDUCE(0, hi, LAMBDA(a, v, a + v))"))).toBe(true);
+    expect(add("MAX(MAP(hi, LAMBDA(v, v - @lo)))")).toEqual([10, 12]);
+    expect(refused(add("MAX(MAP(hi, LAMBDA(v, v * 2)))"))).toBe(true);
+    expect(add("MAX(BYROW(hi, LAMBDA(r, MAX(r))))")).toEqual([30, 30]);
+    expect(refused(add("MAX(BYROW(hi, LAMBDA(r, SUM(r) * 2)))"))).toBe(true);
+  });
+
+  it("a wired λ column is classified by its body", () => {
+    const withLam = (expr: string) => {
+      const n = new ComputedColumnNode({});
+      n.stringLiterals.name = "out";
+      const fn = compileLambda(expr, ["lo", "hi"])!;
+      const lam = { __lambda: true as const, params: ["lo", "hi"], fn, expr };
+      return col(n.data({ frame: [two], fn: [lam] } as never).frame as FrameValue, "out").values;
+    };
+    expect(withLam("(lo + hi) / 2")).toEqual([23, 24]);
+    expect(refused(withLam("lo + hi"))).toBe(true);
+  });
+
   it("a Frame Input formula column is held to the same rule", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
@@ -231,5 +256,26 @@ describe("a computed column over readings classifies as Expression does", () => 
     const out = n.data({}).frame as FrameValue;
     expect(refused(col(out, "bad").values)).toBe(true);
     expect(col(out, "mid").values).toEqual([23]);
+  });
+
+  it("a Frame Input column calling a wired λ is read through the λ's body", () => {
+    const mean = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("(lo + hi) / 2", ["lo", "hi"])!, expr: "(lo + hi) / 2" };
+    const sum = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("lo + hi", ["lo", "hi"])!, expr: "lo + hi" };
+    const n = new FrameInputNode({
+      lambdaKeys: ["fn1", "fn2"],
+      frameText: frameSourceToText([
+        { name: "lo", type: "number", cells: ["20"], unit: "degC" },
+        { name: "hi", type: "number", cells: ["26"], unit: "degC" },
+        { name: "mid", type: "number", cells: [], expr: "λ1" },
+        { name: "bad", type: "number", cells: [], expr: "λ2" },
+        { name: "mid2", type: "number", cells: [], expr: "λ1(@lo, @hi)" },
+        { name: "bad2", type: "number", cells: [], expr: "λ2(@lo, @hi)" },
+      ]),
+    });
+    const out = n.data({ fn1: [mean], fn2: [sum] } as never).frame as FrameValue;
+    expect(col(out, "mid").values).toEqual([23]);
+    expect(col(out, "mid2").values).toEqual([23]);
+    expect(refused(col(out, "bad").values)).toBe(true);
+    expect(refused(col(out, "bad2").values)).toBe(true);
   });
 });
