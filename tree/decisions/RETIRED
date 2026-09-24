@@ -91,3 +91,16 @@ D13	2026-09-24	superseded	C10	Claude Opus 5.5	the author	widenNeverNarrow: Dimen
 C46	2026-09-24	superseded	B16	Claude Opus 5.5	the author	consistencyOverQuirks: cross-engine consistency outranks Excel-quirk parity
 D40	2026-09-24	superseded	C25	Claude Opus 5.5	the author	unitOnValue: The unit belongs to the value
 C39	2026-09-24	moved	D79	Claude Opus 5.5	the author	effectsEdgeTriggered: An outside effect such as an alert fires only when its status changes, and never on load
+C2	2026-09-24	superseded	B3	Claude Opus 5.5	the author	realCanvasScenes: Marketing scenes are the real app: locked scenes plus at most one live scene per page
+C7	2026-09-24	reverted	-	Claude Opus 5.5	the author	authorRuled: A rule is author-ruled only when the author ratifies its leaf in session
+C5	2026-09-24	reverted	-	Claude Opus 5.5	the author	exceptionsUnderRule: A rule's exceptions live under the rule itself, each naming the condition that would remove it
+C6	2026-09-24	reverted	-	Claude Opus 5.5	the author	specFirst: Spec-first for new mechanisms: a new subsystem or cross-cutting sweep lands its rule before the code
+C8	2026-09-24	reverted	-	Claude Opus 5.5	the author	declareOnce: One declaration per fact
+C9	2026-09-24	reverted	-	Claude Opus 5.5	the author	labelUnenforced: A rule not enforced by a test is debt, and is labeled
+C57	2026-09-24	reverted	-	Claude Opus 5.5	the author	commentMinimalism: Knowledge lives in leaves, specs, tests and commits; a comment is the last resort
+C83	2026-09-24	reverted	-	Claude Opus 5.5	the author	parallelAgents: Parallel agent sessions: one test run at a time, a one-line claim board, the Lead merges
+C108	2026-09-24	reverted	-	Claude Opus 5.5	the author	auditDefaultsToFix: When an audit finds defensible but worse behavior, the default is to fix it
+C81	2026-09-24	reverted	-	Claude Opus 5.5	the author	wikilinkCitations: Leaves are cited with Obsidian links, so the tree can be browsed in Obsidian
+C82	2026-09-24	reverted	-	Claude Opus 5.5	the author	vaultOutbox: The author's vault edits reach agents through outbox notes, action tags and git
+B9	2026-09-24	reverted	-	Claude Opus 5.5	the author	rulesWithoutMemory: AI agents build Solenoid under one author, so its rules must hold without anyone remembering them
+B8	2026-09-24	reverted	-	Claude Opus 5.5	the author	treeIsTheHome: Solenoid's decisions and rules live only in the decision tree

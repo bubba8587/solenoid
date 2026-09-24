@@ -1,4 +1,4 @@
-// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere
+// [[B3]] sameNodeEverywhere
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";

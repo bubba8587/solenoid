@@ -1,4 +1,4 @@
-// [[C8]] declareOnce. Mechanics: tree/specs/canvas/input-cable-pruning.md.
+// [[D16]] retypeReconciles. Mechanics: tree/specs/canvas/input-cable-pruning.md.
 import { getOwningEditor } from "../activeGraph";
 
 /** `gone` is the set of departing keys, or a predicate over the target-input key for the complement case. */

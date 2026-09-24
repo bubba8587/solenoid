@@ -5,7 +5,7 @@ import type { GroupByOp } from "../rete-nodes";
 import { GROUP_BY_OP_META } from "../rete-nodes";
 import { FrameDisplay } from "./FrameDisplay";
 
-// Derived from GROUP_BY_OP_META ([[C8]] declareOnce) — the table the search rows read too.
+// Derived from GROUP_BY_OP_META — the table the search rows read too.
 const GROUP_BY_OPTIONS: ReadonlyArray<OpOption<GroupByOp>> = (Object.keys(GROUP_BY_OP_META) as GroupByOp[])
   .map((value) => ({ value, label: GROUP_BY_OP_META[value].label }));
 

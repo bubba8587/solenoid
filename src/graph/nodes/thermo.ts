@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C8]] declareOnce
+// [[C76]] formulaPackDefault, [[C17]] shareImpl
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, readInput } from "./shared";

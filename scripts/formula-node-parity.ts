@@ -1,4 +1,3 @@
-// [[C8]] declareOnce
 // Reports the node-to-formula parity gap (the measurement is src/graph/formulaNodeParity.ts, shared with
 // the ratchet test): A, Excel-named nodes whose name a formula can't call; B, native node ops with no
 // formula equivalent; C, formula names with no node and no EXCEL_GAP entry. scripts/parity.ts is Excel's gap.

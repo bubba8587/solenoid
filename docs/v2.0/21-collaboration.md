@@ -10,8 +10,8 @@ complexity · Structural blast radius.
 
 `out-of-scope.md` test 3, §3 and §11 argued: a service is a company, not a feature; real-time
 co-editing is free next door and contradicts local-first; hosted anything converts "your
-file" into "our servers." That doc is a DRAFT and carries no ARR ([[C7]] authorRuled:
-only an owner ratification is author-ruled), so those were the agent's inferences, not
+file" into "our servers." That doc is a DRAFT and carries no ARR (only an owner
+ratification is author-ruled), so those were the agent's inferences, not
 rulings — the author's order is the first word on this ground, and the three sections plus
 decisions R5 were rewritten to it on 2026-09-01. The arguments were not wrong; they were
 costs. This bundle keeps them as design constraints:

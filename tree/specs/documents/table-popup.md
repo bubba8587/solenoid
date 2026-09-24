@@ -2,11 +2,11 @@
 aliases: ["Table popup"]
 tags: [spec, documents]
 ---
-<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C8]] declareOnce, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams -->
+<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams -->
 
 # Spec: Table popup
 
-Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C8]] declareOnce, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin and [[D18]] frameLabelHint. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin and [[D18]] frameLabelHint. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
 

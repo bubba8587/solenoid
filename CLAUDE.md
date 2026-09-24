@@ -1,4 +1,3 @@
-<!-- [[B8]] -->
 # Claude Code Notes
 
 Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`
@@ -58,12 +57,12 @@ invented vocabulary + the author's names for the on-screen chrome).
   A leaf is a choice a person could weigh, written in plain words (a MUST is fine when it is
   that kind of choice); how the code carries it out (call order, wrappers, internal formats)
   is spec content (`docs/dte.md` § What is a leaf and what is a spec). A new mechanism lands
-  its rule before its code ([[C6]] specFirst), and a rule's exceptions live under that rule
-  ([[C5]] exceptionsUnderRule). "Leaf" is the author's word; "node" means an app node. Read the
+  its rule before its code, and a rule's exceptions live under that rule, each naming what
+  would remove it (`docs/dte.md` § Solenoid practice). "Leaf" is the author's word; "node" means an app node. Read the
   governing leaf and spec before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
   `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate --as B` (your ring) before you finish.
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
-  author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
+  author edits the tree from Obsidian and those edits reach you only this way.
 - **`tree/specs/` — the mechanics, one spec per subsystem, grouped in folders; `tree/` is one Obsidian vault with `tree/decisions/`** (`docs/subsystem-invariants.md` is the index).
   Three FLOOR specs carry a `covers:` glob and govern whole classes of files: every component is built
   to `tree/specs/floors/components.md`, every node class and op module to `tree/specs/floors/node-classes.md`, every store to
@@ -87,8 +86,7 @@ invented vocabulary + the author's names for the on-screen chrome).
   problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
   `docsPointers.test.ts`).
 - **Comments are the LAST-RESORT home**; the default outcome for an existing comment is deletion.
-  The policy is the leaf: `python tools/dte.py show C57` ([[C57]] commentMinimalism). Read it before
-  writing comment prose.
+  The policy is `tree/specs/floors/engineering.md` § Comments. Read it before writing comment prose.
 - Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
   of truth (Add menu + Function Reference generate from it).
 
@@ -123,7 +121,8 @@ superseded, or restating what a test already pins.
   format is `DD-MMM-YYYY` ([[C44]] dateSerials). Units are authored only by the FC / Convert
   ([[C25]] firstClassUnits). Frames/cubes never enter formulas ([[C15]] matricesInFormulas).
 - Several agents on this repo at once: one test run at a time, a one-line claim in
-  `docs/agent-coordination.md`, the Lead merges ([[C83]] parallelAgents). Solo session: claim nothing.
+  `docs/agent-coordination.md`, the Lead merges (the protocol is that file). Solo session: claim nothing.
+- An audit that finds defensible but worse behavior fixes it by default; leaving it takes a stated reason.
 - A black screen: every render is boundaried — ask for the copied error text first, don't hunt
   blind (`tree/specs/canvas/react-flow-surface-contract.md`).
 

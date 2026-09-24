@@ -112,7 +112,7 @@ is parked there.
 ## Code → spec routing (grep your file here before editing)
 
 The per-FILE version of the cheat-sheet below. Files listed here carry no prose comment
-pointers by design ([[C57]] commentMinimalism) — this table IS the pointer; the one line a
+pointers by design (`../tree/specs/floors/engineering.md` § Comments) — this table IS the pointer; the one line a
 file may carry is its `[[ID]]` citation, which `python tools/dte.py trace <file>` follows to the
 governing leaves. Editing a listed file without reading its docs is how recorded negative
 results get retried and settled rulings relapse.
@@ -121,7 +121,7 @@ results get retried and settled rulings relapse.
 |---|---|
 | `tree/decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, CLAUDE, README, ADOPTING, DECISIONS) |
 | `groupCollapse.ts`, `flyToNode.ts` | [[C88]] collapseIsVisual; `../tree/specs/canvas/group-collapse.md` |
-| `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `../tree/specs/canvas/add-menu.md`; [[D5]] searchWiderThanLabel, [[C8]] declareOnce |
+| `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `../tree/specs/canvas/add-menu.md`; [[D5]] searchWiderThanLabel |
 | `equationSolve.ts` | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
 | `semanticZoomStore.ts` | [[B10]] reactFlowView; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
 | `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[B10]] reactFlowView |

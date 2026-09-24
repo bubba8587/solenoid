@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[C7]] authorRuled
+// [[C10]] socketLattice
 import { ConduitNode, conduitLaneOf } from "./rete-nodes";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";

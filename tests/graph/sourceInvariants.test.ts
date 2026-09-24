@@ -1,12 +1,11 @@
-// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[C8]] declareOnce, [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
+// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 // ─── Source-scan enforcement for the grep-shaped rules (tree/decisions/) ───────────
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
-// failed when a NEW file forgot them, which [[C9]] labelUnenforced flags as precisely the shape
-// of every Origin incident. These scans close the completeness half the same way
+// failed when a NEW file forgot them, which is precisely the shape of every Origin incident. These scans close the completeness half the same way
 // formulaPathIsReteFree.test.ts closes [[C17]] shareImpl: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
 //
@@ -917,7 +916,7 @@ describe("heroChipRow: hero-box chips use the shared --chip row, never an inline
 describe("[[B10]] reactFlowView — the movement stack reads sizes through measuredBox", () => {
   // Every module that moves or fits nodes. A direct DOM size read here is either a
   // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
-  // above ([[C5]] exceptionsUnderRule); the node lists the four that stand.
+  // above; the leaf lists the four that stand.
   const STACK = ["tidyArrange.ts", "groupPush.ts", "groupPushCore.ts", "groupLogic.ts", "groupCollapse.ts",
     "standoffs.ts", "standoffSolver.ts", "flyToNode.ts", "fcDocking.ts", "canvasActions.ts", "OutlinePanel.tsx", "zoomAt.ts"];
   it("no unsanctioned offsetWidth/offsetHeight read outside nodeSize.ts", () => {

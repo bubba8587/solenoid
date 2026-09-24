@@ -1,4 +1,4 @@
-// [[C26]] opArgDistinct, [[C63]] oneRecordNode, [[D5]] searchWiderThanLabel, [[C8]] declareOnce
+// [[C26]] opArgDistinct, [[C63]] oneRecordNode, [[D5]] searchWiderThanLabel
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
@@ -281,7 +281,7 @@ export function opEntry(
     type: `${decl.type}__op-${op.op}`,
     label: opSearchLabel(host.label, op.label),
     create: () => decl.create(op.op),
-    // Not the host's keywords, hiddenOps or ops mark ([[C8]] declareOnce); the op's own keywords ride along.
+    // Not the host's keywords, hiddenOps or ops mark; the op's own keywords ride along.
     keywords: op.keywords,
     hiddenOps: undefined,
     hideOpsMark: undefined,

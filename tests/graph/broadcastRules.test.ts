@@ -5,7 +5,7 @@ import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 import { isSolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
-// The table IS this test ([[C8]] declareOnce):
+// The table IS this test:
 // a change to either without the other fails here. PAD follows the standing
 // rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
 // CONSTRUCTION functions own their #N/A padding inside their registered impls

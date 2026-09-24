@@ -1,4 +1,3 @@
-// [[C8]] declareOnce.
 
 export interface ColumnPickerSpec {
   key: string;

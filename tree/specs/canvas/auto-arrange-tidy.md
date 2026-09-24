@@ -2,7 +2,7 @@
 aliases: ["Auto-arrange / Tidy"]
 tags: [spec, canvas]
 ---
-<!-- [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C8]] declareOnce, [[C112]] noOverlapsEver -->
+<!-- [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C112]] noOverlapsEver -->
 
 # Spec: Auto-arrange / Tidy
 
@@ -50,7 +50,7 @@ A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a m
 
 `elkTidyLayout` builds the graph and applies the result through a `translate` callback. elkjs is a heavy chunk, so it loads lazily on the first Tidy (`makeEnsureElk`); a failed load clears the cache so the next Tidy retries, and a surface destroyed during the load returns null.
 
-- The root options are `ELK_ROOT_OPTIONS`: `elk.algorithm = layered`, `elk.hierarchyHandling = INCLUDE_CHILDREN`, `elk.edgeRouting = POLYLINE`. This constant is their one home: `elkTidyLayout` spreads it and the integration test consumes it verbatim, so the two cannot drift ([[C8]] declareOnce). `tidyLayerSplitFor` is shared with the test the same way.
+- The root options are `ELK_ROOT_OPTIONS`: `elk.algorithm = layered`, `elk.hierarchyHandling = INCLUDE_CHILDREN`, `elk.edgeRouting = POLYLINE`. This constant is their one home: `elkTidyLayout` spreads it and the integration test consumes it verbatim, so the two cannot drift ([[engineering#One declaration per fact]]). `tidyLayerSplitFor` is shared with the test the same way.
 - Each card becomes a child with its ports sorted by socket index and `portConstraints: FIXED_POS`. Edges connect port ids (`${nodeId}_${key}_${side}`); an edge with an empty socket key connects the node itself.
 - Docked Format Controllers are adornments, not layout nodes. They are left out, and their inline cables are bridged (host → FC → consumer becomes host → consumer) so the real graph still lays out.
 - ELK only sees edges whose both ends are in the layout, because an edge to an excluded node makes ELK throw. Edges into a group's members are remapped onto the group as node-level edges, and edges into a cluster follower are remapped onto its cluster leader.

@@ -1,4 +1,4 @@
-// [[C8]] declareOnce, [[C22]], [[C80]], [[B16]] oneFormulaSurface (RANGE_* policies), [[C14]] currentExcelParity
+// [[C22]], [[C80]], [[B16]] oneFormulaSurface (RANGE_* policies), [[C14]] currentExcelParity
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite, powerOf } from "./valueKinds";

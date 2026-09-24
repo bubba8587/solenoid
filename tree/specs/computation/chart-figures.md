@@ -2,7 +2,7 @@
 aliases: ["Chart figures"]
 tags: [spec, computation]
 ---
-<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C8]] declareOnce, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams -->
+<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams -->
 
 # Spec: Chart figures
 
@@ -97,7 +97,7 @@ Ops `line`, `column`, `winloss` (`SPARKLINE_OP_META`); an old save's `bar` loads
 
 ### Chart
 
-The card picks the op in two steps: a family select (Cartesian, Categorical, Multi-series, from `CHART_OP_META`'s `group`) narrows a type select, and picking a family jumps to its first type. The type is the node's `op`, the accented op select; the family is only a filter ([[C26]] opArgDistinct), and both derive from `CHART_OP_META` so they can't drift from the Add-menu rows ([[C8]] declareOnce). Every op reads the same `values` input, so switching op is a plain recompute.
+The card picks the op in two steps: a family select (Cartesian, Categorical, Multi-series, from `CHART_OP_META`'s `group`) narrows a type select, and picking a family jumps to its first type. The type is the node's `op`, the accented op select; the family is only a filter ([[C26]] opArgDistinct), and both derive from `CHART_OP_META` so they can't drift from the Add-menu rows ([[engineering#One declaration per fact]]). Every op reads the same `values` input, so switching op is a plain recompute.
 
 `data()` reads the raw `values` input. The input is kept raw (`rawInputs`) because coercion would widen a wired list into a single frame row; Boxplot is raw for the same reason. A cube is flattened to a frame of its scalar columns first (`flatCubeToFrame(cube, "scalar")`: a list or table column has nothing to plot and is skipped); a top-level `SolError` there is treated as no data (Chart is in the error guard's see-errors set, so it runs). Every non-finite cell becomes null in place, so labels stay aligned with rows.
 

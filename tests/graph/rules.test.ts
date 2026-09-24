@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 
-// [[C9]] labelUnenforced, [[C7]] authorRuled, [[B8]] treeIsTheHome, [[C81]] wikilinkCitations, [[C82]] vaultOutbox
+// [[A1]] visualGraphCalculator, [[B1]] obsidianBet. The practice it pins: docs/dte.md § Solenoid practice.
 // The decision tree keeps its own claims honest: a MUST that no test cites is folklore, and
 // a node never lists its tests (the list is derived from citations). The structural checks
 // (parents, citations resolve) are `python tools/dte.py validate`; this suite pins what
@@ -40,10 +40,13 @@ function readTree(): DecisionNode[] {
         sections[chunk.slice(0, nl).trim()] = chunk.slice(nl + 1);
       }
       const title = field("title");
+      // A leaf's name is its first alias, written inline (`aliases: [x]`) or as a block list.
+      const alias = fm[1].match(/^aliases:[ \t]*\[\s*"?([A-Za-z][A-Za-z0-9-]*)/m)?.[1]
+        ?? fm[1].match(/^aliases:[ \t]*\n[ \t]+-[ \t]+"?([A-Za-z][A-Za-z0-9-]*)/m)?.[1];
       nodes.push({
         id: field("id"),
         title,
-        name: field("name") || null,
+        name: alias ?? null,
         ratifiedBy: field("ratified_by"),
         sections,
         body: fm[2],
@@ -99,12 +102,12 @@ describe("the decision tree (tree/decisions/)", () => {
     expect(named.filter((n, i) => named.indexOf(n) !== i)).toEqual([]);
   });
 
-  // ─── The owner-ratification guard ([[C7]] authorRuled) ──────────────────────────────────
+  // ─── The owner-ratification guard (docs/dte.md § Solenoid practice) ──────────────────────────────────
   // A ruling is the owner's only when the owner ratified the leaf in session. This list
   // is the owner's: an agent that runs `dte ratify` alone fails here, because moving the
   // list is part of the same owner-marked change. (If you are an agent reading this while
   // tempted: don't. The list is the author's, not yours.)
-  it("owner ratifications match the owner-kept list ([[C7]] authorRuled)", () => {
+  it("owner ratifications match the owner-kept list", () => {
     const OWNER_RATIFIED: string[] = ["A1", "B1", "B2", "B3", "B7", "C80", "D62", "E10"]; // author-maintained; agents must not edit
     const ratified = nodes.filter((n) => n.ratifiedBy).map((n) => n.id);
     expect(ratified.sort()).toEqual([...OWNER_RATIFIED].sort());
@@ -141,7 +144,7 @@ describe("the decision tree (tree/decisions/)", () => {
   });
 });
 
-describe("[[B8]] treeIsTheHome — the tool's own gauges hold", () => {
+describe("the decision tree — the tool's own gauges hold", () => {
   // `validate` is the structural check and `coverage --check` the completeness one (every
   // artifact cites a decision or is listed in .dtecoverage with the reason it needs none,
   // and no exclusion is stale). Both run here so a push cannot regress them; skipped only

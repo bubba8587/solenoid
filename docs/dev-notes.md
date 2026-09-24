@@ -42,7 +42,7 @@ specific item.
 ### SESSION DIGEST (2026-09-23: decisions, specs and code comments lined up; author away)
 
 - **What stands:** each fact has one home. Rulings and reasons live in `tree/decisions/`, mechanics in
-  `tree/specs/`, and code keeps only one-sentence line constraints ([[C57]] commentMinimalism). About 14,000
+  `tree/specs/`, and code keeps only one-sentence line constraints (`tree/specs/floors/engineering.md` § Comments). About 14,000
   comment lines left roughly 820 files, comment-only (verified token-for-token against the parse tree); what
   they said landed in a spec or node first. tsc, the full vitest suite, `dte validate` and `coverage --check`
   are green.

@@ -1,4 +1,4 @@
-// [[C8]] declareOnce, [[C9]] labelUnenforced
+// [[B16]] oneFormulaSurface
 import { buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
 import { NODE_EXCEL, EXCEL_GAP } from "./nodeExcel";

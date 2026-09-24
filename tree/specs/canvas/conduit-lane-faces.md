@@ -31,7 +31,7 @@ The point is then rotated by the angle about the pivot, the center of the body s
 
 `conduitLaneOffset` is the only lane geometry. The component paints each square on it, and `conduitLanePoint` puts each cable tip on it, so a tip can never drift off the square it plugs into.
 
-- A cable tip lands on the **center** of its lane's square, not on its rim ([[C7]] authorRuled).
+- A cable tip lands on the **center** of its lane's square, not on its rim (the author's ruling).
 - Tip positions are computed, never measured. React Flow's stored handle box is wrong for a Conduit twice over: it re-measures only on a node version bump, so an expand or collapse leaves it on the old geometry; and it is the bounding box of the rotated square, which is up to √2 larger off-axis.
 - A cable can arrive one frame before the component republishes its lane count, so the lane index is clamped to the last lane.
 - `conduitFacePoint` gives a ribbon trunk's attachment point: the pivot plus or minus the column offset along the angle, for the output or input face (see [[cable-rendering-knobs]]).

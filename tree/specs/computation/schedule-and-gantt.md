@@ -2,7 +2,7 @@
 aliases: ["Schedule and Gantt"]
 tags: [spec, computation]
 ---
-<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D66]] daysMinutesModes, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C63]] oneRecordNode, [[C8]] declareOnce, [[C38]] sinkRunButtonOnly -->
+<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D66]] daysMinutesModes, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C63]] oneRecordNode, [[C38]] sinkRunButtonOnly -->
 
 # Spec: Schedule and Gantt
 
@@ -152,7 +152,7 @@ The checks are the DCMA assessment's that fit a table of tasks, under plain name
 
 ### What is not a node
 
-- Checks are the `diagnostics` output, not a separate node ([[C8]] declareOnce).
+- Checks are the `diagnostics` output, not a separate node ([[engineering#One declaration per fact]]).
 - A baseline is a second scheduled table (a pasted Frame or Cube Input, or a pinned value) wired into the Gantt's `baseline`, not a node that stamps a clock inside `data()`.
 - A work calendar is `weekend_code` and `holidays`, not a socket kind.
 - There is no Predecessors node; the cell is the predecessor list.

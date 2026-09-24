@@ -366,7 +366,7 @@ Two mechanisms keep loads fast ([[graph-load-teardown-performance]]). The topolo
 
 ## Marketing-page scenes
 
-Serves [[C2]] realCanvasScenes. Feature scenes on the marketing pages render the real node components over a local rete stack (their own editor, engine and view). A locked scene (`SceneStage`) borrows the process-wide globals for a single compute and then restores them. A page may host one live, interactive stage (`LiveGraph`) that keeps the globals, so its overlays, such as the report and table popups, work. A page has only one slot each for the global editor, engine and view, which is why it can hold at most one live stage and every other scene is locked and self-contained.
+Serves [[B3]] sameNodeEverywhere: every scene on the marketing pages is the real app, never a picture of it, and at most one scene per page is live. Feature scenes on the marketing pages render the real node components over a local rete stack (their own editor, engine and view). A locked scene (`SceneStage`) borrows the process-wide globals for a single compute and then restores them. A page may host one live, interactive stage (`LiveGraph`) that keeps the globals, so its overlays, such as the report and table popups, work. A page has only one slot each for the global editor, engine and view, which is why it can hold at most one live stage and every other scene is locked and self-contained.
 
 ## Entrance choreography
 

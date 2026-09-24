@@ -2,21 +2,27 @@
 aliases: ["Engineering rules"]
 tags: [spec, floors]
 ---
-<!-- [[C8]] declareOnce, [[C9]] labelUnenforced, [[C17]] shareImpl, [[B2]] webTryDesktopFull -->
+<!-- [[C17]] shareImpl, [[B2]] webTryDesktopFull -->
 
 # Spec: Engineering rules
 
-Serves [[C8]] declareOnce, [[C9]] labelUnenforced, [[C17]] shareImpl and [[B2]] webTryDesktopFull.
+Serves [[C17]] shareImpl and [[B2]] webTryDesktopFull.
 
 The cross-cutting code-hygiene rules. Unlike the other floors this spec has no `covers:` glob: each rule binds every file in the repo, source and tests alike, whenever the file does the thing the rule names. A file that relies on one cites the parent leaf it serves, or nothing.
 
 ## Declarations
 
+### One declaration per fact
+
+**MUST:** every user-visible fact (a label, a name, which operation a node performs, how many inputs it takes) is written down in exactly one place, and every other place that shows it reads it from there. Copying a value into a second place is a defect even while the two copies agree.
+
+No session remembers that a fact was copied, so nothing keeps two copies equal: they are already wrong, and nobody has looked yet. The IS.TEST node once showed ISBOOLEAN while the Add menu search offered ISLOGICAL, so a name read off the node couldn't be found in the menu: its list of operations had been written out twice, one `OPS` array in the component and one in `nodeOps.ts`.
+
 ### An override lives on the declaration it overrides
 
 **MUST:** when a derived value can't be computed for every case, the exception is a field on the same declaration (the `fx` field on an `OP_META` table), never a separate lookup map keyed by the same identity.
 
-A separate map is a second place that must be kept in step, sitting away from the thing it modifies ([[C8]] declareOnce). [[C51]] formulaNaming derives a formula name by despacing the op label, which works only while the label despaces to the function's name. The bare labels of the Sets and Fill ops ("Union", "Constant") despace to UNION and CONSTANT rather than SETUNION and FILLVALUE, so `fx` sits on `SET_OP_META`, `SET_RELATION_META` and `FILL_OP_META`.
+A separate map is a second place that must be kept in step, sitting away from the thing it modifies ([[engineering#One declaration per fact]]). [[C51]] formulaNaming derives a formula name by despacing the op label, which works only while the label despaces to the function's name. The bare labels of the Sets and Fill ops ("Union", "Constant") despace to UNION and CONSTANT rather than SETUNION and FILLVALUE, so `fx` sits on `SET_OP_META`, `SET_RELATION_META` and `FILL_OP_META`.
 
 ### Lists of names are generated
 
@@ -61,3 +67,13 @@ Two modules look like pure value code but reach rete, and are the usual traps: `
 recharts is one lazy chunk. Every renderer that uses recharts lives in `components/chartRender.tsx`, and nothing the app imports statically may import it. `chartView.tsx`, which every card imports, stays free of recharts and loads the chunk behind `lazy` and `Suspense`. The other heavy figure and layout libraries follow the same rule: `mermaid` (MermaidView) and `elkjs` (Tidy) are reached only by dynamic import, never a static `from`. A source sweep enforces it: exactly one file under `src/` imports from `recharts`, and that file is `components/chartRender.tsx`.
 
 recharts is the largest optional dependency, and most documents never draw a chart. On the web ([[B2]] webTryDesktopFull) the first load is the product's first impression, and one static import anywhere in the card tree drags the whole library into the main bundle. Reopen if charts become a core surface that most documents use, or the canvas figure views replace recharts.
+
+## Comments
+
+A comment is a copy of knowledge that has a better home, and copies drift. A reason that governs code belongs in the leaf the code cites, where `trace` and `blast` find it; in a comment it is found only by someone who opens that file. When a comment is reviewed, the default outcome is deletion. DTE's own B38 commentsMigrate makes the same split: the why goes to the leaf, the how to the spec, and only what the code does stays in the code.
+
+- **Where knowledge lives, strongest home first.** (1) The code itself, its names and types: rename before commenting. (2) A machine check: a "do not do X" that a test can enforce becomes a test, because a comment guard is a plea and a test is a wall. (3) The leaf or the spec, found through the routing table in `docs/README.md`. (4) The commit message, which holds all revision history. (5) A comment, only for a line-level constraint that is invisible at every level above and likely to be broken by someone editing that exact line. Both conditions must hold.
+- **What gets cut.** Revision history ("the old code…", "previously…") moves to the commit message; a present-tense constraint tangled up with it survives on its own. A dated ruling in a comment is a misfiled decision: make it a leaf, then delete the comment. Investigations, measurements and negative results have one home (`docs/dev-notes.md` or the spec). A routed file carries no prose beyond its `[[ID]]` line, and content that exists only in a comment is promoted before it is cut. A module header states scope and hard constraints only, cites the spec rather than quoting it, and runs at most two lines. A doc comment carries what the signature cannot (ordering, what null means, units, side effects); a JSDoc that restates the name goes. Never translate code into English. TODOs go to `docs/backlog.md`, and commented-out code is deleted.
+- **The blast-radius test.** A constraint earns a comment only when a mistake could happen at a single edit site, no doc lies on the path to that mistake, and no stronger home is available. Prose that governs a module's architecture goes the other way and is promoted to a leaf or spec.
+- **Compression.** A surviving comment is one sentence stating the constraint (enumerated contracts and truth tables excepted). Section banners appear only in files of about 400 lines or more. No Excel-equivalent or duplicate annotations that the catalog or a spec already carries. Test files (`*.test.ts`, `*.test.tsx`) are exempt for now.
+- **Reopen if** regressions keep happening that a comment would have prevented. Fix the routing first.
