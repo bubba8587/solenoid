@@ -155,6 +155,14 @@ Three tables name functions a formula refuses. Each refusal happens before any a
 
 Formula.js also exposes some legacy stems with dotted children (`FX.TDIST.RT`); the stem is the superseded name, so those dotted spellings are blocked too (`TDIST.RT`, `CHIDIST.RT`, `BINOMDIST.RANGE`, `ISO.CEILING.MATH` and the rest). `TDIST` maps to `T.DIST.RT` because Excel split its tails argument into `.RT` and `.2T`; `TINV` was always two-tailed, so it maps to `T.INV.2T`. `ELIMINATED_FUNCTIONS` is the set of `LEGACY_ALIASES` keys, derived, never kept by hand. Each blocked name is also registered as an internal stub answering the same `#NAME?`, so a direct `resolveExcelFunction` caller (a node) gets the redirect instead of Formula.js's implementation. Blocked names are removed from `RANGE_FUNCTIONS` and `RANGE_POSITIONAL` at module load and filtered out of every advertised list.
 
+### Excel names on cards
+
+Where a card does what an Excel function does, it wears the Excel spelling in capitals ([[D23]] capsClaimsFunction), even when the formula surface won't run that function. This is a naming divergence from Excel, recorded here rather than as a decision of its own:
+
+- **GROUPBY and PIVOTBY** are frame cards. Excel runs them as formulas; Solenoid's formula surface refuses them through `FRAME_SURFACE_NAMES` (Frames don't flow through formulas, [[C15]] matricesInFormulas) and the refusal names the card, so the capitals still point at something the user can use. The [[D23]] test admits the map's keys. Frame verbs with no Excel function (Unpivot, Nest, Rename and the like) stay Title Case. If the stack merge lands, Append and Bind Columns become VSTACK and HSTACK. Reopen if the formula surface starts accepting Frames.
+- **ISBOOLEAN** is the Type Check op's label, because Solenoid's first-class type is called Boolean on every surface. Excel has no ISBOOLEAN, so `excelFunctions.ts` registers `ISBOOLEAN(v)` with ISLOGICAL's test, which keeps the capitals a true callable claim with no `nameCase.test.ts` allowlist entry. `ISLOGICAL` stays callable for Excel parity and is the Inspector's Excel equivalent; the op's saved key stays `islogical`. Reopen if the type is renamed.
+- **DATE (Build)** is the DATE(year, month, day) card. A bare DATE beside a Date Input card would differ only by letter case, so the Title Case parenthetical tells them apart ([[D22]] oneNamePerCard allows a parenthetical that distinguishes rather than hints at use); DATE is still the callable token. Reopen if Date Input is renamed.
+
 `formulaFunctionNames()` is every dispatchable name, uppercase and sorted: Formula.js's flat and dotted names (walked to depth two, skipping `FX.utils`), every `EXCEL_IMPL_META` key and every internal registration, minus `ELIMINATED_FUNCTIONS`.
 
 ### Packs

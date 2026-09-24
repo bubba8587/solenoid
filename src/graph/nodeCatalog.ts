@@ -1,4 +1,4 @@
-// [[C19]] namingModel, [[C53]] queryIsCompositePreset, [[E13]] dateBuildName, [[C14]] currentExcelParity
+// [[C19]] namingModel, [[C53]] queryIsCompositePreset, [[C14]] currentExcelParity
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,

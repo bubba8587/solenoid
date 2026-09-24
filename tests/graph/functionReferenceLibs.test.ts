@@ -1,4 +1,4 @@
-// [[C14]], [[E12]]
+// [[C14]]
 import { describe, it, expect } from "vitest";
 import { buildFunctionReference, libraryTags, LIBRARY_TAGS } from "../../src/graph/functionReference";
 import { EXCEL_GAP } from "../../src/graph/nodeExcel";

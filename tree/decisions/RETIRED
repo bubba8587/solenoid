@@ -28,3 +28,6 @@ C90	2026-09-23	reverted	-	Claude Opus 5.5	the author	drawnCablesAnnotate: A draw
 E1	2026-09-24	superseded	D4	Claude Opus 5.5	-	shapeGuardManualSets: An irreducibly hand-kept set is guarded by the behavior it produces
 E2	2026-09-24	superseded	D13	Claude Opus 5.5	-	cubeNeverNarrowsToFrame: A cube never enters a frame socket; the node gets the wider socket
 E4	2026-09-24	superseded	D15	Claude Opus 5.5	-	oneResolvePredicate: "Resolve past untyped passthroughs" goes through one predicate
+E14	2026-09-24	reverted	-	Claude Opus 5.5	the author	frameVerbExcelNames: A frame verb that is an Excel function carries its Excel spelling
+E12	2026-09-24	reverted	-	Claude Opus 5.5	the author	isBooleanName: The type-check op is ISBOOLEAN, a callable alias of ISLOGICAL
+E13	2026-09-24	reverted	-	Claude Opus 5.5	the author	dateBuildName: The DATE(y, m, d) node is named DATE (Build)
