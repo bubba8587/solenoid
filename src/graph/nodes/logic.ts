@@ -406,7 +406,7 @@ function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) =
 
 export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | "islogical" | "istext" | "isnontext";
 
-// ISBOOLEAN is Solenoid's name for ISLOGICAL (`formula-language.md` § Excel names on cards); the `islogical` key stays because saves use it.
+// ISBOOLEAN is Solenoid's name for ISLOGICAL (`formula-language.md` § Excel names on nodes); the `islogical` key stays because saves use it.
 export const IS_TEST_OP_META = {
   isnumber:  { label: "ISNUMBER",  description: "`TRUE` when the value is a number. Excel: `ISNUMBER`." },
   isblank:   { label: "ISBLANK",   description: "`TRUE` when the cell is empty. Excel: `ISBLANK`." },

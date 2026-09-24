@@ -28,7 +28,7 @@ the decision tree (`dte.md`).
   should express Cube (today singular `any`); Excel range forms (`row=0`/`col=0` whole
   row/col, the reference form) — Solenoid INDEX is cell-only. (`archive/1.4-plan.md` D6 HOLD.)
 - **The stack merge (author 2026-09-23: deferred).** Append and Bind Columns (Frames) sit beside
-  XSTACK (lists and tables). `../tree/specs/computation/formula-language.md` § Excel names on cards says the Frame pair becomes VSTACK and
+  XSTACK (lists and tables). `../tree/specs/computation/formula-language.md` § Excel names on nodes says the Frame pair becomes VSTACK and
   HSTACK when the merge lands; [[C48]] appendLadder keeps one append node per rank. Reopening it
   means picking one of the two and rewording the other.
 
