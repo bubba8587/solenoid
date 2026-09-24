@@ -113,6 +113,20 @@ describe("PolarsBackend — verb command shapes", () => {
     expect(call![1]).toEqual({ left: l, right: r, opts });
   });
 
+  it("join → keys in two units send the transform the join corpus's `unit keys` cases pin", async () => {
+    const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
+    const keyed = (spec: string): FrameValue => ({ __frame: true, columns: [{ name: "d", type: "number", values: [1], unit: columnUnitFromSpec(spec)! }] });
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:L");
+    const l = await be.source(keyed("km"));
+    invokeMock.mockResolvedValueOnce("plf:R");
+    const r = await be.source(keyed("m"));
+    invokeMock.mockResolvedValueOnce("plf:J");
+    await be.join(l, r, { leftKey: "d", rightKey: "d", how: "inner" });
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_join");
+    expect((call![1] as { opts: JoinOpts }).opts).toEqual({ leftKey: "d", rightKey: "d", how: "inner", rightKeyScale: 0.001, rightKeyOffset: 0 });
+  });
+
   it("append → engine_append { handles }", async () => {
     const be = frameBackend();
     invokeMock.mockResolvedValueOnce("plf:A");
@@ -286,8 +300,41 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
     await frameBackend().source(withNf);
     const call = invokeMock.mock.calls.find((c) => c[0] === "engine_source");
     expect(call?.[1]).toEqual({
-      frame: { columns: [{ name: "v", type: "number", values: [1, { __nf: "inf" }, { __nf: "-inf" }, { __nf: "nan" }, { __err: "#DIV/0!" }] }] },
+      frame: { columns: [{ name: "v", type: "number", values: [1, { __nf: "inf" }, { __nf: "-inf" }, { __nf: "nan" }, { __err: "#DIV/0!", ref: expect.any(Number) }] }] },
     });
+  });
+
+  it("an uploaded error cell comes back as the same SolError, message and origin kept", async () => {
+    const err = { ...solError("#N/A", "no match for 7"), origin: { nodeId: "n1", nodeName: "Lookup", rowIndex: 2 } };
+    invokeMock.mockResolvedValueOnce("plf:src");
+    const ref = await runFrameUnary({ __frame: true, columns: [{ name: "v", type: "number", values: [1, err] }] }, { kind: "sort", by: "v", dir: "desc" });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    const sent = invokeMock.mock.calls.find((c) => c[0] === "engine_source")![1] as { frame: { columns: { values: { ref?: number }[] }[] } };
+    const wireRef = sent.frame.columns[0].values[1].ref;
+    invokeMock.mockResolvedValueOnce("plf:f");
+    invokeMock.mockResolvedValueOnce([{ name: "v", type: "number", values: [1, { __err: "#N/A", ref: wireRef }] }]);
+    const out = await readFrame(ref) as FrameValue;
+    expect(out.columns[0].values[1]).toBe(err);
+  });
+
+  it("a frame with an error cell in a text or logical column computes on the oracle", async () => {
+    const be = frameBackend();
+    const textErr: FrameValue = { __frame: true, columns: [
+      { name: "k", type: "number", values: [2, 1] },
+      { name: "s", type: "string", values: ["a", solError("#N/A", "x")] },
+    ] };
+    const h = await be.source(textErr);
+    expect(String(h).startsWith("jsf:")).toBe(true);
+    const sorted = await be.apply(h, { kind: "sort", by: "k", dir: "asc" });
+    expect((await be.collect(sorted)).columns[1].values[0]).toMatchObject({ code: "#N/A" });
+    expect(invokeMock).not.toHaveBeenCalled();
+    invokeMock.mockResolvedValueOnce("plf:R");
+    const right = await be.source({ __frame: true, columns: [{ name: "k", type: "number", values: [1] }, { name: "v", type: "number", values: [10] }] });
+    invokeMock.mockResolvedValueOnce([{ name: "k", type: "number", values: [1] }, { name: "v", type: "number", values: [10] }]);
+    const joined = await be.join(h, right, { leftKey: "k", rightKey: "k", how: "inner" });
+    expect(invokeMock.mock.calls.map((c) => c[0])).toEqual(["engine_source", "engine_collect"]);
+    const out = await be.collect(joined);
+    expect(out.columns.map((c) => c.values)).toEqual([[1], [expect.objectContaining({ code: "#N/A" })], [10]]);
   });
 
   it("collect DECODES the sentinel back to Infinity/NaN (no more silent null)", async () => {

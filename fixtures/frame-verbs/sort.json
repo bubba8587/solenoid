@@ -550,6 +550,62 @@
      }
     ]
    }
+  },
+  {
+   "name": "error cells: error cells tail with blanks and NaN, in input order",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        3,
+        {
+         "__err": "#N/A"
+        },
+        1,
+        null,
+        {
+         "__err": "#DIV/0!"
+        },
+        {
+         "__nf": "nan"
+        },
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sort",
+    "by": "n",
+    "dir": "desc"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       3,
+       2,
+       1,
+       {
+        "__err": "#N/A"
+       },
+       null,
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__nf": "nan"
+       }
+      ]
+     }
+    ]
+   }
   }
  ]
 }

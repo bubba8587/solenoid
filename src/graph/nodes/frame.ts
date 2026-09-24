@@ -32,7 +32,7 @@ import {
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
-  filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS, LIST_FILTER_OPS,
+  VALUELESS_FILTER_OPS, LIST_FILTER_OPS,
   sortCube, distinctCube, sliceCube, filterCube, selectCubeColumns, windowCube,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
@@ -577,15 +577,6 @@ export class FilterFrameNode extends ClassicPreset.Node {
     }
     if (conditions.length === 0) {
       return { ...(await emitFrame(this, gen, await passFrame(f))), dropped: this.publishDropped(gen, null) };
-    }
-    if (conditions.some((c) => ERROR_FILTER_OPS.has(c.op))) {
-      const mat = await readFrame(f);
-      if (mat == null || isSolError(mat)) {
-        return { ...(await emitFrame(this, gen, mat ?? null)), dropped: this.publishDropped(gen, null) };
-      }
-      const keptF = filterRowsMulti(mat, this.combine, conditions);
-      const droppedF = filterRowsMulti(mat, this.combine, conditions, true);
-      return { ...(await emitFrame(this, gen, keptF)), dropped: this.publishDropped(gen, droppedF) };
     }
     const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
     const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });

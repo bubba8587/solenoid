@@ -25,6 +25,15 @@ describe("join keys with units", () => {
     expect(out.columns[0].values).toEqual([5000, 7000]);
   });
 
+  it("conversion noise doesn't block a match: °F reads as °C, m as ft", () => {
+    const c = frame({ name: "t", type: "number", values: [20, 100, 0, -40], unit: unit("degC") });
+    const f = frame({ name: "t", type: "number", values: [68, 212, 32, -40], unit: unit("degF") }, { name: "v", type: "number", values: [1, 2, 3, 4] });
+    expect(joinFrames(c, f, { leftKey: "t", rightKey: "t", how: "left" }).columns[1].values).toEqual([1, 2, 3, 4]);
+    const ft = frame({ name: "d", type: "number", values: [1, 10], unit: unit("ft") });
+    const m = frame({ name: "d", type: "number", values: [0.3048, 3.048], unit: unit("m") }, { name: "v", type: "number", values: [1, 2] });
+    expect(joinFrames(ft, m, { leftKey: "d", rightKey: "d", how: "left" }).columns[1].values).toEqual([1, 2]);
+  });
+
   it("keys measuring different things are #UNIT!", () => {
     const left = frame({ name: "d", type: "number", values: [5], unit: unit("km") });
     const right = frame({ name: "d", type: "number", values: [5], unit: unit("kg") });

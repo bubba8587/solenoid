@@ -4405,6 +4405,263 @@
      }
     ]
    }
+  },
+  {
+   "name": "error cells: an error in a partition answers every cumulative row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "p",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b",
+        "b"
+       ]
+      },
+      {
+       "name": "o",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        2,
+        1,
+        2
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__err": "#DIV/0!"
+        },
+        4,
+        5
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "p"
+    ],
+    "orderBy": "o",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "v",
+    "as": "c"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "p",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a",
+       "b",
+       "b"
+      ]
+     },
+     {
+      "name": "o",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       2,
+       1,
+       2
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#DIV/0!"
+       },
+       4,
+       5
+      ]
+     },
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#N/A"
+       },
+       4,
+       9
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: lag passes error cells through",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "lag",
+    "column": "v",
+    "as": "l",
+    "n": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__err": "#N/A"
+       },
+       3
+      ]
+     },
+     {
+      "name": "l",
+      "type": "number",
+      "values": [
+       null,
+       1,
+       {
+        "__err": "#N/A"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: error partition keys split by code",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "p",
+       "type": "number",
+       "values": [
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__err": "#DIV/0!"
+        },
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__nf": "nan"
+        }
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "p"
+    ],
+    "fn": "group_sum",
+    "column": "v",
+    "as": "g"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "p",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__nf": "nan"
+       }
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       4
+      ]
+     },
+     {
+      "name": "g",
+      "type": "number",
+      "values": [
+       4,
+       2,
+       4,
+       4
+      ]
+     }
+    ]
+   }
   }
  ]
 }

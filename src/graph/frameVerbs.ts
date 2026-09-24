@@ -6,10 +6,9 @@ import {
   isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
-import { sameColumnUnit, isUnitCell, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
+import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
 import { dimEqual, dimPow, formatDim } from "./dimension";
 import { fcUnitToUnit } from "./unitBridge";
-import { tagFrameCellUnit } from "./unitColumn";
 import { forAggregate, coerceLogical, guardFinite, decimalFromText } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
@@ -28,8 +27,6 @@ export type FilterOp =
   | "listContains" | "listContainsAny" | "listContainsAll" | "listEmpty";
 
 export const VALUELESS_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["isblank", "notblank", "iserror", "noterror", "listEmpty"]);
-
-export const ERROR_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["iserror", "noterror"]);
 
 export const LIST_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["listContains", "listContainsAny", "listContainsAll", "listEmpty"]);
 
@@ -558,10 +555,20 @@ export function joinKeyTransform(left: FrameColumn | undefined, right: FrameColu
   if (!dimEqual(lu.dim, ru.dim) || (isCurrency(lu.dim) && (lu.display ?? "") !== (ru.display ?? ""))) {
     throw solError("#UNIT!", `Join keys measure different things (${lu.display ?? formatDim(lu.dim)} and ${ru.display ?? formatDim(ru.dim)}). Convert one key first`);
   }
-  const toBase = (x: number, u: typeof lu) => { const t = tagFrameCellUnit(x, u); return isUnitCell(t) ? t.value : (t as number); };
-  const al = toBase(1, lu) - toBase(0, lu), bl = toBase(0, lu);
-  const ar = toBase(1, ru) - toBase(0, ru), br = toBase(0, ru);
-  return { scale: ar / al, offset: (br - bl) / al };
+  const affine = (u: ColumnUnit) => { const x = u.display ? fcUnitToUnit(u.display) : null; return { a: x?.scale ?? 1, b: x?.offset ?? 0 }; };
+  const l = affine(lu), r = affine(ru);
+  return { scale: r.a / l.a, offset: (r.b - l.b) / l.a };
+}
+
+const decimalExponent = (x: number): number => Number(Math.abs(x).toExponential().split("e")[1]);
+
+/** A right key read in the left key's unit, rounded at the 15th significant digit of the larger term. */
+function convertKey(v: number, scale: number, offset: number): number {
+  const y = v * scale + offset;
+  const t = Math.max(Math.abs(v * scale), Math.abs(offset));
+  if (!Number.isFinite(y) || y === 0 || !Number.isFinite(t)) return y;
+  const p = decimalExponent(y) - decimalExponent(t) + 15;
+  return p < 1 ? 0 : p > 100 ? y : Number(y.toPrecision(p));
 }
 
 const encKey = (v: FrameCell): string => JSON.stringify(encodeCell(v));
@@ -706,7 +713,7 @@ export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts):
   if (t && (t.scale !== 1 || t.offset !== 0) && rk.type === "number") {
     const scaled: FrameColumn = {
       ...rk, ...(lk.unit ? { unit: lk.unit } : {}),
-      values: rk.values.map((v) => (typeof v === "number" ? v * t.scale + t.offset : v)),
+      values: rk.values.map((v) => (typeof v === "number" ? convertKey(v, t.scale, t.offset) : v)),
     };
     const { raw: _raw, ...clean } = scaled;
     right = frame(right.columns.map((c) => (c === rk ? clean : c)));

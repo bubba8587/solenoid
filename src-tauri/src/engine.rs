@@ -55,7 +55,10 @@ impl Cell {
         match self {
             Cell::Null => serde_json::json!(["n"]),
             Cell::Bool(b) => serde_json::json!(["b", b]),
-            Cell::Num(n) => serde_json::json!(["#", key_num(*n)]),
+            Cell::Num(n) => match error_of(*n) {
+                Some((code, _)) => serde_json::json!(["e", code]),
+                None => serde_json::json!(["#", key_num(*n)]),
+            },
             Cell::Str(s) => serde_json::json!(["s", s]),
         }
     }
@@ -202,10 +205,14 @@ fn json_to_cell(v: &Json, ty: SolType) -> Cell {
                     t.parse::<f64>().map(Cell::Num).unwrap_or(Cell::Null)
                 }
             }
-            Json::Object(o) => match o.get("__nf").and_then(Json::as_str) {
-                Some("inf") => Cell::Num(f64::INFINITY),
-                Some("-inf") => Cell::Num(f64::NEG_INFINITY),
-                Some("nan") => Cell::Num(f64::NAN),
+            Json::Object(o) => match (o.get("__nf").and_then(Json::as_str), o.get("__err").and_then(Json::as_str)) {
+                (Some("inf"), _) => Cell::Num(f64::INFINITY),
+                (Some("-inf"), _) => Cell::Num(f64::NEG_INFINITY),
+                (Some("nan"), _) => Cell::Num(f64::NAN),
+                (_, Some(code)) => {
+                    let reference = o.get("ref").and_then(Json::as_u64).unwrap_or(0) as u32;
+                    Cell::Num(f64::from_bits(error_cell_bits(code, reference)))
+                }
                 _ => Cell::Null,
             },
             _ => Cell::Null,
@@ -223,17 +230,15 @@ fn cell_to_json(c: &Cell) -> Json {
 }
 
 fn num_to_json(n: f64) -> Json {
+    if let Some((code, why)) = error_of(n) {
+        return match why {
+            ErrWhy::Reason(r) => serde_json::json!({"__err": code, "why": r}),
+            ErrWhy::Ref(0) => serde_json::json!({"__err": code}),
+            ErrWhy::Ref(k) => serde_json::json!({"__err": code, "ref": k}),
+        };
+    }
     if n.is_nan() {
-        let err = |code: &str, why: &str| serde_json::json!({"__err": code, "why": why});
-        match n.to_bits() {
-            ERR_DOMAIN_BITS => return err("#DOMAIN!", "domain"),
-            ERR_OVERFLOW_BITS => return err("#OVERFLOW!", "overflow"),
-            ERR_DIV0_BITS => return err("#DIV/0!", "pct_change_from_zero"),
-            ERR_DIV0_TOTAL_BITS => return err("#DIV/0!", "zero_total"),
-            ERR_UNIT_ADD_BITS => return err("#UNIT!", "readings_add"),
-            ERR_UNIT_SCALE_BITS => return err("#UNIT!", "readings_scale"),
-            _ => return serde_json::json!({"__nf": "nan"}),
-        }
+        return serde_json::json!({"__nf": "nan"});
     }
     if n.is_infinite() {
         return serde_json::json!({"__nf": if n > 0.0 { "inf" } else { "-inf" }});
@@ -857,7 +862,22 @@ fn lazy_window(
     };
     let nn = n.unwrap_or(1.0).round().max(1.0) as i64;
     // No partition is one group: a constant column key, since `.over(lit)` breaks `first` and `last`.
-    let keys: Vec<Expr> = if partition_by.is_empty() { vec![col(WINDOW_IDX).is_null()] } else { partition_by.iter().map(|k| col(k.as_str())).collect() };
+    let keys: Vec<Expr> = if partition_by.is_empty() {
+        vec![col(WINDOW_IDX).is_null()]
+    } else {
+        partition_by
+            .iter()
+            .flat_map(|k| {
+                let c = col(k.as_str());
+                match type_of_in(&plan.names, &plan.types, k) {
+                    Some(SolType::Number | SolType::Date) => {
+                        vec![when(is_err_expr(c.clone())).then(lit(NULL)).otherwise(c.clone()), nonfinite_label_expr(c)]
+                    }
+                    _ => vec![c],
+                }
+            })
+            .collect()
+    };
     let over = |e: Expr| e.over(keys.clone());
     let col_ty = col_name.and_then(|c| type_of_in(&plan.names, &plan.types, c));
     let vnum = || {
@@ -952,6 +972,12 @@ fn lazy_window(
         "first" => over(vraw().first()),
         "last" => over(vraw().last()),
         other => return Err(IpcError::new("#VALUE!", format!("unknown window function \"{other}\""))),
+    };
+    let expr = if needs_column && !matches!(func, "lag" | "lead") && matches!(col_ty, Some(SolType::Number | SolType::Date)) {
+        let errs = is_err_expr(vraw());
+        when(over(errs.clone().any(true))).then(over(vraw().filter(errs).first())).otherwise(expr)
+    } else {
+        expr
     };
     let expr = match (reading_scale, func) {
         (Some(_), "cumsum" | "rolling_sum" | "group_sum") => unit_error_column(ERR_UNIT_ADD_BITS),
@@ -1163,9 +1189,14 @@ fn cell_display(c: &Cell) -> Option<String> {
 
 fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> Result<Option<Expr>, IpcError> {
     let c = col(column);
+    let numeric = matches!(ty, SolType::Number | SolType::Date);
     match op {
         "isblank" => return Ok(Some(c.is_null())),
         "notblank" => return Ok(Some(c.is_not_null())),
+        "iserror" | "noterror" => {
+            let err = if numeric { is_err_expr(c) } else { c.is_null().and(lit(false)) };
+            return Ok(Some(if op == "iserror" { err } else { err.not() }));
+        }
         _ => {}
     }
     if value.is_null() {
@@ -1207,6 +1238,7 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
         parsed
     };
     let Some(v) = parsed else { return Ok(None) };
+    let not_err = if numeric { is_err_expr(c.clone()).not() } else { lit(true) };
     let x = c.cast(DataType::Float64);
     let y = lit(v);
     let e = match op {
@@ -1218,7 +1250,7 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
         "gte" => x.clone().gt_eq(y).and(x.is_not_nan()),
         _ => return Err(IpcError::new("#VALUE!", format!("unknown filter op \"{op}\""))),
     };
-    Ok(Some(e))
+    Ok(Some(e.and(not_err)))
 }
 
 fn require_text_column(op: &str, ty: SolType, column: &str) -> Result<(), IpcError> {
@@ -1331,6 +1363,79 @@ const ERR_DIV0_BITS: u64 = 0x7ff8_0000_0000_0d03;
 const ERR_UNIT_ADD_BITS: u64 = 0x7ff8_0000_0000_0e04;
 const ERR_UNIT_SCALE_BITS: u64 = 0x7ff8_0000_0000_0e05;
 const ERR_DIV0_TOTAL_BITS: u64 = 0x7ff8_0000_0000_0d06;
+
+// ─── Error cells: a reserved quiet NaN in a number or date column ──────────────
+const ERR_CELL_TAG: u64 = 0x7ffc;
+const ERR_CODES: &[&str] = &[
+    "#DIV/0!", "#N/A", "#DOMAIN!", "#CONV!", "#OVERFLOW!", "#SYNTAX!", "#VALUE!", "#TYPE!",
+    "#SHAPE!", "#UNIT!", "#NAME?", "#REF!", "#CIRC!", "#SOLVE!", "#AMBIGUOUS!", "#ERROR!",
+];
+
+fn error_cell_bits(code: &str, reference: u32) -> u64 {
+    let idx = ERR_CODES.iter().position(|c| *c == code).unwrap_or(ERR_CODES.len() - 1) as u64;
+    (ERR_CELL_TAG << 48) | (idx << 32) | reference as u64
+}
+
+enum ErrWhy {
+    Reason(&'static str),
+    Ref(u32),
+}
+
+fn error_of(n: f64) -> Option<(&'static str, ErrWhy)> {
+    if !n.is_nan() {
+        return None;
+    }
+    let b = n.to_bits();
+    let reason = |code, why| Some((code, ErrWhy::Reason(why)));
+    match b {
+        ERR_DOMAIN_BITS => reason("#DOMAIN!", "domain"),
+        ERR_OVERFLOW_BITS => reason("#OVERFLOW!", "overflow"),
+        ERR_DIV0_BITS => reason("#DIV/0!", "pct_change_from_zero"),
+        ERR_DIV0_TOTAL_BITS => reason("#DIV/0!", "zero_total"),
+        ERR_UNIT_ADD_BITS => reason("#UNIT!", "readings_add"),
+        ERR_UNIT_SCALE_BITS => reason("#UNIT!", "readings_scale"),
+        _ if b >> 48 == ERR_CELL_TAG => ERR_CODES.get(((b >> 32) & 0xffff) as usize).map(|c| (*c, ErrWhy::Ref(b as u32))),
+        _ => None,
+    }
+}
+
+fn is_err_expr(e: Expr) -> Expr {
+    e.cast(DataType::Float64).map(
+        |c: Column| {
+            let s = c.as_materialized_series();
+            let mask: Vec<bool> = s.f64()?.into_iter().map(|v| v.is_some_and(|x| error_of(x).is_some())).collect();
+            Ok(Some(Series::new(c.name().clone(), mask).into_column()))
+        },
+        GetOutput::from_type(DataType::Boolean),
+    )
+}
+
+/// A label that tells apart the cells a finite key can't: NaN, ±Infinity, and each error code.
+fn nonfinite_label_expr(e: Expr) -> Expr {
+    e.cast(DataType::Float64).map(
+        |c: Column| {
+            let s = c.as_materialized_series();
+            let labels: Vec<Option<&str>> = s
+                .f64()?
+                .into_iter()
+                .map(|v| match v {
+                    Some(x) if x.is_finite() => None,
+                    Some(x) if x.is_nan() => Some(error_of(x).map_or("nan", |(code, _)| code)),
+                    Some(x) => Some(if x > 0.0 { "inf" } else { "-inf" }),
+                    None => None,
+                })
+                .collect();
+            Ok(Some(Series::new(c.name().clone(), labels).into_column()))
+        },
+        GetOutput::from_type(DataType::String),
+    )
+}
+
+/// The oracle's `forAggregate`: an error cell anywhere in the group answers with the first one.
+fn first_error_or(e: Expr, src: Expr) -> Expr {
+    let errs = is_err_expr(src.clone());
+    when(errs.clone().any(true)).then(src.filter(errs).first()).otherwise(e)
+}
 
 // ─── Units through an aggregate, as the oracle's `readingPlan` ────────────────
 // The engine sees no units, so the op names the column's reading scale, or a linear unit's
@@ -1549,19 +1654,13 @@ fn group_by_lazy_plan(
             group_exprs.push(
                 when(c.clone().is_finite()).then(c.clone()).otherwise(lit(NULL)).alias(format!("__gk{i}v")),
             );
-            group_exprs.push(
-                when(c.clone().is_nan())
-                    .then(lit("nan"))
-                    .when(c.clone().eq(lit(f64::INFINITY)))
-                    .then(lit("inf"))
-                    .when(c.eq(lit(f64::NEG_INFINITY)))
-                    .then(lit("-inf"))
-                    .otherwise(lit(NULL))
-                    .alias(format!("__gk{i}nf")),
-            );
+            group_exprs.push(nonfinite_label_expr(c).alias(format!("__gk{i}nf")));
         } else {
             group_exprs.push(c.alias(format!("__gk{i}v")));
         }
+    }
+    if keys.is_empty() {
+        group_exprs.push(lit(0i32).alias("__gk_all"));
     }
     let mut out_types: Vec<SolType> = keys.iter().map(|k| type_of_in(names, types, k).unwrap()).collect();
     let mut agg_exprs: Vec<Expr> = keys
@@ -1577,7 +1676,7 @@ fn group_by_lazy_plan(
             && a.op != "count"
             && a.op != "percentof"
         {
-            e = guard_agg_expr(e, col(a.column.as_str()));
+            e = first_error_or(guard_agg_expr(e, col(a.column.as_str())), col(a.column.as_str()));
         }
         if preserves && src_ty == SolType::Logical {
             e = e.neq(lit(0.0));
@@ -1693,6 +1792,58 @@ fn assemble_join_layout(
     Ok(SolFrame { df, types: final_types })
 }
 
+/// The decimal exponent of `x`, read off its shortest round-trip form (as JS `toExponential()`).
+fn decimal_exponent(x: f64) -> i32 {
+    format!("{:e}", x.abs()).split_once('e').and_then(|(_, e)| e.parse().ok()).unwrap_or(0)
+}
+
+/// `Number(x.toPrecision(p))`: the exact value rounds half up at `p` significant digits.
+fn round_sig(x: f64, p: usize) -> f64 {
+    if !x.is_finite() || x == 0.0 || p == 0 || p > 100 {
+        return x;
+    }
+    let exact = format!("{:.100e}", x.abs());
+    let (mantissa, exp) = exact.split_once('e').unwrap_or((&exact, "0"));
+    let digits: Vec<u8> = mantissa.bytes().filter(u8::is_ascii_digit).take(p + 1).collect();
+    let mut kept: String = digits[..p].iter().map(|&d| d as char).collect();
+    if digits.get(p).is_some_and(|&d| d >= b'5') {
+        let mut bytes = kept.into_bytes();
+        let mut i = bytes.len();
+        loop {
+            if i == 0 {
+                bytes.insert(0, b'1');
+                break;
+            }
+            i -= 1;
+            if bytes[i] == b'9' {
+                bytes[i] = b'0';
+            } else {
+                bytes[i] += 1;
+                break;
+            }
+        }
+        kept = String::from_utf8(bytes).unwrap_or_default();
+    }
+    let exp: i32 = exp.parse().unwrap_or(0);
+    let v: f64 = format!("{kept}e{}", exp - (p as i32 - 1)).parse().unwrap_or(x.abs());
+    v.copysign(x)
+}
+
+/// A right key read in the left key's unit, `v × scale + offset`, rounded at the 15th
+/// significant digit of the larger term, so conversion noise can't block a match.
+fn convert_key(v: f64, scale: f64, offset: f64) -> f64 {
+    if v.is_nan() {
+        return v;
+    }
+    let y = v * scale + offset;
+    let t = (v * scale).abs().max(offset.abs());
+    if !y.is_finite() || y == 0.0 || !t.is_finite() {
+        return y;
+    }
+    let p = decimal_exponent(y) - decimal_exponent(t) + 15;
+    if p < 1 { 0.0 } else { round_sig(y, p as usize) }
+}
+
 fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
     if opts.how.as_str() == "cross" {
         let joined = left
@@ -1713,21 +1864,24 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
         ));
     }
     let scaled_right;
-    let right = match (rt, opts.right_key_scale, opts.right_key_offset) {
-        (SolType::Number, s, o) if s.is_some() || o.is_some() => {
-            let (s, o) = (s.unwrap_or(1.0), o.unwrap_or(0.0));
-            let k = opts.right_key.as_str();
-            let df = right
-                .df
-                .clone()
-                .lazy()
-                .with_column((col(k).cast(DataType::Float64) * lit(s) + lit(o)).alias(k))
-                .collect()
-                .map_err(|e| IpcError::internal(format!("join key scale failed: {e}")))?;
-            scaled_right = SolFrame { df, types: right.types.clone() };
-            &scaled_right
-        }
-        _ => right,
+    let (scale, offset) = (opts.right_key_scale.unwrap_or(1.0), opts.right_key_offset.unwrap_or(0.0));
+    let right = if rt == SolType::Number && (scale != 1.0 || offset != 0.0) {
+        let k = opts.right_key.as_str();
+        let (_, cells) = right.column_cells(k).unwrap_or((rt, Vec::new()));
+        let read: Vec<Cell> = cells
+            .into_iter()
+            .map(|c| match c {
+                Cell::Num(v) => Cell::Num(convert_key(v, scale, offset)),
+                other => other,
+            })
+            .collect();
+        let mut df = right.df.clone();
+        df.with_column(series_of(k, rt, &read))
+            .map_err(|e| IpcError::internal(format!("join key scale failed: {e}")))?;
+        scaled_right = SolFrame { df, types: right.types.clone() };
+        &scaled_right
+    } else {
+        right
     };
     if opts.how.as_str() == "asof" {
         return verb_join_asof(left, right, opts);
