@@ -4,6 +4,55 @@ Relegated from `dev-notes.md` to keep the live log lean. Entries keep their orig
 
 ---
 
+## Sweep 2026-09-24b — session digest 2026-09-23 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-23: decisions, specs and code comments lined up; author away)
+
+- **What stands:** each fact has one home. Rulings and reasons live in `tree/decisions/`, mechanics in
+  `tree/specs/`, and code keeps only one-sentence line constraints (`tree/specs/floors/engineering.md` § Comments). About 14,000
+  comment lines left roughly 820 files, comment-only (verified token-for-token against the parse tree); what
+  they said landed in a spec or node first. tsc, the full vitest suite, `dte validate` and `coverage --check`
+  are green.
+- **Tree:** C72 merged into B11 and C104 into C103; D73 nodeCoversFormula split out of C17; new C109
+  linuxOwnWindowControls and D74 webkitgtkNoNodeLayers give the Linux window chrome its reasons. About 30
+  nodes gained a Why or a correction from the lift, each with a History line. The E14 vs C48 stack merge is
+  deferred (`deferrals.md`).
+- **Specs:** `format-model`, `value-semantics`, `layout-chrome` and `touch-gestures` moved into the vault and
+  are cited as wikilinks. New: `table-popup`, `palette-and-theme`, `command-palette`, `outline-panel`. Nearly
+  every other spec was restructured for reading in Obsidian with no fact dropped. Stale
+  "subsystem-invariants §" pointers across docs now name the spec itself.
+- **Tests:** the suite runs in about 15s instead of about 100s. `vitest.config.ts` splits a shared project
+  (`isolate: false`, reset by `tests/setup/sharedWorker.ts`) from a short isolated list of files that need
+  a fresh module graph.
+- **Code fixes riding along:** the Composed chart draws its legend below the plot like Scatter; the
+  HTML-in-Canvas renderer draws `anycombo` as a split square like the DOM socket.
+- **Comment-lift suspects:** fixed or ruled (`a6cb19b2`); the last one, Range including Stop, is now
+  [[C110]] rangeIncludesStop on the author's reason (not an Excel function, so it matches LinSpace).
+- **Author rulings, author present:** C90 retired (the drawn-cables spec covers its files); D62 ratified;
+  Conduit N and the Slider's per-change speed are exceptions under D22 and C95; op switches stop writing
+  `node.label` (a sweep in `sourceInvariants.test.ts` holds it, [[D22]]).
+- **Demo data:** Local File's folder falls back to the demo vault's `Data` like the vault does ([[C1]]), and
+  Personal Finance reads its CSVs from there with Local File cards. The demo vault serves
+  `.obsidian/types.json` and `daily-notes.json`, so demo reads match a real vault.
+- **Formula side:** every kernel a pack formula calls lives in a rete-free `nodes/*Ops.ts`, each pack's
+  formulas in `packs/<id>Formulas.ts`, and `formulaPathIsReteFree.test.ts` roots at them (`../tree/specs/floors/engineering.md` § The formula path is rete-free).
+- **Site:** the Packs and Examples pages render from `BUILTIN_PACKS` and `SEED_GROUPS`; the Obsidian page
+  leads with Solenoid Properties, a live panel of the plugin's own `PropertyChip` over the demo vault; each
+  page gets its own title and link-preview tags (`siteMeta.ts`, `<page>.html`, `vercel.json`). Phone
+  layout: the scene thread hides in one column and scene frames cap at 82vw. The author's own copy is theirs:
+  flag, don't rewrite ("turbocharges" restored).
+- **Also:** the Schedule and Gantt spec is in the vault (`schedule-and-gantt`); dependencies are on latest,
+  `mermaid` 12 with a `lodash-es` override. **For the author:** C70's per-row faults vs the whole-run error,
+  and Local File's grammar-text Predecessors (both in the backlog).
+- **Charts:** every figure the Chart Builder titles now draws its title, and the Sankey, KPI and Gauge cards
+  render through `ChartFigure`, so options apply on the card ([[D75]] builderExposesEveryOption: a type's
+  builder keys are exactly what its renderer honors; `chartTitles.test.ts`). The audit made alpha, radar,
+  canvas-figure fontsize and the Gantt view keys real. Sankey merges repeated From/To pairs (`mergeFlows`)
+  and lifts a flow on hover. Every chart card, Chart Builder, Mermaid and Record included, is the chart
+  kind; an unfiled card with one non-numeric output wears its output's color ([[C111]]).
+
+---
+
 ## Sweep 2026-09-24 — session digests 2026-09-22d and 2026-09-22c (moved verbatim from the live window)
 
 ### SESSION DIGEST (2026-09-22d: fixing what the rebuild specs found; author away)

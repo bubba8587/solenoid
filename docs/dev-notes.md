@@ -6,6 +6,27 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-24b: the review leads closed, and the tree made ratifiable; author present, then remote)
+
+- **Review leads:** every "2026-09-24 review rounds" lead is fixed with a failing test first, or inboxed (units,
+  formulas vs Excel, frames, charts and schedule, stores, documents, engines, composite inner state), plus two
+  rounds of follow-ups. One text-to-number reader everywhere (`decimalFromText`, hex is text, "1,234" is 1234,
+  desktop engine included); the native engine carries error cells with their code; joins on units match 68 °F to
+  20 °C. Full suite 6573 green, tsc clean, `dte validate` and `coverage --check` green.
+- **Tree, the author's rulings:** a leaf is a product call a person could decide, in plain words, following
+  from its parent (A thus B thus C); mechanics, code order and designs are specs (`docs/dte.md` § What is a leaf
+  and what is a spec). "Leaf" means a tree item and "node" an app node. Our `dte-feedback.md` is the input to
+  DTE's next version, and practice here leads the vendored text.
+- **Tree, what stands:** about 190 leaves down to 127. About 70 moved into specs (new
+  `tree/specs/floors/engineering.md`), four duplicates merged, the rules-about-rules (tree home, author-ruled,
+  exceptions, spec-first, comments, wikilinks, outbox, enforcement labels) retired as DTE's job with Solenoid's
+  practice in `docs/dte.md`; 16 leaves reparented to the leaf they follow from; two new B leaves ([[B18]]
+  safeToShare, [[B19]] spreadsheetHabits). Every leaf's Why argues from its parent and its Decision names the
+  rejected option. The author ratified A1, B1, B2, B3, B7 and E10, rewrote A5, A6 and those B leaves in their
+  own words, and removed `made_by`/`by` and `name` (local `tools/dte.py` patch: the name is the first alias).
+- **Open:** the ratification walk continues with the rest of ring B; 34 inbox items; desktop window-close check on
+  the next build (backlog).
+
 ### SESSION DIGEST (2026-09-24: adversarial review rounds over the tree and specs; author checking in)
 
 - **What stands:** about 20 reviewer branches, one slice each (compute, frames, values, documents, canvas,
@@ -39,47 +60,3 @@ specific item.
 - **Open:** 30 inbox items await the author. A DTE tool patch (processed outbox items leave a review card in the
   inbox; a node dragged into `outbox/` stays a node) is stashed, not applied, pending the author's go.
 
-### SESSION DIGEST (2026-09-23: decisions, specs and code comments lined up; author away)
-
-- **What stands:** each fact has one home. Rulings and reasons live in `tree/decisions/`, mechanics in
-  `tree/specs/`, and code keeps only one-sentence line constraints (`tree/specs/floors/engineering.md` § Comments). About 14,000
-  comment lines left roughly 820 files, comment-only (verified token-for-token against the parse tree); what
-  they said landed in a spec or node first. tsc, the full vitest suite, `dte validate` and `coverage --check`
-  are green.
-- **Tree:** C72 merged into B11 and C104 into C103; D73 nodeCoversFormula split out of C17; new C109
-  linuxOwnWindowControls and D74 webkitgtkNoNodeLayers give the Linux window chrome its reasons. About 30
-  nodes gained a Why or a correction from the lift, each with a History line. The E14 vs C48 stack merge is
-  deferred (`deferrals.md`).
-- **Specs:** `format-model`, `value-semantics`, `layout-chrome` and `touch-gestures` moved into the vault and
-  are cited as wikilinks. New: `table-popup`, `palette-and-theme`, `command-palette`, `outline-panel`. Nearly
-  every other spec was restructured for reading in Obsidian with no fact dropped. Stale
-  "subsystem-invariants §" pointers across docs now name the spec itself.
-- **Tests:** the suite runs in about 15s instead of about 100s. `vitest.config.ts` splits a shared project
-  (`isolate: false`, reset by `tests/setup/sharedWorker.ts`) from a short isolated list of files that need
-  a fresh module graph.
-- **Code fixes riding along:** the Composed chart draws its legend below the plot like Scatter; the
-  HTML-in-Canvas renderer draws `anycombo` as a split square like the DOM socket.
-- **Comment-lift suspects:** fixed or ruled (`a6cb19b2`); the last one, Range including Stop, is now
-  [[C110]] rangeIncludesStop on the author's reason (not an Excel function, so it matches LinSpace).
-- **Author rulings, author present:** C90 retired (the drawn-cables spec covers its files); D62 ratified;
-  Conduit N and the Slider's per-change speed are exceptions under D22 and C95; op switches stop writing
-  `node.label` (a sweep in `sourceInvariants.test.ts` holds it, [[D22]]).
-- **Demo data:** Local File's folder falls back to the demo vault's `Data` like the vault does ([[C1]]), and
-  Personal Finance reads its CSVs from there with Local File cards. The demo vault serves
-  `.obsidian/types.json` and `daily-notes.json`, so demo reads match a real vault.
-- **Formula side:** every kernel a pack formula calls lives in a rete-free `nodes/*Ops.ts`, each pack's
-  formulas in `packs/<id>Formulas.ts`, and `formulaPathIsReteFree.test.ts` roots at them (`../tree/specs/floors/engineering.md` § The formula path is rete-free).
-- **Site:** the Packs and Examples pages render from `BUILTIN_PACKS` and `SEED_GROUPS`; the Obsidian page
-  leads with Solenoid Properties, a live panel of the plugin's own `PropertyChip` over the demo vault; each
-  page gets its own title and link-preview tags (`siteMeta.ts`, `<page>.html`, `vercel.json`). Phone
-  layout: the scene thread hides in one column and scene frames cap at 82vw. The author's own copy is theirs:
-  flag, don't rewrite ("turbocharges" restored).
-- **Also:** the Schedule and Gantt spec is in the vault (`schedule-and-gantt`); dependencies are on latest,
-  `mermaid` 12 with a `lodash-es` override. **For the author:** C70's per-row faults vs the whole-run error,
-  and Local File's grammar-text Predecessors (both in the backlog).
-- **Charts:** every figure the Chart Builder titles now draws its title, and the Sankey, KPI and Gauge cards
-  render through `ChartFigure`, so options apply on the card ([[D75]] builderExposesEveryOption: a type's
-  builder keys are exactly what its renderer honors; `chartTitles.test.ts`). The audit made alpha, radar,
-  canvas-figure fontsize and the Gantt view keys real. Sankey merges repeated From/To pairs (`mergeFlows`)
-  and lifts a flow on hover. Every chart card, Chart Builder, Mermaid and Record included, is the chart
-  kind; an unfiled card with one non-numeric output wears its output's color ([[C111]]).

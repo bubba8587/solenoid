@@ -137,34 +137,20 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 
 ## DTE — decision provenance (`docs/dte.md`)
 
-Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feedback.md`.
-- [ ] **Author ratifies the tree** — A1, B7, C80 and D62 are ratified; next D42 / E11
-  (contested, kept), then the B ring. `python tools/dte.py validate` prints the
-  unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
-  `rules.test.ts` (`docs/dte.md` § Solenoid practice).
-- [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
-- [ ] **Coverage is 100% and pinned** (`rules.test.ts` runs `coverage --check` + `validate`). The bulk pass cited
-  whole classes by blast radius (every component cites `../tree/specs/floors/components.md` § The rules, every node class `../tree/specs/documents/save-format.md` § The persisted type is the class name
-  classNameIsType + `../tree/specs/documents/save-format.md` § Every field is persisted or deliberately transient, every store [[B10]], every op module `../tree/specs/floors/engineering.md` § The formula path is rete-free + [[C17]], tests the
-  leaves of the sources they import, MUSTs only where another test already enforces them). Those are true but
-  thin: the comment sweep (WHY → leaf, HOW → spec) still owes each file its SPECIFIC leaf where one
-  exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest
-  (components, nodes, packages, core modules); what is left is line-granular.
-- [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
-  proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
-  declared as the spec layer; the comment policy → `tree/specs/floors/engineering.md` § Comments; `agent-coordination.md` holds the protocol and the live claim board; the Formula.js divergences → `../tree/specs/computation/formulajs-divergences.md`. Exempt as queues:
-  `deferrals.md`, `upstream-formulajs.md` (a few rulings inside deferrals are node candidates when touched).
-  **Blocked on the author:** `out-of-scope.md` is the draft of `inbox/scope-boundary` (the four tests + the mirror
-  test) and its 13 categories are that node's children; nothing can hang off an unplaced leaf, so
-  `dte place scope-boundary A --by <name>` first, then the categories become B leaves and the doc goes.
-- [ ] **C80 blankArgIsExcelBlank still hangs off A5** (author-ratified, so not re-parented by an agent); its family
-  parent is now [[B16]] oneFormulaSurface. One `parents:` edit by the author closes the last ring-skip finding.
-- [ ] **Two author-held `*Where:*` lines remain** (B7, C80; the other 41 went 2026-09-18 once their files cited
-  back). The author deletes them or rules they stay.
-- [ ] **20 SKIPPED RING findings under A5 / A6** are the owner's placement (`dte scope`); either B leaves are
-  missing under Excel parity / divergence, or the finding is noise (feedback 4). The author decides.
-- [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
-  commit flow); `validate` is not in CI either.
+The tree is the author's to ratify: 127 leaves, each a product call that follows from its parent; mechanics
+live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`.
+- [ ] **Author ratifies the tree, one leaf at a time** — A1, B1, B2, B3, B7, C80, D62 and E10 are ratified.
+  New today and unseen by the author: B18 safeToShare, B19 spreadsheetHabits. Next: the rest of ring B, then C.
+  Ratifying adds the ID to `OWNER_RATIFIED` in `rules.test.ts`.
+- [ ] **The outbox still lists A1, B1, B2, B3, B7 as ratified with no History line**: the author cleared those
+  leaves' History by hand and will handle History themselves; leave them.
+- [ ] **34 inbox items** await the author (each says what ratifying it changes, with a lean).
+- [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A); then `out-of-scope.md`'s 13
+  categories become B leaves and that doc goes.
+- [ ] **C80 blankArgIsExcelBlank still hangs off A5** (author-ratified): its natural parent is [[B16]]
+  oneFormulaSurface. The one skipped-ring finding left.
+- [ ] **Two author-held `*Where:*` lines remain** (B7, C80). The author deletes them or rules they stay.
+- [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed; `validate` is not in CI.
 
 ## Formatting & units
 
