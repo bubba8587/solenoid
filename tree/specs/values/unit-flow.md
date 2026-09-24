@@ -91,6 +91,7 @@ There are no exchange rates (`unitValue.ts` `currencyMismatch`). Every currency 
 - `compareUnits` (behind `ComparisonNode`, which is `unitAware`) returns `#UNIT!`. Equality then answers FALSE for `=` and TRUE for `≠`, and ordering (`<`, `>`) passes the `#UNIT!` on.
 - `arithmeticCell` has the guard up front, so every op errors, including multiply and divide, which would otherwise invent an exchange rate. `forAggregateUnits` returns `#UNIT!` too.
 - A currency cell with no code, such as a computed `currency` result, adopts the other side's code.
+- The guard lives once, up front in `arithmeticCell` (`unitValue.ts`), for all seven ops ([[D47]] noMixCurrencies, [[C8]] declareOnce). A new unit combinator registers in the policy sweep in `unitCurrencyPolicy.test.ts`.
 
 Every other dimension works on plain magnitudes, since km and m already differ in scale. `ComparisonNode` being `unitAware` is also what makes `5 km = 5000 m` compare in base SI. A dimensionless operand adopts the other side's unit in a compare (`$5 > 1000` compares 5 with 1000), matching the additive rule. Machine-checked by `unitValue.test.ts` (the currency block) and `logic.test.ts` ("ComparisonNode is unit-aware").
 
