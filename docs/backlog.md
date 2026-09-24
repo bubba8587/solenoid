@@ -213,10 +213,11 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   Solve (make Solve wait on in-flight fetches); check that Tauri's window close fires `pagehide` (else drafts need
   an `onCloseRequested` flush); an SVG value exports as text, frame spans ignore per-column formats; vault asset
   embeds resolve by bare file name.
-- [ ] **Composite inner state:** pins, comments, frame column formats and standoffs on a card inside a composite are
-  top-level `SavedGraph` maps keyed by id, and load keeps only main-editor ids, so they likely drop on reload
-  ([[B12]]). The closed-drill-in pipe gate (`DrillStack.open`) has no test: open, close, then edit and Unpack
-  around the composite in the app.
+- [ ] **Follow-ups (2026-09-24 agents):** NUMBERVALUE card and formula are two implementations and answer empty
+  text differently ([[C17]]); FILTER's include mask reads text as false silently; formula `TAKE(x,,2)` answers blank
+  (Excel keeps all rows); RANDARRAY whole numbers give the endpoints half weight; deleting a composite for real leaves
+  its inner cards' store entries in memory; plain-card copy/paste builds its own snapshot (`copyPaste.ts`) and drops
+  size, frame formats, pins and comments that a pasted composite now keeps.
 - [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
   electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
   result dimensions (escape velocity with r in km, sensible heat, dBm, pH, Newton cooling `EXP(-kk*t)`). Forecast
