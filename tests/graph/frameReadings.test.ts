@@ -6,7 +6,7 @@ import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withUnitS
 import { lowerForEngine } from "../../src/graph/frameBackend";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
-import { isUnitCell, READINGS_ADD, type UnitCell } from "../../src/graph/unitValue";
+import { isUnitCell, READINGS_ADD, READINGS_SCALE, type UnitCell } from "../../src/graph/unitValue";
 import { cubeFromColumns, frameToCube, frameSourceToText, type FrameColumn, type FrameValue } from "../../src/graph/frame";
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
 import { GetColumnNode, ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
@@ -233,6 +233,15 @@ describe("a computed column over readings classifies as Expression does", () => 
     expect(refused(add("@lo + @hi"))).toBe(true);
     expect(refused(add("@lo * 2"))).toBe(true);
     expect(refused(add("SUM(hi)"))).toBe(true);
+  });
+
+  it("a reading scaled says so, a sum of readings says that", () => {
+    const message = (vs: unknown[]) => (vs[0] as { message?: string }).message;
+    expect(message(add("@lo * 2"))).toBe(READINGS_SCALE);
+    expect(message(add("2 * @lo"))).toBe(READINGS_SCALE);
+    expect(message(add("@lo * 2 + @hi"))).toBe(READINGS_SCALE);
+    expect(message(add("@lo + @hi"))).toBe(READINGS_ADD);
+    expect(message(add("@lo + @hi + @lo"))).toBe(READINGS_ADD);
   });
 
   it("a difference, a midpoint and a reading plus a number compute", () => {

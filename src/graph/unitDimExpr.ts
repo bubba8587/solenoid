@@ -362,9 +362,10 @@ export function formulaResultDim(node: Ast, env: DimEnv): Dim | null {
 // result is a point at weight 1, a delta at 0, and #UNIT! otherwise; a point times,
 // over or to the power of anything but a constant is #UNIT!, as in `arithmeticCell`.
 // `list` marks a value spread over a list, whose SUM has no weight until its length
-// is known.
+// is known. `scaled` marks a weight a constant factor produced, so `@t * 2` reports a
+// scaled reading rather than a sum.
 
-type Aff = { w: number; list: boolean; konst: number | null };
+type Aff = { w: number; list: boolean; konst: number | null; scaled?: boolean };
 const affErr = (): SolError => unitError(READINGS_SCALE);
 const sumErr = (): SolError => unitError(READINGS_ADD);
 const ZERO: Aff = { w: 0, list: false, konst: null };
@@ -419,12 +420,12 @@ function affEval(node: Ast, scope: AffScope): Aff | SolError {
     case "unary": {
       const a = sub(node.arg);
       if (isSolError(a)) return a;
-      return node.op === "-" ? { w: -a.w, list: a.list, konst: a.konst === null ? null : -a.konst } : a;
+      return node.op === "-" ? { w: -a.w, list: a.list, konst: a.konst === null ? null : -a.konst, scaled: a.scaled } : a;
     }
     case "percent": {
       const a = sub(node.arg);
       if (isSolError(a)) return a;
-      return { w: a.w / 100, list: a.list, konst: a.konst === null ? null : a.konst / 100 };
+      return { w: a.w / 100, list: a.list, konst: a.konst === null ? null : a.konst / 100, scaled: a.scaled || a.w !== 0 };
     }
     case "bin": {
       const l = sub(node.l), r = sub(node.r);
@@ -432,16 +433,16 @@ function affEval(node: Ast, scope: AffScope): Aff | SolError {
       if (isSolError(r)) return r;
       const list = l.list || r.list;
       switch (node.op) {
-        case "+": return { w: l.w + r.w, list, konst: null };
-        case "-": return { w: l.w - r.w, list, konst: null };
+        case "+": return { w: l.w + r.w, list, konst: null, scaled: l.scaled || r.scaled };
+        case "-": return { w: l.w - r.w, list, konst: null, scaled: l.scaled || r.scaled };
         case "*":
           if (l.w !== 0 && r.w !== 0) return affErr();
-          if (l.w !== 0) return r.konst === null ? affErr() : { w: l.w * r.konst, list, konst: null };
-          if (r.w !== 0) return l.konst === null ? affErr() : { w: r.w * l.konst, list, konst: null };
+          if (l.w !== 0) return r.konst === null ? affErr() : { w: l.w * r.konst, list, konst: null, scaled: true };
+          if (r.w !== 0) return l.konst === null ? affErr() : { w: r.w * l.konst, list, konst: null, scaled: true };
           return { w: 0, list, konst: l.konst !== null && r.konst !== null ? l.konst * r.konst : null };
         case "/":
           if (r.w !== 0) return affErr();
-          if (l.w !== 0) return r.konst === null || r.konst === 0 ? affErr() : { w: l.w / r.konst, list, konst: null };
+          if (l.w !== 0) return r.konst === null || r.konst === 0 ? affErr() : { w: l.w / r.konst, list, konst: null, scaled: true };
           return { w: 0, list, konst: l.konst !== null && r.konst ? l.konst / r.konst : null };
         case "^":
           return l.w !== 0 || r.w !== 0 ? affErr() : { w: 0, list, konst: null };
@@ -529,5 +530,5 @@ export function affineWeight(
   if (isSolError(r)) return r;
   if (Math.abs(r.w - 1) < 1e-12) return 1;
   if (Math.abs(r.w) < 1e-12) return 0;
-  return r.w > 1 ? sumErr() : affErr();
+  return r.w > 1 && !r.scaled ? sumErr() : affErr();
 }
