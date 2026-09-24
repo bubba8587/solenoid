@@ -1,17 +1,20 @@
 // [[D5]] searchWiderThanLabel
 export function fuzzyScore(query: string, text: string): number | null {
-  const q = query.toLowerCase().replace(/\s+/g, "");
+  return fuzzyScoreLower(query.toLowerCase().replace(/\s+/g, ""), text.toLowerCase());
+}
+
+// fuzzyScore for a query already lowercased with its spaces removed, against lowercased text.
+export function fuzzyScoreLower(q: string, t: string): number | null {
   if (!q) return 0;
-  const t = text.toLowerCase();
-  let qi = 0, score = 0, last = -2;
-  for (let ti = 0; ti < t.length && qi < q.length; ti++) {
-    if (t[ti] === q[qi]) {
-      score += last === ti - 1 ? 3 : 1;
-      last = ti;
-      qi++;
-    }
+  let score = 0, last = -2, ti = 0;
+  for (let qi = 0; qi < q.length; qi++) {
+    const at = t.indexOf(q[qi], ti);
+    if (at < 0) return null;
+    score += last === at - 1 ? 3 : 1;
+    last = at;
+    ti = at + 1;
   }
-  return qi === q.length ? score : null;
+  return score;
 }
 
 export function withinOneEdit(a: string, b: string): boolean {
@@ -40,10 +43,13 @@ export function tokenWordScore(token: string, words: string[]): number {
 }
 
 export function fieldScore(query: string, field: string): number | null {
-  const sub = fuzzyScore(query, field);
+  return fieldScoreLower(query.toLowerCase().replace(/\s+/g, ""), field.toLowerCase());
+}
+
+// fieldScore for a query already lowercased with its spaces removed, against a lowercased field.
+export function fieldScoreLower(q: string, f: string): number | null {
+  const sub = fuzzyScoreLower(q, f);
   if (sub === null) return null;
-  const q = query.toLowerCase().replace(/\s+/g, "");
-  const f = field.toLowerCase();
   let tier = 0;
   if (f === q) tier = 1000;
   else if (f.startsWith(q)) tier = 400;

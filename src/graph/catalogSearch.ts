@@ -1,7 +1,7 @@
 // [[D5]] searchWiderThanLabel, [[C19]] namingModel
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { LEGACY_ALIASES } from "./excelFunctions";
-import { fuzzyScore, fieldScore, tokenWordScore, withinOneEdit } from "./fuzzy";
+import { fuzzyScoreLower, fieldScoreLower, tokenWordScore, withinOneEdit } from "./fuzzy";
 import { opsFor, opEntry, excelEntry } from "./nodeOps";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
@@ -64,11 +64,26 @@ function stripGlyphPrefix(label: string): string {
   return label.replace(/^[^\p{L}\p{N}]+\s*/u, "");
 }
 
-export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext): number | null {
+type Prepared = {
+  haystack: string;
+  words: string[];
+  // Each lowercased field the whole query is scored against, with its penalty.
+  fields: [string, number][];
+  // Lowercased names a query one typo away still lands on.
+  names: string[];
+};
+
+// Everything scoreLeaf reads from a leaf but not the query, built once per leaf: the Add menu and the label sweep score every leaf per query.
+const prepared = new WeakMap<LeafWithContext, Prepared>();
+
+function prepare(lc: LeafWithContext): Prepared {
+  const hit = prepared.get(lc);
+  if (hit) return hit;
+  const { leaf, categoryPath } = lc;
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  const haystack = dashes(`${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`);
+  const haystack = dashes(`${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`).toLowerCase();
   const bare = stripGlyphPrefix(leaf.label);
   const colon = leaf.label.indexOf(": ");
   const opName = colon > 0 && leaf.type.includes("__") ? leaf.label.slice(colon + 2) : null;
@@ -76,39 +91,55 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const legacy = legacyNamesOf([...excelNames, bare, ...(opName ? [opName] : [])]);
   const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")} ${legacy.join(" ")}`)
     .toLowerCase().split(WORD_SEP).filter(Boolean);
+  const own = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
+  if (bare && bare !== leaf.label) own.push(bare);
+  if (opName) own.push(opName);
+  const fields: [string, number][] = [
+    ...own.filter((f) => f.trim()).map((f): [string, number] => [f.toLowerCase(), 0]),
+    ...excelNames.map((n): [string, number] => [n.toLowerCase(), 10]),
+    ...legacy.map((n): [string, number] => [n.toLowerCase(), 20]),
+  ];
+  const names = [leaf.label, bare, ...excelNames].map((n) => n.toLowerCase());
+  const p = { haystack, words, fields, names };
+  prepared.set(lc, p);
+  return p;
+}
+
+type Query = { tokens: string[]; squashed: string; trimmed: string };
+
+function parseQuery(query: string): Query {
+  const lower = dashes(query).toLowerCase();
+  return {
+    tokens: lower.split(WORD_SEP).filter(Boolean),
+    squashed: query.toLowerCase().replace(/\s+/g, ""),
+    trimmed: lower.trim(),
+  };
+}
+
+function scoreLeaf(query: Query, lc: LeafWithContext): number | null {
+  const { haystack, words, fields, names } = prepare(lc);
   let s = 0;
-  for (const token of dashes(query).toLowerCase().split(WORD_SEP)) {
-    if (!token) continue;
-    const sub = fuzzyScore(token, haystack);
+  for (const token of query.tokens) {
+    const sub = fuzzyScoreLower(token, haystack);
     const word = tokenWordScore(token, words);
     if (sub === null && word === 0) return null;
     s += word >= 90 ? word : (sub ?? 0) + word;
   }
-  const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
-  if (bare && bare !== leaf.label) fields.push(bare);
-  if (opName) fields.push(opName);
   let bonus = 0;
-  for (const f of fields) {
-    const fs = f.trim() ? fieldScore(query, f) : null;
-    if (fs !== null) bonus = Math.max(bonus, fs);
+  for (const [f, penalty] of fields) {
+    const fs = fieldScoreLower(query.squashed, f);
+    if (fs !== null) bonus = Math.max(bonus, fs - penalty);
   }
-  for (const name of excelNames) {
-    const fs = fieldScore(query, name);
-    if (fs !== null) bonus = Math.max(bonus, fs - 10);
-  }
-  for (const name of legacy) {
-    const fs = fieldScore(query, name);
-    if (fs !== null) bonus = Math.max(bonus, fs - 20);
-  }
-  const q = dashes(query).toLowerCase().trim();
-  if (q.length >= 4 && [leaf.label, bare, ...excelNames].some((n) => withinOneEdit(q, n.toLowerCase()))) bonus = Math.max(bonus, 200);
+  const q = query.trimmed;
+  if (q.length >= 4 && names.some((n) => withinOneEdit(q, n))) bonus = Math.max(bonus, 200);
   return s + bonus;
 }
 
 export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCatalogEntry[] {
+  const q = parseQuery(query);
   const scored: { leaf: NodeCatalogEntry; score: number }[] = [];
   for (const lc of leaves) {
-    const score = scoreLeaf(query, lc);
+    const score = scoreLeaf(q, lc);
     if (score !== null) scored.push({ leaf: lc.leaf, score });
   }
   scored.sort((a, b) => b.score - a.score);
