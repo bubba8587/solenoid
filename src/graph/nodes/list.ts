@@ -22,7 +22,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, arrayCount, shuffleList, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
+import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -1819,20 +1819,17 @@ export class RandArrayNode extends ClassicPreset.Node {
     const count = isSolError(read) ? 0 : read;
     const bad = isSolError(read) ? read
       : count > MAX_GENERATED ? solError("#OVERFLOW!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`)
-      : lo > hi ? solError("#VALUE!", "RANDARRAY's Min is above its Max")
-      : null;
+      : randArrayRange(lo, hi, this.integer);
     if (bad) {
       this.cachedList = bad; this.rolls = []; this.lastGen = -1;
       return { list: bad };
     }
-    const range = hi - lo;
     const gen = getRecalcGen();
     if (this.lastGen !== gen || this.rolls.length !== count) {
       this.rolls = Array.from({ length: count }, () => Math.random());
       this.lastGen = gen;
     }
-    // Round after rescaling, live like min and max: the same lo + r·range the RANDARRAY formula rounds.
-    const list = this.rolls.map((r) => { const x = lo + r * range; return this.integer ? Math.round(x) : x; });
+    const list = this.rolls.map((r) => randArrayDraw(r, lo, hi, this.integer));
     this.cachedList = list;
     return { list };
   }

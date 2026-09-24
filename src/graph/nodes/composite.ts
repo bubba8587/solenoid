@@ -7,7 +7,7 @@ import { resolveTrigModes } from "../trigMode";
 import { settleWildcardTypes } from "../trueAnyAdopt";
 import { reconcileFcTypes } from "../fcReconcile";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "../savedNodeBody";
-import { forgetNode } from "../nodeStoreRegistry";
+import { forgetNodeDeep } from "../nodeStoreRegistry";
 import { installErrorGuards, isSolError, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
@@ -382,7 +382,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   async restoreInternal(snap: CompositeInternalSnapshot, reg: Map<string, NodeCtor>): Promise<void> {
-    for (const id of nestedNodeIds(this.internalEditor)) forgetNode(id);
+    for (const n of this.internalEditor.getNodes()) forgetNodeDeep(n);
     for (const c of [...this.internalEditor.getConnections()]) {
       await this.internalEditor.removeConnection(c.id);
     }

@@ -85,7 +85,7 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
 
 ## Capturing a node's `init`
 
-`extractInit(node)` builds `init` from the live instance ([[C29]] plainJsonInit). Paste uses the same function, so a paste and a save see the same configuration.
+`extractInit(node)` builds `init` from the live instance ([[C29]] plainJsonInit). Copy takes each card through the same `savedNodeBody` a save uses, so a paste and a save see the same configuration, size, collapse and flip. Of the side tables a paste carries only `frameFormats`, the card's own look (`pastedSideTables`, `copyPaste.ts`); whether it carries pins, comments and standoffs waits on the inbox item `paste-carries-card-state`.
 
 1. Every key in `INIT_FIELD_ORDER` that exists on the node with a value other than `undefined` is copied as is. This list is the whitelist of scalar and simple settings (`label`, `op`, `value`, `expr`, `tableText`, `members`, `hostNodeId`, `width`, `height`, and so on).
 2. Object-valued extras are deep-copied, several filtered to live keys so an orphan left behind for undo does not reach the save:

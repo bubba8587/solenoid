@@ -2,7 +2,7 @@
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
-import { forAggregate, isMissing } from "../valueKinds";
+import { forAggregate, ifTest, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
 import { percentileOf } from "./statsOps";
 
@@ -448,6 +448,20 @@ export function arrayCount(n: number, fn: string): number | SolError {
   return k >= 0 ? k : solError("#VALUE!", `${fn} needs a count of 0 or more`);
 }
 
+/** RANDARRAY's bounds check, shared by the formula and the card. */
+export function randArrayRange(lo: number, hi: number, whole: boolean): SolError | null {
+  if (lo > hi) return solError("#VALUE!", "RANDARRAY's Min is above its Max");
+  if (whole && Math.ceil(lo) > Math.floor(hi)) return solError("#VALUE!", "RANDARRAY's Min and Max hold no whole number");
+  return null;
+}
+
+/** One RANDARRAY value from a [0,1) roll: uniform over [lo, hi), or over the whole numbers in [lo, hi] with each equally likely. */
+export function randArrayDraw(roll: number, lo: number, hi: number, whole: boolean): number {
+  if (!whole) return lo + roll * (hi - lo);
+  const a = Math.ceil(lo);
+  return a + Math.floor(roll * (Math.floor(hi) - a + 1));
+}
+
 export function linspace(start: number, end: number, count: number): number[] {
   const n = Math.round(count);
   if (n <= 0) return [];
@@ -734,13 +748,15 @@ export function dropSlice<T>(arr: readonly T[], n: number): T[] {
   return n > 0 ? arr.slice(Math.min(n, arr.length)) : arr.slice(0, Math.max(0, arr.length + n));
 }
 
+/** FILTER's include array read as IF reads a condition ([[E10]] pickVsAggregateErrors: the mask is read whole, so its first error is the answer). A blank keeps nothing. */
 export function filterByMask<T>(arr: readonly T[], mask: readonly unknown[]): T[] | SolError {
-  const err = firstError(mask);
-  if (err) return err;
-  return arr.filter((_, i) => {
-    const m = mask[i];
-    return m === true || (typeof m === "number" && m !== 0);
-  });
+  const keep: boolean[] = [];
+  for (const m of mask) {
+    const t = ifTest(m);
+    if (isSolError(t)) return t;
+    keep.push(t === true);
+  }
+  return arr.filter((_, i) => keep[i]);
 }
 
 export function modeMult(arr: readonly unknown[]): unknown[] | SolError {

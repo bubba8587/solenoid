@@ -18,6 +18,24 @@ export function parseValueText(text: string): number {
   return Number.isNaN(n) ? NaN : (neg ? -n : n) / Math.pow(100, pct);
 }
 
+/** NUMBERVALUE, shared by the formula and the card: whitespace ignored, empty text is 0, each trailing `%` divides by 100. A blank separator takes its default (`.` decimal; `,` group unless the decimal is `,`). */
+export function numberValue(text: string, decimalSep: string, groupSep: string): number | SolError {
+  const bad = solError("#VALUE!", "NUMBERVALUE needs a number");
+  const d = (decimalSep || ".")[0];
+  const g: string | null = groupSep !== "" ? groupSep[0] : d === "," ? null : ",";
+  if (g === d) return bad;
+  let s = text.replace(/\s/g, "");
+  if (s === "") return 0;
+  let pct = 0;
+  while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
+  const di = s.indexOf(d);
+  const intPart = di === -1 ? s : s.slice(0, di);
+  const frac = di === -1 ? null : s.slice(di + 1);
+  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return bad;
+  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
+  return Number.isNaN(n) ? bad : n / Math.pow(100, pct);
+}
+
 export function splitText(text: string, delimiter: string): string[] {
   return delimiter === "" ? [...text] : text.split(delimiter);
 }

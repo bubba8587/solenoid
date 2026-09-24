@@ -8,7 +8,7 @@ import {
 import { SeriesNode } from "../../src/graph/nodes/list";
 import { InterpolateNode } from "../../src/graph/nodes/stats";
 import { setCells } from "../../src/graph/nodes/matrixOps";
-import { isSolError, type SolError } from "../../src/graph/errorValue";
+import { isSolError, solError, type SolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas tranche 1: the matrix core, node-equals-formula ([[C17]] shareImpl) ───────────────
 // Every matrix registration delegates to the same kernels the nodes run, so the
@@ -232,6 +232,14 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
     expect(code(take(x, 2, 1))).toBe("#SHAPE!");
   });
 
+  it("TAKE / DROP with a blank row count keep every row, as in Excel", () => {
+    const m = [[1, 2, 3], [4, 5, 6]];
+    expect(ev("TAKE(m,,2)", { m })).toEqual([[1, 2], [4, 5]]);
+    expect(ev("TAKE(m,,-1)", { m })).toEqual([[3], [6]]);
+    expect(ev("DROP(m,,1)", { m })).toEqual([[2, 3], [5, 6]]);
+    expect(ev("DROP(m,,-2)", { m })).toEqual([[1], [4]]);
+  });
+
   it("FILTER by mask — Excel's include-array form", () => {
     // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
     // with wired comparison values) — a different mechanism from Excel's computed
@@ -244,6 +252,20 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
     expect(ev("FILTER(x, x > 99)", { x })).toEqual([]);      // no if_empty → empty list
     const r = ev("FILTER(x, y)", { x, y: [1, 0] });          // size mismatch
     expect((r as { code?: string }).code).toBe("#SHAPE!");
+  });
+
+  it("FILTER reads its include array as conditions, like IF ([[E10]] pickVsAggregateErrors)", () => {
+    const x = [1, 5, 2, 9];
+    // Text other than TRUE/FALSE is not a condition: #VALUE!, not a silent FALSE.
+    expect(code(ev("FILTER(x, m)", { x, m: [true, "yes", true, false] }))).toBe("#VALUE!");
+    expect(ev("FILTER(x, m)", { x, m: ["TRUE", "false", 1, 0] })).toEqual([1, 2]);
+    // A blank include cell keeps nothing.
+    expect(ev("FILTER(x, m)", { x, m: [true, null, true, false] })).toEqual([1, 2]);
+    // The include array is read whole, so its error is the answer; a data error stays in its cell.
+    expect(code(ev("FILTER(x, m)", { x, m: [true, solError("#N/A", "x"), true, false] }))).toBe("#N/A");
+    const kept = ev("FILTER(d, m)", { d: [1, solError("#N/A", "x"), 3], m: [true, true, false] }) as unknown[];
+    expect(kept[0]).toBe(1);
+    expect(code(kept[1])).toBe("#N/A");
   });
 
   it("MODE.MULT and FREQUENCY are owned — no more element-wise garbage", () => {

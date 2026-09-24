@@ -10,9 +10,8 @@ import { hashText, uuidV4, type HashAlgorithm } from "./hashOps";
 export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { decimalFromText } from "../valueKinds";
 import { resolveExcelFunction } from "../excelFunctions";
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
+import { numberValue, splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
@@ -770,21 +769,7 @@ export class NumberValueNode extends ClassicPreset.Node {
     const decRaw = readInput(inputs.decimal_sep, this.stringLiterals.decimal_sep ?? "");
     const grpRaw = readInput(inputs.group_sep, this.stringLiterals.group_sep ?? "");
     if (decRaw === null || grpRaw === null) { this.cachedResult = null; return { result: null }; }
-    const decSep = decRaw || ".";
-    const grpSep = grpRaw || ",";
-    const result = broadcastCells((raw: string) => {
-      const text = raw.trim();
-      if (!text) return null;
-      let s = text
-        .split(grpSep).join("")
-        .split(decSep).join(".")
-        .replace(/\s+/g, "");
-      let pct = 0;
-      while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
-      const n = decimalFromText(s);
-      if (!Number.isFinite(n)) return solError("#VALUE!", `Cannot parse "${text}" as a number`);
-      return pct > 0 ? n / Math.pow(100, pct) : n;
-    }, strVal(inputs.text, this, "text"));
+    const result = broadcastCells((text: string) => numberValue(text, decRaw, grpRaw), strVal(inputs.text, this, "text"));
     this.cachedResult = result;
     return { result };
   }

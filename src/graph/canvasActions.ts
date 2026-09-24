@@ -9,7 +9,7 @@ import {
   CONDUIT_MAX_LANES, conduitInKey, conduitOutKey, conduitGhostSpecs,
 } from "./rete-nodes";
 import { ribbonForConnection } from "./ribbonCable";
-import { forgetNode } from "./nodeStoreRegistry";
+import { forgetNodeDeep } from "./nodeStoreRegistry";
 import { rebuildGroupMembership } from "./groupMembership";
 import { restoreSettledPushes } from "./groupPush";
 import { CONDUIT_PIVOT } from "./ribbonCable";
@@ -193,7 +193,7 @@ export function linkStandoffBetween(
  */
 export function settleNodeRemoved(editor: NodeEditor<Schemes>, view: View, node: SolenoidNode, gated: boolean): void {
   if (gated) return;
-  forgetNode(node.id);
+  forgetNodeDeep(node);
   rebuildGroupMembership(editor);
   syncGroupCollapse(editor, view);
   if (node instanceof GroupNode) restoreSettledPushes(editor, view);
@@ -246,7 +246,7 @@ export async function deleteSelection(
   const selected = editor.getNodes()
     .filter((n) => doomedIds.has(n.id) && !scope.keeps?.(n))
     .sort((a, b) => Number(dockedFc(b)) - Number(dockedFc(a)));
-  const deletedIds: string[] = [];
+  const deleted: SolenoidNode[] = [];
   let deletedGroup = false;
   scope.begin();
   try {
@@ -267,7 +267,7 @@ export async function deleteSelection(
     }
 
     for (const node of selected) {
-      deletedIds.push(node.id);
+      deleted.push(node);
       if (node instanceof GroupNode) deletedGroup = true;
 
       if (dockedFc(node)) {
@@ -337,8 +337,8 @@ export async function deleteSelection(
   }
 
   // The per-event settles were suppressed above; run their equivalents once, in the order noderemoved and connectionremoved would.
-  for (const id of deletedIds) forgetNode(id);
-  if (deletedIds.length) rebuildGroupMembership(editor);
+  for (const node of deleted) forgetNodeDeep(node);
+  if (deleted.length) rebuildGroupMembership(editor);
   await scope.settle();
   if (deletedGroup && view) restoreSettledPushes(editor, view);
 }
