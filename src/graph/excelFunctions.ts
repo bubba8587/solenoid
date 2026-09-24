@@ -29,7 +29,7 @@ import {
   geometric, fibonacci, MAX_GENERATED, arrayCount, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
   firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
-  takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
+  takeSlice, dropSlice, filterByMask, randArrayRange, randArrayDraw, modeMult, frequencyBins,
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
@@ -1829,15 +1829,13 @@ registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
   if (isSolError(c)) return c;
   const lo = min == null ? 0 : Number(min);
   const hi = max == null ? 1 : Number(max);
-  if (lo > hi) return solError("#VALUE!", "RANDARRAY's Min is above its Max");
+  const whole = isTrue(integer);
+  const bad = randArrayRange(lo, hi, whole);
+  if (bad) return bad;
   if (r * c > MAX_GENERATED) {
     return solError("#OVERFLOW!", `RANDARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
   }
-  const draw = () => {
-    const x = lo + Math.random() * (hi - lo);
-    return isTrue(integer) ? Math.round(x) : x;
-  };
-  const flat = Array.from({ length: r * c }, draw);
+  const flat = Array.from({ length: r * c }, () => randArrayDraw(Math.random(), lo, hi, whole));
   if (c === 1) return flat;
   return wrapCells(flat, c, "rows", () => null); // r × c cells fill exactly, so the pad never fires.
 });
