@@ -207,13 +207,13 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   filesystem access and a pack format are settled.
 
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
-- [ ] **Engines:** `PolarsBackend.join`'s unit key transform has no corpus case; the fuzzer skips error cells, the error
-  filter, date `asof` and `readingScale`; `gridAxes`/`fillGrid` spread rows into `Math.max(...)` (stack on huge tables).
 - [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the
   app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
 - [ ] **Follow-ups (2026-09-24, round 2):** pasting a Missing placeholder gives a broken copy with no missing type; a
   heavy composite whose live card still waits for network permission Solves to blank with nothing saying why; RANDARRAY
-  whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`, unchecked against Excel.
+  whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`, unchecked against Excel; `Math.max(...spread)` over user data still in `excelFunctions.ts` (~1864-1886),
+  `nodes/frame.ts`, `nodes/text.ts`, `scriptCoerce.ts`, `triangle.ts`; Nest Join compares unit keys as tagged base-SI values
+  and may have the conversion noise the join fix removed.
 - [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
   electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
   result dimensions (escape velocity with r in km, sensible heat, dBm, pH, Newton cooling `EXP(-kk*t)`). Forecast
