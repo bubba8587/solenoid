@@ -3,7 +3,7 @@ import { ClassicPreset } from "rete";
 import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput, keepInputLast } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
-import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, type Tri } from "../valueKinds";
+import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, ifTest, type Tri } from "../valueKinds";
 import { compareUnits } from "../unitValue";
 import { isFrameValue, frameRowCount, type FrameValue } from "../frame";
 
@@ -238,9 +238,10 @@ export class IfNode extends ClassicPreset.Node {
     const cond = inputs.cond?.length ? inputs.cond[0] : this.literals.cond;
     const then = pickSlot(this, inputs, "then");
     const els  = pickSlot(this, inputs, "else");
-    this._selectedUnitKey = Array.isArray(cond) || isMissing(cond) ? null : truthy(cond) ? "then" : "else";
+    const scalarTest = Array.isArray(cond) ? null : ifTest(cond);
+    this._selectedUnitKey = typeof scalarTest === "boolean" ? (scalarTest ? "then" : "else") : null;
     const result = broadcastEl<unknown, unknown>(
-      (x, y, z) => (isMissing(x) ? null : truthy(x) ? y : z),
+      (x, y, z) => { const t = ifTest(x); return typeof t === "boolean" ? (t ? y : z) : t; },
       cond, then, els,
     );
     this.cachedResult = result;

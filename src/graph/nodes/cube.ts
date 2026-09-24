@@ -248,11 +248,13 @@ export class CubeRollupNode extends ClassicPreset.Node {
               const cc = cell.columns.find((c) => c.name === col);
               if (!cc) return solError("#REF!", `column "${col}" not found in nested cube`);
               if (cc.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) return solError("#SHAPE!", `column "${col}" holds nested cells; roll up a flat column`);
-              type = cc.type;
               // A cube cell carries its own base-SI unit; read the column in one unit, as a Frame does.
               const { mags, unit: u } = matrixCellsFromList(cc.cells);
               unit = u;
-              return mags as FrameCell[];
+              if (cc.type) { type = cc.type; return mags as FrameCell[]; }
+              const read = inferColumn(col, mags.map((v) => (isSolError(v) ? null : v)));
+              type = read.type;
+              return mags.map((v, k) => (isSolError(v) ? v : read.values[k]));
             })()
           : null;
       if (values === null) { rolled.push(null); continue; }

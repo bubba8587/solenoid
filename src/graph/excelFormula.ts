@@ -1,7 +1,7 @@
 // [[D4]], [[C22]], [[C80]], [[D24]] prepByShape (RANGE_* policies), [[D25]] blockedFailFast
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
-import { isMissing, guardFinite } from "./valueKinds";
+import { isMissing, guardFinite, powerOf } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
@@ -633,7 +633,7 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
     case "-": return fin((na as number) - (nb as number));
     case "*": return fin((na as number) * (nb as number));
     case "/": return nb === 0 && typeof na === "number" ? solError("#DIV/0!", "Division by zero") : fin((na as number) / (nb as number));
-    case "^": return fin(Math.pow(na as number, nb as number));
+    case "^": { const p = powerOf(na as number, nb as number); return isSolError(p) ? p : fin(p); }
     case "&": {
       const s = (v: unknown): string =>
         typeof v === "boolean" ? (v ? "TRUE" : "FALSE")

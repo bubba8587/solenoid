@@ -114,6 +114,12 @@ export function matInverse(m: NumMat): NumMat | null {
   return aug.map((row) => row.slice(n));
 }
 
+/** WRAPROWS and WRAPCOLS read their count as Excel does: truncated, and below 1 is Excel's `#NUM!`. */
+export function wrapCount(w: number, fn: "WRAPROWS" | "WRAPCOLS"): number | SolError {
+  const n = Math.trunc(w);
+  return n >= 1 ? n : solError("#DOMAIN!", `${fn} needs a wrap count of 1 or more`);
+}
+
 export function wrapCells<T>(list: readonly T[], w: number, dir: "rows" | "cols", pad: () => T): T[][] {
   if (dir === "rows") {
     const rows: T[][] = [];

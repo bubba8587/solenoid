@@ -1058,29 +1058,28 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
     valCols.forEach((vc, v) => cells[v][r][c].push(cellAt(vc, i)));
   }
 
-  const aggNum = (cellsList: FrameCell[], op: AggOp): number => {
-    const a = aggregateGroup(cellsList, op === "percentof" ? "sum" : op);
-    return typeof a === "number" ? a : NaN;
+  const sortKey = (cellsList: FrameCell[], v: number): number | string | null => {
+    const a = aggregateGroup(cellsList, funcs[v] === "percentof" ? "sum" : funcs[v], valCols[v].type);
+    return (typeof a === "number" && !Number.isNaN(a)) || typeof a === "string" ? a : null;
+  };
+  const byKey = (desc: boolean) => (sx: number | string | null, sy: number | string | null): number => {
+    if (sx === null || sy === null) return sx === null ? (sy === null ? 0 : 1) : -1;
+    const d = typeof sx === "string" || typeof sy === "string" ? compareStrings(String(sx), String(sy)) : sx - sy;
+    return desc ? -d : d;
   };
   const rowValSort = Math.abs(rs) - 1 - rowCols.length;
   if (rowValSort >= 0 && rowValSort < V && R > 1) {
-    const score = (r: number) => aggNum(Array.from({ length: C }, (_, c) => cells[rowValSort][r][c]).flat(), funcs[rowValSort]);
-    const perm = rowLeaves.map((_, r) => r).sort((x, y) => {
-      const sx = score(x), sy = score(y);
-      if (Number.isNaN(sx) || Number.isNaN(sy)) return Number.isNaN(sx) ? (Number.isNaN(sy) ? 0 : 1) : -1;
-      return rs < 0 ? sy - sx : sx - sy;
-    });
+    const score = (r: number) => sortKey(Array.from({ length: C }, (_, c) => cells[rowValSort][r][c]).flat(), rowValSort);
+    const cmp = byKey(rs < 0);
+    const perm = rowLeaves.map((_, r) => r).sort((x, y) => cmp(score(x), score(y)));
     rowLeaves = perm.map((r) => rowLeaves[r]);
     for (let v = 0; v < V; v++) cells[v] = perm.map((r) => cells[v][r]);
   }
   const colValSort = Math.abs(cs) - 1 - colCols.length;
   if (colValSort >= 0 && colValSort < V && C > 1) {
-    const score = (c: number) => aggNum(Array.from({ length: R }, (_, r) => cells[colValSort][r][c]).flat(), funcs[colValSort]);
-    const perm = colLeaves.map((_, c) => c).sort((x, y) => {
-      const sx = score(x), sy = score(y);
-      if (Number.isNaN(sx) || Number.isNaN(sy)) return Number.isNaN(sx) ? (Number.isNaN(sy) ? 0 : 1) : -1;
-      return cs < 0 ? sy - sx : sx - sy;
-    });
+    const score = (c: number) => sortKey(Array.from({ length: R }, (_, r) => cells[colValSort][r][c]).flat(), colValSort);
+    const cmp = byKey(cs < 0);
+    const perm = colLeaves.map((_, c) => c).sort((x, y) => cmp(score(x), score(y)));
     colLeaves = perm.map((c) => colLeaves[c]);
     for (let v = 0; v < V; v++) for (let r = 0; r < R; r++) cells[v][r] = perm.map((c) => cells[v][r][c]);
   }

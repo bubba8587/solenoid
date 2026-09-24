@@ -322,3 +322,16 @@ export function templateFormat(value: unknown, spec: string | undefined, f: Temp
   if (Array.isArray(value)) return value.map((v) => templateFormat(v, spec, f, isDate)).join(", ");
   return String(value);
 }
+
+/** CHAR and UNICHAR, the CHAR / CODE card's char op: a truncated Unicode code point from 1 to 1114111, surrogates refused. */
+export function charFromCode(code: number): string | SolError {
+  const c = Math.trunc(code);
+  if (!(c >= 1 && c <= 0x10ffff) || (c >= 0xd800 && c <= 0xdfff)) return solError("#VALUE!", "A character code is a code point from 1 to 1114111");
+  return String.fromCodePoint(c);
+}
+
+/** CODE and UNICODE, the card's code op: the first character's Unicode code point. */
+export function codeOfText(text: string): number | SolError {
+  const c = text.codePointAt(0);
+  return c === undefined ? solError("#VALUE!", "Empty text has no character code") : c;
+}
