@@ -209,15 +209,11 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
 - [ ] **Engines:** `PolarsBackend.join`'s unit key transform has no corpus case; the fuzzer skips error cells, the error
   filter, date `asof` and `readingScale`; `gridAxes`/`fillGrid` spread rows into `Math.max(...)` (stack on huge tables).
-- [ ] **Documents:** the first Solve of a heavy composite holding a live card uses cached data and needs a second
-  Solve (make Solve wait on in-flight fetches); check that Tauri's window close fires `pagehide` (else drafts need
-  an `onCloseRequested` flush); an SVG value exports as text, frame spans ignore per-column formats; vault asset
-  embeds resolve by bare file name.
-- [ ] **Follow-ups (2026-09-24 agents):** NUMBERVALUE card and formula are two implementations and answer empty
-  text differently ([[C17]]); FILTER's include mask reads text as false silently; formula `TAKE(x,,2)` answers blank
-  (Excel keeps all rows); RANDARRAY whole numbers give the endpoints half weight; deleting a composite for real leaves
-  its inner cards' store entries in memory; plain-card copy/paste builds its own snapshot (`copyPaste.ts`) and drops
-  size, frame formats, pins and comments that a pasted composite now keeps.
+- [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the
+  app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
+- [ ] **Follow-ups (2026-09-24, round 2):** pasting a Missing placeholder gives a broken copy with no missing type; a
+  heavy composite whose live card still waits for network permission Solves to blank with nothing saying why; RANDARRAY
+  whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`, unchecked against Excel.
 - [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
   electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
   result dimensions (escape velocity with r in km, sensible heat, dBm, pH, Newton cooling `EXP(-kk*t)`). Forecast
