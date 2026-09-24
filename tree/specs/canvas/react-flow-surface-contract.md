@@ -77,6 +77,14 @@ Positions are always absolute canvas coordinates, never RF's parent-relative one
 - Removing nodes removes their cables through the editor, and their names go too.
 - `toFlowNodes` lists parents before their children, as RF requires.
 
+### What the app uses from rete ([[B10]] reactFlowView)
+
+The rete surface is small: `ClassicPreset.Node / Input / Output / Socket / Connection` (plain data classes; every node class extends `Node`), `NodeEditor` (add, remove and get nodes and connections, and `addPipe` for the `nodecreated`, `connectioncreated` and `noderemoved` events that `coerceInputs`, the error guards, FC reconcile and the RF topology sync hang off), and `DataflowEngine` (`fetch`, `reset` and the public `cache`, which is pre-seeded for `#CIRC!`). That is about 1,500 lines of vendored ESM with one dependency, MIT licensed.
+
+- React Flow is only a renderer, with no graph model, typed ports or engine. No third-party model fits better: graphology has no ports or dataflow, Flume and nodl bundle their own renderers, and baklava's core is the same shape under another name. Hand-rolling would swap about 1,500 maintained lines for about 400 of ours across some 150 files, for no functional gain.
+- Every rete render package (area, react, connection, render-utils, minimap, history, auto-arrange) and `styled-components` are gone. Tidy calls elkjs directly, undo is the snapshot history below, and the module-singleton stores (`storeKit.ts`) stay as app-wide state.
+- Components may import rete types (`import type`) and construct `ClassicPreset.Connection` when they wire a cable. That is the app's own model type, not a coupling to a renderer.
+
 ## Groups are sub-flows
 
 A group is an RF parent node, and each member sets `parentId` to it. The model keeps absolute positions; RF holds a member's position relative to its group and tows members itself. Conversion happens only at the boundary: `flowModel.toFlowPosition` / `fromFlowPosition`, `handlers.moveNode` (where moving a group re-bases every member, so a Tidy that moves members before their group still ends consistent) and `onNodesChange` (which applies RF-driven moves to the model, groups first, so a member resolves against its group's new spot). Never write a member's RF position from absolute coordinates.
@@ -323,6 +331,10 @@ Every render is inside an error boundary (`components/ErrorBoundary.tsx`): one a
 ## Load performance
 
 Two mechanisms keep loads fast ([[graph-load-teardown-performance]]). The topology pipe merges a rebuild into one React commit. `syncTopology` keeps each surviving node's object identity, so RF's memo skips cards that didn't change, and adding one node re-renders one card.
+
+## Marketing-page scenes
+
+Serves [[C2]] realCanvasScenes. Feature scenes on the marketing pages render the real node components over a local rete stack (their own editor, engine and view). A locked scene (`SceneStage`) borrows the process-wide globals for a single compute and then restores them. A page may host one live, interactive stage (`LiveGraph`) that keeps the globals, so its overlays, such as the report and table popups, work. A page has only one slot each for the global editor, engine and view, which is why it can hold at most one live stage and every other scene is locked and self-contained.
 
 ## Entrance choreography
 

@@ -23,7 +23,13 @@ A **node class** is the headless model of one card: its sockets, its saved field
 
 - **A formula registration declares its full contract** in `EXCEL_IMPL_META`: return type, arity, rank and list arguments. Routing is derived from that declaration, never from a hand-kept list ([[D20]] declareContract, [[D4]] noManualList).
 - **An op module imports nothing from rete and serves both surfaces** ([[D19]] implReteFree, [[C17]] shareImpl): the node's `data()` and the formula registration call the same function.
-- **A variant is a selector on the existing card, never a sibling node** ([[B11]] maximalMerge). An op is a different function; an argument is a parameter of the same function ([[C26]] opArgDistinct).
+- **A variant is a selector on the existing card, never a sibling node** ([[B11]] maximalMerge). An op is a different function; an argument is a parameter of the same function ([[C26]] opArgDistinct). A merge follows these mechanics, each of which was once gotten wrong:
+  - An op's formula name is `fx ?? despace(label)`. When the real name is an Excel spelling or the label went bare, declare `fx` (distribution `normal` → NORM.DIST). Never dodge a [[C18]] uniqueNameMap collision by reclassifying the family as an argument or inventing a parallel presentation flag: the selector that names the node is the `op` field, and the accent follows.
+  - Selector-driven socket swaps prune departing keys through `dropInputCables` before `removeInput` ([[D10]] onePrunePath), keep the per-op shape in a spec table (the `DIST_SPECS` pattern), and carry state across a switch by meaning (PDF↔PMF, inverse variants → Inverse).
+  - Where the combinations are few, flat ops beat a second picker: each op keeps its own hover description and no new saved field is needed (Hypothesis Test's six tests, Rank & Percentile's INC and EXC forms).
+  - A merge keeps the old Add-menu leaf types, so `NODE_EXCEL` and the Function Reference are untouched; the merged nodes are inventoried in `docs/node-coverage.md`. Old saves load as Placeholders ([[B7]] preAlphaBreakFreely).
+  - After a merge, run `nodeOps.test.ts` and `formulaNodeCoverage.test.ts` beside the parity, catalog and seed suites.
+- **A node reaches everything its formula does** ([[D73]] nodeCoversFormula). A node that dispatches through `resolveExcelFunction` passes the function's full argument list. A node with its own computation covers every mode the registration does, preferably through one shared kernel: the REGEX ops compose `regexApply`, `replaceNth` and `regexGroups` on both surfaces.
 
 ## Reading inputs
 
@@ -36,6 +42,7 @@ A **node class** is the headless model of one card: its sockets, its saved field
 - **A unit-aware class sets `unitAware = true`.** It then receives `UnitCell` tags intact and runs the dimension algebra itself ([[unit-flow]]); every other class sees bare magnitudes.
 - **A class that takes a Cube as is lists the input in `noWidenInputs`**, so the coercion wrapper skips rank widening there and the class runs its own Cube branch ([[frame-verbs]] § Frames and Cubes).
 - **A volatile `data()` freezes its random draw per recalc.** It keys the draw on the recalc generation (`getRecalcGen` in `process.ts`), so every read within one recalc sees the same value, and it never calls a bare `Math.random()` ([[D46]] freezeVolatilePerCalc). The raw draw is what freezes; live inputs such as bounds apply to it on every call, so a new bound rescales the same draw instead of rerolling.
+- **A sink never acts from `data()`** ([[C38]] sinkRunButtonOnly). A class with an irreversible external effect (a disk write) computes only a preview in `data()`. The effect lives in `run()`, which fires only from the node's Run button or an explicit CLI run (`scripts/run-graph.ts --run <label>`, which stands in for the button), and only while the `enabled` arm flag is on. The arm flag never persists: it is left out of the `extractInit` whitelist, so every load path (reopening a save, paste, Placeholder restore) starts disarmed.
 
 ## Sockets
 

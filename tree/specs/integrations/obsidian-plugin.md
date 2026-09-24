@@ -206,7 +206,12 @@ keep their type's hue.
    as the app's literal editors keep their source: a Number pick over a date column shows NaN and
    saves the dates. The Complex field is the one exception: a scalar with no editor of its
    own, it refuses text it cannot read and writes nothing. What the plugin writes, Solenoid's note
-   reader (`noteFrontmatter.ts`) reads as the same type.
+   reader (`noteFrontmatter.ts`) reads as the same type. A blank typed cell is written as
+   missing. The Save path is `yamlValue.ts` (`frameSourceToYaml`, `listToYaml`, `matrixToYaml`,
+   `coerceYaml`, `validateYaml`) with `PropertyChip.tsx`, which hands every Save the rows the
+   editor opened on; no test pins it, since the plugin tests were dropped on the author's call.
+   Obsidian's own YAML writer may restyle a saved list (flow to block); the values are what was
+   in the note.
 7. **`validate` checks shape only (the family inside a list or matrix is a lens, not a gate; the
    Complex scalar still takes only what it reads); `render` takes anything.** On a
    value `validate` refuses, Obsidian shows its own mismatch warning and the inferred type. But

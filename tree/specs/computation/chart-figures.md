@@ -37,6 +37,8 @@ Every consumer recognizes a value by its brand field, never by structure: `isCha
 
 Every payload is data, never geometry: the renderer lays it out at the size it is given.
 
+The figure picks its renderer, not the surface ([[C100]] chartIsAValue): recharts for interactive plots (one lazy chunk, [[C97]] rechartsLazyChunk), plain CSS or SVG cards for structured payloads (KPI, Gauge, the Record views), and a supersampled 2-D canvas for data-heavy figures, which stays one DOM element however many points it draws and takes its theme colors from the live CSS variables when it draws. The Gantt value, for example, carries rows, links and non-working spans as serials plus the resolved view settings, and the layout produces pixels at the measured width, because the same figure draws at four sizes (chip, Display, popup, Report).
+
 | `kind` | Fields |
 |---|---|
 | `kpi` | `value: number \| null`, `prev: number \| null`, `unit: string` (a suffix after the number), `goodUp: boolean` (whether an increase is good). |

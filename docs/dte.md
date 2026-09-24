@@ -29,6 +29,8 @@ property (`name: shareImpl`, the title is the description alone), so `python too
 shareImpl` finds it and a citation may read `[[<ID>]] shareImpl`. The tool prints a leaf as
 `ID name: title`.
 
+`tests/graph/rules.test.ts` guards the leaves ([[B8]] treeIsTheHome): every MUST is cited from a test or labels its debt `*Unenforced:*`, cited suites exist, quoted test names appear in them, owner ratifications match the owner-kept `OWNER_RATIFIED` list, and every `[[ID]] name` pair matches the leaf's `name`.
+
 ## Wikilinks ([[C81]] wikilinkCitations)
 
 Solenoid writes every citation as an Obsidian wikilink, `[[C41]]` or `[[C41]] branchModel`, and
@@ -39,12 +41,21 @@ supersessions and every doc that cites it are followable links, backlinks and gr
 upstream `dte:ID` token as well, so the vendored spec below is still accurate about upstream and
 only its citation syntax differs here. Code files are invisible to Obsidian, so their `[[ID]]`
 lines serve the tool alone. Titles are double-quoted: the `name: summary` convention puts a
-colon in them, and Obsidian rejects the whole property block when the YAML is invalid.
+colon in them, and Obsidian rejects the whole property block when the YAML is invalid
+(`fm_str` quotes on write). The wikilink patch (`cited_ids`, `LINK_RE`, `fm_id`, `fm_ids`,
+`cite_text` and the `links` config key) can go upstream as it is, since DTE's own tree keeps
+`links = token`; it is logged in DTE's FEEDBACK.md. The parser also accepts Obsidian's
+rewrites of a leaf's properties (`null` as empty, block lists, reordered keys), and a
+ratification made in the working tree does not fail the human-held check, because the leaf
+at HEAD was not human-held ([[C81]] wikilinkCitations, [[C82]] vaultOutbox). Specs are
+Obsidian notes too: a front matter with the spec's title as an alias and a `spec` tag, and
+wikilinks to other specs by file name.
 
 Named leaves also carry `aliases: [name]` (written from `name`), so `[[branchModel]]` resolves and the link
 autocompleter offers names. The tool counts a citation only by ID, so write `[[C41]]` in code and
 docs and use the alias when browsing. `tree/decisions/DTE.base` is the tree as Obsidian Bases views:
-Outbox, Unratified, Contested, Inbox, All leaves.
+Outbox, Unratified, Contested, Inbox, All leaves. Obsidian's `aliases`, `tags` and `cssclasses`
+are known fields to the tool.
 
 ## Outbox: edits made in the vault ([[C82]] vaultOutbox)
 

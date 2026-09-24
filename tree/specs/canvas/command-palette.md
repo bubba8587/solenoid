@@ -36,4 +36,8 @@ When an AI key is connected, a sparkle button switches the palette to AI mode ([
 3. Apply loads the rewritten text form through `loadGraph`, the same path a file open takes, then animates in only the nodes the edit added (`revealAddedNodes`). A failed load reports "The rewrite failed to load. The document is unchanged."
 4. Escape first dismisses a shown result, then the palette.
 
+**The rewrite path** ([[C55]] aiWholeDocRewrite). An edit is a whole-document rewrite of the text form: the model emits a full replacement, the strict validator gates it, and there is no edit-operation layer. Nothing in the AI service touches the document; a validated rewrite reaches only the approval diff above. The rewrite is canonicalized through the text-form writer before the diff, so the diff shows only semantic change, and each repair round feeds the validator's issues back to the model. The demo key swaps only the transport, so validation, repair and canonicalization run for real in the demo too.
+
 The result surface stays neutral in AI mode: the accent marks the input's rerouted Enter, not the output.
+
+**Provider, grounding and the off switch** ([[B13]] aiInScope). The provider is Anthropic (`aiService.ts`). The model's grounding is generated from `nodeCatalog.ts` and the live node classes (`aiGrounding.ts`), never hand-written ([[C8]] declareOnce). It is built once per session, so the system prompt stays byte-identical across turns and the provider's prompt cache hits. The assistant ships switched off through `AI_ENABLED` in `aiKey.ts`; off, the sparkle, the Settings section and the What's New slide all hide, and turning the flag on restores the whole surface.
