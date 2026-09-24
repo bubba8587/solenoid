@@ -6,7 +6,7 @@ import { packFormulaSignature } from "./formulaExtensions";
 export const FORMULA_SIGNATURES: Record<string, string> = {
   // ── logical / branching ──
   IF: "condition, then, [else]",
-  IFS: "condition1, value1, condition2, value2, …",
+  IFS: "condition1, value1, …",
   IFERROR: "value, fallback",
   IFNA: "value, fallback",
   SWITCH: "value, case1, result1, …, [default]",

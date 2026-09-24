@@ -93,9 +93,9 @@ n("sumif-out","SumIfsNode", -900,  310, { label: "Spend (Amount < 0)", op: "sumi
 n("disp-out","DisplayNode",      -640, 100, { label: "Expenses (3 mo)" });
 n("expr-rate","ExpressionNode",-680,  380, { label: "Savings rate", expr: "(income + expense) / income" });
 n("gauge-rate","GaugeNode",    -420,  360, { label: "Savings rate" }, { literals: { value: 0 } });
-n("sld-savetarget","SliderInputNode", -420, 560, { label: "Target savings rate %", value: 20, min: 0, max: 60, step: 1 }, { literals: { min: 0, max: 60, step: 1 } });
+n("sld-savetarget","SliderInputNode", -420, 560, { label: "Target savings rate %", value: 20 }, { literals: { min: 0, max: 60, step: 1 } });
 n("expr-savet","ExpressionNode",-680, 560, { label: "Target (fraction)", expr: "t / 100" });
-n("alert-rate","AlertNode",    -160,  360, { label: "Low-savings watch", mode: "range" }, { literals: { value: 50, low: 0.2, high: 1, target: 0 } });
+n("alert-rate","AlertNode",    -160,  360, { label: "Low-savings watch" }, { literals: { value: 50, low: 0.2, high: 1, target: 0 } });
 n("cd-cash", "ConduitNode",    -260,  540, { angle: 0, seq: 1 });
 const GRP_CASH = ["col-amt","red-net","disp-net","sumif-in","disp-in","sumif-out","disp-out","expr-rate","gauge-rate","sld-savetarget","expr-savet","alert-rate","cd-cash"];
 
@@ -159,7 +159,7 @@ n("red-nw",  "AggregateNode",   340,  820, { label: "Net worth", op: "sum" });
 n("disp-nw", "DisplayNode",  620,  800, { label: "Net worth" });
 n("gauge-nw","GaugeNode",    620, 1020, { label: "Toward goal" }, { literals: { value: 0 } });
 n("ratio-nw","ExpressionNode", 430, 1180, { label: "Progress", expr: "nw / goal" });
-n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000, min: 50000, max: 250000, step: 5000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
+n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 120000 }, { literals: { min: 50000, max: 250000, step: 5000 } });
 // SUMIFS (conditional aggregate over one frame) + the frame GROUPBY
 // (keys+values through GetColumn). Coords in the TUNED frame.
 n("sumif-assets","SumIfsNode", 1250, 1110, { label: "Assets (Balance > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
@@ -169,7 +169,7 @@ n("gbf-type", "GroupByFrameNode",  881, 2042, { label: "By asset class", agg: "s
 n("col-tbal", "GetColumnNode",     881, 2270, { label: "Class totals", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("chart-type","ChartNode",  620, 1260, { label: "Assets vs liabilities", op: "column" });
 n("disp-type","DisplayNode", 900, 1080, { label: "Class totals" });
-n("alert-nw","AlertNode",    900,  820, { label: "Emergency-fund watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000, target: 0 } });
+n("alert-nw","AlertNode",    900,  820, { label: "Emergency-fund watch" }, { literals: { value: 50, low: 0, high: 1000000000, target: 0 } });
 n("cd-acct", "ConduitNode", 1160,  900, { angle: 0, seq: 2 });
 const GRP_ACCT = ["col-bal","red-nw","disp-nw","gauge-nw","ratio-nw","slider-goal","sumif-assets","sumif-liab","expr-debt","gbf-type","col-tbal","chart-type","disp-type","alert-nw","cd-acct"];
 
@@ -198,7 +198,7 @@ note("note-assump", -1920, 820,
   "Assumptions (your numbers)",
   "# Stray inputs\nHand-entered values that appear in no CSV. They feed the projections and alerts; change one and the right side recomputes.",
   "vermilion", 360, 170);
-n("in-emerg",    "SliderInputNode", -1900, 1020, { label: "Emergency-fund target $", value: 15000, min: 0, max: 60000, step: 1000 }, { literals: { min: 0, max: 60000, step: 1000 } });
+n("in-emerg",    "SliderInputNode", -1900, 1020, { label: "Emergency-fund target $", value: 15000 }, { literals: { min: 0, max: 60000, step: 1000 } });
 n("in-takehome", "NumberInputNode", -1900, 1320, { label: "Monthly take-home $", value: 5200 });
 n("in-years",    "NumberInputNode", -1900, 1500, { label: "Years to retire", value: 30 });
 const GRP_ASSUMP = ["in-emerg","in-takehome","in-years"];
@@ -210,8 +210,8 @@ note("note-proj", 1420, -560,
   "5 · Retirement what-if",
   "# Retirement projection\n**TVM (FV)** grows today's net worth plus monthly contributions at the assumed return; that is the headline number. The **year-by-year** curve broadcasts the same FV formula across a **SEQUENCE** of years, one Expression over a list, so its last point equals the headline. Drag **Contribution** or **Return** and the projection updates.",
   "green", 400, 220);
-n("sld-contrib","SliderInputNode", 1420, -360, { label: "Monthly contribution $", value: 600, min: 0, max: 3000, step: 50 }, { literals: { min: 0, max: 3000, step: 50 } });
-n("sld-return", "SliderInputNode", 1420,  -60, { label: "Annual return %", value: 7, min: 0, max: 15, step: 0.5 }, { literals: { min: 0, max: 15, step: 0.5 } });
+n("sld-contrib","SliderInputNode", 1420, -360, { label: "Monthly contribution $", value: 600 }, { literals: { min: 0, max: 3000, step: 50 } });
+n("sld-return", "SliderInputNode", 1420,  -60, { label: "Annual return %", value: 7 }, { literals: { min: 0, max: 15, step: 0.5 } });
 n("expr-pmt",  "ExpressionNode", 1700, -360, { label: "Contribution (outflow)", expr: "-contrib" });
 n("expr-mrate","ExpressionNode", 1700,  -60, { label: "Monthly rate", expr: "ret / 100 / 12" });
 n("expr-nper", "ExpressionNode", 1960, -360, { label: "Months", expr: "years * 12" });
@@ -220,8 +220,8 @@ n("tvm-fv",    "TvmNode",        2220, -260, { label: "Projected nest egg", paym
 n("disp-proj", "DisplayNode",    2480, -300, { label: "Projected nest egg" });
 n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { literals: { value: 0 } });
 n("ratio-proj","ExpressionNode", 2340,  100, { label: "Progress", expr: "fv / target" });
-n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000, min: 100000, max: 3000000, step: 50000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
-n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
+n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
+n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
 n("seq-years","SeriesNode",      1960,  440, { label: "Growth horizon (months)", op: "sequence" }, { literals: { start: 12, step: 12 } });
 n("tvm-traj","TvmNode",           2240,  440, { label: "Projected balance curve", paymentTiming: "end" });
 n("spark-growth","SparklineNode", 2520,  440, { label: "Growth trajectory", op: "line" });
@@ -263,8 +263,8 @@ note("note-mort", 1420, 660,
   "6 · Mortgage stress-test",
   "# Mortgage stress test\n**TVM (PMT)** turns a loan, rate and term into a monthly payment; **CUMIPMT** totals lifetime interest. The **Alert** trips when the payment exceeds 28% of take-home pay.",
   "vermilion", 380, 200);
-n("sld-loan", "SliderInputNode", 1420,  860, { label: "Home loan $", value: 350000, min: 100000, max: 800000, step: 10000 }, { literals: { min: 100000, max: 800000, step: 10000 } });
-n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6.25, min: 2, max: 9, step: 0.05 }, { literals: { min: 2, max: 9, step: 0.05 } });
+n("sld-loan", "SliderInputNode", 1420,  860, { label: "Home loan $", value: 350000 }, { literals: { min: 100000, max: 800000, step: 10000 } });
+n("sld-apr",  "SliderInputNode", 1420, 1140, { label: "Mortgage APR %", value: 6.25 }, { literals: { min: 2, max: 9, step: 0.05 } });
 n("in-term",  "NumberInputNode", 1420, 1420, { label: "Term (years)", value: 30 });
 // TVM's fv must be WIRED, not a literal — the Equation-family card is
 // wire-driven, so a seed literal would be an invisible hardcoded known
@@ -281,7 +281,7 @@ n("cumipmt",  "PaymentBreakdownNode", 1960, 1280, { label: "Interest (signed)", 
 n("expr-absint","ExpressionNode",2240, 1280, { label: "Total interest", expr: "-i" });
 n("disp-int", "DisplayNode",     2520, 1280, { label: "Total interest" });
 n("expr-aff", "ExpressionNode",  2240, 1540, { label: "Affordable (28%)", expr: "0.28 * take" });
-n("alert-afford","AlertNode",    2520, 1540, { label: "Affordability watch", mode: "range" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
+n("alert-afford","AlertNode",    2520, 1540, { label: "Affordability watch" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
 n("cd-mort", "ConduitNode",      2800, 1080, { angle: 0, seq: 3 });
 const GRP_MORT = ["sld-loan","sld-apr","in-term","in-endbal","expr-mapr","expr-mnper","tvm-pmt","expr-absp","disp-pmt","cumipmt","expr-absint","disp-int","expr-aff","alert-afford","cd-mort"];
 
@@ -323,7 +323,7 @@ n("col-bud", "GetColumnNode",  1700, 2320, { label: "MonthlyBudget", readAs: "nu
 n("red-bud", "AggregateNode",     1960, 2320, { label: "Monthly budget", op: "sum" });
 n("expr-qbud","ExpressionNode",2220, 2320, { label: "Quarterly budget", expr: "m * 3" });
 n("disp-bud","DisplayNode",    2480, 2300, { label: "Budget (3 mo)" });
-n("alert-g", "AlertNode",      2760, 2160, { label: "Over-budget watch", mode: "range" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
+n("alert-g", "AlertNode",      2760, 2160, { label: "Over-budget watch" }, { literals: { value: 50, low: 0, high: 100, target: 0 } });
 n("cd-bud",  "ConduitNode",    3020, 2200, { angle: 0, seq: 4 });
 const GRP_BUD = ["slicer","col-gamt","red-g","expr-gabs","disp-g","slicer-bud","col-bud","red-bud","expr-qbud","disp-bud","alert-g","cd-bud"];
 
