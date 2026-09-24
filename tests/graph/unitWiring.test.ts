@@ -198,6 +198,23 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(code(run("SUM(a)", list))).toBe("#UNIT!");
     expect(magnitudeOf(run("MAX(a) - MIN(a)", list) as UnitCell)).toBeCloseTo(10, 9); // 10 K
   });
+  it("a bare branch adopts the other branch's unit: IF(c, a, 0) keeps km and °C", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const run = (expr: string, a: unknown, c: boolean) => new ExpressionNode({ expr }).data({ a: [a as never], c: [c as never] }).result;
+    const km = applyFcUnit(5, "km"), t20 = applyFcUnit(20, "degC");
+    for (const [expr, c, want] of [["IF(c, a, 0)", true, 5], ["IF(c, a, 0)", false, 0], ["IFERROR(a, 0)", true, 5], ["CHOOSE(2, 1, a)", true, 5]] as const) {
+      const r = run(expr, km, c) as UnitCell;
+      expect(r.display, expr).toBe("km");
+      expect(displayMagnitudeOf(r)).toBeCloseTo(want, 9);
+    }
+    const cold = run("IF(c, a, 0)", t20, false) as UnitCell;
+    expect(cold.display).toBe("degC");
+    expect(displayMagnitudeOf(cold)).toBeCloseTo(0, 9);
+    expect((run("IF(c, a, a - a)", t20, true) as { code?: string }).code).toBe("#UNIT!");
+    const mixed = new ExpressionNode({ expr: "IF(c, a, b)" }).data({ a: [km as never], b: [applyFcUnit(2, "s") as never], c: [true as never] }).result;
+    expect(isUnitCell(mixed)).toBe(false);
+  });
   it("a function outside the unit tables is loud on a unit, and plain beside one", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");

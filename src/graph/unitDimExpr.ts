@@ -133,11 +133,13 @@ function callDim(name: string, argDims: DimResult[]): DimResult {
   }
   const branches = branchArgs(fn, argDims.length);
   if (branches) {
+    // A dimensionless branch adopts, as under `+` (IF(c, 5 km, 0) is km).
     let acc: Dim | null = null;
     for (const i of branches) {
       const a = argDims[i] ?? DIMENSIONLESS;
       if (a === null) return null;
       if (isSolError(a)) return a;
+      if (isDimensionless(a)) continue;
       if (acc === null) acc = a;
       else if (!dimEqual(acc, a)) return null;
     }
@@ -304,6 +306,9 @@ const AFF_SELECT = new Set(["MIN", "MAX", "MEDIAN", "AVERAGE", "AVG"]);
 /** Rounds its FIRST argument and keeps its kind; the other arguments are plain numbers. */
 const AFF_FIRST = new Set(["ABS", "ROUND", "ROUNDUP", "ROUNDDOWN", "MROUND", "CEILING", "FLOOR", "INT", "TRUNC"]);
 
+const isLiteral = (n: Ast | undefined): boolean =>
+  !n || n.t === "str" || n.t === "bool" || n.t === "blank" || constNum(n) !== null;
+
 function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<string>): Aff | SolError {
   const sub = (n: Ast) => affEval(n, points, lists);
   switch (node.t) {
@@ -379,9 +384,11 @@ function affEval(node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<stri
       }
       const branches = branchArgs(fn, args.length);
       if (branches) {
+        // A literal branch beside readings is a reading (IF(c, a, 0)), as in MIN(a, 30).
         const bs = branches.map((i) => args[i] ?? ZERO);
-        if (bs.some((b) => b.w !== bs[0].w)) return affErr();
-        return { w: bs[0]?.w ?? 0, list: bs.some((b) => b.list), konst: null };
+        const ws = branches.filter((i) => !isLiteral(node.args[i])).map((i) => args[i]?.w ?? 0);
+        if (ws.some((w) => w !== ws[0])) return affErr();
+        return { w: ws[0] ?? 0, list: bs.some((b) => b.list), konst: null };
       }
       return args.some((a) => a.w !== 0) ? affErr() : ZERO;
     }
