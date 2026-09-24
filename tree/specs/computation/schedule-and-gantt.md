@@ -39,7 +39,7 @@ Columns are found by name, case-insensitive; the first alias in each row below t
 | Repeat (`occurrences`, `times`) and Every (`every (days)`, `interval`, `period`) | number, optional | A childless row with Repeat above 1 becomes a parent of that many occurrences, named `<Task> 1`, `<Task> 2` and so on, each starting Every calendar days (default 7) after the one before. The first occurrence takes the row's predecessors. |
 | Anything else (color, notes, url, resource names) | passthrough | Never read by the engine. |
 
-Logical cells read true for `true`, a nonzero number, or the text `true`, `yes`, `y`, `1` or `on`. A date cell may be a serial or text; text that parses two ways or not at all is an error.
+Logical cells read true for `true`, a nonzero number, or the text `true`, `yes`, `y`, `1` or `on` (`readLogicalCell`, which the Gantt also reads its Summary, Critical, Late and Manual cells with). A date cell may be a serial or text; text that parses two ways or not at all is an error.
 
 ### Predecessors
 

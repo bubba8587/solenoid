@@ -8,7 +8,7 @@ import { parseGanttViewOptions, type GanttPayload, type GanttTask, type GanttLin
 import { predecessorText, Calendar, type PlanDependency } from "@solenoid/schedule-engine";
 import { parseDate } from "./nodes/dateSerial";
 import { isSolError } from "./errorValue";
-import { isInactive, ACTIVE_NAMES } from "./scheduleCpm";
+import { isInactive, readLogicalCell, ACTIVE_NAMES } from "./scheduleCpm";
 
 const norm = (s: string) => s.trim().toLowerCase();
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -69,7 +69,6 @@ function flatten(c: CubeValue, level: number, out: Row[]): void {
   }
 }
 
-const bool = (v: CubeCell | undefined) => v === true || v === 1 || (isText(v) && ["true", "yes", "1"].includes(norm(v)));
 const num = (v: CubeCell | undefined) => (isNum(v) ? v : null);
 /** A date cell that may still be text (a passthrough Deadline from a Cube Input). */
 const date = (v: CubeCell | undefined) => {
@@ -106,7 +105,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
       const start = num(r.cells.start), finish = num(r.cells.finish);
       if (start === null || finish === null) throw solError("#VALUE!", `Gantt: "${r.name}" has no Start or Finish; it needs a Schedule node's output`);
       // Depth-first order: a row is a summary exactly when the next row sits one level deeper.
-      const summary = bool(r.cells.summary) || rows[ri + 1]?.level === r.level + 1;
+      const summary = readLogicalCell(r.cells.summary) || rows[ri + 1]?.level === r.level + 1;
       const dur = num(r.cells.duration) ?? num(r.cells.days);
       const fl = num(r.cells.float);
       const base = baseByKey.get(norm(r.name));
@@ -116,8 +115,8 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         milestone: !summary && (dur === 0 || (dur === null && start === finish && !summary)),
         start, finish,
         complete: Math.max(0, Math.min(100, num(r.cells.complete) ?? num(r.cells["% complete"]) ?? 0)),
-        critical: bool(r.cells.critical),
-        late: bool(r.cells.late),
+        critical: readLogicalCell(r.cells.critical),
+        late: readLogicalCell(r.cells.late),
         violated: fl !== null && fl < 0,
         float: summary ? null : fl,
       };
@@ -129,7 +128,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         const parts = ss.map((a, k) => [num(a), num(sf[k])] as const).filter((x): x is readonly [number, number] => x[0] !== null && x[1] !== null).map(([a, b]) => [a, b] as [number, number]);
         if (parts.length > 1) t.segments = parts;
       }
-      if (bool(r.cells.manual)) t.manual = true;
+      if (readLogicalCell(r.cells.manual)) t.manual = true;
       if (deadline !== null) t.deadline = Math.floor(deadline);
       const group = r.cells.project ?? r.cells.section ?? r.cells.group;
       if (group != null && String(group).trim()) t.group = String(group).trim();
@@ -154,7 +153,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         const driving = drivingName === norm(d.task);
         links.push({
           from: pred.name, to: succ.name, type: d.type, lag: d.lag,
-          critical: driving && bool(pred.cells.critical) && bool(succ.cells.critical),
+          critical: driving && readLogicalCell(pred.cells.critical) && readLogicalCell(succ.cells.critical),
           violated: linkViolated(d, pred, succ),
         });
       }
