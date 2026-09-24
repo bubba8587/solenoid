@@ -14,7 +14,7 @@ import { parseDailyNotesConfig } from "../dailyNotesConfig";
 import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
 import { type Shape } from "../frameShape";
-import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
+import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
@@ -88,7 +88,7 @@ export class WebSourceNode extends ClassicPreset.Node {
     if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
       this.inflightKey = key;
-      void this.fetchFrame(ref, key).then(() => scheduleConnectionRecalc(this.id));
+      fetchInBackground(this.id, this.fetchFrame(ref, key));
     }
     return { frame: this.cachedResult };
   }
@@ -415,7 +415,7 @@ export class GeocodeNode extends ClassicPreset.Node {
       } else if (requestNetwork(this.id)) {
         // Commit the key only once the fetch launches, so a gated pass asks again.
         this._lastFetchKey = key;
-        void this.fetchMatches(place).then(() => scheduleConnectionRecalc(this.id));
+        fetchInBackground(this.id, this.fetchMatches(place));
       }
     }
     const m = pickGeocodeMatch(this.matches, this.pickedLabel);
@@ -493,7 +493,7 @@ export class WeatherNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchWeather(lat, lon).then(() => scheduleConnectionRecalc(this.id));
+        fetchInBackground(this.id, this.fetchWeather(lat, lon));
       }
     }
     const c = this.cached;
@@ -572,7 +572,7 @@ export class HolidaysNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchHolidays(year, country).then(() => scheduleConnectionRecalc(this.id));
+        fetchInBackground(this.id, this.fetchHolidays(year, country));
       }
     }
     const applicable = filterHolidays(this.cached ?? [], this.region);
@@ -722,7 +722,7 @@ export class FxNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchRate(from, to).then(() => scheduleConnectionRecalc(this.id));
+        fetchInBackground(this.id, this.fetchRate(from, to));
       }
     }
     const rate = this.cached?.rate ?? null;
@@ -748,7 +748,7 @@ export class FxNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void this.fetchSeries(from, to, start, end).then(() => scheduleConnectionRecalc(this.id));
+        fetchInBackground(this.id, this.fetchSeries(from, to, start, end));
       }
     }
     return { frame: this.seriesFrame() };
@@ -886,7 +886,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
         this.cached = null;
         connectionStore.setState(this.id, { status: "error", message: `"${folder}" is not inside the vault` });
       } else {
-        void trackInflight(this.load(key)).then(() => scheduleConnectionRecalc(this.id));
+        fetchInBackground(this.id, this.load(key));
       }
     }
     return { cube: this.cached };

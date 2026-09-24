@@ -4,21 +4,21 @@ import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
 import type { View } from "../../src/graph/view";
 import { CompositeNode, CompositeOutputNode } from "../../src/graph/nodes/composite";
-import { WebSourceNode } from "../../src/graph/nodes/connection";
+import { WebSourceNode, FxNode } from "../../src/graph/nodes/connection";
 import { NumberInputNode } from "../../src/graph/nodes/input";
 import { connectionStore, refreshConnection, refreshAllConnections, scheduleConnectionRecalc } from "../../src/graph/connectionStore";
 import { registerOwnedGraph } from "../../src/graph/activeGraph";
 
-afterEach(() => { vi.useRealTimers(); });
+const realFetch = globalThis.fetch;
+afterEach(() => { vi.useRealTimers(); globalThis.fetch = realFetch; });
 
 const run = (n: WebSourceNode) => (n as unknown as { data(i: object): unknown }).data({});
 
-async function manualCompositeWith(inner: Schemes["Node"]) {
+async function manualCompositeWith(inner: Schemes["Node"], srcOut = Object.keys(inner.outputs)[0]) {
   const c = new CompositeNode({ runMode: "manual" });
   const out = new CompositeOutputNode({ label: "X" });
   await c.internalEditor.addNode(inner);
   await c.internalEditor.addNode(out as unknown as Schemes["Node"]);
-  const srcOut = Object.keys(inner.outputs)[0];
   await c.internalEditor.addConnection(new ClassicPreset.Connection(inner, srcOut as never, out, "value" as never) as Schemes["Connection"]);
   c.addOutputPort({ label: "X", tier: "basic", internalNodeId: out.id });
   return c;
@@ -48,6 +48,22 @@ describe("a heavy composite holding a live card", () => {
     await refreshAllConnections();
     await c.data({});
     expect(c.stale).toBe(true);
+  });
+
+  it("the first Solve waits for the fetch it starts", async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200, statusText: "OK",
+      headers: { get: () => "application/json" },
+      text: async () => JSON.stringify({ base: "USD", date: "2026-09-01", rates: { EUR: 0.9 } }),
+    })) as unknown as typeof fetch;
+    const fx = new FxNode();
+    fx.stringLiterals.from = "USD";
+    fx.stringLiterals.to = "EUR";
+    const c = await manualCompositeWith(fx as unknown as Schemes["Node"], "rate");
+    c.requestSolve();
+    const out = await c.data({});
+    expect(Object.values(out)[0]).toBe(0.9);
+    expect(c.stale).toBe(false);
   });
 
   it("holds when a refresh-all has no live card inside it", async () => {

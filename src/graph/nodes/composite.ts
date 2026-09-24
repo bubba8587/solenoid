@@ -20,7 +20,7 @@ import { isGraphRebuilding } from "../process";
 import { loopMembers, seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
-import { connectionStore } from "../connectionStore";
+import { connectionStore, whenConnectionsSettled } from "../connectionStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 import { PlaceholderNode } from "./placeholder";
@@ -191,6 +191,8 @@ export class CompositeOutputNode extends ClassicPreset.Node {
     return { value: v };
   }
 }
+
+const SOLVE_FETCH_ROUNDS = 4;
 
 function nestedNodeIds(editor: NodeEditor<Schemes>, out: string[] = []): string[] {
   for (const n of editor.getNodes()) {
@@ -750,7 +752,7 @@ export class CompositeNode extends ClassicPreset.Node {
       const key = this.solveKey(inputs);
       if (this.solveRequested) {
         const solveInputs = this.solveInsideOnly ? {} : inputs;
-        const outputs = await this.runActiveMode(solveInputs);
+        const outputs = await this.solveSettled(solveInputs);
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
         this.lastSolveKey = this.solveKey(inputs);
@@ -781,6 +783,21 @@ export class CompositeNode extends ClassicPreset.Node {
     this.cachedOutputs = outputs;
     this.stale = false;
     compositeStaleStore.set(this.id, false);
+    return outputs;
+  }
+
+  /** A fetch that lands mid-solve runs it again; chained live cards (a Geocode feeding a Weather) land one link per round. */
+  private async solveSettled(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    const ids = nestedNodeIds(this.internalEditor);
+    let landed = connectionStore.landedCount(ids);
+    let outputs = await this.runActiveMode(inputs);
+    for (let round = 0; round < SOLVE_FETCH_ROUNDS; round++) {
+      await whenConnectionsSettled(ids);
+      const now = connectionStore.landedCount(ids);
+      if (now === landed) break;
+      landed = now;
+      outputs = await this.runActiveMode(inputs);
+    }
     return outputs;
   }
 
