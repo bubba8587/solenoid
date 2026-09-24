@@ -196,3 +196,8 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     follow-up script (rename the pair, drop the repeat), and dropping a repeat inside prose left empty
     brackets to clean by hand. The rewrite should write the winner's name and collapse a citation the
     line already carries.
+23. **`reparent` takes no `--authorized-by`.** `set`, `retire` and `move` all accept it, so a reparent
+    done on the owner's word can't say so in the tool; the History line records only the agent. It also
+    works on any leaf, not just orphans, though `--help` describes it as "fix an orphan", which makes it
+    the right tool for a same-ring re-parent (item 17 asked `move` for that). Suggest: accept
+    `--authorized-by` and describe it as the general re-parent.
