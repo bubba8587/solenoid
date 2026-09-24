@@ -546,7 +546,7 @@
    }
   },
   {
-   "name": "an unparseable numeric value matches no rows (no comma stripping)",
+   "name": "a value grouped in thousands reads as its number",
    "frames": {
     "in": {
      "columns": [
@@ -572,7 +572,9 @@
      {
       "name": "v",
       "type": "number",
-      "values": []
+      "values": [
+       1234
+      ]
      }
     ]
    }
@@ -923,7 +925,7 @@
    }
   },
   {
-   "name": "a hex value reads as its number",
+   "name": "a hex value matches no number",
    "frames": {
     "in": {
      "columns": [
@@ -949,9 +951,39 @@
      {
       "name": "n",
       "type": "number",
-      "values": [
-       16
-      ]
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "a decimal comma matches no number",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        3.5,
+        35
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "v",
+    "op": "eq",
+    "value": "3,5"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": []
      }
     ]
    }

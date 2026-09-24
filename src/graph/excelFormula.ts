@@ -700,7 +700,7 @@ function excelBlanks(name: string, args: Ast[], argv: unknown[]): unknown[] {
   return argv.map((v, i) => (args[i]?.t === "blank" && types[i] ? EXCEL_BLANK[types[i]] : v));
 }
 
-const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISBOOLEAN", "ISREF", "N", "T", "TYPE", "IF", "CHOOSE"]);
+const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISBOOLEAN", "ISREF", "N", "T", "TYPE", "IF", "IFS", "CHOOSE"]);
 
 function broadcastCall(name: string, argv: unknown[], blankSlots: readonly boolean[] = []): unknown {
   const call = (...args: unknown[]): unknown => {

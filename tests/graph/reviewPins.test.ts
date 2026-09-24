@@ -435,3 +435,74 @@ describe("review pins: text min and max in PIVOTBY's value sort and Cube Rollup 
     expect(col.values).toEqual(["pear"]);
   });
 });
+
+describe("review pins: follow-ups to the 2026-09-24 formula leads", () => {
+  const ev = async (src: string, vars: Record<string, unknown> = {}) => (await import("../../src/graph/excelFormula")).compileEvaluator(src)!(vars);
+  const code = (v: unknown) => (isSolError(v) ? v.code : v);
+
+  it("TAKE of zero rows or columns is #DOMAIN! (Excel's #CALC!), like DROP of everything; DROP 0 drops none", async () => {
+    expect(code(await ev("TAKE(x, 0)", { x: [1, 2, 3] }))).toBe("#DOMAIN!");
+    expect(code(await ev("TAKE(m, 0)", { m: [[1, 2], [3, 4]] }))).toBe("#DOMAIN!");
+    expect(code(await ev("TAKE(m, 1, 0)", { m: [[1, 2], [3, 4]] }))).toBe("#DOMAIN!");
+    expect(await ev("TAKE(m, 1)", { m: [[1, 2], [3, 4]] })).toEqual([[1, 2]]);
+    expect(await ev("DROP(x, 0)", { x: [1, 2, 3] })).toEqual([1, 2, 3]);
+  });
+
+  it("RANDARRAY refuses a negative count and a Min above Max with #VALUE!; counts truncate, on both surfaces", async () => {
+    expect(code(await ev("RANDARRAY(-1)"))).toBe("#VALUE!");
+    expect(code(await ev("RANDARRAY(2, -1)"))).toBe("#VALUE!");
+    expect(code(await ev("RANDARRAY(2, 1, 5, 1)"))).toBe("#VALUE!");
+    expect((await ev("RANDARRAY(2.9)")) as unknown[]).toHaveLength(2);
+    expect(await ev("RANDARRAY(0)")).toEqual([]);
+    const { RandArrayNode } = await import("../../src/graph/nodes/list");
+    expect(code(new RandArrayNode().data({ count: [-1] }).list)).toBe("#VALUE!");
+    expect(code(new RandArrayNode().data({ count: [2], min: [5], max: [1] }).list)).toBe("#VALUE!");
+    expect(new RandArrayNode().data({ count: [2.9] }).list).toHaveLength(2);
+  });
+
+  it("IFS reads each condition as IF does, on both surfaces", async () => {
+    expect(await ev('IFS("false", 1, "TRUE", 2)')).toBe(2);
+    expect(code(await ev('IFS("text", 1, TRUE, 2)'))).toBe("#VALUE!");
+    expect(code(await ev("IFS(FALSE, 1)"))).toBe("#N/A");
+    expect(await ev("IFS(0, 1, 3, 2)")).toBe(2);
+    const { IfsNode } = await import("../../src/graph/nodes/logic");
+    const card = new IfsNode();
+    expect(card.data({ cond0: ["false"], val0: [1], cond1: ["True"], val1: [2] }).result).toBe(2);
+    expect(code(card.data({ cond0: ["text"], val0: [1] }).result)).toBe("#VALUE!");
+  });
+
+  it("inferColumn keeps an error cell as the error and lets the other cells set the type", async () => {
+    const { inferColumn } = await import("../../src/graph/frame");
+    const { solError } = await import("../../src/graph/errorValue");
+    const e = solError("#DIV/0!", "x");
+    const col = inferColumn("a", [1, e, "3"]);
+    expect(col.type).toBe("number");
+    expect(col.values).toEqual([1, e, 3]);
+    const txt = inferColumn("b", ["pear", e]);
+    expect(txt.type).toBe("string");
+    expect(txt.values[1]).toBe(e);
+  });
+
+  it("hex, binary and octal text is never a number; grouped thousands still are", async () => {
+    const { coerceNumber, coerceLogical } = await import("../../src/graph/valueKinds");
+    expect(coerceNumber("0x1F")).toBeNaN();
+    expect(coerceNumber("0b101")).toBeNaN();
+    expect(coerceNumber("0o17")).toBeNaN();
+    expect(coerceNumber("Infinity")).toBeNaN();
+    expect(coerceNumber(" 12.5 ")).toBe(12.5);
+    expect(coerceNumber("1,234")).toBe(1234);
+    expect(coerceLogical("0x1")).toBeNull();
+    expect(coerceLogical("2")).toBe(true);
+    const { inferColumn, coerceFrameCell } = await import("../../src/graph/frame");
+    expect(inferColumn("h", ["0x1F", "0b1"]).type).toBe("string");
+    expect(inferColumn("n", ["1,234", "5"]).values).toEqual([1234, 5]);
+    expect(coerceFrameCell("number", "0x1F")).toBeNaN();
+    const { passesFilter } = await import("../../src/graph/frameVerbs");
+    expect(passesFilter(31, "eq", "0x1F", "number", false)).toBe(false);
+    expect(passesFilter(31, "eq", "31", "number", false)).toBe(true);
+    expect(code(await ev('"0x1F" + 1'))).toBe("#VALUE!");
+    expect(code(await ev('VALUE("Infinity")'))).toBe("#VALUE!");
+    expect(await ev("COUNTIF(x, 31)", { x: ["0x1F", "31"] })).toBe(1);
+    expect(code(await ev('NUMBERVALUE("0x1F")'))).toBe("#VALUE!");
+  });
+});

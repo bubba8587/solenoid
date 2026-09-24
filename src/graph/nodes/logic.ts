@@ -35,7 +35,6 @@ function broadcastEl<A, T>(
 const triBool = (x: number | boolean | null): Tri =>
   isMissing(x) ? null : x === true || (typeof x === "number" && x !== 0);
 
-const truthy = (x: unknown): boolean => x === true || (typeof x === "number" && x !== 0);
 
 type LiteralHost = { literals: Record<string, number>; stringLiterals: Record<string, string> };
 
@@ -753,7 +752,13 @@ export class IfsNode extends ClassicPreset.Node {
         this.cachedResult = null;
         return { result: null };
       }
-      if (!isMissing(cond) && truthy(cond)) {
+      const test = isMissing(cond) ? false : ifTest(cond);
+      if (isSolError(test)) {
+        this._selectedUnitKey = null;
+        this.cachedResult = test;
+        return { result: test };
+      }
+      if (test) {
         const val = pick(valKey);
         this._selectedUnitKey = valKey;
         this.cachedResult = val;

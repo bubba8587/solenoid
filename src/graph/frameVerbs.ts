@@ -10,7 +10,7 @@ import { sameColumnUnit, isUnitCell, isAffineDisplay, unitError, READINGS_ADD, R
 import { dimEqual, dimPow, formatDim } from "./dimension";
 import { fcUnitToUnit } from "./unitBridge";
 import { tagFrameCellUnit } from "./unitColumn";
-import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
+import { forAggregate, coerceLogical, guardFinite, decimalFromText } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
@@ -182,9 +182,7 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (typeof value === "boolean") return value ? 1 : 0;
   if (typeof value === "string") {
-    const t = value.trim();
-    if (t === "") return null;
-    const n = Number(t);
+    const n = decimalFromText(value);
     return Number.isFinite(n) ? n : null;
   }
   return null;
@@ -1275,7 +1273,7 @@ function lookupNeedle(lookup: string, type: FrameColType): FrameCell {
     const t = lookup.trim();
     return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t);
   }
-  if (type === "number") return Number(lookup);
+  if (type === "number") return decimalFromText(lookup);
   return lookup;
 }
 
@@ -1705,7 +1703,7 @@ function coerceReplacement(t: FrameColType, text: string): FrameCell | undefined
   if (s === "") return null;
   switch (t) {
     case "number":
-    case "date": { const n = Number(s); return Number.isFinite(n) ? n : undefined; }
+    case "date": { const n = decimalFromText(s); return Number.isFinite(n) ? n : undefined; }
     case "logical": {
       const l = s.toLowerCase();
       return l === "true" || l === "1" ? true : l === "false" || l === "0" ? false : null;
@@ -1719,8 +1717,8 @@ export function replaceValues(
 ): FrameValue {
   if (find === "") return f;
   const targets = new Set((column.trim() ? [requireColumn(f, column.trim())] : f.columns).map((c) => c.name));
-  const findNum = Number(find.trim());
-  const numericFind = find.trim() !== "" && Number.isFinite(findNum);
+  const findNum = decimalFromText(find);
+  const numericFind = Number.isFinite(findNum);
   const cols = f.columns.map((col) => {
     if (!targets.has(col.name)) return col;
     if (mode === "substring") {

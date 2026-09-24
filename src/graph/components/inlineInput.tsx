@@ -17,6 +17,7 @@ import { ColumnPickerField } from "./ColumnPickerField";
 import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
+import { decimalFromText } from "../valueKinds";
 
 // Body-height estimate only; socket placement is measured per row ([[C11]] socketBox12).
 export const INPUT_ROW_PITCH = 28;
@@ -358,13 +359,12 @@ export function InlineTextField({
   return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} listId={listId} />;
 }
 
-/** `Number(t)`, not `parseFloat`, so "12abc" is text rather than 12. */
 export type AutoLiteral = number | string | undefined;
 const autoToText = (v: AutoLiteral) => (v == null ? "" : String(v));
 const parseAuto = (t: string): AutoLiteral => {
   const trimmed = t.trim();
   if (trimmed === "") return undefined;
-  const n = Number(trimmed);
+  const n = decimalFromText(trimmed);
   return Number.isFinite(n) ? n : t;
 };
 

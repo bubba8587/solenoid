@@ -52,6 +52,17 @@ describe("MOD — Excel result takes the DIVISOR's sign (FX is wrong)", () => {
   });
 });
 
+describe("IFS reads its tests as IF does (FX is wrong)", () => {
+  it("text counts only as TRUE or FALSE; other text is #VALUE!", () => {
+    expect(call("IFS", "FALSE", 1, true, 2)).toBe(2);
+    const r = call("IFS", "text", 1, true, 2);
+    expect(isSolError(r) && r.code).toBe("#VALUE!");
+  });
+  it("FX still takes any truthy text as true (tripwire)", () => {
+    expect((FX as unknown as { IFS: (...a: unknown[]) => unknown }).IFS("FALSE", 1, true, 2)).toBe(1);
+  });
+});
+
 describe("QUOTIENT — integer division, truncated toward zero; ÷0 is #DIV/0!", () => {
   it("matches Excel", () => {
     expect(num(call("QUOTIENT", 7, 2))).toBe(3);

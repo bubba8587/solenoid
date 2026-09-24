@@ -215,7 +215,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "lcm": [{ excel: "LCM", syntax: "=LCM(a, b)", parity: true }],
   "iferror": [{ excel: "IFERROR", syntax: "=IFERROR(v, fallback)", parity: true }],
   "ifna": [{ excel: "IFNA", syntax: "=IFNA(v, fallback)", parity: true }],
-  "ifs": [{ excel: "IFS", syntax: "=IFS(c1, v1, c2, v2, ...)", parity: false, note: "Fixed 3 conditions; Excel is variadic" }],
+  "ifs": [{ excel: "IFS", syntax: "=IFS(c1, v1, c2, v2, ...)", parity: false, note: "A blank condition gives a blank; Excel reads it as FALSE." }],
   "payment-breakdown": [
     { excel: "IPMT", syntax: "=IPMT(rate, per, nper, pv)", parity: true },
     { excel: "PPMT", syntax: "=PPMT(rate, per, nper, pv)", parity: true },
@@ -252,7 +252,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-filter": [{ excel: "FILTER", syntax: "=FILTER(array, include)", parity: false, note: "Conditions are AND/OR rows on the node. To filter by a parallel List, use Frame from Lists into Frame Filter." }],
   "group-lists": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "Groups a List of values by a parallel List of keys. For tables, use the Frame GROUPBY node." }],
   "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row, [col])", parity: true, note: "A blank or 0 Row returns the whole column, and a blank or 0 Column the whole row, as in Excel." }],
-  "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY(count,[min],[max],[integer])", parity: false, note: "Returns a List, with one Count in place of rows and columns. Integer is supported, and it re-rolls on F9." }],
+  "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY(count,[min],[max],[integer])", parity: false, note: "Returns a List, with one Count in place of rows and columns. Integer is supported, and it re-rolls on F9. A Count of 0 is an empty list; Excel answers #CALC!." }],
   "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Zero rows or columns give an empty list, where Excel gives #CALC!." }],
   "list-sort": [
     { excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" },
@@ -505,7 +505,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "MINIFS", syntax: "=MINIFS(min_range, criteria_range1, criteria1, ...)", parity: true },
     { excel: "MAXIFS", syntax: "=MAXIFS(max_range, criteria_range1, criteria1, ...)", parity: true },
   ],
-  "takedrop": [{ excel: "TAKE", syntax: "=TAKE(array, rows, [cols])", parity: true, note: "A List takes one count and a table takes rows and columns. Negative counts from the end, and 0 means omitted." }],
+  "takedrop": [{ excel: "TAKE", syntax: "=TAKE(array, rows, [cols])", parity: false, note: "A List takes one count and a table takes rows and columns. Negative counts from the end, and 0 means omitted; Excel's TAKE of 0 is #CALC!." }],
   "takedrop-drop": [{ excel: "DROP", syntax: "=DROP(array, rows, [cols])", parity: true, note: "A List drops one count and a table drops rows and columns. Negative counts from the end, and 0 means omitted." }],
   "table-expand": [{ excel: "EXPAND", syntax: "=EXPAND(array, rows, [cols], [pad_with])", parity: false, note: "An empty Fill pads with blanks, not Excel's #N/A. Use the NA node as Fill for Excel's behavior." }],
   "tvm": [

@@ -567,7 +567,7 @@
    }
   },
   {
-   "name": "find reads a hex number as JavaScript does",
+   "name": "find that spells a hex number matches no number",
    "frames": {
     "in": {
      "columns": [
@@ -586,7 +586,7 @@
     "kind": "replaceValues",
     "column": "n",
     "find": "0x10",
-    "replaceWith": "0b11",
+    "replaceWith": "3",
     "mode": "cell"
    },
    "expect": {
@@ -595,7 +595,7 @@
       "name": "n",
       "type": "number",
       "values": [
-       3,
+       16,
        10
       ]
      }

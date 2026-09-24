@@ -442,6 +442,12 @@ export function weighted(op: WeightedOp, values: readonly Cell[], weights: reado
 
 export const MAX_GENERATED = 1_000_000;
 
+/** A generated array's row or column count, Excel's reading: truncated, and `#VALUE!` below 0 or unreadable. */
+export function arrayCount(n: number, fn: string): number | SolError {
+  const k = Math.trunc(n);
+  return k >= 0 ? k : solError("#VALUE!", `${fn} needs a count of 0 or more`);
+}
+
 export function linspace(start: number, end: number, count: number): number[] {
   const n = Math.round(count);
   if (n <= 0) return [];

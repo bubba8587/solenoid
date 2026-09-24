@@ -430,6 +430,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 ### Logic and choice
 
 - **IF(test, [then], [else])** reads its test with `ifTest` (`valueKinds.ts`), which the IF card shares: a blank test answers blank; a number test is true when nonzero; text reads as TRUE or FALSE in any case, and any other text, `""` included, is `#VALUE!`, as in Excel. With a false test and no `else` the answer is FALSE, and with a true test and no `then` it is TRUE. A blank branch (`IF(x,,y)`) arrives as null and stays null, a deliberate difference from Excel, which reads it as 0 ([[C80]] blankArgIsExcelBlank).
+- **IFS(test1, value1, …)** reads each test with `ifTest`, as the IFS card does, and answers the value of the first true one. A blank test before any true one answers blank, an unreadable test is `#VALUE!`, an odd argument count is `#VALUE!`, and no true test is `#N/A`.
 - **CHOOSE(index, v1, …)** runs the Choose node's rule: a blank index is blank, a fractional index truncates (`CHOOSE(2.7, …)` is the second), an index outside 1 to n is `#VALUE!`, and the chosen value passes through as it is, a blank included. CHOOSE is in `NULL_INSPECTING`, so a blank among the unchosen values cannot blank the answer.
 - **NAND, NOR, XNOR** are variadic and three-valued like the Boolean Op node: each operand goes through `coerceLogical`, an unknown (null) flows by Kleene logic, and the answer is a logical. XNOR is TRUE when an even number of inputs are true, and any unknown makes it unknown.
 - **ISCLOSE(a, b, [tolerance])**: `|a − b| ≤ tolerance`, default 10⁻⁹; a blank operand answers blank. **ISBOOLEAN** is TRUE only for a logical.
@@ -523,9 +524,9 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **TOCOL** flattens row by row and **TOROW** down the columns (transpose, then flatten), as the Table Reshape node does.
 - **SEQUENCE(rows, [cols], [start], [step])**: one column answers a list, the Sequence node's own 1-D output; more columns wrap row by row. A blank row count answers blank. The counts truncate; a negative one is `#VALUE!`, and zero rows or columns answer an empty list.
 - **SORT(array, [sort_index], [sort_order])** works on one list: `sort_index` must be 1 or omitted (`#SHAPE!` otherwise), and order −1 sorts descending. **SORTBY(array, by)** refuses a key list of another length with `#SHAPE!`, as the Sort card and Excel do. **FILTER(array, include, [if_empty])** refuses an include array of another size with `#SHAPE!`, and an empty result answers `if_empty` when given.
-- **TAKE** and **DROP(array, rows, [cols])** take Excel's signed counts through the one `takeSlice`/`dropSlice` kernel, per axis on a matrix; a column count on a list is `#SHAPE!`, and dropping everything is `#DOMAIN!` (Excel's `#CALC!`), never a silent empty array.
+- **TAKE** and **DROP(array, rows, [cols])** take Excel's signed counts through the one `takeSlice`/`dropSlice` kernel, per axis on a matrix; a column count on a list is `#SHAPE!`, and taking 0 rows or columns or dropping everything is `#DOMAIN!` (Excel's `#CALC!`), never a silent empty array. DROP of 0 drops nothing. The TAKE / DROP card has no way to leave a count out, so its 0 means "left out" and keeps the whole axis.
 - **UNIQUE**, **MODE.MULT** and **FREQUENCY(data, bins)** answer blank for a blank argument.
-- **RANDARRAY([rows], [cols], [min], [max], [integer])** defaults to one row, one column, 0 and 1; it is volatile, fresh values each evaluation, while the node holds its rolls for a recalculation.
+- **RANDARRAY([rows], [cols], [min], [max], [integer])** defaults to one row, one column, 0 and 1. Its counts read as SEQUENCE's do (`arrayCount`, shared with the RANDARRAY card): they truncate, a negative one is `#VALUE!`, and zero answers an empty list. A Min above Max is `#VALUE!`, as in Excel; it is volatile, fresh values each evaluation, while the node holds its rolls for a recalculation.
 
 ### Criteria (`excelCriteria.ts`)
 
@@ -539,7 +540,7 @@ The criteria family (SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS, COUNTIF, AVER
 4. When the range is numeric (it holds a number and no non-empty text), date-shaped text compares as its serial through `parseDate`. An ambiguous day-month text is `#AMBIGUOUS!`, never a guess.
 5. Otherwise the criterion is text. With `=` or `<>` (or no prefix), `*` and `?` are wildcards, and `~` escapes the next character.
 
-**Matching a cell** (`criterionMatches`): an error cell never matches. A blank criterion matches a blank cell (null or empty text), and "not blank" matches the rest. A blank cell otherwise matches only a `<>` criterion. A logical criterion matches only logical cells. A number criterion compares with number cells, and also with text that reads as a number, as Excel's SUMIF does; logical cells never match it. Text compares case-insensitively: a wildcard pattern matches the whole cell, and the ordering prefixes compare lowercased text by UTF-16 code unit (`compareStrings`, [[C45]] excelComparisons).
+**Matching a cell** (`criterionMatches`): an error cell never matches. A blank criterion matches a blank cell (null or empty text), and "not blank" matches the rest. A blank cell otherwise matches only a `<>` criterion. A logical criterion matches only logical cells. A number criterion compares with number cells, and also with text that reads as a number (`decimalFromText`), as Excel's SUMIF does; logical cells never match it. Text compares case-insensitively: a wildcard pattern matches the whole cell, and the ordering prefixes compare lowercased text by UTF-16 code unit (`compareStrings`, [[C45]] excelComparisons).
 
 **Aggregating** (`criteriaAggregate(kind, values, pairs)`): the ranges and the values range zip to the shortest length, and a row counts when it matches every criterion. An error in a matched value cell is the answer, as in Excel. A value cell contributes when it is a finite number or text that reads as one (AVERAGEIF over "10" and "30" is 20, never "1030"); other text is ignored. COUNT counts matched rows; SUM of nothing is 0; AVERAGE of nothing is `#DIV/0!`; MIN and MAX of nothing are 0, as in Excel.
 
@@ -555,9 +556,10 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 - The IM* functions answer tagged complex values, zip lists pairwise, and answer IMARGUMENT(0) as 0; unparseable complex text is `#VALUE!` rather than `#NUM!`.
 - EXPAND's default padding is blank rather than `#N/A`.
 - CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading; Excel's stop at 255 and use the system code page.
-- SEQUENCE with zero rows or columns is an empty list; Excel, which has no empty array, answers `#CALC!`.
+- SEQUENCE and RANDARRAY with zero rows or columns are an empty list; Excel, which has no empty array, answers `#CALC!`. TAKE and DROP keep the error, as `#DOMAIN!`, because an empty take there is almost always a wrong count.
+- The TAKE / DROP card reads a count of 0 as "left out", keeping the whole axis; Excel's TAKE of 0 is `#CALC!`, and so is the formula's (`#DOMAIN!`).
 - XMATCH and XLOOKUP refuse wildcard and binary search modes.
-- Excel's `#NUM!` is split into `#DOMAIN!`, `#OVERFLOW!` and `#CONV!`; `ERROR.TYPE` still reports all three as 6. A percentile outside its domain, dropping everything, and an XIRR date before the first are `#DOMAIN!`.
+- Excel's `#NUM!` is split into `#DOMAIN!`, `#OVERFLOW!` and `#CONV!`; `ERROR.TYPE` still reports all three as 6. A percentile outside its domain, taking nothing or dropping everything, and an XIRR date before the first are `#DOMAIN!`.
 - A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[D70]] nullNotEnoughData), and so are AVERAGE and MEDIAN of no numbers and LARGE or SMALL with k past the count (Excel: `#DIV/0!`, `#NUM!`); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel, and so does AVERAGEIF(S) with no matching row.
 - LOG2 of a value at or below 0 is blank.
 - FORECAST.ETS uses its own parameter search, so its values are close to Excel's but not identical.
