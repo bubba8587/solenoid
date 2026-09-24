@@ -55,6 +55,8 @@ export function remapSort(sort: ColumnSort, fn: (col: number) => number | null):
 /** `null` is nothing to sort on, and sinks to the bottom in both directions. */
 export type SortKey = string | number | null;
 
+const DECIMAL_RE = /^[+-]?(\d+\.?\d*|\.\d+)(e[+-]?\d+)?$/i;
+
 export function sortKeyOf(v: unknown): SortKey {
   if (v === null || v === undefined) return null;
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
@@ -62,7 +64,8 @@ export function sortKeyOf(v: unknown): SortKey {
   if (typeof v === "string") {
     const t = v.trim();
     if (t === "") return null;
-    const n = Number(t.replace(/[,\s]/g, ""));
+    const d = t.replace(/[,\s]/g, "");
+    const n = DECIMAL_RE.test(d) ? Number(d) : NaN;
     return Number.isFinite(n) ? n : t;
   }
   const code = (v as { code?: unknown }).code;
