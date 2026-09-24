@@ -1,5 +1,6 @@
 // [[E8]]
 import { flushDrafts } from "./draftFlush";
+import { isDesktop } from "./fileBridge";
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
@@ -339,14 +340,21 @@ export function scheduleAutosave(): void {
   }, AUTOSAVE_DELAY);
 }
 
+function flushOnExit(): void {
+  if (_suspend > 0) return;
+  const flushed = flushDrafts();
+  if (_timer === null && !flushed) return;
+  if (_timer) clearTimeout(_timer);
+  _timer = null;
+  documentStore.captureCurrent();
+}
+
 if (typeof window !== "undefined") {
-  window.addEventListener("pagehide", () => {
-    if (_suspend > 0) return;
-    const flushed = flushDrafts();
-    if (_timer === null && !flushed) return;
-    if (_timer) clearTimeout(_timer);
-    _timer = null;
-    documentStore.captureCurrent();
-  });
+  window.addEventListener("pagehide", flushOnExit);
+  // Closing the desktop window has no guaranteed pagehide; a throwing handler would keep the window open.
+  if (isDesktop()) {
+    void import("@tauri-apps/api/window").then((m) =>
+      m.getCurrentWindow().onCloseRequested(() => { try { flushOnExit(); } catch (e) { console.error("[solenoid] close flush failed", e); } }));
+  }
 }
 

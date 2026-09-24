@@ -93,6 +93,7 @@
       ]
     },
     "core:window:allow-close",
+    "core:window:allow-destroy",
     "core:window:allow-center",
     "core:window:allow-minimize",
     "core:window:allow-maximize",
