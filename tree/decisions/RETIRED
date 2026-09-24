@@ -83,3 +83,6 @@ C87	2026-09-24	reverted	-	Claude Opus 5.5	the author	groupsAreSubflows: Groups a
 C91	2026-09-24	reverted	-	Claude Opus 5.5	the author	cableWalkRouter: One walk router for diagonal and straight cables: constraints by construction, shortest walk wins
 C97	2026-09-24	reverted	-	Claude Opus 5.5	the author	rechartsLazyChunk: recharts is one lazy chunk: only chartRender.tsx imports it
 C99	2026-09-24	reverted	-	Claude Opus 5.5	the author	chromeEnvelopeVars: Chrome envelopes are two measured CSS vars; every floating overlay derives from them
+C27	2026-09-24	reverted	-	Claude Opus 5.5	the author	noDataInComponents: Components never call `node.data()`
+D10	2026-09-24	reverted	-	Claude Opus 5.5	the author	onePrunePath: Input-cable pruning is ONE loop (`dropInputCables`)
+D39	2026-09-24	reverted	-	Claude Opus 5.5	the author	keyByValue: Sets and dedupes compare values by what they are, never by where they came from

@@ -1,4 +1,4 @@
-// [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind, [[C27]] noDataInComponents
+// [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind
 // Mechanics: [[conduit-lane-faces]]. All CONDUIT_MAX_LANES lanes are declared up front, since the engine and validator address any lane.
 import { ClassicPreset } from "rete";
 import { trueAnySocket, MutableSocket } from "../sockets";
@@ -81,7 +81,7 @@ export class ConduitNode extends ClassicPreset.Node {
   // Fixed hit-area box — keep in sync with CONDUIT_BODY_SIZE (ribbonCable.ts).
   width = 92;
   height = 92;
-  // Per-lane mirror the component reads ([[C27]] noDataInComponents).
+  // Per-lane mirror the component reads.
   cachedLane: Array<unknown> = new Array(CONDUIT_MAX_LANES).fill(null);
 
   constructor(init?: { label?: string; angle?: number; seq?: number }) {

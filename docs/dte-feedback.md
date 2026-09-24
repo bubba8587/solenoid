@@ -119,7 +119,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     should print the vendored copy's own path (`python tools/dte.py vendor --from <checkout>
     --dir dte-rules`) and nothing about where the source was.
 16. **A rule that governs a class of files needs a scope declaration, not a citation per member.**
-    "Components never call `node.data()`" ([[C27]]) is a real decision with a sweep behind it, and
+    "Components never call `node.data()`" (C27 noDataInComponents (retired)) is a real decision with a sweep behind it, and
     its blast radius is every component; today the only way `blast`, `coverage` and `show` know that
     is 265 identical header lines, which drown the citation that says what each file is FOR. A leaf
     could declare `governs: src/graph/components/*` (the `.dteignore` syntax); `coverage` then counts

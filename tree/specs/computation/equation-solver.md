@@ -13,7 +13,7 @@ The Equation card holds one relation, `LHS = RHS`, and solves it for whichever v
 ## Parsing and sockets
 
 - The relation must have exactly one `=`. No `=` at the top reads "An equation needs one = sign, like V = I * R"; a second one reads "Use exactly one = sign"; a parse failure reads "Syntax error". `parseEquation` answers null for a syntax error and the message text for a shape problem; these show as the card's in-card message.
-- Every variable name in the relation gets an input socket and an output socket, both named after it. The card also has a `holds` output, labeled "Check". Editing the relation adds sockets for new names and returns the departing names so the caller drops their cables before removing the sockets ([[D10]] onePrunePath).
+- Every variable name in the relation gets an input socket and an output socket, both named after it. The card also has a `holds` output, labeled "Check". Editing the relation adds sockets for new names and returns the departing names so the caller drops their cables before removing the sockets ([[input-cable-pruning#The ordering rule]]).
 - A variable is known only through its cable. The card declares no literal map, so a save or seed cannot plant a hidden known ([[C28]] literalsIffEditable).
 
 ## What the card does with its inputs

@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import type { DepreciationNode as DepreciationNodeType, DepreciationOp } from "../rete-nodes";
 import { DEPRECIATION_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

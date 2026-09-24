@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import { useSyncExternalStore } from "react";
 import type { AlertNode as AlertNodeType, AlertMode } from "../rete-nodes";
 import { ALERT_MODE_KEYS, isAlertMet } from "../rete-nodes";

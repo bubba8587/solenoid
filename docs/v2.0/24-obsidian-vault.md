@@ -360,8 +360,8 @@ step.
 ## Rules touched (cite in commits)
 
 `sinkRunButtonOnly` (every writer; J adds "or the CLI's explicit `--run <name>`"),
-`noDataInComponents` (Preview is a pure plan over the cached cube + reads), `retypeReconciles`
-avoided (one `cube` output; A′'s adoption is derived state, never persisted), `onePrunePath`
+components compute nothing (`../../tree/specs/floors/components.md` § The rules; Preview is a pure plan over the cached cube + reads), `retypeReconciles`
+avoided (one `cube` output; A′'s adoption is derived state, never persisted), input-cable pruning
 untouched, `relativeDatesOptIn` untouched (R), a new **[[C101]] onePatchPath**
 (`frontmatterPatch.ts` is the only writer of a note's YAML; `obsidianWrite.ts` writes whole
 documents). The fs allowlist gains `.yaml`/`.yml` read (one capability line, noted in

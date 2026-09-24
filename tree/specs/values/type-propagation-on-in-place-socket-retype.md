@@ -21,7 +21,7 @@ A node's own op, mode or argument field can swap that node's sockets in place. T
 **The recipe:**
 
 1. The class exposes `setOp` / `setMode`, which changes `this.inputs` / `this.outputs` (`addInput` / `removeInput`, or `out.socket = spec.socket`), and `keysDroppedBySwitch(next)`, naming the input keys the swap removes.
-2. On the toggle, the component first calls `dropInputCables(id, departing)` ([[D10]] onePrunePath). Otherwise a removed socket leaves an invisible live cable.
+2. On the toggle, the component first calls `dropInputCables(id, departing)` ([[input-cable-pruning#The ordering rule]]). Otherwise a removed socket leaves an invisible live cable.
 3. Then it calls `setOp` / `setMode`,
 4. then `rerenderNode`,
 5. and after an output swap only, `retypeOutputCables`, because the swap fired no connection event.

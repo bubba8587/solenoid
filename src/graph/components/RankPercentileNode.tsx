@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import { RANK_PERCENTILE_OP_META } from "../rete-nodes";
 import type { RankPercentileNode as RankPercentileNodeType, RankPercentileOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

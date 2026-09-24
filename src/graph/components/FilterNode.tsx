@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import { useState } from "react";
 import type { FilterNode as FilterNodeType } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";

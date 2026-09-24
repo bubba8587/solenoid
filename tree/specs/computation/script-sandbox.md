@@ -2,7 +2,7 @@
 aliases: ["Script sandbox"]
 tags: [spec, computation]
 ---
-<!-- [[C66]] scriptNode, [[D35]] errorInErrorOut, [[D10]] onePrunePath -->
+<!-- [[C66]] scriptNode, [[D35]] errorInErrorOut -->
 
 # Spec: Script sandbox
 
@@ -26,7 +26,7 @@ The source is stored in the card's `expr` field, the same persistence key Expres
 - A name may appear once: "Parameter "…" appears twice".
 - A source with no recognizable function head reads "Write a function: (x) => x * 2".
 
-On each commit `_rebuild` adds a `trueany` input for each new parameter and returns the departing ones, so the caller drops their cables before removing the sockets ([[D10]] onePrunePath).
+On each commit `_rebuild` adds a `trueany` input for each new parameter and returns the departing ones, so the caller drops their cables before removing the sockets ([[input-cable-pruning#The ordering rule]]).
 
 `compileScript` evaluates the source with `new Function("Solenoid", "\"use strict\"; return (…);")`. A result that is not a function reads "Write a function: (x) => x * 2". Compiled functions are cached by source text; the cache clears when it passes 64 entries.
 

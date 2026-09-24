@@ -12,7 +12,7 @@ interface SpecOpNode<Op extends string> {
   setOp(next: Op): void;
 }
 
-/** The switch prunes the departing sockets' cables before the node reshapes ([[D10]] onePrunePath). */
+/** The switch prunes the departing sockets' cables before the node reshapes. */
 export function makeSpecOpComponent<Op extends string, N extends SpecOpNode<Op> & ShellNode & InlineNode>(
   meta: Record<Op, { label: string; description: string; group: string }>,
 ) {

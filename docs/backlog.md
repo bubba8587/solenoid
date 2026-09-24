@@ -144,7 +144,7 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   `rules.test.ts` ([[C7]] authorRuled).
 - [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
 - [ ] **Coverage is 100% and pinned** (`rules.test.ts` runs `coverage --check` + `validate`). The bulk pass cited
-  whole classes by blast radius (every component cites [[C27]] noDataInComponents, every node class `../tree/specs/documents/save-format.md` § The persisted type is the class name
+  whole classes by blast radius (every component cites `../tree/specs/floors/components.md` § The rules, every node class `../tree/specs/documents/save-format.md` § The persisted type is the class name
   classNameIsType + `../tree/specs/documents/save-format.md` § Every field is persisted or deliberately transient, every store [[B10]], every op module `../tree/specs/floors/engineering.md` § The formula path is rete-free + [[C17]], tests the
   leaves of the sources they import, MUSTs only where another test already enforces them). Those are true but
   thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one

@@ -1,4 +1,4 @@
-// [[D10]] onePrunePath, [[C113]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct, [[C44]] dateSerials
+// [[C113]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct, [[C44]] dateSerials
 import type {
   TodayNowNode as TodayNowNodeType,
   DateConstructNode as DateConstructNodeType,
@@ -136,7 +136,7 @@ const DATE_DIFF_OPS = (Object.keys(DATE_DIFF_OP_META) as DateDiffOp[]).map(op =>
 export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   async function handleOp(next: DateDiffOp) {
-    // [[D10]] onePrunePath: prune before removeInput.
+    // Prune before removeInput.
     if (!dateDiffNeedsBasis(next) && data.inputs.basis) {
       await dropInputCables(data.id, ["basis"]);
     }

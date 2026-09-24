@@ -167,7 +167,7 @@ Every other input is a **variable input**: one `trueany` input per root variable
 
 `syncRefs()` runs when the overlay commits a body. Without a template, the wanted inputs are the root variables of `body`; with a template, they are the persisted `sideVars`. Before the first compute, every `sideVars` name is also kept, so cables restored at load find their sockets before the template's value is known. Departing variable inputs are removed and returned as `removedInputs`, and the overlay removes their cables.
 
-During `data()`, when the active source's variables differ from the current ones, `reconcileInputs` updates the key list immediately and changes sockets in a microtask: it adds new inputs, drops the departing inputs' cables through `dropInputCables` before removing them ([[D10]] onePrunePath), then re-renders the card. `sideVars` is set to the active variables while a template is wired and cleared otherwise.
+During `data()`, when the active source's variables differ from the current ones, `reconcileInputs` updates the key list immediately and changes sockets in a microtask: it adds new inputs, drops the departing inputs' cables through `dropInputCables` before removing them ([[input-cable-pruning#The ordering rule]]), then re-renders the card. `sideVars` is set to the active variables while a template is wired and cleared otherwise.
 
 ### Compute
 

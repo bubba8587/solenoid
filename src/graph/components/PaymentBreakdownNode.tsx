@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import { useState } from "react";
 import { PAYMENT_BREAKDOWN_OP_META, PAYMENT_TIMING_META } from "../rete-nodes";
 import type { PaymentBreakdownNode as PaymentBreakdownNodeType, PaymentBreakdownOp, PaymentTiming } from "../rete-nodes";

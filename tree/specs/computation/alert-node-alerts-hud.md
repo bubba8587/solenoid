@@ -21,7 +21,7 @@ The trigger dropdown picks both the condition and which input sockets are live. 
 | `boolean` | Is true | `value` | `value` is a real `true` or exactly `1`; any other nonzero number is not true, because logicals are first-class and bridge to numbers only as 1 and 0 |
 | `text` | Text contains | `text`, `match` | `text` contains `match`; an empty `match` never triggers |
 
-The card carries the full set of sockets at all times, and the component shows only the active mode's keys. On a mode change the component first drops the cables on sockets the new mode hides, through `dropInputCables` ([[D10]] onePrunePath), and then sets the mode.
+The card carries the full set of sockets at all times, and the component shows only the active mode's keys. On a mode change the component first drops the cables on sockets the new mode hides, through `dropInputCables` ([[input-cable-pruning#The ordering rule]]), and then sets the mode.
 
 An unwired socket falls back to the card's typed literal (defaults: `value` 50, `low` 0, `high` 100, `target` 0, `text` and `match` empty). A wired socket always wins, even when its cable carries a blank ([[D33]] unwiredNotBlank).
 

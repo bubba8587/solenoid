@@ -113,10 +113,10 @@ into this file or another doc — point at it. Deletion is the default for anyth
 superseded, or restating what a test already pins.
 
 ### Reflexes (each one is a pointer, not the rule)
-- Components never call `node.data()` ([[C27]] noDataInComponents). Edits commit on Enter/blur
+- Components never call `node.data()` (`tree/specs/floors/components.md`). Edits commit on Enter/blur
   via `useDraftCommit` ([[C95]] commitOnEnter). In-place socket retype must reconcile
   ([[D16]] retypeReconciles). Prune departing sockets' cables before removing them
-  ([[D10]] onePrunePath).
+  (`tree/specs/canvas/input-cable-pruning.md`).
 - After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,
   `formulaNodeCoverage.test.ts` beside the parity/catalog suites ([[B11]] maximalMerge).
 - Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names. Default date
