@@ -154,6 +154,23 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 - `nodeName` gives the catalog label, skipping generated `__op-` rows. A cleared card title falls back to it, so the header never collapses to zero height.
 - `catalogTypeOf` gives the catalog type, which `NODE_EXCEL` and the pack metadata are keyed by.
 - `nodeDisplayName` is the name every surface shows ([[D22]] oneNamePerCard). `catalogUtils` binds it into `nodeNamer` at load, so modules below it in the import graph reach it through `displayNameOf`.
+- The title a placed node shows ([[D22]] oneNamePerCard) is `nodeDisplayName`: the user's own label if they typed one, else `nodeName` (op-aware, skipping the generated "Host: Op" search rows), else the class name. No class hardcodes a family title: every op family sets `this.label = init?.label ?? ""`, and no component syncs a label when the op changes, so the title follows the current op on its own. Every surface that names a node (header, Navigator, Inspector, cable inspector, history digest, popup titles) reads it.
+- A leaf name is a title, so it carries no glyph prefix ("+ Add") and no hint ("ROUND to N digits"), and an "X / Y" row that creates only X is split into two leaves (`leafOps`).
+- The hover type-hint (`.solenoid-node__type-hint`) shows the op-agnostic family name from `nodeTypeName`: the class name with its `Node` suffix removed and spaces added ("Series", "Math FX"). A family name that reads wrong is fixed by renaming the class (`MathFnNode` to `MathFXNode`), never with an override map.
+
+### Where each name comes from ([[C19]] namingModel)
+
+| Name | Home | Shown on |
+|---|---|---|
+| **Name** | the catalog leaf label (`nodeCatalog.ts`), or for an op family the current op's label; the title rules are [[D22]] oneNamePerCard | card title, Navigator, Inspector title, Problems, Pins, Comments, status bar, Isolate, cable inspector, history and popup titles, all through `nodeDisplayName` (the user's own label wins) |
+| **Family name** | `nodeTypeName`, derived from the class name | only the card's hover type-hint, under the exception in [[D22]] |
+| **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description's closing "Excel: X."; and Add-menu search, as a row that shows the name ("Table Size: ROWS", built by `excelEntry` in the hidden-op row shape) whenever the Excel name is not already the row's own name or one of its ops |
+| **Op names** | the family's `OP_META` label, read by `nodeOps` | the op dropdown; hidden-op search rows ("Host: Op"); the card title when the op has its own leaf |
+| **Formula name** | `fx ?? despace(label)` in `nodeOps` | the formula surface; letter case per [[D23]] capsClaimsFunction |
+| **Socket labels** | `addInput` / `addOutput` | the card's rows; bare nouns, with hints in `socketDocs` (`socket-reference.md` §8) |
+| **Description** | the catalog or `OP_META` description | menu row, header hover, Inspector; voice per `DESIGN.md` §7 |
+
+The class name, the rete `super()` name and the registry type key are internal and never shown. `nodeTypeName` (`nodeNamer.ts`) is the last-resort fallback for a node with no catalog entry (a Placeholder, a composite boundary). Modules below `catalogUtils` in the import graph (`errorValue`, `groupCollapse`) reach the same derivation through `displayNameOf`, which `catalogUtils` binds at load. Nothing else reads `constructor.name` for display; the enforcing test lists the two sanctioned uses that are not for display.
 
 ## Invariants
 

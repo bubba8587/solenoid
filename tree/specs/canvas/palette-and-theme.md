@@ -194,6 +194,8 @@ Each edit persists, and recomputes and notifies both stores only when Custom is 
 
 `syncNativeAccent(hex)` sets the Windows 11 window border to the accent through the Tauri command `set_window_border` (`{ r, g, b }`). It does nothing on web, and the Rust command does nothing off Windows 11; a failed call is ignored.
 
+The marketing pages' `.sol-landing` wrapper overrides the four accent variables (`--accent`, `--accent-soft`, `--accent-mid`, `--accent-ink`) with the brand coil gold, whatever accent the visitor picked ([[C3]] brandGoldChrome). Only chrome that reads them changes color; the node and socket colors on the scene canvases use their own variables and are untouched.
+
 ## Palette-derived color for charts and chips
 
 - **The height ramp** (`heightRampColor(t)`, for Surface, Contour and Vector Field): five stops from the slots violet, blue, teal, green and gold, each forced to HSL lightness 0.26, 0.38, 0.5, 0.62 and 0.78, so the ramp reads as height under any palette. `t` is clamped to 0 to 1 and interpolated linearly between stops. The stops are cached per palette version, since a draw calls this thousands of times.

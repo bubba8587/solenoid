@@ -97,3 +97,9 @@ unknownViaPlaceholder). `SavedGraph.packs` rides the sidecar as an activation br
 built: a required-packs/versions record with an offer-to-enable flow on open, parked with the
 pack-distribution system (`deferrals.md` "Pushed to 1.4/2.0"); it must land before the first
 third-party or code pack ships.
+
+Isolation levels: this is level 1 (every pack's constructors registered and its formula
+functions resolving, activation filtering only the Add menu and autocomplete). Level 2 (each
+pack self-contained, enforced by structure) is a later tidy-up the pack/core wall is drawn for;
+level 3 (third-party packs loaded at runtime) is a safety project of its own ([[C79]]
+packActivationIsPresentation).
