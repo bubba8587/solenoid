@@ -2,20 +2,19 @@
 // Must not import `text.ts` (it imports `excelFunctions`; the cycle would drag rete into the formula path).
 import { base64Encode, base64Decode } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { decimalFromText } from "../valueKinds";
 
 export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
 
-/** VALUE's text reading, shared by the formula and Cast ([[B16]] oneFormulaSurface). NaN
- *  for "" and the `0x`/`0o`/`0b` literals `Number()` would read. */
+/** VALUE's text reading, shared by the formula and Cast ([[B16]] oneFormulaSurface): `decimalFromText` after the currency, percent and parenthesis marks. */
 export function parseValueText(text: string): number {
   let t = text.trim(), pct = 0, neg = false;
   while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
   if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
   t = t.replace(/^([+-]?)\$/, "$1").replace(/,/g, "");
-  if (t === "" || /^[+-]?0[xob]/i.test(t)) return NaN;
-  const n = Number(t);
+  const n = decimalFromText(t);
   return Number.isNaN(n) ? NaN : (neg ? -n : n) / Math.pow(100, pct);
 }
 

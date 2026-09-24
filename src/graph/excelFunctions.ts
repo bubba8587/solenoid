@@ -26,7 +26,7 @@ import {
   shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
   gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum,
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
-  geometric, fibonacci, MAX_GENERATED, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
+  geometric, fibonacci, MAX_GENERATED, arrayCount, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
   firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
   takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
@@ -34,7 +34,7 @@ import {
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
-import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
+import { coerceNumber as toNum, coerceLogical, decimalFromText, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
   cx, isCx, parseCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
@@ -489,6 +489,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   XLOOKUP:     { returns: "any", matrixArgs: true, arity: [3, 6] },
   XMATCH:      { returns: "number", matrixArgs: true, arity: [2, 4] },
   IF:          { returns: "any", arity: [2, 3] },
+  IFS:         { returns: "any", arity: [2, 254] },
   INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
   RIGHT:      { returns: "string", arity: [1, 2], family: "text" },
@@ -1119,6 +1120,15 @@ registerInternal("IF", (test, thenV, elseV) => {
   if (cond) return thenV === undefined ? true : thenV;
   return elseV === undefined ? false : elseV;
 });
+registerInternal("IFS", (...args) => {
+  if (args.length % 2 !== 0) return solError("#VALUE!", "IFS takes conditions and values in pairs");
+  for (let i = 0; i < args.length; i += 2) {
+    const cond = ifTest(args[i] ?? null);
+    if (cond === null || isSolError(cond)) return cond;
+    if (cond) return args[i + 1] ?? null;
+  }
+  return solError("#N/A", "No IFS condition matched");
+});
 for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
   registerInternal(name, () => solError("#NAME?", `Use ${use}`));
 }
@@ -1262,7 +1272,7 @@ registerInternal("NUMBERVALUE", (text, dec, grp) => {
   const intPart = di === -1 ? s : s.slice(0, di);
   const frac = di === -1 ? null : s.slice(di + 1);
   if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return VALUE("NUMBERVALUE");
-  const n = Number((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
+  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
   if (Number.isNaN(n)) return VALUE("NUMBERVALUE");
   return n / Math.pow(100, pct);
 });
@@ -1757,9 +1767,10 @@ registerInternal("TOROW", (v) => {
 });
 registerInternal("SEQUENCE", (rows, cols, start, step) => {
   if (rows == null) return null;
-  const r = Math.trunc(Number(rows));
-  const c = cols == null ? 1 : Math.trunc(Number(cols));
-  if (!(r >= 0 && c >= 0)) return solError("#VALUE!", "SEQUENCE needs a row and column count of 0 or more");
+  const r = arrayCount(Number(rows), "SEQUENCE");
+  const c = cols == null ? 1 : arrayCount(Number(cols), "SEQUENCE");
+  if (isSolError(r)) return r;
+  if (isSolError(c)) return c;
   const s0 = start == null ? 1 : Number(start);
   const st = step == null ? 1 : Number(step);
   if (r * c > MAX_GENERATED) {
@@ -1798,8 +1809,10 @@ registerInternal("FILTER", (v, include, ifEmpty) => {
 registerInternal("TAKE", (v, rows, cols) => {
   if (v == null || rows == null) return null;
   const n = Math.round(Number(rows));
+  const c = cols == null ? null : Math.round(Number(cols));
+  if (n === 0 || c === 0) return solError("#DOMAIN!", "TAKE of 0 keeps nothing (Excel: #CALC!)");
   if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
-    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : takeSlice(r, Math.round(Number(cols)))));
+    const m = (v as unknown[][]).map((r) => (c === null ? [...r] : takeSlice(r, c)));
     return takeSlice(m, n);
   }
   if (cols != null) return solError("#SHAPE!", "A list has no columns, so TAKE takes one count");
@@ -1826,10 +1839,13 @@ registerInternal("FREQUENCY", (data, bins) => {
   return frequencyBins(numList(data), numList(bins));
 });
 registerInternal("RANDARRAY", (rows, cols, min, max, integer) => {
-  const r = rows == null ? 1 : Math.max(0, Math.floor(Number(rows)));
-  const c = cols == null ? 1 : Math.max(0, Math.floor(Number(cols)));
+  const r = rows == null ? 1 : arrayCount(Number(rows), "RANDARRAY");
+  const c = cols == null ? 1 : arrayCount(Number(cols), "RANDARRAY");
+  if (isSolError(r)) return r;
+  if (isSolError(c)) return c;
   const lo = min == null ? 0 : Number(min);
   const hi = max == null ? 1 : Number(max);
+  if (lo > hi) return solError("#VALUE!", "RANDARRAY's Min is above its Max");
   if (r * c > MAX_GENERATED) {
     return solError("#OVERFLOW!", `RANDARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
   }

@@ -252,9 +252,9 @@ export class CubeRollupNode extends ClassicPreset.Node {
               const { mags, unit: u } = matrixCellsFromList(cc.cells);
               unit = u;
               if (cc.type) { type = cc.type; return mags as FrameCell[]; }
-              const read = inferColumn(col, mags.map((v) => (isSolError(v) ? null : v)));
+              const read = inferColumn(col, mags);
               type = read.type;
-              return mags.map((v, k) => (isSolError(v) ? v : read.values[k]));
+              return read.values;
             })()
           : null;
       if (values === null) { rolled.push(null); continue; }

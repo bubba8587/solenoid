@@ -2,7 +2,7 @@
 import { parseCsvRows } from "./csv";
 import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, solError, type SolError } from "./errorValue";
-import { coerceLogical } from "./valueKinds";
+import { coerceLogical, decimalFromText } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
 import { formatDim, dimEqual, type Dim } from "./dimension";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
@@ -301,10 +301,7 @@ function cellToNumber(v: unknown): number | null {
   if (isUnitCell(v)) { const m = displayMagnitudeOf(v); return Number.isFinite(m) ? m : null; }
   if (typeof v === "boolean") return v ? 1 : 0;
   if (typeof v === "string") {
-    const t = v.trim();
-    if (t === "") return null;
-    const grouped = /^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(t);
-    const n = Number(grouped ? t.replace(/,/g, "") : t);
+    const n = decimalFromText(v);
     return Number.isFinite(n) ? n : null;
   }
   return null;
@@ -347,24 +344,26 @@ export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameC
     cells = mags;
     recovered = unit;
   }
-  const raw = cells.map((c) => (isBlank(c) ? "" : String(c).trim()));
-  const nonBlank = cells.filter((c) => !isBlank(c));
+  const raw = cells.map((c) => (isSolError(c) ? c.code : isBlank(c) ? "" : String(c).trim()));
+  const nonBlank = cells.filter((c) => !isBlank(c) && !isSolError(c));
+  const read = (fn: (c: unknown) => FrameCell): FrameCell[] =>
+    cells.map((c) => (isSolError(c) ? c : isBlank(c) ? null : fn(c)));
   if (nonBlank.length > 0 && nonBlank.every((c) => typeof c === "boolean")) {
-    return { name, type: "logical", values: cells.map((c) => (isBlank(c) ? null : (c as boolean))), raw };
+    return { name, type: "logical", values: read((c) => c as boolean), raw };
   }
   const numeric = nonBlank.length > 0 && nonBlank.every((c) => cellToNumber(c) !== null);
   if (numeric) {
-    return { name, type: "number", values: cells.map((c) => (isBlank(c) ? null : cellToNumber(c))), raw, ...(recovered ? { unit: recovered } : {}) };
+    return { name, type: "number", values: read(cellToNumber), raw, ...(recovered ? { unit: recovered } : {}) };
   }
   const logical = nonBlank.length > 0 && nonBlank.every(isLogicalCell);
   if (logical) {
-    return { name, type: "logical", values: cells.map((c) => (isBlank(c) ? null : cellToBool(c))), raw };
+    return { name, type: "logical", values: read(cellToBool), raw };
   }
   const dates = nonBlank.length > 0 && nonBlank.every(isDateCell);
   if (dates) {
-    return { name, type: "date", values: cells.map((c) => (isBlank(c) ? null : parseDateToSerial(String(c)))), raw };
+    return { name, type: "date", values: read((c) => parseDateToSerial(String(c))), raw };
   }
-  return { name, type: "string", values: cells.map((c) => (isBlank(c) ? null : String(c).trim())), raw };
+  return { name, type: "string", values: read((c) => String(c).trim()), raw };
 }
 
 export function frameFromCells(headers: ReadonlyArray<string>, rows: ReadonlyArray<ReadonlyArray<unknown>>): FrameValue {

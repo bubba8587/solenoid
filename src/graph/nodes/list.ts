@@ -15,14 +15,14 @@ import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, readingScaleOf, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
+import { forAggregate, isMissing, coerceLogical, decimalFromText, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, unitError, READINGS_ADD, type UnitCell } from "../unitValue";
 import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, shuffleList, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
+import { MAX_GENERATED, arrayCount, shuffleList, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -48,7 +48,7 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
     case "number": {
       if (typeof v === "number") return Number.isFinite(v) ? v : null;
       if (typeof v === "boolean") return v ? 1 : 0;
-      if (typeof v === "string") { const n = Number(v.trim()); return v.trim() !== "" && Number.isFinite(n) ? n : null; }
+      if (typeof v === "string") { const n = decimalFromText(v); return Number.isFinite(n) ? n : null; }
       return null;
     }
     case "date": {
@@ -1815,11 +1815,15 @@ export class RandArrayNode extends ClassicPreset.Node {
       this.cachedList = null; this.rolls = []; this.lastGen = -1;
       return { list: null };
     }
-    const count = Math.max(0, Math.floor(countRaw));
-    if (count > MAX_GENERATED) {
-      const e = solError("#OVERFLOW!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`);
-      this.cachedList = e; this.rolls = []; this.lastGen = -1;
-      return { list: e };
+    const read = arrayCount(countRaw, "RANDARRAY");
+    const count = isSolError(read) ? 0 : read;
+    const bad = isSolError(read) ? read
+      : count > MAX_GENERATED ? solError("#OVERFLOW!", `RANDARRAY count ${count} exceeds the ${MAX_GENERATED} element limit`)
+      : lo > hi ? solError("#VALUE!", "RANDARRAY's Min is above its Max")
+      : null;
+    if (bad) {
+      this.cachedList = bad; this.rolls = []; this.lastGen = -1;
+      return { list: bad };
     }
     const range = hi - lo;
     const gen = getRecalcGen();

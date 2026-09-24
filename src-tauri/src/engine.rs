@@ -998,21 +998,43 @@ fn lazy_fill_blanks(plan: Plan, columns: &[String], dir: &str) -> Result<Plan, I
     Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
 }
 
-/// The oracle's `Number(text)` on trimmed text, kept only when finite. Rust's parser also reads
-/// `inf` and `nan`; JavaScript also reads `0x`, `0o` and `0b` integers.
-fn js_finite_number(t: &str) -> Option<f64> {
-    let radix = match t.get(..2) { Some("0x" | "0X") => 16, Some("0o" | "0O") => 8, Some("0b" | "0B") => 2, _ => 0 };
-    let n = if radix != 0 {
-        let digits = &t[2..];
-        if digits.is_empty() { return None; }
-        let mut acc = 0.0f64;
-        for ch in digits.chars() { acc = acc * radix as f64 + ch.to_digit(radix)? as f64; }
-        acc
-    } else {
-        if t.chars().any(|c| c.is_ascii_alphabetic() && c != 'e' && c != 'E') { return None; }
+/// The oracle's `decimalFromText`: trimmed plain decimal or scientific text, or thousands grouped
+/// by commas, kept only when finite. Radix prefixes, `inf` and `nan` read as nothing.
+fn decimal_from_text(t: &str) -> Option<f64> {
+    let t = t.trim();
+    let body = t.strip_prefix(['+', '-']).unwrap_or(t);
+    let n = if is_decimal_text(body) {
         t.parse::<f64>().ok()?
+    } else if is_grouped_text(body) {
+        t.replace(',', "").parse::<f64>().ok()?
+    } else {
+        return None;
     };
     n.is_finite().then_some(n)
+}
+
+fn all_digits(s: &str) -> bool { !s.is_empty() && s.bytes().all(|c| c.is_ascii_digit()) }
+
+/// `(\d+\.?\d*|\.\d+)(e[+-]?\d+)?`, case-insensitive.
+fn is_decimal_text(b: &str) -> bool {
+    let (mant, exp) = match b.find(['e', 'E']) { Some(i) => (&b[..i], Some(&b[i + 1..])), None => (b, None) };
+    let mant_ok = match mant.split_once('.') {
+        None => all_digits(mant),
+        Some((a, f)) => (all_digits(a) && (f.is_empty() || all_digits(f))) || (a.is_empty() && all_digits(f)),
+    };
+    mant_ok && exp.map_or(true, |e| all_digits(e.strip_prefix(['+', '-']).unwrap_or(e)))
+}
+
+/// `\d{1,3}(,\d{3})+(\.\d*)?`.
+fn is_grouped_text(b: &str) -> bool {
+    let (int, frac) = match b.split_once('.') { Some((a, f)) => (a, Some(f)), None => (b, None) };
+    if frac.is_some_and(|f| !f.bytes().all(|c| c.is_ascii_digit())) { return false; }
+    let mut groups = int.split(',');
+    let head = groups.next().unwrap_or("");
+    if !(1..=3).contains(&head.len()) || !all_digits(head) { return false; }
+    let mut n = 0;
+    for g in groups { if g.len() != 3 || !all_digits(g) { return false; } n += 1; }
+    n > 0
 }
 
 fn replacement_lit(ty: SolType, text: &str) -> Option<Expr> {
@@ -1023,7 +1045,7 @@ fn replacement_lit(ty: SolType, text: &str) -> Option<Expr> {
     }
     Some(match ty {
         SolType::Str => lit(text.to_string()),
-        SolType::Number | SolType::Date => lit(js_finite_number(t)?),
+        SolType::Number | SolType::Date => lit(decimal_from_text(t)?),
         SolType::Logical => match t.to_ascii_lowercase().as_str() {
             "true" | "1" => lit(true),
             "false" | "0" => lit(false),
@@ -1036,7 +1058,7 @@ fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str,
     if find.is_empty() { return Ok(plan); }
     let target = column.trim();
     if !target.is_empty() { require_in(&plan.names, std::slice::from_ref(&target.to_string()))?; }
-    let find_num = js_finite_number(find.trim());
+    let find_num = decimal_from_text(find.trim());
     let find_lower = find.to_ascii_lowercase();
     let exprs: Vec<Expr> = plan.names.iter().enumerate().map(|(i, n)| {
         let c = col(n.as_str());
@@ -1171,10 +1193,10 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
                 match t.to_ascii_lowercase().as_str() {
                     "true" => Some(1.0),
                     "false" => Some(0.0),
-                    _ => js_finite_number(t).map(|n| if n == 0.0 { 0.0 } else { 1.0 }),
+                    _ => decimal_from_text(t).map(|n| if n == 0.0 { 0.0 } else { 1.0 }),
                 }
             } else {
-                js_finite_number(t)
+                decimal_from_text(t)
             }
         }
         _ => None,

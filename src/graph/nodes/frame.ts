@@ -16,7 +16,7 @@ import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
 import { parseDate } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { coerceLogical } from "../valueKinds";
+import { coerceLogical, decimalFromText } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
   buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
@@ -2332,7 +2332,7 @@ export class GetColumnNode extends ClassicPreset.Node {
           if (isSolError(d)) return d;
           return colUnit ? (tagFrameCellUnit(d, colUnit) as number | UnitCell) : d;
         }
-        const n = Number(v.trim());
+        const n = decimalFromText(v);
         return colUnit ? (tagFrameCellUnit(n, colUnit) as number | UnitCell) : n;
       }
       return NaN;

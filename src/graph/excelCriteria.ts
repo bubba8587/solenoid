@@ -2,6 +2,7 @@
 import { solError, isSolError, type SolError } from "./errorValue";
 import { parseDate } from "./nodes/dateSerial";
 import { compareStrings } from "./stringOrder";
+import { decimalFromText } from "./valueKinds";
 
 export type CriterionOp = "eq" | "neq" | "gt" | "gte" | "lt" | "lte";
 
@@ -37,8 +38,8 @@ export function parseCriterion(raw: unknown, numericRange: boolean): Criterion |
   for (const [p, o] of PREFIX) if (text.startsWith(p)) { op = o; rest = text.slice(p.length); break; }
   if (rest === "") return { op, value: null };
   if (rest === "TRUE" || rest === "FALSE") return { op, value: rest === "TRUE" };
-  const n = Number(rest);
-  if (rest.trim() !== "" && Number.isFinite(n)) return { op, value: n };
+  const n = decimalFromText(rest);
+  if (Number.isFinite(n)) return { op, value: n };
   if (numericRange) {
     const d = parseDate(rest);
     if (isSolError(d)) return d.code === "#AMBIGUOUS!" ? d : { op, value: unescape(rest) };
@@ -68,8 +69,8 @@ export function criterionMatches(cell: unknown, crit: Criterion): boolean {
   if (typeof crit.value === "number") {
     if (typeof cell === "number") return cmp(crit.op, cell - crit.value);
     if (typeof cell === "boolean") return false;
-    const asNum = Number(cell);
-    return typeof cell === "string" && cell.trim() !== "" && Number.isFinite(asNum) ? cmp(crit.op, asNum - crit.value) : crit.op === "neq";
+    const asNum = typeof cell === "string" ? decimalFromText(cell) : NaN;
+    return Number.isFinite(asNum) ? cmp(crit.op, asNum - crit.value) : crit.op === "neq";
   }
   if (typeof cell !== "string") return crit.op === "neq";
   if (crit.wild) { const hit = crit.wild.test(cell); return crit.op === "eq" ? hit : !hit; }
@@ -101,7 +102,7 @@ export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[]
     const v = values[i];
     if (isSolError(v)) return v;
     if (typeof v === "number" && Number.isFinite(v)) kept.push(v);
-    else if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) kept.push(Number(v));
+    else if (typeof v === "string" && Number.isFinite(decimalFromText(v))) kept.push(decimalFromText(v));
   }
   switch (kind) {
     case "count": return count;

@@ -663,7 +663,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "comparison", label: "Comparison",  description: "Compares two values (`=`, `≠`, `<`, `>`, `≤`, `≥`) and emits a logical `TRUE` or `FALSE`. Broadcasts over a list.", keywords: "compare", create: () => new ComparisonNode() },
       { type: "choose",  label: "CHOOSE",        description: "Returns one of several values by a 1-based index. Excel: `CHOOSE`.", create: () => new ChooseNode() },
       { type: "switch",  label: "SWITCH",         description: "Matches a value against as many cases as you add and returns the matching result, or a default. Excel: `SWITCH`.", create: () => new SwitchNode() },
-      { type: "ifs",     label: "IFS",            description: "Returns the first value whose condition is non-zero, like chained `IF`, plus an Otherwise fallback. Excel: `IFS`.", create: () => new IfsNode() },
+      { type: "ifs",     label: "IFS",            description: "Returns the value of the first true condition, like chained `IF`, plus an Otherwise fallback. Excel: `IFS`.", create: () => new IfsNode() },
       { type: "pair", children: [
         { type: "iferror", label: "IFERROR", description: "Returns Fallback when Value is an error. A blank is not an error and passes through. Excel: `IFERROR`.", create: () => new IFErrorNode() },
         { type: "ifna", label: "IFNA", description: "Returns Fallback only when Value is `#N/A`; other errors pass through. Excel: `IFNA`.", create: () => new IFErrorNode({ op: "ifna" }) },
@@ -986,7 +986,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
           { type: "pair", children: [
-            { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
+            { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: false, keywords: "take drop list table rows columns elements edge first last head tail" },
             { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
           ]},
         ],

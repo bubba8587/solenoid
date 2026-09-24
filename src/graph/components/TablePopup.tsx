@@ -13,6 +13,7 @@ import { describeColumn, distinctColumnValues } from "../frameVerbs";
 import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
+import { decimalFromText } from "../valueKinds";
 import { columnUnitLabel } from "../unitColumn";
 import { frameFormatStore, columnFormatRow, type ColumnFormatRow } from "../frameFormatStore";
 import { scheduleAutosave } from "../persistence";
@@ -97,7 +98,7 @@ function parseCSV(text: string): string[][] {
 function dateCellToISO(raw: string): string {
   const t = raw.trim();
   if (t === "") return "";
-  const n = Number(t);
+  const n = decimalFromText(t);
   const serial = Number.isFinite(n) ? n : parseDateToSerial(t);
   return Number.isFinite(serial) && serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
 }
@@ -243,9 +244,7 @@ export function TablePopup() {
         const type = colTypeAt(c);
         if (mode === "formatted") {
           if (type === "date") {
-            // Number("") is 0, a real serial (30-Dec-1899), so a blank must not be parsed.
-            if (cell.trim() === "") return cell;
-            const n = Number(cell);
+            const n = decimalFromText(cell);
             return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : cell;
           }
           return cell;
@@ -507,7 +506,7 @@ export function TablePopup() {
           if (t === "false" || t === "0") return false;
           return null;
         }
-        const n = Number(s);
+        const n = decimalFromText(s);
         if (Number.isFinite(n)) return n;
         if (type === "date") { const d = parseDateToSerial(s); return Number.isFinite(d) ? d : NaN; }
         return NaN;
