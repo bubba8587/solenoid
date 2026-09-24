@@ -48,9 +48,9 @@ export const frameFormatStore = {
   serialize(): FrameColumnFormat[] {
     return [..._store.values()].map((v) => ({ ...v, ann: { ...v.ann } }));
   },
-  /** Replaces the set; the caller has already rewritten nodeIds after id-remapping. */
-  load(list: FrameColumnFormat[]): void {
-    _store.clear();
+  /** Adds loaded formats; the caller has already rewritten nodeIds after id-remapping. */
+  merge(list: FrameColumnFormat[]): void {
+    if (list.length === 0) return;
     for (const v of list) _store.set(key(v.nodeId, v.column), { ...v, ann: { ...v.ann } });
     notify();
   },

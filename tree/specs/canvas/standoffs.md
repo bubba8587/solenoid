@@ -8,7 +8,7 @@ tags: [spec, canvas]
 
 Serves [[C89]] standoffsSolveLast; the layer's stacking is [[C65]] domOrderStacking. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-A standoff is an arrangement constraint the user declares between two items on the canvas: "keep these two between this distance and that distance, in this direction." It draws as a pale, thick bar between the two items. Standoffs are a main-canvas feature; the composite drill-in has none.
+A standoff is an arrangement constraint the user declares between two items on the canvas: "keep these two between this distance and that distance, in this direction." It draws as a pale, thick bar between the two items. Standoffs are a main-canvas feature; the composite drill-in has none. Wrap as Composite removes a standoff it would split across the boundary, and one with both ends wrapped rides in the composite's snapshot, unshown, until Unpack brings it back ([[composite-nodes]]).
 
 ## What a standoff links
 

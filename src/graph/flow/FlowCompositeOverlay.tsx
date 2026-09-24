@@ -3,22 +3,20 @@ import type { View } from "../view";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { FlowSurfaceContext } from "../flowSurface";
-import { makeFlowView, type FlowView } from "./flowView";
-import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
+import { FlowSurface, type SurfaceHooks } from "./FlowSurface";
+import { getDrillStack, recordNow, scheduleRecord, syncPositionsToComp } from "./drillStack";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getView, processGraph } from "../process";
 import { swapSelectionSlots, swapArrangeSlots, swapDeleteSlot, swapRepositionDockedSlot } from "../canvasCommands";
 import { repositionDockedFor } from "../fcDocking";
-import { setActiveGraph, type EditScope } from "../activeGraph";
+import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
-import { deleteSelection as deleteSelectionIn, settleNodeRemoved } from "../canvasActions";
-import { settleCableChange } from "../cableSettle";
-import { forgetNode } from "../nodeStoreRegistry";
+import { deleteSelection as deleteSelectionIn } from "../canvasActions";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
 import { reconcileLeftPorts } from "../compositeLogic";
@@ -29,125 +27,7 @@ import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeN
 import { IS_MOBILE } from "../coarse";
 import "../components/compositeEditor.css";
 
-const HISTORY_DEPTH = 50;
-
 const isBoundaryMarker = (n: object) => n instanceof CompositeInputNode || n instanceof CompositeOutputNode;
-const HISTORY_COALESCE_MS = 400;
-
-type DrillStack = {
-  editor: CompositeNode["internalEditor"];
-  engine: CompositeNode["internalEngine"];
-  view: FlowView;
-  handlers: SurfaceHandlers;
-  rebuilding: boolean;
-  /** Closed, the level's pipes stand down: the composite settles its own cables, and a closed-level removal is a relocation. */
-  open: boolean;
-  isRebuilding: () => boolean;
-  history: { stack: string[]; index: number; timer: ReturnType<typeof setTimeout> | null };
-  afterCableChange: () => void;
-  /** Bulk edits gate on `rebuilding`; the topology pipe's sync then recomputes. */
-  scope: EditScope;
-};
-
-type DrillHolder = { __flowDrill?: DrillStack };
-
-function getDrillStack(comp: CompositeNode): DrillStack {
-  const holder = comp as unknown as DrillHolder;
-  if (holder.__flowDrill) return holder.__flowDrill;
-  const handlers = idleHandlers();
-  const view = makeFlowView(comp.internalEditor, {
-    bumpNode: (id) => handlers.bumpNode(id),
-    bumpConnections: () => handlers.bumpConnections(),
-    moveNode: (id, pos) => handlers.moveNode(id, pos),
-    setViewport: (v) => handlers.setViewport(v),
-    getContainer: () => handlers.getContainer(),
-  });
-  const s: DrillStack = {
-    editor: comp.internalEditor,
-    engine: comp.internalEngine,
-    view,
-    handlers,
-    rebuilding: true,
-    open: false,
-    isRebuilding: () => s.rebuilding || !s.open,
-    history: { stack: [], index: -1, timer: null },
-    // The topology pipe below recomputes from the breadcrumb root once per burst.
-    afterCableChange: () => {},
-    scope: {
-      begin: () => { s.rebuilding = true; },
-      end: () => { s.rebuilding = false; },
-      settle: async () => settleCableChange(comp.internalEditor, view as unknown as View),
-    },
-  };
-  let queued = false;
-  const trySync = () => {
-    if (!s.open) {
-      queued = false;
-      return;
-    }
-    if (s.rebuilding) {
-      setTimeout(trySync, 0);
-      return;
-    }
-    queued = false;
-    handlers.syncTopology();
-    void processGraph(compositeEditorStore.stack()[0]?.id ?? comp.id);
-    scheduleAutosave();
-    scheduleRecord(comp, s);
-  };
-  comp.internalEditor.addPipe((ctx) => {
-    const t = (ctx as { type?: string }).type;
-    if (t === "noderemoved") {
-      settleNodeRemoved(comp.internalEditor, view as unknown as View, (ctx as unknown as { data: SolenoidNode }).data, s.isRebuilding());
-    }
-    if (
-      t === "nodecreated" || t === "noderemoved" ||
-      t === "connectioncreated" || t === "connectionremoved"
-    ) {
-      if (!queued) {
-        queued = true;
-        queueMicrotask(trySync);
-      }
-    }
-    return ctx;
-  });
-  holder.__flowDrill = s;
-  return s;
-}
-
-function syncPositionsToComp(comp: CompositeNode, s: DrillStack) {
-  const out: Record<string, { x: number; y: number }> = {};
-  for (const n of s.editor.getNodes()) {
-    const pos = n.position;
-    if (pos) out[n.id] = { x: pos.x, y: pos.y };
-  }
-  comp.internalPositions = out;
-}
-
-function recordNow(comp: CompositeNode, s: DrillStack) {
-  if (s.rebuilding) return;
-  if (s.history.timer) {
-    clearTimeout(s.history.timer);
-    s.history.timer = null;
-  }
-  syncPositionsToComp(comp, s);
-  const json = JSON.stringify(comp.snapshotInternal());
-  const h = s.history;
-  if (json === h.stack[h.index]) return;
-  h.stack = h.stack.slice(0, h.index + 1);
-  h.stack.push(json);
-  if (h.stack.length > HISTORY_DEPTH) h.stack.shift();
-  h.index = h.stack.length - 1;
-}
-
-function scheduleRecord(comp: CompositeNode, s: DrillStack) {
-  if (s.rebuilding) return;
-  if (s.history.timer) clearTimeout(s.history.timer);
-  s.history.timer = setTimeout(() => {
-    s.history.timer = null;
-    recordNow(comp, s);
-  }, HISTORY_COALESCE_MS);
-}
 
 function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const s = useMemo(() => getDrillStack(comp), [comp]);
@@ -325,10 +205,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       if (target < 0 || target >= h.stack.length) return;
       h.index = target;
       s.rebuilding = true;
-      const replaced = s.editor.getNodes().map((n) => n.id);
       try {
         await comp.restoreInternal(JSON.parse(h.stack[target]), ctorRegistry());
-        for (const id of replaced) forgetNode(id);
         for (const [id, pos] of Object.entries(comp.internalPositions)) {
           const n = s.editor.getNode(id);
           if (n) n.position = { ...pos };
