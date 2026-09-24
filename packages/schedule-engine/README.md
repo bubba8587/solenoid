@@ -138,6 +138,9 @@ negative or non-numeric duration or Complete) throws one `ScheduleError` naming 
 
 - A serial's day is `Math.floor(serial + 1e-9)` (`dayKey`), absorbing float drift from round trips
   through milliseconds. `dayOfWeek` is 0 for Sunday to 6 for Saturday.
+- Day indices are walked lazily and cached, so a walk is bounded by the date range: a unit whose
+  day would fall outside 01-Jan-0001 to 31-Dec-9999 is a `ScheduleError` before the walk starts,
+  never a hang on a typo'd Duration or Lag.
 - `indexCeil(serial)` is the first counted unit at or after the serial: a typed date on a weekend
   snaps forward, the `WORKDAY` convention, and a snapped date takes the next day's first minute.
 - `indexFloor(serial)` is the last counted unit at or before it. In Minutes mode a date-only

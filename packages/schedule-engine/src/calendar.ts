@@ -1,9 +1,14 @@
 // [[C69]] ganttPackages, [[C44]] dateSerials, [[D36]] nullSkippedNotZero, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
 
-import type { CalendarSpec } from "./types";
+import { ScheduleError, type CalendarSpec } from "./types";
 
 const SATURDAY = 6, SUNDAY = 0;
 const MINUTES_PER_DAY = 1440;
+const FIRST_DAY = -693593, LAST_DAY = 2958465;
+
+function outOfRange(): ScheduleError {
+  return new ScheduleError("a date falls outside 01-Jan-0001 to 31-Dec-9999; check for a huge Duration or Lag");
+}
 
 /** `+1e-9` absorbs float drift from serial↔ms round trips. */
 export function dayKey(serial: number): number {
@@ -85,17 +90,21 @@ export class Calendar {
 
   dayDate(k: number): number {
     if (k >= 0) {
+      if (k > LAST_DAY - this.anchor) throw outOfRange();
       while (this.forward.length <= k) {
         let next = this.forward.length ? this.forward[this.forward.length - 1] + 1 : this.anchor;
         while (!this.isWorking(next)) next++;
+        if (next > LAST_DAY) throw outOfRange();
         this.forward.push(next);
       }
       return this.forward[k];
     }
     const j = -k - 1;
+    if (j > this.anchor - FIRST_DAY) throw outOfRange();
     while (this.backward.length <= j) {
       let prev = (this.backward.length ? this.backward[this.backward.length - 1] : this.dayDate(0)) - 1;
       while (!this.isWorking(prev)) prev--;
+      if (prev < FIRST_DAY) throw outOfRange();
       this.backward.push(prev);
     }
     return this.backward[j];
