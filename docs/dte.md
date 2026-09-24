@@ -91,11 +91,12 @@ sets `authorized_by` to the author.
   rules that hold without memory (B9), the React Flow view (B10), one card per concept
   (B11), lossless saves (B12), the AI layer (B13), the design system (B14), a lean core plus packs
   (B15), one function set on two surfaces under A5 (B16), the typed value model under A6 (B17).
-- **C — architecture and the roots of each rule family** under a strategy (socketLattice,
-  arraySemantics, firstClassUnits, calcModes, shareImpl, declareOnce, the save-path rules);
-  **D, E — the rules that refine them**. `python tools/dte.py tree --under B17` shows one family.
-  A ring-C leaf whose rule constrains a whole class of files (C27 noDataInComponents, C34
-  classNameIsType) is NOT cited from every member: the class has a floor spec
+- **C — the product calls under each strategy** and the roots of each family (socketLattice,
+  arraySemantics, firstClassUnits, calcModes, shareImpl, declareOnce);
+  **D, E — the calls that refine them**. How the code carries a call out is spec content, at any
+  ring. `python tools/dte.py tree --under B17` shows one family.
+  A rule that constrains a whole class of files (no component computes; a node's class name is
+  its saved type) is NOT cited from every member: it lives in the class's floor spec
   (`tree/specs/floors/components.md`, `tree/specs/floors/node-classes.md`, `tree/specs/floors/stores.md`) whose header carries a
   `covers:` glob, and blast runs leaf → spec → the files built to it. A file's own header cites
   only what is specific to it; a file with nothing specific has no header at all.
