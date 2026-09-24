@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[D67]] grammarOnlyAtBorder
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule
 
 import type { LinkType, PlanDependency } from "./types";
 import { LINK_TYPES } from "./graph";

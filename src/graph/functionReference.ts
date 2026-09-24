@@ -1,4 +1,4 @@
-// [[C8]] declareOnce, [[D4]] noManualList
+// [[C8]] declareOnce
 // Generated from catalog metadata: never add a hand-kept row. EXCEL_GAP (functions with no node) is the one standalone
 // list, and it self-heals.
 

@@ -1,4 +1,4 @@
-/* [[C37]] observerOwnsSize, [[D17]] relaysTransparent. Mechanics: tree/specs/canvas/resizable-content-nodes.md, tree/specs/canvas/conduit-lane-faces.md. */
+/* [[C37]] observerOwnsSize, [[C10]] socketLattice. Mechanics: tree/specs/canvas/resizable-content-nodes.md, tree/specs/canvas/conduit-lane-faces.md. */
 
 /* Pointers land only on what is painted (resizable-content-nodes spec); pointer-events inherits, so every live descendant says `auto` for itself. */
 .solenoid-conduit {

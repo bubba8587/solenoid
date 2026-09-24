@@ -26,6 +26,8 @@ A typed-in list breaks without a sound: leave a name off and nothing errors, the
 
 *Exception:* `RANGE_FUNCTIONS` (`excelFormula.ts`) is typed by hand for the Formula.js functions, because Formula.js publishes no signatures to generate it from. `rangeRouting.test.ts` checks what each of those functions returns. **Removed by:** a signature table for Formula.js.
 
+*Exception:* `ShortcutsOverlay.tsx` keeps its own copy of the key bindings, because it only displays them. **Removed by:** the overlay reading the bindings table.
+
 ## Checks
 
 ### A gating metric has one implementation

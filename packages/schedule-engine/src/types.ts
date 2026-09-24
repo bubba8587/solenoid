@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[E10]] pickVsAggregateErrors, [[D66]] daysMinutesModes
 
 export type LinkType = "FS" | "SS" | "FF" | "SF";
 

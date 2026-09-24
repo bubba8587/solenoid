@@ -2,11 +2,11 @@
 aliases: ["Formula language and evaluator"]
 tags: [spec, computation]
 ---
-<!-- [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[D25]] blockedFailFast, [[C15]] matricesInFormulas, [[D26]] hideMatrixFromVendor, [[D27]] oneBroadcast, [[C17]] shareImpl, [[D19]] implReteFree, [[D20]] declareContract, [[D51]] oneAnswerOneDivergence, [[C18]] uniqueNameMap, [[C20]] wholeArrayArgs, [[D24]] prepByShape, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C46]] consistencyOverQuirks, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming, [[C80]] blankArgIsExcelBlank, [[D7]] oneMetricImpl, [[D9]] useEveryNotSome, [[D4]] noManualList, [[D39]] keyByValue, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct, [[D37]] errorBeatsMissing -->
+<!-- [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C15]] matricesInFormulas, [[C17]] shareImpl, [[D51]] oneAnswerOneDivergence, [[C18]] uniqueNameMap, [[C20]] wholeArrayArgs, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C46]] consistencyOverQuirks, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming, [[C80]] blankArgIsExcelBlank, [[C8]] declareOnce, [[C9]] labelUnenforced, [[D39]] keyByValue, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct, [[D37]] errorBeatsMissing -->
 
 # Spec: Formula language and evaluator
 
-Serves [[B16]] oneFormulaSurface, with its subtree: [[C14]] currentExcelParity, [[D25]] blockedFailFast, [[C15]] matricesInFormulas, [[D26]] hideMatrixFromVendor, [[D27]] oneBroadcast, [[C17]] shareImpl, [[D19]] implReteFree, [[D20]] declareContract, [[D51]] oneAnswerOneDivergence, [[C18]] uniqueNameMap, [[C20]] wholeArrayArgs, [[D24]] prepByShape, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C46]] consistencyOverQuirks, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming and [[C80]] blankArgIsExcelBlank. The shared kernels and the parity measurement also serve [[D7]] oneMetricImpl, [[D9]] useEveryNotSome, [[D4]] noManualList, [[D39]] keyByValue, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct and [[D37]] errorBeatsMissing. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B16]] oneFormulaSurface, with its subtree: [[C14]] currentExcelParity, [[C15]] matricesInFormulas, [[C17]] shareImpl, [[D51]] oneAnswerOneDivergence, [[C18]] uniqueNameMap, [[C20]] wholeArrayArgs, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C46]] consistencyOverQuirks, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming and [[C80]] blankArgIsExcelBlank. The shared kernels and the parity measurement also serve [[C8]] declareOnce, [[C9]] labelUnenforced, [[D39]] keyByValue, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct and [[D37]] errorBeatsMissing. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The formula language is the Excel-style expression language typed into an Expression card, a LAMBDA card and a computed column. A formula is parsed once into a syntax tree and evaluated per recompute against the card's variables. Every function it calls is either an internal registration, which usually calls the same kernel as the matching node, or a Formula.js fallthrough. This spec covers the grammar, how names and calls resolve, how arguments are prepared and broadcast, the function-by-function notes, the shared rete-free kernels both surfaces call, and the measurement that keeps nodes and formulas in step.
 
@@ -33,7 +33,7 @@ The per-name reasons Solenoid overrides a Formula.js function are [[formulajs-di
 | `src/graph/nodes/listOps.ts`, `statsOps.ts`, `mathUtils.ts`, `financeOps.ts`, `dateSerial.ts`, `dateOps.ts`, `textOps.ts`, `matrixOps.ts`, `distributionOps.ts`, `fitOps.ts`, `forecastOps.ts`, `signalOps.ts`, `indexAccess.ts`, `visualOps.ts`, `hashOps.ts`, `convertUnits.ts`, `astroOps.ts`, `chemistryOps.ts`, `electricalOps.ts`, `emSpectrumOps.ts`, `fluidsOps.ts`, `healthOps.ts`, `physicsConstantsOps.ts`, `thermoOps.ts`, `triangleOps.ts` | The shared kernels (see *Shared kernels*). |
 | `src/graph/packs/*Formulas.ts` | A pack's `formulas` (its `PackFormula` impls), importing only kernels. |
 
-Every module the formula path imports is rete-free, each pack's `*Formulas.ts` included ([[D19]] implReteFree). `formulaPathIsReteFree.test.ts` pins it.
+Every module the formula path imports is rete-free, each pack's `*Formulas.ts` included ([[engineering#The formula path is rete-free]]). `formulaPathIsReteFree.test.ts` pins it.
 
 ## Lexical grammar
 
@@ -124,7 +124,7 @@ Function names in call position are case-insensitive and resolve through the reg
 
 `resolveExcelFunction(name)` uppercases the name, returns the internal implementation if one exists, and otherwise walks Formula.js's export object by the dotted path (`NORM.S.DIST` is `FX.NORM.S.DIST`). Both functions and plain objects are walkable containers, since Formula.js hangs `.MATH`, `.PRECISE`, `.INTL` and `.TEST` off callable parents. The result is null when neither has the name. An internal registration therefore always wins over Formula.js. `FX_FUNCTION_NAMES`, which feeds autocomplete and highlighting, walks the same way to a depth of two and skips `FX.utils`; the two walks must match ([[formulajs-divergences]] *Name walking*).
 
-`EXCEL_IMPL_META[name]` declares a registration's contract ([[D20]] declareContract):
+`EXCEL_IMPL_META[name]` declares a registration's contract ([[#The registry]]):
 
 | Field | Meaning |
 |---|---|
@@ -149,7 +149,7 @@ The core registers every internal function at module load. The node and the form
 
 ### Blocked and wrong-surface names
 
-Three tables name functions a formula refuses. Each refusal happens before any argument is evaluated, so a blocked name over a list answers one error, never a list of them ([[D25]] blockedFailFast).
+Three tables name functions a formula refuses. Each refusal happens before any argument is evaluated, so a blocked name over a list answers one error, never a list of them ([[#Blocked and wrong-surface names]]).
 
 **MUST:** a retired Excel name ([[C14]] currentExcelParity) answers a `#NAME?` that names its replacement before anything is done with its arguments. It gets no range routing, no autocomplete entry and no highlighting, and the blocklist is derived from `LEGACY_ALIASES`, never pruned by hand. If a blocked name were routed or its arguments prepared first, it could compute, or fail with an unrelated argument error, instead of pointing the user at the function that replaced it. Answering first is what makes the block total.
 
@@ -193,7 +193,7 @@ Evaluating `{ t: "call", name, args }` uppercases the name and takes the first m
 6. **Typed blanks.** `excelBlanks` replaces blank slots with typed blanks where `BLANK_ARG_TYPES` declares them (see *Blank and omitted arguments*).
 7. **Error handlers.** `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` receive their arguments as they are (see *Error-handling functions*).
 8. **Error propagation.** The first top-level argument that is a `SolError` is the answer. Errors inside a list are not hoisted here; each route decides.
-9. **Matrix containment.** If any argument is a matrix and the function does not declare `matrixArgs`: a `RANGE_POSITIONAL` function answers `#SHAPE!`; a `RANGE_FUNCTIONS` member flattens each matrix row-major and continues; a whole-list native, or a name with no `EXCEL_IMPL_META` entry and no internal registration (a Formula.js-only name), answers one `#SHAPE!` "{NAME} works on values and 1-D lists, not a 2-D matrix"; an internally registered element-wise function continues to the broadcast ([[D26]] hideMatrixFromVendor).
+9. **Matrix containment.** If any argument is a matrix and the function does not declare `matrixArgs`: a `RANGE_POSITIONAL` function answers `#SHAPE!`; a `RANGE_FUNCTIONS` member flattens each matrix row-major and continues; a whole-list native, or a name with no `EXCEL_IMPL_META` entry and no internal registration (a Formula.js-only name), answers one `#SHAPE!` "{NAME} works on values and 1-D lists, not a 2-D matrix"; an internally registered element-wise function continues to the broadcast ([[#The dispatch ladder]]).
 10. **Complex containment.** If any argument is or contains a complex value and the function declares no `cxArgs`, is not in `NULL_INSPECTING` and is not a whole-list native: `#TYPE!` "{NAME} doesn't compute on complex numbers, use the IM* family".
 11. **Route.** Whole-list native, else range function, else broadcast (see *Argument routing*).
 
@@ -231,7 +231,7 @@ A function whose `EXCEL_IMPL_META` entry has `listArgs: true` (and is not blocke
 
 `RANGE_FUNCTIONS` lists the functions whose signature takes a range: the aggregates (`SUM`, `AVERAGE`, `MIN`, `MAX`, `COUNT`, the STDEV and VAR families, `MEDIAN`, `LARGE`, `PERCENTILE`, `RANK` and the rest), `GCD`, `LCM`, `MULTINOMIAL`, the workday functions (their holiday list), the correlation and regression pairs, `AND`, `OR`, `XOR`, `TEXTJOIN`, `CONCAT`, the criteria aggregates, `NPV`, `XNPV`, the lookups, the statistical tests and the pairwise sums. An argument that is a list arrives as one list; nothing is called per element. Blocked spellings listed here (`VLOOKUP`, `SUBTOTAL` and the rest) are removed at load, so they get no range routing. A name added to `RANGE_FUNCTIONS` needs a row in `rangeRouting.test.ts`.
 
-Before dispatch, `prepRangeArgs` applies the function's null and error policy ([[D24]] prepByShape). **MUST:** a routed function declares which policy prepares its arguments, matched to the function's shape, not its category; whole-list natives that preserve positions skip `prepRangeArgs` entirely, through `takesWholeArgs`. No single policy is right for every function: the aggregator policy breaks a positional function (`REVERSE([1, null, 3])` must be `[3, null, 1]`, never `[3, 1]`), and the paired policy breaks two independent samples of different lengths. The policies are checked in this order:
+Before dispatch, `prepRangeArgs` applies the function's null and error policy ([[#Range functions]]). **MUST:** a routed function declares which policy prepares its arguments, matched to the function's shape, not its category; whole-list natives that preserve positions skip `prepRangeArgs` entirely, through `takesWholeArgs`. No single policy is right for every function: the aggregator policy breaks a positional function (`REVERSE([1, null, 3])` must be `[3, null, 1]`, never `[3, 1]`), and the paired policy breaks two independent samples of different lengths. The policies are checked in this order:
 
 | Policy | Members | Errors | Nulls |
 |---|---|---|---|
@@ -243,7 +243,7 @@ Before dispatch, `prepRangeArgs` applies the function's null and error policy ([
 
 A Formula.js `Error` object found in a list counts as an error and is mapped with `fxErrorToSol`. Scalar arguments pass through every policy unchanged. The prepared lists are copied before dispatch because some Formula.js functions mutate their arguments. A numeric result passes `guardFinite` with every flattened input, so `SUM` over a list holding a first-class infinity still answers infinity.
 
-Dropping nulls per array would shear a paired function's pairing, which is why `RANGE_PAIRED` drops whole rows; its shortest-length zip is the same as padding with null, since padded rows would drop anyway. `T.TEST` and `F.TEST` stay pooled because their samples may differ in length for an independent test, and the paired policy's shortest-length zip would throw away the tail of the longer one ([[D24]] prepByShape). **Removed by:** routing per test type, if the evaluator ever dispatches on an argument's value.
+Dropping nulls per array would shear a paired function's pairing, which is why `RANGE_PAIRED` drops whole rows; its shortest-length zip is the same as padding with null, since padded rows would drop anyway. `T.TEST` and `F.TEST` stay pooled because their samples may differ in length for an independent test, and the paired policy's shortest-length zip would throw away the tail of the longer one ([[#Range functions]]). **Removed by:** routing per test type, if the evaluator ever dispatches on an argument's value.
 
 So `AND(x)` over `[TRUE, null, TRUE]` is TRUE: a reduction skips nulls, while the operators and element-wise functions propagate them. That is the one sanctioned node-versus-formula split ([[D51]] oneAnswerOneDivergence).
 
@@ -259,7 +259,7 @@ If every list argument is empty, the answer is `[]`.
 
 ## Broadcasting
 
-`mapCells(argv, cellFn)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, `IFERROR` and `IFNA`, and function broadcasting ([[D27]] oneBroadcast). It owns shape only; `cellFn` owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
+`mapCells(argv, cellFn)` is the one broadcaster for every element-wise surface: binary operators, unary minus and plus, percent, `IFERROR` and `IFNA`, and function broadcasting ([[#Broadcasting]]). It owns shape only; `cellFn` owns the per-cell meaning. The rules, as the B-table in `docs/archive/17-matrix-formulas.md` Part 2 states them and `tests/graph/broadcastRules.test.ts` transcribes row by row:
 
 - A value nested deeper than a matrix (a matrix cell that is itself an array) answers one `#SHAPE!`.
 - Each argument first collapses a singleton: a 1×1 matrix and a one-element list are their scalar, so `[5] + [1,2,3]` is `[6,7,8]` (B10, B11).
@@ -306,7 +306,7 @@ Formula.js reports failures as `Error` objects. Inside a formula they stay `Erro
 
 ## Complex numbers
 
-A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[D45]] maxRankMatrix), so `Array.isArray` means exactly one thing everywhere, and every complex test goes through `isCx`, never a structural array check. It reaches a function only through a declared `cxArgs` (step 10 of the dispatch ladder). The IM* family declares it; COMPLEX and QUADRATICROOTS take real arguments and deliberately do not.
+A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[value-semantics#The value grammar]]), so `Array.isArray` means exactly one thing everywhere, and every complex test goes through `isCx`, never a structural array check. It reaches a function only through a declared `cxArgs` (step 10 of the dispatch ladder). The IM* family declares it; COMPLEX and QUADRATICROOTS take real arguments and deliberately do not.
 
 - **Arguments** (`asCxArg`): a complex value as is, a real number as `re + 0i`, or text in Excel's `a+bi` grammar. Text that does not parse is `#VALUE!` (Excel says `#NUM!`); anything else, logicals included, is `#TYPE!`.
 - **Results** are tagged complex values, not Excel's text complexes. IMREAL, IMAGINARY, IMABS and IMARGUMENT answer numbers.
@@ -322,7 +322,7 @@ A complex value is a tagged object, `{ __cx: true, re, im }` (`cxValue.ts`, [[D4
 
 `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` (`ERROR_HANDLER_FUNCTIONS`) are handled by `applyErrorHandler` before error propagation. An operand counts as an error when it is a `SolError` or a Formula.js `Error`. `IFNA` and `ISNA` catch only `#N/A`; `ISERR` catches everything except `#N/A`; the rest catch every error.
 
-- `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. When either argument is a list or matrix, the two broadcast through `mapCells` like an operator's operands ([[D27]] oneBroadcast): a list fallback reads as one row across a matrix, and a cell past a shorter operand's edge is `null`. A missing fallback is `null`.
+- `IFERROR(value, fallback)` and `IFNA`: a scalar value is replaced by the fallback when caught. When either argument is a list or matrix, the two broadcast through `mapCells` like an operator's operands ([[#Broadcasting]]): a list fallback reads as one row across a matrix, and a cell past a shorter operand's edge is `null`. A missing fallback is `null`.
 - `ISERROR`, `ISERR`, `ISNA`: TRUE or FALSE, walked cell by cell over lists and matrices.
 - `ERROR.TYPE`: per cell of a list or matrix, Excel's number for the code (`#DIV/0!` 2, `#VALUE!` 3, `#REF!` 4, `#NAME?` 5, `#N/A` 7, and 6 for `#NUM!` and the Solenoid codes that split it: `#DOMAIN!`, `#OVERFLOW!`, `#CONV!`); any other code is 3; a non-error answers `#N/A`.
 
@@ -528,7 +528,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 ### Lists
 
 - The list functions call the list nodes' kernels (*List kernels*). A bare scalar argument widens to a one-element list, as a cable widens a Number into a list input, so `REVERSE(5)` is `[5]`; a blank argument is an empty list.
-- The formula names of the Sets and Fill ops (`SETUNION`, `FILLVALUE` and the rest) are declared on `SET_OP_META`, `SET_RELATION_META` and `FILL_OP_META`, because the bare op labels despace to other names ([[D3]] overrideInPlace).
+- The formula names of the Sets and Fill ops (`SETUNION`, `FILLVALUE` and the rest) are declared on `SET_OP_META`, `SET_RELATION_META` and `FILL_OP_META`, because the bare op labels despace to other names ([[engineering#An override lives on the declaration it overrides]]).
 - **LINSPACE, REPEAT, GEOMETRIC, RANGE, PADLEFT, PADRIGHT** check their count at the formula boundary, as their cards do at theirs: a non-finite count is `#VALUE!`, and one above `MAX_GENERATED` is `#OVERFLOW!` ([[C21]] matchNodeLimits). RANGE(start, [stop], [step]) has no count argument, so it caps on the implied length (`rangeCount`), and an endless walk is `#VALUE!`. FIBONACCI caps itself at 78 terms.
 - **RUNNING(op, list, [window])** is the Running family's one name, the aggregator a text argument, as SORT carries its direction ([[C26]] opArgDistinct). The op is SUM, AVERAGE (or AVG), MIN, MAX, MEDIAN, PRODUCT or STDEV, case-insensitive; anything else is `#VALUE!` listing them. A blank op or list answers blank. An omitted window is cumulative; a blank window is unknown and answers blank; 0 is cumulative, a positive count is the sliding window, and anything else is `#DOMAIN!`.
 - **LENGTH** counts every slot, blanks included, which is why it takes the whole-list route.
@@ -594,7 +594,7 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 
 ## Shared kernels
 
-The kernels are the rete-free modules under `src/graph/nodes/` that a node's `data()` and a formula registration both call, so the two surfaces cannot answer differently ([[C17]] shareImpl, [[D19]] implReteFree). They never import rete; a kernel that would need something from a rete-reaching module takes it as an argument instead. Each takes plain values and answers a value, null for "no answer" (shown as a blank), or a `SolError` for a real domain failure. The caller, node or formula, prepares the inputs and tags its own failures.
+The kernels are the rete-free modules under `src/graph/nodes/` that a node's `data()` and a formula registration both call, so the two surfaces cannot answer differently ([[C17]] shareImpl, [[engineering#The formula path is rete-free]]). They never import rete; a kernel that would need something from a rete-reaching module takes it as an argument instead. Each takes plain values and answers a value, null for "no answer" (shown as a blank), or a `SolError` for a real domain failure. The caller, node or formula, prepares the inputs and tags its own failures.
 
 ### List kernels (`nodes/listOps.ts`)
 
@@ -768,7 +768,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 
 **Depreciation.** `vdb` (VDB) is the depreciation between two periods: each period takes the larger of the declining-balance charge (`book·factor/life`) and straight-line over the remaining life, never below salvage, with a fractional period charged pro rata. Out-of-range arguments are null. The VDB formula refuses Excel's `no_switch` of TRUE with `#VALUE!`, since the kernel always switches to straight-line.
 
-**Cash-flow preparation** ([[D24]] prepByShape):
+**Cash-flow preparation** ([[#Range functions]]):
 
 - `cashPrep`: an error cell is the answer; then a null cash flow is 0, never dropped, because dropping it would shift every later period.
 - `datedPrep`: an error in the values or dates is the answer ([[D37]] errorBeatsMissing); null cash flows are 0; a null date makes the whole schedule unknown (`blank`).
@@ -826,7 +826,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 
 ### Text kernels (`nodes/textOps.ts`)
 
-Each kernel works on one string; the text nodes and the text formulas broadcast it. `textOps.ts` must not import `text.ts`, which imports `excelFunctions` and would pull rete into the formula path through the cycle ([[D19]] implReteFree). Lengths and positions count code points, not UTF-16 units.
+Each kernel works on one string; the text nodes and the text formulas broadcast it. `textOps.ts` must not import `text.ts`, which imports `excelFunctions` and would pull rete into the formula path through the cycle ([[engineering#The formula path is rete-free]]). Lengths and positions count code points, not UTF-16 units.
 
 - `splitText` (TEXTSPLIT): an empty delimiter splits into characters.
 - `textAfterBefore` (TEXTAFTER, TEXTBEFORE): the text after or before the first occurrence of the delimiter. An empty delimiter, or one the text does not contain, answers null rather than the whole string.
@@ -915,13 +915,13 @@ The INDEX node and the INDEX formula share `indexInto(value, row, col, tagUnit?)
 
 ## Parity measurement
 
-`formulaNodeParity.ts` measures how far the node catalog and the formula registry cover each other. It is the one implementation behind both the report script and the ratchet test in `formulaNodeParity.test.ts` ([[D7]] oneMetricImpl).
+`formulaNodeParity.ts` measures how far the node catalog and the formula registry cover each other. It is the one implementation behind both the report script and the ratchet test in `formulaNodeParity.test.ts` ([[engineering#A gating metric has one implementation]]).
 
 `measureParity()` walks every visible catalog leaf (hidden leaves skipped, pairs flattened, categories joined into a " › " path) against the current `formulaFunctionNames()`, and produces a `ParityRow` per leaf:
 
 - `excel`: the Excel names the leaf stands in for, uppercase, from the leaf's `excel` field or `NODE_EXCEL`; empty for a Solenoid-native node.
-- `excelCovered`: every one of those names dispatches (`excelCoverage`). An empty claim is never covered, since vacuous is not complete ([[D9]] useEveryNotSome).
-- `inFormula`: the leaf is reachable from a formula by name. That holds when any Excel name dispatches; or the despaced label does (`despace`: whitespace removed, uppercased, the same rule the registrations use, [[C51]] formulaNaming); or every name in the leaf's `fx` dispatches; or the leaf is covered by the language itself (`LANGUAGE_LEAVES`: the four arithmetic operators, Comparison, and the Expression and Equation hosts); or it is a preset formula, a locked Expression with a non-empty formula, detected by creating the node rather than listed ([[D4]] noManualList); or it is an op family whose every op dispatches under `fx ?? despace(label)`. Argument families are not in `NODE_OPS` ([[C26]] opArgDistinct), so an aggregator value such as the GROUPBY card's SUM never makes SUM count.
+- `excelCovered`: every one of those names dispatches (`excelCoverage`). An empty claim is never covered, since vacuous is not complete ([[engineering#Completeness checks use every]]).
+- `inFormula`: the leaf is reachable from a formula by name. That holds when any Excel name dispatches; or the despaced label does (`despace`: whitespace removed, uppercased, the same rule the registrations use, [[C51]] formulaNaming); or every name in the leaf's `fx` dispatches; or the leaf is covered by the language itself (`LANGUAGE_LEAVES`: the four arithmetic operators, Comparison, and the Expression and Equation hosts); or it is a preset formula, a locked Expression with a non-empty formula, detected by creating the node rather than listed ([[engineering#Lists of names are generated]]); or it is an op family whose every op dispatches under `fx ?? despace(label)`. Argument families are not in `NODE_OPS` ([[C26]] opArgDistinct), so an aggregator value such as the GROUPBY card's SUM never makes SUM count.
 
 The measurement reports:
 

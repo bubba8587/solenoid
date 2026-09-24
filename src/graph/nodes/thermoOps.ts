@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 // Compute from the formulation, never a transcribed table.
 
 import { solError, type SolError } from "../errorValue";

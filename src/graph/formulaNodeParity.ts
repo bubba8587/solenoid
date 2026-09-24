@@ -1,4 +1,4 @@
-// [[D7]] oneMetricImpl, [[D9]] useEveryNotSome, [[D4]] noManualList
+// [[C8]] declareOnce, [[C9]] labelUnenforced
 import { buildCatalog } from "./catalogUtils";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
 import { NODE_EXCEL, EXCEL_GAP } from "./nodeExcel";

@@ -89,7 +89,7 @@ src/
 | Module | Role |
 |---|---|
 | `process.ts` | The app's recompute ONLY: the MAIN `_editor/_engine/_area` refs, the graph-rebuild guard, `processGraph()` (the `graphCompute` pass + targeted re-render, cable values, perf, the compute overlay, calc mode), recalc generation (volatile nodes), `bulkSettle`. **STAYS MAIN-ONLY** (persistence/serialize read it) |
-| `graphCompute.ts` | THE model-level pass, one definition for every caller ([[D30]] targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
+| `graphCompute.ts` | THE model-level pass, one definition for every caller (`../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
 | `canvasCommands.ts` | The chrome → surface command slots (select/unselect, Tidy/Cleanup, delete, dock reposition, clear history) the mounted FlowSurface registers and the drill-in swaps (`swapSelectionSlots`/`swapArrangeSlots`) |
 | `graphSignals.ts`, `ctorProvider.ts` | The tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
 | `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore). Also an OWNERSHIP-only registry (`registerOwnedGraph`, distinct from the action-target override) so locked landing scene canvases resolve their OWN nodes for render-time cross-node resolvers (output-socket type → date/unit rendering); scenes are never the action target |
@@ -402,7 +402,7 @@ overlay tabs.
 One file per pack on `packs/packShared.ts` (authoring types,
 `formulaNode`/`placeFormulas`, Equation presets; a pack file may import ONLY
 packShared, its `<id>Formulas.ts`, `../rete-nodes`, and type-only app seams — never core internals),
-its `formulas` in `packs/<id>Formulas.ts`, which imports only rete-free kernels ([[D19]] implReteFree),
+its `formulas` in `packs/<id>Formulas.ts`, which imports only rete-free kernels (`../tree/specs/floors/engineering.md` § The formula path is rete-free),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
 `fcExtensions.ts` above); the settled calls are [[B15]] leanCore and its children, the

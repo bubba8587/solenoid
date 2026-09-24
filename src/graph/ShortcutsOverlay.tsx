@@ -1,4 +1,3 @@
-// [[D4]] noManualList (sanctioned exception: a display-only mirror of the bindings)
 import { useSyncExternalStore } from "react";
 import { shortcutsStore } from "./shortcutsStore";
 import { useEscapeToClose } from "./components/useEscapeToClose";

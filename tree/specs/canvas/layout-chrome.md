@@ -2,7 +2,7 @@
 aliases: ["Layout and chrome"]
 tags: [spec, canvas]
 ---
-<!-- [[C99]] chromeEnvelopeVars, [[C93]] gestureByPointerType, [[C75]] gpuTextureBudget, [[C109]] linuxOwnWindowControls, [[D74]] webkitgtkNoNodeLayers -->
+<!-- [[C99]] chromeEnvelopeVars, [[C93]] gestureByPointerType, [[C75]] gpuTextureBudget, [[C109]] linuxOwnWindowControls, [[B10]] reactFlowView -->
 
 # Spec: Layout and chrome
 
@@ -98,7 +98,7 @@ The menu bar is the title bar: `.solenoid-menubar` carries `data-tauri-drag-regi
 - **Linux control styling.** Hover is the menu items' ink wash (`--accent-ink` at 14%); close hovers to the error red (`--sol-error`) with white ink. Glyphs are 10px SVGs at a 1px stroke (even-sized, never a text glyph). The maximize glyph follows `isMaximized()` on every resize. The window calls are allowed by the `core:window:allow-*` lines in `src-tauri/capabilities/default.json`.
 - **Linux draws its own controls** instead of decorum's ([[C109]] linuxOwnWindowControls, which records decorum 1.1.1's three failures there).
 - **Linux resize.** The undecorated window has no frame to grab. Tauri's own handler starts a resize from a press within 5px of an edge but never changes the cursor, so `WindowControls.tsx` portals eight `.solenoid-wingrip` strips to `body` (5px edges, 10px corners, z-index 10000, resize cursors) that call `startResizeDragging`. They claim the same 5px the native handler already takes, and unmount while the window is maximized or fullscreen.
-- **On Linux nothing inside a node may become a GPU layer** ([[D74]] webkitgtkNoNodeLayers; `src-tauri/src/linux_webview.rs`, called from `lib.rs`). WebKitGTK rasterizes a compositor layer at 1× and stretches the bitmap by the viewport's `scale()`, and a transformed element with any composited descendant must itself become a layer. So one promoted box inside one node puts the whole React Flow viewport on a stretched layer, and zooming in pixelates the canvas.
+- **On Linux nothing inside a node may become a GPU layer** ([[#The desktop window frame (the Tauri shell)]]; `src-tauri/src/linux_webview.rs`, called from `lib.rs`). WebKitGTK rasterizes a compositor layer at 1× and stretches the bitmap by the viewport's `scale()`, and a transformed element with any composited descendant must itself become a layer. So one promoted box inside one node puts the whole React Flow viewport on a stretched layer, and zooming in pixelates the canvas.
   - Two promoters of node content are switched off: the `AsyncOverflowScrolling` feature (every scrollable box in a node) and 2D canvas acceleration (the canvas-drawn charts).
   - The third promoter is CSS: WebKit runs an `opacity`, `transform` or `filter` transition on the GPU by promoting the element, so a hover fade inside a node flipped the whole canvas onto a layer and back (a 1px squish on hover, and at far zoom-out a second of black while the entire graph rasterized at 1×). `main.tsx` marks the engine (`html[data-webview="webkitgtk"]`), and `desktopFrame.css` turns transitions off inside `.react-flow__viewport` and drops the load-time node reveal. The cable flow animates `stroke-dashoffset`, which is never accelerated, so it keeps running.
   - GPU compositing itself stays on, so the canvas paints into the root layer's tiles at the real scale. The blunt alternative, `WEBKIT_DISABLE_COMPOSITING_MODE=1`, also fixes it but moves all painting to the CPU.

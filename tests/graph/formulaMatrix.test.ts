@@ -112,7 +112,7 @@ describe("each matrix name computes what its node computes", () => {
   });
 });
 
-describe("ownership displaced the broadcast garbage ([[D26]] hideMatrixFromVendor's point)", () => {
+describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas's point)", () => {
   it("MMULT is a matrix product, not the element-wise Hadamard the fallthrough gave", () => {
     // Pre-tranche this answered [[{},{}],[{},{}]] — Formula.js MMULT mapped
     // cell-wise. If this test ever sees a 2×2 of objects again, the meta lost
@@ -173,7 +173,7 @@ describe("ownership displaced the broadcast garbage ([[D26]] hideMatrixFromVendo
     }
   });
 
-  it("every tranche registration declares the [[D26]] hideMatrixFromVendor gate", () => {
+  it("every tranche registration declares the [[C15]] matricesInFormulas gate", () => {
     for (const name of ["TRANSPOSE", "MMULT", "MUNIT", "MDETERM", "MINVERSE", "WRAPROWS", "WRAPCOLS", "TOCOL", "TOROW", "SEQUENCE", "COLUMNS", "ROWS", "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND"]) {
       expect(EXCEL_IMPL_META[name]?.matrixArgs, `${name} lost matrixArgs`).toBe(true);
       expect(EXCEL_IMPL_META[name]?.listArgs, `${name} lost listArgs (rank-1 args must arrive whole too)`).toBe(true);

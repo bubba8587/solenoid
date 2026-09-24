@@ -2,11 +2,11 @@
 aliases: ["Save format and load path"]
 tags: [spec, documents]
 ---
-<!-- [[B12]] losslessSaves, [[C30]] saveViaTextForm, [[C29]] plainJsonInit, [[D50]] everyFieldClassified, [[C28]] literalsIffEditable, [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder, [[C33]] saveBindsMain, [[C34]] classNameIsType, [[C35]] unknownViaPlaceholder, [[C36]] captureBeforeSwap, [[C58]] tableInputRawText -->
+<!-- [[B12]] losslessSaves, [[C30]] saveViaTextForm, [[C29]] plainJsonInit, [[C28]] literalsIffEditable, [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder, [[C33]] saveBindsMain, [[C34]] classNameIsType, [[C35]] unknownViaPlaceholder, [[C36]] captureBeforeSwap, [[C58]] tableInputRawText -->
 
 # Spec: Save format and load path
 
-Serves [[B12]] losslessSaves, with its save-path rules [[C30]] saveViaTextForm, [[C29]] plainJsonInit, [[D50]] everyFieldClassified, [[C28]] literalsIffEditable, [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder, [[C33]] saveBindsMain, [[C34]] classNameIsType, [[C35]] unknownViaPlaceholder, [[C36]] captureBeforeSwap and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves, with its save-path rules [[C30]] saveViaTextForm, [[C29]] plainJsonInit, [[C28]] literalsIffEditable, [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder, [[C33]] saveBindsMain, [[C34]] classNameIsType, [[C35]] unknownViaPlaceholder, [[C36]] captureBeforeSwap and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A document has three representations: the live graph (rete editor plus side stores), the `SavedGraph` JSON object, and the text form (one node per line plus a JSON sidecar). The JSON is always produced by passing the live capture through the text form, so the text form is the one canonical projection. This spec defines both serialized shapes, the capture, the load algorithm, the strict validator, and how documents are stored. Names and their rules belong to [[addressable-model]]; the autosave slot mechanics to [[per-doc-autosave-persistence]]; the literal-map convention to [[inline-literal-maps]].
 
@@ -114,7 +114,7 @@ Why: a field that is captured but not re-applied drops on reload, and nothing ca
 
 ### Every field is persisted or deliberately transient
 
-Every own field of a catalog node is classified ([[D50]] everyFieldClassified): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
+Every own field of a catalog node is classified ([[#Every field is persisted or deliberately transient]]): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
 
 Why: the round-trip sweep above proves that captured fields survive, but it can't see a field the whitelist never captured: both sides omit it identically, so the test passes while the user's setting silently resets on every reload. The first triage found exactly that: `asofDirection`, the direction dropdown of an as-of Join, reset to "backward" on every save, reload and paste.
 

@@ -68,7 +68,7 @@ specific item.
   Personal Finance reads its CSVs from there with Local File cards. The demo vault serves
   `.obsidian/types.json` and `daily-notes.json`, so demo reads match a real vault.
 - **Formula side:** every kernel a pack formula calls lives in a rete-free `nodes/*Ops.ts`, each pack's
-  formulas in `packs/<id>Formulas.ts`, and `formulaPathIsReteFree.test.ts` roots at them ([[D19]]).
+  formulas in `packs/<id>Formulas.ts`, and `formulaPathIsReteFree.test.ts` roots at them (`../tree/specs/floors/engineering.md` § The formula path is rete-free).
 - **Site:** the Packs and Examples pages render from `BUILTIN_PACKS` and `SEED_GROUPS`; the Obsidian page
   leads with Solenoid Properties, a live panel of the plugin's own `PropertyChip` over the demo vault; each
   page gets its own title and link-preview tags (`siteMeta.ts`, `<page>.html`, `vercel.json`). Phone

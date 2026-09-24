@@ -34,3 +34,32 @@ E13	2026-09-24	reverted	-	Claude Opus 5.5	the author	dateBuildName: The DATE(y, 
 E11	2026-09-24	moved	C113	Claude Opus 5.5	the author	controlDrivenRetype: a node's op, mode or arg field can swap that node's own sockets in place
 E8	2026-09-24	reverted	-	Claude Opus 5.5	the author	waitForTypeSettle: A derived-type consumer runs only after the wildcard settle
 D78	2026-09-24	reverted	-	Claude Opus 5.5	the author	textErrorsOnOracle: On desktop, a frame holding an error cell in a text or logical column computes on the JS oracle
+E5	2026-09-24	reverted	-	Claude Opus 5.5	the author	anydataWildcard: `anydata` is the rank-2-or-less element-agnostic wildcard (matricesInFormulas)
+E6	2026-09-24	reverted	-	Claude Opus 5.5	the author	portOwnsSocket: An adopting port owns its socket instance
+E7	2026-09-24	reverted	-	Claude Opus 5.5	the author	trueanyNeedsPassthrough: A `trueany` output implies a `passthrough()` declaration
+D3	2026-09-24	reverted	-	Claude Opus 5.5	the author	overrideInPlace: Where a derivation can't be total, the override lives in the same table
+D4	2026-09-24	reverted	-	Claude Opus 5.5	the author	noManualList: A list of names the code relies on is generated, not typed by hand
+D6	2026-09-24	reverted	-	Claude Opus 5.5	the author	opRowDerivesFromHost: An op's search row derives from its host leaf
+D7	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneMetricImpl: A gating metric has one implementation and answers one question
+D9	2026-09-24	reverted	-	Claude Opus 5.5	the author	useEveryNotSome: Completeness quantifiers are `every`, not `some`
+D12	2026-09-24	reverted	-	Claude Opus 5.5	the author	dateValuedPortIsDateTyped: A port that carries a date is typed date
+D14	2026-09-24	reverted	-	Claude Opus 5.5	the author	derivedSocketTypes: Adding a socket type is a derived edit
+D15	2026-09-24	reverted	-	Claude Opus 5.5	the author	wildcardsKeepRank: The wildcard ladder keeps rank
+D17	2026-09-24	reverted	-	Claude Opus 5.5	the author	relaysTransparent: Relay nodes are transparent to every static derivation
+D19	2026-09-24	reverted	-	Claude Opus 5.5	the author	implReteFree: A shared implementation is rete-free
+D20	2026-09-24	reverted	-	Claude Opus 5.5	the author	declareContract: A registration declares its full contract
+D24	2026-09-24	reverted	-	Claude Opus 5.5	the author	prepByShape: Argument prep matches the function's shape, not its category
+D25	2026-09-24	reverted	-	Claude Opus 5.5	the author	blockedFailFast: A blocked spelling answers its redirect before its arguments are touched
+D26	2026-09-24	reverted	-	Claude Opus 5.5	the author	hideMatrixFromVendor: Formula.js never sees a matrix or a complex number unless a registration declares it
+D27	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneBroadcast: One broadcast engine, and the table is the test
+D28	2026-09-24	reverted	-	Claude Opus 5.5	the author	tripwireVendorDrift: A vendored-engine divergence is owned, and tripwired
+D29	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneVerbCorpus: The verb pair computes from one fixture corpus
+D30	2026-09-24	reverted	-	Claude Opus 5.5	the author	targetedEqualsFull: The targeted pass is observationally equal to the full pass
+D31	2026-09-24	reverted	-	Claude Opus 5.5	the author	onlyCalcModeSkips: The calc-mode gate is the only thing that skips a pass
+D32	2026-09-24	reverted	-	Claude Opus 5.5	the author	refreshOutsideRebuild: A live-data refresh never runs inside a rebuild scope
+D45	2026-09-24	reverted	-	Claude Opus 5.5	the author	maxRankMatrix: The value grammar: primitive or tagged scalar, list or matrix; nothing deeper, no bare-array scalar
+D50	2026-09-24	reverted	-	Claude Opus 5.5	the author	everyFieldClassified: Every node field is persisted or deliberately transient
+D64	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneSizeRead: One size read for layout math: measuredBox()
+D65	2026-09-24	reverted	-	Claude Opus 5.5	the author	serialsNeverDate: Schedules compute on integer serials and never construct a Date
+D67	2026-09-24	reverted	-	Claude Opus 5.5	the author	grammarOnlyAtBorder: Link grammar and vendor link codes are parsed at the border; the engine keys predecessors by name
+D74	2026-09-24	reverted	-	Claude Opus 5.5	the author	webkitgtkNoNodeLayers: On WebKitGTK nothing inside a node becomes a compositor layer

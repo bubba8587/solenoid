@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter, [[D32]] refreshOutsideRebuild, [[D10]] onePrunePath, [[C113]] controlDrivenRetype, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
+// [[C95]] commitOnEnter, [[D10]] onePrunePath, [[C113]] controlDrivenRetype, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
 import type React from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
@@ -53,7 +53,7 @@ function statusText(s: ConnectionState): string {
   }
 }
 
-// The card's own data() runs the timer ([[D32]] refreshOutsideRebuild), so it keeps running while the card is unmounted.
+// The card's own data() runs the timer, so it keeps running while the card is unmounted.
 function RefreshIntervalField({ node }: { node: { id: string; refreshMinutes: number } }) {
   const [val, setVal] = useState(String(node.refreshMinutes));
   useEffect(() => { setVal(String(node.refreshMinutes)); }, [node.refreshMinutes]);

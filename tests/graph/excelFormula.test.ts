@@ -1,4 +1,4 @@
-// [[D24]]
+// [[B16]] oneFormulaSurface
 import { describe, it, expect } from "vitest";
 import {
   extractVariables,
@@ -412,7 +412,7 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
 
   it("classifies + aggregates the criteria/meta range functions", () => {
     // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — [[C14]] currentExcelParity blocks
-    // them, and [[D25]] blockedFailFast strips a blocked spelling from RANGE_FUNCTIONS so it
+    // them, and [[C14]] currentExcelParity strips a blocked spelling from RANGE_FUNCTIONS so it
     // answers before its args are shaped.
     for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
                      "AVERAGEIFS", "MAXIFS", "MINIFS"]) {

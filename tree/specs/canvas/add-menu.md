@@ -2,11 +2,11 @@
 aliases: ["Add menu"]
 tags: [spec, canvas]
 ---
-<!-- [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost, [[C19]] namingModel, [[D22]] oneNamePerCard -->
+<!-- [[D5]] searchWiderThanLabel, [[C8]] declareOnce, [[C19]] namingModel, [[D22]] oneNamePerCard -->
 
 # Spec: Add menu
 
-Serves [[D5]] searchWiderThanLabel and [[D6]] opRowDerivesFromHost; the names it shows follow [[C19]] namingModel and [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[D5]] searchWiderThanLabel and [[C8]] declareOnce; the names it shows follow [[C19]] namingModel and [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The Add menu is the panel a user opens to place a new card. With the search box empty it shows the catalog as a tree of categories; as soon as the user types, it shows one ranked list of every row that matches. The catalog is declared in `nodeCatalog.ts` and assembled by `catalogUtils.ts`; op families are declared in `nodeOps.ts`; search is `catalogSearch.ts` and `fuzzy.ts`; the panel is `AddNodeMenu.tsx`. `catalogSearch.test.ts`, `fuzzy.test.ts` and `nodeOps.test.ts` pin the behavior.
 
@@ -83,7 +83,7 @@ A family's **hidden ops** (`hiddenOps`) are the ops with no leaf of their own: e
 - **Hidden-op rows.** Each hidden op gets a row built by `opEntry`, with type `` `${host}__op-${op}` ``. Picking the row places the host card already set to that op. Folding a family onto one card therefore never makes an op unfindable.
 - **Excel-alias rows.** For each Excel name in `CATALOG_TO_EXCEL` that the leaf answers to, `excelEntry` adds a row with type `` `${host}__excel-${name}` ``, unless the name is already worn: the leaf's own label, one of its hidden ops' labels, or any other card's or op's label in the catalog, so "Group Lists: GROUPBY" never sits beside the GROUPBY card. Each Excel name appears at most once per leaf in `NODE_EXCEL`. The match ignores case and a trailing parenthetical, so "T.TEST (paired)" already answers to T.TEST and "DATE (Build)" to DATE. The label is `` `${hostLabel}: ${name}` `` ("Table Size: ROWS"), so a user who types the Excel name sees it on the row they get. When the host label is itself a function name (all capitals, digits and dots, like "AVERAGE" or "LINEST"), the prefix would only repeat itself, so the label is the alias alone ("AVERAGEA"); the description still names the host. A family's primary op gets no hidden-op row, so an Excel name that is the primary op (Type Check's ISNUMBER) still gets its alias row.
 
-Both kinds are views of the host leaf ([[D6]] opRowDerivesFromHost): they spread the host and replace only what must differ. Both are generated at search time and never inserted into the tree, so code that walks the catalog does not count them as extra nodes. Neither carries the host's `keywords`, and neither carries the host's hidden-op list or its `{ }` mark, since a row that is one op has nothing folded up. A hidden-op row does carry the op's own `keywords`.
+Both kinds are views of the host leaf ([[#The search rows]]): they spread the host and replace only what must differ. Both are generated at search time and never inserted into the tree, so code that walks the catalog does not count them as extra nodes. Neither carries the host's `keywords`, and neither carries the host's hidden-op list or its `{ }` mark, since a row that is one op has nothing folded up. A hidden-op row does carry the op's own `keywords`.
 
 **MUST:** a hidden-op row is built from the host leaf plus the op's own declaration (`opEntry` spreading `...host`), never as a second hand-written catalog entry, and what the row must not inherit is named at that call site. Why: every property the leaf owns (label stem, pack, accent, description) has to follow the leaf automatically, or the menu and the card drift apart ([[C8]] declareOnce); the exceptions belong in the same function rather than a parallel table. The exception list blocks the host's `keywords`, not the op's own: blocking every `keywords` value once pushed per-op Excel spellings into the visible label.
 
@@ -161,5 +161,5 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 
 - A rendered label carries only what a reader needs to pick the row. Alternate spellings, Excel function names above all, go in `keywords`, which scores at full weight and never renders ([[D5]] searchWiderThanLabel).
 - A hidden-op row's label is `` `${hostLabel}: ${opLabel}` `` (`opSearchLabel`) and nothing else, so renaming a card renames its op rows.
-- A card's formula name (`fx`) is independent of its label. It stays declared wherever removing the spaces from the label would not produce it ([[D3]] overrideInPlace, [[C18]] uniqueNameMap).
+- A card's formula name (`fx`) is independent of its label. It stays declared wherever removing the spaces from the label would not produce it ([[engineering#An override lives on the declaration it overrides]], [[C18]] uniqueNameMap).
 - Every op is reachable: it either has a row of its own or is the family's primary op. The primary op is found by constructing the leaf and reading its `op` (`primaryOpOf`), never declared by hand.

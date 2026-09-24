@@ -80,7 +80,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   run is one `#VALUE!` on all outputs. Either the code grows a per-row path or C70's line changes.
 - [ ] **Local File's plan `frame` writes Predecessors as grammar text** (`Framing SS+2`), so wiring that frame
   (not the `plan` cube) into Schedule reads the text as one task name and fails as unknown. Verify, then
-  either write structured predecessors or let Schedule's frame path parse the grammar ([[D67]]).
+  either write structured predecessors or let Schedule's frame path parse the grammar (`../tree/specs/computation/schedule-and-gantt.md` § Link grammar stays at the border).
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
@@ -145,7 +145,7 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
 - [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
 - [ ] **Coverage is 100% and pinned** (`rules.test.ts` runs `coverage --check` + `validate`). The bulk pass cited
   whole classes by blast radius (every component cites [[C27]] noDataInComponents, every node class [[C34]]
-  classNameIsType + [[D50]] everyFieldClassified, every store [[B10]], every op module [[D19]] + [[C17]], tests the
+  classNameIsType + `../tree/specs/documents/save-format.md` § Every field is persisted or deliberately transient, every store [[B10]], every op module `../tree/specs/floors/engineering.md` § The formula path is rete-free + [[C17]], tests the
   leaves of the sources they import, MUSTs only where another test already enforces them). Those are true but
   thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
   exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest

@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C15]] matricesInFormulas
+// [[C17]] shareImpl, [[C15]] matricesInFormulas
 
 import { solError, type SolError } from "../errorValue";
 

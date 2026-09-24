@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed
+// [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D68]] importUnsupportedIsNamed
 
 import { parseXml, child, children, text, type XmlNode } from "./xml";
 import type { CalendarSpec, LinkType, PlanTask } from "./types";

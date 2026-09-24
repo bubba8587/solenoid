@@ -1,4 +1,4 @@
-// [[D17]]
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { makeFrameShapeResolver } from "../../src/graph/frameShapeResolver";

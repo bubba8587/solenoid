@@ -381,7 +381,7 @@ export class ListIndexNode extends ClassicPreset.Node {
 
 type IndexResult = number | SolError | null | CubeCell | FrameValue | CubeValue;
 
-/** Lives here, not in indexAccess: formulas never hold a frame or cube ([[D26]] hideMatrixFromVendor), and indexAccess must stay rete-free ([[D19]] implReteFree). */
+/** Lives here, not in indexAccess: formulas never hold a frame or cube, and indexAccess must stay rete-free. */
 function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexResult {
   if (v === null || v === undefined) return null;
   if (!isFrameValue(v) && !isCubeValue(v)) {

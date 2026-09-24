@@ -1,4 +1,4 @@
-// [[C28]], [[C34]], [[C38]], [[D12]], [[E6]], [[E7]]
+// [[C28]], [[C34]], [[C38]], [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -98,14 +98,14 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, offenders.join("\n  ")).toEqual([]);
   });
 
-  // [[E6]] portOwnsSocket: an adopting port OWNS its socket instance — the class doc says it
+  // [[C10]] socketLattice: an adopting port OWNS its socket instance — the class doc says it
   // outright ("One instance per port, never shared — a retype must not leak
   // across cards"). A module-level shared MutableSocket means wiring a date into
   // one card retypes ANOTHER card's port; that card then coerces under the wrong
   // type and answers a plausible number (the Input Switch's old shared
   // valueSocket). Two instances of every class: no MutableSocket may appear in
   // both.
-  it("no two instances of a class share a mutable socket ([[E6]] portOwnsSocket)", () => {
+  it("no two instances of a class share a mutable socket ([[C10]] socketLattice)", () => {
     const offenders: string[] = [];
     for (const [type, entry] of FLAT_CATALOG.entries()) {
       let a: object, b: object;
@@ -120,7 +120,7 @@ describe("catalog ↔ registry consistency", () => {
     expect(offenders, `classes sharing a MutableSocket across instances — adoption leaks between cards:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
 
-  // [[E7]] trueanyNeedsPassthrough: a class with a `trueany` OUTPUT either declares passthrough() (so
+  // [[C10]] socketLattice: a class with a `trueany` OUTPUT either declares passthrough() (so
   // the four derived-type consumers — adoption, unit flow, the display walk,
   // coerceInputs' keep-tags boundary — can resolve it) or is sanctioned with the
   // reason its type resolves another way. An undeclared forwarder's output stays
@@ -136,7 +136,7 @@ describe("catalog ↔ registry consistency", () => {
     XLookupNode: "a genuinely unknowable producer — the result type depends on the looked-up data",
     UnnestNode: "result rank depends on the input's nesting depth (a Frame at depth 1, a Cube at depth >=2)",
   };
-  it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) ([[E7]] trueanyNeedsPassthrough)", () => {
+  it("every class with a trueany output declares passthrough() (or is sanctioned, with a reason) ([[C10]] socketLattice)", () => {
     const offenders: string[] = [];
     const sanctionedSeen = new Set<string>();
     for (const [type, entry] of FLAT_CATALOG.entries()) {
@@ -151,7 +151,7 @@ describe("catalog ↔ registry consistency", () => {
     }
     expect(
       offenders,
-      `trueany outputs with no passthrough() declaration ([[E7]] trueanyNeedsPassthrough) — the port stays ` +
+      `trueany outputs with no passthrough() declaration ([[C10]] socketLattice) — the port stays ` +
       `untyped forever and downstream FCs silently format wrong. Declare the spec, or ` +
       `add the class to TRUEANY_OUT_SANCTIONED with the reason:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -225,7 +225,7 @@ describe("catalog ↔ registry consistency", () => {
   });
 });
 
-// A port that HOLDS a date is typed as one — per [[D12]] dateValuedPortIsDateTyped. Swept over
+// A port that HOLDS a date is typed as one — per [[C10]] socketLattice. Swept over
 // the whole catalog because the convention is only worth anything if it is total: it
 // already held on all 60-odd date ports in the finance and date families, and the two
 // that broke it (XIRR/XNPV `dates`, typed numlist and labelled "Date serials") were

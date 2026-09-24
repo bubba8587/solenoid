@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C51]] formulaNaming
+// [[C17]] shareImpl, [[C51]] formulaNaming
 
 import { colebrookFriction, PIPE_ROUGHNESS } from "../nodes/fluidsOps";
 import { solError } from "../errorValue";

@@ -1,4 +1,4 @@
-// [[D32]] refreshOutsideRebuild, [[C103]] untrustedContentSeams
+// [[C103]] untrustedContentSeams
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
 import { allTopEditors } from "./activeGraph";

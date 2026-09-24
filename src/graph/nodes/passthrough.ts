@@ -1,4 +1,3 @@
-// [[D15]]
 // Duck-typed on purpose: this module imports no node classes and no editor.
 import type { SocketDataType } from "../sockets";
 import type { Shape } from "../frameShape";

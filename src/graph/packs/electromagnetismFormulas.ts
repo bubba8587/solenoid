@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C51]] formulaNaming
+// [[C17]] shareImpl, [[C51]] formulaNaming
 
 import { emSpectrum } from "../nodes/emSpectrumOps";
 import { PHYS_CONSTANTS, type PhysConstOp } from "../nodes/physicsConstantsOps";

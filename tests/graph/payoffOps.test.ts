@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import { payoffPlan, payoffOrder, monthlyRate, type Debt } from "../../src/graph/nodes/payoffOps";
 

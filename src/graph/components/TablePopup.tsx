@@ -1,4 +1,4 @@
-// [[C58]] tableInputRawText, [[D41]] formatFlowsDownstream, [[D4]] noManualList
+// [[C58]] tableInputRawText, [[D41]] formatFlowsDownstream
 import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyText } from "../clipboard";

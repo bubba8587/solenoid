@@ -129,7 +129,7 @@ describe("Expression — value-polymorphic results", () => {
 
   it("variable inputs are `anydata` so text/date arrays AND matrices connect, and a scalar stays scalar", () => {
     const n = new ExpressionNode({ expr: "UPPER(name)", resultAs: "text" });
-    // `anydata` ([[C15]] matricesInFormulas/[[E5]] anydataWildcard) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
+    // `anydata` ([[C15]] matricesInFormulas/[[C10]] socketLattice) replaced `anycombo`, which had replaced `anylist` + the `noWidenInputs` side-channel:
     // same acceptance, but the SOCKET now says the evaluator takes either rank.
     expect(dt(n.inputs.name?.socket)).toBe("anydata");
   });

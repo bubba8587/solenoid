@@ -1,4 +1,4 @@
-// [[D19]] implReteFree (rete-free: the formula path constructs and consumes lambdas), [[C50]] lambdaBindsByName, [[D45]] maxRankMatrix
+// [[C17]] shareImpl (rete-free: the formula path constructs and consumes lambdas), [[C50]] lambdaBindsByName, [[C24]] arraySemantics
 
 export interface LambdaValue {
   __lambda: true;

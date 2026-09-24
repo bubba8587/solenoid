@@ -16,7 +16,7 @@ list of separate documents; the tab strip becomes the page strip of the OPEN doc
 The audit named it: one-doc-one-file means a SINGLE editor/engine can plausibly serve all
 pages. **Recommend: one editor, one engine, pages as view scopes.**
 - FOR: cross-page references are then REAL connections (no bridge machinery, no second
-  recompute path — [[D30]] targetedEqualsFull holds untouched); `nodeNameStore`'s one flat
+  recompute path — `../tree/specs/computation/compute-pass.md` § The targeted pass equals the full pass holds untouched); `nodeNameStore`'s one flat
   per-document namespace is exactly right (a name is unique in the document, which is what a
   cross-page reference needs); `forgetAllNodes()` wiping node-keyed stores on document switch
   stays correct; save/load stays one `rebuildGraph`; undo stays one snapshot history.

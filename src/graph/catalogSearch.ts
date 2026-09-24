@@ -1,4 +1,4 @@
-// [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost, [[C19]] namingModel
+// [[D5]] searchWiderThanLabel, [[C8]] declareOnce, [[C19]] namingModel
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { LEGACY_ALIASES } from "./excelFunctions";
 import { fuzzyScore, fieldScore, tokenWordScore, withinOneEdit } from "./fuzzy";

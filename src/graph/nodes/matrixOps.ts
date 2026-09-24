@@ -1,4 +1,4 @@
-// [[C17]], [[D19]], [[C48]] appendLadder
+// [[C17]], [[C48]] appendLadder
 import { solError, type SolError } from "../errorValue";
 import { indexRefError } from "./indexAccess";
 import type { Cell } from "./coerce";

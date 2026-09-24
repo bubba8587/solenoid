@@ -1,4 +1,4 @@
-// [[D17]] relaysTransparent
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import {
   conduitLaneOffset,

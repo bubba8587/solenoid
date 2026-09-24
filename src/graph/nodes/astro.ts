@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C44]] dateSerials, [[D12]] dateValuedPortIsDateTyped
+// [[C76]] formulaPackDefault, [[C44]] dateSerials
 
 import { ClassicPreset } from "rete";
 import { numIn, numOut, dateIn, dateOut, readInput } from "./shared";

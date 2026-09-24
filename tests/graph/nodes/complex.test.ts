@@ -1,4 +1,4 @@
-// [[D45]]
+// [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
@@ -8,7 +8,7 @@ import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { isSolError, solError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, canConnect } from "../../../src/graph/sockets";
 
-// ─── The complex family: element-wise, and TAGGED ([[D45]] maxRankMatrix) ────────────────────
+// ─── The complex family: element-wise, and TAGGED ([[C24]] arraySemantics) ────────────────────
 // A complex is `{ __cx, re, im }`, never a bare `[re, im]` array — so
 // `Array.isArray` means "list" here like everywhere else, and the family's
 // broadcaster no longer needs the exact-shape sniff the old tuple forced. These
@@ -24,7 +24,7 @@ const dt = (
   return s instanceof SolenoidSocket ? s.dataType : undefined;
 };
 
-describe("the tagged representation ([[D45]] maxRankMatrix)", () => {
+describe("the tagged representation ([[C24]] arraySemantics)", () => {
   it("a complex is a tagged object, and isCx is the one test", () => {
     const z = cx(1, 2);
     expect(isCx(z)).toBe(true);

@@ -61,7 +61,7 @@ A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSe
 - the pane (`container`) and the transformed content element (`viewport`);
 - the camera: `transform`, `zoom` (set the scale, then add an offset to the pan: the anchored-zoom step), `pan`, and `pointer`, the last pointer position in canvas coordinates;
 - `moveNode`, `rerenderNode`, `rerenderCables` and `onRender` (per-card re-render events, which the HTML-in-Canvas layer uses to re-capture);
-- `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[D64]] oneSizeRead).
+- `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[auto-arrange-tidy#Size reads]]).
 
 Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). An add path sets it right after `addNode` (`flowModel.addNode` before, most others through `view.moveNode` after), so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
 

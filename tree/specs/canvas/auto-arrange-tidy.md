@@ -2,11 +2,11 @@
 aliases: ["Auto-arrange / Tidy"]
 tags: [spec, canvas]
 ---
-<!-- [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead, [[C89]] standoffsSolveLast, [[C8]] declareOnce, [[C112]] noOverlapsEver -->
+<!-- [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[B10]] reactFlowView, [[C89]] standoffsSolveLast, [[C8]] declareOnce, [[C112]] noOverlapsEver -->
 
 # Spec: Auto-arrange / Tidy
 
-Serves [[C84]] tidyTranslatesOnly; the position lock is [[D63]] lockedGroupIsObstacle, the size read is [[D64]] oneSizeRead, standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C84]] tidyTranslatesOnly; the position lock is [[D63]] lockedGroupIsObstacle, the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK layered layout engine. It only moves cards; it never resizes them. Cleanup is a bigger pass built on Tidy: it tidies inside every group, fits and collapses the groups, then tidies the top level. Both live in `tidyArrange.ts` (`makeArrangeFn`, `makeCleanupFn`). The integration harness is `tidyArrangeGroups.test.ts`, which drives the real arrange and cleanup with real elkjs over a fake area that models the DOM contract.
 

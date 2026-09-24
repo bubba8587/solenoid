@@ -2,7 +2,7 @@
 aliases: ["Schedule and Gantt"]
 tags: [spec, computation]
 ---
-<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[D13]] widenNeverNarrow, [[C63]] oneRecordNode, [[C8]] declareOnce, [[C38]] sinkRunButtonOnly -->
+<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D66]] daysMinutesModes, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[D13]] widenNeverNarrow, [[C63]] oneRecordNode, [[C8]] declareOnce, [[C38]] sinkRunButtonOnly -->
 
 # Spec: Schedule and Gantt
 
@@ -14,7 +14,7 @@ Code: `src/graph/nodes/schedule.ts` (the Schedule node), `src/graph/scheduleCpm.
 
 ## The tasks cube
 
-A plan is a Cube. Names are the keys: every task name is unique, matched trimmed and case-insensitive, and there are no numeric ids, which would be ambiguous with row numbers and break under Sort or Filter ([[D67]] grammarOnlyAtBorder). A Frame wired into the `tasks` socket widens to a Cube ([[socket-lattice]]).
+A plan is a Cube. Names are the keys: every task name is unique, matched trimmed and case-insensitive, and there are no numeric ids, which would be ambiguous with row numbers and break under Sort or Filter ([[#Link grammar stays at the border]]). A Frame wired into the `tasks` socket widens to a Cube ([[socket-lattice]]).
 
 Columns are found by name, case-insensitive; the first alias in each row below that matches wins.
 
@@ -49,7 +49,7 @@ A Predecessors cell takes one of three shapes:
 2. **Text.** The whole text is one task name, FS with lag 0. A Frame cannot hold a list, so a frame-only plan names one predecessor per cell.
 3. **A nested table** with a Task column and optional Type, Lag and Elapsed columns (`link` or `kind` for Type; `lead` or `offset` for Lag). Type is `FS`, `SS`, `FF` or `SF` (default `FS`); Lag is in working days on the successor's calendar, negative for a lead, and counts calendar days when Elapsed is true. An unknown type or a lag that is not a number is an error naming the task.
 
-A predecessor is never a grammar string inside a cell. `3FS+2d` exists only at the import border, where row numbers resolve to names ([[D67]] grammarOnlyAtBorder).
+A predecessor is never a grammar string inside a cell. `3FS+2d` exists only at the import border, where row numbers resolve to names ([[#Link grammar stays at the border]]).
 
 The Schedule node's `links` socket takes the same dependencies as a flat Frame, one link per row: a Successor column (`task`, `to`), a Predecessor column (`predecessors`, `from`, `after`, `depends on`), and optional Type (`link`, `kind`) and Lag (`lead`, `offset`) columns. A row with a blank successor or predecessor is skipped. Its links are added to each task's Predecessors, and the output cube's Predecessors column carries the merged list (a level with no Predecessors column gains one), so a Gantt downstream draws them. A missing Successor or Predecessor column, a successor that is not in the plan, an unknown type or a non-numeric lag is an error. This flat form is what `Unnest` of the cube on Predecessors produces, and it is the shape of the import and export formats.
 
@@ -208,7 +208,7 @@ There is no bar editing: edits happen in the table ([[C71]] noBarEditing). It is
 
 ## Dates and precision
 
-Dates are Excel serials with a fractional day, zone-less local days. The engine converts a serial to integer working-day or working-minute indices once at the boundary, never compares two serials directly, and never constructs a `Date` ([[D65]] serialsNeverDate), which removes the daylight-saving bug class. The ISO date-times and `xsd:duration` strings at the MSPDI boundary are parsed by hand; no Temporal is needed.
+Dates are Excel serials with a fractional day, zone-less local days. The engine converts a serial to integer working-day or working-minute indices once at the boundary, never compares two serials directly, and never constructs a `Date` ([[#Integer serials, never a Date]]), which removes the daylight-saving bug class. The ISO date-times and `xsd:duration` strings at the MSPDI boundary are parsed by hand; no Temporal is needed.
 
 ### Integer serials, never a Date
 

@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 
 /** Fixed-step RK4 answering `steps + 1` points (t0 included); null for a non-finite bound, a null or non-finite `f`, or a blow-up. */
 export function rk4(

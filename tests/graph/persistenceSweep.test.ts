@@ -1,4 +1,4 @@
-// [[C29]], [[C37]], [[D50]]
+// [[C29]], [[C37]], [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -161,7 +161,7 @@ describe("literal values never enter init", () => {
   });
 });
 
-// ─── [[D50]] everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
+// ─── [[B12]] losslessSaves: the catalog-wide transient-field triage ───────────────────────
 // The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
 // to a field the whitelist never captured (both sides omit it identically). This
 // triage closes that blindness: every OWN field of every catalog node is either
@@ -175,7 +175,7 @@ describe("literal values never enter init", () => {
 // captured, silently resetting to "backward" on every reload. Now whitelisted,
 // pinned below.
 
-describe("[[D50]] everyFieldClassified — every own field is persisted or deliberately transient", () => {
+describe("[[B12]] losslessSaves — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
@@ -280,7 +280,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
     }
     expect(
       [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
-      `Unclassified node fields ([[D50]] everyFieldClassified): each must either persist (whitelist / ` +
+      `Unclassified node fields ([[B12]] losslessSaves): each must either persist (whitelist / ` +
       `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
       `asofDirection bug is what an unclassified field looks like.`,
     ).toEqual([]);

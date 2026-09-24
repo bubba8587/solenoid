@@ -1,4 +1,4 @@
-// [[C18]], [[D20]]
+// [[C18]], [[C17]] shareImpl
 import { describe, it, expect, afterEach } from "vitest";
 import * as FX from "@formulajs/formulajs";
 import {
@@ -38,7 +38,7 @@ describe("numberToText — 15 significant digits, trailing zeros stripped", () =
 describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
   it("keeps the families a difference-that-matters dictates internal", () => {
     // "complex" flipped verify → internal with the [[C15]] matricesInFormulas-amendment tranche: the
-    // tagged Cx ([[D45]] maxRankMatrix) IS the difference that matters — Formula.js's IM* speak
+    // tagged Cx ([[C24]] arraySemantics) IS the difference that matters — Formula.js's IM* speak
     // text complexes, a different currency.
     for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative", "complex"] as const) {
       expect(FAMILY_BACKING[fam].backing).toBe("internal");
@@ -191,7 +191,7 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
       expect(["number", "string", "logical", "date", "complex", "any"]).toContain(m.returns);
     }
   });
-  it("every registered internal declares its meta ([[D20]] declareContract, the registered→declared direction)", () => {
+  it("every registered internal declares its meta ([[C17]] shareImpl, the registered→declared direction)", () => {
     // The reverse direction (declared→dispatches) lives in formulaTier3; without
     // THIS one, 28 registrations had no entry and the rule was fiction.
     const meta = new Set(Object.keys(EXCEL_IMPL_META));

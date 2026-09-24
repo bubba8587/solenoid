@@ -382,7 +382,7 @@ On `develop`, pushed.
   and is the index now; the other mechanics docs are declared in the `specs` glob. `specs/socket-lattice.md` was the
   pilot (12 numbered requirements, each naming its node); the rationale docs followed: the comment policy is [[C57]]
   commentMinimalism's Consequences now, `agent-coordination.md` is [[C83]] parallelAgents (new) plus a bare claim board,
-  the divergences doc is `../specs/formulajs-divergences.md` under [[D28]] tripwireVendorDrift. `out-of-scope.md` waits on the author placing
+  the divergences doc is `../specs/formulajs-divergences.md` under D28 tripwireVendorDrift (retired). `out-of-scope.md` waits on the author placing
   `inbox/scope-boundary`; its categories are that node's children; `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
   into the node / the spec; `fcReconcile.ts`, `conduitTrace.ts`, `unitLattice.ts` cite. The pattern for the other
   ring-C roots is in the backlog.
@@ -392,7 +392,7 @@ On `develop`, pushed.
 - **The cite-and-prune sweep, second half of the day.** Sixteen leaves lifted out of specs and docs that had only a
   nearest-ancestor governor: the layout cluster under B10 ([[C84]] tidyTranslatesOnly, [[C85]] groupPushDeterministic,
   [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
-  C90 drawnCablesAnnotate (retired), [[C91]] cableWalkRouter, with [[D63]] lockedGroupIsObstacle and [[D64]] oneSizeRead),
+  C90 drawnCablesAnnotate (retired), [[C91]] cableWalkRouter, with [[D63]] lockedGroupIsObstacle and D64 oneSizeRead (retired)),
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
   UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers ([[C94]]
   formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk,
@@ -408,8 +408,8 @@ On `develop`, pushed.
 - **Five agents made the thin citations specific** (206 files with only class-wide citations: components, node
   ops/classes, packages, core modules; disjoint lists, no agent ran tests, one full run at the end). Net ~470 comment
   lines gone, ~150 turned into pointers at a leaf or spec. Their candidate lists yielded ten leaves: [[C103]]
-  foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, [[D65]]
-  serialsNeverDate, [[D66]] daysMinutesModes, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed, [[D69]]
+  foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, D65 serialsNeverDate (retired)
+  serialsNeverDate, [[D66]] daysMinutesModes, D67 grammarOnlyAtBorder (retired), [[D68]] importUnsupportedIsNamed, [[D69]]
   convertBadPickIsNA, [[D70]] nullNotEnoughData, [[D71]] zoomLatticeDiscreteOnly; the rest were spec content or
   consequences (C70, C100). Six relapses they found are a backlog item for the author; the Lambda tooltip that
   contradicted [[C50]] is fixed.

@@ -1,13 +1,13 @@
-// [[E5]]
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
 import { isSolError } from "../../src/graph/errorValue";
 
-// ─── [[C15]] matricesInFormulas: the Expression lift ([[E5]] anydataWildcard) ────────────────────────────────────────
+// ─── [[C15]] matricesInFormulas: the Expression lift ([[C10]] socketLattice) ────────────────────────────────────────
 // The connect-time half of the matrix decision: variables are `anydata`, matrices
-// flow in, the formula computes by the broadcast table ([[D27]] oneBroadcast — semantics pinned
+// flow in, the formula computes by the broadcast table ([[C15]] matricesInFormulas — semantics pinned
 // in broadcastRules.test.ts; THIS file pins the node-boundary lift), and the
 // result socket reconciles its RANK to the value while keeping its FAMILY.
 
@@ -44,7 +44,7 @@ describe("matrices flow into a formula (the lift itself)", () => {
   });
 });
 
-describe("the connect-time gate ([[E5]] anydataWildcard acceptance)", () => {
+describe("the connect-time gate ([[C10]] socketLattice acceptance)", () => {
   it("a fresh Expression declares anydata variables", () => {
     const n = new ExpressionNode({ expr: "a + b" });
     for (const v of n.varNames) {
@@ -63,7 +63,7 @@ describe("the connect-time gate ([[E5]] anydataWildcard acceptance)", () => {
   });
 });
 
-describe("the result socket reconciles RANK, keeps FAMILY ([[E5]] anydataWildcard + [[D16]] retypeReconciles)", () => {
+describe("the result socket reconciles RANK, keeps FAMILY ([[C10]] socketLattice + [[D16]] retypeReconciles)", () => {
   it("a matrix result marks the node rank-2; a scalar result marks it back", async () => {
     const node = new ExpressionNode({ expr: "a * 2" });
     wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);

@@ -1,17 +1,17 @@
-// [[C15]], [[D26]], [[D27]], [[D45]]
+// [[C15]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 import { isSolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
-// The table IS this test ([[D7]] oneMetricImpl):
+// The table IS this test ([[C8]] declareOnce):
 // a change to either without the other fails here. PAD follows the standing
 // rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
 // CONSTRUCTION functions own their #N/A padding inside their registered impls
 // ([[C48]] appendLadder) and never route through the broadcaster.
 //
-// Rank grammar (post-[[D45]] maxRankMatrix): no scalar is an array, so Array.isArray at two
+// Rank grammar (post-[[C24]] arraySemantics): no scalar is an array, so Array.isArray at two
 // depths is the complete test — a matrix is an array of ROW arrays.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);

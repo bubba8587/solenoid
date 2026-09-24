@@ -1,4 +1,4 @@
-// [[D7]], [[D9]], [[D25]]
+// [[C8]] declareOnce, [[C9]] labelUnenforced, [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/graph/formulaNodeParity";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
@@ -125,7 +125,7 @@ describe("formula ↔ node parity ratchet", () => {
   // The live catalog can't pin this: gap A is empty, so every excel-named row is
   // FULLY covered and `some` vs `every` agree on all of them. The synthetic
   // partial case is the only input that distinguishes the quantifiers.
-  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node ([[D9]] useEveryNotSome)", () => {
+  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node ([[C9]] labelUnenforced)", () => {
     const only = (avail: string[]) => (n: string) => avail.includes(n);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING", "CEILING.MATH"]))).toBe(true);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING"]))).toBe(false);

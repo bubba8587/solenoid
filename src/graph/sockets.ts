@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow, [[D14]] derivedSocketTypes, [[E6]] portOwnsSocket, [[D15]] wildcardsKeepRank, [[D12]] dateValuedPortIsDateTyped
+// [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow
 import { ClassicPreset } from "rete";
 
 export type SocketDataType =
@@ -235,7 +235,7 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (outT === "anylist" && LIST_COMBO_TYPES.has(inT)) return true;
   if (inT === "anycombo" && (RANK1_VALUE_TYPES.has(outT) || outT === "anylist")) return true;
   if (outT === "anycombo") return inT !== "lambda" && inT !== "chart" && inT !== "document";
-  // [[E5]] anydataWildcard
+  // [[C10]] socketLattice
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
@@ -281,7 +281,7 @@ export class AdoptiveSocket extends MutableSocket {
 
 /** The rung a port was DECLARED at: an adoptive port's base, never the type it adopted
  *  from its cable. Judge an input's acceptance and coerce its value by this
- *  ([[D15]] wildcardsKeepRank). */
+ *  ([[C10]] socketLattice). */
 export function declaredTypeOf(socket: unknown): SocketDataType | undefined {
   if (socket instanceof AdoptiveSocket) return socket.base;
   return socket instanceof SolenoidSocket ? socket.dataType : undefined;

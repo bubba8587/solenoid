@@ -1,4 +1,4 @@
-// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[D64]], [[C95]], [[C97]]
+// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[B10]] reactFlowView, [[C95]], [[C97]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -7,7 +7,7 @@ import * as path from "node:path";
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
 // failed when a NEW file forgot them, which [[C9]] labelUnenforced flags as precisely the shape
 // of every Origin incident. These scans close the completeness half the same way
-// formulaPathIsReteFree.test.ts closes [[D19]] implReteFree: statically, over the real source, so
+// formulaPathIsReteFree.test.ts closes [[C17]] shareImpl: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
 //
 // The scans are LINE-BASED with `//` comments stripped — crude but exactly as
@@ -914,7 +914,7 @@ describe("heroChipRow: hero-box chips use the shared --chip row, never an inline
   });
 });
 
-describe("[[D64]] oneSizeRead — the movement stack reads sizes through measuredBox", () => {
+describe("[[B10]] reactFlowView — the movement stack reads sizes through measuredBox", () => {
   // Every module that moves or fits nodes. A direct DOM size read here is either a
   // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
   // above ([[C5]] exceptionsUnderRule); the node lists the four that stand.

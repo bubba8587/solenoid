@@ -5,7 +5,7 @@ ask: human
 made_by: ai
 by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[D32]]"]
+parents: ["[[C23]]"]
 ---
 ## Decision
 

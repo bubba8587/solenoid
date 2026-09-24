@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 // Unit-free: the node carries the Cost column's currency onto the money columns.
 
 /** Inclusive of both ends; the node injects `Calendar.countBetween`, so weekends and holidays match the schedule. */

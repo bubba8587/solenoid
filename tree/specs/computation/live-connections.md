@@ -2,11 +2,11 @@
 aliases: ["Live connections"]
 tags: [spec, computation]
 ---
-<!-- [[D32]] refreshOutsideRebuild -->
+<!-- [[C23]] calcModes -->
 
 # Spec: Live connections
 
-Serves [[D32]] refreshOutsideRebuild. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C23]] calcModes. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A **connection card** pulls data from outside the graph: a URL (Web Source, Import HTML, Import XML), a local file (Local File), or a service (Geocode, Weather, Holidays, FX, Data Feed, Task Notes, Import Obsidian Note), or a vault folder (Vault Folder). Vault Folder refuses a folder that leaves the vault, and a note renamed or deleted between the listing and its read is left out rather than failing the read. The card saves only its reference (the URL, the path, the query), never the data, so reopening a document fetches again. The shared machinery is `connectionStore.ts`; the fetches are in `nodes/connection.ts` and the other card files; the HTTP layer is `httpBridge.ts`; the status rows and refresh buttons are in `components/ConnectionNodes.tsx`.
 
@@ -31,7 +31,7 @@ An ordinary `processGraph()`, such as one caused by editing an unrelated card, l
 
 A heavy-mode composite (one that holds its outputs until Solve) keys its staleness on `connectionStore.liveStamp(ids)` over every node nested inside it: the global counter, each live card's token, and a per-card count of landed fetches that `scheduleConnectionRecalc(id)` bumps. A refresh or a fresh answer inside it shows the composite stale rather than passing silently, and a Solve waits for the fetches it starts (`liveCardUnmounted.test.ts`).
 
-Both then run `processGraph()` outside any rebuild scope ([[D32]] refreshOutsideRebuild), so an Alert watching live data still fires on fresh values ([[C39]] effectsEdgeTriggered).
+Both then run `processGraph()` outside any rebuild scope ([[compute-pass#A refresh never runs inside a rebuild scope]]), so an Alert watching live data still fires on fresh values ([[C39]] effectsEdgeTriggered).
 
 ## Fetching in the background
 
