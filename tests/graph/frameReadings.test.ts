@@ -2,7 +2,7 @@
 // the frame and cube verbs answer as a formula does. Both engines are held to the values by
 // the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
 import { describe, it, expect } from "vitest";
-import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withReadingScales, type FrameOp } from "../../src/graph/frameVerbs";
+import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withUnitScales, type FrameOp } from "../../src/graph/frameVerbs";
 import { lowerForEngine } from "../../src/graph/frameBackend";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
@@ -11,6 +11,7 @@ import { cubeFromColumns, frameToCube, frameSourceToText, type FrameColumn, type
 import { CubeRollupNode } from "../../src/graph/nodes/cube";
 import { GetColumnNode, ComputedColumnNode, FrameInputNode } from "../../src/graph/nodes/frame";
 import { AggregateNode, SumIfsNode } from "../../src/graph/nodes/list";
+import { compileLambda } from "../../src/graph/nodes/tableLambda";
 
 const unit = (spec: string) => columnUnitFromSpec(spec)!;
 const frame = (...columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
@@ -50,6 +51,18 @@ describe("GROUPBY over readings", () => {
     expect(col(f, "s").values[0]).toBeCloseTo(3 * 5 / 9, 12);
     expect(col(f, "v").values[0]).toBeCloseTo(9 * 25 / 81, 12);
     expect(col(f, "s").unit).toEqual(K);
+  });
+
+  it("a linear unit's spread stays km and its variance is km², in base m² as a formula's VAR is", () => {
+    const f = groupByFrame(temps("km"), ["k"], [{ column: "t", op: "stdevp", as: "s" }, { column: "t", op: "varp", as: "v" }]);
+    expect(col(f, "s").values).toEqual([3, 0]);
+    expect(col(f, "s").unit?.display).toBe("km");
+    expect(col(f, "v").values).toEqual([9e6, 0]);
+    expect(col(f, "v").unit).toEqual({ dim: { length: 2 } });
+    const pivot = pivotFrame(temps("km"), { rowFields: ["k"], colFields: [], values: ["t"], funcs: ["var"] } as never);
+    expect(pivot.columns[1].unit).toEqual({ dim: { length: 2 } });
+    const m = groupByFrame(temps("m"), ["k"], [{ column: "t", op: "varp", as: "v" }]);
+    expect(col(m, "v").values).toEqual([9, 0]);
   });
 
   it("a linear unit is untouched: a km sum stays km, and so does the mode", () => {
@@ -101,11 +114,20 @@ describe("Window over readings", () => {
 });
 
 describe("the native engine gets the reading scale on the op", () => {
-  it("withReadingScales names a °F column's scale and leaves a linear one alone", () => {
+  it("withUnitScales names a °F column's scale and leaves a linear one alone", () => {
     const f = frame({ name: "t", type: "number", values: [], unit: unit("degF") }, { name: "d", type: "number", values: [], unit: unit("km") });
-    const op = withReadingScales(f, { kind: "groupBy", keys: [], aggs: [{ column: "t", op: "stdev", as: "s" }, { column: "d", op: "sum", as: "n" }] }) as Extract<FrameOp, { kind: "groupBy" }>;
+    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [{ column: "t", op: "stdev", as: "s" }, { column: "d", op: "sum", as: "n" }] }) as Extract<FrameOp, { kind: "groupBy" }>;
     expect(op.aggs[0].readingScale).toBeCloseTo(5 / 9, 15);
     expect(op.aggs[1].readingScale).toBeUndefined();
+  });
+
+  it("a variance over a scaled linear unit names the unit's scale; nothing else does", () => {
+    const f = frame({ name: "d", type: "number", values: [], unit: unit("km") }, { name: "m", type: "number", values: [], unit: unit("m") });
+    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [
+      { column: "d", op: "var", as: "v" }, { column: "d", op: "stdev", as: "s" }, { column: "m", op: "varp", as: "w" },
+    ] }) as Extract<FrameOp, { kind: "groupBy" }>;
+    expect(op.aggs.map((a) => a.unitScale)).toEqual([1000, undefined, undefined]);
+    expect(op.aggs.every((a) => a.readingScale === undefined)).toBe(true);
   });
 
   it("lowerForEngine reads each op against the schema it meets, through a rename", () => {
@@ -219,6 +241,30 @@ describe("a computed column over readings classifies as Expression does", () => 
     expect(add("[@lo] + 5")).toEqual([25, 23]);
   });
 
+  it("a LAMBDA's parameters take its arguments' kind, inline or through a host", () => {
+    expect(add("LAMBDA(x, y, (x + y) / 2)(@lo, @hi)")).toEqual([23, 24]);
+    expect(refused(add("LAMBDA(x, x * 2)(@lo)"))).toBe(true);
+    expect(add("REDUCE(@lo, hi, LAMBDA(a, v, MAX(a, v)))")).toEqual([30, 30]);
+    expect(add("REDUCE(0, hi, MAX)")).toEqual([30, 30]);
+    expect(refused(add("REDUCE(0, hi, LAMBDA(a, v, a + v))"))).toBe(true);
+    expect(add("MAX(MAP(hi, LAMBDA(v, v - @lo)))")).toEqual([10, 12]);
+    expect(refused(add("MAX(MAP(hi, LAMBDA(v, v * 2)))"))).toBe(true);
+    expect(add("MAX(BYROW(hi, LAMBDA(r, MAX(r))))")).toEqual([30, 30]);
+    expect(refused(add("MAX(BYROW(hi, LAMBDA(r, SUM(r) * 2)))"))).toBe(true);
+  });
+
+  it("a wired λ column is classified by its body", () => {
+    const withLam = (expr: string) => {
+      const n = new ComputedColumnNode({});
+      n.stringLiterals.name = "out";
+      const fn = compileLambda(expr, ["lo", "hi"])!;
+      const lam = { __lambda: true as const, params: ["lo", "hi"], fn, expr };
+      return col(n.data({ frame: [two], fn: [lam] } as never).frame as FrameValue, "out").values;
+    };
+    expect(withLam("(lo + hi) / 2")).toEqual([23, 24]);
+    expect(refused(withLam("lo + hi"))).toBe(true);
+  });
+
   it("a Frame Input formula column is held to the same rule", () => {
     const n = new FrameInputNode({
       frameText: frameSourceToText([
@@ -231,5 +277,26 @@ describe("a computed column over readings classifies as Expression does", () => 
     const out = n.data({}).frame as FrameValue;
     expect(refused(col(out, "bad").values)).toBe(true);
     expect(col(out, "mid").values).toEqual([23]);
+  });
+
+  it("a Frame Input column calling a wired λ is read through the λ's body", () => {
+    const mean = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("(lo + hi) / 2", ["lo", "hi"])!, expr: "(lo + hi) / 2" };
+    const sum = { __lambda: true as const, params: ["lo", "hi"], fn: compileLambda("lo + hi", ["lo", "hi"])!, expr: "lo + hi" };
+    const n = new FrameInputNode({
+      lambdaKeys: ["fn1", "fn2"],
+      frameText: frameSourceToText([
+        { name: "lo", type: "number", cells: ["20"], unit: "degC" },
+        { name: "hi", type: "number", cells: ["26"], unit: "degC" },
+        { name: "mid", type: "number", cells: [], expr: "λ1" },
+        { name: "bad", type: "number", cells: [], expr: "λ2" },
+        { name: "mid2", type: "number", cells: [], expr: "λ1(@lo, @hi)" },
+        { name: "bad2", type: "number", cells: [], expr: "λ2(@lo, @hi)" },
+      ]),
+    });
+    const out = n.data({ fn1: [mean], fn2: [sum] } as never).frame as FrameValue;
+    expect(col(out, "mid").values).toEqual([23]);
+    expect(col(out, "mid2").values).toEqual([23]);
+    expect(refused(col(out, "bad").values)).toBe(true);
+    expect(refused(col(out, "bad2").values)).toBe(true);
   });
 });

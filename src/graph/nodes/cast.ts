@@ -9,6 +9,8 @@ import { formatNumberPattern } from "./text";
 import { parseValueText } from "./textOps";
 
 import { solError, isSolError, type SolError } from "../errorValue";
+import { isUnitCell } from "../unitValue";
+import { stripUnitCells, unitCellText } from "../unitBridge";
 import { getOwningEditor } from "../activeGraph";
 
 export type CastTarget = "number" | "text" | "date" | "complex" | "logical";
@@ -59,6 +61,7 @@ function castOne(x: unknown, target: CastTarget, format: string, dateish: boolea
       return NaN;
     }
     case "text": {
+      if (isUnitCell(x)) return unitCellText(x, (n) => formatNumberPattern(n, format));
       if (isCx(x)) return formatCx(x);
       if (typeof x === "string") return x;
       if (typeof x === "number") {
@@ -125,6 +128,8 @@ export class CastNode extends ClassicPreset.Node {
     result: "A blank input stays blank rather than failing. A value that will not parse becomes #VALUE!, per cell in a list.",
   };
 
+  /** Text names the value's unit; every other target reads the value as it shows, unit-blind. */
+  unitAware = true;
   label: string;
   target: CastTarget;
   cachedResult: number | (number | null | SolError)[] | string | (string | null)[] | boolean | (boolean | null | SolError)[] | SolError | null = null;
@@ -151,7 +156,7 @@ export class CastNode extends ClassicPreset.Node {
   }
 
   data(inputs: { value?: unknown[] }): { result: CastScalar | (CastScalar | SolError)[] | SolError } {
-    const raw = inputs.value?.[0];
+    const raw = this.target === "text" ? inputs.value?.[0] : stripUnitCells(inputs.value?.[0]);
     const format = "";
     const kind = this.sourceKind();
     const dateish = kind != null && isDateType(kind);

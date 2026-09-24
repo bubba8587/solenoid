@@ -453,6 +453,26 @@ describe("coerceInputs — text on a number port is #TYPE!, never a parsed numbe
     expect(run("number", null)).toBe(null);
     expect(run("numlist", [1, null])).toEqual([1, null]);
   });
+  it("the date, text and logical families refuse another family the same way", () => {
+    for (const [dt, wrong] of [
+      ["date", "2024-01-01"], ["datecombo", true], ["string", 5], ["strcombo", false], ["logical", "yes"], ["logicalcombo", cx(1, 0)],
+    ] as const) {
+      expect(code(run(dt, wrong)), `${dt} ← ${JSON.stringify(wrong)}`).toBe("#TYPE!");
+    }
+    const dates = run("datelist", [45000, "soon", null]) as unknown[];
+    expect([dates[0], code(dates[1]), dates[2]]).toEqual([45000, "#TYPE!", null]);
+    const words = run("strlist", ["a", 1]) as unknown[];
+    expect([words[0], code(words[1])]).toEqual(["a", "#TYPE!"]);
+    const flags = run("logicaltable", [[true, "no", 0]]) as unknown[][];
+    expect([flags[0][0], code(flags[0][1]), flags[0][2]]).toEqual([true, "#TYPE!", false]);
+  });
+  it("each family still takes its own values, and logical and number still bridge", () => {
+    expect(run("date", 45000)).toBe(45000);
+    expect(run("string", "hi")).toBe("hi");
+    expect(run("logical", 1)).toBe(true);
+    expect(run("logical", false)).toBe(false);
+    expect(run("strcombo", null)).toBe(null);
+  });
 });
 
 describe("coerceInputs — the rank rule ignores units (socket-lattice spec req. 4)", () => {

@@ -3,9 +3,10 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, withReadingScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
+import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
+import { READINGS_ADD, READINGS_SCALE } from "./unitValue";
 import { solError, isSolError, type SolError } from "./errorValue";
-import { guardFinite } from "./valueKinds";
+import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
 import { calcModeStore } from "./calcModeStore";
 
@@ -272,14 +273,26 @@ function encodeWireCell(v: unknown): WireCell {
   return v;
 }
 
+/** The engine names why a cell is an error (`why`, engine.rs `num_to_json`); the message is the oracle's. */
+const ENGINE_ERROR_WHY: Readonly<Record<string, string>> = {
+  domain: DOMAIN_MESSAGE,
+  overflow: OVERFLOW_MESSAGE,
+  pct_change_from_zero: PCT_CHANGE_FROM_ZERO,
+  zero_total: ZERO_GROUP_TOTAL,
+  readings_add: READINGS_ADD,
+  readings_scale: READINGS_SCALE,
+};
+
 function decodeWireCell(v: WireCell): unknown {
   if (v && typeof v === "object") {
-    const o = v as { __nf?: string; __err?: string };
+    const o = v as { __nf?: string; __err?: string; why?: string };
     if (o.__nf === "inf") return Infinity;
     if (o.__nf === "-inf") return -Infinity;
     if (o.__nf === "nan") return NaN;
     // The code came from this module's encoder, so the cast keeps solError's union closed.
-    if (typeof o.__err === "string") return solError(o.__err as Parameters<typeof solError>[0], "from the native engine");
+    if (typeof o.__err === "string") {
+      return solError(o.__err as Parameters<typeof solError>[0], (o.why && ENGINE_ERROR_WHY[o.why]) || "from the native engine");
+    }
   }
   return v;
 }
@@ -301,7 +314,7 @@ function shadow(run: () => FrameValue): FrameValue | null {
 export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[]): { wire: FrameOp[]; schema: FrameValue | null } {
   let s = schema;
   const wire = ops.map((op) => {
-    const w = s ? withReadingScales(s, op) : op;
+    const w = s ? withUnitScales(s, op) : op;
     const cur = s;
     s = cur ? shadow(() => applyVerb(cur, op)) : null;
     return w;

@@ -6,7 +6,7 @@ import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } 
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
 import { guardFinite } from "../valueKinds";
-import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, type UnitCell } from "../unitValue";
+import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, type UnitCell } from "../unitValue";
 import { dimEval, affineWeight, type DimEnv } from "../unitDimExpr";
 import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
 import { fcUnitToUnit } from "../unitBridge";
@@ -323,7 +323,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
         if (isSolError(dr)) { this.cachedResult = dr; this.cachedError = null; return { result: dr }; }
         // The accumulator is a reading step after step only when each step answers one.
         const point = foldPoint(expr, fu, ["acc", "value"], []);
-        const bad = isSolError(point) ? point : point === 0 ? unitError("A fold over readings must answer a reading each step, like MAX(acc, value).") : null;
+        const bad = isSolError(point) ? point : point === 0 ? unitError(READINGS_FOLD) : null;
         if (bad) { this.cachedResult = bad; this.cachedError = null; return { result: bad }; }
         out = retagFold(out as Cell, dr, elem, fu, point as 1 | null);
       }

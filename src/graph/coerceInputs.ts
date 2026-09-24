@@ -47,25 +47,41 @@ export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
 
 type Numeric = number | number[] | number[][];
 
-// Text or a complex on a number port (only a wildcard cable can carry one there) is a
-// per-cell `#TYPE!`, never a silently parsed number ([[B17]] typedValueModel).
-function numericCells(v: unknown): unknown {
-  if (typeof v === "boolean") return v ? 1 : 0;
-  if (typeof v === "string") return solError("#TYPE!", "Text where a number is expected");
-  if (typeof v === "object" && v !== null && (v as { __cx?: unknown }).__cx === true) {
-    return solError("#TYPE!", "A complex number where a real number is expected");
+const isCxValue = (v: unknown): boolean =>
+  typeof v === "object" && v !== null && (v as { __cx?: unknown }).__cx === true;
+
+const EXPECTED: Readonly<Record<string, string>> = { number: "a real number", date: "a date", string: "text", logical: "a logical" };
+
+function kindText(c: unknown): string {
+  if (typeof c === "string") return "Text";
+  if (typeof c === "boolean") return "A logical";
+  if (isCxValue(c)) return "A complex number";
+  return "A number";
+}
+
+// A value of another family on a typed port (only a wildcard cable can carry one there) is a
+// per-cell `#TYPE!`, never silently parsed or passed ([[B17]] typedValueModel). The one bridge
+// is logical ↔ number ([[D11]] noAutoCross); a date is a number at runtime. The complex
+// family takes what it is given.
+function familyCell(fam: string, c: unknown): unknown {
+  const isNum = typeof c === "number", isBool = typeof c === "boolean", isText = typeof c === "string";
+  if (!isNum && !isBool && !isText && !isCxValue(c)) return c;
+  switch (fam) {
+    case "number": if (isNum) return c; if (isBool) return c ? 1 : 0; break;
+    case "logical": if (isBool) return c; if (isNum) return Number.isNaN(c) ? null : c !== 0; break;
+    case "date": if (isNum) return c; break;
+    case "string": if (isText) return c; break;
+    default: return c;
   }
-  if (Array.isArray(v)) return v.map(numericCells);
-  return v;
+  const expected = fam === "number" && typeof c === "string" ? "a number" : EXPECTED[fam];
+  return solError("#TYPE!", `${kindText(c)} where ${expected} is expected`);
+}
+function familyCells(fam: string, v: unknown): unknown {
+  return Array.isArray(v) ? v.map((c) => familyCells(fam, c)) : familyCell(fam, v);
 }
 /** A scalar rung cannot hold a per-cell error, so it fails the node instead. */
 function scalarOrThrow<T>(v: T): T {
   if (isSolError(v)) throw v;
-  return v;
-}
-function numsToBools(v: unknown): unknown {
-  if (typeof v === "number") return Number.isNaN(v) ? null : v !== 0;
-  if (Array.isArray(v)) return v.map(numsToBools);
   return v;
 }
 
@@ -109,44 +125,42 @@ function collapseSingleton(v: unknown): unknown {
 function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   if (isFrameRef(v) || isSolError(v)) return v;
   if (hasUnitCell(v)) return coerceUnitCellValue(dataType, v);
+  const fam = elementFamilyOf(dataType);
+  const cells = fam ? familyCells(fam, v) : v;
   switch (dataType) {
     case "table":
       // toMatrix rebuilds the outer array, which drops the non-enumerable matrix unit tag.
-      return carryMatrixUnit(toMatrix(numericCells(v) as Numeric), v);
+      return carryMatrixUnit(toMatrix(cells as Numeric), v);
     case "list":
-      return toList(numericCells(v) as Numeric);
+      return toList(cells as Numeric);
     case "number":
-      return scalarOrThrow(toScalar(scalarOrThrow(numericCells(v)) as Numeric));
+      return scalarOrThrow(toScalar(scalarOrThrow(cells) as Numeric));
     case "numlist": {
-      const n = numericCells(v);
-      const flat = Array.isArray(n) && Array.isArray((n as unknown[])[0]) ? toList(n as Numeric) : n;
+      const flat = Array.isArray(cells) && Array.isArray((cells as unknown[])[0]) ? toList(cells as Numeric) : cells;
       return scalarOrThrow(collapseSingleton(flat));
     }
-    case "logicalcombo":
-      return collapseSingleton(numsToBools(v));
     case "logical":
-      return collapseSingleton(numsToBools(v));
-    case "logicaltable":
-      return numsToBools(v);
+    case "logicalcombo":
     case "string":
     case "date":
-    case "complex":
     case "strcombo":
     case "datecombo":
+      return scalarOrThrow(collapseSingleton(cells));
+    case "logicaltable":
+    case "strtable":
+    case "datetable":
+      return cells;
+    case "complex":
     case "complexcombo":
     case "anydata":
     case "anycombo":
       return collapseSingleton(v);
-    case "logicallist": {
-      if (v == null) return v;
-      const b = numsToBools(v);
-      return Array.isArray(b) ? b : [b];
-    }
+    case "logicallist":
     case "strlist":
     case "datelist":
     case "complexlist":
       if (v == null) return v;
-      return Array.isArray(v) ? v : [v];
+      return Array.isArray(cells) ? cells : [cells];
     case "anylist":
       if (v == null) return v;
       return Array.isArray(v) ? v : [v];
@@ -166,9 +180,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
 function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
   if (isFrameRef(v) || isSolError(v) || hasUnitCell(v)) return v;
   const fam = elementFamilyOf(dataType);
-  if (fam === "number") return scalarOrThrow(numericCells(v));
-  if (fam === "logical") return numsToBools(v);
-  return v;
+  return fam ? scalarOrThrow(familyCells(fam, v)) : v;
 }
 
 /** Shallow-copies: the input frame is a cached value shared with every other consumer. */

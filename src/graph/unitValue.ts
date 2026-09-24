@@ -118,6 +118,7 @@ type Operand = number | UnitCell;
 export const READINGS_ADD = "Temperature readings can't be added. Subtract two for a difference, or average them.";
 /** A reading on an offset scale is not a magnitude, so it can't scale or divide. */
 export const READINGS_SCALE = "Convert the temperature to kelvin first. An offset unit like °C can't take ×, ÷, mod or ^.";
+export const READINGS_FOLD = "A fold over readings must answer a reading each step, like MAX(acc, value).";
 
 export type ArithmeticOp = "add" | "sub" | "mul" | "div" | "mod" | "pow" | "quotient";
 

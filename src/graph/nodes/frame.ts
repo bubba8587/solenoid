@@ -4,8 +4,8 @@ import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableO
 import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
-import { affineWeight } from "../unitDimExpr";
-import { isLambdaValue } from "../lambdaValue";
+import { affineWeight, type Lam } from "../unitDimExpr";
+import { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningEditor, getOwningView } from "../activeGraph";
@@ -109,12 +109,20 @@ function computedColumnType(
 
 /** A row formula over readings on an offset scale (°C) is classified as Expression's is
  *  ([[C25]] firstClassUnits): a sum of readings, or a reading scaled or divided, is #UNIT!.
- *  The result's unit stays the authored one. */
-function readingsRefusal(definition: string, f: FrameValue, alias: Record<string, string | undefined> = {}): SolError | null {
+ *  A wired λ is read through its body. The result's unit stays the authored one. */
+function readingsRefusal(
+  definition: string | Ast, f: FrameValue, alias: Record<string, string | undefined> = {},
+  lams: ReadonlyMap<string, unknown> = new Map(),
+): SolError | null {
   const isReading = (n: string) => isAffineDisplay(f.columns.find((c) => c.name === (alias[n] ?? n))?.unit?.display);
   if (!f.columns.some((c) => isAffineDisplay(c.unit?.display))) return null;
-  const ast = parseFormula(definition);
+  const ast = typeof definition === "string" ? parseFormula(definition) : definition;
   if (!ast) return null;
+  const fns = new Map<string, Lam>();
+  for (const [name, lam] of lams) {
+    const body = isLambdaValue(lam) && lam.expr ? parseFormula(lam.expr) : null;
+    if (body) fns.set(name, { params: (lam as LambdaValue).params, body });
+  }
   const names = new Set<string>();
   const walk = (n: Ast): void => {
     if (n.t === "name" || n.t === "atcol" || n.t === "wholecol") { if (isReading(n.name)) names.add(n.name); }
@@ -124,9 +132,15 @@ function readingsRefusal(definition: string, f: FrameValue, alias: Record<string
     else if (n.t === "bin") { walk(n.l); walk(n.r); }
   };
   walk(ast);
+  for (const lam of fns.values()) walk(lam.body);
   if (names.size === 0) return null;
-  const w = affineWeight(ast, names, names);
+  const w = affineWeight(ast, names, names, fns);
   return isSolError(w) ? w : null;
+}
+
+/** A bare λ column reads its parameters' columns row by row. */
+function bareLambdaCall(lam: LambdaValue): Ast {
+  return { t: "call", name: "λ", args: lam.params.map((name): Ast => ({ t: "atcol", name })) };
 }
 
 function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string): CubeValue {
@@ -294,7 +308,9 @@ export class FrameInputNode extends ClassicPreset.Node {
           continue;
         }
         if (!bare && !ex) { fill(i, solError("#VALUE!", "The formula does not parse")); continue; }
-        const refused = lam ? null : readingsRefusal(c.expr!, frame);
+        const refused = lam
+          ? readingsRefusal(bareLambdaCall(lam), frame, {}, new Map([["λ", lam]]))
+          : readingsRefusal(c.expr!, frame, {}, lamByName);
         if (refused) { fill(i, refused); continue; }
         const r = computeColumnCells(
           frame,
@@ -2522,7 +2538,9 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     );
     if (isSolError(computed)) { this._reconcileSideSockets([]); return out(computed); }
     this._reconcileSideSockets(computed.sideVars);
-    const refused = wired ? null : readingsRefusal(this.expr, f, this.bindings);
+    const refused = wired
+      ? readingsRefusal(bareLambdaCall(wired), f, this.bindings, new Map([["λ", wired]]))
+      : readingsRefusal(this.expr, f, this.bindings);
     const values = refused ? computed.cells.map(() => refused) : computed.cells;
     const colType: FrameColType = this.addAs === "auto"
       ? computedColumnType(name, values, f, wired ? wired.expr : this.expr, this.bindings)

@@ -64,22 +64,24 @@ export class ConvertNode extends ClassicPreset.Node {
     if (x === null) { this.cachedResult = null; return { out: null }; }
     const from = CONVERT_UNIT_DEFS[this.fromUnit];
     const to   = CONVERT_UNIT_DEFS[this.toUnit];
-    if (from && to && !commensurable(from.dim, to.dim)) {
-      const err = solError("#N/A", `Can't convert ${from.category} to ${to.category}: the units measure different things`);
+    if (!from || !to || !commensurable(from.dim, to.dim)) {
+      const err = !from || !to
+        ? solError("#N/A", `Convert doesn't know the unit "${!from ? this.fromUnit : this.toUnit}"`)
+        : solError("#N/A", `Can't convert ${from.category} to ${to.category}: the units measure different things`);
       this.cachedResult = err;
       return { out: err };
     }
     const rangeErr = () => solError("#OVERFLOW!", "The converted value is too large to represent");
-    const toDim: Unit | undefined = to?.dim;
+    const toDim: Unit = to.dim;
     const display = fcUnitToUnit(this.toUnit) ? this.toUnit : undefined;
     const convertCell = (v: UnitOperand): number | UnitCell | SolError => {
       if (isUnitCell(v)) {
-        if (toDim && dimEqual(v.dim, toDim.dim)) return display ? (withDisplay(v, display) as UnitCell) : v;
-        return unitError(`This value is ${formatDim(v.dim) || "a plain number"}, but Convert targets ${formatDim(toDim?.dim ?? {}) || "a plain number"}.`);
+        if (dimEqual(v.dim, toDim.dim)) return display ? (withDisplay(v, display) as UnitCell) : v;
+        return unitError(`This value is ${formatDim(v.dim) || "a plain number"}, but Convert targets ${formatDim(toDim.dim) || "a plain number"}.`);
       }
       const conv = convertValue(v, this.fromUnit, this.toUnit);
       if (conv === null) return rangeErr();
-      return toDim ? fromUnit(conv, toDim, display) : conv;
+      return fromUnit(conv, toDim, display);
     };
     const result = broadcastUnit(convertCell, x);
     this.cachedResult = result;
