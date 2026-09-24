@@ -38,7 +38,7 @@ The known cells are the ones holding numbers. The **coarse grid** is the set of 
 
 ## The widening cap
 
-`WIDEN = 4` bounds the box search. Without it, scattered data (a diagonal, for one) rejects every candidate box, and the four nested loops try every combination of lines, O(lines⁴) per cell, which takes seconds on a modest grid; why the cap is load-bearing is in [[C102]] gridFillThenForecast. Four lines still cross runs of several consecutive holes, and anything sparser is scattered data, which the surface handles anyway.
+`WIDEN = 4` bounds the box search. Without it, scattered data (a diagonal, for one) rejects every candidate box, and the four nested loops try every combination of lines, O(lines⁴) per cell, which takes seconds on a modest grid, so the cap is load-bearing. Four lines still cross runs of several consecutive holes, and anything sparser is scattered data, which the surface handles anyway.
 
 ## Contested boxes
 
@@ -47,7 +47,7 @@ A box is **contested** when some known point other than its four corners sits in
 - **A full box** (two different rows and two different columns) is contested by any known point inside it or exactly on its edge.
 - **A degenerate box** is a segment on one row (when the query row is itself a coarse row) or on one column. It is contested only by a known point on that same row or column strictly between its two ends. Known data on other rows or columns does not contest a segment.
 
-The effect is that edges defer to the surface: an uncontested segment along the table's border fills as a straight line between its two known ends, while interior cells whose boxes hold data curve with the surface. The failure this rule prevents is in [[C102]] gridFillThenForecast.
+The effect is that edges defer to the surface: an uncontested segment along the table's border fills as a straight line between its two known ends, while interior cells whose boxes hold data curve with the surface. The failure this rule prevents: on a sine-shaped diagonal, the only box with four known corners was the grid's four zero corners, so every blank filled a flat zero with the whole diagonal inside that box. The contested rule is the author's ruling.
 
 ## The forecast surface
 
