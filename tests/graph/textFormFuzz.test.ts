@@ -1,4 +1,4 @@
-// [[C30]] saveViaTextForm, [[C19]] namingModel, [[E8]] waitForTypeSettle
+// [[C30]] saveViaTextForm, [[C19]] namingModel
 import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";

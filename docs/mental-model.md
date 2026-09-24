@@ -75,7 +75,7 @@ socketLattice).
 On top of that, derived types resolve again after every wiring or config change.
 `settleWildcardTypes` alternates two systems until both settle: trueany adoption (a
 hollow-ring port adopts the wired type) and Conduit lane tracing. FC adaptation then runs
-once downstream against the settled result ([[E8]] waitForTypeSettle). Derived types are
+once downstream against the settled result (`../tree/specs/documents/save-format.md` load step 10). Derived types are
 never saved; they're worked out again on load. A node that retypes a socket in place
 (Cast's target, read-as, Note frontmatter) must call `reconcileFcTypes` or
 `retypeOutputCables`, because no connection event fires. The spec is

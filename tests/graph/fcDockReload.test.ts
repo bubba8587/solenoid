@@ -1,4 +1,4 @@
-// [[E8]]
+// [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { FrameInputNode } from "../../src/graph/nodes/frame";

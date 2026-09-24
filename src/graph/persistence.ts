@@ -1,4 +1,4 @@
-// [[E8]]
+// [[B12]] losslessSaves
 import { flushDrafts } from "./draftFlush";
 import { isDesktop } from "./fileBridge";
 import { ClassicPreset } from "rete";
