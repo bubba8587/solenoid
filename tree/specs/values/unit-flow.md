@@ -206,7 +206,7 @@ Convert authors the same way: base-SI plus the target unit's display, and `#UNIT
 
 Convert (`nodes/convert.ts`) is `unitAware` and works per cell through `broadcastUnit`. Its conversion math is `dimension.ts` ([[C8]] declareOnce); each unit's `category` only groups the dropdown.
 
-- A from and to unit that measure different things give one `#N/A` for the whole output, at every rank ([[D69]] convertBadPickIsNA).
+- A from and to unit that measure different things, or a unit id Convert doesn't know, give one `#N/A` for the whole output, at every rank ([[D69]] convertBadPickIsNA).
 - A dimensioned cell whose dimension matches the target is re-displayed in the target unit; a mismatched one is `#UNIT!`.
 - A plain number is read as the from-unit and converted; a result too large to represent is `#OVERFLOW!`.
 - Its `unit` getter answers the to-unit as an FC unit id (`none` when there is no FC twin), so an FC's `refreshAnnotation` treats Convert as a unit forwarder.

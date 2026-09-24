@@ -138,4 +138,16 @@ describe("ConvertNode — scalar/list error consistency", () => {
     const list = new ConvertNode({ fromUnit: "km", toUnit: "kg" }).data({ in: [[1, 2, 3]] }).out;
     expect(isSolError(list) && list.code === "#N/A").toBe(true);
   });
+  it("an unknown unit id is the same whole-value #N/A, never #OVERFLOW!", () => {
+    for (const [from, to] of [["furlong", "m"], ["km", "furlong"]]) {
+      for (const input of [1, [1, 2], cellOf(1)]) {
+        const out = new ConvertNode({ fromUnit: from, toUnit: to }).data({ in: [input] }).out;
+        expect(isSolError(out) && out.code, `${from} → ${to}`).toBe("#N/A");
+      }
+    }
+  });
 });
+
+function cellOf(v: number): UnitCell {
+  return new ConvertNode({ fromUnit: "m", toUnit: "m" }).data({ in: [v] }).out as UnitCell;
+}
