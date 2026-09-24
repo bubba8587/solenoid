@@ -2,11 +2,11 @@
 aliases: ["Alert node + Alerts HUD"]
 tags: [spec, computation]
 ---
-<!-- [[C39]] effectsEdgeTriggered -->
+<!-- [[D79]] effectsEdgeTriggered -->
 
 # Spec: Alert node + Alerts HUD
 
-Serves [[C39]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[D79]] effectsEdgeTriggered. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The **Alert** card watches a value and raises a notification when a condition is met. Each firing lands in two places: a toast, and the Alerts section of the HUD, the column of floating panels on the right edge of the screen. The card lives in `nodes/display.ts` (`AlertNode`) and `components/AlertNode.tsx`; the log is `alertStore.ts`; the column is `components/HudStack.tsx`.
 
@@ -40,7 +40,7 @@ The card's value box shows a neutral dot and word, never a pass or fail mark, be
 
 ## When it fires
 
-An Alert fires on a change of status, not on a boolean flip ([[C39]] effectsEdgeTriggered):
+An Alert fires on a change of status, not on a boolean flip ([[D79]] effectsEdgeTriggered):
 
 1. A null status is unknown. It neither fires nor changes the remembered status.
 2. Otherwise the card builds a status key (`statusKey`: the number, or the list joined with commas) and compares it with the key it remembered from the last run (`lastStatusKey`).

@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual (mirrors the group readout), [[C39]] effectsEdgeTriggered
+// [[C88]] collapseIsVisual (mirrors the group readout), [[D79]] effectsEdgeTriggered
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { IS_MOBILE } from "../coarse";
 import { pinStore } from "../pinStore";

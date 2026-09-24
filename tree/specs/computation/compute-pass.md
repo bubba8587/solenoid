@@ -2,11 +2,11 @@
 aliases: ["Compute pass and the input boundary"]
 tags: [spec, computation]
 ---
-<!-- [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
+<!-- [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
 
 # Spec: Compute pass and the input boundary
 
-Serves [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[C10]] socketLattice and . It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice and . It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This file owns what happens from "something changed" to "every card shows its new value": how the engine is driven, which nodes a pass recomputes, the calc mode, volatile nodes, rebuild scopes, and what a value goes through between leaving one node's output and reaching the next node's `data()`. Which cables may connect at all is [[socket-lattice]] ([[C10]] socketLattice); this file starts once a cable exists. The error codes and their meaning are [[error-values]]; units on the value are [[unit-flow]]; the null and blank semantics a `data()` applies are [[value-semantics]].
 
@@ -167,12 +167,12 @@ What an open scope suppresses:
 | The React Flow topology sync (retried each task until the scope closes) | `FlowCanvas.tsx` | the rebuild commits once |
 | Undo-history recording | `flowHistory.ts` | a load is not an undoable step |
 | Document operations (switch, create, fork and the rest) | `documentStore.ts` | they would race a half-built canvas |
-| Outward effects: Alert firing, Expect violations, a relative Date Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[C39]] effectsEdgeTriggered: a load must not replay old alerts |
+| Outward effects: Alert firing, Expect violations, a relative Date Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[D79]] effectsEdgeTriggered: a load must not replay old alerts |
 | The Conduit's lane-change recompute | `ConduitComponent.tsx` | the rebuild's own settle covers it |
 
 ### A refresh never runs inside a rebuild scope
 
-**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[C39]] effectsEdgeTriggered), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
+**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[D79]] effectsEdgeTriggered), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
 
 The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
 

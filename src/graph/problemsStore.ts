@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C39]] effectsEdgeTriggered
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[D79]] effectsEdgeTriggered
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

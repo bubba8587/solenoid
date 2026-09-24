@@ -1,4 +1,4 @@
-// [[C39]] effectsEdgeTriggered
+// [[D79]] effectsEdgeTriggered
 import { ClassicPreset } from "rete";
 import { trueAnyIn, trueAnyOut, numIn, strIn, anyListIn, readInput } from "./shared";
 import type { PassthroughSpec } from "./passthrough";

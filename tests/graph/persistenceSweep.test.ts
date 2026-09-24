@@ -254,7 +254,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (perInputUnitBlind)",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
-    // ── runtime edge-detection ([[C39]] effectsEdgeTriggered) ──
+    // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
     lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──
     step: "AngleDial snap increment — constructor-only, no UI control",

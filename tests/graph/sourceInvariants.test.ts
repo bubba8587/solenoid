@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[C39]], [[C8]] declareOnce, [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
+// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[C8]] declareOnce, [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -559,7 +559,7 @@ describe("[[C38]] sinkRunButtonOnly — data() never touches disk", () => {
   });
 });
 
-describe("[[C39]] effectsEdgeTriggered — an outward effect from data() gates on isGraphRebuilding()", () => {
+describe("[[D79]] effectsEdgeTriggered — an outward effect from data() gates on isGraphRebuilding()", () => {
   // The post-load recompute runs INSIDE the rebuild scope, so an alert/notice
   // fired from data() without the gate replays its whole backlog on every
   // document open, doc switch and rollback (the audit-2026-07-05 class: a
@@ -576,7 +576,7 @@ describe("[[C39]] effectsEdgeTriggered — an outward effect from data() gates o
     expect(
       offenders,
       `These node files fire alerts without the isGraphRebuilding() gate ` +
-      `([[C39]] effectsEdgeTriggered): every document load will replay the alert backlog:\n  ` +
+      `([[D79]] effectsEdgeTriggered): every document load will replay the alert backlog:\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
