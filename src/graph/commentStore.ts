@@ -31,8 +31,9 @@ export const commentStore = {
     return c;
   },
 
-  update(id: string, patch: Partial<Pick<Comment, "text" | "resolved" | "author">>): void {
-    _comments = _comments.map((c) => (c.id === id ? { ...c, ...patch } : c));
+  update(id: string, patch: Partial<Pick<Comment, "text" | "resolved">>): void {
+    const { text, resolved } = patch;
+    _comments = _comments.map((c) => (c.id === id ? { ...c, ...(text !== undefined && { text }), ...(resolved !== undefined && { resolved }) } : c));
     notify();
   },
 
