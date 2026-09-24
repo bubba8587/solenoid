@@ -20,6 +20,7 @@ There are two layers. **The unit is a property of the value**: it travels as dat
   - Table Input's own unit picker (the `author` policy in `matrixUnitPolicy.test.ts`).
   The Number node is a plain literal source and sets nothing.
 - **How it travels.** The tag rides through anything that passes the value along. A transform works the dimension out again through the algebra (`tagDim`) and keeps an operand's `display` when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`). A result whose dimension fits neither operand falls back to its derived-symbol form.
+- **Where it becomes text.** Cast to Text writes the unit into the text in the unit the value reads in (`5 km`, `$5`; `unitCellText` in `unitBridge.ts`), so a cast never drops it silently; Cast's other targets read the value as it shows, unit-blind.
 
 ## Dimensions (`dimension.ts`)
 

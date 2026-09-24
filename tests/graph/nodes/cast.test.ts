@@ -5,6 +5,8 @@ import { cx } from "../../../src/graph/cxValue";
 import { formatNumberPattern } from "../../../src/graph/nodes/text";
 import { isSolError } from "../../../src/graph/errorValue";
 import { SolenoidSocket, isDateType } from "../../../src/graph/sockets";
+import { applyFcUnit } from "../../../src/graph/unitBridge";
+import { wrapNodeData } from "../../../src/graph/coerceInputs";
 
 // No editor singleton in tests → sourceKind() is null, so complex INPUTS can't
 // be disambiguated here — those paths are typed by the live socket. Everything
@@ -159,5 +161,22 @@ describe("Cast node", () => {
     expect(n.cachedResult).toBe(45000);
     n.data({ value: [[45000, 45001]] });
     expect(n.cachedResult).toEqual([45000, 45001]);
+  });
+});
+
+describe("Cast keeps a value's unit where the target can hold it ([[C25]] firstClassUnits)", () => {
+  const through = (target: CastTarget, value: unknown) => {
+    const n = new CastNode({ target });
+    wrapNodeData(n as unknown as Parameters<typeof wrapNodeData>[0]);
+    return n.data({ value: [value] }).result;
+  };
+  it("text names the unit the value reads in", () => {
+    expect(through("text", applyFcUnit(5, "km"))).toBe("5 km");
+    expect(through("text", applyFcUnit(5, "usd"))).toBe("$5");
+    expect(through("text", [applyFcUnit(1.5, "km"), null])).toEqual(["1.5 km", null]);
+    expect(through("text", applyFcUnit(20, "degC"))).toBe("20 °C");
+  });
+  it("a number is the value as it reads, with no unit", () => {
+    expect(through("number", applyFcUnit(5, "km"))).toBe(5);
   });
 });

@@ -1,7 +1,7 @@
 // [[C25]], [[D43]]
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
-import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
+import { UNIT_ANNOTATIONS, isFcUnit, unitById } from "./formatAnnotationStore";
+import { fromUnit, formatUnitCell, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 const DIRECT: Record<string, Unit> = {
@@ -107,6 +107,16 @@ export function displayMagnitudeOf(cell: UnitCellT): number {
     if (u && dimEqual(u.dim, cell.dim)) return (cell.value - (u.offset ?? 0)) / u.scale;
   }
   return cell.value;
+}
+
+/** A cell as text in the unit it reads in ("5 km", "$5"); without a named display unit, its base
+ *  magnitude and derived symbol. */
+export function unitCellText(cell: UnitCellT, fmtNum: (n: number) => string): string {
+  const u = cell.display && isFcUnit(cell.display) ? fcUnitToUnit(cell.display) : null;
+  if (!u || !dimEqual(u.dim, cell.dim)) return formatUnitCell(cell, fmtNum);
+  const { label, prefix } = unitById(cell.display!);
+  const mag = fmtNum(displayMagnitudeOf(cell));
+  return prefix ? `${label}${mag}` : `${mag}${label}`;
 }
 
 export function stripUnitCells(v: unknown): unknown {
