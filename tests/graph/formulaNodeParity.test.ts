@@ -7,7 +7,7 @@ import { initPackFormulas } from "../../src/graph/formulaExtensions";
 // The node set and the formula language drifted apart because NOTHING checked one
 // against the other — a node could ship with an Excel name that no formula could
 // call, and Formula.js could drag in a legacy name nobody decided to support. The
-// ratchet rules are [[C51]] formulaNaming / [[C18]] uniqueNameMap.
+// ratchet rules are [[C51]] formulaNaming / [[B16]] oneFormulaSurface.
 //
 // This test pins today's gaps and makes them one-way. Both directions assert
 // live ⊆ pinned (a NEW gap fails) AND pinned ⊆ live (a CLOSED gap must be deleted

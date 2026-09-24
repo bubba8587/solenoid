@@ -1,4 +1,3 @@
-// [[C74]] semanticZoomRawScale
 import { createNotifier } from "./storeKit";
 import { settingsStore } from "./settingsStore";
 

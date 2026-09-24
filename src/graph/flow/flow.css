@@ -1,4 +1,4 @@
-/* [[C43]] oneFlowSurface, [[C88]] collapseIsVisual (.sol-member-hidden), [[C99]] chromeEnvelopeVars */
+/* [[C43]] oneFlowSurface, [[C88]] collapseIsVisual (.sol-member-hidden), [[B14]] oneDesignSystem */
 
 /* flow.css loads after RF's stylesheet, so these override its `.react-flow__pane.draggable` rule. */
 .react-flow__pane.draggable { cursor: default; }

@@ -390,13 +390,13 @@ On `develop`, pushed.
   matters: nothing in the package tells an adopter that a new A-ring node means a migration sweep; item 13: a
   Decision must state a call, not describe a feature, after the author caught three of eight).
 - **The cite-and-prune sweep, second half of the day.** Sixteen leaves lifted out of specs and docs that had only a
-  nearest-ancestor governor: the layout cluster under B10 ([[C84]] tidyTranslatesOnly, [[C85]] groupPushDeterministic,
-  [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
-  C90 drawnCablesAnnotate (retired), [[C91]] cableWalkRouter, with [[D63]] lockedGroupIsObstacle and D64 oneSizeRead (retired)),
+  nearest-ancestor governor: the layout cluster under B10 (C84 tidyTranslatesOnly (retired), [[C85]] groupPushDeterministic,
+  [[C86]] membershipByGesture, C87 groupsAreSubflows (retired), [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
+  C90 drawnCablesAnnotate (retired), C91 cableWalkRouter (retired), with [[D63]] lockedGroupIsObstacle and D64 oneSizeRead (retired)),
   the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
   UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers ([[C94]]
-  formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk,
-  [[C98]] paletteMirrorsMenubar, [[C99]] chromeEnvelopeVars, [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
+  formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, C97 rechartsLazyChunk (retired),
+  [[C98]] paletteMirrorsMenubar, C99 chromeEnvelopeVars (retired), [[C100]] chartIsAValue, [[C101]] onePatchPath, [[C102]] gridFillThenForecast; the last two
   replaced a plan-doc 'candidate' and a core-only A5 citation). D64 / C95 / C97 are enforced by
   source sweeps now; the four sanctioned size reads carry their reason in place.
 - **`.dtecoverage` makes 100% coverage reachable** (author's ask): a store of artifacts that need no citation,

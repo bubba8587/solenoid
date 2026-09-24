@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[D16]] retypeReconciles, [[C11]] socketBox12. Mechanics: tree/specs/documents/literal-input-editors.md.
+// [[C95]] commitOnEnter (useDraftCommit, useEditableLabel), [[C28]] literalsIffEditable, [[D16]] retypeReconciles. Mechanics: tree/specs/documents/literal-input-editors.md.
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
@@ -19,7 +19,7 @@ import { stopDragStart } from "../coarse";
 import { usePendingDraft } from "../draftFlush";
 import { decimalFromText } from "../valueKinds";
 
-// Body-height estimate only; socket placement is measured per row ([[C11]] socketBox12).
+// Body-height estimate only; socket placement is measured per row.
 export const INPUT_ROW_PITCH = 28;
 
 /** Derived at render time, never cached in state, so any re-render sees the current graph. */

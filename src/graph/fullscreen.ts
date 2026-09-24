@@ -1,4 +1,4 @@
-// [[C99]] chromeEnvelopeVars
+// [[B14]] oneDesignSystem
 import { isDesktop } from "./fileBridge";
 
 /** iOS Safari has no Fullscreen API for arbitrary elements, so callers hide the affordance. */

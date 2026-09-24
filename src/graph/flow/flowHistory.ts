@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (the snapshot history), [[C30]] saveViaTextForm
+// [[B10]] reactFlowView (the snapshot history), [[B12]] losslessSaves
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding } from "../process";

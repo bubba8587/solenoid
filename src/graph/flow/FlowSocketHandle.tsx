@@ -1,4 +1,3 @@
-// [[C11]] socketBox12
 import { Handle, Position, useConnection, useNodeId } from "@xyflow/react";
 import { SocketComponent } from "../components/SocketComponent";
 import { SocketLitRing } from "../components/NodeSocket";

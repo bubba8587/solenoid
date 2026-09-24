@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C30]] saveViaTextForm
+// [[B12]] losslessSaves
 
 import {
   isDesktop,

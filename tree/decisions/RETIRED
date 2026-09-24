@@ -63,3 +63,23 @@ D64	2026-09-24	reverted	-	Claude Opus 5.5	the author	oneSizeRead: One size read 
 D65	2026-09-24	reverted	-	Claude Opus 5.5	the author	serialsNeverDate: Schedules compute on integer serials and never construct a Date
 D67	2026-09-24	reverted	-	Claude Opus 5.5	the author	grammarOnlyAtBorder: Link grammar and vendor link codes are parsed at the border; the engine keys predecessors by name
 D74	2026-09-24	reverted	-	Claude Opus 5.5	the author	webkitgtkNoNodeLayers: On WebKitGTK nothing inside a node becomes a compositor layer
+C11	2026-09-24	reverted	-	Claude Opus 5.5	the author	socketBox12: A socket is a fixed 12×12 box in its own measured row
+C18	2026-09-24	reverted	-	Claude Opus 5.5	the author	uniqueNameMap: A derived name function is TOTAL and INJECTIVE
+C20	2026-09-24	reverted	-	Claude Opus 5.5	the author	wholeArrayArgs: Array arguments arrive whole
+C29	2026-09-24	reverted	-	Claude Opus 5.5	the author	plainJsonInit: `extractInit` is a fixed point, and JSON-plain
+C30	2026-09-24	reverted	-	Claude Opus 5.5	the author	saveViaTextForm: Every save passes through the text form, so it carries every SavedGraph field both ways
+C31	2026-09-24	reverted	-	Claude Opus 5.5	the author	immutableDocStore: `documentStoreCore` transforms are structurally immutable
+C32	2026-09-24	reverted	-	Claude Opus 5.5	the author	autosaveSlotOrder: Autosave slots: write the older, read the newer, `seq` first and strictly rising
+C33	2026-09-24	reverted	-	Claude Opus 5.5	the author	saveBindsMain: Persistence binds the main graph, never the active surface
+C34	2026-09-24	reverted	-	Claude Opus 5.5	the author	classNameIsType: The class name is the persisted type: kept and unique
+C36	2026-09-24	reverted	-	Claude Opus 5.5	the author	captureBeforeSwap: A canvas-swapping verb captures first and guards the rebuild
+C37	2026-09-24	reverted	-	Claude Opus 5.5	the author	observerOwnsSize: A node's width and height mirror its rendered size; only size-owning classes read them back
+C40	2026-09-24	reverted	-	Claude Opus 5.5	the author	storesRegisterForget: A node-keyed store registers both forget and forgetAll
+C65	2026-09-24	reverted	-	Claude Opus 5.5	the author	domOrderStacking: Node stacking is each node's React Flow zIndex, set by nodeZIndex
+C74	2026-09-24	reverted	-	Claude Opus 5.5	the author	semanticZoomRawScale: The far-zoom switch reads the raw CSS scale at 0.3, never folded with the pixel ratio
+C75	2026-09-24	reverted	-	Claude Opus 5.5	the author	gpuTextureBudget: A covered canvas stops painting, and layer promotion never overruns a mobile GPU
+C84	2026-09-24	reverted	-	Claude Opus 5.5	the author	tidyTranslatesOnly: Tidy is a translate-only ELK layout: symmetric ports, leading-edge anchor, never a pinned size
+C87	2026-09-24	reverted	-	Claude Opus 5.5	the author	groupsAreSubflows: Groups are React Flow sub-flows; the model stays absolute, converted only at the boundary
+C91	2026-09-24	reverted	-	Claude Opus 5.5	the author	cableWalkRouter: One walk router for diagonal and straight cables: constraints by construction, shortest walk wins
+C97	2026-09-24	reverted	-	Claude Opus 5.5	the author	rechartsLazyChunk: recharts is one lazy chunk: only chartRender.tsx imports it
+C99	2026-09-24	reverted	-	Claude Opus 5.5	the author	chromeEnvelopeVars: Chrome envelopes are two measured CSS vars; every floating overlay derives from them

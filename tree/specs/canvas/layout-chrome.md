@@ -2,17 +2,17 @@
 aliases: ["Layout and chrome"]
 tags: [spec, canvas]
 ---
-<!-- [[C99]] chromeEnvelopeVars, [[C93]] gestureByPointerType, [[C75]] gpuTextureBudget, [[C109]] linuxOwnWindowControls, [[B10]] reactFlowView -->
+<!-- [[B14]] oneDesignSystem, [[C93]] gestureByPointerType, [[B10]] reactFlowView, [[C109]] linuxOwnWindowControls -->
 
 # Spec: Layout and chrome
 
-Serves [[C99]] chromeEnvelopeVars. It maps the app's chrome (the bars, pills, panels and overlays around the canvas) on desktop, tablet and mobile: what sits where, what each offset is measured from, and what to check before adding or moving a piece. Citations are a file plus a selector, never a line number; grep the selector.
+Serves [[B14]] oneDesignSystem. It maps the app's chrome (the bars, pills, panels and overlays around the canvas) on desktop, tablet and mobile: what sits where, what each offset is measured from, and what to check before adding or moving a piece. Citations are a file plus a selector, never a line number; grep the selector.
 
 The recurring bug here is a floating overlay covering a bar. Every overlay's offset traces back to the same few bar heights, so moving or resizing a bar moves every dependent offset with it. The two envelopes below carry most of that; the tables say what each remaining number means.
 
 ## The two envelopes
 
-Both are measured CSS variables on `:root` ([[C99]] chromeEnvelopeVars).
+Both are measured CSS variables on `:root` ([[#The two envelopes]]).
 
 - **`--chrome-top`** is published by `Header.tsx`, which observes its own height. Every top-anchored overlay offsets from it. On desktop it measures 66px (the 22px menu bar plus the 44px top bar), with a 2px accent underline making about 68px to the canvas. A tablet in portrait wraps the top bar onto two rows (see Tablets), so the envelope is conditional and no longer a number anyone could write down; `touchActions.test.ts` pins the wrap.
 - **`--chrome-bottom`** is published by `chromeBottom.ts`. Each bottom bar (the status bar, the mobile action bar) registers its root element while mounted, and the variable is the tallest registered height. A `display: none` bar measures 0, so whichever bar owns the bottom edge wins. The mobile bar's height includes its safe-area padding, so the variable carries the inset and consumers drop their own `env()` term.
@@ -166,7 +166,7 @@ The minimap and the socket legend are `display: none` on mobile (`mobile.css`). 
   The header, the status bar and the left navigator are full-width or left-anchored and untouched.
 - **Inspector docked** (desktop and tablet): `html.sol-inspector-docked` (`inspectorStore.ts`), the same push scaled to `--inspector-w: 340px` (`InspectorPanel.css`). The canvas wrapper shrinks; the nav pill, HUD stack and socket legend shift; the command palette re-centers on the canvas. It is the report dock's full set, kept in step. The two right docks are mutually exclusive: the one opened last takes the slot and the other closes, because the author ruled side by side too big. So their squeeze rules never stack.
 - **Presenting**: `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides nearly all chrome: the header, nav pill, status bar, navigator and its open-pill, legend, minimap, mobile bar and HUD (`PresentationOverlay.css`). The canvas is the slide.
-- **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own) and the navigator and its open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop and `88px + safe-area` on mobile) with a run-controls panel tucked under it (`top: 120px`). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[C75]] gpuTextureBudget).
+- **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own) and the navigator and its open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop and `88px + safe-area` on mobile) with a run-controls panel tucked under it (`top: 120px`). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[html-in-canvas#The GPU texture budget]]).
 
 ## The z-index ladder
 

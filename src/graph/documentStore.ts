@@ -1,4 +1,4 @@
-// [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
+// Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
 import { flushDrafts } from "./draftFlush";
 import { createNotifier } from "./storeKit";
 import { serializeGraph, loadGraph, loadRefusal, type SavedGraph } from "./persistence";

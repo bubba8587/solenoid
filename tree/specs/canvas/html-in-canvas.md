@@ -2,11 +2,11 @@
 aliases: ["HTML-in-Canvas gesture layer"]
 tags: [spec, canvas]
 ---
-<!-- [[C42]] htmlInCanvasRenderer, [[C75]] gpuTextureBudget -->
+<!-- [[C42]] htmlInCanvasRenderer, [[B10]] reactFlowView -->
 
 # Spec: HTML-in-Canvas gesture layer
 
-Serves [[C42]] htmlInCanvasRenderer; its GPU limits are [[C75]] gpuTextureBudget. It covers what the layer does, when it runs, and the number behind each knob. The knobs are tuning, not decisions: change one freely, and record the measurement that justified the change here.
+Serves [[C42]] htmlInCanvasRenderer; its GPU limits are [[#The GPU texture budget]]. It covers what the layer does, when it runs, and the number behind each knob. The knobs are tuning, not decisions: change one freely, and record the measurement that justified the change here.
 
 The layer makes pan and zoom cheap on a big graph. During a gesture it hides React Flow's viewport and draws captured bitmaps of the cards on a canvas instead; at rest the real DOM is back. It is never a DOM replacement: every click, edit and hover lands on the real cards. The engine is `HtmlCanvasRenderer` (`htmlCanvasRenderer.ts`), an imperative class rather than a React component; `HtmlCanvasLayer` mounts it and feeds it.
 
@@ -19,7 +19,7 @@ The layer makes pan and zoom cheap on a big graph. During a gesture it hides Rea
 ## The lifecycle
 
 1. **Build.** On engaging, the layer starts in the gesture state (holder hidden, canvas active), so the DOM and the canvas never show as a double image, and it retries the capture every 120 ms until it succeeds. It then drops to idle.
-2. **Gesture.** Any camera change, or a held pointer while gesturing, enters the gesture: the React Flow viewport ("the holder") gets `visibility: hidden`, never `display: none`, so its layout stays measurable and an in-flight drag survives. DOM-only elements stay visible through it (below). Cable flow animation freezes to match the static canvas. On fine pointers the holder gets a gesture-scoped `will-change: transform` layer; on coarse pointers it never does ([[C75]] gpuTextureBudget).
+2. **Gesture.** Any camera change, or a held pointer while gesturing, enters the gesture: the React Flow viewport ("the holder") gets `visibility: hidden`, never `display: none`, so its layout stays measurable and an in-flight drag survives. DOM-only elements stay visible through it (below). Cable flow animation freezes to match the static canvas. On fine pointers the holder gets a gesture-scoped `will-change: transform` layer; on coarse pointers it never does ([[#The GPU texture budget]]).
 3. **Settle.** A gesture ends on a timer that each camera change re-arms: 140 ms after a pan, and `DEFAULT_ZOOM_SETTLE_MS = 420` after any gesture that zoomed (`zoomSettle.ts`; `window.__zoomSettle` overrides live). A scale change repaints the whole visible DOM at the new raster scale, while a pan only recomposites, and wheel zoom is notchy with no held-pointer signal. A short zoom settle would leave and re-enter the gesture on every notch and pay that repaint each time. A longer settle doesn't cure choppy zoom: a deployed 3000 ms A/B ruled it out.
 4. **Held.** If the gesture ends below `HOLD_ZOOM = 0.4`, the canvas keeps drawing at rest. The DOM comes back muted (by opacity, so it still hit-tests) and the selected or focused cards show as live DOM on top. The renderer skips those live cards (`setDomLive`), so nothing paints twice. At that zoom DOM text is unreadable anyway, every card is in view so the settle repaint would be at its most expensive, and holding removes the pop at gesture end. `window.__hcHoldZoom` overrides it.
 5. **Idle.** Above the hold zoom the holder is fully restored and the canvas clears to transparent. The canvas element itself stays visible even when idle, because capture needs it rendered.
@@ -78,7 +78,7 @@ Every change to how a card looks must reach a re-capture, by one of two channels
 
 ## DOM-only elements
 
-The DOM-only set is the Conduit node views, every cable the canvas does not draw (one touching a Conduit, or one the graph snapshot can't resolve), and the standoff svg. None of them is captured. They stay live DOM through a gesture, shown through the hidden holder with inline `visibility: visible`, and the canvas skips them. On coarse pointers, where the holder gets no compositor layer, each DOM-only element is promoted on its own instead, capped at 1024 px (`PROMOTE_MAX`, [[C75]] gpuTextureBudget). Group collapse stamps inline visibility on the same elements, so the layer never overrides an element something else hid, clears only a `visible` it stamped itself, and clears the old set's overrides before a rebuild installs the new one.
+The DOM-only set is the Conduit node views, every cable the canvas does not draw (one touching a Conduit, or one the graph snapshot can't resolve), and the standoff svg. None of them is captured. They stay live DOM through a gesture, shown through the hidden holder with inline `visibility: visible`, and the canvas skips them. On coarse pointers, where the holder gets no compositor layer, each DOM-only element is promoted on its own instead, capped at 1024 px (`PROMOTE_MAX`, [[#The GPU texture budget]]). Group collapse stamps inline visibility on the same elements, so the layer never overrides an element something else hid, clears only a `visible` it stamped itself, and clears the old set's overrides before a rebuild installs the new one.
 
 ## Debugging
 

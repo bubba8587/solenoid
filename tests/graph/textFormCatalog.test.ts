@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C30]] saveViaTextForm, [[C28]] literalsIffEditable
+// [[B12]] losslessSaves, [[C28]] literalsIffEditable
 import { describe, it, expect } from "vitest";
 import { isDeepStrictEqual } from "node:util";
 import type { ClassicPreset } from "rete";

@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C87]] groupsAreSubflows
+// [[B10]] reactFlowView, [[C43]] oneFlowSurface
 
 export type View = {
   hasNode(id: string): boolean;

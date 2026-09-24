@@ -1,4 +1,4 @@
-// [[C77]] compositeIsSubgraph, [[C33]] saveBindsMain
+// [[C77]] compositeIsSubgraph, [[B12]] losslessSaves
 import type { View } from "../view";
 import { makeFlowView, type FlowView } from "./flowView";
 import { idleHandlers, type SurfaceHandlers } from "./FlowSurface";

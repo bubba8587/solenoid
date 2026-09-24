@@ -1,4 +1,4 @@
-// [[C65]] domOrderStacking. Mechanics: tree/specs/canvas/resizable-content-nodes.md, tree/specs/canvas/conduit-lane-faces.md.
+// Mechanics: tree/specs/canvas/resizable-content-nodes.md, tree/specs/canvas/conduit-lane-faces.md.
 import { SocketComponent } from "./SocketComponent";
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";

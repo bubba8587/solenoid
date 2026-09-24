@@ -1,4 +1,4 @@
-// [[C97]] rechartsLazyChunk, [[C100]] chartIsAValue
+// [[C100]] chartIsAValue
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, type ScatterShapeProps, type SymbolsProps } from "recharts";
 import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";

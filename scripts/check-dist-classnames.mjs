@@ -1,4 +1,4 @@
-// [[C34]]
+// [[B12]] losslessSaves
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 

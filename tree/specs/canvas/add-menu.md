@@ -161,5 +161,5 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 
 - A rendered label carries only what a reader needs to pick the row. Alternate spellings, Excel function names above all, go in `keywords`, which scores at full weight and never renders ([[D5]] searchWiderThanLabel).
 - A hidden-op row's label is `` `${hostLabel}: ${opLabel}` `` (`opSearchLabel`) and nothing else, so renaming a card renames its op rows.
-- A card's formula name (`fx`) is independent of its label. It stays declared wherever removing the spaces from the label would not produce it ([[engineering#An override lives on the declaration it overrides]], [[C18]] uniqueNameMap).
+- A card's formula name (`fx`) is independent of its label. It stays declared wherever removing the spaces from the label would not produce it ([[engineering#An override lives on the declaration it overrides]], [[formula-language#Derived names are unique]]).
 - Every op is reachable: it either has a row of its own or is the family's primary op. The primary op is found by constructing the leaf and reading its `op` (`primaryOpOf`), never declared by hand.

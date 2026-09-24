@@ -2,11 +2,11 @@
 aliases: ["Composite nodes"]
 tags: [spec, computation]
 ---
-<!-- [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[C33]] saveBindsMain, [[C43]] oneFlowSurface, [[C28]] literalsIffEditable, [[C37]] observerOwnsSize, [[C39]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
+<!-- [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset, [[C35]] unknownViaPlaceholder, [[B12]] losslessSaves, [[C43]] oneFlowSurface, [[C28]] literalsIffEditable, [[C39]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility, [[C79]] packActivationIsPresentation -->
 
 # Spec: Composite nodes
 
-Serves [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[C33]] saveBindsMain, [[C43]] oneFlowSurface, [[C28]] literalsIffEditable, [[C37]] observerOwnsSize, [[C39]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C77]] compositeIsSubgraph, [[D52]] compositesHoldUntilSolve, [[C53]] queryIsCompositePreset and [[C35]] unknownViaPlaceholder, with [[B12]] losslessSaves, [[C43]] oneFlowSurface, [[C28]] literalsIffEditable, [[C39]] effectsEdgeTriggered, [[C76]] formulaPackDefault, [[C78]] packLegibility and [[C79]] packActivationIsPresentation. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This file owns the Composite card: its value model, its boundary ports and markers, every run mode, the heavy-mode hold, loops inside a composite, making a composite from a selection and unpacking it, how it saves and loads, and how edits inside it reach the outside. How the drill-in canvas mounts, leaves, undoes and substitutes the active graph is [[composite-drill-in-mount-lifecycle]]; this file only names the points where the drill-in calls into the composite. The outer pass that retargets an inner edit onto the owning card is [[compute-pass]]. The save shape of `init.internal` is also summarized in [[save-format]].
 
@@ -34,7 +34,7 @@ A composite is a subgraph, not a Group variant ([[C77]] compositeIsSubgraph). Th
 - The internal pipe reacts to `nodecreated`, `noderemoved`, `connectioncreated` and `connectionremoved`: each calls `markInternalEdit()` (bumps `internalEditSeq`), and a connection event outside `hydrate()` also calls `settleInternalTypes()`.
 - `runSeq` counts `data()` calls. The drill-in re-renders its internal cards only when `runSeq` has advanced ([[composite-drill-in-mount-lifecycle]] § Undo inside a composite).
 - A composite nests: a member may itself be a composite, whose `data()` runs inside the outer composite's internal pass.
-- The card is size-owning: its constructor reads `width` and `height` back from `init` (defaults 240 × 140) ([[C37]] observerOwnsSize). The markers are 140 × 70.
+- The card is size-owning: its constructor reads `width` and `height` back from `init` (defaults 240 × 140) ([[react-flow-surface-contract#Node width and height]]). The markers are 140 × 70.
 - Its catalog kind is `util`.
 
 ## Ports
@@ -356,7 +356,7 @@ Hydration happens on document load (after the outer cables, with the same regist
 
 `restoreInternal(snapshot, reg)` (drill-in undo) forgets every internal node's store entries at every depth (the snapshot restores them under the new ids), removes every internal connection and node, clears `internalPositions`, translates every port's `internalNodeId` to its saved id (the snapshot's language), forgets the saved-id map, parks the snapshot as pending and hydrates it.
 
-Copy and paste treat a composite like any node: the clone is constructed from `extractInit`, so its `internal` snapshot rides along, and it is hydrated before it is added. Inside a drill-in, copy works on the internal editor and never copies markers. Saving always serializes the main graph, never the open drill-in ([[C33]] saveBindsMain). The save validator recurses into `init.internal`, prefixing its findings with "inside the composite" ([[save-format]]).
+Copy and paste treat a composite like any node: the clone is constructed from `extractInit`, so its `internal` snapshot rides along, and it is hydrated before it is added. Inside a drill-in, copy works on the internal editor and never copies markers. Saving always serializes the main graph, never the open drill-in ([[save-format#Saving binds the main graph]]). The save validator recurses into `init.internal`, prefixing its findings with "inside the composite" ([[save-format]]).
 
 ## Edits inside and how they reach the outside
 

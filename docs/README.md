@@ -123,12 +123,12 @@ results get retried and settled rulings relapse.
 | `groupCollapse.ts`, `flyToNode.ts` | [[C88]] collapseIsVisual; `../tree/specs/canvas/group-collapse.md` |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `../tree/specs/canvas/add-menu.md`; [[D5]] searchWiderThanLabel, [[C8]] declareOnce |
 | `equationSolve.ts` | [[C47]] equationNode; `../tree/specs/computation/equation-solver.md` |
-| `semanticZoomStore.ts` | [[C74]] semanticZoomRawScale |
-| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[C75]] gpuTextureBudget |
+| `semanticZoomStore.ts` | [[B10]] reactFlowView; `../tree/specs/canvas/react-flow-surface-contract.md` § Semantic zoom |
+| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts`, `HtmlCanvasLayer.tsx`, `hic*.ts` | [[C42]] htmlInCanvasRenderer; `../tree/specs/canvas/html-in-canvas.md`; [[B10]] reactFlowView |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | [[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; `../tree/specs/canvas/pointer-gestures.md` |
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | [[C43]] oneFlowSurface; `../tree/specs/canvas/react-flow-surface-contract.md`; [[B10]] reactFlowView |
 | `graphCompute.ts`, `process.ts`, `coerceInputs.ts`, `nodeRegistry.ts` (the pass and arrival coercion) | `../tree/specs/computation/compute-pass.md`; [[C23]] calcModes; `../tree/specs/values/error-values.md` |
-| `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[C43]] oneFlowSurface; `../tree/specs/canvas/react-flow-surface-contract.md`; [[C11]] socketBox12; `../DESIGN.md` § Cards |
+| `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | [[C43]] oneFlowSurface; `../tree/specs/canvas/react-flow-surface-contract.md`; [[B10]] reactFlowView; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | [[C23]] calcModes; `../tree/specs/computation/live-connections.md` |
 | `flyToNode.ts`, any camera `zoomAt` caller | [[C88]] collapseIsVisual; `../tree/specs/canvas/group-collapse.md` (camera targets) |
 | `activeGraph.ts` | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` (canvas-substitution seam) |
@@ -140,11 +140,11 @@ results get retried and settled rulings relapse.
 | `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `CommandPalette.tsx` | `../tree/specs/canvas/command-palette.md` |
 | `OutlinePanel.tsx` | `../tree/specs/canvas/outline-panel.md` |
-| `cablePaths.ts`, `ribbonCable.ts` | [[C91]] cableWalkRouter, [[C10]] socketLattice; `../tree/specs/canvas/cable-rendering-knobs.md` |
-| `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts` | [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows; `../tree/specs/canvas/group-expand-push.md` |
+| `cablePaths.ts`, `ribbonCable.ts` | [[B10]] reactFlowView, [[C10]] socketLattice; `../tree/specs/canvas/cable-rendering-knobs.md` |
+| `groupPush.ts`, `groupPushCore.ts`, `groupLogic.ts` | [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[B10]] reactFlowView; `../tree/specs/canvas/group-expand-push.md` |
 | `standoffSolver.ts`, `standoffs.ts` | [[C89]] standoffsSolveLast; `../tree/specs/canvas/standoffs.md` |
 | `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | `../tree/specs/canvas/drawn-cables.md` |
-| `tidyArrange.ts` (ELK), `nodeSize.ts` | [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[B10]] reactFlowView; `../tree/specs/canvas/auto-arrange-tidy.md` |
+| `tidyArrange.ts` (ELK), `nodeSize.ts` | [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle; `../tree/specs/canvas/auto-arrange-tidy.md` |
 | `errorValue.ts`, `valueKinds.ts` | `tree/specs/values/value-semantics.md`; [[C24]] arraySemantics; `../tree/specs/values/error-values.md` |
 | `fcReconcile.ts`, in-place socket retype | [[D16]] retypeReconciles; `../tree/specs/values/type-propagation-on-in-place-socket-retype.md` |
 | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `../tree/specs/values/unit-flow.md`; [[D43]] unitByGranularity, [[C25]] firstClassUnits |
@@ -152,7 +152,7 @@ results get retried and settled rulings relapse.
 | `alertStore.ts` | [[C39]] effectsEdgeTriggered; `../tree/specs/computation/alert-node-alerts-hud.md` |
 | `nodeNameStore.ts` | [[C19]] namingModel; `../tree/specs/documents/addressable-model.md` |
 | `persistence.ts`, `textForm.ts`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
-| `documentStore.ts`, `documentStoreCore.ts` | [[C32]] autosaveSlotOrder; `../tree/specs/documents/per-doc-autosave-persistence.md` |
+| `documentStore.ts`, `documentStoreCore.ts` | [[B12]] losslessSaves; `../tree/specs/documents/per-doc-autosave-persistence.md` |
 | `persistence.ts` (load gate, literal maps) | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` |
 | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `../tree/specs/values/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice |

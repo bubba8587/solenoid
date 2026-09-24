@@ -287,7 +287,7 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
 // ─── INTERPOLATE grid mode: the last name [[C15]] matricesInFormulas unblocked ([[C17]] shareImpl) ────────────────
 // The node is ONE node with a List/Grid mode toggle, so it is ONE formula name —
 // the arm is chosen by the first argument's RANK, not by a second registration
-// ([[C18]] uniqueNameMap injectivity). Grid mode was parked behind the noFramesInFormulas cap; [[C15]] matricesInFormulas lifted it.
+// ([[B16]] oneFormulaSurface injectivity). Grid mode was parked behind the noFramesInFormulas cap; [[C15]] matricesInFormulas lifted it.
 describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   // Grid mode is now INTERPOLATE(table, xs?, ys?, forecast?) — coordinates ride beside Z.
   const z = [[0, 10], [null, null], [20, 30]];

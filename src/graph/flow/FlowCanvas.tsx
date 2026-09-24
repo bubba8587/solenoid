@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C33]] saveBindsMain, [[C40]] storesRegisterForget, [[C89]] standoffsSolveLast, [[D63]] lockedGroupIsObstacle
+// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C89]] standoffsSolveLast, [[D63]] lockedGroupIsObstacle
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { NodeEditor } from "rete";

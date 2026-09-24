@@ -1,4 +1,4 @@
-// [[C17]], [[C20]], [[C8]] declareOnce, [[B16]] oneFormulaSurface, [[D48]]
+// [[C17]], [[B16]] oneFormulaSurface, [[C8]] declareOnce, [[D48]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { ForecastNode, LinestNode } from "../../src/graph/nodes/stats";

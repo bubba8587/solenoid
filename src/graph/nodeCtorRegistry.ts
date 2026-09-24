@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[C8]] declareOnce
+// [[B12]] losslessSaves, [[C8]] declareOnce
 import { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "./catalogUtils";
 

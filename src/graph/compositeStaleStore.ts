@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[D52]] compositesHoldUntilSolve
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[D52]] compositesHoldUntilSolve
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

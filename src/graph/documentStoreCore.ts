@@ -1,4 +1,4 @@
-// [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
+// [[B12]] losslessSaves. Mechanics: tree/specs/documents/per-doc-autosave-persistence.md.
 
 import type { SavedGraph } from "./persistence";
 import { validateSavedGraph } from "./persistenceCore";

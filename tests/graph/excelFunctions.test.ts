@@ -1,4 +1,4 @@
-// [[C18]], [[C17]] shareImpl
+// [[B16]] oneFormulaSurface, [[C17]] shareImpl
 import { describe, it, expect, afterEach } from "vitest";
 import * as FX from "@formulajs/formulajs";
 import {
@@ -356,7 +356,7 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
   });
 });
 
-describe("the duplicate-registration guard ([[C18]] uniqueNameMap's registry half)", () => {
+describe("the duplicate-registration guard ([[B16]] oneFormulaSurface's registry half)", () => {
   it("a second claim on a live name throws instead of silently overwriting", () => {
     registerInternal("GUARDTESTNAME", () => 1);
     expect(() => registerInternal("GUARDTESTNAME", () => 2)).toThrow(/Duplicate formula registration/);

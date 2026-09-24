@@ -67,7 +67,7 @@ The message is a neutral observation prefixed with the card's label (or "Alert" 
 
 Numbers print as integers or rounded to three decimals.
 
-`alertStore` registers `forget` and `forgetAll` with the node-store registry ([[C40]] storesRegisterForget): deleting an Alert card removes its events, and a whole-graph rebuild clears the log. Each event in the HUD has its own dismiss button (`alertStore.dismiss`).
+`alertStore` registers `forget` and `forgetAll` with the node-store registry ([[stores#The rules]]): deleting an Alert card removes its events, and a whole-graph rebuild clears the log. Each event in the HUD has its own dismiss button (`alertStore.dismiss`).
 
 ## The HUD column
 

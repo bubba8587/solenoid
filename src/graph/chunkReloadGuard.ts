@@ -1,4 +1,4 @@
-// [[C97]] rechartsLazyChunk (a stale lazy chunk after a deploy)
+// [[B2]] webTryDesktopFull (a stale lazy chunk after a deploy)
 // Reload at most once per window, and never auto-reload when the timestamp can't be persisted.
 
 export interface ReloadStore {

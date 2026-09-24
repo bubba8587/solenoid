@@ -2,11 +2,11 @@
 aliases: ["Per-doc autosave persistence"]
 tags: [spec, documents]
 ---
-<!-- [[C32]] autosaveSlotOrder -->
+<!-- [[B12]] losslessSaves -->
 
 # Spec: Per-doc autosave persistence
 
-Serves [[C32]] autosaveSlotOrder. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Autosave keeps the user's whole document library in the browser's `localStorage`. Every document has its own pair of slots, and one small index pair lists the documents. The code is `documentStore.ts` (storage and the public store), `documentStoreCore.ts` (pure library transforms) and `persistenceCore.ts` (slot choice); `documentStorePersist.test.ts` guards it.
 
@@ -17,7 +17,7 @@ Autosave keeps the user's whole document library in the browser's `localStorage`
 | `solenoid.docs.index.a` / `.b` | `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`, metadata only, no graphs |
 | `solenoid.docs.doc.<id>.a` / `.b` | `{ seq, doc }`, one full document (`id`, `name`, `graph`, `updatedAt`, `filePath?`, `fileSavedAt?`) |
 
-`seq` is always the first key of a payload ([[C32]] autosaveSlotOrder).
+`seq` is always the first key of a payload ([[#Two slots per pair]]).
 
 ## Two slots per pair
 

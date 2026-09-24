@@ -1,4 +1,4 @@
-// [[C99]] chromeEnvelopeVars
+// [[B14]] oneDesignSystem
 import { createNotifier } from "./storeKit";
 
 // Marketing pages mount the live overlays read-only and hide chrome with nothing to act on off the canvas; one

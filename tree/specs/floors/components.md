@@ -2,11 +2,11 @@
 aliases: ["Components"]
 tags: [spec, floors]
 ---
-<!-- [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath, [[C37]] observerOwnsSize, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem, [[C43]] oneFlowSurface, [[C11]] socketBox12; covers: src/graph/components/*.tsx, src/graph/flow/*.tsx, src/graph/*.tsx -->
+<!-- [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem, [[C43]] oneFlowSurface, [[B10]] reactFlowView; covers: src/graph/components/*.tsx, src/graph/flow/*.tsx, src/graph/*.tsx -->
 
 # Spec: Components
 
-Serves [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath, [[C37]] observerOwnsSize, [[B3]] sameNodeEverywhere and [[B14]] oneDesignSystem.
+Serves [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath, [[B12]] losslessSaves, [[B3]] sameNodeEverywhere and [[B14]] oneDesignSystem.
 
 What every React component in the app is built to. A component that implements a specific mechanism cites that mechanism's leaf in its own header; this spec is the floor every one of them stands on, and its `covers:` line is what `dte blast` and `dte coverage` read instead of a citation per file. The first section is the rules; the rest describes the shared card kit that almost every node component is assembled from: the card shell, the value box, the input rows and manual resize. How a socket anchors and how a cable finds it is [[react-flow-surface-contract]]; visual rules (color, type, spacing) are DESIGN.md.
 
@@ -15,7 +15,7 @@ What every React component in the app is built to. A component that implements a
 1. **A component never computes.** It renders what the model already holds and never calls `node.data()`. A value it shows comes from the engine's cached result on the node or from a store ([[C27]] noDataInComponents; the `sourceInvariants` sweep enforces it).
 2. **A text edit commits on Enter or clickaway, never per keystroke.** `useDraftCommit` (in `components/inlineInput.tsx`) and the draft-commit fields hold the draft locally, write it to the node on commit, and run the recompute; Escape reverts. A raw `<input onChange>` never calls `processGraph`. A discrete pick, such as a dropdown or checkbox, applies at once ([[C95]] commitOnEnter; sweep-enforced).
 3. **A socket that is about to disappear loses its cables first**, through `dropInputCables` (or `dropOutputCables` for an output) in `components/cablePrune.ts`, never a hand-rolled loop over `editor.removeConnection` ([[D10]] onePrunePath; sweep-enforced).
-4. **A node's `width` and `height` belong to the ResizeObserver**, which overwrites them with the rendered size on every layout. Only a declared size-owner class (annotation frames, the composite card, groups, overlay hosts) reads `init.width` and `init.height` back on load; any other resize gesture routes its size through `nodeSizeStore` ([[C37]] observerOwnsSize).
+4. **A node's `width` and `height` belong to the ResizeObserver**, which overwrites them with the rendered size on every layout. Only a declared size-owner class (annotation frames, the composite card, groups, overlay hosts) reads `init.width` and `init.height` back on load; any other resize gesture routes its size through `nodeSizeStore` ([[react-flow-surface-contract#Node width and height]]).
 5. **Every render is inside an error boundary**: `ErrorBoundary` wraps each card (`withNodeBoundary`) and the app root, so one throwing card shows its own error and never blanks the canvas ([[C43]] oneFlowSurface; [[react-flow-surface-contract]]). The node wrapper is memoized by component type, because a fresh wrapper type per render would remount the card, lose focus mid-edit and re-run every effect.
 6. **Visual, layout and copy choices follow DESIGN.md** ([[B14]] oneDesignSystem): the op and argument split ([[C26]] opArgDistinct), the socket glyph table, the voice rules for every string, icons at even pixel sizes, and no native browser dialogs ([[C106]] noNativeDialogs).
 7. **A node looks and behaves the same wherever it renders** ([[B3]] sameNodeEverywhere): marketing scenes, popups and the socket value peek mount the real component, never a redrawn copy.
@@ -83,7 +83,7 @@ The card's CSS lives in `nodeCard.css`; socket sizing is `socket.css`, driven by
 
 ## Input rows
 
-`InlineInputs` (`inlineInput.tsx`) renders a card's input rows, one `MeasuredSocketRow` per socket ([[C11]] socketBox12). `ExtensibleInputs` and `PairedExtensibleInputs` add rows that can be added and removed.
+`InlineInputs` (`inlineInput.tsx`) renders a card's input rows, one `MeasuredSocketRow` per socket ([[react-flow-surface-contract#The socket box and its row]]). `ExtensibleInputs` and `PairedExtensibleInputs` add rows that can be added and removed.
 
 - **The row.** Each row is 22 px tall with the label on the left and a literal field on the right. A wired row replaces the field with a marker naming the source (`↩ Rate`, or the catalog name for an unlabeled source, [[D22]] oneNamePerCard), truncated at 72 px with the full name in the tooltip. Which inputs are wired and who drives them are derived at render time, never cached, so a rename shows at once.
 - **Which field.** Which field a row gets, and which map it writes, is [[inline-literal-maps]]. A socket label of the form `Foo (default X)` splits into the label `Foo` and the placeholder `X`. `suggest` offers type-ahead through one native `<datalist>` per card holding the union of every suggested key's options; any value still commits. `cableOnlyKeys` rows show only the socket and label; `mathLabelKeys` labels render with KaTeX.

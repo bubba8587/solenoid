@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
+// [[C100]] chartIsAValue
 import { ClassicPreset } from "rete";
 import { chartOut, strIn, readInput } from "./shared";
 import { type ImageValue } from "../imageValue";

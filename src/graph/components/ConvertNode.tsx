@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D40]] unitOnValue (Convert primacy), [[C11]] socketBox12
+// [[C25]] firstClassUnits, [[D40]] unitOnValue (Convert primacy)
 import { useState, useRef, useLayoutEffect, useSyncExternalStore, type ChangeEvent } from "react";
 import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../rete-nodes";
 import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from "../rete-nodes";
@@ -136,7 +136,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const fromCode   = CONVERT_UNIT_DEFS[fromUnit]?.excelCode ?? "";
   const toCode     = CONVERT_UNIT_DEFS[toUnit]?.excelCode ?? "";
 
-  // Socket tops are measured from the in/out boxes ([[C11]] socketBox12).
+  // Socket tops are measured from the in/out boxes.
   const inBoxRef  = useRef<HTMLDivElement>(null);
   const outBoxRef = useRef<HTMLDivElement>(null);
   const [inTop, setInTop]   = useState<number | undefined>(undefined);

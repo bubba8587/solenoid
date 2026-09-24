@@ -1,4 +1,3 @@
-// [[C37]] observerOwnsSize
 import { useRef } from "react";
 // Owning accessors: a node inside a drill-in isn't in the main editor, so the grip wouldn't render.
 import { getOwningEditor, getActiveView } from "../activeGraph";
@@ -11,7 +10,7 @@ import { nodeResizable } from "../rete-nodes";
 const MIN_CARD_W = 140;
 const MIN_BOX_H = 40;
 
-/** The grip reports the card's size, so the box follows the height delta from the drag's start; the size rides `nodeSizeStore` ([[C37]] observerOwnsSize). */
+/** The grip reports the card's size, so the box follows the height delta from the drag's start; the size rides `nodeSizeStore`. */
 export function ResizeHandle({ nodeId }: { nodeId: string }) {
   const Grip = useFlowResizeGrip();
   const start = useRef<{ cardH: number; boxH: number } | null>(null);

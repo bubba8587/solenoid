@@ -1,4 +1,3 @@
-// [[C91]] cableWalkRouter
 import { CABLE_SHAPES, useCableShape, type CableShape } from "./cableShape";
 import { useCableFlow } from "./cableFlowStore";
 import "./CableShapeSelector.css";

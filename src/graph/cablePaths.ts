@@ -1,4 +1,4 @@
-// [[C91]] cableWalkRouter
+// [[B10]] reactFlowView
 import type { CableShape } from "./cableShape";
 
 export enum Position {
@@ -208,7 +208,7 @@ function routeWalk(args: PathArgs, div: number): Pt[] {
   }
   cands.sort((p, q) => p.turns - q.turns);
   for (let m = minLeg; m >= 0.25; m /= 2) {
-    // Length first ([[C91]] cableWalkRouter); the sort order only settles exact ties.
+    // Length first ([[B10]] reactFlowView); the sort order only settles exact ties.
     let best: { heads: number[]; lens: number[]; total: number } | null = null;
     for (const c of cands) {
       const heads = buildHeads(kS, c.sigma, c.b, c.r, c.e);

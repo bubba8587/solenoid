@@ -191,7 +191,7 @@ The resolver clamps `places` to 0–20 and `sigfigs` to 1–21, but the FC popup
 
 ## The annotation store
 
-`formatAnnotationStore` holds each FC's annotation, keyed `nodeId::socketKey`, with a per-node index because every value box calls `getForNode` on every render. A node carries at most one FC, so `getForNode` answers the annotation on any of its sockets. `clearNodes` resets node state but leaves the pack unit and format registrations, which are extensions, not node state. The store registers its forgetters with the node-store registry ([[C40]] storesRegisterForget).
+`formatAnnotationStore` holds each FC's annotation, keyed `nodeId::socketKey`, with a per-node index because every value box calls `getForNode` on every render. A node carries at most one FC, so `getForNode` answers the annotation on any of its sockets. `clearNodes` resets node state but leaves the pack unit and format registrations, which are extensions, not node state. The store registers its forgetters with the node-store registry ([[stores#The rules]]).
 
 ## The FC card (`nodes/formatController.ts`)
 

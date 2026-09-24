@@ -1,4 +1,4 @@
-// [[C89]] standoffsSolveLast, [[C65]] domOrderStacking
+// [[C89]] standoffsSolveLast
 import { measuredSize } from "../nodeSize";
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";

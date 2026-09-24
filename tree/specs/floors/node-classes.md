@@ -2,11 +2,11 @@
 aliases: ["Node classes and op modules"]
 tags: [spec, floors]
 ---
-<!-- [[C34]] classNameIsType, [[B12]] losslessSaves, [[C29]] plainJsonInit, [[C17]] shareImpl, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles, [[D33]] unwiredNotBlank; covers: src/graph/nodes/*.ts -->
+<!-- [[B12]] losslessSaves, [[C17]] shareImpl, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles, [[D33]] unwiredNotBlank; covers: src/graph/nodes/*.ts -->
 
 # Spec: Node classes and op modules
 
-Serves [[C34]] classNameIsType, [[B12]] losslessSaves, [[C29]] plainJsonInit, [[C17]] shareImpl, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles and [[D33]] unwiredNotBlank.
+Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles and [[D33]] unwiredNotBlank.
 
 This is the floor every node class and op module under `src/graph/nodes/` is built to. A file that implements a specific mechanism (units, dates, errors, a family's merge) cites that leaf in its own header. This spec's `covers:` line is what `dte blast` and `dte coverage` read instead of a citation in every file.
 
@@ -14,9 +14,9 @@ A **node class** is the headless model of one card: its sockets, its saved field
 
 ## Identity and persistence
 
-- **The class name is the persisted type.** It is kept and unique, so renaming a class changes the save format ([[C34]] classNameIsType).
+- **The class name is the persisted type.** It is kept and unique, so renaming a class changes the save format ([[save-format#The persisted type is the class name]]).
 - **An unknown saved type loads as a Placeholder** and saves back out as itself, losing nothing ([[C35]] unknownViaPlaceholder). `PlaceholderNode` is not in the Add-menu catalog; only the loader builds one. It keeps the original type, init and literal maps verbatim, rebuilds the saved socket keys (adoptive inputs, `trueany` outputs) so the cables survive, and every output emits `#REF!` naming the missing type.
-- **Every field is either persisted or deliberately transient**, and the persistence sweep (`persistenceSweep.test.ts`) knows which ([[save-format#Every field is persisted or deliberately transient]]). `extractInit` is a fixed point, so saving a freshly loaded node gives back the same init, and its output is plain JSON ([[C29]] plainJsonInit).
+- **Every field is either persisted or deliberately transient**, and the persistence sweep (`persistenceSweep.test.ts`) knows which ([[save-format#Every field is persisted or deliberately transient]]). `extractInit` is a fixed point, so saving a freshly loaded node gives back the same init, and its output is plain JSON ([[save-format#The capture is a fixed point, and plain JSON]]).
 - **Extensible rows rebuild their exact keys.** A card with addable rows (value rows `v0`, `v1`, …, or paired rows such as `column0` and `value0`) takes the saved keys from `valueKeys` on load and paste and rebuilds exactly those, never a fresh sequence; paired cards read the ids through `pairIdsFromKeys`. Otherwise saved literals and cables stop lining up with their rows. A row's insertion order is its meaning (stack order, concatenation order, left to right). A fixed input that sits after the rows (SWITCH's Default, IFS's Otherwise, Merge Plots' Options) is re-seated last by `keepInputLast` each time a row is added, so the live socket order is the one a reload rebuilds.
 
 ## Formula registrations and op modules

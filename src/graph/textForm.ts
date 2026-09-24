@@ -1,4 +1,4 @@
-// [[C30]] saveViaTextForm, [[C19]] namingModel
+// [[B12]] losslessSaves, [[C19]] namingModel
 import type { SavedGraph, SavedNode, SavedConnection, SavedStandoff } from "./persistence";
 import { CURRENT_SAVE_VERSION } from "./persistenceCore";
 import type { Pin } from "./pinStore";

@@ -52,7 +52,7 @@ Other loads register with `trackInflight(promise, id?)`. `whenConnectionsSettled
 
 ## Status
 
-Each card's status lives in `connectionStore` as `idle`, `loading`, `ok` (with row count, column count and `fetchedAt`), `error` (with a message shown on the card) or `gated`. The status row renders it, with `gated` reading "Waiting for permission". The store registers `forget` and `forgetAll` ([[C40]] storesRegisterForget): deleting a card drops its status and token, and a whole-graph rebuild clears every status and token and resets the permission prompt.
+Each card's status lives in `connectionStore` as `idle`, `loading`, `ok` (with row count, column count and `fetchedAt`), `error` (with a message shown on the card) or `gated`. The status row renders it, with `gated` reading "Waiting for permission". The store registers `forget` and `forgetAll` ([[stores#The rules]]): deleting a card drops its status and token, and a whole-graph rebuild clears every status and token and resets the permission prompt.
 
 ## The network gate
 

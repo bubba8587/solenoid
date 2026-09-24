@@ -26,7 +26,7 @@ headless model and compute spine, kept on purpose; no rete render package exists
 The module singletons `_editor`, `_engine` and `_area` live in `process.ts`. A composite
 drill-in doesn't open a new page. It swaps the active surface through the `activeGraph.ts`
 seam (`getActive*`, `getOwningEditor`), so the same chrome drives whichever canvas is on
-top. `getEditor()` and persistence always mean the main graph ([[C33]] saveBindsMain). The
+top. `getEditor()` and persistence always mean the main graph (`../tree/specs/documents/save-format.md` § Saving binds the main graph). The
 full surface contract (what React Flow owns, what the model owns, and the conversions at the
 boundary) is `../tree/specs/canvas/react-flow-surface-contract.md`.
 
@@ -120,7 +120,7 @@ Display is a separate, read-side pipeline: the raw result, then type-default for
 Every node has a stable, user-editable `name`. Rete `id`s are random and regenerated on
 load, so never save or compare ids across loads ([[C19]] namingModel). The text form
 (`textForm.ts`: one node per line, name-addressed, in topological order, byte-stable
-writes) is the canonical projection, and the JSON save derives from it ([[C30]]
+writes) is the canonical projection, and the JSON save derives from it (`../tree/specs/documents/save-format.md` § Every save passes through the text form
 saveViaTextForm).
 
 Load (`rebuildGraph`) constructs the nodes, remaps ids, restores state, then runs the
@@ -129,8 +129,8 @@ ordered tail: hydrate, settle wildcard types, dock FCs. The strict validator
 loader stays permissive, loading an unknown type as a lossless Placeholder.
 
 Autosave is per document, two localStorage slots per doc, diffed by object identity, so
-store transforms must return new objects or nothing saves ([[C31]] immutableDocStore;
-the slot rotation is [[C32]] autosaveSlotOrder). The full format and load algorithm are
+store transforms must return new objects or nothing saves (`../tree/specs/documents/per-doc-autosave-persistence.md` § Change detection is object identity;
+the slot rotation is `../tree/specs/documents/per-doc-autosave-persistence.md` § Two slots per pair). The full format and load algorithm are
 `../tree/specs/documents/save-format.md`.
 
 ## What exists (orientation only; verify in code before relying on detail)

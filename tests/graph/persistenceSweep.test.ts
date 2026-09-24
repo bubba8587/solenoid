@@ -1,4 +1,4 @@
-// [[C29]], [[C37]], [[B12]] losslessSaves
+// [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -98,7 +98,7 @@ describe("varDescriptions — captured, but only for LIVE variables", () => {
   });
 });
 
-// ─── [[C29]] plainJsonInit's file half: everything extractInit captures is JSON-plain ─────
+// ─── [[B12]] losslessSaves's file half: everything extractInit captures is JSON-plain ─────
 // The fixed-point sweep above compares LIVE objects, so a Map/Set/class-instance
 // config field passes it perfectly ({} equals {} on both sides) while the FILE
 // silently empties it: the save path stringifies each init field
@@ -307,7 +307,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
   });
 });
 
-// ─── [[C37]] observerOwnsSize: width/height dual-use ownership ──────────────────────────────
+// ─── [[B12]] losslessSaves: width/height dual-use ownership ──────────────────────────────
 // `width`/`height` serve two masters: NodeCard's ResizeObserver OWNS them at
 // runtime (it overwrites both with measured pixels every layout — the minimap
 // silhouette and cable geometry read them), and the persistence whitelist
@@ -324,7 +324,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
 // fails here and must update the list, which is where the "does the user's
 // drag survive reload?" question gets asked.
 
-describe("[[C37]] observerOwnsSize — the size-owner set is exactly the declared list", () => {
+describe("[[B12]] losslessSaves — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
     "composite", "query",                        // the composite card (query = its preset)
@@ -348,7 +348,7 @@ describe("[[C37]] observerOwnsSize — the size-owner set is exactly the declare
     expect(
       adopts,
       `These classes now adopt persisted width/height but are not declared ` +
-      `SIZE_OWNERS ([[C37]] observerOwnsSize) — declare them (is the size a user gesture?), ` +
+      `SIZE_OWNERS ([[B12]] losslessSaves) — declare them (is the size a user gesture?), ` +
       `or stop consuming the init`,
     ).toEqual([]);
     expect(

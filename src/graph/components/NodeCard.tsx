@@ -1,4 +1,3 @@
-// [[C11]] socketBox12, [[C37]] observerOwnsSize
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../canvasCommands";

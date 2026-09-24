@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk, [[C100]] chartIsAValue
+// [[C43]] oneFlowSurface, [[C100]] chartIsAValue
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
 import { toSeries, partSlices } from "./chartCore";

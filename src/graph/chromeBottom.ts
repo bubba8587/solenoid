@@ -1,4 +1,4 @@
-// [[C99]] chromeEnvelopeVars (publishes --chrome-bottom)
+// [[B14]] oneDesignSystem (publishes --chrome-bottom)
 import { useEffect, useRef, type RefObject } from "react";
 
 

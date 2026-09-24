@@ -1,4 +1,3 @@
-// [[C91]] cableWalkRouter (tracks follow the live cable shape)
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { getCablePath, Position } from "../cablePaths";

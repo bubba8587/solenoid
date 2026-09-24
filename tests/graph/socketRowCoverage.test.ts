@@ -1,4 +1,4 @@
-// [[C11]]
+// [[B10]] reactFlowView
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -92,7 +92,7 @@ function rendersRows(name: string, bodies: Map<string, { file: string; body: str
   return false;
 }
 
-describe("[[C11]] socketBox12 — a side with more than one socket renders one row per socket", () => {
+describe("[[B10]] reactFlowView — a side with more than one socket renders one row per socket", () => {
   it("no catalog node stacks its sockets on a single point", () => {
     const bodies = componentBodies();
     const pairs = registryPairs();

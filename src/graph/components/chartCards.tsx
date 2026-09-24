@@ -1,4 +1,4 @@
-// [[C63]] oneRecordNode, [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
+// [[C63]] oneRecordNode, [[C100]] chartIsAValue
 import { useLayoutEffect, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { titleIndexFor } from "../chartValue";

@@ -188,7 +188,7 @@ export function linkStandoffBetween(
 }
 
 /**
- * Every surface's `noderemoved` settle ([[C40]] storesRegisterForget). Under a rebuild gate a removal may be a
+ * Every surface's `noderemoved` settle ([[B10]] reactFlowView). Under a rebuild gate a removal may be a
  * relocation (Wrap as Composite keeps the node and its stores), so the gated edit forgets what it really deleted.
  */
 export function settleNodeRemoved(editor: NodeEditor<Schemes>, view: View, node: SolenoidNode, gated: boolean): void {
