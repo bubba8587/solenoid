@@ -26,11 +26,19 @@ describe("open drafts flush before a capture", () => {
     expect(store).toMatch(/captureCurrent\(opts\?: \{ keepDrafts\?: boolean \}\): boolean \{[\s\S]{0,160}if \(!opts\?\.keepDrafts\) flushDrafts\(\);/);
     const persistence = readFileSync("src/graph/persistence.ts", "utf8");
     expect(persistence).toContain("documentStore.captureCurrent({ keepDrafts: true });");
-    expect(persistence).toMatch(/"pagehide"[\s\S]{0,120}flushDrafts\(\)/);
+    expect(persistence).toMatch(/function flushOnExit\(\)[\s\S]{0,120}flushDrafts\(\)/);
+    expect(persistence).toContain('window.addEventListener("pagehide", flushOnExit);');
     const session = readFileSync("src/graph/fileSession.ts", "utf8");
     expect(session.match(/flushDrafts\(\);/g)?.length).toBe(2);
     for (const f of ["components/inlineInput.tsx", "components/NoteNode.tsx", "components/ReportOverlay.tsx"]) {
       expect(readFileSync(`src/graph/${f}`, "utf8")).toContain("usePendingDraft(");
     }
+  });
+
+  it("closing the desktop window flushes too, and the window may still close after", () => {
+    const persistence = readFileSync("src/graph/persistence.ts", "utf8");
+    expect(persistence).toMatch(/onCloseRequested\(\(\) => \{ try \{ flushOnExit\(\); \} catch/);
+    const caps = JSON.parse(readFileSync("src-tauri/capabilities/default.json", "utf8")) as { permissions: unknown[] };
+    expect(caps.permissions).toContain("core:window:allow-destroy");
   });
 });

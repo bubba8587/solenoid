@@ -1,7 +1,7 @@
 // [[C113]], [[C38]] sinkRunButtonOnly, [[D62]] demoVaultResolution
 import { ClassicPreset } from "rete";
 import { dateIn, cubeOut, frameOut } from "./shared";
-import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
+import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { apiKeyStore } from "../apiKeyStore";
 import { fetchText } from "../httpBridge";
@@ -114,7 +114,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
         this.loadDemo();
       } else if (requestNetwork(this.id)) {
         this._lastKey = key;
-        void trackInflight(this.fetchProvider(from, to)).then(() => scheduleConnectionRecalc(this.id));
+        fetchInBackground(this.id, this.fetchProvider(from, to));
       }
     }
     switch (this.provider) {

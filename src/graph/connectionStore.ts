@@ -44,6 +44,12 @@ export const connectionStore = {
     return parts.length ? `${_gen}|${parts.join(",")}` : "";
   },
 
+  landedCount(ids: Iterable<string>): number {
+    let n = 0;
+    for (const id of ids) n += _landed.get(id) ?? 0;
+    return n;
+  },
+
   /** The card's own `data()` keeps its timer in step, so a card that is not mounted still refreshes. */
   autoRefresh(id: string, minutes: number) {
     _live.add(id);
@@ -151,17 +157,33 @@ registerNodeForgetAll(() => {
 });
 
 let _recalcQueued = false;
-const _inflight = new Set<Promise<unknown>>();
+const _inflight = new Map<Promise<unknown>, string | undefined>();
 
-export function trackInflight<T>(p: Promise<T>): Promise<T> {
-  _inflight.add(p);
+/** `id` names the card the load belongs to, so a holder of that card can wait on it. */
+export function trackInflight<T>(p: Promise<T>, id?: string): Promise<T> {
+  _inflight.set(p, id);
   const done = () => { _inflight.delete(p); };
   p.then(done, done);
   return p;
 }
 
-export async function whenConnectionsSettled(): Promise<void> {
-  while (_inflight.size > 0) await Promise.allSettled([..._inflight]);
+/** A card's background fetch: tracked until it has landed, then one coalesced recompute. */
+export function fetchInBackground(id: string, p: Promise<unknown>): void {
+  void trackInflight(p.then(() => scheduleConnectionRecalc(id)), id);
+}
+
+function pendingFor(ids?: Iterable<string>): Promise<unknown>[] {
+  if (!ids) return [..._inflight.keys()];
+  const want = new Set(ids);
+  return [..._inflight].filter(([, id]) => id !== undefined && want.has(id)).map(([p]) => p);
+}
+
+/** With `ids`, only the loads of those cards. */
+export async function whenConnectionsSettled(ids?: Iterable<string>): Promise<void> {
+  const scope = ids ? [...ids] : undefined;
+  for (let pending = pendingFor(scope); pending.length > 0; pending = pendingFor(scope)) {
+    await Promise.allSettled(pending);
+  }
 }
 
 export function hasInflightConnections(): boolean {

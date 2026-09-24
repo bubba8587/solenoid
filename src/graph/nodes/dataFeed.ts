@@ -1,7 +1,7 @@
 // [[D32]] refreshOutsideRebuild, [[C28]] literalsIffEditable, [[C103]] untrustedContentSeams, [[D50]] everyFieldClassified
 import { ClassicPreset } from "rete";
 import { frameOut } from "./shared";
-import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";
+import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { fetchText } from "../httpBridge";
 import { frameRowCount, type FrameValue } from "../frame";
 import { apiKeyStore } from "../apiKeyStore";
@@ -68,7 +68,7 @@ export class DataFeedNode extends ClassicPreset.Node {
     if (cacheKey === this.lastKey) return { frame: this.cachedResult };
     if (this.inflightKey !== cacheKey) {
       this.inflightKey = cacheKey;
-      void this.fetchFrame(url, cacheKey).then(() => scheduleConnectionRecalc(this.id));
+      fetchInBackground(this.id, this.fetchFrame(url, cacheKey));
     }
     return { frame: this.cachedResult };
   }

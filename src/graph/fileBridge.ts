@@ -116,7 +116,12 @@ export async function listVaultFolders(root: string, maxDepth = 6): Promise<stri
   return out.sort((a, b) => a.localeCompare(b));
 }
 
-export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promise<string[]> {
+export function listVaultMarkdownFiles(root: string, maxDepth = 6): Promise<string[]> {
+  return listVaultFiles(root, maxDepth, (name) => /\.md$/i.test(name));
+}
+
+/** Vault-relative paths, hidden entries skipped. */
+export async function listVaultFiles(root: string, maxDepth = 6, keep: (name: string) => boolean = () => true): Promise<string[]> {
   if (!root || !canReadRoot(root)) return [];
   const out: string[] = [];
   async function walk(abs: string, rel: string, depth: number): Promise<void> {
@@ -127,7 +132,7 @@ export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promis
       if (e.name.startsWith(".")) continue;
       const childRel = rel ? `${rel}/${e.name}` : e.name;
       if (e.isDirectory) await walk(await fs().join(abs, e.name), childRel, depth + 1);
-      else if (/\.md$/i.test(e.name)) out.push(childRel);
+      else if (keep(e.name)) out.push(childRel);
     }
   }
   await walk(root, "", 0);

@@ -1,7 +1,7 @@
 // [[B1]] obsidianBet, [[C101]] onePatchPath
 
 import {
-  hasFs, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath, readTextFilePath,
+  hasFs, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath, readTextFilePath, listVaultFiles,
 } from "./fileBridge";
 import { nodeChartSvg, nodeChartSvgProvided, serializeSvgWithComputedStyles } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
@@ -25,6 +25,15 @@ function claimName(stem: string, ext: string, taken: Set<string>): string {
 
 /** `#`, `^`, `[`, `]` and `|` end or redirect a wikilink target, so an embedded file cannot carry them. */
 const linkSafe = (s: string) => s.replace(/[#^[\]|]/g, "");
+
+/** Obsidian's "shortest path when possible": the bare name when no other vault file shares it, else the vault path. */
+export function assetLinkTarget(relPath: string, vaultFiles: readonly string[]): string {
+  const name = relPath.split("/").pop() ?? relPath;
+  const lower = name.toLowerCase();
+  const self = relPath.toLowerCase();
+  const shared = vaultFiles.some((f) => f.toLowerCase() !== self && (f.split("/").pop() ?? f).toLowerCase() === lower);
+  return shared ? relPath : name;
+}
 
 export function imageMarkdown(alt: string, url: string): string {
   const a = alt.replace(/[\r\n]+/g, " ").replace(/([\\[\]])/g, "\\$1");
@@ -136,13 +145,16 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   let base = sinkName;
   const takenNotes = new Set<string>();
   const takenAssets = new Set<string>();
+  let vaultFiles: Promise<string[]> | null = null;
 
   async function writeAsset(refName: string, bytes: Uint8Array, ext: string): Promise<string> {
     if (assetParts.length) await ensureDir(assetDir);
     const fileName = `${claimName(linkSafe(`${base}-${sanitizeName(refName)}`), ext, takenAssets)}.${ext}`;
+    vaultFiles ??= listVaultFiles(opts.vault).catch(() => []);
+    const others = await vaultFiles;
     await writeBinaryFilePath(await joinPath(assetDir, fileName), bytes);
     assetCount++;
-    return `![[${fileName}]]`;
+    return `![[${assetLinkTarget([...(assetParts.length ? assetParts : subParts), fileName].join("/"), others)}]]`;
   }
 
   async function resolveRef(name: string, value: unknown): Promise<string> {

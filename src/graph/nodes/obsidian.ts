@@ -438,10 +438,10 @@ export class ImportObsidianNode extends NoteNode {
     // Dedupe on the raw wired value, not fileName (which gains `.md`), or a stable input reloads forever.
     if (!wired) {
       this._wiredPath = "";
-      if (refresh && readable && this.fileName) void trackInflight(this.reloadFile());
+      if (refresh && readable && this.fileName) void trackInflight(this.reloadFile(), this.id);
     } else if ((wired !== this._wiredPath || refresh) && readable) {
       this._wiredPath = wired;
-      void trackInflight(this.loadFromWire(wired, refresh));
+      void trackInflight(this.loadFromWire(wired, refresh), this.id);
     }
     const base = super.data();
     return base instanceof Promise
