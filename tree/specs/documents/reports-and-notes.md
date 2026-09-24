@@ -283,7 +283,7 @@ Write to Obsidian's Note target takes a DocumentValue on `in` and writes markdow
 | null | nothing |
 | anything else (a number, text, a logical, an error, a list, a unit value, a complex, a Cube) | the text the screen shows: `refPreview` with the source Report's format pick for that ref (`resolveRefAnnotation`) |
 
-Assets are named `<note name>-<ref name>.<ext>` with `#`, `^`, `[`, `]` and `|` removed (each would break the wikilink), and go to the asset subfolder setting, else beside the note; the `![[file]]` embed resolves by file name anywhere in the vault. An asset name already written in this run, ignoring case, gains ` (2)`, ` (3)` and so on. A rerun writes the same names, overwriting the previous run's assets. A chart's source node is found by following the cable into the producer's input of the same name.
+Assets are named `<note name>-<ref name>.<ext>` with `#`, `^`, `[`, `]` and `|` removed (each would break the wikilink), and go to the asset subfolder setting, else beside the note. The embed takes Obsidian's shortest-path link (`assetLinkTarget`): the bare file name when no other file in the vault shares it, ignoring case, else the asset's vault path, so a same-named file in another folder never takes the embed. The vault is listed once per write, six folders deep with hidden folders skipped (`listVaultFiles`); a failed listing links by bare name. An asset name already written in this run, ignoring case, gains ` (2)`, ` (3)` and so on. A rerun writes the same names, overwriting the previous run's assets. A chart's source node is found by following the cable into the producer's input of the same name.
 
 **Modes.** `mergeNoteText(existing, md, mode, blockName)`:
 

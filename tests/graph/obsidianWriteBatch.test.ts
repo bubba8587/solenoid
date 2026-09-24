@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const written = new Map<string, string>();
 const assets: string[] = [];
+const vaultFiles: string[] = [];
 vi.mock("../../src/graph/fileBridge", () => ({
   hasFs: () => true,
   joinPath: async (...parts: string[]) => parts.join("/"),
@@ -10,16 +11,17 @@ vi.mock("../../src/graph/fileBridge", () => ({
   writeTextFilePath: async (p: string, text: string) => { written.set(p, text); },
   writeBinaryFilePath: async (p: string) => { assets.push(p); },
   readTextFilePath: async () => { throw new Error("missing"); },
+  listVaultFiles: async () => [...vaultFiles],
 }));
 
-const { writeDocumentToVault } = await import("../../src/graph/obsidianWrite");
+const { writeDocumentToVault, assetLinkTarget } = await import("../../src/graph/obsidianWrite");
 const { makeDocument } = await import("../../src/graph/documentValue");
 const { formatAnnotationStore } = await import("../../src/graph/formatAnnotationStore");
 
 const opts = { vault: "/v", subfolder: "", assetSubfolder: "", name: "Report", refSources: new Map<string, string>() };
 
 describe("writing a batch document to the vault", () => {
-  beforeEach(() => { written.clear(); assets.length = 0; });
+  beforeEach(() => { written.clear(); assets.length = 0; vaultFiles.length = 0; });
 
   it("a merge with no rows writes no note", async () => {
     const res = await writeDocumentToVault(makeDocument("", {}, undefined, undefined, { pages: [] }), opts);
@@ -61,6 +63,19 @@ describe("writing a batch document to the vault", () => {
     expect(res.assets).toBe(2);
     expect(written.get("/v/Q#1 [a].md")).toBe("![[Q1 a-pic.png]]");
     expect(written.get("/v/Q1 a.md")).toBe("![[Q1 a-pic (2).png]]");
+  });
+
+  it("an asset whose name another vault file shares embeds by its vault path", async () => {
+    vaultFiles.push("Old/Report-pic.png", "Notes/other.md");
+    const png = { __image: true, src: "data:image/png;base64,iVBORw0KGgo=", height: 10 };
+    await writeDocumentToVault(makeDocument("`=pic`", { pic: png }), { ...opts, assetSubfolder: "Assets" });
+    expect(written.get("/v/Report.md")).toBe("![[Assets/Report-pic.png]]");
+  });
+
+  it("the shortest unique link: the bare name unless another file shares it, ignoring case", () => {
+    expect(assetLinkTarget("A/x.png", ["A/x.png", "B/y.png"])).toBe("x.png");
+    expect(assetLinkTarget("A/x.png", ["A/x.png", "B/X.PNG"])).toBe("A/x.png");
+    expect(assetLinkTarget("x.png", ["x.png", "B/x.png"])).toBe("x.png");
   });
 
   it("a web image is linked, its alt and URL escaped so the markdown holds", async () => {
