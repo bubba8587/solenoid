@@ -194,6 +194,12 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   Either teach `nodeTypeName` acronym/hyphen handling (a derivation tweak, author to okay)
   or accept "Url Encode" / "ESeries".
 
+## Packs
+
+- [ ] **LOW — variable definitions on every pack Expression** (author 2026-09-24): fill `varDescriptions` on each
+  pack formula entry (`packShared.ts`); the card already shows them. Only a handful of entries have them now (EM's
+  wavelength, a few Timesavers). Metadata only, DESIGN.md §7 voice; pairs well with the pack-units lead below.
+
 ## From the comment lift (rest partition)
 - [ ] **Voice lint over option tables.** `uiCopy.test.ts` skips the `tsx-opt-*` records `copyCorpus.ts` already
   collects (dropdown rows, op-meta labels and descriptions); widen the lint to them, a sweep of its own.
