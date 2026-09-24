@@ -154,12 +154,14 @@ describe("the decision tree — the tool's own gauges hold", () => {
   });
   const probe = spawnSync("python3", ["--version"], { encoding: "utf8" });
   const hasPython = !probe.error && probe.status === 0;
+  // Each walk reads the whole repo in a child process, so it grows with the repo; a busy CI runner needs more than the 5 s default.
+  const WALK_MS = 30_000;
   it.skipIf(!hasPython)("validate --as B is clean", () => {
     const r = dte("validate", "--as", "B");
     expect(r.status, r.stdout + r.stderr).toBe(0);
-  });
+  }, WALK_MS);
   it.skipIf(!hasPython)("coverage --check: every artifact cites or is excluded with a reason", () => {
     const r = dte("coverage", "--check");
     expect(r.status, r.stdout + r.stderr).toBe(0);
-  });
+  }, WALK_MS);
 });
