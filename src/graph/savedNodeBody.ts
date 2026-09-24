@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C30]] saveViaTextForm, [[C77]] compositeIsSubgraph
+// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph
 import type { ClassicPreset } from "rete";
 import { extractInit } from "./copyPaste";
 import { nodeSizeStore } from "./nodeSizeStore";

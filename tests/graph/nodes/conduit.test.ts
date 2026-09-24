@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[D17]] relaysTransparent
+// [[B12]] losslessSaves, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ConduitNode, conduitGhostSpecs, conduitLaneOf, conduitSeqTaken } from "../../../src/graph/nodes/conduit";
 

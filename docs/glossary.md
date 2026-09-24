@@ -254,7 +254,7 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
 - **Node blurb** (description tooltip) — the node's description as plain text, surfaced as the
   header's HTML `title`. `headerTooltip()` in `nodeKit.tsx` (from `describeNode`).
 - **Sockets**: typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
-  `.input-socket` / `.output-socket`, locked 12×12 ([[C11]] socketBox12).
+  `.input-socket` / `.output-socket`, locked 12×12 (`../tree/specs/canvas/react-flow-surface-contract.md` § The socket box and its row).
 - **Cables**: `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from
   `cablePaths.ts`, ribbons from `ribbonCable.ts`.
 - **Hero box**: the large result box at a node's bottom. `.solenoid-node__io-row--hero`; value

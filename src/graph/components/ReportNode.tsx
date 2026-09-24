@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax, [[C11]] socketBox12
+// [[C68]] knapIsTheDocumentSyntax
 import { useSyncExternalStore } from "react";
 import type { ReportNode as ReportNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";

@@ -1,4 +1,4 @@
-// [[C36]] captureBeforeSwap, [[B12]] losslessSaves
+// [[B12]] losslessSaves
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const _mem = new Map<string, string>();

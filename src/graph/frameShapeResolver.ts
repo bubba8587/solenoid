@@ -1,4 +1,4 @@
-// [[C8]] declareOnce, [[D17]] relaysTransparent
+// [[C8]] declareOnce, [[C10]] socketLattice
 import type { NodeEditor, ClassicPreset } from "rete";
 import type { Shape } from "./frameShape";
 import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";

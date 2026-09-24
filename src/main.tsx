@@ -1,4 +1,4 @@
-// [[C93]] gestureByPointerType (IS_MOBILE is the one mobile gate), [[C99]] chromeEnvelopeVars
+// [[C93]] gestureByPointerType (IS_MOBILE is the one mobile gate), [[B14]] oneDesignSystem
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { initAppTheme } from "./graph/appTheme";

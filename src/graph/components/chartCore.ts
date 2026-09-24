@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk
+// [[C100]] chartIsAValue, [[B2]] webTryDesktopFull
 // Must stay recharts-free: a helper imported from here must not drag recharts into the main bundle.
 import { useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";

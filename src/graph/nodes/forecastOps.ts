@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C24]] arraySemantics, [[D28]] tripwireVendorDrift (the parity:false divergence, tree/specs/computation/formulajs-divergences.md)
+// [[C17]] shareImpl, [[C24]] arraySemantics
 import { stdNormCDF, normSInv } from "./mathUtils";
 import { lowess } from "./signalOps";
 

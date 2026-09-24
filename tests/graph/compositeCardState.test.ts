@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C30]] saveViaTextForm, [[C77]] compositeIsSubgraph
+// [[B12]] losslessSaves, [[C77]] compositeIsSubgraph
 import { describe, it, expect } from "vitest";
 import { CompositeNode, type CompositeSavedNode } from "../../src/graph/nodes/composite";
 import { NumberInputNode } from "../../src/graph/nodes/input";

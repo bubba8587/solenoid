@@ -30,7 +30,7 @@ Adding or removing one node then re-renders one card, not the whole canvas. Both
 1. Remove every connection, then every node, one at a time.
 2. Reset every node-keyed store once with `forgetAllNodes()` (`nodeStoreRegistry.ts`).
 
-The per-node `noderemoved` handler in `FlowCanvas` skips `forgetNode` while a rebuild is running, because some stores scan their whole map on each forget, which would cost nodes × entries. The bulk reset replaces it. A store that registers a per-node forgetter must also register a bulk reset with `registerNodeForgetAll`, or the reset is incomplete ([[C40]] storesRegisterForget).
+The per-node `noderemoved` handler in `FlowCanvas` skips `forgetNode` while a rebuild is running, because some stores scan their whole map on each forget, which would cost nodes × entries. The bulk reset replaces it. A store that registers a per-node forgetter must also register a bulk reset with `registerNodeForgetAll`, or the reset is incomplete ([[stores#The rules]]).
 
 ## Build: construct, then add in batches
 

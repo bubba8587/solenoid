@@ -1,4 +1,4 @@
-// [[C11]]
+// [[B10]] reactFlowView
 // Probes, at two zooms (one fractional), that every Handle's measured box is the glyph box at
 // --socket-size and that each plain cable's drawn ends sit on the rim of the handle React Flow measured.
 // Conduit lanes are exempt, since their tips come from conduitLaneOffset. sourceInvariants.test.ts pins

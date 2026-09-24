@@ -1,4 +1,4 @@
-// [[C97]] rechartsLazyChunk
+// [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import { buildQrPayload, qrModulesToSvg, svgDataUrl } from "../../src/graph/qrCode";
 

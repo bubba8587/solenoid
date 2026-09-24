@@ -2,13 +2,19 @@
 aliases: ["Formula.js divergences"]
 tags: [spec, computation]
 ---
-<!-- [[D28]] tripwireVendorDrift, [[D26]] hideMatrixFromVendor, [[C17]] shareImpl -->
+<!-- [[C17]] shareImpl, [[C15]] matricesInFormulas -->
 
 # Spec: Formula.js divergences
 
-Serves [[D28]] tripwireVendorDrift. Formula.js is the vendored library that backs every Excel function Solenoid does not register itself. Where its answer differs from Excel's, `excelFunctions.ts` registers an override (`registerInternal`) that gives Excel's answer, usually by calling the same kernel the matching node calls ([[C17]] shareImpl). This spec lists each override and the evidence for it. Read it before deleting an override, widening the Formula.js fallthrough, or folding a registration back into the library: each entry is the reason the library's answer is wrong for Solenoid. `tests/graph/formulaDivergence.test.ts` pins each one both ways, the override right and Formula.js still wrong.
+Serves [[C17]] shareImpl. Formula.js is the vendored library that backs every Excel function Solenoid does not register itself. Where its answer differs from Excel's, `excelFunctions.ts` registers an override (`registerInternal`) that gives Excel's answer, usually by calling the same kernel the matching node calls. This spec lists each override and the evidence for it. Read it before deleting an override, widening the Formula.js fallthrough, or folding a registration back into the library: each entry is the reason the library's answer is wrong for Solenoid. `tests/graph/formulaDivergence.test.ts` pins each one both ways, the override right and Formula.js still wrong.
 
 Deliberate differences from Excel itself (not from Formula.js) are in [[formula-language]] under *Function notes*.
+
+## Overrides and tripwires
+
+**MUST:** where Formula.js gives a different answer from Excel, Solenoid registers an override that gives Excel's answer, backed by the same implementation as the node ([[C17]] shareImpl). Each divergence is pinned in both directions: a test that the override is right, and a tripwire that Formula.js is still wrong. A Formula.js update that changes either answer then fails the suite and forces a fresh look.
+
+Without the tripwire, a vendor update that fixes or changes a function passes silently, and the override either shadows a fix or starts diverging in a new way. The first divergence list lived in a sweep script that was later lost and had to be rebuilt from notes, so the evidence lives in the suite, with the per-name reasons below.
 
 ## Scalar math
 
@@ -75,7 +81,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 
 ## Array-returning names and complex numbers
 
-UNIQUE, SORT, MODE.MULT, FREQUENCY and the regression quartet (TREND, GROWTH, LINEST, LOGEST) are registered internally. Formula.js writes its array functions against 2-D spreadsheet ranges with unvetted quirks, and has been caught changing its arguments in place ([[D26]] hideMatrixFromVendor). The IM* family is internal for the same reason: Formula.js's IM* functions accept complex numbers only as text and refuse the graph's own complex values.
+UNIQUE, SORT, MODE.MULT, FREQUENCY and the regression quartet (TREND, GROWTH, LINEST, LOGEST) are registered internally. Formula.js writes its array functions against 2-D spreadsheet ranges with unvetted quirks, and has been caught changing its arguments in place ([[formula-language#The dispatch ladder]]). The IM* family is internal for the same reason: Formula.js's IM* functions accept complex numbers only as text and refuse the graph's own complex values.
 
 ## Name walking
 

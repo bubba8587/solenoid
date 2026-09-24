@@ -2,13 +2,19 @@
 aliases: ["Auto-arrange / Tidy"]
 tags: [spec, canvas]
 ---
-<!-- [[C84]] tidyTranslatesOnly, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead, [[C89]] standoffsSolveLast, [[C8]] declareOnce, [[C112]] noOverlapsEver -->
+<!-- [[B10]] reactFlowView, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast, [[C8]] declareOnce, [[C112]] noOverlapsEver -->
 
 # Spec: Auto-arrange / Tidy
 
-Serves [[C84]] tidyTranslatesOnly; the position lock is [[D63]] lockedGroupIsObstacle, the size read is [[D64]] oneSizeRead, standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B10]] reactFlowView; the position lock is [[D63]] lockedGroupIsObstacle, the size read is [[#Size reads]], standoff clusters are [[C89]] standoffsSolveLast. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Tidy rearranges cards into a left-to-right (or top-to-bottom) flow using the ELK layered layout engine. It only moves cards; it never resizes them. Cleanup is a bigger pass built on Tidy: it tidies inside every group, fits and collapses the groups, then tidies the top level. Both live in `tidyArrange.ts` (`makeArrangeFn`, `makeCleanupFn`). The integration harness is `tidyArrangeGroups.test.ts`, which drives the real arrange and cleanup with real elkjs over a fake area that models the DOM contract.
+
+## What Tidy guarantees
+
+Tidy is an ELK layered layout, called directly, that only moves nodes. Ports sit symmetrically so two connected nodes line up; the result is anchored to the flow's leading edge and its cross-axis center; no layout pass leaves a fixed inline size on a card. A global Tidy keeps each group as a rigid unit and never enters it; a group's own Tidy arranges exactly that group's members.
+
+Why: each of these closes a failure the opposite choice produced. rete-auto-arrange's `classic` preset put outputs at the top and inputs at the bottom, so every link staircased its target upward and the graph looked as if it floated high. Anchoring by the top-left corner dropped a flattened row to the top of the old footprint, the same symptom from the other side. And its applier stamped an inline height on every card, which froze it. Moving without resizing keeps cards content-driven, as [[react-flow-surface-contract#Node width and height]] demands of everything else. Symmetric ports and leading-edge anchoring give the same answer in either direction, so Cleanup's cycle of Tidy then autofit is a fixed point. **Reopen if:** ELK is replaced, or React Flow starts owning card sizes (then the guard that drops pinned sizes becomes the wrong tool).
 
 ## Entry points
 
@@ -26,7 +32,19 @@ Every size read in the movement stack (tidy, push, standoffs, splice, align, aut
 3. The node's stored `width` / `height`, the ResizeObserver's mirror, supplied through the `editor` argument.
 4. A default of `FALLBACK_NODE_W` × `FALLBACK_NODE_H` (180 × 100).
 
-Tiers 3 and 4 are collapse-aware: an unpainted collapsed card reports `COLLAPSED_NODE_H` (52) as its height instead of its taller expanded one. Do not write ad-hoc reads such as `offsetWidth || node.width || 100`; they disagree with each other before first paint and on collapsed groups.
+Tiers 3 and 4 are collapse-aware: an unpainted collapsed card reports `COLLAPSED_NODE_H` (52) as its height instead of its taller expanded one.
+
+**MUST:** no feature reads `offsetWidth || node.width || 100` on its own. Separate reads disagreed exactly where it mattered: before first paint an unpainted member read as zero, which shrank a bounding box to its corner, and on a collapsed group the stored size is the taller expanded one (OutlinePanel, which tried the sources in the opposite order, once centered the camera on a collapsed group's expanded box).
+
+A source sweep enforces it: a direct `offsetWidth` or `offsetHeight` read in a movement-stack module outside `nodeSize.ts` fails unless the line above carries `measuredBox exception:` and its reason. Five exceptions stand, each the same ladder with a different last step, and each goes away when `measuredBox` accepts a fallback from its caller:
+
+- `zoomAt.frameSize` takes a narrower surface, so callers outside the flow view can frame a node.
+- The push world reads an expanded group at its stored size, which is exactly what it renders, since React Flow's measure lags a resize by a frame.
+- The expand push reads a collapsed card by its layout formula.
+- Group containment falls back to the stored box.
+- A docked FC's caller supplies the fallback.
+
+**Reopen if:** React Flow's measure becomes reliable before first paint, which would collapse the ladder to one step.
 
 ## Building the ELK graph
 

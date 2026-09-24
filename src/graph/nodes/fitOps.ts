@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C61]] oneDistributionNode
+// [[C17]] shareImpl, [[C61]] oneDistributionNode
 import { lnGamma, regularizedBeta, regularizedGamma, stdNormCDF } from "./mathUtils";
 
 export type FitFamily = "normal" | "lognorm" | "expon" | "gamma" | "weibull" | "uniform" | "beta" | "poisson";

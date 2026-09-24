@@ -316,7 +316,7 @@ describe("CompositeNode boundary output-type adoption (wildcardLadder)", () => {
     await connect(c.internalEditor, num, "value", disp, "in");
     expect(sockOf("inputs")).toBe("number");
     expect(sockOf("outputs")).toBe("number");
-    // Unwiring reverts the rings (derived state, never persisted — [[D15]] wildcardsKeepRank).
+    // Unwiring reverts the rings (derived state, never persisted — [[C10]] socketLattice).
     const conn = c.internalEditor.getConnections()[0]!;
     await c.internalEditor.removeConnection(conn.id);
     expect(sockOf("inputs")).toBe("trueany");

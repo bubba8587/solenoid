@@ -2,11 +2,11 @@
 aliases: ["Type propagation on in-place socket retype"]
 tags: [spec, values]
 ---
-<!-- [[D16]] retypeReconciles, [[D17]] relaysTransparent, [[C8]] declareOnce, [[D15]] wildcardsKeepRank -->
+<!-- [[D16]] retypeReconciles, [[C10]] socketLattice, [[C8]] declareOnce -->
 
 # Spec: Type propagation on in-place socket retype
 
-Serves [[D16]] retypeReconciles. The static shape walk serves [[D17]] relaysTransparent (passthroughs forward the shape) and [[C8]] declareOnce (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[D16]] retypeReconciles. The static shape walk serves [[C10]] socketLattice (passthroughs forward the shape) and [[C8]] declareOnce (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 ## The trap
 
@@ -50,7 +50,7 @@ Any code that changes a socket's `dataType` in place must re-drive FC adaptation
   3. Refresh every Convert's unit arrows (`syncUnitArrows`) before the FCs, so the chain settles in one sweep.
   4. For every FC: `adaptTypeFromConnections`, `refreshAnnotation`, re-render.
   5. If any FC retyped, re-render the cables again on the next animation frame, since a retyped socket's cables stay detached until their paths recompute.
-- **`retypeOutputCables(editor, area, nodeId, outKey)`** runs after an output socket is swapped. It reads the new type off the already-swapped socket, keeps each outgoing cable the new type can still feed (an `any` input always survives, and so does same-family widening), drops only the ones that no longer fit, then calls `reconcileFcTypes`. An adoptive input is judged by its `base`, not the type it adopted from this very cable: a rank-2 result retyped onto a Display that adopted the rank-1 type keeps the cable and re-adopts ([[D15]] wildcardsKeepRank). Cast, `ResultTypeToggle` and Get Column use it. The Note's `commitFields` does the same for each retyped key.
+- **`retypeOutputCables(editor, area, nodeId, outKey)`** runs after an output socket is swapped. It reads the new type off the already-swapped socket, keeps each outgoing cable the new type can still feed (an `any` input always survives, and so does same-family widening), drops only the ones that no longer fit, then calls `reconcileFcTypes`. An adoptive input is judged by its `base`, not the type it adopted from this very cable: a rank-2 result retyped onto a Display that adopted the rank-1 type keeps the cable and re-adopts ([[socket-lattice#The wildcard ladder keeps rank]]). Cast, `ResultTypeToggle` and Get Column use it. The Note's `commitFields` does the same for each retyped key.
 
 `concreteTypeOfOutput` walks through wildcard passthroughs (a Display fed by a date reads as a date) but stops at a node with its own concrete output type. So a retype ends at the first node that types the value itself, like a math node that always outputs a number. That's correct, not a gap.
 
@@ -83,6 +83,16 @@ The FC's own type-adapt walk doesn't read it: `concreteTypeOfOutput` walks upstr
 - A generative output (XLOOKUP's value-dependent result, MAP's formula-typed result, sources) declares nothing and stays static.
 
 **Passthrough alone is the wrong tool when the forwarded value crosses a unit granularity** ([[D43]] unitByGranularity). Keeping tags would carry per-item `UnitCell`s into a matrix, which the model forbids. So the rank-crossing nodes (WRAPROWS, WRAPCOLS, and the stackers, whose `anytable` rows accept a list) are `unitAware = true` and reduce each input themselves: `matrixCellsFromList` gives bare magnitudes plus the one shared unit, tagged with `withMatrixUnit`. In coerceInputs, `unitAware` wins over the passthrough keep-tags branch, so the two work together.
+
+### A trueany output declares its passthrough
+
+**MUST:** a class with a `trueany` output either declares `passthrough()` or is listed with the reason its type resolves another way: the FC is the resolver, Conduit lanes resolve through `conduitTrace`, composite boundary ports sync in their own pass, and XLOOKUP and NA are unknowable. A forwarder that skips the declaration leaves its output `trueany` forever, so downstream FCs can't key a family and a date serial silently shows as its raw number.
+
+### Relays are transparent
+
+**MUST:** a value relay (a Conduit lane, a passthrough chain, an IF with one wired branch) is transparent to static resolution. A cable leaving it resolves its type, unit annotation and frame shape from the originating source's socket, through chains and reverting on disconnect, never from the relay's own untyped lane. A Conduit run is identified by its origin, so every segment of one run resolves to the same run, and provenance readings (the Cable inspector's "From") and run-wide actions can't differ by which segment was clicked.
+
+When a relay answered from its own untyped lane, downstream column pickers went empty and formula column references silently failed to resolve through a passthrough, with no error anywhere.
 
 Machine-checked by `passthroughSystem.test.ts`, `trueAnyAdopt.test.ts` and `matrixUnitPolicy.test.ts`.
 
@@ -148,7 +158,7 @@ A socket type can also come from static config (INDEX's Column literal, and the 
 
 - Adoption never drops cables. It is derived state; only an explicit user retype goes through `retypeOutputCables`. A cable adoption leaves ill-typed is not flagged on the canvas: it keeps delivering, and the consumer's coercion is the only check (text on a number port is `#TYPE!`, `coerceInputs.ts` `numericCells`; the other families pass the value through).
 - Adopted types are never saved. They're worked out from the wiring on load.
-- An adopting port owns its socket instance, since a shared one would leak adoption between cards ([[E6]] portOwnsSocket).
+- An adopting port owns its socket instance, since a shared one would leak adoption between cards ([[socket-lattice#Each port owns its socket instance]]).
 - A drilled-into composite settles its inner editor itself (`composite.ts` `settleInternalTypes`: the same joint settle plus boundary adoption). The main canvas pipe never touches the inner editor.
 
 Machine-checked by `trueAnyAdopt.test.ts`.

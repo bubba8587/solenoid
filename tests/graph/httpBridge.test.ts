@@ -1,4 +1,4 @@
-// [[D32]] refreshOutsideRebuild, [[C38]] sinkRunButtonOnly
+// [[C23]] calcModes, [[C38]] sinkRunButtonOnly
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { fetchText, CorsLikelyError, MAX_FETCH_BYTES } from "../../src/graph/httpBridge";
 

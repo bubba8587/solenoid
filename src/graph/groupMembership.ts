@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[C87]] groupsAreSubflows
+// [[C86]] membershipByGesture, [[B10]] reactFlowView
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { GroupNode } from "./rete-nodes";

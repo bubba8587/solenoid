@@ -1,4 +1,4 @@
-// [[C29]], [[C37]], [[D50]]
+// [[B12]] losslessSaves
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -98,7 +98,7 @@ describe("varDescriptions — captured, but only for LIVE variables", () => {
   });
 });
 
-// ─── [[C29]] plainJsonInit's file half: everything extractInit captures is JSON-plain ─────
+// ─── [[B12]] losslessSaves's file half: everything extractInit captures is JSON-plain ─────
 // The fixed-point sweep above compares LIVE objects, so a Map/Set/class-instance
 // config field passes it perfectly ({} equals {} on both sides) while the FILE
 // silently empties it: the save path stringifies each init field
@@ -161,7 +161,7 @@ describe("literal values never enter init", () => {
   });
 });
 
-// ─── [[D50]] everyFieldClassified: the catalog-wide transient-field triage ───────────────────────
+// ─── [[B12]] losslessSaves: the catalog-wide transient-field triage ───────────────────────
 // The fixed-point sweep above proves WHITELISTED fields round-trip; it is blind
 // to a field the whitelist never captured (both sides omit it identically). This
 // triage closes that blindness: every OWN field of every catalog node is either
@@ -175,7 +175,7 @@ describe("literal values never enter init", () => {
 // captured, silently resetting to "backward" on every reload. Now whitelisted,
 // pinned below.
 
-describe("[[D50]] everyFieldClassified — every own field is persisted or deliberately transient", () => {
+describe("[[B12]] losslessSaves — every own field is persisted or deliberately transient", () => {
   // extractInit's BESPOKE extras: object-valued fields captured by dedicated
   // blocks inside extractInit rather than the flat whitelist (deep-copy /
   // filtering semantics). Kept in sync by the honesty check below.
@@ -280,7 +280,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
     }
     expect(
       [...offenders.entries()].map(([k, o]) => `${k} (${o.join(", ")})`),
-      `Unclassified node fields ([[D50]] everyFieldClassified): each must either persist (whitelist / ` +
+      `Unclassified node fields ([[B12]] losslessSaves): each must either persist (whitelist / ` +
       `bespoke extras) or join DELIBERATELY_TRANSIENT with the reason — the ` +
       `asofDirection bug is what an unclassified field looks like.`,
     ).toEqual([]);
@@ -307,7 +307,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
   });
 });
 
-// ─── [[C37]] observerOwnsSize: width/height dual-use ownership ──────────────────────────────
+// ─── [[B12]] losslessSaves: width/height dual-use ownership ──────────────────────────────
 // `width`/`height` serve two masters: NodeCard's ResizeObserver OWNS them at
 // runtime (it overwrites both with measured pixels every layout — the minimap
 // silhouette and cable geometry read them), and the persistence whitelist
@@ -324,7 +324,7 @@ describe("[[D50]] everyFieldClassified — every own field is persisted or delib
 // fails here and must update the list, which is where the "does the user's
 // drag survive reload?" question gets asked.
 
-describe("[[C37]] observerOwnsSize — the size-owner set is exactly the declared list", () => {
+describe("[[B12]] losslessSaves — the size-owner set is exactly the declared list", () => {
   const SIZE_OWNERS = new Set([
     "note", "image", "svg", "import-obsidian",   // annotation surfaces — user-dragged frames
     "composite", "query",                        // the composite card (query = its preset)
@@ -348,7 +348,7 @@ describe("[[C37]] observerOwnsSize — the size-owner set is exactly the declare
     expect(
       adopts,
       `These classes now adopt persisted width/height but are not declared ` +
-      `SIZE_OWNERS ([[C37]] observerOwnsSize) — declare them (is the size a user gesture?), ` +
+      `SIZE_OWNERS ([[B12]] losslessSaves) — declare them (is the size a user gesture?), ` +
       `or stop consuming the init`,
     ).toEqual([]);
     expect(

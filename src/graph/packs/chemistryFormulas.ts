@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C51]] formulaNaming
+// [[C17]] shareImpl, [[C51]] formulaNaming
 
 import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass } from "../nodes/chemistryOps";
 import { solError } from "../errorValue";

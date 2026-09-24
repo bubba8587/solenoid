@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate
+// [[C69]] ganttPackages, [[C44]] dateSerials
 
 import type { GanttPayload, GanttTask } from "./payload";
 import type { GridColumn } from "./frame";

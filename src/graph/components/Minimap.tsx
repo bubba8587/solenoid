@@ -1,4 +1,4 @@
-// [[C88]] collapseIsVisual, [[C37]] observerOwnsSize
+// [[C88]] collapseIsVisual
 import { getActiveView, getActiveEditor } from "../activeGraph";
 import type { SolenoidNode } from "../schemes";
 import { GroupNode, NoteNode, nodeAccent } from "../rete-nodes";

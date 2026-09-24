@@ -1,4 +1,4 @@
-// [[C36]] captureBeforeSwap, [[C32]] autosaveSlotOrder
+// [[B12]] losslessSaves
 // Disk save and open. The documentStore library stays the working store; a document bound to a path saves through to it.
 
 import { flushDrafts } from "./draftFlush";

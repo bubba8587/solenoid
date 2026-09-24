@@ -1,4 +1,4 @@
-// [[D7]], [[D9]], [[D25]]
+// [[C8]] declareOnce, [[C9]] labelUnenforced, [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/graph/formulaNodeParity";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
@@ -7,7 +7,7 @@ import { initPackFormulas } from "../../src/graph/formulaExtensions";
 // The node set and the formula language drifted apart because NOTHING checked one
 // against the other — a node could ship with an Excel name that no formula could
 // call, and Formula.js could drag in a legacy name nobody decided to support. The
-// ratchet rules are [[C51]] formulaNaming / [[C18]] uniqueNameMap.
+// ratchet rules are [[C51]] formulaNaming / [[B16]] oneFormulaSurface.
 //
 // This test pins today's gaps and makes them one-way. Both directions assert
 // live ⊆ pinned (a NEW gap fails) AND pinned ⊆ live (a CLOSED gap must be deleted
@@ -125,7 +125,7 @@ describe("formula ↔ node parity ratchet", () => {
   // The live catalog can't pin this: gap A is empty, so every excel-named row is
   // FULLY covered and `some` vs `every` agree on all of them. The synthetic
   // partial case is the only input that distinguishes the quantifiers.
-  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node ([[D9]] useEveryNotSome)", () => {
+  it("excelCovered quantifier is EVERY, not SOME — one missing name uncovers the node ([[C9]] labelUnenforced)", () => {
     const only = (avail: string[]) => (n: string) => avail.includes(n);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING", "CEILING.MATH"]))).toBe(true);
     expect(excelCoverage(["CEILING", "CEILING.MATH"], only(["CEILING"]))).toBe(false);

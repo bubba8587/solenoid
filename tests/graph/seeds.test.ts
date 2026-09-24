@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[C29]] plainJsonInit
+// [[C10]] socketLattice, [[B12]] losslessSaves
 import { describe, it, expect, beforeAll } from "vitest";
 import { ClassicPreset } from "rete";
 import * as Nodes from "../../src/graph/rete-nodes";

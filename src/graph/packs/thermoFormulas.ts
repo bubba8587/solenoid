@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C51]] formulaNaming
+// [[C17]] shareImpl, [[C51]] formulaNaming
 
 import { standardAtmosphere, antoinePressure, ANTOINE, type AntoineOp } from "../nodes/thermoOps";
 import { solError, isSolError } from "../errorValue";

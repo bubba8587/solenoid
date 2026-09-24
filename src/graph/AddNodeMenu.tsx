@@ -1,4 +1,4 @@
-// [[D5]] searchWiderThanLabel, [[D6]] opRowDerivesFromHost
+// [[D5]] searchWiderThanLabel
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { IS_COARSE } from "./coarse";

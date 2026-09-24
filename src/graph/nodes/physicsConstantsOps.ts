@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 // CODATA 2018 values (several exact by the 2019 SI redefinition); SI units in every label.
 
 export type PhysConstOp =

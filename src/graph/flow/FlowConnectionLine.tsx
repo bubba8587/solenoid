@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C91]] cableWalkRouter
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView
 import type { ConnectionLineComponentProps } from "@xyflow/react";
 import { useSyncExternalStore } from "react";
 import { getCablePath, draggedCableArgs, Position as CablePosition } from "../cablePaths";

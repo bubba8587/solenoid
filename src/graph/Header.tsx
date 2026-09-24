@@ -1,4 +1,3 @@
-// [[C99]] chromeEnvelopeVars (publishes --chrome-top)
 import { useEffect, useRef } from "react";
 import { MenuBar } from "./MenuBar";
 import { TopBar } from "./TopBar";

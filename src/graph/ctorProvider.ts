@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType
+// [[B12]] losslessSaves
 // copyPaste.ts can't import nodeCtorRegistry directly: catalogUtils → nodeCatalog → rete-nodes → composite → copyPaste
 // would be a cycle.
 let _ctorRegistryProvider: () => Map<string, new (init?: Record<string, unknown>) => object> = () => new Map();

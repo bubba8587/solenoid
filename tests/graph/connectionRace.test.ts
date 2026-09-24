@@ -1,4 +1,4 @@
-// [[D32]] refreshOutsideRebuild
+// [[C23]] calcModes
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { FxNode, WeatherNode } from "../../src/graph/nodes/connection";
 

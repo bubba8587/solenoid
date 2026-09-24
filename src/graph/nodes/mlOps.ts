@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[D46]] freezeVolatilePerCalc
+// [[C17]] shareImpl, [[D46]] freezeVolatilePerCalc
 // Rows × features numbers in; the frame cards pick the numeric columns and drop rows with a blank.
 import { matEigh, matSolve } from "./matrixOps";
 import { mulberry32 } from "../monteCarlo";

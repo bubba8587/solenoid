@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D19]] implReteFree, [[C25]] firstClassUnits, [[D40]] unitOnValue
+// [[C17]] shareImpl, [[C25]] firstClassUnits, [[D40]] unitOnValue
 import { convert as dimConvert, type Dim, type Unit } from "../dimension";
 
 export type ConvertCategory =

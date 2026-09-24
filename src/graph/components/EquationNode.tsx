@@ -1,4 +1,4 @@
-// [[C47]] equationNode, [[C11]] socketBox12
+// [[C47]] equationNode
 import { useRef, useState, useLayoutEffect, type ReactNode } from "react";
 import type { EquationNode as EquationNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps, type Emit } from "./nodeKit";

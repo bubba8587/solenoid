@@ -210,7 +210,7 @@ function collapsedCardSize(view: View, g: GroupNode): { w: number; h: number } {
   const m = measuredSize(view, g.id);
   if (m) return m;
   const el = view.nodeElement(g.id);
-  // [[D64]] exception: the last tier is the collapsed-card layout formula, not a default.
+  // measuredBox exception: the last tier is the collapsed-card layout formula, not a default.
   if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
   const rows = Math.max(
     groupCollapseStore.retainedFor(g.id).length,

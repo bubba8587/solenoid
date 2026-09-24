@@ -1,13 +1,13 @@
-// [[D19]]
+// [[C17]] shareImpl
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── [[D19]] implReteFree: the formula path must not pull in rete or the socket lattice ──────
+// ─── [[C17]] shareImpl: the formula path must not pull in rete or the socket lattice ──────
 // The headless evaluator (run-graph, the Expression host) loads excelFormula →
 // excelFunctions → the shared op modules. None of that may reach rete or
 // sockets.ts: the shared-impl modules exist precisely so both surfaces call one
-// implementation WITHOUT the formula surface loading the editor ([[D19]] implReteFree —
+// implementation WITHOUT the formula surface loading the editor ([[C17]] shareImpl —
 // previously UNENFORCED, and violated twice: excelFunctions reached rete through
 // nodes/date.ts and nodes/convert.ts until the serial layer and the unit table
 // were extracted to dateSerial.ts / convertUnits.ts).
@@ -45,7 +45,7 @@ function resolveLocal(fromFile: string, spec: string): string | null {
   return null;
 }
 
-describe("[[D19]] implReteFree — the formula path is rete-free", () => {
+describe("[[C17]] shareImpl — the formula path is rete-free", () => {
   it("no module reachable from excelFormula/excelFunctions/packs/*Formulas imports rete or sockets", () => {
     const offenders: string[] = [];
     const seen = new Set<string>();

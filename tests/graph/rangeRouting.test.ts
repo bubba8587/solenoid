@@ -1,4 +1,4 @@
-// [[C17]], [[C20]], [[D4]], [[D24]], [[D48]]
+// [[C17]], [[B16]] oneFormulaSurface, [[C8]] declareOnce, [[D48]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { ForecastNode, LinestNode } from "../../src/graph/nodes/stats";
@@ -103,7 +103,7 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
 describe("the regression quartet — owned, not routed (the last DEFERRED closed)", () => {
   // The former DEFERRED list. Like UNIQUE/SORT/TRANSPOSE before them, the fix
   // shape is OWNERSHIP (a listArgs registration over the nodes' fitting kernels,
-  // [[D26]] hideMatrixFromVendor), not RANGE_FUNCTIONS routing — so membership there stays false, and the
+  // [[C15]] matricesInFormulas), not RANGE_FUNCTIONS routing — so membership there stays false, and the
   // shape checks below are what "fixed" means: one fitted answer, never a
   // broadcast echo of the input.
   const QUARTET = ["TREND", "GROWTH", "LINEST", "LOGEST"];

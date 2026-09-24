@@ -2,7 +2,7 @@
 aliases: ["React Flow surface contract"]
 tags: [spec, canvas]
 ---
-<!-- [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C65]] domOrderStacking, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream -->
+<!-- [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[C52]] visibleSelection, [[D41]] formatFlowsDownstream -->
 
 # Spec: React Flow surface contract
 
@@ -17,7 +17,7 @@ The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay
 - Anything that belongs to the surface goes in `FlowSurface`, never in one host. That covers gestures, menus, keys, layers and installers. A behavior installed in one host is a behavior the other silently lacks.
 - The top-bar chrome calls commands through slots in `canvasCommands.ts`. While a drill-in is open it swaps four of them to point at its own level and restores them on unmount: `swapSelectionSlots` (select, unselect all), `swapArrangeSlots` (Tidy and Cleanup), `swapDeleteSlot` (the delete button used on touch, where there is no Delete key) and `swapRepositionDockedSlot` (re-seating a docked Format Controller). A new slot that the drill-in should own needs its own `swap*` function here, or the command silently acts on the main canvas. The `setClearHistory` slot must run after every document load or rebuild, or Ctrl+Z unwinds the load itself.
 - The "open the Add menu here" request (`addMenuRequest`, used by the command palette, the top bar's + and the `A` key) nests the same way: the drill-in's registration replaces the main canvas's while open and restores it on close.
-- Code that runs for one node finds its graph with `getOwningEditor` / `getOwningView`; `getOwningView` is null for a node no surface shows (one in a closed composite), so nothing pans to, moves or measures it through a view that doesn't hold it. Chrome finds the graph the user is looking at with `getActiveEditor` / `getActiveView`. The bare `getEditor()` / `getView()` are only for persistence and main-only lifecycle code ([[C33]] saveBindsMain).
+- Code that runs for one node finds its graph with `getOwningEditor` / `getOwningView`; `getOwningView` is null for a node no surface shows (one in a closed composite), so nothing pans to, moves or measures it through a view that doesn't hold it. Chrome finds the graph the user is looking at with `getActiveEditor` / `getActiveView`. The bare `getEditor()` / `getView()` are only for persistence and main-only lifecycle code ([[save-format#Saving binds the main graph]]).
 - Two mounted flows must carry different RF `id`s (`hooks.rfId`), because RF derives every internal pattern, marker and aria id from it. The main canvas uses `main`, the drill-in `drill`, the landing graph `landing`, and each landing scene card `scene` plus a React `useId`.
 
 ### The stack and its handlers
@@ -39,7 +39,7 @@ A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSe
 | `afterNodeAdded` | A node was added from the Add menu and positioned. |
 | `afterConnect` | A cable was wired. |
 | `standoffs` | Render the standoff layer. Main canvas only. |
-| `drawnCables` | Render the drawn-cable layer and its tool. Main canvas only, because drawn cables persist in `SavedGraph`, which binds to the main graph ([[C33]] saveBindsMain). |
+| `drawnCables` | Render the drawn-cable layer and its tool. Main canvas only, because drawn cables persist in `SavedGraph`, which binds to the main graph ([[save-format#Saving binds the main graph]]). |
 | `standsDownWhenDrilled` | The main canvas's keyboard stands down while a drill-in is open (the drill-in installs its own). |
 | `noKeyboard` | Skip the canvas keyboard entirely: no F9, Ctrl+S or O, palette, nudge, copy and paste, group verbs or Delete. The landing and showcase mounts run the canvas for its gestures alone. |
 | `noContextMenu` | Suppress every right-click menu, the native one included. It also kills `contextmenu` at the DOM in the capture phase, because a touch long-press is not reliably seen by `onPaneContextMenu` and would otherwise raise the Add menu or the native menu. |
@@ -61,7 +61,7 @@ A stack that sets `afterCableChange` gets the cable-change pipe (`installCableSe
 - the pane (`container`) and the transformed content element (`viewport`);
 - the camera: `transform`, `zoom` (set the scale, then add an offset to the pan: the anchored-zoom step), `pan`, and `pointer`, the last pointer position in canvas coordinates;
 - `moveNode`, `rerenderNode`, `rerenderCables` and `onRender` (per-card re-render events, which the HTML-in-Canvas layer uses to re-capture);
-- `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[D64]] oneSizeRead).
+- `measured(id)`, RF's post-layout size with no DOM read, undefined until measured ([[auto-arrange-tidy#Size reads]]).
 
 Positions are always absolute canvas coordinates, never RF's parent-relative ones. A node's absolute position lives on the node itself (`node.position`). An add path sets it right after `addNode` (`flowModel.addNode` before, most others through `view.moveNode` after), so there is no side map and nothing to reconcile. `nodeElement` looks up the live DOM element on every call, so a per-frame loop should cache the result locally.
 
@@ -95,6 +95,8 @@ A group is an RF parent node, and each member sets `parentId` to it. The model k
 - During a group drag, the model's member positions follow the group by its per-frame delta, collapsed groups included, since RF tows hidden member children either way. Selected members are skipped, because RF already moves them as part of the selection.
 - A node created live (the Add menu, paste) inside an expanded group's box joins it once the card has rendered, since containment needs its size. The pipe that does this is installed once per stack, because `editor.addPipe` cannot be removed, and it stands down during a rebuild.
 
+Why: RF's own parenting gives towing and stacking for free, but everything else in the app (saves, Tidy, standoffs, the lasso, docking) reads absolute positions, and each would need its own conversion. One seam costs less than a relative model everywhere. **Reopen if:** RF drops sub-flows, or the model goes relative for some other reason.
+
 The full rules are in [[group-expand-push]].
 
 ## An open group's interior is working canvas
@@ -115,8 +117,24 @@ A Conduit gets the same treatment: its node box is a fixed 92 square around a mu
 - **Settings that are off on purpose.** RF's own arrow-key move is off (`disableKeyboardA11y`), because the canvas keyboard nudges the selection on the dot grid, and RF's version needs a focused card and steps 5px. RF's box select is off (`selectionKeyCode={null}`), because shift-drag belongs to the lasso. Double-click zoom is off (`zoomOnDoubleClick={false}`, see [[touch-gestures]]). `zoomOnScroll` is off, because `installWheelZoom` is the one wheel path. `zIndexMode="manual"`.
 - **Locking.** A locked canvas passes `nodesDraggable`, `nodesConnectable` and `elementsSelectable` all false; the CSS half of locking is in [[pointer-gestures]].
 - **A node wrapper's inline `visibility`.** RF writes `visible` onto `.react-flow__node` after measuring, so any imperative visibility write there is silently overwritten. Per-node hide and show rides RF's `className` instead (`flowModel.nodeClassName` plus an `!important` rule in flow.css). Hiding the members of a collapsed group is the standing example ([[group-collapse]]). The surface re-stamps the classes whenever the collapse store notifies, because a collapse toggle changes no topology and `syncTopology` never runs for it.
-- **Stacking.** Each node's stacking is its RF `zIndex`, from `flowModel.nodeZIndex`: groups −2, Conduits −1, everything else 0 ([[C65]] domOrderStacking). Without it a group's body sits level with its members and takes their pointer events.
+- **Stacking.** Each node's stacking is its RF `zIndex`, from `flowModel.nodeZIndex`: groups −2, Conduits −1, everything else 0 ([[#Stacking]]). Without it a group's body sits level with its members and takes their pointer events.
 - **Card sizes.** A grip resize (`resizing` set on the dimension change) stays out of RF state: the model sizes the card and RF only measures it. RF's own measures feed the DOM-free size source.
+
+### Stacking
+
+RF stacks nodes by their `zIndex`, and the area-plane ladder is that data, not DOM order: standoff bars lowest, groups at −2 and Conduits at −1 (stamped by `nodeZIndex` in `flowModel.ts`), ordinary nodes at 0. The fixed lifts (isolate endpoints, an open group picker, the selected cable) stay explicit z-index writes. The standoff layer's depth is its own CSS (`StandoffLayer.css`, `z-index: -3`), since it renders in RF's viewport portal rather than as a node.
+
+Why: a group's body has to sit below its members, or it catches their pointer events, and RF's own model for that is `zIndex`. Selecting a node never moves its DOM element, so selection can't close a native popup inside a card; the `pointerdown` swallow on form controls exists only to prevent a drag. **Reopen if:** cards visibly stack wrongly after selection, or a control needs the last-selected card on top, which RF's `zIndex` model does not give.
+
+### Node width and height
+
+**MUST:** `node.width` and `node.height` mirror the node's measured size. NodeCard's ResizeObserver overwrites both with the rendered pixels on every layout, and the minimap silhouette and the cable geometry read them.
+
+- Both persist for every node, but only the declared size-owner classes read `init.width` and `init.height` back on load: the surfaces the user sizes by dragging (the annotation frames, the composite card, groups and the overlay hosts). For every other class the saved values are inert, and the class default plus a fresh measure win.
+- A class with a resize gesture either reads the init back or routes its size through `nodeSizeStore`, as Display's grip does (its own persisted channel, `sn.size`).
+- No other class may start reading the init.
+
+Why: a field with two jobs drifts silently, and this one can drift either way. A new resizable class that forgets to read the init back loses the user's drag on reload ([[B12]] losslessSaves); a compute class that starts reading it freezes an old measured size into its layout. Layout math reads sizes through `measuredBox()` ([[auto-arrange-tidy#Size reads]]).
 
 ## The dot grid
 
@@ -145,7 +163,7 @@ Every live cable change on either surface, including the ones components make th
 
 ## Sockets
 
-The socket box is always exactly 12×12 ([[C11]] socketBox12): `display: block; line-height: 0`, a global rule in `nodeCard.css`. The one exception under C11 is the Conduit's lane squares, sized to the lane geometry, whose tips are computed rather than measured.
+The socket box is always exactly 12×12 ([[#The socket box and its row]]): `display: block; line-height: 0`, a global rule in `nodeCard.css`. The one exception is the Conduit's lane squares, sized to the lane geometry, whose tips are computed rather than measured.
 
 - The RF `Handle` wraps the socket glyph (`FlowSocketHandle.tsx`, reset by `.sol-rf-handle-reset`). RF measures the handle's box for cable endpoints and uses its outer edge at mid-height.
 - The reset Handle is `position: relative`, not `static`. The socket wrapper's pointer-catch halo (`[data-socket-side]::before` in socket.css) is a positioned box, so a static Handle paints under it, the wrapper swallows the press, and RF starts a node drag instead of a cable.
@@ -155,6 +173,14 @@ The socket box is always exactly 12×12 ([[C11]] socketBox12): `display: block; 
 - The dot straddles the card edge with `left: -5` / `right: -5`, positioned against `__content`. Don't make the io-row or `__body` a positioning context.
 - A Conduit's socket tips come from `conduitLaneOffset`, not from the measured handle ([[conduit-lane-faces]]).
 - The card adapter (`SolNodeAdapter`) calls RF's `updateNodeInternals` whenever a card's version bumps, since a bump can mean swapped or retyped sockets. Its `emit` is a stub, because on this surface only `NodeSocket` consumes it and `NodeSocket` renders an RF Handle.
+
+### The socket box and its row
+
+**MUST:** every socket renders as a fixed 12×12 box (`display:block; line-height:0`) inside its own measured row, and its vertical position comes from measuring that row: never a fixed constant, and never a `transform`. When a card has two or more sockets on one side, each gets its own row: `InlineInputs`, `InlineOutputRows` or `MeasuredSocketRow`, or a card's own measured row (as the Equation card's `EquationVarRow` and `EquationOutRow` are). `NodeShell` lays out output sockets only, and only as bare dots; a card that declares inputs renders them itself.
+
+Why: RF places a cable's endpoint by measuring the Handle box that wraps the socket. A `transform` or an unmeasured constant makes that measurement report the wrong spot, so the cable ends beside the dot instead of on it. A socket with no row of its own gets no position of its own: `NodeSocket` falls back to `--out-socket-top, 50%`, so every dot on that side lands on the same pixel, one visible handle with the rest stacked under it, and nothing throws (Geocode once shipped four outputs on one point, and Weather two inputs with no dot to plug into).
+
+**Exception, the Conduit's lane squares:** each lane square is the socket itself, sized to the lane geometry (`--socket-size`, the base square times the collapse scale, with a 9px fallback) and rotated with the block, and its cable tip is computed from `conduitLaneOffset`, never measured ([[conduit-lane-faces]]). The measured box exists so RF's handle measurement lands on the dot, and a Conduit's tips never read that measurement. **Removed by:** a Conduit cable tip that reads RF's handle box.
 
 ## Flipped sockets
 
@@ -172,6 +198,12 @@ A node can flip its sockets to the opposite side, inputs on the right and output
 ## World-coordinate overlays
 
 An overlay drawn in graph coordinates renders inside RF's `<ViewportPortal>`, which RF places inside the transformed viewport after the edge and node layers. Every surface mounts `PendingCableLayer`; `StandoffLayer` and `DrawnCableLayer` mount only when the host's `standoffs` / `drawnCables` hooks are on, which only the main canvas does. A sibling of `<ReactFlow>` would paint in screen space and not move with the camera. The armed drawn-cable tool is the exception: its capture sheet is screen-space, and because the pane never sees its presses, it pans the camera itself through a screen-space nudge on the surface ([[drawn-cables]]).
+
+## Semantic zoom
+
+The far-zoom simplification (the class `html.solenoid-semantic-zoom`, with plain CSS doing the swap; what a card shows is in [[components]]) switches on the raw CSS scale, at a threshold of 0.3 (`SEMANTIC_ZOOM_SCALE`), never folded with the device pixel ratio. The surface being zoomed owns the toggle: `syncSemanticZoomFor` runs from that surface's viewport drivers.
+
+Why: folding the pixel ratio in was tried and measured worse. It made the switch trip at a different apparent zoom on each display, and legibility depends on apparent size. At 0.3 a 200px card draws at about 60px, where its body text is unreadable but the card is still a clear block. The threshold is conservative, applying only to a far overview a user can actually reach.
 
 ## Selection
 
@@ -293,9 +325,9 @@ A composite drill-in keeps its own per-composite history ([[composite-drill-in-m
 
 `FlowCanvas` owns one editor, engine and view stack for the app's lifetime. Documents load through the real persistence and `documentStore` path, and chrome reaches the canvas through the `process.ts` slots. Once, at startup, it registers the delete verb, the docked-FC reposition, Tidy and Cleanup, the bulk settle (`settleCableChange` plus a pass, the one settle after a bulk topology change such as paste or unpack), the standoff settle (the pure solver, with locked groups pinned) and the per-node forget pipe. Its stack's `afterCableChange` is the targeted recompute.
 
-- A live node deletion re-derives membership and collapse, and deleting an expanded group restores the pushes it caused (`settleNodeRemoved`, shared with the drill-in; [[C40]] storesRegisterForget). Under a rebuild gate it does nothing: a whole-graph rebuild runs the forget-all pass once instead, and a bulk edit forgets only what it truly deleted, since Wrap as Composite and Unpack relocate nodes with their ids.
+- A live node deletion re-derives membership and collapse, and deleting an expanded group restores the pushes it caused (`settleNodeRemoved`, shared with the drill-in; [[stores#The rules]]). Under a rebuild gate it does nothing: a whole-graph rebuild runs the forget-all pass once instead, and a bulk edit forgets only what it truly deleted, since Wrap as Composite and Unpack relocate nodes with their ids.
 - A `/?seed=<id>` link (from the Examples page) opens that seed as a new document, then strips the parameter, so a reload or an autosave doesn't keep minting copies.
-- The app chrome (toasts, dialogs, the palette) renders beside the surface, not inside it, because the main wrapper is `visibility: hidden` under a drill-in ([[C75]] gpuTextureBudget).
+- The app chrome (toasts, dialogs, the palette) renders beside the surface, not inside it, because the main wrapper is `visibility: hidden` under a drill-in ([[html-in-canvas#The GPU texture budget]]).
 
 The showcase audit stage (`StaticFlowStage`, `?showcase`) is a minimal non-interactive surface: real components and real values with no pan, zoom or drag. Callers build its graph through the stack's editor and view verbs, and the stage mirrors the topology into RF state.
 

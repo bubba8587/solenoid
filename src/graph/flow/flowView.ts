@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C87]] groupsAreSubflows
+// [[B10]] reactFlowView, [[C43]] oneFlowSurface
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import type { View } from "../view";

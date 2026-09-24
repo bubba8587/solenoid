@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[C75]] gpuTextureBudget
+// [[C42]] htmlInCanvasRenderer, [[B10]] reactFlowView
 
 import { Camera } from "./hicCamera";
 import { cablePolyline } from "./hicCableGeom";

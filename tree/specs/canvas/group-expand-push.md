@@ -2,11 +2,11 @@
 aliases: ["Group expand push"]
 tags: [spec, canvas]
 ---
-<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle, [[C112]] noOverlapsEver -->
+<!-- [[C85]] groupPushDeterministic, [[C86]] membershipByGesture, [[B10]] reactFlowView, [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle, [[C112]] noOverlapsEver -->
 
 # Spec: Group expand push
 
-Serves [[C85]] groupPushDeterministic (the push and its records), [[C87]] groupsAreSubflows (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C85]] groupPushDeterministic (the push and its records), [[B10]] reactFlowView (the RF projection) and [[C86]] membershipByGesture (who joins a group). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A collapsed group draws as a small card. Expanding it back to full size would cover whatever sits nearby, so the expansion pushes those neighbors just far enough aside, remembers each push, and slides them back when the group collapses again. This spec covers that push, how groups map onto React Flow, and the rules for who is a member of a group.
 
@@ -96,7 +96,7 @@ A membership change re-projects the nodes through the `groupMembershipStore` sub
 - The box is the members' bounding box (through `measuredBox`) plus `GROUP_PAD` (24) on each side and `GROUP_HEADER` (34, matching GroupNode.css) on top, with integer dimensions: a fractional width or height puts the edge on a half-pixel and the selection ring drifts. Creation, the within-group Tidy and autofit share these two constants; if they disagreed, Cleanup's tidy-then-autofit cycle would drift the box a few pixels on every run.
 - The group's color is the palette slot of the most common node kind in the selection; a tie, or all kinds distinct, falls back to gray (`GROUP_DEFAULT_COLOR`). The members tint at once.
 - **Autofit** (the `F` key, or a double-press on the resize grip) wraps the box tightly around its current members with the same padding, clamped to the grip's own minimums (`GROUP_MIN_W` 140, `GROUP_MIN_H` 90) and to integers. `autofitGroupWithHistory` records one undo entry for position, size and members together, so both entry points undo as a single step, then re-settles the standoffs as a rigid block, pinning the fitted group, and runs the no-overlap pass preferring it, since a box that grows can land on a neighbor. A locked group keeps its corner: the members move to it instead ([[D63]] lockedGroupIsObstacle).
-- The group element stacks behind its members and behind member Conduits (−1), so a Conduit inside a group stays selectable ([[C65]] domOrderStacking).
+- The group element stacks behind its members and behind member Conduits (−1), so a Conduit inside a group stays selectable ([[react-flow-surface-contract#Stacking]]).
 - **The position lock** is set only through `setGroupLocked`; its re-projection repaints the RF `draggable` flag and the header lock icon ([[D63]] lockedGroupIsObstacle). Every standoff solve pins every locked group and its members (`withLockedGroupsPinned`), since the solver works on raw endpoint ids and a member's standoff would otherwise slide the member out of the locked box.
 
 ## Who is a member

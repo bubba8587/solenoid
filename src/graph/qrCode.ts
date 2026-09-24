@@ -1,4 +1,4 @@
-// [[C97]] rechartsLazyChunk (the qrcode package is a lazy import too)
+// [[B2]] webTryDesktopFull (the qrcode package is a lazy import too)
 // QR payload assembly and SVG rendering, pure. The `qrcode` encoder is imported lazily by the node, never here.
 
 export type QrTemplate = "text" | "wifi" | "vcard";

@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D19]] implReteFree, [[C44]] dateSerials, [[D48]] classifyNonFinite
+// [[C17]] shareImpl, [[C44]] dateSerials, [[D48]] classifyNonFinite
 // Entry points take date serials; a per-cell domain failure is a SolError, an undefined answer (DATEDIF over a reversed range) is `null`.
 import { solError, isSolError, type SolError } from "../errorValue";
 import { serialToJsDate, jsDateToSerial, parseDate, parseDateToSerial } from "./dateSerial";

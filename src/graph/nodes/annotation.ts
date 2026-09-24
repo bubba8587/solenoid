@@ -312,7 +312,7 @@ export class FileLinkNode extends ClassicPreset.Node {
   path: string;
   fileName: string;
   collapsed: boolean;
-  // Fixed-width card: it owns no width or height, so it stays out of SIZE_OWNERS ([[C37]] observerOwnsSize).
+  // Fixed-width card: it owns no width or height, so it stays out of SIZE_OWNERS.
 
   constructor(init?: { label?: string; path?: string; fileName?: string; collapsed?: boolean }) {
     super(init?.label ?? "File Link");

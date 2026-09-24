@@ -2,11 +2,11 @@
 aliases: ["Node classes and op modules"]
 tags: [spec, floors]
 ---
-<!-- [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C29]] plainJsonInit, [[D20]] declareContract, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles, [[D33]] unwiredNotBlank; covers: src/graph/nodes/*.ts -->
+<!-- [[B12]] losslessSaves, [[C17]] shareImpl, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles, [[D33]] unwiredNotBlank; covers: src/graph/nodes/*.ts -->
 
 # Spec: Node classes and op modules
 
-Serves [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C29]] plainJsonInit, [[D20]] declareContract, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles and [[D33]] unwiredNotBlank.
+Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[D10]] onePrunePath, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles and [[D33]] unwiredNotBlank.
 
 This is the floor every node class and op module under `src/graph/nodes/` is built to. A file that implements a specific mechanism (units, dates, errors, a family's merge) cites that leaf in its own header. This spec's `covers:` line is what `dte blast` and `dte coverage` read instead of a citation in every file.
 
@@ -14,17 +14,17 @@ A **node class** is the headless model of one card: its sockets, its saved field
 
 ## Identity and persistence
 
-- **The class name is the persisted type.** It is kept and unique, so renaming a class changes the save format ([[C34]] classNameIsType).
+- **The class name is the persisted type.** It is kept and unique, so renaming a class changes the save format ([[save-format#The persisted type is the class name]]).
 - **An unknown saved type loads as a Placeholder** and saves back out as itself, losing nothing ([[C35]] unknownViaPlaceholder). `PlaceholderNode` is not in the Add-menu catalog; only the loader builds one. It keeps the original type, init and literal maps verbatim, rebuilds the saved socket keys (adoptive inputs, `trueany` outputs) so the cables survive, and every output emits `#REF!` naming the missing type.
-- **Every field is either persisted or deliberately transient**, and the persistence sweep (`persistenceSweep.test.ts`) knows which ([[D50]] everyFieldClassified). `extractInit` is a fixed point, so saving a freshly loaded node gives back the same init, and its output is plain JSON ([[C29]] plainJsonInit).
+- **Every field is either persisted or deliberately transient**, and the persistence sweep (`persistenceSweep.test.ts`) knows which ([[save-format#Every field is persisted or deliberately transient]]). `extractInit` is a fixed point, so saving a freshly loaded node gives back the same init, and its output is plain JSON ([[save-format#The capture is a fixed point, and plain JSON]]).
 - **Extensible rows rebuild their exact keys.** A card with addable rows (value rows `v0`, `v1`, …, or paired rows such as `column0` and `value0`) takes the saved keys from `valueKeys` on load and paste and rebuilds exactly those, never a fresh sequence; paired cards read the ids through `pairIdsFromKeys`. Otherwise saved literals and cables stop lining up with their rows. A row's insertion order is its meaning (stack order, concatenation order, left to right). A fixed input that sits after the rows (SWITCH's Default, IFS's Otherwise, Merge Plots' Options) is re-seated last by `keepInputLast` each time a row is added, so the live socket order is the one a reload rebuilds.
 
 ## Formula registrations and op modules
 
-- **A formula registration declares its full contract** in `EXCEL_IMPL_META`: return type, arity, rank and list arguments. Routing is derived from that declaration, never from a hand-kept list ([[D20]] declareContract, [[D4]] noManualList).
-- **An op module imports nothing from rete and serves both surfaces** ([[D19]] implReteFree, [[C17]] shareImpl): the node's `data()` and the formula registration call the same function.
+- **A formula registration declares its full contract** in `EXCEL_IMPL_META`: return type, arity, rank and list arguments. Routing is derived from that declaration, never from a hand-kept list ([[formula-language#The registry]], [[engineering#Lists of names are generated]]).
+- **An op module imports nothing from rete and serves both surfaces** ([[engineering#The formula path is rete-free]], [[C17]] shareImpl): the node's `data()` and the formula registration call the same function.
 - **A variant is a selector on the existing card, never a sibling node** ([[B11]] maximalMerge). An op is a different function; an argument is a parameter of the same function ([[C26]] opArgDistinct). A merge follows these mechanics, each of which was once gotten wrong:
-  - An op's formula name is `fx ?? despace(label)`. When the real name is an Excel spelling or the label went bare, declare `fx` (distribution `normal` → NORM.DIST). Never dodge a [[C18]] uniqueNameMap collision by reclassifying the family as an argument or inventing a parallel presentation flag: the selector that names the node is the `op` field, and the accent follows.
+  - An op's formula name is `fx ?? despace(label)`. When the real name is an Excel spelling or the label went bare, declare `fx` (distribution `normal` → NORM.DIST). Never dodge a [[formula-language#Derived names are unique]] collision by reclassifying the family as an argument or inventing a parallel presentation flag: the selector that names the node is the `op` field, and the accent follows.
   - Selector-driven socket swaps prune departing keys through `dropInputCables` before `removeInput` ([[D10]] onePrunePath), keep the per-op shape in a spec table (the `DIST_SPECS` pattern), and carry state across a switch by meaning (PDF↔PMF, inverse variants → Inverse).
   - Where the combinations are few, flat ops beat a second picker: each op keeps its own hover description and no new saved field is needed (Hypothesis Test's six tests, Rank & Percentile's INC and EXC forms).
   - A merge keeps the old Add-menu leaf types, so `NODE_EXCEL` and the Function Reference are untouched; the merged nodes are inventoried in `docs/node-coverage.md`. Old saves load as Placeholders ([[B7]] preAlphaBreakFreely).

@@ -11,6 +11,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/floors/components.md` | every React component |
 | `../tree/specs/floors/node-classes.md` | every node class and op module |
 | `../tree/specs/floors/stores.md` | every module-singleton store |
+| `../tree/specs/floors/engineering.md` | cross-cutting code-hygiene rules (no `covers:` glob; each rule binds every file that does what it names) |
 
 ## Computation
 

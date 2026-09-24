@@ -2,11 +2,11 @@
 aliases: ["Conduit lane faces"]
 tags: [spec, canvas]
 ---
-<!-- [[D17]] relaysTransparent, [[C95]] commitOnEnter -->
+<!-- [[C10]] socketLattice, [[C95]] commitOnEnter -->
 
 # Spec: Conduit lane faces
 
-Serves [[D17]] relaysTransparent. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C10]] socketLattice. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A Conduit is a rotatable block of lanes. Each lane is a pair of square sockets: input `in_i` on one face and output `out_i` on the opposite face, with the value passing straight through. This spec says where those faces and squares sit and which way cables leave them. The geometry lives in `ribbonCable.ts` (`conduitLaneOffset`, `conduitLanePoint`, `conduitFacePoint`) and `components/ConduitComponent.tsx`; the body box is covered in [[resizable-content-nodes]].
 

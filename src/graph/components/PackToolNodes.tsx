@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[C11]] socketBox12, [[C26]] opArgDistinct
+// [[C76]] formulaPackDefault, [[C26]] opArgDistinct
 
 import {
   EmSpectrumNode as EmSpectrumNodeType,

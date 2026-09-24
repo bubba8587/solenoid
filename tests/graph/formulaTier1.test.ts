@@ -1,4 +1,4 @@
-// [[C17]], [[D25]]
+// [[C17]], [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
 import { resolveExcelFunction, LEGACY_ALIASES } from "../../src/graph/excelFunctions";
 import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
@@ -198,7 +198,7 @@ describe("FORECAST.LINEAR", () => {
   });
 });
 
-describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on every surface ([[D25]] blockedFailFast)", () => {
+describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on every surface", () => {
   it("every blocked spelling answers #NAME? naming its replacement", () => {
     for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
       const r = ev(`${name}(1)`);

@@ -1,4 +1,4 @@
-// [[C42]] htmlInCanvasRenderer, [[C75]] gpuTextureBudget
+// [[C42]] htmlInCanvasRenderer
 import { useEffect, useRef, useState } from "react";
 import { useRenderMode } from "../renderMode";
 import { zoomSettleMs } from "../zoomSettle";

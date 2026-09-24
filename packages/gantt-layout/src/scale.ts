@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D66]] daysMinutesModes
 
 import type { GanttPayload, GanttViewOptions } from "./payload";
 import type { FrameScale, ScaleCell, ScaleTier } from "./frame";

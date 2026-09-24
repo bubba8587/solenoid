@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials, [[D36]] nullSkippedNotZero, [[D65]] serialsNeverDate, [[D66]] daysMinutesModes
+// [[C69]] ganttPackages, [[C44]] dateSerials, [[D36]] nullSkippedNotZero, [[D66]] daysMinutesModes
 
 import { ScheduleError, type CalendarSpec } from "./types";
 

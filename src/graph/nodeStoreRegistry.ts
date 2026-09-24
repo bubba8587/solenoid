@@ -1,4 +1,3 @@
-// [[C40]] storesRegisterForget
 
 type Forgetter = (nodeId: string) => void;
 

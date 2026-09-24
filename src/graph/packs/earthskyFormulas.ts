@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C51]] formulaNaming
+// [[C17]] shareImpl, [[C51]] formulaNaming
 
 import { solarPosition, sunTimes, moonPhase, latLonError } from "../nodes/astroOps";
 import { solError } from "../errorValue";

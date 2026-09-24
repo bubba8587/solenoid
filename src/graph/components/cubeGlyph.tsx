@@ -1,4 +1,3 @@
-// [[C11]] socketBox12
 // 240-unit paths drawn deliberately oversized in the 12×12 box, so the socket SVG must paint overflow-visible.
 
 export const CUBE_FILL_PATH = "M223.007,60.529l0.038,119.008l-103.007,59.471l-103.045,-59.537l-0.038,-119.008l103.007,-59.471l103.045,59.537Z";

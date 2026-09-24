@@ -1,4 +1,4 @@
-// [[D17]] relaysTransparent, [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind, [[E6]] portOwnsSocket, [[D15]] wildcardsKeepRank, [[C27]] noDataInComponents
+// [[D35]] errorInErrorOut, [[D42]] perInputUnitBlind, [[C27]] noDataInComponents
 // Mechanics: [[conduit-lane-faces]]. All CONDUIT_MAX_LANES lanes are declared up front, since the engine and validator address any lane.
 import { ClassicPreset } from "rete";
 import { trueAnySocket, MutableSocket } from "../sockets";
@@ -90,8 +90,8 @@ export class ConduitNode extends ClassicPreset.Node {
     this.label = init?.label && init.label !== "Conduit" ? init.label : `Conduit ${this.seq}`;
     this.angle = snapConduitAngle(init?.angle);
     for (let i = 0; i < CONDUIT_MAX_LANES; i++) {
-      // `trueany` in, the supremum ([[D15]] wildcardsKeepRank); a fresh MutableSocket out per
-      // lane ([[E6]] portOwnsSocket) so the lane carries its adopted type on.
+      // `trueany` in, the supremum; a fresh MutableSocket out per
+      // lane so the lane carries its adopted type on.
       this.addInput(conduitInKey(i), new ClassicPreset.Input(trueAnySocket));
       this.addOutput(conduitOutKey(i), new ClassicPreset.Output(new MutableSocket("trueany")));
     }

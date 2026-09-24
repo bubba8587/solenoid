@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[C61]] oneDistributionNode, [[D19]] implReteFree
+// [[C17]] shareImpl, [[C61]] oneDistributionNode
 // Must not import rete: excelFunctions.ts registers the distribution formulas straight on `DIST_SPECS[key].compute`.
 import {
   stdNormCDF,

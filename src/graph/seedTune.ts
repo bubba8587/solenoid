@@ -1,4 +1,4 @@
-// [[C89]] standoffsSolveLast (the seed rule), [[C84]] tidyTranslatesOnly
+// [[C89]] standoffsSolveLast (the seed rule), [[B10]] reactFlowView
 // Console-only: group fit and a whole-canvas Tidy measure painted DOM, so they need the live app. scripts/tune-seeds.mjs
 // patches the returned geometry in place, not as a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";

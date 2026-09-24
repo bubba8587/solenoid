@@ -1,4 +1,4 @@
-// [[B12]] losslessSaves, [[C30]] saveViaTextForm
+// [[B12]] losslessSaves
 
 import type { SavedGraph, SavedNode, SavedConnection } from "./persistence";
 import { readTextForm, parseNodeLine } from "./textForm";

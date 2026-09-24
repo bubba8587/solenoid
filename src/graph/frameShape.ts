@@ -1,4 +1,4 @@
-// [[C8]] declareOnce, [[D17]] relaysTransparent
+// [[C8]] declareOnce, [[C10]] socketLattice
 import { makeHeaders, type FrameColType, type FrameValue } from "./frame";
 import { solError } from "./errorValue";
 import type { FrameSchemaColumn } from "./frameBackend";

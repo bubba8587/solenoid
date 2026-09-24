@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl, [[C51]] formulaNaming
+// [[C17]] shareImpl, [[C51]] formulaNaming
 
 import { isInMask, tallyPairs } from "../nodes/listOps";
 import type { PackFormula } from "./packShared";

@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 // Masses are IUPAC abridged/conventional values; an element with no stable isotope carries its bracketed mass number.
 
 import { solError, type SolError } from "../errorValue";

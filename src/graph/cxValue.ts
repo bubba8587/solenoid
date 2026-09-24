@@ -1,4 +1,4 @@
-// [[C17]] shareImpl, [[D45]] maxRankMatrix, [[D19]] implReteFree
+// [[C17]] shareImpl, [[C24]] arraySemantics
 
 import { solError, type SolError } from "./errorValue";
 

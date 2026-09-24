@@ -1,4 +1,3 @@
-// [[C84]] tidyTranslatesOnly
 import { useSyncExternalStore } from "react";
 import { settingsStore, type Settings } from "./settingsStore";
 import { useEscapeToClose } from "./components/useEscapeToClose";

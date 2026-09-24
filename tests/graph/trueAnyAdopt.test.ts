@@ -1,4 +1,4 @@
-// [[D15]]
+// [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { ClassicPreset } from "rete";
 import { reconcileTrueAnyTypes, type AdoptEditor } from "../../src/graph/trueAnyAdopt";
@@ -50,11 +50,11 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     expect(dt(disp.outputs.out?.socket)).toBe("trueany");
   });
 
-  it("adoption never PERSISTS: a save/paste init carries no adopted type ([[D15]] wildcardsKeepRank)", () => {
+  it("adoption never PERSISTS: a save/paste init carries no adopted type ([[C10]] socketLattice)", () => {
     // The save records a node's init fields (extractInit — persistence and paste
     // share it), never its sockets, so an adopted type must not appear there and
     // a reconstructed node must start hollow. This is the "never persists" half
-    // of [[D15]] wildcardsKeepRank, previously unpinned: if Display ever grows a whitelisted field
+    // of [[C10]] socketLattice, previously unpinned: if Display ever grows a whitelisted field
     // holding the adopted type, this fails.
     const src = numSource();
     const disp = new DisplayNode();

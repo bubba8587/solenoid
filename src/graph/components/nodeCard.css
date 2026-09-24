@@ -1,4 +1,4 @@
-/* [[C43]] oneFlowSurface, [[C11]] socketBox12. Mechanics: tree/specs/canvas/react-flow-surface-contract.md. */
+/* [[C43]] oneFlowSurface, [[B10]] reactFlowView. Mechanics: tree/specs/canvas/react-flow-surface-contract.md. */
 
 .solenoid-node {
   background: var(--surface);

@@ -1,4 +1,4 @@
-// [[C11]] socketBox12, [[C28]] literalsIffEditable
+// [[C28]] literalsIffEditable
 import { useEffect, useState } from "react";
 import type { ExpectNode as ExpectNodeType } from "../rete-nodes";
 import { EXPECT_CHECK_LABEL } from "../nodes/quality";

@@ -1,4 +1,4 @@
-// [[C30]] saveViaTextForm, [[B12]] losslessSaves
+// [[B12]] losslessSaves
 
 export const CURRENT_SAVE_VERSION = 2;
 

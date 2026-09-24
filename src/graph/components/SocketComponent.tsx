@@ -1,4 +1,4 @@
-// [[C11]] socketBox12, [[B14]] oneDesignSystem
+// [[B14]] oneDesignSystem
 import { useId, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { SOCKET_COLORS } from "../sockets";

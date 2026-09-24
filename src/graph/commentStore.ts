@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C40]] storesRegisterForget, [[C30]] saveViaTextForm
+// [[B10]] reactFlowView
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

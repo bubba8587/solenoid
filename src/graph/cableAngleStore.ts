@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
+// [[B10]] reactFlowView (module-singleton store, storeKit)
 // Degrees clockwise from +X (0 = right, 90 = down); absent means the cardinal side.
 
 import { createNotifier } from "./storeKit";

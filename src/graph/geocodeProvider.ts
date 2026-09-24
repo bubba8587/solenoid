@@ -1,4 +1,4 @@
-// [[D32]] refreshOutsideRebuild
+// [[C23]] calcModes
 // Open-Meteo geocoding (keyless, CORS-open). The parse is pure; the node owns fetch and cache.
 
 export interface GeocodeMatch {

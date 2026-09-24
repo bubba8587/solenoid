@@ -1,4 +1,4 @@
-// [[B10]], [[C65]], [[C43]]
+// [[B10]], [[C43]]
 import { describe, it, expect } from "vitest";
 import {
   buildModel,

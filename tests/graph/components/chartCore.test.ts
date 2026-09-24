@@ -1,4 +1,4 @@
-// [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk, [[C24]]
+// [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
 import { axisTick, toSeries, partSlices } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";

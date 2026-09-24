@@ -1,4 +1,3 @@
-// [[D17]] relaysTransparent (reports the run)
 import { useState, useSyncExternalStore } from "react";
 import { cableSelectionStore } from "../cableState";
 import { useCableShape } from "../cableShape";

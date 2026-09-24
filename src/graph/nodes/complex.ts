@@ -1,4 +1,3 @@
-// [[D45]] maxRankMatrix
 import { polyRoots } from "./mathUtils";
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, readInput, type CellResult, type BroadcastResult } from "./shared";

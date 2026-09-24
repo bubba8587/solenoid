@@ -2,11 +2,11 @@
 aliases: ["Save format and load path"]
 tags: [spec, documents]
 ---
-<!-- [[B12]] losslessSaves, [[C30]] saveViaTextForm, [[C29]] plainJsonInit, [[D50]] everyFieldClassified, [[C28]] literalsIffEditable, [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder, [[C33]] saveBindsMain, [[C34]] classNameIsType, [[C35]] unknownViaPlaceholder, [[C36]] captureBeforeSwap, [[C58]] tableInputRawText -->
+<!-- [[B12]] losslessSaves, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[C58]] tableInputRawText -->
 
 # Spec: Save format and load path
 
-Serves [[B12]] losslessSaves, with its save-path rules [[C30]] saveViaTextForm, [[C29]] plainJsonInit, [[D50]] everyFieldClassified, [[C28]] literalsIffEditable, [[C31]] immutableDocStore, [[C32]] autosaveSlotOrder, [[C33]] saveBindsMain, [[C34]] classNameIsType, [[C35]] unknownViaPlaceholder, [[C36]] captureBeforeSwap and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves, with its save-path rules [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder and [[C58]] tableInputRawText. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A document has three representations: the live graph (rete editor plus side stores), the `SavedGraph` JSON object, and the text form (one node per line plus a JSON sidecar). The JSON is always produced by passing the live capture through the text form, so the text form is the one canonical projection. This spec defines both serialized shapes, the capture, the load algorithm, the strict validator, and how documents are stored. Names and their rules belong to [[addressable-model]]; the autosave slot mechanics to [[per-doc-autosave-persistence]]; the literal-map convention to [[inline-literal-maps]].
 
@@ -28,7 +28,11 @@ A document has three representations: the live graph (rete editor plus side stor
 
 ## The persisted type is the class name
 
-A node's `type` is its JavaScript `constructor.name` (for example `NumberInputNode`), and loading resolves `type` through `ctorRegistry()` ([[C34]] classNameIsType). The registry is built once, lazily, by calling every factory in `FLAT_CATALOG` and mapping each instance's `constructor.name` to its constructor; the first class registered under a name wins, and a factory that throws is skipped (its type then loads as a Placeholder). Production builds must keep class names: `vite.config.ts` pins `build.minify: "esbuild"` with `esbuild.keepNames: true`. No two catalog classes may share a name.
+A node's `type` is its JavaScript `constructor.name` (for example `NumberInputNode`), and loading resolves `type` through `ctorRegistry()` ([[#The persisted type is the class name]]). The registry is built once, lazily, by calling every factory in `FLAT_CATALOG` and mapping each instance's `constructor.name` to its constructor; the first class registered under a name wins, and a factory that throws is skipped (its type then loads as a Placeholder). The class name is also a dispatch key elsewhere (`SEES_ERRORS`, group collapse, pins).
+
+**MUST:** production builds keep class names. Vite 8 defaults to the Oxc minifier, which has no keepNames equivalent, so `vite.config.ts` pins `build.minify: "esbuild"` with `esbuild.keepNames: true`. **MUST:** no two catalog classes share a name.
+
+Why: the class name is the saved identity ([[B12]] losslessSaves). A mangled name breaks every load. Two classes sharing a name are worse, because the registry keeps the first one registered: saves of the other class silently rebuild as the winner, with different sockets, plausible wiring and the wrong computation. The Placeholder path fires only for an absent type, and a collision looks exactly like a match.
 
 Every constructor accepts one optional `init` object and must rebuild the node's full configuration from it. `PlaceholderNode` is not in the catalog; only the loader builds one.
 
@@ -85,7 +89,7 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
 
 ## Capturing a node's `init`
 
-`extractInit(node)` builds `init` from the live instance ([[C29]] plainJsonInit). Copy takes each card through the same `savedNodeBody` a save uses, so a paste and a save see the same configuration, size, collapse and flip. Of the side tables a paste carries only `frameFormats`, the card's own look (`pastedSideTables`, `copyPaste.ts`); whether it carries pins, comments and standoffs waits on the inbox item `paste-carries-card-state`.
+`extractInit(node)` builds `init` from the live instance ([[#The capture is a fixed point, and plain JSON]]). Copy takes each card through the same `savedNodeBody` a save uses, so a paste and a save see the same configuration, size, collapse and flip. Of the side tables a paste carries only `frameFormats`, the card's own look (`pastedSideTables`, `copyPaste.ts`); whether it carries pins, comments and standoffs waits on the inbox item `paste-carries-card-state`.
 
 1. Every key in `INIT_FIELD_ORDER` that exists on the node with a value other than `undefined` is copied as is. This list is the whitelist of scalar and simple settings (`label`, `op`, `value`, `expr`, `tableText`, `members`, `hostNodeId`, `width`, `height`, and so on).
 2. Object-valued extras are deep-copied, several filtered to live keys so an orphan left behind for undo does not reach the save:
@@ -102,21 +106,37 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
 
 Literal values never enter `init`: they live only in `SavedNode.literals` and `stringLiterals`, restored after construction. A literal key can share a name with an init field (Pad Text's `width` input beside its card `width`, a Script parameter named `label`), so one flat namespace would let either overwrite the other. A constructor may still accept a literal key in its `init` to seed a catalog preset or a hand-written text form; the saved map wins on load.
 
-The capture must be a fixed point: `extractInit(new Ctor(extractInit(n)))` equals `extractInit(n)`, and every value must survive `JSON.parse(JSON.stringify(v))`. A `Map`, `Set`, class instance, `NaN` or `Infinity` breaks the second rule silently, because the text form stringifies each field (`Infinity` becomes `null`).
+### The capture is a fixed point, and plain JSON
 
-Every own field of a catalog node is classified ([[D50]] everyFieldClassified): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly).
+**MUST:** for every catalog node, `extractInit(new Ctor(extractInit(n)))` equals `extractInit(n)`: what a save captures, a load re-applies, and the next save captures again identically, including non-default booleans and changed literal maps. **MUST:** every captured value survives `JSON.parse(JSON.stringify(v))`.
+
+Why: a field that is captured but not re-applied drops on reload, and nothing catches it ([[B12]] losslessSaves). The JSON half closes a second blind spot: the text form stringifies each field, so a `Map`, `Set`, class instance, `NaN` or `Infinity` (which becomes `null`) silently empties in the saved file while the live-object round trip still passes.
+
+### Every field is persisted or deliberately transient
+
+Every own field of a catalog node is classified ([[#Every field is persisted or deliberately transient]]): captured as above, transient by name (`cached*` derived display state, `_*` private machinery), or listed with a reason in the `DELIBERATELY_TRANSIENT` table of `tests/graph/persistenceSweep.test.ts`. Examples of deliberately transient fields: compiled `ast` and `evaluator` (rebuilt from `expr`), per-pass error and result state, frozen random rolls, fetch handles, the image `dataUrl` (its `assetPath` persists instead), and a sink's `enabled` arm flag, so every load starts disarmed ([[C38]] sinkRunButtonOnly). **MUST:** a field in none of the three is an unmade decision, and the sweep fails, naming it.
+
+Why: the round-trip sweep above proves that captured fields survive, but it can't see a field the whitelist never captured: both sides omit it identically, so the test passes while the user's setting silently resets on every reload. The first triage found exactly that: `asofDirection`, the direction dropdown of an as-of Join, reset to "backward" on every save, reload and paste.
 
 Table Input and the paint grid store the raw typed text (`tableText`) as the saved truth; the matrix is derived from it on compute, and blank lines survive in every position ([[C58]] tableInputRawText).
 
 ## Capturing the graph: `serializeGraph()`
 
-`serializeGraph()` always reads the main graph through `getEditor()` and `getView()`, never the surface a Composite drill-in has made active ([[C33]] saveBindsMain). It returns `null` when no editor exists. Otherwise it returns `readTextForm(writeTextForm(raw))` ([[C30]] saveViaTextForm), where `raw` is built by `buildRawSavedGraph`:
+### Saving binds the main graph
+
+**MUST:** the composite drill-in substitutes the editor, area and history through the `activeGraph.ts` seam for canvas operations only. `getEditor()`, serialization, autosave and load always resolve the main graph, so a save taken while drilled in serializes the document, not the open subgraph. Why: getting this wrong is total, silent data loss ([[B12]] losslessSaves). An autosave during a drill-in would write the composite's internal subgraph over the document, and the file would still be valid, so nothing would flag it.
+
+### Every save passes through the text form
+
+`serializeGraph()` always reads the main graph through `getEditor()` and `getView()`, never the surface a Composite drill-in has made active ([[#Saving binds the main graph]]). It returns `null` when no editor exists. Otherwise it returns `readTextForm(writeTextForm(raw))` ([[#Every save passes through the text form]]), where `raw` is built by `buildRawSavedGraph`:
 
 - One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed` and `flipped` come from their stores.
 - A `PlaceholderNode` is written as the node it stands for: `type` is its `missingType`, `init` is a copy of its `savedInit`, and its saved literal maps are copied back ([[C35]] unknownViaPlaceholder).
 - `connections` from the editor, then `standoffs`, `pins`, `comments`, `frameFormats` from their stores, keeping the entries whose nodes are all in the main editor (`savedSideTables`, which a composite's `snapshotInternal` also runs over its internal editor), `drawnCables` from its store, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
 
-The round trip through the text form renames every `id` to the node's name, orders nodes topologically, and canonicalizes field order. Any top-level field that `writeTextForm` or `readTextForm` does not carry is deleted from every save, so a new `SavedGraph` field must be added to both.
+The round trip through the text form renames every `id` to the node's name, orders nodes topologically, and canonicalizes field order. **MUST:** every save passes through the text form, so every top-level `SavedGraph` field is written by `writeTextForm` and read back by `readTextForm`; a new field is added to both. Why: a field that either direction omits is deleted from every save, and autosave then writes the lossy result over the good copy ([[B12]] losslessSaves). That happened to `comments` and `reportPalette`: `buildRawSavedGraph` built them and the round trip dropped them, losing real data on every save until the gap was found.
+
+The line order is by dependency, never canvas position (the writing rules below), so a git diff shows only what an edit touched; canvas order would reshuffle the file on every drag.
 
 ## The text form
 
@@ -295,7 +315,7 @@ A `PlaceholderNode` ([[C35]] unknownViaPlaceholder) keeps the original type (`mi
 - Live rete ids. Every load mints new ones; only names are stable.
 - Adopted socket types. A wildcard socket's settled type is derived from the wiring by step 10 on every load, never stored.
 - Derived display and runtime state, per the field classification above: `cached*` and `_*` fields and the `DELIBERATELY_TRANSIENT` list.
-- A node's measured size for most classes. `width` and `height` are captured in every node's `init`, but only size-owning classes (annotation frames, the Composite card, Groups, overlay hosts) read them back ([[C37]] observerOwnsSize); for other classes the saved values are inert and a fresh measure wins.
+- A node's measured size for most classes. `width` and `height` are captured in every node's `init`, but only size-owning classes (annotation frames, the Composite card, Groups, overlay hosts) read them back ([[react-flow-surface-contract#Node width and height]]); for other classes the saved values are inert and a fresh measure wins.
 - Image bytes. On desktop, `bundleLocalImages` runs before `serializeGraph`, so the JSON carries the fresh paths. It writes each unsaved image into an `images/` folder beside the file (reusing a same-content file, else `name (2).ext` up to `(9)`, else a content-hash suffix) and records a document-relative `assetPath`; the Image card re-reads it on mount, which covers a document load, a paste and a Placeholder restore with no hook per load path. A path that climbs out of the document's folder is never read, and a missing file is not an error, since the folder is the user's and files move. The card shows a "not saved" hint until its image is bundled. On the web an attached image stays session-only.
 - Selection, camera, undo history, open overlays, drill-in state, and the sink arm flag.
 - The document's own name, file path and clocks: these live on the library entry (`SolDoc`), not in the graph.
@@ -329,13 +349,13 @@ Suggestions use Levenshtein distance within a budget of `max(2, ceil(len / 4))`,
 
 The document library is the working store; files are exports and imports of one document.
 
-**The library.** `DocLibrary` is `{ v, documents, currentId }`, most recently changed first. Each `SolDoc` is `{ id, name, graph, updatedAt, filePath?, fileSavedAt? }`: `id` is a random UUID, `name` is unique in the library ("Untitled", "Untitled 2", ...), `graph` is a `SavedGraph`, `updatedAt` is the epoch ms of the last capture, `filePath` binds the document to a disk file (desktop), and `fileSavedAt` is the last file write. Every transform in `documentStoreCore.ts` returns a new `SolDoc` for each document it changes, because `persist()` skips a document whose object is identical to the one it last wrote ([[C31]] immutableDocStore). A duplicated document gets a new id and name and no `filePath` or `fileSavedAt`.
+**The library.** `DocLibrary` is `{ v, documents, currentId }`, most recently changed first. Each `SolDoc` is `{ id, name, graph, updatedAt, filePath?, fileSavedAt? }`: `id` is a random UUID, `name` is unique in the library ("Untitled", "Untitled 2", ...), `graph` is a `SavedGraph`, `updatedAt` is the epoch ms of the last capture, `filePath` binds the document to a disk file (desktop), and `fileSavedAt` is the last file write. Every transform in `documentStoreCore.ts` returns a new `SolDoc` for each document it changes, because `persist()` skips a document whose object is identical to the one it last wrote ([[per-doc-autosave-persistence#Change detection is object identity]]). A duplicated document gets a new id and name and no `filePath` or `fileSavedAt`.
 
-**localStorage.** Each document has its own two-slot pair `solenoid.docs.doc.<id>.a` / `.b` holding `{ seq, doc }`, and the library has one index pair `solenoid.docs.index.a` / `.b` holding `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`. Every write goes to the older slot; every read takes the newer structurally valid one; `seq` is a strictly rising in-session counter and must be the first key of the payload ([[C32]] autosaveSlotOrder). A failed write raises a sticky notice until a write fully succeeds. Restore reads the index, then each document's slots through `validateDoc` (which applies `validateSavedGraph`), skipping a missing or corrupt document. The mechanics are in [[per-doc-autosave-persistence]].
+**localStorage.** Each document has its own two-slot pair `solenoid.docs.doc.<id>.a` / `.b` holding `{ seq, doc }`, and the library has one index pair `solenoid.docs.index.a` / `.b` holding `{ seq, currentId, docs: [{ id, name, updatedAt, filePath? }] }`. Every write goes to the older slot; every read takes the newer structurally valid one; `seq` is a strictly rising in-session counter and must be the first key of the payload ([[per-doc-autosave-persistence#Two slots per pair]]). A failed write raises a sticky notice until a write fully succeeds. Restore reads the index, then each document's slots through `validateDoc` (which applies `validateSavedGraph`), skipping a missing or corrupt document. The mechanics are in [[per-doc-autosave-persistence]].
 
 **Autosave.** Any settled edit calls `scheduleAutosave()`, which debounces 700 ms and then calls `documentStore.captureCurrent()`: serialize the main graph, write it into the current document with a fresh `updatedAt`, float that document to the top, persist. A capture is skipped while autosave is suspended or while a rebuild is in progress. A capture whose serialize throws writes nothing, raises one sticky error notice (dismissed by the next capture that succeeds) and returns false ([[B12]] losslessSaves). A pending autosave is flushed synchronously on `pagehide` and on the desktop window's close request ([[per-doc-autosave-persistence]]). In the dev server each capture is also mirrored to `.dev/current-graph.json`.
 
-**Switching documents.** Every `documentStore` verb that changes which document is on screen (`newBlank`, `newFromTemplate`, `open`, `saveAs`, `duplicate`, `importAsDocument`) first returns early if a rebuild is running, then captures the outgoing document, and stays on it when that capture fails ([[C36]] captureBeforeSwap). The sanctioned exceptions are `restore` (nothing live at startup), `remove` (capturing would resurrect the deleted edits) and `reloadCurrent` (gated on the load reveal instead). When the incoming document's load is refused, the library reverts `currentId` to the document still on screen, or, with nothing to revert to, adds and shows a blank "Untitled", so an autosave never writes one document's graph into another. Deleting the last document replaces it with a blank one. A fresh profile starts from the default seed.
+**Switching documents.** Every `documentStore` verb that changes which document is on screen (`newBlank`, `newFromTemplate`, `open`, `saveAs`, `duplicate`, `importAsDocument`) first returns early if a rebuild is running, then captures the outgoing document, and stays on it when that capture fails ([[per-doc-autosave-persistence#Swapping documents]]). The sanctioned exceptions are `restore` (nothing live at startup), `remove` (capturing would resurrect the deleted edits) and `reloadCurrent` (gated on the load reveal instead). When the incoming document's load is refused, the library reverts `currentId` to the document still on screen, or, with nothing to revert to, adds and shows a blank "Untitled", so an autosave never writes one document's graph into another. Deleting the last document replaces it with a blank one. A fresh profile starts from the default seed.
 
 **Save clocks.** `saveTimeStore` is the leaf module node classes read the clocks through (`autosavedAt`, the current document's `updatedAt`, and `fileSavedAt`), since a node class cannot import `documentStore`. `documentStore` registers itself as its provider at load and bumps it on every library change; in a headless run nothing registers, so both read null.
 

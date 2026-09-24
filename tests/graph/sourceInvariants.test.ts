@@ -1,4 +1,4 @@
-// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[D64]], [[C95]], [[C97]]
+// [[B10]] reactFlowView, [[C13]], [[C26]], [[C27]], [[B12]] losslessSaves, [[C38]], [[C39]], [[D10]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -7,7 +7,7 @@ import * as path from "node:path";
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
 // failed when a NEW file forgot them, which [[C9]] labelUnenforced flags as precisely the shape
 // of every Origin incident. These scans close the completeness half the same way
-// formulaPathIsReteFree.test.ts closes [[D19]] implReteFree: statically, over the real source, so
+// formulaPathIsReteFree.test.ts closes [[C17]] shareImpl: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
 //
 // The scans are LINE-BASED with `//` comments stripped — crude but exactly as
@@ -306,7 +306,7 @@ describe("[[C26]] opArgDistinct — OP pickers bind `op`, ARG pickers never do",
   });
 });
 
-describe("[[C30]] saveViaTextForm — the text form carries every SavedGraph field, both directions", () => {
+describe("[[B12]] losslessSaves — the text form carries every SavedGraph field, both directions", () => {
   // serializeGraph() returns readTextForm(writeTextForm(raw)) — the text form is
   // the NARROW WAIST of the save path, so a SavedGraph field that either
   // direction omits is deleted from EVERY save, and autosave then writes the
@@ -348,14 +348,14 @@ describe("[[C30]] saveViaTextForm — the text form carries every SavedGraph fie
     }
     expect(
       missing,
-      `SavedGraph fields the text-form narrow waist drops ([[C30]] saveViaTextForm) — the field ` +
+      `SavedGraph fields the text-form narrow waist drops ([[B12]] losslessSaves) — the field ` +
       `will silently vanish from every save until both directions carry it:\n  ` +
       missing.join("\n  "),
     ).toEqual([]);
   });
 });
 
-describe("[[C34]] classNameIsType — class names are load-bearing: keepNames stays in both bundler configs", () => {
+describe("[[B12]] losslessSaves — class names are load-bearing: keepNames stays in both bundler configs", () => {
   // `constructor.name` is not a label here — it is the TYPE written into every
   // save (persistence.ts), the ctor-registry key that loads resolve through, and
   // a dispatch key (SEES_ERRORS, groupCollapse, pinStore…). A build without
@@ -582,7 +582,7 @@ describe("[[C39]] effectsEdgeTriggered — an outward effect from data() gates o
   });
 });
 
-describe("[[C36]] captureBeforeSwap — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
+describe("[[B12]] losslessSaves — every documentStore verb that swaps the canvas captures first and guards the rebuild", () => {
   // A verb that switches which document is on screen without captureCurrent()
   // discards up to AUTOSAVE_DELAY of edits to the outgoing doc; without the
   // isGraphRebuilding() guard it races a load and can serialize a half-built
@@ -621,7 +621,7 @@ describe("[[C36]] captureBeforeSwap — every documentStore verb that swaps the 
     }
     expect(
       offenders,
-      `documentStore verbs that swap the canvas without the discipline ([[C36]] captureBeforeSwap):\n  ` +
+      `documentStore verbs that swap the canvas without the discipline ([[B12]] losslessSaves):\n  ` +
       offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -717,7 +717,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
   });
 });
 
-describe("[[C40]] storesRegisterForget — every node-keyed store registers with nodeStoreRegistry", () => {
+describe("[[B10]] reactFlowView — every node-keyed store registers with nodeStoreRegistry", () => {
   // Per-node state lives in module-level stores (rete's separate React root —
   // no shared context), and the registry is the ONE answer to "what happens on
   // node delete / graph rebuild". A store that skips it leaks dead-id entries
@@ -777,7 +777,7 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
     expect(
       offenders,
       `These stores hold state but never register with nodeStoreRegistry ` +
-      `([[C40]] storesRegisterForget): a deleted node's entries linger and a rebuild misses them. ` +
+      `([[B10]] reactFlowView): a deleted node's entries linger and a rebuild misses them. ` +
       `registerNodeForget(+All), or add the store to SANCTIONED with the reason ` +
       `it is not node-keyed:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
@@ -797,7 +797,7 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
     }
     expect(
       offenders,
-      `These stores register forget but not forgetAll ([[C40]] storesRegisterForget) — the rebuild ` +
+      `These stores register forget but not forgetAll ([[B10]] reactFlowView) — the rebuild ` +
       `bulk reset misses them:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -813,7 +813,7 @@ describe("[[C40]] storesRegisterForget — every node-keyed store registers with
   });
 });
 
-describe("[[C11]] socketBox12 — the socket box's greppable half", () => {
+describe("[[B10]] reactFlowView — the socket box's greppable half", () => {
   // The rendering half (RF measures the Handle's box; a transform or an
   // unmeasured constant misreports the cable endpoint) is
   // scripts/socket-box-probe.mjs on the live page. The known REGRESSION VECTORS
@@ -914,7 +914,7 @@ describe("heroChipRow: hero-box chips use the shared --chip row, never an inline
   });
 });
 
-describe("[[D64]] oneSizeRead — the movement stack reads sizes through measuredBox", () => {
+describe("[[B10]] reactFlowView — the movement stack reads sizes through measuredBox", () => {
   // Every module that moves or fits nodes. A direct DOM size read here is either a
   // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
   // above ([[C5]] exceptionsUnderRule); the node lists the four that stand.
@@ -928,11 +928,11 @@ describe("[[D64]] oneSizeRead — the movement stack reads sizes through measure
         const code = line.replace(/\/\/.*$/, "");
         if (!/offset(Width|Height)\b/.test(code)) return;
         if (/void el\.offsetWidth/.test(code)) return; // the reflow kick, not a size read
-        if (/\[\[D64\]\] exception:/.test((raw[i - 1] ?? "") + (raw[i - 2] ?? ""))) return; // a two-line read shares one marker
+        if (/measuredBox exception:/.test((raw[i - 1] ?? "") + (raw[i - 2] ?? ""))) return; // a two-line read shares one marker
         bad.push(`${f}:${i + 1}`);
       });
     }
-    expect(bad, "read the size through measuredBox (nodeSize.ts), or sanction the line with `// [[D64]] exception: <reason>`").toEqual([]);
+    expect(bad, "read the size through measuredBox (nodeSize.ts), or sanction the line with `// measuredBox exception: <reason>`").toEqual([]);
   });
 });
 
@@ -1020,7 +1020,7 @@ function rawFieldsReaching(effect: RegExp): string[] {
   }
 }
 
-describe("[[C97]] rechartsLazyChunk — recharts is imported statically by exactly one module", () => {
+describe("[[B2]] webTryDesktopFull — recharts is imported statically by exactly one module", () => {
   it("only components/chartRender.tsx imports recharts", () => {
     const importers = walk(SRC)
       .filter((f) => /from\s+["']recharts["']/.test(fs.readFileSync(f, "utf8")))

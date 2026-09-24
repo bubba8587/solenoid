@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[C94]] formatFamilyGates, [[E6]] portOwnsSocket
+// [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[C94]] formatFamilyGates
 import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";

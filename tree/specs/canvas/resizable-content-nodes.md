@@ -2,11 +2,11 @@
 aliases: ["Resizable-content nodes"]
 tags: [spec, canvas]
 ---
-<!-- [[C37]] observerOwnsSize -->
+<!-- [[B12]] losslessSaves -->
 
 # Spec: Resizable-content nodes
 
-Serves [[C37]] observerOwnsSize. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B12]] losslessSaves. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Some nodes render content whose size changes with live input: a slider, a drag, a growing list. For these, the **node body stays a constant size** (it is the node's hit area and the `offsetParent` its contents position against), and the visible content overflows it. The node's top-left corner then never moves as the content changes, so nothing has to re-center it.
 

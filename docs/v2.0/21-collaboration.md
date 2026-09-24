@@ -164,7 +164,7 @@ warned: "multiplayer before Bet 2 exists is misery; on a clean addressable model
 tractable" — Bet 2 shipped). The shared document is a CRDT (Yjs-class; Automerge is the
 alternative) shaped like the text form's semantics, not its bytes:
 - `nodes`: a map keyed by NAME → { type, init fields, literals, stringLiterals } (each field
-  a last-writer-wins register; `init` is JSON-plain by [[C29]] plainJsonInit, so it serializes).
+  a last-writer-wins register; `init` is JSON-plain by `../tree/specs/documents/save-format.md` § The capture is a fixed point, and plain JSON, so it serializes).
 - `connections`: a map keyed by `target/targetInput` (one cable per input — the key IS the
   invariant) → { source, sourceOutput }.
 - `visual`: positions / sizes / collapsed / page per node (LWW registers; positions are the

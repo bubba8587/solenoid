@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 
 import { isSolError, solError, type SolError } from "../errorValue";
 import { clamp } from "./mathUtils";

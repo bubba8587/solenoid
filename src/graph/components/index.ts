@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType.
+// [[B12]] losslessSaves.
 
 export { SocketComponent } from "./SocketComponent";
 export { ConduitComponent } from "./ConduitComponent";

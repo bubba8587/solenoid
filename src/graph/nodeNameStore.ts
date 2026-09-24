@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C40]] storesRegisterForget, [[C19]] namingModel
+// [[B10]] reactFlowView, [[C19]] namingModel
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { NAME_RE, typePrefix, nextAvailableName, counterCheckpoint } from "./nodeNaming";

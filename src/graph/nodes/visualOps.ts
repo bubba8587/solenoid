@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 import { clamp, iterMin, iterMax } from "./mathUtils";
 
 /** Equal-width bins over `[min, max]` (min < max): the lower edges, and each value's bin by those same edges, the last bin closed. */

@@ -2,11 +2,11 @@
 aliases: ["Compute pass and the input boundary"]
 tags: [spec, computation]
 ---
-<!-- [[C23]] calcModes, [[D30]] targetedEqualsFull, [[D31]] onlyCalcModeSkips, [[D32]] refreshOutsideRebuild, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[D13]] widenNeverNarrow, [[D11]] noAutoCross, [[D27]] oneBroadcast, [[C17]] shareImpl -->
+<!-- [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[D13]] widenNeverNarrow, [[D11]] noAutoCross, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
 
 # Spec: Compute pass and the input boundary
 
-Serves [[C23]] calcModes, [[D30]] targetedEqualsFull, [[D31]] onlyCalcModeSkips, [[D32]] refreshOutsideRebuild, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[D13]] widenNeverNarrow and [[D11]] noAutoCross. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[C39]] effectsEdgeTriggered, [[D13]] widenNeverNarrow and [[D11]] noAutoCross. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This file owns what happens from "something changed" to "every card shows its new value": how the engine is driven, which nodes a pass recomputes, the calc mode, volatile nodes, rebuild scopes, and what a value goes through between leaving one node's output and reaching the next node's `data()`. Which cables may connect at all is [[socket-lattice]] ([[C10]] socketLattice); this file starts once a cable exists. The error codes and their meaning are [[error-values]]; units on the value are [[unit-flow]]; the null and blank semantics a `data()` applies are [[value-semantics]].
 
@@ -41,11 +41,19 @@ The model is a rete `NodeEditor`; the engine is a rete-engine `DataflowEngine` a
 | `fetchAll(editor, engine, onNode?, { stopOnCancel? })` | Fetches every node in `editor.getNodes()` order, skipping a node removed while an earlier fetch awaited, calls `onNode` with each result, and collects a map of id to outputs. A fetch that rejects with `Cancelled` records `null`, or under `stopOnCancel` ends the pass and answers `null`; any other rejection propagates. |
 | `computeAll(editor, engine, changedId?)` | `clearCollectMemo`, `resolveTrigModes`, then `invalidate`, then `seedLoopErrors(loopMembers(...))`, then `fetchAll`. |
 
-Seeding must happen after invalidation and before any fetch: the engine resolves inputs before calling `data()`, so fetching into a cycle would recurse forever. Because a member's cache entry is already resolved, every node downstream of a loop computes normally and shows the propagated `#CIRC!` through the error guard. Seeding only the members, never their descendants, is what makes a full and a targeted pass agree about cycles ([[D30]] targetedEqualsFull).
+Seeding must happen after invalidation and before any fetch: the engine resolves inputs before calling `data()`, so fetching into a cycle would recurse forever. Because a member's cache entry is already resolved, every node downstream of a loop computes normally and shows the propagated `#CIRC!` through the error guard. Seeding only the members, never their descendants, is what makes a full and a targeted pass agree about cycles ([[#The targeted pass equals the full pass]]).
 
 `resolveTrigModes(editor)` runs before every fetch because a trigonometric Math node in automatic angle mode reads its resolved mode during `data()` ([[unit-flow]], the one compute-time unit read).
 
 The headless runner (`scripts/run-graph.ts`) calls `computeAll`. The app's pass (`processGraph`) runs `invalidate` and `fetchAll` with its own bookkeeping, described below. A composite's private engine resets fully and fetches only its output markers, with the same `loopMembers` and `seedLoopErrors`.
+
+### The targeted pass equals the full pass
+
+**MUST:** `downstreamClosure(editor, startId)` is exactly the set of nodes a full pass would recompute differently: the start node and everything that depends on it, through branches and joins, stopping at cycles, no more and no less. Cycles are handled the same way too: the targeted pass seeds `#CIRC!` on exactly the members of each loop, as the full pass does, instead of recursing until the stack overflows.
+
+**MUST:** the pass has one definition, the functions above. `processGraph`, the headless runner and the seed tests all run it, and no second copy of the walk or the loop seeding may exist. The composite's marker-only pull is the one different pass shape.
+
+Recomputing too much only wastes time. Recomputing too little is the dangerous half: a node left outside the set keeps showing its previous answer, with no error, beside fresh values ([[C23]] calcModes).
 
 ## The app pass (`processGraph`)
 
@@ -67,7 +75,7 @@ A targeted pass is correct only for a change whose effect flows solely through c
 
 ### Entry order
 
-1. **Calc-mode gate.** If the mode is manual, `opts.force` is not set and no rebuild scope is open, the call marks the graph dirty and returns without computing. This is the only gate that drops a pass ([[D31]] onlyCalcModeSkips). A load, seed or paste runs inside a rebuild scope, so an opened document computes even in manual mode.
+1. **Calc-mode gate.** If the mode is manual, `opts.force` is not set and no rebuild scope is open, the call marks the graph dirty and returns without computing. This is the only gate that drops a pass ([[#Only the calc-mode gate skips a pass]]). A load, seed or paste runs inside a rebuild scope, so an opened document computes even in manual mode.
 2. **Single flight.** If a pass is already running, the call sets a rerun flag (and a forced-rerun flag when `opts.force` is set, and an exact-rerun flag when a `beginForceExact` bracket is open) and returns. Passes never nest: a nested pass would share and corrupt the per-pass state (the engine cache, the collect memo, the loop set). Components that call `processGraph` from a mount or render effect during a pass are the usual source.
 3. **Run.** Increments the compute-overlay counter (`beginCompute`), runs the pass body, clears the dirty flag on completion, and in a `finally` clears the in-flight flag and decrements the counter (`endCompute`). The overlay (`computeOverlayStore.ts`) is a "Computing…" curtain that blocks interaction, so a multi-second pass can't interleave with a pan, drag or add. It appears only once a pass has run for 150 ms (`REVEAL_DELAY`) and then stays at least 350 ms (`MIN_VISIBLE`) so it never flashes; a pass that ends before the reveal cancels it, and a new pass cancels a pending hide.
 4. **Drain.** If a rerun was requested, runs exactly one more full pass, `processGraph()` with `{ force: true }` when any coalesced request was forced (otherwise the manual-mode gate would swallow a coalesced F9), inside its own `beginForceExact` bracket when any was exact (the F9 caller's bracket has already closed by then, so sketch would otherwise sample the pass F9 asked for). A full pass is a superset of any targeted request that was coalesced, so the arguments of coalesced calls are dropped. The drain runs after the in-flight flag clears, so it never nests, and a component effect whose dependencies did not change fires nothing, so the drain cannot queue itself forever.
@@ -97,7 +105,7 @@ A targeted pass is correct only for a change whose effect flows solely through c
 | Paste | `bulkSettle(pastedIds)`: an additive pass rendering only the pasted nodes |
 | Delete, composite create or unpack, undo, redo | a rebuild scope, then one `bulkSettle()` (a full pass) |
 | F9, Calculate now, the status bar's Calculate, switching to Automatic or Sketch, local midnight when the document holds a volatile date | `requestRecalc()` |
-| A live-data connection refresh or a background load landing | `processGraph()` outside any rebuild scope ([[D32]] refreshOutsideRebuild) |
+| A live-data connection refresh or a background load landing | `processGraph()` outside any rebuild scope ([[#A refresh never runs inside a rebuild scope]]) |
 
 `bulkSettle(renderOnly?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly)`.
 
@@ -121,6 +129,10 @@ The store holds `mode: "auto" | "manual" | "sketch"`, a `dirty` boolean and a `f
 | auto or sketch | pass runs | forced exact pass, new generation | no-op if same mode, else catch-up pass | mode changes, no pass |
 | manual, clean | dirty set, no pass | forced exact pass, stays clean | dirty cleared, catch-up pass | no-op |
 | manual, dirty | stays dirty, no pass | forced exact pass, dirty cleared | dirty cleared, catch-up pass | no-op |
+
+### Only the calc-mode gate skips a pass
+
+**MUST:** the calc mode and the dirty flag form the real state machine in the table above. In manual mode an edit marks the graph dirty instead of computing; switching to automatic or sketch clears the pending flag and the caller owes the catch-up recompute, since the store never runs a pass; an unavailable `localStorage` falls back to in-memory state, never to a graph that quietly stops recomputing. The entry-order gate is the only thing that drops a pass. A graph that has stopped recomputing looks exactly like one that doesn't need to, so the transitions have direct tests (`calcModeStore.test.ts`).
 
 `requestRecalc()` increments the recalc generation, calls `beginForceExact()`, runs `processGraph(undefined, undefined, { force: true })`, and calls `endForceExact()` in a `finally`. So F9 always computes, in any mode, on full data, and re-rolls every volatile node.
 
@@ -158,7 +170,11 @@ What an open scope suppresses:
 | Outward effects: Alert firing, Expect violations, a relative Date Input's day change, a composite's By-Row cap warning, Problems panel logging | nodes and `problemsStore.ts` | [[C39]] effectsEdgeTriggered: a load must not replay old alerts |
 | The Conduit's lane-change recompute | `ConduitComponent.tsx` | the rebuild's own settle covers it |
 
-A live-data refresh (`refreshConnection`, `refreshAllConnections`, a background load landing) runs its pass outside any rebuild scope, so an Alert on fresh data still fires ([[D32]] refreshOutsideRebuild). The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
+### A refresh never runs inside a rebuild scope
+
+**MUST:** a live-data refresh (`refreshConnection` from the manual button or the interval timer, `refreshAllConnections`, a background load landing) runs its pass outside `beginGraphRebuild` / `endGraphRebuild`. Bulk topology operations wrap themselves in scopes on purpose; a refresh must never be one of them. A scope suppresses outward effects so a load doesn't replay old alerts ([[C39]] effectsEdgeTriggered), and a refresh inside one would swallow a real alert on fresh data: an Alert watching a live feed would simply stop firing.
+
+The Tornado sweep opens a scope and `beginForceExact()` on purpose: its perturbation passes must run in manual mode, on full data, without raising real alerts.
 
 ## The per-node wrappers
 
@@ -228,7 +244,7 @@ Details the table compresses:
 - **Widening.** A value only moves up in rank ([[D13]] widenNeverNarrow): a scalar or list widens into `table` as one row (CSV orientation; a column takes a Transpose), and into `frame` and `cube` the same way. Narrowing happens only where a combo or scalar rung collapses a singleton; a real narrowing failure throws `ShapeError`, which the guard renders as `#SHAPE!` ([[D35]] errorInErrorOut). An empty list reaching `number` is `#SHAPE!` ("Expected a single value, got 0"); reaching `list` or `table` it stays empty.
 - **The shape helpers** (`nodes/coerce.ts`). `toMatrix` only widens and never fails: a scalar is 1×1, a list one row, a matrix unchanged. `toList` wraps a scalar, flattens a 1×N or N×1 matrix and throws `ShapeError` on a real M×N table. `toScalar` flattens and throws `ShapeError` on more than one element. A scalar is any value that is not an array, so a value that reaches a rung through a wildcard (`trueany` accepts everything) is one value, never a list of its characters. `toAnyMatrix` is `toMatrix` for any element type. `matrixShape(v)` is the one row and column count that the Table Info node's outputs and the COLUMNS and ROWS formulas share ([[C17]] shareImpl): a list is one row, a scalar is 1×1, and a wired blank is unknown (`null`). A Frame has its own real shape, so the node handles it before calling this, and Frames never reach formulas. The error guard recognizes `ShapeError` by its `name`.
 - **Frame and Cube construction.** `frameFromRows(rows)` makes one column per position of the widest row, headers `Col1`, `Col2`, … and column types inferred from the cells. A `FrameValue` arriving at `frame` passes unchanged. `toCube` passes a Cube, converts a Frame with `frameToCube`, and builds from rows otherwise.
-- **Rungs without widening.** The typed matrix rungs other than `table` (`strtable`, `datetable`, `complextable`, `logicaltable`) and `anytable` do not widen at arrival; the node widens with `toAnyMatrix` itself. `any` does not collapse a singleton. `anycombo` and `anydata` get no element coercion and no widening, so a scalar stays a scalar; on `anydata` a matrix flows whole, because the formula evaluator owns the rank semantics ([[D27]] oneBroadcast).
+- **Rungs without widening.** The typed matrix rungs other than `table` (`strtable`, `datetable`, `complextable`, `logicaltable`) and `anytable` do not widen at arrival; the node widens with `toAnyMatrix` itself. `any` does not collapse a singleton. `anycombo` and `anydata` get no element coercion and no widening, so a scalar stays a scalar; on `anydata` a matrix flows whole, because the formula evaluator owns the rank semantics ([[formula-language#Broadcasting]]).
 - **Why the strict list rungs wrap a lone value.** Without the wrap, a node's `for...of` over the input throws on a number and walks a string one character at a time.
 
 **Unit-cell coercion** (kept-unit inputs whose value is a `UnitCell` or an array directly holding one): shapes by rank without the numeric coercers, which would reject a cell object.

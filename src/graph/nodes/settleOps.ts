@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 
 export interface SettleRow {
   name: string;

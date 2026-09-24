@@ -2,11 +2,11 @@
 aliases: ["Cable rendering knobs"]
 tags: [spec, canvas]
 ---
-<!-- [[C91]] cableWalkRouter, [[D17]] relaysTransparent -->
+<!-- [[B10]] reactFlowView, [[C10]] socketLattice -->
 
 # Spec: Cable rendering knobs
 
-Serves [[C91]] cableWalkRouter (the router and the spline) and [[D17]] relaysTransparent (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B10]] reactFlowView (the router and the spline) and [[C10]] socketLattice (ribbons and Conduit runs: the Conduit is wiring, so the run is the user's entity). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This spec covers how a wired cable is drawn: the three cable shapes (spline, diagonal and straight), per-socket exit angles, ribbons (several Conduit lanes drawn as one wide cable), and Conduit runs (the whole wire through a chain of Conduits). The drawing lives in `flow/FlowCableEdge.tsx`, the paths in `cablePaths.ts`, the ribbon logic in `ribbonCable.ts`, and the run walk in `conduitTrace.ts`.
 
@@ -63,7 +63,7 @@ The inverse case (`kind: "groupSource"`) is a Conduit hidden inside a collapsed 
 
 ## Conduit runs
 
-A cable is one segment of a wire, not the whole wire ([[D17]] relaysTransparent). A Conduit is wiring, not computation, so the entity the user means is the **run**. `conduitPath` in `conduitTrace.ts` (unit-tested in `conduitTrace.test.ts`) finds it in two walks:
+A cable is one segment of a wire, not the whole wire ([[type-propagation-on-in-place-socket-retype#Relays are transparent]]). A Conduit is wiring, not computation, so the entity the user means is the **run**. `conduitPath` in `conduitTrace.ts` (unit-tested in `conduitTrace.test.ts`) finds it in two walks:
 
 1. **Upstream, a chain.** From the clicked cable, while its source is a Conduit, step to the one cable feeding the matching input lane (an input lane takes at most one cable). Stop at a node that is not a Conduit, or at a Conduit whose input lane is unwired; that Conduit is then the origin.
 2. **Downstream, a tree, from the origin.** From the origin cable, follow every cable out of each Conduit's matching output lane (one output lane can feed many cables). A cable into a non-Conduit is a terminal. A Conduit lane with nothing wired out is also a terminal, where the run dies.
@@ -120,6 +120,8 @@ The remaining discontinuities are inherent:
 - Two routes of equal length can swap, including the mirror flip when sockets face each other head-on.
 
 Property tests in `cablePaths.test.ts` check the invariants by machine, plus continuity under simulated 0.5 px drags: a large jump is allowed only between routes of equal length. Keep them passing when touching the router.
+
+Why one walk router: the heuristic routers it replaced (`getDiagonalPath`, `getSmoothStepPath`, `withAngleLeads`) needed fallbacks, and the fallbacks produced kinks. Constraints that hold by construction leave nothing to fall back from. **Reopen if:** cables need obstacle avoidance, which no walk family provides.
 
 ## Spline
 

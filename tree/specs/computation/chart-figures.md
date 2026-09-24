@@ -2,11 +2,11 @@
 aliases: ["Chart figures"]
 tags: [spec, computation]
 ---
-<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[C97]] rechartsLazyChunk, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C8]] declareOnce, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams -->
+<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C8]] declareOnce, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams -->
 
 # Spec: Chart figures
 
-Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[C97]] rechartsLazyChunk, [[C71]] noBarEditing, [[C63]] oneRecordNode and [[C94]] formatFamilyGates (the Format Controller's `chart` family). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode and [[C94]] formatFamilyGates (the Format Controller's `chart` family). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A chart in Solenoid is a value, not a drawing. Each figure node computes a small, self-describing figure value and sends it down a `chart` cable; whatever receives it (the node's own card, a Display, the chart popup, a Report embed) draws it at the size it has. This spec covers that value, the nodes that make it, the options string that styles it, and the renderers that draw it.
 
@@ -37,7 +37,7 @@ Every consumer recognizes a value by its brand field, never by structure: `isCha
 
 Every payload is data, never geometry: the renderer lays it out at the size it is given.
 
-The figure picks its renderer, not the surface ([[C100]] chartIsAValue): recharts for interactive plots (one lazy chunk, [[C97]] rechartsLazyChunk), plain CSS or SVG cards for structured payloads (KPI, Gauge, the Record views), and a supersampled 2-D canvas for data-heavy figures, which stays one DOM element however many points it draws and takes its theme colors from the live CSS variables when it draws. The Gantt value, for example, carries rows, links and non-working spans as serials plus the resolved view settings, and the layout produces pixels at the measured width, because the same figure draws at four sizes (chip, Display, popup, Report).
+The figure picks its renderer, not the surface ([[C100]] chartIsAValue): recharts for interactive plots (one lazy chunk, [[engineering#Heavy libraries load lazily]]), plain CSS or SVG cards for structured payloads (KPI, Gauge, the Record views), and a supersampled 2-D canvas for data-heavy figures, which stays one DOM element however many points it draws and takes its theme colors from the live CSS variables when it draws. The Gantt value, for example, carries rows, links and non-working spans as serials plus the resolved view settings, and the layout produces pixels at the measured width, because the same figure draws at four sizes (chip, Display, popup, Report).
 
 | `kind` | Fields |
 |---|---|
@@ -272,7 +272,7 @@ A `MermaidValue` is not a `ChartValue`; the surfaces test for it separately and 
 
 ### The three paths
 
-- **recharts.** Every recharts component lives in `chartRender.tsx`, the one module under `src/` that imports `recharts`, and nothing imports it statically ([[C97]] rechartsLazyChunk). `chartView.tsx` and `chartCore.ts` stay recharts-free and wrap each renderer in `lazy` plus `Suspense`, with a blank box of the figure's size as the fallback, so the card doesn't reflow and its sockets don't re-measure before the chunk arrives. There is no spinner; it would flash too fast to read. A chart is a figure, never prose or a form control, so the whole recharts subtree is unselectable and draws no focus outline (`chartView.css`): recharts' SVG text would otherwise select in fragments, and recharts 3's accessibility layer makes marks focusable. Colors are resolved values, not CSS variables, because recharts writes SVG attributes: `useChartColors` reads `--border-strong` (grid), `--text-dim` (axis), `--gauge-track` and the Display kind accent (the default mark color), and re-reads when the theme store changes. `mermaid` and `@solenoid/gantt-react` follow the same rule: reached only by dynamic import.
+- **recharts.** Every recharts component lives in `chartRender.tsx`, the one module under `src/` that imports `recharts`, and nothing imports it statically ([[engineering#Heavy libraries load lazily]]). `chartView.tsx` and `chartCore.ts` stay recharts-free and wrap each renderer in `lazy` plus `Suspense`, with a blank box of the figure's size as the fallback, so the card doesn't reflow and its sockets don't re-measure before the chunk arrives. There is no spinner; it would flash too fast to read. A chart is a figure, never prose or a form control, so the whole recharts subtree is unselectable and draws no focus outline (`chartView.css`): recharts' SVG text would otherwise select in fragments, and recharts 3's accessibility layer makes marks focusable. Colors are resolved values, not CSS variables, because recharts writes SVG attributes: `useChartColors` reads `--border-strong` (grid), `--text-dim` (axis), `--gauge-track` and the Display kind accent (the default mark color), and re-reads when the theme store changes. `mermaid` and `@solenoid/gantt-react` follow the same rule: reached only by dynamic import.
 - **CSS cards.** KPI, the Bar gauge and Record are DOM elements styled by `chartCards.css`; every text size there is `calc(Npx * var(--chart-fscale, 1))`.
 - **Canvas.** One `<canvas>` element however many points it draws. `setupCanvas` sets the backing store to `min(4, devicePixelRatio · 2)` times the CSS size and lets the browser downscale. Colors are read from the canvas's computed CSS variables at each draw (`--text`, `--text-dim`, `--border-strong`, `--surface-sunken`, `--accent`, plus the palette's green, vermilion and blue); the component subscribes to the theme store so a theme change redraws. Each view redraws on every layout.
 

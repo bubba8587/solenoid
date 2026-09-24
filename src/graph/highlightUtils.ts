@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[D17]] relaysTransparent
+// [[C43]] oneFlowSurface, [[C10]] socketLattice
 // Asymmetric and depth-limited: hovering an origin lights all its cables and their destinations, hovering a
 // destination lights that cable and the origin; a Conduit lane is followed through once.
 

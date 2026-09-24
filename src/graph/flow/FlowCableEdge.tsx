@@ -1,4 +1,3 @@
-// [[C65]] domOrderStacking, [[C11]] socketBox12, [[C91]] cableWalkRouter
 import { useContext, useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { FlowRevealContext } from "../flowSurface";

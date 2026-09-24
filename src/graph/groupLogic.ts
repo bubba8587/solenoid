@@ -1,4 +1,4 @@
-// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[C87]] groupsAreSubflows, [[C52]] visibleSelection, [[C112]] noOverlapsEver
+// [[C86]] membershipByGesture, [[D63]] lockedGroupIsObstacle, [[B10]] reactFlowView, [[C52]] visibleSelection, [[C112]] noOverlapsEver
 import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
@@ -170,7 +170,7 @@ export function moveGroupMembers(
 
 function groupRenderedSize(view: View, g: GroupNode): { w: number; h: number } {
   const el = view.nodeElement(g.id);
-  // [[D64]] exception: containment wants the RENDERED box, falling back to the stored one.
+  // measuredBox exception: containment wants the RENDERED box, falling back to the stored one.
   return { w: el?.offsetWidth || g.width, h: el?.offsetHeight || g.height };
 }
 

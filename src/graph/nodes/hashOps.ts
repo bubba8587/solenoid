@@ -1,4 +1,4 @@
-// [[D19]] implReteFree, [[C17]] shareImpl
+// [[C17]] shareImpl
 // WebCrypto's SHA is async-only, so the digests live here in full. UTF-8 in, lowercase hex out.
 
 export type HashAlgorithm = "sha256" | "sha1" | "md5" | "crc32" | "fnv1a32" | "fnv1a64";

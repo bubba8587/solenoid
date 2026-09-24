@@ -1,4 +1,4 @@
-// [[C69]] ganttPackages, [[C44]] dateSerials, [[D65]] serialsNeverDate
+// [[C69]] ganttPackages, [[C44]] dateSerials
 
 export const UNIX_EPOCH_SERIAL = 25569;
 

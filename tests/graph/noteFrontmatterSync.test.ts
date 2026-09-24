@@ -1,4 +1,4 @@
-// [[D16]] retypeReconciles, [[D15]] wildcardsKeepRank
+// [[D16]] retypeReconciles, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { NoteNode } from "../../src/graph/nodes/annotation";

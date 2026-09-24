@@ -113,7 +113,7 @@ retired E8 is the example). The many small,
 similar technical choices that fall out of a leaf are spec content: fluid, edited freely, with
 git history as their governance record, like code. Formula.js divergences are the worked
 example: nobody decided "do not diverge from Formula.js"; the decision is Excel parity
-([[A5]] excelParity, [[D28]] tripwireVendorDrift), and the per-name evidence is
+([[A5]] excelParity, `../tree/specs/computation/formulajs-divergences.md` § Overrides and tripwires), and the per-name evidence is
 `tree/specs/computation/formulajs-divergences.md`. One decision may govern several things when turning it off
 for one would break the others; do not split those, and do not merge things that were ever
 reversed independently.

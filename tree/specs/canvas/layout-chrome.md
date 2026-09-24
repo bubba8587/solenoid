@@ -2,20 +2,22 @@
 aliases: ["Layout and chrome"]
 tags: [spec, canvas]
 ---
-<!-- [[C99]] chromeEnvelopeVars, [[C93]] gestureByPointerType, [[C75]] gpuTextureBudget, [[C109]] linuxOwnWindowControls, [[D74]] webkitgtkNoNodeLayers -->
+<!-- [[B14]] oneDesignSystem, [[C93]] gestureByPointerType, [[B10]] reactFlowView, [[C109]] linuxOwnWindowControls -->
 
 # Spec: Layout and chrome
 
-Serves [[C99]] chromeEnvelopeVars. It maps the app's chrome (the bars, pills, panels and overlays around the canvas) on desktop, tablet and mobile: what sits where, what each offset is measured from, and what to check before adding or moving a piece. Citations are a file plus a selector, never a line number; grep the selector.
+Serves [[B14]] oneDesignSystem. It maps the app's chrome (the bars, pills, panels and overlays around the canvas) on desktop, tablet and mobile: what sits where, what each offset is measured from, and what to check before adding or moving a piece. Citations are a file plus a selector, never a line number; grep the selector.
 
 The recurring bug here is a floating overlay covering a bar. Every overlay's offset traces back to the same few bar heights, so moving or resizing a bar moves every dependent offset with it. The two envelopes below carry most of that; the tables say what each remaining number means.
 
 ## The two envelopes
 
-Both are measured CSS variables on `:root` ([[C99]] chromeEnvelopeVars).
+Both are measured CSS variables on `:root` ([[#The two envelopes]]).
 
 - **`--chrome-top`** is published by `Header.tsx`, which observes its own height. Every top-anchored overlay offsets from it. On desktop it measures 66px (the 22px menu bar plus the 44px top bar), with a 2px accent underline making about 68px to the canvas. A tablet in portrait wraps the top bar onto two rows (see Tablets), so the envelope is conditional and no longer a number anyone could write down; `touchActions.test.ts` pins the wrap.
 - **`--chrome-bottom`** is published by `chromeBottom.ts`. Each bottom bar (the status bar, the mobile action bar) registers its root element while mounted, and the variable is the tallest registered height. A `display: none` bar measures 0, so whichever bar owns the bottom edge wins. The mobile bar's height includes its safe-area padding, so the variable carries the inset and consumers drop their own `env()` term.
+
+**MUST:** every floating overlay derives its anchor from the two envelopes with `calc(var(--chrome-*) + gap)`, and no overlay hard-codes a bar height. The offsets used to be magic numbers scattered across many CSS files, so moving one bar meant finding every dependent by hand; measured once, a bar that appears, hides or grows carries every overlay with it. **Reopen if:** the header and footer become part of the layout rather than floating, so the canvas is simply the remaining flex box.
 
 Every use keeps a static fallback for the first paint, before the observers fire: `var(--chrome-top, 66px)`, and `var(--chrome-bottom, 19px)` on desktop or `var(--chrome-bottom, calc(57px + env(safe-area-inset-bottom)))` on mobile.
 
@@ -97,11 +99,12 @@ The menu bar is the title bar: `.solenoid-menubar` carries `data-tauri-drag-regi
 - **Linux draws its own controls** instead of decorum's ([[C109]] linuxOwnWindowControls, which records decorum 1.1.1's three failures there).
   decorum 1.1.1's three failures on Linux: it leaves the native title bar in place, injects its control group twice (once per page-load event, with no guard), and builds its buttons from GNOME's `button-layout`, where `:minimize` gets no click handler.
 - **Linux resize.** The undecorated window has no frame to grab. Tauri's own handler starts a resize from a press within 5px of an edge but never changes the cursor, so `WindowControls.tsx` portals eight `.solenoid-wingrip` strips to `body` (5px edges, 10px corners, z-index 10000, resize cursors) that call `startResizeDragging`. They claim the same 5px the native handler already takes, and unmount while the window is maximized or fullscreen.
-- **On Linux nothing inside a node may become a GPU layer** ([[D74]] webkitgtkNoNodeLayers; `src-tauri/src/linux_webview.rs`, called from `lib.rs`). WebKitGTK rasterizes a compositor layer at 1× and stretches the bitmap by the viewport's `scale()`, and a transformed element with any composited descendant must itself become a layer. So one promoted box inside one node puts the whole React Flow viewport on a stretched layer, and zooming in pixelates the canvas.
+- **On Linux nothing inside a node may become a GPU layer** ([[#The desktop window frame (the Tauri shell)]]; `src-tauri/src/linux_webview.rs`, called from `lib.rs`). WebKitGTK rasterizes a compositor layer at 1× and stretches the bitmap by the viewport's `scale()`, and a transformed element with any composited descendant must itself become a layer. So one promoted box inside one node puts the whole React Flow viewport on a stretched layer, and zooming in pixelates the canvas.
   - Two promoters of node content are switched off: the `AsyncOverflowScrolling` feature (every scrollable box in a node) and 2D canvas acceleration (the canvas-drawn charts).
   - The third promoter is CSS: WebKit runs an `opacity`, `transform` or `filter` transition on the GPU by promoting the element, so a hover fade inside a node flipped the whole canvas onto a layer and back (a 1px squish on hover, and at far zoom-out a second of black while the entire graph rasterized at 1×). `main.tsx` marks the engine (`html[data-webview="webkitgtk"]`), and `desktopFrame.css` turns transitions off inside `.react-flow__viewport` and drops the load-time node reveal. The cable flow animates `stroke-dashoffset`, which is never accelerated, so it keeps running.
   - GPU compositing itself stays on, so the canvas paints into the root layer's tiles at the real scale. The blunt alternative, `WEBKIT_DISABLE_COMPOSITING_MODE=1`, also fixes it but moves all painting to the CPU.
-  - Any new trigger brings the blur back: `will-change`, `translateZ` or other 3D transforms, `<video>`, WebGL, or `position: fixed` inside a node. Check with `WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS=1`, where a green box around the graph is the viewport layer.
+  - Any new trigger brings the blur back: `will-change`, `translateZ` or other 3D transforms, `<video>`, WebGL, or `position: fixed` inside a node. A new style that promotes an element inside a card (a transform animation, `will-change`, a filter) is checked against WebKitGTK before it ships, with `WEBKIT_SHOW_COMPOSITING_DEBUG_VISUALS=1`, where a green box around the graph is the viewport layer.
+  - This is the mobile GPU budget ([[html-in-canvas#The GPU texture budget]]) decided per engine: layer promotion is chosen by the app, not left to the browser. **Reopen if:** WebKitGTK rasterizes layers at their transformed scale.
 - **A debug build is marked on the window itself.** `lib.rs` sets the bug-badged icon under `cfg(debug_assertions)`, from `src-tauri/icons/debug/icon.rgba` (raw RGBA, so no PNG decoder ships; `scripts/debug-icon.mjs` regenerates it from `icons/icon.png`). Release builds never carry it. The two builds pin to the panel as separate apps (`scripts/install-linux-launchers.mjs`): the debug launcher runs through a `solenoid-debug` symlink, because GTK takes `WM_CLASS` from the program name, and a distinct class is what the panel matches a launcher by.
 
 ## Mobile
@@ -164,7 +167,7 @@ The minimap and the socket legend are `display: none` on mobile (`mobile.css`). 
   The header, the status bar and the left navigator are full-width or left-anchored and untouched.
 - **Inspector docked** (desktop and tablet): `html.sol-inspector-docked` (`inspectorStore.ts`), the same push scaled to `--inspector-w: 340px` (`InspectorPanel.css`). The canvas wrapper shrinks; the nav pill, HUD stack and socket legend shift; the command palette re-centers on the canvas. It is the report dock's full set, kept in step. The two right docks are mutually exclusive: the one opened last takes the slot and the other closes, because the author ruled side by side too big. So their squeeze rules never stack.
 - **Presenting**: `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides nearly all chrome: the header, nav pill, status bar, navigator and its open-pill, legend, minimap, mobile bar and HUD (`PresentationOverlay.css`). The canvas is the slide.
-- **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own) and the navigator and its open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop and `88px + safe-area` on mobile) with a run-controls panel tucked under it (`top: 120px`). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[C75]] gpuTextureBudget).
+- **Drilled into a composite**: `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app frame stays. It hides the main minimap (the drill-in host renders its own) and the navigator and its open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb strip (`.solenoid-composite-editor__strip`, `top: 74px` on desktop and `88px + safe-area` on mobile) with a run-controls panel tucked under it (`top: 120px`). Its backdrop is z-index 4, above the canvas and below the chrome, so the app frame stays usable. The covered main canvas stops painting ([[html-in-canvas#The GPU texture budget]]).
 
 ## The z-index ladder
 
