@@ -12,6 +12,8 @@ A plan in Solenoid is a table of tasks, one row per task, and the schedule is a 
 
 Code: `src/graph/nodes/schedule.ts` (the Schedule node), `src/graph/scheduleCpm.ts` (reads the tasks cube into the engine's model and writes the computed columns back), `src/graph/nodes/gantt.ts` with `src/graph/ganttPayload.ts` (the Gantt node and its payload), `src/graph/planImport.ts` (plan files into the tasks cube, used by Local File in `nodes/connection.ts`). The engine and the figure are the three in-repo packages of [[C69]] ganttPackages, each with its own contract: `packages/schedule-engine/README.md` (the passes, the calendar, the file formats), `packages/gantt-layout/README.md` (the payload fields and the layout) and `packages/gantt-react/README.md` (the figure and its option keys). The Gantt node's place among the figure nodes, its option defaults, its popup and its export are in [[chart-figures]]. This spec does not restate them.
 
+The app consumes the three packages through `tsconfig.json` paths, the Vite alias and the vitest alias, never an install step, so `npm ci` and the desktop build are untouched. Each package carries its own `package.json` and LICENSE ([[C69]] ganttPackages).
+
 ## The tasks cube
 
 A plan is a Cube. Names are the keys: every task name is unique, matched trimmed and case-insensitive, and there are no numeric ids, which would be ambiguous with row numbers and break under Sort or Filter ([[#Link grammar stays at the border]]). A Frame wired into the `tasks` socket widens to a Cube ([[socket-lattice]]).

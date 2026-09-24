@@ -148,6 +148,8 @@ Light shadows take the ink's hue, so a warm ramp casts a warm shadow; dark mode 
 
 Returning the ramp object itself, rather than a copy, means the authored hexes pass through byte-identical at home.
 
+The rotation is in OKLCh, never HSL: HSL's saturation varies with hue, so an HSL rotation washed the workbench in the accent color, at up to twice the authored perceived chroma on Orchard's dark ground ([[C62]] paletteAllOrNone).
+
 ## Which palette is in effect
 
 Three layers decide the palette:
