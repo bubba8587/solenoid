@@ -57,6 +57,8 @@ invented vocabulary + the author's names for the on-screen chrome).
   ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
   A new mechanism lands its rule leaf before its code ([[C6]] specFirst), and a rule's
   exceptions live under that rule, each naming what would remove it ([[C5]] exceptionsUnderRule).
+  A leaf is a human product call in plain words; mechanics, code order and designs are specs
+  (`docs/dte.md` § What is a leaf and what is a spec — read it before `dte new`).
   Every MUST-rule (with its enforcing test) and every settled decision (what stands, what would
   reopen it) is a DTE leaf (the author's word; "node" means an app card). Read the governing
   leaf before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as

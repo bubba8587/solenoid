@@ -94,7 +94,10 @@ otherwise. The map binds agents, not the author.
 
 ## What is a leaf and what is a spec (the author's test)
 
-A leaf is a decision someone could reverse, and something would break. The many small,
+A leaf is a product call a person could make: the author could read it, choose otherwise, and
+something the user sees would change (the author, 2026-09-24). It is written in plain words, with no
+code terms. "Could someone reverse it and would something break" is not enough on its own: a load
+order or a wrapper order passes that and is still mechanics (the retired E8 is the example). The many small,
 similar technical choices that fall out of a leaf are spec content: fluid, edited freely, with
 git history as their governance record, like code. Formula.js divergences are the worked
 example: nobody decided "do not diverge from Formula.js"; the decision is Excel parity

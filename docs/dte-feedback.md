@@ -81,6 +81,12 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     consequence of it, so the per-name evidence is a spec serving that node, not twelve
     nodes. State the test and the example where `dte spec` and B38 commentsMigrate are
     introduced; it is the difference between a tree of 200 nodes and one of 2000.
+    **Sharpened 2026-09-24:** "reversible and something breaks" still let mechanics in (a leaf
+    fixing the order two load steps run in passes it). The owner's sharper test: a leaf is a call
+    a person could *decide*, in plain product words; anything that describes how the code fires is
+    spec. About 65 of this tree's ~190 leaves failed it. The vendored `CLAUDE.md` protocol never
+    states the test, so agents who read only it create such leaves; it belongs in the protocol
+    where `dte new` is introduced.
 13. **The Decision section needs a "feature description" tripwire.** When an agent lifts a
     mechanics doc into nodes, the easiest Decision to write opens by describing what the
     thing IS (a standoff's band formula, what a readout row shows, what fields a drawn
