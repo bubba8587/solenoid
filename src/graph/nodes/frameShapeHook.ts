@@ -1,4 +1,3 @@
-// [[C8]] declareOnce.
 import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 

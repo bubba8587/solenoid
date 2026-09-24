@@ -372,7 +372,7 @@ On `develop`, pushed.
   which is the refresh path from now on (it also rewrites `tools/dte.py`). The upstream PROTOCOL file is gone: the agent
   protocol is `dte-rules/CLAUDE.md`, and CLAUDE.md now routes agents to it; `dte-rules/DECISIONS.md` is a render of DTE's own tree.
 - **A8 threeLayers absorbed**: the 86 `*Enforced by:*` blocks are deleted (every named test already cited its node, D8's
-  test now does); [[C9]] labelUnenforced inverted (a MUST is cited FROM its test or labelled `*Unenforced:*`);
+  test now does); C9 labelUnenforced (retired) inverted (a MUST is cited FROM its test or labelled `*Unenforced:*`);
   `rules.test.ts` checks the citation direction and no longer pins quoted test names. `dte.cfg` declares the
   `specs` / `tests` / `agents` layers. `*Where:*` lines remain (backlog).
 - **A5 idPlusName absorbed**: every node has a camelCase `name` (17 were unnamed, four carried `NAME-n`
@@ -380,8 +380,8 @@ On `develop`, pushed.
 - **The mechanics docs ARE the spec layer** (author's rule: every system-describing doc is a node or a spec; on-ramps,
   proposals and history stay). `subsystem-invariants.md` is split into `specs/` (27 files, each serving a named node)
   and is the index now; the other mechanics docs are declared in the `specs` glob. `specs/socket-lattice.md` was the
-  pilot (12 numbered requirements, each naming its node); the rationale docs followed: the comment policy is [[C57]]
-  commentMinimalism's Consequences now, `agent-coordination.md` is [[C83]] parallelAgents (new) plus a bare claim board,
+  pilot (12 numbered requirements, each naming its node); the rationale docs followed: the comment policy is C57 (retired)
+  commentMinimalism's Consequences now, `agent-coordination.md` is C83 parallelAgents (retired) (new) plus a bare claim board,
   the divergences doc is `../specs/formulajs-divergences.md` under D28 tripwireVendorDrift (retired). `out-of-scope.md` waits on the author placing
   `inbox/scope-boundary`; its categories are that node's children; `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
   into the node / the spec; `fcReconcile.ts`, `conduitTrace.ts`, `unitLattice.ts` cite. The pattern for the other
@@ -440,14 +440,14 @@ On `develop`, nothing pushed.
   B3's demotion to C needs C2/C3 pushed to D first (13 citing files); not done, the owner decides. The inline-tag regex
   had carried a raw backspace byte since the flat-tag commit (inline tags were never detected); fixed from a byte-level
   script. `--done` now removes a whole paragraph that opens with a tag, but stops at a list or heading line.
-- **DTE citations are wikilinks** ([[C81]] wikilinkCitations, created this session): every `dte:ID` token in code,
+- **DTE citations are wikilinks** (C81 wikilinkCitations (retired), created this session): every `dte:ID` token in code,
   tests and docs is `[[ID]]`, node link fields are quoted wikilinks, and node prose links its in-tree IDs, so the
   repo opened as an Obsidian vault shows the tree's lineage and backlinks. The vendored `tools/dte.py` reads both
   forms and writes per the new `links` key in `dte.cfg`; the patch passes DTE's own 74 tests untouched and is
   logged in DTE's FEEDBACK.md beside a note on how DTE sits against ADR/MADR, RFC 2119 and the spec-kit tools.
   Node titles are now double-quoted (the `name: summary` colon made 157 frontmatters invalid YAML, so Obsidian
   showed every property as invalid); the tool quotes titles on write.
-- **Vault outbox** ([[C82]] vaultOutbox, created this session): `python tools/dte.py outbox` lists what the author
+- **Vault outbox** (C82 vaultOutbox (retired), created this session): `python tools/dte.py outbox` lists what the author
   changed in Obsidian (notes in `decisions/outbox/`, `ratify`/`retire`/`contest`/`ask` tags (flat, the author's ruling), a typed `ratified_by`,
   never bare diffs) with the command each needs; `--done` clears one; validate prints the count; CLAUDE.md
   makes it the session-start step. Nodes carry `name` (the camelCase handle, split out of the title at the author's request) and `aliases` from it, `null`/block-list rewrites parse,

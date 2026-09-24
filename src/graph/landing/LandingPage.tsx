@@ -1,4 +1,4 @@
-// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
+// [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";

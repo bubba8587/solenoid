@@ -26,7 +26,7 @@ warning is expected.
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
 - [ ] **The ARR pass over the tree** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
-  node ([[C7]] authorRuled; `archive/1.4-plan.md` D3).
+  node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
@@ -135,25 +135,24 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
   demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's
   bridge + Plan vignettes — none maps to a single locked pass.
 
-## DTE — decision provenance (`docs/dte.md`, [[B8]] treeIsTheHome)
+## DTE — decision provenance (`docs/dte.md`)
 
 Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feedback.md`.
 - [ ] **Author ratifies the tree** — A1, B7, C80 and D62 are ratified; next D42 / E11
   (contested, kept), then the B ring. `python tools/dte.py validate` prints the
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
-  `rules.test.ts` ([[C7]] authorRuled).
+  `rules.test.ts` (`docs/dte.md` § Solenoid practice).
 - [ ] **Author places `tree/decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
 - [ ] **Coverage is 100% and pinned** (`rules.test.ts` runs `coverage --check` + `validate`). The bulk pass cited
   whole classes by blast radius (every component cites `../tree/specs/floors/components.md` § The rules, every node class `../tree/specs/documents/save-format.md` § The persisted type is the class name
   classNameIsType + `../tree/specs/documents/save-format.md` § Every field is persisted or deliberately transient, every store [[B10]], every op module `../tree/specs/floors/engineering.md` § The formula path is rete-free + [[C17]], tests the
   leaves of the sources they import, MUSTs only where another test already enforces them). Those are true but
-  thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
+  thin: the comment sweep (WHY → leaf, HOW → spec) still owes each file its SPECIFIC leaf where one
   exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest
   (components, nodes, packages, core modules); what is left is line-granular.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
-  declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]
-  parallelAgents (the file is the live claim board); the Formula.js divergences → `../tree/specs/computation/formulajs-divergences.md`. Exempt as queues:
+  declared as the spec layer; the comment policy → `tree/specs/floors/engineering.md` § Comments; `agent-coordination.md` holds the protocol and the live claim board; the Formula.js divergences → `../tree/specs/computation/formulajs-divergences.md`. Exempt as queues:
   `deferrals.md`, `upstream-formulajs.md` (a few rulings inside deferrals are node candidates when touched).
   **Blocked on the author:** `out-of-scope.md` is the draft of `inbox/scope-boundary` (the four tests + the mirror
   test) and its 13 categories are that node's children; nothing can hang off an unplaced leaf, so

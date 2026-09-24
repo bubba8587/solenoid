@@ -1,4 +1,4 @@
-// [[B13]] aiInScope, [[C8]] declareOnce
+// [[B13]] aiInScope
 
 import { ClassicPreset } from "rete";
 import { buildCatalog } from "./catalogUtils";

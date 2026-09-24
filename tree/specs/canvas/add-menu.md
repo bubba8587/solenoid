@@ -2,11 +2,11 @@
 aliases: ["Add menu"]
 tags: [spec, canvas]
 ---
-<!-- [[D5]] searchWiderThanLabel, [[C8]] declareOnce, [[C19]] namingModel, [[D22]] oneNamePerCard -->
+<!-- [[D5]] searchWiderThanLabel, [[C19]] namingModel, [[D22]] oneNamePerCard -->
 
 # Spec: Add menu
 
-Serves [[D5]] searchWiderThanLabel and [[C8]] declareOnce; the names it shows follow [[C19]] namingModel and [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[D5]] searchWiderThanLabel; the names it shows follow [[C19]] namingModel and [[D22]] oneNamePerCard. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The Add menu is the panel a user opens to place a new card. With the search box empty it shows the catalog as a tree of categories; as soon as the user types, it shows one ranked list of every row that matches. The catalog is declared in `nodeCatalog.ts` and assembled by `catalogUtils.ts`; op families are declared in `nodeOps.ts`; search is `catalogSearch.ts` and `fuzzy.ts`; the panel is `AddNodeMenu.tsx`. `catalogSearch.test.ts`, `fuzzy.test.ts` and `nodeOps.test.ts` pin the behavior.
 
@@ -85,7 +85,7 @@ A family's **hidden ops** (`hiddenOps`) are the ops with no leaf of their own: e
 
 Both kinds are views of the host leaf ([[#The search rows]]): they spread the host and replace only what must differ. Both are generated at search time and never inserted into the tree, so code that walks the catalog does not count them as extra nodes. Neither carries the host's `keywords`, and neither carries the host's hidden-op list or its `{ }` mark, since a row that is one op has nothing folded up. A hidden-op row does carry the op's own `keywords`.
 
-**MUST:** a hidden-op row is built from the host leaf plus the op's own declaration (`opEntry` spreading `...host`), never as a second hand-written catalog entry, and what the row must not inherit is named at that call site. Why: every property the leaf owns (label stem, pack, accent, description) has to follow the leaf automatically, or the menu and the card drift apart ([[C8]] declareOnce); the exceptions belong in the same function rather than a parallel table. The exception list blocks the host's `keywords`, not the op's own: blocking every `keywords` value once pushed per-op Excel spellings into the visible label.
+**MUST:** a hidden-op row is built from the host leaf plus the op's own declaration (`opEntry` spreading `...host`), never as a second hand-written catalog entry, and what the row must not inherit is named at that call site. Why: every property the leaf owns (label stem, pack, accent, description) has to follow the leaf automatically, or the menu and the card drift apart ([[engineering#One declaration per fact]]); the exceptions belong in the same function rather than a parallel table. The exception list blocks the host's `keywords`, not the op's own: blocking every `keywords` value once pushed per-op Excel spellings into the visible label.
 
 ## Scoring a row
 

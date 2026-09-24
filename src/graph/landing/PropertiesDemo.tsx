@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere
+// [[C107]] obsidianPlugin, [[B3]] sameNodeEverywhere
 import { useMemo, useState } from "react";
 import { parse, stringify } from "yaml";
 import noteText from "../../../demo-vault/Solenoid/Property types.md?raw";

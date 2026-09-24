@@ -1,6 +1,5 @@
 # DTE feedback from Solenoid
 
-<!-- [[B8]] treeIsTheHome -->
 Difficulties met while running the vendored tool here, for the author to carry to the DTE
 repo. One numbered item each: what was run, what happened, what would have helped. Delete an
 item once it is processed upstream. Written against DTE `3050da4` (vendored 2026-09-18).
@@ -214,3 +213,17 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     body in their own voice. A ratified leaf reads as present governance by its owner; the agent-written
     activity log on it was clutter. B41 presentGovernance already drops the Contest section on ratify;
     it could drop History too, leaving git as the record.
+27. **DTE has no rule that an unenforced MUST is labeled.** Solenoid kept one as a leaf (C9
+    labelUnenforced, retired 2026-09-24 as a rule about rules, now `docs/dte.md` § Solenoid
+    practice): a leaf whose Decision states a MUST is cited by the test that enforces it, or its
+    Consequences carry an `*Unenforced:*` line saying why nothing can check it, and a bug fix ships
+    with the check that would have caught it. `rules.test.ts` pins the labeling. It is the one habit
+    that separates a spec from folk memory, and A8 threeLayers already derives "enforced by" from
+    citations, so the check is cheap. Suggest: a B rule, and a `validate` warning for a MUST node
+    that no test file cites and that carries no `*Unenforced:*` line.
+28. **`set_field` leaves a block list's items behind.** `reparent D62 --parents C1` on a leaf whose
+    `parents` Obsidian had rewritten as a block list (`parents:` then `  - "[[C1]]"` lines) wrote
+    `parents: ["[[C1]]"]` and kept the old `  - ` lines under it, so the front matter read as a
+    flow list followed by stray items. Any field write (`retire`'s `supersedes`, `authorize`) hits the
+    same path. Patched locally: `set_field` drops the indented `- ` lines that follow the key it
+    replaces. The fix belongs upstream beside B30 obsidianVault's tolerance for vault edits.

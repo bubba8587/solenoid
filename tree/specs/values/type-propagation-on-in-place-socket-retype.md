@@ -2,11 +2,11 @@
 aliases: ["Type propagation on in-place socket retype"]
 tags: [spec, values]
 ---
-<!-- [[D16]] retypeReconciles, [[C10]] socketLattice, [[C8]] declareOnce -->
+<!-- [[D16]] retypeReconciles, [[C10]] socketLattice -->
 
 # Spec: Type propagation on in-place socket retype
 
-Serves [[D16]] retypeReconciles. The static shape walk serves [[C10]] socketLattice (passthroughs forward the shape) and [[C8]] declareOnce (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[D16]] retypeReconciles. The static shape walk serves [[C10]] socketLattice (passthroughs forward the shape) and [[engineering#One declaration per fact]] (`frameShape()` and `columnPickers()` are each a node's one declaration). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 ## The trap
 

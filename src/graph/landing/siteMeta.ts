@@ -1,4 +1,4 @@
-// [[C8]] declareOnce, [[C2]] realCanvasScenes
+// [[B3]] sameNodeEverywhere
 export const SITE_ORIGIN = "https://solenoid-ngc.vercel.app";
 
 export interface SitePageMeta {

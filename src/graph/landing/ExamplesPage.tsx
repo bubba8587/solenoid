@@ -1,4 +1,4 @@
-// [[C2]] realCanvasScenes, [[B14]] oneDesignSystem (DESIGN.md § Voice)
+// [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { useEffect } from "react";
 import { SiteHeader, SiteFooter } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";

@@ -4,7 +4,7 @@ import { frameShapeOf } from "../../src/graph/nodes/frameShapeHook";
 import { passthroughForOutput } from "../../src/graph/nodes/passthrough";
 import { ConduitNode } from "../../src/graph/nodes/conduit";
 
-// [[C8]] declareOnce for frame SHAPE: a frame producer states its own output columns
+// [[C10]] socketLattice. Frame SHAPE is declared once: a frame producer states its own output columns
 // (`frameShape()`), forwards them (`passthrough()`), or is named below as genuinely
 // data-dependent. Without this sweep a new frame node ships silently unknown — every
 // downstream column picker, INDEX projection and conduit trace goes `trueany`, and
@@ -26,7 +26,7 @@ const DATA_DEPENDENT_FRAME_PRODUCERS: Record<string, string> = {
   TallyNode: "the Value column's type is inferred from the tallied values",
 };
 
-describe("every frame producer declares its shape ([[C8]] declareOnce)", () => {
+describe("every frame producer declares its shape ([[C10]] socketLattice)", () => {
   it("no catalog node emits a frame with no shape rule", () => {
     const offenders: string[] = [];
     const sanctionedSeen = new Set<string>();
@@ -46,7 +46,7 @@ describe("every frame producer declares its shape ([[C8]] declareOnce)", () => {
     }
     expect(
       offenders,
-      `frame outputs with no static shape ([[C8]] declareOnce) — every downstream column picker and ` +
+      `frame outputs with no static shape — every downstream column picker and ` +
       `type projection reads them as unknown. Declare frameShape(), or add the class to ` +
       `DATA_DEPENDENT_FRAME_PRODUCERS with the reason:\n  ` + offenders.join("\n  "),
     ).toEqual([]);

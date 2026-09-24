@@ -1,4 +1,4 @@
-// [[C8]] declareOnce
+// [[B3]] sameNodeEverywhere
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { SITE_PAGES, SITE_ORIGIN, pageHtml, type SitePage } from "../../src/graph/landing/siteMeta";

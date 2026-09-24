@@ -1582,7 +1582,10 @@ def set_field(text, key, value):
     new = "%s: %s" % (key, value) if value != "" else "%s:" % key
     for k in range(1, end):
         if lines[k].split(":", 1)[0].strip() == key:
-            lines[k] = new
+            j = k + 1
+            while j < end and re.match(r"^\s+-\s", lines[j]):   # a block list's items go with its key
+                j += 1
+            lines[k:j] = [new]
             return "\n".join(lines)
     lines.insert(end, new)
     return "\n".join(lines)

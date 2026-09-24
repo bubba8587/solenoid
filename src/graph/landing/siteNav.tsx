@@ -1,4 +1,4 @@
-// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere (the marketing chrome)
+// [[B3]] sameNodeEverywhere (the marketing chrome)
 // Routes are plain pathnames and navigation is ordinary anchors (a full reload), which Vercel rewrites back to index.html.
 import { useSyncExternalStore, type ReactNode } from "react";
 import { appThemeStore } from "../appTheme";

@@ -1,4 +1,4 @@
-// [[B8]] treeIsTheHome
+// [[A1]] visualGraphCalculator
 import { describe, expect, it } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
@@ -127,7 +127,7 @@ describe("README routing-table code citations exist", () => {
 });
 
 describe("the tree/ vault's wikilinks resolve", () => {
-  // tree/ is one Obsidian vault ([[C81]] wikilinkCitations): a node by ID or name,
+  // tree/ is one Obsidian vault ([[B1]] obsidianBet): a node by ID or name,
   // a spec by file name or title alias. Links inside code spans are code, not links.
   const TREE = path.join(ROOT, "tree");
   const files: string[] = [];

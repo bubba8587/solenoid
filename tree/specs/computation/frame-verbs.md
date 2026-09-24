@@ -2,7 +2,7 @@
 aliases: ["Frame model and relational verbs"]
 tags: [spec, computation]
 ---
-<!-- [[C16]] polarsEngine, [[C24]] arraySemantics, [[C45]] excelComparisons, [[C59]] byteStringOrder, [[D76]] textMinMax, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[C10]] socketLattice, [[C25]] firstClassUnits, [[C64]] decisionMatrixFamily, [[C8]] declareOnce, [[D46]] freezeVolatilePerCalc -->
+<!-- [[C16]] polarsEngine, [[C24]] arraySemantics, [[C45]] excelComparisons, [[C59]] byteStringOrder, [[D76]] textMinMax, [[D48]] classifyNonFinite, [[D49]] textPredicateNeedsText, [[C10]] socketLattice, [[C25]] firstClassUnits, [[C64]] decisionMatrixFamily, [[D46]] freezeVolatilePerCalc -->
 
 # Spec: Frame model and relational verbs
 
@@ -398,7 +398,7 @@ Every op but `count` reads only numeric cells: logical cells count as 1/0 and te
 
 The engine groups with `group_by_stable` on derived key expressions (a float key split into its finite value and a non-finite class token: a finite `x` is `(x, null)`, `±∞` and `NaN` are `(null, "inf" | "-inf" | "nan")`, a null is `(null, null)`) so buckets match `encodeCell`, and each output key is the group's first-seen original cell. `count` counts the raw column whatever its type; on a string column `min` and `max` are Polars' string `min()` and `max()` over the non-empty cells (UTF-8 byte order, which matches code-unit order outside the astral plane), and every other op is the empty-group constant (0 for sum, 1 for product, blank otherwise). The guard wraps every aggregate over a number or date column except `count` and `percentof`, and its `#DOMAIN!` and `#OVERFLOW!` results travel as reserved NaN payloads (see Native execution). A min or max over a logical column is cast back to TRUE/FALSE.
 
-The GROUPBY card sends one aggregate over its Aggregate column with `as` equal to that column's name. With a totals depth other than 0 it collects its input and runs `pivot` with that column as the only value field and no column fields (the totals re-aggregate the source). A Cube input is flattened with `flatCubeToFrame`. With no keys or no column it passes through. The GROUPBY and Pivot cards' aggregate selector derives from `AGG_OP_META` ([[C8]] declareOnce) and leaves out the `pivotOnly` ops, which only the pivot assembly can run.
+The GROUPBY card sends one aggregate over its Aggregate column with `as` equal to that column's name. With a totals depth other than 0 it collects its input and runs `pivot` with that column as the only value field and no column fields (the totals re-aggregate the source). A Cube input is flattened with `flatCubeToFrame`. With no keys or no column it passes through. The GROUPBY and Pivot cards' aggregate selector derives from `AGG_OP_META` ([[engineering#One declaration per fact]]) and leaves out the `pivotOnly` ops, which only the pivot assembly can run.
 
 ### unpivot
 

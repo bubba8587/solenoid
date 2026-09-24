@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C8]] declareOnce
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
 import type { Pack, PackPlacement } from "./packShared";
 import {
   KMeansNode, PcaNode, LogisticNode,

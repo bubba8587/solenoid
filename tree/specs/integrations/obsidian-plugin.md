@@ -10,7 +10,7 @@ Serves [[C107]] obsidianPlugin. The plugin adds every Solenoid object type that 
 Obsidian's properties: each one shows as the app's chip and opens the app's popup editor, and the
 note keeps plain YAML. This spec is what the plugin has, how it is built, and every place it
 differs from the full app. A divergence lives here under the rule it bends, with what would remove
-it ([[C5]] exceptionsUnderRule).
+it (`docs/dte.md` § Solenoid practice).
 
 ## What it has
 

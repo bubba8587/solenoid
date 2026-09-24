@@ -1,4 +1,4 @@
-// [[C2]] realCanvasScenes
+// [[B3]] sameNodeEverywhere
 import { useLayoutEffect, useRef, useState } from "react";
 import { getCablePath, Position } from "../cablePaths";
 

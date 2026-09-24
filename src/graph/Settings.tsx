@@ -1,4 +1,4 @@
-// [[C8]] declareOnce, [[C98]] paletteMirrorsMenubar
+// [[C98]] paletteMirrorsMenubar
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";

@@ -1,4 +1,3 @@
-// [[C8]] declareOnce (the Reference generates from nodeCatalog)
 import { createNotifier } from "./storeKit";
 
 export type FrTab = "reference" | "sockets" | "help" | "knap" | "notes";

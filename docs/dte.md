@@ -1,9 +1,7 @@
-<!-- [[B8]] -->
 # Decision provenance — DTE
 
 This repo tracks the *why* behind its code as a **DTE** (Decision Tree Engineering)
-tree, governed by B8 "Solenoid's decisions and rules live only as DTE leaves; rules.md and
-decisions.md retire". The tool is vendored at `tools/dte.py`
+tree. The tool is vendored at `tools/dte.py`
 (one file, stdlib Python 3.8+); run `python tools/dte.py --help`.
 
 **DTE's own rules are vendored, not duplicated here.** The canonical DTE spec, agent
@@ -11,27 +9,52 @@ protocol, overview, adoption guide and a render of DTE's own tree live in `dte-r
 `dte-rules/CLAUDE.md`, `dte-rules/README.md`, `dte-rules/ADOPTING.md` and
 `dte-rules/DECISIONS.md`, written by
 `python tools/dte.py vendor --from <a DTE checkout> --dir dte-rules`, which also refreshes
-`tools/dte.py` itself (the local copy carries two patches ahead of upstream until the author lands them: the
-`.dtecoverage` store below, which feedback 14 holds, and a `decisions` key in `dte.cfg` so the
-tree can live at `tree/decisions`; a re-vendor must keep both). Read them before
+`tools/dte.py` itself (the local copy carries patches ahead of upstream until the author lands them: the
+`.dtecoverage` store below, which feedback 14 holds, a `decisions` key in `dte.cfg` so the
+tree can live at `tree/decisions`, and the block-list field write of feedback 28; a re-vendor must keep them). Read them before
 creating or changing decisions, and check them before filing DTE feedback. Do NOT re-create DTE's own format/protocol/usage decisions as
 leaves in this tree; this tree holds only Solenoid's own decisions. (`dte-rules/` is
 `.dteignore`d — its `dte:` tokens belong to DTE's tree; note it describes DTE's OWN rings
 A/B/C, which are not Solenoid's rings below.)
 
-**The tree is the one home.** Every rule that lived in the old rules.md and every decision
-in the old decisions.md is a leaf now; both documents are deleted (git has them). B8
-carries the field mapping (MUST →
-Decision, Why/Origin → Why, Exceptions/Where/Reopen if → Consequences; the old Enforced-by
-column is derived from citing tests now, never stored) and
-the naming convention: a leaf lifted from a named rule carries the name in its `name`
-property (`name: shareImpl`, the title is the description alone), so `python tools/dte.py find
-shareImpl` finds it and a citation may read `[[<ID>]] shareImpl`. The tool prints a leaf as
-`ID name: title`.
+**The tree is the one home** (DTE A2 nothingUndecided, B39 vendoredRules). Solenoid's product calls live only as
+leaves, never in a separate rules document; code, tests and docs point at the leaf instead of
+restating it, and a doc that only restates decisions is deleted. A leaf's short name lives in
+its `aliases` (the first alias is the name), so `python tools/dte.py find shareImpl` finds it,
+a citation may read `[[<ID>]] shareImpl`, and the tool prints a leaf as `ID name: title`.
 
-`tests/graph/rules.test.ts` guards the leaves ([[B8]] treeIsTheHome): every MUST is cited from a test or labels its debt `*Unenforced:*`, cited suites exist, quoted test names appear in them, owner ratifications match the owner-kept `OWNER_RATIFIED` list, and every `[[ID]] name` pair matches the leaf's `name`.
+`tests/graph/rules.test.ts` guards the leaves: every MUST is cited from a test or labels its
+debt `*Unenforced:*`, names are unique, owner ratifications match the owner-kept
+`OWNER_RATIFIED` list, every `[[ID]] name` pair matches the leaf's name, and `validate` and
+`coverage --check` pass.
 
-## Wikilinks ([[C81]] wikilinkCitations)
+## Solenoid practice
+
+DTE's rules govern how the tree is kept. These are the habits Solenoid adds on top; none is a
+leaf, because none is a product call.
+
+- **Author-ruled means ratified** (DTE A3 provenance, B7 provenanceFields). A leaf binds as the author's
+  ruling only when `ratified_by` names the author, set on the author's word in session. Something
+  the author said once, a quote in a Why, or an agent's confidence about what the author meant
+  confers nothing; an unratified leaf binds as the working agent's inference and is open to
+  question on those terms. The owner keeps `OWNER_RATIFIED` in `rules.test.ts`.
+- **Rules hold without memory** (DTE A7 autonomy, B19 privateMemory). No session remembers the last, so a rule that
+  governs the code is written once, derived rather than transcribed, and enforced by a test.
+- **An unenforced MUST is labeled.** A leaf with a MUST is cited by the test that enforces it, or
+  its Consequences carry an `*Unenforced:*` line saying why it can't be checked; a bug fix ships
+  with the check that would have caught it. The leaf never names its tests. `rules.test.ts` pins
+  the labeling; whether a citing test truly enforces its MUST is a reader's job. DTE has no such
+  rule yet (`docs/dte-feedback.md` item 24).
+- **Exceptions live under their rule** (DTE B35 refinementsAreChildren), each naming the
+  condition that would remove it. An exception no condition could remove means the rule was
+  written wrong.
+- **Spec first** (DTE B8 recordWhenDecided, A8 threeLayers). A new subsystem, naming law,
+  declaration format or many-file sweep writes its rule down before the code lands: the spec for
+  how it works, a leaf only for a choice a person could make. Ordinary work needs neither.
+- **Comments are the last resort** (DTE B38 commentsMigrate). The policy is
+  `tree/specs/floors/engineering.md` § Comments.
+
+## Wikilinks
 
 Solenoid writes every citation as an Obsidian wikilink, `[[C41]]` or `[[C41]] branchModel`, and
 the link fields of a leaf (`parents`, `supersedes`, `superseded_by`, `conflicts_with`) as quoted
@@ -47,17 +70,17 @@ colon in them, and Obsidian rejects the whole property block when the YAML is in
 `links = token`; it is logged in DTE's FEEDBACK.md. The parser also accepts Obsidian's
 rewrites of a leaf's properties (`null` as empty, block lists, reordered keys), and a
 ratification made in the working tree does not fail the human-held check, because the leaf
-at HEAD was not human-held ([[C81]] wikilinkCitations, [[C82]] vaultOutbox). Specs are
+at HEAD was not human-held. Specs are
 Obsidian notes too: a front matter with the spec's title as an alias and a `spec` tag, and
 wikilinks to other specs by file name.
 
-Named leaves also carry `aliases: [name]` (written from `name`), so `[[branchModel]]` resolves and the link
+A leaf's `aliases` carry its name, so `[[branchModel]]` resolves and the link
 autocompleter offers names. The tool counts a citation only by ID, so write `[[C41]]` in code and
 docs and use the alias when browsing. `tree/decisions/DTE.base` is the tree as Obsidian Bases views:
 Outbox, Unratified, Contested, Inbox, All leaves. Obsidian's `aliases`, `tags` and `cssclasses`
 are known fields to the tool.
 
-## Outbox: edits made in the vault ([[C82]] vaultOutbox)
+## Outbox: edits made in the vault
 
 The inbox is how an agent hands a decision up to the author. The outbox is the other direction:
 whatever the author designates in Obsidian is a work list, and **every agent session starts with
@@ -87,12 +110,11 @@ sets `authorized_by` to the author.
 - **A** also holds Excel parity (A5) and the deliberate divergences from Excel (A6), placed
   there by the owner on 2026-09-17.
 - **B — high-level strategy** that helps deliver A: pre-alpha break-freely (B7), the Obsidian bet (B1),
-  web-vs-desktop (B2), marketing on real canvases (B3), the tree as the one home (B8),
-  rules that hold without memory (B9), the React Flow view (B10), one card per concept
+  web-vs-desktop (B2), the same node everywhere, marketing included (B3), the React Flow view (B10), one card per concept
   (B11), lossless saves (B12), the AI layer (B13), the design system (B14), a lean core plus packs
   (B15), one function set on two surfaces under A5 (B16), the typed value model under A6 (B17).
 - **C — the product calls under each strategy** and the roots of each family (socketLattice,
-  arraySemantics, firstClassUnits, calcModes, shareImpl, declareOnce);
+  arraySemantics, firstClassUnits, calcModes, shareImpl);
   **D, E — the calls that refine them**. How the code carries a call out is spec content, at any
   ring. `python tools/dte.py tree --under B17` shows one family.
   A rule that constrains a whole class of files (no component computes; a node's class name is
