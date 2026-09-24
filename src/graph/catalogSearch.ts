@@ -83,7 +83,7 @@ function prepare(lc: LeafWithContext): Prepared {
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  const haystack = dashes(`${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`).toLowerCase();
+  const haystack = dashes(`${leaf.label} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`).toLowerCase();
   const bare = stripGlyphPrefix(leaf.label);
   const colon = leaf.label.indexOf(": ");
   const opName = colon > 0 && leaf.type.includes("__") ? leaf.label.slice(colon + 2) : null;

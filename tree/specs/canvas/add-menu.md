@@ -93,7 +93,7 @@ Both kinds are views of the host leaf ([[#The search rows]]): they spread the ho
 
 Two texts are built from the row, and both are deliberately wider than what the menu renders:
 
-- The **haystack**: label, description, Excel names, category path, the type with `-` and `_` read as spaces, and `keywords`.
+- The **haystack**: label, Excel names, category path, the type with `-` and `_` read as spaces, and `keywords`. The description stays out: it is prose, and a subsequence scan over prose lets nearly any short query land on a row whose sentences happen to hold its letters in order.
 - The **word list**: the words of the label, the label with any leading op glyph stripped ("+ Add" becomes "Add"), the type words, `keywords`, the category path, the Excel names and the row's **retired names**: every `LEGACY_ALIASES` name whose replacement is one of the row's Excel names, its stripped label or its op name (MATCH on XMATCH, FLOOR.PRECISE on FLOOR, DSUM on SUM). The formula surface refuses those names with "Use X", so the menu lands them on X's card. Words split on anything that is not a letter, digit or dot, so a hyphenated query ("k-means") lands word by word.
 
 En and em dashes in either text, and in the query, read as plain hyphens, so "savitzky-golay" finds a keyword spelled with an en dash.
@@ -103,7 +103,7 @@ The query splits on the same separators, and every query word must land on the r
 1. As a **subsequence** of the haystack: its letters appear in order, not necessarily together (`fuzzyScore`, which ignores whitespace in the query). Each matched letter scores 1, or 3 when it directly follows the previous match.
 2. As a **word hit** against the word list (`tokenWordScore`): 150 for an exact word, 100 for a word prefix, 90 for a word within one edit. One edit is a Damerau-Levenshtein distance of one: one letter substituted, inserted or deleted, or two neighbors swapped (`withinOneEdit`). The one-edit match applies only to query words of 4 or more letters, so "sun" does not reach "sum".
 
-A word that scores 90 or more as a word hit counts that score alone. Otherwise it counts its subsequence score plus any word score. The words' scores add up. Word order is therefore free ("input frame" finds Frame Input), and a one-letter typo ("frane input") still ranks its target first instead of losing to rows whose long descriptions happen to contain the letters.
+A word that scores 90 or more as a word hit counts that score alone. Otherwise it counts its subsequence score plus any word score. The words' scores add up. Word order is therefore free ("input frame" finds Frame Input), and a one-letter typo ("frane input") still ranks its target first instead of losing to rows whose longer haystacks happen to contain the letters.
 
 On top of the word total, the row gets the best **whole-query bonus** from its fields (`fieldScore`): 1000 plus the subsequence score for an exact match, 400 for a prefix, 150 for a match at the start of any space-separated word, and the bare subsequence score otherwise. The fields are:
 
