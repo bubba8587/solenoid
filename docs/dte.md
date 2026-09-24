@@ -20,7 +20,7 @@ nodes in this tree; this tree holds only Solenoid's own decisions. (`dte-rules/`
 A/B/C, which are not Solenoid's rings below.)
 
 **The tree is the one home.** Every rule that lived in the old rules.md and every decision
-in the old decisions.md is a node now; both documents are deleted (git has them). B8
+in the old decisions.md is a leaf now; both documents are deleted (git has them). B8
 carries the field mapping (MUST →
 Decision, Why/Origin → Why, Exceptions/Where/Reopen if → Consequences; the old Enforced-by
 column is derived from citing tests now, never stored) and
@@ -92,7 +92,7 @@ sets `authorized_by` to the author.
 Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. Assume ring B unless told
 otherwise. The map binds agents, not the author.
 
-## What is a node and what is a spec (the author's test)
+## What is a leaf and what is a spec (the author's test)
 
 A node is a decision someone could reverse, and something would break. The many small,
 similar technical choices that fall out of a node are spec content: fluid, edited freely, with

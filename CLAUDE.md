@@ -55,11 +55,11 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **The decision tree (`tree/decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
   The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session; you are
   ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
-  A new mechanism lands its rule node before its code ([[C6]] specFirst), and a rule's
+  A new mechanism lands its rule leaf before its code ([[C6]] specFirst), and a rule's
   exceptions live under that rule, each naming what would remove it ([[C5]] exceptionsUnderRule).
   Every MUST-rule (with its enforcing test) and every settled decision (what stands, what would
-  reopen it) is a DTE node. Read the governing node before changing sockets, names or value
-  handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
+  reopen it) is a DTE leaf (the author's word; "node" means an app card). Read the governing
+  leaf before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
   `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate` before you finish.
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
   author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
@@ -86,7 +86,7 @@ invented vocabulary + the author's names for the on-screen chrome).
   problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
   `docsPointers.test.ts`).
 - **Comments are the LAST-RESORT home**; the default outcome for an existing comment is deletion.
-  The policy is the node: `python tools/dte.py show C57` ([[C57]] commentMinimalism). Read it before
+  The policy is the leaf: `python tools/dte.py show C57` ([[C57]] commentMinimalism). Read it before
   writing comment prose.
 - Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
   of truth (Add menu + Function Reference generate from it).
