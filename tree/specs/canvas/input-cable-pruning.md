@@ -2,11 +2,11 @@
 aliases: ["Input-cable pruning"]
 tags: [spec, canvas]
 ---
-<!-- [[D10]] onePrunePath -->
+<!-- [[C8]] declareOnce -->
 
 # Spec: Input-cable pruning
 
-Serves [[D10]] onePrunePath. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C8]] declareOnce: the prune is one loop, declared once. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 Many nodes change their own sockets: a mode or op switch hides some inputs, a variadic row is deleted, a formula variable or a side socket disappears. Whenever input sockets are about to go away, the cables wired into them are removed first, through one helper. This spec says what that helper does and when code may bypass it.
 
@@ -50,3 +50,7 @@ The sanctioned direct callers, each with a genuinely different shape:
 | `components/expressionEdit.ts` | The Equation prune covers both directions, because a variable owns an output socket too. Expression and LAMBDA already use the helper. |
 
 A new direct caller needs its reason added to that list in the test.
+
+## Why one helper
+
+Eleven hand-rolled copies of the loop had drifted, one of them inside a node class (Computed Column's side-socket reconcile) where a components-only sweep could not see it. They disagreed on the details that matter: some snapshotted the connection list before removing and some iterated it live while awaiting removals, and some remembered that a drill-in edits its own graph while the next copy would not have. The helper also carries the ordering rule the copies each half-remembered.

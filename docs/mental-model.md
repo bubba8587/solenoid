@@ -62,8 +62,7 @@ The compute path, in order (the full mechanics, including every coercion rung, a
    `SolError`s, three-valued logic, and units as data on the value.
 5. **Render.** The node stashes its result (`cachedResult` and similar), the adapter bumps
    the card's version, and React Flow re-renders that card. Value boxes format through the
-   display pipeline below. Components never call `data()` themselves ([[C27]]
-   noDataInComponents); display logic that needs computation gets a pure extracted helper.
+   display pipeline below. Components never call `data()` themselves (`../tree/specs/floors/components.md` § The rules); display logic that needs computation gets a pure extracted helper.
 
 ## Where types come from
 

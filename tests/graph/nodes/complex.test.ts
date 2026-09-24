@@ -37,7 +37,7 @@ describe("the tagged representation ([[C24]] arraySemantics)", () => {
     expect(isCx(null)).toBe(false);
   });
 
-  it("two equal complexes from different sources are distinct objects — membership goes through setKey ([[D39]] keyByValue)", () => {
+  it("two equal complexes from different sources are distinct objects — membership goes through setKey", () => {
     expect(cx(1, 2)).not.toBe(cx(1, 2));
     expect(cx(1, 2)).toEqual(cx(1, 2));
   });

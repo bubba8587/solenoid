@@ -94,8 +94,8 @@ sets `authorized_by` to the author.
 - **C — architecture and the roots of each rule family** under a strategy (socketLattice,
   arraySemantics, firstClassUnits, calcModes, shareImpl, declareOnce, the save-path rules);
   **D, E — the rules that refine them**. `python tools/dte.py tree --under B17` shows one family.
-  A ring-C leaf whose rule constrains a whole class of files (C27 noDataInComponents, C34
-  classNameIsType) is NOT cited from every member: the class has a floor spec
+  A rule that constrains a whole class of files (a component never calls `node.data()`; the
+  persisted type is the class name) is NOT cited from every member: the class has a floor spec
   (`tree/specs/floors/components.md`, `tree/specs/floors/node-classes.md`, `tree/specs/floors/stores.md`) whose header carries a
   `covers:` glob, and blast runs leaf → spec → the files built to it. A file's own header cites
   only what is specific to it; a file with nothing specific has no header at all.

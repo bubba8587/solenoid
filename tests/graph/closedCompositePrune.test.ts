@@ -1,4 +1,4 @@
-// [[D10]] onePrunePath, [[C77]] compositeIsSubgraph
+// [[C8]] declareOnce, [[C77]] compositeIsSubgraph
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";

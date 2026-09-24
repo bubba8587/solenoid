@@ -499,7 +499,7 @@ none of them effort:
   `@xyflow/react`), TanStack Table and Virtual, Floating UI all ship from one pnpm workspace with
   changesets. The draft proposed the opposite topology in their name.
 - Solenoid's design rules are **enforced by vitest source scans over this tree**
-  (`noDataInComponents`, `frameLabelGrammar`, `uiCopy` for DESIGN § 7, `catalogRegistry`,
+  (no `node.data()` in components, `frameLabelGrammar`, `uiCopy` for DESIGN § 7, `catalogRegistry`,
   `chartPopupCoverage`), the spec is routed by file path in `docs/README.md`, and the
   relapse guard is the decision tree (`../dte.md`). A `gantt-react` in another repo escapes all of it: its strings,
   tooltips, CSS variables and node docs would be the first Solenoid mechanisms with no routed

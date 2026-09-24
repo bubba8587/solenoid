@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C13]], [[C26]], [[C27]], [[B12]] losslessSaves, [[C38]], [[C39]], [[D10]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
+// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[C39]], [[C8]] declareOnce, [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -634,7 +634,7 @@ describe("[[B12]] losslessSaves — every documentStore verb that swaps the canv
   });
 });
 
-describe("[[C27]] noDataInComponents — components never call node.data()", () => {
+describe("components never call node.data() (tree/specs/floors/components.md § The rules)", () => {
   // `data()` assumes the engine-driven coerceInputs wrapper (and, for most
   // nodes, installErrorGuards) has run; a component calling it raw gets
   // un-coerced inputs and can throw during render (the NoteNode/CurveNode
@@ -655,7 +655,7 @@ describe("[[C27]] noDataInComponents — components never call node.data()", () 
     }
     expect(
       offenders,
-      `Components must not call node.data() ([[C27]] noDataInComponents) — extract a pure helper ` +
+      `Components must not call node.data() (tree/specs/floors/components.md § The rules) — extract a pure helper ` +
       `(the coerceInputs wrapper assumes engine-driven calls):\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
@@ -682,7 +682,7 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     // nodes/ and packs/ are in scope too: Computed Column's side-socket
     // reconcile moved a "these sockets are going away" moment into a node
     // class, which was exactly where the components-only scan couldn't see
-    // (the twelfth hand-rolled copy, [[D10]] onePrunePath).
+    // (the twelfth hand-rolled copy, tree/specs/canvas/input-cable-pruning.md § Why one helper).
     const offenders: string[] = [];
     const roots = ["components", "nodes", "packs"].map((d) => path.join(SRC, d));
     for (const root of roots) {

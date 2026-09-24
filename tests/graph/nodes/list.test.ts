@@ -1,4 +1,4 @@
-// [[D39]]
+// [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import type { CondAggOp } from "../../../src/graph/nodes/list";
 import {
@@ -249,7 +249,7 @@ describe("Set operations (two lists)", () => {
     expect(run("intersect", [e, 2], [e, 2])).toEqual([2]);
   });
 
-  it("complex numbers compare by VALUE, not object identity (Set-node fix, [[D39]] keyByValue)", () => {
+  it("complex numbers compare by VALUE, not object identity (Set-node fix)", () => {
     // A complex is a tagged OBJECT ([[C24]] arraySemantics); each 3+4i below is a SEPARATE instance,
     // so a reference-keyed Set would never match them. They must intersect/dedupe.
     expect(run("intersect", [cx(3, 4), cx(1, 2)], [cx(3, 4), cx(5, 6)])).toEqual([cx(3, 4)]);

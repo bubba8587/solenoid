@@ -1,4 +1,4 @@
-// [[C68]] knapIsTheDocumentSyntax, [[D10]] onePrunePath
+// [[C68]] knapIsTheDocumentSyntax
 import { usePendingDraft } from "../draftFlush";
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";

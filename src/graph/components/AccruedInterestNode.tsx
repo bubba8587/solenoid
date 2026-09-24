@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import { useState } from "react";
 import { ACCRUED_INTEREST_OP_OPTIONS, type AccruedInterestNode as AccruedInterestNodeType, type AccruedInterestOp } from "../rete-nodes";
 import { processGraph } from "../process";

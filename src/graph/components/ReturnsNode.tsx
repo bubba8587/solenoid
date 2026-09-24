@@ -15,7 +15,7 @@ export function ReturnsComponent({ data, emit }: NodeProps<ReturnsNodeType>) {
   async function pickOp(next: ReturnsOp) {
     if (next === data.op) return;
     const departing = RETURNS_OP_META[data.op].needs.filter((k) => !RETURNS_OP_META[next].needs.includes(k));
-    if (departing.length) await dropInputCables(data.id, departing); // [[D10]] onePrunePath: before the swap
+    if (departing.length) await dropInputCables(data.id, departing); // before the swap
     const { outputChanged } = data.setOp(next);
     const editor = getActiveEditor();
     const view = getActiveView();

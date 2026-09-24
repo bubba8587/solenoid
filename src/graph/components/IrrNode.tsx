@@ -1,4 +1,3 @@
-// [[D10]] onePrunePath
 import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
 import type { IRRNode as IRRNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";

@@ -1,4 +1,4 @@
-// [[D39]]
+// [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { IsInNode, TallyNode, AggregateNode } from "../../../src/graph/rete-nodes";
