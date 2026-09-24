@@ -20,7 +20,7 @@ backlog line is deleted; git is the record.
 4. `npx tsc --noEmit` and `npx vitest run <the test files the plan names>` after every
    step; the full `npx vitest run` before the final commit of a plan.
 5. Comments: none unless the plan says so ([[C57]] commentMinimalism). Rulings go in
-   decision nodes (`docs/dte.md`) only where the plan says.
+   decision leaves (`docs/dte.md`) only where the plan says.
 6. Stay on scope. A tempting adjacent fix → one line under "Findings" in the plan's
    digest entry, not a change.
 7. When the plan is done: one terse line in the current `docs/dev-notes.md` digest,

@@ -31,3 +31,4 @@ E4	2026-09-24	superseded	D15	Claude Opus 5.5	-	oneResolvePredicate: "Resolve pas
 E14	2026-09-24	reverted	-	Claude Opus 5.5	the author	frameVerbExcelNames: A frame verb that is an Excel function carries its Excel spelling
 E12	2026-09-24	reverted	-	Claude Opus 5.5	the author	isBooleanName: The type-check op is ISBOOLEAN, a callable alias of ISLOGICAL
 E13	2026-09-24	reverted	-	Claude Opus 5.5	the author	dateBuildName: The DATE(y, m, d) node is named DATE (Build)
+E11	2026-09-24	moved	C113	Claude Opus 5.5	the author	controlDrivenRetype: a node's op, mode or arg field can swap that node's own sockets in place

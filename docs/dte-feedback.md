@@ -16,7 +16,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
 3. **`vendor` duplicated the ignore entry.** `.dteignore` already had `dte-rules`; `vendor`
    appended `dte-rules/*` because it matches the literal `<dir>/*` form only. Treat `dir` and
    `dir/*` as the same entry.
-4. **`scope` re-lists deliberate ring skips forever.** SKIPPED RING flags 20 C nodes whose
+4. **`scope` re-lists deliberate ring skips forever.** SKIPPED RING flags 20 C leaves whose
    parents A5 / A6 the owner placed at ring A on purpose. There is no way to say "this skip is
    intended", so the finding never clears and buries real ones. Suggest: a skip under a
    human-held parent is not a finding, or a per-node `skip_ok` the owner can set.
@@ -26,7 +26,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
    code, would make it a gauge.
 6. **No tool support for the A8 migration.** A8 threeLayers says a node stores nothing from
    below, but an adopted tree is full of `*Enforced by:*` / `*Where:*` lines naming files. The
-   safe migration is "delete the pointer only where the named file already cites the node
+   safe migration is "delete the pointer only where the named file already cites the leaf
    back", and nothing computes that. I wrote a one-off script; a `dte scope --pointers` (file
    and test names found in node bodies, with whether the file cites back) would make it
    mechanical. The `*Where:*` lines are still in this tree for that reason.
@@ -49,7 +49,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     per-session protocol (cite what you touch, migrate comments as you go); `dte-rules/ADOPTING.md`'s
     "Growing the tree" reads as day-one advice. An agent that re-vendors sees new commands
     and absorbs the rules that *fail validate* (names, pointers) and stops there. Needed: a
-    "when the rules change" section, or `vendor` printing the A/B nodes added since the
+    "when the rules change" section, or `vendor` printing the A/B leaves added since the
     last stamp with the action each one implies; and `dte-rules/ADOPTING.md` naming the sweep for an
     existing tree ("`dte spec` each ring-C root, fill Requirements from your mechanics docs,
     then `scope --comments` file by file") as an explicit step, not something to infer.
@@ -133,8 +133,8 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     error underneath item 16: an artifact does not have to cite a TREE node; citing (or being
     covered by) the spec it is built to is the three-layer model working as A8 says.
 18. **Coverage should be spec-based, and the rules should say so.** After items 14 and 16 the gauge
-    still reads as "does every file cite a tree node", which is the wrong question: A8's layers make
-    the chain code → spec → tree, and a file citing a tree node directly is the exception (a MUST
+    still reads as "does every file cite a tree leaf", which is the wrong question: A8's layers make
+    the chain code → spec → tree, and a file citing a tree leaf directly is the exception (a MUST
     the file is the one home of), not the norm. What the adopter landed here, proposed as the
     upstream shape:
     - **A spec is the scope of the files built to it.** Its header carries `covers: <globs>`

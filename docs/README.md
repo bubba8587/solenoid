@@ -18,7 +18,7 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 4. **`architecture.md`** — the file map: where things live.
 5. **`dte.md`** — the decision tree: every NORMATIVE rule (what must remain true, and
    the test that enforces it) and every settled decision (the WHY and what would
-   reverse it) is a node under `../tree/decisions/`. Read the governing node before touching
+   reverse it) is a leaf under `../tree/decisions/`. Read the governing leaf before touching
    sockets, formula names or value handling, or proposing anything that touches a
    settled call.
 
@@ -60,7 +60,7 @@ is parked there.
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
-  ring map and everyday commands. Read before creating or changing a decision node;
+  ring map and everyday commands. Read before creating or changing a decision leaf;
   `python tools/dte.py validate` must print `OK` before you finish.
 - **`dte-feedback.md`** — difficulties met with the DTE tool itself, numbered, for the author to
   carry upstream; delete an item once it is processed there.
@@ -102,7 +102,7 @@ is parked there.
 
 ## Process
 
-- **`agent-coordination.md`** — the live claim board for parallel sessions; the protocol is the node it cites.
+- **`agent-coordination.md`** — the live claim board for parallel sessions; the protocol is the leaf it cites.
 
 ---
 
@@ -111,7 +111,7 @@ is parked there.
 The per-FILE version of the cheat-sheet below. Files listed here carry no prose comment
 pointers by design ([[C57]] commentMinimalism) — this table IS the pointer; the one line a
 file may carry is its `[[ID]]` citation, which `python tools/dte.py trace <file>` follows to the
-governing nodes. Editing a listed file without reading its docs is how recorded negative
+governing leaves. Editing a listed file without reading its docs is how recorded negative
 results get retried and settled rulings relapse.
 
 | Code | Governing docs |

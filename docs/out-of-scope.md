@@ -4,7 +4,7 @@
 > (2026-07-02). Treat every entry as a *proposal*, not policy: do not cite it to
 > reject work until the author has been through it. The four tests and the
 > Alteryx-pattern distinction are the parts most likely to survive review intact.
-> Nothing here carries ARR ([[C7]] authorRuled: only an owner-ratified node is ARR); every
+> Nothing here carries ARR ([[C7]] authorRuled: only an owner-ratified leaf is ARR); every
 > "stay out" below is the agent's inference until the author marks it. **Where the author
 > HAS spoken, the section says so and the author's word is the line** — §4 (Script,
 > 2026-08-28) and, as of 2026-09-01, test 3 / §3 / §11 (accounts, cloud saves, multiplayer

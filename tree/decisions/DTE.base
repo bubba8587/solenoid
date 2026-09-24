@@ -74,7 +74,7 @@ views:
       - ask
       - by
   - type: table
-    name: All nodes
+    name: All leaves
     filters:
       and:
         - file.hasProperty("id")

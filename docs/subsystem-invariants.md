@@ -1,6 +1,6 @@
 # Solenoid: subsystem specs
 
-The index of `../tree/specs/`, grouped by the folders the specs live in. Each spec states what its subsystem does, in enough detail to rebuild it, and names the decision nodes it serves on its first line. Read the whole spec before changing its subsystem. This page only points; it never holds mechanics.
+The index of `../tree/specs/`, grouped by the folders the specs live in. Each spec states what its subsystem does, in enough detail to rebuild it, and names the decision leaves it serves on its first line. Read the whole spec before changing its subsystem. This page only points; it never holds mechanics.
 
 ## Floors
 
