@@ -207,10 +207,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   filesystem access and a pack format are settled.
 
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
-- [ ] **Units:** a native-engine `#UNIT!` cell decodes with the generic engine message, not `READINGS_ADD`; `var` of a
-  km column drops the unit (should be km²); `IF(c, a, 0)` drops a unit; a LAMBDA computed column and REDUCE/BYROW
-  over frame columns aren't °C-classified; Cast to Text drops a unit; Convert with an unknown unit id says `#OVERFLOW!`;
-  text reaching a date, string or logical port through a wildcard passes silently.
 - [ ] **Engines:** `PolarsBackend.join`'s unit key transform has no corpus case; the fuzzer skips error cells, the error
   filter, date `asof` and `readingScale`; `gridAxes`/`fillGrid` spread rows into `Math.max(...)` (stack on huge tables).
 - [ ] **Documents:** the first Solve of a heavy composite holding a live card uses cached data and needs a second
