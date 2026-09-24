@@ -113,6 +113,20 @@ describe("PolarsBackend — verb command shapes", () => {
     expect(call![1]).toEqual({ left: l, right: r, opts });
   });
 
+  it("join → keys in two units send the transform the join corpus's `unit keys` cases pin", async () => {
+    const { columnUnitFromSpec } = await import("../../src/graph/unitColumn");
+    const keyed = (spec: string): FrameValue => ({ __frame: true, columns: [{ name: "d", type: "number", values: [1], unit: columnUnitFromSpec(spec)! }] });
+    const be = frameBackend();
+    invokeMock.mockResolvedValueOnce("plf:L");
+    const l = await be.source(keyed("km"));
+    invokeMock.mockResolvedValueOnce("plf:R");
+    const r = await be.source(keyed("m"));
+    invokeMock.mockResolvedValueOnce("plf:J");
+    await be.join(l, r, { leftKey: "d", rightKey: "d", how: "inner" });
+    const call = invokeMock.mock.calls.find((c) => c[0] === "engine_join");
+    expect((call![1] as { opts: JoinOpts }).opts).toEqual({ leftKey: "d", rightKey: "d", how: "inner", rightKeyScale: 0.001, rightKeyOffset: 0 });
+  });
+
   it("append → engine_append { handles }", async () => {
     const be = frameBackend();
     invokeMock.mockResolvedValueOnce("plf:A");

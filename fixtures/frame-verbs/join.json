@@ -2006,6 +2006,472 @@
      }
     ]
    }
+  },
+  {
+   "name": "unit keys: a right key in m reads in the left key's km (PolarsBackend.join's transform)",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5,
+        2.5,
+        1.234,
+        7
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "L0",
+        "L1",
+        "L2",
+        "L3"
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "dist",
+       "type": "number",
+       "values": [
+        2500,
+        5000,
+        1234,
+        9000,
+        5000
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "dist",
+    "how": "inner",
+    "rightKeyScale": 0.001,
+    "rightKeyOffset": 0
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       5,
+       5,
+       2.5,
+       1.234
+      ]
+     },
+     {
+      "name": "tag",
+      "type": "string",
+      "values": [
+       "L0",
+       "L0",
+       "L1",
+       "L2"
+      ]
+     },
+     {
+      "name": "tag2",
+      "type": "string",
+      "values": [
+       "R1",
+       "R4",
+       "R0",
+       "R2"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "unit keys: a right join fills the key from the right row, read in the left key's unit",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        5,
+        3
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "L0",
+        "L1"
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "dist",
+       "type": "number",
+       "values": [
+        5000,
+        7000,
+        null
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "R0",
+        "R1",
+        "R2"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "dist",
+    "how": "right",
+    "rightKeyScale": 0.001,
+    "rightKeyOffset": 0
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       5,
+       7,
+       null
+      ]
+     },
+     {
+      "name": "tag",
+      "type": "string",
+      "values": [
+       "L0",
+       null,
+       null
+      ]
+     },
+     {
+      "name": "tag2",
+      "type": "string",
+      "values": [
+       "R0",
+       "R1",
+       "R2"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "unit keys: °F read as °C through scale and offset",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        20,
+        100,
+        0,
+        -40
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "L0",
+        "L1",
+        "L2",
+        "L3"
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "dist",
+       "type": "number",
+       "values": [
+        68,
+        212,
+        32,
+        -40,
+        50
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "R0",
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "dist",
+    "how": "outer",
+    "rightKeyScale": 0.5555555555555556,
+    "rightKeyOffset": -17.77777777777777
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       20,
+       100,
+       0,
+       -40,
+       10
+      ]
+     },
+     {
+      "name": "tag",
+      "type": "string",
+      "values": [
+       "L0",
+       "L1",
+       "L2",
+       "L3",
+       null
+      ]
+     },
+     {
+      "name": "tag2",
+      "type": "string",
+      "values": [
+       "R0",
+       "R1",
+       "R2",
+       "R3",
+       "R4"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "unit keys: m read as ft rounds at the 15th digit, so 0.3048 m matches 1 ft",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        10,
+        3.28083989501312
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "L0",
+        "L1",
+        "L2"
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "dist",
+       "type": "number",
+       "values": [
+        0.3048,
+        3.048,
+        1,
+        1e-300
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "R0",
+        "R1",
+        "R2",
+        "R3"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "dist",
+    "how": "outer",
+    "rightKeyScale": 3.280839895013123,
+    "rightKeyOffset": 0
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       10,
+       3.28083989501312,
+       3.28083989501312e-300
+      ]
+     },
+     {
+      "name": "tag",
+      "type": "string",
+      "values": [
+       "L0",
+       "L1",
+       "L2",
+       null
+      ]
+     },
+     {
+      "name": "tag2",
+      "type": "string",
+      "values": [
+       "R0",
+       "R1",
+       "R2",
+       "R3"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "unit keys: as-of over a scaled right key",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "d",
+       "type": "number",
+       "values": [
+        1,
+        2.2,
+        4
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "L0",
+        "L1",
+        "L2"
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "dist",
+       "type": "number",
+       "values": [
+        900,
+        2000,
+        3500
+       ]
+      },
+      {
+       "name": "tag",
+       "type": "string",
+       "values": [
+        "R0",
+        "R1",
+        "R2"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "d",
+    "rightKey": "dist",
+    "how": "asof",
+    "asofDirection": "nearest",
+    "asofTolerance": 0.5,
+    "rightKeyScale": 0.001,
+    "rightKeyOffset": 0
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "d",
+      "type": "number",
+      "values": [
+       1,
+       2.2,
+       4
+      ]
+     },
+     {
+      "name": "tag",
+      "type": "string",
+      "values": [
+       "L0",
+       "L1",
+       "L2"
+      ]
+     },
+     {
+      "name": "tag2",
+      "type": "string",
+      "values": [
+       "R0",
+       "R1",
+       "R2"
+      ]
+     }
+    ]
+   }
   }
  ]
 }

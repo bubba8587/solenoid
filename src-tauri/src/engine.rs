@@ -1671,6 +1671,55 @@ fn assemble_join_layout(
     Ok(SolFrame { df, types: final_types })
 }
 
+/// The decimal exponent of `x`, read off its shortest round-trip form (as JS `toExponential()`).
+fn decimal_exponent(x: f64) -> i32 {
+    format!("{:e}", x.abs()).split_once('e').and_then(|(_, e)| e.parse().ok()).unwrap_or(0)
+}
+
+/// `Number(x.toPrecision(p))`: the exact value rounds half up at `p` significant digits.
+fn round_sig(x: f64, p: usize) -> f64 {
+    if !x.is_finite() || x == 0.0 || p == 0 || p > 100 {
+        return x;
+    }
+    let exact = format!("{:.100e}", x.abs());
+    let (mantissa, exp) = exact.split_once('e').unwrap_or((&exact, "0"));
+    let digits: Vec<u8> = mantissa.bytes().filter(u8::is_ascii_digit).take(p + 1).collect();
+    let mut kept: String = digits[..p].iter().map(|&d| d as char).collect();
+    if digits.get(p).is_some_and(|&d| d >= b'5') {
+        let mut bytes = kept.into_bytes();
+        let mut i = bytes.len();
+        loop {
+            if i == 0 {
+                bytes.insert(0, b'1');
+                break;
+            }
+            i -= 1;
+            if bytes[i] == b'9' {
+                bytes[i] = b'0';
+            } else {
+                bytes[i] += 1;
+                break;
+            }
+        }
+        kept = String::from_utf8(bytes).unwrap_or_default();
+    }
+    let exp: i32 = exp.parse().unwrap_or(0);
+    let v: f64 = format!("{kept}e{}", exp - (p as i32 - 1)).parse().unwrap_or(x.abs());
+    v.copysign(x)
+}
+
+/// A right key read in the left key's unit, `v × scale + offset`, rounded at the 15th
+/// significant digit of the larger term, so conversion noise can't block a match.
+fn convert_key(v: f64, scale: f64, offset: f64) -> f64 {
+    let y = v * scale + offset;
+    let t = (v * scale).abs().max(offset.abs());
+    if !y.is_finite() || y == 0.0 || !t.is_finite() {
+        return y;
+    }
+    let p = decimal_exponent(y) - decimal_exponent(t) + 15;
+    if p < 1 { 0.0 } else { round_sig(y, p as usize) }
+}
+
 fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
     if opts.how.as_str() == "cross" {
         let joined = left
@@ -1691,21 +1740,24 @@ fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<S
         ));
     }
     let scaled_right;
-    let right = match (rt, opts.right_key_scale, opts.right_key_offset) {
-        (SolType::Number, s, o) if s.is_some() || o.is_some() => {
-            let (s, o) = (s.unwrap_or(1.0), o.unwrap_or(0.0));
-            let k = opts.right_key.as_str();
-            let df = right
-                .df
-                .clone()
-                .lazy()
-                .with_column((col(k).cast(DataType::Float64) * lit(s) + lit(o)).alias(k))
-                .collect()
-                .map_err(|e| IpcError::internal(format!("join key scale failed: {e}")))?;
-            scaled_right = SolFrame { df, types: right.types.clone() };
-            &scaled_right
-        }
-        _ => right,
+    let (scale, offset) = (opts.right_key_scale.unwrap_or(1.0), opts.right_key_offset.unwrap_or(0.0));
+    let right = if rt == SolType::Number && (scale != 1.0 || offset != 0.0) {
+        let k = opts.right_key.as_str();
+        let (_, cells) = right.column_cells(k).unwrap_or((rt, Vec::new()));
+        let read: Vec<Cell> = cells
+            .into_iter()
+            .map(|c| match c {
+                Cell::Num(v) => Cell::Num(convert_key(v, scale, offset)),
+                other => other,
+            })
+            .collect();
+        let mut df = right.df.clone();
+        df.with_column(series_of(k, rt, &read))
+            .map_err(|e| IpcError::internal(format!("join key scale failed: {e}")))?;
+        scaled_right = SolFrame { df, types: right.types.clone() };
+        &scaled_right
+    } else {
+        right
     };
     if opts.how.as_str() == "asof" {
         return verb_join_asof(left, right, opts);

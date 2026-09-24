@@ -769,3 +769,15 @@ fn replace_values_match_rule_parity() {
     assert_eq!(dump(&replace("s", "b", "99"))[2].2, vec![Json::String("a".into()), Json::String("99".into()), Json::String("c".into())]);
     assert_eq!(dump(&replace("s", "B", "99"))[2].2, vec![Json::String("a".into()), Json::String("b".into()), Json::String("c".into())]);
 }
+
+/// `round_sig` answers as JS `Number(x.toPrecision(p))`: half up on the exact value.
+#[test]
+fn round_sig_matches_to_precision() {
+    assert_eq!(round_sig(0.125, 2), 0.13);
+    assert_eq!(round_sig(-0.125, 2), -0.13);
+    assert_eq!(round_sig(2.5, 1), 3.0);
+    assert_eq!(round_sig(9.995, 3), 9.99);
+    assert_eq!(round_sig(99.95, 3), 100.0);
+    assert_eq!(round_sig(10000305.17578125, 15), 10000305.1757813);
+    assert_eq!(convert_key(32.0, 5.0 / 9.0, -17.77777777777777), 0.0);
+}
