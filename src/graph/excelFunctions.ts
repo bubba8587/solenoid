@@ -14,7 +14,7 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { parseValueText, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { parseValueText, numberValue, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -34,7 +34,7 @@ import {
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
-import { coerceNumber as toNum, coerceLogical, decimalFromText, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
+import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
   cx, isCx, parseCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
@@ -1259,23 +1259,7 @@ registerInternal("VALUE", (x) => {
   const n = parseValueText(toStr(typeof x === "boolean" ? "" : x));
   return Number.isNaN(n) ? VALUE("VALUE") : n;
 });
-registerInternal("NUMBERVALUE", (text, dec, grp) => {
-  const d = (toStr(dec ?? "") || ".")[0];
-  const gRaw = toStr(grp ?? "");
-  const g: string | null = gRaw !== "" ? gRaw[0] : d === "," ? null : ",";
-  if (g === d) return VALUE("NUMBERVALUE");
-  let s = toStr(text).replace(/\s/g, "");
-  if (s === "") return 0;
-  let pct = 0;
-  while (s.endsWith("%")) { pct++; s = s.slice(0, -1); }
-  const di = s.indexOf(d);
-  const intPart = di === -1 ? s : s.slice(0, di);
-  const frac = di === -1 ? null : s.slice(di + 1);
-  if (frac != null && ((g != null && frac.includes(g)) || frac.includes(d))) return VALUE("NUMBERVALUE");
-  const n = decimalFromText((g != null ? intPart.split(g).join("") : intPart) + (frac != null ? `.${frac}` : ""));
-  if (Number.isNaN(n)) return VALUE("NUMBERVALUE");
-  return n / Math.pow(100, pct);
-});
+registerInternal("NUMBERVALUE", (text, dec, grp) => numberValue(toStr(text), toStr(dec ?? ""), toStr(grp ?? "")));
 
 for (const op of ["coupdaybs", "coupdaysnc", "coupncd", "couppcd", "coupnum"] as const) {
   registerInternal(op, (settle, maturity, freq, basis) =>

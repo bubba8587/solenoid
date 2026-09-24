@@ -33,9 +33,22 @@ describe("NUMBERVALUE — strict full-string parse", () => {
   it("swapped separators parse", () => {
     expect(nv("1.234,56", ",", ".")).toBe(1234.56);
   });
-  it("blank is null; a plain number parses", () => {
-    expect(nv("")).toBe(null);
+  it("blank is 0, as in Excel; a plain number parses", () => {
+    expect(nv("")).toBe(0);
     expect(nv("42")).toBe(42);
+  });
+  it("the card and the formula answer alike ([[C17]] shareImpl)", async () => {
+    const cases: [string, string?, string?][] = [
+      [""], ["  "], ["42"], ["12%%"], ["1 234"], ["1.234,56", ",", "."], ["3,5%", ","],
+      ["1,5", ",", ","], ["3.1,2", ".", ","], ["1.2.3"], ["12x"], ["0x1F"],
+    ];
+    for (const [text, d, g] of cases) {
+      const args = [text, d, g].filter((a) => a !== undefined).map((a) => JSON.stringify(a)).join(",");
+      const formula = compileEvaluator(`NUMBERVALUE(${args})`)!({});
+      const card = nv(text, d, g);
+      if (isSolError(formula)) expect(isSolError(card) && card.code, `${args}`).toBe(formula.code);
+      else expect(card, `${args}`).toBe(formula);
+    }
   });
 });
 
@@ -143,11 +156,11 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     const found = new TextFindNode({ op: "find" }).data({ needle: ["l"], haystack: [["hello", "abc"]] }).result as unknown[];
     expect(found[0]).toBe(3);
     expect(isSolError(found[1])).toBe(true);
-    // One unparseable string errors alone; a blank stays a blank.
+    // One unparseable string errors alone; empty text reads 0, as in Excel.
     const nums = new NumberValueNode().data({ text: [["42", "12x", ""]] }).result as unknown[];
     expect(nums[0]).toBe(42);
     expect(isSolError(nums[1]) && (nums[1] as { code: string }).code).toBe("#VALUE!");
-    expect(nums[2]).toBeNull();
+    expect(nums[2]).toBe(0);
     // A delimiter this element doesn't contain is a per-cell blank.
     expect(new TextAfterBeforeNode({ op: "after" }).data({ text: [["a-b", "cd"]], delimiter: ["-"] }).result)
       .toEqual(["b", null]);
