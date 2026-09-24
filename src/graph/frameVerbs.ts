@@ -62,9 +62,10 @@ type _MissingFrameOpKind = Exclude<FrameOp["kind"], (typeof FRAME_OP_KINDS)[numb
 const _frameOpKindsExhaustive: _MissingFrameOpKind[] = [] satisfies never[];
 void _frameOpKindsExhaustive;
 
-/** `readingScale` marks the column as readings on an offset scale (°C 1, °F 5/9). The oracle
- *  reads it off the column's unit when absent; the native engine, which sees no units, needs it. */
-export interface AggSpec { column: string; op: AggOp; as: string; readingScale?: number }
+/** `readingScale` marks the column as readings on an offset scale (°C 1, °F 5/9); `unitScale` is a
+ *  linear unit's scale (km 1000), which a variance needs to land in base SI. The oracle reads both
+ *  off the column's unit when absent; the native engine, which sees no units, needs them. */
+export interface AggSpec { column: string; op: AggOp; as: string; readingScale?: number; unitScale?: number }
 
 const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
 
@@ -412,10 +413,11 @@ function sumGroup(values: FrameCell[]): FrameCell {
 
 const UNIT_KEEPING_AGGS: ReadonlySet<string> = new Set(["sum", "avg", "min", "max", "median", "mode", "first", "last"]);
 
-// ─── Readings on an offset scale (°C, °F) through an aggregate ([[C25]] firstClassUnits) ───
-// As in a formula: readings have no sum, product or share; a spread is a delta in kelvin
-// (var a squared one); the averages and picks stay readings. A refused op is #UNIT! in
-// every cell of its column, since the op, not a cell, is at fault.
+// ─── Units through an aggregate ([[C25]] firstClassUnits) ───
+// As in a formula: a spread keeps a linear unit and a variance squares it, in base SI as
+// VAR's is. Readings on an offset scale (°C, °F) have no sum, product or share; a spread is
+// a delta in kelvin (var a squared one); the averages and picks stay readings. A refused op
+// is #UNIT! in every cell of its column, since the op, not a cell, is at fault.
 
 /** The display scale of an offset unit (°C 1, °F 5/9), or undefined for any other unit. */
 export function readingScaleOf(unit: ColumnUnit | undefined): number | undefined {
@@ -423,29 +425,43 @@ export function readingScaleOf(unit: ColumnUnit | undefined): number | undefined
   return d && isAffineDisplay(d) ? fcUnitToUnit(d)?.scale ?? 1 : undefined;
 }
 
+/** The display scale of a linear unit other than its base (km 1000), else undefined. */
+export function linearScaleOf(unit: ColumnUnit | undefined): number | undefined {
+  const d = unit?.display;
+  if (!d || isAffineDisplay(d)) return undefined;
+  const s = fcUnitToUnit(d)?.scale;
+  return s === undefined || s === 1 ? undefined : s;
+}
+
 const AGG_READINGS_REFUSED: Partial<Record<AggOp, string>> = { sum: READINGS_ADD, product: READINGS_SCALE, percentof: READINGS_SCALE };
 const AGG_READINGS_DELTA: Partial<Record<AggOp, 1 | 2>> = { stdev: 1, stdevp: 1, var: 2, varp: 2 };
 
 interface ReadingPlan { cell: (v: FrameCell) => FrameCell; unit?: ColumnUnit }
 
+const scaledBy = (k: number) => (v: FrameCell): FrameCell => (typeof v === "number" && Number.isFinite(v) ? v * k : v);
+
 function readingPlan(
   unit: ColumnUnit | undefined, given: number | undefined, refused: string | undefined, delta: 1 | 2 | undefined, keeps: boolean,
+  givenLinear?: number,
 ): ReadingPlan {
   const scale = given ?? readingScaleOf(unit);
-  const kept = { cell: (v: FrameCell) => v, ...(unit && keeps ? { unit } : {}) };
-  if (scale === undefined) return kept;
+  const kept = { cell: (v: FrameCell) => v, ...(unit && (keeps || delta === 1) ? { unit } : {}) };
+  if (scale === undefined) {
+    if (delta !== 2) return kept;
+    const k = (givenLinear ?? linearScaleOf(unit) ?? 1) ** 2;
+    return { cell: k === 1 ? kept.cell : scaledBy(k), ...(unit ? { unit: { dim: dimPow(unit.dim, 2) } } : {}) };
+  }
   if (refused !== undefined) { const err = unitError(refused); return { cell: () => err }; }
   if (delta === undefined) return kept;
-  const k = delta === 2 ? scale * scale : scale;
   return {
-    cell: (v) => (typeof v === "number" && Number.isFinite(v) ? v * k : v),
+    cell: scaledBy(delta === 2 ? scale * scale : scale),
     unit: { dim: dimPow(unit?.dim ?? { temperature: 1 }, delta) },
   };
 }
 
 /** How an aggregate answers over a column: its cells and its unit. */
-export function aggUnitPlan(op: AggOp, unit: ColumnUnit | undefined, readingScale?: number): ReadingPlan {
-  return readingPlan(unit, readingScale, AGG_READINGS_REFUSED[op], AGG_READINGS_DELTA[op], UNIT_KEEPING_AGGS.has(op));
+export function aggUnitPlan(op: AggOp, unit: ColumnUnit | undefined, readingScale?: number, unitScale?: number): ReadingPlan {
+  return readingPlan(unit, readingScale, AGG_READINGS_REFUSED[op], AGG_READINGS_DELTA[op], UNIT_KEEPING_AGGS.has(op), unitScale);
 }
 
 export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: readonly AggSpec[]): FrameValue {
@@ -465,7 +481,7 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
   }));
   const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => {
     const preserves = spec.op === "min" || spec.op === "max";
-    const plan = aggUnitPlan(spec.op, col.unit, spec.readingScale);
+    const plan = aggUnitPlan(spec.op, col.unit, spec.readingScale, spec.unitScale);
     let values = keyOrder.map((k) => plan.cell(aggregateGroup(buckets.get(k)!.map((i) => cellAt(col, i)), spec.op, col.type)));
     if (preserves && col.type === "logical") {
       values = values.map((v) => (typeof v === "number" ? v !== 0 : v));
@@ -1387,12 +1403,21 @@ export function bindColumns(frames: readonly FrameValue[]): FrameValue {
   }));
 }
 
-/** The op as the native engine needs it: an aggregate or window over readings names its
- *  reading scale, read off `f`'s column units, since the engine sees no units. */
-export function withReadingScales(f: FrameValue, op: FrameOp): FrameOp {
-  const scaleOf = (name: string | undefined) => readingScaleOf(f.columns.find((c) => c.name === name)?.unit);
+/** The op as the native engine needs it, since the engine sees no units: an aggregate or window
+ *  over readings names its reading scale, and a variance over a scaled linear unit its scale. */
+export function withUnitScales(f: FrameValue, op: FrameOp): FrameOp {
+  const unitOf = (name: string | undefined) => f.columns.find((c) => c.name === name)?.unit;
+  const scaleOf = (name: string | undefined) => readingScaleOf(unitOf(name));
   if (op.kind === "groupBy") {
-    return { ...op, aggs: op.aggs.map((a) => { const s = a.readingScale ?? scaleOf(a.column); return s === undefined ? a : { ...a, readingScale: s }; }) };
+    return {
+      ...op,
+      aggs: op.aggs.map((a) => {
+        const s = a.readingScale ?? scaleOf(a.column);
+        if (s !== undefined) return { ...a, readingScale: s };
+        const u = AGG_READINGS_DELTA[a.op] === 2 ? a.unitScale ?? linearScaleOf(unitOf(a.column)) : undefined;
+        return u === undefined ? a : { ...a, unitScale: u };
+      }),
+    };
   }
   if (op.kind === "window") {
     const s = op.readingScale ?? scaleOf(op.column);
@@ -1927,6 +1952,9 @@ export interface WindowSpec {
   n?: number;
 }
 
+export const PCT_CHANGE_FROM_ZERO = "Percent change from zero is undefined";
+export const ZERO_GROUP_TOTAL = "The group total is 0";
+
 const WINDOW_READINGS_REFUSED: Partial<Record<WindowFn, string>> = {
   cumsum: READINGS_ADD, rolling_sum: READINGS_ADD, group_sum: READINGS_ADD, share: READINGS_SCALE, pct_change: READINGS_SCALE,
 };
@@ -2058,7 +2086,7 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
           const prev = p >= 1 ? nums[p - 1] : null;
           if (err) { v = err; break; }
           if (x === null || prev === null) { v = null; break; }
-          v = spec.fn === "diff" ? x - prev : prev === 0 ? solError("#DIV/0!", "Percent change from zero is undefined") : (x - prev) / prev;
+          v = spec.fn === "diff" ? x - prev : prev === 0 ? solError("#DIV/0!", PCT_CHANGE_FROM_ZERO) : (x - prev) / prev;
           break;
         }
         case "rolling_sum": case "rolling_avg": case "rolling_min": case "rolling_max": {
@@ -2073,7 +2101,7 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
         case "group_sum": case "group_avg": case "group_min": case "group_max": case "group_count": v = groupValue; break;
         case "share": {
           if (err) { v = err; break; }
-          v = x === null ? null : total === 0 ? solError("#DIV/0!", "The group total is 0") : x / total;
+          v = x === null ? null : total === 0 ? solError("#DIV/0!", ZERO_GROUP_TOTAL) : x / total;
           break;
         }
         case "first": v = err ?? (vals.length ? vals[0] : null); break;

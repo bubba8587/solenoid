@@ -319,7 +319,7 @@ fn apply_ops_group_by_mid_chain() {
     let ops = vec![
         WireOp::GroupBy {
             keys: vec!["k".into()],
-            aggs: vec![WireAgg { column: "v".into(), op: "sum".into(), as_name: "total".into(), reading_scale: None }],
+            aggs: vec![WireAgg { column: "v".into(), op: "sum".into(), as_name: "total".into(), reading_scale: None, unit_scale: None }],
         },
         WireOp::Sort { by: "total".into(), dir: "desc".into() },
     ];
@@ -411,6 +411,14 @@ fn non_finite_crosses_the_wire_as_the_nf_sentinel() {
     // Finite formatting unchanged: integral → integer, else shortest float.
     assert_eq!(num_to_json(1.0), serde_json::json!(1));
     assert_eq!(num_to_json(1.5), serde_json::json!(1.5));
+}
+
+#[test]
+fn an_error_cell_names_its_reason() {
+    let cell = |bits: u64| num_to_json(f64::from_bits(bits));
+    assert_eq!(cell(ERR_UNIT_ADD_BITS), serde_json::json!({"__err": "#UNIT!", "why": "readings_add"}));
+    assert_eq!(cell(ERR_UNIT_SCALE_BITS), serde_json::json!({"__err": "#UNIT!", "why": "readings_scale"}));
+    assert_eq!(cell(ERR_DIV0_TOTAL_BITS), serde_json::json!({"__err": "#DIV/0!", "why": "zero_total"}));
 }
 
 #[test]
@@ -712,6 +720,14 @@ fn err_code(e: &IpcError) -> String {
 /// plain Value equality would work for integers — but compare through as_f64 for
 /// every number pair so a fixture may write 1.0 or 1 interchangeably, exactly as
 /// JSON.parse does on the JS side.
+/// An error cell's `why` names the message the app shows; the corpus compares by code.
+fn without_why(v: &Json) -> Json {
+    match v {
+        Json::Object(o) => Json::Object(o.iter().filter(|(k, _)| k.as_str() != "why").map(|(k, x)| (k.clone(), x.clone())).collect()),
+        _ => v.clone(),
+    }
+}
+
 fn frames_equal(a: &[(String, String, Vec<Json>)], b: &[(String, String, Vec<Json>)]) -> bool {
     a.len() == b.len()
         && a.iter().zip(b).all(|(x, y)| {
@@ -720,7 +736,7 @@ fn frames_equal(a: &[(String, String, Vec<Json>)], b: &[(String, String, Vec<Jso
                 && x.2.len() == y.2.len()
                 && x.2.iter().zip(&y.2).all(|(p, q)| match (p.as_f64(), q.as_f64()) {
                     (Some(m), Some(n)) => m == n,
-                    _ => p == q,
+                    _ => without_why(p) == without_why(q),
                 })
         })
 }

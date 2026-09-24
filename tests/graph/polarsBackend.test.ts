@@ -14,6 +14,8 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
 
 import { frameBackend, initFrameBackend, resetFrameBackendToJs, runFrameUnary, readFrame, collectPreview, clearCollectMemo, isFrameRef } from "../../src/graph/frameBackend";
 import { solError } from "../../src/graph/errorValue";
+import { READINGS_ADD, READINGS_SCALE } from "../../src/graph/unitValue";
+import { ZERO_GROUP_TOTAL } from "../../src/graph/frameVerbs";
 
 // Force the desktop guard on (engineAvailable() === isDesktop(), which reads
 // window.__TAURI_INTERNALS__), and start each test from the default JS backend.
@@ -296,6 +298,20 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
     invokeMock.mockResolvedValueOnce([{ name: "n", type: "number", values: [{ __nf: "inf" }, { __nf: "nan" }, 2] }]); // collect
     const out = await readFrame(ref);
     expect(out).toMatchObject({ columns: [{ name: "n", values: [Infinity, NaN, 2] }] });
+  });
+
+  it("an engine error cell decodes with the oracle's message for its reason", async () => {
+    invokeMock.mockResolvedValueOnce("plf:src");
+    const ref = await runFrameUnary(sample, { kind: "select", columns: ["n"] });
+    if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
+    invokeMock.mockResolvedValueOnce("plf:f");
+    invokeMock.mockResolvedValueOnce([{ name: "n", type: "number", values: [
+      { __err: "#UNIT!", why: "readings_add" }, { __err: "#UNIT!", why: "readings_scale" },
+      { __err: "#DIV/0!", why: "zero_total" }, { __err: "#DOMAIN!" },
+    ] }]);
+    const out = await readFrame(ref) as FrameValue;
+    const messages = out.columns[0].values.map((v) => (v as { message?: string }).message);
+    expect(messages).toEqual([READINGS_ADD, READINGS_SCALE, ZERO_GROUP_TOTAL, "from the native engine"]);
   });
 
   it("a groupBy ±Inf result from an ALL-FINITE base column classifies as #OVERFLOW! (one extra column fetch)", async () => {

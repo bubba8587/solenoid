@@ -224,11 +224,14 @@ fn cell_to_json(c: &Cell) -> Json {
 
 fn num_to_json(n: f64) -> Json {
     if n.is_nan() {
+        let err = |code: &str, why: &str| serde_json::json!({"__err": code, "why": why});
         match n.to_bits() {
-            ERR_DOMAIN_BITS => return serde_json::json!({"__err": "#DOMAIN!"}),
-            ERR_OVERFLOW_BITS => return serde_json::json!({"__err": "#OVERFLOW!"}),
-            ERR_DIV0_BITS => return serde_json::json!({"__err": "#DIV/0!"}),
-            ERR_UNIT_BITS => return serde_json::json!({"__err": "#UNIT!"}),
+            ERR_DOMAIN_BITS => return err("#DOMAIN!", "domain"),
+            ERR_OVERFLOW_BITS => return err("#OVERFLOW!", "overflow"),
+            ERR_DIV0_BITS => return err("#DIV/0!", "pct_change_from_zero"),
+            ERR_DIV0_TOTAL_BITS => return err("#DIV/0!", "zero_total"),
+            ERR_UNIT_ADD_BITS => return err("#UNIT!", "readings_add"),
+            ERR_UNIT_SCALE_BITS => return err("#UNIT!", "readings_scale"),
             _ => return serde_json::json!({"__nf": "nan"}),
         }
     }
@@ -373,6 +376,8 @@ pub struct WireAgg {
     as_name: String,
     #[serde(rename = "readingScale", default)]
     reading_scale: Option<f64>,
+    #[serde(rename = "unitScale", default)]
+    unit_scale: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -941,7 +946,7 @@ fn lazy_window(
         "share" => {
             let total = over(vnum().sum());
             when(vnum().is_null()).then(lit(NULL))
-                .when(total.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS)))
+                .when(total.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_TOTAL_BITS)))
                 .otherwise(vnum() / total)
         }
         "first" => over(vraw().first()),
@@ -949,7 +954,8 @@ fn lazy_window(
         other => return Err(IpcError::new("#VALUE!", format!("unknown window function \"{other}\""))),
     };
     let expr = match (reading_scale, func) {
-        (Some(_), "cumsum" | "rolling_sum" | "group_sum" | "share" | "pct_change") => unit_error_column(),
+        (Some(_), "cumsum" | "rolling_sum" | "group_sum") => unit_error_column(ERR_UNIT_ADD_BITS),
+        (Some(_), "share" | "pct_change") => unit_error_column(ERR_UNIT_SCALE_BITS),
         (Some(s), "diff") => scale_finite(expr, s),
         _ => expr,
     };
@@ -1300,21 +1306,30 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
 const ERR_DOMAIN_BITS: u64 = 0x7ff8_0000_0000_0d01;
 const ERR_OVERFLOW_BITS: u64 = 0x7ff8_0000_0000_0f02;
 const ERR_DIV0_BITS: u64 = 0x7ff8_0000_0000_0d03;
-const ERR_UNIT_BITS: u64 = 0x7ff8_0000_0000_0e04;
+const ERR_UNIT_ADD_BITS: u64 = 0x7ff8_0000_0000_0e04;
+const ERR_UNIT_SCALE_BITS: u64 = 0x7ff8_0000_0000_0e05;
+const ERR_DIV0_TOTAL_BITS: u64 = 0x7ff8_0000_0000_0d06;
 
-// ─── Readings on an offset scale (°C, °F), as the oracle's `readingPlan` ────────
-// The engine sees no units, so the op names the column's reading scale. A refused op is
-// #UNIT! in every cell; a spread is a delta, scaled to kelvin per power.
-fn unit_error_column() -> Expr {
-    lit(f64::from_bits(ERR_UNIT_BITS))
+// ─── Units through an aggregate, as the oracle's `readingPlan` ────────────────
+// The engine sees no units, so the op names the column's reading scale, or a linear unit's
+// scale for a variance, which lands in base SI. Over readings a refused op is #UNIT! in every
+// cell, and a spread is a delta, scaled to kelvin per power.
+fn unit_error_column(bits: u64) -> Expr {
+    lit(f64::from_bits(bits))
 }
 fn scale_finite(e: Expr, k: f64) -> Expr {
     when(e.clone().is_finite()).then(e.clone() * lit(k)).otherwise(e)
 }
-fn readings_agg(e: Expr, op: &str, scale: Option<f64>) -> Expr {
-    let Some(s) = scale else { return e };
+fn readings_agg(e: Expr, op: &str, scale: Option<f64>, unit_scale: Option<f64>) -> Expr {
+    let Some(s) = scale else {
+        return match (op, unit_scale) {
+            ("var" | "varp", Some(u)) => scale_finite(e, u * u),
+            _ => e,
+        };
+    };
     match op {
-        "sum" | "product" | "percentof" => unit_error_column(),
+        "sum" => unit_error_column(ERR_UNIT_ADD_BITS),
+        "product" | "percentof" => unit_error_column(ERR_UNIT_SCALE_BITS),
         "stdev" | "stdevp" => scale_finite(e, s),
         "var" | "varp" => scale_finite(e, s * s),
         _ => e,
@@ -1545,7 +1560,7 @@ fn group_by_lazy_plan(
         if preserves && src_ty == SolType::Logical {
             e = e.neq(lit(0.0));
         }
-        e = readings_agg(e, &a.op, a.reading_scale);
+        e = readings_agg(e, &a.op, a.reading_scale, a.unit_scale);
         agg_exprs.push(e.alias(agg_names[i].as_str()));
         out_types.push(if preserves { src_ty } else { SolType::Number });
     }

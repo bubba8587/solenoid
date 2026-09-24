@@ -2,7 +2,7 @@
 // the frame and cube verbs answer as a formula does. Both engines are held to the values by
 // the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
 import { describe, it, expect } from "vitest";
-import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withReadingScales, type FrameOp } from "../../src/graph/frameVerbs";
+import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withUnitScales, type FrameOp } from "../../src/graph/frameVerbs";
 import { lowerForEngine } from "../../src/graph/frameBackend";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
@@ -51,6 +51,18 @@ describe("GROUPBY over readings", () => {
     expect(col(f, "s").values[0]).toBeCloseTo(3 * 5 / 9, 12);
     expect(col(f, "v").values[0]).toBeCloseTo(9 * 25 / 81, 12);
     expect(col(f, "s").unit).toEqual(K);
+  });
+
+  it("a linear unit's spread stays km and its variance is km², in base m² as a formula's VAR is", () => {
+    const f = groupByFrame(temps("km"), ["k"], [{ column: "t", op: "stdevp", as: "s" }, { column: "t", op: "varp", as: "v" }]);
+    expect(col(f, "s").values).toEqual([3, 0]);
+    expect(col(f, "s").unit?.display).toBe("km");
+    expect(col(f, "v").values).toEqual([9e6, 0]);
+    expect(col(f, "v").unit).toEqual({ dim: { length: 2 } });
+    const pivot = pivotFrame(temps("km"), { rowFields: ["k"], colFields: [], values: ["t"], funcs: ["var"] } as never);
+    expect(pivot.columns[1].unit).toEqual({ dim: { length: 2 } });
+    const m = groupByFrame(temps("m"), ["k"], [{ column: "t", op: "varp", as: "v" }]);
+    expect(col(m, "v").values).toEqual([9, 0]);
   });
 
   it("a linear unit is untouched: a km sum stays km, and so does the mode", () => {
@@ -102,11 +114,20 @@ describe("Window over readings", () => {
 });
 
 describe("the native engine gets the reading scale on the op", () => {
-  it("withReadingScales names a °F column's scale and leaves a linear one alone", () => {
+  it("withUnitScales names a °F column's scale and leaves a linear one alone", () => {
     const f = frame({ name: "t", type: "number", values: [], unit: unit("degF") }, { name: "d", type: "number", values: [], unit: unit("km") });
-    const op = withReadingScales(f, { kind: "groupBy", keys: [], aggs: [{ column: "t", op: "stdev", as: "s" }, { column: "d", op: "sum", as: "n" }] }) as Extract<FrameOp, { kind: "groupBy" }>;
+    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [{ column: "t", op: "stdev", as: "s" }, { column: "d", op: "sum", as: "n" }] }) as Extract<FrameOp, { kind: "groupBy" }>;
     expect(op.aggs[0].readingScale).toBeCloseTo(5 / 9, 15);
     expect(op.aggs[1].readingScale).toBeUndefined();
+  });
+
+  it("a variance over a scaled linear unit names the unit's scale; nothing else does", () => {
+    const f = frame({ name: "d", type: "number", values: [], unit: unit("km") }, { name: "m", type: "number", values: [], unit: unit("m") });
+    const op = withUnitScales(f, { kind: "groupBy", keys: [], aggs: [
+      { column: "d", op: "var", as: "v" }, { column: "d", op: "stdev", as: "s" }, { column: "m", op: "varp", as: "w" },
+    ] }) as Extract<FrameOp, { kind: "groupBy" }>;
+    expect(op.aggs.map((a) => a.unitScale)).toEqual([1000, undefined, undefined]);
+    expect(op.aggs.every((a) => a.readingScale === undefined)).toBe(true);
   });
 
   it("lowerForEngine reads each op against the schema it meets, through a rename", () => {
