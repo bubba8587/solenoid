@@ -17,6 +17,9 @@ import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { copySelected, copySet, pasteClipboard } from "../../src/graph/copyPaste";
 import { mergeFlowNodes, toFlowNodes } from "../../src/graph/flow/flowModel";
 import { setActiveGraph } from "../../src/graph/activeGraph";
+import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
+import { frameFormatStore } from "../../src/graph/frameFormatStore";
+import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 
 let editor: NodeEditor<Schemes>;
 
@@ -94,6 +97,21 @@ describe("paste", () => {
     expect(host.selected || fc.selected).toBe(false);
     expect(dockedNodeStore.get(fcClone.id)?.hostNodeId).toBe(hostClone.id);
     expect(editor.getConnections().some((c) => c.source === hostClone.id && c.target === fcClone.id)).toBe(true);
+  });
+});
+
+describe("paste carries the card's own look", () => {
+  it("size and frame column formats come with the clone ([[B12]] losslessSaves)", async () => {
+    const src = await add(new DisplayNode());
+    nodeSizeStore.set(src.id, { w: 320, h: 240 });
+    frameFormatStore.set(src.id, "price", { format: "currency", unit: "" } as FormatAnnotation);
+    src.selected = true;
+    copySelected();
+    nodeSizeStore.set(src.id, { w: 100, h: 100 });
+    await pasteClipboard(0, 400);
+    const clone = editor.getNodes().find((n) => n.id !== src.id)!;
+    expect(nodeSizeStore.get(clone.id)).toEqual({ w: 320, h: 240 });
+    expect(frameFormatStore.get(clone.id, "price")?.format).toBe("currency");
   });
 });
 

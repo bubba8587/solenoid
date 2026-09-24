@@ -5,25 +5,21 @@ import { dockedNodeStore } from "./dockedNodeStore";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
 import { getCtorRegistry } from "./ctorProvider";
 import { getActiveEditor, getActiveView, editScopeFor } from "./activeGraph";
-import { collapseStore } from "./collapseStore";
-import { socketFlipStore } from "./socketFlipStore";
 import { nodeNameStore } from "./nodeNameStore";
+import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "./savedNodeBody";
 
 // A snapshot taken at copy time, so a later edit or delete of the source never changes what pastes.
 interface ClipboardEntry {
   id: string;
   Ctor: new (init?: Record<string, unknown>) => ClassicPreset.Node;
-  init: Record<string, unknown>;
-  literals?: Record<string, number>;
-  stringLiterals?: Record<string, string>;
-  collapsed: boolean;
-  flipped: boolean;
+  body: SavedNodeBody;
   x: number;
   y: number;
 }
 
 interface ClipboardData {
   entries: ClipboardEntry[];
+  side: SideTables;
   connections: Array<{
     srcIdx: number;
     srcOutput: string;
@@ -52,18 +48,14 @@ export function copySet(editor: NodeEditor<Schemes>): SolenoidNode[] {
 }
 
 function snapshotEntry(n: ClassicPreset.Node, x: number, y: number): ClipboardEntry {
-  const any = n as unknown as Record<string, unknown>;
-  return {
-    id: n.id,
-    Ctor: n.constructor as ClipboardEntry["Ctor"],
-    init: structuredClone(extractInit(n)),
-    literals: any.literals && typeof any.literals === "object" ? { ...(any.literals as Record<string, number>) } : undefined,
-    stringLiterals: any.stringLiterals && typeof any.stringLiterals === "object" ? { ...(any.stringLiterals as Record<string, string>) } : undefined,
-    collapsed: !!collapseStore.get(n.id),
-    flipped: !!socketFlipStore.get(n.id),
-    x,
-    y,
-  };
+  const body = savedNodeBody(n);
+  return { id: n.id, Ctor: n.constructor as ClipboardEntry["Ctor"], body: { ...body, init: structuredClone(body.init) }, x, y };
+}
+
+/** The side tables a paste carries: the card's own look. */
+function pastedSideTables(owns: (id: string) => boolean): SideTables {
+  const { frameFormats } = savedSideTables(owns);
+  return frameFormats ? { frameFormats } : {};
 }
 
 export function copySelected() {
@@ -89,6 +81,7 @@ export function copySelected() {
 
   _clipboard = {
     entries: selected.map((n, i) => snapshotEntry(n, positions[i].x - minX, positions[i].y - minY)),
+    side: pastedSideTables((id) => selectedIds.has(id)),
     connections: internalConns.map((c) => ({
       srcIdx: idxMap.get(c.source)!,
       srcOutput: c.sourceOutput,
@@ -229,11 +222,11 @@ export function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
 
 function cloneEntry(e: ClipboardEntry): ClassicPreset.Node | null {
   try {
-    const clone = new e.Ctor(structuredClone(e.init));
+    const clone = new e.Ctor(structuredClone(e.body.init));
     // Restore the value maps after construction, or the constructor's own defaults overwrite them.
     const cloneAny = clone as unknown as Record<string, unknown>;
-    if (e.literals) cloneAny.literals = { ...e.literals };
-    if (e.stringLiterals) cloneAny.stringLiterals = { ...e.stringLiterals };
+    if (e.body.literals) cloneAny.literals = { ...e.body.literals };
+    if (e.body.stringLiterals) cloneAny.stringLiterals = { ...e.body.stringLiterals };
     return clone;
   } catch {
     return null;
@@ -282,8 +275,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   for (let i = 0; i < clones.length; i++) {
     const clone = clones[i];
     if (!clone) continue;
-    if (clip.entries[i].collapsed) collapseStore.set(clone.id, true);
-    if (clip.entries[i].flipped) socketFlipStore.set(clone.id, true);
+    restoreNodeState(clone.id, clip.entries[i].body);
     const fresh = (clone as unknown as { assignFreshSeq?: () => void }).assignFreshSeq;
     if (typeof fresh === "function") fresh.call(clone);
     toAdd.push({ clone: clone as SolenoidNode, x: originX + clip.entries[i].x, y: originY + clip.entries[i].y });
@@ -302,6 +294,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       const hydrate = (clone as unknown as { hydrate?: (r: typeof reg) => Promise<void> }).hydrate;
       if (typeof hydrate === "function") await hydrate(reg);
     }
+    restoreSideTables(clip.side, (id) => oldToNew.get(id));
     toAdd.forEach(({ clone }, idx) => selectNode(clone.id, idx > 0));
     for (const conn of clip.connections) {
       const src = clones[conn.srcIdx];
