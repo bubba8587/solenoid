@@ -246,6 +246,12 @@ describe("histogramBins", () => {
     expect(histogramBins([3, 3, 3], 4)).toEqual([3, 0, 0, 0]); // one spike, all in bin 0
   });
 
+  it("a value on a bin's lower edge lands in that bin, however the division rounds", () => {
+    const w = 0.3 / 7;
+    expect(histogramBins([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
+    expect(histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1)!.counts.map((c) => c[0])).toEqual([1, 0, 0, 1, 0, 0, 1]);
+  });
+
   it("a large series doesn't RangeError (iterMin/iterMax, not Math.min/max spread)", () => {
     // A histogram over a big frame column is an ordinary ask; the spread form
     // throws past ~125k args on min/max.

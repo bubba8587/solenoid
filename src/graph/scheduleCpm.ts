@@ -128,7 +128,7 @@ function readPredecessors(cell: CubeCell, taskName: string): PlanDependency[] {
       const lag = lagCell == null || lagCell === "" ? 0 : isNum(lagCell) ? lagCell : Number(lagCell);
       if (!Number.isFinite(lag)) throw solError("#VALUE!", `Schedule: task "${taskName}" waits on "${task}" with a lag that is not a number`);
       const elapsedCol = findColumn(t, ELAPSED_NAMES);
-      out.push({ task, type, lag, ...(elapsedCol && readBool(elapsedCol.cells[i]) ? { elapsed: true } : {}) });
+      out.push({ task, type, lag, ...(elapsedCol && readLogicalCell(elapsedCol.cells[i]) ? { elapsed: true } : {}) });
     }
     return out;
   }
@@ -158,7 +158,7 @@ function readDate(cell: CubeCell | undefined, task: string, column: string): num
   return null;
 }
 
-function readBool(cell: CubeCell | undefined): boolean {
+export function readLogicalCell(cell: CubeCell | undefined): boolean {
   if (typeof cell === "boolean") return cell;
   if (isNum(cell)) return cell !== 0;
   if (isText(cell)) return ["true", "yes", "y", "1", "on"].includes(norm(cell));
@@ -167,7 +167,7 @@ function readBool(cell: CubeCell | undefined): boolean {
 
 /** An Active cell that is set and false leaves its row, and the row's subtree, out of the schedule. */
 export function isInactive(cell: CubeCell | undefined): boolean {
-  return cell != null && cell !== "" && !readBool(cell);
+  return cell != null && cell !== "" && !readLogicalCell(cell);
 }
 
 interface Level {
@@ -254,12 +254,12 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
       ...(isNum(workCell) ? { work: workCell } : {}), ...(isNum(unitsCell) ? { units: unitsCell } : {}),
       predecessors: generated ? [] : pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
       start: readDate(cols.start?.cells[i], name, "Start"), finish: readDate(cols.finish?.cells[i], name, "Finish"), deadline: readDate(cols.deadline?.cells[i], name, "Deadline"),
-      manual: cols.manual ? readBool(cols.manual.cells[i]) : false,
+      manual: cols.manual ? readLogicalCell(cols.manual.cells[i]) : false,
       complete: cols.complete ? (isNum(cols.complete.cells[i]) ? (cols.complete.cells[i] as number) : 0) : 0,
       group: groupCell == null ? null : String(groupCell).trim() || null,
-      alap: cols.alap ? readBool(cols.alap.cells[i]) : false,
+      alap: cols.alap ? readLogicalCell(cols.alap.cells[i]) : false,
       actualStart: readDate(cols.actual?.cells[i], name, "Actual start"),
-      elapsed: cols.elapsed ? readBool(cols.elapsed.cells[i]) : false,
+      elapsed: cols.elapsed ? readLogicalCell(cols.elapsed.cells[i]) : false,
       calendar: taskCalendar(cols, i, hoursPerDay),
       children: kids,
       row: i + 1,

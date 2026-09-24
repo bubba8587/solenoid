@@ -36,7 +36,9 @@ export const nodeNameStore = {
   },
 
   claim(id: string, name: string | undefined, fallbackCtorName: string): string {
-    if (typeof name === "string" && NAME_RE.test(name) && _ids.get(name) !== id && !_ids.has(name)) {
+    if (typeof name === "string" && NAME_RE.test(name) && !_ids.has(name)) {
+      const old = _names.get(id);
+      if (old) _ids.delete(old);
       _names.set(id, name);
       _ids.set(name, id);
       bumpCounter(name);

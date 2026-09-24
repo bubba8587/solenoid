@@ -87,5 +87,18 @@ describe("Schedule rows with a Repeat column", () => {
     if (isSolError(p)) throw new Error(p.message);
     expect(p.tasks.map((t) => t.name)).toEqual(["A", "B"]);
   });
+
+  it("reads a logical cell as the Schedule does: y, on and any nonzero number are true", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C", "D"], type: "string" },
+      { name: "Start", cells: [MON, MON, MON, MON], type: "date" },
+      { name: "Finish", cells: [MON + 1, MON + 1, MON + 1, MON + 1], type: "date" },
+      { name: "Critical", cells: ["Y", "on", 2, "no"] },
+      { name: "Manual", cells: ["on", "y", -1, 0] },
+    ]);
+    const p = ganttPayloadFromSchedule(c, { today: MON });
+    if (isSolError(p)) throw new Error(p.message);
+    expect(p.tasks.map((t) => [t.critical, !!t.manual])).toEqual([[true, true], [true, true], [true, true], [false, false]]);
+  });
 });
 

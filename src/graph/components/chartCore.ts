@@ -50,7 +50,9 @@ export function toSeries(v: unknown): { i: number; v: number }[] {
   return out;
 }
 
-// A pie has no place for a zero or negative slice, and recharts would sum it into the others' angles.
-export function pieSlices(series: readonly { i: number; v: number }[]): { i: number; v: number }[] {
-  return series.filter((d) => d.v > 0);
+/** The rows a part-of-whole figure can place: a pie has no slice for zero or less, a funnel stage or radial ring none below zero. */
+export function partSlices(op: ChartShape, series: readonly { i: number; v: number }[]): { i: number; v: number }[] {
+  if (op === "pie") return series.filter((d) => d.v > 0);
+  if (op === "funnel" || op === "radialbar") return series.filter((d) => d.v >= 0);
+  return [...series];
 }

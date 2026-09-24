@@ -37,9 +37,7 @@
         "label": "Annual total",
         "op": "mul",
         "width": 180,
-        "height": 177,
-        "a": 0,
-        "b": 0
+        "height": 177
       },
       "literals": {
         "a": 0,

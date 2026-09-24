@@ -1,10 +1,11 @@
-// [[C10]] socketLattice
+// [[C10]] socketLattice, [[C29]] plainJsonInit
 import { describe, it, expect, beforeAll } from "vitest";
 import { ClassicPreset } from "rete";
 import * as Nodes from "../../src/graph/rete-nodes";
 import { SolenoidSocket, canConnect } from "../../src/graph/sockets";
 import { CURRENT_SAVE_VERSION } from "../../src/graph/persistenceCore";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
+import { extractInit } from "../../src/graph/copyPaste";
 
 // Validates every seed graph against the REAL node classes: each saved type
 // resolves to a constructor, each connection lands on sockets that exist with
@@ -127,6 +128,23 @@ for (const [path, mod] of Object.entries(seedModules)) {
         }
       }
       expect(problems, problems.join("\n")).toEqual([]);
+    });
+
+    it("init holds only what extractInit captures, at every level", () => {
+      const stale: string[] = [];
+      const scan = (nodes: SavedNode[], where: string) => {
+        for (const sn of nodes) {
+          const Ctor = (Nodes as unknown as Record<string, unknown>)[sn.type] as
+            (new (init?: Record<string, unknown>) => AnyNode) | undefined;
+          if (!Ctor || !sn.init) continue;
+          const captured = extractInit(new Ctor({ ...sn.init }));
+          for (const k of Object.keys(sn.init)) if (!(k in captured)) stale.push(`${where}${sn.id} (${sn.type}) init.${k}`);
+          const inner = (sn.init.internal as { nodes?: SavedNode[] } | undefined)?.nodes;
+          if (inner) scan(inner, `${where}${sn.id} > `);
+        }
+      };
+      scan(g.nodes, "");
+      expect(stale, stale.join("\n")).toEqual([]);
     });
 
     it("every connection lands on existing, compatible sockets", () => {

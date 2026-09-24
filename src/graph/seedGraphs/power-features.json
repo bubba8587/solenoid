@@ -39,10 +39,7 @@
       "y": -441,
       "init": {
         "label": "Rate",
-        "value": 3,
-        "min": 0,
-        "max": 10,
-        "step": 0.5
+        "value": 3
       },
       "literals": {
         "min": 0,

@@ -3,7 +3,7 @@ import { ClassicPreset } from "rete";
 import { readInput, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
-import { histogram2d } from "./visualOps";
+import { histogram2d, equalWidthBins } from "./visualOps";
 export { histogram2d } from "./visualOps";
 import { isChartValue } from "../chartValue";
 import type {
@@ -283,13 +283,8 @@ export function histogramBins(vals: (number | null)[], k: number): number[] | So
   const max = iterMax(nums);
   const counts = new Array<number>(bins).fill(0);
   if (min === max) { counts[0] = nums.length; return counts; }
-  const w = (max - min) / bins;
-  for (const x of nums) {
-    let idx = Math.floor((x - min) / w);
-    if (idx >= bins) idx = bins - 1;
-    if (idx < 0) idx = 0;
-    counts[idx]++;
-  }
+  const { idx } = equalWidthBins(min, max, bins);
+  for (const x of nums) counts[idx(x)]++;
   return counts;
 }
 

@@ -1,7 +1,7 @@
 // [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk, [[C100]] chartIsAValue
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";
-import { toSeries, pieSlices } from "./chartCore";
+import { toSeries, partSlices } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
 import type { ChartValue, ScalePayload, OverlayPayload } from "../chartValue";
@@ -201,8 +201,8 @@ function renderSeries(value: ChartValue, op: ChartShape, width: number, height: 
     if (!value.series.some((s) => toSeries(s.values).length > 0)) return EMPTY_FIGURE;
     return <MultiSeriesView op={op} series={value.series} labels={value.labels} width={width} height={height} axes={axes} opts={value.options} fontScale={fontScale} />;
   }
-  const series = toSeries(value.values);
-  if (series.length === 0 || (op === "pie" && pieSlices(series).length === 0)) return EMPTY_FIGURE;
+  const series = partSlices(op, toSeries(value.values));
+  if (series.length === 0) return EMPTY_FIGURE;
   return <ChartView op={op} series={series} width={width} height={height} axes={axes} opts={value.options} labels={value.labels} fontScale={fontScale} />;
 }
 

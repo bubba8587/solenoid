@@ -20,6 +20,12 @@ describe("sortKeyOf — what a cell reduces to", () => {
     expect(sortKeyOf("1,234")).toBe(1234); // a thousands-formatted cell still sorts by magnitude
   });
 
+  it("reads only decimal text as a number: hex, binary, octal and Infinity stay text", () => {
+    for (const t of ["0x1F", "0b101", "0o17", "Infinity", "-Infinity"]) expect(sortKeyOf(t)).toBe(t);
+    expect(sortKeyOf("1e3")).toBe(1000);
+    expect(sortKeyOf(".5")).toBe(0.5);
+  });
+
   it("reads text as text, and booleans as 0/1", () => {
     expect(sortKeyOf("banana")).toBe("banana");
     expect(sortKeyOf(true)).toBe(1);
