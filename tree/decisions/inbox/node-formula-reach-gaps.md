@@ -26,3 +26,9 @@ For the rest, add a third exception to [[D73]] nodeCoversFormula: another card i
 [[D73]] allows only two reasons for a missing argument: the argument is a cell-grid concept, or the formula lacks it too. None of these six fits either one. RANK's order, UNIQUE on text and dates, and QUARTILE's out-of-range answer were fixed in the same sweep.
 
 **Owner's call:** build the first three, and accept "another card covers it" as a D73 exception for the last three, or build those as well?
+
+## What ratifying means
+
+- **Ratify:** three cards grow: the WORKDAY / NETWORKDAYS weekend input takes a mask string like "0000011", CONCAT rows take lists, and TEXTJOIN gets more than one text row. [[D73]] gains a third reason a card may lack a formula argument: another card in the same menu does it.
+- **Build all six instead:** also a 2-D RANDARRAY, FILTER's include mask and if_empty on List Filter, and XLOOKUP over plain lists. Those cut against [[C49]] filterOneJob and duplicate Frame Filter and Frame from Lists.
+- **Lean:** ratify as written.

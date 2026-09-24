@@ -14,3 +14,9 @@ The query "mean" ranks AVERAGE above "Fill: Mean".
 ## Why
 
 AVERAGE now carries "mean" as a keyword and ranks second, behind Fill's Mean op, whose label matches exactly. Putting AVERAGE first needs keywords weighted per word rather than per field. **Owner's call:** worth that change to scoring, or is second fine?
+
+## What ratifying means
+
+- **Ratify:** search scoring weighs keywords per word, so typing mean puts AVERAGE first. This changes ranking for other queries too, so a few other searches will reorder.
+- **Reject:** AVERAGE stays second, one row below Fill: Mean.
+- **Lean:** reject. Second is visible without scrolling, and a scoring change is a lot of reordering for one query.

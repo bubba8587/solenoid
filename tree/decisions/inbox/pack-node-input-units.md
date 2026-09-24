@@ -23,3 +23,9 @@ Only Triangle Solver is `unitAware`. Every other pack node reads a tagged input 
 The formula surface strips cells to base SI instead, so STANDARDATMOSPHERE and the card disagree on the same input ([[C17]] shareImpl). Outputs are bare except for Triangle Solver's angles, so K, Pa, Hz and mm go downstream as plain numbers. That contradicts the flagship unit story ([[C25]] firstClassUnits). A per-input declaration keeps [[D42]] perInputUnitBlind's central strip: the strip converts instead of discarding the unit.
 
 **Owner's call:** build the declared-unit coercion for pack nodes now, or park it with the pack distribution work?
+
+## What ratifying means
+
+- **Ratify:** Standard Atmosphere, EM Spectrum, Pipe Roughness, Parallel Combine and the other custom pack cards read a wired `2 km` as 2000 m, answer with units attached, and refuse a length where a frequency belongs.
+- **Park:** those cards keep reading the displayed number, so a wired km or GHz value gives a silently wrong answer until the pack work resumes.
+- **Lean:** ratify now. The wrong answers are silent, and the Thermo presets already use the same idea.

@@ -16,3 +16,9 @@ Open next steps, in order: declare the remaining physical presets (fluids, elect
 ## Why
 
 Without a declaration a correlation computed on whatever arrived: a Magnus preset fed 293.15 K computed as if it were 293.15 °C and showed 9.35 MPa, and fed °C it refused with `#UNIT!` because the unit algebra can't see that `243.04` is in °C. Physical presets bake bare constants (R = 287.05, g, G) into their formulas, so the unit algebra also mislabels their result dimension whenever units are wired. A declared input unit is the least mechanism that makes each assumption explicit and enforced. **Owner's call:** keep this mechanism and roll it out to every physical preset, with result units next, or handle presets another way?
+
+## What ratifying means
+
+- **Ratify:** the mechanism Thermo presets use stays, and every physical preset in fluids, electricity, electromagnetism, earth and sky, health and chemistry declares its input units. Wiring `5 km` into escape velocity then gives the right answer. Result units come after that as a second step.
+- **Reject:** you name the other approach, and the Thermo declarations get replaced.
+- **Lean:** ratify. It pairs with the low-priority variable-definitions item, since both fill the same pack entries.

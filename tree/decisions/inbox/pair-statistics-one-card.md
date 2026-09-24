@@ -24,3 +24,9 @@ Smaller candidates found in the same sweep, each a sibling pair with identical s
 All three cards read two paired lists through `forPair`, apply the same pair policy and return one number. They differ only in the kernel, which is what [[B11]] maximalMerge says an op is. Nothing differs in value: every op keeps its own formula name and answer.
 
 **Owner's call:** merge the pair statistics now, and which of the smaller candidates to take (Group Lists is the one where retiring and keeping both have a case).
+
+## What ratifying means
+
+- **Ratify the main merge:** the Add menu shows one pair-statistics card where there are three now. Picking CORREL, SLOPE or COVARIANCE.S is an op switch on it, cables stay attached, and every formula name and answer is unchanged. Saves with the old three cards break (pre-alpha).
+- **The smaller pairs** are separate yes/no answers. You can take any subset.
+- **Lean:** ratify the main merge; of the smaller ones, REDUCE/SCAN and Append/Bind Columns are the clearest; keep Group Lists as the 1-D fast path.

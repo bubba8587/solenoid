@@ -14,3 +14,9 @@ In the Schedule, a Complete column holding logicals (a TaskNotes-style done chec
 ## Why
 
 Today any non-number reads as 0, so a done task shows 0%. **Owner's call:** read logicals, or keep Complete numeric only?
+
+## What ratifying means
+
+- **Ratify:** a TaskNotes done checkbox wired as Complete shows done tasks at 100% on the Gantt and in progress roll-ups.
+- **Reject:** Complete takes numbers only, and a checkbox column has to go through a formula (`IF(done, 100, 0)`) first.
+- **Lean:** ratify. TaskNotes is the flagship integration and its done field is a checkbox.

@@ -14,3 +14,9 @@ In `nodeExcel.ts`, Excel's GROUPBY is recorded on the frame GROUPBY card. Group 
 ## Why
 
 Today only Group Lists claims GROUPBY, so the Function Reference sends GROUPBY to Group Lists. Group Lists matches the formula's list form (keys, values, a function); the frame card wears the name. The Add-menu alias row is already gone (af2fc377). **Owner's call:** which card owns the Excel name?
+
+## What ratifying means
+
+- **Ratify:** the Function Reference entry for GROUPBY opens the frame GROUPBY card. Group Lists keeps a description line pointing there.
+- **Reject:** Group Lists keeps the name, and the frame card stays unnamed in the reference.
+- **Lean:** ratify. It matches your 09-24 wording that prose calls the frame card GROUPBY.

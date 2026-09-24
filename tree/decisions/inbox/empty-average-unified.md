@@ -14,3 +14,9 @@ An average over no values gives one answer on every surface: either blank (as AV
 ## Why
 
 The two disagree today. **Owner's call:** blank everywhere, #DIV/0! everywhere, or keep the split?
+
+## What ratifying means
+
+- **Blank everywhere:** AVERAGEIF and AVERAGEIFS with no matches go blank like AVERAGE, which keeps [[D70]] nullNotEnoughData (not enough data is a quiet blank, not an error). Differs from Excel for all three, so all three get a parity note.
+- **#DIV/0! everywhere:** matches Excel, but reverses [[D70]] for averages, so an empty filter upstream shows an error downstream.
+- **Lean:** blank everywhere, unless you want Excel parity to beat [[D70]] here.

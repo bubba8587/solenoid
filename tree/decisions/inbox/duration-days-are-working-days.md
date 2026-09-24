@@ -14,3 +14,9 @@ In the Schedule, a united Duration of `day` or `week` means working days and wor
 ## Why
 
 Today a united Duration converts through hours per day, so 2 day becomes 48 hours, which is 6 working days at 8 hours a day. Found by the charts review. **Owner's call:** working days, or calendar hours?
+
+## What ratifying means
+
+- **Ratify:** `2 day` on an 8-hour calendar is 2 working days and `1 week` is 5 working days. This is how Microsoft Project reads d and w.
+- **Reject:** `2 day` stays 48 hours, which the calendar spreads over 6 working days.
+- **Lean:** ratify. Nobody who types 2 days into a plan means 6 working days.

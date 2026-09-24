@@ -14,3 +14,9 @@ Names given to cards inside a composite belong to that composite: they are saved
 ## Why
 
 Today a name given inside a composite isn't saved at all, so it is gone after a reload or a drill-in undo (a lossless-save gap under [[B12]] losslessSaves). Saving it needs a rule first, because names live in one global namespace today, so an inner name could clash with a main-canvas one. The other lost fields (size, collapsed, flipped) are being fixed without waiting on this. **Owner's call:** names scoped per composite, or one global namespace (an inner name must be unique everywhere)?
+
+## What ratifying means
+
+- **Scoped per composite:** inner names save and reload. Two composites can each have a card called Total, and a formula inside a composite finds its own Total first.
+- **One global namespace:** inner names also save and reload, but naming an inner card Total is refused while the main canvas has one. Duplicating a composite would need every inner name changed.
+- **Lean:** scoped. It is the only choice under which a copied composite still works without renaming.

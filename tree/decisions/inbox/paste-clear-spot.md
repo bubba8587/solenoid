@@ -14,3 +14,9 @@ A pasted or added card lands at the nearest spot to the pointer that overlaps no
 ## Why
 
 Today it lands exactly at the pointer and can overlap; the review treated that as manual placement, which [[C112]] exempts. **Owner's call:** clear spot, or exactly where you point?
+
+## What ratifying means
+
+- **Ratify:** a pasted or added card lands at the nearest free spot to the pointer, a short hop away if the pointer is over another card.
+- **Reject:** it lands exactly at the pointer and can cover a card. [[C112]] keeps its manual-placement exemption for this.
+- **Lean:** ratify. You didn't pick the exact pixel, so shifting it costs nothing, and no overlaps ever is your rule.
