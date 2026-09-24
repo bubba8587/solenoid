@@ -74,6 +74,25 @@ describe("Wrap as Composite inside a drill-in relocates, it doesn't delete", () 
     expect(dockedNodeStore.get(fc.id)?.hostNodeId).toBe(num.id);
   });
 
+  it("deleting a composite for real forgets its inner cards at every depth", async () => {
+    const { editor } = drillLevel();
+    const num = new NumberInputNode({ value: 3 });
+    const disp = new DisplayNode();
+    const inner = new CompositeNode();
+    const outer = new CompositeNode();
+    for (const n of [num, disp]) await inner.internalEditor.addNode(n as SolenoidNode);
+    await outer.internalEditor.addNode(inner as SolenoidNode);
+    await editor.addNode(outer as SolenoidNode);
+    nodeNameStore.rename(num.id, "deep_rate");
+    nodeNameStore.ensure(inner.id, "CompositeNode");
+    collapseStore.set(disp.id, true);
+
+    await editor.removeNode(outer.id);
+    expect(nodeNameStore.get(inner.id)).toBeUndefined();
+    expect(nodeNameStore.get(num.id)).toBeUndefined();
+    expect(collapseStore.get(disp.id)).toBeFalsy();
+  });
+
   it("an ungated removal still forgets", async () => {
     const { editor } = drillLevel();
     const num = new NumberInputNode({ value: 1 });
