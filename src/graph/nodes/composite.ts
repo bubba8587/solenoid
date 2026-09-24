@@ -6,7 +6,8 @@ import { AdoptiveSocket, MutableSocket, SolenoidSocket, type SocketDataType } fr
 import { resolveTrigModes } from "../trigMode";
 import { settleWildcardTypes } from "../trueAnyAdopt";
 import { reconcileFcTypes } from "../fcReconcile";
-import { savedNodeBody, restoreNodeState, type SavedNodeBody } from "../savedNodeBody";
+import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "../savedNodeBody";
+import { forgetNode } from "../nodeStoreRegistry";
 import { installErrorGuards, isSolError, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
@@ -59,7 +60,7 @@ export interface CompositeSavedConnection {
   targetInput: string;
 }
 
-export interface CompositeInternalSnapshot {
+export interface CompositeInternalSnapshot extends SideTables {
   nodes: CompositeSavedNode[];
   connections: CompositeSavedConnection[];
 }
@@ -289,7 +290,7 @@ export class CompositeNode extends ClassicPreset.Node {
     });
     this.internalEngine = new DataflowEngine<Schemes>();
     this.internalEditor.use(this.internalEngine);
-    this._pending = init?.internal ? { nodes: [...init.internal.nodes], connections: [...init.internal.connections] } : null;
+    this._pending = init?.internal ? { ...init.internal, nodes: [...init.internal.nodes], connections: [...init.internal.connections] } : null;
 
     for (const p of this.inputPorts) {
       if (p.exposure === "exposed") this.addInput(p.id, new ClassicPreset.Input(new AdoptiveSocket(), p.label));
@@ -359,6 +360,7 @@ export class CompositeNode extends ClassicPreset.Node {
       }
     }
     const liveOf = new Map([...built].map(([savedId, n]) => [savedId, n.id]));
+    restoreSideTables(pending, (id) => liveOf.get(id));
     const isLive = (id: string) => !!this.internalEditor.getNode(id);
     for (const node of built.values()) {
       remapNodeRefs(node as unknown as NodeRefs, liveOf, isLive);
@@ -380,6 +382,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   async restoreInternal(snap: CompositeInternalSnapshot, reg: Map<string, NodeCtor>): Promise<void> {
+    for (const id of nestedNodeIds(this.internalEditor)) forgetNode(id);
     for (const c of [...this.internalEditor.getConnections()]) {
       await this.internalEditor.removeConnection(c.id);
     }
@@ -389,7 +392,7 @@ export class CompositeNode extends ClassicPreset.Node {
     this.internalPositions = {};
     for (const p of [...this.inputPorts, ...this.outputPorts]) p.internalNodeId = this.savedInternalId(p.internalNodeId);
     this._savedIds.clear();
-    this._pending = { nodes: [...snap.nodes], connections: [...snap.connections] };
+    this._pending = { ...snap, nodes: [...snap.nodes], connections: [...snap.connections] };
     await this.hydrate(reg);
   }
 
@@ -411,7 +414,7 @@ export class CompositeNode extends ClassicPreset.Node {
       target: sid(c.target),
       targetInput: c.targetInput as string,
     }));
-    return { nodes, connections };
+    return { nodes, connections, ...savedSideTables((id) => !!this.internalEditor.getNode(id), sid) };
   }
 
   savedInternalId(liveId: string): string {

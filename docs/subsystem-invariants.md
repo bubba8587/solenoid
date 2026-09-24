@@ -70,7 +70,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/canvas/conduit-lane-faces.md` | Conduit lane geometry | Conduit components |
 | `../tree/specs/canvas/resizable-content-nodes.md` | cards whose content the user resizes | Conduit, Display |
 | `../tree/specs/canvas/input-cable-pruning.md` | dropping cables before their sockets go | `components/cablePrune.ts` |
-| `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` | opening and leaving a composite's inner canvas | `flow/FlowCompositeOverlay.tsx` |
+| `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` | opening and leaving a composite's inner canvas | `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts` |
 | `../tree/specs/canvas/add-menu.md` | the Add menu tree, search rows and scoring | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` |
 | `../tree/specs/canvas/layout-chrome.md` | where every bar and floating overlay sits, and what its offsets derive from | `Header.tsx`, `chromeBottom.ts`, the chrome CSS |
 | `../tree/specs/canvas/touch-gestures.md` | the inventory of every pointer and touch gesture per device | `flow/*`, `pointerGesture.ts` |

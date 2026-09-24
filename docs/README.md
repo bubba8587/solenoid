@@ -151,7 +151,7 @@ results get retried and settled rulings relapse.
 | `persistence.ts`, `textForm.ts`, `graphValidate.ts`, `fileSession.ts` | [[B12]] losslessSaves; `../tree/specs/documents/save-format.md` (names: `../tree/specs/documents/addressable-model.md`) |
 | `documentStore.ts`, `documentStoreCore.ts` | [[C32]] autosaveSlotOrder; `../tree/specs/documents/per-doc-autosave-persistence.md` |
 | `persistence.ts` (load gate, literal maps) | [[C28]] literalsIffEditable; `../tree/specs/documents/inline-literal-maps.md` |
-| `flow/FlowCompositeOverlay.tsx`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |
+| `flow/FlowCompositeOverlay.tsx`, `flow/drillStack.ts`, drill-in lifecycle | [[C77]] compositeIsSubgraph; `../tree/specs/canvas/composite-drill-in-mount-lifecycle.md` |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `../tree/specs/values/socket-lattice.md` (the spec); `socket-reference.md`; [[C10]] socketLattice, [[D15]] wildcardsKeepRank |
 | `nodes/cube.ts` | [[C10]] socketLattice; `../tree/specs/values/socket-lattice.md` (the Cube is the recursive lattice supremum) |
 | `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts`, `ReportOverlay.tsx`, `reportExport.ts` | `../tree/specs/documents/reports-and-notes.md`; [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |

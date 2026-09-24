@@ -10,6 +10,7 @@ import { cableSelectionStore } from "./cableState";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { forgetNode } from "./nodeStoreRegistry";
+import { standoffStore } from "./standoffs";
 import { measuredBox } from "./nodeSize";
 import { getOwningEditor, editScopeFor } from "./activeGraph";
 
@@ -60,6 +61,8 @@ export async function createCompositeFromSelection(editor: Editor, view: View): 
       await composite.internalEditor.addNode(n as SolenoidNode);
       if (b) composite.internalPositions[n.id] = { x: b.x - minX, y: b.y - minY };
     }
+    // A standoff binds two cards of one canvas; one end wrapped leaves it spanning two.
+    for (const st of standoffStore.all()) if (selIds.has(st.a.nodeId) !== selIds.has(st.b.nodeId)) standoffStore.remove(st.id);
     for (const c of internalConns) {
       const s = composite.internalEditor.getNode(c.source);
       const t = composite.internalEditor.getNode(c.target);

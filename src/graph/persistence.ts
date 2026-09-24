@@ -4,14 +4,13 @@ import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
-import { savedNodeBody, restoreNodeState, type SavedNodeBody } from "./savedNodeBody";
+import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SavedStandoff, type SideTables } from "./savedNodeBody";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
 import { forgetAllNodes } from "./nodeStoreRegistry";
-import { standoffStore, type StandoffEnd } from "./standoffs";
 import { drawnCableStore, type SavedDrawnCable } from "./drawnCables";
 import { nodeNameStore } from "./nodeNameStore";
 import { writeTextForm, readTextForm } from "./textForm";
@@ -19,12 +18,9 @@ import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets, rem
 import { packsStore, allPacks } from "./packs";
 import { pushNotice } from "./noticeStore";
 import { documentStore } from "./documentStore";
-import { pinStore, type Pin } from "./pinStore";
 import { reportStore } from "./reportStore";
 import { presentationStore } from "./presentationStore";
 import { compositeEditorStore } from "./compositeEditorStore";
-import { commentStore, type SavedCommentData } from "./commentStore";
-import { frameFormatStore, type FrameColumnFormat } from "./frameFormatStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore } from "./loadReveal";
@@ -48,23 +44,13 @@ export interface SavedConnection {
   targetInput: string;
 }
 
-export interface SavedStandoff {
-  a: StandoffEnd;
-  b: StandoffEnd;
-  min: number;
-  max: number;
-  locked?: boolean;
-}
+export type { SavedStandoff };
 
-export interface SavedGraph {
+export interface SavedGraph extends SideTables {
   v: number;
   nodes: SavedNode[];
   connections: SavedConnection[];
-  standoffs?: SavedStandoff[];
   drawnCables?: SavedDrawnCable[];
-  pins?: Pin[];
-  comments?: SavedCommentData[];
-  frameFormats?: FrameColumnFormat[];
   palette?: { base?: string; overrides?: Record<string, string> };
   reportPalette?: { base?: string; overrides?: Record<string, string> };
   meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean };
@@ -103,24 +89,9 @@ function buildRawSavedGraph(): SavedGraph | null {
     targetInput: c.targetInput,
   }));
 
-  const standoffs: SavedStandoff[] = standoffStore.all().map((s) => ({
-    a: { ...s.a },
-    b: { ...s.b },
-    min: Math.round(s.min),
-    max: Math.round(s.max),
-    ...(s.locked ? { locked: true } : {}),
-  }));
-
-  const g: SavedGraph = { v: CURRENT_SAVE_VERSION, nodes, connections };
-  if (standoffs.length > 0) g.standoffs = standoffs;
+  const g: SavedGraph = { v: CURRENT_SAVE_VERSION, nodes, connections, ...savedSideTables((id) => !!editor.getNode(id)) };
   const drawnCables = drawnCableStore.serialize();
   if (drawnCables.length > 0) g.drawnCables = drawnCables;
-  const pins = pinStore.serialize();
-  if (pins.length > 0) g.pins = pins;
-  const comments = commentStore.serialize();
-  if (comments.length > 0) g.comments = comments;
-  const frameFormats = frameFormatStore.serialize();
-  if (frameFormats.length > 0) g.frameFormats = frameFormats;
   const palette = paletteStore.docPalette();
   if (palette) g.palette = palette;
   const reportPalette = reportPaletteStore.reportPalette();
@@ -307,6 +278,11 @@ async function rebuildGraph(
     bump();
   }
 
+  restoreSideTables(g, (id) => {
+    const live = idMap.get(id);
+    return live && editor.getNode(live) ? live : undefined;
+  });
+
   for (const node of created) {
     if (node instanceof CompositeNode) await node.hydrate(reg);
   }
@@ -322,38 +298,7 @@ async function rebuildGraph(
     if (node instanceof FormatControllerNode) node.refreshAnnotation(editor);
   }
 
-  for (const ss of g.standoffs ?? []) {
-    const aId = idMap.get(ss.a.nodeId);
-    const bId = idMap.get(ss.b.nodeId);
-    if (!aId || !bId || aId === bId) continue;
-    standoffStore.add(
-      { nodeId: aId, anchor: ss.a.anchor },
-      { nodeId: bId, anchor: ss.b.anchor },
-      ss.min,
-      ss.max,
-      ss.locked ?? false,
-    );
-  }
-
   drawnCableStore.load(g.drawnCables ?? []);
-
-  pinStore.load(
-    (g.pins ?? [])
-      .map((p) => ({ nodeId: idMap.get(p.nodeId) ?? "", outputKey: p.outputKey }))
-      .filter((p) => p.nodeId && editor.getNode(p.nodeId)),
-  );
-
-  commentStore.load(
-    (g.comments ?? [])
-      .map((c) => ({ ...c, nodeId: idMap.get(c.nodeId) ?? "" }))
-      .filter((c) => c.nodeId && editor.getNode(c.nodeId)),
-  );
-
-  frameFormatStore.load(
-    (g.frameFormats ?? [])
-      .map((f) => ({ ...f, nodeId: idMap.get(f.nodeId) ?? "" }))
-      .filter((f) => f.nodeId && editor.getNode(f.nodeId)),
-  );
 
   rebuildGroupMembership(editor);
 

@@ -53,12 +53,18 @@ export const commentStore = {
 
   serialize: (): SavedCommentData[] => _comments.map((c) => ({ ...c })),
 
-  load(list: SavedCommentData[]): void {
-    _comments = list.map((c) => ({ ...c, time: c.time ?? Date.now() }));
-    _seq = _comments.reduce((m, c) => {
-      const n = parseInt(c.id.replace(/\D/g, ""), 10);
-      return Number.isFinite(n) ? Math.max(m, n) : m;
-    }, _seq);
+  /** Adds loaded comments, keeping the counter above every id; one whose id is taken (a pasted composite's) gets a fresh id. */
+  merge(list: SavedCommentData[]): void {
+    if (list.length === 0) return;
+    const seqOf = (id: string) => parseInt(id.replace(/\D/g, ""), 10);
+    _seq = list.reduce((m, c) => (Number.isFinite(seqOf(c.id)) ? Math.max(m, seqOf(c.id)) : m), _seq);
+    const taken = new Set(_comments.map((c) => c.id));
+    const added = list.map((c) => {
+      const id = taken.has(c.id) ? `cm${++_seq}` : c.id;
+      taken.add(id);
+      return { ...c, id, time: c.time ?? Date.now() };
+    });
+    _comments = [..._comments, ...added];
     notify();
   },
 

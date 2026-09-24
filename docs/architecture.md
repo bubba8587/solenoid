@@ -127,7 +127,8 @@ src/
 | `flowSurface.ts` | The injection seam: node components ask for the RF `Handle` (`useFlowSocket`) and the resize grip (`useFlowResizeGrip`); the flow chunk injects both so shared component code never imports @xyflow/react |
 | `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see `tree/specs/canvas/pointer-gestures.md`) |
 | `flow/flowHistory.ts` + `flow/flowHistoryDigest.ts` (+tests) | Snapshot undo — THE undo: debounced full-graph snapshots + `describeGraphDelta` labels |
-| `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion, run controls and the per-composite snapshot history; registers the active graph and swaps the select / arrange slots while open (see `tree/specs/canvas/composite-drill-in-mount-lifecycle.md`) |
+| `flow/drillStack.ts` | The per-composite drill stack that outlives the drill-in: its flow view, topology pipe, open gate and snapshot history |
+| `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion and run controls; registers the active graph and swaps the select / arrange slots while open (see `tree/specs/canvas/composite-drill-in-mount-lifecycle.md`) |
 | `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
 | `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |

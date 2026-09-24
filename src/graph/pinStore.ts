@@ -35,8 +35,12 @@ export const pinStore = {
 
   serialize: (): Pin[] => _pins.map((p) => ({ ...p })),
 
-  load(pins: Pin[]): void {
-    _pins = pins.map((p) => ({ ...p }));
+  /** Adds loaded pins; a node already pinned keeps its pin. */
+  merge(pins: Pin[]): void {
+    const next = [..._pins];
+    for (const p of pins) if (!next.some((q) => q.nodeId === p.nodeId)) next.push({ ...p });
+    if (next.length === _pins.length) return;
+    _pins = next;
     notify();
   },
 

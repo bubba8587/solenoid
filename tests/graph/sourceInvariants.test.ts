@@ -317,9 +317,11 @@ describe("[[C30]] saveViaTextForm — the text form carries every SavedGraph fie
   // readTextForm.
   it("every SavedGraph interface field appears in writeTextForm AND readTextForm", () => {
     const persistence = fs.readFileSync(path.join(SRC, "persistence.ts"), "utf8");
-    const iface = /export interface SavedGraph \{([\s\S]*?)\n\}/.exec(persistence);
+    const iface = /export interface SavedGraph extends SideTables \{([\s\S]*?)\n\}/.exec(persistence);
     expect(iface, "SavedGraph interface not found in persistence.ts").toBeTruthy();
-    const fields = [...iface![1].matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
+    const sideTables = /export interface SideTables \{([\s\S]*?)\n\}/.exec(fs.readFileSync(path.join(SRC, "savedNodeBody.ts"), "utf8"));
+    expect(sideTables, "SideTables interface not found in savedNodeBody.ts").toBeTruthy();
+    const fields = [...(iface![1] + sideTables![1]).matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]);
     expect(fields.length).toBeGreaterThanOrEqual(10); // parser sanity — the interface has ~12 fields
     // `v` is the version gate, checked structurally by its own dedicated lines
     // (too short a name to grep for honestly).
