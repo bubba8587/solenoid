@@ -425,7 +425,7 @@ export function gridAxes(z: unknown, xs: unknown, ys: unknown):
   { xs: number[]; ys: number[]; z: (number | null)[][] } | SolError | null {
   if (!Array.isArray(z) || z.length === 0) return null;
   const rows = z.length;
-  const cols = Math.max(...z.map((r) => (Array.isArray(r) ? r.length : 0)));
+  const cols = iterMax(z.map((r) => (Array.isArray(r) ? r.length : 0)));
   if (cols === 0) return null;
   const zg: (number | null)[][] = Array.from({ length: rows }, (_, i) =>
     Array.from({ length: cols }, (_, j) => {
@@ -455,7 +455,7 @@ export function gridAxes(z: unknown, xs: unknown, ys: unknown):
 
 export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], forecast = true): (number | null)[][] {
   const R = z.length;
-  const C = R > 0 ? Math.max(...z.map((r) => r.length)) : 0;
+  const C = R > 0 ? iterMax(z.map((r) => r.length)) : 0;
   const isKnown = (v: number | null | undefined): v is number => typeof v === "number" && Number.isFinite(v);
   const Z: (number | null)[][] = Array.from({ length: R }, (_, i) =>
     Array.from({ length: C }, (_, j) => { const v = z[i]?.[j]; return isKnown(v) ? v : null; }),

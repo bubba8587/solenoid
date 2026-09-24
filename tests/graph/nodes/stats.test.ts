@@ -451,6 +451,15 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
     const vl = gridAxes(z, [1, NaN], undefined);
     expect(isSolError(vl) && vl.code).toBe("#VALUE!");
   });
+
+  it("gridAxes and fillGrid take a table too tall to spread into Math.max", () => {
+    const z = Array.from({ length: 300_000 }, (_, i) => [i]);
+    const axes = gridAxes(z, undefined, undefined);
+    expect(axes && !isSolError(axes) && axes.xs).toEqual([1]);
+    const out = fillGrid(z, [1], Array.from({ length: z.length }, (_, i) => i + 1));
+    expect(out.length).toBe(300_000);
+    expect(out[299_999][0]).toBe(299_999);
+  });
 });
 
 describe("CORREL / RSQ", () => {
