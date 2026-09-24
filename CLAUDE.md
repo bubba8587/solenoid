@@ -55,13 +55,13 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **The decision tree (`tree/decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
   The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session; you are
   ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
-  A new mechanism lands its rule leaf before its code ([[C6]] specFirst), and a rule's
-  exceptions live under that rule, each naming what would remove it ([[C5]] exceptionsUnderRule).
   A leaf is a human product call in plain words; mechanics, code order and designs are specs
-  (`docs/dte.md` § What is a leaf and what is a spec — read it before `dte new`).
-  Every MUST-rule (with its enforcing test) and every settled decision (what stands, what would
-  reopen it) is a DTE leaf (the author's word; "node" means an app card). Read the governing
-  leaf before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
+  (`docs/dte.md` § What is a leaf and what is a spec — read it before `dte new`). A new
+  mechanism lands its spec before its code, and a leaf only when it carries a product call
+  ([[C6]] specFirst). A mechanism's MUST lives in its spec with its enforcing test; a settled
+  product call (what stands, what would reopen it) is a leaf, and its exceptions live under it
+  ([[C5]] exceptionsUnderRule). "Leaf" is the author's word; "node" means an app node. Read the
+  governing leaf and spec before changing sockets, names or value handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
   `[[<ID>]] name` in comments and commits; run `python tools/dte.py validate` before you finish.
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
   author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
