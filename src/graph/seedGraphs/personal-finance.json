@@ -201,10 +201,7 @@
       "y": 595,
       "init": {
         "label": "Target savings rate %",
-        "value": 20,
-        "min": 0,
-        "max": 60,
-        "step": 1
+        "value": 20
       },
       "literals": {
         "min": 0,
@@ -228,8 +225,7 @@
       "x": 191,
       "y": 615,
       "init": {
-        "label": "Low-savings watch",
-        "mode": "range"
+        "label": "Low-savings watch"
       },
       "literals": {
         "value": 50,
@@ -520,10 +516,7 @@
       "y": 1409,
       "init": {
         "label": "Net-worth goal",
-        "value": 120000,
-        "min": 50000,
-        "max": 250000,
-        "step": 5000
+        "value": 120000
       },
       "literals": {
         "min": 50000,
@@ -639,8 +632,7 @@
       "x": 1182,
       "y": 972,
       "init": {
-        "label": "Emergency-fund watch",
-        "mode": "range"
+        "label": "Emergency-fund watch"
       },
       "literals": {
         "value": 50,
@@ -703,10 +695,7 @@
       "y": 1582,
       "init": {
         "label": "Emergency-fund target $",
-        "value": 15000,
-        "min": 0,
-        "max": 60000,
-        "step": 1000
+        "value": 15000
       },
       "literals": {
         "min": 0,
@@ -755,10 +744,7 @@
       "y": 920,
       "init": {
         "label": "Monthly contribution $",
-        "value": 600,
-        "min": 0,
-        "max": 3000,
-        "step": 50
+        "value": 600
       },
       "literals": {
         "min": 0,
@@ -773,10 +759,7 @@
       "y": 210,
       "init": {
         "label": "Annual return %",
-        "value": 7,
-        "min": 0,
-        "max": 15,
-        "step": 0.5
+        "value": 7
       },
       "literals": {
         "min": 0,
@@ -872,10 +855,7 @@
       "y": 499,
       "init": {
         "label": "Retirement target $",
-        "value": 1000000,
-        "min": 100000,
-        "max": 3000000,
-        "step": 50000
+        "value": 1000000
       },
       "literals": {
         "min": 100000,
@@ -889,8 +869,7 @@
       "x": 3180,
       "y": 307,
       "init": {
-        "label": "Off-track watch",
-        "mode": "range"
+        "label": "Off-track watch"
       },
       "literals": {
         "value": 50,
@@ -987,10 +966,7 @@
       "y": 1731,
       "init": {
         "label": "Home loan $",
-        "value": 350000,
-        "min": 100000,
-        "max": 800000,
-        "step": 10000
+        "value": 350000
       },
       "literals": {
         "min": 100000,
@@ -1005,10 +981,7 @@
       "y": 1485,
       "init": {
         "label": "Mortgage APR %",
-        "value": 6.25,
-        "min": 2,
-        "max": 9,
-        "step": 0.05
+        "value": 6.25
       },
       "literals": {
         "min": 2,
@@ -1131,8 +1104,7 @@
       "x": 3367,
       "y": 1846,
       "init": {
-        "label": "Affordability watch",
-        "mode": "range"
+        "label": "Affordability watch"
       },
       "literals": {
         "value": 50,
@@ -1329,8 +1301,7 @@
       "x": 2745,
       "y": 3257,
       "init": {
-        "label": "Over-budget watch",
-        "mode": "range"
+        "label": "Over-budget watch"
       },
       "literals": {
         "value": 50,

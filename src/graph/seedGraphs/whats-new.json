@@ -115,7 +115,9 @@
       "y": 1068,
       "init": {
         "label": "Rain this week (mm)",
-        "value": 12,
+        "value": 12
+      },
+      "literals": {
         "min": 0,
         "max": 60,
         "step": 1

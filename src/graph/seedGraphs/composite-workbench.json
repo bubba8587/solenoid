@@ -601,8 +601,7 @@
               "init": {
                 "label": "Cost",
                 "defaultValue": 600,
-                "uncertainty": 80,
-                "distribution": "normal"
+                "uncertainty": 80
               },
               "x": 0,
               "y": 160

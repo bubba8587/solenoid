@@ -189,8 +189,7 @@
       "x": 2221,
       "y": 460,
       "init": {
-        "label": "Water the garden?",
-        "mode": "range"
+        "label": "Water the garden?"
       },
       "literals": {
         "value": 0,
