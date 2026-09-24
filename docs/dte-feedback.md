@@ -201,3 +201,16 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     works on any leaf, not just orphans, though `--help` describes it as "fix an orphan", which makes it
     the right tool for a same-ring re-parent (item 17 asked `move` for that). Suggest: accept
     `--authorized-by` and describe it as the general re-parent.
+24. **`name` and `aliases` are one fact kept twice.** The owner asked to keep only `aliases` (2026-09-24):
+    Obsidian needs `aliases` for `[[name]]` links, and `name` duplicated it on every leaf. Local patch: a
+    leaf's name is its first alias; `new` writes only `aliases`; `set name` rewrites the alias. Upstream
+    B32 nameHandle can keep the idea (a camelCase handle beside the title) and drop the second field.
+25. **The owner removed `made_by` and `by` from every leaf.** In practice provenance came from
+    `ratified_by` (the owner's mark) and git (who wrote what, when); the two fields were noise in the
+    vault's properties pane. Local patch: both optional, an unratified leaf reads as the agent's work,
+    and `new` stops writing them. Upstream A3 provenance / B7 provenanceFields could say the same:
+    "ratified or not" is the provenance that matters, and the rest is derivable from history.
+26. **On ratified leaves the owner also deleted the History and the contest record** and rewrote the
+    body in their own voice. A ratified leaf reads as present governance by its owner; the agent-written
+    activity log on it was clutter. B41 presentGovernance already drops the Contest section on ratify;
+    it could drop History too, leaving git as the record.
