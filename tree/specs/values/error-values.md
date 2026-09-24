@@ -97,7 +97,7 @@ The shared helpers are `cellShortCircuit` (the full rule) and `cellError` (error
 - ±Infinity from all-finite inputs becomes `#OVERFLOW!` (one code, which splits out Excel's #NUM!, ERROR.TYPE 6);
 - ±Infinity when an input was already infinite passes, since the Constant node's ∞ is a real value: ∞ + 5 = ∞, 2 × ∞ = ∞, 5 / ∞ = 0.
 
-It runs at the producing op (the broadcasters, `applyOp`, `broadcastCall`), so Expression's `tagResult` trusts it: a surviving ∞ passes, and a stray NaN nets to `#DOMAIN!`. `0^0 = 1`, as in JS and Polars, while Excel gives #NUM! (`parity: false` on the pow leaf).
+It runs at the producing op, so Expression's `tagResult` trusts it. The guarded producers are the element-wise broadcasters (`shared.ts`), the formula operator `applyOp`, `broadcastCall`, the RANGE dispatch, the frame aggregation path (`guardAgg`, frameVerbs) and the native engine's result normalizer (frameBackend). A kernel with its own recorded non-finite convention (a quiet null, a tagged error, IMDIV's `cx(NaN, NaN)`) is the deliberate alternative, not an exemption ([[D48]] classifyNonFinite). Both engines mask a non-finite join key to unmatchable. Expression trusts the guard: a surviving ∞ passes, and a stray NaN nets to `#DOMAIN!`. `0^0 = 1`, as in JS and Polars, while Excel gives #NUM! (`parity: false` on the pow leaf).
 
 **Scalar reads** use `readInput(wired, literal)` (`shared.ts`) for data inputs, so a wired `null` propagates instead of being swallowed by the literal. Config inputs (base, digits, order, counts) keep their defaults. `readInputSweep.test.ts` is the zero-floor ratchet across `nodes/*.ts`, and the full rules are [[value-semantics]] "Reading an input". Machine-checked by `broadcastContract.test.ts`.
 

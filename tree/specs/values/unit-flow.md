@@ -231,6 +231,14 @@ For one output, the first rule that applies decides:
 6. **A Conduit lane** `out_i` inherits `in_i`, duck-typed on `cachedLane`, on purpose with no `passthrough()` declaration.
 7. **Anything else is a transform** and carries the format only where the node declares that the op keeps the value's meaning. `carriedFormat` reads `formatCarryForOutput`, whose per-op map lives in the node's op table. An undeclared transform carries nothing, so multiply, divide, power, count, variance, product, rates, z-scores and finance outputs show plain. The output socket's declared element family must exist (a wildcard, a Frame or a lambda carries no format), and among the declared inputs the first one that is wired, annotated and of that same family wins; the copy has `unit: "none"` and no custom unit, because the unit is value-level ([[C25]] firstClassUnits). Two or more date-styled operands make a span (date − date, NETWORKDAYS) and carry nothing ([[D41]] formatFlowsDownstream).
 
+### What carries the format
+
+Which steps keep a value's meaning ([[D41]] formatFlowsDownstream):
+
+- **Carries:** add and subtract (5% + 3% is a percent, a date + days is a date); mean, min, max, standard deviation, moving windows and EWMA; ABS, ROUND, MROUND and clamp; EDATE and WORKDAY keep a date.
+- **Doesn't carry:** multiply, divide, power and MOD; count, variance and product; z-scores and correlation; every finance result (NPV, a rate, CAGR, Sharpe); a free-form Expression; and date − date or NETWORKDAYS, which give a span, not a date. A change of kind, like number to text, carries nothing.
+- **Pass-through nodes** (Sort, Reverse, Slice, Filter, INDEX, TRANSPOSE) compute nothing new, so they forward the format unchanged.
+
 ### Both directions, bounded only upstream
 
 - **Downstream:** a box after the FC inherits through `inAnnotation`, walking back through passthroughs and through declared meaning-preserving transforms, with no limit until a nearer FC overrides.
