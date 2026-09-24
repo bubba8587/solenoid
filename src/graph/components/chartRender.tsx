@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, pieSlices, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, partSlices, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { OverlayPayload } from "../chartValue";
 import { ChartTitle, titleHeight } from "./chartTitle";
@@ -183,7 +183,7 @@ export function ChartView({
       </BarChart>
     );
   } else if (op === "pie") {
-    const slices = pieSlices(series);
+    const slices = partSlices(op, series);
     const pieMode = opts?.pielabels ?? "outside";
     const labeled = !!labels && pieMode !== "off";
     const pad = !labeled ? 6 : pieMode === "inside" ? Math.min(16, width * 0.07) : Math.min(30, width * 0.12);
@@ -243,23 +243,24 @@ export function ChartView({
     );
   } else if (op === "radialbar") {
     // recharts reads a radial legend's `name` and `fill` off the chart data.
-    const rings = series.map((d, i) => ({ ...d, name: sanitizeChartLabel(tickFmt(d.i)), fill: paint(i) }));
+    const rings = partSlices(op, series).map((d) => ({ ...d, name: sanitizeChartLabel(tickFmt(d.i)), fill: paint(d.i) }));
     chart = (
       <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={rings} startAngle={90} endAngle={-270}>
         <RadialBar dataKey="v" background={{ fill: grid }} cornerRadius={3} isAnimationActive={false}>
-          {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
+          {rings.map((d) => <Cell key={d.i} fill={d.fill} />)}
         </RadialBar>
         {labels && <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fs, color: axis }} />}
         {SLICE_TIP}
       </RadialBarChart>
     );
   } else if (op === "funnel") {
+    const stages = partSlices(op, series);
     chart = (
       <FunnelChart width={width} height={chartH}>
         {SLICE_TIP}
-        <Funnel dataKey="v" data={series} isAnimationActive={false}>
+        <Funnel dataKey="v" data={stages} isAnimationActive={false}>
           <LabelList position="right" dataKey="v" fill={axis} stroke="none" fontSize={10 * fs} />
-          {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
+          {stages.map((d) => <Cell key={d.i} fill={paint(d.i)} />)}
         </Funnel>
       </FunnelChart>
     );

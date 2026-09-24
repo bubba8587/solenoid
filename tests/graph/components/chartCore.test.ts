@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[C97]] rechartsLazyChunk, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, toSeries, pieSlices } from "../../../src/graph/components/chartCore";
+import { axisTick, toSeries, partSlices } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -32,8 +32,18 @@ describe("toSeries", () => {
   });
 });
 
-describe("pieSlices", () => {
-  it("drops zero and negative slices and keeps each slice's row index", () => {
-    expect(pieSlices(toSeries([10, -5, 0, 3]))).toEqual([{ i: 0, v: 10 }, { i: 3, v: 3 }]);
+describe("partSlices", () => {
+  it("a pie drops zero and negative slices and keeps each slice's row index", () => {
+    expect(partSlices("pie", toSeries([10, -5, 0, 3]))).toEqual([{ i: 0, v: 10 }, { i: 3, v: 3 }]);
+  });
+
+  it("a funnel or radial drops a negative stage and keeps a zero one", () => {
+    for (const op of ["funnel", "radialbar"] as const) {
+      expect(partSlices(op, toSeries([10, -5, 0, 3]))).toEqual([{ i: 0, v: 10 }, { i: 2, v: 0 }, { i: 3, v: 3 }]);
+    }
+  });
+
+  it("leaves an axis figure's series whole", () => {
+    expect(partSlices("column", toSeries([10, -5]))).toEqual([{ i: 0, v: 10 }, { i: 1, v: -5 }]);
   });
 });
