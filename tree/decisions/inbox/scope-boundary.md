@@ -1,9 +1,7 @@
 ---
-title: "Solenoid's scope boundary against spreadsheets, knowledge bases, documents, code and databases"
+title: Solenoid's scope boundary against spreadsheets, knowledge bases, documents, code and databases
 proposed_ring: A
 ask: human
-made_by: joint
-by: the project owner (asked), Claude Fable 5.1 (drafted)
 date: 2026-09-17
 parents: []
 ---

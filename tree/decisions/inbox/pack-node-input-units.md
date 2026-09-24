@@ -1,11 +1,11 @@
 ---
-title: "A pack node declares the unit each physical input and output uses"
+title: A pack node declares the unit each physical input and output uses
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C25]]", "[[D42]]"]
+parents:
+  - "[[C25]]"
+  - "[[D42]]"
 ---
 ## Decision
 

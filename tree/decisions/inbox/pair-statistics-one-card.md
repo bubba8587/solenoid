@@ -1,11 +1,10 @@
 ---
-title: "CORREL, COVARIANCE and the regression statistics merge into one card"
+title: CORREL, COVARIANCE and the regression statistics merge into one card
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[B11]]"]
+parents:
+  - "[[B11]]"
 ---
 ## Decision
 

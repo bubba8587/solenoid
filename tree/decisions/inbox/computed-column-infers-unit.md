@@ -1,11 +1,11 @@
 ---
-title: "A computed column infers its unit from the formula"
+title: A computed column infers its unit from the formula
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C25]]", "[[D43]]"]
+parents:
+  - "[[C25]]"
+  - "[[D43]]"
 ---
 ## Decision
 

@@ -1,11 +1,12 @@
 ---
-title: "A ghost cable feeds nothing until adopted, and stays a ghost across a save"
+title: A ghost cable feeds nothing until adopted, and stays a ghost across a save
 proposed_ring: C
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[B12]]", "[[B17]]", "[[C43]]"]
+parents:
+  - "[[B12]]"
+  - "[[B17]]"
+  - "[[C43]]"
 ---
 ## Decision
 

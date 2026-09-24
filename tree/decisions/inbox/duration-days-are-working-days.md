@@ -1,11 +1,11 @@
 ---
-title: "A Duration in days or weeks counts working days, as Microsoft Project does"
+title: A Duration in days or weeks counts working days, as Microsoft Project does
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C70]]", "[[D66]]"]
+parents:
+  - "[[C70]]"
+  - "[[D66]]"
 ---
 ## Decision
 

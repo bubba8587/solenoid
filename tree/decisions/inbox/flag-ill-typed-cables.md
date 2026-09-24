@@ -1,11 +1,11 @@
 ---
-title: "The canvas marks a cable whose types no longer match"
+title: The canvas marks a cable whose types no longer match
 proposed_ring: C
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[B17]]", "[[D16]]"]
+parents:
+  - "[[B17]]"
+  - "[[D16]]"
 ---
 ## Decision
 

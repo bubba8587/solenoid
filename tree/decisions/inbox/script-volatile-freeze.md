@@ -1,11 +1,10 @@
 ---
-title: "A volatile Script holds its result until F9, as D46 asks of every random node"
+title: A volatile Script holds its result until F9, as D46 asks of every random node
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[D46]]"]
+parents:
+  - "[[D46]]"
 ---
 ## Decision
 

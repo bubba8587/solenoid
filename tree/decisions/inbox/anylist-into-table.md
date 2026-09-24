@@ -1,11 +1,10 @@
 ---
-title: "An anylist output may or may not feed a concrete matrix input"
+title: An anylist output may or may not feed a concrete matrix input
 proposed_ring: C
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C10]]"]
+parents:
+  - "[[C10]]"
 ---
 ## Decision
 

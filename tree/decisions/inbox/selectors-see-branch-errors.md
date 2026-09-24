@@ -1,11 +1,10 @@
 ---
-title: "IF, IFS, SWITCH and CHOOSE pass only a test error up; a branch error that isn't chosen never surfaces"
+title: IF, IFS, SWITCH and CHOOSE pass only a test error up; a branch error that isn't chosen never surfaces
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[D35]]"]
+parents:
+  - "[[D35]]"
 ---
 ## Decision
 

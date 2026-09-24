@@ -1,11 +1,11 @@
 ---
-title: "Write Properties turns text into a note link only in a column that holds links"
+title: Write Properties turns text into a note link only in a column that holds links
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[B1]]", "[[B17]]"]
+parents:
+  - "[[B1]]"
+  - "[[B17]]"
 ---
 ## Decision
 

@@ -1,11 +1,10 @@
 ---
-title: "A task that waits on an inactive task skips that dependency"
+title: A task that waits on an inactive task skips that dependency
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C70]]"]
+parents:
+  - "[[C70]]"
 ---
 ## Decision
 

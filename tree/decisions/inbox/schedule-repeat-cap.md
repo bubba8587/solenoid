@@ -2,10 +2,10 @@
 title: "A Schedule row's Repeat count has a cap; past it the row is #OVERFLOW!"
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C70]]", "[[C21]]"]
+parents:
+  - "[[C70]]"
+  - "[[C21]]"
 ---
 ## Decision
 

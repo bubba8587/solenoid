@@ -1,11 +1,10 @@
 ---
-title: "Close the remaining node-vs-formula reach gaps, or name a third exception"
+title: Close the remaining node-vs-formula reach gaps, or name a third exception
 proposed_ring: E
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[D73]]"]
+parents:
+  - "[[D73]]"
 ---
 ## Decision
 

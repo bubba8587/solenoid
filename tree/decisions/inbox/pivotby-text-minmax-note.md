@@ -1,11 +1,10 @@
 ---
-title: "PIVOTBY's text min and max are recorded as a deliberate difference from Excel"
+title: PIVOTBY's text min and max are recorded as a deliberate difference from Excel
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[D76]]"]
+parents:
+  - "[[D76]]"
 ---
 ## Decision
 

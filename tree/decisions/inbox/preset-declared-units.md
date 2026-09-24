@@ -1,11 +1,10 @@
 ---
-title: "A formula preset declares the unit each input is read in"
+title: A formula preset declares the unit each input is read in
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C25]]"]
+parents:
+  - "[[C25]]"
 ---
 ## Decision
 

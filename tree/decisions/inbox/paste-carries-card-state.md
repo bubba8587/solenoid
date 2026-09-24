@@ -1,11 +1,10 @@
 ---
-title: "A pasted card carries its pins, comments and standoffs, as a pasted composite's inner cards do"
+title: A pasted card carries its pins, comments and standoffs, as a pasted composite's inner cards do
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[B12]]"]
+parents:
+  - "[[B12]]"
 ---
 ## Decision
 

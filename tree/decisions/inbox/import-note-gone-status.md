@@ -1,11 +1,10 @@
 ---
-title: "Import Obsidian Note shows when its note was renamed or deleted"
+title: Import Obsidian Note shows when its note was renamed or deleted
 proposed_ring: E
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C23]]"]
+parents:
+  - "[[C23]]"
 ---
 ## Decision
 

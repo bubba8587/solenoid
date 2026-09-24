@@ -2,10 +2,10 @@
 title: "Text passed straight to SUM, AND and friends is #VALUE!, as in Excel"
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[B17]]", "[[A5]]"]
+parents:
+  - "[[B17]]"
+  - "[[A5]]"
 ---
 ## Decision
 

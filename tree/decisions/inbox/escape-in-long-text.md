@@ -1,11 +1,10 @@
 ---
-title: "Escape in a Note or Report body keeps the draft and leaves the field"
+title: Escape in a Note or Report body keeps the draft and leaves the field
 proposed_ring: E
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C95]]"]
+parents:
+  - "[[C95]]"
 ---
 ## Decision
 

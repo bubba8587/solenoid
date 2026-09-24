@@ -1,11 +1,10 @@
 ---
-title: "A logical TRUE in a Schedule's Complete column reads as 100%"
+title: A logical TRUE in a Schedule's Complete column reads as 100%
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C70]]"]
+parents:
+  - "[[C70]]"
 ---
 ## Decision
 

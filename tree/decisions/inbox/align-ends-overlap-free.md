@@ -1,11 +1,10 @@
 ---
-title: "Align ends with the no-overlap pass"
+title: Align ends with the no-overlap pass
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C112]]"]
+parents:
+  - "[[C112]]"
 ---
 ## Decision
 

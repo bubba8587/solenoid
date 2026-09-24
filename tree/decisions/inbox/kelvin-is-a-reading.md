@@ -1,11 +1,11 @@
 ---
-title: "A kelvin value beside a °C reading counts as a reading, not a difference"
+title: A kelvin value beside a °C reading counts as a reading, not a difference
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C25]]", "[[D40]]"]
+parents:
+  - "[[C25]]"
+  - "[[D40]]"
 ---
 ## Decision
 

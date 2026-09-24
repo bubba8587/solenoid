@@ -1,11 +1,10 @@
 ---
-title: "A locked canvas refuses Undo and Redo"
+title: A locked canvas refuses Undo and Redo
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C43]]"]
+parents:
+  - "[[C43]]"
 ---
 ## Decision
 

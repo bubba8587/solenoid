@@ -1,11 +1,11 @@
 ---
-title: "A card's name inside a composite is scoped to that composite"
+title: A card's name inside a composite is scoped to that composite
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C77]]", "[[B12]]"]
+parents:
+  - "[[C77]]"
+  - "[[B12]]"
 ---
 ## Decision
 

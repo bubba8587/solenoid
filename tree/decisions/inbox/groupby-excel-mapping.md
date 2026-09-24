@@ -1,11 +1,11 @@
 ---
-title: "Excel's GROUPBY maps to the frame GROUPBY card, not Group Lists"
+title: Excel's GROUPBY maps to the frame GROUPBY card, not Group Lists
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C51]]", "[[D73]]"]
+parents:
+  - "[[C51]]"
+  - "[[D73]]"
 ---
 ## Decision
 

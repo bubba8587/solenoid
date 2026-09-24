@@ -1,11 +1,10 @@
 ---
-title: "A card that grows pushes its neighbors like a group expand"
+title: A card that grows pushes its neighbors like a group expand
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[C112]]"]
+parents:
+  - "[[C112]]"
 ---
 ## Decision
 

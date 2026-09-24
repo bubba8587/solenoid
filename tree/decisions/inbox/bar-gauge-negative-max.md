@@ -1,11 +1,10 @@
 ---
-title: "A Bar gauge with a Max below 0 draws a reversed 0-to-Max track"
+title: A Bar gauge with a Max below 0 draws a reversed 0-to-Max track
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[D75]]"]
+parents:
+  - "[[D75]]"
 ---
 ## Decision
 

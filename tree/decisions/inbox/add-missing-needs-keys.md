@@ -1,11 +1,10 @@
 ---
-title: "Add-missing writes blank keys only for the keys you list"
+title: Add-missing writes blank keys only for the keys you list
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[B1]]"]
+parents:
+  - "[[B1]]"
 ---
 ## Decision
 

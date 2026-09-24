@@ -1,11 +1,10 @@
 ---
-title: "AVERAGE of nothing and AVERAGEIF(S) with no matching row give the same answer"
+title: AVERAGE of nothing and AVERAGEIF(S) with no matching row give the same answer
 proposed_ring: D
 ask: human
-made_by: ai
-by: Claude Opus 5.5
 date: 2026-09-24
-parents: ["[[D70]]"]
+parents:
+  - "[[D70]]"
 ---
 ## Decision
 
