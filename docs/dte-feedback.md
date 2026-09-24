@@ -167,3 +167,20 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     `git worktree` fails with `.git` as the one uncited file: the walk skips a `.git` directory
     (`dirs[:] = ... d != ".git"`) but a worktree's `.git` is a file. Worked around with `.git` in
     `.dteignore`; the tool should skip `.git` whether file or directory.
+
+20. **"Node" collides with the adopter's own vocabulary; DTE should call a decision a leaf.**
+    Solenoid is a node-graph app, so "node" already means a card on its canvas, and reports like
+    "E11 moved, 25 nodes' citations rewritten" were ambiguous. The owner ruled (2026-09-24) that a
+    tree item is a **leaf** here. The local rename can only go so far: `validate` prints "195 nodes"
+    and "Nodes changed in this working tree", `show`/`blast` and the ledger say node, the generated
+    `DTE.base` view is "All nodes", the vendored `CLAUDE.md` / `SPEC.md` / `DECISIONS.md` say node
+    throughout, and the next `vendor` puts it all back. Suggest DTE adopt "leaf" as its own term (it
+    fits the tree metaphor better than "node"), or at least a `term = leaf` key in `dte.cfg` that the
+    tool's output and the vendored text follow. One snag: the README already calls code, config and
+    docs "the leaves and bark", so adopting "leaf" for decisions means renaming that half of the
+    metaphor (the tool already says "artifacts", which would do).
+21. **A wording-only sweep costs a History line per leaf.** The rename above touched 129 leaves; the
+    "body changed with no new History line" warning demanded a line in each, all identical ("node
+    reads leaf; the rule is unchanged"). That is 129 lines of History that say nothing about any
+    one decision. Suggest a way to mark a change as editorial (a `--editorial` flag on a commit-level
+    record, or one line in a tree-wide log) so History stays about the decision.
