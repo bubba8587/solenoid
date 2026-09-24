@@ -28,8 +28,6 @@ export type FilterOp =
 
 export const VALUELESS_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["isblank", "notblank", "iserror", "noterror", "listEmpty"]);
 
-export const ERROR_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["iserror", "noterror"]);
-
 export const LIST_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["listContains", "listContainsAny", "listContainsAll", "listEmpty"]);
 
 export interface FilterCond { column: string; op: FilterOp; value: FrameCell; matchCase?: boolean }

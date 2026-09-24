@@ -423,8 +423,6 @@ fn an_error_cell_names_its_reason() {
 
 #[test]
 fn nf_sentinel_uploads_into_real_infinity_cells() {
-    // Upload direction: {"__nf":"inf"} → a real ±Inf f64 cell; {"__err":..} →
-    // Null (Polars-typed columns can't hold a per-cell error — deliberate).
     let inf = json_to_cell(&serde_json::json!({"__nf": "inf"}), SolType::Number);
     let ninf = json_to_cell(&serde_json::json!({"__nf": "-inf"}), SolType::Number);
     let nan = json_to_cell(&serde_json::json!({"__nf": "nan"}), SolType::Number);
@@ -432,7 +430,15 @@ fn nf_sentinel_uploads_into_real_infinity_cells() {
     assert!(matches!(inf, Cell::Num(n) if n == f64::INFINITY));
     assert!(matches!(ninf, Cell::Num(n) if n == f64::NEG_INFINITY));
     assert!(matches!(nan, Cell::Num(n) if n.is_nan()));
-    assert!(matches!(err, Cell::Null));
+    assert!(matches!(err, Cell::Num(n) if n.is_nan()));
+}
+
+#[test]
+fn an_uploaded_error_cell_downloads_with_its_code_and_reference() {
+    let up = |v: serde_json::Value, ty| match json_to_cell(&v, ty) { Cell::Num(n) => num_to_json(n), other => cell_to_json(&other) };
+    assert_eq!(up(serde_json::json!({"__err": "#N/A", "ref": 7}), SolType::Number), serde_json::json!({"__err": "#N/A", "ref": 7}));
+    assert_eq!(up(serde_json::json!({"__err": "#AMBIGUOUS!"}), SolType::Date), serde_json::json!({"__err": "#AMBIGUOUS!"}));
+    assert_eq!(up(serde_json::json!({"__err": "#BOGUS"}), SolType::Number), serde_json::json!({"__err": "#ERROR!"}));
 }
 
 #[test]
@@ -723,7 +729,7 @@ fn err_code(e: &IpcError) -> String {
 /// An error cell's `why` names the message the app shows; the corpus compares by code.
 fn without_why(v: &Json) -> Json {
     match v {
-        Json::Object(o) => Json::Object(o.iter().filter(|(k, _)| k.as_str() != "why").map(|(k, x)| (k.clone(), x.clone())).collect()),
+        Json::Object(o) => Json::Object(o.iter().filter(|(k, _)| !matches!(k.as_str(), "why" | "ref")).map(|(k, x)| (k.clone(), x.clone())).collect()),
         _ => v.clone(),
     }
 }

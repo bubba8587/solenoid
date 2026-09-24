@@ -2275,6 +2275,342 @@
      }
     ]
    }
+  },
+  {
+   "name": "error cells: an error key groups by its code",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        {
+         "__err": "#N/A"
+        },
+        1,
+        {
+         "__err": "#DIV/0!"
+        },
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__nf": "nan"
+        },
+        1
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       1,
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__nf": "nan"
+       }
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       5,
+       8,
+       3,
+       5
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: an error in a group answers the first one; count counts it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#DIV/0!"
+        },
+        {
+         "__err": "#N/A"
+        },
+        {
+         "__nf": "nan"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     },
+     {
+      "column": "v",
+      "op": "count",
+      "as": "c"
+     },
+     {
+      "column": "v",
+      "op": "max",
+      "as": "m"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__err": "#DOMAIN!"
+       }
+      ]
+     },
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       3,
+       1
+      ]
+     },
+     {
+      "name": "m",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__err": "#DOMAIN!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: a refused op over readings beats an error cell",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        20,
+        {
+         "__err": "#N/A"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [
+     "k"
+    ],
+    "aggs": [
+     {
+      "column": "t",
+      "op": "sum",
+      "as": "s",
+      "readingScale": 1
+     },
+     {
+      "column": "t",
+      "op": "stdev",
+      "as": "sd",
+      "readingScale": 0.5555555555555556
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "string",
+      "values": [
+       "a"
+      ]
+     },
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#UNIT!"
+       }
+      ]
+     },
+     {
+      "name": "sd",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "no keys: one group over every row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "number",
+      "values": [
+       6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "no keys over no rows: no groups",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": []
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "groupBy",
+    "keys": [],
+    "aggs": [
+     {
+      "column": "v",
+      "op": "sum",
+      "as": "s"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "number",
+      "values": []
+     }
+    ]
+   }
   }
  ]
 }

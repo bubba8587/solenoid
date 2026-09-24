@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine, [[C24]] arraySemantics
+// [[C16]] polarsEngine, [[C24]] arraySemantics, [[D78]] textErrorsOnOracle
 import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
@@ -265,11 +265,30 @@ class JsFrameBackend implements FrameBackend {
 // IPC argument names must match the Rust command parameters in engine.rs.
 type WireCell = unknown;
 
+// An uploaded error cell carries a reference the engine hands back, so it downloads as the same
+// SolError, message and origin included, for as long as the original is alive.
+const _errorRefs = new Map<number, WeakRef<SolError>>();
+const _errorIds = new WeakMap<SolError, number>();
+let _errorSeq = 0;
+const _errorGone = typeof FinalizationRegistry !== "undefined" ? new FinalizationRegistry<number>((id) => _errorRefs.delete(id)) : null;
+
+function errorRef(e: SolError): number | undefined {
+  if (typeof WeakRef === "undefined") return undefined;
+  let id = _errorIds.get(e);
+  if (id === undefined) {
+    id = _errorSeq = (_errorSeq % 0xffff_ffff) + 1;
+    _errorIds.set(e, id);
+    _errorRefs.set(id, new WeakRef(e));
+    _errorGone?.register(e, id);
+  }
+  return id;
+}
+
 function encodeWireCell(v: unknown): WireCell {
   if (typeof v === "number" && !Number.isFinite(v)) {
     return { __nf: Number.isNaN(v) ? "nan" : v > 0 ? "inf" : "-inf" };
   }
-  if (isSolError(v)) return { __err: v.code };
+  if (isSolError(v)) { const ref = errorRef(v); return ref === undefined ? { __err: v.code } : { __err: v.code, ref }; }
   return v;
 }
 
@@ -285,12 +304,14 @@ const ENGINE_ERROR_WHY: Readonly<Record<string, string>> = {
 
 function decodeWireCell(v: WireCell): unknown {
   if (v && typeof v === "object") {
-    const o = v as { __nf?: string; __err?: string; why?: string };
+    const o = v as { __nf?: string; __err?: string; why?: string; ref?: number };
     if (o.__nf === "inf") return Infinity;
     if (o.__nf === "-inf") return -Infinity;
     if (o.__nf === "nan") return NaN;
     // The code came from this module's encoder, so the cast keeps solError's union closed.
     if (typeof o.__err === "string") {
+      const original = o.ref === undefined ? undefined : _errorRefs.get(o.ref)?.deref();
+      if (original && original.code === o.__err) return original;
       return solError(o.__err as Parameters<typeof solError>[0], (o.why && ENGINE_ERROR_WHY[o.why]) || "from the native engine");
     }
   }
@@ -332,8 +353,32 @@ function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[
   });
 }
 
+/** The native engine keeps error cells only in number and date columns. */
+const holdsTextOrLogicalError = (f: FrameValue): boolean =>
+  f.columns.some((c) => (c.type === "string" || c.type === "logical") && c.values.some(isSolError));
+
+const isOracleHandle = (h: FrameHandle): boolean => h.startsWith("jsf:");
+
 class PolarsBackend implements FrameBackend {
   private schemas = new Map<string, FrameValue | null>();
+  /** Frames holding an error cell the engine can't store compute here, on the oracle. */
+  private oracle = new JsFrameBackend();
+
+  private async onOracle(handles: readonly FrameHandle[], run: (hs: FrameHandle[]) => Promise<FrameHandle>): Promise<FrameHandle> {
+    const temps: FrameHandle[] = [];
+    try {
+      const hs: FrameHandle[] = [];
+      for (const h of handles) {
+        if (isOracleHandle(h)) { hs.push(h); continue; }
+        const t = await this.oracle.source(await this.collect(h));
+        temps.push(t);
+        hs.push(t);
+      }
+      return await run(hs);
+    } finally {
+      for (const t of temps) this.oracle.drop(t);
+    }
+  }
 
   private remember(handle: FrameHandle, schema: FrameValue | null): FrameHandle {
     this.schemas.set(handle, schema);
@@ -345,24 +390,28 @@ class PolarsBackend implements FrameBackend {
   }
 
   async source(frame: FrameValue): Promise<FrameHandle> {
+    if (holdsTextOrLogicalError(frame)) return this.oracle.source(frame);
     const wire = { columns: frame.columns.map((c) => ({ name: c.name, type: c.type, values: c.values.map(encodeWireCell) })) };
     const h = await (ipcInvoke<string>("engine_source", { frame: wire }) as Promise<FrameHandle>);
     return this.remember(h, schemaOnly(frame));
   }
 
   async apply(handle: FrameHandle, op: FrameOp): Promise<FrameHandle> {
+    if (isOracleHandle(handle)) return this.oracle.apply(handle, op);
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), [op]);
     const h = await (ipcInvoke<string>("engine_apply", { handle, op: wire[0] }) as Promise<FrameHandle>);
     return this.remember(h, schema);
   }
 
   async applyMany(handle: FrameHandle, ops: readonly FrameOp[]): Promise<FrameHandle> {
+    if (isOracleHandle(handle)) return this.oracle.applyMany(handle, ops);
     const { wire, schema } = lowerForEngine(this.schemaOf(handle), ops);
     const h = await (ipcInvoke<string>("engine_apply_many", { handle, ops: wire }) as Promise<FrameHandle>);
     return this.remember(h, schema);
   }
 
   async join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle> {
+    if (isOracleHandle(left) || isOracleHandle(right)) return this.onOracle([left, right], ([l, r]) => this.oracle.join(l, r, opts));
     const l = this.schemaOf(left), r = this.schemaOf(right);
     let wireOpts = opts;
     if (l && r && opts.how !== "cross" && opts.rightKeyScale === undefined && opts.rightKeyOffset === undefined) {
@@ -374,18 +423,21 @@ class PolarsBackend implements FrameBackend {
   }
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
+    if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.append(hs));
     const h = await (ipcInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
     return this.remember(h, ss.every(Boolean) ? shadow(() => appendFrames(ss as FrameValue[])) : null);
   }
 
   async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
+    if (handles.some(isOracleHandle)) return this.onOracle(handles, (hs) => this.oracle.bindColumns(hs));
     const h = await (ipcInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>);
     const ss = handles.map((x) => this.schemaOf(x));
     return this.remember(h, ss.every(Boolean) ? shadow(() => bindColumns(ss as FrameValue[])) : null);
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
+    if (isOracleHandle(handle)) return this.oracle.preview(handle, n);
     const p = await ipcInvoke<FramePreview>("engine_preview", { handle, n });
     return {
       ...p,
@@ -395,11 +447,13 @@ class PolarsBackend implements FrameBackend {
   }
 
   async collect(handle: FrameHandle): Promise<FrameValue> {
+    if (isOracleHandle(handle)) return this.oracle.collect(handle);
     const columns = await ipcInvoke<FrameColumn[]>("engine_collect", { handle });
     return { __frame: true, columns: withSchemaMeta(decodeWireColumns(columns), this.schemaOf(handle)) };
   }
 
   async column(handle: FrameHandle, name: string): Promise<FrameColumn | null> {
+    if (isOracleHandle(handle)) return this.oracle.column(handle, name);
     const c = await ipcInvoke<FrameColumn | null>("engine_column", { handle, name });
     if (!c) return null;
     const [out] = withSchemaMeta([{ ...c, values: c.values.map(decodeWireCell) as FrameColumn["values"] }], this.schemaOf(handle));
@@ -407,11 +461,13 @@ class PolarsBackend implements FrameBackend {
   }
 
   drop(handle: FrameHandle): void {
+    if (isOracleHandle(handle)) { this.oracle.drop(handle); return; }
     this.schemas.delete(handle);
     void ipcInvoke("engine_drop", { handle }).catch(() => {});
   }
 
   async sample(handle: FrameHandle, n: number): Promise<{ handle: FrameHandle; factor: number }> {
+    if (isOracleHandle(handle)) return this.oracle.sample(handle, n);
     const r = await (ipcInvoke<{ handle: string; factor: number }>("engine_sample", { handle, n }) as Promise<{ handle: FrameHandle; factor: number }>);
     if (r.handle !== handle) this.remember(r.handle, this.schemaOf(handle));
     return r;

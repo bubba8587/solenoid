@@ -803,6 +803,77 @@
      }
     ]
    }
+  },
+  {
+   "name": "error cells: a chain of aggregates keeps the error's code",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        {
+         "__err": "#N/A"
+        },
+        1,
+        2
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [
+       "k"
+      ],
+      "aggs": [
+       {
+        "column": "v",
+        "op": "sum",
+        "as": "s"
+       }
+      ]
+     },
+     {
+      "kind": "groupBy",
+      "keys": [],
+      "aggs": [
+       {
+        "column": "s",
+        "op": "avg",
+        "as": "a"
+       }
+      ]
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "a",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       }
+      ]
+     }
+    ]
+   }
   }
  ]
 }

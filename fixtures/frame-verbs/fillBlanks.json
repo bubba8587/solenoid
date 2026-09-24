@@ -220,6 +220,52 @@
     "dir": "down"
    },
    "expectError": "#REF!"
+  },
+  {
+   "name": "error cells: an error cell fills the blanks after it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        null,
+        2,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "fillBlanks",
+    "columns": [],
+    "dir": "down"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       1,
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#N/A"
+       },
+       2,
+       2
+      ]
+     }
+    ]
+   }
   }
  ]
 }

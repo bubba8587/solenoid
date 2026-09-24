@@ -955,6 +955,176 @@
      }
     ]
    }
+  },
+  {
+   "name": "error cells: iserror keeps a number column's error cells",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        null,
+        {
+         "__nf": "nan"
+        },
+        {
+         "__err": "#DIV/0!"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "iserror",
+    "value": null
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#N/A"
+       },
+       {
+        "__err": "#DIV/0!"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: noterror keeps blanks and NaN",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        null,
+        {
+         "__nf": "nan"
+        },
+        {
+         "__err": "#DIV/0!"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "noterror",
+    "value": null
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       1,
+       null,
+       {
+        "__nf": "nan"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: an error cell fails neq, a NaN passes it",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "n",
+       "type": "number",
+       "values": [
+        1,
+        {
+         "__err": "#N/A"
+        },
+        2,
+        {
+         "__nf": "nan"
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "n",
+    "op": "neq",
+    "value": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "n",
+      "type": "number",
+      "values": [
+       2,
+       {
+        "__nf": "nan"
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "error cells: iserror on a string column keeps nothing",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filter",
+    "column": "s",
+    "op": "iserror",
+    "value": null
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "s",
+      "type": "string",
+      "values": []
+     }
+    ]
+   }
   }
  ]
 }
