@@ -173,7 +173,7 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     "E11 moved, 25 nodes' citations rewritten" were ambiguous. The owner ruled (2026-09-24) that a
     tree item is a **leaf** here. The local rename can only go so far: `validate` prints "195 nodes"
     and "Nodes changed in this working tree", `show`/`blast` and the ledger say node, the generated
-    `DTE.base` view is "All nodes", the vendored `CLAUDE.md` / `SPEC.md` / `DECISIONS.md` say node
+    `DTE.base` view is "All nodes", the vendored `dte-rules/` (its CLAUDE, SPEC and DECISIONS files) says node
     throughout, and the next `vendor` puts it all back. Suggest DTE adopt "leaf" as its own term (it
     fits the tree metaphor better than "node"), or at least a `term = leaf` key in `dte.cfg` that the
     tool's output and the vendored text follow. One snag: the README already calls code, config and
