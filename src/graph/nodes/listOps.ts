@@ -2,7 +2,7 @@
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
-import { forAggregate, isMissing } from "../valueKinds";
+import { forAggregate, ifTest, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
 import { percentileOf } from "./statsOps";
 
@@ -734,13 +734,15 @@ export function dropSlice<T>(arr: readonly T[], n: number): T[] {
   return n > 0 ? arr.slice(Math.min(n, arr.length)) : arr.slice(0, Math.max(0, arr.length + n));
 }
 
+/** FILTER's include array read as IF reads a condition ([[E10]] pickVsAggregateErrors: the mask is read whole, so its first error is the answer). A blank keeps nothing. */
 export function filterByMask<T>(arr: readonly T[], mask: readonly unknown[]): T[] | SolError {
-  const err = firstError(mask);
-  if (err) return err;
-  return arr.filter((_, i) => {
-    const m = mask[i];
-    return m === true || (typeof m === "number" && m !== 0);
-  });
+  const keep: boolean[] = [];
+  for (const m of mask) {
+    const t = ifTest(m);
+    if (isSolError(t)) return t;
+    keep.push(t === true);
+  }
+  return arr.filter((_, i) => keep[i]);
 }
 
 export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
