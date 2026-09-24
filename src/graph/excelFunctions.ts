@@ -14,13 +14,13 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { parseValueText, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { parseValueText, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
-import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
+import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
@@ -34,7 +34,7 @@ import {
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
-import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
+import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
   cx, isCx, parseCx, type Cx,
   cxAdd, cxSub, cxMul, cxDiv, cxAbs, cxArg, cxExp, cxLn, cxLog10, cxLog2, cxPow,
@@ -500,6 +500,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   REPT:       { returns: "string", arity: [2, 2], family: "text" },
   SUBSTITUTE: { returns: "string", arity: [3, 4], family: "text" },
   REPLACE:    { returns: "string", arity: [4, 4], family: "text" },
+  CHAR:       { returns: "string", arity: [1, 1], family: "text" },
+  CODE:       { returns: "number", arity: [1, 1], family: "text" },
   UNICHAR:    { returns: "string", arity: [1, 1], family: "text" },
   UNICODE:    { returns: "number", arity: [1, 1], family: "text" },
   EXACT:      { returns: "logical", arity: [2, 2], family: "text" },
@@ -852,15 +854,8 @@ registerInternal("REPT", (text, times) => {
   if (t.length * n > 32767) return solError("#VALUE!", "REPT's result would pass 32,767 characters, Excel's text limit");
   return t.repeat(n);
 });
-registerInternal("UNICHAR", (code) => {
-  const c = Math.trunc(toNum(code));
-  if (!(c >= 1 && c <= 0x10ffff) || (c >= 0xd800 && c <= 0xdfff)) return solError("#VALUE!", "UNICHAR needs a code point from 1 to 1114111");
-  return String.fromCodePoint(c);
-});
-registerInternal("UNICODE", (text) => {
-  const c = toStr(text).codePointAt(0);
-  return c === undefined ? solError("#VALUE!", "UNICODE needs at least one character") : c;
-});
+for (const name of ["CHAR", "UNICHAR"]) registerInternal(name, (code) => charFromCode(toNum(code)));
+for (const name of ["CODE", "UNICODE"]) registerInternal(name, (text) => codeOfText(toStr(text)));
 registerInternal("SUBSTITUTE", (text, old, neu, instance) => {
   const t = toStr(text), o = toStr(old), n = toStr(neu);
   if (o === "") return t;
@@ -953,7 +948,7 @@ registerInternal("MOD", (a, b) => {
 });
 registerInternal("POWER", (a, b) => {
   const x = toNum(a), y = toNum(b);
-  return badNum(x, y) ? VALUE("POWER") : Math.pow(x, y);
+  return badNum(x, y) ? VALUE("POWER") : powerOf(x, y);
 });
 registerInternal("QUOTIENT", (a, b) => {
   const x = toNum(a), y = toNum(b);
@@ -1119,8 +1114,8 @@ registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
   return spillLookup("XMATCH", lookup, pick);
 });
 registerInternal("IF", (test, thenV, elseV) => {
-  if (test == null) return null;
-  const cond = typeof test === "number" ? test !== 0 : Boolean(test);
+  const cond = ifTest(test ?? null);
+  if (cond === null || isSolError(cond)) return cond;
   if (cond) return thenV === undefined ? true : thenV;
   return elseV === undefined ? false : elseV;
 });
@@ -1744,15 +1739,13 @@ const wrapPad = (padWith: unknown, what: string) => () =>
     : solError("#N/A", `Padded: the list doesn't fill the last ${what}`);
 registerInternal("WRAPROWS", (list, w, padWith) => {
   if (list == null || w == null) return null;
-  const width = Math.round(Number(w));
-  if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPROWS needs a wrap count of 1 or more");
-  return wrapCells(toList(list), width, "rows", wrapPad(padWith, "row"));
+  const width = wrapCount(Number(w), "WRAPROWS");
+  return isSolError(width) ? width : wrapCells(toList(list), width, "rows", wrapPad(padWith, "row"));
 });
 registerInternal("WRAPCOLS", (list, w, padWith) => {
   if (list == null || w == null) return null;
-  const width = Math.round(Number(w));
-  if (!Number.isFinite(width) || width < 1) return solError("#VALUE!", "WRAPCOLS needs a wrap count of 1 or more");
-  return wrapCells(toList(list), width, "cols", wrapPad(padWith, "column"));
+  const width = wrapCount(Number(w), "WRAPCOLS");
+  return isSolError(width) ? width : wrapCells(toList(list), width, "cols", wrapPad(padWith, "column"));
 });
 registerInternal("TOCOL", (v) => {
   const m = toMatrix(v);
@@ -1764,8 +1757,9 @@ registerInternal("TOROW", (v) => {
 });
 registerInternal("SEQUENCE", (rows, cols, start, step) => {
   if (rows == null) return null;
-  const r = Math.max(0, Math.floor(Number(rows)));
-  const c = cols == null ? 1 : Math.max(0, Math.floor(Number(cols)));
+  const r = Math.trunc(Number(rows));
+  const c = cols == null ? 1 : Math.trunc(Number(cols));
+  if (!(r >= 0 && c >= 0)) return solError("#VALUE!", "SEQUENCE needs a row and column count of 0 or more");
   const s0 = start == null ? 1 : Number(start);
   const st = step == null ? 1 : Number(step);
   if (r * c > MAX_GENERATED) {

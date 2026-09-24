@@ -11,7 +11,7 @@ export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
@@ -577,7 +577,7 @@ export type CharCodeOp = "char" | "code";
 
 export class CharCodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    code: "Accepts the full Unicode range. Excel's CHAR stops at 255. An out-of-range value gives a blank.",
+    code: "Accepts the full Unicode range. Excel's CHAR stops at 255. A code below 1 or past 1114111 is #VALUE!.",
   };
 
   label: string;
@@ -602,11 +602,8 @@ export class CharCodeNode extends ClassicPreset.Node {
 
   data(inputs: { code?: (number | number[])[]; text?: (string | string[])[] }): { result: CellResult<string | number> } {
     const result: CellResult<string | number> = this.op === "char"
-      ? broadcastCells((c: number) => {
-          try { return String.fromCodePoint(Math.floor(c)); } catch { return null; }
-        }, readInput(inputs.code, this.literals.code ?? 65))
-      : broadcastCells((t: string) => (t.length > 0 ? (t.codePointAt(0) ?? null) : null),
-          strVal(inputs.text, this, "text"));
+      ? broadcastCells((c: number) => charFromCode(c), readInput(inputs.code, this.literals.code ?? 65))
+      : broadcastCells((t: string) => codeOfText(t), strVal(inputs.text, this, "text"));
     this.cachedResult = result;
     return { result };
   }

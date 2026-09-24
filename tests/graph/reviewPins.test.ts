@@ -352,3 +352,86 @@ describe("review pins: the exported webpage", () => {
     expect(src).not.toMatch(/securityLevel: "loose"/);
   });
 });
+
+describe("review pins: formulas against Excel (2026-09-24 leads)", () => {
+  const ev = async (src: string) => (await import("../../src/graph/excelFormula")).compileEvaluator(src)!({});
+  const code = (v: unknown) => (isSolError(v) ? v.code : v);
+
+  it("IF reads TRUE and FALSE text as logicals and refuses other text, on both surfaces", async () => {
+    expect(await ev('IF("TRUE", 1, 2)')).toBe(1);
+    expect(await ev('IF("false", 1, 2)')).toBe(2);
+    expect(code(await ev('IF("text", 1, 2)'))).toBe("#VALUE!");
+    expect(code(await ev('IF("", 1, 2)'))).toBe("#VALUE!");
+    expect(code(await ev('IF("1", 1, 2)'))).toBe("#VALUE!");
+    const { IfNode } = await import("../../src/graph/nodes/logic");
+    const card = new IfNode();
+    expect(code(card.data({ cond: ["text"], then: [1], else: [2] }).result)).toBe("#VALUE!");
+    expect(card.data({ cond: ["True"], then: [1], else: [2] }).result).toBe(1);
+  });
+
+  it("CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading", async () => {
+    expect(await ev("CHAR(256)")).toBe("Ā");
+    expect(await ev("CHAR(128512)")).toBe("😀");
+    expect(await ev('CODE("😀")')).toBe(128512);
+    expect(code(await ev("CHAR(0)"))).toBe("#VALUE!");
+    expect(code(await ev('CODE("")'))).toBe("#VALUE!");
+    const { CharCodeNode } = await import("../../src/graph/nodes/text");
+    expect(code(new CharCodeNode({ op: "char" }).data({ code: [0] }).result)).toBe("#VALUE!");
+    expect(new CharCodeNode({ op: "char" }).data({ code: [65.9] }).result).toBe("A");
+    expect(code(new CharCodeNode({ op: "code" }).data({ text: [""] }).result)).toBe("#VALUE!");
+  });
+
+  it("SEQUENCE refuses a negative count with #VALUE!; zero stays an empty list", async () => {
+    expect(code(await ev("SEQUENCE(-1)"))).toBe("#VALUE!");
+    expect(code(await ev("SEQUENCE(2, -1)"))).toBe("#VALUE!");
+    expect(await ev("SEQUENCE(0)")).toEqual([]);
+    expect(await ev("SEQUENCE(1.9)")).toEqual([1]);
+  });
+
+  it("WRAPROWS and WRAPCOLS truncate the wrap count; below 1 is #DOMAIN! (Excel's #NUM!), on both surfaces", async () => {
+    expect(code(await ev("WRAPROWS(SEQUENCE(4), 0.5)"))).toBe("#DOMAIN!");
+    expect(code(await ev("WRAPCOLS(SEQUENCE(4), 0)"))).toBe("#DOMAIN!");
+    expect(await ev("WRAPROWS(SEQUENCE(4), 1.9)")).toEqual([[1], [2], [3], [4]]);
+    const { TableReshapeNode } = await import("../../src/graph/nodes/matrix");
+    const rows = new TableReshapeNode({ op: "wraprows" });
+    expect(code(rows.data({ list: [[1, 2, 3, 4]], wrapCount: [0.5] }).result)).toBe("#DOMAIN!");
+    expect(rows.data({ list: [[1, 2, 3, 4]], wrapCount: [2.9] }).result).toEqual([[1, 2], [3, 4]]);
+  });
+
+  it("zero to a negative power is #DIV/0! on ^, POWER and the Arithmetic card", async () => {
+    expect(code(await ev("0^-1"))).toBe("#DIV/0!");
+    expect(code(await ev("POWER(0, -0.5)"))).toBe("#DIV/0!");
+    expect(await ev("0^0")).toBe(1);
+    const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
+    expect(code(new ArithmeticNode({ op: "pow" }).data({ a: [0], b: [-1] }).result)).toBe("#DIV/0!");
+  });
+});
+
+describe("review pins: text min and max in PIVOTBY's value sort and Cube Rollup ([[D76]] textMinMax)", () => {
+  it("PIVOTBY sorts rows by a text max in code-unit order, not as blanks", async () => {
+    const { pivotFrame } = await import("../../src/graph/frameVerbs");
+    const t = { __frame: true as const, columns: [
+      { name: "k", type: "string" as const, values: ["a", "b", "c"] },
+      { name: "s", type: "string" as const, values: ["pear", "apple", "fig"] },
+    ] };
+    const asc = pivotFrame(t, { rowFields: ["k"], colFields: [], values: ["s"], funcs: ["max"], rowSort: 2 });
+    expect(asc.columns[0].values).toEqual(["b", "c", "a"]);
+    const desc = pivotFrame(t, { rowFields: ["k"], colFields: [], values: ["s"], funcs: ["max"], rowSort: -2 });
+    expect(desc.columns[0].values).toEqual(["a", "c", "b"]);
+  });
+
+  it("Cube Rollup reads an untyped nested text column as text", async () => {
+    const { CubeRollupNode } = await import("../../src/graph/nodes/cube");
+    const { cubeFromColumns } = await import("../../src/graph/frame");
+    const cube = cubeFromColumns([
+      { name: "p", cells: ["a"], type: "string" },
+      { name: "items", cells: [cubeFromColumns([{ name: "s", cells: ["pear", "Plum"] }])] },
+    ]);
+    const n = new CubeRollupNode({ agg: "max" });
+    n.stringLiterals = { nested: "items", column: "s", as: "Last" };
+    const out = n.data({ cube: [cube] }).frame as { columns: { name: string; type: string; values: unknown[] }[] };
+    const col = out.columns.find((c) => c.name === "Last")!;
+    expect(col.type).toBe("string");
+    expect(col.values).toEqual(["pear"]);
+  });
+});

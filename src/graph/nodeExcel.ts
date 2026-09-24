@@ -46,11 +46,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "by-axis": [{ excel: "BYROW", syntax: "=BYROW(array, LAMBDA(values, ...))", parity: false, note: "Reduces each row with its own formula of (values), or a wired LAMBDA value" }],
   "by-col": [{ excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(values, ...))", parity: false, note: "Reduces each column with its own formula of (values), or a wired LAMBDA value" }],
   "char-code-char": [
-    { excel: "CHAR", syntax: "=CHAR(code)", parity: false, note: "Full Unicode (=UNICHAR); code point 0–1114111" },
+    { excel: "CHAR", syntax: "=CHAR(code)", parity: false, note: "Full Unicode, like UNICHAR: code points 1 to 1114111, where Excel stops at 255" },
     { excel: "UNICHAR", syntax: "=UNICHAR(code)", parity: true, note: "Same as CHAR in Solenoid; full Unicode range" },
   ],
   "char-code-code": [
-    { excel: "CODE", syntax: "=CODE(text)", parity: false, note: "Returns Unicode code point (=UNICODE); full Unicode range" },
+    { excel: "CODE", syntax: "=CODE(text)", parity: false, note: "The Unicode code point, like UNICODE, where Excel answers the system code page" },
     { excel: "UNICODE", syntax: "=UNICODE(text)", parity: true, note: "Same as CODE in Solenoid; full Unicode range" },
   ],
   "chisq-test": [{ excel: "CHISQ.TEST", syntax: "=CHISQ.TEST(obs, exp)" }],
@@ -253,7 +253,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "group-lists": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "Groups a List of values by a parallel List of keys. For tables, use the Frame GROUPBY node." }],
   "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row, [col])", parity: true, note: "A blank or 0 Row returns the whole column, and a blank or 0 Column the whole row, as in Excel." }],
   "list-randarray": [{ excel: "RANDARRAY", syntax: "=RANDARRAY(count,[min],[max],[integer])", parity: false, note: "Returns a List, with one Count in place of rows and columns. Integer is supported, and it re-rolls on F9." }],
-  "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Zero or negative rows or columns give an empty list; Excel gives #VALUE! or #CALC!." }],
+  "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Zero rows or columns give an empty list, where Excel gives #CALC!." }],
   "list-sort": [
     { excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" },
     { excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Use the Sort node's By input. Sorts a List of any type by a parallel List of numbers; text keys aren't supported yet." },

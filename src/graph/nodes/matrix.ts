@@ -1,6 +1,6 @@
 // [[C58]], [[C48]], [[B11]]
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
+import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
 import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import { pickSlot, pairIdsFromKeys } from "./logic";
@@ -449,8 +449,9 @@ export class TableReshapeNode extends ClassicPreset.Node {
     if (this.op === "wraprows") {
       const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const wRaw = readInput(inputs.wrapCount, this.literals.wrapCount ?? 3);
-      const w = wRaw === null ? 0 : Math.round(wRaw);
-      if (!raw || w < 1) return { result: null };
+      if (!raw || wRaw === null) return { result: null };
+      const w = wrapCount(wRaw, "WRAPROWS");
+      if (isSolError(w)) return { result: w };
       const { mags: list, unit } = matrixCellsFromList(raw);
       const pad = wrapPadCell(inputs.fill, "row");
       const rows: CellMat = wrapCells(list as Cell[], w, "rows", () => pad);
@@ -460,8 +461,9 @@ export class TableReshapeNode extends ClassicPreset.Node {
     } else if (this.op === "wrapcols") {
       const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
       const wRaw = readInput(inputs.wrapCount, this.literals.wrapCount ?? 3);
-      const w = wRaw === null ? 0 : Math.round(wRaw);
-      if (!raw || w < 1) return { result: null };
+      if (!raw || wRaw === null) return { result: null };
+      const w = wrapCount(wRaw, "WRAPCOLS");
+      if (isSolError(w)) return { result: w };
       const { mags: list, unit } = matrixCellsFromList(raw);
       const pad = wrapPadCell(inputs.fill, "column");
       const mat: CellMat = wrapCells(list as Cell[], w, "cols", () => pad);

@@ -5,7 +5,7 @@ import {
   dimMul, dimDiv, dimPow, dimEqual, isDimensionless, formatDim, parseUnit,
 } from "./dimension";
 import { solError, isSolError, type SolError } from "./errorValue";
-import { isMissing } from "./valueKinds";
+import { isMissing, powerOf } from "./valueKinds";
 
 export interface UnitCell {
   readonly __unitCell: true;
@@ -181,7 +181,8 @@ export function arithmeticCell(
     case "pow": {
       const refused = affineRefused(); if (refused) return refused;
       if (!isDimensionless(db)) return unitError("An exponent must be a plain number, not a dimensioned quantity.");
-      return tagDim(Math.pow(x, y), dimPow(da, y));
+      const p = powerOf(x, y);
+      return isSolError(p) ? p : tagDim(p, dimPow(da, y));
     }
   }
 }

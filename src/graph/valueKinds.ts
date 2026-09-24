@@ -32,6 +32,20 @@ export function coerceLogical(v: unknown): boolean | null {
   return null;
 }
 
+/** IF's reading of its test, Excel's: text counts only as TRUE or FALSE in any case, and anything else unreadable is `#VALUE!`. */
+export function ifTest(v: unknown): boolean | Missing | SolError {
+  if (isMissing(v) || isSolError(v)) return v;
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") return Number.isNaN(v) ? solError("#VALUE!", "IF's test is not a number") : numberToLogical(v);
+  if (isUncertain(v)) return numberToLogical(v.value);
+  if (typeof v === "string") {
+    const t = v.toLowerCase();
+    if (t === "true") return true;
+    if (t === "false") return false;
+  }
+  return solError("#VALUE!", "IF needs a logical test. Text counts only as TRUE or FALSE");
+}
+
 export function coerceNumber(v: unknown): number {
   if (typeof v === "number") return v;
   if (isUncertain(v)) return v.value;
@@ -112,6 +126,11 @@ export function guardFinite(result: number, ...inputs: unknown[]): number | SolE
   }
   const fromInfiniteInput = inputs.some((v) => v === Infinity || v === -Infinity);
   return fromInfiniteInput ? result : solError("#OVERFLOW!", "The result is too large to represent. The true value exceeds the numeric range.");
+}
+
+/** `^`, POWER and the Arithmetic card's power op: zero to a negative power is Excel's `#DIV/0!`. */
+export function powerOf(x: number, y: number): number | SolError {
+  return x === 0 && y < 0 ? solError("#DIV/0!", "Zero to a negative power divides by zero") : Math.pow(x, y);
 }
 
 export type Tri = boolean | Missing;

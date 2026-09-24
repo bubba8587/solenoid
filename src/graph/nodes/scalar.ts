@@ -3,7 +3,7 @@ import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
 import { lnGamma, roundDigits } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
-import { guardFinite } from "../valueKinds";
+import { guardFinite, powerOf } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
 import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, fromUnit, type ArithmeticOp } from "../unitValue";
@@ -105,7 +105,7 @@ export const ARITHMETIC_OP_META = {
   div:      { label: "Divide",     carry: false, description: "`A ÷ B`. `#DIV/0!` when `B = 0`." },
   mod:      { label: "MOD",        carry: false, description: "Remainder of `A ÷ B`. Excel: `MOD`." },
   quotient: { label: "QUOTIENT",   carry: false, description: "Integer part of `A ÷ B`, truncated toward zero. Excel: `QUOTIENT`." },
-  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars; Excel gives `#NUM!`). A result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
+  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars; Excel gives `#NUM!`). 0 to a negative power is `#DIV/0!`, and a result too large to represent is `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
 } satisfies Record<ArithmeticOp, { label: string; description: string; carry: boolean }>;
 
 export class ArithmeticNode extends ClassicPreset.Node {
@@ -150,7 +150,7 @@ export class ArithmeticNode extends ClassicPreset.Node {
             case "div": return y === 0 ? divZero() : x / y;
             // Excel MOD's sign follows the divisor and JS % the dividend, so use the floored form.
             case "mod": return y === 0 ? divZero() : x - y * Math.floor(x / y);
-            case "pow":      return Math.pow(x, y);
+            case "pow":      return powerOf(x, y);
             case "quotient": return y === 0 ? divZero() : Math.trunc(x / y);
           }
           return null;

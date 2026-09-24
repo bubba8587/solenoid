@@ -250,7 +250,7 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 
 | Operator | Result |
 |---|---|
-| `+` `-` `*` `^` | Arithmetic on the operands, then `guardFinite`. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[D11]] noAutoCross). |
+| `+` `-` `*` `^` | Arithmetic on the operands, then `guardFinite`. `^` runs `powerOf`, the POWER and Arithmetic card kernel: zero to a negative power is `#DIV/0!`, as in Excel. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[D11]] noAutoCross). |
 | `/` | `#DIV/0!` when the divisor is 0 and the dividend is a number; otherwise divide, then `guardFinite`. |
 | `&` | Both sides as text: numbers through `numberToText`, logicals as `TRUE` and `FALSE`, strings as they are. `null & "a"` is `null`. |
 | `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE. |
@@ -347,7 +347,7 @@ A wired lambda reaching the MAP, BYROW, BYCOL, REDUCE, SCAN or MAKEARRAY node bi
 | `#TYPE!` | A Frame verb; ordering across types; any operator or undeclared function on a complex value; a lambda used as an operand. |
 | `#SHAPE!` | A value deeper than a matrix; a matrix given to a whole-list native, a positional lookup without `matrixArgs`, or a Formula.js-only function. |
 | `#VALUE!` | Applying a non-lambda; lambda arity mismatch; bad LAMBDA parameters or no body; an unapplied lambda as the result; a host without a lambda; mapped from Formula.js `#VALUE!`, `#NULL!` or an unrecognized error; many implementations' argument checks. |
-| `#DIV/0!` | `/` by zero; implementations. |
+| `#DIV/0!` | `/` by zero; zero to a negative power; implementations. |
 | `#DOMAIN!` | A NaN result from an operator, a broadcast call, a range call, or Expression's final check; Formula.js `#NUM!`. |
 | `#OVERFLOW!` | An infinite result from finite inputs; a generator past `MAX_GENERATED`. |
 | `#REF!` | A row or column reference outside a computed column. |
@@ -429,7 +429,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 ### Logic and choice
 
-- **IF(test, [then], [else])**: a blank test answers blank; a number test is true when nonzero. With a false test and no `else` the answer is FALSE, and with a true test and no `then` it is TRUE. A blank branch (`IF(x,,y)`) arrives as null and stays null, a deliberate difference from Excel, which reads it as 0 ([[C80]] blankArgIsExcelBlank).
+- **IF(test, [then], [else])** reads its test with `ifTest` (`valueKinds.ts`), which the IF card shares: a blank test answers blank; a number test is true when nonzero; text reads as TRUE or FALSE in any case, and any other text, `""` included, is `#VALUE!`, as in Excel. With a false test and no `else` the answer is FALSE, and with a true test and no `then` it is TRUE. A blank branch (`IF(x,,y)`) arrives as null and stays null, a deliberate difference from Excel, which reads it as 0 ([[C80]] blankArgIsExcelBlank).
 - **CHOOSE(index, v1, …)** runs the Choose node's rule: a blank index is blank, a fractional index truncates (`CHOOSE(2.7, …)` is the second), an index outside 1 to n is `#VALUE!`, and the chosen value passes through as it is, a blank included. CHOOSE is in `NULL_INSPECTING`, so a blank among the unchosen values cannot blank the answer.
 - **NAND, NOR, XNOR** are variadic and three-valued like the Boolean Op node: each operand goes through `coerceLogical`, an unknown (null) flows by Kleene logic, and the answer is a logical. XNOR is TRUE when an even number of inputs are true, and any unknown makes it unknown.
 - **ISCLOSE(a, b, [tolerance])**: `|a − b| ≤ tolerance`, default 10⁻⁹; a blank operand answers blank. **ISBOOLEAN** is TRUE only for a logical.
@@ -438,7 +438,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 ### Math
 
 - **ROUND**, **ROUNDUP** and **ROUNDDOWN** run the ROUND card's kernel, `roundDigits` (`nodes/mathUtils.ts`). ROUND rounds half away from zero, as Excel does (`ROUND(-2.5, 0)` is −3). The digits count truncates toward zero, and the scaled value is read at 15 significant digits before it rounds, as Excel reads it, so binary noise never tips a result: `ROUND(1.005, 2)` is 1.01 and `ROUNDUP(0.1+0.2, 1)` is 0.3. A blank digits argument is 0.
-- **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[C46]] consistencyOverQuirks).
+- **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[C46]] consistencyOverQuirks) and `POWER(0, -1)` is `#DIV/0!`.
 - **LOG2** answers blank for x at or below 0, the node's quiet-blank convention, rather than `#DOMAIN!`. **HYPOTENUSE(x, y)** answers blank when either is blank.
 - **ERF.PRECISE** and **ERFC.PRECISE** are Excel's single-argument forms, identical to ERF and ERFC, and delegate to them.
 - **CONVERT** runs the unit system on the Convert node's unit keys ([[formulajs-divergences]]).
@@ -519,9 +519,9 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **DIAGONAL(list)** is `numpy.diag`: a list becomes a square matrix with the list on its diagonal and 0 elsewhere (the node alone offers a blank off-diagonal). The registration also reads a matrix's diagonal as a list, `numpy.diag`'s dual, but DIAGONAL declares no `matrixArgs`, so a matrix argument answers `#SHAPE!` before it gets there. **OUTER(a, b)** is the matrix of products.
 - **TRACE**, **MATRIXRANK**, **NORM**, **SOLVE(A, b)**, **EIGENVALUES** and **EIGENVECTORS** run the Matrix Determinant, Solve and Eigen nodes' kernels; SOLVE needs a square A with one b per row (`#SHAPE!`) and answers `#DIV/0!` for a singular A; the eigen functions need a square, symmetric matrix.
 - **SPECTRUM(list, [rate])** is the FFT node's one-sided spectrum as rows `[frequency, magnitude, phase]`. **HISTOGRAM2D(xs, ys, kx, ky)** answers only the kx × ky count matrix (`counts[x bin][y bin]`), since coordinates ride beside a matrix rather than inside it; the Histogram node's 2-D mode draws the figure, and no finite pair answers blank. The kernel pairs samples by index, skips a pair with a non-finite side, clamps each axis to 1 to 100 equal-width bins, and collapses an axis whose values are all equal to one bin.
-- **WRAPROWS** and **WRAPCOLS(list, count, [pad_with])**: a blank list or count answers blank, a count below 1 is `#VALUE!`, and the default pad is `#N/A` ([[C48]] appendLadder).
+- **WRAPROWS** and **WRAPCOLS(list, count, [pad_with])**: a blank list or count answers blank, the count truncates (`wrapCount`, shared with the Table Reshape card), a count below 1 is `#DOMAIN!` (Excel's `#NUM!`), and the default pad is `#N/A` ([[C48]] appendLadder).
 - **TOCOL** flattens row by row and **TOROW** down the columns (transpose, then flatten), as the Table Reshape node does.
-- **SEQUENCE(rows, [cols], [start], [step])**: one column answers a list, the Sequence node's own 1-D output; more columns wrap row by row. A blank row count answers blank.
+- **SEQUENCE(rows, [cols], [start], [step])**: one column answers a list, the Sequence node's own 1-D output; more columns wrap row by row. A blank row count answers blank. The counts truncate; a negative one is `#VALUE!`, and zero rows or columns answer an empty list.
 - **SORT(array, [sort_index], [sort_order])** works on one list: `sort_index` must be 1 or omitted (`#SHAPE!` otherwise), and order −1 sorts descending. **SORTBY(array, by)** refuses a key list of another length with `#SHAPE!`, as the Sort card and Excel do. **FILTER(array, include, [if_empty])** refuses an include array of another size with `#SHAPE!`, and an empty result answers `if_empty` when given.
 - **TAKE** and **DROP(array, rows, [cols])** take Excel's signed counts through the one `takeSlice`/`dropSlice` kernel, per axis on a matrix; a column count on a list is `#SHAPE!`, and dropping everything is `#DOMAIN!` (Excel's `#CALC!`), never a silent empty array.
 - **UNIQUE**, **MODE.MULT** and **FREQUENCY(data, bins)** answer blank for a blank argument.
@@ -554,6 +554,8 @@ Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because co
 - VALUE does not parse date or time text.
 - The IM* functions answer tagged complex values, zip lists pairwise, and answer IMARGUMENT(0) as 0; unparseable complex text is `#VALUE!` rather than `#NUM!`.
 - EXPAND's default padding is blank rather than `#N/A`.
+- CHAR and CODE are UNICHAR and UNICODE, the CHAR / CODE card's full-Unicode reading; Excel's stop at 255 and use the system code page.
+- SEQUENCE with zero rows or columns is an empty list; Excel, which has no empty array, answers `#CALC!`.
 - XMATCH and XLOOKUP refuse wildcard and binary search modes.
 - Excel's `#NUM!` is split into `#DOMAIN!`, `#OVERFLOW!` and `#CONV!`; `ERROR.TYPE` still reports all three as 6. A percentile outside its domain, dropping everything, and an XIRR date before the first are `#DOMAIN!`.
 - A sample statistic with too few values (SKEW below 3, KURT below 4, SEM and CV below 2) is blank rather than `#DIV/0!` ([[D70]] nullNotEnoughData), and so are AVERAGE and MEDIAN of no numbers and LARGE or SMALL with k past the count (Excel: `#DIV/0!`, `#NUM!`); STDEV.S and VAR.S of one value stay `#DIV/0!`, as in Excel, and so does AVERAGEIF(S) with no matching row.
