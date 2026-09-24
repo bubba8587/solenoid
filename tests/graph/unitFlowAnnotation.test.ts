@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D40]], [[D41]]
+// [[C10]] socketLattice, [[C25]], [[D41]]
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { makeAnnotationResolver, resolveValueOrigin } from "../../src/graph/unitFlow";

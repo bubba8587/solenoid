@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D13]] widenNeverNarrow
+// [[C10]] socketLattice
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { SOCKET_COLORS } from "../sockets";

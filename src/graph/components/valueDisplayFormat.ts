@@ -1,4 +1,4 @@
-// [[D40]] unitOnValue, [[D41]] formatFlowsDownstream. Mechanics: tree/specs/values/unit-flow.md.
+// [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream. Mechanics: tree/specs/values/unit-flow.md.
 
 import { isCx, formatCxDisplay, type Cx } from "../cxValue";
 import { getOwningEditor } from "../activeGraph";

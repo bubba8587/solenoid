@@ -78,7 +78,7 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     expect(isUnitCell(priced) && (priced as UnitCell).display).toBe("usd");
     expect(ann().inAnnotation(id("C_d1"), "in")?.unit).toBe("usd");        // before the ×100
     // ×100 by a bare number keeps the result IN the currency dimension, so the $ DISPLAY
-    // unit — a property of the VALUE ([[D40]] unitOnValue) — rides the UnitCell through ($10 × 100
+    // unit — a property of the VALUE ([[C25]] firstClassUnits) — rides the UnitCell through ($10 × 100
     // = $1000, still shown as money). The display FORMAT does NOT: a multiply MEANS a new
     // value (formatCarryPerOp), so the 2-decimal style does not cross the ×, and only a
     // nearer FC could restate it.

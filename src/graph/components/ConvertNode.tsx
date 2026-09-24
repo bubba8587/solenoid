@@ -1,4 +1,4 @@
-// [[C25]] firstClassUnits, [[D40]] unitOnValue (Convert primacy)
+// [[C25]] firstClassUnits (Convert primacy)
 import { useState, useRef, useLayoutEffect, useSyncExternalStore, type ChangeEvent } from "react";
 import type { ConvertNode as ConvertNodeType, ConvertCategory, ConvertUnitDef } from "../rete-nodes";
 import { CONVERT_UNIT_DEFS, CONVERT_CATEGORY_LABELS, FormatControllerNode } from "../rete-nodes";
@@ -85,7 +85,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
   const [outFormat, setOutFormat] = useState(node.outFormat);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
 
-  // Convert primacy ([[D40]] unitOnValue): adjacent FCs relock on a from/to change.
+  // Convert primacy ([[C25]] firstClassUnits): adjacent FCs relock on a from/to change.
   function refreshFcs() {
     const editor = getOwningEditor(node.id);
     if (!editor) return;

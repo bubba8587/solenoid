@@ -788,7 +788,7 @@ describe("omitted arguments — IF(x,,y) is a BLANK (author 2026-07-16)", () => 
 
 describe("type-honest operators and well-formed numbers", () => {
   const run = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)?.(env);
-  it("text in arithmetic is #VALUE!, never JavaScript's concatenation ([[D11]] noAutoCross)", () => {
+  it("text in arithmetic is #VALUE!, never JavaScript's concatenation ([[C10]] socketLattice)", () => {
     for (const expr of ['"2" + 3', '"3" * 2', '"a" - 1', '2 ^ "x"']) {
       const r = run(expr) as { code?: string };
       expect(r?.code, expr).toBe("#VALUE!");

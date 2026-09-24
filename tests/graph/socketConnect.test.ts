@@ -1,4 +1,4 @@
-// [[C10]], [[D11]], [[D13]]
+// [[C10]]
 import { describe, it, expect } from "vitest";
 import { canConnect, areCompatible, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "../../src/graph/sockets";
 

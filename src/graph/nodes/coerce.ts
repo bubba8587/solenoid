@@ -1,4 +1,4 @@
-// [[D13]] widenNeverNarrow, [[C17]] shareImpl
+// [[C10]] socketLattice, [[C17]] shareImpl
 // Keep this import type-only, so no runtime cycle with errorValue can form.
 import type { SolError } from "../errorValue";
 import { matRows, matCols } from "./matrixOps";

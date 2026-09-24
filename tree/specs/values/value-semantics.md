@@ -2,11 +2,11 @@
 aliases: ["Value semantics"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D33]] unwiredNotBlank, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence, [[C45]] excelComparisons, [[C46]] consistencyOverQuirks, [[C14]] currentExcelParity, [[C22]] rowFormulaRefs -->
+<!-- [[C24]] arraySemantics, [[D33]] unwiredNotBlank, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C22]] rowFormulaRefs -->
 
 # Spec: Value semantics
 
-Serves [[C24]] arraySemantics (the value model), [[D33]] unwiredNotBlank, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence (one answer per computation, and the reduction versus element-wise line), [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[C46]] consistencyOverQuirks and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C24]] arraySemantics (the value model), [[D33]] unwiredNotBlank, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence (one answer per computation, and the reduction versus element-wise line), [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[B16]] oneFormulaSurface and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This is the one reference for the value model's special kinds: what each means, what produces it, how it propagates in each kind of computation, and how it renders. The mechanics (the error guard, the per-cell contract, the bounded scan) are [[error-values]]; this file is the meaning. Every rule here is built. A rule that is decided but not yet built gets a `[decided <date>]` tag here and an item in the backlog.
 

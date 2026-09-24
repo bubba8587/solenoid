@@ -72,7 +72,7 @@ area. When you coin a new load-bearing term, add it here.
   only on a value that has none. Both ride the value through passthroughs and selectors. The
   format also carries through a transform whose op keeps the value's meaning, and drops at
   one that doesn't ([[D41]] formatFlowsDownstream). The unit's dimension is worked out again
-  through the algebra, keeping its display when the dimension survives ([[D40]]
+  through the algebra, keeping its display when the dimension survives ([[C25]]
   unitOnValue). (`nodes/formatController.ts`, `fcReconcile.ts`)
 - **FC lock states**: who owns the FC's unit dropdown. *Authored*: the FC set it.
   **forwarding**: the unit came from upstream, so the FC mirrors it, locked, because a unit

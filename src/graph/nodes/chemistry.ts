@@ -1,4 +1,4 @@
-// [[C76]] formulaPackDefault, [[D40]] unitOnValue
+// [[C76]] formulaPackDefault, [[C25]] firstClassUnits
 
 import { ClassicPreset } from "rete";
 import { numOut, strIn, readInput } from "./shared";

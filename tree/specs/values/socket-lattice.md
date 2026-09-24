@@ -2,7 +2,7 @@
 aliases: ["Socket lattice"]
 tags: [spec, values]
 ---
-<!-- [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow -->
+<!-- [[C10]] socketLattice -->
 
 # Spec: Socket lattice
 
@@ -12,14 +12,14 @@ Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides w
 
 ## Constraints
 
-- [[D11]] noAutoCross: a value's type is part of its meaning, so a connection that would silently coerce is refused.
+- [[C10]] socketLattice: a value's type is part of its meaning, so a connection that would silently coerce is refused.
 - Reopen if: a new family or a second bridge. Re-derive the lattice and the sweep; never hand-edit a pair.
 
 ## Requirements
 
 1. **The grid.** The regular types are an element × dimension product: `FAMILIES` (number, string, date, complex, logical) × `DIMS` (scalar, list, combo, matrix). Each family's rank-1 rung comes in two forms: `list` (strict) and `combo` (scalar or list). [[C10]] socketLattice, [[#New socket types are derived]].
-2. **One predicate derives the within-family accept-sets.** `dimFlows(dOut, dIn)` is `rank(dOut) ≤ rank(dIn)`, or the one exception the rank model can't express: a combo may narrow into its element scalar. `SOCKET_ACCEPTS` is built from it. [[D13]] widenNeverNarrow.
-3. **The bridge is built by the same predicate.** `logical ↔ number` is the one cross-family bridge (0 and 1 for FALSE and TRUE, the multiply-by-a-condition idiom). It is mirrored through `dimFlows` on both sides, so the combo-to-scalar exception can't hold on one side and not the other (`logicalcombo → number` flows wherever `logical → number` does). `coerceInputs` does the runtime conversion. [[D11]] noAutoCross.
+2. **One predicate derives the within-family accept-sets.** `dimFlows(dOut, dIn)` is `rank(dOut) ≤ rank(dIn)`, or the one exception the rank model can't express: a combo may narrow into its element scalar. `SOCKET_ACCEPTS` is built from it. [[C10]] socketLattice.
+3. **The bridge is built by the same predicate.** `logical ↔ number` is the one cross-family bridge (0 and 1 for FALSE and TRUE, the multiply-by-a-condition idiom). It is mirrored through `dimFlows` on both sides, so the combo-to-scalar exception can't hold on one side and not the other (`logicalcombo → number` flows wherever `logical → number` does). `coerceInputs` does the runtime conversion. [[C10]] socketLattice.
 4. **A combo collapses a singleton on arrival.** A one-element list arriving at a combo or any scalar rung is that scalar (`coerceInputs.collapseSingleton`); a strict list rung keeps its list and re-widens a scalar on the way in, so the round trip is lossless. A complex is a tagged scalar and collapses like one. This is what makes the combo-to-scalar edge true rather than merely permitted.
 5. **Cross-type dimensional edges are explicit in `accepts()`**, because rank derivation can't express them and they are the edges a rework is most likely to lose. The complete list:
    - `combo → scalar` within a family (req. 2), and `anycombo → any` for the same reason.
@@ -28,7 +28,7 @@ Every socket has a type (`SocketDataType`, `sockets.ts`), and the type decides w
    - `anytable` as an input takes any family value of rank 2 or less, or `anylist` (a list or scalar widens into the 2-D wildcard). As an output it is strictly 2-D and reaches concrete matrices only; it never narrows.
    - `anydata` as an input takes any family value of rank 2 or less, `anylist` and `anytable`, and refuses Frames, Cubes and the object family. As an output it reaches every non-object input. Only `anylist` and `anytable` outputs need naming in the input branch, since `anycombo` and `any` outputs already reach every non-object input. [[#anydata, the formula-variable wildcard]].
    - `frame` as an input takes any family value of rank 2 or less, `anytable` or `anylist`: a matrix is rows × columns, a 1-D list is a single row (as in CSV; transpose for a column), and a scalar is 1×1, with `coerceInputs` building it through `frameFromRows`. As an output it reaches only another `frame` or a `cube`, since anything else would lose the headers.
-   - `cube` as an input takes everything `frame` takes, plus `frame` itself (the supremum). As an output it reaches only another `cube` or `any`, since any narrower container would silently drop the nesting. A Frame verb that should take a Cube gets a cube-adoptive input of its own (`cubeAdoptIn` with `noWidenInputs`, the Add Column pattern); how it flattens or refuses nested columns is in the frame-verbs spec. The lattice is never widened for one node. [[D13]] widenNeverNarrow.
+   - `cube` as an input takes everything `frame` takes, plus `frame` itself (the supremum). As an output it reaches only another `cube` or `any`, since any narrower container would silently drop the nesting. A Frame verb that should take a Cube gets a cube-adoptive input of its own (`cubeAdoptIn` with `noWidenInputs`, the Add Column pattern); how it flattens or refuses nested columns is in the frame-verbs spec. The lattice is never widened for one node. [[C10]] socketLattice.
    - `trueany` on either side accepts everything; it resolves by adoption (req. 8).
 6. **Element-agnostic 2-D inputs use the grid socket** (`anyTableIn`), not the scalar-circle `any`: TRANSPOSE, HSTACK, CHOOSEROWS and CHOOSECOLS, reshape-flatten, and the MAP, BYROW and REDUCE values. `any` is the rank-0 wildcard (comparison values, CHOOSE and SWITCH rows, EXPAND's fill, fold seeds). Cast, Display and IS.TEST are `trueany`; Expression and computed-column variables are `anydata`; a LAMBDA's captured-variable inputs are `anylist`, so a matrix does not wire into a λ capture. Table Info is `frame`-typed, so anything of rank 2 or less widens in and it reports rows × columns.
 7. **The socket type is the only date signal.** A date serial is a number at runtime, so every "is this a date?" check goes through `isDateType`, and a port whose value is a date uses the date family. [[#Date-valued ports are date-typed]].
@@ -61,7 +61,7 @@ A date serial and a plain number are the same `number` at runtime, so once a dat
 
 **MUST:** adoption (`trueAnyAdopt.ts`) resolves a type without disconnecting anything, and the adopted type is never saved; it is worked out again from the wiring after load (req. 9).
 
-A wildcard that forgot its rank would let a list-shaped port take a matrix, and any untyped hop would become a way around [[D13]] widenNeverNarrow. Adoption is a reading of the current wiring, not something the user authored: dropping cables would destroy work to satisfy a guess, and saving the guess would freeze a type the wiring no longer implies. `trueany` draws as the hollow ring. INDEX takes its element family from its container, including a Frame column when `frameShapeResolver` can know it ahead of time; a Cube cell stays `trueany`, because a Cube is the one container whose cells can differ within a column.
+A wildcard that forgot its rank would let a list-shaped port take a matrix, and any untyped hop would become a way around [[C10]] socketLattice. Adoption is a reading of the current wiring, not something the user authored: dropping cables would destroy work to satisfy a guess, and saving the guess would freeze a type the wiring no longer implies. `trueany` draws as the hollow ring. INDEX takes its element family from its container, including a Frame column when `frameShapeResolver` can know it ahead of time; a Cube cell stays `trueany`, because a Cube is the one container whose cells can differ within a column.
 
 ### anydata, the formula-variable wildcard
 

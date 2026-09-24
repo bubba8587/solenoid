@@ -44,7 +44,7 @@ export const FX_CURRENCIES: Currency[] = CURRENCY_TSV.trim().split("\n").map((li
 });
 
 // Registered as currency display units so an authored code resolves at render; an unregistered id would fall back to
-// the base-SI symbol ([[D40]] unitOnValue).
+// the base-SI symbol ([[C25]] firstClassUnits).
 const CURRENCY_UNIT: Unit = { dim: { currency: 1 }, scale: 1 };
 registerDisplayUnits(Object.fromEntries(FX_CURRENCIES.map((c) => [c.code.toLowerCase(), CURRENCY_UNIT])));
 

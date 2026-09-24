@@ -2,11 +2,11 @@
 aliases: ["Formula language and evaluator"]
 tags: [spec, computation]
 ---
-<!-- [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C15]] matricesInFormulas, [[C17]] shareImpl, [[D51]] oneAnswerOneDivergence, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C46]] consistencyOverQuirks, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming, [[C80]] blankArgIsExcelBlank, [[C8]] declareOnce, [[C9]] labelUnenforced, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct, [[D37]] errorBeatsMissing -->
+<!-- [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C15]] matricesInFormulas, [[C17]] shareImpl, [[D51]] oneAnswerOneDivergence, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming, [[C80]] blankArgIsExcelBlank, [[C8]] declareOnce, [[C9]] labelUnenforced, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct, [[D37]] errorBeatsMissing -->
 
 # Spec: Formula language and evaluator
 
-Serves [[B16]] oneFormulaSurface, with its subtree: [[C14]] currentExcelParity, [[C15]] matricesInFormulas, [[C17]] shareImpl, [[D51]] oneAnswerOneDivergence, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C46]] consistencyOverQuirks, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming and [[C80]] blankArgIsExcelBlank. The shared kernels and the parity measurement also serve [[C8]] declareOnce, [[C9]] labelUnenforced, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct and [[D37]] errorBeatsMissing. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[B16]] oneFormulaSurface, with its subtree: [[C14]] currentExcelParity, [[C15]] matricesInFormulas, [[C17]] shareImpl, [[D51]] oneAnswerOneDivergence, [[C21]] matchNodeLimits, [[C45]] excelComparisons, [[C50]] lambdaBindsByName, [[D77]] constantsAlwaysWin, [[C51]] formulaNaming and [[C80]] blankArgIsExcelBlank. The shared kernels and the parity measurement also serve [[C8]] declareOnce, [[C9]] labelUnenforced, [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C48]] appendLadder, [[C61]] oneDistributionNode, [[D70]] nullNotEnoughData, [[C26]] opArgDistinct and [[D37]] errorBeatsMissing. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The formula language is the Excel-style expression language typed into an Expression card, a LAMBDA card and a computed column. A formula is parsed once into a syntax tree and evaluated per recompute against the card's variables. Every function it calls is either an internal registration, which usually calls the same kernel as the matching node, or a Formula.js fallthrough. This spec covers the grammar, how names and calls resolve, how arguments are prepared and broadcast, the function-by-function notes, the shared rete-free kernels both surfaces call, and the measurement that keeps nodes and formulas in step.
 
@@ -280,13 +280,13 @@ Ragged element-wise math pads with `null`, never `#N/A`. Shape-building function
 
 | Operator | Result |
 |---|---|
-| `+` `-` `*` `^` | Arithmetic on the operands, then `guardFinite`. `^` runs `powerOf`, the POWER and Arithmetic card kernel: zero to a negative power is `#DIV/0!`, as in Excel. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[D11]] noAutoCross). |
+| `+` `-` `*` `^` | Arithmetic on the operands, then `guardFinite`. `^` runs `powerOf`, the POWER and Arithmetic card kernel: zero to a negative power is `#DIV/0!`, as in Excel. A text operand to any of these (and to `/`) is `#VALUE!` "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE" ([[C10]] socketLattice). |
 | `/` | `#DIV/0!` when the divisor is 0 and the dividend is a number; otherwise divide, then `guardFinite`. |
 | `&` | Both sides as text: numbers through `numberToText`, logicals as `TRUE` and `FALSE`, strings as they are. `null & "a"` is `null`. |
 | `=` `<>` | Two strings compare case-insensitively (`toLowerCase`, [[C45]] excelComparisons). Anything else compares with `===` after the logical bridge, so `5 = "5"` is FALSE and `TRUE = 1` is TRUE. |
 | `<` `>` `<=` `>=` | Two numbers numerically; two strings by UTF-16 code unit (`compareStrings`, [[C59]] byteStringOrder), which is case-sensitive; any other pair `#TYPE!` "Cannot order values of different types; Cast one side first". |
 
-`0^0` is 1, the JavaScript answer, not Excel's `#NUM!` ([[C46]] consistencyOverQuirks).
+`0^0` is 1, the JavaScript answer, not Excel's `#NUM!` ([[B16]] oneFormulaSurface).
 
 `numberToText(x)`: non-finite values use `String`; otherwise round to 15 significant digits and strip trailing zeros, so `(0.1+0.2) & "kg"` is `0.3kg`. Magnitudes of 1e21 or more, or nonzero below 1e-4, are written Excel's way: `1E+21`, `1E-07` (uppercase E, signed, at least two exponent digits).
 
@@ -469,7 +469,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 ### Math
 
 - **ROUND**, **ROUNDUP** and **ROUNDDOWN** run the ROUND card's kernel, `roundDigits` (`nodes/mathUtils.ts`). ROUND rounds half away from zero, as Excel does (`ROUND(-2.5, 0)` is −3). The digits count truncates toward zero, and the scaled value is read at 15 significant digits before it rounds, as Excel reads it, so binary noise never tips a result: `ROUND(1.005, 2)` is 1.01 and `ROUNDUP(0.1+0.2, 1)` is 0.3. A blank digits argument is 0.
-- **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[C46]] consistencyOverQuirks) and `POWER(0, -1)` is `#DIV/0!`.
+- **POWER** is the `^` operator and the Arithmetic card's power op, so `POWER(0, 0)` is 1 ([[B16]] oneFormulaSurface) and `POWER(0, -1)` is `#DIV/0!`.
 - **LOG2** answers blank for x at or below 0, the node's quiet-blank convention, rather than `#DOMAIN!`. **HYPOTENUSE(x, y)** answers blank when either is blank.
 - **ERF.PRECISE** and **ERFC.PRECISE** are Excel's single-argument forms, identical to ERF and ERFC, and delegate to them.
 - **CONVERT** runs the unit system on the Convert node's unit keys ([[formulajs-divergences]]).
@@ -542,7 +542,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 ### Matrices and dynamic arrays
 
-- A matrix argument reads as itself, a list as one row ([[D13]] widenNeverNarrow), a scalar as 1 × 1, and a blank stays blank.
+- A matrix argument reads as itself, a list as one row ([[C10]] socketLattice), a scalar as 1 × 1, and a blank stays blank.
 - **COLUMNS** and **ROWS** share the Table Info node's `matrixShape`: a list is a row, so COLUMNS counts it and ROWS is 1; a scalar is 1 × 1; a blank is unknown.
 - **HSTACK**, **VSTACK** and **XSTACK(axis, …)** (axis `"v"` or `"h"`, else `#VALUE!`) share the Stack node's kernels: a blank input drops, no inputs answer blank, and ragged edges pad with `#N/A` ([[C48]] appendLadder). **CHOOSECOLS** and **CHOOSEROWS** take the trailing arguments, flattened, as the index list.
 - **EXPAND(array, rows, [cols], [pad_with])** grows the array; a blank row or column count is unknown and answers blank, and an omitted `pad_with` pads with blank, the author's override of Excel's `#N/A`.
@@ -576,7 +576,7 @@ The criteria family (SUMIFS, COUNTIFS, AVERAGEIFS, MINIFS, MAXIFS, COUNTIF, AVER
 
 ### Deliberate differences from Excel
 
-Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because consistency across the graph beats matching a quirk ([[C46]] consistencyOverQuirks):
+Each of these is a named divergence ([[B16]] oneFormulaSurface), kept because consistency across the graph beats matching a quirk:
 
 - A blank IF branch stays blank; Excel reads it as 0.
 - `0^0` is 1; Excel answers `#NUM!`.

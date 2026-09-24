@@ -2,11 +2,11 @@
 aliases: ["Format model"]
 tags: [spec, values]
 ---
-<!-- [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation -->
+<!-- [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation -->
 
 # Spec: Format model
 
-Serves [[C94]] formatFamilyGates, with the unit rules of [[C25]] firstClassUnits and [[D40]] unitOnValue and the downstream carry of [[D41]] formatFlowsDownstream. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C94]] formatFamilyGates, with the unit rules of [[C25]] firstClassUnits and the downstream carry of [[D41]] formatFlowsDownstream. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A **Format Controller** (FC) is the small card that docks on a socket and decides how the value there is displayed: its style, precision, negatives, scale, text attributes and unit. This file is the model it follows. `formatModel.ts` says which controls exist for which value; `formatAnnotationStore.ts` renders a number under a format and stores what each FC has set; `nodes/formatController.ts` is the FC card itself. The FC popup shows and hides its controls from the same model, so what renders and what the popup offers can't disagree. How a format travels along the cables is [[unit-flow]].
 
@@ -28,7 +28,7 @@ Three cases short-circuit before stage 2 and outrank any annotation: a `SolError
 
 ### The unit is value-level; the format is display-level
 
-For the unit, the FC changes the value: `FormatControllerNode.data()` tags the value's `UnitCell` through `applyFcUnit` ([[D40]] unitOnValue). As a user-facing tool, though, the FC can set a unit only on a value that has none ([[C25]] firstClassUnits); re-displaying a value that already has a dimension is Convert's job. Because the unit rides the value, it carries through passthroughs and selectors and drops at a transform on its own. The branches of `applyFcUnit` and the three lock states are in [[unit-flow]]:
+For the unit, the FC changes the value: `FormatControllerNode.data()` tags the value's `UnitCell` through `applyFcUnit` ([[C25]] firstClassUnits). As a user-facing tool, though, the FC can set a unit only on a value that has none; re-displaying a value that already has a dimension is Convert's job. Because the unit rides the value, it carries through passthroughs and selectors and drops at a transform on its own. The branches of `applyFcUnit` and the three lock states are in [[unit-flow]]:
 
 | Lock state | Marker | Meaning |
 |---|---|---|

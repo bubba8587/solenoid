@@ -86,3 +86,7 @@ C99	2026-09-24	reverted	-	Claude Opus 5.5	the author	chromeEnvelopeVars: Chrome 
 C27	2026-09-24	reverted	-	Claude Opus 5.5	the author	noDataInComponents: Components never call `node.data()`
 D10	2026-09-24	reverted	-	Claude Opus 5.5	the author	onePrunePath: Input-cable pruning is ONE loop (`dropInputCables`)
 D39	2026-09-24	reverted	-	Claude Opus 5.5	the author	keyByValue: Sets and dedupes compare values by what they are, never by where they came from
+D11	2026-09-24	superseded	C10	Claude Opus 5.5	the author	noAutoCross: Type separation: element families never auto-cross
+D13	2026-09-24	superseded	C10	Claude Opus 5.5	the author	widenNeverNarrow: Dimensional flow: values widen up, never narrow down
+C46	2026-09-24	superseded	B16	Claude Opus 5.5	the author	consistencyOverQuirks: cross-engine consistency outranks Excel-quirk parity
+D40	2026-09-24	superseded	C25	Claude Opus 5.5	the author	unitOnValue: The unit belongs to the value

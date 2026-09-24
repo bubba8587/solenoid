@@ -1,4 +1,4 @@
-// [[D41]] formatFlowsDownstream, [[D40]] unitOnValue
+// [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits
 // Duck-typed on purpose: this module imports no node classes, so the resolver and the nodes share it without a cycle.
 
 export interface FormatCarrySpec {

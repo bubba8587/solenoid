@@ -1,4 +1,4 @@
-// [[C10]] socketLattice, [[D11]] noAutoCross, [[D13]] widenNeverNarrow
+// [[C10]] socketLattice
 import { ClassicPreset } from "rete";
 
 export type SocketDataType =
@@ -239,7 +239,7 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
-  // [[D13]] widenNeverNarrow
+  // [[C10]] socketLattice
   if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "frame")) return true;
   return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
 }

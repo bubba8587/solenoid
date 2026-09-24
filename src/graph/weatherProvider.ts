@@ -1,4 +1,4 @@
-// [[D40]] unitOnValue
+// [[C25]] firstClassUnits
 // Open-Meteo forecast (keyless, CORS-open): past and future daily rows plus current conditions in one call.
 import { type FrameValue, type FrameColumn } from "./frame";
 import { parseDateToSerial } from "./nodes/dateSerial";

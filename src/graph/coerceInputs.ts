@@ -61,7 +61,7 @@ function kindText(c: unknown): string {
 
 // A value of another family on a typed port (only a wildcard cable can carry one there) is a
 // per-cell `#TYPE!`, never silently parsed or passed ([[B17]] typedValueModel). The one bridge
-// is logical ↔ number ([[D11]] noAutoCross); a date is a number at runtime. The complex
+// is logical ↔ number ([[C10]] socketLattice); a date is a number at runtime. The complex
 // family takes what it is given.
 function familyCell(fam: string, c: unknown): unknown {
   const isNum = typeof c === "number", isBool = typeof c === "boolean", isText = typeof c === "string";
