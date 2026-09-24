@@ -1,4 +1,4 @@
-// [[C16]] polarsEngine, [[C24]] arraySemantics, [[D78]] textErrorsOnOracle
+// [[C16]] polarsEngine, [[C24]] arraySemantics
 import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
