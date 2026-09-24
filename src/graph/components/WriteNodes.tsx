@@ -1,4 +1,4 @@
-// [[C38]] sinkRunButtonOnly, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct
+// [[C38]] sinkRunButtonOnly, [[D10]] onePrunePath, [[C113]] controlDrivenRetype, [[C26]] opArgDistinct
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../rete-nodes";
 import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
@@ -49,7 +49,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
   useEffect(() => { setPath(d.path); }, [d.path]);
 
   // Text uses a STRING input, CSV/JSON a FRAME input; crossing that boundary swaps the
-  // `in` socket in place ([[E11]] controlDrivenRetype), cables pruned first ([[D10]] onePrunePath).
+  // `in` socket in place ([[C113]] controlDrivenRetype), cables pruned first ([[D10]] onePrunePath).
   async function pickFormat(next: WriteFormat) {
     if (next === format) return;
     const willRetype = (format === "text") !== (next === "text");

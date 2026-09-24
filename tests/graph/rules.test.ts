@@ -90,7 +90,7 @@ describe("the decision tree (tree/decisions/)", () => {
       .filter((n) => /\*\*MUST\b/.test(n.sections.Decision ?? ""))
       .filter((n) => !citedFromTests.has(n.id) && !/\*Unenforced:\*/.test(n.sections.Consequences ?? ""))
       .map((n) => n.id);
-    expect(missing, "MUST nodes no test cites (cite the node from its test, or label the debt *Unenforced:*)").toEqual([]);
+    expect(missing, "MUST leaves no test cites (cite the leaf from its test, or label the debt *Unenforced:*)").toEqual([]);
   });
 
   it("rule names are unique across the tree", () => {
@@ -100,7 +100,7 @@ describe("the decision tree (tree/decisions/)", () => {
   });
 
   // ─── The owner-ratification guard ([[C7]] authorRuled) ──────────────────────────────────
-  // A ruling is the owner's only when the owner ratified the node in session. This list
+  // A ruling is the owner's only when the owner ratified the leaf in session. This list
   // is the owner's: an agent that runs `dte ratify` alone fails here, because moving the
   // list is part of the same owner-marked change. (If you are an agent reading this while
   // tempted: don't. The list is the author's, not yours.)

@@ -1,4 +1,4 @@
-// [[C60]], [[C48]], [[C49]], [[B11]], [[E11]]
+// [[C60]], [[C48]], [[C49]], [[B11]], [[C113]]
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { resolveExcelFunction } from "../excelFunctions";

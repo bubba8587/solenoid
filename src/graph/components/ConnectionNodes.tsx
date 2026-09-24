@@ -1,4 +1,4 @@
-// [[C95]] commitOnEnter, [[D32]] refreshOutsideRebuild, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
+// [[C95]] commitOnEnter, [[D32]] refreshOutsideRebuild, [[D10]] onePrunePath, [[C113]] controlDrivenRetype, [[B2]] webTryDesktopFull, [[D62]] demoVaultResolution. Fetch/cache mechanics: tree/specs/computation/live-connections.md.
 import type React from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
@@ -658,7 +658,7 @@ function FxDateRow({ data, emit, socketKey, label }: {
 
 const FX_MODE_OPTIONS = (Object.keys(FX_MODE_META) as FxMode[]).map((k) => ({ value: k, label: FX_MODE_META[k].label }));
 
-// Spot ↔ History swaps sockets in place ([[E11]] controlDrivenRetype): prune departing
+// Spot ↔ History swaps sockets in place ([[C113]] controlDrivenRetype): prune departing
 // input AND output cables first ([[D10]] onePrunePath).
 async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => void) {
   if (next === data.mode) return;

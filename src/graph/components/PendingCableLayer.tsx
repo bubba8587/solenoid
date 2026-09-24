@@ -1,4 +1,4 @@
-// [[E11]] controlDrivenRetype. Spec: tree/specs/canvas/react-flow-surface-contract.md § Ghost cables.
+// [[C113]] controlDrivenRetype. Spec: tree/specs/canvas/react-flow-surface-contract.md § Ghost cables.
 // No connection exists behind a ghost, so it can't be an RF edge; its endpoints come from RF's measured handle bounds.
 import { useSyncExternalStore } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";

@@ -543,7 +543,7 @@ off the release, then ordered "ingest DTE rules and follow them": every change b
 its node, the two nodes acted under got their one contest (D42 perInputUnitBlind, E11
 controlDrivenRetype: keep), and the new rule landed as a node before its code (C6).
 
-- **Input Switch pending ghosts are drawn** ([[E11]]): `PendingCableLayer` (a ViewportPortal
+- **Input Switch pending ghosts are drawn** ([[C113]]): `PendingCableLayer` (a ViewportPortal
   layer beside the drawn cables) draws each `cablePendingStore` entry dashed in the Option A
   stroke from RF's measured handle bounds; no edge exists to carry it.
 - **Tidy reserves a plain card's MEASURED box**: the ELK proxy read `node.width/height` for an
