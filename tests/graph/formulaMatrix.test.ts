@@ -232,6 +232,14 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
     expect(code(take(x, 2, 1))).toBe("#SHAPE!");
   });
 
+  it("TAKE / DROP with a blank row count keep every row, as in Excel", () => {
+    const m = [[1, 2, 3], [4, 5, 6]];
+    expect(ev("TAKE(m,,2)", { m })).toEqual([[1, 2], [4, 5]]);
+    expect(ev("TAKE(m,,-1)", { m })).toEqual([[3], [6]]);
+    expect(ev("DROP(m,,1)", { m })).toEqual([[2, 3], [5, 6]]);
+    expect(ev("DROP(m,,-2)", { m })).toEqual([[1], [4]]);
+  });
+
   it("FILTER by mask — Excel's include-array form", () => {
     // The List Filter NODE is condition-ROW configured (per-row {op, matchCase}
     // with wired comparison values) — a different mechanism from Excel's computed

@@ -1791,20 +1791,20 @@ registerInternal("FILTER", (v, include, ifEmpty) => {
   return out;
 });
 registerInternal("TAKE", (v, rows, cols) => {
-  if (v == null || rows == null) return null;
-  const n = Math.round(Number(rows));
+  if (v == null || (rows == null && cols == null)) return null;
+  const n = rows == null ? null : Math.round(Number(rows));
   const c = cols == null ? null : Math.round(Number(cols));
   if (n === 0 || c === 0) return solError("#DOMAIN!", "TAKE of 0 keeps nothing (Excel: #CALC!)");
   if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
     const m = (v as unknown[][]).map((r) => (c === null ? [...r] : takeSlice(r, c)));
-    return takeSlice(m, n);
+    return n === null ? m : takeSlice(m, n);
   }
   if (cols != null) return solError("#SHAPE!", "A list has no columns, so TAKE takes one count");
-  return takeSlice(toList(v), n);
+  return takeSlice(toList(v), n ?? 0);
 });
 registerInternal("DROP", (v, rows, cols) => {
-  if (v == null || rows == null) return null;
-  const n = Math.round(Number(rows));
+  if (v == null || (rows == null && cols == null)) return null;
+  const n = rows == null ? 0 : Math.round(Number(rows));
   const gone = (len: number, k: number) => len > 0 && Math.abs(k) >= len;
   if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
     const c = cols == null ? 0 : Math.round(Number(cols));
