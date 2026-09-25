@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { launch, launchWindow, injectKit, injectCursor, Recorder, Hand, encodeClip, demo, sleep, OUT, VIEW } from "./rig.mjs";
-import { resetVault, obsidianUp, obsidianWindow, windowOrigin, placeWindow, ScreenRecorder, bridgeVault, grabScreen, VAULT } from "./obsidian.mjs";
+import { resetVault, obsidianUp, obsidianWindow, windowOrigin, placeWindow, ScreenRecorder, bridgeVault, grabScreen, VAULT, SEAM, SOL_SCALE, OBS_LEFT, SOL_RIGHT } from "./obsidian.mjs";
 import { SCENES } from "./scenes.mjs";
 import { CUTS, cutScenes } from "./cuts.mjs";
 
@@ -17,13 +17,6 @@ for (const n of names) if (!SCENES[n]) throw new Error(`unknown scene "${n}"; ha
 const inObsidian = (n) => SCENES[n].app === "obsidian";
 const inBoth = (n) => SCENES[n].app === "both";
 const inSplit = (n) => SCENES[n].app === "split";
-
-// A split scene: Obsidian on the left 768 px of the 1920 px display at the video's scale, Solenoid on the rest at 1.2,
-// which fits its toolbar. The seam and scales map a point from one window to the other.
-const SEAM = 768;
-const SOL_SCALE = 1.2;
-const OBS_LEFT = { x: 0, y: 0, width: SEAM / VIEW.scale, height: VIEW.height };
-const SOL_RIGHT = { x: Math.round(SEAM / SOL_SCALE), y: 0, width: Math.round((1920 - SEAM) / SOL_SCALE), height: Math.round(1080 / SOL_SCALE) };
 
 fs.mkdirSync(path.join(OUT, "clips"), { recursive: true });
 
@@ -187,15 +180,17 @@ for (const name of names) {
   console.log(`● ${name}`);
   const out = path.join(OUT, "clips", `${name}.mp4`);
   let meta;
-  if (inBoth(name) || (inObsidian(name) && scene.states)) {
-    // A stills scene: matched shots per state, which compose.mjs lays side by side (or full frame) and crossfades.
+  if (scene.states) {
+    // A stills scene: matched shots per state, which compose.mjs lays side by side (or full frame) and crossfades. A
+    // split scene's shots are the whole display, so its `apply` may place the windows per state.
     const dir = path.join(OUT, "clips", name);
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(dir, { recursive: true });
-    await placeWindow(obsidian.page, { top: true });
+    await placeWindow(obsidian.page, inSplit(name) ? OBS_LEFT : { top: true });
     const ctx = inBoth(name)
       ? { sol: solenoidContext(solenoid.page, new Hand(solenoid.page), null), obs: obsidianContext(new Hand(obsidian.page)), sleep }
-      : obsidianContext(new Hand(obsidian.page));
+      : inSplit(name) ? splitContext(null) : obsidianContext(new Hand(obsidian.page));
+    if (inSplit(name)) await ctx.noHand();
     if (solenoid) await demo(solenoid.page, () => window.__demo.cursor(false));
     await scene.setup(ctx);
     for (const [i, state] of scene.states.entries()) {

@@ -14,7 +14,7 @@ changes and the video follows the app.
 |---|---|
 | `scenes.mjs` | The Solenoid scenes: each `setup` builds a document off camera, `act` performs on camera; `caption` is `[title, sentence]` |
 | `roundtrip.mjs` | The demo cut's Obsidian round trip: the plugin's look, palettes side by side with the app, a Frame property, the imported note side by side, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
-| `plugin.mjs` | The obsidian cut: the popup's Grid and CSV views, then Priya's emailed table typed into the `q3` Frame property through its Form view, all in Obsidian; then Solenoid beside it joins the note to a roster note, totals it with PIVOTBY and writes the chart back into the note; the plugin's look |
+| `plugin.mjs` | The obsidian cut: meeting notes and an `attendees` String List property, then the popup's Grid and CSV views and Priya's emailed table typed into the `q3` Frame property through its Form view, all in Obsidian; then Solenoid beside it joins the note to a roster note, totals it with PIVOTBY and writes the chart back into the note; the look in both apps |
 | `cuts.mjs` | Each cut's backdrops, running order, title-card copy, wordmark and output name |
 | `record.mjs` | Runs a cut's scenes, or those named, into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig, `app: "both"` stills of both, `app: "split"` scenes with Obsidian and a Solenoid window side by side |
 | `rig.mjs` | Chromium launch (headless, or `launchWindow` as a real window on the rig's display), CDP screencast capture, frame-timestamp encoding, the scripted hand (move, click, drag, type, keys) |
@@ -135,8 +135,9 @@ stands and says so if the state it needs is missing.
 - **Stills scenes** (`app: "both"`, e.g. `palettes`, `import-pair`): `setup({ sol, obs, sleep })` once, then per
   entry in `states` `apply(ctx, state)`, and the recorder takes a Solenoid screenshot and an Obsidian screen grab.
   Compose puts them side by side (`panels: ["obs", "sol"]` flips the order), labels them, crossfades the states and
-  holds each `hold` seconds under a slow push-in. An `app: "obsidian"` scene with `states` and `panels: ["obs"]` is
-  the same, full frame (`pl-look`). A scene with no `caption` gets no caption strip.
+  holds each `hold` seconds under a slow push-in. An `app: "obsidian"` or `app: "split"` scene with `states` and
+  `panels: ["obs"]` grabs the whole display per state, full frame; a split one's `apply` can place the windows per
+  state, so `pl-look` alternates Obsidian alone with both apps side by side. A scene with no `caption` gets none.
 - **Chapter card**: a scene's `chapter: { eyebrow, mark }` opens it on its own first frame, blurred, under a wordmark
   for 1.9 s. The obsidian cut uses one where the story moves into Solenoid (`pl-reload`); keep that scene still for
   its first second, since the crossfade reveals it.
@@ -176,6 +177,9 @@ stands and says so if the state it needs is missing.
 - A menu path must go straight down from its top item: brushing the next top item switches the open menu, and the
   click lands on that menu's first item.
 - The plugin's popup centers over the note's pane and can't be moved; the Form view covers most of a narrow pane.
+- In live preview a bullet's marker renders into its `.cm-line`, so find a line by the text it contains. A property
+  key other notes already use (`attendees`) arrives with Obsidian's type for it and suggests their values; changing
+  its type changes it vault-wide.
 - Obsidian started with its left sidebar collapsed defers the file explorer's view, so `revealInFolder` may not
   exist; a note already open keeps its reading-view scroll through `openFile`.
 - `pkill -f <pattern>` matches your own shell when the pattern is in the command line. Kill by PID.

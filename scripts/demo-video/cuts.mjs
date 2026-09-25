@@ -21,7 +21,7 @@ export const CUTS = {
     out: "solenoid-obsidian",
     intro: "pl-intro",
     outro: "pl-outro",
-    order: ["pl-note", "pl-form", "pl-reload", "pl-write", "pl-look"],
+    order: ["pl-meeting", "pl-form", "pl-reload", "pl-write", "pl-look"],
     mark: "solenoidpropertieswordmark.svg",
     eyebrow: "For Obsidian",
     tagline: "The computation layer for your vault.",

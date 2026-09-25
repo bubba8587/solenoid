@@ -63,6 +63,10 @@ q3:
 tags:
   - work
 ---
+## Notes
+
+- Q3 closes Friday.
+
 [[People/Priya|Priya]] emailed the West figures this morning:
 
 | Division | Sales | Units | Deals | Returns |

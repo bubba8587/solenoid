@@ -80,6 +80,13 @@ export async function obsidianUp() {
   return { browser, page };
 }
 
+/** A split scene's layout: Obsidian on the left 768 px of the 1920 px display at the video's scale, Solenoid on the
+ *  rest at 1.2, which fits its toolbar. Bounds are CSS px at each window's scale. */
+export const SEAM = 768;
+export const SOL_SCALE = 1.2;
+export const OBS_LEFT = { x: 0, y: 0, width: SEAM / VIEW.scale, height: VIEW.height };
+export const SOL_RIGHT = { x: Math.round(SEAM / SOL_SCALE), y: 0, width: Math.round((1920 - SEAM) / SOL_SCALE), height: Math.round(1080 / SOL_SCALE) };
+
 /** Where the main window sits, in CSS px at the video's scale: the whole screen by default, or the left share of a
  *  split scene. `top` raises it over a Solenoid window that shares the display. */
 export async function placeWindow(page, { x = 0, y = 0, width = VIEW.width, height = VIEW.height, top = false } = {}) {

@@ -1,10 +1,11 @@
 // [[B3]] sameNodeEverywhere, [[C107]] obsidianPlugin
-// The plugin cut: a short video for Obsidian users. Figures from an email go into a Frame property through the
-// plugin's Form view; Solenoid joins them to a roster note, totals them with PIVOTBY and charts them; the chart is
-// written back into the note. `app: "split"` scenes film Obsidian and Solenoid side by side on one display.
+// The plugin cut: a short video for Obsidian users. A meeting's attendees go into a String List property; figures from
+// an email go into a Frame property through the plugin's Form view; Solenoid joins them to a roster note, totals them
+// with PIVOTBY and charts them; the chart is written back into the note. `app: "split"` scenes film Obsidian and
+// Solenoid side by side on one display.
 import fs from "node:fs";
 import path from "node:path";
-import { VAULT, noteOnly } from "./obsidian.mjs";
+import { VAULT, noteOnly, placeWindow, OBS_LEFT } from "./obsidian.mjs";
 import { ROOT } from "./rig.mjs";
 import { rectIn, need, openNote, closeOtherWindows } from "./roundtrip.mjs";
 
@@ -17,6 +18,9 @@ const WEST = [
   ["San Francisco", "598000", "1495", "81", "27"], ["Los Angeles", "655000", "1638", "88", "30"],
 ];
 const CHAIN = ["Divisions", "Q3 review", "Join", "PIVOTBY", "Q3 by region", "Regional chart"];
+// The meeting's notes and who was in it.
+const NOTES = ["Central is under target; Omar follows up.", "West figures came in from Priya."];
+const ATTENDEES = ["Sam", "Ada", "Priya", "Omar"];
 
 const wire = (source, sourceOutput, target, targetInput) => ({ source, sourceOutput, target, targetInput });
 const shipped = (rel) => fs.readFileSync(path.join(ROOT, "demo-vault", rel), "utf8");
@@ -77,6 +81,18 @@ async function look(c, { palette = "Default", accent = "gold", mode = "dark" } =
   }, palette, accent, mode);
 }
 
+/** The app's palette, accent and theme. Fired on a timer: awaited across the protocol, a palette swap loses the call. */
+async function appLook(s, { palette = "Default", accent = "gold", mode = "dark" } = {}) {
+  await s.demo((p, a, m) => {
+    setTimeout(async () => {
+      (await import("/src/graph/palette.ts")).paletteStore.setActiveBase(p);
+      const { appThemeStore } = await import("/src/graph/appTheme.ts");
+      appThemeStore.setAccent(a);
+      appThemeStore.setMode(m);
+    }, 0);
+  }, palette, accent, mode);
+}
+
 /** Scrolls the reading view so the element matching sel (and text) sits `at` of the way down the pane. */
 async function scrollTo(c, sel, text, at = 0.3) {
   await c.obs((s, t, f) => {
@@ -95,15 +111,22 @@ const task = (c, text) => c.obs((t) => {
   return r && { x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2 };
 }, text);
 
-/** The note in Obsidian, reading view, the plugin's look on and nothing but the note. */
-async function noteView(o, { zoom = 1 } = {}) {
+/** The note in Obsidian with the plugin's look on and nothing but the note: reading view, or live preview to type. */
+async function noteView(o, { zoom = 1, reading = true } = {}) {
   await closeOtherWindows(o);
   await noteOnly(o.page);
   await obsZoom(o, zoom);
   await look(o);
   await o.obs(() => { for (const leaf of window.app.workspace.getLeavesOfType("markdown").slice(1)) leaf.detach(); });
-  await openNote(o, NOTE, { reading: true });
+  await openNote(o, NOTE, { reading });
 }
+
+/** The live-preview line that holds `text` (a bullet's marker renders into the line too). */
+const editorLine = (c, text) => c.obs((t) => {
+  const line = [...document.querySelectorAll(".markdown-source-view .cm-line")].find((l) => l.textContent.includes(t));
+  const r = line?.getBoundingClientRect();
+  return r && { x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2 };
+}, text);
 
 /** The regional graph in the Solenoid window, loaded unless it already is. */
 async function graphView(s) {
@@ -123,26 +146,66 @@ export const PLUGIN = {
     async act(c) { await c.sleep(5200); },
   },
 
-  "pl-note": {
+  "pl-meeting": {
     app: "obsidian",
     caption: ["Solenoid Properties", "The plugin adds frames, cubes, lists and matrices to Obsidian's property types. The note underneath stays plain YAML."],
     async setup(c) {
-      await noteView(c, { zoom: 1.12 });
-      // The properties at the top, so Priya's table sits clear of the caption.
-      await scrollTo(c, ".metadata-container", undefined, 0.03);
-      await c.hand.show(760, 470);
+      await noteView(c, { zoom: 1.12, reading: false });
+      await c.hand.show(820, 430);
     },
     async act(c) {
       const { hand, sleep, page } = c;
-      await sleep(900);
-      const table = await need(page, ".markdown-preview-view table");
-      await hand.move(table.x + table.w * 0.62, table.y + table.h * 0.6, { ms: 1100 });
-      await c.box(table, 6);
-      await sleep(1500);
-      const chip = await need(page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip');
-      await hand.move(chip.cx + 40, chip.cy + 16, { ms: 1100 });
-      await c.box(await need(page, '.metadata-property[data-property-key="q3"]'), 4);
-      await sleep(2000);
+      await sleep(700);
+      // Two lines of meeting notes under the first, typed at twice the speed in compose.mjs.
+      const first = await editorLine(c, "Q3 closes Friday.");
+      await hand.click({ x: first.x + first.w - 40, y: first.cy });
+      await sleep(200);
+      c.rec.at("fast", { rate: 2 });
+      for (const line of NOTES) {
+        await hand.press("Enter");
+        await sleep(120);
+        await hand.type(line, { cps: 15 });
+        await sleep(150);
+      }
+      c.rec.at("unfast");
+      await sleep(500);
+      // Who was there, as a String List property.
+      await hand.click(await need(page, ".metadata-add-button"));
+      await sleep(300);
+      await hand.type("attendees", { cps: 11 });
+      await sleep(200);
+      await hand.press("Enter");
+      await sleep(350);
+      await hand.click(await need(page, '.metadata-property[data-property-key="attendees"] .metadata-property-icon'));
+      await sleep(350);
+      const type = await need(page, ".menu .menu-item", "Property type");
+      await hand.move(type.cx, type.cy, { ms: 400 });
+      await sleep(600);
+      const list = await need(page, ".menu .menu-item", "String List");
+      await hand.move(list.x + 20, type.cy, { ms: 300, bow: 0 });
+      await hand.move(list.cx, list.cy, { ms: 600 });
+      await sleep(250);
+      await hand.click();
+      await sleep(600);
+      await hand.click(await need(page, '.metadata-property[data-property-key="attendees"] .solenoid-property-chip'));
+      await sleep(800);
+      for (let i = 1; i < ATTENDEES.length; i++) {
+        await hand.click(await need(page, "button", "Add Row"));
+        await sleep(180);
+      }
+      const cells = await rectsIn(page, "td.table-popup__cell");
+      await hand.click(cells[0]);
+      await sleep(120);
+      for (const [i, name] of ATTENDEES.entries()) {
+        if (i) { await hand.press("Enter"); await sleep(120); }
+        await hand.type(name, { cps: 12 });
+        await sleep(150);
+      }
+      await sleep(400);
+      await hand.click(await need(page, "button", "Save"));
+      await sleep(600);
+      await c.box(await need(page, '.metadata-property[data-property-key="attendees"]'), 4);
+      await sleep(1600);
       await c.clearBoxes();
     },
   },
@@ -151,15 +214,20 @@ export const PLUGIN = {
     app: "obsidian",
     caption: ["Solenoid's table editor", "Each chip opens the editor Solenoid uses: a grid, a form for one record at a time, or CSV. Columns keep their types."],
     async setup(c) {
-      // Framed as pl-note, so the cut between them only changes the caption.
       await noteView(c, { zoom: 1.12 });
+      // The properties at the top, so Priya's table sits clear of the caption.
       await scrollTo(c, ".metadata-container", undefined, 0.03);
-      const chip = await need(c.page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip');
-      await c.hand.show(chip.cx + 40, chip.cy + 16);
+      await c.hand.show(820, 430);
     },
     async act(c) {
       const { hand, sleep, page } = c;
-      await sleep(500);
+      await sleep(700);
+      // Priya's table, then the Frame property it goes into.
+      const table = await need(page, ".markdown-preview-view table");
+      await hand.move(table.x + table.w * 0.62, table.y + table.h * 0.6, { ms: 1000 });
+      await c.box(table, 6);
+      await sleep(1300);
+      await c.clearBoxes();
       await hand.click(await need(page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip'));
       await sleep(1000);
       // The grid: its typed columns, down the Sales column and across a row.
@@ -282,23 +350,39 @@ export const PLUGIN = {
   },
 
   "pl-look": {
-    app: "obsidian",
-    caption: ["The Solenoid look", "Turn on the plugin's theme and the whole vault takes Solenoid's palette, with the accent you pick."],
+    app: "split",
+    caption: ["The Solenoid look", "The plugin's theme gives the whole vault Solenoid's palette and the accent you pick, the same ones the app offers."],
     panels: ["obs"],
-    hold: 1.9,
+    hold: 1.7,
+    // Obsidian alone, then beside Solenoid wearing the same palette, accent and theme.
     states: [
-      { palette: "Default", accent: "gold", mode: "dark" },
-      { palette: "Blueprint", accent: "blue", mode: "dark" },
-      { palette: "Orchard", accent: "teal", mode: "dark" },
-      { palette: "Solarized", accent: "gold", mode: "light" },
+      { palette: "Default", accent: "gold", mode: "dark", layout: "full" },
+      { palette: "Default", accent: "violet", mode: "dark", layout: "split" },
+      { palette: "Orchard", accent: "pink", mode: "dark", layout: "full" },
+      { palette: "Blueprint", accent: "sky", mode: "dark", layout: "split" },
+      { palette: "Solarized", accent: "vermilion", mode: "light", layout: "split" },
+      { palette: "Default", accent: "teal", mode: "light", layout: "full" },
     ],
     async setup(c) {
-      await noteView(c, { zoom: 1.12 });
-      await scrollTo(c, ".metadata-container", undefined, 0.03);
-      await c.hand.hide();
+      await noteView(c.obs);
+      await graphView(c.sol);
+      await c.sol.frame(CHAIN, { pad: 0.05, maxK: 1.1, dy: 20 });
     },
-    async apply(c, state) { await look(c, state); },
-    async teardown(c) { await look(c); },
+    async apply(c, state) {
+      const full = state.layout === "full";
+      await placeWindow(c.obs.page, full ? { top: true } : OBS_LEFT);
+      await obsZoom(c.obs, full ? 1.12 : 1);
+      await look(c.obs, state);
+      await appLook(c.sol, state);
+      await c.sleep(500);
+      await scrollTo(c.obs, ".metadata-container", undefined, 0.03);
+    },
+    async teardown(c) {
+      await look(c.obs);
+      await appLook(c.sol);
+      await obsZoom(c.obs, 1);
+      await placeWindow(c.obs.page, OBS_LEFT);
+    },
   },
 
   "pl-outro": {
