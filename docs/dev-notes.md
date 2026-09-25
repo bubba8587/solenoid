@@ -6,6 +6,27 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-25: formulas and aggregates at scale and at the edges; author asleep, one check-in)
+
+- **Long lists:** a list past about 125k values no longer throws. `guardFinite(result, inputs)` takes an array (callers
+  spread whole data lists into it, so web GROUPBY and most range formulas threw), `mapCells` measures each operand once
+  (a tall column was N²: 40k rows took 1.9 s, now 54 ms), and MAP, BYCOL, HSTACK, CONCATLISTS, Set Cells and a script's
+  table result read widths with `reduce`. The remaining `Math.max(...)` spreads run over bounded counts (canvas layout,
+  chart axes, Frame from Lists, Template, Triangle). SUM still throws inside Formula.js past 125k values.
+- **One answer per aggregate** ([[D51]] oneAnswerOneDivergence): the statistics formulas keep a first-class ∞ and a NaN
+  cell, as the Aggregate card and GROUPBY do. `aggregate()` classifies its own result and answers `#DOMAIN!` for a NaN
+  input on every op but the counts; the percentile, quartile, correlation, covariance and regression kernels classify
+  theirs, and percentile interpolation returns a bracketing value both ends hold (PERCENTILE.INC of 1, 2, ∞ at 1 is ∞).
+  MIN and MAX are owned (Formula.js spread the list into `Math.min`) on the card's kernel; PERCENTRANK.INC and .EXC run
+  the card's kernel (Formula.js said 0 below the data).
+- **Retired on the author's suggestion:** AVERAGEA, MINA, MAXA, STDEVA, STDEVPA, VARA and VARPA redirect to their plain
+  forms ([[C14]] currentExcelParity, a new consequence line); lists are typed, so only the logical reading was left.
+- **Other fixes:** Nest Join keys round like Join's converted key (`roundAtLargerTerm`, shared in `frame.ts`), so 1 in
+  matches 2.54 cm; a pasted Missing placeholder stays a placeholder for its node (`placeholderFor`, shared by load,
+  composite hydration and paste); fourteen signature hints mark the second value optional.
+- **Open:** inbox `aggregate-list-cells` asks how every aggregate formula reads a logical (`SUM(x > 5)` is 0 while
+  `AVERAGE(x > 5)` counts); owning SUM waits on it. The outbox still lists A1, B1, B2, B3, B7 (left alone per the backlog).
+
 ### SESSION DIGEST (2026-09-24b: the review leads closed, and the tree made ratifiable; author present, then remote)
 
 - **Review leads:** every "2026-09-24 review rounds" lead is fixed with a failing test first, or inboxed (units,
@@ -26,37 +47,3 @@ specific item.
   own words, and removed `made_by`/`by` and `name` (local `tools/dte.py` patch: the name is the first alias).
 - **Open:** the ratification walk continues with the rest of ring B; 34 inbox items; desktop window-close check on
   the next build (backlog).
-
-### SESSION DIGEST (2026-09-24: adversarial review rounds over the tree and specs; author checking in)
-
-- **What stands:** about 20 reviewer branches, one slice each (compute, frames, values, documents, canvas,
-  charts, chrome, composites, Obsidian, node classes, packs), checked code against specs and nodes; well over
-  100 bugs fixed with tests, specs corrected where the code was right. Full suite about 6500 tests, green
-  under `--sequence.shuffle`; `dte validate`, `coverage --check` and `cargo test --lib` green.
-- **Author rulings, author present:** GROUPBY min/max over text is alphabetical ([[D76]] textMinMax); constants
-  always win in a LAMBDA and a parameter named `e`/`pi`/`tau`/`phi` is `#NAME?` ([[D77]] constantsAlwaysWin,
-  reversing two agent commits); the list Group By is Group Lists all the way down and prose calls the frame
-  card GROUPBY; the Group card is Node Group; questions for the author go to `tree/decisions/inbox/`, never chat.
-- **Tree:** the author's outbox notes were processed: D4 rewritten plainly with E1 folded in, E2 into D13 and the
-  lattice spec, E4 into D15 and the spec, E5's Why says why Any Matrix can't stand in. New: [[C112]]
-  noOverlapsEver (every layout op ends with `separateAll`). Contested and kept: C16, D29, C85, C89, D63, C112,
-  C11 (Conduit lane exception), C43 (names its hooks), C95.
-- **Units:** °C/°F are classified statically (`affineWeight`): a reading plus a number is a reading, two readings
-  subtract to a delta in K, two readings added are `#UNIT!` (`READINGS_ADD`) on every surface: formulas, the
-  Arithmetic and Aggregate cards, frame verbs on both engines (`readingScale` on the wire), computed columns.
-  Expression computes in a shared linear display unit; a function the dimension pass doesn't know refuses a
-  united argument; lookups carry their return column's unit.
-- **Engines:** the frame-verb fuzzer covers window, fill, replace, slice, bind and cross join; every divergence it
-  found is a named corpus case.
-- **Saves and edits:** keys with `.`/`λ`/`-` are quoted in the text form (a save could break for good); literals
-  no longer enter `init`; composites keep inner references, nested composites, FC docks and store state across
-  reload, wrap and undo; one delete path for main canvas and drill-in; paste works from a snapshot.
-- **Tests:** a `vi.mock` file outside ISOLATED fails `sourceInvariants.test.ts`; the flaky shared-pool failures
-  are gone.
-- **Late merges:** the webpage export escapes values after rendering and embeds images; open drafts flush before a
-  switch, save or close (`draftFlush.ts`); composite inner cards keep size, collapse and flip (`savedNodeBody.ts`);
-  Thermo presets declare their input units (`readInDeclaredUnit`); Triangle Solver solves in one unit; FIXED rounds
-  like ROUND.
-- **Open:** 30 inbox items await the author. A DTE tool patch (processed outbox items leave a review card in the
-  inbox; a node dragged into `outbox/` stays a node) is stashed, not applied, pending the author's go.
-

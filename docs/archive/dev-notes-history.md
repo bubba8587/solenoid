@@ -1,6 +1,43 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-24 (the 09-22d and 09-22c digests, verbatim).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-25 (the 09-24 digest, verbatim).
+
+---
+
+## Sweep 2026-09-25 — session digest 2026-09-24 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-24: adversarial review rounds over the tree and specs; author checking in)
+
+- **What stands:** about 20 reviewer branches, one slice each (compute, frames, values, documents, canvas,
+  charts, chrome, composites, Obsidian, node classes, packs), checked code against specs and nodes; well over
+  100 bugs fixed with tests, specs corrected where the code was right. Full suite about 6500 tests, green
+  under `--sequence.shuffle`; `dte validate`, `coverage --check` and `cargo test --lib` green.
+- **Author rulings, author present:** GROUPBY min/max over text is alphabetical ([[D76]] textMinMax); constants
+  always win in a LAMBDA and a parameter named `e`/`pi`/`tau`/`phi` is `#NAME?` ([[D77]] constantsAlwaysWin,
+  reversing two agent commits); the list Group By is Group Lists all the way down and prose calls the frame
+  card GROUPBY; the Group card is Node Group; questions for the author go to `tree/decisions/inbox/`, never chat.
+- **Tree:** the author's outbox notes were processed: D4 rewritten plainly with E1 folded in, E2 into D13 and the
+  lattice spec, E4 into D15 and the spec, E5's Why says why Any Matrix can't stand in. New: [[C112]]
+  noOverlapsEver (every layout op ends with `separateAll`). Contested and kept: C16, D29, C85, C89, D63, C112,
+  C11 (Conduit lane exception), C43 (names its hooks), C95.
+- **Units:** °C/°F are classified statically (`affineWeight`): a reading plus a number is a reading, two readings
+  subtract to a delta in K, two readings added are `#UNIT!` (`READINGS_ADD`) on every surface: formulas, the
+  Arithmetic and Aggregate cards, frame verbs on both engines (`readingScale` on the wire), computed columns.
+  Expression computes in a shared linear display unit; a function the dimension pass doesn't know refuses a
+  united argument; lookups carry their return column's unit.
+- **Engines:** the frame-verb fuzzer covers window, fill, replace, slice, bind and cross join; every divergence it
+  found is a named corpus case.
+- **Saves and edits:** keys with `.`/`λ`/`-` are quoted in the text form (a save could break for good); literals
+  no longer enter `init`; composites keep inner references, nested composites, FC docks and store state across
+  reload, wrap and undo; one delete path for main canvas and drill-in; paste works from a snapshot.
+- **Tests:** a `vi.mock` file outside ISOLATED fails `sourceInvariants.test.ts`; the flaky shared-pool failures
+  are gone.
+- **Late merges:** the webpage export escapes values after rendering and embeds images; open drafts flush before a
+  switch, save or close (`draftFlush.ts`); composite inner cards keep size, collapse and flip (`savedNodeBody.ts`);
+  Thermo presets declare their input units (`readInDeclaredUnit`); Triangle Solver solves in one unit; FIXED rounds
+  like ROUND.
+- **Open:** 30 inbox items await the author. A DTE tool patch (processed outbox items leave a review card in the
+  inbox; a node dragged into `outbox/` stays a node) is stashed, not applied, pending the author's go.
 
 ---
 
