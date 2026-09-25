@@ -261,7 +261,7 @@ export class WeekInfoNode extends ClassicPreset.Node {
 export const DATE_DIFF_OP_META = {
   days:     { label: "DAYS",     description: "Days between dates: `end − start`, signed. Excel: `DAYS`." },
   days360:  { label: "DAYS360",  description: "Days on a 360-day year. Basis 0: `US/NASD`, 1: European. Excel: `DAYS360`." },
-  yearfrac: { label: "YEARFRAC", description: "Fraction of year. Basis 0: `30/360US`, 1: `actual/actual` (≈÷365.25), 2: `actual/360`, 3: `actual/365`, 4: `30/360EU`. Excel: `YEARFRAC`." },
+  yearfrac: { label: "YEARFRAC", description: "Fraction of year. Basis 0: `30/360US`, 1: `actual/actual`, 2: `actual/360`, 3: `actual/365`, 4: `30/360EU`. Excel: `YEARFRAC`." },
   years:    { label: "Whole years",  description: "Complete years between dates. Excel: `DATEDIF \"Y\"`." },
   months:   { label: "Whole months", description: "Complete months between dates. Excel: `DATEDIF \"M\"`." },
   ym:       { label: "Months ignoring years", description: "Complete months past the last whole year. Excel: `DATEDIF \"YM\"`." },
@@ -306,7 +306,7 @@ export class DateDiffNode extends ClassicPreset.Node {
       if (basisRaw === null) { this.cachedResult = null; return { result: null }; }
       basis = Math.floor(basisRaw);
     }
-    const result = broadcast((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+    const result = broadcastErr((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }

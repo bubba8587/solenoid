@@ -49,6 +49,24 @@ describe("date formulas == date nodes", () => {
     expect(ev("WEEKDAY(x)", { x: d("2026-03-15") })).toBe(1);   // a Sunday
     expect(ev("ISOWEEKNUM(x)", { x: d("2021-01-03") })).toBe(53); // ISO week of the prior year
   });
+  it("YEARFRAC basis 1 is Excel's actual/actual, and the dates may come in either order", () => {
+    const yf = (a: string, b: string, basis = 1) => ev("YEARFRAC(a, b, k)", { a: d(a), b: d(b), k: basis }) as number;
+    expect(yf("2012-01-01", "2012-07-30")).toBeCloseTo(211 / 366, 12); // Excel's own example: a leap year has 366 days
+    expect(yf("2023-07-01", "2024-03-01")).toBeCloseTo(244 / 366, 12); // under a year, 29 Feb 2024 inside
+    expect(yf("2023-03-01", "2024-02-28")).toBeCloseTo(364 / 365, 12); // under a year, no 29 Feb inside
+    expect(yf("2023-01-01", "2025-01-01")).toBeCloseTo(731 / (1096 / 3), 12); // over a year: the average of 2023–2025
+    expect(yf("2012-07-30", "2012-01-01")).toBeCloseTo(211 / 366, 12);
+    expect(yf("2024-07-01", "2024-01-01", 3)).toBeCloseTo(182 / 365, 12);
+  });
+
+  it("YEARFRAC truncates its dates to whole days, and a basis outside 0 to 4 is #DOMAIN!", () => {
+    const [a, b] = [d("2024-01-01"), d("2024-01-02")];
+    expect(ev("YEARFRAC(a, b, 3)", { a: a + 0.75, b: b + 0.5 })).toBeCloseTo(1 / 365, 12);
+    expect((ev("YEARFRAC(a, b, 5)", { a, b }) as { code: string }).code).toBe("#DOMAIN!");
+    const card = new DateDiffNode({ op: "yearfrac" }).data({ start: [a], end: [b], basis: [-1] }).result;
+    expect((card as { code: string }).code).toBe("#DOMAIN!");
+  });
+
   it("DAYS / DAYS360 / YEARFRAC / DATEDIF", () => {
     const s = d("2024-01-31"), z = d("2026-03-01");
     same(ev("DAYS(z, s)", { s, z }), new DateDiffNode({ op: "days" }).data({ start: [s], end: [z] }).result);

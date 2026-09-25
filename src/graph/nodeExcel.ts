@@ -120,7 +120,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "date-datedif": [{ excel: "DATEDIF", syntax: "=DATEDIF(start, end, unit)", parity: false, note: "MD borrows from the month before the end month. Where Excel's unreliable MD goes negative, like Jan 31 to Mar 1, results may differ." }],
   "date-diff-days": [{ excel: "DAYS", syntax: "=DAYS(end_date, start_date)", parity: false }],
   "date-diff-days360": [{ excel: "DAYS360", syntax: "=DAYS360(start, end)", parity: false }],
-  "date-diff-yearfrac": [{ excel: "YEARFRAC", syntax: "=YEARFRAC(start, end)", parity: false, note: "basis 1 (actual/actual) is approximated as ÷365.25" }],
+  "date-diff-yearfrac": [{ excel: "YEARFRAC", syntax: "=YEARFRAC(start, end)", parity: true }],
   "date-networkdays": [
     { excel: "NETWORKDAYS", syntax: "=NETWORKDAYS(start, end)", parity: false },
     { excel: "NETWORKDAYS.INTL", syntax: "=NETWORKDAYS.INTL(start, end, wknd)", parity: false, note: "Use NETWORKDAYS with weekend_code input" },

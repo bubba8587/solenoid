@@ -99,7 +99,29 @@ export function dateDiffOpForUnit(unit: string): DateDiffOp | null {
   }
 }
 
-export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): number | null {
+const isLeapYear = (y: number): boolean => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+
+/** Excel's actual/actual year: 366 or 365 for a span that looks a year or less, else the mean of the calendar years it touches. */
+function actualYearLength(sd: Date, ed: Date): number {
+  const sy = sd.getUTCFullYear(), sm = sd.getUTCMonth(), sday = sd.getUTCDate();
+  const ey = ed.getUTCFullYear(), em = ed.getUTCMonth(), eday = ed.getUTCDate();
+  if (sy !== ey && !(sy + 1 === ey && (sm > em || (sm === em && sday >= eday)))) {
+    return (Date.UTC(ey + 1, 0, 1) - Date.UTC(sy, 0, 1)) / 86400000 / (ey - sy + 1);
+  }
+  const mar1 = (y: number) => Date.UTC(y, 2, 1);
+  const t1 = sd.getTime(), t2 = ed.getTime();
+  const feb29 = (sy === ey && isLeapYear(sy))
+    || (isLeapYear(sy) && t1 < mar1(sy) && t2 >= mar1(sy))
+    || (isLeapYear(ey) && t2 >= mar1(ey) && t1 < mar1(ey))
+    || (em === 1 && eday === 29);
+  return feb29 ? 366 : 365;
+}
+
+export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): number | SolError | null {
+  if (op === "yearfrac") {
+    if (!(basis >= 0 && basis <= 4)) return solError("#DOMAIN!", "Basis must be 0, 1, 2, 3, or 4");
+    [s, e] = [Math.trunc(Math.min(s, e)), Math.trunc(Math.max(s, e))];
+  }
   if (s > e && !dateDiffNeedsBasis(op) && op !== "days") return null;
   const sd = serialToJsDate(s), ed = serialToJsDate(e);
   const sy = sd.getUTCFullYear(), sm = sd.getUTCMonth(), sday = sd.getUTCDate();
@@ -134,7 +156,7 @@ export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): numbe
       if (basis === 2) return days / 360;
       if (basis === 3) return days / 365;
       if (basis === 4) return thirty360(true) / 360;
-      return days / 365.25;
+      return days / actualYearLength(sd, ed);
     }
   }
 }

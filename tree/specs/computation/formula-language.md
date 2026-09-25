@@ -794,7 +794,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 
 ### Date kernels (`nodes/dateSerial.ts`, `nodes/dateOps.ts`)
 
-**The serial model.** A date is an Excel-style serial: serial 1 is 1900-01-01, so the Unix epoch is serial 25569, and the fraction is the time of day. `serialToJsDate` and `jsDateToSerial` convert, and every reader uses the UTC getters, so a serial is the same calendar day on every machine ([[C44]] dateSerials). `DEFAULT_DATE_FORMAT` is `DD-MMM-YYYY` and `DEFAULT_DATETIME_FORMAT` is `DD-MMM-YYYY HH:mm`.
+**The serial model.** A date is an Excel-style serial counted from serial 0 on 1899-12-30, so the Unix epoch is serial 25569 and the fraction is the time of day. Serials match Excel's from 1900-03-01; before it they run one ahead, because Excel counts a 29 February 1900 that never existed. `serialToJsDate` and `jsDateToSerial` convert, and every reader uses the UTC getters, so a serial is the same calendar day on every machine ([[C44]] dateSerials). `DEFAULT_DATE_FORMAT` is `DD-MMM-YYYY` and `DEFAULT_DATETIME_FORMAT` is `DD-MMM-YYYY HH:mm`.
 
 **`parseDate(text, opts)`** is the one text-to-date parser, behind DATEVALUE, Cast to date, Frame and Table date columns, Date Input and Get Column's read-as. It answers the serial, `#AMBIGUOUS!`, or NaN when the text is not a date. Time is kept, not floored. In order:
 
@@ -820,7 +820,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 - `dateDiff(op, start, end, basis)`:
   - `days` (DAYS) is signed.
   - `days360` is US 30/360 on basis 0 and European 30/360 on any other basis.
-  - `yearfrac` (YEARFRAC): basis 0 is US 30/360 over 360, 1 is actual days over 365.25 (an approximation of actual/actual), 2 actual over 360, 3 actual over 365, 4 European 30/360 over 360.
+  - `yearfrac` (YEARFRAC): the two dates are truncated to whole days and taken in either order, and a basis outside 0 to 4 is `#DOMAIN!`. Basis 0 is US 30/360 over 360; 1 is Excel's actual/actual, actual days over 366 when the span looks a year or less and a 29 February can fall in it (or both dates share a leap year), over 365 when it looks a year or less otherwise, and over the mean length of the calendar years it touches when it is longer; 2 is actual over 360, 3 actual over 365, 4 European 30/360 over 360.
   - The DATEDIF units (`dateDiffOpForUnit`: `D`, `Y`, `M`, `YM`, `MD`, `YD`, any case) are null over a reversed range. `MD` counts from the start day advanced by the whole months, clamped to that month's length (31 January plus a month is 28 February), so it is never negative. Excel's MD goes negative when the borrow crosses a short month (31 January to 1 March gives −2).
 - `epochToSerial` and `serialToEpoch` (FROMEPOCH, TOEPOCH) convert Unix seconds or milliseconds since 1970-01-01 UTC.
 - `dateTrunc(serial, unit, ceiling)` (DATETRUNC) floors to the start of its day, week (Monday, or Sunday for `week_sun`), month, quarter or year. `ceiling` answers the start of the next period instead, except that a value already on the boundary stays put either way. `dateTruncUnitFor` accepts `d`, `day`, `days`, `w`, `week`, `weeks`, `week_mon`, `monday`, `week_sun`, `sunday`, `m`, `month`, `months`, `q`, `quarter`, `quarters`, `y`, `year`, `years`, case-insensitive.
