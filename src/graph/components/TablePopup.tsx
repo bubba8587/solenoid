@@ -8,7 +8,7 @@ import { formatScalar } from "./format";
 import { parseCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
-import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
+import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, type FrameSourceColumn } from "../frame";
 import { describeColumn, distinctColumnValues } from "../frameVerbs";
 import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
@@ -149,6 +149,7 @@ export function TablePopup() {
   const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
   const initedFor = useRef<TablePopupState | null>(null);
   const summaryCache = useRef<{ deps: unknown[]; value: ColSummary[] | null }>({ deps: [], value: null });
+  const csvTypesFrom = useRef<number | null>(null);
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -562,7 +563,15 @@ export function TablePopup() {
   function showCSV() {
     setCsvText(csvViewText());
     setCsvError(null);
+    const blank = !!headers?.every((h) => !(h ?? "").trim()) && grid.every((r) => r.every((c) => !c.trim()));
+    csvTypesFrom.current = editable && hasHeaderLine ? (blank ? 0 : cols) : null;
     setView("csv");
+  }
+  const settledColumnTypes = (): CellType[] =>
+    view === "csv" && csvTypesFrom.current !== null ? columnTypesAfterCsvEdit(columnTypes, csvTypesFrom.current, grid) : columnTypes;
+  function leaveCsv(next: "grid" | "form") {
+    if (view === "csv") setColumnTypes(settledColumnTypes());
+    setView(next);
   }
   function onCsvChange(v: string) {
     setCsvText(v);
@@ -626,7 +635,7 @@ export function TablePopup() {
   }
   function save() {
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
-    else if (state?.onSaveSource) state.onSaveSource(buildSourceColumns());
+    else if (state?.onSaveSource) state.onSaveSource(buildSourceColumns({ types: settledColumnTypes() }));
     tablePopup.close();
   }
 
@@ -1060,13 +1069,13 @@ export function TablePopup() {
           <button
             type="button"
             aria-pressed={view === "grid"}
-            onClick={() => setView("grid")}
+            onClick={() => leaveCsv("grid")}
           >Grid</button>
           {formCapable && (
             <button
               type="button"
               aria-pressed={view === "form"}
-              onClick={() => setView("form")}
+              onClick={() => leaveCsv("form")}
             >Form</button>
           )}
           <button

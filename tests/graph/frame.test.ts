@@ -19,6 +19,7 @@ import {
   colTypeForSocket,
   addColumn,
   frameHasTextColumns,
+  columnTypesAfterCsvEdit,
   type FrameValue,
 } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
@@ -161,6 +162,39 @@ describe("getColumn", () => {
 });
 
 // ─── frameFromCells ───────────────────────────────────────────────────────────
+
+describe("columnTypesAfterCsvEdit", () => {
+  const ledger = [
+    ["2026-08-03", "Cabinets", "1170", "TRUE"],
+    ["2026-08-05", "Appliances", "895", "FALSE"],
+  ];
+  it("a blank frame takes every column's type from its cells", () => {
+    expect(columnTypesAfterCsvEdit(["string"], 0, ledger)).toEqual(["date", "string", "number", "logical"]);
+  });
+  it("columns before `from` keep their types, even over cells that read otherwise", () => {
+    expect(columnTypesAfterCsvEdit(["string", "number"], 2, ledger)).toEqual(["string", "number", "number", "logical"]);
+  });
+  it("an added column with no values reads as text", () => {
+    expect(columnTypesAfterCsvEdit(["number"], 1, [["1", ""], ["2", " "]])).toEqual(["number", "string"]);
+  });
+  it("fewer columns than types drops nothing", () => {
+    expect(columnTypesAfterCsvEdit(["number", "string", "date"], 3, [["1"]])).toEqual(["number", "string", "date"]);
+    expect(columnTypesAfterCsvEdit(["number", "string"], 0, [])).toEqual(["number", "string"]);
+  });
+  it("a column with no type of its own is read too, so the result has no holes", () => {
+    const out = columnTypesAfterCsvEdit(["number"], 3, [["1", "a", "2026-01-02"]]);
+    expect(out).toEqual(["number", "string", "date"]);
+    expect(out.every((t) => t !== undefined)).toBe(true);
+  });
+  it("text a Number column can't read stays text", () => {
+    expect(columnTypesAfterCsvEdit([], 0, [["5 km", "$1,170", "12%"]])).toEqual(["string", "string", "string"]);
+  });
+  it("leaves the given types untouched", () => {
+    const types = ["string"] as const;
+    columnTypesAfterCsvEdit(types, 0, ledger);
+    expect(types).toEqual(["string"]);
+  });
+});
 
 describe("frameFromCells", () => {
   it("produces the right column count and names", () => {

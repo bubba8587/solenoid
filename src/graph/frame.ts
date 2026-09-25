@@ -366,6 +366,20 @@ export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameC
   return { name, type: "string", values: read((c) => String(c).trim()), raw };
 }
 
+/** From column `from` on, and for any column with no type of its own, each column the rows reach takes the type its cells read as; the others keep theirs. */
+export function columnTypesAfterCsvEdit(
+  types: ReadonlyArray<FrameColType>,
+  from: number,
+  rows: ReadonlyArray<ReadonlyArray<string>>,
+): FrameColType[] {
+  const out = types.slice();
+  const width = rows.reduce((m, r) => Math.max(m, r.length), 0);
+  for (let j = Math.max(0, Math.min(from, out.length)); j < width; j++) {
+    out[j] = inferColumn("", rows.map((r) => r[j] ?? "")).type;
+  }
+  return out;
+}
+
 export function frameFromCells(headers: ReadonlyArray<string>, rows: ReadonlyArray<ReadonlyArray<unknown>>): FrameValue {
   const ncols = Math.max(headers.length, rows.reduce((m, r) => Math.max(m, r.length), 0));
   const names = makeHeaders(headers, ncols);
