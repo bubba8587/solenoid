@@ -291,7 +291,7 @@ export const SCENES = {
         ],
         connections: [wire("price", "value", "eq", "price"), wire("cost", "value", "eq", "cost"), wire("fixed", "value", "eq", "fixed"), wire("units", "value", "eq", "units")],
       }, "Break-even");
-      await c.frame(["Target profit", "Unit cost", "Break-even"], { pad: 0.07, maxK: 1.2, dx: 150, dy: 10 });
+      await c.frame(["Target profit", "Unit cost", "Break-even"], { pad: 0.07, maxK: 1.0, dx: 230, dy: 20 });
       const p = await c.toScreen(260, 600);
       await c.hand.show(p.x, p.y);
     },

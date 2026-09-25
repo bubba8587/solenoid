@@ -149,7 +149,7 @@ export const ROUNDTRIP = {
     async setup({ sol, obs }) {
       await sol.legend(false);
       await sol.example("chart-showcase");
-      await sol.frame(["Heatmap", "Series frame", "Treemap", "Sankey"], { pad: 0.02, maxK: 0.5 });
+      await sol.frame(["Treemap", "Sankey"], { pad: 0.04, maxK: 1.1 });
       await closeOtherWindows(obs);
       await obs.obs(async () => { await window.app.plugins.plugins["solenoid-properties"].setLook(true); });
       await openNote(obs, "Solenoid/Property types.md");
@@ -243,7 +243,7 @@ export const ROUNDTRIP = {
     async setup({ sol, obs }) {
       await sol.legend(false);
       await sol.doc(costsGraph(false), DOC);
-      await sol.frame(["Kitchen remodel"], { pad: 0.06, maxK: 1.9 });
+      await sol.frame(["Kitchen remodel"], { pad: 0.06, maxK: 1.9, dy: 90 });
       await sol.box(await sol.socketRow("Kitchen remodel", "costs", "out"), 4);
       await closeOtherWindows(obs);
       await openNote(obs, NOTE);
@@ -261,7 +261,7 @@ export const ROUNDTRIP = {
       await c.legend(false);
       const current = await c.demo(async () => (await import("/src/graph/documentStore.ts")).documentStore.currentName());
       if (current !== DOC) await c.doc(costsGraph(false), DOC);
-      await c.frame(["Kitchen remodel"], { pad: 0.06, maxK: 1.9 });
+      await c.frame(["Kitchen remodel"], { pad: 0.06, maxK: 1.9, dy: 90 });
       await c.box(await c.socketRow("Kitchen remodel", "costs", "out"), 4);
     },
     async act(c) {
