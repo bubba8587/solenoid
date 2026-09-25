@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import * as FX from "@formulajs/formulajs";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { isSolError } from "../../src/graph/errorValue";
+import { GCDNode } from "../../src/graph/nodes/scalar";
 
 // ─── Formula-engine divergence re-sweep (periodic, author-flagged 2026-06-25) ────
 // The 2026-06-25 consolidation compared every formula-reachable function (our impl
@@ -128,6 +129,28 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
   it("FX still answers 0 below the data", () => {
     expect(FX.PERCENTRANK.INC([1, 2, 3, 4], 0)).toBe(0);
     expect(FX.PERCENTRANK.EXC([1, 2, 3, 4], 0)).toBe(0);
+  });
+});
+
+describe("GCD and LCM truncate each value; a negative one is #DOMAIN! (Excel)", () => {
+  const code = (v: unknown) => (v as { code?: string }).code;
+  it("our answers", () => {
+    expect(call("GCD", 4.5, 6.9)).toBe(2);
+    expect(call("GCD", [12, 18, 24.7])).toBe(6);
+    expect(call("LCM", 4.5, 6)).toBe(12);
+    expect(call("LCM", [12, 18, 24.7])).toBe(72);
+    expect(call("LCM", 0, 6)).toBe(0);
+    expect(code(call("GCD", -4, 6))).toBe("#DOMAIN!");
+    expect(code(call("LCM", 2 ** 53, 3))).toBe("#DOMAIN!");
+  });
+  it("the GCD card answers the same, pair by pair", () => {
+    expect(new GCDNode({ op: "gcd" }).data({ a: [[4.5, 24.9]], b: [[6.9, 36]] }).result).toEqual([2, 12]);
+    expect(code((new GCDNode({ op: "lcm" }).data({ a: [[-4]], b: [[6]] }).result as unknown[])[0])).toBe("#DOMAIN!");
+  });
+  it("FX still runs on the raw decimals and takes negatives", () => {
+    expect(FX.GCD(4.5, 6.9)).not.toBe(2);
+    expect(FX.LCM(4.5, 6)).toBe(27);
+    expect(FX.GCD(-4, 6)).toBe(2);
   });
 });
 

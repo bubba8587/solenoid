@@ -1,7 +1,7 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
-import { lnGamma, roundDigits } from "./mathUtils";
+import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import { guardFinite, powerOf } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
@@ -615,17 +615,7 @@ export class GCDNode extends ClassicPreset.Node {
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
     const b = readInput(inputs.b, this.literals.b);
-    const result = broadcast((x, y) => {
-      let p = Math.abs(Math.round(x));
-      let q = Math.abs(Math.round(y));
-      while (q) { [p, q] = [q, p % q]; }
-      const gcd = p;
-      if (this.op === "lcm") {
-        const product = Math.abs(Math.round(x) * Math.round(y));
-        return gcd === 0 ? 0 : product / gcd;
-      }
-      return gcd;
-    }, a, b);
+    const result = broadcastErr((x, y) => gcdLcm(this.op, [x, y]), a, b);
     this.cachedResult = result;
     return { result };
   }

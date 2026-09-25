@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -478,6 +478,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MOD:         { returns: "number", arity: [2, 2], family: "scalar-math" },
   POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
+  GCD:         { returns: "number", arity: [1, 255], family: "scalar-math" },
+  LCM:         { returns: "number", arity: [1, 255], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   CONVERT:     { returns: "number", arity: [3, 3], family: "scalar-math" },
   "T.DIST":       { returns: "number", arity: [3, 3], family: "statistics" },
@@ -894,6 +896,8 @@ const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
 ];
 for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
+registerInternal("GCD", (...a) => gcdLcm("gcd", numsOf(...a)));
+registerInternal("LCM", (...a) => gcdLcm("lcm", numsOf(...a)));
 for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {
   registerInternal(name, (...a) => {
     const cells: unknown[] = a.flat(Infinity);

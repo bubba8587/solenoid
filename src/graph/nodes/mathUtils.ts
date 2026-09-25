@@ -199,6 +199,23 @@ export function lnFactorial(n: number): number {
   return lnGamma(n + 1);
 }
 
+/** Excel's GCD and LCM: each value truncated; a negative value, or a value or an LCM at 2^53 or more, is #DOMAIN!. */
+export function gcdLcm(op: "gcd" | "lcm", values: readonly number[]): number | SolError {
+  const name = op.toUpperCase();
+  if (values.length === 0) return solError("#VALUE!", `${name} needs at least one number`);
+  let acc = op === "gcd" ? 0 : 1;
+  for (const v of values) {
+    const n = Math.trunc(v);
+    if (!(n >= 0)) return solError("#DOMAIN!", `${name} needs values of 0 or more`);
+    if (n >= 2 ** 53) return solError("#DOMAIN!", `${name} needs values below 2^53`);
+    let a = acc, b = n;
+    while (b) [a, b] = [b, a % b];
+    acc = op === "gcd" ? a : a === 0 ? 0 : (acc / a) * n;
+    if (acc >= 2 ** 53) return solError("#DOMAIN!", "LCM is 2^53 or more");
+  }
+  return acc;
+}
+
 export function lnCombin(n: number, k: number): number {
   if (k < 0 || k > n) return -Infinity;
   return lnFactorial(n) - lnFactorial(k) - lnFactorial(n - k);

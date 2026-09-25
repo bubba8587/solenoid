@@ -23,6 +23,7 @@ Without the tripwire, a vendor update that fixes or changes a function passes si
 - **ROUNDUP, ROUNDDOWN**: Formula.js scales and rounds the raw binary value, so `ROUNDUP(0.1+0.2, 1)` is 0.4 where Excel answers 0.3. All three rounding names run `roundDigits`, the ROUND card's kernel, which reads the scaled value at 15 significant digits and truncates a fractional digits count.
 - **POWER(0, 0)** is 1, the answer of `^` and the Arithmetic card ([[B16]] oneFormulaSurface); Formula.js answers `#NUM!`.
 - **ATAN2**: Excel's `ATAN2(x, y)` is `atan2(y, x)`, x first. Formula.js computes `atan2(x, y)`.
+- **GCD, LCM** run `gcdLcm` (`mathUtils.ts`), the GCD card's kernel: each value is truncated, as in Excel, and a negative value, or a value or an LCM at 2^53 or more, is `#DOMAIN!`. Formula.js runs Euclid's algorithm on the raw decimals, so `GCD(4.5, 6.9)` is about 1.8e-15 and `LCM(4.5, 6)` is 27, and it takes negatives. The card, which read each pair after rounding, reads it the same way now.
 - **LN, LOG10, SQRTPI, ASIN, ACOS, ACOSH, ATANH** outside their domain answer `#DOMAIN!` ("Input is outside this function's domain"). Formula.js silently returns null for some of them.
 
 These match the Math node's own compute.
