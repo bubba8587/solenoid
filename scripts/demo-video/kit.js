@@ -186,16 +186,16 @@
   const svgHand = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24"><path d="M9.2 3.2c.9 0 1.6.7 1.6 1.6v5.4l.3-.1V8.6c0-.9.7-1.5 1.5-1.5s1.5.7 1.5 1.5v1.7l.2-.1c.1-.8.7-1.3 1.5-1.3.8 0 1.5.7 1.5 1.5v1.3c.2-.7.8-1.1 1.4-1.1.8 0 1.5.7 1.5 1.5v4.5c0 3.3-2.4 5.9-5.8 5.9h-1.7c-2 0-3.3-.8-4.5-2.3l-3.4-4.3c-.5-.7-.4-1.6.3-2.1.6-.5 1.5-.4 2 .2l1.1 1.3V4.8c0-.9.7-1.6 1.6-1.6z" fill="#fff" stroke="#111" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
   const svgBeam = `<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24"><g fill="none" stroke-linecap="round"><path d="M8.5 3.5h2.2c.6 0 1 .3 1.3.7.3-.4.7-.7 1.3-.7h2.2M12 4.5v15M8.5 20.5h2.2c.6 0 1-.3 1.3-.7.3.4.7.7 1.3.7h2.2" stroke="#111" stroke-width="3.2"/><path d="M8.5 3.5h2.2c.6 0 1 .3 1.3.7.3-.4.7-.7 1.3-.7h2.2M12 4.5v15M8.5 20.5h2.2c.6 0 1-.3 1.3-.7.3.4.7.7 1.3.7h2.2" stroke="#fff" stroke-width="1.4"/></g></svg>`;
   const SHAPES = { arrow: [svgArrow, 3.8, 2.4], hand: [svgHand, 10.3, 3.8], beam: [svgBeam, 13, 13] };
-  let cursorEl, ringLayer, keyEl, shape = "", cx = -100, cy = -100, shown = false;
+  let cursorEl, ringLayer, keyEl, shape = "", cx = -100, cy = -100, shown = false, ptScale = 1;
   function ensureOverlay() {
     if (cursorEl?.isConnected) return;
     const st = document.createElement("style");
     st.textContent = `
-      #__demo-cursor{position:fixed;left:0;top:0;width:26px;height:26px;z-index:2147483647;pointer-events:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));transition:opacity .3s}
+      #__demo-cursor{position:fixed;left:0;top:0;width:26px;height:26px;z-index:2147483647;pointer-events:none;transform-origin:0 0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));transition:opacity .3s}
       #__demo-rings{position:fixed;inset:0;z-index:2147483646;pointer-events:none}
-      .__demo-ring{position:fixed;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:2px solid rgba(255,255,255,.85);animation:__demoRing .5s ease-out forwards}
+      .__demo-ring{position:fixed;width:calc(34px * var(--demo-scale, 1));height:calc(34px * var(--demo-scale, 1));margin:calc(-17px * var(--demo-scale, 1)) 0 0 calc(-17px * var(--demo-scale, 1));border-radius:50%;border:2px solid rgba(255,255,255,.85);animation:__demoRing .5s ease-out forwards}
       @keyframes __demoRing{from{transform:scale(.3);opacity:.9}to{transform:scale(1.15);opacity:0}}
-      #__demo-keys{position:fixed;left:62%;bottom:72px;transform:translateX(-50%);z-index:2147483645;pointer-events:none;display:flex;gap:8px;opacity:0;transition:opacity .2s}
+      #__demo-keys{position:fixed;left:62%;bottom:72px;transform:translateX(-50%);zoom:var(--demo-scale, 1);z-index:2147483645;pointer-events:none;display:flex;gap:8px;opacity:0;transition:opacity .2s}
       #__demo-keys.on{opacity:1}
       .__demo-box{position:fixed;z-index:2147483644;pointer-events:none;border:2.5px solid #f5b914;border-radius:9px;box-shadow:0 0 0 4px rgba(245,185,20,.16),0 0 20px rgba(245,185,20,.38);animation:__demoBoxIn .38s cubic-bezier(.2,.8,.2,1) forwards;transition:opacity .3s}
       @keyframes __demoBoxIn{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:scale(1)}}
@@ -216,7 +216,7 @@
   }
   function place() {
     const [, hx, hy] = SHAPES[shape] ?? SHAPES.arrow;
-    cursorEl.style.transform = `translate(${cx - hx}px, ${cy - hy}px)`;
+    cursorEl.style.transform = `translate(${cx - hx * ptScale}px, ${cy - hy * ptScale}px) scale(${ptScale})`;
     cursorEl.style.opacity = shown ? "1" : "0";
   }
   let dragging = false;
@@ -254,6 +254,8 @@
     keyTimer = setTimeout(() => keyEl.classList.remove("on"), ms);
   }
   function cursor(on) { shown = on; ensureOverlay(); place(); }
+  // A window filmed at a smaller device scale than its neighbour draws its pointer and keycaps larger to match.
+  function overlayScale(s) { ptScale = s; ensureOverlay(); document.documentElement.style.setProperty("--demo-scale", String(s)); place(); }
   // Callout boxes around a viewport rect; they hold until cleared, so the camera stays put while one shows.
   function box(r, pad = 6) {
     ensureOverlay();
@@ -266,5 +268,5 @@
     for (const el of document.querySelectorAll(".__demo-box")) { el.style.opacity = "0"; setTimeout(() => el.remove(), 320); }
   }
 
-  window.__demo = { mods, view, editor, nodes, byLabel, bounds, camera, setCamera, cameraFor, fly, drift, toScreen, nodeRect, handle, find, within, showKeys, cursor, box, clearBoxes, socketRow, cableMid, row, chip };
+  window.__demo = { mods, view, editor, nodes, byLabel, bounds, camera, setCamera, cameraFor, fly, drift, toScreen, nodeRect, handle, find, within, showKeys, cursor, overlayScale, box, clearBoxes, socketRow, cableMid, row, chip };
 })();

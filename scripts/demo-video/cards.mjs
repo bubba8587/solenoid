@@ -27,7 +27,7 @@ export const captionHtml = ([title, body]) => `${HEAD}<style>
 .cap__body { font-size: 17px; line-height: 1.35; text-wrap-style: balance; }
 </style><div class="cap"><div class="cap__title">${esc(title)}</div><div class="cap__body">${esc(body)}</div></div>`;
 
-export const introMarkHtml = () => `${HEAD}<div class="center" style="top:250px"><div class="mark" style="width:560px;height:104px"></div></div>`;
+export const introMarkHtml = (eyebrow) => `${HEAD}${eyebrow ? `<div class="center" style="top:208px;font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#b8bdc3">${esc(eyebrow)}</div>` : ""}<div class="center" style="top:250px"><div class="mark" style="width:560px;height:104px"></div></div>`;
 export const introLineHtml = (line) => `${HEAD}<div class="center" style="top:388px;font-size:27px;font-weight:500">${esc(line)}</div>`;
 
 export const outroHtml = ({ lead, sub, url }) => `${HEAD}
@@ -40,3 +40,10 @@ export const outroHtml = ({ lead, sub, url }) => `${HEAD}
 export const panelLabelsHtml = (labels, at) => `${HEAD}<style>
 .lab { position: absolute; font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #b8bdc3; }
 </style>${labels.map((l, i) => `<div class="lab" style="left:${at.x[i]}px;top:${at.y}px">${esc(l)}</div>`).join("")}`;
+
+// The fast-forward badge over a sped-up span of a scene: two chevrons and the rate, in the caption's chrome.
+export const fastBadgeHtml = (rate) => `${HEAD}<style>
+.ff { position: absolute; left: 24px; top: 70px; display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 10px;
+  background: #1e1e1e; border: 2px solid #6b6e72; border-radius: 999px; box-shadow: 0 4px 14px rgba(0,0,0,.45);
+  font-weight: 600; font-size: 15px; color: #f5b914; letter-spacing: .02em; }
+</style><div class="ff"><svg width="18" height="12" viewBox="0 0 18 12"><path d="M1 1l7 5-7 5zM9 1l7 5-7 5z" fill="#f5b914"/></svg>${rate}×</div>`;

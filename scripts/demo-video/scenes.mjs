@@ -1,10 +1,11 @@
 // [[B3]] sameNodeEverywhere
 // Each scene builds a real document off camera (save-format JSON or a shipped example), then acts on camera.
-// Captions follow DESIGN.md § Voice; compose.mjs's ORDER is the running order.
+// Captions follow DESIGN.md § Voice; cuts.mjs holds each cut's running order.
 import fs from "node:fs";
 import path from "node:path";
 import { ROOT } from "./rig.mjs";
 import { ROUNDTRIP } from "./roundtrip.mjs";
+import { PLUGIN } from "./plugin.mjs";
 
 const num = (id, label, value, x, y) => ({ id, type: "NumberInputNode", x, y, init: { label, value } });
 const fc = (id, host, key, unit, x, y, extra = {}) => ({
@@ -387,4 +388,5 @@ export const SCENES = {
   },
 
   ...ROUNDTRIP,
+  ...PLUGIN,
 };

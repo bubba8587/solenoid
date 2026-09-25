@@ -50,6 +50,53 @@ export async function launch(url) {
   return { browser, page, profile };
 }
 
+/** Solenoid as a real window on the rig's X display, filmed whole beside Obsidian. `bounds` are in CSS px at `scale`. */
+export async function launchWindow(url, { display, bounds, scale = VIEW.scale }) {
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "solenoid-demo-"));
+  const browser = await puppeteer.launch({
+    executablePath: browserPath(),
+    headless: false,
+    userDataDir: profile,
+    env: { ...process.env, DISPLAY: display },
+    // No automation infobar, and no extra about:blank tab window beside the app window.
+    ignoreDefaultArgs: ["--enable-automation", "about:blank"],
+    args: [
+      `--app=${url}`,
+      `--window-position=${bounds.x},${bounds.y}`,
+      `--window-size=${bounds.width},${bounds.height}`,
+      `--force-device-scale-factor=${scale}`,
+      "--test-type", // no "unsupported command-line flag" bar for --no-sandbox
+      "--force-color-profile=srgb",
+      "--hide-scrollbars",
+      "--mute-audio",
+      "--font-render-hinting=none",
+      "--no-first-run",
+      "--no-default-browser-check",
+      ...(process.env.NO_SANDBOX ? ["--no-sandbox"] : []),
+    ],
+    defaultViewport: null,
+  });
+  let page;
+  for (let i = 0; i < 80 && !page; i++) {
+    page = (await browser.pages()).find((p) => p.url().startsWith(url));
+    if (!page) await sleep(250);
+  }
+  if (!page) throw new Error(`no app window for ${url}`);
+  page.on("pageerror", (e) => console.log("  pageerror:", e.message.slice(0, 160)));
+  // The app window loads before a script can be registered, so the recorder's settings go in and the page reloads.
+  await page.waitForSelector(".react-flow__renderer", { timeout: 180000 });
+  await page.evaluate(() => {
+    localStorage.setItem("solenoid.cableShape", "spline");
+    localStorage.setItem("solenoid.cableFlow", "1");
+    localStorage.setItem("solenoid.settings", JSON.stringify({ minimapPosition: "hide" }));
+  });
+  await page.reload({ waitUntil: "networkidle2", timeout: 180000 });
+  await page.waitForSelector(".react-flow__renderer", { timeout: 60000 });
+  await sleep(2500);
+  await injectKit(page);
+  return { browser, page, profile };
+}
+
 export async function injectKit(page) {
   await injectCursor(page);
   await page.evaluate(() => window.__demo.mods());

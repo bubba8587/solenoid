@@ -52,7 +52,7 @@ function costsGraph(wired) {
 }
 
 /** Center of the first visible element matching sel (and text, when given), searching shadow roots too. */
-function rectIn(page, sel, text) {
+export function rectIn(page, sel, text) {
   return page.evaluate((sel, text) => {
     const roots = [document, ...[...document.querySelectorAll("*")].filter((e) => e.shadowRoot).map((e) => e.shadowRoot)];
     for (const root of roots) {
@@ -68,29 +68,32 @@ function rectIn(page, sel, text) {
     return null;
   }, sel, text);
 }
-async function need(page, sel, text) {
+export async function need(page, sel, text) {
   const r = await rectIn(page, sel, text);
   if (!r) throw new Error(`no ${sel}${text ? ` "${text}"` : ""} in ${await page.title()}`);
   return r;
 }
 
-async function openNote(c, file) {
-  await c.obs(async (f) => {
+/** Opens a note in live preview, or in reading view with `reading`, scrolled to the top. */
+export async function openNote(c, file, { reading = false } = {}) {
+  await c.obs(async (f, r) => {
     const app = window.app;
     const tf = app.vault.getAbstractFileByPath(f);
     const leaf = app.workspace.getLeaf(false);
-    await leaf.openFile(tf, { state: { mode: "source", source: false } });
+    await leaf.openFile(tf, { state: r ? { mode: "preview" } : { mode: "source", source: false } });
     // A note first drawn right after the plugin loads can miss its chips; one rebuild draws them.
     await leaf.rebuildView();
-    app.workspace.getLeavesOfType("file-explorer")[0]?.view.revealInFolder(tf);
+    // A collapsed sidebar defers its views, so the explorer may have nothing to reveal with.
+    app.workspace.getLeavesOfType("file-explorer")[0]?.view.revealInFolder?.(tf);
     leaf.view.editor?.scrollTo(0, 0);
+    leaf.view.previewMode?.applyScroll?.(0);
     document.activeElement?.blur?.();
-  }, file);
+  }, file, reading);
   await c.sleep(900);
 }
 
 /** Closes every window but the main one, such as a Settings an earlier take left open. */
-async function closeOtherWindows(c) {
+export async function closeOtherWindows(c) {
   for (const p of await c.browser.pages()) if (p !== c.page) await p.evaluate(() => window.close()).catch(() => {});
   await c.sleep(400);
 }
@@ -98,6 +101,7 @@ async function closeOtherWindows(c) {
 export const ROUNDTRIP = {
   "obs-look": {
     app: "obsidian",
+    fresh: true,
     caption: ["Solenoid Properties for Obsidian", "A free plugin brings Solenoid's value types and table editors to your notes. The look is optional and uses the app's palettes."],
     async setup(c) {
       await closeOtherWindows(c);

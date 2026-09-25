@@ -22,6 +22,8 @@
     "grid": "solenoid-table",
     "purchases": "solenoid-frame",
     "budget": "number",
-    "phases": "solenoid-cube"
+    "phases": "solenoid-cube",
+    "q3": "solenoid-frame",
+    "roster": "solenoid-frame"
   }
 }

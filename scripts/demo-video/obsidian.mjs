@@ -80,6 +80,33 @@ export async function obsidianUp() {
   return { browser, page };
 }
 
+/** Where the main window sits, in CSS px at the video's scale: the whole screen by default, or the left share of a
+ *  split scene. `top` raises it over a Solenoid window that shares the display. */
+export async function placeWindow(page, { x = 0, y = 0, width = VIEW.width, height = VIEW.height, top = false } = {}) {
+  await page.evaluate((b, raise) => {
+    const w = window.electron.remote.getCurrentWindow();
+    w.setBounds(b);
+    if (raise) w.moveTop();
+  }, { x, y, width, height }, top);
+  await sleep(500);
+}
+
+/** Obsidian down to the note: both sidebars collapsed, no ribbon, no status bar. */
+export async function noteOnly(page) {
+  await page.evaluate(() => {
+    const app = window.app;
+    app.workspace.leftSplit.collapse();
+    app.workspace.rightSplit.collapse();
+    app.vault.setConfig("showRibbon", false);
+    if (!document.getElementById("__demo-quiet")) {
+      const st = Object.assign(document.createElement("style"), { id: "__demo-quiet" });
+      st.textContent = ".status-bar { display: none !important; }";
+      document.head.appendChild(st);
+    }
+  });
+  await sleep(300);
+}
+
 /** The window whose title matches, once it has opened. */
 export async function obsidianWindow(browser, title, timeout = 8000) {
   const t0 = Date.now();
@@ -127,7 +154,9 @@ export class ScreenRecorder {
     this.lead = 0;
   }
   /** The act starts here: everything before it is cut. */
-  begin() { this.lead = Date.now() / 1000 - this.t0; }
+  begin() { this.lead = Date.now() / 1000 - this.t0; this.marks = {}; }
+  /** A timed note for compose.mjs, as `Recorder.at` writes one: a zoom's target rect in screen px. */
+  at(name, data) { this.marks[name] = { t: Date.now() / 1000 - this.t0 - this.lead, ...data }; }
   async stop() {
     const t1 = Date.now() / 1000;
     const done = new Promise((r) => this.proc.on("exit", r));
@@ -140,7 +169,7 @@ export class ScreenRecorder {
     ], { stdio: "inherit" });
     if (r.status !== 0) throw new Error(`ffmpeg failed trimming ${this.raw}`);
     fs.rmSync(this.raw, { force: true });
-    return { duration };
+    return { duration, marks: this.marks };
   }
 }
 
