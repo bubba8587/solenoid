@@ -46,7 +46,7 @@ follows the app.
    -frames:v 1 f.png` at the moments that matter (before and after each action, mid-flight), then read the
    tiles. Check `.dev/video/segments/*.mp4` too: they carry the captions, so collisions show there.
 
-The video and all intermediates live in `.dev/video/` (gitignored). Deliver the mp4s and the poster by hand.
+The video and all intermediates live in `.dev/video/` (gitignored). The author keeps a cut by committing `solenoid-demo.mp4` and the poster to `assets/video/` (about 25 MB a version, forever in history, so only the cuts worth keeping).
 
 ## How the capture works (don't relearn these)
 
@@ -117,7 +117,7 @@ state it needs is missing.
   `c.node(label)`. A box is page chrome, so hold the camera still while one shows.
 - **Zoom in post** on chrome the camera can't reach (the Report drawer is DOM, not canvas):
   `rec.at("zoom", {x, y, w, h})` in device px, then `rec.at("unzoom")`. Compose eases a crop-and-scale in and out
-  over 0.7 s, at most 2.2×. It upscales 1080p, so keep it short.
+  over 0.7 s with `zoompan`, at most 2.2×. It upscales 1080p, so keep it short. (`scale` with `eval=frame` into `crop` fails: crop keeps its first frame size and pins the window top-left.)
 - **Stills scenes** (`app: "both"`, e.g. `palettes`, `import-pair`): `setup({ sol, obs, sleep })` once, then per
   entry in `states` `apply(ctx, state)`, and the recorder takes a Solenoid screenshot and an Obsidian screen grab.
   Compose puts them side by side (`panels: ["obs", "sol"]` flips the order), labels them, crossfades the states and

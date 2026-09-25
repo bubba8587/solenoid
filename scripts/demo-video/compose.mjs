@@ -27,6 +27,7 @@ const OUTRO_S = 5.6;
 const clips = path.join(OUT, "clips");
 const cards = path.join(OUT, "cards");
 const segs = path.join(OUT, "segments");
+fs.rmSync(segs, { recursive: true, force: true }); // a scene dropped from ORDER leaves no stale segment
 for (const d of [cards, segs]) fs.mkdirSync(d, { recursive: true });
 
 function ff(args) {
@@ -114,11 +115,11 @@ function zoomFilter(name) {
   const marks = JSON.parse(fs.readFileSync(path.join(clips, `${name}.json`), "utf8")).marks ?? {};
   if (!marks.zoom) return "";
   const { t: t0, x, y, w, h } = marks.zoom, t1 = marks.unzoom?.t ?? 1e9;
-  const Z = Math.min(1920 / w, 1080 / h, 2.2), cx = x + w / 2, cy = y + h / 2;
-  const u = `if(lt(t,${t0}),0,if(lt(t,${t0 + ZOOM_S}),(t-${t0})/${ZOOM_S},if(lt(t,${t1}),1,if(lt(t,${t1 + ZOOM_S}),1-(t-${t1})/${ZOOM_S},0))))`;
-  const z = `(1+${(Z - 1).toFixed(4)}*(0.5-0.5*cos(PI*${u})))`;
-  return `scale=w='trunc(1920*${z}/2)*2':h='trunc(1080*${z}/2)*2':eval=frame,` +
-    `crop=1920:1080:x='max(0,min(iw-1920,${cx}*iw/1920-960))':y='max(0,min(ih-1080,${cy}*ih/1080-540))',`;
+  const Z = Math.min(1920 / w, 1080 / h, 2.2), cx = (x + w / 2) * 2, cy = (y + h / 2) * 2;
+  const u = `if(lt(it,${t0}),0,if(lt(it,${t0 + ZOOM_S}),(it-${t0})/${ZOOM_S},if(lt(it,${t1}),1,if(lt(it,${t1 + ZOOM_S}),1-(it-${t1})/${ZOOM_S},0))))`;
+  // zoompan snaps its window to whole input pixels: doubling the frame first halves that step.
+  return `scale=3840:2160:flags=lanczos,zoompan=z='1+${(Z - 1).toFixed(4)}*(0.5-0.5*cos(PI*${u}))':d=1:s=1920x1080:fps=${FPS}:` +
+    `x='max(0,min(iw-iw/zoom,${cx}-iw/zoom/2))':y='max(0,min(ih-ih/zoom,${cy}-ih/zoom/2))',`;
 }
 
 ORDER.forEach((name, i) => {
