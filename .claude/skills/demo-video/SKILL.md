@@ -12,13 +12,13 @@ follows the app.
 | File | Job |
 |---|---|
 | `scenes.mjs` | The Solenoid scenes: each `setup` builds a document off camera, `act` performs on camera; `caption` is `[title, sentence]` |
-| `roundtrip.mjs` | The Obsidian round trip: the plugin's look, a Frame property, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
+| `roundtrip.mjs` | The Obsidian round trip: the plugin's look, palettes side by side with the app, a Frame property, the imported note side by side, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
 | `record.mjs` | Runs scenes (all, or those named) into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig, `app: "both"` stills scenes on both |
 | `rig.mjs` | Chromium launch, CDP screencast capture, frame-timestamp encoding, the scripted hand (move, click, drag, type, keys) |
 | `obsidian.mjs` | The Obsidian rig: fresh demo-vault copy, Obsidian on its own Xvfb display, whole-screen recorder, the vault bridge for Solenoid |
 | `kit.js` | Page side: camera flights over the live editor, node, socket and cable lookup, card spacing (`row`), callout boxes, the painted pointer, click ring and keycaps |
 | `cards.mjs` | Captions and title-card text as HTML in the app's fonts and palette |
-| `compose.mjs` | Overlays, crossfades, soundtrack → `.dev/video/solenoid-demo.mp4` and `-silent.mp4` (`ORDER` is the running order) |
+| `compose.mjs` | Overlays, crossfades, post zooms, soundtrack → `.dev/video/solenoid-demo.mp4`, `-silent.mp4` and `-poster.png` (`ORDER` is the running order) |
 | `music.mjs` | The soundtrack, synthesized: D major pad, bass, soft arpeggio, Freeverb |
 | `data/` | The scenes' datasets: `kitchen-costs.csv` (the 40-row ledger pasted in Obsidian), `orders.csv`; the charts scene reads `demo-vault/Data/transactions.csv` |
 
@@ -46,7 +46,9 @@ follows the app.
    -frames:v 1 f.png` at the moments that matter (before and after each action, mid-flight), then read the
    tiles. Check `.dev/video/segments/*.mp4` too: they carry the captions, so collisions show there.
 
-The video and all intermediates live in `.dev/video/` (gitignored). The author keeps a cut by committing `solenoid-demo.mp4` and the poster to `assets/video/` (about 25 MB a version, forever in history, so only the cuts worth keeping).
+Every render and its intermediates land in `.dev/video/` (gitignored). A cut worth keeping is copied to `assets/video/`
+(`solenoid-demo.mp4` and its poster) and committed: about 25 MB a version, in git history for good, so only on the
+author's word.
 
 ## How the capture works (don't relearn these)
 
@@ -108,16 +110,17 @@ state it needs is missing.
 - 7–12 s a scene: about 1 s before the first action, 1.5–2 s after the last change so the caption reads.
 - Prefer one clear interaction per scene (an edit, a drag, a slider, a slicer chip) that visibly changes something
   downstream. A slider makes the best motion: `slide(c, label, fraction, ms)`.
-- Keep chart values readable; axis ticks are compact (`180K`) since 2026-09-25.
-
+- Keep chart values readable; axis ticks are compact (`180K`).
 - **Space the cards**: `c.row(labels, gap)` lays cards left to right at a CSS-px gap (moves them with
   `view.moveNode`); seeds and `c.doc` graphs start crowded or overlapping otherwise.
 - **Point at the change**: `c.box(labelOrRect, pad)` draws a gold outline in the page; `c.clearBoxes()` removes
   them all. Useful targets: `c.socketRow(label, key, side)`, `c.chip(label)` (a card's `[40×3 Frame]` chip),
   `c.node(label)`. A box is page chrome, so hold the camera still while one shows.
 - **Zoom in post** on chrome the camera can't reach (the Report drawer is DOM, not canvas):
-  `rec.at("zoom", {x, y, w, h})` in device px, then `rec.at("unzoom")`. Compose eases a crop-and-scale in and out
-  over 0.7 s with `zoompan`, at most 2.2×. It upscales 1080p, so keep it short. (`scale` with `eval=frame` into `crop` fails: crop keeps its first frame size and pins the window top-left.)
+  `rec.at("zoom", {x, y, w, h})` in device px, then `rec.at("unzoom")`. Compose eases in and back out over 0.7 s
+  each way with `zoompan` on a doubled frame (its window snaps to whole input pixels), at most 2.2×. It upscales
+  1080p, so keep it short. `scale` with `eval=frame` into `crop` doesn't work: crop keeps its first frame size and
+  pins the window top-left.
 - **Stills scenes** (`app: "both"`, e.g. `palettes`, `import-pair`): `setup({ sol, obs, sleep })` once, then per
   entry in `states` `apply(ctx, state)`, and the recorder takes a Solenoid screenshot and an Obsidian screen grab.
   Compose puts them side by side (`panels: ["obs", "sol"]` flips the order), labels them, crossfades the states and
@@ -135,8 +138,8 @@ state it needs is missing.
   import. Seed its `body` with the note's text (read from the vault) so the sockets exist up front.
 - A document named like an open one gets " 2" appended: a follow-on scene reuses the document instead
   (`documentStore.currentName()`).
-- Opening a Report crashed the app on develop until 5e5af11d. If a scene comes back with "Something threw
-  while rendering", read the stack in the still, fix the app on develop, and re-record.
+- A scene that comes back with "Something threw while rendering" found an app bug: read the stack in the still,
+  fix the app on develop, and re-record.
 - `record.mjs` talks to the page over CDP: awaiting a long app call (`paletteStore.setActiveBase`) across it
   fails with "Promise was collected". Fire it on a `setTimeout` in the page and sleep.
 - Obsidian draws a note's plugin-typed properties raw on the first render after the look turns on: `openNote`

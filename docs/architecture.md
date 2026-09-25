@@ -21,6 +21,8 @@ This file is the map.
 │                             #     suite lives at the mirrored path)
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
 ├── public/                   # Static assets served by Vite
+├── assets/                   # loose design sources and test inputs (logo, cube glyph, CSVs); video/ holds the
+│                             #     kept cut of the demo video and its poster (scripts/demo-video/)
 ├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus);
 │                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
 ├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):

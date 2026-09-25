@@ -150,6 +150,11 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
   demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's
   bridge + Plan vignettes — none maps to a single locked pass.
 
+## Demo video (`assets/video/`, the `demo-video` skill)
+
+- [ ] **Author review before publishing:** listen to the synthesized soundtrack (the agent checked it by numbers
+  only) and pick where the cut goes (landing page, README, release notes).
+
 ## DTE — decision provenance (`docs/dte.md`)
 
 The tree is the author's to ratify: 127 leaves, each a product call that follows from its parent; mechanics

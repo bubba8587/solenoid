@@ -10,10 +10,12 @@ specific item.
 
 - **The demo video is generated, not edited by hand:** `scripts/demo-video/` films the real app in headless Chromium
   and a real Obsidian running the Solenoid Properties plugin on a virtual display, then cuts it with ffmpeg: captions,
-  title cards, crossfades and a synthesized soundtrack. The Obsidian round trip is filmed live: the plugin's look
-  switched on, a 40-row Frame pasted into a new property, Import Obsidian Note, a Report written back with Write to
-  Obsidian, the note opened in Obsidian. Running and redoing it, and every mechanic that bit:
-  `.claude/skills/demo-video/SKILL.md`. The mp4s live in `.dev/video/` (gitignored).
+  title cards, crossfades, callout boxes, post zooms and a synthesized soundtrack. Obsidian scenes are filmed live
+  (the plugin's look switched on, a 40-row Frame pasted into a new property, the written note opened); side-by-side
+  scenes pair a Solenoid screenshot with an Obsidian grab per state (palettes and light mode, the imported note).
+  Running and redoing it, and every mechanic that bit: `.claude/skills/demo-video/SKILL.md`.
+- **The kept cut** is `assets/video/solenoid-demo.mp4` (2:27) with its poster; frame zero is the title card, also
+  embedded as cover art. Renders land in `.dev/video/` (gitignored).
 - **App fixes it found**, one commit each: opening a Report no longer takes the app down (a hook after an early
   return); chart value axes write compact ticks in a gutter that fits them; the vault cards gate on `hasFs()` like
   their nodes; Open in Obsidian on the Write card follows the write, not the shell; a frame's CSV edit types the
@@ -21,11 +23,9 @@ specific item.
   vault's showcase note no longer retypes every project's `budget` and `milestones` (its keys are `purchases` and
   `inspections`; the projects' `milestones` is a Frame); an Equation linear in an unknown that appears more than
   once (`p = n*25 - (f + n*10)`) solves it exactly instead of by bisection (`solveLinear`).
-- **Second cut:** palettes and light mode side by side with Obsidian, the Function Reference under the landing page's
-  name wall, a break-even Equation in place of the Triangle Solver, callout boxes and post zooms where a change was
-  hard to see, and a title-card first frame plus poster for previews.
-- **Open:** the Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is
-  shown rigorous). The outbox still lists A1, B1, B2, B3, B7.
+- **Open:** the author listens to the soundtrack and picks where the video is published (backlog, Demo video); the
+  Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is shown
+  rigorous). The outbox still lists A1, B1, B2, B3, B7.
 
 ### SESSION DIGEST (2026-09-25: formulas and aggregates at scale and at the edges; author asleep, one check-in)
 
