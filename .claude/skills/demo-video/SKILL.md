@@ -13,10 +13,10 @@ follows the app.
 |---|---|
 | `scenes.mjs` | The Solenoid scenes: each `setup` builds a document off camera, `act` performs on camera; `caption` is `[title, sentence]` |
 | `roundtrip.mjs` | The Obsidian round trip: the plugin's look, a Frame property, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
-| `record.mjs` | Runs scenes (all, or those named) into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig |
+| `record.mjs` | Runs scenes (all, or those named) into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig, `app: "both"` stills scenes on both |
 | `rig.mjs` | Chromium launch, CDP screencast capture, frame-timestamp encoding, the scripted hand (move, click, drag, type, keys) |
 | `obsidian.mjs` | The Obsidian rig: fresh demo-vault copy, Obsidian on its own Xvfb display, whole-screen recorder, the vault bridge for Solenoid |
-| `kit.js` | Page side: camera flights over the live editor, node and socket lookup, the painted pointer, click ring and keycaps |
+| `kit.js` | Page side: camera flights over the live editor, node, socket and cable lookup, card spacing (`row`), callout boxes, the painted pointer, click ring and keycaps |
 | `cards.mjs` | Captions and title-card text as HTML in the app's fonts and palette |
 | `compose.mjs` | Overlays, crossfades, soundtrack → `.dev/video/solenoid-demo.mp4` and `-silent.mp4` (`ORDER` is the running order) |
 | `music.mjs` | The soundtrack, synthesized: D major pad, bass, soft arpeggio, Freeverb |
@@ -46,7 +46,7 @@ follows the app.
    -frames:v 1 f.png` at the moments that matter (before and after each action, mid-flight), then read the
    tiles. Check `.dev/video/segments/*.mp4` too: they carry the captions, so collisions show there.
 
-The video and all intermediates live in `.dev/video/` (gitignored). Deliver the mp4s by hand.
+The video and all intermediates live in `.dev/video/` (gitignored). Deliver the mp4s and the poster by hand.
 
 ## How the capture works (don't relearn these)
 
@@ -98,7 +98,7 @@ state it needs is missing.
 - **Captions add what the footage can't show.** Never narrate what is on screen ("charts redraw as the data
   changes" was cut for that): name the feature, then give a fact the viewer can't see, such as what the colors
   mean, the verbs and chart types not shown, that the note stays plain YAML, that nothing writes until Run. Check
-  every claim against the catalog description (the Triangle Solver needs a side; three angles fail). Follow
+  every claim against the catalog description. Follow
   `DESIGN.md` § Voice: no em dashes, no slogans, no teased counts. Reuse the landing page's approved lines.
 - **Data inputs are extensive**: a Frame of about 40 rows, not 4, unless it would make a chart busy. Aggregate
   before charting (GROUPBY, then the chart).
@@ -110,11 +110,23 @@ state it needs is missing.
   downstream. A slider makes the best motion: `slide(c, label, fraction, ms)`.
 - Keep chart values readable; axis ticks are compact (`180K`) since 2026-09-25.
 
+- **Space the cards**: `c.row(labels, gap)` lays cards left to right at a CSS-px gap (moves them with
+  `view.moveNode`); seeds and `c.doc` graphs start crowded or overlapping otherwise.
+- **Point at the change**: `c.box(labelOrRect, pad)` draws a gold outline in the page; `c.clearBoxes()` removes
+  them all. Useful targets: `c.socketRow(label, key, side)`, `c.chip(label)` (a card's `[40×3 Frame]` chip),
+  `c.node(label)`. A box is page chrome, so hold the camera still while one shows.
+- **Zoom in post** on chrome the camera can't reach (the Report drawer is DOM, not canvas):
+  `rec.at("zoom", {x, y, w, h})` in device px, then `rec.at("unzoom")`. Compose eases a crop-and-scale in and out
+  over 0.7 s, at most 2.2×. It upscales 1080p, so keep it short.
+- **Stills scenes** (`app: "both"`, e.g. `palettes`, `import-pair`): `setup({ sol, obs, sleep })` once, then per
+  entry in `states` `apply(ctx, state)`, and the recorder takes a Solenoid screenshot and an Obsidian screen grab.
+  Compose puts them side by side (`panels: ["obs", "sol"]` flips the order), labels them, crossfades the states and
+  holds each `hold` seconds under a slow push-in. A scene with no `caption` gets no caption strip.
+
 **Mechanics that bit (2026-09-25):**
 - Dropping a cable on empty canvas opens the Add menu only with the `quickWire` setting, off by default.
   Use the A key: the menu opens at the pointer and the card lands there.
 - The formula popup commits on close (its × or Esc), not Enter; Enter is a newline.
-- The Triangle Solver reads parts only from cables; it has no literal fields.
 - A Convert card's top box shows its input number with the output unit: keep Convert out of frame.
 - Money over area renders a generic `¤`: keep compound currency units out.
 - A Format Controller needs its own cable from the host socket into its `in`, besides docking on it; without it
@@ -125,6 +137,14 @@ state it needs is missing.
   (`documentStore.currentName()`).
 - Opening a Report crashed the app on develop until 5e5af11d. If a scene comes back with "Something threw
   while rendering", read the stack in the still, fix the app on develop, and re-record.
+- `record.mjs` talks to the page over CDP: awaiting a long app call (`paletteStore.setActiveBase`) across it
+  fails with "Promise was collected". Fire it on a `setTimeout` in the page and sleep.
+- Obsidian draws a note's plugin-typed properties raw on the first render after the look turns on: `openNote`
+  calls `leaf.rebuildView()`.
+- To show landing-page components (the FnWall) over the app, import React from the page's own `.vite/deps`
+  URLs and unwrap CJS (`m.default ?? m`); the wall only animates under a `.sol-landing--anim` parent.
+- Plugging a cable into a wired input evicts the old one; there's no unplug gesture. Click the cable
+  (`c.cableMid`, 30% from its source so crossings don't catch another cable) and press Delete.
 - `pkill -f <pattern>` matches your own shell when the pattern is in the command line. Kill by PID.
 
 ## The cut
@@ -133,6 +153,10 @@ Intro card over a blurred drift of the chart showcase → the scenes in `ORDER` 
 drift of Getting started. 0.5 s crossfades; captions fade in after each crossfade and out before the next.
 Title-card copy lives at the top of `compose.mjs`: the tagline is the landing page's hero line and the outro
 its download strip.
+
+**Preview frame**: the intro card is whole from frame zero (no fade from black), because players and link previews
+show the first frame before play. Compose also writes it as `solenoid-demo-poster.png` and embeds it in both mp4s as
+cover art (an `attached_pic` stream).
 
 The soundtrack is generated to the cut's exact length, so nothing licensed ships. The agent can't hear it:
 it was checked by numbers (no clipping, no DC, lows under -2 dB of the total, mids present) and the author

@@ -35,3 +35,8 @@ export const outroHtml = ({ lead, sub, url }) => `${HEAD}
 <div class="center" style="top:292px;font-size:30px;font-weight:600">${esc(lead)}</div>
 <div class="center" style="top:342px;font-size:19px;color:#b8bdc3">${esc(sub)}</div>
 <div class="center" style="top:410px;font-family:AHM,monospace;font-size:21px;color:#f5b914;letter-spacing:.02em">${esc(url)}</div>`;
+
+// Labels over the side-by-side panels of a stills scene; `at` is each label's left edge and the top, in CSS px.
+export const panelLabelsHtml = (labels, at) => `${HEAD}<style>
+.lab { position: absolute; font-weight: 600; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #b8bdc3; }
+</style>${labels.map((l, i) => `<div class="lab" style="left:${at.x[i]}px;top:${at.y}px">${esc(l)}</div>`).join("")}`;

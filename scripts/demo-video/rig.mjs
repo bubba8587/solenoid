@@ -81,6 +81,8 @@ export class Recorder {
     });
   }
   mark(name) { this.marks[name] = Date.now() / 1000 - this.t0; }
+  /** A timed note for compose.mjs, such as a zoom's target rect in frame px. */
+  at(name, data) { this.marks[name] = { t: Date.now() / 1000 - this.t0, ...data }; }
   async stop() {
     const t1 = Date.now() / 1000;
     await this.cdp.send("Page.stopScreencast");

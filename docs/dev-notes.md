@@ -19,7 +19,11 @@ specific item.
   their nodes; Open in Obsidian on the Write card follows the write, not the shell; a frame's CSV edit types the
   columns it adds from their values (`columnTypesAfterCsvEdit`, once the block is left or saved from); the demo
   vault's showcase note no longer retypes every project's `budget` and `milestones` (its keys are `purchases` and
-  `inspections`; the projects' `milestones` is a Frame).
+  `inspections`; the projects' `milestones` is a Frame); an Equation linear in an unknown that appears more than
+  once (`p = n*25 - (f + n*10)`) solves it exactly instead of by bisection (`solveLinear`).
+- **Second cut:** palettes and light mode side by side with Obsidian, the Function Reference under the landing page's
+  name wall, a break-even Equation in place of the Triangle Solver, callout boxes and post zooms where a change was
+  hard to see, and a title-card first frame plus poster for previews.
 - **Open:** the Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is
   shown rigorous). The outbox still lists A1, B1, B2, B3, B7.
 

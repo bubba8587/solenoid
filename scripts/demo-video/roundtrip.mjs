@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { VAULT } from "./obsidian.mjs";
-import { ROOT } from "./rig.mjs";
+import { ROOT, VIEW } from "./rig.mjs";
 
 const NOTE = "Projects/Kitchen remodel.md";
 const REPORT = "Projects/Kitchen remodel costs.md";
@@ -80,6 +80,8 @@ async function openNote(c, file) {
     const tf = app.vault.getAbstractFileByPath(f);
     const leaf = app.workspace.getLeaf(false);
     await leaf.openFile(tf, { state: { mode: "source", source: false } });
+    // A note first drawn right after the plugin loads can miss its chips; one rebuild draws them.
+    await leaf.rebuildView();
     app.workspace.getLeavesOfType("file-explorer")[0]?.view.revealInFolder(tf);
     leaf.view.editor?.scrollTo(0, 0);
     document.activeElement?.blur?.();
@@ -100,6 +102,10 @@ export const ROUNDTRIP = {
     async setup(c) {
       await closeOtherWindows(c);
       await c.obs(async () => { await window.app.plugins.plugins["solenoid-properties"].setLook(false); });
+      // Settings reopens on its last tab, so the gear on camera lands on the plugin's page.
+      await c.obs(() => { window.app.setting.open(); window.app.setting.openTabById("solenoid-properties"); });
+      await c.sleep(1200);
+      await closeOtherWindows(c);
       await openNote(c, NOTE);
       await c.hand.show(900, 430);
     },
@@ -113,13 +119,7 @@ export const ROUNDTRIP = {
       });
       await hand.click(gear);
       const { win, hand: wh } = await c.enterWindow(/^Settings/);
-      await sleep(500);
-      await wh.click(await need(win, 'input[type="search"], input[placeholder^="Search"]'));
-      await sleep(200);
-      await wh.type("look", { cps: 8 });
-      await sleep(700);
-      await wh.click(await need(win, ".vertical-tab-nav-item", "Solenoid look"));
-      await sleep(700);
+      await sleep(900);
       const toggle = await win.evaluate(() => {
         const row = [...document.querySelectorAll(".setting-item")].find((s) => s.querySelector(".setting-item-name")?.textContent.trim() === "Solenoid look");
         const r = row.querySelector(".checkbox-container").getBoundingClientRect();
@@ -133,6 +133,45 @@ export const ROUNDTRIP = {
       await hand.move(760, 470, { ms: 900 });
       await sleep(1300);
     },
+  },
+
+  palettes: {
+    app: "both",
+    caption: ["Palettes and light mode", "The app and the plugin share every palette, accent and light mode, so a graph and its vault can match."],
+    hold: 2.2,
+    states: [
+      { palette: "Default", accent: "gold", mode: "dark" },
+      { palette: "Orchard", accent: "teal", mode: "dark" },
+      { palette: "Blueprint", accent: "blue", mode: "dark" },
+      { palette: "Default", accent: "violet", mode: "light" },
+      { palette: "Solarized", accent: "gold", mode: "light" },
+    ],
+    async setup({ sol, obs }) {
+      await sol.legend(false);
+      await sol.example("chart-showcase");
+      await sol.frame(["Heatmap", "Series frame", "Treemap", "Sankey"], { pad: 0.02, maxK: 0.5 });
+      await closeOtherWindows(obs);
+      await obs.obs(async () => { await window.app.plugins.plugins["solenoid-properties"].setLook(true); });
+      await openNote(obs, "Solenoid/Property types.md");
+    },
+    async apply({ sol, obs }, s) {
+      // Fired on a timer: awaited across the protocol, a palette swap loses the call ("Promise was collected").
+      await sol.demo(({ palette, accent, mode }) => {
+        setTimeout(async () => {
+          (await import("/src/graph/palette.ts")).paletteStore.setActiveBase(palette);
+          const { appThemeStore } = await import("/src/graph/appTheme.ts");
+          appThemeStore.setAccent(accent);
+          appThemeStore.setMode(mode);
+        }, 0);
+      }, s);
+      await obs.obs(async ({ palette, accent, mode }) => {
+        const pl = window.app.plugins.plugins["solenoid-properties"];
+        window.app.changeTheme(mode === "light" ? "moonstone" : "obsidian");
+        await pl.setPalette(palette);
+        await pl.setAccent(accent);
+      }, s);
+    },
+    async teardown(ctx) { await this.apply(ctx, this.states[0]); },
   },
 
   "obs-property": {
@@ -196,19 +235,43 @@ export const ROUNDTRIP = {
     },
   },
 
+  "import-pair": {
+    app: "both",
+    panels: ["obs", "sol"],
+    hold: 3.0,
+    states: [{}],
+    async setup({ sol, obs }) {
+      await sol.legend(false);
+      await sol.doc(costsGraph(false), DOC);
+      await sol.frame(["Kitchen remodel"], { pad: 0.06, maxK: 1.9 });
+      await sol.box(await sol.socketRow("Kitchen remodel", "costs", "out"), 4);
+      await closeOtherWindows(obs);
+      await openNote(obs, NOTE);
+      const row = await need(obs.page, '.metadata-property[data-property-key="costs"]');
+      await obs.box(row, 4);
+    },
+    async apply() {},
+    async teardown({ sol, obs }) { await sol.clearBoxes(); await obs.clearBoxes(); },
+  },
+
   "sol-import": {
     vault: true,
     caption: ["Import Obsidian Note", "Every property arrives typed, down to the column types set in Obsidian. Vault Folder reads a whole folder as one table."],
     async setup(c) {
       await c.legend(false);
-      await c.doc(costsGraph(false), DOC);
-      await c.frame(["Kitchen remodel", "GROUPBY", "Biggest first", "Costs by category"], { pad: 0.04, maxK: 1.0, dy: -30 });
-      const p = await c.toScreen(460, 360);
-      await c.hand.show(p.x, p.y);
+      const current = await c.demo(async () => (await import("/src/graph/documentStore.ts")).documentStore.currentName());
+      if (current !== DOC) await c.doc(costsGraph(false), DOC);
+      await c.frame(["Kitchen remodel"], { pad: 0.06, maxK: 1.9 });
+      await c.box(await c.socketRow("Kitchen remodel", "costs", "out"), 4);
     },
     async act(c) {
       const { hand, sleep } = c;
-      await sleep(1300);
+      await sleep(1400);
+      await c.clearBoxes();
+      await c.fly(["Kitchen remodel", "GROUPBY", "Biggest first", "Costs by category"], { pad: 0.04, maxK: 1.0, dy: -30 }, 1500);
+      const p = await c.toScreen(460, 360);
+      await hand.show(p.x, p.y);
+      await sleep(500);
       const from = await c.socket("Kitchen remodel", "costs", "out");
       const to = await c.socket("GROUPBY", "frame", "in");
       await hand.drag(from, to, { ms: 1100 });
@@ -233,7 +296,19 @@ export const ROUNDTRIP = {
     },
     async act(c) {
       const { hand, sleep } = c;
-      await sleep(2000);
+      await sleep(900);
+      // The Knap tags boxed, and the frame zoomed onto the draft in compose.mjs.
+      const { tags, draft } = await c.demo(() => {
+        const rect = (e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+        return { tags: [...document.querySelectorAll(".knap-tag")].map(rect), draft: rect(document.querySelector(".report-source__ta")) };
+      });
+      for (const t of tags) await c.box(t, 3);
+      const s = VIEW.scale, top = tags.reduce((m, t) => Math.min(m, t.y), Infinity) - 40;
+      c.rec.at("zoom", { x: draft.x * s, y: top * s, w: draft.w * s, h: 300 * s });
+      await sleep(2600);
+      c.rec.at("unzoom");
+      await c.clearBoxes();
+      await sleep(900);
       await hand.click(await c.find(".report-viewtoggle__seg", "Preview"));
       await sleep(1600);
       const armed = await c.demo(async () => {

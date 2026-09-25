@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { launch, injectKit, injectCursor, Recorder, Hand, encodeClip, demo, sleep, OUT } from "./rig.mjs";
-import { resetVault, obsidianUp, obsidianWindow, windowOrigin, ScreenRecorder, bridgeVault, VAULT } from "./obsidian.mjs";
+import { resetVault, obsidianUp, obsidianWindow, windowOrigin, ScreenRecorder, bridgeVault, grabScreen, VAULT } from "./obsidian.mjs";
 import { SCENES } from "./scenes.mjs";
 
 const APP_URL = process.env.URL ?? "http://localhost:1420";
@@ -12,12 +12,13 @@ const wanted = process.argv.slice(2);
 const names = wanted.length ? wanted : Object.keys(SCENES);
 for (const n of names) if (!SCENES[n]) throw new Error(`unknown scene "${n}"; have ${Object.keys(SCENES).join(", ")}`);
 const inObsidian = (n) => SCENES[n].app === "obsidian";
+const inBoth = (n) => SCENES[n].app === "both";
 
 fs.mkdirSync(path.join(OUT, "clips"), { recursive: true });
 
 // The round trip starts from a fresh copy of the demo vault; a later scene recorded alone keeps the vault it left.
 if (names.includes("obs-look") || !fs.existsSync(VAULT)) resetVault();
-const obsidian = names.some(inObsidian) ? await obsidianUp() : null;
+const obsidian = names.some((n) => inObsidian(n) || inBoth(n)) ? await obsidianUp() : null;
 if (obsidian) await injectCursor(obsidian.page);
 
 const solenoid = names.some((n) => !inObsidian(n)) ? await launch(APP_URL) : null;
@@ -64,6 +65,15 @@ function solenoidContext(page, hand, rec) {
     within: (label, sel, text) => demo(page, (l, s, t) => window.__demo.within(l, s, t), label, sel, text),
     find: (sel, text) => demo(page, (s, t) => window.__demo.find(s, t), sel, text),
     demo: (fn, ...args) => demo(page, fn, ...args),
+    async box(target, pad) {
+      const r = typeof target === "string" ? await ctx.node(target) : target;
+      await demo(page, (rr, p) => window.__demo.box(rr, p), r, pad);
+    },
+    clearBoxes: () => demo(page, () => window.__demo.clearBoxes()),
+    socketRow: (label, key, side) => demo(page, (l, k, s) => window.__demo.socketRow(l, k, s), label, key, side),
+    async row(labels, gap) { await demo(page, (l, g) => window.__demo.row(l, g), labels, gap); await sleep(400); },
+    chip: (label) => demo(page, (l) => window.__demo.chip(l), label),
+    cableMid: (...a) => demo(page, (...b) => window.__demo.cableMid(...b), ...a),
     // The socket legend is one overlay across documents; its × and ? buttons flip it.
     async legend(open) {
       const btn = await page.$(`.solenoid-legend button[title="${open ? "Show" : "Hide"} socket legend"]`);
@@ -92,6 +102,8 @@ function obsidianContext(hand) {
   const ctx = {
     app: "obsidian", browser, page, hand, sleep,
     obs: (fn, ...args) => page.evaluate(fn, ...args),
+    box: (r, pad, pg = page) => pg.evaluate((rr, p) => window.__demo.box(rr, p), r, pad),
+    clearBoxes: (pg = page) => pg.evaluate(() => window.__demo.clearBoxes()),
     /** The pointer crosses into a window Obsidian just opened, at the same spot on the screen. */
     async enterWindow(title) {
       const win = await obsidianWindow(browser, title);
@@ -116,7 +128,24 @@ for (const name of names) {
   console.log(`● ${name}`);
   const out = path.join(OUT, "clips", `${name}.mp4`);
   let meta;
-  if (inObsidian(name)) {
+  if (inBoth(name)) {
+    // A stills scene: matched shots of both apps per state, which compose.mjs lays side by side and crossfades.
+    const dir = path.join(OUT, "clips", name);
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.mkdirSync(dir, { recursive: true });
+    const ctx = { sol: solenoidContext(solenoid.page, new Hand(solenoid.page), null), obs: obsidianContext(new Hand(obsidian.page)), sleep };
+    await demo(solenoid.page, () => window.__demo.cursor(false));
+    await scene.setup(ctx);
+    for (const [i, state] of scene.states.entries()) {
+      await scene.apply(ctx, state);
+      await sleep(1200);
+      const n = String(i).padStart(2, "0");
+      await solenoid.page.screenshot({ path: path.join(dir, `${n}-sol.png`) });
+      grabScreen(path.join(dir, `${n}-obs.png`));
+    }
+    await scene.teardown?.(ctx);
+    meta = { duration: scene.states.length * scene.hold };
+  } else if (inObsidian(name)) {
     const hand = new Hand(obsidian.page);
     const ctx = obsidianContext(hand);
     await hand.hide();
@@ -139,6 +168,7 @@ for (const name of names) {
     await rec.start(dir);
     await scene.act(ctx);
     meta = await rec.stop();
+    await scene.teardown?.(ctx);
     encodeClip(dir, out);
   }
   fs.writeFileSync(path.join(OUT, "clips", `${name}.json`), JSON.stringify({ duration: meta.duration, marks: meta.marks ?? {} }, null, 1));

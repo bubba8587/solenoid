@@ -137,6 +137,40 @@
     if (!hs.length) throw new Error(`no ${side ?? ""} socket ${key ?? ""} on "${label}"`);
     return rectOf(hs[0]);
   }
+  // Lays cards out left to right with even gaps by their measured widths, tops aligned with the first.
+  async function row(labels, gap = 70) {
+    const v = await view();
+    const ns = [];
+    for (const l of labels) ns.push(await byLabel(l));
+    let x = ns[0].x;
+    for (const n of ns) { await v.moveNode(n.id, { x, y: ns[0].y }); x += n.w + gap; }
+  }
+  // The first frame or table chip shown on a card ("[26×5 Frame]").
+  async function chip(label) {
+    const n = await byLabel(label);
+    const el = [...(await view()).nodeElement(n.id).querySelectorAll("*")].find((e) => !e.children.length && /^\[\d+×\d+ (Frame|Table)\]$/.test(e.textContent.trim()));
+    if (!el) throw new Error(`no frame chip on "${label}"`);
+    return rectOf(el);
+  }
+  // A card's row at a socket, as wide as the card.
+  async function socketRow(label, key, side = "in") {
+    const n = await nodeRect(label), h = await handle(label, key, side);
+    return { x: n.x + 4, y: h.cy - 14, w: n.w - 8, h: 28, cx: n.cx, cy: h.cy };
+  }
+  // A point on the cable between two sockets, nearer its source, where a click selects it.
+  async function cableMid(fromLabel, fromKey, toLabel, toKey) {
+    const a = await handle(fromLabel, fromKey, "out"), b = await handle(toLabel, toKey, "in");
+    const at = (path, len) => { const p = path.getPointAtLength(len), m = path.getScreenCTM(); return { x: p.x * m.a + p.y * m.c + m.e, y: p.x * m.b + p.y * m.d + m.f }; };
+    const near = (p, q) => Math.hypot(p.x - q.cx, p.y - q.cy) < 18;
+    for (const path of document.querySelectorAll(".react-flow__edge path")) {
+      const L = path.getTotalLength?.();
+      if (!L) continue;
+      const s = at(path, 0), e = at(path, L);
+      if (near(s, a) && near(e, b)) { const m = at(path, L * 0.3); return { x: m.x, y: m.y, cx: m.x, cy: m.y }; }
+      if (near(s, b) && near(e, a)) { const m = at(path, L * 0.7); return { x: m.x, y: m.y, cx: m.x, cy: m.y }; }
+    }
+    throw new Error(`no cable ${fromLabel}.${fromKey} → ${toLabel}.${toKey}`);
+  }
   // Center of the first element under root matching sel whose text includes text.
   function find(sel, text, root = document) {
     const el = [...root.querySelectorAll(sel)].find((e) => !text || e.textContent.includes(text));
@@ -163,6 +197,8 @@
       @keyframes __demoRing{from{transform:scale(.3);opacity:.9}to{transform:scale(1.15);opacity:0}}
       #__demo-keys{position:fixed;left:62%;bottom:72px;transform:translateX(-50%);z-index:2147483645;pointer-events:none;display:flex;gap:8px;opacity:0;transition:opacity .2s}
       #__demo-keys.on{opacity:1}
+      .__demo-box{position:fixed;z-index:2147483644;pointer-events:none;border:2.5px solid #f5b914;border-radius:9px;box-shadow:0 0 0 4px rgba(245,185,20,.16),0 0 20px rgba(245,185,20,.38);animation:__demoBoxIn .38s cubic-bezier(.2,.8,.2,1) forwards;transition:opacity .3s}
+      @keyframes __demoBoxIn{from{opacity:0;transform:scale(1.12)}to{opacity:1;transform:scale(1)}}
       .__demo-key{min-width:44px;height:44px;padding:0 14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#1e1e1e;border:1px solid #3a3a3a;border-bottom-width:3px;color:#f3f4f5;font:600 19px "Atkinson Hyperlegible Next Variable","Atkinson Hyperlegible Next",system-ui,sans-serif;box-shadow:0 4px 14px rgba(0,0,0,.35)}
     `;
     document.head.appendChild(st);
@@ -218,6 +254,17 @@
     keyTimer = setTimeout(() => keyEl.classList.remove("on"), ms);
   }
   function cursor(on) { shown = on; ensureOverlay(); place(); }
+  // Callout boxes around a viewport rect; they hold until cleared, so the camera stays put while one shows.
+  function box(r, pad = 6) {
+    ensureOverlay();
+    const el = document.createElement("div");
+    el.className = "__demo-box";
+    Object.assign(el.style, { left: `${r.x - pad}px`, top: `${r.y - pad}px`, width: `${r.w + 2 * pad}px`, height: `${r.h + 2 * pad}px` });
+    ringLayer.appendChild(el);
+  }
+  function clearBoxes() {
+    for (const el of document.querySelectorAll(".__demo-box")) { el.style.opacity = "0"; setTimeout(() => el.remove(), 320); }
+  }
 
-  window.__demo = { mods, view, editor, nodes, byLabel, bounds, camera, setCamera, cameraFor, fly, drift, toScreen, nodeRect, handle, find, within, showKeys, cursor };
+  window.__demo = { mods, view, editor, nodes, byLabel, bounds, camera, setCamera, cameraFor, fly, drift, toScreen, nodeRect, handle, find, within, showKeys, cursor, box, clearBoxes, socketRow, cableMid, row, chip };
 })();

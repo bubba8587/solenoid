@@ -28,13 +28,11 @@ function spendingGraph() {
       { id: "spend", type: "FrameInputNode", x: 0, y: 0, init: { label: "Spending", frameText: spending } },
       { id: "slicer", type: "SlicerNode", x: 420, y: 0, init: { label: "Account", selectedColumn: "Account", selectedValues: ["Credit Card"], multiSelect: true } },
       { id: "byCat", type: "GroupByFrameNode", x: 700, y: -80, init: { label: "By category", agg: "sum" }, stringLiterals: { keys: "Category", column: "Amount" } },
-      { id: "flows", type: "GroupByFrameNode", x: 700, y: 440, init: { label: "Account to category", agg: "sum" }, stringLiterals: { keys: "Account, Category", column: "Amount" } },
       { id: "treemap", type: "ProportionNode", x: 980, y: -80, init: { label: "Where it went" } },
-      { id: "sankey", type: "SankeyNode", x: 980, y: 440, init: { label: "Accounts and categories" }, stringLiterals: { options: "fontsize=13" } },
     ],
     connections: [
-      wire("spend", "frame", "slicer", "frame"), wire("slicer", "result", "byCat", "frame"), wire("slicer", "result", "flows", "frame"),
-      wire("byCat", "frame", "treemap", "frame"), wire("flows", "frame", "sankey", "frame"),
+      wire("spend", "frame", "slicer", "frame"), wire("slicer", "result", "byCat", "frame"),
+      wire("byCat", "frame", "treemap", "frame"),
     ],
   };
 }
@@ -193,7 +191,7 @@ export const SCENES = {
   },
 
   formula: {
-    caption: ["Excel formulas", "Functions use Excel's names, syntax and math."],
+    caption: ["Formulas", "The formula editor typesets what you write and shows each function's arguments as you type."],
     async setup(c) {
       await c.legend(false);
       await c.doc({
@@ -226,34 +224,95 @@ export const SCENES = {
     },
   },
 
-  triangle: {
-    caption: ["Solve for any part", "Give the Triangle Solver any three parts, one of them a side. It works out the rest, area and perimeter included."],
+  functions: {
+    caption: ["Excel parity", "Solenoid's functions use Excel's names, syntax and math. The Function Reference lists each one with its Excel equivalent."],
+    async setup(c) {
+      await c.legend(false);
+      await c.example("getting-started");
+      await c.hand.hide();
+      await c.demo(async () => {
+        (await import("/src/graph/frStore.ts")).frStore.open("reference");
+        await new Promise((r) => setTimeout(r, 800));
+        // The landing page's function wall, mounted with the app's own React (the dep URLs it already loaded).
+        const dep = (name) => performance.getEntriesByType("resource").map((e) => e.name).find((n) => n.includes(`/.vite/deps/${name}.js`));
+        const cjs = (m) => m.default ?? m; // Vite pre-bundles these CommonJS packages under `default`
+        const React = cjs(await import(dep("react")));
+        const { createRoot } = cjs(await import(dep("react-dom_client")));
+        await import("/src/graph/landing/LandingPage.css");
+        const { FnWall } = await import("/src/graph/landing/LandingScenes.tsx");
+        const scrim = Object.assign(document.createElement("div"), { id: "__demo-fnwall" });
+        scrim.innerHTML = `<style>
+          #__demo-fnwall{position:fixed;inset:0;z-index:2147483000;background:rgba(10,10,11,.74);backdrop-filter:blur(2.5px);display:flex;flex-direction:column;justify-content:center;gap:26px;opacity:0;transition:opacity .9s}
+          #__demo-fnwall .sol-fnwall{gap:26px}
+          #__demo-fnwall .sol-fnwall__fn{font-size:30px;font-weight:600}
+          #__demo-fnwall .sol-fnwall__track{gap:58px;animation-duration:34s}
+          #__demo-fnwall .sol-fnwall__track--rev{animation-duration:40s}
+          #__demo-fnwall .late .sol-fnwall__track{animation-delay:-17s}
+        </style>`;
+        const a = document.createElement("div"), b = document.createElement("div");
+        a.className = "sol-landing--anim"; b.className = "sol-landing--anim late";
+        scrim.append(a, b);
+        document.body.appendChild(scrim);
+        createRoot(a).render(React.createElement(FnWall));
+        createRoot(b).render(React.createElement(FnWall));
+      });
+      await c.sleep(1200);
+    },
+    async act(c) {
+      await c.demo(() => { setTimeout(() => { document.getElementById("__demo-fnwall").style.opacity = "1"; }, 1100); });
+      await c.demo(async () => {
+        const panel = document.querySelector(".fr-panel");
+        const el = [...panel.querySelectorAll("*")].find((e) => e.scrollHeight > e.clientHeight + 200 && getComputedStyle(e).overflowY !== "visible");
+        const t0 = performance.now(), from = el.scrollTop;
+        await new Promise((res) => {
+          const step = (now) => { const t = Math.min(1, (now - t0) / 8200); el.scrollTop = from + 2600 * t; if (t < 1) requestAnimationFrame(step); else res(); };
+          requestAnimationFrame(step);
+        });
+      });
+    },
+    async teardown(c) {
+      await c.demo(async () => { document.getElementById("__demo-fnwall")?.remove(); (await import("/src/graph/frStore.ts")).frStore.close(); });
+    },
+  },
+
+  equation: {
+    caption: ["Solve for any variable", "Write an equation once, with no rearranging. Wire in all but one variable and it solves for the one that's left."],
     async setup(c) {
       await c.legend(false);
       await c.doc({
         v: 2,
         nodes: [
-          { id: "C", type: "SliderInputNode", x: 0, y: 0, init: { label: "Angle C", value: 60 }, literals: { min: 20, max: 150, step: 1 } },
-          num("a", "Side a", 7, 0, 225),
-          num("b", "Side b", 5, 0, 330),
-          { id: "tri", type: "TriangleSolverNode", x: 290, y: -10, init: { label: "Triangle Solver" } },
+          num("target", "Target profit", 0, 0, 0),
+          num("price", "Price", 25, 0, 110),
+          num("units", "Units sold", 500, 0, 220),
+          num("fixed", "Fixed costs", 6000, 0, 330),
+          num("cost", "Unit cost", 10, 0, 440),
+          { id: "eq", type: "EquationNode", x: 400, y: 60, init: { label: "Break-even", expr: "profit = price * units - fixed - cost * units" } },
         ],
-        connections: [wire("a", "value", "tri", "a"), wire("b", "value", "tri", "b"), wire("C", "value", "tri", "C")],
-      }, "Triangle");
-      await c.frame({ x: -20, y: -20, w: 500, h: 490 }, { k: 1.2, dx: 240, dy: 10 });
-      const p = await c.toScreen(160, 300);
+        connections: [wire("price", "value", "eq", "price"), wire("cost", "value", "eq", "cost"), wire("fixed", "value", "eq", "fixed"), wire("units", "value", "eq", "units")],
+      }, "Break-even");
+      await c.frame(["Target profit", "Unit cost", "Break-even"], { pad: 0.07, maxK: 1.2, dx: 150, dy: 10 });
+      const p = await c.toScreen(260, 600);
       await c.hand.show(p.x, p.y);
     },
     async act(c) {
       const { hand, sleep } = c;
-      await sleep(1000);
-      await slide(c, "Angle C", 0.88, 1700);
-      await sleep(400);
-      await slide(c, "Angle C", 0.12, 1800);
-      await sleep(350);
-      const rest = await c.toScreen(120, 230);
+      await sleep(900);
+      await c.box(await c.socketRow("Break-even", "profit"));
+      await sleep(1500);
+      await c.clearBoxes();
+      await hand.drag(await c.socket("Target profit", "value", "out"), await c.socket("Break-even", "profit", "in"), { hover: 250 });
+      await sleep(1200);
+      await hand.click(await c.cableMid("Units sold", "value", "Break-even", "units"));
+      await sleep(250);
+      await hand.press("Delete", "Del");
+      await sleep(700);
+      await c.box(await c.socketRow("Break-even", "units"));
+      await sleep(1700);
+      await c.clearBoxes();
+      const rest = await c.toScreen(260, 620);
       await hand.move(rest.x, rest.y, { ms: 700 });
-      await sleep(1300);
+      await sleep(900);
     },
   },
 
@@ -267,17 +326,21 @@ export const SCENES = {
           { id: "orders", type: "FrameInputNode", x: 0, y: 0, init: { label: "Orders", frameText: csv("orders.csv") } },
           { id: "filter", type: "FilterFrameNode", x: 420, y: 0, init: { label: "Filter", condConfig: { 0: { op: "gte" } }, valueKeys: ["frame", "column0", "value0"] }, stringLiterals: { column0: "Revenue", value0: "500" } },
           { id: "group", type: "GroupByFrameNode", x: 740, y: 0, init: { label: "GROUPBY", agg: "sum", totalDepth: 0 }, stringLiterals: { keys: "Region", column: "Revenue" } },
-          { id: "chart", type: "ChartNode", x: 1060, y: 0, init: { label: "Revenue by region", op: "column" } },
+          // A fixed axis, so the bars visibly drop when the filter tightens.
+          { id: "chart", type: "ChartNode", x: 1060, y: 0, init: { label: "Revenue by region", op: "column" }, stringLiterals: { options: "ylim=0,20000" } },
         ],
         connections: [wire("orders", "frame", "filter", "frame"), wire("filter", "frame", "group", "frame"), wire("group", "frame", "chart", "values")],
       }, "Orders");
-      await c.frame(["Orders", "Filter", "GROUPBY", "Revenue by region"], { pad: 0.04, maxK: 1.0, dy: -40 });
-      const p = await c.toScreen(560, 560);
+      await c.row(["Orders", "Filter", "GROUPBY", "Revenue by region"], 64);
+      await c.frame(["Orders", "Filter", "GROUPBY", "Revenue by region"], { pad: 0.03, maxK: 1.0, dy: -40 });
+      const p = await c.toScreen(700, 520);
       await c.hand.show(p.x, p.y);
     },
     async act(c) {
       const { hand, sleep } = c;
-      await sleep(1700);
+      await sleep(1300);
+      await c.fly(["Filter", "GROUPBY", "Revenue by region"], { pad: 0.04, maxK: 1.2, dy: -30 }, 1300);
+      await sleep(300);
       const value = await c.demo(async () => {
         const n = await window.__demo.byLabel("Filter");
         const el = (await window.__demo.view()).nodeElement(n.id);
@@ -288,13 +351,15 @@ export const SCENES = {
       await hand.click({ x: value.x + value.w * 0.35, y: value.cy });
       await sleep(150);
       await hand.chord("Control", "a");
-      await hand.type("1500", { cps: 8 });
+      await hand.type("2000", { cps: 8 });
       await sleep(250);
       await hand.press("Enter");
-      await sleep(400);
-      const rest = await c.toScreen(900, 560);
-      await hand.move(rest.x, rest.y, { ms: 800 });
-      await sleep(3300);
+      await sleep(500);
+      await c.box(await c.chip("Filter"));
+      await c.box("Revenue by region");
+      await sleep(2300);
+      await c.clearBoxes();
+      await sleep(700);
     },
   },
 
@@ -303,7 +368,8 @@ export const SCENES = {
     async setup(c) {
       await c.legend(false);
       await c.doc(spendingGraph(), "Household spending");
-      await c.frame(["Account", "By category", "Where it went"], { pad: 0.05, maxK: 1.05, dy: -30 });
+      await c.row(["Spending", "Account", "By category", "Where it went"], 64);
+      await c.frame(["Account", "By category", "Where it went"], { pad: 0.05, maxK: 1.15, dy: -30 });
       const p = await c.toScreen(560, 330);
       await c.hand.show(p.x, p.y);
     },
@@ -311,10 +377,12 @@ export const SCENES = {
       const { hand, sleep } = c;
       await sleep(1300);
       await hand.click(await c.within("Account", "button", "Checking"));
-      await sleep(2100);
+      await sleep(700);
+      await c.box("Where it went");
+      await sleep(2200);
+      await c.clearBoxes();
       await hand.hide();
-      await c.fly(["Account to category", "Accounts and categories"], { pad: 0.05, maxK: 1.3, dy: -10 }, 1700);
-      await c.drift({ zoom: 1.04 }, 2600);
+      await c.drift({ zoom: 1.04 }, 1800);
     },
   },
 

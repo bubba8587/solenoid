@@ -99,6 +99,12 @@ export const windowOrigin = (page) => page.evaluate(() => ({
   y: screenY + (outerHeight - innerHeight) / 2,
 }));
 
+/** One frame of the virtual screen, windows and all. */
+export function grabScreen(file) {
+  const r = spawnSync(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-f", "x11grab", "-draw_mouse", "0", "-video_size", `${W}x${H}`, "-i", `${DISPLAY}+0,0`, "-frames:v", "1", file]);
+  if (r.status !== 0) throw new Error(`x11grab still failed: ${r.stderr}`);
+}
+
 /** Records the whole virtual screen from start() to stop(), then trims the lead-in off at the act's first mark. */
 export class ScreenRecorder {
   async start(file) {
