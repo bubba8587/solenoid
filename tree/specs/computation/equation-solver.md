@@ -33,7 +33,7 @@ The layers run in this order.
 - both roots as an ascending list, computed in the numerically stable form;
 - one scalar for a double root (a discriminant within 10⁻¹² of zero, relative);
 - `#SOLVE!` "No real solution: the quadratic's discriminant is negative" for a negative discriminant;
-- nothing when a is effectively zero (degree below 2), so solving falls through to the next layer.
+- nothing when a is effectively zero (degree below 2), so solving falls through to the next layer, except for a line whose unknown appears more than once, which isolation can't take: that one solves exactly as −c/b (`solveLinear`) instead of by root-finding, so `p = r·u − f − c·u` gives 400, not 400.0000000001.
 
 This runs before symbolic isolation because isolation would take the principal square root and lose a root: x² = 36 must give [−6, 6], not 6.
 

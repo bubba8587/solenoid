@@ -1,6 +1,6 @@
 // [[C47]]
 import { describe, it, expect } from "vitest";
-import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, astToFormula, isolate, equalsWithin, type ParsedEquation } from "../../src/graph/equationSolve";
+import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, astToFormula, isolate, equalsWithin, type ParsedEquation } from "../../src/graph/equationSolve";
 import { parseFormula } from "../../src/graph/excelFormula";
 import { EquationNode } from "../../src/graph/nodes/equation";
 import { isSolError, type SolError } from "../../src/graph/errorValue";
@@ -118,6 +118,17 @@ describe("quadratic sniffing (both roots, not a principal branch)", () => {
     expect(isSolError(none)).toBe(true);
     expect((none as SolError).code).toBe("#SOLVE!");
     expect(solveQuadratic({ a: 0, b: 2, c: -10 })).toBe(null); // linear → caller falls through
+  });
+
+  it("solveLinear: −c/b, null with no x term", () => {
+    expect(solveLinear({ a: 0, b: 15, c: -6000 })).toBe(400);
+    expect(solveLinear({ a: 0, b: 0, c: 5 })).toBe(null);
+  });
+
+  it("a line whose unknown appears twice solves exactly, not by root-finding", () => {
+    const eq = new EquationNode({ expr: "profit = price * units - fixed - cost * units" });
+    const out = eq.data({ profit: [0], price: [25], fixed: [6000], cost: [10] });
+    expect(out.units).toBe(400);
   });
 });
 

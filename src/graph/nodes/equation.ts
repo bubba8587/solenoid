@@ -3,7 +3,7 @@
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
-import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
+import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { dimEval, dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { isUnitCell, tagDim, unitError, type UnitCell } from "../unitValue";
@@ -273,6 +273,14 @@ export class EquationNode extends ClassicPreset.Node {
         const roots = solveQuadratic(quad);
         if (roots !== null) {
           values[unknown] = roots;
+          tagUnknown();
+          return finish(null);
+        }
+        const eq = this.equation;
+        const repeated = !!eq && countOccurrences(eq.lhs, unknown) + countOccurrences(eq.rhs, unknown) > 1;
+        const root = repeated ? solveLinear(quad) : null;
+        if (root !== null) {
+          values[unknown] = root;
           tagUnknown();
           return finish(null);
         }

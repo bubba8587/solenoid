@@ -201,6 +201,12 @@ export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | 
   return r1 < r2 ? [r1, r2] : [r2, r1];
 }
 
+/** The root of a fit with no x² term, −c/b, or null when it has no x term either. */
+export function solveLinear(q: QuadraticFit): number | null {
+  const scale = Math.max(Math.abs(q.a), Math.abs(q.b), Math.abs(q.c));
+  return Math.abs(q.b) > 1e-12 * scale ? -q.c / q.b : null;
+}
+
 export function solveNumeric(residual: (x: number) => number | null): number | SolError {
   const grid: number[] = [0];
   for (let k = -6; k <= 12; k++) {
