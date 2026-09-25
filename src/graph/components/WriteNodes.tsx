@@ -181,7 +181,6 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const [pickerOpen, setPickerOpen] = useState(false);
   const [files, setFiles] = useState<string[]>([]);
   const [search, setSearch] = useState("");
-  const desktop = isDesktop();
   const vaultFs = hasFs();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
 
@@ -381,8 +380,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
         )}
         {activeMode === "note" && d.lastWritten && obsidianOpenUrl(vault, d.lastWritten) && (
           <button
-            type="button" className="sol-write__run" title={desktop ? "Open the note in Obsidian" : "Open in Obsidian works in the desktop app"}
-            disabled={!desktop}
+            type="button" className="sol-write__run" title="Open the note in Obsidian"
             onClick={(e) => { e.stopPropagation(); void openExternal(obsidianOpenUrl(vault, d.lastWritten)!); }}
             {...stopPtr}
           >
