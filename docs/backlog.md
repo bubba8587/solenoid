@@ -190,6 +190,12 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   refuses the unsupported arguments with "isn't supported", as XLOOKUP refuses wildcard modes.
 - [ ] **SEARCH has no wildcards** (`?`, `*`, `~`), where Excel's does: `SEARCH("a?c", "xabc")` is `#VALUE!`, Excel 2. It
   needs a kernel shared with the Text Find card; the criteria family's wildcard matcher (`excelCriteria.ts`) is a start.
+- [ ] **N, T, TYPE and ERROR.TYPE are out of scope but still callable (author's call).** `EXCEL_GAP` marks all four
+  `oos` ("Not needed", "Not supported") and they have no card, yet Formula.js answers them, and `NULL_INSPECTING` lists
+  N, T and TYPE on purpose. TYPE is the leaky one: `undefined` for a blank, a LAMBDA or a complex number, one answer per
+  element on a list (Excel 64), `#SHAPE!` on a matrix, and `TYPE(1/0)` is `#DIV/0!` (Excel 16). Retire the four the way
+  the A forms went ([[C14]] currentExcelParity; the gap notes already name Cast, ISTEXT, ISERROR and IFERROR), or keep
+  them, fix TYPE, and move their rows out of the gap list.
 
 ## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
 
