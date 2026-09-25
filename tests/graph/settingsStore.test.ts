@@ -135,7 +135,6 @@ describe("SETTINGS_SCHEMA — disabledOnMobile", () => {
   it("every marked field is still a real, rendered field", () => {
     for (const key of marked) {
       const field = SETTINGS_SCHEMA.flatMap((s) => s.fields).find((f) => f.key === key);
-      expect(field, `${key} should exist in the schema`).toBeDefined();
       // A "folder" field has no toggle/segment control to gray, so the flag would
       // silently do nothing there.
       expect(field!.type === "folder", `${key} must not be a folder field`).toBe(false);

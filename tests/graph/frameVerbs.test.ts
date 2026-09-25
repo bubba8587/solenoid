@@ -45,15 +45,6 @@ describe("sort — error cells (oracle-only)", () => {
 });
 
 describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)", () => {
-  // Rust keys rows with serde_json of the SAME tagged tuples this oracle builds,
-  // asserted byte-identical in engine/tests.rs `row_key_is_byte_identical_to_js_
-  // json_stringify` against this exact literal. If encodeCell's encoding ever
-  // changes, update BOTH pins together. (Key BEHAVIOR — a bucket per non-finite,
-  // the \u0001 separator class, null bucketing — is corpus-pinned.)
-  it("the tagged-tuple key literal both backends pin (incl. \\u0001 + -0)", () => {
-    const literal = JSON.stringify([["s", "a\u0001b"], ["#", 1], ["#", -0], ["b", true], ["n"]]);
-    expect(literal).toBe('[["s","a\\u0001b"],["#",1],["#",0],["b",true],["n"]]');
-  });
   it("+∞, −∞ and NaN key apart from each other and from null", () => {
     const nf: FrameValue = {
       __frame: true,

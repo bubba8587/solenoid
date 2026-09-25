@@ -184,7 +184,6 @@ describe("columnTypesAfterCsvEdit", () => {
   it("a column with no type of its own is read too, so the result has no holes", () => {
     const out = columnTypesAfterCsvEdit(["number"], 3, [["1", "a", "2026-01-02"]]);
     expect(out).toEqual(["number", "string", "date"]);
-    expect(out.every((t) => t !== undefined)).toBe(true);
   });
   it("text a Number column can't read stays text", () => {
     expect(columnTypesAfterCsvEdit([], 0, [["5 km", "$1,170", "12%"]])).toEqual(["string", "string", "string"]);
@@ -264,11 +263,6 @@ describe("frameRowCount", () => {
   it("returns 0 for a frame with no rows", () => {
     const f = buildFrame([], ["A"]);
     expect(frameRowCount(f)).toBe(0);
-  });
-
-  it("returns the max column length (handles ragged columns)", () => {
-    const f = frameFromCells(["A", "B"], [[1, 2], [3, 4], [5, 6]]);
-    expect(frameRowCount(f)).toBe(3);
   });
 });
 

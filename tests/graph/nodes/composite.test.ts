@@ -1357,7 +1357,6 @@ describe("CompositeNode run modes — review pins", () => {
     c.requestSolve();
     const out = await c.data({ [inBId]: [7] });
     expect(out[outId] as number).toBeCloseTo(0.032173, 6);
-    expect(out[outId]).not.toBe(0.0322);
   });
 
   it("Monte Carlo over a wired BLANK uncertain input emits blank outputs, never draws around 0", async () => {

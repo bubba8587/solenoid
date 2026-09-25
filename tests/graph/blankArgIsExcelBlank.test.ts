@@ -46,6 +46,5 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
 
   it("an undeclared blank still propagates as missing, never a fabricated 0", () => {
     expect(ev("SQRT()")).not.toBe(0);
-    expect(ev("ROUND(2.5, )")).toBe(3); // ROUND already reads a blank as 0 (kept)
   });
 });

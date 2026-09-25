@@ -18,7 +18,6 @@ describe("chart popup coverage — no op may lack a pop-out", () => {
   it("enumerates every chart op with no gaps or duplicates", () => {
     expect(chartValueOps().length).toBeGreaterThan(0);
     expect(new Set(chartValueOps()).size).toBe(chartValueOps().length);
-    for (const op of chartValueOps()) expect(typeof op).toBe("string");
   });
 
   it("every op is a recognized chart value with a popup chip", () => {

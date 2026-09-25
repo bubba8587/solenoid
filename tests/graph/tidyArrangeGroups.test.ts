@@ -427,11 +427,7 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
       }
     }
     // Visible top-level units don't overlap.
-    const units = [s.gA.id, s.gB.id, s.src.id, s.loose.id, s.b2.id].filter(
-      (id, i, arr) => arr.indexOf(id) === i,
-    );
     const boxes = [s.gA.id, s.gB.id, s.src.id, s.loose.id].map((id) => boxOf(s.view, id));
-    void units;
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         expect(overlaps(boxes[i], boxes[j]), `${boxes[i].id} ∩ ${boxes[j].id}`).toBe(false);

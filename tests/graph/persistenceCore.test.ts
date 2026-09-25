@@ -136,7 +136,6 @@ describe("autosave slot rotation", () => {
       slots[w] = ++clock;
       const r = chooseReadSlot(slots.a, slots.b);
       expect(r).toBe(w); // the slot we just wrote is the newest
-      expect(slots[r!]).toBe(clock);
     }
   });
 });

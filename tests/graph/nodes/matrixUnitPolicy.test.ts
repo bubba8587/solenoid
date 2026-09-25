@@ -6,7 +6,7 @@ import { ListIndexNode } from "../../../src/graph/nodes/list";
 import { InterpolateNode } from "../../../src/graph/nodes/stats";
 import { NODE_COMPONENTS } from "../../../src/graph/nodeRegistry";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
-import { MutableSocket, SolenoidSocket, AdoptiveSocket } from "../../../src/graph/sockets";
+import { MutableSocket } from "../../../src/graph/sockets";
 import { withMatrixUnit, matrixUnitOf, fromUnit, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
 import { fcUnitToUnit, applyFcUnit } from "../../../src/graph/unitBridge";
 import { FormatControllerNode } from "../../../src/graph/nodes/formatController";
@@ -239,6 +239,3 @@ describe("an FC on a matrix that already carries a unit never relabels it ([[C25
     expect(matrixUnitOf(out)?.display).toBe("km");
   });
 });
-
-// Guard the guard: keep the imports honest (unused-import trip if a helper is dropped).
-void SolenoidSocket; void AdoptiveSocket;

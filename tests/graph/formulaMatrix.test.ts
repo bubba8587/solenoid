@@ -119,7 +119,6 @@ describe("ownership displaced the broadcast garbage ([[C15]] matricesInFormulas'
     // its matrixArgs and the containment guard stopped routing.
     const r = ev("MMULT(a, b)", { a: M, b: M }) as number[][];
     expect(r).toEqual([[7, 10], [15, 22]]);
-    expect(typeof r[0][0]).toBe("number");
   });
 
   it("results COMPOSE through the rank-2 engine", () => {

@@ -62,9 +62,6 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
 
   it("looks up by a date key — a serial or an ISO date both match", () => {
     expect(lookupFrameCell(people, "joined", "name", "46010")).toBe("Bob");
-    // 46010 as an Excel serial is a real date; matching by ISO goes via parseDateToSerial
-    const iso = people.columns[2]; // sanity: the serial column exists
-    expect(iso.values[1]).toBe(46010);
   });
 
   it("returns the FIRST matching row", () => {

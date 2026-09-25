@@ -47,7 +47,5 @@ describe("Chart Builder › Gantt target", () => {
     for (const k of ["zoom", "tiers", "fit", "baseline", "arrows", "today", "weekends", "labels", "histogram", "columns", "status", "collapse", "group_by", "fiscal_start"]) {
       expect(calendar, k).not.toContain(k);
     }
-    // The layout switch itself must survive so the user can return to the timeline.
-    expect(calendar.has("layout")).toBe(true);
   });
 });

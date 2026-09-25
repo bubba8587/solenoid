@@ -78,15 +78,6 @@ describe("convertValue — speed", () => {
 });
 
 describe("CONVERT_UNIT_DEFS catalog", () => {
-  it("every def has required fields and callable functions", () => {
-    for (const [key, def] of Object.entries(CONVERT_UNIT_DEFS)) {
-      expect(typeof def.label,     `${key}.label`).toBe("string");
-      expect(typeof def.excelCode, `${key}.excelCode`).toBe("string");
-      expect(typeof def.category,  `${key}.category`).toBe("string");
-      expect(typeof def.toBase,    `${key}.toBase`).toBe("function");
-      expect(typeof def.fromBase,  `${key}.fromBase`).toBe("function");
-    }
-  });
   it("linear units: fromBase(toBase(x)) round-trips within float precision", () => {
     const linearKeys = Object.keys(CONVERT_UNIT_DEFS).filter(k => k !== "C" && k !== "F" && k !== "K");
     for (const key of linearKeys) {

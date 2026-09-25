@@ -1,7 +1,7 @@
 // [[D36]], [[D37]], [[D38]]
 import { describe, it, expect } from "vitest";
 import {
-  MISSING, isMissing, isLogical,
+  isMissing, isLogical,
   logicalToNumber, numberToLogical, coerceLogical,
   kleeneNot, kleeneOr, kleeneAnd,
   forAggregate,
@@ -12,7 +12,6 @@ import { solError, isSolError } from "../../src/graph/errorValue";
 describe("value-kind predicates", () => {
   it("isMissing only true for null", () => {
     expect(isMissing(null)).toBe(true);
-    expect(MISSING).toBe(null);
     for (const v of [undefined, 0, NaN, "", false, [], {}]) {
       expect(isMissing(v)).toBe(false);
     }

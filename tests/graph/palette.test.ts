@@ -517,13 +517,4 @@ describe("contrast ink is baked, not recomputed", () => {
       expect(b).toBe(a);
     }
   });
-
-  it("light and dark can legitimately differ — themeAccent moves the luminance", () => {
-    // Not asserting they DO differ for a given slot (that depends on the palette),
-    // only that the ink is asked for the THEMED color rather than the raw slot, so
-    // a slot sitting near the threshold can flip. This pins the call shape.
-    const raw = PALETTE.lime;
-    expect(contrastInk(themeAccent(raw, "light"))).toBe(contrastInk(themeAccent(raw, "light")));
-    expect(contrastInk(themeAccent(raw, "dark"))).toBe(contrastInk(themeAccent(raw, "dark")));
-  });
 });

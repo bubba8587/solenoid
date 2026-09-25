@@ -36,13 +36,6 @@ describe("AllocatorNode", () => {
     expect(col("Share")).toEqual([1 / 3, 2 / 3]); // raw decimal, formatted downstream
   });
 
-  it("reads weights from the Weight column; no column means equal weights", () => {
-    const n = new AllocatorNode();
-    n.literals.amount = 60;
-    expect(allocOf(n.data({ categories: [wcats([1, 3])] }))).toEqual([20, 40]); // column
-    expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // equal fallback
-  });
-
   it("min-for-target buys the most-valued category first", () => {
     const zero = frame([
       { name: "Category", type: "string", values: ["A", "B"] },

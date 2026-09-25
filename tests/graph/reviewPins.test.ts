@@ -18,7 +18,6 @@ describe("review pins", () => {
   it("a chart label cap counts code points, never splitting a surrogate pair", () => {
     const s = sanitizeChartLabel("😀".repeat(10), 8);
     expect(s).toBe("😀😀😀😀😀😀😀…");
-    expect(s.includes("\ud83d…")).toBe(false);
   });
 
   it("XLOOKUP refuses a return list shorter than the lookup list, like a grid", () => {

@@ -102,11 +102,8 @@ describe("validateGraph — semantics", () => {
   });
 
   it("flags a double-wired single-cable input", () => {
-    const { issues } = validateText(
-      `A: NumberInputNode value=1\nB: NumberInputNode value=2\nC: DisplayNode in<-A.value in<-B.value\n---\n{}`,
-    );
-    // The grammar tokenizes both fields; only one `in<-` key survives per
-    // token map — so build the double wire straight on a SavedGraph instead.
+    // The grammar keeps only one `in<-` key per token map, so the double wire
+    // is built straight on a SavedGraph.
     const g: SavedGraph = {
       v: 2,
       nodes: [
@@ -121,8 +118,6 @@ describe("validateGraph — semantics", () => {
     };
     const direct = validateGraph(g);
     expect(direct.some((i) => i.message.includes("wired more than once"))).toBe(true);
-    // (the text-form variant may or may not carry both cables — assert nothing on it)
-    void issues;
   });
 
   it("flags a dependency cycle as a WARNING (legal to run — it computes #CIRC!)", () => {
