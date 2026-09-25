@@ -32,6 +32,8 @@ const SCALAR_RESULT: Array<[string, string]> = [
   ["MODE.SNGL", "MODE.SNGL(a)"],
   ["PROB", "PROB(a, p, 1, 3)"],
   ["SERIESSUM", "SERIESSUM(2, 1, 1, a)"],
+  ["PEARSON", "PEARSON(a, b)"],
+  ["FVSCHEDULE", "FVSCHEDULE(1, p)"],
   // The long-standing members, kept here so the guard covers the whole set rather
   // than just the additions — a regression in routing would break these identically.
   ["SUM", "SUM(a)"],

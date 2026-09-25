@@ -4,11 +4,12 @@ import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
 import { solError, type SolError } from "../errorValue";
+import { guardFinite } from "../valueKinds";
 import { resolveExcelFunction } from "../excelFunctions";
 import { EquationNode } from "./equation";
 import {
   couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
-  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule,
+  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule, fvSchedule,
   returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
@@ -458,12 +459,7 @@ export class FvScheduleNode extends ClassicPreset.Node {
     const { error, nums: rates } = cashPrep(inputs.schedule?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     if (pv === null) { this.cachedResult = null; return { result: null }; }
-    let result: number | null = null;
-    {
-      let fv = pv;
-      for (const r of rates) fv *= (1 + r);
-      result = Number.isFinite(fv) ? fv : null;
-    }
+    const result = guardFinite(fvSchedule(pv, rates), [pv, ...rates]);
     this.cachedResult = result;
     return { result };
   }

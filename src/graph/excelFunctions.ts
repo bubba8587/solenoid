@@ -33,7 +33,7 @@ import {
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
-  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
   cx, isCx, parseCx, type Cx,
@@ -114,7 +114,7 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   QUARTILE: "statistics", "QUARTILE.INC": "statistics", "QUARTILE.EXC": "statistics",
   RANK: "statistics", "RANK.EQ": "statistics", "RANK.AVG": "statistics",
   PERCENTRANK: "statistics", "PERCENTRANK.INC": "statistics", "PERCENTRANK.EXC": "statistics",
-  CORREL: "statistics", COVAR: "statistics", "COVARIANCE.P": "statistics", "COVARIANCE.S": "statistics",
+  CORREL: "statistics", PEARSON: "statistics", COVAR: "statistics", "COVARIANCE.P": "statistics", "COVARIANCE.S": "statistics",
   SLOPE: "statistics", INTERCEPT: "statistics", RSQ: "statistics", FORECAST: "statistics", STANDARDIZE: "statistics", FISHER: "statistics",
 
   "NORM.DIST": "distributions", "NORM.INV": "distributions", "NORM.S.DIST": "distributions", "NORM.S.INV": "distributions",
@@ -378,6 +378,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "QUARTILE.EXC":   { returns: "number", arity: [2, 2], family: "statistics" },
   "MODE.SNGL": { returns: "number", arity: [1, 255], family: "statistics" },
   CORREL:      { returns: "number", arity: [2, 2], family: "statistics" },
+  PEARSON:     { returns: "number", arity: [2, 2], family: "statistics" },
   RSQ:         { returns: "number", arity: [2, 2], family: "statistics" },
   "COVARIANCE.P": { returns: "number", arity: [2, 2], family: "statistics" },
   "COVARIANCE.S": { returns: "number", arity: [2, 2], family: "statistics" },
@@ -462,6 +463,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "T.TEST": { returns: "number", listArgs: false, arity: [4, 4], family: "statistics", native: true },
   IRR:         { returns: "number", listArgs: true, arity: [1, 2], family: "finance-iterative" },
   MIRR:        { returns: "number", listArgs: true, arity: [3, 3], family: "finance-iterative" },
+  FVSCHEDULE:  { returns: "number", arity: [2, 2], family: "finance" },
   CHOOSE:      { returns: "any", arity: [2, 255], family: "lookup" },
   XIRR:        { returns: "number", listArgs: true, arity: [2, 3], family: "finance-iterative" },
   "F.TEST": { returns: "number", listArgs: false, arity: [2, 2], family: "statistics", native: true },
@@ -951,6 +953,7 @@ registerInternal("QUARTILE.EXC", (arr, q) => quartile(numsOf(arr), toNum(q), tru
 registerInternal("MODE",      (...a) => modeSingle(numsOf(...a)));
 registerInternal("MODE.SNGL", (...a) => modeSingle(numsOf(...a)));
 registerInternal("CORREL",       (x, y) => pearson(numsOf(x), numsOf(y)));
+registerInternal("PEARSON",      (x, y) => pearson(numsOf(x), numsOf(y)));
 registerInternal("RSQ",          (y, x) => pearson(numsOf(x), numsOf(y), true));
 registerInternal("SPEARMAN",     (x, y) => spearman(numsOf(x), numsOf(y)));
 registerInternal("KENDALL",      (x, y) => kendallTau(numsOf(x), numsOf(y)));
@@ -1344,6 +1347,11 @@ registerInternal("XIRR", (values, dates) => {
   const d0 = prep.dates[0];
   if (prep.dates.slice(1, n).some((d) => d < d0)) return solError("#DOMAIN!", "A cash-flow date comes before the first date");
   return solveDiscountRate(prep.values.slice(0, n), prep.dates.slice(0, n).map((d) => (d - d0) / 365)) ?? IRR_CONV("XIRR");
+});
+registerInternal("FVSCHEDULE", (pv, schedule) => {
+  if (pv == null) return null;
+  const p = toNum(pv);
+  return Number.isNaN(p) ? VALUE("FVSCHEDULE") : fvSchedule(p, numsOf(schedule));
 });
 registerInternal("CHOOSE", (index, ...values) => {
   if (index == null) return null;

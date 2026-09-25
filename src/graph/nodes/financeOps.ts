@@ -380,6 +380,10 @@ export function oddCoupon(
 
 // ─── Cash-flow prep + the IRR / XIRR solver ──────────────────────────────────
 
+export function fvSchedule(pv: number, rates: readonly number[]): number {
+  return rates.reduce((fv, r) => fv * (1 + r), pv);
+}
+
 export function cashPrep(raw: (number | null | SolError)[] | null): { error?: SolError; nums: number[] } {
   if (!raw) return { nums: [] };
   for (const v of raw) if (isSolError(v)) return { error: v, nums: [] };

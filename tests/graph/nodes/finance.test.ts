@@ -9,6 +9,7 @@ import {
   IRRNode,
   MirrNode,
   DepreciationNode,
+  FvScheduleNode,
 } from "../../../src/graph/nodes/finance";
 import { securityDisc } from "../../../src/graph/nodes/financeOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
@@ -228,6 +229,20 @@ describe("NPV", () => {
   it("matches =NPV(0.1, 100, 200, 300)", () => {
     const r = new NPVNode().data({ rate: [0.1], list: [[100, 200, 300]] });
     expect(r.result).toBeCloseTo(481.59, 2);
+  });
+});
+
+describe("FVSCHEDULE", () => {
+  it("compounds the whole schedule, on the card and in a formula (Excel: 1.33089)", () => {
+    const schedule = [0.09, 0.11, 0.1];
+    expect(new FvScheduleNode().data({ pv: [1], schedule: [schedule] }).result).toBeCloseTo(1.33089, 10);
+    expect(compileEvaluator("FVSCHEDULE(1, s)")!({ s: schedule })).toBeCloseTo(1.33089, 10);
+  });
+  it("an overflow is #OVERFLOW! on both, never a quiet blank", () => {
+    const schedule = [1e200, 1e200];
+    const code = (v: unknown) => (v as { code?: string }).code;
+    expect(code(new FvScheduleNode().data({ pv: [1], schedule: [schedule] }).result)).toBe("#OVERFLOW!");
+    expect(code(compileEvaluator("FVSCHEDULE(1, s)")!({ s: schedule }))).toBe("#OVERFLOW!");
   });
 });
 

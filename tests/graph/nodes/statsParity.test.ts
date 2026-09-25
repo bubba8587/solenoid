@@ -138,6 +138,7 @@ describe("paired statistics formulas == Correl / Covariance / Regression nodes",
   ];
   it.each(PAIRS)("CORREL/RSQ/COVARIANCE.P/.S/SLOPE/INTERCEPT/STEYX over %j, %j", (x, y) => {
     same(ev("CORREL(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
+    same(ev("PEARSON(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
     same(ev("RSQ(y, x)", { x, y }), new CorrelNode({ op: "rsq" }).data({ x: [x], y: [y] }).result);
     same(ev("COVARIANCE.P(x, y)", { x, y }), new CovarianceNode({ op: "pop" }).data({ x: [x], y: [y] }).result);
     same(ev("COVARIANCE.S(x, y)", { x, y }), new CovarianceNode({ op: "samp" }).data({ x: [x], y: [y] }).result);
