@@ -182,6 +182,15 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 - [ ] **`exprYieldsDate` is conservative**: `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
   Number (their `returns` is "any" / "number"). Extend the declarations if a date-valued lookup column shows up.
 
+## Formula parity leads (2026-09-25 audit against Excel)
+
+- [ ] **TEXTAFTER / TEXTBEFORE drop Excel's later arguments.** `TEXTAFTER("a-b-c", "-", 2)` answers "b-c": the card and
+  the formula read the first occurrence only, and the formula ignores `instance_num`, `match_mode`, `match_end` and
+  `if_not_found` without a word. Either both surfaces gain instance support ([[D73]] nodeCoversFormula), or the formula
+  refuses the unsupported arguments with "isn't supported", as XLOOKUP refuses wildcard modes.
+- [ ] **SEARCH has no wildcards** (`?`, `*`, `~`), where Excel's does: `SEARCH("a?c", "xabc")` is `#VALUE!`, Excel 2. It
+  needs a kernel shared with the Text Find card; the criteria family's wildcard matcher (`excelCriteria.ts`) is a start.
+
 ## Family-name polish ([[D22]] oneNamePerCard revised 2026-09-13 — card shows the class-derived family name)
 
 A few families still read awkwardly as `nodeTypeName` output. Fix = rename the class
