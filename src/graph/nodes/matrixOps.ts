@@ -143,7 +143,7 @@ export function stackH(mats: readonly unknown[][][]): unknown[][] {
   const out: unknown[][] = Array.from({ length: height }, () => []);
   for (const m of mats) {
     const w = matCols(m);
-    for (let i = 0; i < height; i++) out[i].push(...(i < m.length ? m[i] : Array<unknown>(w).fill(na)));
+    for (let i = 0; i < height; i++) out[i] = out[i].concat(i < m.length ? m[i] : Array<unknown>(w).fill(na));
   }
   return out;
 }
@@ -200,7 +200,7 @@ export function setCells(
       ? (w.v.length === 0 ? [] : Array.isArray(w.v[0]) ? (w.v as Cell[][]) : [w.v as Cell[]])
       : [[w.v]];
     const h = block.length;
-    const wdt = h ? Math.max(...block.map((row) => row.length)) : 0;
+    const wdt = block.reduce((w, row) => Math.max(w, row.length), 0);
     if (r < 1 || r > rows) return indexRefError(r, rows, "Row");
     if (c < 1 || c > cols) return indexRefError(c, cols, "Column");
     if (r + h - 1 > rows) return indexRefError(r + h - 1, rows, "Row");

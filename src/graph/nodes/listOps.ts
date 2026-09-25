@@ -678,9 +678,7 @@ export function rangeList(start: number, stop: number | undefined, step: number)
 }
 
 export function concatLists(...lists: (readonly unknown[] | null | undefined)[]): unknown[] {
-  const out: unknown[] = [];
-  for (const l of lists) if (l != null) out.push(...l);
-  return out;
+  return lists.flatMap((l) => l ?? []);
 }
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────

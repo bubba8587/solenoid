@@ -223,7 +223,7 @@ export function coerceScriptResult(v: unknown): { value: unknown; family: Produc
     return { value: cells, family: toSocketFamily(vote) };
   }
   if (rows !== v.length) return { value: solError("#SHAPE!", "Returned values mixed with rows; return a list, or a list of rows"), family: null };
-  const width = Math.max(...(v as unknown[][]).map((r) => r.length));
+  const width = (v as unknown[][]).reduce((w, r) => Math.max(w, r.length), 0);
   const out: unknown[][] = [];
   for (const row of v as unknown[][]) {
     if (row.some(Array.isArray)) return { value: solError("#SHAPE!", "Returned rows nested deeper than a table; return a list of rows"), family: null };

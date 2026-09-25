@@ -1860,7 +1860,7 @@ registerInternal("MAP", (...args: unknown[]) => {
   if (arrays.some((a) => a == null)) return null;
   const shaped = arrays.map((a) => asRows(a)!);
   const rows = Math.max(...shaped.map((m) => m.length));
-  const cols = Math.max(...shaped.flatMap((m) => m.map((r) => r.length)));
+  const cols = shaped.flat().reduce((w, r) => Math.max(w, r.length), 0);
   const cellAt = (m: unknown[][], i: number, j: number) => (i < m.length && j < m[i].length ? m[i][j] : null);
   const fn = etaFn(lam, arrays.length);
   const out = Array.from({ length: rows }, (_, i) =>
@@ -1881,7 +1881,7 @@ registerInternal("BYCOL", (v, fn) => {
   if (isSolError(lam)) return lam;
   const m = asRows(v);
   if (m === null) return null;
-  const cols = Math.max(...m.map((r) => r.length), 0);
+  const cols = m.reduce((w, r) => Math.max(w, r.length), 0);
   const call = etaFn(lam, 1);
   return Array.from({ length: cols }, (_, j) => call(m.map((r) => (j < r.length ? r[j] : null))));
 });
