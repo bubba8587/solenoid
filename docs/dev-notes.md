@@ -15,10 +15,10 @@ specific item.
   scenes pair a Solenoid screenshot with an Obsidian grab per state (palettes and light mode, the imported note).
   Running and redoing it, and every mechanic that bit: `.claude/skills/demo-video/SKILL.md`.
 - **Two cuts** (`cuts.mjs`): `demo`, the app tour, kept as `assets/video/solenoid-demo.mp4` (2:27) with its poster;
-  and `obsidian`, a one-minute story for Obsidian users: an emailed table typed into a Frame property through the
-  plugin's Form view, the note joined to a roster note and totaled with PIVOTBY in Solenoid, the chart written back
-  into the note, the plugin's look. Its split scenes film Obsidian and a real Solenoid window side by side on one
-  display. Frame zero of each is its title card, also embedded as cover art. Renders land in `.dev/video/`
+  and `obsidian`, a one-minute story for Obsidian users: the popup's Grid and CSV views, then an emailed table typed
+  into a Frame property through its Form view, all in Obsidian; then, after a card that opens Solenoid, the note
+  joined to a roster note and totaled with PIVOTBY, the chart written back into the note, and the plugin's look. Its
+  Solenoid scenes film Obsidian and a real Solenoid window side by side on one display. Frame zero of each is its title card, also embedded as cover art. Renders land in `.dev/video/`
   (gitignored).
 - **Solenoid Properties wordmark**: `src/logo/solenoidpropertieswordmark.svg`, the coil beside SOLENOID PROPERTIES in
   Atkinson Hyperlegible Next 800, outlined at the Solenoid wordmark's size, baseline and spacing. The demo vault

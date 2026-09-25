@@ -148,23 +148,39 @@ export const PLUGIN = {
   },
 
   "pl-form": {
-    app: "split",
+    app: "obsidian",
     caption: ["Solenoid's table editor", "Each chip opens the editor Solenoid uses: a grid, a form for one record at a time, or CSV. Columns keep their types."],
     async setup(c) {
-      await noteView(c.obs);
-      await graphView(c.sol);
-      await c.sol.frame(CHAIN, { pad: 0.05, maxK: 1.1, dy: 20 });
-      const chip = await need(c.obs.page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip');
-      await c.hand("obs", { x: chip.cx + 60, y: chip.cy + 50 });
+      // Framed as pl-note, so the cut between them only changes the caption.
+      await noteView(c, { zoom: 1.12 });
+      await scrollTo(c, ".metadata-container", undefined, 0.03);
+      const chip = await need(c.page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip');
+      await c.hand.show(chip.cx + 40, chip.cy + 16);
     },
     async act(c) {
-      const { sleep } = c, page = c.obs.page;
-      const hand = await c.hand("obs");
-      await sleep(600);
+      const { hand, sleep, page } = c;
+      await sleep(500);
       await hand.click(await need(page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip'));
-      await sleep(900);
+      await sleep(1000);
+      // The grid: its typed columns, down the Sales column and across a row.
+      const heads = await rectsIn(page, ".table-popup__colhead");
+      const cells = await rectsIn(page, "td.table-popup__cell");
+      await hand.move(heads[1].cx, heads[1].cy, { ms: 700 });
+      await sleep(450);
+      await hand.move(cells[4 * 5 + 1].cx, cells[4 * 5 + 1].cy, { ms: 800 });
+      await sleep(300);
+      await hand.move(cells[4 * 5 + 4].cx, cells[4 * 5 + 4].cy, { ms: 900 });
+      await sleep(700);
+      // The same rows as CSV.
+      await hand.click(await need(page, "button", "CSV"));
+      await sleep(700);
+      const csv = await need(page, "textarea");
+      await hand.move(csv.x + csv.w * 0.35, csv.y + csv.h * 0.55, { ms: 800 });
+      await sleep(1400);
+      // The caption waits for the Form view: the grid's own buttons sit where it would.
+      c.rec.at("caption");
       await hand.click(await need(page, "button", "Form"));
-      await sleep(600);
+      await sleep(900);
       // The first record at typing speed, the other three fast-forwarded in compose.mjs.
       for (const [i, fields] of WEST.entries()) {
         if (i === 1) c.rec.at("fast", { rate: 4 });
@@ -183,13 +199,15 @@ export const PLUGIN = {
       await sleep(350);
       await hand.click(await need(page, "button", "Save"));
       await sleep(900);
-      await hand.click(await task(c.obs, "Add the West figures"));
+      await hand.click(await task(c, "Add the West figures"));
       await sleep(1500);
     },
   },
 
   "pl-reload": {
     app: "split",
+    // Solenoid enters here: compose.mjs opens the scene on its first frame, blurred under the Solenoid wordmark.
+    chapter: { eyebrow: "Opening" },
     caption: ["Join and PIVOTBY", "Join matches each division to its region and target in a second note. PIVOTBY, Excel's own function, totals both by region."],
     async setup(c) {
       await noteView(c.obs);
@@ -200,7 +218,7 @@ export const PLUGIN = {
     },
     async act(c) {
       const { sleep } = c, s = c.sol;
-      await sleep(700);
+      await sleep(1100);
       const data = await s.find(".solenoid-menubar__top", "Data");
       let hand = await c.hand("sol", data);
       await hand.click(data);

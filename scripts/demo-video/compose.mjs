@@ -46,6 +46,10 @@ async function png(html, file) {
   await page.screenshot({ path: path.join(cards, file), omitBackground: true });
 }
 for (const name of ORDER) if (SCENES[name].caption) await png(captionHtml(SCENES[name].caption), `cap-${name}.png`);
+for (const name of ORDER) {
+  const ch = SCENES[name].chapter;
+  if (ch) await png(introMarkHtml(ch.eyebrow, ch.mark ?? "solenoidwordmark.svg"), `chapter-${name}.png`);
+}
 // Side-by-side panels for a stills scene: Solenoid left, Obsidian right, in 1920×1080 px.
 const PANEL = { w: 936, h: 527, x: [16, 968], y: 236 };
 const LABEL = { sol: "Solenoid", obs: "Obsidian" };
@@ -155,10 +159,27 @@ function retimed(name) {
   return { file, duration: map(meta.duration), marks: moved, fast: { t0, t1: map(t1), rate } };
 }
 
+// A scene's `chapter` puts a card before it: the scene's first frame blurred under a wordmark, as when the story
+// moves to the other app.
+const CHAPTER_S = 1.9;
+function chapterPart(name, i) {
+  const still = path.join(segs, `${String(i + 1).padStart(2, "0")}-${name}-first.png`);
+  ff(["-ss", "0.1", "-i", path.join(clips, `${name}.mp4`), "-frames:v", "1", still]);
+  const out = path.join(segs, `${String(i + 1).padStart(2, "0")}-${name}-chapter.mp4`);
+  ff([
+    "-loop", "1", "-framerate", String(FPS), "-i", still, "-loop", "1", "-i", path.join(cards, `chapter-${name}.png`),
+    "-filter_complex", `[0:v]scale=1920:1080,${backdrop(CHAPTER_S)}[bg];[1:v]format=rgba[m];[bg][m]overlay,format=yuv420p`,
+    "-t", String(CHAPTER_S), ...ENC, out,
+  ]);
+  return { file: out, dur: CHAPTER_S };
+}
+
 ORDER.forEach((name, i) => {
+  if (SCENES[name].chapter) parts.push(chapterPart(name, i));
   const clip = retimed(name), dur = clip.duration;
   const out = path.join(segs, `${String(i + 1).padStart(2, "0")}-${name}.mp4`);
-  const capIn = XF + 0.15, capOut = dur - XF - 0.55;
+  // A `caption` mark holds the caption back until then.
+  const capIn = Math.max(XF + 0.15, clip.marks.caption?.t ?? 0), capOut = dur - XF - 0.55;
   const layers = [], inputs = ["-i", clip.file];
   if (SCENES[name].caption) {
     inputs.push("-loop", "1", "-i", path.join(cards, `cap-${name}.png`));
