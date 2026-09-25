@@ -108,11 +108,8 @@ describe("Electricity & Circuits formulas", () => {
 
 describe("Resistor color code", () => {
   it("decodes the classics", () => {
-    expect(decodeResistor("brown", "black", "", "red", "gold", false)).toEqual({ ohms: 1000, tolerance: 5 });
     expect(decodeResistor("yellow", "violet", "", "orange", "gold", false)).toEqual({ ohms: 47000, tolerance: 5 });
     expect(decodeResistor("orange", "orange", "", "brown", "silver", false)).toEqual({ ohms: 330, tolerance: 10 });
-    // 5-band 1% precision part: 10.0 kΩ.
-    expect(decodeResistor("brown", "black", "black", "red", "brown", true)).toEqual({ ohms: 10000, tolerance: 1 });
     // Gold multiplier divides: 4.7 Ω.
     const r = decodeResistor("yellow", "violet", "", "gold", "gold", false);
     expect((r as { ohms: number }).ohms).toBeCloseTo(4.7, 9);

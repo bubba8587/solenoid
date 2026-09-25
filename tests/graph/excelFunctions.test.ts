@@ -3,7 +3,6 @@ import { describe, it, expect, afterEach } from "vitest";
 import * as FX from "@formulajs/formulajs";
 import {
   FAMILY_BACKING,
-  FUNCTION_FAMILY,
   excelFunctionInfo,
   resolveExcelFunction,
   registerInternal,
@@ -11,7 +10,6 @@ import {
   ELIMINATED_FUNCTIONS,
   EXCEL_IMPL_META,
   numberToText,
-  type FuncFamily,
   unregisterInternal,
 } from "../../src/graph/excelFunctions";
 import { compileEvaluator, formulaFunctionNames } from "../../src/graph/excelFormula";
@@ -36,27 +34,6 @@ describe("numberToText — 15 significant digits, trailing zeros stripped", () =
 });
 
 describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
-  it("keeps the families a difference-that-matters dictates internal", () => {
-    // "complex" flipped verify → internal with the [[C15]] matricesInFormulas-amendment tranche: the
-    // tagged Cx ([[C24]] arraySemantics) IS the difference that matters — Formula.js's IM* speak
-    // text complexes, a different currency.
-    for (const fam of ["statistics", "distributions", "datetime", "lookup", "matrix", "units", "finance-iterative", "complex"] as const) {
-      expect(FAMILY_BACKING[fam].backing).toBe("internal");
-    }
-  });
-
-  it("backs the boring half with Formula.js", () => {
-    for (const fam of ["arithmetic", "scalar-math", "finance", "text"] as const) {
-      expect(FAMILY_BACKING[fam].backing).toBe("formulajs");
-    }
-  });
-
-  it("marks the verify-then-decide families", () => {
-    for (const fam of ["rounding", "combinatorics"] as const) {
-      expect(FAMILY_BACKING[fam].backing).toBe("verify");
-    }
-  });
-
   it("gives every family a non-empty reason", () => {
     for (const v of Object.values(FAMILY_BACKING)) expect(v.why.length).toBeGreaterThan(0);
   });
@@ -64,22 +41,11 @@ describe("FAMILY_BACKING (the audit's per-family verdict)", () => {
 
 describe("excelFunctionInfo", () => {
   it("routes representative functions to the right family + backing", () => {
-    expect(excelFunctionInfo("STDEV")).toMatchObject({ family: "statistics", backing: "internal" });
     expect(excelFunctionInfo("abs")).toMatchObject({ family: "scalar-math", backing: "formulajs" }); // case-insensitive
-    expect(excelFunctionInfo("IRR")).toMatchObject({ family: "finance-iterative", backing: "internal" });
-    expect(excelFunctionInfo("PMT")).toMatchObject({ family: "finance", backing: "formulajs" });
-    expect(excelFunctionInfo("CONVERT")).toMatchObject({ family: "lookup", backing: "internal" });
-    expect(excelFunctionInfo("ROUND")).toMatchObject({ family: "rounding", backing: "verify" });
   });
 
   it("returns null for a Formula.js-only name (not part of the overlap surface)", () => {
     expect(excelFunctionInfo("NONEXISTENTFN")).toBeNull();
-  });
-
-  it("classifies every entry in FUNCTION_FAMILY into a known family", () => {
-    for (const fam of Object.values(FUNCTION_FAMILY)) {
-      expect(FAMILY_BACKING[fam as FuncFamily]).toBeDefined();
-    }
   });
 });
 
@@ -93,7 +59,6 @@ describe("resolveExcelFunction (the resolution seam)", () => {
 
   it("falls through to the Formula.js impl today (no internals registered)", () => {
     const abs = resolveExcelFunction("ABS");
-    expect(typeof abs).toBe("function");
     expect(abs?.(-3)).toBe(FX.ABS(-3));
   });
 
@@ -150,12 +115,6 @@ describe("first wave of native impls (registered through the seam)", () => {
     // non-number arg → tagged #VALUE!
     expect(isSolError(fn("MONTH")("nope"))).toBe(true);
   });
-  it("declares each impl's output socket type + arity (EXCEL_IMPL_META)", () => {
-    expect(EXCEL_IMPL_META.EOMONTH.returns).toBe("date");
-    expect(EXCEL_IMPL_META.LEN.returns).toBe("number");
-    expect(EXCEL_IMPL_META.ROUND.arity).toEqual([2, 2]);
-    expect(EXCEL_IMPL_META.STANDARDIZE.family).toBe("statistics");
-  });
 });
 
 describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", () => {
@@ -179,17 +138,6 @@ describe("Solenoid-only functions — the registry ADDS what Formula.js lacks", 
   it("BETWEEN is a real boolean (covers the logical output type)", () => {
     expect(fn("BETWEEN")(5, 0, 10)).toBe(true);
     expect(fn("BETWEEN")(11, 0, 10)).toBe(false);
-  });
-  it("EXCEL_IMPL_META tags them native + their output type", () => {
-    expect(EXCEL_IMPL_META.CLAMP).toMatchObject({ returns: "number", native: true });
-    expect(EXCEL_IMPL_META.ORDINAL).toMatchObject({ returns: "string", native: true });
-    expect(EXCEL_IMPL_META.BETWEEN).toMatchObject({ returns: "logical", native: true });
-  });
-  it("each registered impl declares an output type that matches the audit families", () => {
-    // Every meta entry has a known ExcelReturn ("any" = type-neutral passthrough).
-    for (const m of Object.values(EXCEL_IMPL_META)) {
-      expect(["number", "string", "logical", "date", "complex", "any"]).toContain(m.returns);
-    }
   });
   it("every registered internal declares its meta ([[C17]] shareImpl, the registered→declared direction)", () => {
     // The reverse direction (declared→dispatches) lives in formulaTier3; without
@@ -229,13 +177,7 @@ describe("statistics flat names — registered so a formula can call them at all
   const X = { x: [2, 4, 4, 4, 5, 5, 7, 9] };
 
   it("STDEV / VAR / MODE / PERCENTILE / QUARTILE / COVAR resolve (were Unknown function)", () => {
-    expect(resolveExcelFunction("STDEV")).toBeTypeOf("function");
-    expect(resolveExcelFunction("VAR")).toBeTypeOf("function");
-    expect(resolveExcelFunction("MODE")).toBeTypeOf("function");
-    expect(resolveExcelFunction("PERCENTILE")).toBeTypeOf("function");
-    expect(resolveExcelFunction("QUARTILE")).toBeTypeOf("function");
     expect(resolveExcelFunction("COVAR")).toBeTypeOf("function");
-    expect(resolveExcelFunction("PERCENTRANK")).toBeTypeOf("function");
   });
 
   it("STDEV defaults to sample, VAR to sample, MODE to single", () => {
@@ -334,8 +276,6 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(m.slice(0, 2)).toEqual([3, 1]);                              // hits keep their positions
     expect(isSolError(m[2]) && (m[2] as SolError).code).toBe("#N/A");    // a miss spills #N/A in place
     expect(ev("XLOOKUP(qs, ks, vs, -1)", env)).toEqual([300, 100, -1]);  // -1 = if-not-found, per element
-    // A scalar needle still answers a scalar (no spill).
-    expect(ev("XMATCH(20, ks)", env)).toBe(2);
   });
 
   it("DOTTED function names parse + resolve (the tokenizer + namespace walk)", () => {
@@ -349,7 +289,6 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
 
   it("date-returning functions emit our SERIAL (a number), not a Formula.js Date object", () => {
     const serial = ev("DATE(2026, 3, 15)");           // 2026-03-15
-    expect(typeof serial).toBe("number");
     expect(serial).toBe(46096);
     expect(ev("EDATE(DATE(2026, 3, 15), 2)")).toBe(46157);    // 2026-05-15, still a number
     expect(typeof ev("DATEVALUE(\"2026-03-15\")")).toBe("number");

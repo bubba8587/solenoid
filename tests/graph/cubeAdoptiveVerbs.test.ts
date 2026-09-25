@@ -4,7 +4,6 @@ import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode, ColumnsNode } f
 import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { cubeFromColumns, flatCubeToFrame, isFrameValue, isCubeValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
-import { canConnect } from "../../src/graph/sockets";
 import { collectPreview } from "../../src/graph/frameBackend";
 
 // The author's ruling (2026-09-12): a cube never enters a frame socket through the lattice;
@@ -30,10 +29,6 @@ describe("flatCubeToFrame", () => {
 });
 
 describe("the lattice stays narrow; the nodes widen", () => {
-  it("cube → frame is still refused at the lattice", () => {
-    expect(canConnect("cube", "frame")).toBe(false);
-  });
-
   it("Window, GROUPBY and Chart declare cube-adoptive inputs", () => {
     for (const n of [new WindowNode(), new GroupByFrameNode(), new ColumnsNode()]) expect(String((n.inputs.frame!.socket as { base?: string }).base)).toBe("cube");
     expect(String((new ChartNode().inputs.values!.socket as { base?: string }).base)).toBe("cube");

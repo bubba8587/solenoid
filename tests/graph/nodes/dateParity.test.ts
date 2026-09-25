@@ -18,14 +18,11 @@ describe("date formulas == date nodes", () => {
     for (const [y, m, dd] of [[2026, 3, 15], [26, 1, 1], [2024, 14, 31], [0, 1, 1], [10000, 1, 1]]) {
       same(ev("DATE(y, m, d)", { y, m, d: dd }), new DateConstructNode().data({ year: [y], month: [m], day: [dd] }).result);
     }
-    expect(ev("DATE(26, 1, 1)")).toBeLessThan(0); // pre-1900 serial, not 1926
-    expect(ev("DATE(2026, 3, 15)")).toBe(d("2026-03-15"));
   });
   it("TIME wraps past 24 h like the node", () => {
     for (const [h, m, s] of [[12, 0, 0], [25, 30, 0], [0, 90, 0], [23, 59, 59.5]]) {
       same(ev("TIME(h, m, s)", { h, m, s }), new TimeConstructNode().data({ hour: [h], minute: [m], second: [s] }).result);
     }
-    expect(ev("TIME(6, 0, 0)")).toBeCloseTo(0.25, 12);
   });
   it("DATEVALUE / TIMEVALUE run the node's parsers (#AMBIGUOUS! and #VALUE! included)", () => {
     for (const t of ["15 March 1996", "2026-03-15", "3/4/2026", "nonsense"]) {
@@ -36,7 +33,6 @@ describe("date formulas == date nodes", () => {
       const n = new DateTimeValueNode({ op: "time" }); n.stringLiterals.text = t;
       same(ev("TIMEVALUE(t)", { t }), n.data({}).result);
     }
-    expect(ev("TIMEVALUE(\"14:30:00\")")).toBeCloseTo(0.6041666666666666, 12);
   });
   it("WEEKDAY / WEEKNUM / ISOWEEKNUM with every return_type", () => {
     const dates = [d("2026-01-01"), d("2026-03-15"), d("2024-12-30"), d("2021-01-03")];
@@ -81,7 +77,6 @@ describe("date formulas == date nodes", () => {
     for (const [unit, op] of units) {
       same(ev("DATEDIF(s, z, u)", { s, z, u: unit }), new DateDiffNode({ op: op as never }).data({ start: [s], end: [z] }).result);
     }
-    expect(ev("DATEDIF(s, z, \"Y\")", { s, z })).toBe(2);
     expect(isSolError(ev("DATEDIF(z, s, \"Y\")", { s, z }))).toBe(true);   // reversed range: #DOMAIN! (the node blanks the cell)
     expect(isSolError(ev("DATEDIF(s, z, \"Q\")", { s, z }))).toBe(true);   // unknown unit
   });

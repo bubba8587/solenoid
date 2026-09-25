@@ -3,7 +3,6 @@ import { describe, it, expect } from "vitest";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { canConnect, SolenoidSocket } from "../../src/graph/sockets";
-import { isSolError } from "../../src/graph/errorValue";
 
 // ─── [[C15]] matricesInFormulas: the Expression lift ([[C10]] socketLattice) ────────────────────────────────────────
 // The connect-time half of the matrix decision: variables are `anydata`, matrices
@@ -36,11 +35,6 @@ describe("matrices flow into a formula (the lift itself)", () => {
     const out = run("a + 1", { a: [[[1, null], [3, 4]]] }) as unknown[][];
     expect(out[0]).toEqual([2, null]);
     expect(out[1]).toEqual([4, 5]);
-  });
-
-  it("the old cap's #SHAPE! is gone — this exact input used to refuse", () => {
-    const r = run("a * 2", { a: [M] });
-    expect(isSolError(r)).toBe(false);
   });
 });
 

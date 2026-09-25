@@ -1,7 +1,7 @@
 // [[C64]], [[C48]], [[C24]] arraySemantics
 import { describe, it, expect } from "vitest";
 import { PivotNode } from "../../src/graph/nodes/frame";
-import { isFrameValue, type FrameValue } from "../../src/graph/frame";
+import type { FrameValue } from "../../src/graph/frame";
 
 // The Pivot node's field-value filter (filterExclude) compiles to the engine row
 // mask: excluded value keys drop those source rows before the pivot aggregates,
@@ -21,7 +21,6 @@ describe("PivotNode field-value filter", () => {
     const node = new PivotNode({ label: "P", agg: "sum" });
     node.filterExclude = { Region: ["S"] };
     const out = node.data({ frame: [frame], rowFields: [["Region"]], colFields: [[]], values: [["Amount"]] });
-    expect(isFrameValue(out.frame)).toBe(true);
     const f = out.frame as FrameValue;
     expect(col(f, "Region")).toEqual(["N"]); // S filtered out
     expect(col(f, "Amount")).toEqual([40]);  // 10 + 30

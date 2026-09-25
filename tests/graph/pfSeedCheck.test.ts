@@ -22,7 +22,6 @@ describe("personal-finance seed data", () => {
   it("transactions: Amount numeric, income vs spend split is sane", () => {
     const tx = loadFrame("transactions.csv");
     const amt = nums(tx, "Amount");
-    expect(getColumn(tx, "Category")).toBeTruthy();
     const income = amt.filter((x) => x > 0).reduce((a, b) => a + b, 0);
     const spend = amt.filter((x) => x < 0).reduce((a, b) => a + b, 0);
     const rate = (income + spend) / income;

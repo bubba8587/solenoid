@@ -4,7 +4,7 @@ import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { installErrorGuards, isSolError, type SolError } from "../../src/graph/errorValue";
+import { installErrorGuards, type SolError } from "../../src/graph/errorValue";
 import { NumberInputNode } from "../../src/graph/nodes/input";
 import { NoteNode } from "../../src/graph/nodes/annotation";
 import { ReportNode } from "../../src/graph/nodes/report";
@@ -51,7 +51,6 @@ describe("Knap through the engine", () => {
     const report = new ReportNode({ body: "{% for x in xs %}" });
     await editor.addNode(report);
     const out = await engine.fetch(report.id) as { document: unknown };
-    expect(isSolError(out.document)).toBe(true);
     expect((out.document as SolError).code).toBe("#SYNTAX!");
     expect((out.document as SolError).origin?.nodeId).toBe(report.id);
   });

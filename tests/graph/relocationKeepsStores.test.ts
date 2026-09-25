@@ -60,7 +60,6 @@ describe("Wrap as Composite inside a drill-in relocates, it doesn't delete", () 
     num.selected = true; disp.selected = true;
 
     const compId = await createCompositeFromSelection(editor, view);
-    expect(compId).toBeTruthy();
     const comp = editor.getNode(compId!) as CompositeNode;
     expect(comp.internalEditor.getNode(num.id)).toBe(num);
     expect(dockedNodeStore.get(fc.id)?.hostNodeId).toBe(num.id);

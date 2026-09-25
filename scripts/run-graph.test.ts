@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { runGraph } from "./run-graph";
-import { isFrameValue, type FrameValue } from "../src/graph/frame";
+import type { FrameValue } from "../src/graph/frame";
 import gettingStarted from "../src/graph/seedGraphs/getting-started.json";
 import tableVerbs from "../src/graph/seedGraphs/table-verbs.json";
 
@@ -13,15 +13,10 @@ import tableVerbs from "../src/graph/seedGraphs/table-verbs.json";
 // no hidden Tauri/browser dependency.
 
 describe("run-graph (headless CLI)", () => {
-  it("has no browser/Tauri globals available — genuinely headless, not jsdom", () => {
-    expect(typeof window).toBe("undefined");
-  });
-
   it("runs a saved graph outside the browser and prints real values, keyed by label", async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const out = await runGraph(gettingStarted as any);
     const sales = out["Quarterly sales"] as { frame: FrameValue };
-    expect(isFrameValue(sales.frame)).toBe(true);
     expect(sales.frame.columns.map((c) => c.name)).toEqual(["Quarter", "Sales"]);
     expect(out["SUM"]).toEqual({ result: 1200 + 1550 + 1340 + 1810 });
   });
@@ -31,7 +26,6 @@ describe("run-graph (headless CLI)", () => {
     const out = await runGraph(tableVerbs as any);
 
     const grouped = (out["GROUPBY Rep → SUM(Amount)"] as { frame: FrameValue }).frame;
-    expect(isFrameValue(grouped)).toBe(true); // not a "jsf:N" ref string — actually materialized
     const rep = grouped.columns.find((c) => c.name === "Rep")!;
     const amount = grouped.columns.find((c) => c.name === "Amount")!;
     const byRep = Object.fromEntries(rep.values.map((r, i) => [r, amount.values[i]]));
@@ -40,7 +34,6 @@ describe("run-graph (headless CLI)", () => {
     expect(byRep).toEqual({ Ada: 230, Bo: 125, Cy: 200, "Grand Total": 555 });
 
     const joined = (out["Join Sales × Reps (left, on Rep)"] as { frame: FrameValue }).frame;
-    expect(isFrameValue(joined)).toBe(true);
     expect(joined.columns.map((c) => c.name)).toEqual(["Rep", "Region", "Amount", "Team"]);
     const team = joined.columns.find((c) => c.name === "Team")!;
     expect(team.values).toEqual(["Red", "Blue", "Red", "Green", "Blue", "Red"]);

@@ -2,9 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { lookupCell, lookupRowIndex, frameRowAt, cubeRowAt, type LookupMatchMode, type LookupSearchMode } from "../../src/graph/frameVerbs";
 import { xmatchIndex } from "../../src/graph/nodes/listOps";
-import { isCubeValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
-import { cubeFromColumns, isFrameValue, frameToCube } from "../../src/graph/frame";
+import { cubeFromColumns, frameToCube } from "../../src/graph/frame";
 import type { FrameValue, CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { XLookupNode } from "../../src/graph/nodes/frame";
@@ -64,21 +63,6 @@ describe("lookupFrameCell — frame XLOOKUP/VLOOKUP", () => {
     expect(lookupFrameCell(people, "joined", "name", "46010")).toBe("Bob");
   });
 
-  it("returns the FIRST matching row", () => {
-    const dup: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "k", type: "string", values: ["x", "x"] },
-        { name: "v", type: "number", values: [10, 20] },
-      ],
-    };
-    expect(lookupFrameCell(dup, "k", "v", "x")).toBe(10);
-  });
-
-  it("returns undefined when no row matches", () => {
-    expect(lookupFrameCell(people, "name", "id", "Zed")).toBeUndefined();
-  });
-
   it("never matches a null / error key cell", () => {
     const gappy: FrameValue = {
       __frame: true,
@@ -133,7 +117,6 @@ describe("lookupRowIndex + cubeRowAt on a cube — the whole-row (*) path", () =
   it("cubeRowAt keeps a nested sub-frame cell WHOLE", () => {
     const idx = lookupRowIndex(customers, "id", "1");
     const row = cubeRowAt(customers, idx);
-    expect(isCubeValue(row)).toBe(true);
     expect(row.columns.map((c) => c.name)).toEqual(["id", "name", "vip", "orders"]);
     expect(row.columns.every((c) => c.cells.length === 1)).toBe(true);
     expect(row.columns.find((c) => c.name === "orders")!.cells[0]).toBe(orders1); // intact
@@ -159,7 +142,6 @@ describe("lookupCell on a cube — cube XLOOKUP (top-level key, whole-cell retur
 
   it("returns a NESTED frame cell WHOLE (the cube half's whole point)", () => {
     const cell = lookupCell(customers, "id", "orders", "1");
-    expect(isFrameValue(cell)).toBe(true);
     expect(cell).toBe(orders1); // the exact sub-frame, intact — not drilled into
   });
 

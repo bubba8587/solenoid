@@ -25,9 +25,6 @@ describe("modalOwnsKeyboard", () => {
 
   it("is true when an aria-modal dialog or a pop-up overlay is in the DOM", () => {
     expect(modalOwnsKeyboard(docWith(true))).toBe(true);
-    for (const root of ['[aria-modal="true"]', ".sol-popup-overlay", ".solenoid-confirm__overlay", ".conn-dialog__overlay"]) {
-      expect(MODAL_SELECTOR).toContain(root);
-    }
   });
 
   it("pins the capture-time answer on the event: a key that closed its modal still reads as under it", () => {

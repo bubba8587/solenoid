@@ -27,7 +27,6 @@ const view: GanttViewOptions = { histogram: true, window: [S(2026, 9, 7), S(2026
 describe("resource histogram", () => {
   it("sums units per day per resource with a first-seen resource order", () => {
     const frame = layoutGantt(payload(tasks, view), { width: 700 });
-    expect(frame.histogram).toBeDefined();
     expect(frame.histogram!.resources).toEqual(["Ana", "Bob"]);
     // Peak is Sep 8: Ana 2 + Bob 1 = 3.
     expect(frame.histogram!.maxUnits).toBe(3);

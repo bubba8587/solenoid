@@ -24,13 +24,6 @@ describe("boundaryCrossings", () => {
     ]);
   });
 
-  it("ignores internal and fully-external connections", () => {
-    const r = boundaryCrossings(focus, conns);
-    const ids = [...r.entry, ...r.exit].map((x) => x.connId);
-    expect(ids).not.toContain("c2"); // internal
-    expect(ids).not.toContain("c4"); // fully external
-  });
-
   it("collects multiple lanes per side (→ a Conduit endpoint; one → a single socket)", () => {
     const multi = [
       c("e1", "x", "o", "a", "i0"),

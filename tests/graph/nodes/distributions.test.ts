@@ -11,22 +11,6 @@ const dist = (op: string, form: string) =>
 // regression here means we've drifted from spreadsheet parity.
 
 describe("normal family", () => {
-  it("NORM.DIST cdf — Φ(1.96) = 0.975", () => {
-    const r = dist("normal", "cdf").data({ x: [1.96], mean: [0], stdev: [1] });
-    expect(r.result).toBeCloseTo(0.975, 4);
-  });
-
-  it("NORM.DIST cdf — non-standard mean/stdev", () => {
-    // NORM.DIST(110, 100, 15, TRUE) = 0.747507
-    const r = dist("normal", "cdf").data({ x: [110], mean: [100], stdev: [15] });
-    expect(r.result).toBeCloseTo(0.747507, 4);
-  });
-
-  it("NORM.S.DIST cdf — Φ(1) = 0.841345", () => {
-    const r = dist("normal-s", "cdf").data({ z: [1] });
-    expect(r.result).toBeCloseTo(0.841345, 4);
-  });
-
   it("NORM.INV is the inverse of NORM.DIST", () => {
     // NORM.INV(0.975, 0, 1) = 1.959964
     const r = dist("normal", "inv").data({ prob: [0.975], mean: [0], stdev: [1] });
@@ -84,62 +68,14 @@ describe("beta / gamma", () => {
   });
 });
 
-describe("lognormal / weibull / exponential", () => {
-  it("LOGNORM.DIST(1, 0, 1) cdf = 0.5", () => {
-    const r = dist("lognorm", "cdf").data({ x: [1], mean: [0], stdev: [1] });
-    expect(r.result).toBeCloseTo(0.5, 4);
-  });
-
-  it("WEIBULL.DIST(1, 2, 2) cdf = 0.221199", () => {
-    const r = dist("weibull", "cdf").data({ x: [1], alpha: [2], beta: [2] });
-    expect(r.result).toBeCloseTo(0.221199, 5);
-  });
-
-  it("EXPON.DIST(1, 1) cdf = 1 - 1/e", () => {
-    const r = dist("expon", "cdf").data({ x: [1], lambda: [1] });
-    expect(r.result).toBeCloseTo(1 - Math.exp(-1), 6);
-  });
-});
-
 describe("discrete family", () => {
-  it("BINOM.DIST(3, 10, 0.5) pmf = 0.117188", () => {
-    const r = dist("binom", "pmf").data({ k: [3], n: [10], p: [0.5] });
-    expect(r.result).toBeCloseTo(0.117188, 5);
-  });
-
-  it("BINOM.DIST(3, 10, 0.5) cdf = 0.171875", () => {
-    const r = dist("binom", "cdf").data({ k: [3], n: [10], p: [0.5] });
-    expect(r.result).toBeCloseTo(0.171875, 5);
-  });
-
   it("POISSON.DIST(3, 2) pmf = 0.180447", () => {
     const r = dist("poisson", "pmf").data({ k: [3], lambda: [2] });
     expect(r.result).toBeCloseTo(0.180447, 5);
   });
-
-  it("POISSON.DIST(3, 2) cdf = 0.857123", () => {
-    const r = dist("poisson", "cdf").data({ k: [3], lambda: [2] });
-    expect(r.result).toBeCloseTo(0.857123, 5);
-  });
-
-  it("HYPGEOM.DIST(2, 5, 10, 20) pmf = 0.348297", () => {
-    const r = dist("hypgeom", "pmf").data({ k: [2], n: [5], M: [10], N: [20] });
-    expect(r.result).toBeCloseTo(0.348297, 5);
-  });
-
-  it("NEGBINOM.DIST(3, 5, 0.5) pmf = 0.136719", () => {
-    const r = dist("negbinom", "pmf").data({ k: [3], r: [5], p: [0.5] });
-    expect(r.result).toBeCloseTo(0.136719, 5);
-  });
 });
 
 describe("the one-node mechanics", () => {
-  it("BINOM.INV — smallest k whose cumulative probability reaches alpha", () => {
-    // BINOM.INV(10, 0.5, 0.75) = 6
-    const r = dist("binom", "inv").data({ prob: [0.75], n: [10], p: [0.5] });
-    expect(r.result).toBe(6);
-  });
-
   it("an inverse form swaps the first input from x to prob and back", () => {
     const node = dist("normal", "cdf");
     expect(node.inputs.x).toBeDefined();

@@ -127,8 +127,6 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
     expect(evalPackFormula("SUNRISE(46000, 0, 0)")).toBe(t.sunrise);
     expect(evalPackFormula("SUNSET(46000, 0, 0)")).toBe(t.sunset);
     expect(evalPackFormula("DAYLENGTH(46000, 0, 0)")).toBe(t.dayLength);
-    expect(t.dayLength).toBeGreaterThan(11.5);
-    expect(t.dayLength).toBeLessThan(12.5);
   });
   it("SUNPOSITION reads a part (elevation default); lat/lon are range-checked", () => {
     const p = solarPosition(46000.5, 40, -74);

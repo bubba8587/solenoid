@@ -26,7 +26,6 @@ describe("baseline ghost", () => {
   it("draws a ghost rect from the baseline start to finish+1", () => {
     const frame = layoutGantt(payload([t], { zoom: "day", window: [S(2026, 9, 6), S(2026, 9, 16)] }), { width: 800 });
     const bar = frame.bars[0];
-    expect(bar.baseline).toBeDefined();
     expect(bar.baseline!.x).toBeCloseTo((t.baselineStart! - frame.scale.from) * frame.scale.pxPerDay, 3);
     expect(bar.baseline!.w).toBeCloseTo(5 * frame.scale.pxPerDay, 3); // 7..11 inclusive = 5 days
   });
@@ -95,7 +94,6 @@ describe("split bars (out-of-sequence progress)", () => {
     });
     const frame = layoutGantt(payload([t], { zoom: "day", window: [S(2026, 9, 6), S(2026, 9, 20)] }), { width: 900 });
     const bar = frame.bars[0];
-    expect(bar.segments).toBeDefined();
     expect(bar.segments!.length).toBe(2);
     const ppd = frame.scale.pxPerDay;
     expect(bar.segments![0].x).toBeCloseTo((S(2026, 9, 7) - frame.scale.from) * ppd, 3);

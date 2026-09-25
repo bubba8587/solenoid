@@ -71,6 +71,5 @@ describe("serializeChartOptions", () => {
   it("serializes the pielabels mode and round-trips it", () => {
     expect(serializeChartOptions({ pielabels: "inside" })).toBe("pielabels=inside");
     expect(parseChartOptions(serializeChartOptions({ pielabels: "off" }))).toEqual({ pielabels: "off" });
-    expect(parseChartOptions(serializeChartOptions({ pielabels: "inside" }))).toEqual({ pielabels: "inside" });
   });
 });

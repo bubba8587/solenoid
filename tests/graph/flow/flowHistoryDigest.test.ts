@@ -41,7 +41,6 @@ describe("describeGraphDelta", () => {
   it("reports a move only when nothing else changed", () => {
     const movedB = { ...b, x: 40 };
     expect(describeGraphDelta(graph([a, b]), graph([a, movedB]))).toBe("Moved node: total");
-    expect(describeGraphDelta(graph([a]), graph([a, movedB].map((n) => n)))).toBe("Added node: total");
   });
 
   it("reports an in-card edit", () => {

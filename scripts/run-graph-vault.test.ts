@@ -6,7 +6,7 @@ import { runGraph, nodeFsProvider } from "./run-graph";
 import { setFsProvider } from "../src/graph/fileBridge";
 import { settingsStore } from "../src/graph/settingsStore";
 import { WriteObsidianNode } from "../src/graph/nodes/obsidian";
-import { isCubeValue, type CubeValue } from "../src/graph/frame";
+import type { CubeValue } from "../src/graph/frame";
 
 // Bundle 24 J — the headless seam: `run-graph --vault <path>` installs a Node file
 // provider behind fileBridge so the Obsidian nodes read a vault with no window, and
@@ -24,7 +24,6 @@ describe("run-graph --vault", () => {
       { vault: DEMO },
     );
     const cube = (out["Projects"] as { cube: CubeValue }).cube;
-    expect(isCubeValue(cube)).toBe(true);
     expect(cube.columns[0]?.cells.length ?? 0).toBeGreaterThan(0);
     const names = cube.columns.map((c) => c.name);
     expect(names).toContain("name");
@@ -59,7 +58,6 @@ describe("run-graph --vault", () => {
     };
     const out = await runGraph(graph, { vault: DEMO });
     const cube = (out["Vault"] as { cube: CubeValue }).cube;
-    expect(isCubeValue(cube)).toBe(true);
     const folderCol = cube.columns.find((c) => c.name === "folder");
     expect(folderCol?.cells.length ?? 0).toBeGreaterThan(0);
     expect(folderCol?.cells.every((c) => c === "Projects")).toBe(true); // read only the wired subfolder

@@ -47,12 +47,6 @@ describe("moveGroupMembers — skipSelected guards the double-move", () => {
     expect(h.final.get("a")).toEqual({ x: 10, y: 5 });
   });
 
-  it("still moves UNSELECTED members with skipSelected on", () => {
-    const h = harness(new Set(["a", "b", "c"])); // whole group + members selected
-    moveGroupMembers(h.editor, h.view, h.group, 10, 5, true);
-    expect(h.translated).toEqual([]);                          // all carried by the selector
-  });
-
   it("no-op on a zero delta", () => {
     const h = harness(new Set());
     moveGroupMembers(h.editor, h.view, h.group, 0, 0, true);

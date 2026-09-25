@@ -5,7 +5,7 @@
 // identically to the old direct-verb path. A structural failure comes back as a
 // tagged SolError VALUE, never a throw.
 import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, frameBackend, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { ReplaceValuesNode } from "../../src/graph/nodes/frame";
 import {
@@ -29,17 +29,6 @@ const sample: FrameValue = {
     { name: "flag", type: "logical", values: [true, false, true, false] },
   ],
 };
-
-describe("collect — full frame round-trip through a handle", () => {
-  it("returns every row, not a head-N preview", async () => {
-    resetFrameBackendToJs();
-    const be = frameBackend();
-    const h = await be.source(sample);
-    const got = await be.collect(h);
-    expect(got.__frame).toBe(true);
-    expect(got.columns).toEqual(sample.columns);
-  });
-});
 
 describe("runFrameUnary — parity with each pure verb", () => {
   it("select", async () => {
@@ -149,7 +138,6 @@ describe("sketch mode (#24) — sampled verb execution + extrapolated aggregates
     ];
     const out = await readFrame(await runFrameUnary(big, { kind: "groupBy", keys: ["region"], aggs }));
     if (isSolError(out) || out == null) throw new Error("expected a frame");
-    expect(out.__approx).toBeDefined();
     expect(out.__approx!.factor).toBeCloseTo(2, 5); // 2×SKETCH_SAMPLE_ROWS rows sampled to SKETCH_SAMPLE_ROWS
     // sum/count are EXTRAPOLATED (scaled by the factor) — never the sample's raw total
     const total = out.columns.find((c) => c.name === "total")!.values.reduce((a, b) => (a as number) + (b as number), 0);

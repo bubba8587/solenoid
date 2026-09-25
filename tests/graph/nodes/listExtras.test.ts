@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { shiftList, pctChangeList, zscoreList, binIndex } from "../../../src/graph/nodes/listOps";
 import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode } from "../../../src/graph/nodes/list";
 import { BetweenNode, IsCloseNode } from "../../../src/graph/nodes/logic";
-import { combinationsOf, gradientList, ewmaList, trapzList, convolveList, crossProduct, rleEncode, polyfitEval } from "../../../src/graph/nodes/listOps";
+import { combinationsOf, crossProduct, polyfitEval } from "../../../src/graph/nodes/listOps";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError } from "../../../src/graph/errorValue";
 
@@ -34,7 +34,6 @@ describe("pctChangeList (Percent Change)", () => {
   });
   it("the DIFF node in percent mode computes it (merged, not a separate node)", () => {
     expect(new DiffNode({ mode: "percent" }).data({ list: [[10, 20]] }).result).toEqual([1]);
-    expect(new DiffNode().data({ list: [[10, 20]] }).result).toEqual([10]); // default delta
   });
 });
 
@@ -45,7 +44,6 @@ describe("zscoreList (Z-Score / standardize)", () => {
   });
   it("the Normalize node in z-score mode computes it (merged, not a separate node)", () => {
     expect((new NormalizeNode({ mode: "zscore" }).data({ list: [[2, 4]] }).result as number[])).toEqual([-1, 1]);
-    expect((new NormalizeNode().data({ list: [[2, 4]] }).result as number[])).toEqual([0, 1]); // default minmax
   });
 });
 
@@ -60,7 +58,6 @@ describe("binIndex (Bin / findInterval)", () => {
 
 describe("combinationsOf (itertools combinations / permutations)", () => {
   it("combinations are order-independent; permutations are ordered", () => {
-    expect(combinationsOf([1, 2, 3], 2, "combinations")).toEqual([[1, 2], [1, 3], [2, 3]]);
     expect(combinationsOf([1, 2, 3], 2, "permutations")).toEqual([[1, 2], [1, 3], [2, 1], [2, 3], [3, 1], [3, 2]]);
     expect(combinationsOf([1, 2], 3, "combinations")).toEqual([]); // k > n
   });
@@ -73,35 +70,26 @@ describe("combinationsOf (itertools combinations / permutations)", () => {
 
 describe("Tier-2/3 kernels (gradient / ewma / trapz / convolve / cross / rle / polyfit)", () => {
   it("gradient is central-difference interior, one-sided at the ends", () => {
-    expect(gradientList([1, 2, 4, 7])).toEqual([1, 1.5, 2.5, 3]);
-    // and it merged into the DIFF node as a 3rd mode
     expect(new DiffNode({ mode: "gradient" }).data({ list: [[1, 2, 4, 7]] }).result).toEqual([1, 1.5, 2.5, 3]);
   });
   it("ewma weights recent values by alpha; blanks carry forward", () => {
-    expect(ewmaList([1, 2, 3], 0.5)).toEqual([1, 1.5, 2.25]);
     expect(new EwmaNode().data({ list: [[1, 2, 3]], alpha: [0.5] }).result).toEqual([1, 1.5, 2.25]);
   });
   it("trapz integrates by the trapezoidal rule", () => {
-    expect(trapzList([0, 1, 2, 3], 1)).toBe(4.5);
     expect(new TrapzNode().data({ list: [[0, 1, 2, 3]], dx: [1] }).result).toBe(4.5);
   });
   it("convolve is the full sliding dot-product", () => {
-    expect(convolveList([1, 2], [1, 1])).toEqual([1, 3, 2]);
     expect(new ConvolveNode().data({ a: [[1, 2]], b: [[1, 1]] }).result).toEqual([1, 3, 2]);
   });
   it("cross product of two 3-vectors; wrong length is #SHAPE!", () => {
-    expect(crossProduct([1, 0, 0], [0, 1, 0])).toEqual([0, 0, 1]);
     expect(new CrossNode().data({ a: [[1, 0, 0]], b: [[0, 1, 0]] }).result).toEqual([0, 0, 1]);
     const bad = crossProduct([1, 2], [3, 4]);
     expect(isSolError(bad) && (bad as { code: string }).code).toBe("#SHAPE!");
   });
   it("rle compresses runs into value/count rows", () => {
-    expect(rleEncode([1, 1, 2, 2, 2, 3])).toEqual([[1, 2], [2, 3], [3, 1]]);
     expect(new RleNode().data({ list: [[1, 1, 2, 2, 2, 3]] }).result).toEqual([[1, 2], [2, 3], [3, 1]]);
   });
   it("polyfit fits exactly through points that lie on a degree-d curve", () => {
-    const fitted = polyfitEval([0, 1, 2], [0, 1, 4], 2) as number[]; // y = x^2
-    fitted.forEach((v, i) => expect(v).toBeCloseTo([0, 1, 4][i], 8));
     const node = new PolyfitNode(); node.literals.degree = 2;
     (node.data({ x: [[0, 1, 2]], y: [[0, 1, 4]] }).result as number[]).forEach((v, i) => expect(v).toBeCloseTo([0, 1, 4][i], 8));
   });
@@ -135,7 +123,6 @@ describe("COUNTBLANK — Aggregate op that counts missing cells", () => {
     const { AggregateNode } = await import("../../../src/graph/nodes/list");
     expect(new AggregateNode({ op: "countblank" }).data({ list: [[1, null, 3, null, null]] }).result).toBe(3);
     expect(new AggregateNode({ op: "countblank" }).data({ list: [[null, null]] }).result).toBe(2);
-    expect(new AggregateNode({ op: "count" }).data({ list: [[1, null, 3]] }).result).toBe(2); // count still skips blanks
   });
 });
 

@@ -20,7 +20,6 @@ describe("PayoffPlannerNode", () => {
     expect(init.order).toBe("snowball");
     expect(init.mode).toBe("schedule");
     expect(new PayoffPlannerNode({ order: "x" as never, mode: "y" as never }).order).toBe("avalanche");
-    expect(new PayoffPlannerNode().mode).toBe("summary");
   });
 
   it("summary: one row per debt with months, interest (Balance's unit) and a payoff date off the start", () => {

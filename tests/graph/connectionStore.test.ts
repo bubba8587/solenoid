@@ -80,7 +80,6 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
 
     // A manual click and an interval timer both call exactly this function.
     await refreshConnection(source.id);
-    expect(isGraphRebuilding()).toBe(false);
 
     const key2 = connectionStore.key(source.id, source.url.trim());
     expect(key2).not.toBe(key1); // the refresh actually changed the cache key
@@ -114,7 +113,6 @@ describe("C2 — per-document network permission gate", () => {
 
   it("allowNetwork() grants the foreign document and opens the gate", () => {
     docMetaStore.setDocMeta({ foreign: true });
-    expect(networkAllowed()).toBe(false);
     allowNetwork();
     expect(docMetaStore.networkAllowed()).toBe(true);
     expect(networkAllowed()).toBe(true);

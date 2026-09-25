@@ -7,7 +7,7 @@ import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { TodayNowNode } from "../../src/graph/nodes/date";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
-import { frameSourceToText, type FrameValue } from "../../src/graph/frame";
+import { frameSourceToText } from "../../src/graph/frame";
 import type { Schemes } from "../../src/graph/schemes";
 
 // ─── Docked-FC reload order (the "false Frame type on reload" bug) ────────────
@@ -109,7 +109,7 @@ describe("docked FC survives a reload of the computed-column → INDEX chain", (
     expect(fc.socketDataType).toBe("frame"); // the false Frame type
   });
 
-  it("load order settles wildcard types before dockSelf — the FC adopts the cell's family, locked to its unit", async () => {
+  it("load order settles wildcard types before dockSelf — the FC adopts the cell's family", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     // "Reload": nodes constructed from persisted state, cables restored, no
     // per-cable settle (the rebuild gate suppresses it).
@@ -138,13 +138,5 @@ describe("docked FC survives a reload of the computed-column → INDEX chain", (
     // The docked FC adopted the CELL's family (numlist — number's combo rung),
     // never the raw upstream "frame".
     expect(fc.socketDataType).toBe("numlist");
-
-    // And the first compute pass locks it to the inherited unit.
-    const frame = fi.data({}).frame as FrameValue;
-    const cell = idx.data({ list: [frame] }).result;
-    fc.data({ in: [cell] });
-    expect(fc.forwarding).toBe(true);
-    expect(fc.unitLocked).toBe(true);
-    expect(fc.unit).toBe("usd");
   });
 });

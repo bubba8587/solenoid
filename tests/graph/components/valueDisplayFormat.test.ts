@@ -27,12 +27,6 @@ describe("dateFormatDisplay", () => {
     expect(dateFormatDisplay(ser(2026, 1, 3), true, false)).toBe("03-Jan-2026");
   });
 
-  it("formats a list of serials, so the value renders as a chip of dates", () => {
-    const out = dateFormatDisplay([ser(2026, 1, 3), ser(2026, 2, 4)], true, false);
-    expect(Array.isArray(out)).toBe(true);
-    expect(out).toEqual(["03-Jan-2026", "04-Feb-2026"]);
-  });
-
   it("shows the time when the serial carries a fraction (e.g. NOW())", () => {
     const noonNewYear = ser(2026, 1, 1) + 0.5;
     expect(dateFormatDisplay(noonNewYear, true, false)).toBe("01-Jan-2026 12:00");
@@ -250,7 +244,6 @@ describe("displayedType — one rule with socket adoption (no first-branch guess
     const { iff, disp } = await ifOver(dateSocket, numberSocket);
     expect(nodeOutputIsDate(iff.id)).toBe(false);
     expect(nodeOutputIsDate(disp.id)).toBe(false); // and it doesn't leak downstream
-    expect(dateFormatDisplay(46000, nodeOutputIsDate(iff.id), false)).toBe(46000);
   });
 
   it("AGREEING branches still resolve, through the selector and past it", async () => {

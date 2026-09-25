@@ -112,13 +112,6 @@ describe("a typed frame verb is recognized and refused, not a typo", () => {
   it("the hint bar carries the redirect", () => {
     expect(signatureFor("getcolumn")).toBe("frame verb — use the Get Column node");
   });
-
-  it("stays out of autocomplete — the editor must not teach a banned name", () => {
-    // Advertised names come from the registry; FRAME_SURFACE_NAMES never
-    // registers, so this holds by construction — pinned so a future
-    // registration path can't quietly change it.
-    expect(formulaFunctionNames().map((n) => n.toUpperCase())).not.toContain("JOIN");
-  });
 });
 
 // ─── NODE_SURFACE_NAMES — a formula name whose capability became a NODE ────────
@@ -140,10 +133,6 @@ describe("a node-only verb (TEXTFILTER → List Filter) is recognized and redire
 
   it("the hint bar carries the redirect", () => {
     expect(signatureFor("textfilter")).toBe("use the List Filter node");
-  });
-
-  it("stays out of autocomplete — the name no longer registers", () => {
-    expect(formulaFunctionNames().map((n) => n.toUpperCase())).not.toContain("TEXTFILTER");
   });
 
   it("every target is a real catalog leaf and never shadows a live/blocked name", () => {

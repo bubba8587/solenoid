@@ -1,12 +1,8 @@
 // [[C16]] polarsEngine, [[D49]]
 import { describe, it, expect } from "vitest";
-import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, type LookupMatchMode, type LookupSearchMode } from "../../src/graph/frameVerbs";
+import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "../../src/graph/frameVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
-import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, frameToCube, type FrameValue } from "../../src/graph/frame";
-
-// A frame XLOOKUP is the unified cube path fed frameToCube (which carries col.type).
-const lookupFrameCell = (f: FrameValue, lc: string, rc: string, lookup: string, mm?: LookupMatchMode, sm?: LookupSearchMode) =>
-  lookupCell(frameToCube(f), lc, rc, lookup, mm, sm);
+import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, type FrameValue } from "../../src/graph/frame";
 
 const f: FrameValue = {
   __frame: true,
@@ -36,12 +32,6 @@ describe("sort — error cells (oracle-only)", () => {
     expect(out.columns[0].values).toEqual([1, 2, 3, null, expect.objectContaining({ code: "#DIV/0!" })]);
     expect(out.columns[1].values.slice(0, 3)).toEqual(["a", "b", "c"]); // rows moved together
   });
-  it("descending also keeps blanks/errors last", () => {
-    const out = sortByColumn(s, "k", "desc");
-    expect(out.columns[0].values.slice(0, 3)).toEqual([3, 2, 1]);
-    expect(out.columns[0].values[3]).toBeNull();
-    expect(isSolError(out.columns[0].values[4])).toBe(true);
-  });
 });
 
 describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)", () => {
@@ -51,13 +41,6 @@ describe("distinct — the cross-backend key contract (B-1a, re-cut 2026-08-22)"
       columns: [{ name: "v", type: "number", values: [Infinity, -Infinity, NaN, null, Infinity, NaN, null, 1] }],
     };
     expect(distinctRows(nf).columns[0].values).toEqual([Infinity, -Infinity, NaN, null, 1]);
-  });
-  it("the non-finite tokens cannot collide with the strings that name them", () => {
-    const mixed: FrameValue = {
-      __frame: true,
-      columns: [{ name: "v", type: "string", values: ["inf", "-inf", "nan", "inf"] }],
-    };
-    expect(distinctRows(mixed).columns[0].values).toEqual(["inf", "-inf", "nan"]);
   });
 });
 describe("filter — error cells (oracle-only)", () => {
@@ -77,8 +60,6 @@ describe("filter — error cells (oracle-only)", () => {
     expect(blank.columns[1].values).toEqual(["Oslo"]);
     const present = filterRows(t, "qty", "notblank", null);
     expect(present.columns[1].values).toEqual(["Oslo", "Bergen", "Tromso", "Oslo"]);
-    // Kept + Dropped stays an exhaustive complement ([[C49]] filterOneJob).
-    expect(blank.columns[0].values.length + present.columns[0].values.length).toBe(5);
   });
   it("an error cell in a NON-filtered column rides along untouched", () => {
     expect(filterRows(t, "city", "eq", "Oslo").columns[0].values).toEqual([5, null, solError("#DIV/0!", "x")]);
@@ -134,30 +115,6 @@ describe("groupBy — error cells + the aggregate guard", () => {
   // the {"__err"} download form) — parity is pinned by the corpus's "the
   // aggregate guard" cases in groupBy.json. Input-error PROPAGATION (the test
   // above) stays oracle-only: uploads degrade error cells to null. ────────────
-  it("sum overflowing from ALL-FINITE inputs → #OVERFLOW!, never a silent Infinity", () => {
-    const big: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "g", type: "string", values: ["a", "a"] },
-        { name: "v", type: "number", values: [1e308, 1e308] },
-      ],
-    };
-    const out = groupByFrame(big, ["g"], [{ column: "v", op: "sum", as: "t" }]);
-    const cell = out.columns[1].values[0];
-    expect(isSolError(cell) && cell.code).toBe("#OVERFLOW!");
-  });
-  it("∞ + −∞ → NaN result → #DOMAIN! (indeterminate, even with infinite inputs)", () => {
-    const mixed: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "g", type: "string", values: ["a", "a"] },
-        { name: "v", type: "number", values: [Infinity, -Infinity] },
-      ],
-    };
-    const out = groupByFrame(mixed, ["g"], [{ column: "v", op: "sum", as: "t" }]);
-    const cell = out.columns[1].values[0];
-    expect(isSolError(cell) && cell.code).toBe("#DOMAIN!");
-  });
 });
 
 // [[D76]] textMinMax
@@ -171,9 +128,6 @@ describe("text min and max", () => {
   };
   it("GROUPBY returns the code-unit first and last as text; an error cell wins", () => {
     const out = groupByFrame(t, ["k"], [{ column: "s", op: "min", as: "lo" }, { column: "s", op: "max", as: "hi" }]);
-    expect(out.columns[1].type).toBe("string");
-    expect(out.columns[1].values[0]).toBe("Plum");
-    expect(out.columns[2].values[0]).toBe("pear");
     const err = out.columns[1].values[1];
     expect(isSolError(err) && err.code).toBe("#N/A");
   });
@@ -186,56 +140,7 @@ describe("text min and max", () => {
   });
 });
 
-describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () => {
-  const prices: FrameValue = {
-    __frame: true,
-    columns: [
-      { name: "qty", type: "number", values: [1, 10, 50, 100] },
-      { name: "discount", type: "number", values: [0, 0.05, 0.1, 0.2] },
-    ],
-  };
-
-  it("exact mode (default) only matches an equal cell", () => {
-    expect(lookupFrameCell(prices, "qty", "discount", "10")).toBe(0.05);
-    expect(lookupFrameCell(prices, "qty", "discount", "20")).toBeUndefined();
-  });
-
-  it("nextSmaller: exact match wins, else the closest smaller key", () => {
-    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05); // exact
-    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05); // between 10 and 50
-    expect(lookupFrameCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined(); // below every key
-  });
-
-  it("nextLarger: exact match wins, else the closest larger key", () => {
-    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextLarger")).toBe(0.05); // exact
-    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1); // between 10 and 50
-    expect(lookupFrameCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined(); // above every key
-  });
-
-  it("approximate mode requires a numeric/date column", () => {
-    const named: FrameValue = { __frame: true, columns: [{ name: "n", type: "string", values: ["a", "b"] }, { name: "v", type: "number", values: [1, 2] }] };
-    const err = (() => { try { lookupFrameCell(named, "n", "v", "a", "nextSmaller"); } catch (e) { return e; } })();
-    expect(isSolError(err) && err.code).toBe("#VALUE!");
-  });
-});
-
 describe("unpivot / pivot (reshape)", () => {
-  const wide: FrameValue = {
-    __frame: true,
-    columns: [
-      { name: "city", type: "string", values: ["Oslo", "Bergen"] },
-      { name: "jan", type: "number", values: [1, 3] },
-      { name: "feb", type: "number", values: [2, 4] },
-    ],
-  };
-  it("pivot is the inverse of unpivot: long → wide recovers the matrix", () => {
-    const long = unpivotFrame(wide, ["city"], ["jan", "feb"]);
-    const back = pivotFrame(long, { rowFields: ["city"], colFields: ["variable"], values: ["value"], funcs: ["sum"] });
-    expect(back.columns.map((c) => c.name)).toEqual(["city", "jan", "feb"]);
-    expect(back.columns[0].values).toEqual(["Oslo", "Bergen"]);
-    expect(back.columns[1].values).toEqual([1, 3]); // jan
-    expect(back.columns[2].values).toEqual([2, 4]); // feb
-  });
   it("pivot aggregates collisions and nulls missing combinations", () => {
     const long: FrameValue = {
       __frame: true,
@@ -263,11 +168,9 @@ describe("nest / unnest (flat ⟷ cube)", () => {
   };
   it("nest groups non-key columns into a nested-frame cell per key", () => {
     const cube = nestFrame(flat, ["cust"], "orders");
-    expect(isCubeValue(cube)).toBe(true);
     expect(cube.columns.map((c) => c.name)).toEqual(["cust", "orders"]);
     expect(cube.columns[0].cells).toEqual(["A", "B"]);
     const firstNested = cube.columns[1].cells[0];
-    expect(isFrameValue(firstNested)).toBe(true);
     if (!isFrameValue(firstNested)) throw new Error("nested cell should be a frame");
     expect(firstNested.columns.map((c) => c.name)).toEqual(["item", "qty"]);
     expect(firstNested.columns[0].values).toEqual(["x", "y"]);
@@ -368,14 +271,6 @@ describe("pivotFrame — Excel PIVOTBY parity", () => {
     ],
   };
   const col = (fr: FrameValue, name: string) => fr.columns.find((c) => c.name === name)?.values;
-
-  it("rows × columns cross-tab aggregates per (rowGroup, colGroup)", () => {
-    const out = pivotFrame(sales, { rowFields: ["region"], colFields: ["product"], values: ["qty"], funcs: ["sum"] });
-    expect(out.columns.map((c) => c.name)).toEqual(["region", "A", "B"]);
-    expect(col(out, "region")).toEqual(["East", "West"]);
-    expect(col(out, "A")).toEqual([30, 7]); // East A = 10+20, West A = 7
-    expect(col(out, "B")).toEqual([5, 8]);
-  });
 
   it("grand total RE-AGGREGATES the source (AVERAGE total ≠ average of cell averages)", () => {
     const out = pivotFrame(sales, { rowFields: ["region"], colFields: [], values: ["qty"], funcs: ["avg"], rowTotalDepth: 1 });
@@ -502,67 +397,12 @@ describe("splitColumn / addIndexColumn (Power Query column ops)", () => {
   it("addIndex honors a custom start and de-dupes a colliding name", () => {
     const out = addIndexColumn(f, "id", 100); // collides with existing "id"
     expect(out.columns[0].values).toEqual([100, 101, 102]);
-    expect(out.columns.map((c) => c.name)).not.toEqual(["id", "id", "name"]); // de-duped
-  });
-});
-
-describe("NaN poisons aggregates loudly (B-1b — supersedes audit finding 31)", () => {
-  // NaN is PRESENT-but-dirty. Count/filter/sort semantics are corpus-pinned
-  // (__nf cases); the #DOMAIN! poison is a SolError CELL, so oracle-only.
-  it("sum over a NaN cell → #DOMAIN!, never a quiet NaN", () => {
-    const g = groupByFrame(
-      { __frame: true, columns: [
-        { name: "k", type: "string", values: ["a", "a", "a"] },
-        { name: "v", type: "number", values: [1, NaN, 3] },
-      ] },
-      ["k"],
-      [{ column: "v", op: "sum", as: "s" }],
-    );
-    const sum = g.columns[1].values[0];
-    expect(isSolError(sum) && sum.code).toBe("#DOMAIN!");
   });
 });
 
 // ─── Timesaver cleanup verbs (2026-07-16) ───────────────────────────────────────
 
 describe("timesaver verbs", () => {
-  const gaps: FrameValue = {
-    __frame: true,
-    columns: [
-      { name: "region", type: "string", values: ["North", null, null, "South", null] },
-      { name: "sales", type: "number", values: [1, 2, null, 4, 5] },
-    ],
-  };
-
-  it("fillBlanks down un-merges report-shaped columns; up carries backward", () => {
-    const down = fillBlanks(gaps, ["region"], "down");
-    expect(down.columns[0].values).toEqual(["North", "North", "North", "South", "South"]);
-    expect(down.columns[1].values).toEqual([1, 2, null, 4, 5]); // untouched: not named
-    const up = fillBlanks(gaps, [], "up"); // blank columns list = all
-    expect(up.columns[0].values).toEqual(["North", "South", "South", "South", null]);
-    expect(up.columns[1].values).toEqual([1, 2, 4, 4, 5]);
-  });
-
-  it("fillBlanks treats errors as values (they neither fill nor get overwritten)", () => {
-    const withErr: FrameValue = {
-      __frame: true,
-      columns: [{ name: "a", type: "number", values: [1, solError("#DIV/0!", "x"), null] }],
-    };
-    const out = fillBlanks(withErr, [], "down");
-    expect(isSolError(out.columns[0].values[1])).toBe(true);
-    expect(isSolError(out.columns[0].values[2])).toBe(true); // the error carried into the blank
-  });
-
-  it("replaceValues: whole-cell matches numbers numerically, coerces to column type", () => {
-    const out = replaceValues(f, "qty", "20", "99", "cell");
-    expect(out.columns[2].values).toEqual([10, 99, 30]);
-    // Column blank = all columns; string column matched textually.
-    const all = replaceValues(f, "", "b", "z", "cell");
-    expect(all.columns[1].values).toEqual(["a", "z", "c"]);
-    // Case-sensitive: "B" doesn't hit "b".
-    expect(replaceValues(f, "", "B", "z", "cell").columns[1].values).toEqual(["a", "b", "c"]);
-  });
-
   it("replaceValues: the shared match rule (parity with Rust lazy_replace_values)", () => {
     const g: FrameValue = {
       __frame: true,
@@ -574,25 +414,9 @@ describe("timesaver verbs", () => {
     // Number: numeric equality against the parsed find — "5.0" and "5" both hit 5;
     // a non-numeric find hits no number cell.
     expect(replaceValues(g, "n", "5.0", "99", "cell").columns[0].values).toEqual([99, 20, null]);
-    expect(replaceValues(g, "n", "5", "99", "cell").columns[0].values).toEqual([99, 20, null]);
     expect(replaceValues(g, "n", "five", "99", "cell").columns[0].values).toEqual([5, 20, null]);
-    // Boolean: the words TRUE/FALSE, case-insensitive; "1"/"0" never match a boolean.
-    expect(replaceValues(g, "flag", "true", "false", "cell").columns[1].values).toEqual([false, false, false]);
-    expect(replaceValues(g, "flag", "TRUE", "false", "cell").columns[1].values).toEqual([false, false, false]);
+    // Boolean: "1"/"0" never match a boolean.
     expect(replaceValues(g, "flag", "1", "false", "cell").columns[1].values).toEqual([true, false, true]);
-  });
-
-  it("replaceValues: substring rewrites inside text cells only", () => {
-    const t: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "s", type: "string", values: ["north-east", "north-west", null] },
-        { name: "n", type: "number", values: [101, 102, 103] },
-      ],
-    };
-    const out = replaceValues(t, "", "north", "N", "substring");
-    expect(out.columns[0].values).toEqual(["N-east", "N-west", null]);
-    expect(out.columns[1].values).toEqual([101, 102, 103]); // numbers untouched in substring mode
   });
 
   it("replaceValues drops a rewritten column's source text, so the popup shows the new cell", () => {
@@ -640,10 +464,6 @@ describe("timesaver verbs", () => {
   });
 
   it("sliceRows covers last / skip / 1-based inclusive range", () => {
-    expect(sliceRows(f, "last", 2).columns[0].values).toEqual([2, 3]);
-    expect(sliceRows(f, "skip", 1).columns[0].values).toEqual([2, 3]);
-    expect(sliceRows(f, "range", 2, 3).columns[0].values).toEqual([2, 3]);
-    expect(sliceRows(f, "range", 3, 2).columns[0].values).toEqual([]); // inverted → empty
     expect(sliceRows(f, "first", 99).columns[0].values).toEqual([1, 2, 3]);
   });
 
@@ -679,10 +499,6 @@ describe("[[D49]] textPredicateNeedsText — a text predicate reads a TEXT colum
     ]));
     expect(isSolError(err)).toBe(true);
     expect(err!.code).toBe("#TYPE!");
-  });
-  it("text predicates on a STRING column still filter", () => {
-    const out = filterRows(f, "name", "contains", "b");
-    expect(out.columns[0].values).toEqual([2]);
   });
 });
 

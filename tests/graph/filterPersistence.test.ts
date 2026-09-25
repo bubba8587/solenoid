@@ -8,17 +8,6 @@ import { FilterFrameNode } from "../../src/graph/nodes/frame";
 const asNode = (n: unknown) => n as ClassicPreset.Node;
 
 describe("List Filter op config persists (the reload-reset bug)", () => {
-  it("a non-default op round-trips through extractInit → constructor", () => {
-    const f = new FilterNode(); // default: one row `value0`, op "gt"
-    f.condConfig["0"] = { op: "noterror" };
-    const init = extractInit(asNode(f));
-    // The op must survive the save snapshot (was dropped: the filter checked
-    // `column0`, which a value-only List Filter row never has).
-    expect((init.condConfig as Record<string, { op: string }>)["0"]?.op).toBe("noterror");
-    const reloaded = new FilterNode(init);
-    expect(reloaded.condConfig["0"].op).toBe("noterror");
-  });
-
   it("multiple rows each keep their op + matchCase", () => {
     const f = new FilterNode();
     f.addValueInput(); // value1

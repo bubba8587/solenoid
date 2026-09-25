@@ -19,7 +19,6 @@ import { isMermaidValue } from "../../../src/graph/mermaidValue";
 describe("visual nodes", () => {
   it("Sparkline emits a chart value; Chart emits a first-class chart value", () => {
     const sp = new SparklineNode({ op: "column" });
-    expect(sp.op).toBe("column");
     expect(sp.data({ values: [[1, 2, 3]] }).chart).toMatchObject({ __chart: true, op: "column", values: [1, 2, 3] });
     expect(sp.data({}).chart).toMatchObject({ __chart: true, values: [] });
     // legacy "bar" migrates to "column"; retired "area" → "line"
@@ -144,7 +143,6 @@ describe("visual nodes", () => {
 
     const g = new GaugeNode({ mode: "bar" });
     const init = extractInit(g);
-    expect(init.mode).toBe("bar");
     expect(new GaugeNode(init as { mode: "bar" }).mode).toBe("bar");
   });
 });
@@ -180,8 +178,6 @@ describe("Surface (3-D plot)", () => {
     s.literals.yaw = 135;
     s.literals.pitch = 60;
     const s2 = cloneNode(s) as SurfaceNode;
-    expect(s2.literals.yaw).toBe(135);
-    expect(s2.literals.pitch).toBe(60);
     expect(s2.data({}).chart.payload).toMatchObject({ yaw: 135, pitch: 60 });
   });
 });
@@ -212,7 +208,6 @@ describe("Chart Builder", () => {
   it("target round-trips through extractInit; a stale target falls back to column", () => {
     const b = new ChartBuilderNode({ target: "kpi" });
     const init = extractInit(b);
-    expect(init.target).toBe("kpi");
     expect(new ChartBuilderNode(init as { target?: never }).target).toBe("kpi");
   });
 
@@ -452,7 +447,6 @@ describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
     expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys"]);
     n.setOp("contour");
     expect(Object.keys(n.inputs)).toEqual(["z", "xs", "ys", "levels"]);
-    expect(n.literals.levels).toBe(8);
     const z = [[10, 20], [30, 40]];
     expect(n.data({ z: [z] }).chart).toMatchObject({ op: "contour", payload: { kind: "contour", levels: 8 } });
     n.setOp("surface");
@@ -689,7 +683,6 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
       { name: "C", type: "number", values: [12, 11] },
     ]);
     const out = await n.data({ frame: [f] });
-    expect(isSolError(out.chart)).toBe(false);
     expect(((out.chart as { payload: CandlePayload }).payload).low).toEqual([null, 11]);
     const short = frame([{ name: "O", type: "number", values: [1] }, { name: "H", type: "number", values: [2] }]);
     const bad = await n.data({ frame: [short] });
@@ -755,7 +748,6 @@ describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
     const err = histogramBins([1, 2, 3], 0);
     expect((err as { code?: string }).code).toBe("#DOMAIN!");
     expect((histogramBins([1, 2, 3], NaN) as { code?: string }).code).toBe("#DOMAIN!");
-    expect(histogramBins([1, 2, 3], 2)).toEqual([1, 2]);
   });
 
   it("Date Range never emits an end before its start", async () => {

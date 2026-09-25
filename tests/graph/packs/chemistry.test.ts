@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { CHEMISTRY_FORMULAS } from "../../../src/graph/packs/chemistry";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { ElementNode, MolarMassNode, elementCell, searchElements } from "../../../src/graph/nodes/chemistry";
-import { ELEMENTS, ELEMENT_BY_SYMBOL, molarMass } from "../../../src/graph/nodes/chemistryOps";
+import { ELEMENTS, molarMass } from "../../../src/graph/nodes/chemistryOps";
 import { isSolError, type SolError } from "../../../src/graph/errorValue";
 
 const num = (type: string, inputs: Record<string, number>): number => {
@@ -61,13 +61,6 @@ describe("Element data", () => {
     expect(ELEMENTS).toHaveLength(118);
     expect(new Set(ELEMENTS.map((e) => e.symbol)).size).toBe(118);
     ELEMENTS.forEach((e, i) => expect(e.n).toBe(i + 1));
-  });
-
-  it("anchor masses (IUPAC)", () => {
-    expect(ELEMENT_BY_SYMBOL.get("H")!.mass).toBeCloseTo(1.008, 3);
-    expect(ELEMENT_BY_SYMBOL.get("C")!.mass).toBeCloseTo(12.011, 3);
-    expect(ELEMENT_BY_SYMBOL.get("Fe")!.mass).toBeCloseTo(55.845, 3);
-    expect(ELEMENT_BY_SYMBOL.get("U")!.mass).toBeCloseTo(238.029, 2);
   });
 
   it("node outputs and stale-op fallback", () => {

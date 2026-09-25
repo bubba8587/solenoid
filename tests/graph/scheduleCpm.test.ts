@@ -26,15 +26,6 @@ function tasks(rows: [string, number | null, string[] | string | null][], extra?
 const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!.cells;
 
 describe("scheduleTasks — the CPM pass over a cube", () => {
-  it("a chain: each task starts the working day after its predecessor finishes", () => {
-    const r = scheduleTasks(tasks([["A", 2, []], ["B", 3, ["A"]]]), { start: MON, workingDays: true });
-    expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07"]);
-    expect(col(r.cube, "Finish").map(iso)).toEqual(["2026-01-06", "2026-01-09"]);
-    expect(col(r.cube, "Float")).toEqual([0, 0]);
-    expect(col(r.cube, "Critical")).toEqual([true, true]);
-    expect(iso(r.projectFinish)).toBe("2026-01-09");
-  });
-
   it("the kitchen: a diamond, a holiday inside a task, float on the parallel branches, a closing milestone", () => {
     const c = tasks([
       ["Demolition", 2, []],

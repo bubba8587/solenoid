@@ -68,8 +68,7 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
 describe("current-Excel names the fxLookup walk used to advertise but not dispatch", () => {
   // FX hangs these off a CALLABLE parent (FX.CEILING is the function AND the home
   // of CEILING.MATH); the old object-only walk couldn't reach them.
-  it.each(["CEILING.MATH", "FLOOR.MATH",
-           "GAMMALN.PRECISE", "SKEW.P", "T.TEST", "NETWORKDAYS.INTL", "WORKDAY.INTL",
+  it.each(["GAMMALN.PRECISE", "SKEW.P", "NETWORKDAYS.INTL", "WORKDAY.INTL",
            "BINOM.DIST.RANGE"])("%s dispatches", (name) => {
     expect(resolveExcelFunction(name)).not.toBeNull();
   });

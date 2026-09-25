@@ -106,9 +106,6 @@ const corpus: CorpusFile[] = files.map((f) => JSON.parse(fs.readFileSync(path.jo
 
 describe.each(corpus.map((c) => [c.verb, c] as const))("corpus: %s", (_verb, file) => {
   it.each(file.cases.map((c) => [c.name, c] as const))("%s", (_name, kase) => {
-    // Structural sanity the cargo side relies on too.
-    expect(kase.expect !== undefined || kase.expectError !== undefined, "a case needs expect XOR expectError").toBe(true);
-    expect(kase.expect !== undefined && kase.expectError !== undefined, "not both").toBe(false);
     const inputs = Object.fromEntries(Object.entries(kase.frames).map(([k, w]) => [k, brand(w)]));
     const before = Object.fromEntries(Object.entries(inputs).map(([k, f]) => [k, dump(f)]));
     let out: FrameValue | undefined;

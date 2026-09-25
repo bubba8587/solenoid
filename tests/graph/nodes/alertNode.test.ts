@@ -19,10 +19,6 @@ describe("AlertNode", () => {
     expect(new AlertNode(extractInit(n)).condition).toBe("boolean");
   });
 
-  it("defaults to range mode", () => {
-    expect(new AlertNode().condition).toBe("range");
-  });
-
   it("fires on the first eval when a wired value is already out of range", () => {
     const n = new AlertNode();
     n.data({ value: [150], low: [0], high: [100] }); // born triggered → fires

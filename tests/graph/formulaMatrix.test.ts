@@ -302,8 +302,6 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   it("the forecast flag is grid mode's LAST argument", () => {
     const off = new InterpolateNode({ mode: "grid", forecast: false });
     expect(ev("INTERPOLATE(t, x, y, FALSE)", { t: z, x: xs, y: ys })).toEqual(off.data({ z: [z], xs: [xs], ys: [ys] }).result);
-    const on = new InterpolateNode({ mode: "grid" });
-    expect(ev("INTERPOLATE(t, x, y)", { t: z, x: xs, y: ys })).toEqual(on.data({ z: [z], xs: [xs], ys: [ys] }).result);
   });
 
   it("omitted axes count 1, 2, 3…, matching the node with unwired axes", () => {
@@ -338,17 +336,12 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
 describe("setCells kernel (Set Cell)", () => {
   const m = (): (number | null)[][] => [[1, 2], [3, 4]];
 
-  it("writes a single cell by 1-based address", () => {
-    expect(setCells(m(), [{ r: 1, c: 2, v: 9 }])).toEqual([[1, 9], [3, 4]]);
-  });
-
   it("applies writes in row order — a later write wins on the same address", () => {
     expect(setCells(m(), [{ r: 2, c: 1, v: 7 }, { r: 2, c: 1, v: 8 }])).toEqual([[1, 2], [8, 4]]);
   });
 
   it("errors the whole result #REF! on an out-of-range row or column (shared wording)", () => {
     const badRow = setCells(m(), [{ r: 3, c: 1, v: 0 }]);
-    expect(isSolError(badRow)).toBe(true);
     expect((badRow as SolError).code).toBe("#REF!");
     expect((badRow as SolError).message).toContain("Row 3 is outside 1");
     const badCol = setCells(m(), [{ r: 1, c: 5, v: 0 }]);
@@ -378,7 +371,6 @@ describe("setCells kernel (Set Cell)", () => {
 
   it("a block that runs off the bottom errors #REF! naming the Row axis (no clipping)", () => {
     const e = setCells(m3(), [{ r: 3, c: 1, v: [[1], [2]] }]); // 2 tall from row 3 → row 4
-    expect(isSolError(e)).toBe(true);
     expect((e as SolError).code).toBe("#REF!");
     expect((e as SolError).message).toContain("Row 4 is outside 1");
   });

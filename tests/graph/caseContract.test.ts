@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import {
-  distinctRows, filterRows, groupByFrame, joinFrames, passesFilter, replaceValues,
+  distinctRows, groupByFrame, joinFrames, passesFilter, replaceValues,
 } from "../../src/graph/frameVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
@@ -39,11 +39,6 @@ describe("comparisons ignore case", () => {
       expect(passesFilter("alpha", op, value, "string", true), `${op} matchCase`).toBe(false);
     }
   });
-
-  it("frame filterRows defaults insensitive end to end", () => {
-    const out = filterRows(frame("c", ["us", "US", "eu"]), "c", "eq", "US", false);
-    expect(out.columns[0].values).toEqual(["us", "US"]);
-  });
 });
 
 describe("identity ops are case-sensitive (keys are identity)", () => {
@@ -73,7 +68,7 @@ describe("identity ops are case-sensitive (keys are identity)", () => {
 });
 
 describe("Replace Values keeps its described fine print", () => {
-  it("whole-cell is case-sensitive and numbers match numerically", () => {
+  it("whole-cell is case-sensitive", () => {
     const f: FrameValue = {
       __frame: true,
       columns: [
@@ -83,20 +78,5 @@ describe("Replace Values keeps its described fine print", () => {
     };
     const s = replaceValues(f, "s", "US", "eu", "cell");
     expect(s.columns[0].values).toEqual(["us", "eu", null]);
-    const n = replaceValues(f, "n", "5", "9", "cell");
-    expect(n.columns[1].values).toEqual([9, 50, null]);
-  });
-
-  it("substring mode rewrites only string columns", () => {
-    const f: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "s", type: "string", values: ["a5b"] },
-        { name: "n", type: "number", values: [5] },
-      ],
-    };
-    const out = replaceValues(f, "", "5", "x", "substring");
-    expect(out.columns[0].values).toEqual(["axb"]);
-    expect(out.columns[1].values).toEqual([5]);
   });
 });

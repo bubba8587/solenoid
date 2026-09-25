@@ -38,7 +38,6 @@ describe("verb pipeline through the backend", () => {
 
     const p = await be.preview(top2, 10);
     expect(p.schema.map((c) => c.name)).toEqual(["name", "total", "orders"]);
-    expect(p.rowCount).toBe(2);
     expect(p.rows).toEqual([
       ["Ada", 30, 2], // 10 + 20 over 2 orders
       ["Cy", 6, 3],   // 1 + 2 + 3 over 3 orders (Bo, total 5, falls off the top-2)

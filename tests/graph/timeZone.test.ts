@@ -97,7 +97,6 @@ describe("TIMEZONECONVERT ↔ Time Zone Convert node", () => {
     const s = serial(2026, 7, 4, 12, 0);
     const node = new TimeZoneConvertNode().data({ datetime: [s], from: ["America/New_York"], to: ["Asia/Tokyo"] });
     const f = compileEvaluator('TIMEZONECONVERT(s, "America/New_York", "Asia/Tokyo")');
-    expect(f).not.toBeNull();
     expect(f!({ s })).toBe(node.result);
     expect(node.result).toBe(serial(2026, 7, 5, 1, 0));
   });

@@ -86,7 +86,6 @@ describe("flow controller (React Flow port C1)", () => {
   it("addNode places a catalog entry and it computes", async () => {
     const { m } = await build();
     const node = await addNode(m, "number-input", { x: 500, y: 500 });
-    expect(node).not.toBeNull();
     expect(m.editor.getNode(node!.id)?.position).toEqual({ x: 500, y: 500 });
     moveNode(m, node!.id, { x: 10, y: 20 });
     expect(m.editor.getNode(node!.id)?.position).toEqual({ x: 10, y: 20 });

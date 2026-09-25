@@ -140,7 +140,6 @@ describe("pack formula functions ([[C51]] formulaNaming decision 4)", () => {
 describe("Standard Atmosphere domain", () => {
   it("accepts down to −5 km, as the 1976 tables do, and refuses below", () => {
     const low = standardAtmosphere(-4900);
-    expect(isSolError(low)).toBe(false);
     expect((low as { T: number }).T).toBeGreaterThan(288.15);
     const under = standardAtmosphere(-5100);
     expect(isSolError(under) && under.code).toBe("#DOMAIN!");

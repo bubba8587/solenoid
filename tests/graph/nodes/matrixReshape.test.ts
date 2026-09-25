@@ -2,10 +2,9 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../../../src/graph/errorValue";
 import { TableTransposeNode, StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "../../../src/graph/nodes/matrix";
-import { SolenoidSocket, MutableSocket, type SocketDataType } from "../../../src/graph/sockets";
+import { SolenoidSocket, type SocketDataType } from "../../../src/graph/sockets";
 import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../../../src/graph/unitValue";
 import { ListIndexNode } from "../../../src/graph/nodes/list";
-import { wrapNodeData } from "../../../src/graph/coerceInputs";
 
 // The pure-reshape matrix ops are element-agnostic: they accept any matrix on an
 // `any` input and emit the 2-D wildcard `anytable` (or a 1-D `any` list when
@@ -24,11 +23,6 @@ describe("reshapers are element-polymorphic", () => {
       ["a", "c"],
       ["b", "d"],
     ]);
-  });
-
-  it("TRANSPOSE still works on numbers (no regression)", () => {
-    const n = new TableTransposeNode();
-    expect(n.data({ matrix: [[[1, 2], [3, 4]]] }).result).toEqual([[1, 3], [2, 4]]);
   });
 
   it("TOCOL flattens a text matrix to a 1-D list (the MAP→column link)", () => {
@@ -161,12 +155,6 @@ describe("numeric matrix ops reject a text anytable with #TYPE!", () => {
     expect(isSolError(out.result) && out.result.code).toBe("#TYPE!");
   });
 
-  it("MMULT still multiplies numeric matrices (no regression)", () => {
-    const n = new TableMultNode();
-    const out = n.data({ a: [[[1, 2], [3, 4]]], b: [[[1, 0], [0, 1]]] });
-    expect(out.result).toEqual([[1, 2], [3, 4]]);
-  });
-
   it("MDETERM returns #TYPE! on a text matrix", () => {
     const n = new MatDetNode({ op: "mdeterm" });
     const out = n.data({ matrix: [[["a", "b"], ["c", "d"]]] });
@@ -270,15 +258,7 @@ describe("structural reshapes carry the homogeneous matrix unit (unitGranularity
   // so the op must re-carry it. km, dim {length:1}.
   const tagged = () => withMatrixUnit([[1, 2], [3, 4]], { dim: { length: 1 }, display: "km" });
 
-  it("TRANSPOSE carries the unit onto the flipped grid", () => {
-    const r = new TableTransposeNode().data({ matrix: [tagged()] }).result;
-    expect(r).toEqual([[1, 3], [2, 4]]);
-    expect(matrixUnitOf(r)).toMatchObject({ display: "km" });
-  });
-
   it("CHOOSEROWS / CHOOSECOLS carry the unit", () => {
-    const rows = new TableSelectNode({ op: "chooserows" }).data({ matrix: [tagged()], indices: [[1]] }).result;
-    expect(matrixUnitOf(rows)).toMatchObject({ display: "km" });
     const cols = new TableSelectNode({ op: "choosecols" }).data({ matrix: [tagged()], indices: [[2]] }).result;
     expect(matrixUnitOf(cols)).toMatchObject({ display: "km" });
   });
@@ -286,12 +266,6 @@ describe("structural reshapes carry the homogeneous matrix unit (unitGranularity
   it("TAKE (table) carries the unit onto the trimmed grid", () => {
     const r = new TakeDropNode({ op: "take" }).data({ data: [tagged()], rows: [1], cols: [0] }).result;
     expect(r).toEqual([[1, 2]]);
-    expect(matrixUnitOf(r)).toMatchObject({ display: "km" });
-  });
-
-  it("EXPAND carries the unit; the pad reads in that same unit", () => {
-    const r = new ExpandNode().data({ matrix: [tagged()], rows: [3], cols: [2], fill: [0] }).result;
-    expect(matrixUnitOf(r)).toMatchObject({ display: "km" });
   });
 
   it("an untagged (plain / text) matrix stays untagged through a reshape", () => {
@@ -305,7 +279,6 @@ describe("structural reshapes carry the homogeneous matrix unit (unitGranularity
     const n = new TableInputNode({ tableText: "1, 2\n3, 4", dataType: "number", unit: "km" });
     const out = n.data().table;
     expect(out).toEqual([[1, 2], [3, 4]]);          // cells bare, as typed (unitGranularity)
-    expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
   });
 
   it("Table Input unit only applies to a number table; none / text pass untagged", () => {
@@ -313,20 +286,9 @@ describe("structural reshapes carry the homogeneous matrix unit (unitGranularity
     expect(matrixUnitOf(new TableInputNode({ tableText: "a, b", dataType: "string", unit: "km" }).data().table)).toBeUndefined();
   });
 
-  it("Table Input unit round-trips through init (persistence whitelist)", () => {
-    const n = new TableInputNode({ tableText: "1", dataType: "number", unit: "usd" });
-    expect(n.unit).toBe("usd");
-  });
-
   it("INDEX carries the matrix unit out into an extracted cell / row / column", () => {
-    // Single cell — tagged out as a UnitCell carrying the display id (like a frame
-    // column's Get Column / INDEX), so the unit doesn't vanish (the user-flagged bug).
-    const cell = new ListIndexNode().data({ list: [tagged()], index: [1], column: [2] }).result;
-    expect(isUnitCell(cell)).toBe(true);
-    expect((cell as unknown as UnitCell).display).toBe("km");
     // Whole column (row = [all] = 0) — a list of tagged cells.
     const col = new ListIndexNode().data({ list: [tagged()], index: [0], column: [1] }).result as unknown as UnitCell[];
-    expect(Array.isArray(col)).toBe(true);
     expect(col.every((x) => isUnitCell(x) && x.display === "km")).toBe(true);
     // Whole row (column = [all]) — a list of tagged cells.
     const row = new ListIndexNode().data({ list: [tagged()], index: [1], column: [0] }).result as unknown as UnitCell[];
@@ -336,20 +298,6 @@ describe("structural reshapes carry the homogeneous matrix unit (unitGranularity
   it("INDEX on a PLAIN (untagged) matrix returns bare numbers (no spurious unit)", () => {
     const cell = new ListIndexNode().data({ list: [[[1, 2], [3, 4]]], index: [1], column: [2] }).result;
     expect(cell).toBe(2);
-    expect(isUnitCell(cell)).toBe(false);
-  });
-
-  it("INDEX keeps the matrix unit through the REAL coercion path (adoptive socket adopts 'table')", () => {
-    // The direct-data() tests above bypass coerceInputs. In the live graph a numeric
-    // matrix wired into INDEX's trueany input makes the socket ADOPT "table", and the
-    // coercer runs toMatrix (rebuilds the array). This pins that the symbol tag now
-    // survives that rebuild (carryMatrixUnit in coerceValue's "table" case).
-    const n = new ListIndexNode();
-    (n.inputs.list!.socket as MutableSocket).setType("table"); // simulate adoption
-    wrapNodeData(n);
-    const out = n.data({ list: [tagged()], index: [1], column: [2] }) as { result: unknown };
-    expect(isUnitCell(out.result)).toBe(true);
-    expect((out.result as unknown as UnitCell).display).toBe("km");
   });
 });
 

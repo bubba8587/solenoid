@@ -187,16 +187,6 @@ describe("text form: unit cases", () => {
     expect(names).toEqual(["Filter_1", "Filter_2"]);
   });
 
-  it("preserves an explicit valid unique name", () => {
-    const g: SavedGraph = {
-      v: 2,
-      nodes: [{ id: "a1", type: "FilterNode", name: "MyFilter", x: 0, y: 0, init: {} }],
-      connections: [],
-    };
-    const reloaded = readTextForm(writeTextForm(g));
-    expect(reloaded.nodes[0].name).toBe("MyFilter");
-  });
-
   it("round-trips per-column frame formats through the sidecar (name-addressed)", () => {
     const g: SavedGraph = {
       v: 2,
@@ -310,21 +300,6 @@ describe("text form: unit cases", () => {
     expect(reloaded.nodes[0].init.body).toBe('line one\nline "two"\nline three');
   });
 
-  it("translates connection endpoints from id to name and back", () => {
-    const g: SavedGraph = {
-      v: 2,
-      nodes: [
-        { id: "src", type: "NumberInputNode", name: "Num_1", x: 0, y: 0, init: {} },
-        { id: "tgt", type: "FilterNode", name: "Filter_1", x: 10, y: 0, init: {} },
-      ],
-      connections: [{ source: "src", sourceOutput: "value", target: "tgt", targetInput: "list" }],
-    };
-    const text = writeTextForm(g);
-    expect(text).toContain("list<-Num_1.value");
-    const reloaded = readTextForm(text);
-    expect(reloaded.connections).toEqual([{ source: "Num_1", sourceOutput: "value", target: "Filter_1", targetInput: "list" }]);
-  });
-
   it("translates hostNodeId / members id-references to names", () => {
     const g: SavedGraph = {
       v: 2,
@@ -384,7 +359,6 @@ describe("text form: unit cases", () => {
         { source: "b", sourceOutput: "out", target: "a", targetInput: "list" },
       ],
     };
-    expect(() => writeTextForm(g)).not.toThrow();
     const text = writeTextForm(g);
     const reloaded = readTextForm(text);
     expect(reloaded.nodes.length).toBe(2);

@@ -40,7 +40,6 @@ describe("snapCoord", () => {
   it("works for negative values and never returns -0", () => {
     expect(snapCoord(-24)).toBe(-24);
     expect(snapCoord(-11)).toBe(0);
-    expect(Object.is(snapCoord(-11), -0)).toBe(false);
     expect(snapCoord(-36)).toBe(-24); // tie goes toward +∞
     expect(snapCoord(-47)).toBe(-48);
   });

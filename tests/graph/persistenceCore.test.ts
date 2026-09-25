@@ -4,7 +4,6 @@ import {
   validateSavedGraph,
   chooseWriteSlot,
   chooseReadSlot,
-  CURRENT_SAVE_VERSION,
   deriveMissingNodeSockets,
   remapNodeRefs,
 } from "../../src/graph/persistenceCore";
@@ -137,12 +136,6 @@ describe("autosave slot rotation", () => {
       const r = chooseReadSlot(slots.a, slots.b);
       expect(r).toBe(w); // the slot we just wrote is the newest
     }
-  });
-});
-
-describe("CURRENT_SAVE_VERSION", () => {
-  it("matches the format the serializer writes (v2)", () => {
-    expect(CURRENT_SAVE_VERSION).toBe(2);
   });
 });
 

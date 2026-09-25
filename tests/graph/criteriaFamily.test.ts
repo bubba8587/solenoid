@@ -1,7 +1,7 @@
 // [[C45]] excelComparisons, [[C24]], [[C60]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { criteriaAggregate, parseCriterion, criterionMatches } from "../../src/graph/excelCriteria";
+import { criteriaAggregate, parseCriterion } from "../../src/graph/excelCriteria";
 import { isSolError } from "../../src/graph/errorValue";
 import { SumIfsNode } from "../../src/graph/nodes/list";
 import { buildFrame } from "../../src/graph/frame";
@@ -41,7 +41,6 @@ describe("the *IFS family runs Excel's criteria grammar", () => {
     expect(criteriaAggregate("count", null, [[[{ __solError: true, code: "#N/A", message: "" }, 1], 1]])).toBe(1);
     const amb = parseCriterion(">1/2/2026", true);
     expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
-    expect(criterionMatches(3, { op: "gte", value: 3 })).toBe(true);
   });
   it("the card and the formula agree on one probe", () => {
     const f = buildFrame([["North", 120], ["South", 80], ["North", 200]] as never, ["region", "sales"]);

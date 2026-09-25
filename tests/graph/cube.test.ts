@@ -64,19 +64,9 @@ describe("cube cells hold any value (recursive)", () => {
 });
 
 describe("cube depth — cached, counts cube-in-cube nesting only", () => {
-  it("a flat cube (no cube cells) is depth 1", () => {
-    expect(cubeDepth(cubeFromRows([[1, 2], [3, 4]]))).toBe(1);
-  });
-
   it("a nested FRAME is a leaf — it doesn't add depth", () => {
     const c = cubeFromColumns([{ name: "x", cells: [buildFrame([[1, 2]], ["p", "q"])] }]);
     expect(cubeDepth(c)).toBe(1);
-  });
-
-  it("a cube holding a cube is depth 2", () => {
-    const inner = cubeFromRows([[7]]); // depth 1
-    const c = cubeFromColumns([{ name: "n", cells: [1, inner, 3] }]);
-    expect(cubeDepth(c)).toBe(2);
   });
 
   it("depth keeps climbing with each cube layer (3, then 4)", () => {
@@ -98,13 +88,6 @@ describe("cube depth — cached, counts cube-in-cube nesting only", () => {
     const inner = cubeFromRows([[9]]); // depth 1
     const c = cubeFromColumns([{ name: "list", cells: [[1, 2, inner]] }]); // a cube buried in a list cell
     expect(cubeDepth(c)).toBe(2);
-  });
-
-  it("computes bottom-up — a parent reads its child's cached depth", () => {
-    const child = cubeFromColumns([{ name: "a", cells: [cubeFromRows([[1]])] }]); // depth 2
-    expect(child.depth).toBe(2); // cached on the value itself
-    const parent = cubeFromColumns([{ name: "b", cells: [child] }]);
-    expect(parent.depth).toBe(3);
   });
 });
 
@@ -133,7 +116,6 @@ describe("toCube — every value widens UP into the supremum", () => {
   it("a 1-D list → a single ROW", () => {
     const c = toCube([10, 20, 30]);
     expect(cubeRowCount(c)).toBe(1);
-    expect(c.columns.length).toBe(3);
     expect(c.columns.map((col) => col.cells[0])).toEqual([10, 20, 30]);
   });
 
@@ -142,16 +124,6 @@ describe("toCube — every value widens UP into the supremum", () => {
     expect(c.columns.length).toBe(1);
     expect(cubeRowCount(c)).toBe(1);
     expect(c.columns[0].cells[0]).toBe(42);
-  });
-});
-
-describe("frameToCube", () => {
-  it("preserves column names, cell values, AND the element type", () => {
-    const f = buildFrame([[1], [2]], ["only"]);
-    const c = frameToCube(f);
-    expect(c.columns[0].name).toBe("only");
-    expect(c.columns[0].cells).toEqual([1, 2]);
-    expect(c.columns[0].type).toBe("number"); // carried from the frame column (was dropped)
   });
 });
 

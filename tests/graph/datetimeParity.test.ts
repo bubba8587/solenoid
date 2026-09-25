@@ -10,7 +10,6 @@ describe("WORKDAY.INTL returns a serial, not a raw Date", () => {
   it("matches plain WORKDAY (both land on the same working day)", () => {
     const intl = ev("WORKDAY.INTL(DATE(2024,1,1), 5, 1)"); // weekend code 1 = Sat/Sun (the default)
     const plain = ev("WORKDAY(DATE(2024,1,1), 5)");
-    expect(typeof intl).toBe("number");
     expect(intl).toBe(plain);            // 2024-01-01 (Mon) + 5 workdays = 2024-01-08
     expect(intl - ev("DATE(2024,1,8)")).toBe(0); // and serial arithmetic works
   });

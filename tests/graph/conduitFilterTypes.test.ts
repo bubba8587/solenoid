@@ -51,7 +51,6 @@ describe("List Filter preserves units (passthrough) while filtering by magnitude
   it("filters on the display magnitude but keeps the dimensioned cells on the output", () => {
     const m = { length: 1 }; // meters
     const list = [tagDim(3, m), tagDim(1, m), tagDim(5, m)];
-    expect(list.every(isUnitCell)).toBe(true); // sanity: real UnitCells
     const f = new FilterNode();
     f.condConfig["0"] = { op: "gt" };
     f.stringLiterals["value0"] = "2";

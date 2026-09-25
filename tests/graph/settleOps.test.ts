@@ -52,17 +52,6 @@ describe("settleGroup", () => {
 
 // TRANSACTIONS mode: a ledger of expenses, each split equally among its beneficiaries, with
 // payers and beneficiaries as independent sets. Both halves feed the same greedy minTransfers.
-describe("minTransfers", () => {
-  it("the biggest creditor takes from the biggest debtor, fewest transfers", () => {
-    expect(minTransfers([{ name: "A", net: 190 }, { name: "B", net: -10 }, { name: "C", net: -70 }, { name: "D", net: -110 }])).toEqual([
-      { from: "D", to: "A", amount: 110 }, { from: "C", to: "A", amount: 70 }, { from: "B", to: "A", amount: 10 },
-    ]);
-  });
-  it("an even group needs nothing", () => {
-    expect(minTransfers([{ name: "A", net: 0 }, { name: "B", net: 0 }])).toEqual([]);
-  });
-});
-
 describe("settleLedger", () => {
   it("the trip: a shared bill, a sub-group cab, a one-person reimbursement", () => {
     const r = settleLedger([

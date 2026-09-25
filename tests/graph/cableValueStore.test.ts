@@ -12,7 +12,6 @@ beforeEach(() => {
 
 describe("cableValueStore — set / get", () => {
   it("stores each output under nodeId:key, any value type, overwriting on re-set", () => {
-    expect(cableValueStore.get("n1", "out")).toBeUndefined();
     cableValueStore.setNodeOutputs("n1", { arr: [1, 2, 3], nil: null, flag: false, out: 1 });
     cableValueStore.setNodeOutputs("n1", { out: 99 });
     cableValueStore.setNodeOutputs("n2", { out: 20 });

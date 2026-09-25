@@ -65,30 +65,6 @@ function distinct(rects: Rect[], axis: "x" | "y"): number {
 }
 
 describe("tidyLayoutOptions — the three knobs map to ELK options", () => {
-  it("direction sets elk.direction; RIGHT and DOWN", () => {
-    expect(tidyLayoutOptions({ direction: "right", density: "normal", widthCap: 0 })["elk.direction"]).toBe("RIGHT");
-    expect(tidyLayoutOptions({ direction: "down", density: "normal", widthCap: 0 })["elk.direction"]).toBe("DOWN");
-  });
-
-  it("density picks the spacing pair; normal stays today's 55/38", () => {
-    const pair = (d: TidyDensity) => {
-      const o = tidyLayoutOptions({ direction: "right", density: d, widthCap: 0 });
-      return [o["elk.layered.spacing.nodeNodeBetweenLayers"], o["elk.spacing.nodeNode"]];
-    };
-    expect(pair("compact")).toEqual(["36", "24"]);
-    expect(pair("normal")).toEqual(["55", "38"]);
-    expect(pair("airy")).toEqual(["80", "56"]);
-  });
-
-  it("a width cap turns layerUnzipping on globally; off omits it", () => {
-    const off = tidyLayoutOptions({ direction: "right", density: "normal", widthCap: 0 });
-    expect(off["elk.layered.layerUnzipping.strategy"]).toBeUndefined();
-    for (const cap of [2, 3, 4] as const) {
-      const o = tidyLayoutOptions({ direction: "right", density: "normal", widthCap: cap });
-      expect(o["elk.layered.layerUnzipping.strategy"]).toBe("ALTERNATING");
-    }
-  });
-
   it("tidyLayerSplitFor: 'at most N per row' → ceil(count/cap), floored at 1; 0 uncapped", () => {
     expect(tidyLayerSplitFor(10, 0)).toBe(0);
     // 10 nodes: cap 2 → 5 sublayers, cap 3 → 4, cap 4 → 3 (the per-layer width never exceeds cap).

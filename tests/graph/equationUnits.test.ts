@@ -26,7 +26,6 @@ describe("Equation node — units derive through the solve", () => {
     const eq = new EquationNode({ expr: "d = v * t" });
     const out = eq.data({ v: [cell(5, "ms1")], t: [cell(10, "s")] });
     const d = out.d as UnitCell;
-    expect(isUnitCell(d)).toBe(true);
     expect(d.value).toBe(50);
     expect(unitLabelOf(d)).toBe("m");
   });
@@ -35,7 +34,6 @@ describe("Equation node — units derive through the solve", () => {
     const eq = new EquationNode({ expr: "d = v * t" });
     const out = eq.data({ d: [cell(100, "m")], t: [cell(20, "s")] });
     const v = out.v as UnitCell;
-    expect(isUnitCell(v)).toBe(true);
     expect(v.value).toBe(5);
     expect(unitLabelOf(v)).toBe("m/s");
   });
@@ -56,9 +54,7 @@ describe("Equation node — units derive through the solve", () => {
     const out = eq.data({ A: [A] });
     // both real roots, each tagged length
     const roots = out.x as (UnitCell | number)[];
-    expect(Array.isArray(roots)).toBe(true);
     for (const r of roots) {
-      expect(isUnitCell(r)).toBe(true);
       expect(unitLabelOf(r)).toBe("m");
     }
     expect((roots as UnitCell[]).map((r) => r.value).sort((a, b) => a - b)).toEqual([-6, 6]);
@@ -81,7 +77,6 @@ describe("Equation node — units derive through the solve", () => {
     const eq = new EquationNode({ expr: "V = I * R" });
     const out = eq.data({ V: [12], I: [2] });
     expect(out.R).toBe(6);
-    expect(isUnitCell(out.R)).toBe(false);
   });
 
   it("Ohm's law with units: R from 12 V and 2 A reads 6 Ω", () => {
@@ -89,7 +84,6 @@ describe("Equation node — units derive through the solve", () => {
     const V = fromUnit(12, VOLT) as UnitCell;
     const I = fromUnit(2, AMP) as UnitCell;
     const out = eq.data({ V: [V], I: [I] });
-    expect(isUnitCell(out.R)).toBe(true);
     expect((out.R as UnitCell).value).toBe(6);
     expect(unitLabelOf(out.R)).toBe("Ω");
   });

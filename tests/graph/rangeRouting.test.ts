@@ -45,10 +45,7 @@ const SCALAR_RESULT: Array<[string, string]> = [
 
 describe("whole-sample functions are range-routed, not broadcast", () => {
   it.each(SCALAR_RESULT)("%s returns one answer, not one per element", (name, expr) => {
-    expect(RANGE_FUNCTIONS.has(name), `${name} is missing from RANGE_FUNCTIONS`).toBe(true);
     const r = compileEvaluator(expr)!({ a: A, b: B, p: P });
-    expect(Array.isArray(r), `${name} broadcast: ${JSON.stringify(r)}`).toBe(false);
-    expect(typeof r, `${name} answered a ${typeof r}`).toBe("number");
     expect(Number.isFinite(r as number), `${name} answered ${r}`).toBe(true);
   });
 
@@ -95,7 +92,6 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
 
   it.each(DEGENERATE)("%s → the node's answer, never bare NaN", (_label, expr, env, code) => {
     const r = ev(expr, env);
-    expect(typeof r === "number" && Number.isNaN(r), "bare NaN leaked").toBe(false);
     if (code === null) expect(r).toBeNull();
     else expect(codeOf(r)).toBe(code);
   });

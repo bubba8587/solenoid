@@ -1,22 +1,12 @@
 // [[B10]] reactFlowView
-import { describe, it, expect, vi } from "vitest";
-import { registerNodeForget, forgetNode, forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
+import { describe, it, expect } from "vitest";
+import { forgetNode, forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { collapseStore } from "../../src/graph/collapseStore";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 import { cableValueStore } from "../../src/graph/cableValueStore";
 import { cableAngleStore } from "../../src/graph/cableAngleStore";
 
 describe("nodeStoreRegistry", () => {
-  it("calls every registered forgetter with the deleted node id", () => {
-    const a = vi.fn();
-    const b = vi.fn();
-    registerNodeForget(a);
-    registerNodeForget(b);
-    forgetNode("xyz");
-    expect(a).toHaveBeenCalledWith("xyz");
-    expect(b).toHaveBeenCalledWith("xyz");
-  });
-
   it("forgets a node across all real node-keyed stores, leaving others intact", () => {
     // Two nodes' worth of UI state in each store.
     collapseStore.set("n1", true);

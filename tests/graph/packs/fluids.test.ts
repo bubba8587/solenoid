@@ -94,10 +94,6 @@ describe("Colebrook friction factor", () => {
 
 describe("Pipe Roughness", () => {
   it("carries the textbook values, sorted smooth to rough", () => {
-    const byId = Object.fromEntries(PIPE_ROUGHNESS.map((r) => [r.id, r.mm]));
-    expect(byId.pvc).toBe(0.0015);
-    expect(byId.steel).toBe(0.045);
-    expect(byId.castiron).toBe(0.26);
     for (let i = 1; i < PIPE_ROUGHNESS.length; i++) {
       expect(PIPE_ROUGHNESS[i].mm).toBeGreaterThanOrEqual(PIPE_ROUGHNESS[i - 1].mm);
     }

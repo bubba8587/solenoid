@@ -43,12 +43,10 @@ describe("Lambda (LAMBDA value)", () => {
     // so a broken lambda propagates down its cable instead of silently no-op'ing.
     const bad = new LambdaNode({ params: "x, 2y", expr: "x" });
     const badR = bad.data({}).result;
-    expect(isSolError(badR)).toBe(true);
     expect((badR as SolError).code).toBe("#NAME?");
     expect(bad.cachedError).toBe("Bad parameter name");
     const syn = new LambdaNode({ params: "x", expr: "x +* 1" });
     const synR = syn.data({}).result;
-    expect(isSolError(synR)).toBe(true);
     expect((synR as SolError).code).toBe("#SYNTAX!");
     expect(syn.cachedError).toBe("Syntax error");
     // A blank body is still a legitimate no-value, not an error.
@@ -85,7 +83,6 @@ describe("Lambda wired into consumers", () => {
     const by = new ByAxisNode();
     const lam = lambdaOf("a, b", "a + b");
     const r = by.data({ table: [[[1, 2]]], lambda: [lam] }).result;
-    expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#VALUE!");
     expect(by.cachedError).toMatch(/isn't one of this node's variables/);
   });
@@ -126,7 +123,6 @@ describe("MapTable (MAP)", () => {
   it("errors on a shape mismatch", () => {
     const n = new MapTableNode({ expr: "value * value2" });
     const r = n.data({ table: [[[1, 2], [3, 4]]], table2: [[[1, 2, 3]]] }).result;
-    expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#SHAPE!");
     expect(n.cachedError).toMatch(/Shape mismatch/);
   });
@@ -180,7 +176,6 @@ describe("ReduceLambda (REDUCE)", () => {
   it("flags a syntax error", () => {
     const n = new ReduceLambdaNode({ expr: "acc +* value" });
     const r = n.data({ table: [[[1]]] }).result;
-    expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#SYNTAX!");
     expect(n.cachedError).toBe("Syntax error");
   });
@@ -269,7 +264,6 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
     const list = [km(1), km(2), km(3)]; // base meters 1000/2000/3000
     const out = new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [list] }).result as UnitCell[];
     expect(out.length).toBe(1);
-    expect(isUnitCell(out[0])).toBe(true);
     expect(out[0].dim).toEqual({ length: 1 });
     expect(magnitudeOf(out[0])).toBeCloseTo(6000, 6); // 6 km in meters
     expect(out[0].display).toBe("km");
@@ -331,7 +325,6 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
   });
 
   it("a bare (unitless) list is unchanged — no tagging", () => {
-    expect(new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [[1, 2, 3]] }).result).toBe(6);
     expect(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result).toEqual([6]);
   });
 

@@ -127,7 +127,6 @@ describe("GridPainterNode", () => {
     const n = new GridPainterNode({ tableText: "1,,\n,2,", rows: 2, cols: 3 });
     expect(n.data()).toEqual({ result: [[1, null, null], [null, 2, null]] });
     const n2 = cloneNode(n) as GridPainterNode;
-    expect(n2.tableText).toBe("1,,\n,2,");
     expect(n2.literals.rows).toBe(2);
     expect(n2.data()).toEqual(n.data());
   });

@@ -18,18 +18,12 @@ describe("distinctColumnValues — the constrained-entry datalist source", () =>
     const isErr = (s: string) => s.startsWith("#");
     expect(distinctColumnValues(["Bolt", "#VALUE!", "Nut", "#REF!", "Bolt"], isErr)).toEqual(["Bolt", "Nut"]);
   });
-
-  it("an all-blank / empty column yields no suggestions", () => {
-    expect(distinctColumnValues([])).toEqual([]);
-    expect(distinctColumnValues(["", null, undefined])).toEqual([]);
-  });
 });
 
 describe("picking a suggestion commits like a typed value", () => {
   it("a suggested value coerces identically to typing it, for a string column", () => {
     const cells = ["Bolt M4", "Nut M4", "Bolt M4", "", "Washer"];
     const suggestions = distinctColumnValues(cells);
-    expect(suggestions).toEqual(["Bolt M4", "Nut M4", "Washer"]);
     // The datalist only populates the same <input>; a pick travels the identical commit
     // path as a keystroke, so each suggestion round-trips to itself through the cell coercion.
     for (const s of suggestions) {

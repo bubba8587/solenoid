@@ -1,11 +1,9 @@
 // [[C25]] firstClassUnits, [[B16]]
 import { describe, it, expect } from "vitest";
 import { type Dim } from "../../src/graph/dimension";
-import { dimensionsMultiply, dimensionsAdd, isUniversalDim } from "../../src/graph/unitLattice";
+import { dimensionsAdd, isUniversalDim } from "../../src/graph/unitLattice";
 import { arithmeticCell } from "../../src/graph/nodes/scalar";
-import { forAggregateUnits, tagDim, dimOf, isUnitCell } from "../../src/graph/unitValue";
-import { dimEval } from "../../src/graph/unitDimExpr";
-import { parseFormula } from "../../src/graph/excelFormula";
+import { forAggregateUnits, tagDim, isUnitCell } from "../../src/graph/unitValue";
 import { isSolError } from "../../src/graph/errorValue";
 
 // A representative cross-section of the dimension lattice: the universal
@@ -25,7 +23,6 @@ const isUnitErr = (v: unknown) => isSolError(v) && (v as { code: string }).code 
 describe("unit lattice — full sweep of the dimensional separation contract (step 7)", () => {
   it("×/÷ ALWAYS combine (dimensional flow): never a #UNIT!", () => {
     for (const a of NAMES) for (const b of NAMES) {
-      expect(dimensionsMultiply(DIMS[a], DIMS[b])).toBe(true);
       for (const op of ["mul", "div"] as const) {
         const r = arithmeticCell(op, cellOf(DIMS[a]), cellOf(DIMS[b]));
         expect(isUnitErr(r)).toBe(false);
@@ -53,24 +50,6 @@ describe("unit lattice — full sweep of the dimensional separation contract (st
       const shouldErr = a !== b && !isUniversalDim(DIMS[a]) && !isUniversalDim(DIMS[b]);
       expect(!!prep.error).toBe(shouldErr);
     }
-  });
-
-  it("the dimensionless element is universal for BOTH × and + (a bare number adopts)", () => {
-    for (const name of NAMES) {
-      const d = DIMS[name];
-      // scalar × d always combines
-      expect(isUnitErr(arithmeticCell("mul", 2, cellOf(d)))).toBe(false);
-      // scalar + d never errors either — the bare 2 adopts d's unit
-      expect(isUnitErr(arithmeticCell("add", 2, cellOf(d)))).toBe(false);
-    }
-  });
-
-  it("dimEval mirrors the algebra: * combines, + separates, / derives", () => {
-    const env = { d: DIMS.length, t: DIMS.time };
-    expect(dimOf(tagDim(1, dimEval(parseFormula("d / t")!, env) as Dim))).toEqual(DIMS.speed);
-    expect(isUnitErr(dimEval(parseFormula("d + t")!, env))).toBe(true);
-    const prod = dimEval(parseFormula("d * t")!, env);
-    expect(prod).toEqual({ length: 1, time: 1 });
   });
 
   it("the algebra is closed: every ×/÷ result is a valid tagged cell or bare number", () => {

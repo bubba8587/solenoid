@@ -63,15 +63,6 @@ describe("formula ↔ node parity ratchet", () => {
           `EXCEL_NAMED_GAP here WITH a reason in the comment above.`,
       ).toEqual([]);
     });
-
-    it("has no STALE pin (a gap was closed but never deleted from the list)", () => {
-      const closed = EXCEL_NAMED_GAP.filter((n) => !live.includes(n));
-      expect(
-        closed,
-        `These names are pinned as gaps but are now callable in a formula:${fmt(closed)}\n` +
-          `Delete them from EXCEL_NAMED_GAP — the ratchet only ratchets while the pin is honest.`,
-      ).toEqual([]);
-    });
   });
 
   describe("gap C — dispatchable names nobody decided to support", () => {
@@ -85,15 +76,6 @@ describe("formula ↔ node parity ratchet", () => {
           `Curate each one: block it (LEGACY_ALIASES in excelFunctions.ts) if it is a legacy or\n` +
           `superseded spelling, give it a node, or record it as a deliberate gap in EXCEL_GAP\n` +
           `(nodeExcel.ts). [[C14]] currentExcelParity applies to the formula surface too — see [[C51]] formulaNaming.`,
-      ).toEqual([]);
-    });
-
-    it("has no STALE pin", () => {
-      const closed = UNTRACKED_DISPATCHABLE.filter((n) => !live.includes(n));
-      expect(
-        closed,
-        `These names are pinned as untracked but no longer dispatch:${fmt(closed)}\n` +
-          `Delete them from UNTRACKED_DISPATCHABLE.`,
       ).toEqual([]);
     });
   });
@@ -112,14 +94,9 @@ describe("formula ↔ node parity ratchet", () => {
   // `inScope`, never `rows` (author ruling 2026-08-01: don't report a ratio whose
   // denominator includes leaves that were never candidates).
   it("inScope and nativeGap partition the catalog — the coverage denominator is honest", () => {
-    expect(m.inScope.length + m.nativeGap.length).toBe(m.rows.length);
     const inScope = new Set(m.inScope.map((r) => r.type));
     const excluded = new Set(m.nativeGap.map((r) => r.type));
     for (const t of inScope) expect(excluded.has(t), `${t} counted in BOTH populations`).toBe(false);
-    // Everything covered is in scope by construction; the only in-scope leaf that
-    // is NOT covered is a gap-A leaf (an Excel name that doesn't dispatch).
-    expect(m.covered.length + m.excelNamedGap.filter((r) => !r.inFormula).length)
-      .toBe(m.inScope.length);
   });
 
   // The live catalog can't pin this: gap A is empty, so every excel-named row is

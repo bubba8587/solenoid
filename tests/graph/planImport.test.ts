@@ -6,7 +6,7 @@ import { planToCube, mspdiToPlan, isMspdiText, csvPlanToCube, planToFrame } from
 import { csvToFrame } from "../../src/graph/nodes/connection";
 import { scheduleTasks } from "../../src/graph/scheduleCpm";
 import { formatDateSerial, parseDateToSerial } from "../../src/graph/nodes/dateSerial";
-import { isCubeValue, type CubeValue } from "../../src/graph/frame";
+import type { CubeValue } from "../../src/graph/frame";
 
 const iso = (s: unknown) => formatDateSerial(s as number, "YYYY-MM-DD");
 const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!.cells;
@@ -21,7 +21,6 @@ describe("plan import", () => {
     expect(plan.cube.columns.map((c) => c.name)).toEqual(["Task", "Duration", "Predecessors", "Start", "Deadline", "Tasks"]);
     expect(col(plan.cube, "Task")).toEqual(["Demolition", "Rough-in", "Drywall", "Paint", "Cabinets", "Countertops", "Appliances", "Final inspection"]);
     const roughIn = col(plan.cube, "Tasks")[1] as CubeValue;
-    expect(isCubeValue(roughIn)).toBe(true);
     expect(col(roughIn, "Task")).toEqual(["Plumbing rough-in", "Electrical rough-in"]);
     expect(col(plan.cube, "Predecessors")[2]).toEqual(["Rough-in"]);            // FS/0 → a list of names
     const typed = col(plan.cube, "Predecessors")[6] as CubeValue;               // SS+1 → a Task · Type · Lag table
@@ -39,7 +38,6 @@ describe("plan import", () => {
   it("a Smartsheet-style CSV with row-number predecessors becomes a plan; a plain CSV does not", () => {
     const f = csvToFrame("Task Name,Duration,Predecessors\nDemolition,2,\nFraming,3,1\nRoof,2,\"2FS+1d, 1SS\"\nInspect,0,3");
     const cube = csvPlanToCube(f)!;
-    expect(cube).not.toBeNull();
     expect(col(cube, "Predecessors")[1]).toEqual(["Demolition"]);
     const roof = col(cube, "Predecessors")[2] as CubeValue;
     expect(col(roof, "Task")).toEqual(["Framing", "Demolition"]);

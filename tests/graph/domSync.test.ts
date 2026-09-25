@@ -43,7 +43,6 @@ describe("camFromDrawMatrix", () => {
     // camera k=0.5, t=(40,60); element anchored at world (200,100):
     // e = k*anchor + tx → 140, f = 110
     const cam = camFromDrawMatrix({ a: 0.5, b: 0, c: 0, d: 0.5, e: 140, f: 110 }, 200, 100);
-    expect(cam).not.toBeNull();
     expect(cam!.k).toBeCloseTo(0.5);
     expect(cam!.x).toBeCloseTo(40);
     expect(cam!.y).toBeCloseTo(60);

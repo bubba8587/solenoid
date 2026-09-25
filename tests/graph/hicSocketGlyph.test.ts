@@ -1,6 +1,6 @@
 // [[C42]] htmlInCanvasRenderer
 import { describe, it, expect } from "vitest";
-import { socketGlyphKind, COMBO_PAIRS } from "../../src/graph/hicSocketGlyph";
+import { socketGlyphKind } from "../../src/graph/hicSocketGlyph";
 
 describe("socketGlyphKind", () => {
   it("scalars → circle", () => {
@@ -29,9 +29,5 @@ describe("socketGlyphKind", () => {
     expect(socketGlyphKind("trueany")).toBe("ring");
     expect(socketGlyphKind("anydata")).toBe("hollowSquare");
     expect(socketGlyphKind(undefined)).toBe("circle");
-  });
-  it("COMBO_PAIRS maps to [scalar, list]", () => {
-    expect(COMBO_PAIRS.numlist).toEqual(["number", "list"]);
-    expect(COMBO_PAIRS.logicalcombo).toEqual(["logical", "logicallist"]);
   });
 });

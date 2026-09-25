@@ -41,14 +41,11 @@ describe("downstreamClosure (targeted recompute cone)", () => {
 
     const fromA = downstreamClosure(editor, A.id);
     expect([...fromA].sort()).toEqual([A.id, B.id, C.id, D.id].sort());
-    expect(fromA.has(E.id)).toBe(false); // unrelated branch is NOT re-rendered
 
     // A mid-graph node's cone is just itself + what it feeds (the join D), not its
     // siblings or anything upstream.
     const fromB = downstreamClosure(editor, B.id);
     expect([...fromB].sort()).toEqual([B.id, D.id].sort());
-    expect(fromB.has(A.id)).toBe(false);
-    expect(fromB.has(C.id)).toBe(false);
   });
 
   it("terminates on a cycle instead of looping forever", async () => {

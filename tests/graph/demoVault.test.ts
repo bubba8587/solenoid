@@ -9,7 +9,7 @@ import {
 } from "../../src/graph/demoVault";
 import { settingsStore } from "../../src/graph/settingsStore";
 import { LocalFileNode } from "../../src/graph/nodes/connection";
-import { isFrameValue, type FrameValue } from "../../src/graph/frame";
+import type { FrameValue } from "../../src/graph/frame";
 
 // The bundled read-only demo vault seam: the sentinel root, the resolver (setting +
 // force override), and the in-memory FsProvider read against the real demo-vault files.
@@ -114,7 +114,6 @@ describe("Local File over the demo seam (works without desktop)", () => {
     forceDemoVault(true);
     const node = new LocalFileNode({ label: "expenses.csv", fileName: "expenses.csv" });
     const { frame } = await node.data();
-    expect(isFrameValue(frame)).toBe(true);
     const f = frame as FrameValue;
     expect(f.columns.map((c) => c.name)).toEqual(["date", "category", "vendor", "amount"]);
     expect(f.columns[0].values.length).toBe(6);

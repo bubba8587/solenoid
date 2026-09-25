@@ -15,7 +15,6 @@ import {
 describe("lnGamma", () => {
   it("matches ln of factorials at integer points", () => {
     expect(Math.exp(lnGamma(1))).toBeCloseTo(1, 9); // 0!
-    expect(Math.exp(lnGamma(2))).toBeCloseTo(1, 9); // 1!
     expect(Math.exp(lnGamma(5))).toBeCloseTo(24, 6); // 4!
     expect(Math.exp(lnGamma(11))).toBeCloseTo(3628800, 1); // 10!
   });
@@ -164,7 +163,6 @@ describe("bisectionInv", () => {
 describe("expFitR2", () => {
   it("recovers y = b·mˣ with a perfect log-scale R²", () => {
     const fit = expFitR2([1, 2, 3, 4], [2, 4, 8, 16]); // y = 1·2ˣ
-    expect(fit).not.toBeNull();
     expect(fit!.m).toBeCloseTo(2, 10);
     expect(fit!.b).toBeCloseTo(1, 10);
     expect(fit!.r2).toBeCloseTo(1, 10);

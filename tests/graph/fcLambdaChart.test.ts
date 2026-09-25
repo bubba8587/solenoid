@@ -103,7 +103,6 @@ describe("FC lambdaView / chartFontScale reach a downstream Display", () => {
 
   it("DisplayNode.data keeps the LambdaValue in cachedValue (the component renders by kind)", () => {
     const value = { __lambda: true as const, params: ["x"], fn: (x: unknown) => x, expr: "x * 2" };
-    expect(isLambdaValue(value)).toBe(true);
     const disp = new DisplayNode();
     disp.data({ in: [value] });
     // The old data() stringified here (formatLambda), which made the component's

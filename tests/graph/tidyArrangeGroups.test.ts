@@ -264,7 +264,7 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
   });
 
   it("a selection Tidy never leaves its cards on an unselected neighbor", async () => {
-    const { editor, view, arrangeFn, src, sink, group } = await buildScene();
+    const { view, arrangeFn, src, sink, group } = await buildScene();
     // The selected pair straddles the group; stacked around their old center, they land on it.
     view.fakes.get(src.id)!.position = { x: 300, y: 60 };
     view.fakes.get(sink.id)!.position = { x: 300, y: 700 };
@@ -278,11 +278,10 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
         expect(overlaps(top[i], top[j]), `${top[i].id} overlaps ${top[j].id}`).toBe(false);
       }
     }
-    expect(editor.getNodes().length).toBe(5);
   });
 
   it("a position-locked group stays put and nothing lands on it", async () => {
-    const { editor, view, arrangeFn, src, sink, m1, m2, group } = await buildScene();
+    const { view, arrangeFn, src, sink, m1, m2, group } = await buildScene();
     group.lockedPosition = true;
     const gBefore = { ...view.fakes.get(group.id)!.position };
     const m1Before = { ...view.fakes.get(m1.id)!.position };
@@ -298,8 +297,6 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
     for (const id of [src.id, sink.id]) {
       expect(overlaps(g, boxOf(view, id)), `${id} overlaps the locked group`).toBe(false);
     }
-    // Sanity: the pass still ran (loose nodes are the layout targets).
-    expect(editor.getNodes().length).toBe(5);
   });
 
   it("the group's rendered box is unchanged by the pass (rigid unit, not resized)", async () => {

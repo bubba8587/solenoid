@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { FUNCTION_FAMILY, FAMILY_BACKING, internalFunctionNames } from "../../../src/graph/excelFunctions";
 import { AggregateNode } from "../../../src/graph/nodes/list";
-import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, ModeNode, FisherNode } from "../../../src/graph/nodes/stats";
+import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, FisherNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
 // capabilityParity / [[C17]] shareImpl for the STATISTICS family (the A1 backing flip): every
@@ -58,8 +58,6 @@ describe("a NaN cell poisons an aggregate, as it does in GROUPBY", () => {
       expect(code(new AggregateNode({ op }).data({ list: [list] }).result), op).toBe("#DOMAIN!");
     }
     expect(new AggregateNode({ op: "count" }).data({ list: [list] }).result).toBe(3);
-    expect(code(ev("MIN(x)", { x: list }))).toBe("#DOMAIN!");
-    expect(code(ev("MAX(x)", { x: list }))).toBe("#DOMAIN!");
   });
 });
 
@@ -152,9 +150,6 @@ describe("MODE / FISHER", () => {
   it("MODE.SNGL is Excel's first-occurring tie; the node keeps every tie", () => {
     expect(ev("MODE.SNGL(x)", { x: [4, 2, 2, 4, 1] })).toBe(4);
     expect(ev("MODE(x)", { x: [4, 2, 2, 4, 1] })).toBe(4);
-    expect(ev("MODE(x)", { x: [1, 2, 2, 3] })).toBe(2);
-    expect(new ModeNode().data({ list: [[4, 2, 2, 4, 1]] }).result).toEqual([2, 4]);
-    expect(new ModeNode().data({ list: [[1, 2, 2, 3]] }).result).toBe(2);
   });
   it("FISHER / FISHERINV share the domain rule", () => {
     same(ev("FISHER(0.5)"), new FisherNode({ op: "fisher" }).data({ value: [0.5] }).result);

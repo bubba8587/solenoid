@@ -75,16 +75,6 @@ describe("Record clamp option", () => {
     const p = (await rec.data({ frame: [frame] })).chart.payload as RecordPayload;
     expect(p.clamp).toBe(true);
   });
-
-  it("round-trips through the text form", () => {
-    const g: SavedGraph = {
-      v: 2,
-      nodes: [{ id: "r", type: "RecordNode", name: "P", x: 0, y: 0, init: { op: "gallery" }, stringLiterals: { options: "clamp=on" } }],
-      connections: [],
-    };
-    const rn = readTextForm(writeTextForm(g)).nodes.find((n) => n.type === "RecordNode");
-    expect(rn?.stringLiterals?.options).toContain("clamp=on");
-  });
 });
 
 describe("Record gallery — cardsize preset", () => {

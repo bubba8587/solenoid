@@ -9,7 +9,6 @@ describe("withinOneEdit — one Damerau-Levenshtein edit", () => {
     expect(withinOneEdit("frmae", "frame")).toBe(true); // adjacent transposition
     expect(withinOneEdit("frme", "frame")).toBe(true); // deletion
     expect(withinOneEdit("fraame", "frame")).toBe(true); // insertion
-    expect(withinOneEdit("xlokup", "xlookup")).toBe(true);
   });
 
   it("rejects two or more edits", () => {

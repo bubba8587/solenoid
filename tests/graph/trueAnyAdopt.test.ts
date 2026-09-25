@@ -61,7 +61,6 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     reconcileTrueAnyTypes(makeEditor([src, disp], [
       { source: src.id, sourceOutput: "value", target: disp.id, targetInput: "in" },
     ]));
-    expect(dt(disp.inputs.in?.socket)).toBe("number"); // adopted live
     const init = extractInit(disp);
     expect(JSON.stringify(init)).not.toContain('"number"');
     const clone = new DisplayNode(init as ConstructorParameters<typeof DisplayNode>[0]);

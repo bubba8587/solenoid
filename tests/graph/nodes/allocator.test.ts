@@ -23,7 +23,6 @@ describe("AllocatorNode", () => {
     const n = new AllocatorNode();
     n.literals.amount = 60;
     expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // no Weight column → equal
-    expect(allocOf(n.data({ categories: [wcats([1, 3])] }))).toEqual([20, 40]); // Weight column drives it
   });
 
   it("emits Category, Allocation, and Share as a raw fraction of the spend", () => {

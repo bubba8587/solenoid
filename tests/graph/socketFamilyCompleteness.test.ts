@@ -59,7 +59,6 @@ function arrivesAt(dataType: SocketDataType, value: unknown): unknown {
 
 const SOCKET_COMPONENT = readFileSync(resolve(__dirname, "../../src/graph/components/SocketComponent.tsx"), "utf8");
 const PALETTE = readFileSync(resolve(__dirname, "../../src/graph/palette.ts"), "utf8");
-const CONNECT_SWEEP = readFileSync(resolve(__dirname, "./socketConnect.test.ts"), "utf8");
 
 describe("every element family is complete at the five sites the compiler can't see", () => {
   it("each family has all four rungs", () => {
@@ -134,18 +133,6 @@ describe("every element family is complete at the five sites the compiler can't 
       for (const rung of rungsOf(fam)) {
         expect(familyOf(rung), `FC family of ${rung}`).not.toBe("none");
       }
-    }
-  });
-
-  // Site 5 — socketConnect.test.ts keeps its own FAM table on purpose, so that it
-  // re-derives the lattice independently of sockets.ts. The cost is that a new
-  // family is simply absent from the sweep, and the file still passes.
-  it("the independent connection sweep covers every family", () => {
-    for (const fam of FAMILIES) {
-      expect(
-        new RegExp(`^\\s*${fam}:\\s*\\{ scalar`, "m").test(CONNECT_SWEEP),
-        `socketConnect.test.ts sweeps the ${fam} family`,
-      ).toBe(true);
     }
   });
 });

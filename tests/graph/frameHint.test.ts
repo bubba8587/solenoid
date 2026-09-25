@@ -72,7 +72,6 @@ describe("frame-input example hints", () => {
   it("every hint names a real input and carries 3–5 rectangular typed rows", () => {
     for (const { ctor, key, hint, inputs } of hinted) {
       expect(inputs.has(key), `${ctor}.${key}: no such input`).toBe(true);
-      expect(hint.columns.length, `${ctor}.${key}: empty hint`).toBeGreaterThan(0);
       const rows = hint.columns[0].cells.length;
       expect(rows, `${ctor}.${key}: sample rows`).toBeGreaterThanOrEqual(3);
       expect(rows, `${ctor}.${key}: sample rows`).toBeLessThanOrEqual(5);

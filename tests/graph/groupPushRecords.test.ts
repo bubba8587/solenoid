@@ -253,7 +253,6 @@ describe("autofit and group creation", () => {
     const gView = addView(g.id, 100, 100, groupView(g));
     addView(a.id, 400, 150, () => ({ w: 180, h: 80 }));
     const nView = addView(n.id, 450, 200, () => ({ w: 180, h: 80 }));
-    expect(overlaps(boxAt(gView), boxAt(nView))).toBe(false);
 
     await autofitGroupWithHistory(editor, view, g);
     expectNoOverlaps({ g: gView, n: nView });

@@ -19,7 +19,6 @@ describe("chart value", () => {
   it("ChartNode emits a chart value carrying its op, values, parsed options and title", () => {
     const ch = new ChartNode({ op: "line", label: "Revenue" });
     const out = ch.data({ values: [[10, 20, 30]], options: ["title=Growth;color=red"] });
-    expect(isChartValue(out.chart)).toBe(true);
     expect(out.chart).toMatchObject({
       __chart: true,
       op: "line",

@@ -117,7 +117,6 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     const dist = (real.get("F_distFc") as FormatControllerNode).data({ in: [5] }).out;
     const time = (real.get("F_timeFc") as FormatControllerNode).data({ in: [1] }).out;
     const speed = (real.get("F_div") as ArithmeticNode).data({ a: [dist] as never, b: [time] as never }).result;
-    expect(isUnitCell(speed)).toBe(true);
     expect((speed as UnitCell).value).toBe(5);
     expect(unitLabelOf(speed)).toBe("m/s");
     // cancellation: 10 m ÷ 2 m → a PURE RATIO (5:1), known-dimensionless
@@ -174,7 +173,6 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     const t = (real.get("J_tFc") as FormatControllerNode).data({ in: [10] }).out;
     const out = (real.get("J_eq") as EquationNode).data({ v: [v], t: [t] });
     const dist = out.d as UnitCell;
-    expect(isUnitCell(dist)).toBe(true);
     expect(dist.value).toBe(50);
     expect(unitLabelOf(dist)).toBe("m");
   });
@@ -184,7 +182,6 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     expect(unitLabelOf(batch)).toBe("widgets");
     const every = (real.get("I_timeFc") as FormatControllerNode).data({ in: [1] }).out;
     const rate = (real.get("I_div") as ArithmeticNode).data({ a: [batch] as never, b: [every] as never }).result;
-    expect(isUnitCell(rate)).toBe(true);
     expect(unitLabelOf(rate)).toBe("widgets/s");
   });
 });

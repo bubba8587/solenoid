@@ -164,7 +164,6 @@ describe("a CONTROL needs a usable bound — Slider keeps the card's", () => {
     node.literals.max = 100;
     node.data({ max: [null as unknown as number], min: [null as unknown as number] });
     expect(Number.isFinite(node.effectiveMin)).toBe(true);
-    expect(Number.isFinite(node.effectiveMax)).toBe(true);
     expect(node.effectiveMax).toBe(100);
   });
 

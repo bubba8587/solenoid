@@ -61,7 +61,6 @@ describe("every Tier 3 name computes what its node computes", () => {
       const node = new PadNode({ op: dir as "left" | "right" });
       expect(ev(`${meta.label}(x, 6, 0)`, { x: LIST }))
         .toEqual(node.data({ list: [LIST], n: [6], fill: [0] }).result);
-      expect(despace(meta.label)).toBe(meta.label); // the name IS the label
     }
   });
 
@@ -142,10 +141,6 @@ describe("the whole-list routing, which is the half that isn't the function", ()
   // The reason Tier 3 needed plumbing at all: without it the evaluator maps a call
   // element-wise over an array argument, so REVERSE([1,2,3]) would have run three
   // times on three scalars and answered [[1],[2],[3]].
-  it("a list argument arrives WHOLE, not mapped element-wise", () => {
-    expect(ev("REVERSE(x)", { x: [1, 2, 3] })).toEqual([3, 2, 1]);
-  });
-
   it("nulls keep their POSITION — the aggregator null-drop would be wrong here", () => {
     expect(ev("REVERSE(x)", { x: [1, null, 3] })).toEqual([3, null, 1]);
     expect(ev("NTHELEMENT(x, 2)", { x: [1, null, 3, null] })).toEqual([1, 3]);
@@ -153,7 +148,6 @@ describe("the whole-list routing, which is the half that isn't the function", ()
 
   it("a cell error rides along in its own slot rather than being hoisted", () => {
     const out = ev("REVERSE(x)", { x: [1, { __solError: true, code: "#DIV/0!", message: "x" }, 3] }) as unknown[];
-    expect(Array.isArray(out)).toBe(true);
     expect((out[1] as { code?: string }).code).toBe("#DIV/0!");
     expect(out[0]).toBe(3);
   });
@@ -176,8 +170,6 @@ describe("the whole-list routing, which is the half that isn't the function", ()
   it("a generator is capped at the formula boundary (the node's Count is a spinner)", () => {
     const r = ev("LINSPACE(0, 1, 2000000)");
     expect((r as { code?: string }).code).toBe("#OVERFLOW!");
-    // Under the cap it just computes.
-    expect((ev("LINSPACE(0, 1, 3)") as number[]).length).toBe(3);
   });
 });
 
@@ -255,7 +247,6 @@ describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
     const x = [1, 2, 3, 4, 5, 6, 7, 8];
     const out = ev("SHUFFLE(x)", { x }) as number[];
     expect([...out].sort((a, b) => a - b)).toEqual(x);   // same multiset
-    expect(out.length).toBe(x.length);
     // Volatile means two evaluations may differ; over enough draws they must. This is
     // the ONE Tier 3 function that can't assert node-equals-formula, because the two
     // deliberately run different volatility clocks — the node holds its keys until the

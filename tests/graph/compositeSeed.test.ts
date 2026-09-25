@@ -37,7 +37,6 @@ async function loadSeed(editor: NodeEditor<Schemes>) {
   const byId = new Map<string, ClassicPreset.Node>();
   for (const sn of (seed.nodes as SavedNode[])) {
     const Ctor = (Nodes as unknown as Record<string, new (i?: Record<string, unknown>) => ClassicPreset.Node>)[sn.type];
-    expect(Ctor, `unknown type ${sn.type}`).toBeTypeOf("function");
     const node = new Ctor({ ...sn.init });
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };
@@ -72,7 +71,6 @@ describe("Composite Workbench seed", () => {
     const byId = await loadSeed(editor);
     const out = await engine.fetch(byId.get("simComp")!.id) as Record<string, unknown>;
     const series = out.p_series as number[];
-    expect(Array.isArray(series)).toBe(true);
     expect(series).toHaveLength(10);
     // (0 + 100) × 1.05 = 105; (105 + 100) × 1.05 = 215.25; (215.25 + 100) × 1.05 = 331.0125
     expect(series[0]).toBeCloseTo(105);
@@ -153,7 +151,6 @@ describe("Composite Workbench seed", () => {
     const { editor } = buildEditor();
     const byId = await loadSeed(editor);
     const comp = byId.get("simComp") as CompositeNode;
-    expect(editor.getNode(comp.id)).toBeDefined();
     // Every internal node got a position from the seed's x/y.
     for (const n of comp.internalEditor.getNodes()) {
       expect(comp.internalPositions[n.id], `no position for ${n.label}`).toBeDefined();

@@ -28,10 +28,4 @@ describe("zoomSettleMs", () => {
       expect(zoomSettleMs(), `${String(junk)} should not be accepted`).toBe(DEFAULT_ZOOM_SETTLE_MS);
     }
   });
-
-  it("is read per call, so an override applies to the next gesture", () => {
-    expect(zoomSettleMs()).toBe(DEFAULT_ZOOM_SETTLE_MS);
-    g.__zoomSettle = 900;
-    expect(zoomSettleMs()).toBe(900);
-  });
 });

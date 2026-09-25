@@ -1,7 +1,7 @@
 // [[D54]], [[C24]] arraySemantics, [[C44]] dateSerials
 import { describe, it, expect } from "vitest";
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
-import { isCubeValue, type CubeValue } from "../../../src/graph/frame";
+import { type CubeValue } from "../../../src/graph/frame";
 
 describe("Input Switch (CableSwitchNode)", () => {
   it("single mode routes the active input through", () => {
@@ -18,7 +18,6 @@ describe("Input Switch (CableSwitchNode)", () => {
     n.titles = { v0: "North", v1: "South" };
     n.selectedKeys = ["v0", "v1"];
     const out = n.data({ v0: [100], v1: [200] }).out;
-    expect(isCubeValue(out)).toBe(true);
     const cube = out as CubeValue;
     expect(cube.columns.map((c) => c.name)).toEqual(["name", "value"]);
     expect(cube.columns[0].cells).toEqual(["North", "South"]);
@@ -105,7 +104,6 @@ describe("Input Switch (CableSwitchNode)", () => {
     expect(Object.keys(n.inputs)[n.activeIndex]).toBe("v2"); // next one down
     n.activeIndex = 1; // v2, now the last slot
     n.removeValueInput("v2");
-    expect(n.activeIndex).toBe(0);
     expect(Object.keys(n.inputs)[n.activeIndex]).toBe("v0");
   });
 

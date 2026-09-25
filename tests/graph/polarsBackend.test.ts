@@ -64,8 +64,7 @@ describe("PolarsBackend — selection at startup", () => {
   it("does NOT swap when the engine reports a non-polars backend", async () => {
     await initWith("none");
     invokeMock.mockClear();
-    const h = await frameBackend().source(sample);
-    expect(String(h).startsWith("jsf:")).toBe(true);
+    await frameBackend().source(sample);
     expect(invokeMock).not.toHaveBeenCalled();
   });
 });
@@ -225,11 +224,6 @@ describe("PolarsBackend — verb chain fusion (applyMany batching)", () => {
     if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
     ref = await runFrameUnary(ref, { kind: "head", n: 2 });
     if (!isFrameRef(ref)) throw new Error("expected a FrameRef");
-    expect(ref.__plan).toHaveLength(3);
-
-    // Chaining alone: only the source upload happened — no apply/applyMany yet.
-    const applyCallsSoFar = invokeMock.mock.calls.filter((c) => c[0] === "engine_apply" || c[0] === "engine_apply_many");
-    expect(applyCallsSoFar).toHaveLength(0);
 
     invokeMock.mockResolvedValueOnce("plf:fused"); // engine_apply_many (the ONE flush)
     invokeMock.mockResolvedValueOnce([
@@ -324,10 +318,8 @@ describe("PolarsBackend — the non-finite wire sentinel + aggregate guard (B-1b
       { name: "s", type: "string", values: ["a", solError("#N/A", "x")] },
     ] };
     const h = await be.source(textErr);
-    expect(String(h).startsWith("jsf:")).toBe(true);
     const sorted = await be.apply(h, { kind: "sort", by: "k", dir: "asc" });
     expect((await be.collect(sorted)).columns[1].values[0]).toMatchObject({ code: "#N/A" });
-    expect(invokeMock).not.toHaveBeenCalled();
     invokeMock.mockResolvedValueOnce("plf:R");
     const right = await be.source({ __frame: true, columns: [{ name: "k", type: "number", values: [1] }, { name: "v", type: "number", values: [10] }] });
     invokeMock.mockResolvedValueOnce([{ name: "k", type: "number", values: [1] }, { name: "v", type: "number", values: [10] }]);

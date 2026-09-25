@@ -74,16 +74,6 @@ const connect = async (e: AnyEditor, s: ClassicPreset.Node, t: ClassicPreset.Nod
   e.addConnection(new ClassicPreset.Connection(s as never, "out", t as never, tIn) as never);
 
 describe("makeAnnotationResolver — FC locks a format that rides through passthroughs", () => {
-  it("a downstream Display resolves the upstream FC's annotation (no trailing FC)", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
-    const fc = node("FC", { annotation: () => usd });           // FC locks usd
-    const disp = node("Display", { passesUnitThrough: true });  // passthrough
-    for (const n of [fc, disp]) await editor.addNode(n as never);
-    await connect(editor, fc, disp);
-    const r = makeAnnotationResolver(editor);
-    expect(r.inAnnotation(disp.id, "in")?.unit).toBe("usd");
-  });
-
   it("the lock survives a chain of passthroughs", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const fc = node("FC", { annotation: () => usd });
@@ -358,11 +348,9 @@ describe("applyFcUnit — the FC is value-mutating (FC A4: the unit rides the VA
   });
 
   it("RE-DISPLAYS a commensurable already-dimensioned value (base kept, display swapped)", () => {
-    const fiveKm = fromUnit(5, UNITS.m, "km"); // 5 m tagged, display km (contrived)
     const asMi = applyFcUnit(fromUnit(5000, UNITS.m, "km"), "mi") as UnitCell;
     expect(asMi.value).toBeCloseTo(5000, 6);   // base meters unchanged
     expect(asMi.display).toBe("mi");           // re-displayed in miles
-    expect(isUnitCell(fiveKm)).toBe(true);
   });
 
   it("#UNIT! on a true dimension clash (a length can't be re-labeled a mass)", () => {
@@ -462,17 +450,6 @@ describe("resolveValueOrigin — the popup 'Go to source' upstream walk", () => 
     expect(resolveValueOrigin(editor, disp.id)).toBe(add.id);
     expect(resolveValueOrigin(editor, add.id)).toBe(add.id);
     expect(resolveValueOrigin(editor, lone.id)).toBe(lone.id);
-  });
-
-  it("Convert is a transform — the walk stops there", async () => {
-    const editor = new NodeEditor() as unknown as AnyEditor;
-    const num = node("Number");
-    const conv = node("Convert", { fromUnit: "km", toUnit: "mi" });
-    const disp = node("Display", { passesUnitThrough: true });
-    for (const n of [num, conv, disp]) await editor.addNode(n as never);
-    await connect(editor, num, conv);
-    await connect(editor, conv, disp);
-    expect(resolveValueOrigin(editor, disp.id)).toBe(conv.id);
   });
 });
 

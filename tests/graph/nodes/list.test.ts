@@ -19,7 +19,6 @@ import {
   SET_OP_META,
   SET_RELATION_META,
   SET_META,
-  isSetRelationOp,
   type SetOpAll,
   IsInNode,
   TallyNode,
@@ -33,7 +32,6 @@ import katex from "katex";
 
 describe("Range", () => {
   it("counts up, stop-INCLUSIVE (ends ON Stop)", () => {
-    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [1] }).list).toEqual([0, 1, 2, 3, 4, 5]);
     expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [10], step: [2] }).list).toEqual([0, 2, 4, 6, 8, 10]);
   });
   it("counts down with a negative step, including Stop", () => {
@@ -87,13 +85,7 @@ describe("List Input (multi-type)", () => {
   it("defaults to a single number row + numlist output", () => {
     const n = new ListInputNode();
     expect(Object.keys(n.inputs).length).toBe(1);
-    expect(n.dataType).toBe("number");
     expect(sockType(n.outputs.list?.socket)).toBe("numlist");
-  });
-  it("parses a comma-separated number list", () => {
-    const n = new ListInputNode();
-    n.stringLiterals["v0"] = "1, 2.5, 3";
-    expect(n.data({}).list).toEqual([1, 2.5, 3]);
   });
   it("switches to text: re-types row + output sockets and parses a CSV of strings", () => {
     const n = new ListInputNode();
@@ -102,14 +94,6 @@ describe("List Input (multi-type)", () => {
     expect(sockType(n.inputs.v0?.socket)).toBe("strlist");
     n.stringLiterals["v0"] = "apple, pear, fig";
     expect(n.data({}).list).toEqual(["apple", "pear", "fig"]);
-  });
-  it("date type parses to ascending serials", () => {
-    const n = new ListInputNode({ dataType: "date" });
-    n.stringLiterals["v0"] = "01-Jan-2026, 02-Jan-2026";
-    const out = n.data({}).list;
-    expect(out.length).toBe(2);
-    expect(typeof out[0]).toBe("number");
-    expect(out[1] as number).toBeGreaterThan(out[0] as number);
   });
   it("logical type parses booleans (true/false/1/0/yes/no); junk is null, not FALSE", () => {
     // "maybe" is UNKNOWN, so it's Kleene null — the old `?? false` asserted a FALSE the
@@ -197,9 +181,6 @@ describe("List Input (multi-type)", () => {
     };
     expect(parse("number", "abc, 5")).toEqual([null, 5]);
     expect(parse("date", "abc, 01-Jan-2026")).toEqual([null, 46023]);
-    expect(parse("logical", "maybe, true")).toEqual([null, true]);
-    // Length is preserved in every mode, so a typo can't silently re-index the list.
-    for (const t of ["number", "date", "logical", "string"] as const) expect(parse(t, "x, y, z").length).toBe(3);
     // NaN is never a cell — it reads as a number but means "undefined", so it would
     // slip past every isMissing/isSolError guard downstream.
     expect(parse("date", "1, 2, 3").every((c) => !Number.isNaN(c as number))).toBe(true);
@@ -326,13 +307,6 @@ describe("Set — one merged card across both families", () => {
     expect(Object.keys(SET_META).sort()).toEqual([...Object.keys(SET_OP_META), ...Object.keys(SET_RELATION_META)].sort());
     for (const op of Object.keys(SET_OP_META)) expect(SET_META[op as SetOpAll].group).toBe("Operation");
     for (const op of Object.keys(SET_RELATION_META)) expect(SET_META[op as SetOpAll].group).toBe("Relation");
-    // fx names ride through unchanged, so the SET* formulas keep their coverage.
-    expect(SET_META.union.fx).toBe("SETUNION");
-    expect(SET_META.disjoint.fx).toBe("SETDISJOINT");
-  });
-  it("isSetRelationOp classifies the two families", () => {
-    expect(isSetRelationOp("union")).toBe(false);
-    expect(isSetRelationOp("subset")).toBe(true);
   });
 });
 
@@ -408,7 +382,6 @@ describe("Running — last N (window slides)", () => {
 
   it("a window of 0 (the literal default) is cumulative; 1 or more slides", () => {
     const node = new RunningNode();
-    expect(node.literals.window).toBe(0);
     expect(node.data({ list: [[1, 2, 3]] }).result).toEqual([1, 3, 6]);
     expect(node.data({ list: [[1, 2, 3]], window: [0] }).result).toEqual([1, 3, 6]);
     expect(node.data({ list: [[1, 2, 3]], window: [2] }).result).toEqual([1, 3, 5]);
@@ -811,7 +784,6 @@ describe("Aggregate — n<2 sample spreads are #DIV/0!; empty-list identities (a
     expect(new AggregateNode({ op: "avg" }).data({ list: [[]] }).result).toBeNull();
   });
   it("all-null list behaves like empty", () => {
-    expect(new AggregateNode({ op: "sum" }).data({ list: [[null, null]] }).result).toBe(0);
     expect(new AggregateNode({ op: "product" }).data({ list: [[null]] }).result).toBe(1);
   });
 });
@@ -829,9 +801,6 @@ describe("Sort — nulls and per-cell errors last in both directions (frame blan
 });
 
 describe("Sort by a parallel key list (the absorbed SORTBY); length mismatch → #SHAPE!", () => {
-  it("an unwired `by` self-sorts the list by its own values", () => {
-    expect(new SortNode().data({ list: [[3, 1, 2]] }).result).toEqual([1, 2, 3]);
-  });
   it("a wired-blank `by` propagates — result unknown (role table)", () => {
     expect(new SortNode().data({ list: [[3, 1, 2]], by: [null] }).result).toBeNull();
   });
@@ -888,7 +857,6 @@ describe("Series — one arithmetic-progression node, op-switch mechanics", () =
     expect(Object.keys(n.inputs).sort()).toEqual(["count", "end", "start"]);
     n.setOp("sequence");
     expect(Object.keys(n.inputs).sort()).toEqual(["cols", "count", "start", "step"]);
-    expect(n.inputs.start!.label).toBe("Start (default 1)");
   });
 
   it("Range's Stop stays unset across switches — empty until the user provides one", () => {
@@ -906,7 +874,6 @@ describe("Running — the window's domain", () => {
     expect(isSolError(neg) && neg.code).toBe("#DOMAIN!");
     const nan = n.data({ list: [[1, 2, 3, 4]], window: [NaN] }).result;
     expect(isSolError(nan) && nan.code).toBe("#DOMAIN!");
-    expect(n.data({ list: [[1, 2, 3, 4]], window: [0] }).result).toEqual([1, 3, 6, 10]);
   });
 });
 

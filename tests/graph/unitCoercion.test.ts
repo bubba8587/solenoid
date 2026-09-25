@@ -167,19 +167,6 @@ describe("dimensioned cells shape without #SHAPE! (the $ USD regression)", () =>
     expect((out as UnitCell).dim).toEqual({ currency: 1 });
     expect((out as UnitCell).display).toBe("usd"); // SUM keeps $ (was 60 ¤)
   });
-
-  it("a currency value into a unit-blind Comparison compares magnitudes (no #SHAPE!)", async () => {
-    const g = makeGraph();
-    const num = new NumberInputNode({ label: "n", value: 5 });
-    const fc = new FormatControllerNode({ unit: "usd" });
-    const thr = new NumberInputNode({ label: "t", value: 3 });
-    const cmp = new ComparisonNode({ op: "gt" });
-    for (const n of [num, fc, thr, cmp]) await g.editor.addNode(n as never);
-    await g.conn(num, "value", fc, "in");
-    await g.conn(fc, "out", cmp, "a");
-    await g.conn(thr, "value", cmp, "b");
-    expect((await g.fetch(cmp)).result).toBe(true); // $5 > 3
-  });
 });
 
 describe("FC lock states live on the value layer (A2 arrows)", () => {

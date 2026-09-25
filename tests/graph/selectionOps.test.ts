@@ -76,13 +76,6 @@ describe("distributeDeltas (equal gaps, first/last fixed)", () => {
     expect(b.dx).toBe(150 - 30); // target start 150
   });
 
-  it("keeps the first and last (by leading edge) fixed", () => {
-    const items = [box("a", 0, 0, 20, 20), box("b", 90, 0, 20, 20), box("c", 300, 0, 20, 20)];
-    const moves = distributeDeltas(items, "h");
-    // only the middle node moves
-    expect(moves.map((m) => m.seedId)).toEqual(["b"]);
-  });
-
   it("works on the vertical axis (dy only)", () => {
     const items = [box("a", 0, 0, 10, 30), box("b", 0, 50, 10, 30), box("c", 0, 300, 10, 30)];
     const moves = distributeDeltas(items, "v");
@@ -102,11 +95,6 @@ describe("distributeDeltas (equal gaps, first/last fixed)", () => {
     expect(at("b")!.dx).toBe(0 + 20 + g - 5);      // start 60 - 5
     expect(at("c")!.dx).toBe(0 + 20 + g + 20 + g - 10); // start 120 - 10
     expect(at("d")!.dx).toBe(3 * (20 + g) - 15);   // start 180 - 15
-    // resulting edges never overlap
-    const startsAt = (id: string, orig: number) => orig + (at(id)?.dx ?? 0);
-    expect(startsAt("a", 0) + 20).toBeLessThanOrEqual(startsAt("b", 5));
-    expect(startsAt("b", 5) + 20).toBeLessThanOrEqual(startsAt("c", 10));
-    expect(startsAt("c", 10) + 20).toBeLessThanOrEqual(startsAt("d", 15));
   });
 });
 

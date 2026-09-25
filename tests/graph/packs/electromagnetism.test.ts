@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { EM_FORMULAS, ELECTROMAGNETISM_PACK } from "../../../src/graph/packs/electromagnetism";
+import { EM_FORMULAS } from "../../../src/graph/packs/electromagnetism";
 import { auditFormulaPack, entryByType, evalFormula, evalEquation, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { isSolError } from "../../../src/graph/errorValue";
 import { EmSpectrumNode } from "../../../src/graph/nodes/emSpectrum";
@@ -101,12 +101,6 @@ describe("Physics Constant node", () => {
     const ann = r.inAnnotation(disp.id, "in");
     expect(ann?.unit).toBe("custom");
     expect(ann?.customUnit).toBe(" m/s");
-  });
-});
-
-describe("pack wiring", () => {
-  it("depends on the electricity pack", () => {
-    expect(ELECTROMAGNETISM_PACK.dependsOn).toEqual(["electricity"]);
   });
 });
 

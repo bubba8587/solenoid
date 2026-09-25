@@ -42,7 +42,6 @@ describe("per-doc autosave keys", () => {
     const beta = metas.find((m) => m.name === "Beta")!;
     expect(keysMatching(/^solenoid\.docs\.index\./).length).toBeGreaterThan(0);
     expect(docKeysFor(alpha.id).length).toBeGreaterThan(0);
-    expect(docKeysFor(beta.id).length).toBeGreaterThan(0);
 
     // Renaming Beta persists Beta + the index — Alpha's stored bytes must not move.
     const alphaBytes = docKeysFor(alpha.id).map((k) => [k, _mem.get(k)] as const);

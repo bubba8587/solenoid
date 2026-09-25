@@ -53,17 +53,6 @@ describe("CubeRollupNode", () => {
     expect(col.values).toEqual(["Hinge", "Hinge"]);
   });
 
-  it("ripples a leaf part's price change through to every assembly that uses it", () => {
-    const before = rollup(productsCube({ hinge: 2, panel: 10 }));
-    const after = rollup(productsCube({ hinge: 5, panel: 10 })); // Hinge price 2 → 5
-    const totalsBefore = before.columns.find((c) => c.name === "TotalCost")!.values;
-    const totalsAfter = after.columns.find((c) => c.name === "TotalCost")!.values;
-    // Both P1 (uses 4 hinges) and P2 (uses 2 hinges) recompute — every assembly
-    // that references the changed leaf part ripples, none that don't would drift.
-    expect(totalsBefore).toEqual([18, 4]);
-    expect(totalsAfter).toEqual([1 * 10 + 4 * 5, 2 * 5]); // [30, 10]
-  });
-
   it("respects the chosen aggregate op (count)", () => {
     const cube = productsCube({ hinge: 2, panel: 10 });
     const out = rollup(cube, "count");

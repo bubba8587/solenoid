@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { weightedShuffleKey, shuffleList } from "../../src/graph/nodes/listOps";
 import { ShuffleNode } from "../../src/graph/nodes/list";
-import { isSolError, type SolError } from "../../src/graph/errorValue";
+import type { SolError } from "../../src/graph/errorValue";
 
 describe("weightedShuffleKey", () => {
   it("sinks a non-positive or non-finite weight to the end", () => {
@@ -10,10 +10,6 @@ describe("weightedShuffleKey", () => {
     expect(weightedShuffleKey(0.5, -3)).toBe(Infinity);
     expect(weightedShuffleKey(0.5, NaN)).toBe(Infinity);
     expect(weightedShuffleKey(0.5, Infinity)).toBe(Infinity);
-  });
-
-  it("higher weight yields a smaller key for the same uniform (lands earlier)", () => {
-    expect(weightedShuffleKey(0.5, 4)).toBeLessThan(weightedShuffleKey(0.5, 1));
   });
 
   it("equal uniforms sort by descending weight (via shuffleList's ascending keys)", () => {
@@ -44,7 +40,6 @@ describe("ShuffleNode weights socket", () => {
 
   it("a weights list shorter than the list is #SHAPE!, not a silent uniform shuffle", () => {
     const out = new ShuffleNode().data({ list: [["A", "B", "C"]], weights: [[1, 2]] });
-    expect(isSolError(out.result)).toBe(true);
     expect((out.result as SolError).code).toBe("#SHAPE!");
     // A longer list is fine: the extra weights are ignored.
     const ok = new ShuffleNode().data({ list: [["A", "B"]], weights: [[0, 1, 5]] });

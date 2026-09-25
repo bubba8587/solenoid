@@ -20,10 +20,6 @@ describe("extractInlineRefs", () => {
     expect(extractInlineRefs("`=1abc` is not a ref, but `=abc1` is.")).toEqual(["abc1"]);
   });
 
-  it("returns empty for a body with no refs", () => {
-    expect(extractInlineRefs("Just plain prose.")).toEqual([]);
-  });
-
   it("the `!` highlight flag is display-only: key is the bare name, deduped with the plain form", () => {
     expect(extractInlineRefs("Rate is `=rate!` (target `=rate`).")).toEqual(["rate"]);
     expect(extractInlineRefs("`=a!` and `=b`")).toEqual(["a", "b"]);

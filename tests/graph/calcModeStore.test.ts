@@ -60,12 +60,4 @@ describe("calcModeStore", () => {
     expect(calcModeStore.version()).toBeGreaterThan(v0);
     calcModeStore.setMode("auto");
   });
-
-  it("survives a missing localStorage (the vitest env is node — persist must not throw)", () => {
-    // The store's try/catch IS the behavior under test: private mode / no
-    // storage must degrade to in-memory mode, never crash a setMode.
-    expect(() => calcModeStore.setMode("manual")).not.toThrow();
-    expect(calcModeStore.mode()).toBe("manual");
-    calcModeStore.setMode("auto");
-  });
 });

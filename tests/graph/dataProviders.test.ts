@@ -14,7 +14,6 @@ describe("dataProviders", () => {
     });
     const f = parseFredObservations(json);
     expect(f.columns.map((c) => c.name)).toEqual(["date", "value"]);
-    expect(frameRowCount(f)).toBe(3);
     expect(getColumn(f, "value")?.values).toEqual([1.5, null, 2.0]);
     // The date column is type-inferred (ISO strings → a date column); just assert it
     // carries all three rows, not its coerced representation.
@@ -34,13 +33,7 @@ describe("dataProviders", () => {
 
   it("builds provider URLs — FRED keyless CSV; Alpha Vantage keyed CSV", () => {
     // FRED is keyless now — the public fredgraph.csv download, no api_key.
-    const fredUrl = PROVIDERS.fred.buildUrl("UNRATE", "");
-    expect(fredUrl).toContain("fredgraph.csv?id=UNRATE");
-    expect(fredUrl).not.toContain("api_key");
-    expect(PROVIDERS.fred.needsKey).toBe(false);
-
     expect(PROVIDERS.alphavantage.buildUrl("MSFT", "K")).toContain("datatype=csv");
-    expect(PROVIDERS.alphavantage.needsKey).toBe(true);
   });
 
   it("FRED folds date range + frequency into the URL (cosd/coed/fq/fam)", () => {

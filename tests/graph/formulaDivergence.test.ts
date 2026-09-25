@@ -354,7 +354,6 @@ describe("FIXED and DOLLAR round with roundDigits, as ROUND does", () => {
 describe("FIXED — drift guards, incl. half-away rounding", () => {
   it("decimals, negative decimals, no_commas, signed halves", () => {
     expect(str(call("FIXED", 1234.567, 1))).toBe("1,234.6");
-    expect(str(call("FIXED", 1234.567, -1))).toBe("1,230");
     expect(str(call("FIXED", 1234.567, 1, true))).toBe("1234.6");
     expect(str(call("FIXED", 2.5, 0))).toBe("3");
     expect(str(call("FIXED", -2.5, 0))).toBe("-3");

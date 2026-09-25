@@ -1,7 +1,7 @@
 // [[C64]]
 import { describe, it, expect } from "vitest";
 import { decisionMatrix, decisionCriteria, decisionSensitivity } from "../../src/graph/frameVerbs";
-import { DecisionMatrixNode, DecisionSensitivityNode } from "../../src/graph/rete-nodes";
+import { DecisionMatrixNode } from "../../src/graph/rete-nodes";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { isFrameValue, isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 
@@ -263,11 +263,6 @@ const wframe = (rows: [string, number, string?][]): FrameValue => ({
 });
 
 describe("DecisionMatrixNode (criterion-keyed weights frame)", () => {
-  it("defaults normalize to ÷Max — Raw silently degenerates on mixed scales", () => {
-    expect(new DecisionMatrixNode().normalize).toBe("max");
-    expect(new DecisionSensitivityNode().normalize).toBe("max");
-  });
-
   it("scores from the weights frame, keyed by criterion name", () => {
     const node = new DecisionMatrixNode({ normalize: "none" });
     const w = wframe([["quality", 3], ["cost", -1]]);

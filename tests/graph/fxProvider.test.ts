@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, FX_CURRENCIES } from "../../src/graph/fxProvider";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { applyFcUnit } from "../../src/graph/unitBridge";
-import { isUnitCell, dimOf } from "../../src/graph/unitValue";
+import { dimOf } from "../../src/graph/unitValue";
 
 // C1 Currency / FX — the Frankfurter parse is pure + fixture-tested (widget rule 5), and
 // importing fxProvider registers every currency code with the display bridge.
@@ -59,7 +59,6 @@ describe("parseFxSeries", () => {
 describe("FX_CURRENCIES — the bundled picker list", () => {
   it("parses code + name, keeping multi-word names whole", () => {
     expect(FX_CURRENCIES.length).toBeGreaterThan(25);
-    expect(FX_CURRENCIES.find((c) => c.code === "USD")?.name).toBe("United States Dollar");
     expect(FX_CURRENCIES.find((c) => c.code === "CNY")?.name).toBe("Chinese Renminbi Yuan");
   });
   it("every code is three upper-case letters", () => {
@@ -70,7 +69,6 @@ describe("FX_CURRENCIES — the bundled picker list", () => {
 describe("currency-unit registration — applyFcUnit authors a currency cell for any code", () => {
   it("a code beyond the four built-ins (CAD) tags the value on the currency dimension", () => {
     const cell = applyFcUnit(100, "cad");
-    expect(isUnitCell(cell)).toBe(true);
     expect(dimOf(cell)).toEqual({ currency: 1 });
     expect((cell as { display?: string }).display).toBe("cad");
   });

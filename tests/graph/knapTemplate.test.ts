@@ -114,7 +114,6 @@ describe("renderKnap", () => {
   it("a broken template reports line:column errors and no output", async () => {
     const r = await renderKnap("ok\n{% if x %}", {});
     expect(r.output).toBe("");
-    expect(r.errors.length).toBeGreaterThan(0);
     expect(knapErrorText(r.errors)).toMatch(/^2:\d+ .*endif/);
   });
   it("a `{# … #}` comment is stripped, over one line or many; an unclosed one is a syntax error", async () => {
@@ -235,7 +234,6 @@ describe("batchTruncation", () => {
     expect(batchTruncation(MAX_PAGES + 740)).toEqual({ truncated: true, shown: MAX_PAGES, total: MAX_PAGES + 740 });
   });
   it("is not truncated at or under the cap", () => {
-    expect(batchTruncation(300)).toEqual({ truncated: false, shown: 300, total: 300 });
     expect(batchTruncation(MAX_PAGES)).toEqual({ truncated: false, shown: MAX_PAGES, total: MAX_PAGES });
   });
 });

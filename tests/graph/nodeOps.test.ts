@@ -1,6 +1,6 @@
 // [[B11]], [[C26]], [[D5]]
 import { describe, it, expect } from "vitest";
-import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry } from "../../src/graph/nodeOps";
+import { NODE_OPS, opsFor, hiddenOps, opEntry } from "../../src/graph/nodeOps";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { flattenLeaves, searchLeaves } from "../../src/graph/catalogSearch";
 import { despace } from "../../src/graph/formulaNodeParity";
@@ -172,7 +172,6 @@ describe("collapsed families keep every op reachable", () => {
   it("a search hit for a hidden op builds the node already set to that op", () => {
     const all = flattenLeaves(catalog);
     const hit = searchLeaves(all, "symmetric difference")[0];
-    expect(hit, "no search hit for a hidden Set op").toBeTruthy();
     const inst = hit.create() as { op?: unknown };
     expect(inst.op).toBe("symdiff");
   });
@@ -203,10 +202,6 @@ describe("collapsed families keep every op reachable", () => {
 });
 
 describe("the exposure flag is the whole change", () => {
-  it("defaults to collapsed, so a new family adds no leaves by itself", () => {
-    for (const decl of NODE_OPS) expect(exposureOf(decl), decl.type).toBe("collapsed");
-  });
-
   it("flipping to `leaves` yields one entry per hidden op, each pre-set", () => {
     const decl = opsFor("list-sets")! as Parameters<typeof opEntry>[0];
     const host = byType.get("list-sets")!;

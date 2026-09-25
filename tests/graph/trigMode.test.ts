@@ -98,8 +98,6 @@ describe("MathFn trig — per-cell mixed-unit interpretation", () => {
     expect(deg[0]).toBeCloseTo(0, 9);
     expect(deg[1]).toBeCloseTo(0.5, 9);
     expect(deg[2]).toBeCloseTo(1, 9);
-    // No UnitCell wrapping sneaks in — bare in, bare out.
-    expect(deg.every((v) => typeof v === "number")).toBe(true);
 
     const sinRad = new MathFXNode({ op: "sin", angleMode: "rad" });
     const rad = sinRad.data({ in: [[0, Math.PI / 6]] as never }).result as number[];

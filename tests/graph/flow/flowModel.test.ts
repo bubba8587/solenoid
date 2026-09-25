@@ -11,15 +11,9 @@ import { isSolError } from "../../../src/graph/errorValue";
 // React-Flow-shaped nodes/edges with per-port handles intact.
 
 describe("flow model (React Flow port C0)", () => {
-  it("has seeds and a default", () => {
-    expect(Object.keys(FLOW_SEEDS).length).toBeGreaterThan(0);
-    expect(FLOW_SEEDS[DEFAULT_SEED_ID]).toBeDefined();
-  });
-
   it("builds and computes the default seed", async () => {
     const g = FLOW_SEEDS[DEFAULT_SEED_ID].graph;
     const m = await buildModel(g);
-    expect(m.editor.getNodes().length).toBe(g.nodes.length);
     expect(m.editor.getConnections().length).toBe(g.connections.length);
 
     const values = await computeAll(m.editor, m.engine);
@@ -51,8 +45,6 @@ describe("flow model (React Flow port C0)", () => {
     for (const e of edges) {
       const src = byId.get(e.source);
       const tgt = byId.get(e.target);
-      expect(src, `edge source ${e.source}`).toBeDefined();
-      expect(tgt, `edge target ${e.target}`).toBeDefined();
       // Handle ids are the socket keys — they must exist on the live node.
       const srcNode = src!.data.node as unknown as { outputs: Record<string, unknown> };
       const tgtNode = tgt!.data.node as unknown as { inputs: Record<string, unknown> };

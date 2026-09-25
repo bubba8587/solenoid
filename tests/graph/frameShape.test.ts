@@ -47,7 +47,6 @@ describe("shapeOf — select", () => {
 
   it("throws #REF! for a missing column — same as the oracle", () => {
     const op: FrameOp = { kind: "select", columns: ["Nope"] };
-    expect(() => shapeOf(op, actualShape(people))).toThrow();
     let code: string | undefined;
     try { shapeOf(op, actualShape(people)); } catch (e) { code = isSolError(e) ? e.code : undefined; }
     let realCode: string | undefined;

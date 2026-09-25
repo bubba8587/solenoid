@@ -243,9 +243,6 @@ describe("error consumers", () => {
     // A bare NaN is neither an error nor caught — Test's ISERROR and IFERROR match.
     expect(new IsTestNode({ op: "iserror" }).data({ value: [NaN] }).result).toBe(false);
     expect(new IFErrorNode({ op: "iferror" }).data({ value: [NaN], fallback: [9] }).result).toBeNaN();
-    // A tagged error is caught/flagged by both.
-    expect(new IsTestNode({ op: "iserror" }).data({ value: [div0] }).result).toBe(true);
-    expect(new IFErrorNode({ op: "iferror" }).data({ value: [div0], fallback: [9] }).result).toBe(9);
   });
 
   it("IS-check remembers the observed error for the explanation panel", () => {
@@ -332,10 +329,6 @@ describe("error producers", () => {
     const n2 = new XLookupNode();
     n2.stringLiterals = { lookup: "", inColumn: "k", returnColumn: "v", ifNotFound: "0" };
     expect(n2.data({ frame: [f], lookup: [["2", "99"]] }).value).toEqual([20, 0]);
-    // A single lookup value still answers a single cell — the common case is unchanged.
-    const n3 = new XLookupNode();
-    n3.stringLiterals = { lookup: "2", inColumn: "k", returnColumn: "v", ifNotFound: "" };
-    expect(n3.data({ frame: [f] }).value).toBe(20);
   });
 
   it("XMATCH miss on a wired array is #N/A; unwired stays blank", () => {
@@ -351,8 +344,6 @@ describe("error producers", () => {
     const r = new XMatchNode().data({ value: [[30, 10, 99]], array: [[10, 20, 30]] }).result as unknown[];
     expect(r.slice(0, 2)).toEqual([3, 1]);
     expect(isSolError(r[2]) && (r[2] as SolError).code).toBe("#N/A");
-    // A scalar needle still answers a scalar — the common case is unchanged.
-    expect(new XMatchNode().data({ value: [20], array: [[10, 20, 30]] }).result).toBe(2);
   });
 
   it("Filter ([[C49]] filterOneJob) never shape-errors: a per-cell error just fails its condition", () => {

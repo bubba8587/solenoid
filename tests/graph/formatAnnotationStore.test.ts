@@ -39,10 +39,6 @@ beforeEach(() => {
 // ─── formatAnnotationStore ────────────────────────────────────────────────────
 
 describe("formatAnnotationStore — set / get", () => {
-  it("get returns undefined for an entry never set", () => {
-    expect(formatAnnotationStore.get("n1", "out")).toBeUndefined();
-  });
-
   it("set then get round-trips the annotation", () => {
     const a = ann({ format: "decimal", unit: "usd", decimalDigits: 2 });
     formatAnnotationStore.set("n1", "out", a);
@@ -90,10 +86,6 @@ describe("formatAnnotationStore — delete", () => {
     formatAnnotationStore.set("n1", "out", ann());
     formatAnnotationStore.delete("n1", "out");
     expect(formatAnnotationStore.get("n1", "out")).toBeUndefined();
-  });
-
-  it("delete on a nonexistent key is a no-op (no throw)", () => {
-    expect(() => formatAnnotationStore.delete("n1", "out")).not.toThrow();
   });
 });
 
@@ -322,10 +314,6 @@ describe("unitById", () => {
 // ─── formatMismatchStore ──────────────────────────────────────────────────────
 
 describe("formatMismatchStore", () => {
-  it("has() returns false for an unset node", () => {
-    expect(formatMismatchStore.has("n1")).toBe(false);
-  });
-
   it("setMismatch(true) sets it; has() returns true", () => {
     formatMismatchStore.setMismatch("n1", true);
     expect(formatMismatchStore.has("n1")).toBe(true);

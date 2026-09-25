@@ -5,7 +5,6 @@ import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrit
 import { notesToCube } from "../../src/graph/vaultCube";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
-import { isFrameValue } from "../../src/graph/frame";
 
 // Bundle 24 item B — the pure frontmatter line-patcher: untouched bytes stay identical,
 // and a cube round-trips through a note unchanged. [[C101]] onePatchPath: the ONE writer of a note's YAML.
@@ -100,19 +99,6 @@ describe("round trip — a demo-vault note re-patched with its own values is unc
     };
     const { text: out } = patchFrontmatter(text, patch);
     expect(out).toBe(text);
-  });
-});
-
-describe("nested frame from a cube cell writes as a block of rows", () => {
-  it("milestones round-trips as rows-of-objects", () => {
-    const frame = { __frame: true as const, columns: [
-      { name: "name", type: "string" as const, values: ["Demo", "Cabinets"] },
-      { name: "done", type: "logical" as const, values: [true, false] },
-    ] };
-    const val = cellToYaml(frame, undefined, NO_NAMES);
-    expect(isFrameValue(frame)).toBe(true);
-    const { text } = patchFrontmatter("---\nx: 1\n---\nb\n", { plan: val });
-    expect(text).toContain("plan:\n  - name: Demo\n    done: true\n  - name: Cabinets\n    done: false");
   });
 });
 

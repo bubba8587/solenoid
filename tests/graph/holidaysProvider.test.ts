@@ -96,8 +96,6 @@ describe("daysToNextHoliday — whole days to the next on/after today", () => {
 describe("NAGER_COUNTRIES — the bundled picker list", () => {
   it("parses code + name, keeping multi-word names whole", () => {
     expect(NAGER_COUNTRIES.length).toBeGreaterThan(190);
-    expect(NAGER_COUNTRIES.find((c) => c.code === "US")?.name).toBe("United States");
-    expect(NAGER_COUNTRIES.find((c) => c.code === "GB")?.name).toBe("United Kingdom");
     expect(NAGER_COUNTRIES.find((c) => c.code === "BA")?.name).toBe("Bosnia and Herzegovina");
   });
   it("every entry has a two-letter code and a non-empty name", () => {

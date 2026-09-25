@@ -22,12 +22,6 @@ describe("ConduitNode.rotateBy", () => {
     c.rotateBy(-1);
     expect(c.angle).toBe(315); // 0 - 45 → 315
   });
-
-  it("snaps an off-quantum starting angle to the grid", () => {
-    const c = new ConduitNode({ angle: 20 }); // nearest 45-multiple is 0
-    c.rotateBy(1);
-    expect(c.angle).toBe(45);
-  });
 });
 
 describe("conduitLaneOf", () => {

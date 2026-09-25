@@ -30,7 +30,6 @@ describe("solveStandoffs", () => {
       new Set(["a"]),
     );
     expect(d.get("b")!.dx).toBeCloseTo(-100, 0);
-    expect(d.get("b")!.dy ?? 0).toBeCloseTo(0);
     expect(d.has("a")).toBe(false);
   });
 
@@ -128,8 +127,6 @@ describe("solveStandoffs", () => {
       [east("s1", "a", "b", 28, 60), east("s2", "b", "a", 28, 60)],
     );
     for (const v of d.values()) {
-      expect(Number.isFinite(v.dx)).toBe(true);
-      expect(Number.isFinite(v.dy)).toBe(true);
       expect(Math.abs(v.dx) + Math.abs(v.dy)).toBeLessThan(2000);
     }
   });

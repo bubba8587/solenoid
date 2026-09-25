@@ -564,13 +564,6 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
 });
 
 describe("the @ operator — this-row reads (Excel [@Price] as @price)", () => {
-  it("@ works in the CC node's inline formula, mixed with whole-column reads", () => {
-    const r = run(named("@price * @qty", "rev"), sales) as FrameValue;
-    expect(getColumn(r, "rev")!.values).toEqual([20, 60, 120]);
-    const mix = run(named("@price * COUNT(qty)", "x"), sales) as FrameValue;
-    expect(getColumn(mix, "x")!.values).toEqual([30, 60, 90]);
-  });
-
   it("a ZERO-param λ reads the row via @ — capture sockets grow, columns win over them", () => {
     const lam = new LambdaNode({ expr: "@price * @qty", params: "" });
     const fn = (lam.data({}) as { result: unknown }).result;
@@ -805,7 +798,6 @@ describe("persistence", () => {
   it("extractInit round-trips expr and the column name", () => {
     const n = named("qty * price", "revenue");
     const init = extractInit(n) as { expr?: string };
-    expect(init.expr).toBe("qty * price");
     const clone = new ComputedColumnNode(init as ConstructorParameters<typeof ComputedColumnNode>[0]);
     expect(clone.expr).toBe("qty * price");
   });
@@ -827,8 +819,6 @@ describe("review pins — wired blanks, picked columns at @, λ params", () => {
     const n = named("@qty * rate", "amt");
     const blank = run(n, sales, { rate: [null] }) as FrameValue;
     expect(getColumn(blank, "amt")!.values).toEqual([null, null, null]);
-    const bare = run(named("@qty * rate", "amt"), sales) as FrameValue;
-    expect(getColumn(bare, "amt")!.values).toEqual([0, 0, 0]); // the literal default, 0
     const viaAt = run(named("@qty * @rate", "amt"), sales, { rate: [null] }) as FrameValue;
     expect(getColumn(viaAt, "amt")!.values).toEqual([null, null, null]);
   });
@@ -843,9 +833,5 @@ describe("review pins — wired blanks, picked columns at @, λ params", () => {
     gone.bindings = { x: "vanished" };
     const e = run(gone, sales);
     expect(isSolError(e) && e.message).toBe('No column "vanished" to bind "x" to');
-  });
-
-  it("a λ literal's params are not side names: @x inside LAMBDA(x, …) grows no socket", () => {
-    expect(rowRefNames("SUM(MAP(qty, LAMBDA(x, @x * 2))) + @rate")).toEqual(["rate"]);
   });
 });

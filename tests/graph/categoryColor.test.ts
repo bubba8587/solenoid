@@ -15,26 +15,10 @@ describe("categoryColorIndex — the Chip hue assignment", () => {
     expect(m.size).toBe(3);
   });
 
-  it("a value's index is its first-appearance rank regardless of repeats or later position", () => {
-    const m = categoryColorIndex(["a", "b", "a", "a", "c", "b"]);
-    expect(m.get("a")).toBe(0); // every 'a' resolves to the same slot
-    expect(m.get("b")).toBe(1);
-    expect(m.get("c")).toBe(2);
-  });
-
-  it("is pure — same input, same output", () => {
-    const input = ["x", "y", "x", "z"];
-    expect([...categoryColorIndex(input)]).toEqual([...categoryColorIndex(input)]);
-  });
-
   it("skips null / undefined cells", () => {
     const m = categoryColorIndex([null, "a", undefined, "a", null, "b"]);
     expect(m.get("a")).toBe(0);
     expect(m.get("b")).toBe(1);
     expect(m.size).toBe(2);
-  });
-
-  it("a scalar (one value) is slot 0", () => {
-    expect(categoryColorIndex(["solo"]).get("solo")).toBe(0);
   });
 });

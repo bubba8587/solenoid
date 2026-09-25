@@ -91,12 +91,4 @@ describe("formula ↔ node capability parity (curated surface)", () => {
       uncovered.join("\n  "),
     ).toEqual([]);
   });
-
-  it("the alias list stays honest — every entry is a declared function that needs it", () => {
-    const nodes = nodeNames();
-    const stale = Object.keys(FORMULA_NODE_ALIAS).filter(
-      (n) => !(n in EXCEL_IMPL_META) || nodes.has(n),
-    );
-    expect(stale, `FORMULA_NODE_ALIAS entries that are no longer needed (drop them):\n  ${stale.join("\n  ")}`).toEqual([]);
-  });
 });

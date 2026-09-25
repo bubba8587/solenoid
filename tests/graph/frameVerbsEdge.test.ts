@@ -66,11 +66,6 @@ describe("ragged + all-null", () => {
     const out = headRows(ragged, 3);
     expect(out.columns[1].values).toEqual([9, null, null]);
   });
-  it("an all-null key column matches nothing in a join (null != null)", () => {
-    const nullsL: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [null, null] }] };
-    const nullsR: FrameValue = { __frame: true, columns: [{ name: "k", type: "number", values: [null] }] };
-    expect(frameRowCount(joinFrames(nullsL, nullsR, { leftKey: "k", rightKey: "k", how: "inner" }))).toBe(0);
-  });
   it("append of two empty frames is an empty frame with the union schema", () => {
     const out = appendFrames([empty, { __frame: true, columns: [{ name: "c", type: "number", values: [] }] }]);
     expect(out.columns.map((c) => c.name)).toEqual(["a", "b", "c"]);

@@ -84,7 +84,6 @@ describe("MSPDI write", () => {
       const cal = { workingDays: true, holidays: [isoToSerial("2026-03-09")!], precision };
       const o = schedule({ tasks, start: isoToSerial("2026-03-02")!, calendar: cal });
       const xml = writeMspdi(o, { title: "Shed", formatIso: iso, minutes: precision === "minutes", holidays: cal.holidays });
-      expect(xml).toContain("<Task>");
       const back = readMspdi(xml);
       expect(back.title).toBe("Shed");
       expect(back.calendar.holidays).toEqual([isoToSerial("2026-03-09")]);

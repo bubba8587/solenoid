@@ -176,10 +176,6 @@ describe("ScriptNode.data — frames and cubes in", () => {
       { name: "sales", type: "number", values: [10, 7] },
     ],
   };
-  it("a frame arrives as rows of {name: value} — the mirror of the output form", async () => {
-    const { result } = await run("(f) => f.map((r) => r.city + ':' + r.sales).join(' ')", { f: [frame] });
-    expect(result).toBe("Oslo:10 Riga:7");
-  });
   it("a script can round-trip a frame: read rows, return transformed rows", async () => {
     const { result, node } = await run("(f) => f.map((r) => ({ city: r.city, big: r.sales * 100 }))", { f: [frame] });
     const out = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };

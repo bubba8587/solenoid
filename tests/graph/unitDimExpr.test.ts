@@ -19,9 +19,6 @@ describe("dimensional AST interpretation — operators", () => {
     expect(evalExpr("a * b", { a: LENGTH, b: TIME })).toEqual({ length: 1, time: 1 });
     expect(evalExpr("a / b", { a: LENGTH, b: TIME })).toEqual({ length: 1, time: -1 });
   });
-  it("distance / time reads m/s dimension", () => {
-    expect(evalExpr("d / t", { d: LENGTH, t: TIME })).toEqual({ length: 1, time: -1 });
-  });
   it("mass * accel yields force dimension", () => {
     expect(evalExpr("m * a", { m: MASS, a: { length: 1, time: -2 } }))
       .toEqual({ mass: 1, length: 1, time: -2 });

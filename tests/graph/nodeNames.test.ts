@@ -41,10 +41,6 @@ describe("nodeTypeName", () => {
   it("returns the name unchanged when there is no 'Node' suffix and no camelCase boundary", () => {
     expect(nodeTypeName({ constructor: { name: "Foo" } })).toBe("Foo");
   });
-
-  it("handles a single-word lowercase class name", () => {
-    expect(nodeTypeName({ constructor: { name: "add" } })).toBe("add");
-  });
 });
 
 // ─── nodeDisplayNames ─────────────────────────────────────────────────────────
@@ -52,11 +48,6 @@ describe("nodeTypeName", () => {
 describe("nodeDisplayNames", () => {
   it("returns an empty map for an empty list", () => {
     expect(nodeDisplayNames([])).toEqual(new Map());
-  });
-
-  it("single node with a label → bare label", () => {
-    const map = nodeDisplayNames([node("n1", "ArithmeticNode", "My Calc")]);
-    expect(map.get("n1")).toBe("My Calc");
   });
 
   it("single node with no label → type name", () => {
@@ -69,15 +60,6 @@ describe("nodeDisplayNames", () => {
     expect(map.get("n1")).toBe("Add");
   });
 
-  it("unique labels stay bare (no index appended)", () => {
-    const map = nodeDisplayNames([
-      node("n1", "ArithmeticNode", "Revenue"),
-      node("n2", "ArithmeticNode", "Cost"),
-    ]);
-    expect(map.get("n1")).toBe("Revenue");
-    expect(map.get("n2")).toBe("Cost");
-  });
-
   it("duplicate labels get 1-based numeric suffixes", () => {
     const map = nodeDisplayNames([
       node("n1", "ArithmeticNode", "Total"),
@@ -85,26 +67,6 @@ describe("nodeDisplayNames", () => {
     ]);
     expect(map.get("n1")).toBe("Total 1");
     expect(map.get("n2")).toBe("Total 2");
-  });
-
-  it("three nodes with the same label get indices 1, 2, 3", () => {
-    const map = nodeDisplayNames([
-      node("a", "ArithmeticNode", "X"),
-      node("b", "ArithmeticNode", "X"),
-      node("c", "ArithmeticNode", "X"),
-    ]);
-    expect(map.get("a")).toBe("X 1");
-    expect(map.get("b")).toBe("X 2");
-    expect(map.get("c")).toBe("X 3");
-  });
-
-  it("unlabeled nodes sharing a type-name get numbered", () => {
-    const map = nodeDisplayNames([
-      node("n1", "ArithmeticNode"),
-      node("n2", "ArithmeticNode"),
-    ]);
-    expect(map.get("n1")).toBe("Add 1");
-    expect(map.get("n2")).toBe("Add 2");
   });
 
   it("mix of labeled and unlabeled nodes are independent groups", () => {

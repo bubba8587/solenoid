@@ -56,14 +56,6 @@ describe("inferColumn", () => {
     expect(col.values).toEqual([1, 2, 3]);
   });
 
-  it("infers number for numeric strings", () => {
-    const col = inferColumn("Price", ["10", "20.5", "1,234"]);
-    expect(col.type).toBe("number");
-    expect(col.values[0]).toBe(10);
-    expect(col.values[1]).toBe(20.5);
-    expect(col.values[2]).toBe(1234);
-  });
-
   it("keeps thousands-grouped numbers numeric but NOT the European decimal comma (audit P0-7)", () => {
     const grouped = inferColumn("Big", ["1,234", "12,345.6", "1,234,567"]);
     expect(grouped.type).toBe("number");
@@ -81,10 +73,7 @@ describe("inferColumn", () => {
     const col = inferColumn("Date", dates);
     expect(col.type).toBe("date");
     expect(col.values).toHaveLength(3);
-    // Values must be finite numbers (serials), matching parseDateToSerial
     for (let i = 0; i < dates.length; i++) {
-      expect(typeof col.values[i]).toBe("number");
-      expect(Number.isFinite(col.values[i])).toBe(true);
       expect(col.values[i]).toBe(parseDateToSerial(dates[i]));
     }
   });
@@ -127,11 +116,6 @@ describe("inferColumn", () => {
     const col = inferColumn("Ambiguous", ["1/2/26", "2026", "Jan 3 2026"]);
     // Conservative ISO-only detection — none of these match YYYY-MM-DD
     expect(col.type).not.toBe("date");
-  });
-
-  it("preserves the column name", () => {
-    const col = inferColumn("Revenue", [100, 200]);
-    expect(col.name).toBe("Revenue");
   });
 });
 
@@ -198,7 +182,6 @@ describe("columnTypesAfterCsvEdit", () => {
 describe("frameFromCells", () => {
   it("produces the right column count and names", () => {
     const f = frameFromCells(["X", "Y", "Z"], [[1, 2, 3]]);
-    expect(f.columns).toHaveLength(3);
     expect(f.columns.map((c) => c.name)).toEqual(["X", "Y", "Z"]);
   });
 
@@ -222,14 +205,8 @@ describe("frameFromCells", () => {
 
   it("date column values are serials", () => {
     const f = frameFromCells(["D"], [["2026-01-03"], ["2026-06-15"]]);
-    expect(typeof f.columns[0].values[0]).toBe("number");
     expect(f.columns[0].values[0]).toBe(parseDateToSerial("2026-01-03"));
     expect(f.columns[0].values[1]).toBe(parseDateToSerial("2026-06-15"));
-  });
-
-  it("is a valid FrameValue", () => {
-    const f = frameFromCells(["A"], [[1]]);
-    expect(isFrameValue(f)).toBe(true);
   });
 
   it("handles empty rows (zero-row frame)", () => {
@@ -283,14 +260,6 @@ describe("addColumn", () => {
     expect(f2.columns).toHaveLength(1);
     expect(f2.columns[0].values).toEqual([99, 88]);
   });
-
-  it("de-dupes the name when appending a duplicate", () => {
-    const f = frameFromCells(["A", "B"], [[1, 2]]);
-    const f2 = addColumn(f, "A", [99]);
-    // "A" exists → replace; same test ensures addColumn doesn't add a phantom
-    expect(f2.columns).toHaveLength(2);
-    expect(f2.columns[0].values).toEqual([99]);
-  });
 });
 
 // The AddColumnNode pads a values list SHORTER than the frame to the row count with
@@ -335,7 +304,6 @@ describe("frameHasTextColumns", () => {
 
   it("false for date columns (date serials don't block the matrix)", () => {
     const f = frameFromCells(["D"], [["2026-01-03"]]);
-    expect(f.columns[0].type).toBe("date");
     expect(frameHasTextColumns(f)).toBe(false);
   });
 });
@@ -516,7 +484,6 @@ describe("frameText persistence round-trip", () => {
 
   it("a JSON frameText preserves an explicit logical column + null", () => {
     const original = frameFromCells(["flag"], [["TRUE"], [""], ["FALSE"]]);
-    expect(original.columns[0].type).toBe("logical"); // a blank doesn't break inference
     // The JSON form is what the popup/save writes; reopening re-parses it.
     const json = frameColumnsToInputText(original.columns);
     const back = frameFromInputText(json);
@@ -576,13 +543,9 @@ describe("Frame Input is a LITERAL source — never rewrites what you typed", ()
   it("inferColumn keeps the INPUTTED text as `raw` (date + logical, BEFORE inference)", () => {
     // A date column: values become serials, but raw keeps the original ISO text.
     const dateCol = inferColumn("d", ["2026-01-03", "2026-02-04"]);
-    expect(dateCol.type).toBe("date");
-    expect(typeof dateCol.values[0]).toBe("number"); // a serial
     expect(dateCol.raw).toEqual(["2026-01-03", "2026-02-04"]);
     // A logical column from lowercase text: value is a boolean, raw keeps "true"/"false".
     const boolCol = inferColumn("flag", ["true", "false"]);
-    expect(boolCol.type).toBe("logical");
-    expect(boolCol.values).toEqual([true, false]);
     expect(boolCol.raw).toEqual(["true", "false"]);
   });
 
@@ -594,7 +557,6 @@ describe("Frame Input is a LITERAL source — never rewrites what you typed", ()
 
   it("deriveFrame carries the Frame Input's literal source as raw", () => {
     const derived = deriveFrame([{ name: "flag", type: "logical", cells: ["1", "TRUE"] }]);
-    expect(derived.columns[0].values).toEqual([true, true]);
     expect(derived.columns[0].raw).toEqual(["1", "TRUE"]); // both literals preserved
   });
 

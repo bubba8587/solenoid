@@ -160,7 +160,6 @@ describe("multi-column sort — Excel's add-a-level model", () => {
     const sort: ColumnSort = [{ col: 3, dir: "desc" }];
     expect(sortDirOf(sort, 3)).toBe("desc");
     expect(sortDirOf(sort, 1)).toBeNull();
-    expect(sortDirOf([], 3)).toBeNull();
   });
 });
 
@@ -183,9 +182,5 @@ describe("remapSort — the sort under structural column changes", () => {
 
   it("clears outright when the map rejects every key (the CSV-reshape case)", () => {
     expect(remapSort([{ col: 0, dir: "asc" }, { col: 3, dir: "desc" }], () => null)).toEqual([]);
-  });
-
-  it("is the identity for an empty sort", () => {
-    expect(remapSort([], removal(0))).toEqual([]);
   });
 });

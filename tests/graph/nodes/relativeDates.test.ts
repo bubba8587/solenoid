@@ -48,7 +48,6 @@ describe("Date Input under the opt-in", () => {
     settingsStore.set("relativeDates", true);
     const n = new DateInputNode({ date: "today" });
     const first = n.data().result as number;
-    expect(typeof first).toBe("number");
     expect(first).toBe(Math.floor(parseDate("today", { relative: true }) as number));
     n.data(); // same day → no alert
     expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(0);

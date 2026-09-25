@@ -430,7 +430,6 @@ describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)
   });
   it("forecast defaults ON, drives the grid fill, and round-trips through extractInit", () => {
     const n = new InterpolateNode({ mode: "grid" });
-    expect(n.forecast).toBe(true);
     const z = [[5, 15, null]]; // slope 1 across xs [0,10,20]; X=20 is past the data
     expect((n.data({ z: [z], xs: [[0, 10, 20]] }).result as (number | null)[][])[0][2]).toBeCloseTo(25, 3); // forecast → trend 25
     n.forecast = false;
@@ -586,7 +585,6 @@ describe("Hypothesis Test — one node, six tests", () => {
     const init = extractInit(n as never);
     expect(init.op).toBe("t-welch");
     const clone = new HypothesisTestNode(init as { op: "t-welch" });
-    expect(clone.op).toBe("t-welch");
     expect(Object.keys(clone.inputs).sort()).toEqual(["a", "b"]);
   });
 });

@@ -47,7 +47,6 @@ describe("pointer census — what gesture is in flight", () => {
     expect(isPinching()).toBe(false);
     down(1, "touch");
     expect(touchCount()).toBe(1);
-    expect(isPinching()).toBe(false);
     down(2, "touch");
     expect(isPinching()).toBe(true);
   });
@@ -67,7 +66,6 @@ describe("pointer census — what gesture is in flight", () => {
     down(1, "mouse");
     down(2, "pen");
     expect(touchCount()).toBe(0);
-    expect(isPinching()).toBe(false);
     // A finger alongside them still isn't two fingers.
     down(3, "touch");
     expect(isPinching()).toBe(false);
@@ -108,6 +106,5 @@ describe("pointer census — what gesture is in flight", () => {
     down(1, "touch"); down(2, "touch");
     t.fire("blur", {});
     expect(touchCount()).toBe(0);
-    expect(isPinching()).toBe(false);
   });
 });

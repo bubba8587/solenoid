@@ -290,7 +290,6 @@ describe("spline", () => {
     // 0° conduit with a rotated conduit directly below: dx = 0 but the cable
     // must still exit east as a curve, not become a point-to-point line.
     const cu = parseCubic(spline({ sx: 0, sy: 0, tx: 0, ty: 250, sa: 0, ta: 270 }));
-    expect(cu).not.toBeNull();
     expect(offGrid(cu!.exitDeg - 0, 360)).toBeLessThan(TOL);
     expect(offGrid(cu!.entryDeg - 270, 360)).toBeLessThan(TOL);
     // Plain cables flat in one axis but long in the other also stay curves.
@@ -306,7 +305,6 @@ describe("spline", () => {
     ];
     for (const c of cases) {
       const cu = parseCubic(spline(c));
-      expect(cu, JSON.stringify(c)).not.toBeNull();
       expect(offGrid(cu!.exitDeg - (c.sa ?? 0), 360), `exit ${JSON.stringify(c)}`).toBeLessThan(TOL);
       expect(offGrid(cu!.entryDeg - (c.ta ?? 0), 360), `entry ${JSON.stringify(c)}`).toBeLessThan(TOL);
       expect(dist(cu!.start, { x: c.sx, y: c.sy })).toBeLessThan(0.01);

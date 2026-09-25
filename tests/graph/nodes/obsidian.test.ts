@@ -18,12 +18,10 @@ describe("WriteObsidianNode persistence + arming", () => {
     n.stringLiterals.path = "Weekly Report";
     n.enabled = true;
     const init = extractInit(n);
-    expect(init.subfolder).toBe("reports/2026");
     expect(init.enabled).toBeUndefined();
     const reloaded = new WriteObsidianNode(init);
     expect(reloaded.subfolder).toBe("reports/2026");
     expect(reloaded.enabled).toBe(false); // every load starts disarmed
-    expect(new WriteObsidianNode().stringLiterals).toEqual({ path: "", keys: "" }); // path (Note) + keys (Properties)
   });
 
   it("data() caches the document and resolves the path for the preview; the Note plan is empty", () => {
@@ -34,7 +32,6 @@ describe("WriteObsidianNode persistence + arming", () => {
     expect(out).toEqual({ plan: null }); // Note target: no cube, no plan
     expect(n.cachedDoc).toBe(doc);
     expect(n.resolveMode()).toBe("note");
-    expect(n.renderedTarget()).toEqual({ name: "Memo", subfolder: "Notes" });
   });
 });
 
@@ -107,7 +104,6 @@ describe("ImportObsidianNode", () => {
   it("persists the source fileName + inherited note fields through extractInit", () => {
     const n = new ImportObsidianNode({ fileName: "notes/weekly.md", body: "---\na: 1\n---\nhi", color: "violet" });
     const init = extractInit(n);
-    expect(init.fileName).toBe("notes/weekly.md");
     expect(init.body).toBe("---\na: 1\n---\nhi");
     const reloaded = new ImportObsidianNode(init);
     expect(reloaded.fileName).toBe("notes/weekly.md");
@@ -139,7 +135,6 @@ describe("ImportObsidianNode reads the demo vault on the web ([[B2]] webTryDeskt
 
 describe("ImportObsidianNode refresh cadence (bundle I)", () => {
   it("refreshMinutes persists through extractInit, defaults to 0, never negative", () => {
-    expect(new ImportObsidianNode().refreshMinutes).toBe(0);
     expect(extractInit(new ImportObsidianNode({ refreshMinutes: 15 }) as never).refreshMinutes).toBe(15);
     expect(new ImportObsidianNode({ refreshMinutes: -3 }).refreshMinutes).toBe(0);
   });

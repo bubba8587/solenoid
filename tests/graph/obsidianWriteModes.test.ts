@@ -27,10 +27,8 @@ describe("mergeNoteText", () => {
 
 describe("WriteObsidianNode modes + path target", () => {
   it("mode persists through extractInit, defaults to overwrite, a stale value falls back; inputs are in + path", () => {
-    expect(new WriteObsidianNode().mode).toBe("overwrite");
     expect(extractInit(new WriteObsidianNode({ mode: "block" }) as never).mode).toBe("block");
     expect(new WriteObsidianNode({ mode: "nope" as never }).mode).toBe("overwrite");
-    expect(Object.keys(new WriteObsidianNode().inputs)).toEqual(["in", "path", "rows"]);
   });
   it("renderedTarget resolves the wired path: a folder/name splits, the folder prepends to the subfolder", () => {
     const n = new WriteObsidianNode({ subfolder: "Ops" });

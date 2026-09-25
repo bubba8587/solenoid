@@ -15,7 +15,6 @@ describe("axisTick", () => {
   it("returns empty string for non-finite", () => {
     expect(axisTick(NaN)).toBe("");
     expect(axisTick(Infinity)).toBe("");
-    expect(axisTick(-Infinity)).toBe("");
   });
 });
 

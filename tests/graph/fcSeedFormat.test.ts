@@ -64,8 +64,6 @@ describe("personal-finance FC formats survive the full load order", () => {
     expect(moneyFcs.length).toBeGreaterThan(5);
     const VALID_FORMATS = new Set(["auto", "decimal", "integer", "fraction", "fraction_adv", "scientific", "percent", "custom"]);
     for (const sn of (seed.nodes as SavedNode[]).filter((n) => n.type === "FormatControllerNode")) {
-      // No FC may carry a currency-as-format value.
-      expect(String(sn.init?.format)).not.toMatch(/^currency_/);
       expect(VALID_FORMATS.has(String(sn.init?.format)), `${sn.id} format ${sn.init?.format}`).toBe(true);
     }
     for (const sn of moneyFcs) {

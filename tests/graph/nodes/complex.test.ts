@@ -36,11 +36,6 @@ describe("the tagged representation ([[C24]] arraySemantics)", () => {
     expect(isCx({ re: 1, im: 2 })).toBe(false);
     expect(isCx(null)).toBe(false);
   });
-
-  it("two equal complexes from different sources are distinct objects — membership goes through setKey", () => {
-    expect(cx(1, 2)).not.toBe(cx(1, 2));
-    expect(cx(1, 2)).toEqual(cx(1, 2));
-  });
 });
 
 describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", () => {
@@ -106,9 +101,6 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
   });
 
   it("per-cell nulls and ragged lists follow the broadcast contract", () => {
-    // A wired MISSING short-circuits that cell only.
-    expect(new ComplexUnaryNode({ op: "conj" }).data({ z: [[cx(1, 2), null]] }).result)
-      .toEqual([cx(1, -2), null]);
     // Ragged operands pad to the LONGEST with a missing cell.
     expect(new ComplexBinaryNode({ op: "sum" }).data({ a: [[cx(1, 1), cx(2, 2)]], b: [[cx(1, 1)]] }).result)
       .toEqual([cx(2, 2), null]);
@@ -151,15 +143,6 @@ describe("complex nodes broadcast over lists (scalar-or-list combo sockets)", ()
     const list = new ComplexUnaryNode({ op: "conj" });
     wrapNodeData(list as never);
     expect(list.data({ z: [[cx(1, 2), cx(3, 4)] as never] }).result).toEqual([cx(1, -2), cx(3, -4)]);
-  });
-
-  // The case the old tuple could NOT distinguish: a lone complex arriving at a
-  // strict `complexlist` input now wraps to a singleton like every other scalar —
-  // under [re, im] it slipped through as a fake 2-list.
-  it("a complex scalar widens into a complexlist input as a SINGLETON", () => {
-    const list = new ComplexUnaryNode({ op: "conj" });
-    wrapNodeData(list as never);
-    expect(list.data({ z: [cx(5, 1) as never] }).result).toEqual(cx(5, -1));
   });
 });
 

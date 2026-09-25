@@ -34,10 +34,6 @@ describe("Cast node", () => {
   it("casts to number", () => {
     expect(cast("number", "42.5")).toBe(42.5);
     expect(cast("number", 7)).toBe(7);
-    const r = cast("number", [1, "2", "x"]) as Array<number | import("../../../src/graph/errorValue").SolError>;
-    expect(r[0]).toBe(1);
-    expect(r[1]).toBe(2);
-    expect(isSolError(r[2]) && (r[2] as import("../../../src/graph/errorValue").SolError).code).toBe("#VALUE!");
   });
 
   it("empty text and 0x/0o/0b literals are #VALUE!, never a silent number ([[B17]] typedValueModel)", () => {

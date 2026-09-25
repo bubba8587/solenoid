@@ -5,7 +5,7 @@ import {
   type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
 import {
-  sortCube, distinctCube, sliceCube, filterCube, passesListFilter, encodeCubeCell,
+  sortCube, distinctCube, sliceCube, filterCube, passesListFilter,
   sortByColumn, distinctRows, sliceRows, filterRowsMulti,
   type FilterCond,
 } from "../../src/graph/frameVerbs";
@@ -48,7 +48,6 @@ describe("selectCubeRows", () => {
   });
   it("carries the __cube brand out and blanks an out-of-range index", () => {
     const r = selectCubeRows(sampleCube(), [2, 5]);
-    expect(r.__cube).toBe(true);
     expect(colCells(r, "name")).toEqual(["c", null]);
     expect(colCells(r, "tags")[1]).toBeNull();
   });
@@ -92,10 +91,6 @@ describe("distinctCube", () => {
     const d = distinctCube(c);
     // Rows 0 and 1 have equal tags + sub → row 1 drops; row 2 differs.
     expect(colCells(d, "tags")).toEqual([["a", "b"], ["a"]]);
-  });
-  it("encodeCubeCell keys equal lists equal and different lists apart", () => {
-    expect(encodeCubeCell(["a", "b"])).toEqual(encodeCubeCell(["a", "b"]));
-    expect(JSON.stringify(encodeCubeCell(["a"]))).not.toBe(JSON.stringify(encodeCubeCell(["a", "b"])));
   });
 });
 

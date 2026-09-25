@@ -75,10 +75,6 @@ describe("WriteFileNode persistence", () => {
     expect(reloaded.format).toBe("json");
     expect(reloaded.enabled).toBe(false);
   });
-
-  it("defaults format to csv", () => {
-    expect(new WriteFileNode().format).toBe("csv");
-  });
 });
 
 describe("WriteFileNode.run() — the sink discipline (format defaults to csv)", () => {

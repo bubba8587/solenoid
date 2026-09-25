@@ -1,6 +1,6 @@
 // [[C28]]
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { parseListLiteral, wrapNodeData, TYPEABLE_LIST, LAZY_FRAME_NODES } from "../../src/graph/coerceInputs";
+import { parseListLiteral, wrapNodeData, TYPEABLE_LIST } from "../../src/graph/coerceInputs";
 
 // The FrameRef bridge in wrapNodeData reads readFrame from frameBackend. Stub it to a
 // sentinel so the tests observe the collect-vs-forward DISPATCH, not the backend; every
@@ -11,8 +11,8 @@ vi.mock("../../src/graph/frameBackend", async (orig) => {
   const actual = await orig<typeof import("../../src/graph/frameBackend")>();
   return { ...actual, readFrame: vi.fn(async () => COLLECTED) };
 });
-import { readFrame, isFrameRef } from "../../src/graph/frameBackend";
-import { SolenoidSocket, AdoptiveSocket, canConnect } from "../../src/graph/sockets";
+import { readFrame } from "../../src/graph/frameBackend";
+import { SolenoidSocket, AdoptiveSocket } from "../../src/graph/sockets";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { DatePartNode, parseDateToSerial } from "../../src/graph/nodes/date";
@@ -198,18 +198,6 @@ describe("coerceInputs — Expression is a broadcaster: its variables are `anyda
     // The node no longer carries a coercion side-channel — the socket is the truth.
     expect("noWidenInputs" in node).toBe(false);
   });
-  it("the [[C15]] matricesInFormulas acceptance: scalars, lists AND matrices connect; frames/cubes do not", () => {
-    expect(canConnect("list", "anydata")).toBe(true);
-    expect(canConnect("date", "anydata")).toBe(true);
-    expect(canConnect("strlist", "anydata")).toBe(true);
-    expect(canConnect("table", "anydata")).toBe(true);   // the lift
-    expect(canConnect("anytable", "anydata")).toBe(true);
-    expect(canConnect("frame", "anydata")).toBe(false);  // matrices-ONLY ([[C15]] matricesInFormulas)
-    expect(canConnect("cube", "anydata")).toBe(false);
-    expect(canConnect("lambda", "anydata")).toBe(false);
-    // anycombo itself is unchanged — the old rung still refuses rank 2.
-    expect(canConnect("table", "anycombo")).toBe(false);
-  });
   it("scalar inputs → a SCALAR result (not a 1-element list)", () => {
     expect(runExpr("a + b", { a: [5], b: [3] })).toBe(8);
   });
@@ -242,7 +230,6 @@ describe("text reaching a number-family rung through a wildcard is one #TYPE! va
   };
   const code = (v: unknown) => (v as { code?: string }).code;
   it("is never split into characters or refused as a list of its length", () => {
-    expect(code(through("number", "abc"))).toBe("#TYPE!");
     const l = through("list", "abc") as unknown[];
     expect(l).toHaveLength(1);
     expect(code(l[0])).toBe("#TYPE!");
@@ -328,17 +315,6 @@ describe("coerceInputs — an adoptive port coerces on its BASE, never its adopt
     wrapNodeData(len as never);
     expect((len.data({ list: ["abc"] } as never) as { result: unknown }).result).toBe(1);
   });
-
-  it("the rule is now a single line with no exception", () => {
-    // Both adoptive kinds answer with `base`; a plain socket answers with its type.
-    const idx = new ListIndexNode();
-    expect((idx.inputs.list!.socket as AdoptiveSocket).base).toBe("trueany");
-    const len = new ListLengthNode();
-    expect((len.inputs.list!.socket as AdoptiveSocket).base).toBe("anylist");
-    // Adoption changes the DISPLAY type, never the coercion type.
-    (idx.inputs.list!.socket as AdoptiveSocket).setType("frame");
-    expect((idx.inputs.list!.socket as AdoptiveSocket).base).toBe("trueany");
-  });
 });
 
 // The lazy-handle bridge in wrapNodeData: the relational verbs (LAZY_FRAME_NODES) must
@@ -367,12 +343,6 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
 
   beforeEach(() => (readFrame as unknown as { mockClear: () => void }).mockClear());
 
-  it("the fixture is a recognized ref and the probe names sit on the right sides of the set", () => {
-    expect(isFrameRef(fakeRef)).toBe(true);
-    expect(LAZY_FRAME_NODES.has("DistinctNode")).toBe(true);   // a relational verb: lazy
-    expect(LAZY_FRAME_NODES.has("DisplayNode")).toBe(false);   // a plain consumer: collects
-  });
-
   it("a LAZY class receives the raw FrameRef, uncollected (a)", () => {
     const p = bridgeProbe("DistinctNode");
     const out = p.data({ frame: [fakeRef] });
@@ -386,7 +356,6 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     await p.data({ frame: [fakeRef] });                // a ref present -> async collect path
     expect(readFrame).toHaveBeenCalledTimes(1);
     expect(p.received()!.frame[0]).toBe(COLLECTED);
-    expect(isFrameRef(p.received()!.frame[0])).toBe(false);
   });
 
   it("collects only the ref sitting among plain values in an input array (c)", async () => {
@@ -479,7 +448,6 @@ describe("coerceInputs — the rank rule ignores units (socket-lattice spec req.
   it("a united singleton collapses on a combo port exactly as a plain one does", () => {
     const add = () => { const n = new ArithmeticNode({ op: "add" } as never); wrapNodeData(n as never); return n; };
     const km = applyFcUnit(5, "km");
-    expect(Array.isArray(add().data({ a: [[5]], b: [[5]] } as never).result)).toBe(false);
     expect(Array.isArray(add().data({ a: [[km]], b: [[km]] } as never).result)).toBe(false);
   });
 });

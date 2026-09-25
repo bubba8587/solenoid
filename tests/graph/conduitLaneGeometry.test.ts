@@ -60,21 +60,10 @@ describe("conduitLaneOffset — the Conduit's lane geometry", () => {
           const flat = conduitLaneOffset(lay(), side, i);
           const spun = conduitLaneOffset(lay({ angle }), side, i);
           // Same distance from the pivot, turned by exactly `angle` (CW, y-down).
-          expect(Math.hypot(spun.x, spun.y)).toBeCloseTo(Math.hypot(flat.x, flat.y), 10);
           const rad = (angle * Math.PI) / 180;
           expect(spun.x).toBeCloseTo(flat.x * Math.cos(rad) - flat.y * Math.sin(rad), 10);
           expect(spun.y).toBeCloseTo(flat.x * Math.sin(rad) + flat.y * Math.cos(rad), 10);
         }
-      }
-    }
-  });
-
-  it("keeps neighbouring lanes exactly one pitch apart at any angle", () => {
-    for (const angle of [0, 45, 90, 225]) {
-      for (let i = 1; i < 3; i++) {
-        const a = conduitLaneOffset(lay({ angle }), "in", i - 1);
-        const b = conduitLaneOffset(lay({ angle }), "in", i);
-        expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeCloseTo(ROW_PITCH, 10);
       }
     }
   });

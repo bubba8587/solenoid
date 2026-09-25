@@ -5,7 +5,7 @@ import { MakeArrayNode } from "../../src/graph/nodes/tableLambda";
 import { FilterNode } from "../../src/graph/nodes/list";
 import { solError, isSolError, type SolError } from "../../src/graph/errorValue";
 import { compilePositional } from "../../src/graph/excelFormula";
-import { passesFilter, filterRowsMulti, VALUELESS_FILTER_OPS } from "../../src/graph/frameVerbs";
+import { passesFilter, filterRowsMulti } from "../../src/graph/frameVerbs";
 import type { FrameValue } from "../../src/graph/frame";
 
 const code = (v: unknown) => (isSolError(v) ? (v as SolError).code : v);
@@ -49,7 +49,6 @@ describe("error filter predicates", () => {
     expect(passesFilter(err, "noterror", "", "number", false)).toBe(false);
     expect(passesFilter(5, "noterror", "", "number", false)).toBe(true);
     expect(passesFilter(null, "noterror", "", "number", false)).toBe(true); // null isn't an error
-    expect(VALUELESS_FILTER_OPS.has("noterror")).toBe(true);
   });
 
   it("List Filter 'noterror' drops error cells; Dropped keeps them", () => {

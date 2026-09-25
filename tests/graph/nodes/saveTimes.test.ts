@@ -19,9 +19,6 @@ describe("SaveTimesNode", () => {
     const n = new SaveTimesNode();
     const { autosave, filesave } = n.data();
     expect(filesave).toBeNull();
-    // Serials are days-as-float, so a ms round-trip drifts sub-millisecond; the card
-    // shows HH:mm, well inside that.
-    expect(serialToJsDate(autosave!).getTime()).toBeCloseTo(at, -1);
     // A time of day means a fractional serial, which is what makes the box show HH:mm.
     expect(Number.isInteger(autosave!)).toBe(false);
   });

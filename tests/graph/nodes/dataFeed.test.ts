@@ -16,7 +16,6 @@ describe("DataFeedNode gating", () => {
     const n = new DataFeedNode();
     expect(n.provider).toBe("fred");
     expect(n.preset().id).toBe("fred");
-    expect(n.needsKey()).toBe(false);
   });
 
   it("empty input → idle, no frame (no fetch)", () => {

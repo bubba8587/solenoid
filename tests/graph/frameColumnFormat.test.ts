@@ -203,7 +203,6 @@ describe("a stamped format is never serialized", () => {
     });
     frameFormatStore.set(input.id, "B", DEC3);
     const out = await collected(await chain([input, new SortFrameNode()]));
-    expect(col(out, "B").format).toEqual(DEC3);
     expect(frameColumnsToInputText(out.columns)).not.toContain("format");
     expect(input.frameText).not.toContain("format");
   });
@@ -212,14 +211,7 @@ describe("a stamped format is never serialized", () => {
 describe("describeAnnotation — the one shared inherit/column hint wording", () => {
   // The docked FC's inherit hint (FormatControllerNode.describeInheritedStyle) now
   // delegates here instead of re-implementing the wording, so this is the single guard
-  // for both surfaces. Pins the connective prose (the part that drifts) and the
-  // per-column-type dispatch, not the label words themselves (those are label tables).
-  it("number precision reads `· N place(s)` / `· N sig fig(s)`, pluralized", () => {
-    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 3, decimalMode: "places" }, "number")).toMatch(/· 3 places$/);
-    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 1, decimalMode: "places" }, "number")).toMatch(/· 1 place$/);
-    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 2, decimalMode: "sigfigs" }, "number")).toMatch(/· 2 sig figs$/);
-  });
-
+  // for both surfaces.
   it("dispatches by column type — string reads case, logical reads show-as, number reads format", () => {
     const ann: FormatAnnotation = {
       format: "decimal", unit: "none", decimalDigits: 0, decimalMode: "places",

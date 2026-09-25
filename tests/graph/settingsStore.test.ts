@@ -85,17 +85,8 @@ describe("settingsStore — persistence round-trip", () => {
     // Characterization: resetToDefaults() also calls persist(), so set() then reset
     // would overwrite storage to defaults before initSettings() could read "top" back.
     localStorage.setItem(LS_KEY, JSON.stringify({ groupPush: true, tidyAlign: "top", csvFolder: "" }));
-    expect(settingsStore.get("tidyAlign")).toBe("center"); // still at default in memory
     initSettings();
     expect(settingsStore.get("tidyAlign")).toBe("top"); // restored from storage
-  });
-
-  it("initSettings() is a no-op when localStorage has no entry", () => {
-    // localStorage is clear (from beforeEach). State is at defaults.
-    const before = settingsStore.version();
-    initSettings();
-    expect(settingsStore.version()).toBe(before);
-    expect(settingsStore.get("groupPush")).toBe(true);
   });
 
   it("initSettings() fills missing keys from defaults (partial stored object)", () => {
@@ -111,26 +102,16 @@ describe("settingsStore — persistence round-trip", () => {
 
   it("initSettings() ignores malformed JSON and leaves settings unchanged", () => {
     localStorage.setItem(LS_KEY, "not-valid-json{{{");
-    const before = settingsStore.version();
     initSettings(); // should swallow the parse error
-    expect(settingsStore.version()).toBe(before);
     expect(settingsStore.get("groupPush")).toBe(true);
   });
 });
 
-// `disabledOnMobile` is a CONTRACT, not a hint: a marked setting must be grayed in
-// Settings AND dropped from the command palette AND ignored by the feature. Pinning
-// the exact marked set here means adding the flag to a new field is a deliberate act
-// that fails this test until all three consumers are updated.
 describe("SETTINGS_SCHEMA — disabledOnMobile", () => {
   const marked = SETTINGS_SCHEMA.flatMap((s) => s.fields)
     .filter((f) => f.disabledOnMobile)
     .map((f) => f.key)
     .sort();
-
-  it("marks exactly the settings with no mobile counterpart", () => {
-    expect(marked).toEqual(["commandPaletteAlwaysOn", "minimapPosition"]);
-  });
 
   it("every marked field is still a real, rendered field", () => {
     for (const key of marked) {

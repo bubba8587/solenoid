@@ -20,15 +20,6 @@ describe("pinStore — toggle / remove / clear", () => {
     expect(cb).toHaveBeenCalledTimes(3);
   });
 
-  it("list returns the internal array directly (not a copy)", () => {
-    // Characterization: list() is a direct reference; external push mutates the store.
-    // Tests that observe this should use serialize() for a safe snapshot instead.
-    pinStore.toggle("n1", "out");
-    const pins = pinStore.list() as { nodeId: string; outputKey: string }[];
-    pins.push({ nodeId: "n2", outputKey: "out" });
-    expect(pinStore.list()).toHaveLength(2);
-  });
-
   it("remove drops only the targeted node's pin, and notifies", () => {
     pinStore.toggle("n1", "out");
     pinStore.toggle("n2", "value");

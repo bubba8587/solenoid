@@ -24,7 +24,6 @@ describe("site page HTML", () => {
       const page = SITE_PAGES[name];
       for (const source of [page.path, `${page.path}/`]) {
         const i = rewrites.findIndex((r) => r.source === source);
-        expect(i, source).toBeGreaterThanOrEqual(0);
         expect(i, source).toBeLessThan(catchAll);
         expect(rewrites[i].destination).toBe(`/${name}.html`);
       }

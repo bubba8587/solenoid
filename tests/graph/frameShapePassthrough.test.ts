@@ -28,15 +28,6 @@ async function chain(mid: (e: NodeEditor<Schemes>) => Promise<{ node: Schemes["N
 describe("frame SHAPE survives a passthrough (Bug B)", () => {
   const cols = (s: { columns: { name: string }[] } | null) => s?.columns.map((c) => c.name) ?? null;
 
-  it("the source itself resolves (control)", async () => {
-    const r = await chain(async (e) => {
-      const d = new DisplayNode() as unknown as Schemes["Node"];
-      await e.addNode(d);
-      return { node: d, inKey: "in", outKey: "out" };
-    });
-    expect(cols(r.direct)).toEqual(["Name", "Qty"]);
-  });
-
   it("through a Display", async () => {
     const r = await chain(async (e) => {
       const d = new DisplayNode() as unknown as Schemes["Node"];

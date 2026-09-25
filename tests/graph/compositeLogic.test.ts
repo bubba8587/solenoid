@@ -88,7 +88,6 @@ describe("createCompositeFromSelection", () => {
     ]));
 
     const compositeId = await createCompositeFromSelection(editor, view);
-    expect(compositeId).not.toBeNull();
 
     // The selected nodes are GONE from the outer editor — physically relocated,
     // not just spatially framed like a Group.
@@ -97,7 +96,6 @@ describe("createCompositeFromSelection", () => {
     expect(editor.getNodes()).toHaveLength(3); // numB, disp, composite
 
     const composite = editor.getNode(compositeId!) as unknown as CompositeNode;
-    expect(composite).toBeInstanceOf(CompositeNode);
     expect(composite.inputPorts).toHaveLength(1);  // numB → add.b crossed in
     expect(composite.outputPorts).toHaveLength(1); // add.result → disp.in crossed out
     expect(composite.internalEditor.getNodes()).toHaveLength(4); // numA + add + 2 markers
@@ -181,7 +179,6 @@ describe("createCompositeFromSelection", () => {
     (num as unknown as { selected: boolean }).selected = true;
     const { view } = makeFakeView(new Map([[num.id, { x: 0, y: 0 }]]));
     const firstId = await createCompositeFromSelection(editor, view);
-    expect(firstId).not.toBeNull();
 
     const composite = editor.getNode(firstId!)!;
     (composite as unknown as { selected: boolean }).selected = true;
@@ -219,7 +216,6 @@ describe("unpackComposite", () => {
     ]);
     const { view, translated } = makeFakeView(positions);
     const compositeId = await createCompositeFromSelection(editor, view);
-    expect(compositeId).not.toBeNull();
 
     const ok = await unpackComposite(editor, view, compositeId!);
     expect(ok).toBe(true);

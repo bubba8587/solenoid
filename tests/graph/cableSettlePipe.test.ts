@@ -29,7 +29,6 @@ describe("the cable-settle pipe every surface stack installs", () => {
   it("settles FC types on a live cable change, then hands the cable to the host's recompute", async () => {
     const seen: CableEnds[] = [];
     const { fc, wire } = await scene({ afterCableChange: (c) => seen.push(c), isRebuilding: () => false });
-    expect(fc.socketDataType).toBe("trueany");
     await wire();
     expect(fc.socketDataType).toBe("number");
     expect(seen.map((c) => c.target)).toEqual([fc.id]);

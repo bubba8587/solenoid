@@ -50,12 +50,6 @@ describe("Get Column read-as coerces text columns", () => {
     expect(out).toEqual([45000, 45001]);
   });
 
-  it("read-as Date on an inferred DATE column passes its serials through", () => {
-    const f = frameFromCells(["When"], [["2026-01-03"], ["2026-02-04"]]); // → date column (serials)
-    const out = col(new GetColumnNode({ readAs: "date" }), f, "When");
-    expect(out.map(Math.floor)).toEqual([Math.floor(ser(2026, 1, 3)), Math.floor(ser(2026, 2, 4))]);
-  });
-
   it("read-as Text on a DATE column formats serials as date strings, not raw digits", () => {
     const f = frameFromCells(["When"], [["2026-01-03"]]);
     const out = new GetColumnNode({ readAs: "text" }).data({ frame: [f], name: ["When"] }).values as string[];

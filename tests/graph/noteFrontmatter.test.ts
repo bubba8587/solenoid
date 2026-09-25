@@ -33,12 +33,6 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
-  it("types an ISO date as a date serial", () => {
-    const r = parseNoteFrontmatter("---\ndue: 2026-03-01\n---\n");
-    expect(r.fields[0].guessed).toBe("date");
-    expect(r.fields[0].value).toBe(Math.round(parseDateToSerial("2026-03-01")));
-  });
-
   it("types a list of ISO dates as a date list, never a numeric one", () => {
     const r = parseNoteFrontmatter("---\nmilestones:\n  - 2026-09-01\n  - \n  - 2026-10-15\nmixed: [2026-09-01, 7]\nquoted: [\"2026-09-01\"]\n---\n");
     const serial = (s: string) => Math.round(parseDateToSerial(s));

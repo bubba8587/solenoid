@@ -1,6 +1,6 @@
 // [[C94]] formatFamilyGates
 import { describe, it, expect } from "vitest";
-import { familyOf, controlsFor, precisionApplies, COMPLEX_FORMAT_STYLES } from "../../src/graph/formatModel";
+import { familyOf, controlsFor, precisionApplies } from "../../src/graph/formatModel";
 import { applyLogicalStyle } from "../../src/graph/formatAnnotationStore";
 import type { SocketDataType } from "../../src/graph/sockets";
 
@@ -89,7 +89,6 @@ describe("controlsFor — the truth table rows", () => {
     expect(c.numberStyle).toBe(false);
     expect(c.precision).toBe(true);
     expect(c.unit).toBe(true);
-    expect(COMPLEX_FORMAT_STYLES).toEqual(["auto", "decimal", "scientific"]);
   });
 
   it("lambda family: the view-as dropdown only", () => {

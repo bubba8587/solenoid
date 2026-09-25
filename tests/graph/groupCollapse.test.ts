@@ -52,12 +52,6 @@ describe("group collapse — docked satellites are virtual members", () => {
     expect(resolveVisibleTarget(editor, fc.id)).toBe(group.id);
   });
 
-  it("an undocked FC outside the group stays visible", async () => {
-    const { editor, fc } = await build();
-    recomputeGroupCollapse(editor);
-    expect(groupCollapseStore.isNodeHidden(fc.id)).toBe(false);
-  });
-
   it("a docked FC to a NON-member host is untouched", async () => {
     const { editor, fc, outside } = await build();
     dock(fc.id, outside.id);

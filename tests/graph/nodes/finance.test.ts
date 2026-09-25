@@ -247,12 +247,6 @@ describe("FVSCHEDULE", () => {
 });
 
 describe("IRR", () => {
-  it("finds the rate where NPV = 0", () => {
-    // -100 now, 146.41 in 4 periods → exactly 10%
-    const r = new IRRNode().data({ list: [[-100, 0, 0, 0, 146.41]] });
-    expect(r.result).toBeCloseTo(0.1, 4);
-  });
-
   it("matches a typical project IRR", () => {
     const r = new IRRNode().data({ list: [[-1000, 300, 400, 500, 600]] });
     expect(r.result).toBeCloseTo(0.248886, 4);

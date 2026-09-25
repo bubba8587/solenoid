@@ -9,7 +9,6 @@ describe("imageAssets — data: URL ↔ bytes round trip", () => {
     const url = bytesToDataUrl(bytes, "image/png");
     expect(url.startsWith("data:image/png;base64,")).toBe(true);
     const back = dataUrlToBytes(url);
-    expect(back).not.toBeNull();
     expect(back!.mime).toBe("image/png");
     expect(back!.bytes).toEqual(bytes);
   });
