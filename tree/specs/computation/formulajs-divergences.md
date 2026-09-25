@@ -35,7 +35,7 @@ These match the Math node's own compute.
 
 - **RANK, RANK.EQ, RANK.AVG** (`excelRank`): descending, largest is rank 1. Ties share the lowest rank (RANK, RANK.EQ) or the average rank (RANK.AVG). A value not in the list is `#N/A`; Formula.js answers 0.
 - **TRIMMEAN** (`excelTrimmean`) drops `floor(n · percent / 2)` values from each end, so the total trimmed is rounded down to an even count, then averages the rest. Formula.js over-trims: `TRIMMEAN([2,4,4,4,5,5,7,9], 0.2)` is 5 in Excel and 4.83 in Formula.js. Trimming every value is `#DOMAIN!`.
-- **PERCENTRANK** (`excelPercentRank`) interpolates linearly between the bracketing points and truncates, never rounds, to `significance` digits (default 3). The inclusive form uses an (n−1) basis and the exclusive form an (n+1) basis. A value outside the data's range is `#N/A`, and an exact match takes the first occurrence.
+- **PERCENTRANK, PERCENTRANK.INC, PERCENTRANK.EXC** (`excelPercentRank`) interpolate linearly between the bracketing points and truncate, never round, to `significance` digits (default 3). The inclusive forms use an (n−1) basis and the exclusive form an (n+1) basis. A value outside the data's range is `#N/A`, where Formula.js's dotted forms answer 0 below it and an error above it; an exact match takes the first occurrence.
 - **QUARTILE.INC** is PERCENTILE.INC at q/4, so quartile 0 is the minimum and quartile 4 the maximum, matching the Rank & Percentile node's interpolation. Formula.js's QUARTILE.INC errors on 0 and 4.
 - **T.TEST**: Formula.js ignores `tails` and `type`. Ours honors both: type 1 is paired, 2 equal variance, 3 Welch; tails 1 halves the two-tailed p-value.
 - **F.TEST**: Formula.js returns the variance ratio instead of the p-value.

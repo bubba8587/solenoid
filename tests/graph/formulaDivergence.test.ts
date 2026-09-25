@@ -118,6 +118,17 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
     expect(num(call("PERCENTRANK", [1, 2, 3, 4], 4))).toBeCloseTo(1, 9);
     expect(isSolError(call("PERCENTRANK", [1, 2, 3, 4], 5))).toBe(true); // outside the range
   });
+  it("PERCENTRANK.INC and .EXC run the same kernel, so a value outside the data is #N/A", () => {
+    for (const name of ["PERCENTRANK.INC", "PERCENTRANK.EXC"]) {
+      for (const x of [0, 5]) expect((call(name, [1, 2, 3, 4], x) as { code: string }).code).toBe("#N/A");
+    }
+    expect(num(call("PERCENTRANK.INC", [1, 2, 3, 4], 3))).toBeCloseTo(0.666, 9);
+    expect(num(call("PERCENTRANK.EXC", [1, 2, 3, 4], 3))).toBeCloseTo(0.6, 9);
+  });
+  it("FX still answers 0 below the data", () => {
+    expect(FX.PERCENTRANK.INC([1, 2, 3, 4], 0)).toBe(0);
+    expect(FX.PERCENTRANK.EXC([1, 2, 3, 4], 0)).toBe(0);
+  });
 });
 
 // ─── TEXT-family sweep (B-4b, 2026-07-05) — same contract as above: "Excel-correct"

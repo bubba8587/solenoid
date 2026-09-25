@@ -111,7 +111,8 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   SKEW: "statistics", "SKEW.P": "statistics", KURT: "statistics", DEVSQ: "statistics",
   LARGE: "statistics", SMALL: "statistics", PERCENTILE: "statistics", "PERCENTILE.INC": "statistics", "PERCENTILE.EXC": "statistics",
   QUARTILE: "statistics", "QUARTILE.INC": "statistics", "QUARTILE.EXC": "statistics",
-  RANK: "statistics", "RANK.EQ": "statistics", "RANK.AVG": "statistics", PERCENTRANK: "statistics",
+  RANK: "statistics", "RANK.EQ": "statistics", "RANK.AVG": "statistics",
+  PERCENTRANK: "statistics", "PERCENTRANK.INC": "statistics", "PERCENTRANK.EXC": "statistics",
   CORREL: "statistics", COVAR: "statistics", "COVARIANCE.P": "statistics", "COVARIANCE.S": "statistics",
   SLOPE: "statistics", INTERCEPT: "statistics", RSQ: "statistics", FORECAST: "statistics", STANDARDIZE: "statistics", FISHER: "statistics",
 
@@ -346,6 +347,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "QUARTILE.INC": { returns: "number", arity: [2, 2], family: "statistics" },
   COVAR:       { returns: "number", arity: [2, 2], family: "statistics" },
   PERCENTRANK: { returns: "number", arity: [2, 3], family: "statistics" },
+  "PERCENTRANK.INC": { returns: "number", arity: [2, 3], family: "statistics" },
+  "PERCENTRANK.EXC": { returns: "number", arity: [2, 3], family: "statistics" },
   RANK:        { returns: "number", arity: [2, 3], family: "statistics" },
   "RANK.EQ":   { returns: "number", arity: [2, 3], family: "statistics" },
   "RANK.AVG":  { returns: "number", arity: [2, 3], family: "statistics" },
@@ -938,7 +941,9 @@ registerInternal("RANK",     (v, ref, order) => excelRank(toNum(v), (ref as numb
 registerInternal("RANK.EQ",  (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], false, rankOrder(order)));
 registerInternal("RANK.AVG", (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], true, rankOrder(order)));
 registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? [], toNum(pct)));
-registerInternal("PERCENTRANK", (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), false));
+for (const [name, exc] of [["PERCENTRANK", false], ["PERCENTRANK.INC", false], ["PERCENTRANK.EXC", true]] as const) {
+  registerInternal(name, (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), exc));
+}
 
 const domErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
 const num1 = (fn: string, f: (x: number) => number | SolError) =>
