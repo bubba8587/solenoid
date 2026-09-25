@@ -27,6 +27,7 @@ const SAMPLES: (number | null)[][] = [
   [1, 2, -Infinity],
   [5, Infinity, -Infinity],
   [Infinity, Infinity],
+  [1, NaN, 3],
 ];
 
 describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
@@ -36,6 +37,7 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
     ["STDEV.P", "stdev_p"], ["VAR", "var_s"], ["VAR.S", "var_s"], ["VAR.P", "var_p"],
     ["SKEW", "skew"], ["SKEW.P", "skew_p"], ["KURT", "kurt"],
     ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
+    ["MIN", "min"], ["MAX", "max"],
   ];
   it.each(OPS)("%s(list) == Aggregate %s", (fn, op) => {
     for (const list of SAMPLES) {
@@ -45,6 +47,19 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
   });
   it("a formula over several args flattens them into one sample", () => {
     expect(ev("AVERAGE(a, 10, b)", { a: [1, 2], b: [3] })).toBeCloseTo(4, 12);
+  });
+});
+
+describe("a NaN cell poisons an aggregate, as it does in GROUPBY", () => {
+  it("every op but the counts answers #DOMAIN!, on the card and in a formula", () => {
+    const code = (v: unknown) => (v as { code?: string }).code;
+    const list = [1, NaN, 3];
+    for (const op of ["avg", "min", "max", "median", "ptp"] as const) {
+      expect(code(new AggregateNode({ op }).data({ list: [list] }).result), op).toBe("#DOMAIN!");
+    }
+    expect(new AggregateNode({ op: "count" }).data({ list: [list] }).result).toBe(3);
+    expect(code(ev("MIN(x)", { x: list }))).toBe("#DOMAIN!");
+    expect(code(ev("MAX(x)", { x: list }))).toBe("#DOMAIN!");
   });
 });
 

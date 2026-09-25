@@ -14,6 +14,7 @@ const mean = (a: readonly number[]) => sum(a) / a.length;
 const ssd = (a: readonly number[], m: number) => a.reduce((x, y) => x + (y - m) ** 2, 0);
 
 export function aggregate(op: AggregateOp, arr: readonly number[]): number | SolError | null {
+  if (op !== "count" && op !== "countdistinct" && arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr);
   const r = aggregateRaw(op, arr);
   return typeof r === "number" ? guardFinite(r, arr) : r;
 }

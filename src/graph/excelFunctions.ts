@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, iterMin, iterMax } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -882,7 +882,10 @@ registerInternal("MINUTE", (x) => { const n = toNum(x); return Number.isNaN(n) ?
 registerInternal("SECOND", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("SECOND") : serialToJsDate(n).getUTCSeconds(); });
 
 const numsOf = (...args: unknown[]): number[] =>
-  args.flatMap((a) => (Array.isArray(a) ? a : [a])).map(toNum).filter((n) => !Number.isNaN(n));
+  args.flatMap((a) => (Array.isArray(a) ? a : [a])).flatMap((v) => {
+    const n = toNum(v);
+    return typeof v === "number" || !Number.isNaN(n) ? [n] : [];
+  });
 const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["AVERAGE", "avg"], ["AVEDEV", "avedev"], ["MEDIAN", "median"], ["GEOMEAN", "geomean"],
   ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
@@ -891,13 +894,13 @@ const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
 ];
 for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
-for (const [name, pick] of [["MIN", iterMin], ["MAX", iterMax]] as const) {
+for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {
   registerInternal(name, (...a) => {
     const cells: unknown[] = a.flat(Infinity);
     const err = cells.find((v) => isSolError(v) || v instanceof Error);
     if (err !== undefined) return err;
     const nums = cells.filter((v): v is number => typeof v === "number");
-    return nums.length === 0 ? 0 : pick(nums);
+    return nums.length === 0 ? 0 : aggregate(op, nums);
   });
 }
 const asRange = (v: unknown): unknown[] => (Array.isArray(v) ? v : [v]);
