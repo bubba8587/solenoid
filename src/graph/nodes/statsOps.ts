@@ -85,7 +85,9 @@ export function percentileOf(sorted: readonly number[], p: number, exc: boolean)
   const n = sorted.length;
   const i = exc ? p * (n + 1) - 1 : p * (n - 1);
   const lo = Math.floor(i), hi = exc ? Math.min(n - 1, Math.ceil(i)) : Math.ceil(i);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+  const a = sorted[lo], b = sorted[hi], t = i - lo;
+  if (a === b) return a;
+  return Number.isFinite(a) && Number.isFinite(b) ? a + (b - a) * t : (1 - t) * a + t * b;
 }
 
 export function percentile(arr: readonly number[], p: number, exc: boolean): number | SolError | null {
@@ -95,7 +97,7 @@ export function percentile(arr: readonly number[], p: number, exc: boolean): num
   if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
     return solError("#DOMAIN!", "Percentile is outside the EXC domain: it must lie strictly between 1/(n+1) and n/(n+1)");
   }
-  return percentileOf([...arr].sort((a, b) => a - b), p, exc);
+  return guardFinite(percentileOf([...arr].sort((a, b) => a - b), p, exc), arr);
 }
 
 export function quartile(arr: readonly number[], q: number, exc: boolean): number | SolError | null {
@@ -107,7 +109,7 @@ export function quartile(arr: readonly number[], q: number, exc: boolean): numbe
   if (exc && (p < 1 / (n + 1) || p > n / (n + 1))) {
     return solError("#DOMAIN!", "Quartile is outside the EXC domain: q/4 must lie between 1/(n+1) and n/(n+1)");
   }
-  return percentileOf([...arr].sort((a, b) => a - b), p, exc);
+  return guardFinite(percentileOf([...arr].sort((a, b) => a - b), p, exc), arr);
 }
 
 export function nthExtreme(arr: readonly number[], k: number, largest: boolean): number | null {
@@ -129,7 +131,7 @@ export function pearson(xs: readonly number[], ys: readonly number[], rsq = fals
   const den = Math.sqrt(dx2 * dy2);
   if (den === 0) return solError("#DIV/0!", "One of the lists has zero variance");
   const r = num / den;
-  return rsq ? r * r : r;
+  return guardFinite(rsq ? r * r : r, xs.concat(ys));
 }
 
 export function averageRanks(arr: readonly number[]): number[] {
@@ -167,12 +169,12 @@ export function kendallTau(xs: readonly number[], ys: readonly number[]): number
   return (conc - disc) / den;
 }
 
-export function covariance(xs: readonly number[], ys: readonly number[], sample: boolean): number | null {
+export function covariance(xs: readonly number[], ys: readonly number[], sample: boolean): number | SolError | null {
   const n = Math.min(xs.length, ys.length);
   if (n < 2) return null;
   const mx = mean(xs.slice(0, n)), my = mean(ys.slice(0, n));
   const cov = xs.slice(0, n).reduce((a, x, i) => a + (x - mx) * (ys[i] - my), 0);
-  return sample ? cov / (n - 1) : cov / n;
+  return guardFinite(sample ? cov / (n - 1) : cov / n, xs.concat(ys));
 }
 
 export function modes(arr: readonly number[]): number | number[] | null {
@@ -209,9 +211,9 @@ export function regression(xs: readonly number[], ys: readonly number[], op: "sl
   }
   if (SSxx === 0) return solError("#DIV/0!", "Known Xs have zero variance");
   const slope = SSxy / SSxx;
-  if (op === "slope") return slope;
-  if (op === "intercept") return yMean - slope * xMean;
-  return n >= 3 ? Math.sqrt(Math.max(0, SSyy - slope * SSxy) / (n - 2)) : null;
+  const r = op === "slope" ? slope : op === "intercept" ? yMean - slope * xMean
+    : n >= 3 ? Math.sqrt(Math.max(0, SSyy - slope * SSxy) / (n - 2)) : null;
+  return r === null ? null : guardFinite(r, xs.concat(ys));
 }
 
 // ─── Hypothesis tests beyond Excel's four ──────────

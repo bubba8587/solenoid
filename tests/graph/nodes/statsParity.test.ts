@@ -52,6 +52,20 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
   });
 });
 
+describe("a first-class infinity is a value, as on the cards", () => {
+  const code = (v: unknown) => (v as { code?: string }).code;
+  it("an order statistic lands on it or past it; a spread around it is undefined", () => {
+    expect(ev("AVERAGE(x)", { x: [1, 2, Infinity] })).toBe(Infinity);
+    expect(ev("MEDIAN(x)", { x: [1, 2, Infinity] })).toBe(2);
+    expect(ev("PERCENTILE.INC(x, 1)", { x: [1, 2, Infinity] })).toBe(Infinity);
+    expect(ev("PERCENTILE.INC(x, 0.75)", { x: [1, 2, Infinity] })).toBe(Infinity);
+    expect(ev("PERCENTILE.INC(x, 0.25)", { x: [-Infinity, 1, 2] })).toBe(-Infinity);
+    expect(code(ev("PERCENTILE.INC(x, 0.5)", { x: [-Infinity, Infinity] }))).toBe("#DOMAIN!");
+    expect(code(ev("STDEV(x)", { x: [1, 2, Infinity] }))).toBe("#DOMAIN!");
+    expect(code(ev("CORREL(x, y)", { x: [1, 2, Infinity], y: [2, 4, 6] }))).toBe("#DOMAIN!");
+  });
+});
+
 describe("the numpy / pandas / R one-liners answer what scipy answers", () => {
   const x = [2, 4, 4, 4, 5, 5, 7, 9];
   it("PTP / IQR / MAD / SEM / CV / RMS", () => {
@@ -74,8 +88,10 @@ describe("the numpy / pandas / R one-liners answer what scipy answers", () => {
   });
 });
 
-describe("order statistics formulas == Rank & Percentile node", () => {
-  const list = [3, 1, 4, 1, 5, 9, 2, 6];
+describe.each([
+  [[3, 1, 4, 1, 5, 9, 2, 6]],
+  [[3, Infinity, 4, 1, -Infinity, 2]],
+])("order statistics formulas == Rank & Percentile node over %j", (list) => {
   const node = (op: string, key: string, v: number) => {
     const n = new RankPercentileNode({ op: op as never });
     return n.data({ list: [list], [key]: [v] } as never).result;
@@ -106,6 +122,8 @@ describe("paired statistics formulas == Correl / Covariance / Regression nodes",
     [[1, 1, 1], [1, 2, 3]],
     [[1, null, 3, 4], [2, 4, null, 8]],
     [[1, 2], [3, 3]],
+    [[1, 2, Infinity], [2, 4, 6]],
+    [[1, 2, 3], [-Infinity, 4, 6]],
   ];
   it.each(PAIRS)("CORREL/RSQ/COVARIANCE.P/.S/SLOPE/INTERCEPT/STEYX over %j, %j", (x, y) => {
     same(ev("CORREL(x, y)", { x, y }), new CorrelNode({ op: "correl" }).data({ x: [x], y: [y] }).result);
