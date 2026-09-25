@@ -89,7 +89,7 @@ A Composite's subgraph is not a side table either. It rides inside the Composite
 
 ## Capturing a node's `init`
 
-`extractInit(node)` builds `init` from the live instance ([[#The capture is a fixed point, and plain JSON]]). Copy takes each card through the same `savedNodeBody` a save uses, so a paste and a save see the same configuration, size, collapse and flip. Of the side tables a paste carries only `frameFormats`, the card's own look (`pastedSideTables`, `copyPaste.ts`); whether it carries pins, comments and standoffs waits on the inbox item `paste-carries-card-state`.
+`extractInit(node)` builds `init` from the live instance ([[#The capture is a fixed point, and plain JSON]]). Copy takes each card through the same `savedNodeBody` a save uses, so a paste and a save see the same configuration, size, collapse and flip. A Placeholder pastes as another Placeholder for the same missing type (`placeholderFor`, which the loader and composite hydration also build with), with its sockets and a name taken from that type, and the node references in its saved `init` follow the paste as a live card's do. Of the side tables a paste carries only `frameFormats`, the card's own look (`pastedSideTables`, `copyPaste.ts`); whether it carries pins, comments and standoffs waits on the inbox item `paste-carries-card-state`.
 
 1. Every key in `INIT_FIELD_ORDER` that exists on the node with a value other than `undefined` is copied as is. This list is the whitelist of scalar and simple settings (`label`, `op`, `value`, `expr`, `tableText`, `members`, `hostNodeId`, `width`, `height`, and so on).
 2. Object-valued extras are deep-copied, several filtered to live keys so an orphan left behind for undo does not reach the save:

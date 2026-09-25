@@ -20,6 +20,9 @@ import { setActiveGraph } from "../../src/graph/activeGraph";
 import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 import { frameFormatStore } from "../../src/graph/frameFormatStore";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
+import { PlaceholderNode } from "../../src/graph/nodes/placeholder";
+import { savedNodeBody } from "../../src/graph/savedNodeBody";
+import { nodeNameStore } from "../../src/graph/nodeNameStore";
 
 let editor: NodeEditor<Schemes>;
 
@@ -73,6 +76,32 @@ describe("copy", () => {
 });
 
 describe("paste", () => {
+  it("pastes a Missing placeholder as another placeholder for the same node", async () => {
+    const ph = await add(new PlaceholderNode({
+      missingType: "GoneNode", savedInit: { label: "Gone", op: "x" }, savedLiterals: { a: 2 },
+      inputKeys: ["a"], outputKeys: ["out"], label: "Gone",
+    }) as unknown as SolenoidNode);
+    ph.selected = true;
+    copySelected();
+    await pasteClipboard(100, 100);
+    const pasted = editor.getNodes().find((n) => n.id !== ph.id)!;
+    expect(pasted).toBeInstanceOf(PlaceholderNode);
+    expect(savedNodeBody(pasted)).toEqual(savedNodeBody(ph));
+    expect([Object.keys(pasted.inputs), Object.keys(pasted.outputs)]).toEqual([["a"], ["out"]]);
+    expect(nodeNameStore.get(pasted.id)).toMatch(/^Gone/);
+  });
+
+  it("a pasted placeholder's references follow the paste, as a live card's do", async () => {
+    const host = await add(new NumberInputNode({ value: 1 }));
+    const left = await add(new NumberInputNode({ value: 2 }));
+    const ph = await add(new PlaceholderNode({ missingType: "GoneNode", savedInit: { hostNodeId: host.id, members: [host.id, left.id] } }) as unknown as SolenoidNode);
+    host.selected = ph.selected = true;
+    copySelected();
+    await pasteClipboard(100, 100);
+    const [pastedHost, pastedPh] = editor.getNodes().slice(3) as [SolenoidNode, PlaceholderNode];
+    expect(pastedPh.savedInit).toEqual({ hostNodeId: pastedHost.id, members: [pastedHost.id] });
+  });
+
   it("pastes what was copied, not what the source became", async () => {
     const src = await add(new NumberInputNode({ value: 1 }));
     src.selected = true;

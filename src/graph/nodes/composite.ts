@@ -23,7 +23,7 @@ import { compositeStaleStore } from "../compositeStaleStore";
 import { connectionStore, whenConnectionsSettled } from "../connectionStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
-import { PlaceholderNode } from "./placeholder";
+import { PlaceholderNode, placeholderFor } from "./placeholder";
 import { FormatControllerNode } from "./formatController";
 import { deriveMissingNodeSockets, remapNodeRefs, mapNodeRefs, type NodeRefs } from "../persistenceCore";
 
@@ -319,17 +319,7 @@ export class CompositeNode extends ClassicPreset.Node {
       const Ctor = reg.get(sn.type);
       let node: ClassicPreset.Node;
       if (!Ctor) {
-        const sockets = phSockets.get(sn.id);
-        const initLabel = sn.init?.label;
-        node = new PlaceholderNode({
-          missingType: sn.type,
-          savedInit: { ...sn.init },
-          savedLiterals: sn.literals,
-          savedStringLiterals: sn.stringLiterals,
-          inputKeys: sockets?.inputs,
-          outputKeys: sockets?.outputs,
-          label: typeof initLabel === "string" ? initLabel : sn.type,
-        });
+        node = placeholderFor(sn, phSockets.get(sn.id));
       } else {
         node = new Ctor({ ...sn.init });
         const anyNode = node as unknown as Record<string, unknown>;

@@ -7,7 +7,7 @@ import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } 
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SavedStandoff, type SideTables } from "./savedNodeBody";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";
+import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode, placeholderFor } from "./rete-nodes";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse } from "./groupCollapse";
@@ -224,17 +224,7 @@ async function rebuildGraph(
     const Ctor = reg.get(sn.type);
     let node: ClassicPreset.Node;
     if (!Ctor) {
-      const sockets = phSockets.get(sn.id);
-      const initLabel = sn.init?.label;
-      node = new PlaceholderNode({
-        missingType: sn.type,
-        savedInit: { ...sn.init },
-        savedLiterals: sn.literals,
-        savedStringLiterals: sn.stringLiterals,
-        inputKeys: sockets?.inputs,
-        outputKeys: sockets?.outputs,
-        label: typeof initLabel === "string" ? initLabel : sn.type,
-      });
+      node = placeholderFor(sn, phSockets.get(sn.id));
       placeholdered.push(sn.type);
     } else {
       node = new Ctor({ ...sn.init });

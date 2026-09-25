@@ -43,3 +43,19 @@ export class PlaceholderNode extends ClassicPreset.Node {
     return out;
   }
 }
+
+export function placeholderFor(
+  sn: { type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> },
+  sockets?: { inputs: string[]; outputs: string[] },
+): PlaceholderNode {
+  const label = sn.init?.label;
+  return new PlaceholderNode({
+    missingType: sn.type,
+    savedInit: { ...sn.init },
+    savedLiterals: sn.literals,
+    savedStringLiterals: sn.stringLiterals,
+    inputKeys: sockets?.inputs,
+    outputKeys: sockets?.outputs,
+    label: typeof label === "string" ? label : sn.type,
+  });
+}

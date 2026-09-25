@@ -7,12 +7,15 @@ import { getCtorRegistry } from "./ctorProvider";
 import { getActiveEditor, getActiveView, editScopeFor } from "./activeGraph";
 import { nodeNameStore } from "./nodeNameStore";
 import { savedNodeBody, restoreNodeState, savedSideTables, restoreSideTables, type SavedNodeBody, type SideTables } from "./savedNodeBody";
+import { PlaceholderNode, placeholderFor } from "./nodes/placeholder";
 
 // A snapshot taken at copy time, so a later edit or delete of the source never changes what pastes.
 interface ClipboardEntry {
   id: string;
   Ctor: new (init?: Record<string, unknown>) => ClassicPreset.Node;
   body: SavedNodeBody;
+  /** Set on a placeholder: the socket keys a paste rebuilds it with. */
+  sockets?: { inputs: string[]; outputs: string[] };
   x: number;
   y: number;
 }
@@ -49,7 +52,8 @@ export function copySet(editor: NodeEditor<Schemes>): SolenoidNode[] {
 
 function snapshotEntry(n: ClassicPreset.Node, x: number, y: number): ClipboardEntry {
   const body = savedNodeBody(n);
-  return { id: n.id, Ctor: n.constructor as ClipboardEntry["Ctor"], body: { ...body, init: structuredClone(body.init) }, x, y };
+  const sockets = n instanceof PlaceholderNode ? { inputs: Object.keys(n.inputs), outputs: Object.keys(n.outputs) } : undefined;
+  return { id: n.id, Ctor: n.constructor as ClipboardEntry["Ctor"], body: { ...body, init: structuredClone(body.init) }, ...(sockets ? { sockets } : {}), x, y };
 }
 
 /** The side tables a paste carries: the card's own look. */
@@ -221,6 +225,7 @@ export function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
 }
 
 function cloneEntry(e: ClipboardEntry): ClassicPreset.Node | null {
+  if (e.sockets) return placeholderFor({ ...e.body, init: structuredClone(e.body.init) }, e.sockets);
   try {
     const clone = new e.Ctor(structuredClone(e.body.init));
     // Restore the value maps after construction, or the constructor's own defaults overwrite them.
@@ -254,16 +259,16 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
   }
   for (const clone of clones) {
     if (!clone) continue;
-    const ref = clone as unknown as { members?: string[]; hostNodeId?: string };
+    const ref = (clone instanceof PlaceholderNode ? clone.savedInit : clone) as unknown as
+      { members?: string[]; hostNodeId?: string; steps?: Array<{ nodeIds?: string[] }> };
     if (Array.isArray(ref.members)) {
       ref.members = ref.members.map((m) => oldToNew.get(m)).filter((m): m is string => !!m);
     }
     if (typeof ref.hostNodeId === "string" && ref.hostNodeId) {
       ref.hostNodeId = oldToNew.get(ref.hostNodeId) ?? "";
     }
-    const stepsRef = clone as unknown as { steps?: Array<{ nodeIds?: string[] }> };
-    if (Array.isArray(stepsRef.steps)) {
-      for (const step of stepsRef.steps) {
+    if (Array.isArray(ref.steps)) {
+      for (const step of ref.steps) {
         if (Array.isArray(step.nodeIds)) {
           step.nodeIds = step.nodeIds.map((m) => oldToNew.get(m)).filter((m): m is string => !!m);
         }
@@ -271,22 +276,22 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     }
   }
 
-  const toAdd: Array<{ clone: SolenoidNode; x: number; y: number }> = [];
+  const toAdd: Array<{ clone: SolenoidNode; type: string; x: number; y: number }> = [];
   for (let i = 0; i < clones.length; i++) {
     const clone = clones[i];
     if (!clone) continue;
     restoreNodeState(clone.id, clip.entries[i].body);
     const fresh = (clone as unknown as { assignFreshSeq?: () => void }).assignFreshSeq;
     if (typeof fresh === "function") fresh.call(clone);
-    toAdd.push({ clone: clone as SolenoidNode, x: originX + clip.entries[i].x, y: originY + clip.entries[i].y });
+    toAdd.push({ clone: clone as SolenoidNode, type: clip.entries[i].body.type, x: originX + clip.entries[i].x, y: originY + clip.entries[i].y });
   }
 
   unselectAllNodes();
   scope.begin();
   try {
-    await Promise.all(toAdd.map(async ({ clone, x, y }) => {
+    await Promise.all(toAdd.map(async ({ clone, type, x, y }) => {
       await editor.addNode(clone);
-      nodeNameStore.ensure(clone.id, clone.constructor.name);
+      nodeNameStore.ensure(clone.id, type);
       await view.moveNode(clone.id, { x, y });
     }));
     const reg = getCtorRegistry();
