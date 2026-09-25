@@ -257,7 +257,7 @@ export function anyDimensioned(...args: Array<UnitOperand | UnitOperand[] | null
 export { dimOf, magnitudeOf };
 
 
-export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart" | "document";
+export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart" | "document";
 
 export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   input:   "amber",
@@ -267,7 +267,6 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   list:    "gold",
   lambda:  "green",
   util:    "gray",
-  display: "gold",
   chart:   "green",
   string:  "lime",
   date:    "pink",
@@ -290,23 +289,3 @@ function refreshKindAccents() {
   }
 }
 paletteStore.subscribe(refreshKindAccents);
-
-export const NODE_KIND_LABELS: Record<NodeKind, string> = {
-  input:   "Input",
-  math:    "Math",
-  convert: "Convert",
-  logic:   "Logic",
-  list:    "List",
-  lambda:  "Lambda",
-  util:    "Utility",
-  display: "Display",
-  chart:   "Chart",
-  string:  "Text",
-  date:    "Date",
-  complex: "Complex",
-  table:   "Table",
-  frame:   "Frame",
-  format:  "Format",
-  boundary: "Boundary",
-  document: "Document",
-};

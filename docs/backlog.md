@@ -109,7 +109,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Gauge Dial has no Options input**, so no title or font size in Dial mode (author's call).
 - [ ] **Multi-output services still fall to math blue:** Geocode, Weather, Holidays, FX; input amber would fit
   ([[C111]] reaches only one-output cards).
-- [ ] **The `display` node kind has no card left** (`NODE_KIND_SLOTS`); prune it or give it a use.
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 

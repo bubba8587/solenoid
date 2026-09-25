@@ -3,7 +3,6 @@
 import { useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, type PaletteSlot } from "../palette";
-import { NODE_KIND_ACCENTS } from "../nodes/shared";
 
 export type ChartShape =
   | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
@@ -25,7 +24,7 @@ export function useChartColors() {
     grid: get("--border-strong", "#3a3a3a"),
     axis: get("--text-dim", "#888"),
     track: get("--gauge-track", "#4d5157"),
-    viz: NODE_KIND_ACCENTS.display,
+    viz: resolveColor("gold"),
   };
 }
 
