@@ -152,8 +152,9 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 
 ## Demo video (`assets/video/`, the `demo-video` skill)
 
-- [ ] **Author review before publishing:** listen to the synthesized soundtrack (the agent checked it by numbers
-  only) and pick where the cut goes (landing page, README, release notes).
+- [ ] **Author review before publishing:** listen to the synthesized soundtracks (the agent checked them by numbers
+  only) and pick where each cut goes: the app tour (landing page, README, release notes), the one-minute Obsidian
+  cut (the plugin's README and community listing, the `/obsidian` page).
 
 ## DTE — decision provenance (`docs/dte.md`)
 

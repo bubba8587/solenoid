@@ -14,8 +14,15 @@ specific item.
   (the plugin's look switched on, a 40-row Frame pasted into a new property, the written note opened); side-by-side
   scenes pair a Solenoid screenshot with an Obsidian grab per state (palettes and light mode, the imported note).
   Running and redoing it, and every mechanic that bit: `.claude/skills/demo-video/SKILL.md`.
-- **The kept cut** is `assets/video/solenoid-demo.mp4` (2:27) with its poster; frame zero is the title card, also
-  embedded as cover art. Renders land in `.dev/video/` (gitignored).
+- **Two cuts** (`cuts.mjs`): `demo`, the app tour, kept as `assets/video/solenoid-demo.mp4` (2:27) with its poster;
+  and `obsidian`, a one-minute story for Obsidian users: an emailed table typed into a Frame property through the
+  plugin's Form view, the note joined to a roster note and totaled with PIVOTBY in Solenoid, the chart written back
+  into the note, the plugin's look. Its split scenes film Obsidian and a real Solenoid window side by side on one
+  display. Frame zero of each is its title card, also embedded as cover art. Renders land in `.dev/video/`
+  (gitignored).
+- **Solenoid Properties wordmark**: `src/logo/solenoidpropertieswordmark.svg`, the coil beside SOLENOID PROPERTIES in
+  Atkinson Hyperlegible Next 800, outlined at the Solenoid wordmark's size, baseline and spacing. The demo vault
+  gains `Sales/Q3 review` and `Sales/Divisions` for the obsidian cut's story.
 - **App fixes it found**, one commit each: opening a Report no longer takes the app down (a hook after an early
   return); chart value axes write compact ticks in a gutter that fits them; the vault cards gate on `hasFs()` like
   their nodes; Open in Obsidian on the Write card follows the write, not the shell; a frame's CSV edit types the
@@ -23,7 +30,7 @@ specific item.
   vault's showcase note no longer retypes every project's `budget` and `milestones` (its keys are `purchases` and
   `inspections`; the projects' `milestones` is a Frame); an Equation linear in an unknown that appears more than
   once (`p = n*25 - (f + n*10)`) solves it exactly instead of by bisection (`solveLinear`).
-- **Open:** the author listens to the soundtrack and picks where the video is published (backlog, Demo video); the
+- **Open:** the author listens to the soundtracks and picks where each video is published (backlog, Demo video); the
   Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is shown
   rigorous). The outbox still lists A1, B1, B2, B3, B7.
 

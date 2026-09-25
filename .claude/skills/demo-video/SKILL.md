@@ -6,19 +6,22 @@ description: Record and cut Solenoid's marketing/demo video from the real app an
 # The demo video
 
 `scripts/demo-video/` films the real app and the real Obsidian plugin, never a mockup ([[B3]] sameNodeEverywhere),
-one scene at a time, and assembles the cut. Everything is reproducible: re-run it after UI changes and the video
-follows the app.
+one scene at a time, and assembles a cut. There are two cuts (`cuts.mjs`): `demo`, the tour of the app, and
+`obsidian`, a one-minute story for Obsidian users about the plugin. Everything is reproducible: re-run it after UI
+changes and the video follows the app.
 
 | File | Job |
 |---|---|
 | `scenes.mjs` | The Solenoid scenes: each `setup` builds a document off camera, `act` performs on camera; `caption` is `[title, sentence]` |
-| `roundtrip.mjs` | The Obsidian round trip: the plugin's look, palettes side by side with the app, a Frame property, the imported note side by side, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
-| `record.mjs` | Runs scenes (all, or those named) into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig, `app: "both"` stills scenes on both |
-| `rig.mjs` | Chromium launch, CDP screencast capture, frame-timestamp encoding, the scripted hand (move, click, drag, type, keys) |
-| `obsidian.mjs` | The Obsidian rig: fresh demo-vault copy, Obsidian on its own Xvfb display, whole-screen recorder, the vault bridge for Solenoid |
+| `roundtrip.mjs` | The demo cut's Obsidian round trip: the plugin's look, palettes side by side with the app, a Frame property, the imported note side by side, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
+| `plugin.mjs` | The obsidian cut: Priya's emailed table typed into the `q3` Frame property through the popup's Form view, the note joined to a roster note and totaled with PIVOTBY, the chart written back into the note, the plugin's look |
+| `cuts.mjs` | Each cut's backdrops, running order, title-card copy, wordmark and output name |
+| `record.mjs` | Runs a cut's scenes, or those named, into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig, `app: "both"` stills of both, `app: "split"` scenes with Obsidian and a Solenoid window side by side |
+| `rig.mjs` | Chromium launch (headless, or `launchWindow` as a real window on the rig's display), CDP screencast capture, frame-timestamp encoding, the scripted hand (move, click, drag, type, keys) |
+| `obsidian.mjs` | The Obsidian rig: fresh demo-vault copy, Obsidian on its own Xvfb display, window placement, the note-only layout, whole-screen recorder, the vault bridge for Solenoid |
 | `kit.js` | Page side: camera flights over the live editor, node, socket and cable lookup, card spacing (`row`), callout boxes, the painted pointer, click ring and keycaps |
 | `cards.mjs` | Captions and title-card text as HTML in the app's fonts and palette |
-| `compose.mjs` | Overlays, crossfades, post zooms, soundtrack → `.dev/video/solenoid-demo.mp4`, `-silent.mp4` and `-poster.png` (`ORDER` is the running order) |
+| `compose.mjs` | One cut's overlays, crossfades, post zooms, fast-forwards and soundtrack → `.dev/video/<out>.mp4`, `-silent.mp4` and `-poster.png` |
 | `music.mjs` | The soundtrack, synthesized: D major pad, bass, soft arpeggio, Freeverb |
 | `data/` | The scenes' datasets: `kitchen-costs.csv` (the 40-row ledger pasted in Obsidian), `orders.csv`; the charts scene reads `demo-vault/Data/transactions.csv` |
 
@@ -40,15 +43,15 @@ follows the app.
    (`/src/graph/process.ts`), so a production build won't work. **Restart it after editing app code:** once Vite has
    hot-updated a module, the app imports it under a new URL and the kit's import loads a second copy (the editor
    reads as null).
-6. `node scripts/demo-video/record.mjs [scene…]` (all scenes when none are named). About 30 s a scene.
-7. `node scripts/demo-video/compose.mjs`.
+6. `node scripts/demo-video/record.mjs <cut>` films a cut's scenes (`demo` or `obsidian`), or name scenes to redo
+   them. About 30 s a scene. Record one cut per run: the obsidian cut leaves Obsidian with its sidebars collapsed.
+7. `node scripts/demo-video/compose.mjs <cut>` (`demo` when none is named).
 8. **Watch before you ship.** You can't play video, so pull stills and tile them: `ffmpeg -ss <t> -i clip.mp4
    -frames:v 1 f.png` at the moments that matter (before and after each action, mid-flight), then read the
    tiles. Check `.dev/video/segments/*.mp4` too: they carry the captions, so collisions show there.
 
 Every render and its intermediates land in `.dev/video/` (gitignored). A cut worth keeping is copied to `assets/video/`
-(`solenoid-demo.mp4` and its poster) and committed: about 25 MB a version, in git history for good, so only on the
-author's word.
+(its mp4 and poster) and committed: 10 to 25 MB a version, in git history for good, so only on the author's word.
 
 ## How the capture works (don't relearn these)
 
@@ -76,15 +79,23 @@ author's word.
   `c.within`, `c.node` (a node with no label is found by its header title). `c.example(seedId)` opens a
   shipped example. A Frame Input takes plain CSV as its `frameText` and types the columns itself.
 - **Settings the recorder sets**: spline cables with flow beads (the README hero look) and the minimap hidden.
+- **Split scenes** (`app: "split"`) film both apps at once: Obsidian placed on the left 768 px of the display, and
+  Solenoid as a real Chromium window (`launchWindow`: `--app`, no `about:blank` tab, no automation bar, `--test-type`
+  against the `--no-sandbox` bar) on the rest at device scale 1.2, where its toolbar fits; one x11grab takes both.
+  Window bounds are in CSS px at the window's scale and must be whole numbers, or Chromium ignores them. Solenoid's
+  pointer is drawn at Obsidian's size (`overlayScale`), and `c.hand("sol", target)` carries the pointer across the
+  seam. The Solenoid window can't take settings before its first load, so it sets them and reloads.
 
 ## The Obsidian round trip
 
 The vault is a fresh copy of `demo-vault/` at `$TMPDIR/solenoid-demo-obsidian/Demo vault` (Obsidian names the vault
-after the folder), reset whenever the run includes `obs-look`, with the snippet off, the plugin's look off and no
-saved layout. Scenes run in order and hand state on: `obs-property` pastes the ledger into a new `costs` Frame
-property, `sol-import` and `sol-write` read that note, `sol-write` writes `Projects/Kitchen remodel costs.md` and
-its chart PNG, `obs-open` opens it. A later scene recorded alone keeps the vault as it stands and says so if the
-state it needs is missing.
+after the folder), reset whenever the run includes a `fresh` scene (`obs-look`, `pl-intro`), with the snippet off,
+the plugin's look off and no saved layout. Scenes run in order and hand state on. In the demo cut `obs-property`
+pastes the ledger into a new `costs` Frame property, `sol-import` and `sol-write` read that note, `sol-write` writes
+`Projects/Kitchen remodel costs.md` and its chart PNG, `obs-open` opens it. In the obsidian cut `pl-form` adds the
+West rows to `Sales/Q3 review`, `pl-reload` reads them (Data › Refresh all connections), `pl-write` fills the note's
+`Regional chart` block, and `pl-look` shows the finished note. A later scene recorded alone keeps the vault as it
+stands and says so if the state it needs is missing.
 
 - **Solenoid reaches the vault** through the FsProvider seam: `bridgeVault` exposes Node's fs, fenced to the vault,
   to the page (`setFsProvider`) and sets `obsidianVault`. The vault cards gate on `hasFs()`, so they work in the
@@ -124,7 +135,14 @@ state it needs is missing.
 - **Stills scenes** (`app: "both"`, e.g. `palettes`, `import-pair`): `setup({ sol, obs, sleep })` once, then per
   entry in `states` `apply(ctx, state)`, and the recorder takes a Solenoid screenshot and an Obsidian screen grab.
   Compose puts them side by side (`panels: ["obs", "sol"]` flips the order), labels them, crossfades the states and
-  holds each `hold` seconds under a slow push-in. A scene with no `caption` gets no caption strip.
+  holds each `hold` seconds under a slow push-in. An `app: "obsidian"` scene with `states` and `panels: ["obs"]` is
+  the same, full frame (`pl-look`). A scene with no `caption` gets no caption strip.
+- **Fast-forward**: `c.rec.at("fast", { rate: 4 })` and `c.rec.at("unfast")` play that span at 2, 3 or 4 times under
+  a small badge; the other marks move with it. The plugin cut types the first record at speed and forwards the rest.
+  More than one zoom: `zoom2`/`unzoom2` and so on.
+- **Obsidian for the camera**: `noteOnly` collapses both sidebars, hides the ribbon and the status bar; reading view
+  (`openNote(c, file, { reading: true })`) hides `%%` block markers; `webFrame.setZoomFactor` (as Ctrl + = does)
+  makes a full-screen shot read larger. Keep what matters above the caption band at the left (CSS y 590).
 
 **Mechanics that bit (2026-09-25):**
 - Dropping a cable on empty canvas opens the Add menu only with the `quickWire` setting, off by default.
@@ -148,14 +166,22 @@ state it needs is missing.
   URLs and unwrap CJS (`m.default ?? m`); the wall only animates under a `.sol-landing--anim` parent.
 - Plugging a cable into a wired input evicts the old one; there's no unplug gesture. Click the cable
   (`c.cableMid`, 30% from its source so crossings don't catch another cable) and press Delete.
+- A cable that has to run back left winds across the cards. Route it through Conduits turned 180°: a U-turn under
+  the source, a straight run between rows, a hook into the target (`salesGraph`). A spline's arms are 40% of its
+  length, so one long backward cable bulges over whatever lies between.
+- A menu path must go straight down from its top item: brushing the next top item switches the open menu, and the
+  click lands on that menu's first item.
+- The plugin's popup centers over the note's pane and can't be moved; the Form view covers most of a narrow pane.
+- Obsidian started with its left sidebar collapsed defers the file explorer's view, so `revealInFolder` may not
+  exist; a note already open keeps its reading-view scroll through `openFile`.
 - `pkill -f <pattern>` matches your own shell when the pattern is in the command line. Kill by PID.
 
 ## The cut
 
-Intro card over a blurred drift of the chart showcase → the scenes in `ORDER` → outro card over a blurred
-drift of Getting started. 0.5 s crossfades; captions fade in after each crossfade and out before the next.
-Title-card copy lives at the top of `compose.mjs`: the tagline is the landing page's hero line and the outro
-its download strip.
+Intro card over a blurred backdrop → the cut's scenes → outro card. The demo cut's backdrops are drifts over the
+chart showcase and Getting started; the obsidian cut's are still split screens under a push-in, and its cards carry
+the Solenoid Properties wordmark (`src/logo/solenoidpropertieswordmark.svg`). 0.5 s crossfades; captions fade in
+after each crossfade and out before the next. Title-card copy lives in `cuts.mjs`: the landing pages' lines.
 
 **Preview frame**: the intro card is whole from frame zero (no fade from black), because players and link previews
 show the first frame before play. Compose also writes it as `solenoid-demo-poster.png` and embeds it in both mp4s as

@@ -127,7 +127,9 @@ export const PLUGIN = {
     app: "obsidian",
     caption: ["Solenoid Properties", "The plugin adds frames, cubes, lists and matrices to Obsidian's property types. The note underneath stays plain YAML."],
     async setup(c) {
-      await noteView(c, { zoom: 1.35 });
+      await noteView(c, { zoom: 1.12 });
+      // The properties at the top, so Priya's table sits clear of the caption.
+      await scrollTo(c, ".metadata-container", undefined, 0.03);
       await c.hand.show(760, 470);
     },
     async act(c) {
@@ -273,7 +275,8 @@ export const PLUGIN = {
       { palette: "Solarized", accent: "gold", mode: "light" },
     ],
     async setup(c) {
-      await noteView(c, { zoom: 1.3 });
+      await noteView(c, { zoom: 1.12 });
+      await scrollTo(c, ".metadata-container", undefined, 0.03);
       await c.hand.hide();
     },
     async apply(c, state) { await look(c, state); },
