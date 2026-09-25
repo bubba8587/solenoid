@@ -576,21 +576,20 @@ function mapCells(argv: unknown[], cellFn: (...ops: unknown[]) => unknown): unkn
     return out;
   }
 
-  const mats = args.filter(isMatrix);
-  const rows = Math.max(...mats.map((m) => m.length));
-  const widthOf = (m: unknown[][]) => Math.max(...m.map((r) => r.length), 0);
-  const colSingleton = (m: unknown[][]) => m.every((r) => r.length === 1);
-  const cols = Math.max(
-    ...mats.map((m) => (colSingleton(m) ? 1 : widthOf(m))),
-    ...args.filter((a): a is unknown[] => isArr(a) && !isMatrix(a)).map((a) => a.length),
+  const rows = args.filter(isMatrix).reduce((n, m) => Math.max(n, m.length), 0);
+  const widthOf = (m: unknown[][]) => m.reduce((n, r) => Math.max(n, r.length), 0);
+  const colSingleton = args.map((a) => isMatrix(a) && a.every((r) => r.length === 1));
+  const cols = args.reduce<number>(
+    (n, a, k) => Math.max(n, isMatrix(a) ? (colSingleton[k] ? 1 : widthOf(a)) : isArr(a) ? a.length : 1),
     1,
   );
-  const cellAt = (a: unknown, i: number, j: number): unknown => {
+  const cellAt = (k: number, i: number, j: number): unknown => {
+    const a = args[k];
     if (isMatrix(a)) {
       const ri = a.length === 1 ? 0 : i;
       if (ri >= a.length) return PAD;
       const row = a[ri];
-      const cj = colSingleton(a) ? 0 : j;
+      const cj = colSingleton[k] ? 0 : j;
       return cj < row.length ? row[cj] : PAD;
     }
     if (isArr(a)) return j < a.length ? a[j] : PAD;
@@ -600,7 +599,7 @@ function mapCells(argv: unknown[], cellFn: (...ops: unknown[]) => unknown): unkn
   for (let i = 0; i < rows; i++) {
     const row: unknown[] = [];
     for (let j = 0; j < cols; j++) {
-      const ops = args.map((a) => cellAt(a, i, j));
+      const ops = args.map((_, k) => cellAt(k, i, j));
       row.push(ops.some((o) => o === PAD) ? null : cellFn(...ops));
     }
     out.push(row);

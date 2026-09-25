@@ -74,6 +74,29 @@ describe("the eleven rows", () => {
   });
 });
 
+describe("a tall matrix maps in one pass", () => {
+  it("a column's cost grows with its rows, not with their square", () => {
+    const rows = 2000;
+    let reads = 0;
+    const col = new Proxy(Array.from({ length: rows }, (_, i) => [i]), {
+      get(target, key, receiver) {
+        if (typeof key === "string" && /^\d+$/.test(key)) reads++;
+        return Reflect.get(target, key, receiver);
+      },
+    });
+    expect((ev("x + 1", { x: col }) as number[][])[rows - 1]).toEqual([rows]);
+    expect(reads).toBeLessThan(rows * 10);
+  });
+
+  it("more rows than a call can take as arguments still map", () => {
+    const rows = 150_000;
+    const m = Array.from({ length: rows }, (_, i) => [i, -i]);
+    const out = ev("x + 1", { x: m }) as number[][];
+    expect(out.length).toBe(rows);
+    expect(out[rows - 1]).toEqual([rows, 2 - rows]);
+  });
+});
+
 describe("the per-cell value model rides through rank 2 unchanged", () => {
   it("a cell error propagates in place ([[D37]] errorBeatsMissing)", () => {
     const err = { __solError: true, code: "#DIV/0!", message: "x" };
