@@ -368,14 +368,14 @@ export class TextSliceNode extends ClassicPreset.Node {
     // Only the chosen op's operands join the zip, or a list left in an unused box would spill.
     const result = this.op === "mid"
       ? broadcastCells((t: string, s: number, l: number) => {
-          return resolveExcelFunction("MID")!(t, Math.max(1, Math.floor(s)), Math.max(0, Math.floor(l))) as string;
+          return resolveExcelFunction("MID")!(t, s, l) as string | SolError;
         },
         text,
         readInput(inputs.start, this.literals.start ?? 1),
         readInput(inputs.len,   this.literals.len   ?? 1))
       : broadcastCells((t: string, count: number) => {
           const fn = this.op === "left" ? "LEFT" : "RIGHT";
-          return resolveExcelFunction(fn)!(t, Math.max(0, Math.floor(count))) as string;
+          return resolveExcelFunction(fn)!(t, count) as string | SolError;
         },
         text,
         readInput(inputs.n, this.literals.n ?? 1));
@@ -421,11 +421,10 @@ export class TextFindNode extends ClassicPreset.Node {
     start?: (number | number[])[];
   }): { result: BroadcastResult } {
     const result = broadcastCells((needle: string, haystack: string, s: number) => {
-      const raw = resolveExcelFunction(this.op === "find" ? "FIND" : "SEARCH")!(
-        needle, haystack, Math.max(1, Math.floor(s)));
+      const raw = resolveExcelFunction(this.op === "find" ? "FIND" : "SEARCH")!(needle, haystack, s);
       return raw instanceof Error
         ? solError("#VALUE!", "Find text not found within the text")
-        : raw as number;
+        : raw as number | SolError;
     },
       strVal(inputs.needle,   this, "needle"),
       strVal(inputs.haystack, this, "haystack"),

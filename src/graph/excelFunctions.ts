@@ -845,14 +845,18 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
   return kept.join(toStr(delim));
 });
 
-const TEXT_ARG_POSITIONS: Record<string, number[]> = {
-  LEFT: [0], RIGHT: [0], UPPER: [0], LOWER: [0],
-  TRIM: [0], REPLACE: [0, 3],
-  EXACT: [0, 1], FIND: [0, 1], SEARCH: [0, 1],
+const atLeast = (name: string, i: number, min: number, what: string) => (a: unknown[]): SolError | null =>
+  a[i] != null && Math.trunc(toNum(a[i])) < min ? solError("#VALUE!", `${name} ${what}`) : null;
+const TEXT_PASS_THROUGHS: Record<string, { text: number[]; check?: (a: unknown[]) => SolError | null }> = {
+  LEFT: { text: [0], check: atLeast("LEFT", 1, 0, "takes 0 or more characters") },
+  RIGHT: { text: [0], check: atLeast("RIGHT", 1, 0, "takes 0 or more characters") },
+  UPPER: { text: [0] }, LOWER: { text: [0] }, TRIM: { text: [0] }, REPLACE: { text: [0, 3] }, EXACT: { text: [0, 1] },
+  FIND: { text: [0, 1], check: atLeast("FIND", 2, 1, "starts at 1 or later") },
+  SEARCH: { text: [0, 1], check: atLeast("SEARCH", 2, 1, "starts at 1 or later") },
 };
-for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
+for (const [name, { text, check }] of Object.entries(TEXT_PASS_THROUGHS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
-  registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
+  registerInternal(name, (...a) => check?.(a) ?? f(...a.map((x, i) => (text.includes(i) ? toStr(x) : x))));
 }
 for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];

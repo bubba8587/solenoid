@@ -4,6 +4,7 @@ import * as FX from "@formulajs/formulajs";
 import { resolveExcelFunction } from "../../src/graph/excelFunctions";
 import { isSolError } from "../../src/graph/errorValue";
 import { GCDNode } from "../../src/graph/nodes/scalar";
+import { TextSliceNode, TextFindNode } from "../../src/graph/nodes/text";
 
 // ─── Formula-engine divergence re-sweep (periodic, author-flagged 2026-06-25) ────
 // The 2026-06-25 consolidation compared every formula-reachable function (our impl
@@ -129,6 +130,24 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
   it("FX still answers 0 below the data", () => {
     expect(FX.PERCENTRANK.INC([1, 2, 3, 4], 0)).toBe(0);
     expect(FX.PERCENTRANK.EXC([1, 2, 3, 4], 0)).toBe(0);
+  });
+});
+
+describe("LEFT, RIGHT, FIND and SEARCH refuse a negative count or a start below 1 (Excel)", () => {
+  const code = (v: unknown) => (v as { code?: string }).code;
+  it("our answers, and the Text Slice and Text Find cards say the same", () => {
+    expect(code(call("LEFT", "abc", -1))).toBe("#VALUE!");
+    expect(code(call("RIGHT", "abc", -2))).toBe("#VALUE!");
+    expect(call("LEFT", "abc", -0.5)).toBe("");
+    expect(code(call("FIND", "a", "abc", 0))).toBe("#VALUE!");
+    expect(code(call("SEARCH", "A", "abc", -1))).toBe("#VALUE!");
+    expect(code(new TextSliceNode({ op: "left" }).data({ text: ["abc"], n: [-1] }).result)).toBe("#VALUE!");
+    expect(code(new TextSliceNode({ op: "mid" }).data({ text: ["abc"], start: [0], len: [1] }).result)).toBe("#VALUE!");
+    expect(code(new TextFindNode({ op: "find" }).data({ needle: ["a"], haystack: ["abc"], start: [0] }).result)).toBe("#VALUE!");
+  });
+  it("FX still clamps", () => {
+    expect(FX.LEFT("abc", -1)).toBe("");
+    expect(FX.FIND("a", "abc", 0)).toBe(1);
   });
 });
 
