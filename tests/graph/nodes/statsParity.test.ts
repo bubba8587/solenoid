@@ -23,6 +23,10 @@ const SAMPLES: (number | null)[][] = [
   [1, 1, 1],
   [-4, 9],
   [0.5, 2.5, 7, 7, 7, 11],
+  [1, 2, Infinity],
+  [1, 2, -Infinity],
+  [5, Infinity, -Infinity],
+  [Infinity, Infinity],
 ];
 
 describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
@@ -41,6 +45,10 @@ describe("statistics formulas == Aggregate node (one statsOps kernel)", () => {
   });
   it("a formula over several args flattens them into one sample", () => {
     expect(ev("AVERAGE(a, 10, b)", { a: [1, 2], b: [3] })).toBeCloseTo(4, 12);
+  });
+  it("AVERAGEA counts text as 0 and keeps a first-class infinity", () => {
+    expect(ev("AVERAGEA(x)", { x: [1, "a", 2] })).toBe(1);
+    expect(ev("AVERAGEA(x)", { x: [1, "a", Infinity] })).toBe(Infinity);
   });
 });
 

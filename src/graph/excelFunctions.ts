@@ -875,7 +875,7 @@ registerInternal("MINUTE", (x) => { const n = toNum(x); return Number.isNaN(n) ?
 registerInternal("SECOND", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("SECOND") : serialToJsDate(n).getUTCSeconds(); });
 
 const numsOf = (...args: unknown[]): number[] =>
-  args.flatMap((a) => (Array.isArray(a) ? a : [a])).map(toNum).filter((n) => Number.isFinite(n));
+  args.flatMap((a) => (Array.isArray(a) ? a : [a])).map(toNum).filter((n) => !Number.isNaN(n));
 const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["AVERAGE", "avg"], ["AVEDEV", "avedev"], ["MEDIAN", "median"], ["GEOMEAN", "geomean"],
   ["HARMEAN", "harmean"], ["DEVSQ", "devsq"], ["STDEV", "stdev"], ["STDEV.S", "stdev"],
@@ -886,7 +886,7 @@ const AGG_FORMULAS: Array<[string, AggregateOp]> = [
 for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
 registerInternal("AVERAGEA", (...a) => {
   const cells = a.flatMap((x) => (Array.isArray(x) ? x : [x])).filter((v) => v != null);
-  return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isFinite(n) ? n : 0; }));
+  return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isNaN(n) ? 0 : n; }));
 });
 const asRange = (v: unknown): unknown[] => (Array.isArray(v) ? v : [v]);
 const ifsPairs = (rest: unknown[]): Array<[unknown[], unknown]> | SolError => {

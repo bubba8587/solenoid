@@ -1,6 +1,7 @@
 // [[C17]] shareImpl, [[D36]] nullSkippedNotZero, [[D51]] oneAnswerOneDivergence, [[D48]] classifyNonFinite, [[C14]] currentExcelParity, [[D70]] nullNotEnoughData
 // Inputs are prepared numbers (errors propagated, blanks skipped by the caller); null means not enough data and shows as a blank, a SolError is a real domain failure.
 import { solError, type SolError } from "../errorValue";
+import { guardFinite } from "../valueKinds";
 import { iterMin, iterMax, stdNormCDF, fCDF, chiSqCDF, lnCombin } from "./mathUtils";
 
 export type AggregateOp =
@@ -13,6 +14,11 @@ const mean = (a: readonly number[]) => sum(a) / a.length;
 const ssd = (a: readonly number[], m: number) => a.reduce((x, y) => x + (y - m) ** 2, 0);
 
 export function aggregate(op: AggregateOp, arr: readonly number[]): number | SolError | null {
+  const r = aggregateRaw(op, arr);
+  return typeof r === "number" ? guardFinite(r, arr) : r;
+}
+
+function aggregateRaw(op: AggregateOp, arr: readonly number[]): number | SolError | null {
   if (arr.length === 0) return op === "sum" || op === "count" ? 0 : op === "product" ? 1 : null;
   const n = arr.length;
   switch (op) {
@@ -62,8 +68,8 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
       return percentileOf(s, 0.75, false) - percentileOf(s, 0.25, false);
     }
     case "mad": {
-      const med = aggregate("median", arr) as number;
-      return aggregate("median", arr.map((v) => Math.abs(v - med)));
+      const med = aggregateRaw("median", arr) as number;
+      return aggregateRaw("median", arr.map((v) => Math.abs(v - med)));
     }
     case "sem":  return n < 2 ? null : Math.sqrt(ssd(arr, mean(arr)) / (n - 1)) / Math.sqrt(n);
     case "cv": {

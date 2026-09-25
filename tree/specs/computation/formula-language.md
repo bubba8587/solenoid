@@ -498,9 +498,9 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 ### Statistics
 
-- The statistics family runs the nodes' kernels (Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher). Range arguments arrive prepared by `prepRangeArgs`, so a registration only gathers the finite numbers.
+- The statistics family runs the nodes' kernels (Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher). Range arguments arrive prepared by `prepRangeArgs`, so a registration only gathers the numbers: text that reads as no number is skipped, and a first-class infinity counts, as it does on the cards.
 - The flat Excel names carry Excel's flat-name defaults: STDEV and VAR are the sample forms, PERCENTILE and QUARTILE inclusive, MODE single, COVAR the population form.
-- **AVERAGEA** counts every non-blank cell: text as 0, logicals as 1 and 0.
+- **AVERAGEA** counts every non-blank cell: text that reads as no number as 0, logicals as 1 and 0.
 - **SLOPE, INTERCEPT, STEYX, RSQ** take Excel's order, known Ys first, and **FORECAST.LINEAR(x, known_ys, known_xs)** runs the node's `linearFit` (zero-variance Xs are `#DIV/0!`). **PERCENTRANK(array, x, [significance])** is the inclusive form with 3 digits by default.
 - **The tests beyond Excel's four** run the Hypothesis Test node's kernels: ANOVA and KRUSKAL take each group as a separate list argument (the node reads a matrix's columns); MANNWHITNEY, WILCOXON and KSTEST take two lists; FISHEREXACT(a, b, c, d), PROPTEST(x1, n1, x2, n2) and BINOMTEST(k, n, p) take numbers. **T.TEST(a, b, tails, type)** defaults tails to 2; a type other than 1, 2 or 3, or tails other than 1 or 2, is `#DOMAIN!`.
 - **PROB(range, probabilities, lower, [upper])**: an omitted upper limit means exactly the lower limit.
