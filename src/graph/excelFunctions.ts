@@ -501,6 +501,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   IFS:         { returns: "any", arity: [2, 254] },
   INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
+  BASE:       { returns: "string", arity: [2, 3] },
+  DEC2HEX:    { returns: "string", arity: [1, 2] },
+  BIN2HEX:    { returns: "string", arity: [1, 2] },
+  OCT2HEX:    { returns: "string", arity: [1, 2] },
   RIGHT:      { returns: "string", arity: [1, 2], family: "text" },
   MID:        { returns: "string", arity: [3, 3], family: "text" },
   UPPER:      { returns: "string", arity: [1, 1], family: "text" },
@@ -849,6 +853,10 @@ const TEXT_ARG_POSITIONS: Record<string, number[]> = {
 for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
+}
+for (const name of ["BASE", "DEC2HEX", "BIN2HEX", "OCT2HEX"]) {
+  const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
+  registerInternal(name, (...a) => { const r = f(...a); return typeof r === "string" ? r.toUpperCase() : r; });
 }
 registerInternal("MID", (text, start, len) => {
   const t = toStr(text), s = Math.trunc(toNum(start)), n = Math.trunc(toNum(len));

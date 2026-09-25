@@ -48,6 +48,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 
 - **CONCAT, CONCATENATE, TEXTJOIN** are owned so a number is written with `numberToText` (15 significant digits) rather than Formula.js's formatting.
 - **Text pass-throughs.** LEFT, RIGHT, UPPER, LOWER, TRIM, REPLACE, EXACT, FIND and SEARCH stay Formula.js for their semantics, but each text-position argument (`TEXT_ARG_POSITIONS`; REPLACE's first and fourth) first goes through `numberToText`, so `LEFT(0.1+0.2, 3)` reads "0.3".
+- **BASE, DEC2HEX, BIN2HEX, OCT2HEX** stay Formula.js with the result uppercased: Excel writes the letter digits A to Z in uppercase (`DEC2HEX(255)` is `FF`), and Formula.js in lowercase.
 - **PROPER** runs `properCase` (`nodes/textOps.ts`), the Text Transform card's kernel: a letter after any non-letter is capitalized and every other letter lowercased, Excel's rule, so `PROPER("76BudGet")` is `76Budget` and `o'neil 2nd` is `O'Neil 2Nd`. Formula.js capitalizes only after certain separators.
 - **MID** of length 0 is `""`, as in Excel; Formula.js answers an error. A start below 1 or a negative length is `#VALUE!`. The Text Slice card calls the same registration.
 - **REPT** truncates a fractional count (`REPT("ab", 2.9)` is `abab`), refuses a negative one, and refuses a result past Excel's 32,767 characters, all with `#VALUE!`. Formula.js throws a raw `RangeError` on a fractional count.

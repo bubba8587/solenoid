@@ -132,6 +132,21 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
   });
 });
 
+describe("hex digits are uppercase, as Excel writes them", () => {
+  it("our answers", () => {
+    expect(call("DEC2HEX", 255)).toBe("FF");
+    expect(call("DEC2HEX", -1)).toBe("FFFFFFFFFF");
+    expect(call("BIN2HEX", "11111111")).toBe("FF");
+    expect(call("OCT2HEX", "377")).toBe("FF");
+    expect(call("BASE", 35, 36)).toBe("Z");
+    expect(call("BASE", 10, 16, 4)).toBe("000A");
+  });
+  it("FX still writes lowercase", () => {
+    expect(FX.DEC2HEX(255)).toBe("ff");
+    expect(FX.BASE(35, 36)).toBe("z");
+  });
+});
+
 describe("GCD and LCM truncate each value; a negative one is #DOMAIN! (Excel)", () => {
   const code = (v: unknown) => (v as { code?: string }).code;
   it("our answers", () => {
