@@ -11,9 +11,20 @@ export function FlowResizeGrip({
   // The callbacks handed to RF must keep their identity: NodeResizeControl rebinds its d3 drag on change, which drops an in-flight touch.
   const latest = useRef({ onResizeStart, onResize, onResizeEnd });
   latest.current = { onResizeStart, onResize, onResizeEnd };
-  const start = useCallback((_e: unknown, p: ResizeParams) => latest.current.onResizeStart?.(round(p)), []);
-  const resize = useCallback((_e: unknown, p: ResizeParams) => latest.current.onResize(round(p)), []);
-  const end = useCallback((_e: unknown, p: ResizeParams) => latest.current.onResizeEnd?.(round(p)), []);
+  // RF 12.12 fires onResizeEnd after a bare click too; a click (or the group grip's autofit double-click) is not a resize.
+  const moved = useRef(false);
+  const start = useCallback((_e: unknown, p: ResizeParams) => {
+    moved.current = false;
+    latest.current.onResizeStart?.(round(p));
+  }, []);
+  const resize = useCallback((_e: unknown, p: ResizeParams) => {
+    moved.current = true;
+    latest.current.onResize(round(p));
+  }, []);
+  const end = useCallback((_e: unknown, p: ResizeParams) => {
+    if (moved.current) latest.current.onResizeEnd?.(round(p));
+    moved.current = false;
+  }, []);
   return (
     <NodeResizeControl
       position="bottom-right"
