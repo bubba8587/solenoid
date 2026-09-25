@@ -473,13 +473,6 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   GESTEP: "number, [step]",
   // statistics
   AVEDEV: "value1, [value2], …",
-  AVERAGEA: "value1, [value2], …",
-  MAXA: "value1, [value2], …",
-  MINA: "value1, [value2], …",
-  STDEVA: "value1, [value2], …",
-  STDEVPA: "value1, [value2], …",
-  VARA: "value1, [value2], …",
-  VARPA: "value1, [value2], …",
   DEVSQ: "value1, [value2], …",
   "MODE.SNGL": "value1, [value2], …",
   "SKEW.P": "value1, [value2], …",

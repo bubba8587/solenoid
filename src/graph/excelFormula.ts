@@ -410,11 +410,11 @@ function dispatch(name: string, ...args: unknown[]): unknown {
 // ─── Array-aware evaluator (Expression's compute core) ───────────────────────
 
 export const RANGE_FUNCTIONS = new Set<string>([
-  "SUM", "SUMSQ", "SUMPRODUCT", "PRODUCT", "AVERAGE", "AVERAGEA", "AVEDEV", "DEVSQ",
-  "MIN", "MINA", "MAX", "MAXA", "COUNT", "COUNTA", "COUNTBLANK",
+  "SUM", "SUMSQ", "SUMPRODUCT", "PRODUCT", "AVERAGE", "AVEDEV", "DEVSQ",
+  "MIN", "MAX", "COUNT", "COUNTA", "COUNTBLANK",
   "MEDIAN", "MODE", "GEOMEAN", "HARMEAN", "TRIMMEAN",
-  "STDEV", "STDEVA", "STDEVPA", "STDEV.S", "STDEV.P",
-  "VAR", "VARA", "VARPA", "VAR.S", "VAR.P",
+  "STDEV", "STDEV.S", "STDEV.P",
+  "VAR", "VAR.S", "VAR.P",
   "SKEW", "SKEW.P", "KURT", "LARGE", "SMALL",
   "PTP", "IQR", "MAD", "SEM", "CV", "RMS", "SPEARMAN", "KENDALL",
   "ANOVA", "KRUSKAL", "MANNWHITNEY", "WILCOXON", "KSTEST",

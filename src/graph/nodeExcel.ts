@@ -352,7 +352,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "reduce-avedev": [{ excel: "AVEDEV", syntax: "=AVEDEV(range)", parity: true }],
   "reduce-avg": [
     { excel: "AVERAGE", syntax: "=AVERAGE(range)", parity: true },
-    { excel: "AVERAGEA", syntax: "=AVERAGEA(range)", parity: false, note: "AVERAGEA counts text as 0; Solenoid is numbers-only" },
   ],
   "reduce-count": [
     { excel: "COUNT", syntax: "=COUNT(range)", parity: true },
@@ -367,33 +366,27 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "scan-lambda": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, value, ...))", parity: false, note: "Like REDUCE, but returns every running value, in the input's shape." }],
   "reduce-max": [
     { excel: "MAX", syntax: "=MAX(range)", parity: true },
-    { excel: "MAXA", syntax: "=MAXA(range)", parity: false, note: "MAXA counts text as 0; Solenoid is numbers-only" },
   ],
   "reduce-median": [{ excel: "MEDIAN", syntax: "=MEDIAN(range)", parity: true }],
   "reduce-min": [
     { excel: "MIN", syntax: "=MIN(range)", parity: true },
-    { excel: "MINA", syntax: "=MINA(range)", parity: false, note: "MINA counts text as 0; Solenoid is numbers-only" },
   ],
   "reduce-product": [{ excel: "PRODUCT", syntax: "=PRODUCT(n1, n2, ...)", parity: false, note: "Takes one List instead of separate arguments." }],
   "reduce-skew": [{ excel: "SKEW", syntax: "=SKEW(range)", parity: true }],
   "reduce-skew_p": [{ excel: "SKEW.P", syntax: "=SKEW.P(range)", parity: true }],
   "reduce-stdev": [
     { excel: "STDEV.S", syntax: "=STDEV.S(range)", parity: true },
-    { excel: "STDEVA", syntax: "=STDEVA(range)", parity: false, note: "STDEVA counts text as 0; Solenoid is numbers-only" },
   ],
   "reduce-stdev_p": [
     { excel: "STDEV.P", syntax: "=STDEV.P(range)", parity: true },
-    { excel: "STDEVPA", syntax: "=STDEVPA(range)", parity: false, note: "STDEVPA counts text as 0; Solenoid is numbers-only" },
   ],
   "reduce-sum": [{ excel: "SUM", syntax: "=SUM(range)", parity: true }],
   "reduce-sumsq": [{ excel: "SUMSQ", syntax: "=SUMSQ(n1, n2, ...)", parity: false, note: "Takes one List instead of separate arguments." }],
   "reduce-var_p": [
     { excel: "VAR.P", syntax: "=VAR.P(range)", parity: true },
-    { excel: "VARPA", syntax: "=VARPA(range)", parity: false, note: "VARPA counts text as 0; Solenoid is numbers-only" },
   ],
   "reduce-var_s": [
     { excel: "VAR.S", syntax: "=VAR.S(range)", parity: true },
-    { excel: "VARA", syntax: "=VARA(range)", parity: false, note: "VARA counts text as 0; Solenoid is numbers-only" },
   ],
   "regex": [
     { excel: "REGEXTEST", syntax: "=REGEXTEST(text, pattern)", parity: false, note: "Returns 1 or 0, where Excel returns TRUE or FALSE." },
@@ -542,6 +535,13 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "FLOOR.PRECISE", syntax: "=FLOOR.PRECISE(x, sig)", category: "Math & Trig", superseded: true, note: "Use FLOOR.MATH; PRECISE differs only in ignoring the significance's sign." },
   { excel: "ISO.CEILING", syntax: "=ISO.CEILING(x, sig)", category: "Math & Trig", superseded: true, note: "Use CEILING.MATH; ISO.CEILING is CEILING.PRECISE under its ISO name." },
   { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", superseded: true, note: "Use SUMIFS." },
+  { excel: "AVERAGEA", syntax: "=AVERAGEA(range)", category: "Statistical", superseded: true, note: "Use AVERAGE. The A form also counts a range's text as 0, and lists here never mix text with numbers." },
+  { excel: "MINA", syntax: "=MINA(range)", category: "Statistical", superseded: true, note: "Use MIN. The A form also counts a range's text as 0, and lists here never mix text with numbers." },
+  { excel: "MAXA", syntax: "=MAXA(range)", category: "Statistical", superseded: true, note: "Use MAX. The A form also counts a range's text as 0, and lists here never mix text with numbers." },
+  { excel: "STDEVA", syntax: "=STDEVA(range)", category: "Statistical", superseded: true, note: "Use STDEV.S. The A form also counts a range's text as 0, and lists here never mix text with numbers." },
+  { excel: "STDEVPA", syntax: "=STDEVPA(range)", category: "Statistical", superseded: true, note: "Use STDEV.P. The A form also counts a range's text as 0, and lists here never mix text with numbers." },
+  { excel: "VARA", syntax: "=VARA(range)", category: "Statistical", superseded: true, note: "Use VAR.S. The A form also counts a range's text as 0, and lists here never mix text with numbers." },
+  { excel: "VARPA", syntax: "=VARPA(range)", category: "Statistical", superseded: true, note: "Use VAR.P. The A form also counts a range's text as 0, and lists here never mix text with numbers." },
   { excel: "ADDRESS", syntax: "=ADDRESS(row, col)", category: "Lookup & Reference", oos: true, note: "Returns a cell reference as text." },
   { excel: "AREAS", syntax: "=AREAS(reference)", category: "Lookup & Reference", oos: true, note: "Counts the areas in a cell reference." },
   { excel: "COLUMN", syntax: "=COLUMN(reference)", category: "Lookup & Reference", oos: true, note: "Returns a cell reference's column number." },

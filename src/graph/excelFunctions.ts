@@ -104,7 +104,7 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   FACT: "combinatorics", FACTDOUBLE: "combinatorics", COMBIN: "combinatorics", COMBINA: "combinatorics",
   PERMUT: "combinatorics", PERMUTATIONA: "combinatorics", MULTINOMIAL: "combinatorics",
 
-  AVERAGE: "statistics", AVERAGEA: "statistics", AVEDEV: "statistics", MEDIAN: "statistics", MODE: "statistics",
+  AVERAGE: "statistics", AVEDEV: "statistics", MEDIAN: "statistics", MODE: "statistics",
   MIN: "statistics", MAX: "statistics",
   GEOMEAN: "statistics", HARMEAN: "statistics", TRIMMEAN: "statistics",
   STDEV: "statistics", "STDEV.S": "statistics", STDEVP: "statistics", "STDEV.P": "statistics",
@@ -249,6 +249,8 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   DMAX: "MAX", DMIN: "MIN", DPRODUCT: "PRODUCT", DGET: "XLOOKUP",
   DSTDEV: "STDEV.S", DSTDEVP: "STDEV.P", DVAR: "VAR.S", DVARP: "VAR.P",
 
+  AVERAGEA: "AVERAGE", MINA: "MIN", MAXA: "MAX", STDEVA: "STDEV.S", STDEVPA: "STDEV.P", VARA: "VAR.S", VARPA: "VAR.P",
+
   NORMDIST: "NORM.DIST", NORMINV: "NORM.INV", NORMSDIST: "NORM.S.DIST", NORMSINV: "NORM.S.INV",
   LOGNORMDIST: "LOGNORM.DIST", LOGINV: "LOGNORM.INV", LOGNORMINV: "LOGNORM.INV",
   TDIST: "T.DIST.RT", TINV: "T.INV.2T", // TDIST's tails argument split into .RT and .2T; TINV was always two-tailed.
@@ -355,7 +357,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "RANK.AVG":  { returns: "number", arity: [2, 3], family: "statistics" },
   TRIMMEAN:    { returns: "number", arity: [2, 2], family: "statistics" },
   AVERAGE:     { returns: "number", arity: [1, 255], family: "statistics" },
-  AVERAGEA:    { returns: "number", arity: [1, 255], family: "statistics" },
   MIN:         { returns: "number", arity: [1, 255], family: "statistics" },
   MAX:         { returns: "number", arity: [1, 255], family: "statistics" },
   AVEDEV:      { returns: "number", arity: [1, 255], family: "statistics" },
@@ -890,10 +891,6 @@ const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
 ];
 for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
-registerInternal("AVERAGEA", (...a) => {
-  const cells = a.flatMap((x) => (Array.isArray(x) ? x : [x])).filter((v) => v != null);
-  return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isNaN(n) ? 0 : n; }));
-});
 for (const [name, pick] of [["MIN", iterMin], ["MAX", iterMax]] as const) {
   registerInternal(name, (...a) => {
     const cells: unknown[] = a.flat(Infinity);

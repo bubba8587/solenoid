@@ -29,7 +29,7 @@ const RESULT_DIMLESS_FNS = new Set([
 ]);
 
 /** Spreads keep the dimension; over °C they are a difference. */
-const SPREAD_FNS = new Set(["STDEV", "STDEV.S", "STDEV.P", "STDEVP", "STDEVA", "STDEVPA", "AVEDEV"]);
+const SPREAD_FNS = new Set(["STDEV", "STDEV.S", "STDEV.P", "AVEDEV"]);
 
 const PRESERVE_FNS = new Set([
   "ABS", "MIN", "MAX", "MEDIAN", "SUM", "AVERAGE", "AVG",

@@ -155,7 +155,7 @@ Three tables name functions a formula refuses. Each refusal happens before any a
 
 | Table | Answer | Examples |
 |---|---|---|
-| `LEGACY_ALIASES` (the blocklist, [[C14]] currentExcelParity) | `#NAME?` "Use {replacement}" | `VLOOKUP`, `HLOOKUP`, `LOOKUP` to `XLOOKUP`; `MATCH` to `XMATCH`; the D* database family to its aggregate; the pre-2010 statistics spellings (`NORMDIST`, `STDEVP`, `TDIST`); the undotted spellings of dotted names (`STDEVS`, `PERCENTILEINC`); `CEILING.PRECISE`, `FLOOR.PRECISE`, `ISO.CEILING`; `SUBTOTAL`, `AGGREGATE` to `SUM`; `COLUMN`, `ROW` to `INDEX`; `SUMIF` to `SUMIFS` |
+| `LEGACY_ALIASES` (the blocklist, [[C14]] currentExcelParity) | `#NAME?` "Use {replacement}" | `VLOOKUP`, `HLOOKUP`, `LOOKUP` to `XLOOKUP`; `MATCH` to `XMATCH`; the D* database family to its aggregate; the pre-2010 statistics spellings (`NORMDIST`, `STDEVP`, `TDIST`); the undotted spellings of dotted names (`STDEVS`, `PERCENTILEINC`); `CEILING.PRECISE`, `FLOOR.PRECISE`, `ISO.CEILING`; `SUBTOTAL`, `AGGREGATE` to `SUM`; `COLUMN`, `ROW` to `INDEX`; `SUMIF` to `SUMIFS`; the A forms (`AVERAGEA`, `MINA`, `MAXA`, `STDEVA`, `STDEVPA`, `VARA`, `VARPA`) to their plain forms |
 | `FRAME_SURFACE_NAMES` ([[C15]] matricesInFormulas) | `#TYPE!` "Frames don't flow through formulas, use the {node} node, or a Computed Column for row math" | `BUILDFRAME`, `JOIN`, `FRAMEFILTER`, `PIVOTBY`, `UNPIVOT`, `KMEANS`, `SETCELL` |
 | `NODE_SURFACE_NAMES` | `#NAME?` "Use the {node} node" | `TEXTFILTER` to List Filter |
 
@@ -500,7 +500,6 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 - The statistics family runs the nodes' kernels (Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher). Range arguments arrive prepared by `prepRangeArgs`, so a registration only gathers the numbers: text that reads as no number is skipped, and a first-class infinity counts, as it does on the cards.
 - The flat Excel names carry Excel's flat-name defaults: STDEV and VAR are the sample forms, PERCENTILE and QUARTILE inclusive, MODE single, COVAR the population form.
-- **AVERAGEA** counts every non-blank cell: text that reads as no number as 0, logicals as 1 and 0.
 - **SLOPE, INTERCEPT, STEYX, RSQ** take Excel's order, known Ys first, and **FORECAST.LINEAR(x, known_ys, known_xs)** runs the node's `linearFit` (zero-variance Xs are `#DIV/0!`). **PERCENTRANK(array, x, [significance])** is the inclusive form with 3 digits by default.
 - **The tests beyond Excel's four** run the Hypothesis Test node's kernels: ANOVA and KRUSKAL take each group as a separate list argument (the node reads a matrix's columns); MANNWHITNEY, WILCOXON and KSTEST take two lists; FISHEREXACT(a, b, c, d), PROPTEST(x1, n1, x2, n2) and BINOMTEST(k, n, p) take numbers. **T.TEST(a, b, tails, type)** defaults tails to 2; a type other than 1, 2 or 3, or tails other than 1 or 2, is `#DOMAIN!`.
 - **PROB(range, probabilities, lower, [upper])**: an omitted upper limit means exactly the lower limit.
