@@ -212,8 +212,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   app's own controls) now that a close listener flushes drafts (`core:window:allow-destroy` added), and drafts survive it.
 - [ ] **Follow-ups (2026-09-24, round 2):** pasting a Missing placeholder gives a broken copy with no missing type; a
   heavy composite whose live card still waits for network permission Solves to blank with nothing saying why; RANDARRAY
-  whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`, unchecked against Excel; Nest Join compares unit keys as tagged base-SI values
-  and may have the conversion noise the join fix removed.
+  whole numbers over a range holding none (1.2 to 1.8) is `#VALUE!`, unchecked against Excel.
 - [ ] **Packs and units:** only Thermo presets declare input units (`preset-declared-units` in the inbox); fluids,
   electricity, EM, earthsky, health and chemistry build bare constants into formulas, so wired units give wrong
   result dimensions (escape velocity with r in km, sensible heat, dBm, pH, Newton cooling `EXP(-kk*t)`). Forecast

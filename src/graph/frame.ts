@@ -6,7 +6,7 @@ import { coerceLogical, decimalFromText } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
 import { formatDim, dimEqual, type Dim } from "./dimension";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
-import { displayMagnitudeOf } from "./unitBridge";
+import { displayMagnitudeOf, fcUnitToUnit } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 import { dateAnnotationPattern, type FormatAnnotation } from "./formatAnnotationStore";
 
@@ -527,9 +527,20 @@ export function toCube(v: unknown): CubeValue {
 
 // ─── Relate: nest two frames into a cube (the relational producer) ─────────────
 
+const decimalExponent = (x: number): number => Number(Math.abs(x).toExponential().split("e")[1]);
+
+/** `y` rounded at the 15th significant digit of `t`, the larger term of the conversion that produced it. */
+export function roundAtLargerTerm(y: number, t: number): number {
+  if (!Number.isFinite(y) || y === 0 || !Number.isFinite(t)) return y;
+  const p = decimalExponent(y) - decimalExponent(t) + 15;
+  return p < 1 ? 0 : p > 100 ? y : Number(y.toPrecision(p));
+}
+
 function dimKeyId(base: number, dim: Dim, display: string | undefined): string {
   const cur = dimEqual(dim, { currency: 1 }) ? (display ?? "") : "";
-  return `~u:${formatDim(dim)}${cur ? `:${cur}` : ""}:${String(base)}`;
+  const offset = (display ? fcUnitToUnit(display)?.offset : undefined) ?? 0;
+  const key = roundAtLargerTerm(base, Math.max(Math.abs(base - offset), Math.abs(offset)));
+  return `~u:${formatDim(dim)}${cur ? `:${cur}` : ""}:${String(key)}`;
 }
 
 function keyId(v: FrameCell | UnitCell): string {

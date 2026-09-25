@@ -73,6 +73,16 @@ describe("nest join keys with units", () => {
     const nested = cube.columns[1].cells as FrameValue[];
     expect(nested.map((f) => frameRowCount(f))).toEqual([2, 0]);
   });
+
+  it("conversion noise doesn't block a match, as in Join: in and cm, lb and kg, °F and °C", () => {
+    const nested = (pu: string, pv: number[], cu: string, cv: number[]) => (relateFramesToCube(
+      frame({ name: "k", type: "number", values: pv, unit: unit(pu) }),
+      frame({ name: "k", type: "number", values: cv, unit: unit(cu) }), "k", "items")!.columns[1].cells as FrameValue[]).map(frameRowCount);
+    expect(nested("in", [1, 12], "cm", [2.54, 30.48])).toEqual([1, 1]);
+    expect(nested("lb", [10], "kg", [4.5359237])).toEqual([1]);
+    expect(nested("ft", [0.1], "m", [0.03048])).toEqual([1]);
+    expect(nested("degF", [68, 451, -459.67], "degC", [20, 232.77777777777777, -273.15])).toEqual([1, 1, 1]);
+  });
 });
 
 describe("a join keeps its columns' units and formats", () => {

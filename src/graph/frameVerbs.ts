@@ -3,7 +3,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn,
+  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn, roundAtLargerTerm,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
 import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
@@ -560,15 +560,9 @@ export function joinKeyTransform(left: FrameColumn | undefined, right: FrameColu
   return { scale: r.a / l.a, offset: (r.b - l.b) / l.a };
 }
 
-const decimalExponent = (x: number): number => Number(Math.abs(x).toExponential().split("e")[1]);
-
 /** A right key read in the left key's unit, rounded at the 15th significant digit of the larger term. */
 function convertKey(v: number, scale: number, offset: number): number {
-  const y = v * scale + offset;
-  const t = Math.max(Math.abs(v * scale), Math.abs(offset));
-  if (!Number.isFinite(y) || y === 0 || !Number.isFinite(t)) return y;
-  const p = decimalExponent(y) - decimalExponent(t) + 15;
-  return p < 1 ? 0 : p > 100 ? y : Number(y.toPrecision(p));
+  return roundAtLargerTerm(v * scale + offset, Math.max(Math.abs(v * scale), Math.abs(offset)));
 }
 
 const encKey = (v: FrameCell): string => JSON.stringify(encodeCell(v));
