@@ -77,46 +77,32 @@ async function look(c, { palette = "Default", accent = "gold", mode = "dark" } =
   }, palette, accent, mode);
 }
 
-/** Scrolls a reading-view pane (0 is the left one) so the element matching sel (and text) sits `at` of the way down. */
-async function scrollTo(c, sel, text, at = 0.3, pane = 0) {
-  await c.obs((s, t, f, i) => {
-    const leaf = window.app.workspace.getLeavesOfType("markdown")[i];
+/** Scrolls the reading view so the element matching sel (and text) sits `at` of the way down the pane. */
+async function scrollTo(c, sel, text, at = 0.3) {
+  await c.obs((s, t, f) => {
+    const leaf = window.app.workspace.getLeavesOfType("markdown")[0];
     const el = leaf.view.containerEl.querySelector(".markdown-preview-view");
     const target = [...el.querySelectorAll(s)].find((e) => t === undefined || e.textContent.trim() === t);
     if (target) el.scrollTop += target.getBoundingClientRect().top - el.getBoundingClientRect().top - el.clientHeight * f;
-  }, sel, text, at, pane);
+  }, sel, text, at);
   await c.sleep(300);
 }
 
-/** The task checkbox whose line reads `text`, in the rightmost pane that shows it. */
+/** The reading view's task checkbox whose line reads `text`. */
 const task = (c, text) => c.obs((t) => {
-  const items = [...document.querySelectorAll(".markdown-preview-view li.task-list-item")].filter((l) => l.textContent.trim().startsWith(t));
-  const boxes = items.map((l) => l.querySelector("input.task-list-item-checkbox")?.getBoundingClientRect()).filter((r) => r && r.width > 0);
-  const r = boxes.sort((a, b) => b.x - a.x)[0];
+  const li = [...document.querySelectorAll(".markdown-preview-view li.task-list-item")].find((l) => l.textContent.trim().startsWith(t));
+  const r = li?.querySelector("input.task-list-item-checkbox")?.getBoundingClientRect();
   return r && { x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2 };
 }, text);
 
-/** The note in Obsidian, reading view, the plugin's look on and nothing but the note. With `panes: 2` the note opens
- *  again beside itself, scrolled to Priya's table, so the table stays in view while the popup covers the first pane. */
-async function noteView(o, { zoom = 1, panes = 1 } = {}) {
+/** The note in Obsidian, reading view, the plugin's look on and nothing but the note. */
+async function noteView(o, { zoom = 1 } = {}) {
   await closeOtherWindows(o);
   await noteOnly(o.page);
   await obsZoom(o, zoom);
   await look(o);
   await o.obs(() => { for (const leaf of window.app.workspace.getLeavesOfType("markdown").slice(1)) leaf.detach(); });
   await openNote(o, NOTE, { reading: true });
-  if (panes === 2) {
-    await o.obs(async (f) => {
-      const ws = window.app.workspace, left = ws.getLeavesOfType("markdown")[0];
-      const right = ws.getLeaf("split", "vertical");
-      await right.openFile(ws.app.vault.getAbstractFileByPath(f), { state: { mode: "preview" } });
-      await right.rebuildView();
-      ws.setActiveLeaf(left, { focus: false });
-      document.activeElement?.blur?.();
-    }, NOTE);
-    await o.sleep(900);
-    await scrollTo(o, "p", undefined, 0.16, 1);
-  }
 }
 
 /** The regional graph in the Solenoid window, loaded unless it already is. */
@@ -141,13 +127,13 @@ export const PLUGIN = {
     app: "obsidian",
     caption: ["Solenoid Properties", "The plugin adds frames, cubes, lists and matrices to Obsidian's property types. The note underneath stays plain YAML."],
     async setup(c) {
-      await noteView(c, { zoom: 1.1, panes: 2 });
-      await c.hand.show(640, 560);
+      await noteView(c, { zoom: 1.35 });
+      await c.hand.show(760, 470);
     },
     async act(c) {
       const { hand, sleep, page } = c;
       await sleep(900);
-      const table = (await rectsIn(page, ".markdown-preview-view table")).sort((a, b) => b.x - a.x)[0];
+      const table = await need(page, ".markdown-preview-view table");
       await hand.move(table.x + table.w * 0.62, table.y + table.h * 0.6, { ms: 1100 });
       await c.box(table, 6);
       await sleep(1500);
@@ -160,15 +146,18 @@ export const PLUGIN = {
   },
 
   "pl-form": {
-    app: "obsidian",
+    app: "split",
     caption: ["Solenoid's table editor", "Each chip opens the editor Solenoid uses: a grid, a form for one record at a time, or CSV. Columns keep their types."],
     async setup(c) {
-      await noteView(c, { zoom: 1.1, panes: 2 });
-      const chip = await need(c.page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip');
-      await c.hand.show(chip.cx + 40, chip.cy + 16);
+      await noteView(c.obs);
+      await graphView(c.sol);
+      await c.sol.frame(CHAIN, { pad: 0.05, maxK: 1.1, dy: 20 });
+      const chip = await need(c.obs.page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip');
+      await c.hand("obs", { x: chip.cx + 60, y: chip.cy + 50 });
     },
     async act(c) {
-      const { hand, sleep, page } = c;
+      const { sleep } = c, page = c.obs.page;
+      const hand = await c.hand("obs");
       await sleep(600);
       await hand.click(await need(page, '.metadata-property[data-property-key="q3"] .solenoid-property-chip'));
       await sleep(900);
@@ -192,7 +181,7 @@ export const PLUGIN = {
       await sleep(350);
       await hand.click(await need(page, "button", "Save"));
       await sleep(900);
-      await hand.click(await task(c, "Add the West figures"));
+      await hand.click(await task(c.obs, "Add the West figures"));
       await sleep(1500);
     },
   },

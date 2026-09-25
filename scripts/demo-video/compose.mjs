@@ -53,9 +53,9 @@ for (const order of [["sol", "obs"], ["obs", "sol"]]) {
   await png(panelLabelsHtml(order.map((k) => LABEL[k]), { x: PANEL.x.map((x) => x / VIEW.scale), y: (PANEL.y - 34) / VIEW.scale }), `panel-labels-${order.join("-")}.png`);
 }
 for (const rate of [2, 3, 4]) await png(fastBadgeHtml(rate), `fast-${rate}.png`);
-await png(introMarkHtml(CUT.eyebrow), `${CUT_NAME}-intro-mark.png`);
+await png(introMarkHtml(CUT.eyebrow, CUT.mark), `${CUT_NAME}-intro-mark.png`);
 await png(introLineHtml(CUT.tagline), `${CUT_NAME}-intro-line.png`);
-await png(outroHtml(CUT.end), `${CUT_NAME}-outro.png`);
+await png(outroHtml(CUT.end, CUT.mark), `${CUT_NAME}-outro.png`);
 await browser.close();
 
 // A slow push-in toward the center over `total` seconds. zoompan, since a crop after a per-frame scale keeps its

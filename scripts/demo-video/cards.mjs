@@ -6,14 +6,27 @@ import { ROOT } from "./rig.mjs";
 
 const font = (pkg, file) =>
   fs.readFileSync(path.join(ROOT, "node_modules", "@fontsource-variable", pkg, "files", file)).toString("base64");
-const wordmark = fs.readFileSync(path.join(ROOT, "src", "logo", "solenoidwordmark.svg")).toString("base64");
+/** A wordmark from src/logo as a mask, so the cards paint it in the app's gold at any size. */
+const maskOf = (file) => {
+  const b64 = fs.readFileSync(path.join(ROOT, "src", "logo", file)).toString("base64");
+  return `-webkit-mask:url(data:image/svg+xml;base64,${b64}) center / contain no-repeat;mask:url(data:image/svg+xml;base64,${b64}) center / contain no-repeat`;
+};
+/** Each wordmark's box on the intro card and the outro, in CSS px at 1280×720. */
+const MARKS = {
+  "solenoidwordmark.svg": { intro: [560, 104], outro: [380, 70] },
+  "solenoidpropertieswordmark.svg": { intro: [820, 79], outro: [620, 60] },
+};
+const markDiv = (file, which) => {
+  const [w, h] = MARKS[file][which];
+  return `<div class="mark" style="width:${w}px;height:${h}px;${maskOf(file)}"></div>`;
+};
 
 const HEAD = `<meta charset="utf-8"><style>
 @font-face { font-family: "AHN"; font-weight: 200 800; src: url(data:font/woff2;base64,${font("atkinson-hyperlegible-next", "atkinson-hyperlegible-next-latin-wght-normal.woff2")}) format("woff2"); }
 @font-face { font-family: "AHM"; font-weight: 200 800; src: url(data:font/woff2;base64,${font("atkinson-hyperlegible-mono", "atkinson-hyperlegible-mono-latin-wght-normal.woff2")}) format("woff2"); }
 html, body { margin: 0; width: 1280px; height: 720px; background: transparent; overflow: hidden; }
 body { font-family: "AHN", system-ui, sans-serif; color: #f3f4f5; -webkit-font-smoothing: antialiased; }
-.mark { background: #f5b914; -webkit-mask: url(data:image/svg+xml;base64,${wordmark}) center / contain no-repeat; mask: url(data:image/svg+xml;base64,${wordmark}) center / contain no-repeat; margin: 0 auto; }
+.mark { background: #f5b914; margin: 0 auto; }
 .center { position: absolute; left: 0; right: 0; text-align: center; }
 </style>`;
 
@@ -27,11 +40,11 @@ export const captionHtml = ([title, body]) => `${HEAD}<style>
 .cap__body { font-size: 17px; line-height: 1.35; text-wrap-style: balance; }
 </style><div class="cap"><div class="cap__title">${esc(title)}</div><div class="cap__body">${esc(body)}</div></div>`;
 
-export const introMarkHtml = (eyebrow) => `${HEAD}${eyebrow ? `<div class="center" style="top:208px;font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#b8bdc3">${esc(eyebrow)}</div>` : ""}<div class="center" style="top:250px"><div class="mark" style="width:560px;height:104px"></div></div>`;
+export const introMarkHtml = (eyebrow, mark = "solenoidwordmark.svg") => `${HEAD}${eyebrow ? `<div class="center" style="top:208px;font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#b8bdc3">${esc(eyebrow)}</div>` : ""}<div class="center" style="top:${mark === "solenoidwordmark.svg" ? 250 : 262}px">${markDiv(mark, "intro")}</div>`;
 export const introLineHtml = (line) => `${HEAD}<div class="center" style="top:388px;font-size:27px;font-weight:500">${esc(line)}</div>`;
 
-export const outroHtml = ({ lead, sub, url }) => `${HEAD}
-<div class="center" style="top:178px"><div class="mark" style="width:380px;height:70px"></div></div>
+export const outroHtml = ({ lead, sub, url }, mark = "solenoidwordmark.svg") => `${HEAD}
+<div class="center" style="top:${mark === "solenoidwordmark.svg" ? 178 : 184}px">${markDiv(mark, "outro")}</div>
 <div class="center" style="top:292px;font-size:30px;font-weight:600">${esc(lead)}</div>
 <div class="center" style="top:342px;font-size:19px;color:#b8bdc3">${esc(sub)}</div>
 <div class="center" style="top:410px;font-family:AHM,monospace;font-size:21px;color:#f5b914;letter-spacing:.02em">${esc(url)}</div>`;

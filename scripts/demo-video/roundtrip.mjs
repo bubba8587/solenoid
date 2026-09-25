@@ -86,7 +86,9 @@ export async function openNote(c, file, { reading = false } = {}) {
     // A collapsed sidebar defers its views, so the explorer may have nothing to reveal with.
     app.workspace.getLeavesOfType("file-explorer")[0]?.view.revealInFolder?.(tf);
     leaf.view.editor?.scrollTo(0, 0);
-    leaf.view.previewMode?.applyScroll?.(0);
+    // A note already open keeps its reading-view scroll through openFile.
+    const preview = leaf.view.containerEl.querySelector(".markdown-preview-view");
+    if (preview) preview.scrollTop = 0;
     document.activeElement?.blur?.();
   }, file, reading);
   await c.sleep(900);

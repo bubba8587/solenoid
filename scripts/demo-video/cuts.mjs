@@ -22,11 +22,12 @@ export const CUTS = {
     intro: "pl-intro",
     outro: "pl-outro",
     order: ["pl-note", "pl-form", "pl-reload", "pl-write", "pl-look"],
+    mark: "solenoidpropertieswordmark.svg",
     eyebrow: "For Obsidian",
     tagline: "The computation layer for your vault.",
     end: {
-      lead: "Solenoid Properties for Obsidian",
-      sub: "Free in Obsidian's community plugins. The Solenoid app is free and open source.",
+      lead: "Free in Obsidian's community plugins.",
+      sub: "Solenoid itself is free and open source, in the browser or on Windows and Linux.",
       url: "solenoid-ngc.vercel.app/obsidian",
     },
     // Its backdrops are still screens, so compose.mjs pushes in on them.
