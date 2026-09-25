@@ -101,6 +101,7 @@ export function ReportOverlay() {
     reportStore.close();
   }
   useEscapeToClose(closeReport, !!nodeId);
+  usePendingDraft(!!node && body !== lastSyncRef.current, () => void commitBody());
 
   const tex = useKatexReady();
   const bodyHtml = useMemo(
@@ -197,8 +198,6 @@ export function ReportOverlay() {
     await processGraph();
     setRenderVersion((v) => v + 1);
   }
-
-  usePendingDraft(!!node && body !== lastSyncRef.current, () => void commitBody());
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);
