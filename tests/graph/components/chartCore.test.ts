@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, toSeries, partSlices } from "../../../src/graph/components/chartCore";
+import { axisTick, compactTick, valueAxisWidth, toSeries, partSlices } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -16,6 +16,35 @@ describe("axisTick", () => {
     expect(axisTick(NaN)).toBe("");
     expect(axisTick(Infinity)).toBe("");
     expect(axisTick(-Infinity)).toBe("");
+  });
+});
+
+describe("compactTick", () => {
+  it("keeps three significant figures and scales past a thousand, so a value axis fits its gutter", () => {
+    expect(compactTick(0)).toBe("0");
+    expect(compactTick(0.125)).toBe("0.125");
+    expect(compactTick(800)).toBe("800");
+    expect(compactTick(1500)).toBe("1.5K");
+    expect(compactTick(150000)).toBe("150K");
+    expect(compactTick(1234567)).toBe("1.23M");
+    expect(compactTick(-2500000000)).toBe("-2.5B");
+  });
+  it("returns empty string for non-finite", () => {
+    expect(compactTick(NaN)).toBe("");
+    expect(compactTick(Infinity)).toBe("");
+  });
+});
+
+describe("valueAxisWidth", () => {
+  it("keeps the 26 px gutter (40 with an axis title) while the ticks stay short", () => {
+    expect(valueAxisWidth([1, 5, 80], 1)).toBe(26);
+    expect(valueAxisWidth([1, 5, 80], 1, true)).toBe(40);
+    expect(valueAxisWidth([], 1)).toBe(26);
+  });
+  it("grows to the widest end tick, rounded the way the axis rounds its ends", () => {
+    expect(valueAxisWidth([120000, 176319], 1)).toBe(32); // ends at 180K
+    expect(valueAxisWidth([-1234, 50], 1)).toBe(37); // starts at -1.2K
+    expect(valueAxisWidth([1, 2, null, "x", NaN], 2)).toBe(43); // scales with the font
   });
 });
 

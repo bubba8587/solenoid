@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, partSlices, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, partSlices, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { OverlayPayload } from "../chartValue";
 import { ChartTitle, titleHeight } from "./chartTitle";
@@ -143,7 +143,7 @@ export function ChartView({
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   const chartH = height - titleH;
-  const yAxisW = axes ? (yLabel ? 40 : 26) : 0;
+  const yAxisW = axes ? valueAxisWidth([...series.map((d) => d.v), opts?.ymin, opts?.ymax], fs, !!yLabel) : 0;
   const bottomM = axes ? (xLabel ? 18 : 4) : 2;
   const margin = axes ? { top: PLOT_TOP, right: 8, bottom: bottomM, left: 0 } : { top: 2, right: 2, bottom: 2, left: 2 };
   const catInterval = series.length <= ALL_TICKS_UPTO ? 0 : undefined;
@@ -154,7 +154,7 @@ export function ChartView({
       <LineChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Line dataKey="v" stroke={color} strokeOpacity={opts?.alpha ?? 1} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </LineChart>
@@ -164,7 +164,7 @@ export function ChartView({
       <AreaChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </AreaChart>
@@ -176,7 +176,7 @@ export function ChartView({
     chart = (
       <BarChart width={width} height={chartH} data={series} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
-        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis type="number" tick={AXIS} tickLine={false} tickFormatter={compactTick} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? Math.max(32, catW) : catW} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={fillAlpha < 1 && opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false} />
@@ -273,7 +273,7 @@ export function ChartView({
         {showGrid && <CartesianGrid stroke={grid} />}
         {/* allowDecimals=false stops recharts inventing fractional ticks. */}
         {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />}
         {SCATTER_TIP}
         <Scatter data={scatterData} fill={color} fillOpacity={opts?.alpha ?? 1} shape={dot} isAnimationActive={false} />
       </ScatterChart>
@@ -283,7 +283,7 @@ export function ChartView({
       <BarChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false}>
           {signColors && series.map((d, i) => (
@@ -376,7 +376,7 @@ export function MultiSeriesView({
   const yLabel = axes && opts?.ylabel
     ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
     : undefined;
-  const yAxisW = yLabel ? 40 : 26;
+  const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel);
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
   const data = Array.from({ length: n }, (_, i) => {
@@ -421,7 +421,7 @@ export function MultiSeriesView({
       <Container width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}
         {series.map((s, j) => op === "area"
           ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
@@ -432,7 +432,7 @@ export function MultiSeriesView({
     chart = (
       <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
-        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis type="number" tick={AXIS} tickLine={false} tickFormatter={compactTick} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 52 : 40} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {tip}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
@@ -465,7 +465,7 @@ export function MultiSeriesView({
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}
         {series.map((s, j) => (
           <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} shape={dot} isAnimationActive={false}
@@ -478,7 +478,7 @@ export function MultiSeriesView({
       <BarChart width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
@@ -547,7 +547,7 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
     <ComposedChart width={width} height={chartH} data={data} margin={margin}>
       {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
       <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} allowDuplicatedCategory={false} />
-      <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />
+      <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs)} domain={yDomain} />
       {tip}{legend}
       {series.map((s, j) => {
         const c = paint(j);
@@ -708,13 +708,13 @@ export function ComposedView({ series, labels, width, height, opts, fscale = 1 }
   const title = opts?.title;
   const legendH = series.length > 1 ? MULTI_LEGEND_H : 0;
   const chartH = height - (title ? titleHeight(fscale) : 0) - legendH;
-  const yAxisW = yLabel ? 40 : 26;
+  const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fscale, !!yLabel);
   const margin = { top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 };
   const chart = (
     <ComposedChart width={width} height={chartH} data={data} margin={margin}>
       {(opts?.grid ?? true) && <CartesianGrid stroke={grid} vertical={false} />}
       <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={n <= ALL_TICKS_UPTO ? 0 : undefined} label={xLabel} height={xLabel ? 28 : undefined} />
-      <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomainOf(opts)} label={yLabel} />
+      <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomainOf(opts)} label={yLabel} />
       <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />
       {series.map((s, j) => j === 0
         ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} fillOpacity={(opts?.alpha ?? 1) * dim(j)} isAnimationActive={false} />
@@ -785,7 +785,7 @@ export function BubbleView({ series, width, height, opts, fscale = 1 }: {
     <ScatterChart width={width} height={chartH} margin={{ top: PLOT_TOP, right: 12, bottom: xLabel ? 18 : 4, left: 0 }}>
       {(opts?.grid ?? true) && <CartesianGrid stroke={grid} />}
       <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} label={xLabel} height={xLabel ? 28 : undefined} />
-      <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yLabel ? 40 : 26} domain={yDomainOf(opts)} label={yLabel} />
+      <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} tickFormatter={compactTick} width={valueAxisWidth([...data.map((d) => d.y), opts?.ymin, opts?.ymax], fscale, !!yLabel)} domain={yDomainOf(opts)} label={yLabel} />
       <ZAxis type="number" dataKey="z" range={[40, 420]} />
       <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} content={<BubbleTooltip names={names} />} />
       <Scatter data={data} fill={colors[0]} fillOpacity={0.55} isAnimationActive={false} />

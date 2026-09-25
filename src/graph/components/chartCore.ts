@@ -38,6 +38,32 @@ export function axisTick(n: number): string {
   return String(Number(n.toPrecision(10)));
 }
 
+const sig3 = (n: number): string => String(Number(n.toPrecision(3)));
+
+/** A value-axis tick: three significant figures, with K, M, B above a thousand. */
+export function compactTick(n: number): string {
+  if (!Number.isFinite(n)) return "";
+  const a = Math.abs(n);
+  if (a >= 1e9) return `${sig3(n / 1e9)}B`;
+  if (a >= 1e6) return `${sig3(n / 1e6)}M`;
+  if (a >= 1e3) return `${sig3(n / 1e3)}K`;
+  return sig3(n);
+}
+
+/** A value axis's gutter in px: its widest compact tick at 5.8 · fs a character (never under three), with the
+ *  data's extremes rounded to two figures standing in for recharts' nice end ticks, plus recharts' 8 px of tick
+ *  spacing and 14 for an axis title. */
+export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = false): number {
+  let lo = 0, hi = 0;
+  for (const v of values) {
+    if (typeof v !== "number" || !Number.isFinite(v)) continue;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  const ends = [lo, hi].map((n) => compactTick(Number(n.toPrecision(2))).length);
+  return Math.ceil(Math.max(3, ...ends) * 5.8 * fs + 8) + (titled ? 14 : 0);
+}
+
 export function toSeries(v: unknown): { i: number; v: number }[] {
   if (v == null) return [];
   const arr: unknown[] = Array.isArray(v) ? v : [v];

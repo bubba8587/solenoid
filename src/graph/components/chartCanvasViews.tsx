@@ -4,6 +4,7 @@ import { appThemeStore } from "../appTheme";
 import { resolveColor } from "../palette";
 import { serialToJsDate } from "../nodes/date";
 import { heightColor } from "./SurfaceView";
+import { compactTick } from "./chartCore";
 import type {
   WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
@@ -41,17 +42,6 @@ function themeInk(canvas: HTMLCanvasElement) {
 
 const tickFont = (fs: number) => `500 ${8.5 * fs}px system-ui, sans-serif`;
 
-function fmtTick(n: number): string {
-  const a = Math.abs(n);
-  if (a >= 1e9) return `${trim3(n / 1e9)}B`;
-  if (a >= 1e6) return `${trim3(n / 1e6)}M`;
-  if (a >= 1e3) return `${trim3(n / 1e3)}K`;
-  return trim3(n);
-}
-function trim3(n: number): string {
-  return String(Number(n.toPrecision(3)));
-}
-
 function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: number, sy: (v: number) => number, x0: number, x1: number, fs: number) {
   ctx.font = tickFont(fs);
   ctx.textAlign = "right";
@@ -66,7 +56,7 @@ function drawYAxis(ctx: Ctx, ink: ReturnType<typeof themeInk>, lo: number, hi: n
     ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x1, y); ctx.stroke();
     ctx.globalAlpha = 0.9;
     ctx.fillStyle = ink.dim;
-    ctx.fillText(fmtTick(v), x0 - 3, y);
+    ctx.fillText(compactTick(v), x0 - 3, y);
   }
   ctx.globalAlpha = 1;
 }
@@ -523,11 +513,11 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   ctx.fillStyle = ink.dim;
   ctx.textBaseline = "bottom";
   ctx.textAlign = "left";
-  ctx.fillText(fmtTick(xmin), padL, H - 1);
+  ctx.fillText(compactTick(xmin), padL, H - 1);
   ctx.textAlign = "right";
-  ctx.fillText(fmtTick(xmax), W - padR, H - 1);
+  ctx.fillText(compactTick(xmax), W - padR, H - 1);
   ctx.textAlign = "left";
-  ctx.fillText(fmtTick(ymax), padL, padT - 2);
+  ctx.fillText(compactTick(ymax), padL, padT - 2);
 }
 
 // ─── React wrappers ────────────────────────────────────────────────────────────
