@@ -18,7 +18,7 @@ import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
 import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
@@ -735,7 +735,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const [nameFormat, setNameFormat] = useState(data.nameFormat);
   const [folders, setFolders] = useState<string[]>([]);
   const desktop = isDesktop();
-  const canRead = desktop || isDemoVaultPath(vault); // the demo vault reads with no filesystem
+  const canRead = hasFs() || isDemoVaultPath(vault); // the demo vault reads with no filesystem
   useEffect(() => { setFolder(data.folder); }, [data.folder]);
   useEffect(() => {
     let alive = true;

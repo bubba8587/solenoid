@@ -1,7 +1,7 @@
 // [[C38]] sinkRunButtonOnly, [[C113]] controlDrivenRetype, [[C26]] opArgDistinct
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../rete-nodes";
-import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
 import { getVaultRoot } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { settingsStore } from "../settingsStore";
@@ -182,6 +182,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const [files, setFiles] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const desktop = isDesktop();
+  const vaultFs = hasFs();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
 
   const activeMode = d.resolveMode(); // "note" | "properties"
@@ -257,8 +258,8 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} keys={inputKeys} />
       <div className="sol-conn">
-        {!desktop && <div className="sol-conn__note">Writing to a vault is available in the desktop app only.</div>}
-        {desktop && vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
+        {!vaultFs && <div className="sol-conn__note">Writing to a vault is available in the desktop app only.</div>}
+        {vaultFs && vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
         <SegToggle value={target} options={OBSIDIAN_TARGET_OPTIONS} onChange={pickTarget} />
 
         {activeMode === "note" ? (
@@ -278,7 +279,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
             </button>
             {pickerOpen && (
               <div className="sol-import__picker" {...stopPtr}>
-                {!desktop ? (
+                {!vaultFs ? (
                   <div className="sol-import__empty">Reading a vault is available in the desktop app only.</div>
                 ) : vault.trim() === "" ? (
                   <div className="sol-import__empty">Set the Obsidian vault folder in Settings.</div>
@@ -352,7 +353,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
         <div className="sol-write__row">
           <button
             type="button" className="sol-write__run"
-            disabled={!desktop || vault.trim() === "" || busy}
+            disabled={!vaultFs || vault.trim() === "" || busy}
             title="Read the vault and report what Run would do"
             onClick={(e) => { e.stopPropagation(); void preview(); }}
             {...stopPtr}
@@ -360,12 +361,12 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
             Preview
           </button>
           <label className="sol-write__armed" {...stopPtr}>
-            <input type="checkbox" checked={armed} disabled={!desktop} onChange={toggleArmed} />
+            <input type="checkbox" checked={armed} disabled={!vaultFs} onChange={toggleArmed} />
             Armed
           </label>
           <button
             type="button" className="sol-write__run"
-            disabled={!desktop || !armed || !canRun || vault.trim() === "" || busy}
+            disabled={!vaultFs || !armed || !canRun || vault.trim() === "" || busy}
             title="Write to the vault now"
             onClick={(e) => { e.stopPropagation(); void run(); }}
             {...stopPtr}

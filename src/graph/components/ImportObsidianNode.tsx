@@ -12,7 +12,7 @@ import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
-import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
+import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { getActiveView, getActiveEditor } from "../activeGraph";
@@ -59,7 +59,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
   const desktop = isDesktop();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
-  const canRead = desktop || isDemoVaultPath(vault);
+  const canRead = hasFs() || isDemoVaultPath(vault);
 
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
