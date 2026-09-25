@@ -85,6 +85,12 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
     ["GEOMEAN of a negative", "GEOMEAN(x)", { x: [-4, 9] }, "#DOMAIN!"],
     ["Z.TEST of a constant", "Z.TEST(x, 1)", { x: [1, 1, 1] }, "#DOMAIN!"],
   ];
+  it("guards a range longer than a call can take as arguments", () => {
+    const x = Array.from({ length: 200_000 }, (_, i) => i % 7);
+    expect(ev("AVERAGE(x)", { x })).toBeCloseTo(2.99997, 10);
+    expect(ev("MEDIAN(x)", { x })).toBe(3);
+  });
+
   it.each(DEGENERATE)("%s → the node's answer, never bare NaN", (_label, expr, env, code) => {
     const r = ev(expr, env);
     expect(typeof r === "number" && Number.isNaN(r), "bare NaN leaked").toBe(false);

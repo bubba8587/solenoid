@@ -125,7 +125,7 @@ export function broadcast(
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
     const r = fn(...(args as number[]));
-    return r === null ? null : guardFinite(r, ...args);
+    return r === null ? null : guardFinite(r, args);
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
@@ -135,7 +135,7 @@ export function broadcast(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
     const r = fn(...(ops as number[]));
-    out.push(r === null ? null : guardFinite(r, ...ops));
+    out.push(r === null ? null : guardFinite(r, ops));
   }
   return out;
 }
@@ -149,7 +149,7 @@ export function broadcastErr(
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
     const r = fn(...(args as number[]));
-    return typeof r === "number" ? guardFinite(r, ...args) : r;
+    return typeof r === "number" ? guardFinite(r, args) : r;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | SolError | null)[] = [];
@@ -159,7 +159,7 @@ export function broadcastErr(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
     const r = fn(...(ops as number[]));
-    out.push(typeof r === "number" ? guardFinite(r, ...ops) : r);
+    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
   }
   return out;
 }
@@ -193,7 +193,7 @@ export function broadcastCells(
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
     const r = call(...(args as Cell[]));
-    return typeof r === "number" ? guardFinite(r, ...args) : r;
+    return typeof r === "number" ? guardFinite(r, args) : r;
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (Cell | SolError | null)[] = [];
@@ -203,7 +203,7 @@ export function broadcastCells(
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
     const r = call(...(ops as Cell[]));
-    out.push(typeof r === "number" ? guardFinite(r, ...ops) : r);
+    out.push(typeof r === "number" ? guardFinite(r, ops) : r);
   }
   return out;
 }
@@ -212,15 +212,15 @@ export type UnitOperand = number | UnitCell;
 export type BroadcastUnitResult =
   number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null;
 
-function guardCell(r: number | UnitCell | SolError | null, ...inputs: unknown[]): number | UnitCell | SolError | null {
+function guardCell(r: number | UnitCell | SolError | null, inputs: ReadonlyArray<unknown>): number | UnitCell | SolError | null {
   if (r === null || typeof r === "string") return r;
   if (isUnitCell(r)) {
-    const g = guardFinite(r.value, ...inputs);
+    const g = guardFinite(r.value, inputs);
     if (typeof g !== "number") return g;
     // tagDim would collapse an empty-dim ratio cell to a bare number, so re-mint the ratio.
     return r.ratio === true ? tagRatio(g) : tagDim(g, r.dim, r.display);
   }
-  if (typeof r === "number") return guardFinite(r, ...inputs);
+  if (typeof r === "number") return guardFinite(r, inputs);
   return r;
 }
 
@@ -232,7 +232,7 @@ export function broadcastUnit(
   if (lists.length === 0) {
     const sc = cellShortCircuit(args);
     if (sc !== COMPUTE) return sc;
-    return guardCell(fn(...(args as UnitOperand[])), ...args);
+    return guardCell(fn(...(args as UnitOperand[])), args);
   }
   const len = lists.reduce((m, l) => Math.max(m, l.length), 0);
   const out: (number | UnitCell | SolError | null)[] = [];
@@ -241,7 +241,7 @@ export function broadcastUnit(
     const ops = args.map((a) => (Array.isArray(a) ? a[i] : a)) as UnitOperand[];
     const sc = cellShortCircuit(ops);
     if (sc !== COMPUTE) { out.push(sc); continue; }
-    out.push(guardCell(fn(...ops), ...ops));
+    out.push(guardCell(fn(...ops), ops));
   }
   return out;
 }

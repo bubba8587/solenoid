@@ -572,7 +572,7 @@ async function applyAggGuard(handle: FrameHandle, f: FrameValue): Promise<FrameV
     return {
       ...c,
       values: c.values.map((v) =>
-        typeof v === "number" && !Number.isFinite(v) ? guardFinite(v, ...inputs) : v),
+        typeof v === "number" && !Number.isFinite(v) ? guardFinite(v, inputs) : v),
     };
   });
   return { ...f, columns };

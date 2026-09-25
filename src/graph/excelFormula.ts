@@ -622,7 +622,7 @@ function applyOp(op: string, a: unknown, b: unknown): unknown {
   }
   const num = (v: unknown): unknown => (typeof v === "boolean" ? (v ? 1 : 0) : v);
   const na = num(a), nb = num(b);
-  const fin = (r: number): unknown => guardFinite(r, na, nb);
+  const fin = (r: number): unknown => guardFinite(r, [na, nb]);
   if ((op === "+" || op === "-" || op === "*" || op === "/" || op === "^")
       && (typeof na === "string" || typeof nb === "string")) {
     return solError("#VALUE!", "Arithmetic needs numbers. Join text with &, or read a number from text with NUMBERVALUE");
@@ -704,7 +704,7 @@ const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "
 function broadcastCall(name: string, argv: unknown[], blankSlots: readonly boolean[] = []): unknown {
   const call = (...args: unknown[]): unknown => {
     const r = dispatch(name, ...args);
-    return typeof r === "number" ? guardFinite(r, ...args) : r;
+    return typeof r === "number" ? guardFinite(r, args) : r;
   };
   const inspectsNull = NULL_INSPECTING.has(name);
   if (!argv.some(isArr)) {
@@ -726,7 +726,7 @@ function etaOrEval(a: Ast, env: Record<string, unknown>): unknown {
     const fnName = a.name.toUpperCase();
     const fn = (...args: unknown[]): unknown => {
       const r = dispatch(fnName, ...args);
-      return typeof r === "number" ? guardFinite(r, ...args) : r;
+      return typeof r === "number" ? guardFinite(r, args) : r;
     };
     return { __lambda: true, params: [], fn, expr: a.name, eta: true } satisfies LambdaValue;
   }
@@ -847,7 +847,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         if (prep.error !== undefined) return prep.error;
         const r = dispatch(name, ...prep.args.map((a) => (isArr(a) ? a.slice() : a)));
         return typeof r === "number"
-          ? guardFinite(r, ...prep.args.flatMap((a) => (isArr(a) ? a : [a])))
+          ? guardFinite(r, prep.args.flatMap((a) => (isArr(a) ? a : [a])))
           : r;
       }
       return broadcastCall(name, argv, n.args.map((a) => a.t === "blank"));

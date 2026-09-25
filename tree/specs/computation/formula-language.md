@@ -298,7 +298,7 @@ Evaluation is eager. Both operands of every operator and every argument of every
 
 ## Numeric and vendor boundaries
 
-`guardFinite(result, ...inputs)`: a finite result passes; NaN is `#DOMAIN!`; an infinite result is `#OVERFLOW!` unless some input was itself infinite, in which case the infinity passes (a first-class infinity from the Constant node). The operators, range dispatch, broadcast calls and eta calls apply it.
+`guardFinite(result, inputs)`: a finite result passes; NaN is `#DOMAIN!`; an infinite result is `#OVERFLOW!` unless some input was itself infinite, in which case the infinity passes (a first-class infinity from the Constant node). The operators, range dispatch, broadcast calls and eta calls apply it.
 
 Formula.js reports failures as `Error` objects. Inside a formula they stay `Error`s (the error handlers recognize them). `fxErrorToSol` maps one to a `SolError` by the code in its message: `#DIV/0!`, `#N/A`, `#NAME?`, `#REF!`, `#VALUE!` keep their code, `#NULL!` becomes `#VALUE!`, `#NUM!` becomes `#DOMAIN!`, and anything unrecognized is `#VALUE!`. `normalizeFxResult` applies that to a top-level result.
 

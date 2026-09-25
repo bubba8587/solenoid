@@ -71,7 +71,7 @@ function cell(v: unknown): Cell {
   if (isSolError(v)) return v;
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v;
-  return typeof v === "number" ? guardFinite(v, v) : null;
+  return typeof v === "number" ? guardFinite(v, [v]) : null;
 }
 
 // ─── Unit carry over a 1-D list ───────────────────────────────────────────────

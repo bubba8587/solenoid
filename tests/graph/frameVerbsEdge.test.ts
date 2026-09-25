@@ -90,3 +90,21 @@ describe("window over one large partition", () => {
     expect(ranks[6]).toBe(7);
   }, 10_000);
 });
+
+describe("aggregates over one large group", () => {
+  it("never spread the group into a call", () => {
+    const n = 200_000;
+    const f: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "k", type: "string", values: Array.from({ length: n }, () => "a") },
+        { name: "v", type: "number", values: Array.from({ length: n }, (_, i) => i % 7) },
+      ],
+    };
+    const ops = ["sum", "avg", "min", "max", "product", "median", "mode", "stdev", "stdevp", "var", "varp"] as const;
+    const g = groupByFrame(f, ["k"], ops.map((op) => ({ column: "v", op, as: op })));
+    const at = (op: string) => g.columns.find((c) => c.name === op)!.values[0];
+    for (const op of ops) expect(typeof at(op), op).toBe("number");
+    expect([at("sum"), at("min"), at("max"), at("product"), at("median")]).toEqual([599_994, 0, 6, 0, 3]);
+  }, 10_000);
+});

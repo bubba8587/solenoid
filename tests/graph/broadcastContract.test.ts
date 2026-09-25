@@ -115,22 +115,22 @@ describe("broadcastCall / unary / percent — formula-layer broadcasters", () =>
 
 describe("guardFinite — a computation never yields a bare NaN/Infinity", () => {
   it("NaN → #DOMAIN!", () => {
-    const r = guardFinite(NaN, 0, Infinity);
+    const r = guardFinite(NaN, [0, Infinity]);
     expect(isSolError(r) && (r as { code: string }).code).toBe("#DOMAIN!");
   });
   it("±Inf from all-finite inputs → #OVERFLOW!", () => {
-    const r = guardFinite(Infinity, 1e308, 10);
+    const r = guardFinite(Infinity, [1e308, 10]);
     expect(isSolError(r) && (r as { code: string }).code).toBe("#OVERFLOW!");
-    const r2 = guardFinite(-Infinity, 5, 3);
+    const r2 = guardFinite(-Infinity, [5, 3]);
     expect(isSolError(r2) && (r2 as { code: string }).code).toBe("#OVERFLOW!");
   });
   it("±Inf when an INPUT was already infinite → passes through", () => {
-    expect(guardFinite(Infinity, Infinity, 5)).toBe(Infinity);
-    expect(guardFinite(-Infinity, 2, -Infinity)).toBe(-Infinity);
+    expect(guardFinite(Infinity, [Infinity, 5])).toBe(Infinity);
+    expect(guardFinite(-Infinity, [2, -Infinity])).toBe(-Infinity);
   });
   it("a finite result passes through unchanged", () => {
-    expect(guardFinite(42, 6, 7)).toBe(42);
-    expect(guardFinite(0, 0, 0)).toBe(0);
+    expect(guardFinite(42, [6, 7])).toBe(42);
+    expect(guardFinite(0, [0, 0])).toBe(0);
   });
 
   it("Arithmetic node: 10^400 overflows to #OVERFLOW!", () => {

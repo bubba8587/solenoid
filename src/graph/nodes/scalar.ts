@@ -866,7 +866,7 @@ export class SeriesSumNode extends ClassicPreset.Node {
     for (let i = 0; i < coef.length; i++) {
       result += coef[i] * Math.pow(x, n + i * m);
     }
-    this.cachedResult = guardFinite(result, x, n, m, ...coef);
+    this.cachedResult = guardFinite(result, [x, n, m, ...coef]);
     return { result: this.cachedResult };
   }
 }
@@ -897,7 +897,7 @@ export class MultinomialNode extends ClassicPreset.Node {
     const total = ns.reduce((s, v) => s + v, 0);
     const lnResult = lnGamma(total + 1) - ns.reduce((s, v) => s + lnGamma(v + 1), 0);
     const result = Math.round(Math.exp(lnResult));
-    this.cachedResult = guardFinite(result, ...vals);
+    this.cachedResult = guardFinite(result, vals);
     return { result: this.cachedResult };
   }
 }

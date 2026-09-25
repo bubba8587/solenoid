@@ -357,7 +357,7 @@ export function aggregateGroup(values: FrameCell[], op: AggOp, type?: FrameColTy
   if (prep.error) return prep.error;
   const nums = prep.nums;
   if (nums.length === 0) return op === "sum" ? 0 : op === "product" ? 1 : null;
-  if (nums.some((n) => Number.isNaN(n))) return guardFinite(NaN, ...nums);
+  if (nums.some((n) => Number.isNaN(n))) return guardFinite(NaN, nums);
   const r = rawAggregate(nums, op);
   if (r === undefined) throw solError("#NAME?", `Unknown aggregation "${op}"`);
   return guardAgg(r, nums);
@@ -377,14 +377,14 @@ function textExtreme(values: readonly FrameCell[], op: "min" | "max"): FrameCell
 }
 
 function guardAgg(r: number | null, inputs: readonly number[]): FrameCell {
-  return typeof r === "number" ? guardFinite(r, ...inputs) : r;
+  return typeof r === "number" ? guardFinite(r, inputs) : r;
 }
 
 function rawAggregate(nums: readonly number[], op: Exclude<AggOp, "count" | "percentof">): number | null {
   switch (op) {
     case "sum": return nums.reduce((a, b) => a + b, 0);
     case "avg": return nums.reduce((a, b) => a + b, 0) / nums.length;
-    case "min": return nums.reduce((a, b) => (b < a ? b : a));  // reduce, not Math.min(...spread), which overflows the stack on a large group
+    case "min": return nums.reduce((a, b) => (b < a ? b : a));
     case "max": return nums.reduce((a, b) => (b > a ? b : a));
     case "product": return nums.reduce((a, b) => a * b, 1);
     case "median": {
