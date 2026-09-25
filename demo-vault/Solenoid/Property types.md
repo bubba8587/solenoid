@@ -8,7 +8,7 @@ crew:
   - Ana
   - Ben
   - Chidi
-milestones:
+inspections:
   - 2026-09-01
   - 2026-10-15
   - 2026-12-01
@@ -26,7 +26,7 @@ grid:
   - - 4
     - 5
     - 6
-budget:
+purchases:
   - item: Cabinets
     cost: 4200
     ordered: 2026-09-02

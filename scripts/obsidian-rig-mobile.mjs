@@ -2,7 +2,7 @@
 // Runs the rig as a phone: Obsidian's mobile emulation, a phone-sized window, and a coarse pointer with
 // touch, which must share one CDP session, so the steps run in a row. Needs `npm run plugin:rig -- up`.
 //   node scripts/obsidian-rig-mobile.mjs setup 412x915 look Orchard theme light \
-//     note "Solenoid/Property types.md" shot note.png tap budget shot frame.png close teardown
+//     note "Solenoid/Property types.md" shot note.png tap purchases shot frame.png close teardown
 // Steps: setup [WxH] | look <palette> | theme dark|light | note <path> | tap <property> | shot <out.png>
 //   | settings | close | eval '<js>' | teardown.
 import puppeteer from "puppeteer-core";
