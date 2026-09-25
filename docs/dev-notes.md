@@ -6,6 +6,23 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)
+
+- **The demo video is generated, not edited by hand:** `scripts/demo-video/` films the real app in headless Chromium
+  and a real Obsidian running the Solenoid Properties plugin on a virtual display, then cuts it with ffmpeg: captions,
+  title cards, crossfades and a synthesized soundtrack. The Obsidian round trip is filmed live: the plugin's look
+  switched on, a 40-row Frame pasted into a new property, Import Obsidian Note, a Report written back with Write to
+  Obsidian, the note opened in Obsidian. Running and redoing it, and every mechanic that bit:
+  `.claude/skills/demo-video/SKILL.md`. The mp4s live in `.dev/video/` (gitignored).
+- **App fixes it found**, one commit each: opening a Report no longer takes the app down (a hook after an early
+  return); chart value axes write compact ticks in a gutter that fits them; the vault cards gate on `hasFs()` like
+  their nodes; Open in Obsidian on the Write card follows the write, not the shell; a frame's CSV edit types the
+  columns it adds from their values (`columnTypesAfterCsvEdit`, once the block is left or saved from); the demo
+  vault's showcase note no longer retypes every project's `budget` and `milestones` (its keys are `purchases` and
+  `inspections`; the projects' `milestones` is a Frame).
+- **Open:** the Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is
+  shown rigorous). The outbox still lists A1, B1, B2, B3, B7.
+
 ### SESSION DIGEST (2026-09-25: formulas and aggregates at scale and at the edges; author asleep, one check-in)
 
 - **Long lists:** a list past about 125k values no longer throws. `guardFinite(result, inputs)` takes an array (callers
@@ -35,24 +52,3 @@ specific item.
   `AVERAGE(x > 5)` counts); owning SUM waits on it. Backlog "Formula parity leads" holds TEXTAFTER's later arguments,
   SEARCH wildcards, and the author's call on N, T, TYPE and ERROR.TYPE (out of scope, still callable). The outbox
   still lists A1, B1, B2, B3, B7 (left alone per the backlog).
-
-### SESSION DIGEST (2026-09-24b: the review leads closed, and the tree made ratifiable; author present, then remote)
-
-- **Review leads:** every "2026-09-24 review rounds" lead is fixed with a failing test first, or inboxed (units,
-  formulas vs Excel, frames, charts and schedule, stores, documents, engines, composite inner state), plus two
-  rounds of follow-ups. One text-to-number reader everywhere (`decimalFromText`, hex is text, "1,234" is 1234,
-  desktop engine included); the native engine carries error cells with their code; joins on units match 68 °F to
-  20 °C. Full suite 6573 green, tsc clean, `dte validate` and `coverage --check` green.
-- **Tree, the author's rulings:** a leaf is a product call a person could decide, in plain words, following
-  from its parent (A thus B thus C); mechanics, code order and designs are specs (`docs/dte.md` § What is a leaf
-  and what is a spec). "Leaf" means a tree item and "node" an app node. Our `dte-feedback.md` is the input to
-  DTE's next version, and practice here leads the vendored text.
-- **Tree, what stands:** about 190 leaves down to 127. About 70 moved into specs (new
-  `tree/specs/floors/engineering.md`), four duplicates merged, the rules-about-rules (tree home, author-ruled,
-  exceptions, spec-first, comments, wikilinks, outbox, enforcement labels) retired as DTE's job with Solenoid's
-  practice in `docs/dte.md`; 16 leaves reparented to the leaf they follow from; two new B leaves ([[B18]]
-  safeToShare, [[B19]] spreadsheetHabits). Every leaf's Why argues from its parent and its Decision names the
-  rejected option. The author ratified A1, B1, B2, B3, B7 and E10, rewrote A5, A6 and those B leaves in their
-  own words, and removed `made_by`/`by` and `name` (local `tools/dte.py` patch: the name is the first alias).
-- **Open:** the ratification walk continues with the rest of ring B; 34 inbox items; desktop window-close check on
-  the next build (backlog).

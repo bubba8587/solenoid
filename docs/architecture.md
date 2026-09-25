@@ -45,8 +45,10 @@ This file is the map.
 │                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts,
 │                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
 │                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
-│                             #     (pinnable .desktop launchers for the local release + debug apps)
-├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
+│                             #     (pinnable .desktop launchers for the local release + debug apps),
+│                             #     demo-video/ (the demo video: scripted scenes filmed in Chromium and a real
+│                             #     Obsidian, cut with ffmpeg; the demo-video skill runs it)
+├── .claude/                  # Claude Code project config: skills/ (add-node, demo-video), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
 ├── package.json              # JS deps + scripts (dev, build, test, tauri)

@@ -1,0 +1,41 @@
+Date,Category,Vendor,Item,Amount,Paid
+2026-08-03,Cabinets,Northwood Cabinetry,Deposit,1170,TRUE
+2026-08-05,Appliances,Appliance Barn,Range,895,TRUE
+2026-08-05,Appliances,Appliance Barn,Range hood,265,TRUE
+2026-08-10,Countertops,StoneWorks,Template visit,115,TRUE
+2026-08-17,Labor,Sam's Crew,Demolition,665,TRUE
+2026-08-18,Labor,Sam's Crew,Debris haul-away,250,TRUE
+2026-08-20,Plumbing,Harbor Plumbing,Rough-in,500,TRUE
+2026-08-21,Electrical,Brightline Electric,Panel upgrade,765,TRUE
+2026-08-24,Electrical,Brightline Electric,Lighting circuit,320,TRUE
+2026-08-26,Labor,Sam's Crew,Drywall patch,295,TRUE
+2026-08-27,Paint & finish,Hardware Hub,Primer,65,TRUE
+2026-08-31,Flooring,Floor & Co,Oak planks,965,TRUE
+2026-08-31,Flooring,Floor & Co,Underlayment,125,TRUE
+2026-09-02,Plumbing,Harbor Plumbing,Sink,295,TRUE
+2026-09-02,Plumbing,Harbor Plumbing,Faucet,170,TRUE
+2026-09-04,Paint & finish,Hardware Hub,Wall paint,115,TRUE
+2026-09-08,Labor,Sam's Crew,Floor install,560,TRUE
+2026-09-09,Appliances,Appliance Barn,Dishwasher,540,TRUE
+2026-09-11,Electrical,Brightline Electric,Outlets and switches,205,TRUE
+2026-09-14,Cabinets,Hardware Hub,Pulls and hinges,150,TRUE
+2026-09-15,Paint & finish,Hardware Hub,Caulk and filler,25,TRUE
+2026-09-16,Appliances,Appliance Barn,Refrigerator,1155,TRUE
+2026-09-17,Flooring,Floor & Co,Trim and thresholds,100,TRUE
+2026-09-18,Labor,Sam's Crew,Painting,435,TRUE
+2026-09-21,Electrical,Brightline Electric,Under-cabinet lights,225,TRUE
+2026-09-22,Plumbing,Harbor Plumbing,Disposal,135,TRUE
+2026-09-23,Countertops,StoneWorks,Deposit,700,TRUE
+2026-09-24,Paint & finish,Hardware Hub,Cabinet finish,55,TRUE
+2026-09-29,Cabinets,Northwood Cabinetry,Delivery,140,FALSE
+2026-10-01,Cabinets,Northwood Cabinetry,Balance,2030,FALSE
+2026-10-02,Labor,Sam's Crew,Cabinet install,735,FALSE
+2026-10-06,Plumbing,Harbor Plumbing,Final hookup,205,FALSE
+2026-10-08,Countertops,StoneWorks,Quartz balance,1285,FALSE
+2026-10-09,Countertops,StoneWorks,Backsplash tile,330,FALSE
+2026-10-12,Labor,Sam's Crew,Tile install,375,FALSE
+2026-10-14,Electrical,Brightline Electric,Final inspection,95,FALSE
+2026-10-15,Appliances,Appliance Barn,Microwave drawer,405,FALSE
+2026-10-19,Paint & finish,Hardware Hub,Touch-up kit,45,FALSE
+2026-10-21,Labor,Sam's Crew,Final clean,205,FALSE
+2026-10-23,Flooring,Floor & Co,Floor finish,165,FALSE

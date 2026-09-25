@@ -181,6 +181,9 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
   highlighted editor edits a Frame Input column formula.
 - [ ] **`exprYieldsDate` is conservative**: `XLOOKUP` / `MAX` / `MIN` over a date column type the computed column
   Number (their `returns` is "any" / "number"). Extend the declarations if a date-valued lookup column shows up.
+- [ ] **A blank frame's CSV view starts with a blank header line** (`buildText`): a CSV pasted below it makes its
+  header row the first data row, with the columns unnamed. Found filming the demo video (a new Frame property in
+  Obsidian); the author held the behavior until a change is shown rigorous, so the video clicks at the top first.
 
 ## Formula parity leads (2026-09-25 audit against Excel)
 

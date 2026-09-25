@@ -1,0 +1,41 @@
+Date,Region,Product,Units,Revenue
+2026-07-03,West,Lamp,8,480
+2026-07-05,East,Monitor arm,2,240
+2026-07-08,East,Chair,2,450
+2026-07-09,North,Chair,10,2250
+2026-07-10,South,Monitor arm,8,960
+2026-07-13,East,Shelf,10,1800
+2026-07-14,North,Desk,2,900
+2026-07-17,South,Desk,4,1800
+2026-07-20,South,Lamp,4,240
+2026-07-22,North,Desk,6,2700
+2026-07-24,South,Chair,2,450
+2026-07-26,North,Chair,4,900
+2026-07-27,West,Desk,4,1800
+2026-07-28,South,Lamp,1,60
+2026-07-29,West,Desk,1,450
+2026-07-31,East,Chair,6,1350
+2026-08-01,North,Monitor arm,4,480
+2026-08-03,North,Desk,4,1800
+2026-08-04,East,Desk,1,450
+2026-08-05,South,Chair,10,2250
+2026-08-06,North,Chair,2,450
+2026-08-08,North,Shelf,6,1080
+2026-08-09,West,Desk,8,3600
+2026-08-12,West,Chair,3,675
+2026-08-13,West,Chair,12,2700
+2026-08-14,North,Desk,4,1800
+2026-08-16,East,Desk,8,3600
+2026-08-18,North,Chair,3,675
+2026-08-21,North,Monitor arm,5,600
+2026-08-23,North,Monitor arm,12,1440
+2026-08-25,North,Lamp,6,360
+2026-08-26,North,Monitor arm,3,360
+2026-08-29,North,Chair,10,2250
+2026-08-30,South,Shelf,8,1440
+2026-09-02,North,Desk,1,450
+2026-09-03,North,Monitor arm,6,720
+2026-09-05,West,Chair,8,1800
+2026-09-07,West,Monitor arm,2,240
+2026-09-08,South,Chair,12,2700
+2026-09-11,North,Desk,2,900

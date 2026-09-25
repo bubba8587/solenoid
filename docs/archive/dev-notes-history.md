@@ -1,8 +1,31 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-25 (the 09-24 digest, verbatim).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-25b (the 09-24b digest, verbatim).
 
 ---
+
+## Sweep 2026-09-25b — session digest 2026-09-24b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-24b: the review leads closed, and the tree made ratifiable; author present, then remote)
+
+- **Review leads:** every "2026-09-24 review rounds" lead is fixed with a failing test first, or inboxed (units,
+  formulas vs Excel, frames, charts and schedule, stores, documents, engines, composite inner state), plus two
+  rounds of follow-ups. One text-to-number reader everywhere (`decimalFromText`, hex is text, "1,234" is 1234,
+  desktop engine included); the native engine carries error cells with their code; joins on units match 68 °F to
+  20 °C. Full suite 6573 green, tsc clean, `dte validate` and `coverage --check` green.
+- **Tree, the author's rulings:** a leaf is a product call a person could decide, in plain words, following
+  from its parent (A thus B thus C); mechanics, code order and designs are specs (`docs/dte.md` § What is a leaf
+  and what is a spec). "Leaf" means a tree item and "node" an app node. Our `dte-feedback.md` is the input to
+  DTE's next version, and practice here leads the vendored text.
+- **Tree, what stands:** about 190 leaves down to 127. About 70 moved into specs (new
+  `tree/specs/floors/engineering.md`), four duplicates merged, the rules-about-rules (tree home, author-ruled,
+  exceptions, spec-first, comments, wikilinks, outbox, enforcement labels) retired as DTE's job with Solenoid's
+  practice in `docs/dte.md`; 16 leaves reparented to the leaf they follow from; two new B leaves ([[B18]]
+  safeToShare, [[B19]] spreadsheetHabits). Every leaf's Why argues from its parent and its Decision names the
+  rejected option. The author ratified A1, B1, B2, B3, B7 and E10, rewrote A5, A6 and those B leaves in their
+  own words, and removed `made_by`/`by` and `name` (local `tools/dte.py` patch: the name is the first alias).
+- **Open:** the ratification walk continues with the rest of ring B; 34 inbox items; desktop window-close check on
+  the next build (backlog).
 
 ## Sweep 2026-09-25 — session digest 2026-09-24 (moved verbatim from the live window)
 

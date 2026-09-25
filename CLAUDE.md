@@ -89,6 +89,7 @@ invented vocabulary + the author's names for the on-screen chrome).
   The policy is `tree/specs/floors/engineering.md` § Comments. Read it before writing comment prose.
 - Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
   of truth (Add menu + Function Reference generate from it).
+- The demo video is generated: the `demo-video` skill (`scripts/demo-video/`) re-films it after UI changes.
 
 ### Pre-alpha — break freely ([[B7]])
 One user (the author): break old saves, old code, legacy names. No shims, aliases, migration
