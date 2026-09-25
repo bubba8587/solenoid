@@ -4,7 +4,7 @@ import { solError, isSolError, type SolError, type SolErrorCode } from "./errorV
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
 import { criteriaAggregate } from "./excelCriteria";
-import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
+import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, iterMin, iterMax } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
 import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
@@ -105,6 +105,7 @@ export const FUNCTION_FAMILY: Record<string, FuncFamily> = {
   PERMUT: "combinatorics", PERMUTATIONA: "combinatorics", MULTINOMIAL: "combinatorics",
 
   AVERAGE: "statistics", AVERAGEA: "statistics", AVEDEV: "statistics", MEDIAN: "statistics", MODE: "statistics",
+  MIN: "statistics", MAX: "statistics",
   GEOMEAN: "statistics", HARMEAN: "statistics", TRIMMEAN: "statistics",
   STDEV: "statistics", "STDEV.S": "statistics", STDEVP: "statistics", "STDEV.P": "statistics",
   VAR: "statistics", "VAR.S": "statistics", VARP: "statistics", "VAR.P": "statistics",
@@ -355,6 +356,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TRIMMEAN:    { returns: "number", arity: [2, 2], family: "statistics" },
   AVERAGE:     { returns: "number", arity: [1, 255], family: "statistics" },
   AVERAGEA:    { returns: "number", arity: [1, 255], family: "statistics" },
+  MIN:         { returns: "number", arity: [1, 255], family: "statistics" },
+  MAX:         { returns: "number", arity: [1, 255], family: "statistics" },
   AVEDEV:      { returns: "number", arity: [1, 255], family: "statistics" },
   MEDIAN:      { returns: "number", arity: [1, 255], family: "statistics" },
   GEOMEAN:     { returns: "number", arity: [1, 255], family: "statistics" },
@@ -891,6 +894,15 @@ registerInternal("AVERAGEA", (...a) => {
   const cells = a.flatMap((x) => (Array.isArray(x) ? x : [x])).filter((v) => v != null);
   return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isNaN(n) ? 0 : n; }));
 });
+for (const [name, pick] of [["MIN", iterMin], ["MAX", iterMax]] as const) {
+  registerInternal(name, (...a) => {
+    const cells: unknown[] = a.flat(Infinity);
+    const err = cells.find((v) => isSolError(v) || v instanceof Error);
+    if (err !== undefined) return err;
+    const nums = cells.filter((v): v is number => typeof v === "number");
+    return nums.length === 0 ? 0 : pick(nums);
+  });
+}
 const asRange = (v: unknown): unknown[] => (Array.isArray(v) ? v : [v]);
 const ifsPairs = (rest: unknown[]): Array<[unknown[], unknown]> | SolError => {
   if (rest.length === 0 || rest.length % 2 !== 0) return solError("#VALUE!", "Criteria come in range, criterion pairs");

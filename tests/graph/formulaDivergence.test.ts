@@ -131,6 +131,23 @@ describe("PERCENTRANK — linear interpolation + TRUNCATE to sig digits (Excel);
   });
 });
 
+describe("MIN and MAX read a list without spreading it into a call", () => {
+  const long = Array.from({ length: 150_000 }, (_, i) => i);
+  it("a list past the argument limit answers", () => {
+    expect(call("MIN", long, 7)).toBe(0);
+    expect(call("MAX", long)).toBe(149_999);
+  });
+  it("they read numbers only, and no numbers is 0, as Formula.js reads them", () => {
+    expect(call("MAX", [1, "9", true, 3])).toBe(3);
+    expect(call("MIN", ["a"], null)).toBe(0);
+    expect(FX.MAX([1, "9", true, 3])).toBe(3);
+  });
+  it("FX still spreads the list into a call", () => {
+    expect(() => FX.MIN(long)).toThrow(RangeError);
+    expect(() => FX.MAX(long)).toThrow(RangeError);
+  });
+});
+
 // ─── TEXT-family sweep (B-4b, 2026-07-05) — same contract as above: "Excel-correct"
 // blocks pin OUR result; "FX still …" tripwires pin FX's wrong answer so an FX
 // upgrade that fixes one surfaces the override for re-evaluation. ───────────────
