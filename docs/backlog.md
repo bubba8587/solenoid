@@ -34,12 +34,11 @@ warning is expected.
 
 ## Cubes and lists (author 2026-09-26)
 
-- [ ] **The settings sweep ([[D86]] blankRoles, [[input-roles]]).** Declared so far: TAKE, DROP, EXPAND, INDEX, ROUND(UP/DOWN),
-  CHOOSEROWS/COLS, SORT, SORTBY, UNIQUE, TEXTJOIN, XMATCH, XLOOKUP. Give every other function its `ARG_ROLES` entry and every card `inputRoles`
-  (`rolesFrom` its formula twin, or inline), bring the author the list first, then clear the `[decided 2026-09-26]` rows of
-  input-roles' "What each input kind does today". Known cases: Slice's end, Series' count, MAKEARRAY's sizes, TEXTSPLIT's
-  delimiter, Clamp's bounds, as-of tolerance, column references, Slider bounds, Filter's condition value (overturns
-  [[C24]]'s blank-filter consequence).
+- [ ] **The settings sweep ([[D86]] blankRoles, [[input-roles]]).** Declared so far: TAKE, DROP, EXPAND, INDEX,
+  ROUND(UP/DOWN), CHOOSEROWS/COLS, SORT, SORTBY, UNIQUE, TEXTJOIN, XMATCH, XLOOKUP, TEXTSPLIT, TEXTAFTER, TEXTBEFORE.
+  The rest are proposed in `settings-audit.md` for the author's review (judgment calls first). Once ruled, give each
+  function its `ARG_ROLES` entry and each card `inputRoles` (`rolesFrom` its formula twin, or inline), then clear the
+  `[decided 2026-09-26]` rows of input-roles' "What each input kind does today".
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass

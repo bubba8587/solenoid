@@ -100,6 +100,8 @@ is parked there.
   19 computed-column surface → `archive/`); see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in
   `archive/dev-notes-history.md`.
+- **`settings-audit.md`** — the settings sweep's proposed roles for review ([[D86]] blankRoles); archived once
+  the sweep lands.
 - Shipped release views are archived: `archive/release-plan-1.1.md` (the 1.1 cut),
   `archive/1.2-plan.md` (the 1.2 build queue, executed).
 
