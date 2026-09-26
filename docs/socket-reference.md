@@ -1284,7 +1284,7 @@ When the cause is a type mismatch, there are three ways forward:
   `logical` ↔ `number`, which connects directly at every rank.
 - **Wrong direction on the rank ladder** (a list into a scalar, a matrix into a
   list, a frame into a matrix): the value is wider than the port. Reshape
-  explicitly — Get Column, TOCOL, INDEX — rather than expecting the socket to
+  explicitly — Get Column, TOROW, INDEX — rather than expecting the socket to
   narrow. The one narrowing that connects on its own is a **combo** into its own
   family's scalar.
 - **A container into something narrower** (a `cube` into a `frame`, a `frame` into

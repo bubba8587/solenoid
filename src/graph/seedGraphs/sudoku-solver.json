@@ -185,7 +185,7 @@
               "type": "ExpressionNode",
               "init": {
                 "label": "Cells (81×1)",
-                "expr": "TRANSPOSE(TOCOL(grid))"
+                "expr": "TOCOL(grid)"
               },
               "x": 340,
               "y": -380
@@ -277,7 +277,7 @@
               "type": "ExpressionNode",
               "init": {
                 "label": "Cell values",
-                "expr": "TOCOL(MMULT(IF(MMULT(cand,ones)=1, cand, 0), TRANSPOSE(digits)))"
+                "expr": "TOROW(MMULT(IF(MMULT(cand,ones)=1, cand, 0), TRANSPOSE(digits)))"
               },
               "x": 0,
               "y": 380

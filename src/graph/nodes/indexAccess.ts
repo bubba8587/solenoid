@@ -56,13 +56,11 @@ export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: 
     return tag(rowArr[c] ?? null);
   }
 
-  // One index walks the list; with two, it reads along whichever axis names a position past 1 ([[D84]] listEitherAxis).
+  // A list is one row ([[D85]] columnsStayColumns): one index walks along it, as Excel's INDEX does on a one-row
+  // range; with two, the row must be 1 and the column picks the item.
   const arr = v as unknown[];
   const item = (i: number, what: string) => (i < 0 || i >= arr.length ? indexRefError(i + 1, arr.length, what) : arr[i] as unknown);
   if (col === undefined) return rowAll ? [...arr] : item(r, "Item");
-  if (!rowAll && r !== 0) {
-    if (!colAll && c !== 0) return indexRefError(c + 1, 1, "Column");
-    return item(r, "Row");
-  }
+  if (!rowAll && r !== 0) return indexRefError(r + 1, 1, "Row");
   return colAll ? [...arr] : item(c, "Column");
 }

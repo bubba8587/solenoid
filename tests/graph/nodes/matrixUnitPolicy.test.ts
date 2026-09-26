@@ -156,9 +156,9 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
       .toBeUndefined();
   });
 
-  it("convert-to-list: TOCOL / TOROW flatten a grid unit into per-cell list tags", () => {
-    const col = new M.TableReshapeNode({ op: "tocol" }).data({ matrix: [kmGrid()] }).result as unknown[];
-    expect(col.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
+  it("TOCOL keeps the grid unit on its column; TOROW flattens it into per-cell list tags", () => {
+    const col = new M.TableReshapeNode({ op: "tocol" }).data({ matrix: [kmGrid()] }).result;
+    expect(matrixUnitOf(col)).toMatchObject({ display: "km" });
     const row = new M.TableReshapeNode({ op: "torow" }).data({ matrix: [kmGrid()] }).result as unknown[];
     expect(row.every((c) => isUnitCell(c) && (c as UnitCell).display === "km")).toBe(true);
   });

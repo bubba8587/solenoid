@@ -38,7 +38,7 @@ A cable won't connect if the canvas is **locked**, it loops a node into itself, 
 On a type mismatch:
 
 - **Wrong family**, like a date into a number: add a **Cast**. TRUE/FALSE and numbers are the one pair that doesn't need one.
-- **Too wide for the input**, like a List into a single value or a matrix into a List: reshape it with Get Column, TOCOL or INDEX.
+- **Too wide for the input**, like a List into a single value or a matrix into a List: reshape it with Get Column, TOROW or INDEX.
 - **A container into something narrower**, like a Cube into a Frame or a Frame into a matrix: use UNNEST or Get Column.
 
 With Quick-wire on in Settings, dropping a cable on empty canvas opens the Add menu with incompatible nodes dimmed, and picking one connects it to the first compatible input.

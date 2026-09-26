@@ -84,19 +84,19 @@ describe("polyform through the engine", () => {
     expect(disp.cachedValue).toBe("HI");
   });
 
-  it("a text matrix flows MAP → TOCOL → list (the reshaper completes the chain)", async () => {
+  it("a text matrix flows MAP → TOROW → list (the reshaper completes the chain)", async () => {
     const { editor, engine } = makeEditor();
     const table = new TableInputNode({ tableText: "1, 2\n3, 4" });
     const map = new MapTableNode({ expr: '"#" & value', resultAs: "text" });
-    const tocol = new TableReshapeNode({ op: "tocol" });
+    const torow = new TableReshapeNode({ op: "torow" });
     await editor.addNode(table);
     await editor.addNode(map);
-    await editor.addNode(tocol);
-    // MAP emits a `strtable`; TOCOL's `any` input accepts it and flattens it to a
-    // 1-D list of the text values — so the 2-D text result is no longer a dead end.
+    await editor.addNode(torow);
+    // MAP emits a `strtable`; TOROW's `any` input accepts it and flattens it to a
+    // list of the text values ([[D85]] columnsStayColumns: TOCOL would keep a column).
     await connect(editor, table, "table", map, "table");
-    await connect(editor, map, "result", tocol, "matrix");
-    const out = await engine.fetch(tocol.id) as { result: unknown };
+    await connect(editor, map, "result", torow, "matrix");
+    const out = await engine.fetch(torow.id) as { result: unknown };
     expect(out.result).toEqual(["#1", "#2", "#3", "#4"]);
   });
 });

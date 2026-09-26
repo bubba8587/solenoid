@@ -9,6 +9,8 @@ import type {
 } from "../rete-nodes";
 import { isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaSig } from "../nodes/lambda";
 import { processGraph } from "../process";
+import { getActiveEditor, getActiveView } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { formulaPopup } from "../formulaPopupStore";
 import { cableValueStore } from "../cableValueStore";
 import { InlineInputs, useIncomingSources } from "./inlineInput";
@@ -100,15 +102,26 @@ const AXIS_OPTS: ReadonlyArray<{ value: ByAxis; label: string }> = [
   { value: "col", label: "By column" },
 ];
 
+// [[D16]] retypeReconciles: BYROW answers a one-column table and BYCOL a list, so the switch retypes the output.
 export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: ByAxis) {
+    if (!data.setOp(next)) return;
+    const editor = getActiveEditor();
+    const view = getActiveView();
+    if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
+    setOpField(next);
+  }
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
-      <OpSelect value={op} onChange={setOp} options={AXIS_OPTS} />
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={AXIS_OPTS} />
       <FormulaBox node={data} />
-      <ResultTypeToggle node={data} dim="combo" />
-      <ValueDisplay value={data.cachedResult as ListVal} />
+      <ResultTypeToggle node={data} dim={data.resultDim} />
+      {op === "row"
+        ? <TableDisplay table={data.cachedResult as (number | string | null)[][] | null} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
+        : <ValueDisplay value={data.cachedResult as ListVal} />}
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );

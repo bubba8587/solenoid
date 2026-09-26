@@ -369,7 +369,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
 
     const tbl = new ClassicPreset.Node("StrTable");
     tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
-    const flat = new TableReshapeNode({ op: "tocol" });
+    const flat = new TableReshapeNode({ op: "torow" });
     const flatKey = Object.keys(flat.inputs)[0];
     reconcileTrueAnyTypes(makeEditor([tbl, flat], [
       { source: tbl.id, sourceOutput: "out", target: flat.id, targetInput: flatKey },

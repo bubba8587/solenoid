@@ -671,8 +671,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   EXPAND:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
   WRAPROWS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   WRAPCOLS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
-  TOCOL:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  TOROW:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  TOCOL:      { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  TOROW:      { returns: "any", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
 
   UNIQUE:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
@@ -687,7 +687,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
 
   LAMBDA:    { returns: "number", listArgs: true, arity: [1, 255], native: true },
   MAP:       { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
-  BYROW:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
+  BYROW:     { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
   BYCOL:     { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 2], native: true },
   REDUCE:    { returns: "number", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
   SCAN:      { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [3, 3], native: true },
@@ -1792,13 +1792,14 @@ registerInternal("WRAPCOLS", (list, w, padWith) => {
   const width = wrapCount(Number(w), "WRAPCOLS");
   return isSolError(width) ? width : wrapCells(toList(list), width, "cols", wrapPad(padWith, "column"));
 });
+// [[D85]] columnsStayColumns: TOCOL is a one-column table, TOROW a list (a row); both read row by row, as Excel's do.
 registerInternal("TOCOL", (v) => {
   const m = toMatrix(v);
-  return m === null ? null : m.flat();
+  return m === null ? null : m.flat().map((x) => [x]);
 });
 registerInternal("TOROW", (v) => {
   const m = toMatrix(v);
-  return m === null ? null : matTranspose(m).flat();
+  return m === null ? null : m.flat();
 });
 registerInternal("SEQUENCE", (rows, cols, start, step) => {
   if (rows == null) return null;
@@ -1927,7 +1928,8 @@ registerInternal("BYROW", (v, fn) => {
   if (isSolError(lam)) return lam;
   const m = asRows(v);
   const call = etaFn(lam, 1);
-  return m === null ? null : m.map((row) => call([...row]));
+  // One answer per row, as a column beside the rows it came from ([[D85]] columnsStayColumns).
+  return m === null ? null : m.map((row) => [call([...row])]);
 });
 registerInternal("BYCOL", (v, fn) => {
   const lam = needLambda(fn, "BYCOL");
@@ -1982,8 +1984,7 @@ registerInternal("MAKEARRAY", (rows, cols, fn) => {
   if (r * c > MAX_GENERATED) {
     return solError("#OVERFLOW!", `MAKEARRAY count ${r * c} exceeds the ${MAX_GENERATED} element limit`);
   }
-  const out = Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => lam.fn(i + 1, j + 1)));
-  return c === 1 && r > 0 ? out.map((row) => row[0]) : out;
+  return Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => lam.fn(i + 1, j + 1)));
 });
 
 registerInternal("GROUPBY", (keys, values, fn) => {

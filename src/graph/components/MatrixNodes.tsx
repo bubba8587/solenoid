@@ -14,6 +14,7 @@ import type {
   ExpandNode as ExpandNodeType,
   TableInfoNode as TableInfoNodeType,
 } from "../rete-nodes";
+import { dropInputCables } from "./cablePrune";
 import {
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META, STACK_OP_META,
 } from "../rete-nodes";
@@ -147,14 +148,25 @@ const RESHAPE_OPS = (Object.keys(TABLE_RESHAPE_OP_META) as TableReshapeOp[]).map
   value: op, label: TABLE_RESHAPE_OP_META[op].label,
 }));
 
+// [[D16]] retypeReconciles: the wrap ops and the flatten ops have different sockets, so the switch reshapes the card.
 export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
-  const isWrap = op === "wraprows" || op === "wrapcols";
+  const [op, setOpField] = useNodeField(data, "op");
+  async function pickOp(next: TableReshapeOp) {
+    if (next === data.op) return;
+    const departing = data.keysDroppedBySwitch(next);
+    if (departing.length > 0) await dropInputCables(data.id, departing);
+    const { outputChanged } = data.setOp(next);
+    const editor = getActiveEditor();
+    const view = getActiveView();
+    if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
+    setOpField(next);
+  }
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={RESHAPE_OPS} />
-      {isWrap
+      <OpSelect value={op} onChange={(o) => void pickOp(o)} options={RESHAPE_OPS} />
+      {op !== "torow"
         ? <TableDisplay table={data.cachedMatrix} label={nodeDisplayName(data)} elem="number" />
         : /* flattened list is homogeneous at runtime (matches the input's element
              type); ValueDisplay branches number-vs-text on the first cell. */

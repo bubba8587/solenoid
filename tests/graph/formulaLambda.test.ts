@@ -109,7 +109,8 @@ describe("each host computes what its node computes ([[C17]] shareImpl)", () => 
     const node = new MakeArrayNode({ expr: "row * 10 + col", literals: { rows: 2, cols: 3 } });
     expect(ev("MAKEARRAY(2, 3, LAMBDA(row, col, row * 10 + col))"))
       .toEqual(node.data({}).result);
-    expect(ev("MAKEARRAY(3, 1, LAMBDA(r, c, r))")).toEqual([1, 2, 3]);
+    // [[D85]] columnsStayColumns: one column stays a column.
+    expect(ev("MAKEARRAY(3, 1, LAMBDA(r, c, r))")).toEqual([[1], [2], [3]]);
     expect(code(ev("MAKEARRAY(2000, 2000, LAMBDA(r, c, r))"))).toBe("#OVERFLOW!");
   });
 
@@ -151,7 +152,7 @@ describe("eta-lambdas and application — the recorded deviations, closed", () =
   // MEANINGFUL arity only (etaFn): a raw SQRT never sees MAP's row/col tuple.
   it("eta: a bare function name in a host's fn slot", () => {
     expect(ev("MAP(x, SQRT)", { x: [1, 4, 9] })).toEqual([1, 2, 3]);
-    expect(ev("BYROW(m, SUM)", { m: M })).toEqual([3, 7]);
+    expect(ev("BYROW(m, SUM)", { m: M })).toEqual([[3], [7]]);
     expect(ev("BYCOL(m, MAX)", { m: M })).toEqual([3, 4]);
     expect(ev("REDUCE(0, x, SUM)", { x: [1, 2, 3, 4] })).toBe(10);
     expect(ev("SCAN(0, x, SUM)", { x: [1, 2, 3] })).toEqual([1, 3, 6]);

@@ -401,8 +401,8 @@ export type TableReshapeOp = "wraprows" | "wrapcols" | "tocol" | "torow";
 export const TABLE_RESHAPE_OP_META = {
   wraprows: { label: "WRAPROWS", description: "Wraps a list into a table row-by-row. Each row has `Wrap_count` values. Excel: `WRAPROWS`." },
   wrapcols: { label: "WRAPCOLS", description: "Wraps a list into a table column-by-column. Each column has `Wrap_count` values. Excel: `WRAPCOLS`." },
-  tocol:    { label: "TOCOL",    description: "Flatten a table to a 1D list, reading row by row. Excel: `TOCOL`." },
-  torow:    { label: "TOROW",    description: "Flatten a table to a 1D list, reading column by column. Excel: `TOROW`." },
+  tocol:    { label: "TOCOL",    description: "Stacks a table's cells into one column, reading row by row. Excel: `TOCOL`." },
+  torow:    { label: "TOROW",    description: "Lines a table's cells up in one list, reading row by row. Excel: `TOROW`." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {
@@ -429,17 +429,38 @@ export class TableReshapeNode extends ClassicPreset.Node {
     super("TableReshape");
     this.op    = init?.op    ?? "wraprows";
     this.label = init?.label ?? "";
-    const wraps = this.op === "wraprows" || this.op === "wrapcols";
-    if (wraps) {
-      this.addInput("list",      anyListIn("List"));
-      this.addInput("wrapCount", numIn("Wrap count"));
-      this.addInput("fill",      anyIn("Fill"));
-      this.addOutput("result", adoptiveTableOut("Table"));
-      this.height = 235;
-    } else {
-      this.addInput("matrix", anyTableIn("Matrix"));
-      this.addOutput("result", adoptiveListOut("List"));
-    }
+    for (const k of TableReshapeNode.inputKeysFor(this.op)) this.addInput(k, TableReshapeNode.inputFor(k));
+    this.addOutput("result", TableReshapeNode.outputFor(this.op));
+    if (this.op === "wraprows" || this.op === "wrapcols") this.height = 235;
+  }
+
+  static inputKeysFor(op: TableReshapeOp): string[] {
+    return op === "wraprows" || op === "wrapcols" ? ["list", "wrapCount", "fill"] : ["matrix"];
+  }
+  static inputFor(key: string) {
+    return key === "list" ? anyListIn("List") : key === "wrapCount" ? numIn("Wrap count") : key === "fill" ? anyIn("Fill") : anyTableIn("Matrix");
+  }
+  /** TOROW answers a list (a row); every other op a table, TOCOL's with one column ([[D85]] columnsStayColumns). */
+  static outputFor(op: TableReshapeOp) {
+    return op === "torow" ? adoptiveListOut("List") : op === "tocol" ? adoptiveTableOut("Column") : adoptiveTableOut("Table");
+  }
+
+  keysDroppedBySwitch(next: TableReshapeOp): string[] {
+    const keep = new Set(TableReshapeNode.inputKeysFor(next));
+    return Object.keys(this.inputs).filter((k) => !keep.has(k));
+  }
+
+  /** Reshapes in place and fires no connection event: the caller prunes the departing inputs' cables before and retypes the output's after. */
+  setOp(next: TableReshapeOp): { outputChanged: boolean } {
+    if (next === this.op) return { outputChanged: false };
+    const before = TableReshapeNode.outputFor(this.op).socket;
+    this.op = next;
+    for (const k of this.keysDroppedBySwitch(next)) this.removeInput(k);
+    for (const k of TableReshapeNode.inputKeysFor(next)) if (!this.inputs[k]) this.addInput(k, TableReshapeNode.inputFor(k));
+    const spec = TableReshapeNode.outputFor(next);
+    this.outputs.result!.socket = spec.socket;
+    this.outputs.result!.label = spec.label;
+    return { outputChanged: spec.socket !== before };
   }
 
   data(inputs: { list?: unknown[]; wrapCount?: number[]; fill?: unknown[]; matrix?: unknown[] }) {
@@ -473,12 +494,14 @@ export class TableReshapeNode extends ClassicPreset.Node {
     } else if (this.op === "tocol") {
       const m = toAnyMatrix(inputs.matrix?.[0]);
       if (!m) return { result: null };
-      this.cachedList = taggedListFromMatrix(m.flat(), matrixUnitOf(m)) as Cell[];
-      return { result: this.cachedList };
+      const col: CellMat = m.flat().map((x) => [x as Cell]);
+      withMatrixUnit(col, matrixUnitOf(m));
+      this.cachedMatrix = col;
+      return { result: col };
     } else {
       const m = toAnyMatrix(inputs.matrix?.[0]);
       if (!m) return { result: null };
-      this.cachedList = taggedListFromMatrix(matTranspose(m).flat(), matrixUnitOf(m)) as Cell[];
+      this.cachedList = taggedListFromMatrix(m.flat(), matrixUnitOf(m)) as Cell[];
       return { result: this.cachedList };
     }
   }

@@ -178,11 +178,17 @@ describe("MAP — text & date matrices", () => {
 describe("BYROW / REDUCE / MAKEARRAY — text", () => {
   it("BYROW joins each row to a string", () => {
     const n = new ByAxisNode({ expr: 'TEXTJOIN(",", FALSE, values)', resultAs: "text" });
-    expect(n.data({ table: [[["a", "b"], ["c", "d"]]] }).result).toEqual(["a,b", "c,d"]);
+    expect(n.data({ table: [[["a", "b"], ["c", "d"]]] }).result).toEqual([["a,b"], ["c,d"]]);
   });
 
-  it("BYROW output socket is the text combo", () => {
-    expect(dt(new ByAxisNode({ resultAs: "text" }).outputs.result?.socket)).toBe("strcombo");
+  // [[D85]] columnsStayColumns: BYROW answers a one-column table, BYCOL a list.
+  it("BYROW's output socket is the text table, BYCOL's the text combo, and the switch retypes it", () => {
+    const n = new ByAxisNode({ resultAs: "text" });
+    expect(dt(n.outputs.result?.socket)).toBe("strtable");
+    expect(dt(new ByAxisNode({ resultAs: "text", op: "col" }).outputs.result?.socket)).toBe("strcombo");
+    expect(n.setOp("col")).toBe(true);
+    expect(dt(n.outputs.result?.socket)).toBe("strcombo");
+    expect(n.outputs.result?.label).toBe("Per column");
   });
 
   it("REDUCE concatenates from a wired text initial", () => {

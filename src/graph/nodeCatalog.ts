@@ -1006,7 +1006,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "map-table",  label: "MAP",       description: "Applies a formula to every cell of up to three tables of the same shape. `value`, `value2` and `value3` are each table's cell, and `row` and `col` are its 1-based position; a single value in `value2` or `value3` is repeated to fit. Set Result type for text or dates. Excel: `MAP`.", create: () => new MapTableNode(),  parity: false },
           { type: "pair", children: [
-            { type: "by-axis",    label: "BYROW", description: "Reduces each row or column of a table to one value. Variable `v` = the row or column as a list. Pick the result type for text or date. Excel: `BYROW`.", create: () => new ByAxisNode(), parity: false },
+            { type: "by-axis",    label: "BYROW", description: "Reduces each row of a table to one value in a column, or each column to one value in a list. Variable `values` = the row or column as a list. Pick the result type for text or date. Excel: `BYROW`.", create: () => new ByAxisNode(), parity: false },
             { type: "by-col",    label: "BYCOL", description: "Reduces each row or column of a table to one value. Variable `v` = the row or column as a list. Pick the result type for text or date. Excel: `BYCOL`.", create: () => new ByAxisNode({ op: "col" }), parity: false },
           ]},
           { type: "make-array", label: "MAKEARRAY", description: "A rows×cols table from a formula of its indices, `row` and `col` 1-based. Pick the result type for text or date. Excel: `MAKEARRAY`.", create: () => new MakeArrayNode(), parity: false },

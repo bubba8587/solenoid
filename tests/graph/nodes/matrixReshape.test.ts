@@ -25,10 +25,26 @@ describe("reshapers are element-polymorphic", () => {
     ]);
   });
 
-  it("TOCOL flattens a text matrix to a 1-D list (the MAP→column link)", () => {
-    const n = new TableReshapeNode({ op: "tocol" });
-    expect(dt(n.outputs.result?.socket)).toBe("anylist"); // 1-D, untyped element
-    expect(n.data({ matrix: [[["Jo"], ["Di"]]] }).result).toEqual(["Jo", "Di"]);
+  // [[D85]] columnsStayColumns: TOCOL is a one-column table, TOROW a list; both read row by row, as Excel's do.
+  it("TOCOL stacks a text matrix into one column; TOROW lines it up as a list", () => {
+    const col = new TableReshapeNode({ op: "tocol" });
+    expect(dt(col.outputs.result?.socket)).toBe("anytable");
+    expect(col.data({ matrix: [[["a", "b"], ["c", "d"]]] }).result).toEqual([["a"], ["b"], ["c"], ["d"]]);
+    const row = new TableReshapeNode({ op: "torow" });
+    expect(dt(row.outputs.result?.socket)).toBe("anylist");
+    expect(row.data({ matrix: [[["a", "b"], ["c", "d"]]] }).result).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("switching between a wrap op and a flatten op reshapes the card's sockets", () => {
+    const n = new TableReshapeNode({ op: "wraprows" });
+    expect(n.keysDroppedBySwitch("torow").sort()).toEqual(["fill", "list", "wrapCount"]);
+    expect(n.setOp("torow")).toEqual({ outputChanged: true });
+    expect(Object.keys(n.inputs)).toEqual(["matrix"]);
+    expect(dt(n.outputs.result?.socket)).toBe("anylist");
+    expect(n.setOp("tocol")).toEqual({ outputChanged: true });
+    expect(dt(n.outputs.result?.socket)).toBe("anytable");
+    n.setOp("wrapcols");
+    expect(Object.keys(n.inputs)).toEqual(["list", "wrapCount", "fill"]);
   });
 
   it("WRAPROWS builds a text matrix from a text list", () => {

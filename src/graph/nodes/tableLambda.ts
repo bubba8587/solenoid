@@ -1,6 +1,6 @@
 // [[C13]], [[C50]]
 import { ClassicPreset } from "rete";
-import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType } from "./shared";
+import { numIn, anyIn, anyTableIn, lambdaIn, resultOut, readInput, type ResultType, type ResultDim } from "./shared";
 import { toAnyMatrix } from "./coerce";
 import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } from "../excelFormula";
 import { isLambdaValue, type LambdaValue } from "./lambda";
@@ -211,14 +211,19 @@ export class MapTableNode extends ClassicPreset.Node {
 export type ByAxis = "row" | "col";
 export const BY_AXIS_OP_META: Record<ByAxis, { label: string }> = { row: { label: "BYROW" }, col: { label: "BYCOL" } };
 
+/** BYROW answers a one-column table beside the rows it came from, BYCOL a list ([[D85]] columnsStayColumns). */
 export class ByAxisNode extends ClassicPreset.Node {
+  static dimFor(op: ByAxis): ResultDim { return op === "row" ? "matrix" : "combo"; }
+  static labelFor(op: ByAxis): string { return op === "row" ? "Per row" : "Per column"; }
+  get resultDim(): ResultDim { return ByAxisNode.dimFor(this.op); }
+
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
   unitAware = true;
   label: string;
   op: ByAxis;
   resultAs: ResultType;
   stringLiterals: Record<string, string>;
-  cachedResult: (Cell | UnitCell)[] | SolError | null = null;
+  cachedResult: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null = null;
   cachedError: string | null = null;
   readonly lambdaSig = { vars: ["values"], required: 1 };
   width = 210;
@@ -232,10 +237,20 @@ export class ByAxisNode extends ClassicPreset.Node {
     this.stringLiterals = { formula: init?.expr ?? "SUM(values)" };
     this.addInput("table", anyTableIn("Table"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Per-" + this.op, "combo", this.resultAs));
+    this.addOutput("result", resultOut(ByAxisNode.labelFor(this.op), ByAxisNode.dimFor(this.op), this.resultAs));
   }
 
-  data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | SolError | null } {
+  /** Retypes the output in place and fires no connection event, so the component follows with retypeOutputCables. */
+  setOp(next: ByAxis): boolean {
+    if (next === this.op) return false;
+    this.op = next;
+    const spec = resultOut(ByAxisNode.labelFor(next), ByAxisNode.dimFor(next), this.resultAs);
+    this.outputs.result!.socket = spec.socket;
+    this.outputs.result!.label = spec.label;
+    return true;
+  }
+
+  data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | (Cell | UnitCell)[][] | SolError | null } {
     const m = toAnyMatrix(inputs.table?.[0]);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
@@ -257,9 +272,10 @@ export class ByAxisNode extends ClassicPreset.Node {
         if (isSolError(point)) { this.cachedResult = point; this.cachedError = null; return { result: point }; }
         out = out.map((c) => retagFold(c as Cell, dr, elem, fu, point));
       }
-      this.cachedResult = out;
+      const shaped = this.op === "row" ? out.map((c) => [c]) : out;
+      this.cachedResult = shaped;
       this.cachedError = null;
-      return { result: out };
+      return { result: shaped };
     } catch {
       this.cachedResult = null;
       this.cachedError = "Evaluation error";
