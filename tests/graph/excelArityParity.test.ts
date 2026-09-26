@@ -14,10 +14,8 @@ const KNOWN_SHORT: Record<string, string> = {
   ODDLPRICE: "no day-count basis argument yet",
   ODDLYIELD: "no day-count basis argument yet",
   GROUPBY: "field_headers, total_depth, sort_order, filter_array and field_relationship are not built",
-  GROWTH: "const (forcing the fit through b = 1) is not built",
-  TREND: "const (forcing the fit through the origin) is not built",
-  LINEST: "const and stats are not built",
-  LOGEST: "const and stats are not built",
+  LINEST: "answers [slope, intercept, R²], not Excel's row; const and stats wait on that shape",
+  LOGEST: "answers [m, b] as a list; const and stats wait on the same call as LINEST",
   MAP: "the LAMBDA takes each cell's row and column after up to three arrays' cells, so more arrays would collide",
 };
 
@@ -85,5 +83,16 @@ describe("VDB's no_switch", () => {
     expect(ev("VDB(1000, 0, 5, 4, 5, 2)")).toBeCloseTo(108, 6);
     expect(ev("VDB(1000, 0, 5, 4, 5, 2, TRUE)")).toBeCloseTo(51.84, 6);
     expect(ev("VDB(1000, 0, 5, 0, 1, 2, TRUE)")).toBeCloseTo(400, 6);
+  });
+});
+
+describe("TREND and GROWTH's const", () => {
+  it("FALSE forces b = 0 for TREND and b = 1 for GROWTH", () => {
+    const ev = (e: string, env: Record<string, unknown>) => compileEvaluator(e)!(env);
+    const xs = [1, 2, 3], ys = [2, 4, 7];
+    expect(ev("TREND(y, x, n, FALSE)", { y: ys, x: xs, n: [4] }) as number[]).toEqual([(31 / 14) * 4].map((v) => expect.closeTo(v, 9)));
+    expect((ev("TREND(y, x, n)", { y: ys, x: xs, n: [0] }) as number[])[0]).toBeCloseTo(-2 / 3, 9);
+    const g = ev("GROWTH(y, x, n, FALSE)", { y: [2, 4, 8], x: xs, n: [4] }) as number[];
+    expect(g[0]).toBeCloseTo(Math.exp(((Math.log(2) + 2 * Math.log(4) + 3 * Math.log(8)) / 14) * 4), 9);
   });
 });

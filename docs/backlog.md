@@ -49,7 +49,7 @@ warning is expected.
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Functions short of Excel's signature** (the parity check, `excelArityParity.test.ts`, lists each with its reason): the
   day-count `basis` on PRICE, YIELD and the four odd-coupon functions; GROUPBY's five trailing options;
-  TREND and GROWTH's const, LINEST and LOGEST's const and stats; MAP past three arrays. TEXTAFTER, TEXTBEFORE and
+  LINEST and LOGEST's const and stats (their answer's shape first: Excel's is a row, or a 5 × 2 grid with stats); MAP past three arrays. TEXTAFTER, TEXTBEFORE and
   TEXTSPLIT read one delimiter, not Excel's array of them (formula-language § the text kernels). The reference (`fixtures/excelArity.ts`) covers the registered Excel names that declare an arity.
 - [ ] **List Sort and List Filter names** (author to rule): both take tables now; rename to Sort / Filter beside Frame Sort
   and Frame Filter, or keep the "List" names.

@@ -266,8 +266,8 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   "MODE.MULT": "number1, [number2], …",
   FREQUENCY: "data_array, bins_array",
   INTERPOLATE: "known_ys, [known_xs], [new_xs]",
-  TREND: "known_ys, [known_xs], [new_xs]",
-  GROWTH: "known_ys, [known_xs], [new_xs]",
+  TREND: "known_ys, [known_xs], [new_xs], [const]",
+  GROWTH: "known_ys, [known_xs], [new_xs], [const]",
   LINEST: "known_ys, [known_xs]",
   LOGEST: "known_ys, [known_xs]",
   // ── distributions ──

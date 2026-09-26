@@ -39,6 +39,8 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   SORTBY: Object.fromEntries(Array.from({ length: 127 }, (_, k) => [2 + 2 * k, setting(LEFT_OUT)])),
   UNIQUE: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT) },
   VDB: { 5: setting(LEFT_OUT), 6: setting(false) },
+  TREND: { 3: setting(LEFT_OUT) },
+  GROWTH: { 3: setting(LEFT_OUT) },
   TEXTSPLIT: { 2: setting(LEFT_OUT), 3: setting(false), 4: setting(0), 5: setting(LEFT_OUT) },
   TEXTAFTER: { 2: setting(LEFT_OUT), 3: setting(0), 4: setting(0), 5: setting(LEFT_OUT) },
   TEXTBEFORE: { 2: setting(LEFT_OUT), 3: setting(0), 4: setting(0), 5: setting(LEFT_OUT) },

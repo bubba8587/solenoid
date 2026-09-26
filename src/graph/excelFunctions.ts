@@ -742,8 +742,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   QUADRATICROOTS: { returns: "complex", rank: "list", listArgs: true, arity: [3, 3], family: "complex", native: true },
   POLYROOTS:      { returns: "complex", rank: "list", listArgs: true, arity: [1, 1], family: "complex", native: true },
 
-  TREND:  { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
-  GROWTH: { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
+  TREND:  { returns: "number", rank: "list", listArgs: true, arity: [1, 4], family: "statistics" },
+  GROWTH: { returns: "number", rank: "list", listArgs: true, arity: [1, 4], family: "statistics" },
   LINEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
   LOGEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
 };
@@ -2183,22 +2183,41 @@ function regressionTargets(target: unknown): number[] | SolError {
   return list.filter((v): v is number => v !== null).map(Number);
 }
 
-registerInternal("TREND", (ys, xs, newXs) => {
+/** Least squares through the origin, Excel's const = FALSE: slope = Σxy / Σx². */
+const slopeThroughOrigin = (xs: readonly number[], ys: readonly number[]): number | null => {
+  let sxy = 0, sxx = 0;
+  for (let i = 0; i < xs.length; i++) { sxy += xs[i] * ys[i]; sxx += xs[i] * xs[i]; }
+  return xs.length > 0 && sxx > 0 ? sxy / sxx : null;
+};
+registerInternal("TREND", (ys, xs, newXs, konst) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
   const targets = regressionTargets(newXs == null ? (xs ?? pair.xs) : newXs);
   if (isSolError(targets)) return targets;
-  const fit = targets.length > 0 ? linearFit(pair.xs, pair.ys) : null;
+  if (targets.length === 0) return [];
+  // const FALSE forces b = 0, as Excel's TREND does.
+  if (konst != null && !isTrue(konst)) {
+    const m = slopeThroughOrigin(pair.xs, pair.ys);
+    return m == null ? [] : targets.map((x) => m * x);
+  }
+  const fit = linearFit(pair.xs, pair.ys);
   return fit ? targets.map((x) => fit.intercept + fit.slope * x) : [];
 });
-registerInternal("GROWTH", (ys, xs, newXs) => {
+registerInternal("GROWTH", (ys, xs, newXs, konst) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
   const targets = regressionTargets(newXs == null ? (xs ?? pair.xs) : newXs);
   if (isSolError(targets)) return targets;
-  const fit = targets.length > 0 ? expFit(pair.xs, pair.ys) : null;
+  if (targets.length === 0) return [];
+  // const FALSE forces b = 1, so ln y = x·ln m is fit through the origin, as Excel's GROWTH does.
+  if (konst != null && !isTrue(konst)) {
+    if (pair.ys.some((y) => !(y > 0))) return [];
+    const lnM = slopeThroughOrigin(pair.xs, pair.ys.map(Math.log));
+    return lnM == null ? [] : targets.map((x) => Math.exp(lnM * x));
+  }
+  const fit = expFit(pair.xs, pair.ys);
   return fit ? targets.map((x) => fit.b * Math.pow(fit.m, x)) : [];
 });
 registerInternal("LINEST", (ys, xs) => {
