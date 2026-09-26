@@ -40,6 +40,11 @@ specific item.
   signatures; on a list SORT and UNIQUE change nothing without by_col. List Sort (Rows / Columns, key rows with their own
   order), List Filter (a table's rows tested on one Column) and UNIQUE (Rows / Columns, Only singles) take `anydata`, so a
   list stays a list. Kernels `sortGrid`, `sortGridByKeys`, `filterGrid`, `uniqueGrid`.
+- **Excel-signature parity** ([[A5]] excelParity): `excelArityParity.test.ts` checks every registered Excel name's arity
+  against Excel's (`fixtures/excelArity.ts`); the ones still short are listed with a reason and the list only shrinks.
+  Filled in the author's absence: MODE.MULT's several ranges; TEXTSPLIT's row delimiter, ignore_empty, match_mode and
+  pad_with; TEXTAFTER / TEXTBEFORE's instance_num, match_mode, match_end and if_not_found; VDB's no_switch; TREND and
+  GROWTH's const. `settings-audit.md` proposes the settings sweep's roles for review.
 - **Socket labels** carry no parentheticals: "(1-based)" moved to the Inspector's socket notes ([[C19]] namingModel, the
   author's words); the rest are a backlog sweep.
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
@@ -47,8 +52,7 @@ specific item.
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); the settings sweep (backlog, [[D86]];
-  twelve functions declared); whether List Sort and List Filter keep their names now they take tables; the Cubes and
+- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); the settings sweep (review `settings-audit.md` first); whether List Sort and List Filter keep their names now they take tables; the Cubes and
   lists section of the backlog, next up a blank in a typed list literal; an Excel-signature parity check (backlog); the
   plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The
   outbox is empty.
