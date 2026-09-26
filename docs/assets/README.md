@@ -10,3 +10,6 @@ theme). Replace in place to refresh; keep the filenames stable so the README kee
 
 Optional additions if you want to grow the gallery later: a Format Controller unit
 chain (Unit Flow seed) and a Cube drill-in popup (Cubes seed).
+
+`issue-3/` holds the screenshots linked from the reply on issue #3 (XY plots). The reply links them by
+commit, so the folder can be deleted without breaking it.

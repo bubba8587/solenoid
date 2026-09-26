@@ -791,8 +791,10 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   let yDomain: [number | string, number | string] = [opts?.ymin ?? "auto", opts?.ymax ?? "auto"];
   let xTicks: number[] | undefined = xcats && xcats.length <= ALL_TICKS_UPTO ? xcats.map((_, i) => i) : undefined;
   let yTicks: number[] | undefined;
+  const pw = width - yAxisW - margin.left - margin.right, ph = chartH - margin.top - margin.bottom - xAxisH;
+  if (!xcats && opts?.xmin !== undefined && opts?.xmax !== undefined) xTicks = niceTicks(opts.xmin, opts.xmax, Math.max(3, Math.round(pw / 60)));
+  if (opts?.ymin !== undefined && opts?.ymax !== undefined) yTicks = niceTicks(opts.ymin, opts.ymax, Math.max(3, Math.round(ph / 40)));
   if (opts?.aspect === "equal" && !xcats) {
-    const pw = width - yAxisW - margin.left - margin.right, ph = chartH - margin.top - margin.bottom - xAxisH;
     const eq = equalDomains(ext(pts.map((p) => p.x), opts?.xmin, opts?.xmax), ext(pts.map((p) => p.y), opts?.ymin, opts?.ymax), pw, ph);
     xDomain = eq.x;
     yDomain = eq.y;
