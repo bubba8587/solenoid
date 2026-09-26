@@ -15,6 +15,7 @@ describe("SPARKLINE", () => {
     const svg = svgOf(r);
     expect(svg.match(/<path/g)).toHaveLength(1);
     expect(svg).toContain("fill='none'");
+    expect(svg).toContain("#f5b914");
   });
 
   it("draws columns and a two-color win/loss strip", () => {

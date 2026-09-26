@@ -41,7 +41,7 @@ export const SPARKLINE_OPS: readonly SparklineOp[] = ["line", "column", "winloss
 export const SPARKLINE_MAX_POINTS = 40;
 const SPARK_W = 80;
 const SPARK_H = 20;
-const SPARK_COLOR = { line: "#3173e0", pos: "#00b862", neg: "#e0473a" } as const;
+const SPARK_COLOR = { line: "#f5b914", pos: "#00b862", neg: "#e0473a" } as const;
 
 /** The numbers in order, averaged into `SPARKLINE_MAX_POINTS` buckets past the cap; anything else is skipped. */
 export function sparklineSeries(values: readonly unknown[]): number[] {

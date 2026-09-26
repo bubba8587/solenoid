@@ -9,7 +9,7 @@ specific item.
 ### SESSION DIGEST (2026-09-26: SPARKLINE and typed Cube columns; author present)
 
 - **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text: line, column or win/loss, the
-  Sparkline node's types, averaged down to 40 points past that ([[D82]] sparklineCell). A text cell holding a
+  Sparkline node's types in the Default gold (win/loss in green and vermilion), averaged down to 40 points past that ([[D82]] sparklineCell). A text cell holding a
   `data:image` picture shows as the picture in the Frame and Cube cards and popups ([[D83]] imageTextCells).
 - **Typed Cube columns** ([[D80]] cubeColumnTypes): Cube Input's root header has the type button (None, Number, Text,
   Date, Boolean, Formula). A type overrides every kind in the column: scalars read as Frame cells (NaN when unreadable),
@@ -24,7 +24,7 @@ specific item.
 - **INDEX on a list** now treats it as one row, as ROWS and COLUMNS already did: `INDEX(x, 1, 2)` is the second item,
   `INDEX(x, 2, 1)` is `#REF!` ([[C15]] matricesInFormulas); one index still walks along it.
 - **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
-  re-export (backlog). The outbox still lists A1, B1, B2, B3, B7.
+  re-export (backlog, exported to Solenoid-Properties `develop`). The outbox is processed: A1, B1, B2, B3, B7 are ratified.
 
 ### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)
 
