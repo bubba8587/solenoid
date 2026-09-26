@@ -136,8 +136,8 @@ the decision tree (`dte.md`).
 
 ## Parked features (revisit only if the trigger returns)
 
-- **Array constants and nested arrays in formulas (author 2026-09-26: deferred until Excel's
-  nested-array syntax reaches the stable channel; then take Excel's syntax).** Excel's Beta
+- **Array constants and nested arrays in formulas** (author 2026-09-26: "let's defer in-array constants indefinitely
+  until Excel nested syntax reaches stable channel"; author 2026-09-24: take Excel's syntax). Excel's Beta
   Channel (Insider post 2026-09-24) lets a cell hold an array: braces nest (`={{1,2,3};{4,5,6}}`),
   TEXTSPLIT over a column answers one array per row, and FLATTEN, HAS, HASANY and HASALL arrive.
   Flat constants included: `{1,2,3}` a list, `{1;2;3}` a one-column table ([[D85]]), `{1,2;3,4}`
