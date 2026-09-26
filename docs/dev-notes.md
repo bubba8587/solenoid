@@ -32,8 +32,8 @@ specific item.
   arguments; CHOOSEROWS and CHOOSECOLS stay table verbs on a list. A typed skip reads as Excel's in INDEX, EXPAND,
   TAKE and DROP (`EXPAND(m, 3, , 0)`, [[C80]] blankArgIsExcelBlank).
 - **Settings** ([[E15]] settingBlankIsLeftOut, the author's call): a blank wired into a count, position, size or mode reads
-  as left out, overriding the typed value; no default is `#SYNTAX!`; a blank inside a settings list stays put; data
-  blanks stay blank. Cards read through `readSetting` / `requiredSetting`, formulas through `BLANK_ARG_TYPES`. Six
+  as left out, overriding the typed value; no default is `#SYNTAX!`; a blank inside a settings list is skipped at its
+  spot (a pick list drops the pick); data blanks stay blank. Cards read through `readSetting` / `requiredSetting`, formulas through `BLANK_ARG_TYPES`. Six
   functions so far (TAKE, DROP, EXPAND, INDEX, ROUND, CHOOSEROWS/COLS).
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
 - **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name

@@ -175,3 +175,9 @@ export function forAggregate(values: ReadonlyArray<unknown>): AggregatePrep {
   const nums = values.filter((v): v is number => typeof v === "number");
   return { nums };
 }
+
+/** Blank items of a list (or table) of settings read as left out, each at its spot ([[E15]]). */
+export function skipBlankSettings<T, D>(v: T, leftOut: D): T {
+  if (!Array.isArray(v)) return v;
+  return v.map((x) => (Array.isArray(x) ? skipBlankSettings(x, leftOut) : (x ?? leftOut))) as T;
+}

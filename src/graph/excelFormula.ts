@@ -1,7 +1,7 @@
 // [[C22]], [[C80]], [[B16]] oneFormulaSurface (RANGE_* policies), [[C14]] currentExcelParity
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
-import { isMissing, guardFinite, powerOf } from "./valueKinds";
+import { isMissing, guardFinite, powerOf, skipBlankSettings } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { isCx, formatCx } from "./cxValue";
@@ -689,7 +689,8 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
 /**
  * The setting slots of each function and what a blank there reads as: Excel's typed blank, `omitted` where Excel reads the
  * slot as left out (the function's default), or `required` for a setting with no default (`#SYNTAX!`). A slot left blank
- * and a blank value both land here ([[C80]] blankArgIsExcelBlank, [[E15]]); a blank inside a list of settings stays put.
+ * and a blank value both land here ([[C80]] blankArgIsExcelBlank, [[E15]]); so does a blank item of a list of settings,
+ * except in a pick list (`omitted` / `required`), whose kernel skips it.
  */
 type BlankType = "number" | "logical" | "text" | "omitted" | "required";
 const EXCEL_BLANK: Record<Exclude<BlankType, "required">, unknown> = { number: 0, logical: false, text: "", omitted: undefined };
@@ -697,7 +698,7 @@ export const BLANK_ARG_TYPES: Record<string, Record<number, BlankType>> = {
   TEXTJOIN: { 1: "logical" },
   XMATCH: { 2: "number", 3: "number" },
   XLOOKUP: { 4: "number", 5: "number" },
-  INDEX: { 1: "number", 2: "number" },
+  INDEX: { 1: "omitted", 2: "omitted" },
   EXPAND: { 1: "omitted", 2: "omitted" },
   TAKE: { 1: "omitted", 2: "omitted" },
   DROP: { 1: "omitted", 2: "omitted" },
@@ -714,6 +715,7 @@ function excelBlanks(name: string, args: Ast[], argv: unknown[]): { argv: unknow
   if (!types) return { argv, settled };
   const out = argv.map((v, i) => {
     const type = types[i];
+    if (type && Array.isArray(v)) return type === "omitted" || type === "required" ? v : skipBlankSettings(v, EXCEL_BLANK[type]);
     if (!type || !(args[i]?.t === "blank" || v === null)) return v;
     settled[i] = true;
     return type === "required" ? solError("#SYNTAX!", `${name}: argument ${i + 1} is blank, and it has no default`) : EXCEL_BLANK[type];
