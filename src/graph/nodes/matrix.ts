@@ -523,7 +523,7 @@ export const TABLE_SELECT_OP_META = {
 
 export class TableSelectNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    indices: "Negative indices count from the end. A zero or out-of-range index errors the whole result; a blank index gives a blank row or column there.",
+    indices: "1-based. Negative indices count from the end. A zero or out-of-range index errors the whole result; a blank index gives a blank row or column there.",
   };
 
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
@@ -537,7 +537,7 @@ export class TableSelectNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "chooserows";
     this.label = init?.label ?? "";
     this.addInput("matrix",  adoptiveTableIn("Table"));
-    this.addInput("indices", listIn(this.op === "chooserows" ? "Row indices (1-based)" : "Col indices (1-based)"));
+    this.addInput("indices", listIn(this.op === "chooserows" ? "Row indices" : "Col indices"));
     this.addOutput("result", adoptiveTableOut("Result"));
   }
 

@@ -1866,6 +1866,7 @@ export const XMATCH_SEARCH_MODE_META: Record<XMatchSearchMode, { label: string; 
 export class XMatchNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     value: "Text matches ignore case, like Excel's lookups. The approximate modes compare numbers and dates only.",
+    result: "1-based. #N/A when not found.",
   };
 
   label: string;
@@ -1884,7 +1885,7 @@ export class XMatchNode extends ClassicPreset.Node {
     this.searchMode = init?.searchMode ?? "first";
     this.addInput("value",  anyComboIn("Lookup value"));
     this.addInput("array",  adoptiveListIn("Array"));
-    this.addOutput("result", numListOut("1-based position (#N/A when not found)"));
+    this.addOutput("result", numListOut("Position"));
   }
 
   data(inputs: { value?: unknown[]; array?: unknown[][] }): { result: XMatchResult } {
