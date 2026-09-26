@@ -207,7 +207,7 @@ Formula.js's array functions are written against 2-D spreadsheet ranges and have
 
 A blank slot evaluates to `null`, the first-class missing value. An omitted trailing argument is absent, so the implementation receives `undefined`. Implementations read `undefined` as "use the default" and never treat `null` as omitted ([[C80]] blankArgIsExcelBlank).
 
-`BLANK_ARG_TYPES` declares, per function and zero-based parameter index, the Excel type of a blank slot; `excelBlanks` substitutes that type's blank (number 0, logical FALSE, text "", or `undefined` where Excel reads the slot as left out) at step 6, for internal and Formula.js implementations alike. Only a slot that was syntactically blank is substituted; a variable that happens to be null is not.
+`BLANK_ARG_TYPES` declares, per function and zero-based parameter index, the setting slots and what a blank there reads as; `excelBlanks` substitutes that type's blank (number 0, logical FALSE, text "", `undefined` where Excel reads the slot as left out, or `#SYNTAX!` for a `required` setting with no default) at step 6, for internal and Formula.js implementations alike. A slot left empty and a variable whose value is blank are substituted alike ([[E15]] settingBlankIsLeftOut); a blank inside a list stays put. A substituted slot no longer blanks the answer under the null rule.
 
 | Function | Parameter | Blank reads as |
 |---|---|---|
@@ -215,10 +215,12 @@ A blank slot evaluates to `null`, the first-class missing value. An omitted trai
 | `XMATCH` | 2 (`match_mode`), 3 (`search_mode`) | 0 |
 | `XLOOKUP` | 4 (`match_mode`), 5 (`search_mode`) | 0 |
 | `INDEX` | 1 (`row_num`), 2 (`column_num`) | 0, the whole axis |
-| `EXPAND` | 1 (`rows`), 2 (`columns`), 3 (`pad_with`) | left out: that axis keeps its size |
+| `EXPAND` | 1 (`rows`), 2 (`columns`) | left out: that axis keeps its size |
 | `TAKE`, `DROP` | 1 (`rows`), 2 (`columns`) | left out: that axis is kept whole |
+| `ROUND`, `ROUNDUP`, `ROUNDDOWN` | 1 (`num_digits`) | 0 |
+| `CHOOSEROWS`, `CHOOSECOLS` | 1 (the first index) | required: `#SYNTAX!` |
 
-A blank value in those slots (a variable or cable that is blank) is not a blank slot: INDEX, EXPAND, TAKE and DROP answer blank, as their cards do for a wired blank. That half is not yet ruled (backlog, Cubes and lists).
+A blank index further along CHOOSEROWS or CHOOSECOLS picks a blank row or column in its place.
 
 So `TEXTJOIN(",",,"a","","b")` is `a,,b`, and `XMATCH(7, x, )` is an exact match. A blank `search_mode` becomes 0, which the implementation rejects as Excel does. Every other blank stays `null` and follows the route's missing-value rules. `IF(x,,y)` returns `null` for a true `x`, not 0.
 

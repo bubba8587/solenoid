@@ -44,21 +44,24 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
     expect(ev("ROUND(2.5, )")).toBe(3);                 // the empty slot is not a value
   });
 
-  it("INDEX: a blank position is 0, the whole axis; a blank value still blanks the answer", () => {
+  it("INDEX: a blank position is 0, the whole axis, typed or a blank value ([[E15]])", () => {
     const m = [[1, 2], [3, 4]];
     expect(ev("INDEX(x, , 2)", { x: [10, 20, 30] })).toBe(20);
     expect(ev("INDEX(m, , 2)", { m })).toEqual([2, 4]);
     expect(ev("INDEX(m, 2, )", { m })).toEqual([3, 4]);
-    expect(ev("INDEX(m, b, 2)", { m, b: null })).toBeNull();
+    expect(ev("INDEX(m, b, 2)", { m, b: null })).toEqual([2, 4]);
   });
 
-  it("EXPAND, TAKE, DROP: a blank size keeps that axis, as omitted; a blank value blanks the answer", () => {
+  it("EXPAND, TAKE, DROP: a blank size keeps that axis, typed or a blank value ([[E15]])", () => {
     const m = [[1, 2], [3, 4]];
     expect(ev("EXPAND(m, 3, , 0)", { m })).toEqual([[1, 2], [3, 4], [0, 0]]);
     expect(ev("EXPAND(m, , 3)", { m })).toEqual([[1, 2, null], [3, 4, null]]);
     expect(ev("TAKE(m, , 1)", { m })).toEqual([[1], [3]]);
     expect(ev("DROP(m, , 1)", { m })).toEqual([[2], [4]]);
-    for (const f of ["EXPAND(m, b, 3)", "TAKE(m, b, 1)", "DROP(m, b, 1)"]) expect(ev(f, { m, b: null }), f).toBeNull();
+    expect(ev("EXPAND(m, b, 3)", { m, b: null })).toEqual([[1, 2, null], [3, 4, null]]);
+    expect(ev("TAKE(m, b, 1)", { m, b: null })).toEqual([[1], [3]]);
+    expect(ev("DROP(m, b, 1)", { m, b: null })).toEqual([[2], [4]]);
+    expect(ev("TAKE(m, b)", { m, b: null })).toEqual(m);
   });
 
   it("an undeclared blank still propagates as missing, never a fabricated 0", () => {

@@ -30,13 +30,17 @@ specific item.
   the ordinary socket swap; one index walks a one-row or one-column table as in Excel (`INDEX(TOCOL(x), 3)`); the hint
   reads `INDEX(array, [row], [col])`. Positions may be lists, on the card and in the formula, as Excel's array
   arguments; CHOOSEROWS and CHOOSECOLS stay table verbs on a list. A typed skip reads as Excel's in INDEX, EXPAND,
-  TAKE and DROP (`EXPAND(m, 3, , 0)`, [[C80]] blankArgIsExcelBlank); a blank value blanks the answer, as on the cards.
+  TAKE and DROP (`EXPAND(m, 3, , 0)`, [[C80]] blankArgIsExcelBlank).
+- **Settings** ([[E15]] settingBlankIsLeftOut, the author's call): a blank wired into a count, position, size or mode reads
+  as left out, overriding the typed value; no default is `#SYNTAX!`; a blank inside a settings list stays put; data
+  blanks stay blank. Cards read through `readSetting` / `requiredSetting`, formulas through `BLANK_ARG_TYPES`. Six
+  functions so far (TAKE, DROP, EXPAND, INDEX, ROUND, CHOOSEROWS/COLS).
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
 - **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** a wired blank in INDEX, EXPAND, TAKE and DROP's size slots (backlog; the typed blank slot is ruled); the Cubes and lists section of the backlog, next
+- **Open:** the settings sweep (backlog, [[E15]]; six functions done); the Cubes and lists section of the backlog, next
   up SORT and FILTER on a matrix; an Excel-signature parity check (backlog); the plugin release
   (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The outbox is empty.
 

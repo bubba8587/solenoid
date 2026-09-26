@@ -1,6 +1,6 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
+import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readSetting, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
 import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import { guardFinite, powerOf } from "../valueKinds";
@@ -576,7 +576,7 @@ export class RoundNNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
     const value  = readInput(inputs.value, this.literals.value);
-    const digits = readInput(inputs.digits, this.literals.digits ?? 0);
+    const digits = readSetting(inputs.digits, this.literals.digits ?? 0, 0);
     let result: BroadcastResult = null;
     if (value !== null) {
       result = broadcast((v, d) => roundDigits(v, d, this.op), value, digits);

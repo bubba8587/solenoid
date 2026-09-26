@@ -33,7 +33,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#DOMAIN!": "An input was outside what the function accepts, such as the square root or log of a negative number, or ASIN beyond ±1.",
   "#CONV!":  "An iterative solver didn't converge. Try a different starting guess, or check the inputs are solvable.",
   "#OVERFLOW!": "The result is too large or small to represent. Reduce the input magnitudes.",
-  "#SYNTAX!": "A formula couldn't be parsed. Check for unbalanced parentheses, doubled operators, or a missing argument.",
+  "#SYNTAX!": "A formula couldn't be parsed, or a setting with no default is blank. Check for unbalanced parentheses, doubled operators, or a missing argument or setting.",
   "#VALUE!": "A value had the wrong type, or a formula failed while evaluating. Check each input is the kind of data the node expects.",
   "#TYPE!":  "The element type is wrong, like text where a number belongs or a number where a date does. Use a Cast node, or reshape the input.",
   "#SHAPE!": "The sizes of Lists or matrices don't line up. Check that the connected Lists and tables have matching lengths.",

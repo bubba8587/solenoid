@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
-import { type SolError } from "../errorValue";
+import { type SolError, solError } from "../errorValue";
 import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
 import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
 import { dimOf } from "../unitValue";
@@ -110,6 +110,17 @@ export function keepInputLast(node: ClassicPreset.Node, key: string): void {
 
 export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | null {
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
+}
+
+/** A setting (a count, position, size or mode): a wired blank reads as the setting left out, so `leftOut` stands in ([[E15]]). */
+export function readSetting<T, D>(wired: readonly T[] | undefined, literal: T, leftOut: D): T | D {
+  return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? leftOut);
+}
+
+/** A setting with no default: left out, or wired blank, it answers `#SYNTAX!` naming the socket ([[E15]]). */
+export function requiredSetting<T>(wired: readonly T[] | undefined, literal: T | null | undefined, label: string): T | SolError {
+  const v = wired === undefined || wired.length === 0 ? literal : wired[0];
+  return v ?? solError("#SYNTAX!", `${label} is blank, and it has no default`);
 }
 
 export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;

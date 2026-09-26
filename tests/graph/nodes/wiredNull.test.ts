@@ -319,14 +319,12 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
   // Excel's omitted-argument readings are real and stay. They just belong to the
   // `undefined` branch, which readInput hands back only for an unwired slot with
   // nothing typed. A `?? 0` on the literal would collapse the two.
-  it("INDEX: an omitted axis is the WHOLE axis; a wired blank axis is unknown", () => {
+  it("INDEX: an omitted axis is the WHOLE axis, and so is a wired blank one ([[E15]])", () => {
     const m = [[1, 2], [3, 4]];
-    // Omitted column → the whole row (Excel INDEX).
     expect(new ListIndexNode().data({ list: [m], index: [1] }).result).toEqual([1, 2]);
-    // A cable carrying blank is not an omission.
     expect(new ListIndexNode().data({
       list: [m], index: [1], column: [null as unknown as number],
-    }).result).toBeNull();
+    }).result).toEqual([1, 2]);
   });
 
   it("Slice: an omitted end runs to the end; a wired blank end is unknown", () => {
@@ -651,10 +649,10 @@ describe("Input family — wired blank by role", () => {
 describe("Lists ▸ Find — INDEX three-state read", () => {
   // INDEX reads an OMITTED axis (unwired, nothing typed) as the whole axis, a wired
   // blank as unknown (null), and a number as that 1-based position.
-  it("INDEX: a wired blank index is null; a typed literal still indexes", () => {
+  it("INDEX: a wired blank index overrides the typed one and reads as left out; a typed literal still indexes", () => {
     const node = new ListIndexNode();
     node.literals.index = 2;
-    expect(node.data({ list: [[10, 20, 30]], index: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ list: [[10, 20, 30]], index: [null as unknown as number] }).result).toEqual([10, 20, 30]);
     expect(node.data({ list: [[10, 20, 30]] }).result).toBe(20);
     expect(node.data({ list: [[10, 20, 30]], index: [3] }).result).toBe(30);
   });

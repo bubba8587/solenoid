@@ -100,6 +100,7 @@ Reading the input correctly is half of it; the other half is what the node then 
 | The input is | A wired blank means | So the node | Example |
 |---|---|---|---|
 | an **operand**, the value computed on | this element is unknown | **propagates**: blank in, blank out, per cell | `UPPER(blank)` is blank |
+| a **setting**: a count, position, size or mode ([[E15]] settingBlankIsLeftOut) | the setting was left out | **uses the node's default**, overriding the typed value; no default is `#SYNTAX!`. Read it with `readSetting` or `requiredSetting` (`nodes/shared.ts`) | TAKE's rows, INDEX's position, ROUND's digits, CHOOSEROWS's indices |
 | a **mode selector**: basis, delimiter, pattern, weekend code | the mode is unknown | **propagates**, since an unknown rule gives an unknown answer | `TEXTSPLIT(x, blank)` is blank |
 | a **shape**: rows, columns, count, wrap width | the result's shape is unknown | **propagates** | `MAKEARRAY(blank, 3)` is blank |
 | a **member of a reduction**: CONCAT's rows, SUM's inputs | one contributor is missing | **skips it**, as SUM skips nulls | `CONCAT(blank, "b")` is `"b"` |
@@ -111,6 +112,8 @@ Reading the input correctly is half of it; the other half is what the node then 
 | a **filter predicate** | that row is not known to match | **drops the row** | Filter |
 | a **filter condition's column or comparison value** | the condition can't be evaluated, so which rows survive is unknown | **propagates**: the whole result is blank | Filter, SUMIFS |
 | an **optional** input: a bound, a tolerance, a comparison value | still unknown (see "Absent is not unknown") | **propagates** | Clamp's min, an as-of tolerance |
+
+The **mode selector**, **shape**, **filter condition** and **optional** rows are settings under [[E15]]; they describe nodes the settings sweep has not reached yet (backlog), and each moves to the setting row as it is swept.
 
 The first row is the default. The others exist because the alternative is worse in a specific, checkable way, not as a matter of taste:
 

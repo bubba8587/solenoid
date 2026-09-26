@@ -157,17 +157,22 @@ export function stackV(mats: readonly unknown[][][]): unknown[][] {
   return out;
 }
 
-export function chooseAxis<T>(m: T[][], indices: readonly number[], kind: "row" | "column"): T[][] | SolError {
+/** A blank index picks a blank row or column in its place ([[E15]]: a blank inside a list of settings stays at its spot). */
+export function chooseAxis<T>(m: T[][], indices: readonly (number | null)[], kind: "row" | "column"): (T | null)[][] | SolError {
   const size = kind === "row" ? matRows(m) : matCols(m);
   const label = kind === "row" ? "CHOOSEROWS" : "CHOOSECOLS";
-  const resolved: number[] = [];
+  const resolved: (number | null)[] = [];
   for (const i of indices) {
+    if (i == null) { resolved.push(null); continue; }
     const p = i < 0 ? size + Math.trunc(i) : Math.trunc(i) - 1;
     if (!(p >= 0 && p < size))
       return solError("#VALUE!", `${label}: ${kind} index ${i} is out of range for a table with ${size} ${kind}s`);
     resolved.push(p);
   }
-  return kind === "row" ? resolved.map((r) => [...m[r]]) : m.map((row) => resolved.map((c) => row[c]));
+  const blankRow = (): null[] => Array<null>(matCols(m)).fill(null);
+  return kind === "row"
+    ? resolved.map((r) => (r === null ? blankRow() : [...m[r]]))
+    : m.map((row) => resolved.map((c) => (c === null ? null : row[c])));
 }
 
 export function expandMat<T>(m: T[][], reqR: number, reqC: number, fill: T): T[][] | SolError {

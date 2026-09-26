@@ -25,7 +25,7 @@ The set is Excel-style `#CODE!`, but more specific than Excel's seven, following
 | `#DOMAIN!` | an input outside a function's domain, such as √−1 | splits Excel's #NUM!; SQLSTATE 2201E / 2201F; Err:503 |
 | `#CONV!` | an iterative solver did not converge (IRR) | splits Excel's #NUM!; Err:523 |
 | `#OVERFLOW!` | a finite computation whose true answer is a number too big for the float type (2^5000), or a generator asked for more elements than its cap | splits Excel's #NUM!; SQLSTATE 22003; Err:512 |
-| `#SYNTAX!` | formula text did not parse | splits Excel's #VALUE!; Err:516 |
+| `#SYNTAX!` | formula text did not parse, or a setting with no default is blank ([[E15]]) | splits Excel's #VALUE!; Err:516 |
 | `#VALUE!` | wrong type, or operand misuse | Excel; SQLSTATE 22018 |
 | `#TYPE!` | the wrong element type for the op | Solenoid only; Excel folds it into #VALUE! |
 | `#SHAPE!` | a list or matrix dimension mismatch | no Excel scalar equivalent; nearest is #SPILL! |

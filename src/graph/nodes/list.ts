@@ -9,7 +9,7 @@ import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn } from "./shared";
+import { readInput, readSetting, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
@@ -381,9 +381,10 @@ export class ListIndexNode extends ClassicPreset.Node {
     const v = inputs.list?.[0] ?? null;
     this.reconcileAxes(v);
     // Until the swap lands, the sockets on the card say what the numbers mean.
-    const rowIn = this.inputs.position ? readInput<IndexAxis>(inputs.position, this.literals.position)
-      : readInput<IndexAxis>(inputs.index, this.literals.index);
-    const colIn = this.inputs.column ? readInput<IndexAxis>(inputs.column, this.literals.column) : undefined;
+    // A blank wired position is the position left out: the whole axis, as Excel's omitted row_num ([[E15]]).
+    const rowIn = this.inputs.position ? readSetting<IndexAxis, undefined>(inputs.position, this.literals.position, undefined)
+      : readSetting<IndexAxis, undefined>(inputs.index, this.literals.index, undefined);
+    const colIn = this.inputs.column ? readSetting<IndexAxis, undefined>(inputs.column, this.literals.column, undefined) : undefined;
     const result = indexIntoContainer(v, rowIn, colIn);
     this.cachedResult = result;
     return { result };

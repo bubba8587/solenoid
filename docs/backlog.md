@@ -34,8 +34,11 @@ warning is expected.
 
 ## Cubes and lists (author 2026-09-26)
 
-- [ ] **A wired blank in a size or position slot** (author to rule; the author doubts today's answer): INDEX, EXPAND, TAKE and DROP
-  answer blank for a blank variable or cable in a row/col slot, formula and card alike. A typed blank slot is ruled ([[C80]]).
+- [ ] **The settings sweep ([[E15]] settingBlankIsLeftOut).** TAKE, DROP, EXPAND, INDEX, ROUND and CHOOSEROWS/COLS read a wired
+  blank setting as left out. Tag every other card's settings (`readSetting` / `requiredSetting`) and every formula's
+  (`BLANK_ARG_TYPES`), bring the author the list first, then retire the propagating rows of value-semantics' role table.
+  Known cases: Slice's end, Series' count, MAKEARRAY's sizes, TEXTSPLIT's delimiter, Filter's condition value (turns
+  [[C24]]'s "a blank filter value matches no rows" into keep-every-row; rewrite that consequence when it lands).
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass

@@ -1705,17 +1705,18 @@ registerInternal("XSTACK", (axis, ...args) => {
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? (a === "v" ? stackV(mats) : stackH(mats)) : null;
 });
+const asIndex = (v: unknown): number | null => (v == null ? null : Number(v));
 registerInternal("CHOOSECOLS", (matrix, ...cols) => {
   const m = toMatrix(matrix);
-  return m === null ? null : chooseAxis(m, cols.flat().map(Number), "column");
+  return m === null ? null : chooseAxis(m, cols.flat().map(asIndex), "column");
 });
 registerInternal("CHOOSEROWS", (matrix, ...rows) => {
   const m = toMatrix(matrix);
-  return m === null ? null : chooseAxis(m, rows.flat().map(Number), "row");
+  return m === null ? null : chooseAxis(m, rows.flat().map(asIndex), "row");
 });
 registerInternal("EXPAND", (matrix, rows, cols, fill) => {
   const m = toMatrix(matrix);
-  if (m === null || rows === null || cols === null) return null;
+  if (m === null) return null;
   return expandMat(m, Math.round(Number(rows ?? 0)), Math.round(Number(cols ?? 0)), fill ?? null);
 });
 registerInternal("MMULT", (a, b) => {
@@ -1856,23 +1857,23 @@ const asRowsOf = (v: unknown): { m: unknown[][]; list: boolean } =>
   Array.isArray(v) && v.length > 0 && Array.isArray(v[0]) ? { m: v as unknown[][], list: false } : { m: [toList(v)], list: true };
 const backToList = (m: unknown[][], list: boolean): unknown => (list && m.length === 1 ? m[0] : m);
 registerInternal("TAKE", (v, rows, cols) => {
-  // A blank value blanks the answer, as on the card; a skipped slot arrives as undefined and keeps its axis ([[C80]] blankArgIsExcelBlank).
-  if (v == null || rows === null || cols === null || (rows === undefined && cols === undefined)) return null;
-  const n = rows === undefined ? null : Math.round(Number(rows));
-  const c = cols === undefined ? null : Math.round(Number(cols));
+  // A blank count arrives as undefined and keeps its axis ([[E15]]).
+  if (v == null) return null;
+  const n = rows == null ? null : Math.round(Number(rows));
+  const c = cols == null ? null : Math.round(Number(cols));
   if (n === 0 || c === 0) return solError("#DOMAIN!", "TAKE of 0 keeps nothing (Excel: #CALC!)");
   const { m, list } = asRowsOf(v);
   const cut = m.map((r) => (c === null ? [...r] : takeSlice(r, c)));
   return backToList(n === null ? cut : takeSlice(cut, n), list);
 });
 registerInternal("DROP", (v, rows, cols) => {
-  if (v == null || rows === null || cols === null || (rows === undefined && cols === undefined)) return null;
-  const n = rows === undefined ? 0 : Math.round(Number(rows));
-  const c = cols === undefined ? 0 : Math.round(Number(cols));
+  if (v == null) return null;
+  const n = rows == null ? 0 : Math.round(Number(rows));
+  const c = cols == null ? 0 : Math.round(Number(cols));
   const gone = (len: number, k: number) => len > 0 && Math.abs(k) >= len;
   const { m, list } = asRowsOf(v);
   if (gone(m.length, n) || gone(m[0]?.length ?? 0, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
-  return backToList(dropSlice(m.map((r) => (cols === undefined ? [...r] : dropSlice(r, c))), n), list);
+  return backToList(dropSlice(m.map((r) => (cols == null ? [...r] : dropSlice(r, c))), n), list);
 });
 registerInternal("MODE.MULT", (v) => (v == null ? null : modeMult(toList(v))));
 registerInternal("FREQUENCY", (data, bins) => {
