@@ -99,6 +99,22 @@ describe("each matrix name computes what its node computes", () => {
     expect(fxCols.length).toBe(nodeCols.length);
   });
 
+  // [[D85]] columnsStayColumns, [[D73]] nodeCoversFormula: Excel's ignore and scan_by_column, on the card as scanBy and skipCells.
+  it("TOCOL / TOROW take ignore and scan_by_column, and the card answers the same", () => {
+    const e = solError("#DIV/0!", "x");
+    const g = [[1, null], [e, 4]];
+    expect(ev("TOCOL(g)", { g })).toEqual([[1], [null], [e], [4]]);
+    expect(ev("TOCOL(g, 1)", { g })).toEqual([[1], [e], [4]]);
+    expect(ev("TOCOL(g, 2)", { g })).toEqual([[1], [null], [4]]);
+    expect(ev("TOROW(g, , TRUE)", { g })).toEqual([1, e, null, 4]);
+    expect(ev("TOROW(g, 3, TRUE)", { g })).toEqual([1, 4]);
+    expect(ev("TOROW(g, 5)", { g })).toMatchObject({ code: "#VALUE!" });
+    const card = new TableReshapeNode({ op: "torow", scanBy: "col", skipCells: "both" });
+    expect(card.data({ matrix: [g] }).result).toEqual(ev("TOROW(g, 3, TRUE)", { g }));
+    const col = new TableReshapeNode({ op: "tocol", scanBy: "col", skipCells: "blanks" });
+    expect(col.data({ matrix: [g] }).result).toEqual(ev("TOCOL(g, 1, TRUE)", { g }));
+  });
+
   it("TOCOL / TOROW — the node's exact scan orders", () => {
     expect(ev("TOCOL(m)", { m: M })).toEqual(new TableReshapeNode({ op: "tocol" }).data({ matrix: [M] }).result);
     expect(ev("TOROW(m)", { m: M })).toEqual(new TableReshapeNode({ op: "torow" }).data({ matrix: [M] }).result);

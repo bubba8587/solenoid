@@ -21,7 +21,9 @@ import {
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
-import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { SegToggle } from "./SegToggle";
+import type { SkipCells } from "../nodes/matrixOps";
+import { NodeShell, OpSelect, ArgSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { makeToggleNodeComponent } from "./standardNode";
@@ -148,6 +150,17 @@ const RESHAPE_OPS = (Object.keys(TABLE_RESHAPE_OP_META) as TableReshapeOp[]).map
   value: op, label: TABLE_RESHAPE_OP_META[op].label,
 }));
 
+const SCAN_OPTS: ReadonlyArray<{ value: "row" | "col"; label: string; title: string }> = [
+  { value: "row", label: "By row", title: "Read the table row by row" },
+  { value: "col", label: "By column", title: "Read the table column by column" },
+];
+const SKIP_OPTS: ReadonlyArray<{ value: SkipCells; label: string }> = [
+  { value: "none", label: "Keep every cell" },
+  { value: "blanks", label: "Skip blanks" },
+  { value: "errors", label: "Skip errors" },
+  { value: "both", label: "Skip blanks and errors" },
+];
+
 // [[D16]] retypeReconciles: the wrap ops and the flatten ops have different sockets, so the switch reshapes the card.
 export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNodeType>) {
   const [op, setOpField] = useNodeField(data, "op");
@@ -162,10 +175,15 @@ export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNode
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
   }
+  const [scanBy, setScanBy] = useNodeField(data, "scanBy");
+  const [skipCells, setSkipCells] = useNodeField(data, "skipCells");
+  const flattens = op === "tocol" || op === "torow";
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={(o) => void pickOp(o)} options={RESHAPE_OPS} />
+      {flattens && <SegToggle value={scanBy} onChange={setScanBy} options={SCAN_OPTS} />}
+      {flattens && <ArgSelect value={skipCells} onChange={setSkipCells} options={SKIP_OPTS} />}
       {op !== "torow"
         ? <TableDisplay table={data.cachedMatrix} label={nodeDisplayName(data)} elem="number" />
         : /* flattened list is homogeneous at runtime (matches the input's element

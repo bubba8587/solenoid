@@ -20,7 +20,7 @@ import { histogram2d, sparklineImage, SPARKLINE_OPS, type SparklineOp } from "./
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
-import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, type NumMat } from "./nodes/matrixOps";
+import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, flattenCells, SKIP_BY_CODE, type NumMat } from "./nodes/matrixOps";
 import {
   reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList,
   shiftList, pctChangeList, zscoreList, binIndex, combinationsOf,
@@ -671,8 +671,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   EXPAND:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
   WRAPROWS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   WRAPCOLS:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
-  TOCOL:      { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
-  TOROW:      { returns: "any", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  TOCOL:      { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 3], native: true },
+  TOROW:      { returns: "any", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 3], native: true },
   SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
 
   UNIQUE:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
@@ -1793,14 +1793,21 @@ registerInternal("WRAPCOLS", (list, w, padWith) => {
   return isSolError(width) ? width : wrapCells(toList(list), width, "cols", wrapPad(padWith, "column"));
 });
 // [[D85]] columnsStayColumns: TOCOL is a one-column table, TOROW a list (a row); both read row by row, as Excel's do.
-registerInternal("TOCOL", (v) => {
+function flattenArgs(fn: string, v: unknown, ignore: unknown, scan: unknown): unknown[] | SolError | null {
   const m = toMatrix(v);
-  return m === null ? null : m.flat().map((x) => [x]);
+  if (m === null) return null;
+  const code = ignore == null ? 0 : toNum(ignore);
+  const skip = SKIP_BY_CODE[code];
+  if (!Number.isInteger(code) || !skip) return solError("#VALUE!", `${fn}'s ignore is 0, 1, 2 or 3`);
+  const byCol = scan == null ? false : coerceLogical(scan);
+  if (byCol === null) return solError("#VALUE!", `${fn}'s scan_by_column is TRUE or FALSE`);
+  return flattenCells(m as unknown[][], byCol, skip);
+}
+registerInternal("TOCOL", (v, ignore, scan) => {
+  const cells = flattenArgs("TOCOL", v, ignore, scan);
+  return Array.isArray(cells) ? cells.map((x) => [x]) : cells;
 });
-registerInternal("TOROW", (v) => {
-  const m = toMatrix(v);
-  return m === null ? null : m.flat();
-});
+registerInternal("TOROW", (v, ignore, scan) => flattenArgs("TOROW", v, ignore, scan));
 registerInternal("SEQUENCE", (rows, cols, start, step) => {
   if (rows == null) return null;
   const r = arrayCount(Number(rows), "SEQUENCE");

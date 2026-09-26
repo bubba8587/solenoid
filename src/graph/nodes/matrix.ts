@@ -1,6 +1,6 @@
 // [[C58]], [[C48]], [[B11]]
 import { ClassicPreset } from "rete";
-import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
+import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells, flattenCells, SKIP_BY_CODE, type SkipCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
 import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import { pickSlot, pairIdsFromKeys } from "./logic";
@@ -414,6 +414,9 @@ export class TableReshapeNode extends ClassicPreset.Node {
   unitAware = true;
   label: string;
   op: TableReshapeOp;
+  /** TOCOL and TOROW's `scan_by_column` and `ignore` arguments. */
+  scanBy: "row" | "col";
+  skipCells: SkipCells;
   cachedList: Cell[] | null = null;
   cachedMatrix: CellMat | null = null;
   literals: Record<string, number> = { wrapCount: 3 };
@@ -425,10 +428,12 @@ export class TableReshapeNode extends ClassicPreset.Node {
     combine: "single",
   }];
 
-  constructor(init?: { label?: string; op?: TableReshapeOp }) {
+  constructor(init?: { label?: string; op?: TableReshapeOp; scanBy?: "row" | "col"; skipCells?: SkipCells }) {
     super("TableReshape");
     this.op    = init?.op    ?? "wraprows";
     this.label = init?.label ?? "";
+    this.scanBy = init?.scanBy === "col" ? "col" : "row";
+    this.skipCells = SKIP_BY_CODE.includes(init?.skipCells as SkipCells) ? init!.skipCells! : "none";
     for (const k of TableReshapeNode.inputKeysFor(this.op)) this.addInput(k, TableReshapeNode.inputFor(k));
     this.addOutput("result", TableReshapeNode.outputFor(this.op));
     if (this.op === "wraprows" || this.op === "wrapcols") this.height = 235;
@@ -494,14 +499,14 @@ export class TableReshapeNode extends ClassicPreset.Node {
     } else if (this.op === "tocol") {
       const m = toAnyMatrix(inputs.matrix?.[0]);
       if (!m) return { result: null };
-      const col: CellMat = m.flat().map((x) => [x as Cell]);
+      const col: CellMat = flattenCells(m, this.scanBy === "col", this.skipCells).map((x) => [x as Cell]);
       withMatrixUnit(col, matrixUnitOf(m));
       this.cachedMatrix = col;
       return { result: col };
     } else {
       const m = toAnyMatrix(inputs.matrix?.[0]);
       if (!m) return { result: null };
-      this.cachedList = taggedListFromMatrix(m.flat(), matrixUnitOf(m)) as Cell[];
+      this.cachedList = taggedListFromMatrix(flattenCells(m, this.scanBy === "col", this.skipCells), matrixUnitOf(m)) as Cell[];
       return { result: this.cachedList };
     }
   }

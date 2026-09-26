@@ -1,5 +1,5 @@
 // [[C17]], [[C48]] appendLadder
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { indexRefError } from "./indexAccess";
 import type { Cell } from "./coerce";
 import { MAX_GENERATED } from "./listOps";
@@ -303,4 +303,23 @@ export function matEigh(m: NumMat, tol = 1e-12): { values: number[]; vectors: Nu
     if (vectors[big][c] < 0) for (let r = 0; r < n; r++) vectors[r][c] = -vectors[r][c];
   }
   return { values, vectors };
+}
+
+// ─── TOCOL / TOROW ([[D85]] columnsStayColumns) ─────────────────────────────
+
+export type SkipCells = "none" | "blanks" | "errors" | "both";
+/** Excel's `ignore` codes: 0 keeps every cell, 1 skips blanks, 2 errors, 3 both. */
+export const SKIP_BY_CODE: readonly SkipCells[] = ["none", "blanks", "errors", "both"];
+
+/** A table's cells in reading order, row by row or column by column, skipping blanks, errors or both. */
+export function flattenCells<T>(m: readonly (readonly T[])[], byColumn: boolean, skip: SkipCells): T[] {
+  const out: T[] = [];
+  const width = m.reduce((w, row) => Math.max(w, row.length), 0);
+  const keep = (v: T) => !((skip === "blanks" || skip === "both") && v == null) && !((skip === "errors" || skip === "both") && isSolError(v));
+  if (byColumn) {
+    for (let j = 0; j < width; j++) for (const row of m) { const v = row[j] as T; if (keep(v)) out.push(v); }
+  } else {
+    for (const row of m) for (const v of row) if (keep(v)) out.push(v);
+  }
+  return out;
 }

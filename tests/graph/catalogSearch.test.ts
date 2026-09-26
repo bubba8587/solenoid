@@ -225,6 +225,16 @@ describe("Excel-alias rows never repeat a name a card already wears", () => {
     expect(search("GROUPBY").map((l) => l.label)).not.toContain("Group Lists: GROUPBY");
   });
 
+  // [[D73]] nodeCoversFormula: ISERR was an alias row for a card with no ISERR op.
+  it("ISERR is a real Type Check op, and ISERROR ranks its own op first", () => {
+    expect(types("ISERR", 1)).toEqual(["is-test__op-iserr"]);
+    expect(types("ISERROR", 1)).toEqual(["is-test__op-iserror"]);
+  });
+
+  it("the Table Reshape card's family name finds its four ops first", () => {
+    expect(types("table reshape", 4).sort()).toEqual(["reshape-tocol", "reshape-torow", "reshape-wrapcols", "reshape-wraprows"]);
+  });
+
   it("no card lists the same Excel name twice", () => {
     const dupes = Object.entries(NODE_EXCEL).filter(([, eqs]) => new Set(eqs.map((e) => e.excel)).size !== eqs.length).map(([t]) => t);
     expect(dupes).toEqual([]);

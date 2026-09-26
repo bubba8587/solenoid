@@ -233,7 +233,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "irr": [{ excel: "IRR", syntax: "=IRR(cashflows)", parity: true }],
   "is-test": [
     { excel: "ISBLANK", syntax: "=ISBLANK(v)", parity: true },
-    { excel: "ISERR", syntax: "=ISERR(v)", parity: false, note: "No ISERR op. ISERROR catches every error code, #N/A included." },
+    { excel: "ISERR", syntax: "=ISERR(v)", parity: true },
     { excel: "ISERROR", syntax: "=ISERROR(v)", parity: true },
     { excel: "ISLOGICAL", syntax: "=ISLOGICAL(v)", parity: true, note: "TRUE only for a real boolean (TRUE/FALSE), not 0/1 or \"TRUE\"; matches Excel's type check." },
     { excel: "ISBOOLEAN", syntax: "=ISBOOLEAN(v)", parity: false, note: "Solenoid's name for ISLOGICAL: the same test." },
@@ -256,7 +256,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-sequence": [{ excel: "SEQUENCE", syntax: "=SEQUENCE(rows, cols, start, step)", parity: false, note: "Zero rows or columns give an empty list, where Excel gives #CALC!." }],
   "list-sort": [
     { excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" },
-    { excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Use the Sort node's By input. Sorts a List of any type by a parallel List of numbers; text keys aren't supported yet." },
+    { excel: "SORTBY", syntax: "=SORTBY(array, by_array, [sort_order])", parity: false, note: "Use the Sort node's By input. Sorts a List of any type by a parallel List of keys; one key list only." },
   ],
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: false, note: "Values and 1-D lists only; Excel also takes a matrix by row or by column." }],
   "xstack": [

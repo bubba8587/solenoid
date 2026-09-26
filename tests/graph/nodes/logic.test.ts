@@ -140,7 +140,7 @@ import { IsTestNode } from "../../../src/graph/nodes/logic";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("IS.TEST — per-cell to any depth (1-D and 2-D Any input)", () => {
-  const run = (op: "isnumber" | "istext" | "islogical" | "iserror" | "isna") =>
+  const run = (op: "isnumber" | "istext" | "islogical" | "iserror" | "iserr" | "isna") =>
     (v: unknown) => new IsTestNode({ op }).data({ value: [v] }).result;
 
   it("ISNUMBER over a 2-D table tests each cell (not its rows)", () => {
@@ -164,6 +164,15 @@ describe("IS.TEST — per-cell to any depth (1-D and 2-D Any input)", () => {
     const na = solError("#N/A", "x");
     const div0 = solError("#DIV/0!", "x");
     expect(run("isna")([na, div0, 5])).toEqual([true, false, false]);
+  });
+
+  // [[D73]] nodeCoversFormula: the formula ISERR had no op on the card.
+  it("ISERR flags every error but #N/A, per cell and whole, as the formula does", () => {
+    const na = solError("#N/A", "x");
+    const div0 = solError("#DIV/0!", "x");
+    expect(run("iserr")([na, div0, 5])).toEqual([false, true, false]);
+    expect(new IsTestNode({ op: "iserr" }).data({ value: [div0] }).result).toBe(true);
+    expect(new IsTestNode({ op: "iserr" }).data({ value: [na] }).result).toBe(false);
   });
 
   it("ISBLANK stays whole-input (a populated table is not blank)", () => {

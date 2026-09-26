@@ -32,6 +32,10 @@ specific item.
   now reshapes the sockets (Table Reshape's never did). A one-row-matrix change to INDEX that shipped by accident is
   reverted. TAKE/DROP on lists, blank list literals, INDEX's blank position and
   SORT/FILTER on matrices wait on the author (backlog, Cubes and lists).
+- **Table Reshape and search:** TOCOL/TOROW take Excel's `ignore` and `scan_by_column`, and the card carries them as
+  a By row / By column toggle and a skip picker. The Type Check card gains ISERR (the menu offered "Type Check: ISERR"
+  on a card that had no such op). The reshape rows gain "table reshape" keywords, so the family name finds them.
+  Held for the author: Excel-alias rows ("List Sort: SORTBY") read as ops, but [[C19]] namingModel requires them.
 - **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
   re-export (backlog, exported to Solenoid-Properties `develop`). The outbox is processed: A1, B1, B2, B3, B7 are ratified.
 
