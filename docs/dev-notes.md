@@ -52,7 +52,8 @@ specific item.
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); the settings sweep (review `settings-audit.md` first); whether List Sort and List Filter keep their names now they take tables; the Cubes and
-  lists section of the backlog, next up a blank in a typed list literal; an Excel-signature parity check (backlog); the
-  plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The
-  outbox is empty.
+- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); the settings sweep (review
+  `settings-audit.md` first); whether List Sort and List Filter keep their names now they take tables; the parity
+  list's remaining gaps (backlog); the Cubes and lists section of the backlog, next up a blank in a typed list literal;
+  the plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`).
+  The outbox is empty.
