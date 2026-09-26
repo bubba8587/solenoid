@@ -401,8 +401,8 @@ export type TableReshapeOp = "wraprows" | "wrapcols" | "tocol" | "torow";
 export const TABLE_RESHAPE_OP_META = {
   wraprows: { label: "WRAPROWS", description: "Wraps a list into a table row-by-row. Each row has `Wrap_count` values. Excel: `WRAPROWS`." },
   wrapcols: { label: "WRAPCOLS", description: "Wraps a list into a table column-by-column. Each column has `Wrap_count` values. Excel: `WRAPCOLS`." },
-  tocol:    { label: "TOCOL",    description: "Stacks a table's cells into one column, reading row by row. Excel: `TOCOL`." },
-  torow:    { label: "TOROW",    description: "Lines a table's cells up in one list, reading row by row. Excel: `TOROW`." },
+  tocol:    { label: "TOCOL",    description: "Stacks a table's values into one column, reading row by row. Excel: `TOCOL`." },
+  torow:    { label: "TOROW",    description: "Lines a table's values up in one list, reading row by row. Excel: `TOROW`." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {

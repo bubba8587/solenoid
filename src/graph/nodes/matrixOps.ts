@@ -308,7 +308,7 @@ export function matEigh(m: NumMat, tol = 1e-12): { values: number[]; vectors: Nu
 // ─── TOCOL / TOROW ([[D85]] columnsStayColumns) ─────────────────────────────
 
 export type SkipCells = "none" | "blanks" | "errors" | "both";
-/** Excel's `ignore` codes: 0 keeps every cell, 1 skips blanks, 2 errors, 3 both. */
+/** Excel's `ignore` codes: 0 keeps every value, 1 skips blanks, 2 errors, 3 both. */
 export const SKIP_BY_CODE: readonly SkipCells[] = ["none", "blanks", "errors", "both"];
 
 /** A table's cells in reading order, row by row or column by column, skipping blanks, errors or both. */

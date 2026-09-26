@@ -225,9 +225,9 @@ describe("Excel-alias rows never repeat a name a card already wears", () => {
     expect(search("GROUPBY").map((l) => l.label)).not.toContain("Group Lists: GROUPBY");
   });
 
-  // [[D73]] nodeCoversFormula: ISERR was an alias row for a card with no ISERR op.
-  it("ISERR is a real Type Check op, and ISERROR ranks its own op first", () => {
-    expect(types("ISERR", 1)).toEqual(["is-test__op-iserr"]);
+  // [[D73]] nodeCoversFormula: the Type Check card has no ISERR op, so no row may offer it there.
+  it("no row offers ISERR on Type Check, and ISERROR ranks its own op first", () => {
+    expect(search("ISERR").map((l) => l.type)).not.toContain("is-test__excel-ISERR");
     expect(types("ISERROR", 1)).toEqual(["is-test__op-iserror"]);
   });
 

@@ -155,7 +155,7 @@ const SCAN_OPTS: ReadonlyArray<{ value: "row" | "col"; label: string; title: str
   { value: "col", label: "By column", title: "Read the table column by column" },
 ];
 const SKIP_OPTS: ReadonlyArray<{ value: SkipCells; label: string }> = [
-  { value: "none", label: "Keep every cell" },
+  { value: "none", label: "Keep every value" },
   { value: "blanks", label: "Skip blanks" },
   { value: "errors", label: "Skip errors" },
   { value: "both", label: "Skip blanks and errors" },

@@ -233,7 +233,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "irr": [{ excel: "IRR", syntax: "=IRR(cashflows)", parity: true }],
   "is-test": [
     { excel: "ISBLANK", syntax: "=ISBLANK(v)", parity: true },
-    { excel: "ISERR", syntax: "=ISERR(v)", parity: true },
     { excel: "ISERROR", syntax: "=ISERROR(v)", parity: true },
     { excel: "ISLOGICAL", syntax: "=ISLOGICAL(v)", parity: true, note: "TRUE only for a real boolean (TRUE/FALSE), not 0/1 or \"TRUE\"; matches Excel's type check." },
     { excel: "ISBOOLEAN", syntax: "=ISBOOLEAN(v)", parity: false, note: "Solenoid's name for ISLOGICAL: the same test." },
@@ -557,6 +556,7 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "RTD", syntax: "=RTD(prog_id, server, ...)", category: "Lookup & Reference", oos: true, note: "Pulls real-time data from a COM server." },
   { excel: "VLOOKUP", syntax: "=VLOOKUP(x, table, col)", category: "Lookup & Reference", superseded: true, note: "Use XLOOKUP." },
   { excel: "CELL", syntax: "=CELL(info_type, ref)", category: "Info", oos: true, note: "Returns a cell's metadata." },
+  { excel: "ISERR", syntax: "=ISERR(value)", category: "Info", oos: true, note: "The formula answers as Excel's does; the Type Check card offers ISERROR and ISNA instead." },
   { excel: "N", syntax: "=N(value)", category: "Info", oos: true, note: "Not needed: values arrive already typed. Use Cast to change a type." },
   { excel: "T", syntax: "=T(value)", category: "Info", oos: true, note: "Not needed: values arrive already typed. Use ISTEXT to test for text." },
   { excel: "TYPE", syntax: "=TYPE(value)", category: "Info", oos: true, note: "Not needed: every value already shows its type." },
