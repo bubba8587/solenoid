@@ -54,8 +54,6 @@ and four functions arrive: `FLATTEN(array, [pad_value], [levels])`, `HAS(array, 
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass
   § Typed list literals) while `1,x,3` is `[1, null, 3]` and a wired blank stays in place.
-- [ ] **INDEX with a blank position** (`INDEX(x,,2)`) answers blank, while TAKE and DROP read a blank count as "keep the
-  axis" ([[C80]] blankArgIsExcelBlank); Excel answers item 2. **EXPAND(x,,4)** is blank for the same reason.
 - [ ] **SORT and FILTER on a matrix** are `#SHAPE!` (SORT works on one list; FILTER on a 1 × N matrix too).
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Excel-signature parity check** (author asked 2026-09-26): a reference of Excel's real signatures and a test that

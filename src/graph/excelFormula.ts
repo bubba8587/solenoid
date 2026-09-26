@@ -686,12 +686,17 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
   }
 }
 
-type BlankType = "number" | "logical" | "text";
-const EXCEL_BLANK: Record<BlankType, unknown> = { number: 0, logical: false, text: "" };
+/** `omitted`: Excel reads a blank slot there as the argument left out (EXPAND and TAKE keep that axis). */
+type BlankType = "number" | "logical" | "text" | "omitted";
+const EXCEL_BLANK: Record<BlankType, unknown> = { number: 0, logical: false, text: "", omitted: undefined };
 export const BLANK_ARG_TYPES: Record<string, Record<number, BlankType>> = {
   TEXTJOIN: { 1: "logical" },
   XMATCH: { 2: "number", 3: "number" },
   XLOOKUP: { 4: "number", 5: "number" },
+  INDEX: { 1: "number", 2: "number" },
+  EXPAND: { 1: "omitted", 2: "omitted", 3: "omitted" },
+  TAKE: { 1: "omitted", 2: "omitted" },
+  DROP: { 1: "omitted", 2: "omitted" },
 };
 function excelBlanks(name: string, args: Ast[], argv: unknown[]): unknown[] {
   const types = BLANK_ARG_TYPES[name];
