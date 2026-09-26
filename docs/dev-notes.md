@@ -41,6 +41,7 @@ specific item.
   `searchSamples.test.ts`; `SEARCH_SAMPLES_OUT` writes the table's JSON. It found two gaps, both fixed: an op's
   keywords never reached its row (`fromMeta` dropped them), so "kanban" missed "Record: Board"; and List Sort had no
   argument words ("descending").
+  A search shows one row per thing placed, so "SORT → List Sort" no longer sits beside "List Sort" (`places`).
 - **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
   re-export (backlog, exported to Solenoid-Properties `develop`). The outbox is processed: A1, B1, B2, B3, B7 are ratified.
 

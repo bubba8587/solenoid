@@ -289,7 +289,8 @@ describe("the one Distribution node is reachable by search without growing the m
     // is right there with it, presetting the op. Asserted on the op TYPE rather
     // than the label: the Excel spellings live in `keywords` now, so a dotted
     // query has to reach the row WITHOUT the names being in what renders.
-    const top3 = (q: string) => searchLeaves(leaves, q).slice(0, 3).map((l) => l.type);
+    // What each row places: an Excel-name row stands in for the row it duplicates ("NORM.INV → Distributions").
+    const top3 = (q: string) => searchLeaves(leaves, q).slice(0, 3).map((l) => l.places ?? l.type);
     expect(top3("weibull")).toContain("distributions__op-weibull");
     expect(top3("poisson")).toContain("distributions__op-poisson");
     expect(top3("hypergeometric")).toContain("distributions__op-hypgeom");

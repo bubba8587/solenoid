@@ -109,9 +109,10 @@ function prepare(lc: LeafWithContext): Prepared {
   const own = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   if (bare && bare !== leaf.label) own.push(bare);
   if (opName) own.push(opName);
-  if (aliasName) own.push(aliasName);
   const fields: [string, number][] = [
     ...own.filter((f) => f.trim()).map((f): [string, number] => [f.toLowerCase(), 0]),
+    // A row that shows the typed Excel name beats one that only hides it in its keywords, since only one of them shows.
+    ...(aliasName ? [[aliasName.toLowerCase(), -5] as [string, number]] : []),
     ...(family ? [[family.toLowerCase(), 5] as [string, number]] : []),
     ...excelNames.map((n): [string, number] => [n.toLowerCase(), 10]),
     ...legacy.map((n): [string, number] => [n.toLowerCase(), 20]),
@@ -164,6 +165,7 @@ function scoreLeaf(query: Query, lc: LeafWithContext): number | null {
   return s + bonus;
 }
 
+/** Best first, one row per thing placed: "SORT → List Sort" and "List Sort" place the same card, so only the better match shows. */
 export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCatalogEntry[] {
   const q = parseQuery(query);
   const scored: { leaf: NodeCatalogEntry; score: number }[] = [];
@@ -172,7 +174,15 @@ export function searchLeaves(leaves: LeafWithContext[], query: string): NodeCata
     if (score !== null) scored.push({ leaf: lc.leaf, score });
   }
   scored.sort((a, b) => b.score - a.score);
-  return scored.map((x) => x.leaf);
+  const placed = new Set<string>();
+  const out: NodeCatalogEntry[] = [];
+  for (const { leaf } of scored) {
+    const key = leaf.places ?? leaf.type;
+    if (placed.has(key)) continue;
+    placed.add(key);
+    out.push(leaf);
+  }
+  return out;
 }
 
 type PortLike = { socket?: unknown };

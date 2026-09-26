@@ -93,7 +93,7 @@ Both kinds are views of the host leaf ([[#The search rows]]): they spread the ho
 
 ## Scoring a row
 
-`scoreLeaf(query, row)` returns a score, higher is better, or null when the row does not match. `searchLeaves` drops the nulls and sorts the rest best first.
+`scoreLeaf(query, row)` returns a score, higher is better, or null when the row does not match. `searchLeaves` drops the nulls, sorts the rest best first, and keeps one row per thing placed: an alias row carries `places` (the host, or `host__op-op` when it sets a non-primary op), every other row places its own type, and a later row that places the same thing is dropped. So "SORT" shows "SORT → List Sort" and not "List Sort" beside it, and "NORM.S.DIST" shows its arrow row without the "Distributions: Standard Normal" op row.
 
 Two texts are built from the row, and both are deliberately wider than what the menu renders:
 
@@ -112,7 +112,7 @@ A word that scores 90 or more as a word hit counts that score alone. Otherwise i
 On top of the word total, the row gets the best **whole-query bonus** from its fields (`fieldScore`): 1000 plus the subsequence score for an exact match, 400 for a prefix, 150 for a match at the start of any space-separated word, and the bare subsequence score otherwise. The fields are:
 
 - the label; the label followed by the category path; the type words; `keywords`; the label with its op glyph stripped (without the strip, "Add Column" would outrank the Add card for "add");
-- for a generated `Host: Name` row, the part after the colon, so an exact hit on an op's name ranks like an exact hit on a leaf's own label; for an alias row, the Excel name before the arrow;
+- for a generated `Host: Name` row, the part after the colon, so an exact hit on an op's name ranks like an exact hit on a leaf's own label; for an alias row, the Excel name before the arrow, scored 5 higher, so on a tie with an op row that only hides the name in its keywords, the row that shows the typed name is the one kept;
 - the family name, scored 5 lower, so "table reshape" lands on the reshape ops and "bessel" on the Bessel functions;
 - each Excel name, scored 10 lower so an exact label still wins a tie;
 - each retired name, scored 20 lower, so a row that wears the name itself ("Sparkline: Column" for COLUMN) keeps first place.

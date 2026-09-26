@@ -20,6 +20,8 @@ export type NodeCatalogEntry = {
   excel?: ExcelEquiv[];
   keywords?: string;
   fx?: string[];
+  /** A generated row that places what another row places (the host, or `host__op-op`); search shows one of them. */
+  places?: string;
 };
 
 export type ExcelEquiv = {

@@ -243,6 +243,16 @@ describe("Excel-alias rows never repeat a name a card already wears", () => {
     expect(search("NORM.DIST")[0].label).toBe("NORM.DIST → Distributions: Normal");
   });
 
+  // "SORT → List Sort" and "List Sort" place the same card: a search shows only the better match.
+  it("no search shows two rows that place the same thing", () => {
+    for (const q of ["SORT", "SORTBY", "list sort", "NORM.DIST", "Standard Normal", "EXPON.DIST", "COUNTA", "ROWS", "ISERR"]) {
+      const placed = search(q).map((l) => l.places ?? l.type);
+      expect(new Set(placed).size, q).toBe(placed.length);
+    }
+    expect(search("SORT").map((l) => l.label)).not.toContain("List Sort");
+    expect(search("EXPON.DIST")[0].label).toBe("EXPON.DIST → Distributions: Exponential");
+  });
+
   it("a card's family name finds its rows", () => {
     expect(types("bessel", 4).every((t) => t.startsWith("bessel-"))).toBe(true);
     expect(types("coupon", 3).every((t) => t.startsWith("coupon-"))).toBe(true);

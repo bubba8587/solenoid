@@ -237,7 +237,7 @@ export function opSearchLabel(hostLabel: string, opLabel: string): string {
 }
 
 const _primaryOp = new Map<string, string | null>();
-function primaryOpOf(host: NodeCatalogEntry): string | null {
+export function primaryOpOf(host: NodeCatalogEntry): string | null {
   const hit = _primaryOp.get(host.type);
   if (hit !== undefined) return hit;
   let op: string | null = null;
@@ -270,6 +270,8 @@ export function excelEntry(host: NodeCatalogEntry, name: string, op?: { decl: No
     type: `${host.type}__excel-${name}`,
     label: excelSearchLabel(name, host.label, op?.entry.label),
     ...(op ? { create: () => op.decl.create(op.entry.op) } : {}),
+    // The host set to its own primary op is the host itself.
+    places: op && op.entry.op !== primaryOpOf(host) ? `${op.decl.type}__op-${op.entry.op}` : host.type,
     keywords: undefined,
     hiddenOps: undefined,
     hideOpsMark: undefined,
