@@ -176,6 +176,13 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 - [ ] **Two author-held `*Where:*` lines remain** (B7, C80). The author deletes them or rules they stay.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed; `validate` is not in CI.
 
+## Socket labels (author 2026-09-26)
+
+- [ ] **Parentheticals move to the Inspector.** A socket label names the input; notes like "(optional)", "(UTC)", "(px)",
+  "(value)" belong in the class's `socketDocs`, as "(1-based)" already moved (ec1de47). ~15 labels in `src/graph/nodes`
+  (`(In|Out)\("[^"]*\(`), plus any built outside the helpers. Math notation stays (`arg(z)`, `P(lo ≤ X ≤ hi)`);
+  bring the author the unit ones (`T (K)`, `p (Pa)`) before moving them.
+
 ## Formatting & units
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
