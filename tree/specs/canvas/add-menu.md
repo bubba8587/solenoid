@@ -151,7 +151,7 @@ Quick-wire is a setting (`quickWire`, off by default). With it on, a cable dropp
 
 ## Search samples
 
-`scripts/search-samples.ts` holds one sample query per kind of searchable row (a card's label and its lower-case prefix, a card named after its function, a family name, an op label, an op's formula name, a card's Excel name, a Frame verb's Excel name, a retired Excel name, a keyword, a pack card's keyword, a one-edit typo, words in any order, an argument's words) with the row it must land on and how far down it may sit. `searchSamples.test.ts` runs them against the real catalog, and `SEARCH_SAMPLES_OUT=<file>` writes the results as JSON for a readable table. A sample whose row needs a pack searches with every pack on.
+`scripts/search-samples.ts` holds one sample query per kind of searchable row (a card's label and its lower-case prefix, a card named after its function, a family name, an op label, an op's formula name, a card's Excel name, a Frame verb's Excel name, a retired Excel name, a keyword, a pack card's keyword, a one-edit typo, words in any order, an argument's words) with the row it must land on and how far down it may sit. `searchSamples.test.ts` runs them against the real catalog, and `npm run search-samples` (`-- --misses` for the misses alone) prints the results as a Markdown table. A sample whose row needs a pack searches with every pack on.
 
 An op's own `keywords` ride its row, declared on the family's `OP_META` beside its label (`fromMeta` carries them), so "kanban" lands on "Record: Board".
 

@@ -27,7 +27,8 @@
     "copy-inventory": "tsx scripts/copy-inventory.ts",
     "validate-graph": "tsx scripts/validate-graph.ts",
     "ai-grounding": "tsx scripts/ai-grounding.ts",
-    "ai-prompt": "tsx scripts/ai-prompt.ts"
+    "ai-prompt": "tsx scripts/ai-prompt.ts",
+    "search-samples": "node scripts/search-samples-table.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

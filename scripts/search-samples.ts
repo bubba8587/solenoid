@@ -1,6 +1,6 @@
 // [[D5]] searchWiderThanLabel, [[C19]] namingModel
 // One sample query per kind of searchable row, run through the real Add-menu search.
-// tests/graph/searchSamples.test.ts runs them; SEARCH_SAMPLES_OUT=<file> also writes the results as JSON.
+// tests/graph/searchSamples.test.ts runs them; `npm run search-samples` prints them as a Markdown table.
 import { flattenLeaves, searchLeaves } from "../src/graph/catalogSearch";
 import { buildCatalog } from "../src/graph/catalogUtils";
 

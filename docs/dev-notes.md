@@ -38,7 +38,7 @@ specific item.
   name and the row places that op ([[C19]] namingModel, amended on the author's word); "Card: Op" is only ever an op.
   Every row carries its card's family name (the hover hint's), so "bessel" or "is test" finds the family.
 - **Search samples:** `scripts/search-samples.ts` (46 queries, one per kind of searchable row) runs in
-  `searchSamples.test.ts`; `SEARCH_SAMPLES_OUT` writes the table's JSON. It found two gaps, both fixed: an op's
+  `searchSamples.test.ts`; `npm run search-samples` prints them as a Markdown table. It found two gaps, both fixed: an op's
   keywords never reached its row (`fromMeta` dropped them), so "kanban" missed "Record: Board"; and List Sort had no
   argument words ("descending").
   A search shows one row per thing placed, so "SORT → List Sort" no longer sits beside "List Sort" (`places`).
