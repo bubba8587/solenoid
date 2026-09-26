@@ -2,7 +2,8 @@
 import { ClassicPreset } from "rete";
 import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells, flattenCells, SKIP_BY_CODE, type SkipCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
-import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput, readSetting, requiredSetting } from "./shared";
+import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput, readRole } from "./shared";
+import { rolesFrom } from "../inputRoles";
 import { pickSlot, pairIdsFromKeys } from "./logic";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
@@ -523,8 +524,9 @@ export const TABLE_SELECT_OP_META = {
 
 export class TableSelectNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    indices: "1-based. Negative indices count from the end. A zero or out-of-range index errors the whole result; a blank index gives a blank row or column there.",
+    indices: "1-based. Negative indices count from the end. A zero or out-of-range index errors the whole result; a blank index is skipped.",
   };
+  static inputRoles = rolesFrom("CHOOSEROWS", { indices: 1 });
 
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
@@ -544,9 +546,9 @@ export class TableSelectNode extends ClassicPreset.Node {
   data(inputs: { matrix?: unknown[]; indices?: number[][] }): { result: CellMat | SolError | null } {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     if (!m) { this.cachedResult = null; return { result: null }; }
-    const idx = requiredSetting(inputs.indices, undefined, this.op === "chooserows" ? "Row indices" : "Col indices");
+    const idx = readRole<number[] | number | SolError>(this, "indices", inputs.indices);
     if (isSolError(idx)) { this.cachedResult = idx; return { result: idx }; }
-    const picked = chooseAxis(m, idx, this.op === "chooserows" ? "row" : "column");
+    const picked = chooseAxis(m, Array.isArray(idx) ? idx : [idx], this.op === "chooserows" ? "row" : "column");
     this.cachedResult = isSolError(picked) ? picked : carryMatrixUnit(picked, m);
     return { result: this.cachedResult };
   }
@@ -566,6 +568,7 @@ export class TakeDropNode extends ClassicPreset.Node {
     rows: "Positive counts from the start, negative from the end, 0 keeps all.",
     cols: "Positive counts from the start, negative from the end, 0 keeps all.",
   };
+  static inputRoles = rolesFrom("TAKE", { rows: 1, cols: 2 });
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["data"], combine: "single" }];
   label: string;
   op: TakeDropOp;
@@ -591,8 +594,8 @@ export class TakeDropNode extends ClassicPreset.Node {
   data(inputs: { data?: unknown[]; rows?: number[]; cols?: number[] }): { result: unknown } {
     const raw = inputs.data?.[0];
     if (raw == null) { this.cachedResult = null; return { result: null }; }
-    const rRaw = readSetting(inputs.rows, this.literals.rows ?? 0, 0);
-    const cRaw = readSetting(inputs.cols, this.literals.cols ?? 0, 0);
+    const rRaw = readRole<number | undefined>(this, "rows", inputs.rows) ?? 0;
+    const cRaw = readRole<number | undefined>(this, "cols", inputs.cols) ?? 0;
     const nRows = Math.round(rRaw);
     const nCols = Math.round(cRaw);
     const gone = (len: number, k: number) => this.op === "drop" && len > 0 && Math.abs(k) >= len;
@@ -618,6 +621,7 @@ export class ExpandNode extends ClassicPreset.Node {
     rows: "Target row count. 0 keeps the current count.",
     cols: "Target column count. 0 keeps the current count.",
   };
+  static inputRoles = rolesFrom("EXPAND", { rows: 1, cols: 2 });
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   cachedResult: CellMat | SolError | null = null;
@@ -637,8 +641,8 @@ export class ExpandNode extends ClassicPreset.Node {
   data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[]; fill?: unknown[] }): { result: CellMat | SolError | null } {
     const m = toAnyMatrix(inputs.matrix?.[0]);
     if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
-    const reqRRaw = readSetting(inputs.rows, this.literals.rows ?? 0, 0);
-    const reqCRaw = readSetting(inputs.cols, this.literals.cols ?? 0, 0);
+    const reqRRaw = readRole<number | undefined>(this, "rows", inputs.rows) ?? 0;
+    const reqCRaw = readRole<number | undefined>(this, "cols", inputs.cols) ?? 0;
     const fill = (inputs.fill?.[0] ?? null) as Cell;
     const result = expandMat(m, Math.round(reqRRaw), Math.round(reqCRaw), fill);
     this.cachedResult = isSolError(result) ? result : (carryMatrixUnit(result, m), result);

@@ -1,6 +1,7 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readSetting, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
+import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
+import { rolesFrom } from "../inputRoles";
 import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import { guardFinite, powerOf } from "../valueKinds";
@@ -554,6 +555,7 @@ export const ROUNDN_OP_META = {
 } satisfies Record<RoundNOp, { label: string; description: string }>;
 
 export class RoundNNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("ROUND", { digits: 1 });
   label: string;
   op: RoundNOp;
   cachedResult: BroadcastResult = null;
@@ -576,7 +578,7 @@ export class RoundNNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
     const value  = readInput(inputs.value, this.literals.value);
-    const digits = readSetting(inputs.digits, this.literals.digits ?? 0, 0);
+    const digits = readRole<number | number[]>(this, "digits", inputs.digits);
     let result: BroadcastResult = null;
     if (value !== null) {
       result = broadcast((v, d) => roundDigits(v, d, this.op), value, digits);

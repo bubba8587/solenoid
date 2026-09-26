@@ -40,6 +40,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 | `../tree/specs/values/unit-flow.md` | units on values and formats flowing downstream | `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts` |
 | `../tree/specs/values/error-values.md` | error codes, propagation and display | `errorValue.ts` |
 | `../tree/specs/values/value-semantics.md` | null, NaN, infinity and errors per context, and reading an input (wired blank vs literal) | every `data()` |
+| `../tree/specs/values/input-roles.md` | what a blank means per input role (data, setting, picks) and the one declaration cards and formulas read | `inputRoles.ts`, `readRole`, every `data()` |
 | `../tree/specs/values/format-model.md` | the Format Controller's render pipeline, per-family controls and precision | `formatModel.ts`, `formatAnnotationStore.ts` |
 
 ## Documents

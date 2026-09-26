@@ -23,7 +23,7 @@ The trigger dropdown picks both the condition and which input sockets are live. 
 
 The card carries the full set of sockets at all times, and the component shows only the active mode's keys. On a mode change the component first drops the cables on sockets the new mode hides, through `dropInputCables` ([[input-cable-pruning#The ordering rule]]), and then sets the mode.
 
-An unwired socket falls back to the card's typed literal (defaults: `value` 50, `low` 0, `high` 100, `target` 0, `text` and `match` empty). A wired socket always wins, even when its cable carries a blank ([[D33]] unwiredNotBlank).
+An unwired socket falls back to the card's typed literal (defaults: `value` 50, `low` 0, `high` 100, `target` 0, `text` and `match` empty). A wired socket always wins, even when its cable carries a blank ([[D86]] blankRoles).
 
 ## The status output
 

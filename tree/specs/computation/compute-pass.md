@@ -2,11 +2,11 @@
 aliases: ["Compute pass and the input boundary"]
 tags: [spec, computation]
 ---
-<!-- [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
+<!-- [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D86]] blankRoles, [[D42]] perInputUnitBlind, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas, [[C17]] shareImpl -->
 
 # Spec: Compute pass and the input boundary
 
-Serves [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D33]] unwiredNotBlank, [[D42]] perInputUnitBlind, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice and . It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C23]] calcModes, [[D46]] freezeVolatilePerCalc, [[D35]] errorInErrorOut, [[D86]] blankRoles, [[D42]] perInputUnitBlind, [[D79]] effectsEdgeTriggered, [[C10]] socketLattice, [[C15]] matricesInFormulas and [[C17]] shareImpl. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This file owns what happens from "something changed" to "every card shows its new value": how the engine is driven, which nodes a pass recomputes, the calc mode, volatile nodes, rebuild scopes, and what a value goes through between leaving one node's output and reaching the next node's `data()`. Which cables may connect at all is [[socket-lattice]] ([[C10]] socketLattice); this file starts once a cable exists. The error codes and their meaning are [[error-values]]; units on the value are [[unit-flow]]; the null and blank semantics a `data()` applies are [[value-semantics]].
 
@@ -281,7 +281,7 @@ An unparseable field is `null` in place, never dropped (which would shift later 
 ## What `data()` receives
 
 - `inputs[key]` is an array with one coerced value per cable into that input. An input with no cable has no key, so `inputs[key]` is `undefined`, apart from an injected list literal.
-- A wired cable carrying a blank arrives as `[null]`, and that is a real missing value. `readInput(inputs.key, literal)` (`nodes/shared.ts`) returns the literal only when the input is unwired (`undefined` or empty) and otherwise the first value, with `undefined` read as `null` ([[D33]] unwiredNotBlank). A read of the form `inputs.key?.[0] ?? literal` would swallow the wired blank; what a node then does with it, by the input's role, is [[value-semantics]] "Reading an input".
+- A wired cable carrying a blank arrives as `[null]`, and that is a real missing value. `readInput(inputs.key, literal)` (`nodes/shared.ts`) returns the literal only when the input is unwired (`undefined` or empty) and otherwise the first value, with `undefined` read as `null` ([[D86]] blankRoles). A read of the form `inputs.key?.[0] ?? literal` would swallow the wired blank; what a node then does with it, by the input's role, is [[value-semantics]] "Reading an input".
 - A value is never a `SolError` at the top level unless the node is in `SEES_ERRORS`, because the guard answered for it. The exception is a lazy Frame that failed to collect (next section).
 - A value never contains a `UnitCell` unless units are kept for that input.
 - A value is never a `FrameRef` unless the node is lazy. The collect runs before `rawInputs` is consulted, so a raw input on an eager node still receives a collected Frame.

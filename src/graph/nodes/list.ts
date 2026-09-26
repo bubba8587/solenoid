@@ -9,7 +9,8 @@ import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, readSetting, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn } from "./shared";
+import { readInput, readRole, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn } from "./shared";
+import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
@@ -293,11 +294,12 @@ export class ListLengthNode extends ClassicPreset.Node {
 
 export class ListIndexNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    index: "Rows count from 1. 0 or unset takes every row. A wired list of rows picks each one. A wired blank blanks the result instead.",
-    column: "Columns count from 1. 0 or unset takes every column. A wired list of columns picks each one.",
-    position: "Items count from 1. 0 or unset takes the whole list. A wired list of positions picks each item, in that order. A wired blank blanks the result instead.",
+    index: "Rows count from 1. 0, unset or blank takes every row. A wired list of rows picks each one, skipping blanks.",
+    column: "Columns count from 1. 0, unset or blank takes every column. A wired list of columns picks each one, skipping blanks.",
+    position: "Items count from 1. 0, unset or blank takes the whole list. A wired list of positions picks each item, in that order, skipping blanks.",
     result: "A whole row taken from a frame arrives as a one-row frame. A whole column arrives as a list.",
-  };
+  };  static inputRoles = rolesFrom("INDEX", { index: 1, position: 1, column: 2 });
+
 
   label: string;
   cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
@@ -381,10 +383,8 @@ export class ListIndexNode extends ClassicPreset.Node {
     const v = inputs.list?.[0] ?? null;
     this.reconcileAxes(v);
     // Until the swap lands, the sockets on the card say what the numbers mean.
-    // A blank wired position is the position left out: the whole axis, as Excel's omitted row_num ([[E15]]).
-    const rowIn = this.inputs.position ? readSetting<IndexAxis, undefined>(inputs.position, this.literals.position, undefined)
-      : readSetting<IndexAxis, undefined>(inputs.index, this.literals.index, undefined);
-    const colIn = this.inputs.column ? readSetting<IndexAxis, undefined>(inputs.column, this.literals.column, undefined) : undefined;
+    const rowIn = this.inputs.position ? readRole<IndexAxis>(this, "position", inputs.position) : readRole<IndexAxis>(this, "index", inputs.index);
+    const colIn = this.inputs.column ? readRole<IndexAxis>(this, "column", inputs.column) : undefined;
     const result = indexIntoContainer(v, rowIn, colIn);
     this.cachedResult = result;
     return { result };

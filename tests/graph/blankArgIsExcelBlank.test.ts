@@ -1,18 +1,11 @@
 // [[C80]]
 import { describe, it, expect } from "vitest";
-import { compileEvaluator, BLANK_ARG_TYPES } from "../../src/graph/excelFormula";
-import { resolveExcelFunction } from "../../src/graph/excelFunctions";
+import { compileEvaluator } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
 describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, an omitted argument the default", () => {
-  it("every declared function exists and each declared index is a real parameter", () => {
-    for (const [name, types] of Object.entries(BLANK_ARG_TYPES)) {
-      expect(resolveExcelFunction(name), name).not.toBeNull();
-      for (const i of Object.keys(types)) expect(Number(i)).toBeGreaterThanOrEqual(0);
-    }
-  });
 
   it("TEXTJOIN: a blank ignore_empty is FALSE and keeps the empties; omitted is not possible (required)", () => {
     expect(ev('TEXTJOIN(",", , "a", "", "b")')).toBe("a,,b");
@@ -44,7 +37,7 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
     expect(ev("ROUND(2.5, )")).toBe(3);                 // the empty slot is not a value
   });
 
-  it("INDEX: a blank position is 0, the whole axis, typed or a blank value ([[E15]])", () => {
+  it("INDEX: a blank position is 0, the whole axis, typed or a blank value ([[D86]])", () => {
     const m = [[1, 2], [3, 4]];
     expect(ev("INDEX(x, , 2)", { x: [10, 20, 30] })).toBe(20);
     expect(ev("INDEX(m, , 2)", { m })).toEqual([2, 4]);
@@ -52,7 +45,7 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
     expect(ev("INDEX(m, b, 2)", { m, b: null })).toEqual([2, 4]);
   });
 
-  it("EXPAND, TAKE, DROP: a blank size keeps that axis, typed or a blank value ([[E15]])", () => {
+  it("EXPAND, TAKE, DROP: a blank size keeps that axis, typed or a blank value ([[D86]])", () => {
     const m = [[1, 2], [3, 4]];
     expect(ev("EXPAND(m, 3, , 0)", { m })).toEqual([[1, 2], [3, 4], [0, 0]]);
     expect(ev("EXPAND(m, , 3)", { m })).toEqual([[1, 2, null], [3, 4, null]]);

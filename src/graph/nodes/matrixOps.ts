@@ -157,19 +157,16 @@ export function stackV(mats: readonly unknown[][][]): unknown[][] {
   return out;
 }
 
-/** A blank index is skipped; with none left, the indices were never given, and they have no default ([[E15]]). */
-export function chooseAxis<T>(m: T[][], indices: readonly (number | null | undefined)[], kind: "row" | "column"): T[][] | SolError {
+export function chooseAxis<T>(m: T[][], indices: readonly number[], kind: "row" | "column"): T[][] | SolError {
   const size = kind === "row" ? matRows(m) : matCols(m);
   const label = kind === "row" ? "CHOOSEROWS" : "CHOOSECOLS";
   const resolved: number[] = [];
   for (const i of indices) {
-    if (i == null) continue;
     const p = i < 0 ? size + Math.trunc(i) : Math.trunc(i) - 1;
     if (!(p >= 0 && p < size))
       return solError("#VALUE!", `${label}: ${kind} index ${i} is out of range for a table with ${size} ${kind}s`);
     resolved.push(p);
   }
-  if (resolved.length === 0) return solError("#SYNTAX!", `${label}: no ${kind} indices given, and they have no default`);
   return kind === "row" ? resolved.map((r) => [...m[r]]) : m.map((row) => resolved.map((c) => row[c]));
 }
 

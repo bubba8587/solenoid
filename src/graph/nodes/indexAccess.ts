@@ -33,8 +33,6 @@ export function indexRefError(n: number, max: number, what: string): SolError {
 
 export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: UnitTagger): unknown {
   if (v === null || v === undefined) return null;
-  row = skipBlankPositions(row);
-  col = skipBlankPositions(col);
   if (Array.isArray(row) || Array.isArray(col)) return indexMany(v, row, col, tagUnit);
   const ax = resolveAxes(row as IndexPosition, col as IndexPosition);
   if (ax.blank) return null;
@@ -99,13 +97,6 @@ function positionOf(x: unknown): number | null | SolError {
  * CHOOSEROWS and CHOOSECOLS do. Otherwise the two axes pair up as Excel's array arguments do (a list against a column
  * spreads into a table, a size mismatch pads with #N/A), one value per pair; a pair that would answer a whole row is #VALUE!.
  */
-/** A blank in a list of positions is skipped; a list with none left is the axis left out, the whole axis ([[E15]]). */
-function skipBlankPositions(a: IndexAxis): IndexAxis {
-  if (!Array.isArray(a) || isGrid(a)) return a;
-  const kept = a.filter((p) => p != null);
-  return kept.length ? kept : undefined;
-}
-
 function indexMany(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: UnitTagger): unknown {
   if (isGrid(v) && (Array.isArray(row) !== Array.isArray(col))) {
     const picks = Array.isArray(row) ? row : (col as unknown[]);

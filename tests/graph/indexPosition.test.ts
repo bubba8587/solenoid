@@ -35,7 +35,7 @@ describe("INDEX with several positions, as Excel's array arguments", () => {
     expect(ev("INDEX(m, 0, p)", { m, p: [1, 3] })).toEqual([[1, 3], [4, 6], [7, 9]]);
   });
 
-  it("a blank position is skipped ([[E15]]), a bad one its error", () => {
+  it("a blank position is skipped ([[D86]]), a bad one its error", () => {
     expect(ev("INDEX(x, p)", { x: [10, 20, 30], p: [1, null] })).toEqual([10]);
     const out = ev("INDEX(x, p)", { x: [10, 20, 30], p: [1, 9] }) as unknown[];
     expect(isSolError(out[1]) && out[1].code).toBe("#REF!");

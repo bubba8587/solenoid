@@ -2,11 +2,11 @@
 aliases: ["Value semantics"]
 tags: [spec, values]
 ---
-<!-- [[C24]] arraySemantics, [[D33]] unwiredNotBlank, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C22]] rowFormulaRefs -->
+<!-- [[C24]] arraySemantics, [[D86]] blankRoles, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence, [[C45]] excelComparisons, [[B16]] oneFormulaSurface, [[C14]] currentExcelParity, [[C22]] rowFormulaRefs -->
 
 # Spec: Value semantics
 
-Serves [[C24]] arraySemantics (the value model), [[D33]] unwiredNotBlank, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence (one answer per computation, and the reduction versus element-wise line), [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[B16]] oneFormulaSurface and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C24]] arraySemantics (the value model), [[D86]] blankRoles, [[D36]] nullSkippedNotZero, [[D37]] errorBeatsMissing, [[D38]] kleeneLogic, [[D51]] oneAnswerOneDivergence (one answer per computation, and the reduction versus element-wise line), [[C45]] excelComparisons (comparisons versus identity, list versus relational), [[B16]] oneFormulaSurface and [[C14]] currentExcelParity. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 This is the one reference for the value model's special kinds: what each means, what produces it, how it propagates in each kind of computation, and how it renders. The mechanics (the error guard, the per-cell contract, the bounded scan) are [[error-values]]; this file is the meaning. Every rule here is built. A rule that is decided but not yet built gets a `[decided <date>]` tag here and an item in the backlog.
 
@@ -70,7 +70,7 @@ Which rule applies is decided by the kind of computation, not by the function's 
 
 The one sanctioned divergence ([[D51]] oneAnswerOneDivergence): the formula `AND(x)` is a reduction, so it skips nulls as Excel does, while the BooleanOp node is element-wise and uses Kleene logic. Same word, two contexts, both correct. Any other disagreement between a node and a formula is a bug.
 
-**Scalar operators.** The operator table (`applyOp`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `BLANK_ARG_TYPES` types it, so `IF(x,,y)` answers `null`, not 0) are in [[formula-language]].
+**Scalar operators.** The operator table (`applyOp`: errors first, then `null` propagating, the logical bridge, case-blind `=`, code-unit ordering with `#TYPE!` across types) and blank arguments (a blank slot is `null` unless `ARG_ROLES` declares its role, [[input-roles]], so `IF(x,,y)` answers `null`, not 0) are in [[formula-language]].
 
 ## Reading an input: a wired blank versus the typed literal
 
@@ -87,84 +87,15 @@ const n = readInput(inputs.count, this.literals.count ?? 1);
 ```
 
 - When the slot is **unwired** (`undefined`), the typed literal is the value: the field on the card is the input.
-- When the slot is **wired**, the cable's value wins, **even when it is `null`**. A blank you deliberately wired is a fact about the data, not an absence of input.
+- When the slot is **wired**, the cable's value wins, **even when it is `null`**: the typed value never stands in for a wired blank. What the blank then means is the input's role ([[input-roles]]).
 
 **Never write `inputs.x?.[0] ?? this.literals.x`.** `??` can't tell "no cable" from "a cable carrying blank", so it silently puts the card's value in place of the graph's answer: a number the user never asked for, with an origin they can't see. This is the most common way a Solenoid node has produced a confidently wrong answer. `nodes/readInputSweep.test.ts` ratchets the remaining occurrences down and fails on new ones.
 
 **A wildcard slot's literal lives in one of two maps.** A slot typed `any` or `trueany` is element-agnostic, so its typed literal may be a number (`literals`) or text (`stringLiterals`). The inline field writes exactly one and clears the other, so the reader never has to break a tie. Only a node that declares `autoLiterals = true` gets that field: the value selectors IF, IFS, SWITCH and CHOOSE, whose wildcard rows are value branches. A wildcard sink or relay (Display, Cast, Report, Cube) leaves it off and stays wire-only. The unwired-versus-wired rule is unchanged; it just reads both maps (`pickSlot` in `nodes/logic.ts`).
 
-### What a wired blank does, by the input's role
+### What the node does with a blank
 
-Reading the input correctly is half of it; the other half is what the node then does. Decide by the input's role, not its type:
-
-| The input is | A wired blank means | So the node | Example |
-|---|---|---|---|
-| an **operand**, the value computed on | this element is unknown | **propagates**: blank in, blank out, per cell | `UPPER(blank)` is blank |
-| a **setting**: a count, position, size or mode ([[E15]] settingBlankIsLeftOut) | the setting was left out | **uses the node's default**, overriding the typed value; no default is `#SYNTAX!`. Read it with `readSetting` or `requiredSetting` (`nodes/shared.ts`) | TAKE's rows, INDEX's position, ROUND's digits, CHOOSEROWS's indices |
-| a **mode selector**: basis, delimiter, pattern, weekend code | the mode is unknown | **propagates**, since an unknown rule gives an unknown answer | `TEXTSPLIT(x, blank)` is blank |
-| a **shape**: rows, columns, count, wrap width | the result's shape is unknown | **propagates** | `MAKEARRAY(blank, 3)` is blank |
-| a **member of a reduction**: CONCAT's rows, SUM's inputs | one contributor is missing | **skips it**, as SUM skips nulls | `CONCAT(blank, "b")` is `"b"` |
-| a **check's parameter**: Expect's bound or pattern | that check can't be evaluated | **skips that check** and passes the data through | Expect keeps flowing and reports no violation |
-| a **control's bound**: Slider min, max, step | the control still has to work | **falls back to the card's own value** | the Slider keeps clamping to its typed bound |
-| a **column reference**: which column to sort, group, split or look up by | the target is unknown | **propagates**: a blank Frame out, not the Frame unchanged | Frame Sort, Get Column, XLOOKUP |
-| a **figure's datum**: a chart's values, a KPI's number, a Mermaid source | there is nothing to draw | **propagates**: renders an empty figure, never a `SolError` out a `chart` socket | Gauge, KPI |
-| a **presentation annotation**: an options string, decimals, a color | no styling was given | **falls back to the neutral default**, never to the card's styling | chart Options, the Chart Options builder |
-| a **filter predicate** | that row is not known to match | **drops the row** | Filter |
-| a **filter condition's column or comparison value** | the condition can't be evaluated, so which rows survive is unknown | **propagates**: the whole result is blank | Filter, SUMIFS |
-| an **optional** input: a bound, a tolerance, a comparison value | still unknown (see "Absent is not unknown") | **propagates** | Clamp's min, an as-of tolerance |
-
-The **mode selector**, **shape**, **filter condition** and **optional** rows are settings under [[E15]]; they describe nodes the settings sweep has not reached yet (backlog), and each moves to the setting row as it is swept.
-
-The first row is the default. The others exist because the alternative is worse in a specific, checkable way, not as a matter of taste:
-
-- A **reduction** that propagated would let one blank void a whole aggregate, which is neither Excel's range behavior nor SQL's.
-- A **check** that propagated would null out the user's data to report a violation it could not justify. Undeterminable is not the same as failed.
-- A **control** that propagated would drop the value the user physically set. "Stop constraining" (`±Infinity`) is no escape either: it breaks `<input type="range">`, the play loop's wrap-around and the Tornado sweep's bounds.
-- A **presentation annotation** looks like a control, and it is the one place the control rule does not extend. The control fallback exists because the widget can't work without a bound. Styling always has a working neutral (`{}` options, 0 decimals), so there is nothing to rescue, and falling back to the card would bring back styling the graph withheld. The test is the widget's, not the input's: can it render at all? A Bullet's `max` is the track's scale, and without it the Bullet can't render, so `max` is a control and keeps the card's bound while the same node's `value` and `target` go blank. Three inputs, two dispositions, one node.
-- A **filter condition** looks as though it should skip, the way a check's parameter does. It doesn't, and the difference is what the node outputs. A check passes the data through and reports separately, so skipping costs only the report. A filter's output is the decision itself: skipping the condition silently returns more rows than the graph asked for, which reads as a successful unfiltered result rather than a missing one.
-
-**An empty string** needs its own note, because it is the literal these roles ship with. `""` is a real value that already means something on almost every frame verb: "no column chosen, pass the Frame through". It is what an unwired slot on an untouched card reads, and that reading is unchanged. A cable delivering blank is a different fact and takes the row's disposition. So read the raw value first and only then `.trim()` it: in `const raw = readInput(inputs.column, this.stringLiterals.column ?? "")`, `null` is the wired blank and `""` is the untouched card.
-
-### Absent is not unknown
-
-Most nodes already have a code path for an absent input, and it usually sits right next to the read:
-
-```ts
-const min = inputs.min?.[0] ?? this.literals.min ?? null;   // null = no floor applied
-const rk  = (inputs.rightKey?.[0] ?? …).trim() || lk;       // blank = same key as left
-const tol = inputs.tolerance?.[0] ?? this.literals.tolerance; // undefined = exact match
-```
-
-That path exists for the unwired slot. Routing a wired blank into it looks like reuse but changes the meaning: "the user didn't supply this" and "the graph computed this and got nothing" are different facts, and only the first means omitted.
-
-So Clamp with a wired blank `min` is **blank**, not unclamped. An as-of Join whose `tolerance` arrives blank is **blank**, not an exact-match join. A KPI whose `prev` arrives blank shows **no comparison**, not a comparison against the card's number. The unwired readings (no floor, exact match, no delta) are unchanged, because that is what an unwired slot still means.
-
-This is the same rule as everywhere else. It gets its own section because the absent branch is already written, which makes the wrong answer the easiest one to write. An existing comment that says "unwired or blank means default" conflates the two cases; this spec wins.
-
-`readInput` already separates them, and it is the tool for an input with a real omitted reading. Pass the literal through without a `?? default` and you get three distinct states back:
-
-```ts
-const end = readInput(inputs.end, this.literals.end as number | undefined);
-//  undefined → unwired, nothing typed  → omitted: slice to the end of the list
-//  null      → a cable carrying blank  → unknown: blank out
-//  a number  → wired or typed          → use it
-```
-
-Excel's own omitted-argument readings live in the `undefined` branch, and only there: INDEX's omitted axis meaning the whole row or column, Slice's open end, an as-of Join's exact-match tolerance, a Sequence with no stop yet. Writing `?? 0` or `?? 1` on the literal collapses `undefined` into a value and throws the distinction away, so add a default only when the input really has no omitted reading.
-
-### Where the blank check goes
-
-Two placement rules, both found by sweeping `finance.ts` (73 reads, about 20 multi-op hosts). Neither is about which disposition to take. Both are about a guard that takes the right disposition in the wrong place, which typechecks and is silently wrong.
-
-- **An error outranks an unknown** ([[D37]] errorBeatsMissing). A node that both null-guards its scalars and inspects a list for `SolError`s runs the error check first. `#DIV/0!` reaching MIRR's cash flows while a blank reaches its `finrate` is not a blank result: it is `#DIV/0!`, because that is what `installErrorGuards` would return had the error arrived on any other input. Guard order alone decides this, so put the error branch above the blank one.
-- **Scope the guard to the active op.** On a multi-op node, only the inputs the current op reads can make the result unknown. A guard hoisted above the `switch` that combines every op's inputs turns a blank on an input this op ignores into a blank answer: TBILLYIELD does not read `discount`, so a blank there must not null it. Either put the read and its guard inside the branch, or read op-dependently first (`const a = this.op === "disc" ? readInput(inputs.pr, …) : readInput(inputs.investment, …)`) and guard the result. Inputs every op shares (`basis`, `frequency`) can still be guarded once, up top.
-
-### Writing a new node
-
-1. Read every input through `readInput`. An input that is not a card field has no literal and nothing to swallow.
-2. Name each input's role from the table and take that disposition. Place the guard as "Where the blank check goes" says: after any error branch, inside the op's branch.
-3. **Check what consumes the value, not only `data()`.** The Slider's wired-blank bug was invisible in its own method: three other call sites (a DOM attribute, a wrap-around, and a sensitivity sweep in another file) each assumed a finite bound. If a node publishes a field others read (`effectiveMin`, `cachedResult`), the disposition has to hold at those call sites too.
-4. Pin both halves in a test: a wired blank does the right thing, and an unwired slot still uses the literal. A fix that propagates unconditionally breaks every typed default as badly as the bug it replaces. Worked examples of each row of the table are in `nodes/wiredNull.test.ts`.
+Reading the input correctly is half of it; the other half is what the node then does, and that depends on the input's role: data stays blank, a setting left blank is its default, a blank pick is dropped, and a required one with no default is `#SYNTAX!` ([[D86]] blankRoles). The roles, the one declaration every function and card subscribes to (`ARG_ROLES`, `readRole`), what each input kind does today, where the check goes and the checklist for a new node are [[input-roles]].
 
 ## Boundaries and bridges
 

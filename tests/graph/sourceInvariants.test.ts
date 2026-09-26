@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[D16]], [[D22]], [[D42]], [[D33]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
+// [[B10]] reactFlowView, [[C13]], [[C26]], [[B12]] losslessSaves, [[C38]], [[D79]], [[D16]], [[D22]], [[D42]], [[D86]], [[D46]], [[C95]], [[B2]] webTryDesktopFull
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -382,7 +382,7 @@ describe("[[D16]] retypeReconciles — a node class reconciles on the editor tha
   });
 });
 
-describe("[[D33]] unwiredNotBlank — a wired blank never falls back to a literal or default", () => {
+describe("[[D86]] blankRoles — a wired blank never falls back to a literal or default", () => {
   // `inputs.x?.[0] ?? fallback` hides a wired null behind the fallback. Test connection presence
   // (readInput, or inputs.x?.length) instead. `?? null` / `?? []` only normalize an absent cable.
   const PATTERN = /\binputs(?:\.\w+|\[[^\]]+\])\?\.\[0\]\s*\?\?\s*([^\s,;)]+)/g;
@@ -400,7 +400,7 @@ describe("[[D33]] unwiredNotBlank — a wired blank never falls back to a litera
         for (const h of hits(file)) if (!(h in SANCTIONED)) offenders.push(h);
       }
     }
-    expect(offenders, `A wired blank falls back here ([[D33]] unwiredNotBlank); use readInput:\n  ${offenders.join("\n  ")}`).toEqual([]);
+    expect(offenders, `A wired blank falls back here ([[D86]] blankRoles); use readInput:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
   it("the sanctioned list stays honest", () => {
     for (const [key, why] of Object.entries(SANCTIONED)) {

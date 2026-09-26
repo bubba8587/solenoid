@@ -1705,14 +1705,14 @@ registerInternal("XSTACK", (axis, ...args) => {
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? (a === "v" ? stackV(mats) : stackH(mats)) : null;
 });
-const asIndex = (v: unknown): number | null => (v == null ? null : Number(v));
+const asIndices = (args: unknown[]): number[] => args.flat().filter((v) => v !== undefined).map(Number);
 registerInternal("CHOOSECOLS", (matrix, ...cols) => {
   const m = toMatrix(matrix);
-  return m === null ? null : chooseAxis(m, cols.flat().map(asIndex), "column");
+  return m === null ? null : chooseAxis(m, asIndices(cols), "column");
 });
 registerInternal("CHOOSEROWS", (matrix, ...rows) => {
   const m = toMatrix(matrix);
-  return m === null ? null : chooseAxis(m, rows.flat().map(asIndex), "row");
+  return m === null ? null : chooseAxis(m, asIndices(rows), "row");
 });
 registerInternal("EXPAND", (matrix, rows, cols, fill) => {
   const m = toMatrix(matrix);
@@ -1857,7 +1857,7 @@ const asRowsOf = (v: unknown): { m: unknown[][]; list: boolean } =>
   Array.isArray(v) && v.length > 0 && Array.isArray(v[0]) ? { m: v as unknown[][], list: false } : { m: [toList(v)], list: true };
 const backToList = (m: unknown[][], list: boolean): unknown => (list && m.length === 1 ? m[0] : m);
 registerInternal("TAKE", (v, rows, cols) => {
-  // A blank count arrives as undefined and keeps its axis ([[E15]]).
+  // A blank count arrives as undefined and keeps its axis ([[D86]]).
   if (v == null) return null;
   const n = rows == null ? null : Math.round(Number(rows));
   const c = cols == null ? null : Math.round(Number(cols));

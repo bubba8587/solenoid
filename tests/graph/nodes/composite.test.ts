@@ -82,7 +82,7 @@ describe("CompositeNode shell", () => {
     expect(out[outId]).toBe(7);
   });
 
-  it("a wired blank beats the declared default ([[D33]] unwiredNotBlank)", async () => {
+  it("a wired blank beats the declared default ([[D86]] blankRoles)", async () => {
     const c = new CompositeNode();
     const passthrough = new CompositeOutputNode({ label: "Result" });
     const inMarker = new CompositeInputNode({ label: "A" });

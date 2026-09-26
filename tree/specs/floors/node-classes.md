@@ -2,11 +2,11 @@
 aliases: ["Node classes and op modules"]
 tags: [spec, floors]
 ---
-<!-- [[B12]] losslessSaves, [[C17]] shareImpl, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles, [[D33]] unwiredNotBlank; covers: src/graph/nodes/*.ts -->
+<!-- [[B12]] losslessSaves, [[C17]] shareImpl, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc, [[C28]] literalsIffEditable, [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles, [[D86]] blankRoles; covers: src/graph/nodes/*.ts -->
 
 # Spec: Node classes and op modules
 
-Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles and [[D33]] unwiredNotBlank.
+Serves [[B12]] losslessSaves, [[C17]] shareImpl, [[D42]] perInputUnitBlind, [[D46]] freezeVolatilePerCalc and [[C28]] literalsIffEditable, with [[C35]] unknownViaPlaceholder, [[D16]] retypeReconciles and [[D86]] blankRoles.
 
 This is the floor every node class and op module under `src/graph/nodes/` is built to. A file that implements a specific mechanism (units, dates, errors, a family's merge) cites that leaf in its own header. This spec's `covers:` line is what `dte blast` and `dte coverage` read instead of a citation in every file.
 
@@ -39,7 +39,7 @@ A **node class** is the headless model of one card: its sockets, its saved field
   - an error beats a missing value in the same cell ([[D37]] errorBeatsMissing);
   - a producer turns a non-finite result into a classified error rather than emitting it bare ([[D48]] classifyNonFinite);
   - an input ignores units only where that input is declared unit-blind ([[D42]] perInputUnitBlind).
-- **Wired beats literal, even when blank.** A connected cable's value wins even when it carries null; only an unwired slot falls back to the card's typed literal ([[D33]] unwiredNotBlank). So a card tests connection presence (`readInput`, or `inputs[key]?.length`), never `?? literal`, which would hide a wired blank behind the literal. A wildcard slot on an `autoLiterals` card reads through `pickSlot`, which applies the same rule over both literal maps.
+- **Wired beats literal, even when blank.** A connected cable's value wins even when it carries null; only an unwired slot falls back to the card's typed literal ([[D86]] blankRoles). So a card tests connection presence (`readInput`, or `inputs[key]?.length`), never `?? literal`, which would hide a wired blank behind the literal. A setting or pick socket declares its role (`static inputRoles`, usually `rolesFrom` its formula twin) and reads through `readRole` ([[input-roles]]). A wildcard slot on an `autoLiterals` card reads through `pickSlot`, which applies the same rule over both literal maps.
 - **A unit-aware class sets `unitAware = true`.** It then receives `UnitCell` tags intact and runs the dimension algebra itself ([[unit-flow]]); every other class sees bare magnitudes.
 - **A class that takes a Cube as is lists the input in `noWidenInputs`**, so the coercion wrapper skips rank widening there and the class runs its own Cube branch ([[frame-verbs]] § Frames and Cubes).
 - **A volatile `data()` freezes its random draw per recalc.** It keys the draw on the recalc generation (`getRecalcGen` in `process.ts`), so every read within one recalc sees the same value, and it never calls a bare `Math.random()` ([[D46]] freezeVolatilePerCalc). The raw draw is what freezes; live inputs such as bounds apply to it on every call, so a new bound rescales the same draw instead of rerolling.

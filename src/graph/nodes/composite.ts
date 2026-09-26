@@ -106,7 +106,7 @@ export function byRowValues(v: unknown): unknown[] {
 
 export const BY_ROW_MAX_ROWS = 500;
 
-/** A wired exposed port wins even when it carries a blank; only an unwired or hidden one takes the default ([[D33]] unwiredNotBlank). */
+/** A wired exposed port wins even when it carries a blank; only an unwired or hidden one takes the default ([[D86]] blankRoles). */
 export function portSource(
   port: CompositeInputPort,
   marker: { defaultValue: number | null } | undefined,

@@ -34,11 +34,12 @@ warning is expected.
 
 ## Cubes and lists (author 2026-09-26)
 
-- [ ] **The settings sweep ([[E15]] settingBlankIsLeftOut).** TAKE, DROP, EXPAND, INDEX, ROUND and CHOOSEROWS/COLS read a wired
-  blank setting as left out. Tag every other card's settings (`readSetting` / `requiredSetting`) and every formula's
-  (`BLANK_ARG_TYPES`), bring the author the list first, then retire the propagating rows of value-semantics' role table.
-  Known cases: Slice's end, Series' count, MAKEARRAY's sizes, TEXTSPLIT's delimiter, Filter's condition value (turns
-  [[C24]]'s "a blank filter value matches no rows" into keep-every-row; rewrite that consequence when it lands).
+- [ ] **The settings sweep ([[D86]] blankRoles, [[input-roles]]).** Declared so far: TAKE, DROP, EXPAND, INDEX, ROUND(UP/DOWN),
+  CHOOSEROWS/COLS, TEXTJOIN, XMATCH, XLOOKUP. Give every other function its `ARG_ROLES` entry and every card `inputRoles`
+  (`rolesFrom` its formula twin, or inline), bring the author the list first, then clear the `[decided 2026-09-26]` rows of
+  input-roles' "What each input kind does today". Known cases: Slice's end, Series' count, MAKEARRAY's sizes, TEXTSPLIT's
+  delimiter, Clamp's bounds, as-of tolerance, column references, Slider bounds, Filter's condition value (overturns
+  [[C24]]'s blank-filter consequence).
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass

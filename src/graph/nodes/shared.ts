@@ -2,8 +2,9 @@
 import { ClassicPreset } from "rete";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
-import { type SolError, solError } from "../errorValue";
-import { cellShortCircuit, guardFinite, COMPUTE, skipBlankSettings } from "../valueKinds";
+import { type SolError } from "../errorValue";
+import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
+import { applyRole, type InputRole } from "../inputRoles";
 import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
 import { dimOf } from "../unitValue";
 
@@ -112,15 +113,13 @@ export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | n
   return wired === undefined || wired.length === 0 ? literal : (wired[0] ?? null);
 }
 
-/** A setting (a count, position, size or mode): a wired blank reads as the setting left out, so `leftOut` stands in, and so does a blank item of a wired list ([[E15]]). */
-export function readSetting<T, D>(wired: readonly T[] | undefined, literal: T, leftOut: D): T | D {
-  return wired === undefined || wired.length === 0 ? literal : skipBlankSettings(wired[0] ?? leftOut, leftOut);
-}
-
-/** A setting with no default: left out, or wired blank, it answers `#SYNTAX!` naming the socket ([[E15]]). */
-export function requiredSetting<T>(wired: readonly T[] | undefined, literal: T | null | undefined, label: string): T | SolError {
+/** A declared input read by its role ([[D86]] blankRoles): unwired, the typed value; wired, the cable's; a blank as the role reads it. */
+export function readRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined): T {
+  const role = (node.constructor as { inputRoles?: Record<string, InputRole> }).inputRoles?.[key];
+  if (!role) throw new Error(`${node.constructor.name}: no input role declared for "${key}"`);
+  const literal = (node as { literals?: Record<string, unknown> }).literals?.[key];
   const v = wired === undefined || wired.length === 0 ? literal : wired[0];
-  return v ?? solError("#SYNTAX!", `${label} is blank, and it has no default`);
+  return applyRole(role, v ?? null, node.inputs[key]?.label ?? key) as T;
 }
 
 export type CellResult<T> = T | (T | SolError | null)[] | SolError | null;

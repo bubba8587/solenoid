@@ -105,3 +105,5 @@ C82	2026-09-24	reverted	-	Claude Opus 5.5	the author	vaultOutbox: The author's v
 B9	2026-09-24	reverted	-	Claude Opus 5.5	the author	rulesWithoutMemory: AI agents build Solenoid under one author, so its rules must hold without anyone remembering them
 B8	2026-09-24	reverted	-	Claude Opus 5.5	the author	treeIsTheHome: Solenoid's decisions and rules live only in the decision tree
 D84	2026-09-26	superseded	D85	claude	-	listEitherAxis: A list's position arguments work along either axis, since a column-shaped answer is a list too
+D33	2026-09-26	superseded	D86	Claude Opus 5.5	the author	unwiredNotBlank: An unplugged input uses its typed value; a plugged-in blank stays blank
+E15	2026-09-26	superseded	D86	Claude Opus 5.5	the author	settingBlankIsLeftOut: A blank wired into a setting means the setting was left out

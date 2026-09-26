@@ -192,7 +192,7 @@ Evaluating `{ t: "call", name, args }` uppercases the name and takes the first m
 3. **Blocked.** `LEGACY_ALIASES`, then `FRAME_SURFACE_NAMES`, then `NODE_SURFACE_NAMES`, as tabled above.
 4. **Unknown.** No implementation resolves: `#NAME?` "Unknown function {NAME}".
 5. **Evaluate arguments.** Each argument is evaluated. For a lambda host (`MAP`, `BYROW`, `BYCOL`, `REDUCE`, `SCAN`, `GROUPBY`) a bare dispatchable name eta-expands instead (see *LAMBDA*).
-6. **Typed blanks.** `excelBlanks` replaces blank slots with typed blanks where `BLANK_ARG_TYPES` declares them (see *Blank and omitted arguments*).
+6. **Input roles.** `applyArgRoles` reads each declared argument by its role in `ARG_ROLES` ([[input-roles]]), so a blank setting is its default, a blank pick is dropped and a missing required one is `#SYNTAX!` (see *Blank and omitted arguments*).
 7. **Error handlers.** `IFERROR`, `IFNA`, `ISERROR`, `ISERR`, `ISNA` and `ERROR.TYPE` receive their arguments as they are (see *Error-handling functions*).
 8. **Error propagation.** The first top-level argument that is a `SolError` is the answer. Errors inside a list are not hoisted here; each route decides.
 9. **Matrix containment.** If any argument is a matrix and the function does not declare `matrixArgs`: a `RANGE_POSITIONAL` function answers `#SHAPE!`; a `RANGE_FUNCTIONS` member flattens each matrix row-major and continues; a whole-list native, or a name with no `EXCEL_IMPL_META` entry and no internal registration (a Formula.js-only name), answers one `#SHAPE!` "{NAME} works on values and 1-D lists, not a 2-D matrix"; an internally registered element-wise function continues to the broadcast ([[#The dispatch ladder]]).
@@ -207,20 +207,7 @@ Formula.js's array functions are written against 2-D spreadsheet ranges and have
 
 A blank slot evaluates to `null`, the first-class missing value. An omitted trailing argument is absent, so the implementation receives `undefined`. Implementations read `undefined` as "use the default" and never treat `null` as omitted ([[C80]] blankArgIsExcelBlank).
 
-`BLANK_ARG_TYPES` declares, per function and zero-based parameter index, the setting slots and what a blank there reads as; `excelBlanks` substitutes that type's blank (number 0, logical FALSE, text "", `undefined` where Excel reads the slot as left out, or `#SYNTAX!` for a `required` setting with no default) at step 6, for internal and Formula.js implementations alike. A slot left empty and a variable whose value is blank are substituted alike ([[E15]] settingBlankIsLeftOut), and so is a blank item of a list of settings; a pick list (`omitted` or `required`) is left to its kernel, which skips the blank pick. A substituted slot no longer blanks the answer under the null rule.
-
-| Function | Parameter | Blank reads as |
-|---|---|---|
-| `TEXTJOIN` | 1 (`ignore_empty`) | FALSE |
-| `XMATCH` | 2 (`match_mode`), 3 (`search_mode`) | 0 |
-| `XLOOKUP` | 4 (`match_mode`), 5 (`search_mode`) | 0 |
-| `INDEX` | 1 (`row_num`), 2 (`column_num`) | left out: the whole axis |
-| `EXPAND` | 1 (`rows`), 2 (`columns`) | left out: that axis keeps its size |
-| `TAKE`, `DROP` | 1 (`rows`), 2 (`columns`) | left out: that axis is kept whole |
-| `ROUND`, `ROUNDUP`, `ROUNDDOWN` | 1 (`num_digits`) | 0 |
-| `CHOOSEROWS`, `CHOOSECOLS` | 1 (the first index) | required: `#SYNTAX!` |
-
-A blank index further along CHOOSEROWS or CHOOSECOLS, or a blank in a list of INDEX positions, is skipped; with none left, CHOOSEROWS and CHOOSECOLS answer `#SYNTAX!` and INDEX takes the whole axis.
+The arguments that are settings or positions, and what a blank in each reads as, are declared once in `ARG_ROLES` and read at step 6; the roles, the declaration and the reading rules are [[input-roles]] ([[D86]] blankRoles). A slot left empty and a variable whose value is blank read alike there, and a declared slot no longer blanks the answer under the null rule.
 
 So `TEXTJOIN(",",,"a","","b")` is `a,,b`, and `XMATCH(7, x, )` is an exact match. A blank `search_mode` becomes 0, which the implementation rejects as Excel does. Every other blank stays `null` and follows the route's missing-value rules. `IF(x,,y)` returns `null` for a true `x`, not 0.
 
@@ -917,13 +904,13 @@ FITDIST and the Fit Distribution node share these, in the spirit of `scipy.stats
 
 The INDEX node and the INDEX formula share `indexInto(value, row, col, tagUnit?)` over a scalar, a list or a matrix, everything both surfaces can hold. Frame and cube slicing stay in the node, because `frame.ts` imports the socket lattice; for the same reason the node passes `tagFrameCellUnit` in as `tagUnit` rather than the kernel importing `unitColumn.ts`, which reaches rete through `unitBridge`.
 
-- An axis (`IndexAxis`) is a 1-based position, `undefined` for an axis never given, or null for one given as blank. `resolveAxes` truncates a fractional position (`INDEX(x, 1.9)` reads row 1), reads 0 or `undefined` as the whole axis (Excel's omitted `row_num`), and makes the answer blank when either axis is blank; a card or formula has already read a blank setting as left out ([[E15]]), so only a blank inside a table of positions gets here. A blank container answers blank.
+- An axis (`IndexAxis`) is a 1-based position, `undefined` for an axis never given, or null for one given as blank. `resolveAxes` truncates a fractional position (`INDEX(x, 1.9)` reads row 1), reads 0 or `undefined` as the whole axis (Excel's omitted `row_num`), and makes the answer blank when either axis is blank; a card or formula has already read a blank setting as left out ([[D86]]), so only a blank inside a table of positions gets here. A blank container answers blank.
 - A scalar is a 1 × 1: position 1, or the whole axis, returns it, and anything else is `#REF!`.
 - A matrix given one index and no column walks it when it is one row or one column, as Excel's INDEX does on a range of that shape: `INDEX(m, 2)` on a one-row table `m` and `INDEX(TOCOL(x), 2)` are the second value. Any other matrix reads the one index as a row.
 - A matrix: both axes whole passes it through; a whole column comes out as a list (a short ragged row contributes a blank); a whole row as a list; one cell as itself. A homogeneous matrix unit rides out onto each extracted number through `tagUnit`; the unit-blind formula surface passes none.
 - A flat list is one row ([[D85]] columnsStayColumns), as ROWS and COLUMNS count it. With one index, the index walks along it, as Excel's INDEX does on a one-row range: `INDEX(x, 2)` is the second item and 0 is the whole list. With two, the row must be 1 or 0 and the column picks the item: `INDEX(x, 1, 2)` and `INDEX(x, 0, 2)` are the second item, `INDEX(x, 1, 0)` is the whole list, and `INDEX(x, 2, 1)` is `#REF!`, as `CHOOSEROWS(x, 2)` is `#VALUE!`. A column-shaped answer (TOCOL, BYROW, MAKEARRAY with one column) is a one-column table, so `INDEX(TOCOL(x), 2, 1)` is its second cell.
 - The card's position sockets are number lists (`numlist`), so a wired list of positions works as it does in a formula; a typed position is one number. The card swaps its Row and Column sockets for a single Position socket while a list is wired in, and back when a table arrives, through the ordinary socket swap (cables prune first, [[D16]] retypeReconciles); a typed number rides across as Position or Row. A blank or error input leaves the sockets as they are. `indexAxes` in the save records which pair is showing.
-- A position may be a list or a table of positions, as Excel's array arguments: INDEX answers once per position, shaped like the positions (`INDEX(x, p)` with `p` = 1, 3 is a list of the 1st and 3rd items). With both axes given, the two pair up as Excel's broadcasting does (a list against a column spreads into a table, a size mismatch pads with `#N/A`), and a pair that would pick a whole row is `#VALUE!`. A list of positions against a whole axis of a table picks those rows or columns, as CHOOSEROWS and CHOOSECOLS do. A blank in a flat list of positions is skipped, and a list with none left is the whole axis ([[E15]]); a blank inside a table of positions answers blank in its place. A Frame or Cube takes one position per axis (`#VALUE!` otherwise).
+- A position may be a list or a table of positions, as Excel's array arguments: INDEX answers once per position, shaped like the positions (`INDEX(x, p)` with `p` = 1, 3 is a list of the 1st and 3rd items). With both axes given, the two pair up as Excel's broadcasting does (a list against a column spreads into a table, a size mismatch pads with `#N/A`), and a pair that would pick a whole row is `#VALUE!`. A list of positions against a whole axis of a table picks those rows or columns, as CHOOSEROWS and CHOOSECOLS do. A blank in a flat list of positions is skipped, and a list with none left is the whole axis ([[D86]]); a blank inside a table of positions answers blank in its place. A Frame or Cube takes one position per axis (`#VALUE!` otherwise).
 - Out of range is `#REF!` from `indexRefError(n, max, what)`, "Row 5 is outside 1…3", so both surfaces word it identically.
 
 ## Parity measurement

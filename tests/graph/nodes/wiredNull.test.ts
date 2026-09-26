@@ -319,7 +319,7 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
   // Excel's omitted-argument readings are real and stay. They just belong to the
   // `undefined` branch, which readInput hands back only for an unwired slot with
   // nothing typed. A `?? 0` on the literal would collapse the two.
-  it("INDEX: an omitted axis is the WHOLE axis, and so is a wired blank one ([[E15]])", () => {
+  it("INDEX: an omitted axis is the WHOLE axis, and so is a wired blank one ([[D86]])", () => {
     const m = [[1, 2], [3, 4]];
     expect(new ListIndexNode().data({ list: [m], index: [1] }).result).toEqual([1, 2]);
     expect(new ListIndexNode().data({
