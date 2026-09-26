@@ -1113,7 +1113,8 @@ container input, projected per the container's kind — three cases:
 - A **homogeneous container** (list/combo/matrix) projects to that family's
   **combo** rung, because whether INDEX returns one element or a whole slice
   depends on runtime arguments. Feeding INDEX a `datelist` gives a `datecombo`
-  output.
+  output. A matrix with a wired position projects to `trueany` instead, since
+  a wired list of positions can pick a whole table.
 - A **frame** consults the projection CONTEXT (the frame's static shape and
   which ports are wired), not just the socket type: a column literal that
   resolves against the static shape projects the COLUMN's family combo (`numlist`

@@ -1171,7 +1171,7 @@ for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
 }
 registerInternal("INDEX", (list, row, col) => {
   const axis = (v: unknown): IndexAxis | SolError => {
-    if (v === undefined || v === null) return v;
+    if (v === undefined || v === null || Array.isArray(v)) return v;
     const n = toNum(v);
     return Number.isNaN(n) ? solError("#VALUE!", "INDEX position must be a number") : n;
   };

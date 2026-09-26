@@ -1,6 +1,6 @@
 // [[C60]], [[C48]], [[C49]], [[B11]], [[C113]]
 import { ClassicPreset } from "rete";
-import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
+import { is2DType, numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { resolveExcelFunction } from "../excelFunctions";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
@@ -293,9 +293,9 @@ export class ListLengthNode extends ClassicPreset.Node {
 
 export class ListIndexNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    index: "Rows count from 1. 0 or unset takes every row. A wired blank blanks the result instead.",
-    column: "Columns count from 1. 0 or unset takes every column.",
-    position: "Items count from 1. 0 or unset takes the whole list. A wired blank blanks the result instead.",
+    index: "Rows count from 1. 0 or unset takes every row. A wired list of rows picks each one. A wired blank blanks the result instead.",
+    column: "Columns count from 1. 0 or unset takes every column. A wired list of columns picks each one.",
+    position: "Items count from 1. 0 or unset takes the whole list. A wired list of positions picks each item, in that order. A wired blank blanks the result instead.",
     result: "A whole row taken from a frame arrives as a one-row frame. A whole column arrives as a list.",
   };
 
@@ -317,7 +317,7 @@ export class ListIndexNode extends ClassicPreset.Node {
   }
 
   static axisKeys(axes: "rowcol" | "position"): string[] { return axes === "position" ? ["position"] : ["index", "column"]; }
-  static axisInput(key: string) { return numIn(key === "position" ? "Position" : key === "index" ? "Row" : "Column"); }
+  static axisInput(key: string) { return numListIn(key === "position" ? "Position" : key === "index" ? "Row" : "Column"); }
 
   /** Value-driven ([[D85]] columnsStayColumns: a list is one row, walked by one position): runs in a microtask on the owning editor, prunes the departing inputs' cables before removing them, and carries the typed number across. A blank or error says nothing about shape. */
   private reconcileAxes(v: unknown): void {
@@ -347,8 +347,14 @@ export class ListIndexNode extends ClassicPreset.Node {
       project: (t, ctx) =>
         t === "frame" ? this.frameProjection(ctx)
         : t === "cube" ? this.cubeProjection(ctx)
+        : this.positionsWired(ctx) && is2DType(t) ? "trueany"
         : comboOfType(t) ?? "trueany",
     }];
+  }
+
+  /** Wired positions may be several, so a table's answer could be a value, a list or a table. */
+  private positionsWired(ctx: ProjectContext): boolean {
+    return ListIndexNode.axisKeys(this.indexAxes).some((k) => ctx.wired(k));
   }
 
   /** A cube's slices are always cubes, so any blank unwired axis gives a cube; only a single cell is unknowable. */
@@ -371,13 +377,13 @@ export class ListIndexNode extends ClassicPreset.Node {
     return comboOfFamily(c.type) ?? "trueany";
   }
 
-  data(inputs: { list?: unknown[]; index?: number[]; column?: number[]; position?: number[] }): { result: IndexResult } {
+  data(inputs: { list?: unknown[]; index?: IndexAxis[]; column?: IndexAxis[]; position?: IndexAxis[] }): { result: IndexResult } {
     const v = inputs.list?.[0] ?? null;
     this.reconcileAxes(v);
     // Until the swap lands, the sockets on the card say what the numbers mean.
-    const rowIn = this.inputs.position ? readInput(inputs.position, this.literals.position as number | undefined)
-      : readInput(inputs.index, this.literals.index as number | undefined);
-    const colIn = this.inputs.column ? readInput(inputs.column, this.literals.column as number | undefined) : undefined;
+    const rowIn = this.inputs.position ? readInput<IndexAxis>(inputs.position, this.literals.position)
+      : readInput<IndexAxis>(inputs.index, this.literals.index);
+    const colIn = this.inputs.column ? readInput<IndexAxis>(inputs.column, this.literals.column) : undefined;
     const result = indexIntoContainer(v, rowIn, colIn);
     this.cachedResult = result;
     return { result };
@@ -392,6 +398,7 @@ function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexRe
   if (!isFrameValue(v) && !isCubeValue(v)) {
     return indexInto(v, row, col, tagFrameCellUnit) as IndexResult;
   }
+  if (Array.isArray(row) || Array.isArray(col)) return solError("#VALUE!", "INDEX takes one row and one column of a Frame or Cube at a time");
   const ax = resolveAxes(row, col);
   if (ax.blank) return null;
   const { rowAll, colAll, r, c } = ax;
