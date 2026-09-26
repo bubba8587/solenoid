@@ -14,7 +14,13 @@ import { csvField } from "../csvSafety";
 import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
-function describe(view: DrillView, listVertical: boolean): {
+/** What was typed, for the Source switch: a value as its text, a nested container still a chip. */
+function sourceItem(v: unknown, crumb: string, at: { r: number; c: number }): ReactNode {
+  if (v !== null && typeof v === "object") return <CubeCellChip cell={v as CubeCell} crumb={crumb} size="sm" at={at} />;
+  return v == null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
+}
+
+function describe(view: DrillView, listVertical: boolean, source: boolean): {
   headers: string[] | null;
   rows: number;
   cols: number;
@@ -46,13 +52,16 @@ function describe(view: DrillView, listVertical: boolean): {
   }
   if (view.kind === "list") {
     const items = view.items;
+    const item = (i: number, at: { r: number; c: number }) => (source
+      ? sourceItem(items[i] ?? null, "item", at)
+      : <CubeCellChip cell={(items[i] ?? null) as CubeCell} crumb="item" size="sm" type={view.type} at={at} />);
     if (!listVertical) {
       return {
         headers: null,
         rows: 1,
         cols: items.length,
         depth: null,
-        cell: (_r, c) => <CubeCellChip cell={(items[c] ?? null) as CubeCell} crumb="item" size="sm" at={{ r: 0, c }} />,
+        cell: (_r, c) => item(c, { r: 0, c }),
         sortKey: (_r, c) => sortKeyOf(items[c] ?? null),
       };
     }
@@ -61,7 +70,7 @@ function describe(view: DrillView, listVertical: boolean): {
       rows: items.length,
       cols: 1,
       depth: null,
-      cell: (r) => <CubeCellChip cell={(items[r] ?? null) as CubeCell} crumb="item" size="sm" at={{ r, c: 0 }} />,
+      cell: (r) => item(r, { r, c: 0 }),
       sortKey: (r) => sortKeyOf(items[r] ?? null),
     };
   }
@@ -113,6 +122,7 @@ export function CubePopup() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const { sort, cycle: cycleSort } = useColumnSort(state?.stack[state.stack.length - 1]);
   const [listVertical, setListVertical] = useState(false);
+  const [sourceMode, setSourceMode] = useState(false);
 
   const gridRef = useRef<HTMLDivElement>(null);
   const focus = state?.stack[state.stack.length - 1]?.focus;
@@ -129,7 +139,7 @@ export function CubePopup() {
 
   if (!state) return null;
   const view = state.stack[state.stack.length - 1];
-  const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical);
+  const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical, sourceMode);
   const sortable = !(view.kind === "list" && !listVertical);
   const MAX_VISIBLE_ROWS = 1000;
   const rowsTruncated = rows > MAX_VISIBLE_ROWS;
@@ -225,8 +235,8 @@ export function CubePopup() {
                   <td key={c} className="table-popup__cell" data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
                     {editView && state.edit
                       ? (editView.kind === "list"
-                          ? <ListEditCell edit={state.edit} path={editView.path!} row={listVertical ? r : c} />
-                          : <CubeEditCell edit={state.edit} path={editView.path!} row={r} column={headers?.[c] ?? String(c)} />)
+                          ? <ListEditCell edit={state.edit} path={editView.path!} row={listVertical ? r : c} source={sourceMode} />
+                          : <CubeEditCell edit={state.edit} path={editView.path!} row={r} column={headers?.[c] ?? String(c)} source={sourceMode} />)
                       : cell(r, c)}
                   </td>
                 ))}
@@ -242,6 +252,15 @@ export function CubePopup() {
             <button type="button" aria-pressed={!listVertical} onClick={() => setListVertical(false)} title="Show the list across a row">Row</button>
             <button type="button" aria-pressed={listVertical} onClick={() => setListVertical(true)} title="Show the list down a column. Display only; the value doesn't change.">Column</button>
           </div>
+        )}
+        {(editView || view.kind === "list") && (
+          <label
+            className="table-popup__source-check"
+            title={editView ? "Show and edit exactly what you typed, instead of each column's typed reading." : "Show the source text instead of the formatted value."}
+          >
+            <input type="checkbox" checked={sourceMode} onChange={(e) => setSourceMode(e.target.checked)} />
+            Source
+          </label>
         )}
         {editView && state.edit && <CubeEditRows edit={state.edit} view={editView} />}
         <div className="table-popup__spacer" />

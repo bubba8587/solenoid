@@ -16,7 +16,7 @@ import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./node
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
 import { parseValueText, numberValue, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
-import { histogram2d } from "./nodes/visualOps";
+import { histogram2d, sparklineImage, SPARKLINE_OPS, type SparklineOp } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
@@ -413,6 +413,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   EIGENVECTORS:{ returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   SPECTRUM:    { returns: "number", rank: "matrix", listArgs: true, arity: [1, 2], native: true },
   HISTOGRAM2D: { returns: "number", rank: "matrix", listArgs: true, arity: [4, 4], native: true },
+  SPARKLINE:   { returns: "string", listArgs: true, matrixArgs: true, arity: [1, 2], native: true },
   ANOVA:       { returns: "number", arity: [2, 255], native: true },
   KRUSKAL:     { returns: "number", arity: [2, 255], native: true },
   MANNWHITNEY: { returns: "number", arity: [2, 2], native: true },
@@ -1755,6 +1756,15 @@ registerInternal("SOLVE", (m, b) => {
 registerInternal("EIGENVALUES", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.values : solError("#SHAPE!", "EIGENVALUES needs a square, symmetric matrix"); });
 registerInternal("EIGENVECTORS", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.vectors : solError("#SHAPE!", "EIGENVECTORS needs a square, symmetric matrix"); });
 registerInternal("SPECTRUM", (list, rate) => spectrum(numList(list), rate == null ? 1 : Number(rate)).map((r) => [r.frequency, r.magnitude, r.phase]));
+// [[D82]] sparklineCell
+registerInternal("SPARKLINE", (range, type) => {
+  const items = Array.isArray(range) ? flat(range) : [range];
+  const err = items.find(isSolError);
+  if (err) return err;
+  const op = (type == null || type === "" ? "line" : toStr(type).trim().toLowerCase()) as SparklineOp;
+  if (!SPARKLINE_OPS.includes(op)) return solError("#VALUE!", "SPARKLINE type is \"line\", \"column\" or \"winloss\"");
+  return sparklineImage(items, op);
+});
 registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => histogram2d(numList(xs), numList(ys), toNum(kx), toNum(ky))?.counts ?? null);
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);

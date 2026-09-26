@@ -1,5 +1,5 @@
-// [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas
-import type { FrameValue, FrameColumn, FrameCell } from "./frame";
+// [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas, [[D81]] cubeRowLists
+import type { FrameCell, CubeCell } from "./frame";
 import type { ExprEvaluator } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";
 import { isSolError, solError, type SolError } from "./errorValue";
@@ -8,9 +8,17 @@ export type ComputedSpec =
   | { kind: "expr"; evaluator: ExprEvaluator; vars: string[] }
   | { kind: "lambda"; lam: LambdaValue };
 
+/** A column a row formula reads: `values` per row, and `whole` when the whole column is not simply `values`. */
+export interface RowColumn {
+  name: string;
+  values: readonly unknown[];
+  whole?: unknown;
+}
+export interface RowTable { columns: readonly RowColumn[] }
+
 type Binding =
-  | { kind: "col"; col: FrameColumn }
-  | { kind: "wholecol"; col: FrameColumn }
+  | { kind: "col"; col: RowColumn }
+  | { kind: "wholecol"; col: RowColumn }
   | { kind: "row" }
   | { kind: "rows" }
   | { kind: "side"; value: unknown };
@@ -45,6 +53,8 @@ function withRow<T>(frame: RowFrame, f: () => T): T {
   try { return f(); } finally { rowStack.pop(); }
 }
 
+const wholeOf = (c: RowColumn): unknown => ("whole" in c ? c.whole : c.values);
+
 export function tagComputedCell(v: unknown): FrameCell {
   if (isSolError(v)) return v;
   if (typeof v === "number") {
@@ -63,16 +73,33 @@ export interface ComputeColumnOptions {
   alias?: Record<string, string | undefined>;
 }
 
-export interface ComputedColumnResult {
-  cells: FrameCell[];
+/** A Cube row can hold a list or a grid, so a list answer is that row's cell; its items are tagged as scalar answers are. */
+export function tagCubeComputedCell(v: unknown): CubeCell {
+  if (!Array.isArray(v)) return tagComputedCell(v);
+  return v.map((x) => (Array.isArray(x)
+    ? x.map((y) => (Array.isArray(y) ? solError("#SHAPE!", "A row's answer can be a list or a grid, not deeper") : tagComputedCell(y)))
+    : tagComputedCell(x)));
+}
+
+export interface ComputedColumnResult<C = FrameCell> {
+  cells: C[];
   sideVars: string[];
 }
 
-export function computeColumnCells(
-  f: FrameValue,
+export function computeColumnCells(f: RowTable, spec: ComputedSpec, opts: ComputeColumnOptions = {}): ComputedColumnResult | SolError {
+  return runColumn(f, spec, opts, tagComputedCell);
+}
+
+export function computeCubeColumnCells(f: RowTable, spec: ComputedSpec, opts: ComputeColumnOptions = {}): ComputedColumnResult<CubeCell> | SolError {
+  return runColumn(f, spec, opts, tagCubeComputedCell);
+}
+
+function runColumn<C>(
+  f: RowTable,
   spec: ComputedSpec,
-  opts: ComputeColumnOptions = {},
-): ComputedColumnResult | SolError {
+  opts: ComputeColumnOptions,
+  tag: (v: unknown) => C,
+): ComputedColumnResult<C> | SolError {
   const params = spec.kind === "lambda" ? spec.lam.params : spec.vars;
   const reserved = opts.reserved ?? [];
 
@@ -149,24 +176,24 @@ export function computeColumnCells(
     at,
     whole: (key) => {
       const c = aliased(key) ?? colByName.get(key);
-      if (c) return c.values;
+      if (c) return wholeOf(c);
       if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name — rename the variable or the column`);
       if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
       return sideCache.get(key);
     },
   };
 
-  const cells: FrameCell[] = [];
+  const cells: C[] = [];
   for (let i = 0; i < rows; i++) {
     cursor = i;
     const rowCells = bindings.map((b) =>
       b.kind === "col" ? (b.col.values[i] ?? null)
-      : b.kind === "wholecol" ? b.col.values
+      : b.kind === "wholecol" ? wholeOf(b.col)
       : b.kind === "row" ? i + 1
       : b.kind === "rows" ? rows
       : b.value);
     const errIdx = bindings.findIndex((b, k) => b.kind === "col" && isSolError(rowCells[k]));
-    if (errIdx >= 0) { cells.push(rowCells[errIdx] as SolError); continue; }
+    if (errIdx >= 0) { cells.push(rowCells[errIdx] as C); continue; }
     const r = withRow(rowFrame, () => {
       try {
         if (spec.kind === "lambda") return spec.lam.fn(...rowCells);
@@ -177,7 +204,7 @@ export function computeColumnCells(
         return isSolError(e) ? e : solError("#VALUE!", e instanceof Error ? e.message : String(e));
       }
     });
-    cells.push(tagComputedCell(r));
+    cells.push(tag(r));
   }
   return { cells, sideVars };
 }

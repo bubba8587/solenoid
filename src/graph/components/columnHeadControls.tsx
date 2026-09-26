@@ -4,6 +4,11 @@ import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
 
+type ColType = "number" | "string" | "date" | "logical";
+export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];
+export const COLTYPE_GLYPH: Record<ColType, string> = { number: "#", string: "T", date: "D", logical: "B" };
+export const COLTYPE_NAME: Record<ColType, string> = { number: "Number", string: "Text", date: "Date", logical: "Boolean" };
+
 
 /** Hidden until first placed; carries the popup's accent, which a portal would otherwise lose. */
 export function useHangUnder(

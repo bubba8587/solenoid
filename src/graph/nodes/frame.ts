@@ -6,7 +6,8 @@ import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
 import { affineWeight, type Lam } from "../unitDimExpr";
 import { isLambdaValue, type LambdaValue } from "../lambdaValue";
-import { computeColumnCells } from "../computedColumnCore";
+import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
+import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
@@ -86,19 +87,11 @@ function cubeToScalarFrame(cube: CubeValue): FrameValue {
   return { __frame: true, columns };
 }
 
-function cubeToExprFrame(cube: CubeValue): FrameValue {
-  const columns = cube.columns.map((c) => {
-    if (c.cells.every((cell) => !Array.isArray(cell) && !isFrameValue(cell) && !isCubeValue(cell))) {
-      return inferColumn(c.name, c.cells);
-    }
-    const err = solError("#SHAPE!", `"${c.name}" has list or table cells; a formula reads scalar columns`);
-    return { name: c.name, type: "string" as FrameColType, values: c.cells.map(() => err) };
-  });
-  return { __frame: true, columns };
-}
+/** What the unit and date rules read of a row table: each column's name, type and unit. */
+type TypedColumns = { columns: ReadonlyArray<{ name: string; type: FrameColType; unit?: ColumnUnit }> };
 
-function computedColumnType(
-  name: string, cells: FrameCell[], f: FrameValue, definition: string | undefined,
+export function computedColumnType(
+  name: string, cells: readonly FrameCell[], f: TypedColumns, definition: string | undefined,
   alias: Record<string, string | undefined> = {},
 ): FrameColType {
   const type = inferColumn(name, cells).type;
@@ -110,8 +103,8 @@ function computedColumnType(
 /** A row formula over readings on an offset scale (°C) is classified as Expression's is
  *  ([[C25]] firstClassUnits): a sum of readings, or a reading scaled or divided, is #UNIT!.
  *  A wired λ is read through its body. The result's unit stays the authored one. */
-function readingsRefusal(
-  definition: string | Ast, f: FrameValue, alias: Record<string, string | undefined> = {},
+export function readingsRefusal(
+  definition: string | Ast, f: TypedColumns, alias: Record<string, string | undefined> = {},
   lams: ReadonlyMap<string, unknown> = new Map(),
 ): SolError | null {
   const isReading = (n: string) => isAffineDisplay(f.columns.find((c) => c.name === (alias[n] ?? n))?.unit?.display);
@@ -2476,7 +2469,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   data(inputs: { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
     const rawF = inputs.frame?.[0] ?? null;
     const isCube = isCubeValue(rawF);
-    const f: FrameValue | null = rawF == null ? null : isCube ? cubeToExprFrame(rawF) : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
+    const f = rawF == null ? null : isCube ? cubeRowTable(rawF) : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
     const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
     const lam = inputs.fn?.[0];
@@ -2494,7 +2487,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         this._rowRefs = this._evaluator ? rowRefNames(this.expr) : [];
         this._compiledFor = this.expr;
       }
-      if (!this.expr.trim()) { this.defVars = []; this._reconcileSideSockets([]); return out(isCube ? rawF : f); }
+      if (!this.expr.trim()) { this.defVars = []; this._reconcileSideSockets([]); return out(isCube ? rawF : (f as FrameValue)); }
       if (!this._evaluator) { this.defVars = []; this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
     }
 
@@ -2515,7 +2508,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     };
 
     this.defVars = wired ? wired.params : this._vars;
-    const computed = computeColumnCells(
+    const computed = (isCube ? computeCubeColumnCells : computeColumnCells)(
       f,
       wired ? { kind: "lambda", lam: wired } : { kind: "expr", evaluator: this._evaluator!, vars: this._vars },
       {
@@ -2532,10 +2525,10 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const refused = wired
       ? readingsRefusal(bareLambdaCall(wired), f, this.bindings, new Map([["λ", wired]]))
       : readingsRefusal(this.expr, f, this.bindings);
-    const values = refused ? computed.cells.map(() => refused) : computed.cells;
-    const colType: FrameColType = this.addAs === "auto"
-      ? computedColumnType(name, values, f, wired ? wired.expr : this.expr, this.bindings)
-      : colTypeForAddAs(this.addAs);
+    const values: CubeCell[] = refused ? computed.cells.map(() => refused) : computed.cells;
+    const listType = isCube ? cubeCellsType(values) : null;
+    const colType: FrameColType = this.addAs !== "auto" ? colTypeForAddAs(this.addAs)
+      : listType ?? computedColumnType(name, values as FrameCell[], f, wired ? wired.expr : this.expr, this.bindings);
 
     if (isCube) {
       const cubeOut = runVerb(() => cubeWithColumn(rawF as CubeValue, name, values, colType, after));
@@ -2543,7 +2536,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     }
 
     // Detect replacement by column count, which is exact and avoids repeating addColumn's `Name (unit)` parsing.
-    const result = addColumn(f, name, values, colType);
+    const frame = f as FrameValue;
+    const result = addColumn(frame, name, values as FrameCell[], colType);
     const replacing = result.columns.length === f.columns.length;
     if (after && !replacing) {
       const anchorIdx = result.columns.findIndex((c) => c.name === after);

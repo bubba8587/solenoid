@@ -12,6 +12,7 @@ A computed column is a Frame column defined by one formula, or one LAMBDA, evalu
 
 - **An Fx column in Frame Input**, typed into the table popup's column header.
 - **The Computed Column node**, which adds one column to a Frame or Cube that arrives on a cable.
+- **An Fx column in Cube Input**, typed into the Cube popup's root header ([[#Fx columns in Cube Input]]).
 
 The formula language itself is [[formula-language]]. This spec covers what is different inside a computed column: how names resolve, how rows are evaluated, and how the result becomes a column.
 
@@ -43,7 +44,7 @@ A name resolves in a fixed order: a column (or the column an explicit binding pi
    - an error passes through;
    - a number passes, except NaN, which becomes `#DOMAIN!` ([[D48]] classifyNonFinite); a surviving infinity is a real value, since the formula's operators have already classified overflow;
    - text, TRUE/FALSE and blank pass, and an undefined result is blank;
-   - a list is `#SHAPE!` (one value per row);
+   - a list is `#SHAPE!` (one value per row), except in a Cube, where a list or a grid is that row's cell and its items are tagged by these same rules (`tagCubeComputedCell`, [[D81]] cubeRowLists). A one-item answer is one value, as a formula's answer is everywhere;
    - anything else is `#VALUE!` ("each row must be a number, text, TRUE/FALSE or blank").
 
 Errors are per row: one bad row never blanks the column.
@@ -85,6 +86,16 @@ How the Fx column is edited (the type button's Fx step, the formula row, the λ 
 - **Side inputs.** A variable or `@name` that names no column grows an input named after it, `anydata` so it can take a whole list (the socket lattice, [[socket-lattice#anydata, the formula-variable wildcard]]). The inputs follow the Frame's columns: when a column appears that the name now matches, the input goes away, and its cables are pruned first ([[input-cable-pruning#The ordering rule]]). The grown inputs are saved (`sideVars`) and rebuilt on load, so a saved cable finds its socket. An unwired side input reads its inline literal, 0 by default; a wired blank stays blank ([[D33]] unwiredNotBlank). The names `frame`, `name`, `fn` and `after` are reserved. A wired LAMBDA's captured names never grow side inputs here, since they ride the LAMBDA card's own sockets.
 - **Explicit bindings.** The card can bind a variable to a chosen column (`bindings`). A bound variable skips the resolution order and always reads that column; if the column is gone, the whole output is `#REF!` "No column "x" to bind "v" to", never a silent fallback.
 - **Name and placement.** The name goes through `addColumn`. A trailing unit in the name, as in `Price (USD)`, is split off and tags a Number column with that unit. A name that then matches an existing column replaces it in place, keeping its position whatever `after` says; a new name that clashes after cleaning is made unique the way headers are. An `after` naming no column is `#REF!`.
-- **Cubes.** A Cube's scalar columns are read as typed columns. A column holding lists or nested tables reads as a column of `#SHAPE!` cells, so referencing it errors while leaving it out is harmless, and the new column is added back onto the original Cube with every nested column carried through untouched ([[C10]] socketLattice).
+- **Cubes.** A Cube is read through `cubeRowTable` (`cubeRows.ts`, [[D81]] cubeRowLists). A column of scalars reads as a typed column, by its declared type when it has one (a Text column keeps `"5"` as text) and by `inferColumn` otherwise. A column holding lists reads each row's list with `@name`, its items as bare magnitudes; its whole read is `#SHAPE!` pointing at `@`, since a column of lists is no single list. A column holding nested tables reads as `#SHAPE!` cells, so referencing it errors while leaving it out is harmless. The cells are computed by `computeCubeColumnCells`, so a row may answer a list, and the new column's type is its items' type when any row is a list (`cubeCellsType`). The new column is added back onto the original Cube with every nested column carried through untouched ([[C10]] socketLattice).
 - **Declared shape.** When the type is pinned and neither `name` nor `after` is wired, the node declares the output's columns ahead of time (`frameShape`), so downstream column pickers see the new column before anything computes. With Auto type the shape is known only after a compute.
 - **Stable output.** An unchanged input, definition, name, placement, bindings and side values return the same output object.
+
+## Fx columns in Cube Input
+
+- **Storage.** A formula column is a `{ name, expr }` entry in Cube Input's column list ([[frame-verbs#The Cube value]], Cube Input's source); it has no cells of its own, and records that still hold its key are ignored.
+- **Reading.** The formula reads the cube as the Computed Column node reads one (`cubeRowTable`), after the typed columns are read by their types ([[D80]] cubeColumnTypes), so `SPARKLINE(@history)` draws each row's own list, typed items included, and a row may answer a list ([[D81]] cubeRowLists).
+- **Dependency order and cycles** work as in Frame Input: a column's variables and `@` reads order it after the columns they name, and columns still unfilled when no more progress is possible are each a column of `#REF!` "Circular computed columns: A → B". A column that reads itself is such a cycle.
+- **No side inputs.** Cube Input has nothing to wire, so a name that is no column is `#REF!` "No column "x"", and there are no LAMBDA inputs.
+- **Blank and bad formulas.** An Fx column with no formula yet is blank; one that doesn't parse is `#VALUE!` "The formula does not parse".
+- **Type.** A column whose rows include a list takes its items' type; otherwise the type is inferred as for any computed column.
+

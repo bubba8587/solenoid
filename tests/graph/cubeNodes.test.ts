@@ -271,8 +271,17 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     const grid = [[1, 2], [3, 4]];
     const badCol = new ListIndexNode().data({ list: [grid], column: [9] }).result;
     expect(isSolError(badCol) && badCol.code).toBe("#REF!");
-    const flatCol = new ListIndexNode().data({ list: [[10, 20]], column: [2] }).result;
-    expect(isSolError(flatCol) && flatCol.code).toBe("#REF!"); // a flat list is n×1
+    const flatCol = new ListIndexNode().data({ list: [[10, 20]], column: [3] }).result;
+    expect(isSolError(flatCol) && flatCol.code).toBe("#REF!");
+  });
+
+  // [[C15]] matricesInFormulas: a list is one row, as ROWS and COLUMNS count it.
+  it("a list is one row: the column picks the item, and a row past 1 is #REF!", () => {
+    expect(new ListIndexNode().data({ list: [[10, 20]], column: [2] }).result).toBe(20);
+    expect(new ListIndexNode().data({ list: [[10, 20]], index: [1], column: [2] }).result).toBe(20);
+    const row2 = new ListIndexNode().data({ list: [[10, 20]], index: [2], column: [1] }).result;
+    expect(isSolError(row2) && row2.code).toBe("#REF!");
+    expect(new ListIndexNode().data({ list: [[10, 20]], index: [2] }).result).toBe(20);
   });
 });
 

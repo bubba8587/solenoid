@@ -48,6 +48,13 @@ and four functions arrive: `FLATTEN(array, [pad_value], [levels])`, `HAS(array, 
 - [ ] **TEXTSPLIT over a list** answers a nested array, one per row, as Excel's Compatibility
   Version 3 does.
 
+## Cubes and lists (author 2026-09-26)
+
+- [ ] **INDEX on a one-row matrix** (the author holds it): `INDEX({1,2,3}, 2)` is `#REF!` here and 2 in Excel, where one
+  index walks a one-row range. Lists already walk (`indexInto`); decide whether a 1 × N matrix follows.
+- [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
+- [ ] **Column types on nested Cube Input levels** ([[D80]] cubeColumnTypes' reopen condition), if wanted.
+
 ## Composites
 
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
@@ -64,7 +71,7 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Next plugin release:** `PropertyChip` gained `resolveToken` (2026-09-23), so re-export the snapshot
+- [ ] **Next plugin release:** `PropertyChip` gained `resolveToken` (2026-09-23) and the cube type button (2026-09-26), so re-export the snapshot
   (`npm run plugin:export`); the README fix waits on `claude/copy-editing-style-kytmz0` in Solenoid-Properties.
 - [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
   row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in

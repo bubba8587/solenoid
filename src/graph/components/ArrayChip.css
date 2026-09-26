@@ -26,6 +26,7 @@
 .solenoid-array-chip--elem-logical-table { --chip-accent: var(--sock-logicaltable); }
 .solenoid-array-chip--elem-complex       { --chip-accent: var(--sock-complexlist); }
 .solenoid-array-chip--elem-complex-table { --chip-accent: var(--sock-complextable); }
+.solenoid-array-chip--elem-any           { --chip-accent: var(--sock-any); }
 .solenoid-array-chip--frame { --chip-accent: var(--sock-frame); }
 .solenoid-array-chip--cube  { --chip-accent: var(--sock-cube); }
 .solenoid-array-chip--chart { --chip-accent: var(--sock-chart); }
@@ -36,4 +37,13 @@
   font-size: 10px;
   padding: 0 5px;
   border-radius: 4px;
+}
+
+/* [[D83]] imageTextCells: a picture held as text, sized to the row. */
+.sol-cell-img {
+  display: inline-block;
+  height: 1.3em;
+  width: auto;
+  max-width: 100%;
+  vertical-align: middle;
 }

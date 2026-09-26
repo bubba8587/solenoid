@@ -21,10 +21,11 @@ export function is2D(v: ArrayValue): v is Cell[][] {
 function to2D(v: ArrayValue): Cell[][] {
   return is2D(v) ? v : [v];
 }
+/** A list of one kind shows as that kind; a mixed list has nothing to render as, so it shows its items as they are. */
 function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
   if (family) return family === "complex" ? "string" : family;
-  const first = is2D(v) ? v[0][0] : v[0];
-  return typeof first === "string" ? "string" : typeof first === "boolean" ? "logical" : "number";
+  const present = (is2D(v) ? (v as Cell[][]).flat() : v).some((c) => c !== null && c !== undefined && !isSolError(c));
+  return present ? "string" : "number";
 }
 
 export function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
@@ -43,6 +44,13 @@ export function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
     fam = f;
   }
   return fam;
+}
+
+/** The chip tint's modifier: a list of one kind wears that kind's color, a mixed list the neutral "any" gray, and an empty one the default. */
+export function elemChipClass(v: ArrayValue, table: boolean, family = elemFamilyOfCells(v)): string {
+  if (family) return family === "number" ? "" : ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`;
+  const present = (is2D(v) ? (v as Cell[][]).flat() : v).some((c) => c !== null && c !== undefined && !isSolError(c));
+  return present ? " solenoid-array-chip--elem-any" : "";
 }
 
 export const POP_OUT_KINDS = ["frame", "cube", "table", "list"] as const;

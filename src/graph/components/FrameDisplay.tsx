@@ -9,6 +9,8 @@ import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { useHostNodeId } from "./nodeContext";
+import { CellImage } from "./cubeCell";
+import { cellImageSrc } from "../recordLayout";
 import { frameFormatStore } from "../frameFormatStore";
 import { formatNumberWithAnnotation, applyLogicalStyle, applyTextCase, isDateStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
@@ -112,7 +114,7 @@ export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSourc
                 const nan = isNanCell(cell);
                 return (
                 <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {cell !== null && chipCols.has(j)
+                  {cellImageSrc(cell) ? <CellImage src={cellImageSrc(cell)!} /> : cell !== null && chipCols.has(j)
                     ? <CategoryChip value={String(cell)} index={chipCols.get(j)!.get(String(cell)) ?? 0} />
                     : fmtCell(cell, c.type, annFor(c))}
                 </td>

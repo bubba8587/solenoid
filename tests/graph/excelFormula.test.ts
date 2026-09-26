@@ -608,6 +608,8 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
     expect(isSolError(past) && past.code).toBe("#REF!");
     // 0 is Excel's WHOLE-axis form, not an error — the node's rule, now shared.
     expect(ev("INDEX(x, 0)", { x: [1, 2] })).toEqual([1, 2]);
+    expect(ev("INDEX(x, 1, 2)", { x: [1, 2] })).toBe(2);
+    expect(ev("INDEX(x, 2, 1)", { x: [1, 2] })).toMatchObject({ code: "#REF!" });
   });
 
   it("COLUMN / ROW → #NAME? 'Use INDEX'", () => {

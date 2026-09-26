@@ -6,6 +6,26 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-26: SPARKLINE and typed Cube columns; author present)
+
+- **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text: line, column or win/loss, the
+  Sparkline node's types, averaged down to 40 points past that ([[D82]] sparklineCell). A text cell holding a
+  `data:image` picture shows as the picture in the Frame and Cube cards and popups ([[D83]] imageTextCells).
+- **Typed Cube columns** ([[D80]] cubeColumnTypes): Cube Input's root header has the type button (None, Number, Text,
+  Date, Boolean, Formula). A type overrides every kind in the column: scalars read as Frame cells (NaN when unreadable),
+  list items as List Input's (blank when unreadable), nested tables with every column set to the type. `cubeText` stays
+  plain records until a column is typed or computed, then `{ columns, rows }`. The Solenoid Properties plugin's cube
+  editor has the button without Formula and saves the picks as it saves a Frame's (the cube replaces its map).
+- **Cube formulas read lists** ([[D81]] cubeRowLists): in Cube Input's Fx columns and the Computed Column node over a
+  Cube, `@name` on a list column is this row's list and a row may answer a list; a bare list column is `#SHAPE!`
+  pointing at `@`. The target shape works: a Cube with a Number-list column and an Fx column `SPARKLINE(@history)`.
+- **Popups:** every list popup has the Source checkbox (Table popup and Cube popup list levels); a mixed list opens as
+  text and its chip wears the neutral gray instead of the number amber (it was the default tint, not a guess).
+- **INDEX on a list** now treats it as one row, as ROWS and COLUMNS already did: `INDEX(x, 1, 2)` is the second item,
+  `INDEX(x, 2, 1)` is `#REF!` ([[C15]] matricesInFormulas); one index still walks along it.
+- **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
+  re-export (backlog). The outbox still lists A1, B1, B2, B3, B7.
+
 ### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)
 
 - **The demo video is generated, not edited by hand:** `scripts/demo-video/` films the real app in headless Chromium
@@ -34,33 +54,3 @@ specific item.
 - **Open:** the author listens to the soundtracks and picks where each video is published (backlog, Demo video); the
   Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is shown
   rigorous). The outbox still lists A1, B1, B2, B3, B7.
-
-### SESSION DIGEST (2026-09-25: formulas and aggregates at scale and at the edges; author asleep, one check-in)
-
-- **Long lists:** a list past about 125k values no longer throws. `guardFinite(result, inputs)` takes an array (callers
-  spread whole data lists into it, so web GROUPBY and most range formulas threw), `mapCells` measures each operand once
-  (a tall column was N²: 40k rows took 1.9 s, now 54 ms), and MAP, BYCOL, HSTACK, CONCATLISTS, Set Cells and a script's
-  table result read widths with `reduce`. The remaining `Math.max(...)` spreads run over bounded counts (canvas layout,
-  chart axes, Frame from Lists, Template, Triangle). SUM still throws inside Formula.js past 125k values.
-- **One answer per aggregate** ([[D51]] oneAnswerOneDivergence): the statistics formulas keep a first-class ∞ and a NaN
-  cell, as the Aggregate card and GROUPBY do. `aggregate()` classifies its own result and answers `#DOMAIN!` for a NaN
-  input on every op but the counts; the percentile, quartile, correlation, covariance and regression kernels classify
-  theirs, and percentile interpolation returns a bracketing value both ends hold (PERCENTILE.INC of 1, 2, ∞ at 1 is ∞).
-  MIN and MAX are owned (Formula.js spread the list into `Math.min`) on the card's kernel; PERCENTRANK.INC and .EXC run
-  the card's kernel (Formula.js said 0 below the data).
-- **Retired on the author's suggestion:** AVERAGEA, MINA, MAXA, STDEVA, STDEVPA, VARA and VARPA redirect to their plain
-  forms ([[C14]] currentExcelParity, a new consequence line); lists are typed, so only the logical reading was left.
-- **Excel parity at the edges, card and formula alike:** YEARFRAC basis 1 is Excel's actual/actual (211/366 for Excel's
-  own example), truncates its dates, takes them in either order and refuses a basis outside 0 to 4; GCD and LCM share
-  one kernel (`gcdLcm`) that truncates each value and refuses a negative or one at 2^53 or more; LEFT, RIGHT, FIND
-  and SEARCH refuse a negative count or a start below 1 (the text cards pass their numbers as given); PEARSON and
-  FVSCHEDULE are range functions on the card kernels (`fvSchedule` in `financeOps.ts`); BASE and the `*2HEX`
-  functions write uppercase.
-- **Other fixes:** Nest Join keys round like Join's converted key (`roundAtLargerTerm`, shared in `frame.ts`), so 1 in
-  matches 2.54 cm; a pasted Missing placeholder stays a placeholder for its node (`placeholderFor`, shared by load,
-  composite hydration and paste); the signature hints mark the second value optional, as Excel's do; the `display`
-  node kind is gone (charts resolve the gold slot directly).
-- **Open:** inbox `aggregate-list-cells` asks how every aggregate formula reads a logical (`SUM(x > 5)` is 0 while
-  `AVERAGE(x > 5)` counts); owning SUM waits on it. Backlog "Formula parity leads" holds TEXTAFTER's later arguments,
-  SEARCH wildcards, and the author's call on N, T, TYPE and ERROR.TYPE (out of scope, still callable). The outbox
-  still lists A1, B1, B2, B3, B7 (left alone per the backlog).

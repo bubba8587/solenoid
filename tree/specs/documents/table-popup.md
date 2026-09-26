@@ -112,12 +112,16 @@ The cell being edited can carry an affix on its right edge:
 
 ## Formatted and Source
 
-The Source checkbox appears on a literal-source editor, and on a read-only popup that is a frame or holds dates. Its tooltip says "Show and edit exactly what you typed, instead of formatted values like TRUE/FALSE and dates." on an editor and "Show the source text instead of the formatted value." elsewhere. The grid (raw text) stays the edit and save truth in both modes.
+The Source checkbox appears on a literal-source editor, and on a read-only popup that is a frame, holds dates or is a list: every list popup has it, in the Table popup and on a Cube popup's list level alike. Its tooltip says "Show and edit exactly what you typed, instead of formatted values like TRUE/FALSE and dates." on an editor and "Show the source text instead of the formatted value." elsewhere. The grid (raw text) stays the edit and save truth in both modes.
 
 - **Literal source, Formatted:** each raw cell is coerced by its column type and formatted (`coerceFrameCell`, `formatFrameCell`). An editable cell shows the formatted text until focused, then the raw text, and shows the formatted text again after the commit.
 - **Literal source, Source:** the raw text throughout.
 - **Read-only, Formatted:** a date column formats its serials in the default date format. A blank date cell stays blank, because `Number("")` is 0, a real serial (30-Dec-1899).
-- **Read-only, Source:** the typed text from `sourceCells` (a frame's `raw`) when there is one; otherwise the underlying form, so a logical shows `1` or `0` and a date its serial. A purely computed column has no `raw`, so it shows the underlying form.
+- **Read-only, Source:** the typed text from `sourceCells` (a frame's `raw`) when there is one; otherwise the underlying form, so a logical shows `1` or `0`, a date its serial and a number its full digits. A purely computed column has no `raw`, so it shows the underlying form.
+
+A list's popup takes its element type from its items (`elemFamilyOfCells`). A list mixing kinds has nothing to render as, so it opens as text and shows each item as it is; its chip wears the neutral `--sock-any` gray rather than claiming a kind (`elemChipClass`).
+
+**Picture cells** ([[D83]] imageTextCells). A text cell whose text is a `data:image/` address (`cellImageSrc`) shows as the picture, 1.3em tall (`CellImage`, `.sol-cell-img`), in the Frame and Cube cards, the Cube popup and the Table popup's read-only cells. The value stays the text, so Copy and Export give the text. An http image address stays text in a grid; the Form view and the Record figure keep their wider `recordImageSrc`.
 
 ## Column formats
 
@@ -230,11 +234,13 @@ The statistics run over every row: a read-only popup reads its value, an editabl
 
 ### Editing a Cube Input
 
-A Cube Input's chip opens the popup as an editor bound to the node (an edit binding, `CubeEditBinding`: `records()` and `save(records)`, read and written back whole); its stored truth is `cubeText` ([[literal-input-editors]]). Each level carries the records `path` it shows, and `refresh()` after a save rebuilds every cube, frame and list level from the records along its path. At each editable level (one with a records path), the cells are editing cells (`CubeEditCell`, `ListEditCell`). Every commit patches the records at the cell's path, the popup re-derives its stack from them, and the records re-serialize into `cubeText`.
+A Cube Input's chip opens the popup as an editor bound to the node (an edit binding, `CubeEditBinding`: `source()` and `save(source)`, read and written back whole, and `cube()`, the cube the source derives); its stored truth is `cubeText` ([[literal-input-editors]]). Each level carries the records `path` it shows, and `refresh()` after a save rebuilds every level: the root from `cube()`, so typed and formula columns show their reading, and each deeper cube, frame and list level from the records along its path. At each editable level (one with a records path), the cells are editing cells (`CubeEditCell`, `ListEditCell`). Every commit patches the records at the cell's path, the popup re-derives its stack from them, and the source re-serializes into `cubeText`.
 
-- **Headers** are editable (`CubeEditHeader`): renaming a key renames it on every row and keeps its position. Enter or blur commits and Escape reverts ([[C95]] commitOnEnter).
-- **The footer** (`CubeEditRows`) adds and removes a row (a record, or a list item), and on a table or cube level adds and removes a column (the last key on every row). A new column arrives named `Column N`, for the header to rename.
-- Column keys show in first-seen order across the records, the order the cube shows.
+- **Column types** ([[D80]] cubeColumnTypes). On the root level each header has the type button beside its name, cycling None (`–`), Number, Text, Date, Boolean and Formula (`Fx`); a new column starts at None. A binding with `noFormulaColumns` (the Obsidian plugin) stops short of Formula. A typed column's cells, and the items of a list drilled out of one, show the typed reading until focused (`declaredTypeAt`: a root column's own type, or the type of the root column a deeper level sits under); the Source checkbox shows what was typed.
+- **Formula columns.** An Fx column shows the formula field under its header (`ColumnExprField`, Enter or blur commits, Escape reverts) and read-only cells holding the computed values. Leaving Fx for None keeps whatever records the column's key held.
+- **Headers** are editable (`CubeEditHeader`): renaming a key renames it on every row, and on the root level in the column list too, and keeps its position. Enter or blur commits and Escape reverts ([[C95]] commitOnEnter).
+- **The footer** (`CubeEditRows`) adds and removes a row (a record, or a list item), and on a table or cube level adds and removes a column (on the root, the last column in the column list; deeper, the last key on every row). A new column arrives named `Column N`, for the header to rename.
+- Column keys show in the column list's order on the root level, and in first-seen order across the records deeper down.
 
 ## Enforced by
 

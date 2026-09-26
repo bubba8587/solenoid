@@ -4,17 +4,21 @@ import { CubeDisplay } from "./CubeDisplay";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { nodeDisplayName } from "../catalogUtils";
-import { parseCubeRecords, cubeRecordsToText, type CubeRecord } from "../literalEditors";
+import { parseCubeSource, cubeSourceToText, type CubeSource } from "../literalEditors";
+import { cubeFromSource } from "../nodes/cube";
+import type { CubeEditBinding } from "../cubePopupStore";
 
 // [[C28]] literalsIffEditable
 export function CubeInputComponent({ data, emit }: NodeProps<CubeInputNodeType>) {
-  const edit = {
-    records: (): CubeRecord[] => { const p = parseCubeRecords(data.cubeText); return "records" in p ? p.records : []; },
-    save: (records: CubeRecord[]) => {
-      data.cubeText = cubeRecordsToText(records);
+  const source = (): CubeSource => { const p = parseCubeSource(data.cubeText); return "source" in p ? p.source : { columns: [], rows: [] }; };
+  const edit: CubeEditBinding = {
+    source,
+    save: (next) => {
+      data.cubeText = cubeSourceToText(next);
       scheduleAutosave();
       void processGraph();
     },
+    cube: () => cubeFromSource(source()),
   };
   return (
     <NodeShell node={data} emit={emit}>

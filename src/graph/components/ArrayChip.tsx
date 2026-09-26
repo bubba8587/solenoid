@@ -2,7 +2,7 @@
 import { type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
-import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, type ElemFamily } from "../valuePopup";
+import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, elemChipClass, type ElemFamily } from "../valuePopup";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
@@ -44,9 +44,7 @@ export function ArrayChip({ value, label, size = "md", accent, pinNodeId, elem, 
   const rows = value.length;
   const cols = table ? ((value[0] as number[] | undefined)?.length ?? 0) : 1;
   const family = elem ?? elemFamilyOfCells(value);
-  const famClass = family && family !== "number"
-    ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
-    : "";
+  const famClass = elemChipClass(value, table, family);
 
   const chipLabel = table ? `${rows}×${cols} Table` : `${rows}× List`;
   const verb = popupOverrides?.onSaveRaw ? "Edit" : "View";

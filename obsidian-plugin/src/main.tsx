@@ -146,8 +146,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     await this.saveData(this.data);
   }
 
-  private async setColumnTypes(key: string, types: ColumnTypes): Promise<void> {
-    this.data.columnTypes = { ...this.data.columnTypes, [key]: { ...this.data.columnTypes?.[key], ...types } };
+  private async setColumnTypes(key: string, types: ColumnTypes, replace = false): Promise<void> {
+    this.data.columnTypes = { ...this.data.columnTypes, [key]: replace ? { ...types } : { ...this.data.columnTypes?.[key], ...types } };
     await this.saveData(this.data);
   }
 
@@ -201,7 +201,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
             initial={value}
             onChange={(next) => ctx.onChange(next)}
             columnTypes={this.data.columnTypes?.[ctx.key]}
-            onColumnTypes={(types) => void this.setColumnTypes(ctx.key, types)}
+            onColumnTypes={(types, replace) => void this.setColumnTypes(ctx.key, types, replace)}
           />);
         shadow.host.addEventListener("pointerdown", () => {
           if (homePopupLayer(shadow.host.ownerDocument)) this.renderPopups();

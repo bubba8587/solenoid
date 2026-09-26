@@ -539,6 +539,8 @@ Per-function behavior that the routing above does not decide. The node and the f
 - **DECOMPOSE(list, period, component, [model])**, **SAVGOL(list, window, order)**, **LOWESS(list, [frac])** (default 2/3), **GAUSSIANSMOOTH(list, sigma)** and **FINDPEAKS(list, [height], [distance], [prominence])** (the peak positions) run the signal kernels.
 - **SHUFFLE(list)** is volatile: a fresh permutation each evaluation, while the node holds its keys until the next recalculation.
 
+- **SPARKLINE(range, [type])** draws a small picture of the range's numbers and answers it as `data:image/svg+xml` text ([[D82]] sparklineCell), which a table cell shows as the picture ([[D83]] imageTextCells). The type is `line` (the default, also for a blank), `column` or `winloss`, case-insensitive, the Sparkline node's three; anything else is `#VALUE!` naming them. The range is a list or a matrix, read row by row; text, TRUE/FALSE and blanks are skipped, the first cell error is the answer, and a range with no number answers blank. Past 40 numbers the range is averaged into 40 equal buckets (`sparklineSeries`, `SPARKLINE_MAX_POINTS`), so a cell's text stays a few hundred bytes however long the range. The picture is 80 × 20, one path (line, columns) or two (win/loss's green and vermilion), in the Default palette's fixed colors, coordinates to one decimal (`sparklineImage` in `nodes/visualOps.ts`).
+
 ### Matrices and dynamic arrays
 
 - A matrix argument reads as itself, a list as one row ([[C10]] socketLattice), a scalar as 1 × 1, and a blank stays blank.
@@ -911,7 +913,7 @@ The INDEX node and the INDEX formula share `indexInto(value, row, col, tagUnit?)
 - An axis (`IndexAxis`) is a 1-based position, `undefined` for an axis never given, or null for one given as blank. `resolveAxes` truncates a fractional position (`INDEX(x, 1.9)` reads row 1), reads 0 or `undefined` as the whole axis (Excel's omitted `row_num`), and makes the answer blank when either axis is blank. A blank container answers blank.
 - A scalar is a 1 × 1: position 1, or the whole axis, returns it, and anything else is `#REF!`.
 - A matrix: both axes whole passes it through; a whole column comes out as a list (a short ragged row contributes a blank); a whole row as a list; one cell as itself. A homogeneous matrix unit rides out onto each extracted number through `tagUnit`; the unit-blind formula surface passes none.
-- A flat list is an n × 1 column, so a given column must be 1; the whole column is the list itself.
+- A flat list is one row, as ROWS and COLUMNS count it ([[C15]] matricesInFormulas). With one index, the index walks along it, as Excel's INDEX does on a one-row range: `INDEX(x, 2)` is the second item and 0 is the whole list. With two, the row must be 1 (or 0) and the column picks the item: `INDEX(x, 1, 2)` is the second item, `INDEX(x, 2, 1)` is `#REF!`, and a whole column of a one-row list is its one item.
 - Out of range is `#REF!` from `indexRefError(n, max, what)`, "Row 5 is outside 1…3", so both surfaces word it identically.
 
 ## Parity measurement

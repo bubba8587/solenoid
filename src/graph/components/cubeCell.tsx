@@ -10,9 +10,15 @@ import { isUnitCell } from "../unitValue";
 import { cubePopup, type CellRef } from "../cubePopupStore";
 import { formatScalar } from "./format";
 import { formatListCell } from "./valueDisplayFormat";
-import { elemFamilyOfCells, type ElemFamily } from "../valuePopup";
+import { elemFamilyOfCells, elemChipClass, type ElemFamily } from "../valuePopup";
 import { errorTip } from "./ErrorChip";
+import { cellImageSrc } from "../recordLayout";
 import "./ArrayChip.css";
+
+/** A text cell holding a data:image picture ([[D83]] imageTextCells). */
+export function CellImage({ src }: { src: string }): ReactNode {
+  return <img className="sol-cell-img" src={src} alt="" draggable={false} />;
+}
 
 const LIST_PREVIEW = 3;
 const HOVER_PREVIEW = 8;
@@ -46,6 +52,8 @@ export function frameCellNode(type: FrameColType, cell: FrameCell, format?: Form
   if (isSolError(cell)) {
     return <span title={errorTip(cell)} style={{ color: "var(--sol-error)" }}>{cell.code}</span>;
   }
+  const img = cellImageSrc(cell);
+  if (img) return <CellImage src={img} />;
   const f = formatFrameCell(type, cell, format);
   return <>{f === null ? "" : String(f)}</>;
 }
@@ -97,8 +105,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   }
   if (Array.isArray(cell)) {
     const is2D = Array.isArray(cell[0]);
-    const family = listFamily(cell, type);
-    const famClass = family && family !== "number" ? ` solenoid-array-chip--elem-${family}${is2D ? "-table" : ""}` : "";
+    const famClass = elemChipClass(cell as Parameters<typeof elemChipClass>[0], is2D, listFamily(cell, type));
     return (
       <button
         type="button"
@@ -106,7 +113,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
         title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} table. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW, type)}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb }, at); }}
+        onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb, type }, at); }}
       >
         [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length} Table` : `${cell.length}× List`}]
       </button>
@@ -119,5 +126,6 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   if (type) return frameCellNode(type, cell, format);
   if (typeof cell === "boolean") return <>{cell ? "TRUE" : "FALSE"}</>;
   if (typeof cell === "number") return <>{formatScalar(cell)}</>;
-  return <>{String(cell)}</>;
+  const img = cellImageSrc(cell);
+  return img ? <CellImage src={img} /> : <>{String(cell)}</>;
 }

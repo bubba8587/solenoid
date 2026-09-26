@@ -6,7 +6,6 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
-import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn } from "./shared";
@@ -15,7 +14,7 @@ import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, readingScaleOf, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { forAggregate, isMissing, coerceLogical, decimalFromText, type Tri } from "../valueKinds";
+import { forAggregate, isMissing, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, isAffineDisplay, isUnitCell, unitError, READINGS_ADD, type UnitCell } from "../unitValue";
 import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
@@ -24,7 +23,7 @@ import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
 import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
-import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
+import { coerceListItem, isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -42,31 +41,7 @@ function parseCsvList(dt: ListElemType, s: string | undefined): AnyCell[] {
   return s ? (parseListLiteral(s, LIST_ELEM_SOCKET[dt].dataType) as AnyCell[]) : [];
 }
 
-/** Converts, never filters; the caller passes null and per-cell errors through before calling. */
-function coerceElem(dt: ListElemType, v: unknown): AnyCell {
-  switch (dt) {
-    case "number": {
-      if (typeof v === "number") return Number.isFinite(v) ? v : null;
-      if (typeof v === "boolean") return v ? 1 : 0;
-      if (typeof v === "string") { const n = decimalFromText(v); return Number.isFinite(n) ? n : null; }
-      return null;
-    }
-    case "date": {
-      if (typeof v === "number") return Number.isFinite(v) ? v : null;
-      if (typeof v === "string") {
-        const d = parseDate(v);
-        if (isSolError(d)) return d;
-        return Number.isFinite(d) ? d : null;
-      }
-      return null;
-    }
-    case "string":
-      if (typeof v === "string") return v;
-      return typeof v === "number" || typeof v === "boolean" ? String(v) : null;
-    case "logical":
-      return coerceLogical(v);
-  }
-}
+const coerceElem = (dt: ListElemType, v: unknown): AnyCell => coerceListItem(dt, v) as AnyCell;
 
 export class ListInputNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {

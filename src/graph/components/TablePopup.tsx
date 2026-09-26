@@ -27,11 +27,12 @@ import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
-import { ColumnFormatButton, ColumnExprField } from "./columnHeadControls";
+import { ColumnFormatButton, ColumnExprField, COLTYPE_ORDER, COLTYPE_GLYPH, COLTYPE_NAME } from "./columnHeadControls";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
-import { parseRecordLayout, recordImageSrc } from "../recordLayout";
+import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
+import { CellImage } from "./cubeCell";
 import "./chartCards.css"; // .sol-record__img, for the Form's image cells
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, defaultFooterStat, footerStatValue, formatFooterStat } from "./tableFooterStats";
@@ -43,9 +44,6 @@ import { ChevronDownIcon } from "./Icons";
 
 type CellType = "number" | "string" | "date" | "logical";
 
-const COLTYPE_ORDER: CellType[] = ["number", "string", "date", "logical"];
-const COLTYPE_GLYPH: Record<CellType, string> = { number: "#", string: "T", date: "D", logical: "B" };
-const COLTYPE_NAME: Record<CellType, string> = { number: "Number", string: "Text", date: "Date", logical: "Boolean" };
 function isTextType(t: CellType): boolean { return t === "string" || t === "logical"; }
 
 // ── grid <-> data ────────────────────────────────────────────────────────────
@@ -224,7 +222,8 @@ export function TablePopup() {
 
   const hasDateCols = state.columnTypes?.some(t => t === "date") || state.cellType === "date";
   const isFramePopup = !!state.columnTypes;
-  const showFmtToggle = literalSource || (!editable && (isFramePopup || hasDateCols));
+  // Every list popup has the Source switch, so a list reads the same wherever it opens.
+  const showFmtToggle = literalSource || (!editable && (isFramePopup || hasDateCols || !!state.list));
   // `as`: "auto" follows the Source toggle at the type's default format (Copy, Export); "shown" is the grid's text with the FC picks (the CSV view); "source" is the raw text whatever the toggle says.
   const displayRowAt = (r: number, as: "auto" | "shown" | "source" = "auto"): string[] => {
     const row = rawRow(r);
@@ -240,7 +239,7 @@ export function TablePopup() {
         return f == null ? "" : String(f);
       });
     }
-    if (!editable && (isFramePopup || hasDateCols)) {
+    if (!editable && (isFramePopup || hasDateCols || !!state.list)) {
       return row.map((cell, c) => {
         const type = colTypeAt(c);
         if (mode === "formatted") {
@@ -252,6 +251,8 @@ export function TablePopup() {
         }
         const src = state.sourceCells?.[r]?.[c];
         if (src != null) return src;
+        const rawV = state.data[r]?.[c];
+        if (typeof rawV === "number") return String(rawV);
         if (type === "logical") return cell === "TRUE" ? "1" : cell === "FALSE" ? "0" : cell;
         return cell;
       });
@@ -672,7 +673,7 @@ export function TablePopup() {
         focusGridCell(target);
       }}
     >
-      {chipCols.has(c) && content !== "" ? <CategoryChip value={content} index={chipCols.get(c)!.get(content) ?? 0} /> : content === "" ? " " : content}
+      {cellImageSrc(content) ? <CellImage src={cellImageSrc(content)!} /> : chipCols.has(c) && content !== "" ? <CategoryChip value={content} index={chipCols.get(c)!.get(content) ?? 0} /> : content === "" ? " " : content}
     </div>
   );
   const onGridEscape = () => {

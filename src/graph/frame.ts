@@ -209,6 +209,32 @@ export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   return NaN;
 }
 
+/** A list item read as a type, as List Input reads one: what the type can't read is blank. Converts, never filters; the caller passes null and per-cell errors through. */
+export function coerceListItem(type: FrameColType, v: unknown): FrameCell {
+  switch (type) {
+    case "number": {
+      if (typeof v === "number") return Number.isFinite(v) ? v : null;
+      if (typeof v === "boolean") return v ? 1 : 0;
+      if (typeof v === "string") { const n = decimalFromText(v); return Number.isFinite(n) ? n : null; }
+      return null;
+    }
+    case "date": {
+      if (typeof v === "number") return Number.isFinite(v) ? v : null;
+      if (typeof v === "string") {
+        const d = parseDate(v);
+        if (isSolError(d)) return d;
+        return d !== null && Number.isFinite(d) ? d : null;
+      }
+      return null;
+    }
+    case "string":
+      if (typeof v === "string") return v;
+      return typeof v === "number" || typeof v === "boolean" ? String(v) : null;
+    case "logical":
+      return coerceLogical(v) as FrameCell;
+  }
+}
+
 export function deriveFrame(source: FrameSource): FrameValue {
   return {
     __frame: true,
@@ -399,6 +425,28 @@ function pickedCell(type: FrameColType, v: unknown): CubeCell {
   return v == null ? null : coerceFrameCell(type, String(v));
 }
 
+const listItemAs = (type: FrameColType, x: unknown): CubeCell =>
+  Array.isArray(x) ? x.map((y) => listItemAs(type, y)) : x == null || isSolError(x) ? (x as CubeCell) : isCubeValue(x) || isFrameValue(x) ? typedCubeCell(type, x) : coerceListItem(type, x);
+
+/** A cell read as its column's declared type ([[D80]] cubeColumnTypes): a scalar as a Frame cell is (unreadable is NaN), a list's items as List Input's are (unreadable is blank), and a nested table with every column read the same way. The cells as typed are never changed. */
+export function typedCubeCell(type: FrameColType, c: CubeCell): CubeCell {
+  if (c == null || isSolError(c)) return c;
+  if (Array.isArray(c)) return c.map((x) => listItemAs(type, x));
+  if (isCubeValue(c)) return makeCube(c.columns.map((col) => ({ ...col, type, cells: col.cells.map((x) => typedCubeCell(type, x)) })));
+  if (isFrameValue(c)) {
+    return {
+      __frame: true,
+      columns: c.columns.map((col) => ({
+        name: col.name, type,
+        values: col.values.map((v) => (v == null || isSolError(v) ? v : pickedCell(type, v) as FrameCell)),
+        ...(type === "number" && col.unit ? { unit: col.unit } : {}),
+        ...(col.format ? { format: col.format } : {}),
+      })),
+    };
+  }
+  return isUnitCell(c) ? c : pickedCell(type, c);
+}
+
 export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>, picks: Readonly<Record<string, FrameColType>> = {}): CubeValue {
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
@@ -414,11 +462,12 @@ export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>, p
     if (typeof v === "object") return recordsToCube([v as Record<string, unknown>]);
     return v as FrameCell;
   };
+  const pickDeep = (type: FrameColType, c: CubeCell): CubeCell => typedCubeCell(type, c);
   return cubeFromColumns(keys.map((key, j) => {
     const cells = records.map((r) => toCell(r[key]));
     const scalarOnly = cells.every((c) => c == null || (typeof c !== "object"));
-    if (!scalarOnly) return { name: names[j], cells };
     const pick = picks[key];
+    if (!scalarOnly) return pick ? { name: names[j], cells: cells.map((c) => pickDeep(pick, c)), type: pick } : { name: names[j], cells };
     if (pick) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
     const inferred = inferColumn(names[j], cells);
     return { name: names[j], cells, type: inferred.type };

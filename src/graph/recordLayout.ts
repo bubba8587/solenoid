@@ -70,10 +70,17 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
   });
 }
 
+/** A data:image URL: the one image a table grid shows in a text cell, since it fetches nothing ([[D83]] imageTextCells). */
+export function cellImageSrc(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return /^data:image\//i.test(t) ? t : null;
+}
+
 /** A data:image URL, or an http(s) URL with an image extension; anything else stays text. */
 export function recordImageSrc(text: string): string | null {
   const t = text.trim();
-  if (/^data:image\//i.test(t)) return t;
+  if (cellImageSrc(t)) return t;
   if (/^https?:\/\/\S+\.(png|jpe?g|gif|webp|svg|avif|bmp)(\?\S*)?$/i.test(t)) return t;
   return null;
 }

@@ -20,7 +20,8 @@ import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type Frame
 import { isSolError } from "../errorValue";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
 
-export type SparklineOp = "line" | "column" | "winloss";
+import type { SparklineOp } from "./visualOps";
+export type { SparklineOp };
 
 export const SPARKLINE_OP_META = {
   line:    { label: "Line" },

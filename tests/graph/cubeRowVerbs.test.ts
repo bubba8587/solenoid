@@ -175,11 +175,37 @@ describe("Computed Column over a cube", () => {
     expect(colCells(c, "tags")[0]).toBe(colCells(src, "tags")[0]);
   });
 
-  it("referencing a list column is #SHAPE! per cell (a nested cell is opaque to the formula)", () => {
-    const c = compute("@timeEstimate + @tags", "x");
-    const cells = colCells(c, "x");
-    expect(cells.every((v) => isSolError(v))).toBe(true);
-    expect((cells[0] as { code: string }).code).toBe("#SHAPE!");
+  // [[D81]] cubeRowLists
+  it("@name reads this row's list, and a list answer is that row's list cell", () => {
+    const c = compute("COUNTA(@tags)", "n");
+    expect(colCells(c, "n")).toEqual([1, 2]);
+    const up = compute("UPPER(@tags)", "up");
+    // A one-item answer is one value, as a formula's answer is everywhere.
+    expect(colCells(up, "up")).toEqual(["WORK", ["HOME", "URGENT"]]);
+    expect(up.columns.find((k) => k.name === "up")!.type).toBe("string");
+  });
+
+  it("a bare list column is #SHAPE! pointing at @", () => {
+    const cells = colCells(compute("COUNTA(tags)", "x"), "x");
+    expect(cells.every((v) => isSolError(v) && v.code === "#SHAPE!")).toBe(true);
+    expect((cells[0] as { message: string }).message).toContain("@tags");
+  });
+
+  it("a nested table column stays out of formulas", () => {
+    const withSub = cubeFromColumns([{ name: "a", cells: [1] }, { name: "sub", cells: [sub0] }]);
+    const n = new ComputedColumnNode({ expr: "@sub" });
+    n.stringLiterals.name = "x";
+    const c = n.data({ frame: [withSub] as never }).frame as CubeValue;
+    expect((colCells(c, "x")[0] as { code: string }).code).toBe("#SHAPE!");
+  });
+
+  it("SPARKLINE draws each row's own list", () => {
+    const series = cubeFromColumns([{ name: "h", cells: [[1, 2, 3], [3, 1]] }]);
+    const n = new ComputedColumnNode({ expr: "SPARKLINE(@h)" });
+    n.stringLiterals.name = "spark";
+    const cells = colCells(n.data({ frame: [series] as never }).frame as CubeValue, "spark");
+    expect(cells.every((v) => typeof v === "string" && v.startsWith("data:image/svg+xml,"))).toBe(true);
+    expect(cells[0]).not.toBe(cells[1]);
   });
 });
 
