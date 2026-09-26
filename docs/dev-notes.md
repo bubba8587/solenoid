@@ -6,44 +6,32 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-09-26: SPARKLINE and typed Cube columns; author present)
+### SESSION DIGEST (2026-09-26: SPARKLINE, typed Cube columns, lists, Add-menu search; author present)
 
-- **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text: line, column or win/loss, the
-  Sparkline node's types in the Default gold (win/loss in green and vermilion), averaged down to 40 points past that ([[D82]] sparklineCell). A text cell holding a
-  `data:image` picture shows as the picture in the Frame and Cube cards and popups ([[D83]] imageTextCells).
+- **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text (line, column or win/loss, the
+  Sparkline node's types; Default gold, win/loss in green and vermilion), averaged to 40 points past that ([[D82]]
+  sparklineCell). A text cell holding a `data:image` picture shows as the picture in Frame and Cube cards and popups
+  ([[D83]] imageTextCells).
 - **Typed Cube columns** ([[D80]] cubeColumnTypes): Cube Input's root header has the type button (None, Number, Text,
-  Date, Boolean, Formula). A type overrides every kind in the column: scalars read as Frame cells (NaN when unreadable),
-  list items as List Input's (blank when unreadable), nested tables with every column set to the type. `cubeText` stays
-  plain records until a column is typed or computed, then `{ columns, rows }`. The Solenoid Properties plugin's cube
-  editor has the button without Formula and saves the picks as it saves a Frame's (the cube replaces its map).
+  Date, Boolean, Formula). A type overrides every kind in its column: scalars read as Frame cells (NaN when
+  unreadable), list items as List Input's (blank when unreadable), nested tables column by column. `cubeText` stays
+  plain records until a column is typed or computed, then `{ columns, rows }`. The plugin's cube editor has the button
+  without Formula and saves the picks as a Frame's.
 - **Cube formulas read lists** ([[D81]] cubeRowLists): in Cube Input's Fx columns and the Computed Column node over a
-  Cube, `@name` on a list column is this row's list and a row may answer a list; a bare list column is `#SHAPE!`
-  pointing at `@`. The target shape works: a Cube with a Number-list column and an Fx column `SPARKLINE(@history)`.
-- **Popups:** every list popup has the Source checkbox (Table popup and Cube popup list levels); a mixed list opens as
-  text and its chip wears the neutral gray instead of the number amber (it was the default tint, not a guess).
-- **INDEX on a list** now treats it as one row, as ROWS and COLUMNS already did: `INDEX(x, 1, 2)` is the second item,
-  `INDEX(x, 2, 1)` is `#REF!` ([[C15]] matricesInFormulas); one index still walks along it.
-- **List audit** (after the author's worry): SORT and the List Sort card never sorted text (a text list came back
-  unchanged); now numbers, then text by character code, then FALSE/TRUE, with blanks, errors and NaN last
-  (`compareListCells`). SORTBY takes text keys and its `sort_order`, which it used to drop silently. A list is one row
-  everywhere ([[D85]] columnsStayColumns, the author's call): TOCOL, BYROW and MAKEARRAY(n, 1) answer one-column
-  tables (so `m / BYROW(m, SUM)` divides each row by its own total), TOROW is the list and reads row by row as Excel's
-  does, INDEX is strict, and SEQUENCE(n) stays a list. The Table Reshape and By Axis cards follow, and their op switch
-  now reshapes the sockets (Table Reshape's never did). A one-row-matrix change to INDEX that shipped by accident is
-  reverted. TAKE/DROP on lists, blank list literals, INDEX's blank position and
-  SORT/FILTER on matrices wait on the author (backlog, Cubes and lists).
-- **Table Reshape and search:** TOCOL/TOROW take Excel's `ignore` and `scan_by_column`, and the card carries them as
-  a By row / By column toggle and a skip picker. Type Check gains ISERR (current Excel beside ISERROR). The reshape rows gain "table reshape" keywords, so the family name finds them.
-  Excel-alias rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name is one op's formula
-  name and the row places that op ([[C19]] namingModel, amended on the author's word); "Card: Op" is only ever an op.
-  Every row carries its card's family name (the hover hint's), so "bessel" or "is test" finds the family.
-- **Search samples:** `scripts/search-samples.ts` (46 queries, one per kind of searchable row) runs in
-  `searchSamples.test.ts`; `npm run search-samples` prints them as a Markdown table. It found two gaps, both fixed: an op's
-  keywords never reached its row (`fromMeta` dropped them), so "kanban" missed "Record: Board"; and List Sort had no
-  argument words ("descending").
-  A search shows one row per thing placed, so "SORT → List Sort" no longer sits beside "List Sort" (`places`).
-- **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
-  re-export (backlog, exported to Solenoid-Properties `develop`). The outbox is processed: A1, B1, B2, B3, B7 are ratified.
+  Cube, `@name` on a list column is this row's list and a row may answer a list; `SPARKLINE(@history)` per row works.
+- **Lists** ([[D85]] columnsStayColumns, the author's call): a list is one row everywhere, so INDEX is strict on it
+  (`INDEX(x, 2, 1)` is `#REF!`); TOCOL, BYROW and MAKEARRAY(n, 1) answer one-column tables; TOROW is the list and reads
+  row by row as Excel's does; SEQUENCE(n) stays a list. TOCOL and TOROW take Excel's `ignore` and `scan_by_column`, on
+  the Table Reshape card as a By row / By column toggle and a skip picker. SORT, SORTBY and List Sort order text and
+  mixed kinds (`compareListCells`); SORTBY keeps its `sort_order`. Every list popup has the Source checkbox; a mixed
+  list opens as text with a gray chip. Type Check gains ISERR.
+- **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
+- **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
+  is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
+  (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
+  46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
+- **Open:** the Cubes and lists section of the backlog; an Excel-signature parity check (backlog); the plugin release
+  (its snapshot is on Solenoid-Properties `develop`). The outbox is empty.
 
 ### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)
 

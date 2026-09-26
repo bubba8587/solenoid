@@ -62,6 +62,9 @@ and four functions arrive: `FLATTEN(array, [pad_value], [levels])`, `HAS(array, 
   axis" ([[C80]] blankArgIsExcelBlank); Excel answers item 2. **EXPAND(x,,4)** is blank for the same reason.
 - [ ] **SORT and FILTER on a matrix** are `#SHAPE!` (SORT works on one list; FILTER on a 1 × N matrix too).
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
+- [ ] **Excel-signature parity check** (author asked 2026-09-26): a reference of Excel's real signatures and a test that
+  fails when a registration's `arity` max is below Excel's. TOCOL and TOROW shipped one argument short of Excel's three
+  because both surfaces agreed with our own declaration, and nothing compared it with Excel.
 - [ ] **Column types on nested Cube Input levels** ([[D80]] cubeColumnTypes' reopen condition), if wanted.
 
 ## Composites
@@ -80,8 +83,9 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Next plugin release:** `PropertyChip` gained `resolveToken` (2026-09-23) and the cube type button (2026-09-26), so re-export the snapshot
-  (`npm run plugin:export`); the README fix waits on `claude/copy-editing-style-kytmz0` in Solenoid-Properties.
+- [ ] **Next plugin release:** the snapshot with `resolveToken` and the cube type button is exported to
+  Solenoid-Properties `develop` (2026-09-26); merge it to `main`, bump the version and release. The README fix waits on
+  `claude/copy-editing-style-kytmz0` there.
 - [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
   row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
   `tree/specs/integrations/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.
