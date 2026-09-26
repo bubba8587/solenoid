@@ -32,26 +32,6 @@ warning is expected.
 
 - [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
 
-## Nested arrays in formulas (author 2026-09-24: take Excel's syntax)
-
-Excel's Beta Channel (Insider post 2026-09-24, "Put multiple values in one cell with lists and
-arrays in Excel") lets a cell hold an array: `{…}` wraps a spilling result into one cell, braces
-nest (`={{1,2,3};{4,5,6}}`), TEXTSPLIT over a column answers one array per row instead of `#CALC!`,
-and four functions arrive: `FLATTEN(array, [pad_value], [levels])`, `HAS(array, value)`,
-`HASANY(array, values)`, `HASALL(array, values)`. Preview only; it may change before GA.
-- [ ] **Flat array constants first** (author to say go; needs no rule change, [[C15]] admits matrices): Excel's
-  literal-only `{1,2,3}` (a list), `{1;2;3}` (a one-column table, [[D85]]), `{1,2;3,4}`; ragged rows and `{}` are errors.
-  Lexer braces, `;` legal only inside them, one AST node (plus `equationSolve.ts` and `unitDimExpr.ts`), and the braces
-  syntax hint goes. A small leaf under C15 records literal-only over Sheets-style expressions.
-- [ ] **Rule first.** Revise [[C15]] matricesInFormulas and `tree/specs/values/value-semantics.md`
-  (which today says a new nesting scheme reopens the bare-array ambiguity) to admit nested arrays
-  with Excel's brace grammar; settle how a nested formula value meets a Cube's list cells.
-- [ ] **Functions onto existing kernels.** FLATTEN on Unnest's list path (`unnestCube`) with
-  `pad_value` and `levels`; HAS on Is In; HASANY as not-disjoint and HASALL as superset on Sets
-  (`applySetOp`), so the formula and the cards agree ([[C17]] shareImpl).
-- [ ] **TEXTSPLIT over a list** answers a nested array, one per row, as Excel's Compatibility
-  Version 3 does.
-
 ## Cubes and lists (author 2026-09-26)
 
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,

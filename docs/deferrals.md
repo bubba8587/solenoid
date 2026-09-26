@@ -136,6 +136,17 @@ the decision tree (`dte.md`).
 
 ## Parked features (revisit only if the trigger returns)
 
+- **Array constants and nested arrays in formulas (author 2026-09-26: deferred until Excel's
+  nested-array syntax reaches the stable channel; then take Excel's syntax).** Excel's Beta
+  Channel (Insider post 2026-09-24) lets a cell hold an array: braces nest (`={{1,2,3};{4,5,6}}`),
+  TEXTSPLIT over a column answers one array per row, and FLATTEN, HAS, HASANY and HASALL arrive.
+  Flat constants included: `{1,2,3}` a list, `{1;2;3}` a one-column table ([[D85]]), `{1,2;3,4}`
+  a matrix, literal-only as Excel, ragged rows and `{}` errors. Nesting needs [[C15]]
+  matricesInFormulas and `tree/specs/values/value-semantics.md` revised first (a new nesting
+  scheme reopens the bare-array ambiguity) and a ruling on how a nested value meets a Cube's
+  list cells. The functions go onto existing kernels ([[C17]] shareImpl): FLATTEN on Unnest's
+  list path (`unnestCube`), HAS on Is In, HASANY/HASALL on Sets (`applySetOp`). The braces syntax
+  hint in `excelFormula.ts` stays until then.
 - **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't build
   per-panel resize. **Moveable / resizable / hideable toolbar chrome** is the same
   customization slice (`archive/1.4-plan.md` F3 HOLD; `tree/specs/canvas/layout-chrome.md` shows the cost).
