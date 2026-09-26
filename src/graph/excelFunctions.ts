@@ -28,7 +28,7 @@ import {
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, arrayCount, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
-  firstError as firstListError, sequenceList, uniqueList, sortNumericList, sortByKeys,
+  firstError as firstListError, sequenceList, uniqueList, sortList, sortByKeys,
   takeSlice, dropSlice, filterByMask, randArrayRange, randArrayDraw, modeMult, frequencyBins,
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
@@ -676,8 +676,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
 
   UNIQUE:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
-  SORT:        { returns: "number", rank: "list", listArgs: true, arity: [1, 3] },
-  SORTBY:      { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
+  SORT:        { returns: "any", rank: "list", listArgs: true, arity: [1, 3] },
+  SORTBY:      { returns: "any", rank: "list", listArgs: true, arity: [2, 3], native: true },
   FILTER:      { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   TAKE:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   DROP:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3] },
@@ -1822,13 +1822,15 @@ registerInternal("SORT", (v, sortIndex, order) => {
   if (sortIndex != null && Number(sortIndex) !== 1) {
     return solError("#SHAPE!", "A list has one column, so SORT's sort_index must be 1 or left out");
   }
-  return sortNumericList(numList(v), Number(order ?? 1) === -1);
+  return sortList(toList(v) as ListCell[], Number(order ?? 1) === -1);
 });
-registerInternal("SORTBY", (v, by) => {
+registerInternal("SORTBY", (v, by, order) => {
   if (v == null || by == null) return null;
-  const arr = toList(v), keys = numList(by);
+  const arr = toList(v), keys = toList(by);
   if (keys.length !== arr.length) return solError("#SHAPE!", `SORTBY's key list has ${keys.length} values but the list has ${arr.length}`);
-  return sortByKeys(arr, keys);
+  const o = order == null ? 1 : toNum(order);
+  if (o !== 1 && o !== -1) return solError("#VALUE!", "SORTBY's sort_order is 1 or -1");
+  return sortByKeys(arr, keys, o === -1);
 });
 registerInternal("FILTER", (v, include, ifEmpty) => {
   if (v == null || include == null) return null;

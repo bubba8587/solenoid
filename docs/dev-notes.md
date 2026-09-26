@@ -23,6 +23,13 @@ specific item.
   text and its chip wears the neutral gray instead of the number amber (it was the default tint, not a guess).
 - **INDEX on a list** now treats it as one row, as ROWS and COLUMNS already did: `INDEX(x, 1, 2)` is the second item,
   `INDEX(x, 2, 1)` is `#REF!` ([[C15]] matricesInFormulas); one index still walks along it.
+- **List audit** (after the author's worry): SORT and the List Sort card never sorted text (a text list came back
+  unchanged); now numbers, then text by character code, then FALSE/TRUE, with blanks, errors and NaN last
+  (`compareListCells`). SORTBY takes text keys and its `sort_order`, which it used to drop silently. INDEX reads a list
+  along either axis ([[D84]] listEitherAxis), since SEQUENCE(n), TOCOL and MAKEARRAY(n, 1) answer lists too; the
+  one-row-list fix earlier this session had broken `INDEX(TOCOL(x), 2, 1)`. A one-row-matrix change to INDEX that
+  shipped by accident is reverted. TAKE/DROP/CHOOSEROWS/CHOOSECOLS, blank list literals, INDEX's blank position and
+  SORT/FILTER on matrices wait on the author (backlog, Cubes and lists).
 - **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
   re-export (backlog, exported to Solenoid-Properties `develop`). The outbox is processed: A1, B1, B2, B3, B7 are ratified.
 

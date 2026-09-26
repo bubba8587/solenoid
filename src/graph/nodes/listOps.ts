@@ -3,6 +3,7 @@ import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { forAggregate, ifTest, isMissing } from "../valueKinds";
+import { compareStrings } from "../stringOrder";
 import { iterMin, iterMax } from "./mathUtils";
 import { percentileOf } from "./statsOps";
 
@@ -711,30 +712,37 @@ export function uniqueList(arr: readonly unknown[]): unknown[] {
   return out;
 }
 
-export function sortNumericList(arr: readonly Cell[], desc = false): Cell[] {
-  const isTail = (v: unknown) => isMissing(v) || isSolError(v);
-  const idx = arr.map((_, i) => i);
-  idx.sort((i, j) => {
-    const ti = isTail(arr[i]), tj = isTail(arr[j]);
-    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
-    const c = (arr[i] as number) - (arr[j] as number);
-    return c !== 0 ? (desc ? -c : c) : i - j;
-  });
-  return idx.map((i) => arr[i]);
+const sortKind = (v: unknown): number => (typeof v === "number" ? 0 : typeof v === "string" ? 1 : typeof v === "boolean" ? 2 : 3);
+const sortsLast = (v: unknown): boolean => isMissing(v) || isSolError(v) || (typeof v === "number" && Number.isNaN(v));
+
+/** One order for every list sort: numbers by value, then text by character code ([[C59]] byteStringOrder), then FALSE and TRUE, Excel's order across kinds. Blanks, errors and NaN go last in either direction. */
+export function compareListCells(a: unknown, b: unknown): number {
+  const ka = sortKind(a), kb = sortKind(b);
+  if (ka !== kb) return ka - kb;
+  if (ka === 0) return (a as number) - (b as number);
+  if (ka === 1) return compareStrings(a as string, b as string);
+  if (ka === 2) return Number(a) - Number(b);
+  return 0;
 }
 
-export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[], desc = false): (T | null)[] {
-  const n = Math.max(arr.length, by.length);
-  const isTail = (v: unknown) => isMissing(v) || isSolError(v);
+function sortedIndex(keys: readonly unknown[], n: number, desc: boolean): number[] {
   const idx = Array.from({ length: n }, (_, i) => i);
   idx.sort((i, j) => {
-    const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
-    const ti = isTail(ki), tj = isTail(kj);
+    const ki = i < keys.length ? keys[i] : null, kj = j < keys.length ? keys[j] : null;
+    const ti = sortsLast(ki), tj = sortsLast(kj);
     if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
-    const c = ki - kj;
+    const c = compareListCells(ki, kj);
     return c !== 0 ? (desc ? -c : c) : i - j;
   });
-  return idx.map((i) => (i < arr.length ? arr[i] : null));
+  return idx;
+}
+
+export function sortList(arr: readonly Cell[], desc = false): Cell[] {
+  return sortedIndex(arr, arr.length, desc).map((i) => arr[i]);
+}
+
+export function sortByKeys<T>(arr: readonly T[], by: readonly unknown[], desc = false): (T | null)[] {
+  return sortedIndex(by, Math.max(arr.length, by.length), desc).map((i) => (i < arr.length ? arr[i] : null));
 }
 
 export function takeSlice<T>(arr: readonly T[], n: number): T[] {

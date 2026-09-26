@@ -52,6 +52,15 @@ and four functions arrive: `FLATTEN(array, [pad_value], [levels])`, `HAS(array, 
 
 - [ ] **INDEX on a one-row matrix** (the author holds it): `INDEX({1,2,3}, 2)` is `#REF!` here and 2 in Excel, where one
   index walks a one-row range. Lists already walk (`indexInto`); decide whether a 1 × N matrix follows.
+- [ ] **TAKE, DROP, CHOOSEROWS, CHOOSECOLS on a list** follow [[D84]] listEitherAxis (findings 2026-09-26):
+  `TAKE(x,,2)` and `DROP(x,,1)` are `#SHAPE!` (should take along the row); `CHOOSEROWS(x,2)` is `#VALUE!` (should be item 2);
+  `CHOOSEROWS(x,1)` and `CHOOSECOLS(x,2)` answer one-row matrices, not a list or an item. Proposed rule: one count reads
+  along its own axis, two counts read along the one that isn't ±1. Awaits the author.
+- [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass
+  § Typed list literals) while `1,x,3` is `[1, null, 3]` and a wired blank stays in place.
+- [ ] **INDEX with a blank position** (`INDEX(x,,2)`) answers blank, while TAKE and DROP read a blank count as "keep the
+  axis" ([[C80]] blankArgIsExcelBlank); Excel answers item 2. **EXPAND(x,,4)** is blank for the same reason.
+- [ ] **SORT and FILTER on a matrix** are `#SHAPE!` (SORT works on one list; FILTER on a 1 × N matrix too).
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Column types on nested Cube Input levels** ([[D80]] cubeColumnTypes' reopen condition), if wanted.
 

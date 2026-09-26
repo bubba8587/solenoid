@@ -275,13 +275,14 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     expect(isSolError(flatCol) && flatCol.code).toBe("#REF!");
   });
 
-  // [[C15]] matricesInFormulas: a list is one row, as ROWS and COLUMNS count it.
-  it("a list is one row: the column picks the item, and a row past 1 is #REF!", () => {
+  // [[D84]] listEitherAxis: two positions read along whichever axis names one past 1.
+  it("a list reads along either axis: row 1 and column k, or row k and column 1, is item k", () => {
     expect(new ListIndexNode().data({ list: [[10, 20]], column: [2] }).result).toBe(20);
     expect(new ListIndexNode().data({ list: [[10, 20]], index: [1], column: [2] }).result).toBe(20);
-    const row2 = new ListIndexNode().data({ list: [[10, 20]], index: [2], column: [1] }).result;
-    expect(isSolError(row2) && row2.code).toBe("#REF!");
+    expect(new ListIndexNode().data({ list: [[10, 20]], index: [2], column: [1] }).result).toBe(20);
     expect(new ListIndexNode().data({ list: [[10, 20]], index: [2] }).result).toBe(20);
+    const both = new ListIndexNode().data({ list: [[10, 20]], index: [2], column: [2] }).result;
+    expect(isSolError(both) && both.code).toBe("#REF!");
   });
 });
 

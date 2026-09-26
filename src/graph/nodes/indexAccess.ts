@@ -44,11 +44,6 @@ export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: 
     const mUnit = matrixUnitOf(v);
     const tag = (x: unknown): unknown => (mUnit && tagUnit ? tagUnit(x, mUnit) : x);
     if (rowAll && colAll) return grid;
-    if (col === undefined && grid.length === 1 && Array.isArray(grid[0])) {
-      const only = grid[0] as unknown[];
-      if (r < 0 || r >= only.length) return indexRefError(r + 1, only.length, "Column");
-      return tag(only[r] ?? null);
-    }
     if (!rowAll && (r < 0 || r >= grid.length)) return indexRefError(r + 1, grid.length, "Row");
     if (rowAll) {
       const width = grid.reduce<number>((m, row) => Math.max(m, Array.isArray(row) ? row.length : 1), 0);
@@ -61,16 +56,13 @@ export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: 
     return tag(rowArr[c] ?? null);
   }
 
-  // A list is one row ([[C15]] matricesInFormulas): one index walks along it, as Excel's INDEX does on a one-row range;
-  // with two, the row must be 1 and the column picks the item.
+  // One index walks the list; with two, it reads along whichever axis names a position past 1 ([[D84]] listEitherAxis).
   const arr = v as unknown[];
-  if (col === undefined) {
-    if (rowAll) return [...arr];
-    if (r < 0 || r >= arr.length) return indexRefError(r + 1, arr.length, "Item");
-    return arr[r] as unknown;
+  const item = (i: number, what: string) => (i < 0 || i >= arr.length ? indexRefError(i + 1, arr.length, what) : arr[i] as unknown);
+  if (col === undefined) return rowAll ? [...arr] : item(r, "Item");
+  if (!rowAll && r !== 0) {
+    if (!colAll && c !== 0) return indexRefError(c + 1, 1, "Column");
+    return item(r, "Row");
   }
-  if (!rowAll && r !== 0) return indexRefError(r + 1, 1, "Row");
-  if (colAll) return [...arr];
-  if (c < 0 || c >= arr.length) return indexRefError(c + 1, arr.length, "Column");
-  return arr[c] as unknown;
+  return colAll ? [...arr] : item(c, "Column");
 }

@@ -21,7 +21,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
+import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, uniqueList, sortList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { coerceListItem, isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -431,7 +431,7 @@ export class SortNode extends ClassicPreset.Node {
       return { result: this.cachedList };
     }
     if ("by" in inputs) { this.cachedList = null; return { result: null }; }
-    this.cachedList = sortNumericList(arr as ListCell[], desc) as (number | null | SolError)[];
+    this.cachedList = sortList(arr as ListCell[], desc) as (number | string | boolean | null | SolError)[];
     return { result: this.cachedList };
   }
 }

@@ -313,7 +313,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   RANDARRAY: "[rows], [columns], [min], [max], [whole_number]",
   UNIQUE: "array",
   SORT: "array, [sort_index], [sort_order]",
-  SORTBY: "array, by_array",
+  SORTBY: "array, by_array, [sort_order]",
   FILTER: "array, include, [if_empty]",
   TAKE: "array, rows, [columns]",
   DROP: "array, rows, [columns]",
