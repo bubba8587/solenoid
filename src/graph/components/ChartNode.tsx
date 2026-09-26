@@ -8,6 +8,7 @@ import { InlineInputs } from "./inlineInput";
 import { ChartFigure, toSeries, type ChartShape } from "./chartView";
 import { ChartExpandButton } from "./ChartExpandButton";
 import { ChartChip } from "./ChartChip";
+import { ErrorChip } from "./ErrorChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { formatAnnotationStore } from "../formatAnnotationStore";
@@ -40,13 +41,15 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const opts = data.chartOptions;
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;
-  const noExpand = op === "composed" || op === "bubble";
+  const noExpand = op === "composed";
   const series = toSeries(data.cachedResult);
-  const hasData = series.length > 0 || !!data.cachedSeries;
+  const err = data.cachedError;
+  const hasData = series.length > 0 || !!data.cachedSeries || !!data.cachedPayload;
   const cv: ChartValue = {
     __chart: true, op, values: data.cachedResult,
     series: data.cachedSeries ?? undefined,
     labels: data.cachedLabels ?? undefined,
+    payload: data.cachedPayload ?? undefined,
     options: opts, title: opts.title || nodeDisplayName(data),
   };
 
@@ -74,7 +77,9 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         <OpSelect value={op} onChange={setOp} options={typeOpts} />
       </div>
       <div ref={chartRef} className="solenoid-node__figure" style={{ position: "relative", marginTop: 4, height: H }}>
-        {!hasData ? (
+        {err ? (
+          <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ErrorChip err={err} /></div>
+        ) : !hasData ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
         ) : !collapsed && (
           <>

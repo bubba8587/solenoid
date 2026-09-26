@@ -5,6 +5,8 @@ import { wrapNodeData } from "../../src/graph/coerceInputs";
 import { cubeFromColumns, flatCubeToFrame, isFrameValue, isCubeValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
 import { collectPreview } from "../../src/graph/frameBackend";
+import type { ChartValue } from "../../src/graph/chartValue";
+const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
 
 // The author's ruling (2026-09-12): a cube never enters a frame socket through the lattice;
 // a verb that wants one gets a cube-adoptive INPUT and flattens inside data().
@@ -62,11 +64,11 @@ describe("the lattice stays narrow; the nodes widen", () => {
 
   it("Chart over a flat cube draws its numeric column", () => {
     const c = new ChartNode();
-    const out = c.data({ values: [flat] });
+    const out = draw(c, { values: [flat] });
     expect(out.chart.values).toEqual([4000, 6000, 5000]);
     // A list column has nothing to plot; the chart draws the rest.
     const withTags = cubeFromColumns([...flat.columns, { name: "Tags", cells: [["a"], [], ["b"]] }]);
-    expect(c.data({ values: [withTags] }).chart.values).toEqual([4000, 6000, 5000]);
+    expect(draw(c, { values: [withTags] }).chart.values).toEqual([4000, 6000, 5000]);
   });
 });
 

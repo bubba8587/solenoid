@@ -1,7 +1,8 @@
 // [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
-import { isChartValue, type ChartValue } from "../../src/graph/chartValue";
+import { isChartValue, type ChartValue, type XYPayload } from "../../src/graph/chartValue";
 import { ChartNode } from "../../src/graph/nodes/visual";
+const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
 import { solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
 
@@ -18,7 +19,7 @@ describe("chart value", () => {
 
   it("ChartNode emits a chart value carrying its op, values, parsed options and title", () => {
     const ch = new ChartNode({ op: "line", label: "Revenue" });
-    const out = ch.data({ values: [[10, 20, 30]], options: ["title=Growth;color=red"] });
+    const out = draw(ch, { values: [[10, 20, 30]], options: ["title=Growth;color=red"] });
     expect(out.chart).toMatchObject({
       __chart: true,
       op: "line",
@@ -30,7 +31,7 @@ describe("chart value", () => {
 
   it("falls back to the node label for the title when Options has none", () => {
     const ch = new ChartNode({ label: "Weekly sales" });
-    const out = ch.data({ values: [[1]] });
+    const out = draw(ch, { values: [[1]] });
     expect(out.chart.title).toBe("Weekly sales");
   });
 
@@ -40,7 +41,7 @@ describe("chart value", () => {
 
   it("a scalar #DIV/0! into the Data socket yields a valid EMPTY chart, not a SolError", () => {
     const ch = new ChartNode({ op: "column", label: "C" });
-    const out = ch.data({ values: [solError("#DIV/0!", "Division by zero")] });
+    const out = draw(ch, { values: [solError("#DIV/0!", "Division by zero")] });
     // Still a chart value (the socket carries a figure, never a bare error object).
     expect(isChartValue(out.chart)).toBe(true);
     expect(out.chart.values).toBeNull();
@@ -48,7 +49,7 @@ describe("chart value", () => {
 
   it("list cells that are errors / NaN / text become null in place (row positions kept)", () => {
     const ch = new ChartNode({ op: "line" });
-    const out = ch.data({ values: [[1, solError("#DIV/0!", "x"), NaN, "text", 5]] });
+    const out = draw(ch, { values: [[1, solError("#DIV/0!", "x"), NaN, "text", 5]] });
     expect(out.chart.values).toEqual([1, null, null, null, 5]);
   });
 
@@ -61,7 +62,7 @@ describe("chart value", () => {
         { name: "Cost", type: "number", values: [4, 9] },
       ],
     };
-    const out = new ChartNode({ op: "composed" }).data({ values: [frame] });
+    const out = draw(new ChartNode({ op: "composed" }), { values: [frame] });
     expect(out.chart.labels).toEqual(["Q1", "Q2"]);
     expect(out.chart.series).toEqual([
       { name: "Rev", values: [10, 20] },
@@ -78,13 +79,11 @@ describe("chart value", () => {
         { name: "size", type: "number", values: [7, 8, 9] },
       ],
     };
-    const out = new ChartNode({ op: "bubble" }).data({ values: [frame] });
-    expect(out.chart.labels).toBeUndefined(); // no category axis
-    expect(out.chart.series).toEqual([
-      { name: "x", values: [1, 2, 3] },
-      { name: "y", values: [4, 5, 6] },
-      { name: "size", values: [7, 8, 9] },
-    ]);
+    const out = draw(new ChartNode({ op: "bubble" }), { values: [frame] });
+    const p = out.chart.payload as XYPayload;
+    expect(p.xcats).toBeUndefined(); // no category axis
+    expect(p.names).toMatchObject({ x: "x", y: "y", s: "size" });
+    expect(p.series[0].points).toEqual([{ x: 1, y: 4, s: 7 }, { x: 2, y: 5, s: 8 }, { x: 3, y: 6, s: 9 }]);
   });
 
   it("Bubble skips a string column and takes the next three numbers", () => {
@@ -97,8 +96,8 @@ describe("chart value", () => {
         { name: "size", type: "number", values: [5, 6] },
       ],
     };
-    const out = new ChartNode({ op: "bubble" }).data({ values: [frame] });
-    expect(out.chart.series?.map((s) => s.name)).toEqual(["x", "y", "size"]);
+    const out = draw(new ChartNode({ op: "bubble" }), { values: [frame] });
+    expect((out.chart.payload as XYPayload).names).toEqual({ x: "x", y: "y", s: "size" });
   });
 
   it("a Frame drives labels (col 0) + values (col 1); error/blank value cells → null, labels aligned", () => {
@@ -110,7 +109,7 @@ describe("chart value", () => {
       ],
     };
     const ch = new ChartNode({ op: "column" });
-    const out = ch.data({ values: [frame] });
+    const out = draw(ch, { values: [frame] });
     expect(out.chart.values).toEqual([10, null, 30]);
     expect(out.chart.labels).toEqual(["Jan", "Feb", "Mar"]);
     expect(out.chart.series).toBeUndefined(); // one numeric column → no legend
@@ -125,7 +124,7 @@ describe("chart value", () => {
         { name: "Target", type: "number", values: [12, 18] },
       ],
     };
-    const out = new ChartNode({ op: "column" }).data({ values: [frame] });
+    const out = draw(new ChartNode({ op: "column" }), { values: [frame] });
     expect(out.chart.labels).toEqual(["Jan", "Feb"]);
     expect(out.chart.values).toEqual([10, 20]); // first series mirrors values
     expect(out.chart.series).toEqual([
@@ -143,7 +142,7 @@ describe("chart value", () => {
         { name: "B", type: "number", values: [4, 5, 6] },
       ],
     };
-    const out = new ChartNode({ op: "line" }).data({ values: [frame] });
+    const out = draw(new ChartNode({ op: "line" }), { values: [frame] });
     expect(out.chart.labels).toEqual([2020, 2021, 2022]); // numeric labels, not a series
     expect(out.chart.values).toEqual([1, 2, 3]);          // first series after the label
     expect(out.chart.series).toEqual([
@@ -162,13 +161,13 @@ describe("chart value", () => {
         { name: "Target", type: "number", values: [12, 18] },
       ],
     };
-    const out = new ChartNode({ op: "column" }).data({ values: [frame] });
+    const out = draw(new ChartNode({ op: "column" }), { values: [frame] });
     expect(out.chart.series?.map((s) => s.name)).toEqual(["Sales", "Target"]);
   });
 
   it("a SolError wired into the Options socket is ignored (not parsed as text)", () => {
     const ch = new ChartNode({ op: "bar", label: "C" });
-    const out = ch.data({ values: [[1, 2]], options: [solError("#VALUE!", "x") as unknown as string] });
+    const out = draw(ch, { values: [[1, 2]], options: [solError("#VALUE!", "x") as unknown as string] });
     expect(isChartValue(out.chart)).toBe(true);
     expect(out.chart.options).toEqual({});
     expect(out.chart.title).toBe("C"); // node label, since Options gave no title

@@ -6,8 +6,7 @@ import { resolveColor, type PaletteSlot } from "../palette";
 
 export type ChartShape =
   | "line" | "area" | "bar" | "column"       // cartesian (axes-aware)
-  | "pie" | "radar" | "radialbar" | "funnel" // categorical / polar
-  | "scatter";                                // index-vs-value dot plot
+  | "pie" | "radar" | "radialbar" | "funnel"; // categorical / polar
 
 // The same slot order as MermaidView, so a chart and a diagram side by side color their series alike.
 const SERIES_SLOTS: PaletteSlot[] = [

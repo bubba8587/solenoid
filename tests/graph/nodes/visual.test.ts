@@ -8,11 +8,13 @@ import {
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
-import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
+import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { DateInputNode, XYPadNode } from "../../../src/graph/nodes/control";
 import { extractInit, cloneNode } from "../../../src/graph/copyPaste";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
+import type { ChartValue } from "../../../src/graph/chartValue";
+const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
 import { isSolError } from "../../../src/graph/errorValue";
 import { isMermaidValue } from "../../../src/graph/mermaidValue";
 
@@ -32,7 +34,7 @@ describe("visual nodes", () => {
     // (op + values + options), the thing a Report renders inline, NOT a
     // numlist pass-through (nothing consumed that; a chart is a sink).
     const ch = new ChartNode({ op: "line" });
-    expect(ch.data({ values: [[4, 5]] })).toEqual({
+    expect(draw(ch, { values: [[4, 5]] })).toEqual({
       // A plain list gives no labels/series — just the values figure.
       chart: { __chart: true, op: "line", values: [4, 5], options: {}, title: "Chart" },
     });
@@ -40,10 +42,10 @@ describe("visual nodes", () => {
 
   it("Chart parses its Options socket into chartOptions", () => {
     const ch = new ChartNode();
-    ch.data({ values: [[1, 2]], options: ["title=Hi;color=red;grid=off;ylim=0,9"] });
+    draw(ch, { values: [[1, 2]], options: ["title=Hi;color=red;grid=off;ylim=0,9"] });
     expect(ch.chartOptions).toEqual({ title: "Hi", color: "red", grid: false, ymin: 0, ymax: 9 });
     // no options wired → empty (Sparkline-equivalent look)
-    ch.data({ values: [[1, 2]] });
+    draw(ch, { values: [[1, 2]] });
     expect(ch.chartOptions).toEqual({});
   });
 
@@ -53,14 +55,14 @@ describe("visual nodes", () => {
       { name: "Speed", type: "number", values: [9, 6] },
       { name: "Price", type: "number", values: [1800, 1400] },
     ] };
-    const out = new ChartNode({ op: "radar" }).data({ values: [frame] }).chart;
+    const out = draw(new ChartNode({ op: "radar" }), { values: [frame] }).chart;
     expect(out.labels).toEqual(["Speed", "Price"]);       // spokes = the number columns
     expect(out.series).toEqual([
       { name: "A", values: [9, 1800] },                    // one polygon per row, named by col 0
       { name: "B", values: [6, 1400] },
     ]);
     // A cartesian chart keeps the other orientation: col 0 labels, columns are series.
-    const bar = new ChartNode({ op: "bar" }).data({ values: [frame] }).chart;
+    const bar = draw(new ChartNode({ op: "bar" }), { values: [frame] }).chart;
     expect(bar.labels).toEqual(["A", "B"]);
     expect(bar.series).toEqual([
       { name: "Speed", values: [9, 6] },
@@ -74,7 +76,7 @@ describe("visual nodes", () => {
       { name: "Sales", type: "number", values: [120, 145, 98] },
       { name: "Target", type: "number", values: [130, 130, 140] },
     ] };
-    const out = new ChartNode({ op: "composed" }).data({ values: [frame], options: ["title=Sales vs target"] }).chart;
+    const out = draw(new ChartNode({ op: "composed" }), { values: [frame], options: ["title=Sales vs target"] }).chart;
     expect(out.labels).toEqual(["Jan", "Feb", "Mar"]);
     expect(out.series).toEqual([
       { name: "Sales", values: [120, 145, 98] },
@@ -89,17 +91,13 @@ describe("visual nodes", () => {
       { name: "Return", type: "number", values: [18, 32] },
       { name: "Reach", type: "number", values: [40, 90] },
     ] };
-    const out = new ChartNode({ op: "bubble" }).data({ values: [frame] }).chart;
-    expect(out.series).toEqual([
-      { name: "Spend", values: [12, 25] },
-      { name: "Return", values: [18, 32] },
-      { name: "Reach", values: [40, 90] },   // the size column, named in the tooltip
-    ]);
+    const out = draw(new ChartNode({ op: "bubble" }), { values: [frame] }).chart;
+    expect((out.payload as XYPayload).names).toEqual({ x: "Spend", y: "Return", s: "Reach" });
     expect(out.options).toMatchObject({ xlabel: "Spend", ylabel: "Return" });
     // An authored label wins; a plain list has no column names to fall back on.
-    const named = new ChartNode({ op: "bubble" }).data({ values: [frame], options: ["xlabel=£ spent"] }).chart;
+    const named = draw(new ChartNode({ op: "bubble" }), { values: [frame], options: ["xlabel=£ spent"] }).chart;
     expect(named.options).toMatchObject({ xlabel: "£ spent", ylabel: "Return" });
-    expect(new ChartNode({ op: "bubble" }).data({ values: [[1, 2, 3]] }).chart.options).toEqual({});
+    expect(draw(new ChartNode({ op: "bubble" }), { values: [[1, 2, 3]] }).chart.options).toEqual({});
   });
 
   it("Mermaid emits a first-class diagram value from its source", () => {

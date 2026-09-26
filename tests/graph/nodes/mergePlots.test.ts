@@ -39,10 +39,10 @@ describe("Merge Plots node", () => {
   it("inherits color / marker size / line width / alpha / marker from the source options", () => {
     const n = new MergePlotsNode();
     const res = n.data({
-      p0: [chart("scatter", [1, 2], { options: { color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true } })],
+      p0: [chart("line", [1, 2], { options: { color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true } })],
     });
     expect(payloadOf(res).series[0]).toMatchObject({
-      kind: "scatter", color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true,
+      kind: "line", color: "#f00", markersize: 5, linewidth: 3, alpha: 0.5, marker: true,
     });
   });
 
@@ -71,8 +71,8 @@ describe("Merge Plots node", () => {
 
   it("wraps a single scalar value into a one-point series", () => {
     const n = new MergePlotsNode();
-    const p = payloadOf(n.data({ p0: [chart("scatter", 5, { title: "S" })] }));
-    expect(p.series).toMatchObject([{ name: "S", kind: "scatter", values: [5] }]);
+    const p = payloadOf(n.data({ p0: [chart("line", 5, { title: "S" })] }));
+    expect(p.series).toMatchObject([{ name: "S", kind: "line", values: [5] }]);
   });
 
   it("skips empty and blank rows", () => {
@@ -90,10 +90,9 @@ describe("Merge Plots node", () => {
     expect(err.message).toContain("pie");
   });
 
-  it("refuses composed and bubble too — only the five x/y kinds overlay", () => {
+  it("refuses composed and the non-plot figures", () => {
     const n = new MergePlotsNode();
     expect(isSolError(n.data({ p0: [chart("composed", [1])] }).chart)).toBe(true);
-    expect(isSolError(n.data({ p0: [chart("bubble", [1])] }).chart)).toBe(true);
     expect(isSolError(n.data({ p0: [chart("kpi", null)] }).chart)).toBe(true);
   });
 

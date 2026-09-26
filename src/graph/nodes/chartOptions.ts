@@ -1,4 +1,4 @@
-// [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption
+// [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[D87]] xyColumnMapping
 import type { ChartValueOp } from "../chartValue";
 
 export interface ChartOptions {
@@ -10,14 +10,26 @@ export interface ChartOptions {
   marker?: boolean;
   ymin?: number;
   ymax?: number;
+  xmin?: number;
+  xmax?: number;
+  aspect?: AspectMode;
+  linestyle?: LineStyle;
   linewidth?: number;
   markersize?: number;
   alpha?: number;
   fontsize?: number;
   pielabels?: PieLabelMode;
   radarscale?: RadarScale;
+  x?: string;
+  y?: string[];
+  s?: string;
+  c?: string;
+  annotate?: string;
+  by?: string;
 }
 
+export type LineStyle = "solid" | "dashed" | "dotted" | "dashdot" | "none";
+export type AspectMode = "auto" | "equal";
 export type PieLabelMode = "off" | "outside" | "inside";
 export type RadarScale = "axis" | "shared";
 
@@ -44,6 +56,21 @@ function toRadarScale(v: string): RadarScale | undefined {
   if (s === "axis" || s === "normalize" || s === "normalized" || s === "independent") return "axis";
   if (s === "shared" || s === "raw" || s === "absolute") return "shared";
   return undefined;
+}
+
+function toLineStyle(v: string): LineStyle | undefined {
+  const s = v.trim().toLowerCase();
+  if (s === "-" || s === "solid") return "solid";
+  if (s === "--" || s === "dashed") return "dashed";
+  if (s === ":" || s === "dotted") return "dotted";
+  if (s === "-." || s === "dashdot") return "dashdot";
+  if (s === "none") return "none";
+  return undefined;
+}
+
+function toAspect(v: string): AspectMode | undefined {
+  const s = v.trim().toLowerCase();
+  return s === "equal" || s === "auto" ? s : undefined;
 }
 
 function toNum(v: string): number | undefined {
@@ -86,6 +113,25 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       }
       case "ymin":   { const n = toNum(val); if (n !== undefined) opts.ymin = n; break; }
       case "ymax":   { const n = toNum(val); if (n !== undefined) opts.ymax = n; break; }
+      case "xlim": {
+        const [lo, hi] = val.split(",");
+        const a = toNum(lo ?? "");
+        const b = toNum(hi ?? "");
+        if (a !== undefined) opts.xmin = a;
+        if (b !== undefined) opts.xmax = b;
+        break;
+      }
+      case "xmin":   { const n = toNum(val); if (n !== undefined) opts.xmin = n; break; }
+      case "xmax":   { const n = toNum(val); if (n !== undefined) opts.xmax = n; break; }
+      case "aspect": { const m = toAspect(val); if (m !== undefined) opts.aspect = m; break; }
+      case "linestyle":
+      case "ls":     { const m = toLineStyle(val); if (m !== undefined) opts.linestyle = m; break; }
+      case "x":      if (val) opts.x = val; break;
+      case "y":      { const names = val.split(",").map((t) => t.trim()).filter(Boolean); if (names.length) opts.y = names; break; }
+      case "s":      if (val) opts.s = val; break;
+      case "c":      if (val) opts.c = val; break;
+      case "annotate": if (val) opts.annotate = val; break;
+      case "by":     if (val) opts.by = val; break;
       default: break;
     }
   }
@@ -122,6 +168,16 @@ export interface ChartBuilderFields {
   group_by?: string;
   cardsize?: string;
   clamp?: string;
+  x?: string;
+  y?: string;
+  s?: string;
+  c?: string;
+  annotate?: string;
+  by?: string;
+  linestyle?: string;
+  aspect?: string;
+  xmin?: number | null;
+  xmax?: number | null;
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
@@ -167,6 +223,19 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("group_by", f.group_by);
   str("cardsize", f.cardsize);
   str("clamp", f.clamp);
+  str("x", f.x);
+  str("y", f.y);
+  str("s", f.s);
+  str("c", f.c);
+  str("annotate", f.annotate);
+  str("by", f.by);
+  str("linestyle", f.linestyle);
+  str("aspect", f.aspect);
+  if ((f.xmin != null && Number.isFinite(f.xmin)) || (f.xmax != null && Number.isFinite(f.xmax))) {
+    const lo = f.xmin != null && Number.isFinite(f.xmin) ? f.xmin : "";
+    const hi = f.xmax != null && Number.isFinite(f.xmax) ? f.xmax : "";
+    parts.push(`xlim=${lo},${hi}`);
+  }
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
     const lo = f.ymin != null && Number.isFinite(f.ymin) ? f.ymin : "";
     const hi = f.ymax != null && Number.isFinite(f.ymax) ? f.ymax : "";
@@ -186,10 +255,11 @@ export type ChartBuilderKey =
   | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
   | "collapse" | "week" | "fiscal_start" | "status" | "group_by"
   | "cardsize" | "clamp"
+  | "x" | "y" | "s" | "c" | "annotate" | "by" | "linestyle" | "aspect" | "xmin" | "xmax"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 export type ChartTargetId =
-  | "column" | "bar" | "line" | "area" | "scatter"
+  | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
   | "pie" | "radar" | "radialbar" | "funnel"
   | "composed" | "bubble" | "overlay"
   | "histogram" | "histogram2d" | "kpi" | "scale" | "proportion" | "sankey"
@@ -200,15 +270,17 @@ const XY_KEYS: readonly ChartBuilderKey[] =
 const LINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "markersize", "alpha", "fontsize"];
+  ["title", "xlabel", "ylabel", "color", "grid", "x", "y", "s", "c", "annotate", "by", "linestyle", "aspect",
+    "xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const XYLINE_KEYS: readonly ChartBuilderKey[] = [...SCATTER_KEYS, "marker"];
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
 const RADAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "grid", "marker", "radarscale", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const COMPOSED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
-const BUBBLE_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "grid", "ymin", "ymax", "fontsize"];
-const OVERLAY_KEYS: readonly ChartBuilderKey[] = ["title", "grid", "ymin", "ymax", "linewidth", "fontsize"];
+const OVERLAY_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "grid", "aspect", "xmin", "xmax", "ymin", "ymax", "linewidth", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "status", "weekends", "labels", "histogram", "minutes", "window", "columns", "collapse", "group_by", "week", "fiscal_start"];
@@ -223,12 +295,13 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   line:      { label: "Line",             group: "Cartesian",    op: "line", keys: LINE_KEYS },
   area:      { label: "Area",             group: "Cartesian",    op: "area", keys: LINE_KEYS },
   scatter:   { label: "Scatter",          group: "Cartesian",    op: "scatter", keys: SCATTER_KEYS },
+  xyline:    { label: "XY Line",          group: "Cartesian",    op: "xyline", keys: XYLINE_KEYS },
   pie:       { label: "Pie",              group: "Categorical",  op: "pie", keys: PIE_KEYS },
   radar:     { label: "Radar",            group: "Categorical",  op: "radar", keys: RADAR_KEYS },
   radialbar: { label: "Radial",           group: "Categorical",  op: "radialbar", keys: SLICE_KEYS },
   funnel:    { label: "Funnel",           group: "Categorical",  op: "funnel", keys: SLICE_KEYS },
   composed:  { label: "Composed",         group: "Multi-series", op: "composed", keys: COMPOSED_KEYS },
-  bubble:    { label: "Bubble",           group: "Multi-series", op: "bubble", keys: BUBBLE_KEYS },
+  bubble:    { label: "Bubble",           group: "Multi-series", op: "bubble", keys: SCATTER_KEYS },
   overlay:   { label: "Merge Plots",      group: "Multi-series", op: "overlay", keys: OVERLAY_KEYS },
   histogram: { label: "Histogram",        group: "Figures",      op: "column", keys: XY_KEYS },
   histogram2d: { label: "Histogram 2-D",  group: "Figures",      op: "contour", keys: STAT_KEYS },

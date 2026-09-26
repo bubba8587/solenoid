@@ -83,7 +83,7 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
 
 const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
 
-const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "window", "columns"];
+const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "x", "y", "s", "c", "annotate", "by", "window", "columns"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }, { key: "clamp", label: "Clamp tiles" }];
 const SELECT_KEYS: readonly {
@@ -98,6 +98,24 @@ const SELECT_KEYS: readonly {
       { value: "outside", label: "Labels: outside" },
       { value: "inside", label: "Labels: on slice" },
       { value: "off", label: "Labels: off" },
+    ],
+  },
+  {
+    key: "linestyle", label: "Line style", clearValue: "",
+    options: [
+      { value: "", label: "Lines: default" },
+      { value: "none", label: "Lines: none" },
+      { value: "solid", label: "Lines: solid" },
+      { value: "dashed", label: "Lines: dashed" },
+      { value: "dotted", label: "Lines: dotted" },
+      { value: "dashdot", label: "Lines: dash-dot" },
+    ],
+  },
+  {
+    key: "aspect", label: "Aspect", clearValue: "auto",
+    options: [
+      { value: "auto", label: "Aspect: fill the plot" },
+      { value: "equal", label: "Aspect: equal x and y" },
     ],
   },
   {
@@ -163,7 +181,7 @@ const SELECT_KEYS: readonly {
     options: [{ value: "s", label: "Small" }, { value: "m", label: "Medium" }, { value: "l", label: "Large" }],
   },
 ];
-const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const NUM_KEYS: readonly ChartBuilderKey[] = ["xmin", "xmax", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 
 export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNodeType>) {
   const out = data.outputs.result;

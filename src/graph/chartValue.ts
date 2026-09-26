@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
-import type { ChartOptions } from "./nodes/chartOptions";
+import type { ChartOptions, LineStyle } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";
 
 export interface KpiPayload {
@@ -105,7 +105,7 @@ export interface RecordPayload {
 }
 export interface OverlaySeries {
   name: string;
-  kind: "line" | "area" | "column" | "bar" | "scatter";
+  kind: "line" | "area" | "column" | "bar";
   values: (number | null)[];
   color?: string;
   markersize?: number;
@@ -118,11 +118,39 @@ export interface OverlayPayload {
   series: OverlaySeries[];
   labels?: (string | number)[];
 }
+export interface XYPoint {
+  x: number;
+  y: number;
+  s?: number;
+  c?: number | string;
+  text?: string;
+}
+export interface XYSeries {
+  name: string;
+  /** In row order; null is a gap, where a connecting line breaks. */
+  points: (XYPoint | null)[];
+  line: LineStyle;
+  marker: boolean;
+  color?: string;
+  markersize?: number;
+  linewidth?: number;
+  alpha?: number;
+  sRange?: [number, number];
+  cRange?: [number, number];
+  cCats?: string[];
+}
+export interface XYPayload {
+  kind: "xy";
+  series: XYSeries[];
+  /** Set when x is a text column: each x is an index into these. */
+  xcats?: string[];
+  names: { x?: string; y?: string; s?: string; c?: string; text?: string };
+}
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | QuiverPayload | RecordPayload | OverlayPayload
-  | GanttPayload;
+  | XYPayload | GanttPayload;
 
 export const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",

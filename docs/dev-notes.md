@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-26: XY plots from issue #3; branch `claude/feature-requests-vh44bk`)
+
+- **XY plots** ([[D87]] xyColumnMapping, new): Scatter, the new **XY Line** op (Cartesian) and Bubble emit an `xy`
+  payload drawn by one `XYView`. Options name the columns: `x`, `y` (comma list), `s` size, `c` color (numeric ramp
+  with a colorbar, or text categories), `annotate` point text, `by` split into series. `linestyle` joins points in row
+  order, broken at gaps; `aspect=equal` and `xlim` for parametric curves. A missing column is `#REF!` on the card.
+- **Merge Plots** overlays XY sources on one numeric plane (Bubble no longer refused); a Line or Area joins by numeric
+  label or row position, bars are `#TYPE!`. The old index-plotted Scatter and `BubbleView` paths are gone.
+- Chart Builder gains the ten XY rows; chart-showcase seed has a Lissajous XY Line group. Contests recorded on
+  [[C96]] chartOptionsAreMatplotlib and [[D75]] builderExposesEveryOption (keep).
+- **Unverified:** the demo video isn't re-filmed; no Display, Report or Composite-boundary shot of an XY value was
+  taken (they route through `ChartFigure`, so they should match the card and popup).
+
 ### SESSION DIGEST (2026-09-26: SPARKLINE, typed Cube columns, lists, Add-menu search; author present)
 
 - **SPARKLINE(range, [type])** answers an 80 × 20 SVG as `data:image/svg+xml` text (line, column or win/loss, the
