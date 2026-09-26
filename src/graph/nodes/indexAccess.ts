@@ -44,6 +44,19 @@ export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: 
     const mUnit = matrixUnitOf(v);
     const tag = (x: unknown): unknown => (mUnit && tagUnit ? tagUnit(x, mUnit) : x);
     if (rowAll && colAll) return grid;
+    // One position on a one-row or one-column table walks along it, as Excel's INDEX does ([[D85]] columnsStayColumns).
+    if (col === undefined && !rowAll) {
+      const width = grid.reduce<number>((m, row) => Math.max(m, Array.isArray(row) ? row.length : 1), 0);
+      if (grid.length === 1 && Array.isArray(grid[0])) {
+        const only = grid[0] as unknown[];
+        return r < 0 || r >= only.length ? indexRefError(r + 1, only.length, "Column") : tag(only[r] ?? null);
+      }
+      if (width === 1) {
+        if (r < 0 || r >= grid.length) return indexRefError(r + 1, grid.length, "Row");
+        const row = grid[r];
+        return tag(Array.isArray(row) ? (row[0] ?? null) : row);
+      }
+    }
     if (!rowAll && (r < 0 || r >= grid.length)) return indexRefError(r + 1, grid.length, "Row");
     if (rowAll) {
       const width = grid.reduce<number>((m, row) => Math.max(m, Array.isArray(row) ? row.length : 1), 0);

@@ -65,7 +65,7 @@ describe("suggestFor", () => {
 describe("signature surfacing (audit 2026-07-16 — arg-count in autocomplete)", () => {
   it("a function suggestion carries its signature hint", () => {
     const idx = suggestFor("INDE").find((s) => s.name === "INDEX");
-    expect(idx?.hint).toBe("array, row, [col]");
+    expect(idx?.hint).toBe("array, [row], [col]");
   });
 
   it("enclosingCall finds the innermost call + the caret's argument", () => {

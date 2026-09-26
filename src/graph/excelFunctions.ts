@@ -502,7 +502,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   XMATCH:      { returns: "number", matrixArgs: true, arity: [2, 4] },
   IF:          { returns: "any", arity: [2, 3] },
   IFS:         { returns: "any", arity: [2, 254] },
-  INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [2, 3] },
+  INDEX:       { returns: "any", matrixArgs: true, listArgs: true, arity: [1, 3] },
   LEFT:       { returns: "string", arity: [1, 2], family: "text" },
   BASE:       { returns: "string", arity: [2, 3] },
   DEC2HEX:    { returns: "string", arity: [1, 2] },

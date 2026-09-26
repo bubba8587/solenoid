@@ -16,7 +16,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   XOR: "logical1, logical2, …",
   NOT: "logical",
   // ── lookup / reference ──
-  INDEX: "array, row, [col]",
+  INDEX: "array, [row], [col]",
   XMATCH: "value, array, [match_mode], [search_mode]",
   XLOOKUP: "value, lookup_array, return_array, [if_not_found], [match_mode], [search_mode]",
   // ── math ──

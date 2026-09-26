@@ -119,7 +119,7 @@ export const INIT_FIELD_ORDER = [
   "cubeText",
   "stamp", "split",
   "pageName",
-  "scanBy", "skipCells",
+  "scanBy", "skipCells", "indexAxes",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [

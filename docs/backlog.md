@@ -50,8 +50,6 @@ and four functions arrive: `FLATTEN(array, [pad_value], [levels])`, `HAS(array, 
 
 ## Cubes and lists (author 2026-09-26)
 
-- [ ] **INDEX on a one-row matrix** (the author holds it): `INDEX({1,2,3}, 2)` is `#REF!` here and 2 in Excel, where one
-  index walks a one-row range. Lists already walk (`indexInto`); decide whether a 1 × N matrix follows.
 - [ ] **CHOOSEROWS(x, 1) and CHOOSECOLS on a list** answer one-row tables, not lists (list in, table out).
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.

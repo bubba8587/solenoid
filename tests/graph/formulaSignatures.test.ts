@@ -14,7 +14,7 @@ describe("formula signatures (display hints)", () => {
   });
 
   it("signatureFor: curated first, synthesized named args for registered impls, null otherwise", () => {
-    expect(signatureFor("index")).toBe("array, row, [col]"); // case-insensitive
+    expect(signatureFor("index")).toBe("array, [row], [col]"); // case-insensitive
     expect(signatureFor("NOT_A_FUNCTION_XYZ")).toBeNull();
   });
 

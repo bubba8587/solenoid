@@ -26,6 +26,9 @@ specific item.
   columns (`TAKE(x, , 2)`), on the formula and the TAKE / DROP card. SORT, SORTBY and List Sort order text and
   mixed kinds (`compareListCells`); SORTBY keeps its `sort_order`. Every list popup has the Source checkbox; a mixed
   list opens as text with a gray chip. Type Check gains ISERR.
+- **INDEX** (the author's call): the card shows one Position socket on a list and Row / Column on anything else, through
+  the ordinary socket swap; one index walks a one-row or one-column table as in Excel (`INDEX(TOCOL(x), 3)`); the hint
+  reads `INDEX(array, [row], [col])`.
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
 - **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed

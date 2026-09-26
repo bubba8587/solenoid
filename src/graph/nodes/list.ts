@@ -3,6 +3,7 @@ import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { resolveExcelFunction } from "../excelFunctions";
 import { getOwningEditor, getOwningView } from "../activeGraph";
+import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
@@ -293,23 +294,48 @@ export class ListLengthNode extends ClassicPreset.Node {
 export class ListIndexNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     index: "Rows count from 1. 0 or unset takes every row. A wired blank blanks the result instead.",
-    column: "Columns count from 1. 0 or unset takes every column. A plain list has only column 1.",
+    column: "Columns count from 1. 0 or unset takes every column.",
+    position: "Items count from 1. 0 or unset takes the whole list. A wired blank blanks the result instead.",
     result: "A whole row taken from a frame arrives as a one-row frame. A whole column arrives as a list.",
   };
 
   label: string;
   cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
   literals: Record<string, number> = {};
+  /** A list takes one Position; anything else a Row and a Column. Saved, so a reload rebuilds the sockets its cables need. */
+  indexAxes: "rowcol" | "position";
   width = 180;
   height = 190;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; indexAxes?: "rowcol" | "position" }) {
     super("ListIndex");
     this.label = init?.label ?? "INDEX";
+    this.indexAxes = init?.indexAxes === "position" ? "position" : "rowcol";
     this.addInput("list",  trueAnyIn("Array"));
-    this.addInput("index", numIn("Row"));
-    this.addInput("column", numIn("Column"));
+    for (const k of ListIndexNode.axisKeys(this.indexAxes)) this.addInput(k, ListIndexNode.axisInput(k));
     this.addOutput("result", trueAnyOut("Value"));
+  }
+
+  static axisKeys(axes: "rowcol" | "position"): string[] { return axes === "position" ? ["position"] : ["index", "column"]; }
+  static axisInput(key: string) { return numIn(key === "position" ? "Position" : key === "index" ? "Row" : "Column"); }
+
+  /** Value-driven ([[D85]] columnsStayColumns: a list is one row, walked by one position): runs in a microtask on the owning editor, prunes the departing inputs' cables before removing them, and carries the typed number across. A blank or error says nothing about shape. */
+  private reconcileAxes(v: unknown): void {
+    if (v == null || isSolError(v)) return;
+    const want = Array.isArray(v) && !(v.length > 0 && Array.isArray(v[0])) ? "position" : "rowcol";
+    if (want === this.indexAxes) return;
+    const departing = ListIndexNode.axisKeys(this.indexAxes);
+    const carried = this.literals[want === "position" ? "index" : "position"];
+    this.indexAxes = want;
+    queueMicrotask(() => {
+      void (async () => {
+        await dropInputCables(this.id, departing);
+        for (const k of departing) { if (this.inputs[k]) this.removeInput(k); delete this.literals[k]; }
+        for (const k of ListIndexNode.axisKeys(want)) if (!this.inputs[k]) this.addInput(k, ListIndexNode.axisInput(k));
+        if (carried !== undefined) this.literals[want === "position" ? "position" : "index"] = carried;
+        await getOwningView(this.id)?.rerenderNode(this.id);
+      })();
+    });
   }
 
   /** `project` varies the rank, not the family, so the result lands on the combo rung; a frame resolves per column. */
@@ -345,10 +371,14 @@ export class ListIndexNode extends ClassicPreset.Node {
     return comboOfFamily(c.type) ?? "trueany";
   }
 
-  data(inputs: { list?: unknown[]; index?: number[]; column?: number[] }): { result: IndexResult } {
-    const rowIn = readInput(inputs.index, this.literals.index as number | undefined);
-    const colIn = readInput(inputs.column, this.literals.column as number | undefined);
-    const result = indexIntoContainer(inputs.list?.[0] ?? null, rowIn, colIn);
+  data(inputs: { list?: unknown[]; index?: number[]; column?: number[]; position?: number[] }): { result: IndexResult } {
+    const v = inputs.list?.[0] ?? null;
+    this.reconcileAxes(v);
+    // Until the swap lands, the sockets on the card say what the numbers mean.
+    const rowIn = this.inputs.position ? readInput(inputs.position, this.literals.position as number | undefined)
+      : readInput(inputs.index, this.literals.index as number | undefined);
+    const colIn = this.inputs.column ? readInput(inputs.column, this.literals.column as number | undefined) : undefined;
+    const result = indexIntoContainer(v, rowIn, colIn);
     this.cachedResult = result;
     return { result };
   }
