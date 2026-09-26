@@ -185,10 +185,12 @@ live in specs. Tool findings and the next DTE version's input: `dte-feedback.md`
 ## Socket labels (author 2026-09-26)
 
 - [ ] **Parentheticals move to the Inspector** (the author: "backlog a wider sweep on parentheticals in socket labels which
-  should move to the Inspector per-socket descriptions"). A socket label names the input; notes like "(optional)", "(UTC)", "(px)",
-  "(value)" belong in the class's `socketDocs`, as "(1-based)" already moved (ec1de47). ~15 labels in `src/graph/nodes`
-  (`(In|Out)\("[^"]*\(`), plus any built outside the helpers. Math notation stays (`arg(z)`, `P(lo ≤ X ≤ hi)`);
-  bring the author the unit ones (`T (K)`, `p (Pa)`) before moving them.
+  should move to the Inspector per-socket descriptions"). "(1-based)" moved (ec1de47). What is left needs the author:
+  - units: `T (K)`, `p (Pa)`, `ρ (kg/m³)`, `a (m/s)` (thermo), `(UTC)` on the astro sockets, `Marker size (px)`,
+    `Font size (pt)` (chart options);
+  - the λ-table binding hints `Values (value)`, `value2 (optional)`, `value3 (optional)` (MAP), a named exception in
+    [[C13]] frameLabelGrammar, so moving them amends that leaf.
+  Math notation stays (`arg(z)`, `P(lo ≤ X ≤ hi)`).
 
 ## Formatting & units
 
