@@ -36,15 +36,54 @@ export function numberValue(text: string, decimalSep: string, groupSep: string):
   return Number.isNaN(n) ? bad : n / Math.pow(100, pct);
 }
 
-export function splitText(text: string, delimiter: string): string[] {
-  return delimiter === "" ? [...text] : text.split(delimiter);
+/** Where `delimiter` occurs, left to right and not overlapping; `caseless` is Excel's match_mode 1. */
+function occurrences(text: string, delimiter: string, caseless: boolean): number[] {
+  const hay = caseless ? text.toLowerCase() : text;
+  const needle = caseless ? delimiter.toLowerCase() : delimiter;
+  const at: number[] = [];
+  for (let i = hay.indexOf(needle); i !== -1; i = hay.indexOf(needle, i + needle.length)) at.push(i);
+  return at;
 }
 
-export function textAfterBefore(op: TextAfterBeforeOp, text: string, delimiter: string): string | null {
+export interface SplitOpts { rowDelimiter?: string; ignoreEmpty?: boolean; caseless?: boolean; pad?: unknown }
+
+/**
+ * TEXTSPLIT: the text split at `delimiter` into a list (one row). With a row delimiter it splits into rows first and
+ * answers a table, short rows padded with `pad` (`#N/A` when left out, as Excel's). An empty delimiter splits into
+ * single characters; `ignoreEmpty` drops the empty parts.
+ */
+export function splitText(text: string, delimiter: string, opts: SplitOpts = {}): string[] | unknown[][] {
+  const caseless = opts.caseless ?? false;
+  const cut = (t: string, d: string): string[] => {
+    if (d === "") return [...t];
+    const parts: string[] = [];
+    let from = 0;
+    for (const i of occurrences(t, d, caseless)) { parts.push(t.slice(from, i)); from = i + d.length; }
+    parts.push(t.slice(from));
+    return opts.ignoreEmpty ? parts.filter((p) => p !== "") : parts;
+  };
+  if (opts.rowDelimiter == null) return cut(text, delimiter);
+  const rows = cut(text, opts.rowDelimiter).map((r) => cut(r, delimiter));
+  const width = Math.max(0, ...rows.map((r) => r.length));
+  const pad = opts.pad !== undefined ? opts.pad : solError("#N/A", "TEXTSPLIT: this row has fewer parts than the longest");
+  return rows.map((r) => [...r, ...Array<unknown>(width - r.length).fill(pad)]);
+}
+
+export interface AfterBeforeOpts { instance?: number; caseless?: boolean; matchEnd?: boolean }
+
+/**
+ * TEXTAFTER / TEXTBEFORE at the `instance`-th delimiter, counted from the end when negative. `matchEnd` counts the end
+ * of the text (the start, counting from the end) as one more delimiter. Not found, or an empty delimiter, is blank.
+ */
+export function textAfterBefore(op: TextAfterBeforeOp, text: string, delimiter: string, opts: AfterBeforeOpts = {}): string | null | SolError {
+  const n = Math.trunc(opts.instance ?? 1);
+  if (n === 0) return solError("#VALUE!", `TEXT${op.toUpperCase()}: instance_num can't be 0`);
   if (delimiter === "") return null;
-  const idx = text.indexOf(delimiter);
-  if (idx === -1) return null;
-  return op === "after" ? text.slice(idx + delimiter.length) : text.slice(0, idx);
+  const at = occurrences(text, delimiter, opts.caseless ?? false).map((i) => ({ i, len: delimiter.length }));
+  if (opts.matchEnd) { if (n > 0) at.push({ i: text.length, len: 0 }); else at.unshift({ i: 0, len: 0 }); }
+  const hit = n > 0 ? at[n - 1] : at[at.length + n];
+  if (!hit) return null;
+  return op === "after" ? text.slice(hit.i + hit.len) : text.slice(0, hit.i);
 }
 
 export function urlEncode(op: UrlEncodeOp, text: string): string {

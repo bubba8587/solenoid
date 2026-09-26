@@ -670,7 +670,7 @@ export class TextSplitNode extends ClassicPreset.Node {
     const text      = strScalar(inputs.text,      this, "text");
     const delimiter = strScalar(inputs.delimiter, this, "delimiter");
     if (text === null || delimiter === null) { this.cachedResult = null; return { result: null }; }
-    const result    = splitText(text, delimiter);
+    const result    = splitText(text, delimiter) as string[];
     this.cachedResult = result;
     return { result };
   }

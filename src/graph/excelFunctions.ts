@@ -454,9 +454,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   ORDINAL:     { returns: "string",  arity: [1, 1], native: true },
   BETWEEN:     { returns: "logical", arity: [3, 3], native: true },
 
-  TEXTSPLIT:    { returns: "string", arity: [2, 2], family: "text", native: true },
-  TEXTAFTER:    { returns: "string", arity: [2, 2], family: "text", native: true },
-  TEXTBEFORE:   { returns: "string", arity: [2, 2], family: "text", native: true },
+  TEXTSPLIT:    { returns: "string", arity: [2, 6], family: "text", native: true },
+  TEXTAFTER:    { returns: "string", arity: [2, 6], family: "text", native: true },
+  TEXTBEFORE:   { returns: "string", arity: [2, 6], family: "text", native: true },
   ENCODEURL:    { returns: "string", arity: [1, 1], family: "text", native: true },
   REGEXTEST:    { returns: "number", arity: [2, 3], family: "text", native: true },
   REGEXEXTRACT: { returns: "string", arity: [2, 4], family: "text", native: true },
@@ -1427,9 +1427,16 @@ registerInternal("FUZZYMATCH", (text, candidates, threshold, method) => {
   const best = fuzzyBest(toStr(text), cands, m, threshold == null ? 0.6 : Number(threshold));
   return best ? best.text : solError("#N/A", "No candidate is similar enough");
 });
-registerInternal("TEXTSPLIT",  (text, delim) => splitText(toStr(text), toStr(delim)));
-registerInternal("TEXTAFTER",  (text, delim) => textAfterBefore("after",  toStr(text), toStr(delim)));
-registerInternal("TEXTBEFORE", (text, delim) => textAfterBefore("before", toStr(text), toStr(delim)));
+registerInternal("TEXTSPLIT", (text, colDelim, rowDelim, ignoreEmpty, matchMode, pad) =>
+  splitText(toStr(text), toStr(colDelim), {
+    rowDelimiter: rowDelim == null ? undefined : toStr(rowDelim), ignoreEmpty: isTrue(ignoreEmpty), caseless: toNum(matchMode ?? 0) === 1, pad,
+  }));
+const afterBefore = (op: "after" | "before") => (text: unknown, delim: unknown, instance: unknown, matchMode: unknown, matchEnd: unknown, ifNotFound: unknown) => {
+  const r = textAfterBefore(op, toStr(text), toStr(delim), { instance: instance == null ? 1 : toNum(instance), caseless: toNum(matchMode ?? 0) === 1, matchEnd: toNum(matchEnd ?? 0) === 1 });
+  return r === null && ifNotFound !== undefined ? ifNotFound : r;
+};
+registerInternal("TEXTAFTER",  afterBefore("after"));
+registerInternal("TEXTBEFORE", afterBefore("before"));
 registerInternal("ENCODEURL",  (text) => urlEncode("encode", toStr(text)));
 const caseFlag = (fn: string, cs: unknown): string | SolError => {
   const v = cs == null ? 0 : Number(cs);

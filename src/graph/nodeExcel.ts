@@ -440,8 +440,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "table-unit": [{ excel: "MUNIT", syntax: "=MUNIT(n)", parity: false }],
   "tblsel-choosecols": [{ excel: "CHOOSECOLS", syntax: "=CHOOSECOLS(array, col1, col2, ...)", parity: false, note: "Takes a list of indices; negative indices count from end" }],
   "tblsel-chooserows": [{ excel: "CHOOSEROWS", syntax: "=CHOOSEROWS(array, row1, row2, ...)", parity: false, note: "Takes a list of indices; negative indices count from end" }],
-  "text-after-before-after": [{ excel: "TEXTAFTER", syntax: "=TEXTAFTER(text, delimiter)", parity: false, note: "First occurrence only; instance_num and match_mode not supported" }],
-  "text-after-before-before": [{ excel: "TEXTBEFORE", syntax: "=TEXTBEFORE(text, delimiter)", parity: false, note: "First occurrence only; instance_num and match_mode not supported" }],
+  "text-after-before-after": [{ excel: "TEXTAFTER", syntax: "=TEXTAFTER(text, delimiter)", parity: false, note: "The card finds the first occurrence; the formula takes instance_num, match_mode, match_end and if_not_found" }],
+  "text-after-before-before": [{ excel: "TEXTBEFORE", syntax: "=TEXTBEFORE(text, delimiter)", parity: false, note: "The card finds the first occurrence; the formula takes instance_num, match_mode, match_end and if_not_found" }],
   "text-clean": [{ excel: "CLEAN", syntax: "=CLEAN(text)", parity: false }],
   "text-concat": [
     { excel: "CONCAT", syntax: "=CONCAT(text1, text2, ...)", parity: false, note: "Each row takes one piece of text. For a whole List, use TEXTJOIN." },
@@ -482,7 +482,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "RIGHT", syntax: "=RIGHT(text, chars)", parity: false },
   ],
   "text-split": [
-    { excel: "TEXTSPLIT", syntax: "=TEXTSPLIT(text, delim)", parity: false, note: "Returns a text List. Separate row and column delimiters aren't supported." },
+    { excel: "TEXTSPLIT", syntax: "=TEXTSPLIT(text, delim)", parity: false, note: "The card returns a text List; the formula also takes a row delimiter, ignore_empty, match_mode and pad_with" },
   ],
   "text-substitute": [{ excel: "SUBSTITUTE", syntax: "=SUBSTITUTE(text, old, new, [instance])", parity: true }],
   "text-trim": [{ excel: "TRIM", syntax: "=TRIM(text)", parity: false }],

@@ -181,9 +181,9 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   // ── Solenoid extras ──
   CLAMP: "x, min, max",
 
-  TEXTSPLIT: "text, delimiter",
-  TEXTAFTER: "text, delimiter",
-  TEXTBEFORE: "text, delimiter",
+  TEXTSPLIT: "text, col_delimiter, [row_delimiter], [ignore_empty], [match_mode], [pad_with]",
+  TEXTAFTER: "text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found]",
+  TEXTBEFORE: "text, delimiter, [instance_num], [match_mode], [match_end], [if_not_found]",
   ENCODEURL: "text",
   REGEXTEST: "text, pattern, [case_sensitivity]",
   REGEXEXTRACT: "text, pattern, [return_mode], [case_sensitivity]",

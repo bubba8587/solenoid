@@ -20,9 +20,6 @@ const KNOWN_SHORT: Record<string, string> = {
   LINEST: "const and stats are not built",
   LOGEST: "const and stats are not built",
   MAP: "the LAMBDA takes each cell's row and column after up to three arrays' cells, so more arrays would collide",
-  TEXTAFTER: "instance_num, match_mode, match_end and if_not_found are not built",
-  TEXTBEFORE: "instance_num, match_mode, match_end and if_not_found are not built",
-  TEXTSPLIT: "ignore_empty, match_mode and pad_with are not built",
 };
 
 const gaps = (): string[] => {
@@ -55,5 +52,30 @@ describe("[[A5]] excelParity: every registration accepts every argument Excel's 
 describe("widened to Excel's signature", () => {
   it("MODE.MULT pools several ranges, as Excel's number1, number2, … do", () => {
     expect(compileEvaluator("MODE.MULT(a, b)")!({ a: [1, 2, 2], b: [3, 3, 1] })).toEqual([1, 2, 3]);
+  });
+});
+
+describe("TEXTSPLIT, TEXTAFTER and TEXTBEFORE take Excel's options", () => {
+  const ev = (e: string, env: Record<string, unknown> = {}) => compileEvaluator(e)!(env);
+  it("TEXTAFTER / TEXTBEFORE: instance from either end, match_mode, match_end, if_not_found", () => {
+    const t = "a-b-C-d";
+    expect(ev("TEXTAFTER(t, \"-\", 2)", { t })).toBe("C-d");
+    expect(ev("TEXTAFTER(t, \"-\", -1)", { t })).toBe("d");
+    expect(ev("TEXTBEFORE(t, \"-\", -2)", { t })).toBe("a-b");
+    expect(ev("TEXTBEFORE(t, \"c\", 1, 1)", { t })).toBe("a-b-");
+    expect(ev("TEXTBEFORE(t, \"c\")", { t })).toBeNull();
+    expect(ev("TEXTAFTER(t, \"-\", 4)", { t })).toBeNull();
+    expect(ev("TEXTBEFORE(t, \"-\", 4, 0, 1)", { t })).toBe("a-b-C-d");
+    expect(ev("TEXTAFTER(t, \"x\", 1, 0, 0, \"none\")", { t })).toBe("none");
+    expect(ev("TEXTAFTER(t, \"-\", 0)", { t })).toMatchObject({ code: "#VALUE!" });
+  });
+  it("TEXTSPLIT: a row delimiter answers a table padded with #N/A; ignore_empty drops empty parts", () => {
+    expect(ev("TEXTSPLIT(t, \",\")", { t: "a,,b" })).toEqual(["a", "", "b"]);
+    expect(ev("TEXTSPLIT(t, \",\", , TRUE)", { t: "a,,b" })).toEqual(["a", "b"]);
+    const m = ev("TEXTSPLIT(t, \",\", \";\")", { t: "a,b;c" }) as unknown[][];
+    expect([m[0], m[1][0]]).toEqual([["a", "b"], "c"]);
+    expect((m[1][1] as { code: string }).code).toBe("#N/A");
+    expect(ev("TEXTSPLIT(t, \",\", \";\", FALSE, 0, \"-\")", { t: "a,b;c" })).toEqual([["a", "b"], ["c", "-"]]);
+    expect(ev("TEXTSPLIT(t, \"X\", , , 1)", { t: "axb" })).toEqual(["a", "b"]);
   });
 });
