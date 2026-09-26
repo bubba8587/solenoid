@@ -1,9 +1,9 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
-import { rolesFrom } from "../inputRoles";
+import { rolesFrom, required } from "../inputRoles";
 import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
-import { solError, type SolError } from "../errorValue";
+import { solError, type SolError, isSolError } from "../errorValue";
 import { guardFinite, powerOf } from "../valueKinds";
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import type { FormatCarrySpec } from "./formatCarry";
@@ -383,6 +383,7 @@ export const BASE_CONVERT_META = {
 };
 
 export class BaseConvertNode extends ClassicPreset.Node {
+  static inputRoles = { from: required, to: required };
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { value: 1010, from: 2, to: 10 };
@@ -397,11 +398,13 @@ export class BaseConvertNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { value?: number[]; from?: number[]; to?: number[] }): { result: number | null } {
+  data(inputs: { value?: number[]; from?: number[]; to?: number[] }): { result: number | SolError | null } {
     const rawVal = readInput(inputs.value, this.literals.value ?? 0);
-    const fromRaw = readInput(inputs.from, this.literals.from ?? 2);
-    const toRaw   = readInput(inputs.to,   this.literals.to   ?? 10);
-    if (rawVal === null || fromRaw === null || toRaw === null) { this.cachedResult = null; return { result: null }; }
+    const fromRaw = readRole<number | SolError>(this, "from", inputs.from);
+    const toRaw   = readRole<number | SolError>(this, "to", inputs.to);
+    if (isSolError(fromRaw)) { this.cachedResult = null; return { result: fromRaw }; }
+    if (isSolError(toRaw)) { this.cachedResult = null; return { result: toRaw }; }
+    if (rawVal === null) { this.cachedResult = null; return { result: null }; }
     const from = Math.round(fromRaw);
     const to   = Math.round(toRaw);
 
@@ -450,6 +453,7 @@ export class BaseConvertNode extends ClassicPreset.Node {
 // ─── Clamp ────────────────────────────────────────────────────────────────────
 
 export class ClampNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("CLAMP", { min: 1, max: 2 });
   static socketDocs: Record<string, string> = {
     min: "Empty and unwired, there is no floor. A wired blank makes the whole result blank.",
     max: "Empty and unwired, there is no ceiling. A wired blank makes the whole result blank.",
@@ -476,11 +480,12 @@ export class ClampNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
     const value = readInput(inputs.value, this.literals.value);
-    const minWired = inputs.min !== undefined, maxWired = inputs.max !== undefined;
-    const min = minWired ? (inputs.min?.[0] ?? null) : (this.literals.min ?? null);
-    const max = maxWired ? (inputs.max?.[0] ?? null) : (this.literals.max ?? null);
+    // A blank bound, whole or one item of a list, is no bound there ([[D86]] blankRoles).
+    const bound = (v: unknown, open: number): number | number[] | null =>
+      v === undefined ? null : Array.isArray(v) ? v.map((x) => (x === undefined ? open : x)) : (v as number);
+    const min = bound(readRole(this, "min", inputs.min), -Infinity);
+    const max = bound(readRole(this, "max", inputs.max), Infinity);
     if (value === null) { this.cachedResult = null; return { result: null }; }
-    if ((minWired && min === null) || (maxWired && max === null)) { this.cachedResult = null; return { result: null }; }
     let result: number | number[] = value;
     if (min !== null) result = broadcast((v, mn) => Math.max(v, mn), result, min) as number | number[];
     if (max !== null) result = broadcast((v, mx) => Math.min(v, mx), result, max) as number | number[];
@@ -500,6 +505,7 @@ export const MROUND_OP_META = {
 } satisfies Record<MRoundOp, { label: string; description: string }>;
 
 export class MRoundNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("MROUND", { multiple: 1 });
   static socketDocs: Record<string, string> = {
     multiple: "A multiple of zero gives zero rather than an error.",
   };
@@ -526,10 +532,11 @@ export class MRoundNode extends ClassicPreset.Node {
 
   data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
     const value    = readInput(inputs.value,    this.literals.value);
-    const multiple = readInput(inputs.multiple, this.literals.multiple);
+    const multiple = readRole<number | number[] | SolError>(this, "multiple", inputs.multiple);
     const snap = this.op === "up" ? Math.ceil : this.op === "down" ? Math.floor : Math.round;
     let result: BroadcastResult = null;
-    if (value !== null && multiple !== null) {
+    if (isSolError(multiple)) result = multiple;
+    else if (value !== null) {
       result = broadcastErr((v, m) => {
         if (m === 0) return 0;
         // Only MROUND requires value and multiple to share a sign; CEILING and FLOOR do not.
@@ -906,6 +913,7 @@ export const BESSEL_OP_META = {
 } satisfies Record<BesselOp, { label: string; description: string }>;
 
 export class BesselNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("BESSELJ", { n: 1 });
   static socketDocs: Record<string, string> = {
     n: "Integer order, 0 or greater.",
   };
@@ -926,8 +934,8 @@ export class BesselNode extends ClassicPreset.Node {
 
   data(inputs: { x?: number[]; n?: number[] }): { result: number | null } {
     const x = readInput(inputs.x, this.literals.x ?? 1);
-    const nRaw = readInput(inputs.n, this.literals.n ?? 0);
-    if (x === null || nRaw === null) { this.cachedResult = null; return { result: null }; }
+    const nRaw = readRole<number>(this, "n", inputs.n);
+    if (x === null) { this.cachedResult = null; return { result: null }; }
     const n = Math.max(0, Math.round(nRaw));
     let result: number;
     switch (this.op) {

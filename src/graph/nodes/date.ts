@@ -1,6 +1,7 @@
 // [[C44]], [[B11]], [[C113]], [[C17]] shareImpl, [[D41]] formatFlowsDownstream
 import { ClassicPreset } from "rete";
-import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
+import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, readRole, BASIS_DOC, type BroadcastResult } from "./shared";
+import { setting } from "../inputRoles";
 import { type SolError } from "../errorValue";
 import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
 import { type FrameValue } from "../frame";
@@ -231,6 +232,7 @@ export const WEEK_INFO_OP_META = {
 } satisfies Record<WeekInfoOp, { label: string; description: string }>;
 
 export class WeekInfoNode extends ClassicPreset.Node {
+  static inputRoles = { return_type: setting(1) };
   label: string;
   op: WeekInfoOp;
   literals: Record<string, number> = { return_type: 1 };
@@ -247,8 +249,7 @@ export class WeekInfoNode extends ClassicPreset.Node {
   }
 
   data(inputs: { date?: (number | number[])[]; return_type?: number[] }): { result: BroadcastResult } {
-    const rtRaw = readInput(inputs.return_type, this.literals.return_type ?? 1);
-    if (rtRaw === null) { this.cachedResult = null; return { result: null }; }
+    const rtRaw = readRole<number>(this, "return_type", inputs.return_type);
     const rt = Math.floor(rtRaw);
     const result = broadcast((serial) => weekInfo(this.op, serial, rt), inputs.date?.[0] ?? null);
     this.cachedResult = result;
@@ -368,6 +369,7 @@ export const WORKDAYS_OP_META = {
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
 export class WorkdaysNode extends ClassicPreset.Node {
+  static inputRoles = { weekend_code: setting(1) };
   static socketDocs: Record<string, string> = {
     holidays: "Each holiday covers its whole calendar day. Any time of day in the entry is ignored.",
     weekend_code: "Excel's WORKDAY.INTL / NETWORKDAYS.INTL codes: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
@@ -431,8 +433,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
-    const codeRaw = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1);
-    if (codeRaw === null) { this.cachedResult = null; return { result: null }; }
+    const codeRaw = readRole<number>(this, "weekend_code", inputs.weekend_code);
     const code = Math.floor(codeRaw);
     const off  = weekendSet(code);
     const hol  = holidaySet(inputs.holidays?.[0]);

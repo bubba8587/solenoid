@@ -1,194 +1,241 @@
-# Settings sweep: the audit for review
+# Settings sweep: what was built, for review
 
-The list the backlog item "The settings sweep" asked for before any behavior changes ([[D86]] blankRoles, [[input-roles]]).
-It proposes a role for every formula argument and card socket that looks like a setting or a pick; everything not listed
-stays data (a blank stays blank). Nothing here is built. Mark a row wrong and it changes before the sweep lands; once the
-sweep is done this file moves to `archive/`.
+The settings sweep ([[D86]] blankRoles, [[input-roles]]), built 2026-09-26 on Claude's judgement at the author's word
+("please use your own judgement and implement for now. can review later."). Every row below is live; mark one wrong and
+it changes. Once reviewed, this file moves to `archive/`.
 
 How to read a row: **setting, blank = omitted** means a blank reads as Excel's omitted argument (the function's default);
-**blank = #SYNTAX!** means Excel requires it and there is no default; **pick** means a position, dropped when blank.
+**blank = #SYNTAX!** means there is no default; **pick** means a position, dropped when blank.
 
-## Judgment calls
+## The rule applied
 
-These are not obvious from the name, so each needs the author's word:
+- An argument Excel marks optional: a blank is the argument left out, so the function's own default.
+- An argument Excel requires, where Excel's typed blank (0, FALSE, "") gives a working answer: that blank, as a slot left
+  empty already reads ([[C80]] blankArgIsExcelBlank). So a blank `cumulative` is FALSE, CUMIPMT's blank `type` is 0, a
+  Bessel order is 0, TEXTJOIN's blank delimiter is "", TRIMMEAN's blank percent is 0.
+- An argument Excel requires, where its typed blank is an error or nonsense (MID's start, LARGE's k, a wrap count, a
+  radix): `#SYNTAX!` naming it.
+- A card with a formula twin reads the twin's declaration (`rolesFrom`); a card-only setting uses the card's own normal
+  default, listed under Card sockets.
 
-- **LARGE** and **SMALL**'s `k`: which rank to take. A pick (a list of ranks drops its blanks) or a required setting?
-- **CLAMP**'s `min` and `max`: a blank bound read as no bound, so the value passes on that side.
-- **FILTER**'s `if_empty`: what to show when nothing passes; a setting read as left out means an empty answer.
-- **`alpha`** in GAMMA.DIST / GAMMA.INV, BETA.DIST / BETA.INV and WEIBULL.DIST is a shape of the distribution; in
-  CONFIDENCE.NORM / CONFIDENCE.T and BINOM.INV it is a probability. Required setting (`#SYNTAX!` when blank) or data
-  (a blank answer)? The proposal is required setting for all eight.
-- **Date "start" arguments** (DATEDIF, DAYS, YEARFRAC, NETWORKDAYS, WORKDAY, DAYS360 and the .INTL pair) are left as data:
-  a blank date is a missing date, so the answer is blank.
-- **Generators' start and step** (LINSPACE, GEOMETRIC, RANGE, SEQUENCE) are listed as settings, since the function has no
-  other input to work on.
-- **Card-only defaults.** A card's typed default can differ from Excel's omitted reading (the Round card's digits type 0,
-  Excel's ROUND requires them). The sweep reads a blank as the formula's reading, not the card's typed value, per D86.
+## Claude's calls on the judgment rows
+
+- **Distribution parameters** (alpha, beta, mean, sd, probability, degrees of freedom) are data: a blank one is a blank
+  answer, as the numbers the function works on are. Only their `cumulative` flag is a setting.
+- **CLAMP**'s bounds: a blank bound is no bound on that side, on the card (item by item in a list of bounds) and in the
+  formula.
+- **LARGE** and **SMALL**'s `k`: a required setting, `#SYNTAX!` when blank.
+- **CHOOSE**'s index: a required setting (`#SYNTAX!`), not a pick, since a list of indices must stay aligned with its
+  answers.
+- **FILTER**'s `if_empty`: a setting; blank is left out, so nothing passing gives the empty answer.
+- **Date "start" arguments** stay data: a blank date is a missing date.
+- **Generators** (SEQUENCE, LINSPACE, GEOMETRIC, RANGE, FIBONACCI, REPEAT and the Series card's ops): their counts and
+  starts are required settings, their optional steps and columns settings.
+- **Filter conditions** (List Filter, Frame Filter, SUMIFS): a blank value or column skips the condition, so the rows
+  pass it; [[C24]]'s blank-filter consequence is overturned, as the author ruled.
+
+## Not swept yet
+
+- Column references in Frame verbs (Frame Sort, Get Column, Join keys, Split Column, Replace Values, Unnest, Cube Rollup,
+  Reconcile, Earned Value, Window's Order by): each needs its own reading of "left out" (pass the Frame through, or
+  `#SYNTAX!`), so they still blank the Frame.
+- An as-of Join's tolerance, and the Slider's bounds (the widget needs a working bound).
+- Gantt, Schedule and Earned Value already read a blank weekend code or hours per day as the default.
 
 ## Formula functions
 
-Already declared (not listed): TAKE, DROP, EXPAND, INDEX, ROUND(UP/DOWN), CHOOSEROWS/COLS, SORT, SORTBY, UNIQUE, TEXTJOIN,
-XMATCH, XLOOKUP, TEXTSPLIT, TEXTAFTER, TEXTBEFORE. Generated from the signature hints (`formulaSignatures.ts`), then
-pruned by hand.
+Every declared function, generated from `ARG_ROLES` (`src/graph/inputRoles.ts`). "omitted" is Excel's omitted
+argument; a value is the typed blank it reads as.
 
-| Function | Proposed roles |
+| Function | Blank reads as |
 |---|---|
-| CHOOSE | `index` (pick; blank = #SYNTAX!) |
-| LOG | `base` (setting; blank = omitted) |
-| TRUNC | `digits` (setting; blank = omitted) |
-| MROUND | `multiple` (setting; blank = #SYNTAX!) |
-| CEILING | `significance` (setting; blank = #SYNTAX!) |
-| FLOOR | `significance` (setting; blank = #SYNTAX!) |
-| RANK | `order` (setting; blank = omitted) |
-| PERCENTILE | `k` (setting; blank = #SYNTAX!) |
-| PERCENTRANK | `significance` (setting; blank = omitted) |
-| RANDDIST | `n` (setting; blank = #SYNTAX!) |
-| NORM.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| NORM.S.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| T.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| CHISQ.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| F.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| BINOM.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| POISSON.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| EXPON.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| LEFT | `count` (setting; blank = omitted) |
-| RIGHT | `count` (setting; blank = omitted) |
-| MID | `start` (setting; blank = #SYNTAX!), `count` (setting; blank = #SYNTAX!) |
-| REPLACE | `start` (setting; blank = #SYNTAX!), `count` (setting; blank = #SYNTAX!) |
-| FIND | `start` (setting; blank = omitted) |
-| SEARCH | `start` (setting; blank = omitted) |
-| TEXT | `format` (setting; blank = #SYNTAX!) |
-| REPT | `count` (setting; blank = #SYNTAX!) |
-| DATEDIF | `unit` (setting; blank = #SYNTAX!) |
-| WEEKDAY | `type` (setting; blank = omitted) |
-| WEEKNUM | `type` (setting; blank = omitted) |
-| YEARFRAC | `basis` (setting; blank = omitted) |
-| PMT | `type` (setting; blank = omitted) |
-| PV | `type` (setting; blank = omitted) |
-| FV | `type` (setting; blank = omitted) |
-| NPER | `type` (setting; blank = omitted) |
-| RATE | `type` (setting; blank = omitted), `guess` (setting; blank = omitted) |
-| IPMT | `type` (setting; blank = omitted) |
-| PPMT | `type` (setting; blank = omitted) |
-| IRR | `guess` (setting; blank = omitted) |
-| XIRR | `guess` (setting; blank = omitted) |
-| DDB | `factor` (setting; blank = omitted) |
-| REGEXEXTRACT | `return_mode` (setting; blank = omitted) |
-| COUPDAYBS | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| COUPDAYSNC | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| COUPNUM | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| COUPNCD | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| COUPPCD | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| ACCRINTM | `basis` (setting; blank = omitted) |
-| INTRATE | `basis` (setting; blank = omitted) |
-| RECEIVED | `basis` (setting; blank = omitted) |
-| YIELDDISC | `basis` (setting; blank = omitted) |
-| PRICEMAT | `basis` (setting; blank = omitted) |
-| YIELDMAT | `basis` (setting; blank = omitted) |
-| DURATION | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| MDURATION | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| PRICE | `frequency` (setting; blank = omitted) |
-| YIELD | `frequency` (setting; blank = omitted) |
-| VDB | `factor` (setting; blank = omitted) |
-| ODDFPRICE | `frequency` (setting; blank = omitted) |
-| ODDFYIELD | `frequency` (setting; blank = omitted) |
-| ODDLPRICE | `frequency` (setting; blank = omitted) |
-| ODDLYIELD | `frequency` (setting; blank = omitted) |
-| CONVERT | `from_unit` (setting; blank = #SYNTAX!), `to_unit` (setting; blank = #SYNTAX!) |
-| VALUETOTEXT | `format` (setting; blank = omitted) |
-| SLUGIFY | `separator` (setting; blank = omitted) |
-| PADTEXT | `width` (setting; blank = #SYNTAX!) |
-| TRUNCATETEXT | `width` (setting; blank = #SYNTAX!) |
-| WRAPTEXT | `width` (setting; blank = #SYNTAX!) |
-| SAVGOL | `window` (setting; blank = #SYNTAX!), `order` (setting; blank = #SYNTAX!) |
-| CAGR | `periods_per_year` (setting; blank = omitted) |
-| VOLATILITY | `periods_per_year` (setting; blank = omitted) |
-| SHARPE | `periods_per_year` (setting; blank = omitted) |
-| SORTINO | `periods_per_year` (setting; blank = omitted) |
-| DOLLAR | `decimals` (setting; blank = omitted) |
-| RANK.EQ | `order` (setting; blank = omitted) |
-| RANK.AVG | `order` (setting; blank = omitted) |
-| T.TEST | `tails` (setting; blank = #SYNTAX!), `type` (setting; blank = #SYNTAX!) |
-| GAMMA.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| WRAPROWS | `wrap_count` (setting; blank = #SYNTAX!), `pad_with` (setting; blank = omitted) |
-| WRAPCOLS | `wrap_count` (setting; blank = #SYNTAX!), `pad_with` (setting; blank = omitted) |
-| TOCOL | `ignore` (setting; blank = omitted), `scan_by_column` (setting; blank = omitted) |
-| TOROW | `ignore` (setting; blank = omitted), `scan_by_column` (setting; blank = omitted) |
-| SEQUENCE | `rows` (setting; blank = #SYNTAX!), `columns` (setting; blank = omitted), `start` (setting; blank = omitted), `step` (setting; blank = omitted) |
-| RANDARRAY | `rows` (setting; blank = omitted), `columns` (setting; blank = omitted), `min` (setting; blank = omitted), `max` (setting; blank = omitted), `whole_number` (setting; blank = omitted) |
-| MAKEARRAY | `rows` (setting; blank = #SYNTAX!), `columns` (setting; blank = #SYNTAX!) |
-| SLICE | `start` (setting; blank = #SYNTAX!) |
-| NTHELEMENT | `n` (setting; blank = #SYNTAX!) |
-| PADRIGHT | `length` (setting; blank = #SYNTAX!) |
-| PADLEFT | `length` (setting; blank = #SYNTAX!) |
-| SIMILARITY | `method` (setting; blank = omitted) |
-| FUZZYMATCH | `method` (setting; blank = omitted) |
-| SPARKLINE | `type` (setting; blank = omitted) |
-| COMBINATIONS | `k` (setting; blank = #SYNTAX!) |
-| PERMUTATIONS | `k` (setting; blank = #SYNTAX!) |
-| EWMA | `alpha` (setting; blank = #SYNTAX!) |
-| POLYFIT | `degree` (setting; blank = #SYNTAX!) |
-| ISOUTLIER | `method` (setting; blank = omitted) |
-| FROMEPOCH | `unit` (setting; blank = omitted) |
-| TOEPOCH | `unit` (setting; blank = omitted) |
-| DATETRUNC | `unit` (setting; blank = #SYNTAX!) |
-| RUNNING | `window` (setting; blank = omitted) |
-| LINSPACE | `start` (setting; blank = #SYNTAX!), `count` (setting; blank = #SYNTAX!) |
-| REPEAT | `count` (setting; blank = #SYNTAX!) |
-| GEOMETRIC | `start` (setting; blank = #SYNTAX!), `count` (setting; blank = #SYNTAX!) |
-| FIBONACCI | `count` (setting; blank = #SYNTAX!) |
-| RANGE | `start` (setting; blank = #SYNTAX!), `step` (setting; blank = omitted) |
-| CEILING.MATH | `significance` (setting; blank = omitted), `mode` (setting; blank = omitted) |
-| FLOOR.MATH | `significance` (setting; blank = omitted), `mode` (setting; blank = omitted) |
-| BASE | `radix` (setting; blank = #SYNTAX!) |
-| DECIMAL | `radix` (setting; blank = #SYNTAX!) |
-| BESSELI | `n` (setting; blank = #SYNTAX!) |
-| BESSELJ | `n` (setting; blank = #SYNTAX!) |
-| BESSELK | `n` (setting; blank = #SYNTAX!) |
-| BESSELY | `n` (setting; blank = #SYNTAX!) |
-| BIN2HEX | `places` (setting; blank = omitted) |
-| BIN2OCT | `places` (setting; blank = omitted) |
-| DEC2BIN | `places` (setting; blank = omitted) |
-| DEC2HEX | `places` (setting; blank = omitted) |
-| DEC2OCT | `places` (setting; blank = omitted) |
-| HEX2BIN | `places` (setting; blank = omitted) |
-| HEX2OCT | `places` (setting; blank = omitted) |
-| OCT2BIN | `places` (setting; blank = omitted) |
-| OCT2HEX | `places` (setting; blank = omitted) |
-| GESTEP | `step` (setting; blank = omitted) |
-| PERCENTILE.EXC | `k` (setting; blank = #SYNTAX!) |
-| PERCENTILE.INC | `k` (setting; blank = #SYNTAX!) |
-| PERCENTRANK.EXC | `significance` (setting; blank = omitted) |
-| PERCENTRANK.INC | `significance` (setting; blank = omitted) |
-| BETA.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| HYPGEOM.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| LOGNORM.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| NEGBINOM.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| WEIBULL.DIST | `cumulative` (setting; blank = #SYNTAX!) |
-| FIXED | `decimals` (setting; blank = omitted) |
-| DAYS360 | `method` (setting; blank = omitted) |
-| NETWORKDAYS.INTL | `weekend` (setting; blank = omitted) |
-| WORKDAY.INTL | `weekend` (setting; blank = omitted) |
-| ACCRINT | `frequency` (setting; blank = #SYNTAX!), `basis` (setting; blank = omitted) |
-| COUPDAYS | `frequency` (setting; blank = omitted), `basis` (setting; blank = omitted) |
-| CUMIPMT | `type` (setting; blank = #SYNTAX!) |
-| CUMPRINC | `type` (setting; blank = #SYNTAX!) |
-| DISC | `basis` (setting; blank = omitted) |
-| PRICEDISC | `basis` (setting; blank = omitted) |
+| ACCRINT | `frequency` → #SYNTAX!; `basis` → omitted |
+| ACCRINTM | `basis` → omitted |
+| BASE | `radix` → #SYNTAX!; `min_length` → omitted |
+| BESSELI | `n` → 0 |
+| BESSELJ | `n` → 0 |
+| BESSELK | `n` → 0 |
+| BESSELY | `n` → 0 |
+| BETA.DIST | `cumulative` → false |
+| BIN2HEX | `places` → omitted |
+| BIN2OCT | `places` → omitted |
+| BINOM.DIST | `cumulative` → false |
+| CAGR | `periods_per_year` → omitted |
+| CEILING | `significance` → #SYNTAX! |
+| CEILING.MATH | `significance` → omitted; `mode` → omitted |
+| CHISQ.DIST | `cumulative` → false |
+| CHOOSE | `index` → #SYNTAX! |
+| CHOOSECOLS | `col1` → pick, none left = #SYNTAX!; the rest → pick |
+| CHOOSEROWS | `row1` → pick, none left = #SYNTAX!; the rest → pick |
+| CLAMP | `min` → omitted; `max` → omitted |
+| COMBINATIONS | `k` → #SYNTAX! |
+| CONVERT | `from_unit` → #SYNTAX!; `to_unit` → #SYNTAX! |
+| COUPDAYBS | `frequency` → omitted; `basis` → omitted |
+| COUPDAYS | `frequency` → omitted; `basis` → omitted |
+| COUPDAYSNC | `frequency` → omitted; `basis` → omitted |
+| COUPNCD | `frequency` → omitted; `basis` → omitted |
+| COUPNUM | `frequency` → omitted; `basis` → omitted |
+| COUPPCD | `frequency` → omitted; `basis` → omitted |
+| CUMIPMT | `type` → 0 |
+| CUMPRINC | `type` → 0 |
+| DATEDIF | `unit` → #SYNTAX! |
+| DATETRUNC | `unit` → #SYNTAX!; `ceiling` → omitted |
+| DAYS360 | `method` → omitted |
+| DDB | `factor` → omitted |
+| DEC2BIN | `places` → omitted |
+| DEC2HEX | `places` → omitted |
+| DEC2OCT | `places` → omitted |
+| DECIMAL | `radix` → #SYNTAX! |
+| DISC | `basis` → omitted |
+| DOLLAR | `decimals` → omitted |
+| DROP | `rows` → omitted; `columns` → omitted |
+| DURATION | `frequency` → omitted; `basis` → omitted |
+| EWMA | `alpha` → #SYNTAX! |
+| EXPAND | `rows` → omitted; `columns` → omitted |
+| EXPON.DIST | `cumulative` → false |
+| F.DIST | `cumulative` → false |
+| FIBONACCI | `count` → #SYNTAX! |
+| FILTER | `if_empty` → omitted |
+| FIND | `start` → omitted |
+| FIXED | `decimals` → omitted; `no_commas` → omitted |
+| FLOOR | `significance` → #SYNTAX! |
+| FLOOR.MATH | `significance` → omitted; `mode` → omitted |
+| FROMEPOCH | `unit` → omitted |
+| FUZZYMATCH | `threshold` → omitted; `method` → omitted |
+| FV | `type` → omitted |
+| GAMMA.DIST | `cumulative` → false |
+| GEOMETRIC | `start` → #SYNTAX!; `count` → #SYNTAX! |
+| GESTEP | `step` → omitted |
+| GROWTH | `const` → omitted |
+| HEX2BIN | `places` → omitted |
+| HEX2OCT | `places` → omitted |
+| HYPGEOM.DIST | `cumulative` → false |
+| INDEX | `row` → pick; `col` → pick |
+| INTRATE | `basis` → omitted |
+| IPMT | `type` → omitted |
+| IRR | `guess` → omitted |
+| ISCLOSE | `tolerance` → omitted |
+| ISOUTLIER | `method` → omitted; `threshold` → omitted |
+| LARGE | `k` → #SYNTAX! |
+| LEFT | `count` → omitted |
+| LINSPACE | `start` → #SYNTAX!; `count` → #SYNTAX! |
+| LOG | `base` → omitted |
+| LOGNORM.DIST | `cumulative` → false |
+| MAKEARRAY | `rows` → #SYNTAX!; `columns` → #SYNTAX! |
+| MDURATION | `frequency` → omitted; `basis` → omitted |
+| MID | `start` → #SYNTAX!; `count` → #SYNTAX! |
+| MROUND | `multiple` → #SYNTAX! |
+| MUNIT | `dimension` → #SYNTAX! |
+| NEGBINOM.DIST | `cumulative` → false |
+| NETWORKDAYS | `holidays` → omitted |
+| NETWORKDAYS.INTL | `weekend` → omitted; `holidays` → omitted |
+| NORM.DIST | `cumulative` → false |
+| NORM.S.DIST | `cumulative` → false |
+| NPER | `type` → omitted |
+| NTHELEMENT | `n` → #SYNTAX! |
+| OCT2BIN | `places` → omitted |
+| OCT2HEX | `places` → omitted |
+| ODDFPRICE | `frequency` → omitted |
+| ODDFYIELD | `frequency` → omitted |
+| ODDLPRICE | `frequency` → omitted |
+| ODDLYIELD | `frequency` → omitted |
+| PADLEFT | `length` → #SYNTAX! |
+| PADRIGHT | `length` → #SYNTAX! |
+| PADTEXT | `width` → #SYNTAX!; `side` → omitted; `fill` → omitted |
+| PERCENTILE | `k` → #SYNTAX! |
+| PERCENTILE.EXC | `k` → #SYNTAX! |
+| PERCENTILE.INC | `k` → #SYNTAX! |
+| PERCENTRANK | `significance` → omitted |
+| PERCENTRANK.EXC | `significance` → omitted |
+| PERCENTRANK.INC | `significance` → omitted |
+| PERMUTATIONS | `k` → #SYNTAX! |
+| PMT | `type` → omitted |
+| POISSON.DIST | `cumulative` → false |
+| POLYFIT | `degree` → #SYNTAX! |
+| PPMT | `type` → omitted |
+| PRICE | `frequency` → omitted |
+| PRICEDISC | `basis` → omitted |
+| PRICEMAT | `basis` → omitted |
+| PV | `type` → omitted |
+| RANDARRAY | `rows` → omitted; `columns` → omitted; `min` → omitted; `max` → omitted; `whole_number` → omitted |
+| RANDDIST | `n` → #SYNTAX! |
+| RANGE | `start` → #SYNTAX!; `step` → omitted |
+| RANK | `order` → omitted |
+| RANK.AVG | `order` → omitted |
+| RANK.EQ | `order` → omitted |
+| RATE | `type` → omitted; `guess` → omitted |
+| RECEIVED | `basis` → omitted |
+| REGEXEXTRACT | `return_mode` → omitted; `case_sensitivity` → omitted |
+| REPEAT | `count` → #SYNTAX! |
+| REPLACE | `start` → #SYNTAX!; `count` → #SYNTAX! |
+| REPT | `count` → #SYNTAX! |
+| RIGHT | `count` → omitted |
+| ROUND | `digits` → 0 |
+| ROUNDDOWN | `digits` → 0 |
+| ROUNDUP | `digits` → 0 |
+| RUNNING | `window` → omitted |
+| SAVGOL | `window` → #SYNTAX!; `order` → #SYNTAX! |
+| SEARCH | `start` → omitted |
+| SEQUENCE | `rows` → #SYNTAX!; `columns` → omitted; `start` → omitted; `step` → omitted |
+| SHARPE | `rf_per_period` → omitted; `periods_per_year` → omitted |
+| SHIFT | `by` → omitted; `wrap` → omitted |
+| SIMILARITY | `method` → omitted |
+| SLICE | `start` → #SYNTAX!; `end` → omitted |
+| SLUGIFY | `separator` → omitted |
+| SMALL | `k` → #SYNTAX! |
+| SORT | `sort_index` → omitted; `sort_order` → omitted; `by_col` → omitted |
+| SORTBY | `sort_order1`, `sort_order2`, … → omitted |
+| SORTINO | `rf_per_period` → omitted; `periods_per_year` → omitted |
+| SPARKLINE | `type` → omitted |
+| T.DIST | `cumulative` → false |
+| T.TEST | `tails` → #SYNTAX!; `type` → #SYNTAX! |
+| TAKE | `rows` → omitted; `columns` → omitted |
+| TEXT | `format` → #SYNTAX! |
+| TEXTAFTER | `instance_num` → omitted; `match_mode` → 0; `match_end` → 0; `if_not_found` → omitted |
+| TEXTBEFORE | `instance_num` → omitted; `match_mode` → 0; `match_end` → 0; `if_not_found` → omitted |
+| TEXTJOIN | `delimiter` → ""; `ignore_empty` → false |
+| TEXTSPLIT | `col_delimiter` → #SYNTAX!; `row_delimiter` → omitted; `ignore_empty` → false; `match_mode` → 0; `pad_with` → omitted |
+| TOCOL | `ignore` → omitted; `scan_by_column` → omitted |
+| TOEPOCH | `unit` → omitted |
+| TOROW | `ignore` → omitted; `scan_by_column` → omitted |
+| TRAPZ | `dx` → omitted |
+| TREND | `const` → omitted |
+| TRIMMEAN | `percent` → 0 |
+| TRUNC | `digits` → omitted |
+| TRUNCATETEXT | `width` → #SYNTAX!; `ellipsis` → omitted |
+| UNIQUE | `by_col` → omitted; `exactly_once` → omitted |
+| VALUETOTEXT | `format` → omitted |
+| VDB | `factor` → omitted; `no_switch` → false |
+| VOLATILITY | `periods_per_year` → omitted |
+| WEEKDAY | `type` → omitted |
+| WEEKNUM | `type` → omitted |
+| WEIBULL.DIST | `cumulative` → false |
+| WORKDAY | `holidays` → omitted |
+| WORKDAY.INTL | `weekend` → omitted; `holidays` → omitted |
+| WRAPCOLS | `wrap_count` → #SYNTAX!; `pad_with` → omitted |
+| WRAPROWS | `wrap_count` → #SYNTAX!; `pad_with` → omitted |
+| WRAPTEXT | `width` → #SYNTAX! |
+| XIRR | `guess` → omitted |
+| XLOOKUP | `match_mode` → 0; `search_mode` → 0 |
+| XMATCH | `match_mode` → 0; `search_mode` → 0 |
+| YEARFRAC | `basis` → omitted |
+| YIELD | `frequency` → omitted |
+| YIELDDISC | `basis` → omitted |
+| YIELDMAT | `basis` → omitted |
 
 ## Card sockets
 
-Sockets with a typed field that look like settings. A card that is its formula's twin takes the formula's roles through
-`rolesFrom`; the rest declare their own.
+Cards with a formula twin read the twin's roles through `rolesFrom`; the rest declare their own. Rows marked "not swept"
+still blank.
 
-| Card | Proposed settings (default when blank) | Proposed picks / column references |
+| Card | Settings (a blank reads as) | Picks / column references |
 |---|---|---|
 | Histogram | Bins (10) | |
-| Gantt, Schedule, Earned Value, WORKDAY / NETWORKDAYS | Weekend (1) | |
+| Gantt, Schedule, Earned Value (already), WORKDAY / NETWORKDAYS | Weekend (1) | |
 | Schedule | Hours per day (8) | |
 | Record | | Row (1) |
-| Slider | Min, Max, Step: the bound the widget needs ([[input-roles]] control row) | |
-| Alert | Low, High (no bound) | |
+| Slider | not swept: Min, Max, Step need a bound the widget can use | |
+| Alert | not swept: Low and High are check parameters, which already skip | |
 | MROUND / CEILING / FLOOR | Multiple (1) | |
 | Base Convert | From base, To base (10) | |
 | Bessel | Order (#SYNTAX!) | |
@@ -202,7 +249,7 @@ Sockets with a typed field that look like settings. A card that is its formula's
 | Shift | By (1) | |
 | EWMA | Alpha (#SYNTAX!) | |
 | Trapz | dx (1) | |
-| LARGE / SMALL card | | K (see Judgment calls) |
+| LARGE / SMALL, PERCENTILE, QUARTILE, RANK, PERCENTRANK card | Significance (3), Order (0), Quart (0) | K, P (#SYNTAX!) |
 | Polyfit | Degree (#SYNTAX!) | |
 | ETS Forecast | Steps ahead (#SYNTAX!), Season length (1) | |
 | TRIMMEAN | Trim % (#SYNTAX!) | |
@@ -223,7 +270,7 @@ Sockets with a typed field that look like settings. A card that is its formula's
 | Get Row | | Row (#SYNTAX!) |
 | Head | Rows (10), To (to the end) | |
 | Window | N (3) | Order by, Value (column references) |
-| Get Column, Frame Sort, Join, Split Column, Replace Values, Unnest, Cube Rollup, Reconcile, Earned Value | | Column references ([[input-roles]] marks them setting or required; each needs a call: pass the Frame through, or #SYNTAX!) |
+| Get Column, Frame Sort, Join, Split Column, Replace Values, Unnest, Cube Rollup, Reconcile, Earned Value | | not swept: column references |
 | Add Index | Start (1) | |
 | Table Reshape (WRAPROWS / WRAPCOLS) | Wrap count (#SYNTAX!) | |
 | Set Cell | | Row n, Column n (#SYNTAX!) |

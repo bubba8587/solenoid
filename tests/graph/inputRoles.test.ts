@@ -116,3 +116,20 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
     expect(ev("TAKE(m, 1)", { m: null })).toBeNull();
   });
 });
+
+describe("[[D86]] the settings sweep: formulas", () => {
+  const isSyntax = (v: unknown) => isSolError(v) && v.code === "#SYNTAX!";
+  it("a blank mode is Excel's typed blank when that works, #SYNTAX! when nothing does", () => {
+    expect(ev("NORM.DIST(1, 0, 1, c)", { c: null })).toBeCloseTo(ev("NORM.DIST(1, 0, 1, FALSE)") as number, 12);
+    expect(isSyntax(ev("MAKEARRAY(r, 3, LAMBDA(i, j, i))", { r: null }))).toBe(true);
+    expect(isSyntax(ev("MID(\"abc\", s, 1)", { s: null }))).toBe(true);
+  });
+  it("an optional setting left blank is the omitted argument", () => {
+    expect(ev("LEFT(\"abc\", n)", { n: null })).toBe("a");
+    expect(ev("LOG(100, b)", { b: null })).toBeCloseTo(2, 12);
+    expect(ev("CLAMP(-5, lo, 3)", { lo: null })).toBe(-5);
+  });
+  it("a distribution's parameter is data, so a blank one is a blank answer", () => {
+    expect(ev("NORM.DIST(1, m, 1, TRUE)", { m: null })).toBeNull();
+  });
+});

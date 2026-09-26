@@ -576,13 +576,12 @@ describe("Record node", () => {
     expect(by.Photo.image).toBe("https://x.test/b.png");
   });
 
-  it("Row is the record pick: a wired blank or out-of-range shows empty boxes; unwired clamps + mirrors", async () => {
+  it("Row is the record pick: a wired blank is row 1, out-of-range shows empty boxes; unwired clamps + mirrors", async () => {
     const n = new RecordNode();
     const f = frame([{ name: "A", type: "number", values: [1, 2, 3] }]);
-    // Wired blank → no record, boxes stay (labels visible), values empty.
+    // Wired blank → the row left out, so record 1 ([[D86]] blankRoles).
     let p = (await n.data({ frame: [f], row: [null as unknown as number] })).chart.payload as RecordPayload;
-    expect(p.index).toBe(0);
-    expect(p.cards[0][0]).toMatchObject({ label: "A", value: null });
+    expect(p.index).toBe(1);
     // Wired out-of-range → empty too, never clamped to a record the cable didn't pick.
     p = (await n.data({ frame: [f], row: [7] })).chart.payload as RecordPayload;
     expect(p.index).toBe(0);

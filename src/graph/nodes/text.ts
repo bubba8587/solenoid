@@ -3,7 +3,7 @@ import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
-  broadcastCells, readInput, type CellResult, type BroadcastResult,
+  broadcastCells, readInput, readRole, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
 import { hashText, uuidV4, type HashAlgorithm } from "./hashOps";
@@ -13,6 +13,7 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 import { numberValue, splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
+import { rolesFrom, setting } from "../inputRoles";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningView } from "../activeGraph";
 import { SolenoidSocket } from "../sockets";
@@ -158,6 +159,7 @@ export const PAD_SIDE_META = {
 } satisfies Record<PadSide, { label: string; description: string }>;
 
 export class PadTextNode extends ClassicPreset.Node {
+  static inputRoles = { ...rolesFrom("PADTEXT", { width: 1 }), fill: setting("") };
   static socketDocs: Record<string, string> = {
     width: "Target length in characters; text already that long passes through unchanged.",
     fill:  "Repeated to fill the gap; blank means a space.",
@@ -180,9 +182,9 @@ export class PadTextNode extends ClassicPreset.Node {
   }
 
   data(inputs: { text?: (string | string[])[]; width?: number[]; fill?: string[] }): { result: CellResult<string> } {
-    const w = readInput(inputs.width, this.literals.width ?? 10);
-    const fill = strScalar(inputs.fill, this, "fill");
-    if (w === null || fill === null) { this.cachedText = null; return { result: null }; }
+    const w = readRole<number | SolError>(this, "width", inputs.width);
+    const fill = readRole<string>(this, "fill", inputs.fill);
+    if (isSolError(w)) { this.cachedText = w; return { result: w }; }
     const result = broadcastCells((t: string) => padText(t, w, this.side, fill), strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
@@ -190,6 +192,7 @@ export class PadTextNode extends ClassicPreset.Node {
 }
 
 export class TruncateTextNode extends ClassicPreset.Node {
+  static inputRoles = { ...rolesFrom("TRUNCATETEXT", { width: 1 }), ellipsis: setting("…") };
   static socketDocs: Record<string, string> = {
     width:    "Maximum length in characters, the ellipsis included.",
     ellipsis: "Appended when anything was cut; blank for a plain cut.",
@@ -210,9 +213,9 @@ export class TruncateTextNode extends ClassicPreset.Node {
   }
 
   data(inputs: { text?: (string | string[])[]; width?: number[]; ellipsis?: string[] }): { result: CellResult<string> } {
-    const w = readInput(inputs.width, this.literals.width ?? 20);
-    const e = strScalar(inputs.ellipsis, this, "ellipsis", "…");
-    if (w === null || e === null) { this.cachedText = null; return { result: null }; }
+    const w = readRole<number | SolError>(this, "width", inputs.width);
+    const e = readRole<string>(this, "ellipsis", inputs.ellipsis);
+    if (isSolError(w)) { this.cachedText = w; return { result: w }; }
     const result = broadcastCells((t: string) => truncateText(t, w, e), strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
@@ -222,6 +225,7 @@ export class TruncateTextNode extends ClassicPreset.Node {
 // ─── Wrap Text (no Excel equivalent; R str_wrap, Python textwrap.wrap) ─────────
 
 export class WrapTextNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("WRAPTEXT", { width: 1 });
   static socketDocs: Record<string, string> = {
     width: "Maximum line length in characters; a single word longer than this still takes its own line.",
   };
@@ -241,8 +245,9 @@ export class WrapTextNode extends ClassicPreset.Node {
 
   data(inputs: { text?: string[]; width?: number[] }): { result: string[] | SolError | null } {
     const text = strScalar(inputs.text, this, "text");
-    const w = readInput(inputs.width, this.literals.width ?? 40);
-    if (text === null || w === null) { this.cachedResult = null; return { result: null }; }
+    const w = readRole<number | SolError>(this, "width", inputs.width);
+    if (isSolError(w)) { this.cachedResult = null; return { result: w as never }; }
+    if (text === null) { this.cachedResult = null; return { result: null }; }
     if (w < 1) { const e = solError("#DOMAIN!", "Width must be at least 1"); this.cachedResult = e; return { result: e }; }
     const result = wrapText(text, w);
     this.cachedResult = result;
@@ -334,6 +339,7 @@ export const TEXT_SLICE_OP_META = {
 } satisfies Record<TextSliceOp, { label: string; description: string }>;
 
 export class TextSliceNode extends ClassicPreset.Node {
+  static inputRoles = { n: setting(1), ...rolesFrom("MID", { start: 1, len: 2 }) };
   static socketDocs: Record<string, string> = {
     n: "Read by LEFT and RIGHT: the number of characters to take.",
     start: "Read by MID: position 1 is the first character.",
@@ -371,14 +377,14 @@ export class TextSliceNode extends ClassicPreset.Node {
           return resolveExcelFunction("MID")!(t, s, l) as string | SolError;
         },
         text,
-        readInput(inputs.start, this.literals.start ?? 1),
-        readInput(inputs.len,   this.literals.len   ?? 1))
+        readRole<number | number[]>(this, "start", inputs.start),
+        readRole<number | number[]>(this, "len", inputs.len))
       : broadcastCells((t: string, count: number) => {
           const fn = this.op === "left" ? "LEFT" : "RIGHT";
           return resolveExcelFunction(fn)!(t, count) as string | SolError;
         },
         text,
-        readInput(inputs.n, this.literals.n ?? 1));
+        readRole<number | number[]>(this, "n", inputs.n));
     this.cachedText = result;
     return { result };
   }
@@ -394,6 +400,7 @@ export const TEXT_FIND_OP_META = {
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
 export class TextFindNode extends ClassicPreset.Node {
+  static inputRoles = { start: setting(1) };
   static socketDocs: Record<string, string> = {
     start: "Counting starts at 1. The position found is still measured from the start of the whole text.",
   };
@@ -428,7 +435,7 @@ export class TextFindNode extends ClassicPreset.Node {
     },
       strVal(inputs.needle,   this, "needle"),
       strVal(inputs.haystack, this, "haystack"),
-      readInput(inputs.start, this.literals.start ?? 1));
+      readRole<number | number[]>(this, "start", inputs.start));
     this.cachedResult = result;
     return { result };
   }
@@ -437,6 +444,7 @@ export class TextFindNode extends ClassicPreset.Node {
 // ─── SUBSTITUTE ───────────────────────────────────────────────────────────────
 
 export class SubstituteNode extends ClassicPreset.Node {
+  static inputRoles = { instance: setting(0) };
   static socketDocs: Record<string, string> = {
     old_text: "Matches are case sensitive.",
     instance: "Which occurrence to replace (1 = the first). Blank or 0 replaces every occurrence.",
@@ -475,7 +483,7 @@ export class SubstituteNode extends ClassicPreset.Node {
       strVal(inputs.text,     this, "text"),
       strVal(inputs.old_text, this, "old_text"),
       strVal(inputs.new_text, this, "new_text"),
-      readInput(inputs.instance, this.literals.instance ?? 0),
+      readRole<number | number[]>(this, "instance", inputs.instance),
     );
     this.cachedText = result;
     return { result };
@@ -485,6 +493,7 @@ export class SubstituteNode extends ClassicPreset.Node {
 // ─── REPLACE ─────────────────────────────────────────────────────────────────
 
 export class TextReplaceNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("REPLACE", { start: 1, num_chars: 2 });
   static socketDocs: Record<string, string> = {
     start: "Position 1 is the first character.",
   };
@@ -516,8 +525,8 @@ export class TextReplaceNode extends ClassicPreset.Node {
         resolveExcelFunction("REPLACE")!(
           text, Math.max(1, Math.floor(s)), Math.max(0, Math.floor(n)), newText) as string,
       strVal(inputs.text, this, "text"),
-      readInput(inputs.start,     this.literals.start     ?? 1),
-      readInput(inputs.num_chars, this.literals.num_chars ?? 1),
+      readRole<number | number[]>(this, "start", inputs.start),
+      readRole<number | number[]>(this, "num_chars", inputs.num_chars),
       strVal(inputs.new_text, this, "new_text"),
     );
     this.cachedText = result;
@@ -544,6 +553,7 @@ export function formatNumberPattern(v: number, format: string): string {
 // ─── REPT ─────────────────────────────────────────────────────────────────────
 
 export class ReptNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("REPT", { times: 1 });
   label: string;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
@@ -563,7 +573,7 @@ export class ReptNode extends ClassicPreset.Node {
       (text: string, times: number) =>
         resolveExcelFunction("REPT")!(text, Math.max(0, Math.floor(times))) as string,
       strVal(inputs.text, this, "text"),
-      readInput(inputs.times, this.literals.times ?? 1),
+      readRole<number | number[]>(this, "times", inputs.times),
     );
     this.cachedText = result;
     return { result };
@@ -618,6 +628,7 @@ export const TEXTJOIN_IGNORE_EMPTY_META: Record<TextJoinIgnoreEmpty, string> = {
 };
 
 export class TextJoinNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("TEXTJOIN", { delimiter: 0 });
   label: string;
   ignoreEmpty: TextJoinIgnoreEmpty;
   cachedText: string | null = null;
@@ -635,8 +646,7 @@ export class TextJoinNode extends ClassicPreset.Node {
 
   data(inputs: { strings?: string[][]; delimiter?: string[] }): { result: string | SolError | null } {
     const strings: string[] = inputs.strings?.[0] ?? [];
-    const delimiter = strScalar(inputs.delimiter, this, "delimiter");
-    if (delimiter === null) { this.cachedText = null; return { result: null }; }
+    const delimiter = readRole<string>(this, "delimiter", inputs.delimiter);
     // A reduction: the first error wins and blanks drop out, as in the formula ([[D51]] oneAnswerOneDivergence).
     const err = (strings as unknown[]).find(isSolError);
     const present = strings.filter((s) => s != null);
@@ -649,6 +659,7 @@ export class TextJoinNode extends ClassicPreset.Node {
 // ─── TEXTSPLIT ────────────────────────────────────────────────────────────────
 
 export class TextSplitNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("TEXTSPLIT", { delimiter: 1 });
   static socketDocs: Record<string, string> = {
     delimiter: "An empty delimiter splits the text into single characters.",
   };
@@ -668,8 +679,9 @@ export class TextSplitNode extends ClassicPreset.Node {
 
   data(inputs: { text?: string[]; delimiter?: string[] }): { result: string[] | null } {
     const text      = strScalar(inputs.text,      this, "text");
-    const delimiter = strScalar(inputs.delimiter, this, "delimiter");
-    if (text === null || delimiter === null) { this.cachedResult = null; return { result: null }; }
+    const delimiter = readRole<string | SolError>(this, "delimiter", inputs.delimiter);
+    if (isSolError(delimiter)) { this.cachedResult = null; return { result: delimiter as never }; }
+    if (text === null) { this.cachedResult = null; return { result: null }; }
     const result    = splitText(text, delimiter) as string[];
     this.cachedResult = result;
     return { result };
@@ -1018,6 +1030,7 @@ export const REGEX_OP_META: Record<RegexOp, { label: string; description: string
 
 
 export class RegexNode extends ClassicPreset.Node {
+  static inputRoles = { occurrence: setting(0) };
   static socketDocs: Record<string, string> = {
     pattern: "Patterns follow JavaScript regular expression syntax. An invalid pattern gives a blank result.",
     replacement: "Only the replace operation reads this input. $1 inserts the first capture group.",
@@ -1053,9 +1066,7 @@ export class RegexNode extends ClassicPreset.Node {
     const replacement = this.op === "replace"
       ? readInput(inputs.replacement, this.stringLiterals.replacement ?? "")
       : "";
-    const occurrenceRaw = this.op === "replace"
-      ? readInput(inputs.occurrence, this.literals.occurrence ?? 0)
-      : 0;
+    const occurrenceRaw = this.op === "replace" ? readRole<number>(this, "occurrence", inputs.occurrence) : 0;
     if (pattern === null || replacement === null || occurrenceRaw === null) { this.cachedResult = null; return { result: null }; }
     const flags       = this.stringLiterals.flags ?? "";
     const occ = Math.max(0, Math.floor(Number(occurrenceRaw) || 0));
@@ -1208,6 +1219,7 @@ export class TextSimilarityNode extends ClassicPreset.Node {
 }
 
 export class FuzzyMatchNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("FUZZYMATCH", { threshold: 2 });
   static socketDocs: Record<string, string> = {
     threshold: "0–1. A needle whose best candidate scores below it answers #N/A instead of a bad guess; 0 always picks the closest.",
     match: "The closest candidate per needle (first on ties); feed it to XLOOKUP for an exact join.",
@@ -1235,8 +1247,8 @@ export class FuzzyMatchNode extends ClassicPreset.Node {
   data(inputs: { needle?: (string | string[])[]; candidates?: (string | null)[][]; threshold?: number[] }): { match: CellResult<string>; score: BroadcastResult } {
     const needle = strVal(inputs.needle, this, "needle");
     const cands = (inputs.candidates?.[0] ?? []).filter((v): v is string => typeof v === "string");
-    const threshold = readInput(inputs.threshold, this.literals.threshold ?? 0.6);
-    if (needle === null || threshold === null) { this.cachedMatch = null; this.cachedScore = null; return { match: null, score: null }; }
+    const threshold = readRole<number | undefined>(this, "threshold", inputs.threshold) ?? 0.6;
+    if (needle === null) { this.cachedMatch = null; this.cachedScore = null; return { match: null, score: null }; }
     const pick = (n: string) => fuzzyBest(n, cands, this.method, threshold);
     const na = () => solError("#N/A", "No candidate is similar enough");
     const one = (n: string) => { const b = pick(n); return b ? b.text : na(); };

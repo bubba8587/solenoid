@@ -1,6 +1,7 @@
 // [[C63]], [[B11]]
 import { ClassicPreset } from "rete";
-import { readInput, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
+import { setting } from "../inputRoles";
 import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d, equalWidthBins } from "./visualOps";
@@ -299,6 +300,7 @@ const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>
   Array.isArray(raw) ? raw : raw == null ? [] : [raw];
 
 export class HistogramNode extends ClassicPreset.Node {
+  static inputRoles = { bins: setting(10), ybins: setting(10) };
   label: string;
   mode: HistogramMode;
   literals: Record<string, number> = { bins: 10, ybins: 10 };
@@ -346,16 +348,16 @@ export class HistogramNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue | SolError } {
     const xs = listOf(inputs.values?.[0] ?? null);
     // Mirror to the card only when unwired: a wired value written into `literals` would be saved.
-    const kx = readInput(inputs.bins, this.literals.bins ?? 10);
-    if (inputs.bins?.[0] === undefined && kx !== null) this.literals.bins = kx;
+    const kx = readRole<number>(this, "bins", inputs.bins);
+    if (inputs.bins?.[0] === undefined) this.literals.bins = kx;
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const title = this.chartOptions.title || this.label || "Histogram";
 
     if (this.mode === "2d") {
       const ys = listOf(inputs.y?.[0] ?? null);
-      const ky = readInput(inputs.ybins, this.literals.ybins ?? 10);
-      if (inputs.ybins?.[0] === undefined && ky !== null) this.literals.ybins = ky;
-      const h = kx === null || ky === null ? null : histogram2d(xs, ys, kx, ky);
+      const ky = readRole<number>(this, "ybins", inputs.ybins);
+      if (inputs.ybins?.[0] === undefined) this.literals.ybins = ky;
+      const h = histogram2d(xs, ys, kx, ky);
       this.cachedResult = null;
       const z = h ? h.yEdges.map((_, j) => h.counts.map((col) => col[j])) : [];
       const payload: ContourPayload = { kind: "contour", xs: h?.xEdges ?? [], ys: h?.yEdges ?? [], z, levels: 10 };
@@ -1053,6 +1055,7 @@ function readClamp(optStr: string | null): boolean {
 export const RECORD_CARD_CAP = 60;
 
 export class RecordNode extends ClassicPreset.Node {
+  static inputRoles = { row: setting(1) };
   static socketDocs: Record<string, string> = {
     row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
@@ -1104,8 +1107,7 @@ export class RecordNode extends ClassicPreset.Node {
     const total = cols[0]?.values.length ?? 0;
     let index = 0;
     if (this.op === "card") {
-      const rowRaw = readInput(inputs.row, this.literals.row ?? 1);
-      index = rowRaw === null ? 0 : Math.round(rowRaw);
+      index = Math.round(readRole<number>(this, "row", inputs.row));
       if (inputs.row?.[0] === undefined && total > 0) {
         index = clamp(index, 1, total);
         this.literals.row = index;

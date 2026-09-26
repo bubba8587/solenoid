@@ -117,7 +117,13 @@ export function readInput<T>(wired: readonly T[] | undefined, literal: T): T | n
 export function readRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined): T {
   const role = (node.constructor as { inputRoles?: Record<string, InputRole> }).inputRoles?.[key];
   if (!role) throw new Error(`${node.constructor.name}: no input role declared for "${key}"`);
-  const literal = (node as { literals?: Record<string, unknown> }).literals?.[key];
+  return readAsRole<T>(node, key, wired, role);
+}
+
+/** `readRole` with the role given, for a card whose roles change with its op (Series). */
+export function readAsRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
+  const n = node as { literals?: Record<string, unknown>; stringLiterals?: Record<string, unknown> };
+  const literal = n.literals?.[key] ?? n.stringLiterals?.[key];
   const v = wired === undefined || wired.length === 0 ? literal : wired[0];
   return applyRole(role, v ?? null, node.inputs[key]?.label ?? key) as T;
 }

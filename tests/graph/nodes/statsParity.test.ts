@@ -159,10 +159,11 @@ describe("MODE / FISHER", () => {
 });
 
 describe("CHOOSE formula == Choose node", () => {
-  it("picks by 1-based index; a blank index is blank, an out-of-range one is #VALUE!, a chosen blank passes through", () => {
+  it("picks by 1-based index; a blank index is #SYNTAX!, an out-of-range one is #VALUE!, a chosen blank passes through", () => {
     expect(ev("CHOOSE(2, 10, 20, 30)")).toBe(20);
     expect(ev("CHOOSE(2, \"a\", \"b\")")).toBe("b");
-    expect(ev("CHOOSE(i, 10, 20)", { i: null })).toBeNull();
+    const blankIdx = ev("CHOOSE(i, 10, 20)", { i: null });
+    expect(isSolError(blankIdx) && blankIdx.code).toBe("#SYNTAX!");
     expect(ev("CHOOSE(1, 10, x)", { x: null })).toBe(10); // an UNCHOSEN blank doesn't poison the pick
     expect(ev("CHOOSE(2, 10, x)", { x: null })).toBeNull();
     const r = ev("CHOOSE(4, 10, 20)");

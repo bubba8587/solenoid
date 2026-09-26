@@ -221,6 +221,7 @@ export class TableMultNode extends ClassicPreset.Node {
 // ─── MUNIT ────────────────────────────────────────────────────────────────────
 
 export class TableUnitNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("MUNIT", { n: 0 });
   label: string;
   cachedResult: Mat | SolError | null = null;
   literals: Record<string, number> = { n: 3 };
@@ -237,8 +238,8 @@ export class TableUnitNode extends ClassicPreset.Node {
   }
 
   data(inputs: { n?: number[] }) {
-    const n = readInput(inputs.n, this.literals.n ?? 3);
-    if (n === null) { this.cachedResult = null; return { result: null }; }
+    const n = readRole<number | SolError>(this, "n", inputs.n);
+    if (isSolError(n)) { this.cachedResult = n; return { result: n }; }
     this.cachedResult = matUnit(n, this.offDiag === "blank" ? null : 0);
     return { result: this.cachedResult };
   }
@@ -407,6 +408,7 @@ export const TABLE_RESHAPE_OP_META = {
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("WRAPROWS", { wrapCount: 1 });
   static socketDocs: Record<string, string> = {
     fill: "Pads the leftover cells. Unwired or blank pads with #N/A, like Excel's default.",
   };
@@ -475,8 +477,9 @@ export class TableReshapeNode extends ClassicPreset.Node {
     // Pads with the wired Fill, or Excel's #N/A when Fill is unwired or blank, the same rule as the formula surface's wrapPad.
     if (this.op === "wraprows") {
       const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
-      const wRaw = readInput(inputs.wrapCount, this.literals.wrapCount ?? 3);
-      if (!raw || wRaw === null) return { result: null };
+      const wRaw = readRole<number | SolError>(this, "wrapCount", inputs.wrapCount);
+      if (isSolError(wRaw)) return { result: wRaw };
+      if (!raw) return { result: null };
       const w = wrapCount(wRaw, "WRAPROWS");
       if (isSolError(w)) return { result: w };
       const { mags: list, unit } = matrixCellsFromList(raw);
@@ -487,8 +490,9 @@ export class TableReshapeNode extends ClassicPreset.Node {
       return { result: rows };
     } else if (this.op === "wrapcols") {
       const raw = toAnyMatrix(inputs.list?.[0])?.flat() ?? null;
-      const wRaw = readInput(inputs.wrapCount, this.literals.wrapCount ?? 3);
-      if (!raw || wRaw === null) return { result: null };
+      const wRaw = readRole<number | SolError>(this, "wrapCount", inputs.wrapCount);
+      if (isSolError(wRaw)) return { result: wRaw };
+      if (!raw) return { result: null };
       const w = wrapCount(wRaw, "WRAPCOLS");
       if (isSolError(w)) return { result: w };
       const { mags: list, unit } = matrixCellsFromList(raw);

@@ -42,6 +42,9 @@ import { solError, isSolError } from "../../../src/graph/errorValue";
 // A wired input arrives as `[null]` (the slot is connected, the value is missing);
 // an unwired one arrives as `undefined`.
 
+// [[D86]] blankRoles: a blank setting is its default, or #SYNTAX! when it has none; data blanks stay blank.
+const isSyntax = (v: unknown) => isSolError(v) && v.code === "#SYNTAX!";
+
 describe("text operands", () => {
   it("UPPER: a wired blank yields blank, not the text typed in the box", () => {
     const node = new TextTransformNode({ op: "upper" });
@@ -56,10 +59,10 @@ describe("text operands", () => {
     expect(node.data({}).result).toBe("ABC");
   });
 
-  it("LEFT: a wired blank COUNT propagates rather than falling back to 1", () => {
+  it("LEFT: a wired blank count is Excel's omitted count, 1, overriding the typed 3", () => {
     const node = new TextSliceNode({ op: "left" });
     node.literals.n = 3;
-    expect(node.data({ text: ["abcdef"], n: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ text: ["abcdef"], n: [null as unknown as number] }).result).toBe("a");
     // Unwired count keeps the literal.
     expect(node.data({ text: ["abcdef"] }).result).toBe("abc");
   });
@@ -70,32 +73,28 @@ describe("text operands", () => {
       .toEqual(["A", null, "C"]);
   });
 
-  it("REPT: a wired blank count propagates", () => {
+  it("REPT: a wired blank count has no default, so #SYNTAX!", () => {
     const node = new ReptNode();
     node.literals.times = 2;
-    expect(node.data({ text: ["ab"], times: [null as unknown as number] }).result).toBeNull();
+    expect(isSyntax(node.data({ text: ["ab"], times: [null as unknown as number] }).result)).toBe(true);
     expect(node.data({ text: ["ab"] }).result).toBe("abab");
   });
 });
 
-describe("mode selectors — the project's model, not Excel's", () => {
-  // The real choice here: a wired blank could mean "the mode is unknown, so the
-  // answer is unknown" (this app's P6 model) or "nothing supplied, use the default"
-  // (Excel's reading of an omitted optional argument). Author call: follow THIS
-  // project. A blank you deliberately wired is not silently reinterpreted.
-  it("TEXTSPLIT: a wired blank delimiter yields blank, not a character split", () => {
+describe("mode selectors are settings ([[D86]] blankRoles)", () => {
+  it("TEXTSPLIT: a wired blank delimiter has no default, so #SYNTAX!, not a character split", () => {
     const node = new TextSplitNode();
     node.stringLiterals.delimiter = ",";
-    expect(node.data({ text: ["a,b"], delimiter: [null as unknown as string] }).result).toBeNull();
+    expect(isSyntax(node.data({ text: ["a,b"], delimiter: [null as unknown as string] }).result)).toBe(true);
     // Unwired keeps the typed delimiter.
     expect(node.data({ text: ["a,b"] }).result).toEqual(["a", "b"]);
   });
 
-  it("NETWORKDAYS: a wired blank weekend code yields blank, not the default week", () => {
+  it("NETWORKDAYS: a wired blank weekend code is the default week", () => {
     const node = new WorkdaysNode({ op: "networkdays" });
     expect(node.data({
       start: [46096], end: [46196], weekend_code: [null as unknown as number],
-    }).result).toBeNull();
+    }).result).toBe(node.data({ start: [46096], end: [46196] }).result);
     expect(typeof node.data({ start: [46096], end: [46196] }).result).toBe("number");
   });
 });
@@ -203,9 +202,10 @@ describe("\"absent\" is not \"unknown\" — the optional-input trap", () => {
     expect(node.data({ value: [-5] }).result).toBe(-5); // no floor applied
   });
 
-  it("Clamp: a WIRED blank min is unknown, not unclamped", () => {
+  it("Clamp: a WIRED blank min is no bound, on the card and in CLAMP", () => {
     const node = new ClampNode();
-    expect(node.data({ value: [-5], min: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ value: [-5], min: [null as unknown as number] }).result).toBe(-5);
+    expect(node.data({ value: [[-5, 5]], min: [[0, null as unknown as number]] }).result).toEqual([0, 5]);
   });
 
   it("Clamp: a WIRED min still clamps", () => {
@@ -327,12 +327,12 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
     }).result).toEqual([1, 2]);
   });
 
-  it("Slice: an omitted end runs to the end; a wired blank end is unknown", () => {
+  it("Slice: an omitted end runs to the end, and so does a wired blank one", () => {
     const arr = [1, 2, 3, 4];
     expect(new SliceNode().data({ list: [arr], start: [2] }).result).toEqual([2, 3, 4]);
     expect(new SliceNode().data({
       list: [arr], start: [2], end: [null as unknown as number],
-    }).result).toBeNull();
+    }).result).toEqual([2, 3, 4]);
   });
 });
 
@@ -366,8 +366,7 @@ describe("figure sinks — empty figure for a datum, neutral default for styling
   });
 
   it("KPI: a wired blank prior shows NO comparison, not a compare against the card's number", () => {
-    // The "absent is not unknown" trap: prev is an optional comparison, and a wired
-    // blank leaves it unknown (no delta) rather than reusing the card's prior.
+    // Prior is a setting: a wired blank is the prior left out, so no delta, and the card's typed prior stays unused ([[D86]] blankRoles).
     const node = new KpiNode();
     node.literals.value = 5;
     node.literals.prev = 10;
@@ -592,9 +591,9 @@ describe("Distribution — a wired blank parameter propagates", () => {
 describe("Rank & Percentile — active-family param guard", () => {
   // LARGE reads k: a wired blank k blanks the result, an unwired slot uses the seeded
   // literal. The list operand skips its own nulls before ranking.
-  it("LARGE: a wired blank k blanks the result; unwired uses the literal", () => {
+  it("LARGE: a wired blank k has no default, so #SYNTAX!; unwired uses the literal", () => {
     const node = new RankPercentileNode({ op: "large" });
-    expect(node.data({ list: [[3, 1, 2]], k: [null as unknown as number] }).result).toBeNull();
+    expect(isSyntax(node.data({ list: [[3, 1, 2]], k: [null as unknown as number] }).result)).toBe(true);
     expect(node.data({ list: [[3, 1, 2]] }).result).toBe(3); // k defaults to 1 -> largest
     expect(node.data({ list: [[3, 1, 2]], k: [2] }).result).toBe(2); // 2nd largest
   });
@@ -659,21 +658,18 @@ describe("Lists ▸ Find — INDEX three-state read", () => {
 });
 
 describe("Lists ▸ Build/Shape — shape params and filter conditions", () => {
-  // A Series shape param (count) blanks the whole list; unwired uses the seeded default.
-  it("Series (linspace): a wired blank count blanks the list; unwired builds it", () => {
+  it("Series (linspace): a wired blank count has no default, so #SYNTAX!; unwired builds it", () => {
     const node = new SeriesNode({ op: "linspace" });
-    expect(node.data({ count: [null as unknown as number] }).list).toBeNull();
+    expect(isSyntax(node.data({ count: [null as unknown as number] }).list)).toBe(true);
     expect(Array.isArray(node.data({}).list)).toBe(true);
   });
 
-  // A filter condition's comparison value is unevaluable when blank, so the whole result
-  // is unknown (NOT the unfiltered list); an empty literal just skips the condition.
-  it("List Filter: a wired blank comparison value blanks the result; empty literal passes through", () => {
+  it("List Filter: a wired blank comparison value skips the condition, as an empty literal does", () => {
     const node = new FilterNode();
     const [valueKey] = node.valueInputKeys();
     node.stringLiterals[valueKey] = "";
     expect(node.data({ list: [null as unknown as unknown[]] }).result).toBeNull();
-    expect(node.data({ list: [[1, 2, 3]], [valueKey]: [null] }).result).toBeNull();
+    expect(node.data({ list: [[1, 2, 3]], [valueKey]: [null] }).result).toEqual([1, 2, 3]);
     expect(node.data({ list: [[1, 2, 3]] }).result).toEqual([1, 2, 3]);
   });
 });
@@ -722,11 +718,11 @@ describe("Numbers ▸ Arithmetic/Functions/Rounding — operands propagate", () 
     expect(node.data({}).result).toBe(5);
   });
 
-  it("MROUND: a wired blank on value OR multiple propagates; unwired rounds", () => {
+  it("MROUND: a wired blank value propagates; a blank multiple has no default, so #SYNTAX!; unwired rounds", () => {
     const node = new MRoundNode({ op: "nearest" });
     node.literals.value = 7; node.literals.multiple = 5;
     expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
-    expect(node.data({ multiple: [null as unknown as number] }).result).toBeNull();
+    expect(isSyntax(node.data({ multiple: [null as unknown as number] }).result)).toBe(true);
     expect(node.data({}).result).toBe(5);
   });
 });

@@ -1,6 +1,7 @@
 // [[C64]], [[C48]]
 import { ClassicPreset } from "rete";
-import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { setting, required, LEFT_OUT } from "../inputRoles";
 import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
@@ -11,7 +12,7 @@ import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { dropInputCables } from "../components/cablePrune";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { cableGhostStore } from "../cableState";
-import { readFilterValue } from "./list";
+import { readFilterValue, readConditionValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
@@ -382,6 +383,7 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
 };
 
 export class HeadNode extends ClassicPreset.Node {
+  static inputRoles = { rows: setting(10), to: setting(LEFT_OUT) };
   static socketDocs: Record<string, string> = {
     rows: "First, Last, and Skip read this as a row count. Rows M–N reads it as the 1-based start row.",
     to: "Only the Rows M–N operation reads this, as the last kept row.",
@@ -408,11 +410,11 @@ export class HeadNode extends ClassicPreset.Node {
 
   async data(inputs: { frame?: unknown[]; rows?: number[]; to?: number[] }) {
     const f = rowVerbInput(inputs.frame?.[0] ?? null);
-    const n = readInput(inputs.rows, this.literals.rows ?? 10);
-    // Only the range op reads `to`, so a wired blank To must not blank the other slices.
-    const to = this.op === "range" ? readInput(inputs.to, this.literals.to ?? n) : 0;
+    const n = readRole<number>(this, "rows", inputs.rows);
+    // A blank To runs to the end of the Rows count, as an unset one does.
+    const to = this.op === "range" ? readRole<number | undefined>(this, "to", inputs.to) ?? n : 0;
     const gen = beginPass(this);
-    if (f == null || n === null || to === null) return emitFrame(this, gen, null);
+    if (f == null) return emitFrame(this, gen, null);
     if (isCubeValue(f)) { const r = runVerb(() => sliceCube(f, this.op, n, this.op === "range" ? to : undefined)); this.cachedResult = r; return { frame: r }; }
     if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
     return emitFrame(this, gen, await runFrameUnary(f, { kind: "sliceRows", mode: this.op, n, to: this.op === "range" ? to : undefined }));
@@ -545,16 +547,13 @@ export class FilterFrameNode extends ClassicPreset.Node {
     const conditions: FilterCond[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
-      const colRaw = readInput(inputs[colKey] as string[] | undefined, this.stringLiterals[colKey] ?? "");
+      const colRaw = readConditionValue(inputs[colKey], this.stringLiterals[colKey]);
       const cfg = this.condConfig[id];
       const op = cfg?.op ?? "gt";
-      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
+      const val = readConditionValue(inputs[valKey], this.stringLiterals[valKey]);
       const valueless = VALUELESS_FILTER_OPS.has(op);
-      if (colRaw === null || (!valueless && val === null)) {
-        return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
-      }
-      const col = String(colRaw).trim();
-      if (col === "" || (!valueless && val!.trim() === "")) continue;
+      const col = colRaw.trim();
+      if (col === "" || (!valueless && val.trim() === "")) continue;
       conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
     }
     if (isCubeValue(f)) {
@@ -1239,6 +1238,7 @@ export class SplitColumnNode extends ClassicPreset.Node {
 }
 
 export class AddIndexNode extends ClassicPreset.Node {
+  static inputRoles = { start: setting(1) };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   literals: Record<string, number> = { start: 1 };
@@ -1263,9 +1263,9 @@ export class AddIndexNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    const start = readInput(inputs.start, this.literals.start ?? 1);
+    const start = readRole<number>(this, "start", inputs.start);
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
-    if (start === null || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
+    if (nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Index";
     this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
     return { frame: this.cachedResult };
@@ -2559,6 +2559,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 // ─── GET ROW ────────────────────────────────────────────────────────────────────
 
 export class GetRowNode extends ClassicPreset.Node {
+  static inputRoles = { index: required };
   label: string;
   cachedResult: FrameValue | CubeValue | null = null;
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
@@ -2578,8 +2579,9 @@ export class GetRowNode extends ClassicPreset.Node {
 
   data(inputs: { frame?: unknown[]; index?: number[] }) {
     const raw = inputs.frame?.[0] ?? null;
-    const idx1 = readInput(inputs.index, this.literals.index ?? 1);
-    if (raw == null || idx1 === null) { this.cachedResult = null; return { frame: null }; }
+    const idx1 = readRole<number | SolError>(this, "index", inputs.index);
+    if (isSolError(idx1)) { this.cachedResult = null; return { frame: idx1 }; }
+    if (raw == null) { this.cachedResult = null; return { frame: null }; }
     const i = Math.round(idx1) - 1;
     if (isCubeValue(raw)) {
       if (i < 0 || i >= cubeRowCount(raw)) { this.cachedResult = null; return { frame: null }; }
@@ -2755,6 +2757,7 @@ function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: 
 }
 
 export class KMeansNode extends ClassicPreset.Node {
+  static inputRoles = { k: required };
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank get no cluster. Scale features first when their units differ, with Normalize.",
     k: "How many clusters.",
@@ -2778,9 +2781,10 @@ export class KMeansNode extends ClassicPreset.Node {
 
   data(inputs: { frame?: (FrameValue | null)[]; k?: number[] }) {
     const f = inputs.frame?.[0] ?? null;
-    const k = readInput(inputs.k, this.literals.k ?? 3);
+    const k = readRole<number | SolError>(this, "k", inputs.k);
     const blank = () => { this.cachedLabels = null; this.cachedCenters = null; return { labels: null, centers: null }; };
-    if (!f || k === null) return blank();
+    if (isSolError(k)) { this.cachedLabels = null; this.cachedCenters = null; return { labels: k, centers: k }; }
+    if (!f) return blank();
     const { names, rows, kept, total } = numericRows(f);
     if (names.length === 0) { const e = solError("#VALUE!", "K-Means needs at least one number column"); this.cachedLabels = e; this.cachedCenters = null; return { labels: e, centers: null }; }
     const r = kmeans(rows, k);
@@ -2936,6 +2940,7 @@ export const WINDOW_FN_META = {
 } satisfies Record<WindowFn, { label: string; description: string }>;
 
 export class WindowNode extends ClassicPreset.Node {
+  static inputRoles = { n: setting(3) };
   static socketDocs: Record<string, string> = {
     keys: "The partition: rows sharing these keys form a group. Leave it empty to treat the whole frame as one group.",
     orderBy: "The column that orders rows WITHIN each group before running / ranking / lagging. Leave it blank to keep the frame's row order.",
@@ -2990,8 +2995,8 @@ export class WindowNode extends ClassicPreset.Node {
     const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
-    const n = readInput(inputs.n, this.literals.n ?? 3);
-    if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
+    const n = readRole<number>(this, "n", inputs.n);
+    if (f == null || keys === null || orderBy === null || column === null || name === null) return emitFrame(this, beginPass(this), null);
     if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) {
       if (isCubeValue(f)) { this.cachedResult = f; return { frame: f }; }
       return emitFrame(this, beginPass(this), await passFrame(f));

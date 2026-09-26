@@ -9,8 +9,8 @@ import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, readRole, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
-import { rolesFrom, setting } from "../inputRoles";
+import { readInput, readRole, readAsRole, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
+import { rolesFrom, setting, LEFT_OUT, type InputRole } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
@@ -148,6 +148,15 @@ const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string;
 };
 
 export class SeriesNode extends ClassicPreset.Node {
+  /** Each op reads its settings as its formula twin declares them ([[D86]] blankRoles); Stop, End, Ratio and Value are data. */
+  static rolesByOp: Record<SeriesOp, Record<string, InputRole>> = {
+    range: rolesFrom("RANGE", { start: 0, step: 2 }),
+    sequence: rolesFrom("SEQUENCE", { count: 0, cols: 1, start: 2, step: 3 }),
+    linspace: rolesFrom("LINSPACE", { start: 0, count: 2 }),
+    geometric: rolesFrom("GEOMETRIC", { start: 0, count: 2 }),
+    fibonacci: rolesFrom("FIBONACCI", { count: 0 }),
+    repeat: rolesFrom("REPEAT", { count: 1 }),
+  };
   label: string;
   op: SeriesOp;
   cachedList: number[] | number[][] | SolError | null = [];
@@ -195,13 +204,17 @@ export class SeriesNode extends ClassicPreset.Node {
   }
 
   data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; cols?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | number[][] | SolError | null } {
+    const roles = SeriesNode.rolesByOp[this.op];
+    const byRole = <T,>(key: keyof typeof inputs & string) => readAsRole<T>(this, key, inputs[key], roles[key]);
     let list: number[] | number[][] | SolError | null;
+    const firstError = (...vs: unknown[]) => vs.find(isSolError) as SolError | undefined;
     if (this.op === "range") {
-      const start = readInput(inputs.start, this.literals.start ?? 0);
+      const start = byRole<number | SolError>("start");
       // `stop` may be unset: undefined is unset, null is a wired blank.
       const stop  = readInput(inputs.stop, this.literals.stop as number | undefined);
-      const step  = readInput(inputs.step, this.literals.step ?? 1);
-      if (start === null || stop === null || step === null) list = null;
+      const step  = byRole<number | undefined>("step") ?? 1;
+      if (isSolError(start)) list = start;
+      else if (stop === null) list = null;
       else {
         const n = rangeCount(start, stop, step);
         if (!Number.isFinite(n)) list = solError("#DOMAIN!", "Step is 0 (or signed away from Stop), so the range never ends");
@@ -209,37 +222,40 @@ export class SeriesNode extends ClassicPreset.Node {
         else list = rangeList(start, stop, step);
       }
     } else if (this.op === "sequence") {
-      const rows  = readInput(inputs.count, this.literals.count ?? 10);
-      const cols  = readInput(inputs.cols,  this.literals.cols  ?? 1);
-      const start = readInput(inputs.start, this.literals.start ?? 1);
-      const step  = readInput(inputs.step,  this.literals.step  ?? 1);
-      list = rows === null || cols === null || start === null || step === null
-        ? null
-        : resolveExcelFunction("SEQUENCE")!(rows, cols, start, step) as number[] | number[][] | SolError;
+      const rows  = byRole<number | SolError>("count");
+      const cols  = byRole<number | undefined>("cols") ?? 1;
+      const start = byRole<number | undefined>("start") ?? 1;
+      const step  = byRole<number | undefined>("step") ?? 1;
+      list = isSolError(rows) ? rows : resolveExcelFunction("SEQUENCE")!(rows, cols, start, step) as number[] | number[][] | SolError;
     } else if (this.op === "linspace") {
-      const start = readInput(inputs.start, this.literals.start ?? 0);
+      const start = byRole<number | SolError>("start");
       const end   = readInput(inputs.end, this.literals.end ?? 1);
-      const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
-      if (start === null || end === null || nRaw === null) list = null;
-      else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
-        ? solError("#OVERFLOW!", `Linspace count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
-        : linspace(start, end, nRaw);
+      const nRaw  = byRole<number | SolError>("count");
+      const err = firstError(start, nRaw);
+      if (err) list = err;
+      else if (end === null) list = null;
+      else list = Math.max(0, Math.round(nRaw as number)) > MAX_GENERATED
+        ? solError("#OVERFLOW!", `Linspace count ${Math.round(nRaw as number)} exceeds the ${MAX_GENERATED} element limit`)
+        : linspace(start as number, end, nRaw as number);
     } else if (this.op === "geometric") {
-      const start = readInput(inputs.start, this.literals.start ?? 1);
+      const start = byRole<number | SolError>("start");
       const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
-      const nRaw  = readInput(inputs.count, this.literals.count ?? 8);
-      if (start === null || ratio === null || nRaw === null) list = null;
-      else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
-        ? solError("#OVERFLOW!", `Geometric count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
-        : geometric(start, ratio, nRaw);
+      const nRaw  = byRole<number | SolError>("count");
+      const err = firstError(start, nRaw);
+      if (err) list = err;
+      else if (ratio === null) list = null;
+      else list = Math.max(0, Math.round(nRaw as number)) > MAX_GENERATED
+        ? solError("#OVERFLOW!", `Geometric count ${Math.round(nRaw as number)} exceeds the ${MAX_GENERATED} element limit`)
+        : geometric(start as number, ratio, nRaw as number);
     } else if (this.op === "fibonacci") {
       // fibonacci self-caps at 78 terms (F79 loses double precision), so no overflow guard.
-      const nRaw = readInput(inputs.count, this.literals.count ?? 10);
-      list = nRaw === null ? null : fibonacci(nRaw);
+      const nRaw = byRole<number | SolError>("count");
+      list = isSolError(nRaw) ? nRaw : fibonacci(nRaw);
     } else {
       const v    = readInput(inputs.value, this.literals.value ?? 0);
-      const nRaw = readInput(inputs.count, this.literals.count ?? 5);
-      if (v === null || nRaw === null) list = null;
+      const nRaw = byRole<number | SolError>("count");
+      if (isSolError(nRaw)) list = nRaw;
+      else if (v === null) list = null;
       else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
         ? solError("#OVERFLOW!", `Repeat count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
         : repeatValue(v, nRaw);
@@ -546,6 +562,7 @@ export class ReverseNode extends ClassicPreset.Node {
 }
 
 export class ShiftNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("SHIFT", { by: 1 });
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   literals: Record<string, number> = { by: 1 };
@@ -564,8 +581,7 @@ export class ShiftNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; by?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const by = readInput(inputs.by, this.literals.by ?? 1);
-    if (by === null) { this.cachedList = []; return { result: [] }; }
+    const by = readRole<number | undefined>(this, "by", inputs.by) ?? 1;
     this.cachedList = shiftList(arr as ListCell[], by, this.wrap === "wrap");
     return { result: this.cachedList };
   }
@@ -665,6 +681,7 @@ export class OutliersNode extends ClassicPreset.Node {
 }
 
 export class CombinationsNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("COMBINATIONS", { k: 1 });
   static socketDocs: Record<string, string> = {
     result: "One row per combination (or permutation). Empty when k is larger than the list.",
   };
@@ -685,14 +702,16 @@ export class CombinationsNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; k?: number[] }) {
     const arr = (inputs.list?.[0] ?? []) as ListCell[];
-    const k = readInput(inputs.k, this.literals.k ?? 2);
-    if (k === null || arr.length === 0) { this.cachedResult = null; return { result: null }; }
+    const k = readRole<number | SolError>(this, "k", inputs.k);
+    if (isSolError(k)) { this.cachedResult = k; return { result: k }; }
+    if (arr.length === 0) { this.cachedResult = null; return { result: null }; }
     this.cachedResult = combinationsOf(arr, k, this.mode);
     return { result: this.cachedResult };
   }
 }
 
 export class EwmaNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("EWMA", { alpha: 1 });
   static socketDocs: Record<string, string> = {
     alpha: "Smoothing factor 0–1: higher tracks recent values closely, lower smooths harder.",
   };
@@ -715,8 +734,8 @@ export class EwmaNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; alpha?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const alpha = readInput(inputs.alpha, this.literals.alpha ?? 0.3);
-    if (alpha === null) { this.cachedList = []; return { result: [] }; }
+    const alpha = readRole<number | SolError>(this, "alpha", inputs.alpha);
+    if (isSolError(alpha)) { this.cachedList = alpha; return { result: alpha }; }
     this.cachedList = ewmaList(arr, alpha);
     return { result: this.cachedList };
   }
@@ -764,6 +783,7 @@ export class CrossNode extends ClassicPreset.Node {
 }
 
 export class PolyfitNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("POLYFIT", { degree: 2 });
   static socketDocs: Record<string, string> = {
     result: "The fitted y value at each input x: the least-squares polynomial of the chosen degree, evaluated back over the data.",
   };
@@ -782,14 +802,15 @@ export class PolyfitNode extends ClassicPreset.Node {
   }
 
   data(inputs: { x?: ListCell[][]; y?: ListCell[][]; degree?: number[] }) {
-    const degree = readInput(inputs.degree, this.literals.degree ?? 2);
-    if (degree === null) { this.cachedList = []; return { result: [] }; }
+    const degree = readRole<number | SolError>(this, "degree", inputs.degree);
+    if (isSolError(degree)) { this.cachedList = degree; return { result: degree }; }
     this.cachedList = polyfitEval(inputs.x?.[0] ?? [], inputs.y?.[0] ?? [], degree);
     return { result: this.cachedList };
   }
 }
 
 export class TrapzNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("TRAPZ", { dx: 1 });
   static socketDocs: Record<string, string> = {
     result: "The area under the piecewise-linear curve through the points, at uniform spacing dx.",
   };
@@ -807,8 +828,7 @@ export class TrapzNode extends ClassicPreset.Node {
   }
 
   data(inputs: { list?: ListCell[][]; dx?: number[] }) {
-    const dx = readInput(inputs.dx, this.literals.dx ?? 1);
-    if (dx === null) { this.cachedResult = null; return { result: null }; }
+    const dx = readRole<number | undefined>(this, "dx", inputs.dx) ?? 1;
     this.cachedResult = trapzList(inputs.list?.[0] ?? [], dx);
     return { result: this.cachedResult };
   }
@@ -837,6 +857,7 @@ export class RleNode extends ClassicPreset.Node {
 }
 
 export class SliceNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("SLICE", { start: 1, end: 2 });
   static socketDocs: Record<string, string> = {
     end: "The element at End is included. Left unset, the slice runs to the end of the list.",
   };
@@ -859,9 +880,9 @@ export class SliceNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; start?: number[]; end?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const startRaw = readInput(inputs.start, this.literals.start ?? 1);
-    const endRaw = readInput(inputs.end, this.literals.end as number | undefined);
-    if (startRaw === null || endRaw === null) { this.cachedList = null; return { result: null }; }
+    const startRaw = readRole<number | SolError>(this, "start", inputs.start);
+    const endRaw = readRole<number | undefined>(this, "end", inputs.end);
+    if (isSolError(startRaw)) { this.cachedList = null; return { result: startRaw }; }
     const sliced = sliceList(arr, startRaw, endRaw);
     this.cachedList = sliced;
     return { result: sliced };
@@ -890,6 +911,10 @@ export function readFilterValue(wired: unknown[] | undefined, literal: string | 
   if (isSolError(raw)) return raw.code;
   return String(raw);
 }
+
+/** A condition's value or column is a setting: a blank one is the condition left out, so it keeps every row ([[D86]] blankRoles). */
+export const readConditionValue = (wired: unknown[] | undefined, literal: string | undefined): string =>
+  readFilterValue(wired, literal) ?? "";
 
 export class FilterNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1008,14 +1033,10 @@ export class FilterNode extends ClassicPreset.Node {
       const id = key.slice(5);
       const cfg = this.condConfig[id];
       const op: FilterOp = cfg?.op ?? "gt";
-      const val = readFilterValue(inputs[key], this.stringLiterals[key]);
+      const val = readConditionValue(inputs[key], this.stringLiterals[key]);
       const valueless = VALUELESS_FILTER_OPS.has(op);
-      if (!valueless && val === null) {
-        this.cachedResult = null; this.cachedDropped = null;
-        return { result: null, dropped: null };
-      }
-      if (!valueless && val!.trim() === "") continue;
-      conds.push({ op, value: val!, matchCase: cfg?.matchCase ?? false });
+      if (!valueless && val.trim() === "") continue;
+      conds.push({ op, value: val, matchCase: cfg?.matchCase ?? false });
     }
     if (conds.length === 0) {
       this.cachedResult = list ? [...arr] : m.map((r) => [...r]);
@@ -1147,18 +1168,17 @@ export class SumIfsNode extends ClassicPreset.Node {
     const crits: Crit[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
       const id = colKey.slice(6);
-      const nameRaw = readInput(inputs[colKey] as string[] | undefined, this.stringLiterals[colKey] ?? "");
+      const nameRaw = readConditionValue(inputs[colKey], this.stringLiterals[colKey]);
       const cfg = this.condConfig[id];
       const op: FilterOp = cfg?.op ?? "eq";
-      const val = readFilterValue(inputs[valKey], this.stringLiterals[valKey]);
+      const val = readConditionValue(inputs[valKey], this.stringLiterals[valKey]);
       const valueless = op === "isblank" || op === "notblank";
-      if (nameRaw === null || (!valueless && val === null)) return finish(null);
-      const name = String(nameRaw).trim();
-      if (name === "" || (!valueless && val!.trim() === "")) continue;
+      const name = nameRaw.trim();
+      if (name === "" || (!valueless && val.trim() === "")) continue;
       const col = getColumn(f, name);
       if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
       try { requireTextColumn(op, col.type, name); } catch (e) { return finish(e as SolError); }
-      crits.push({ col, op, value: val!, matchCase: cfg?.matchCase ?? false });
+      crits.push({ col, op, value: val, matchCase: cfg?.matchCase ?? false });
     }
     if (crits.length === 0) return finish(null);
     const n = frameRowCount(f);
@@ -1415,6 +1435,7 @@ export const RUNNING_OP_META = {
 } satisfies Record<RunningOp, { label: string; description: string }>;
 
 export class RunningNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("RUNNING", { window: 2 });
   static socketDocs: Record<string, string> = {
     window: "0 (the default) is cumulative from the start through this element. 1 or more slides: the last N elements ending here, running short at the start.",
   };
@@ -1442,8 +1463,7 @@ export class RunningNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const w = readInput(inputs.window, this.literals.window ?? 0);
-    if (w === null) { this.cachedList = null; return { result: null }; }
+    const w = readRole<number | undefined>(this, "window", inputs.window) ?? 0;
     if (!Number.isFinite(w) || w < 0) { this.cachedList = []; return { result: solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count") }; }
     const result = running(this.agg, arr, w);
     this.cachedList = result;
@@ -1649,6 +1669,7 @@ export class ShuffleNode extends ClassicPreset.Node {
 
 // ─── NthElement ───────────────────────────────────────────────────────────────
 export class NthElementNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("NTHELEMENT", { n: 1 });
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   cachedList: unknown[] | null = [];
@@ -1665,8 +1686,8 @@ export class NthElementNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; n?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const nRaw = readInput(inputs.n, this.literals.n ?? 2);
-    if (nRaw === null) { this.cachedList = null; return { result: null }; }
+    const nRaw = readRole<number | SolError>(this, "n", inputs.n);
+    if (isSolError(nRaw)) { this.cachedList = null; return { result: nRaw }; }
     this.cachedList = nthElement(arr, nRaw);
     return { result: this.cachedList };
   }
@@ -1708,6 +1729,7 @@ export const PAD_OP_META = {
 } satisfies Record<PadDir, { label: string; description: string }>;
 
 export class PadNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("PADRIGHT", { n: 1 });
   static socketDocs: Record<string, string> = {
     n: "A target at or below the list's length leaves it unchanged. Nothing is trimmed.",
   };
@@ -1731,9 +1753,10 @@ export class PadNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; n?: number[]; fill?: number[] }) {
     const arr  = inputs.list?.[0] ?? [];
-    const nRaw = readInput(inputs.n, this.literals.n ?? 5);
+    const nRaw = readRole<number | SolError>(this, "n", inputs.n);
     const fill = readInput(inputs.fill, this.literals.fill ?? 0);
-    if (nRaw === null || fill === null) { this.cachedList = null; return { result: null }; }
+    if (isSolError(nRaw)) { this.cachedList = null; return { result: nRaw }; }
+    if (fill === null) { this.cachedList = null; return { result: null }; }
     this.cachedList = Math.round(nRaw) > MAX_GENERATED
       ? solError("#OVERFLOW!", `Pad length ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
       : padList(arr, nRaw, fill as unknown, this.op);
@@ -1893,6 +1916,7 @@ export class AggregateNode extends ClassicPreset.Node {
 // ─── RANDARRAY ────────────────────────────────────────────────────────────────
 
 export class RandArrayNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("RANDARRAY", { count: 0, min: 2, max: 3 });
   static socketDocs: Record<string, string> = {
     list: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
   };
@@ -1917,13 +1941,10 @@ export class RandArrayNode extends ClassicPreset.Node {
   }
 
   data(inputs: { count?: number[]; min?: number[]; max?: number[] }): { list: number[] | SolError | null } {
-    const countRaw = readInput(inputs.count, this.literals.count ?? 10);
-    const lo    = readInput(inputs.min, this.literals.min ?? 0);
-    const hi    = readInput(inputs.max, this.literals.max ?? 1);
-    if (countRaw === null || lo === null || hi === null) {
-      this.cachedList = null; this.rolls = []; this.lastGen = -1;
-      return { list: null };
-    }
+    // A blank count, min or max is Excel's omitted reading: one value, from 0 to 1.
+    const countRaw = readRole<number | undefined>(this, "count", inputs.count) ?? 1;
+    const lo    = readRole<number | undefined>(this, "min", inputs.min) ?? 0;
+    const hi    = readRole<number | undefined>(this, "max", inputs.max) ?? 1;
     const read = arrayCount(countRaw, "RANDARRAY");
     const count = isSolError(read) ? 0 : read;
     const bad = isSolError(read) ? read
@@ -2179,6 +2200,7 @@ export class FillNode extends ClassicPreset.Node {
 
 // ─── SPECTRUM (FFT) ──────────────────────────────────────────────────────────
 export class SpectrumNode extends ClassicPreset.Node {
+  static inputRoles = { rate: setting(1) };
   static socketDocs: Record<string, string> = {
     rate: "Samples per unit time (Hz if per second); the frequency column is in those units. Leave at 1 for frequency in cycles per sample.",
     result: "One row per frequency bin 0..n/2: frequency, magnitude (a pure sine of amplitude A reads A), phase in radians.",
@@ -2198,8 +2220,8 @@ export class SpectrumNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; rate?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const rate = readInput(inputs.rate, this.literals.rate ?? 1);
-    if (rate === null || arr.length === 0) { this.cachedResult = null; return { result: null }; }
+    const rate = readRole<number>(this, "rate", inputs.rate);
+    if (arr.length === 0) { this.cachedResult = null; return { result: null }; }
     const rows = spectrum(arr, rate);
     this.cachedResult = rows.map((r) => [r.frequency, r.magnitude, r.phase]);
     return { result: this.cachedResult };
@@ -2215,6 +2237,7 @@ export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; param
 };
 
 export class SmoothNode extends ClassicPreset.Node {
+  static inputRoles = { window: setting(LEFT_OUT), order: setting(LEFT_OUT), frac: setting(LEFT_OUT), sigma: setting(LEFT_OUT) };
   static socketDocs: Record<string, string> = {
     list: "Blank and error cells are skipped by the fits and stay blank in the result.",
     window: "Odd number of neighbours, larger than the order.",
@@ -2247,20 +2270,20 @@ export class SmoothNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; window?: number[]; order?: number[]; frac?: number[]; sigma?: number[] }) {
     const arr = inputs.list?.[0] ?? null;
-    const prm = (k: "window" | "order" | "frac" | "sigma", def: number) => readInput(inputs[k], this.literals[k] ?? def);
+    // A blank setting is the op's default, as an unset one is.
+    const prm = (v: number | undefined, def: number) => v ?? def;
     let out: ListCell[] | null;
     if (arr === null) out = null;
     else if (this.op === "savgol") {
-      const w = prm("window", 5), o = prm("order", 2);
-      if (w === null || o === null) out = null;
-      else {
+      const w = prm(readRole(this, "window", inputs.window), 5), o = prm(readRole(this, "order", inputs.order), 2);
+      {
         const why = savgolProblem(arr.length, w, o);
         if (why) { this.cachedList = []; return { result: solError("#DOMAIN!", why) }; }
         out = savgol(arr, w, o);
       }
     }
-    else if (this.op === "lowess") { const f = prm("frac", 0.67); out = f === null ? null : lowess(arr, f); }
-    else { const sg = prm("sigma", 1); out = sg === null ? null : gaussianSmooth(arr, sg); }
+    else if (this.op === "lowess") out = lowess(arr, prm(readRole(this, "frac", inputs.frac), 0.67));
+    else out = gaussianSmooth(arr, prm(readRole(this, "sigma", inputs.sigma), 1));
     this.cachedList = out ?? [];
     return { result: out };
   }

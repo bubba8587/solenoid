@@ -1463,8 +1463,9 @@ registerInternal("REGEXEXTRACT", (text, pat, mode, cs) => {
   return solError("#VALUE!", "REGEXEXTRACT: return_mode must be 0, 1 or 2");
 });
 
+// A left-out bound is no bound on that side ([[D86]] blankRoles).
 registerInternal("CLAMP", (x, lo, hi) => {
-  const n = toNum(x), a = toNum(lo), b = toNum(hi);
+  const n = toNum(x), a = lo == null ? -Infinity : toNum(lo), b = hi == null ? Infinity : toNum(hi);
   return badNum(n, a, b) ? VALUE("CLAMP") : Math.min(Math.max(n, a), b);
 });
 registerInternal("ORDINAL", (x) => {

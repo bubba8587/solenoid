@@ -88,8 +88,8 @@ describe("every Tier 3 name computes what its node computes", () => {
     const win = new RunningNode({ agg: "avg" });
     expect(ev('RUNNING("average", x, 2)', { x: LIST }))
       .toEqual(win.data({ list: [LIST], window: [2] }).result);
-    // A BLANK window is unknown → blank; an unknown aggregator is a #VALUE!.
-    expect(ev('RUNNING("sum", x, w)', { x: LIST, w: null })).toBeNull();
+    // A blank window is the window left out, so cumulative ([[D86]] blankRoles); an unknown aggregator is a #VALUE!.
+    expect(ev('RUNNING("sum", x, w)', { x: LIST, w: null })).toEqual(ev('RUNNING("sum", x)', { x: LIST }));
     const bad = ev('RUNNING("mode", x)', { x: LIST }) as { code?: string };
     expect(bad?.code).toBe("#VALUE!");
   });

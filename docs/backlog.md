@@ -34,11 +34,9 @@ warning is expected.
 
 ## Cubes and lists (author 2026-09-26)
 
-- [ ] **The settings sweep ([[D86]] blankRoles, [[input-roles]]).** Declared so far: TAKE, DROP, EXPAND, INDEX,
-  ROUND(UP/DOWN), CHOOSEROWS/COLS, SORT, SORTBY, UNIQUE, TEXTJOIN, XMATCH, XLOOKUP, TEXTSPLIT, TEXTAFTER, TEXTBEFORE.
-  The rest are proposed in `settings-audit.md` for the author's review (judgment calls first). Once ruled, give each
-  function its `ARG_ROLES` entry and each card `inputRoles` (`rolesFrom` its formula twin, or inline), then clear the
-  `[decided 2026-09-26]` rows of input-roles' "What each input kind does today".
+- [ ] **Review the settings sweep ([[D86]] blankRoles).** Built on Claude's judgement (2026-09-26); the calls and the
+  exact roles are in `settings-audit.md`. Still to sweep: Frame verbs' column references, an as-of Join's tolerance,
+  the Slider's bounds (the `[decided 2026-09-26]` rows of input-roles' "What each input kind does today").
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass

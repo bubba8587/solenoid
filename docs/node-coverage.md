@@ -121,7 +121,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 - **The exceptions are deliberate:**
   - CONCAT / TEXTJOIN reduce a set to one string (Excel's CONCAT flattens an array rather than spilling).
   - TEXTSPLIT and Text Filter already map 1-D to 1-D. Broadcasting would need a rank-2 result, and the lattice has no 1-D to 2-D edge for it.
-  - A separator or pattern that selects a mode (NUMBERVALUE's separators, Text Filter's pattern) stays a scalar, like the date family's basis and weekend code. A wired blank there propagates: TEXTSPLIT(x, blank) is blank.
+  - A separator or pattern that selects a mode (NUMBERVALUE's separators, Text Filter's pattern) stays a scalar, like the date family's basis and weekend code. A wired blank there is a setting left out ([[D86]] blankRoles): TEXTSPLIT's delimiter has no default, so it is `#SYNTAX!`.
   - Text Input and Promo are literal sources, one value each.
   - Regex stays on the wildcard ladder because its element type depends on the op. It emits `anycombo` rather than `any`, so its dot doesn't draw a scalar circle on a port that can spill a list.
 - **Text Transform**: UPPER, LOWER, TRIM, PROPER, CLEAN, UNACCENT and SLUGIFY. PROPER capitalizes after any non-letter, as Excel does.
@@ -129,7 +129,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 - **LEFT / RIGHT / MID**: MID with a length of 0 is `""`, as in Excel.
 - **FIND / SEARCH**: an absent substring is `#VALUE!` "Find text not found within the text", per cell.
 - **SUBSTITUTE**: an instance of 1 or more replaces only that occurrence; blank or 0 replaces every one. Regex REPLACE's occurrence works the same way, like the REGEXREPLACE formula.
-- **TEXTAFTER / TEXTBEFORE**: a blank delimiter is a per-cell blank. **CHAR**: an out-of-range code point is a per-cell blank. **EXACT** emits a logical.
+- **TEXTAFTER / TEXTBEFORE**: an empty delimiter is a per-cell blank. **CHAR**: an out-of-range code point is a per-cell blank. **EXACT** emits a logical.
 - **NUMBERVALUE**: the separators default to `.` and `,` (a blank field shows the default). It strips group separators, normalizes the decimal, drops all whitespace, then peels trailing `%` signs (each divides by 100). The parse is strict: `12x` is `#VALUE!`, and an empty cell is blank.
 - **FIXED / DOLLAR**: decimals truncate toward zero, default 2, and a negative count rounds left of the point: FIXED(12345.678, −2) = "12,300", DOLLAR gives "$12,300".
 - **ROMAN** spans 1–3999, else `#VALUE!`; **ARABIC** gives blank for empty text and `#VALUE!` for a non-Roman character.

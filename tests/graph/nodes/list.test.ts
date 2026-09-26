@@ -376,8 +376,8 @@ describe("Running — last N (window slides)", () => {
     expect(r).toEqual([2, 2, 4]); // [2], [2,·], [·,4]
   });
 
-  it("a wired blank window leaves the result unknown", () => {
-    expect(windowed("sum").data({ list: [[1, 2]], window: [null as never] }).result).toBeNull();
+  it("a wired blank window is the window left out, so cumulative", () => {
+    expect(windowed("sum").data({ list: [[1, 2]], window: [null as never] }).result).toEqual([1, 3]);
   });
 
   it("a window of 0 (the literal default) is cumulative; 1 or more slides", () => {
@@ -548,19 +548,16 @@ describe("Filter — condition rows over the list's own values ([[C49]] filterOn
     expect(out.dropped).toBeNull();
   });
 
-  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired null is UNKNOWN", () => {
+  it("a WIRED scalar drives a Value row (the `any` socket): number, boolean, and a wired blank skips the condition", () => {
     const n = mk([{ op: "gt", value: "999" }]); // literal is overridden by the cable
     expect(n.data({ list: [[1, 5, 10]], value0: [4] }).result).toEqual([5, 10]);
     // Boolean threshold on a logical list (stringifies to "true").
     const nb = mk([{ op: "eq", value: "" }]);
     expect(nb.data({ list: [[true, false, true]], value0: [true] }).result).toEqual([true, true]);
-    // A wired MISSING makes the condition unevaluable, so which elements survive is
-    // unknown — blank out, NOT the unfiltered list. That reading (an empty literal's
-    // "not written yet") belongs to the UNWIRED slot only; tree/specs/values/value-semantics.md,
-    // "Reading an input" -> "absent is not unknown".
+    // A wired blank is the condition left out, so the list passes through ([[D86]] blankRoles).
     const nn = mk([{ op: "gt", value: "2" }]);
     const out = nn.data({ list: [[1, 5]], value0: [null] });
-    expect(out.result).toBeNull();
+    expect(out.result).toEqual([1, 5]);
     expect(out.dropped).toBeNull();
     // The UNWIRED slot with an empty literal still passes the list through.
     expect(mk([{ op: "gt", value: "" }]).data({ list: [[1, 5]] }).result).toEqual([1, 5]);

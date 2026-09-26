@@ -1,6 +1,7 @@
 // [[B11]], [[C113]]
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
+import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, readRole, BASIS_DOC } from "./shared";
+import { setting } from "../inputRoles";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
 import { solError, type SolError } from "../errorValue";
@@ -700,6 +701,7 @@ export const COUPON_OP_META = {
 } satisfies Record<CouponOp, { label: string; description: string }>;
 
 export class CouponNode extends ClassicPreset.Node {
+  static inputRoles = { frequency: setting(2), basis: setting(0) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
     basis: BASIS_DOC,
@@ -725,9 +727,8 @@ export class CouponNode extends ClassicPreset.Node {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const freq  = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (freq === null || basis === null) { this.cachedResult = null; return { result: null }; }
+    const freq  = readRole<number>(this, "frequency", inputs.frequency);
+    const basis = readRole<number>(this, "basis", inputs.basis);
     const result = couponValue(this.op, s, m, freq, basis);
     this.cachedResult = result;
     return { result };
@@ -754,6 +755,7 @@ function accruedInterestKeys(op: AccruedInterestOp): string[] {
 }
 
 export class AccruedInterestNode extends ClassicPreset.Node {
+  static inputRoles = { basis: setting(0), frequency: setting(2) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
     basis: BASIS_DOC,
@@ -802,12 +804,11 @@ export class AccruedInterestNode extends ClassicPreset.Node {
     if (is == null || ss == null) return fail();
     const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
     const par   = readInput(inputs.par, this.literals.par ?? 1000);
-    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (rate === null || par === null || basis === null) return fail();
+    const basis = readRole<number>(this, "basis", inputs.basis);
+    if (rate === null || par === null) return fail();
     let result: number | null;
     if (this.op === "periodic") {
-      const freq = readInput(inputs.frequency, this.literals.frequency ?? 2);
-      if (freq === null) return fail();
+      const freq = readRole<number>(this, "frequency", inputs.frequency);
       result = accrint(is, ss, rate, par, freq, basis);
     } else {
       result = accrintM(is, ss, rate, par, basis);
@@ -967,6 +968,7 @@ export const DURATION_OP_META = {
 } satisfies Record<DurationOp, { label: string; description: string }>;
 
 export class DurationNode extends ClassicPreset.Node {
+  static inputRoles = { frequency: setting(2), basis: setting(0) };
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
     basis: BASIS_DOC,
@@ -995,9 +997,9 @@ export class DurationNode extends ClassicPreset.Node {
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const coupon = readInput(inputs.coupon, this.literals.coupon ?? 0.08);
     const yld    = readInput(inputs.yld, this.literals.yld ?? 0.09);
-    const freq   = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    const basis  = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (coupon === null || yld === null || freq === null || basis === null) { this.cachedResult = null; return { result: null }; }
+    const freq   = readRole<number>(this, "frequency", inputs.frequency);
+    const basis  = readRole<number>(this, "basis", inputs.basis);
+    if (coupon === null || yld === null) { this.cachedResult = null; return { result: null }; }
     const result = durationValue(this.op, s, m, coupon, yld, freq, basis);
     this.cachedResult = result;
     return { result };
@@ -1037,6 +1039,7 @@ const isOddFirst = (op: BondPricingOp) => op === "oddfprice" || op === "oddfyiel
 const isOddLast  = (op: BondPricingOp) => op === "oddlprice" || op === "oddlyield";
 
 export class BondPricingNode extends ClassicPreset.Node {
+  static inputRoles = { frequency: setting(2) };
   static socketDocs: Record<string, string> = {
     issue: "Left unwired, the issue date falls back to the settlement date.",
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
@@ -1075,8 +1078,8 @@ export class BondPricingNode extends ClassicPreset.Node {
     if (s == null || m == null) return fail();
     const rate       = readInput(inputs.rate, this.literals.rate ?? 0.065);
     const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
-    const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    if (rate === null || redemption === null || freq === null) return fail();
+    const freq       = readRole<number>(this, "frequency", inputs.frequency);
+    if (rate === null || redemption === null) return fail();
     const isPrice = this.op === "price" || this.op === "oddfprice" || this.op === "oddlprice";
     const yldOrPrice = isPrice
       ? readInput(inputs.yld, this.literals.yld ?? 0.07)

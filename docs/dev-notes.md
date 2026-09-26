@@ -45,6 +45,11 @@ specific item.
   Filled in the author's absence: MODE.MULT's several ranges; TEXTSPLIT's row delimiter, ignore_empty, match_mode and
   pad_with; TEXTAFTER / TEXTBEFORE's instance_num, match_mode, match_end and if_not_found; VDB's no_switch; TREND and
   GROWTH's const. `settings-audit.md` proposes the settings sweep's roles for review.
+- **The settings sweep** ([[D86]] blankRoles, built on Claude's judgement at the author's word): `ARG_ROLES` covers about
+  150 functions; the cards read their settings through `readRole` (Series per op, `readAsRole`); a blank filter condition
+  skips the condition ([[C24]]'s consequence overturned). A required setting with a working Excel blank reads as it
+  (a blank `cumulative` is FALSE), otherwise `#SYNTAX!`; distribution parameters are data; CLAMP's blank bound is no
+  bound. For review: `settings-audit.md`.
 - **Socket labels** carry no parentheticals: "(1-based)" moved to the Inspector's socket notes ([[C19]] namingModel, the
   author's words); the rest are a backlog sweep.
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
@@ -52,8 +57,8 @@ specific item.
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); the settings sweep (review
-  `settings-audit.md` first); whether List Sort and List Filter keep their names now they take tables; the parity
-  list's remaining gaps (backlog); the Cubes and lists section of the backlog, next up a blank in a typed list literal;
-  the plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`).
-  The outbox is empty.
+- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); a review of the settings sweep
+  (`settings-audit.md`); whether List Sort and List Filter keep their names now they take tables; the parity list's
+  remaining gaps (backlog); the Cubes and lists section of the backlog, next up a blank in a typed list literal; the
+  plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The
+  outbox is empty.

@@ -83,10 +83,11 @@ describe("a wired-blank SCALAR argument propagates through a whole-arg native", 
     expect(ev("CONTAINS(x, v)", { x: [1, null, 3], v: null })).toBeNull();
   });
 
-  it("SLICE / NTHELEMENT / PADLEFT with a blank scalar are blank", () => {
-    expect(ev("SLICE(x, s)", { x, s: null })).toBeNull();
-    expect(ev("NTHELEMENT(x, n)", { x, n: null })).toBeNull();
-    expect(ev("PADLEFT(x, n, 0)", { x, n: null })).toBeNull();
+  it("SLICE / NTHELEMENT / PADLEFT with a blank setting have no default, so #SYNTAX! ([[D86]] blankRoles)", () => {
+    for (const f of ["SLICE(x, s)", "NTHELEMENT(x, s)", "PADLEFT(x, s, 0)"]) {
+      const r = ev(f, { x, s: null });
+      expect(isSolError(r) && r.code, f).toBe("#SYNTAX!");
+    }
   });
 
   it("the exemptions still work: FILLVALUE(list, blank) fills with missing", () => {

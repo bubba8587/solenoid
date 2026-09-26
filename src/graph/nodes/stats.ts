@@ -1,6 +1,7 @@
 // [[B11]], [[C113]], [[C17]] shareImpl
 import { ClassicPreset } from "rete";
-import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut } from "./shared";
+import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, readRole, tableIn, tableOut, frameOut, strOut } from "./shared";
+import { rolesFrom, required, setting } from "../inputRoles";
 import { rk4 } from "./odeOps";
 import type { Shape } from "../frameShape";
 import { resolveFn } from "./tableLambda";
@@ -67,6 +68,7 @@ const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
 };
 
 export class RankPercentileNode extends ClassicPreset.Node {
+  static inputRoles = { ...rolesFrom("LARGE", { k: 1 }), ...rolesFrom("PERCENTILE", { p: 1 }), ...rolesFrom("QUARTILE", { q: 1 }), ...rolesFrom("PERCENTRANK", { significance: 2 }), ...rolesFrom("RANK", { order: 2 }) };
   static socketDocs: Record<string, string> = {
     significance: "The rank truncates to this many digits. It does not round.",
     order: "0 ranks the largest value 1, as Excel does. Any other number ranks the smallest value 1.",
@@ -124,15 +126,14 @@ export class RankPercentileNode extends ClassicPreset.Node {
       const arr = inputs.list?.[0] ?? null;
       const v = readInput(inputs.value, this.literals.value ?? null);
       if (family === "percentrank") {
-        const sigRaw = readInput(inputs.significance, this.literals.significance ?? 3);
-        if (sigRaw === null) { this.cachedResult = null; return { result: null }; }
+        const sigRaw = readRole<number | undefined>(this, "significance", inputs.significance) ?? 3;
         if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
         const result = excelPercentRank(arr as number[], v, Math.round(sigRaw), exc);
         this.cachedResult = result;
         return { result };
       }
-      const order = readInput(inputs.order, this.literals.order ?? 0);
-      if (!arr || arr.length === 0 || v === null || order === null) { this.cachedResult = null; return { result: null }; }
+      const order = readRole<number | undefined>(this, "order", inputs.order) ?? 0;
+      if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
       const result = excelRank(v, arr as number[], this.op === "rank-avg", order !== 0);
       this.cachedResult = result;
       return { result };
@@ -144,16 +145,15 @@ export class RankPercentileNode extends ClassicPreset.Node {
     let result: number | SolError | null = null;
 
     if (family === "nth") {
-      const kRaw = readInput(inputs.k, this.literals.k ?? 1);
-      if (kRaw === null) { this.cachedResult = null; return { result: null }; }
+      const kRaw = readRole<number | SolError>(this, "k", inputs.k);
+      if (isSolError(kRaw)) { this.cachedResult = kRaw; return { result: kRaw }; }
       result = nthExtreme(arr, kRaw, this.op === "large");
     } else if (family === "percentile") {
-      const p = readInput(inputs.p, this.literals.p ?? 0.5);
-      if (p === null) { this.cachedResult = null; return { result: null }; }
+      const p = readRole<number | SolError>(this, "p", inputs.p);
+      if (isSolError(p)) { this.cachedResult = p; return { result: p }; }
       result = percentile(arr, p, exc);
     } else {
-      const qRaw = readInput(inputs.q, this.literals.q ?? 2);
-      if (qRaw === null) { this.cachedResult = null; return { result: null }; }
+      const qRaw = readRole<number>(this, "q", inputs.q);
       result = quartile(arr, qRaw, exc);
     }
     this.cachedResult = result;
@@ -448,6 +448,7 @@ export class ModeNode extends ClassicPreset.Node {
 // ─── TrimMean ─────────────────────────────────────────────────────────────────
 
 export class TrimMeanNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("TRIMMEAN", { percent: 1 });
   static socketDocs: Record<string, string> = {
     percent: "A fraction from 0 to 1, not a whole-number percent. Half of the trimmed count comes off each end.",
   };
@@ -468,8 +469,7 @@ export class TrimMeanNode extends ClassicPreset.Node {
 
   data(inputs: { list?: number[][]; percent?: number[] }): { result: number | SolError | null } {
     const arr = inputs.list?.[0] ?? null;
-    const percent = readInput(inputs.percent, this.literals.percent ?? 0.1);
-    if (percent === null) { this.cachedResult = null; return { result: null }; }
+    const percent = readRole<number>(this, "percent", inputs.percent);
     if (!arr || arr.length === 0) { this.cachedResult = null; return { result: null }; }
     const result = excelTrimmean(arr, percent);
     this.cachedResult = result;
@@ -1022,6 +1022,7 @@ export class ProbNode extends ClassicPreset.Node {
 
 // ─── FORECAST (ETS) — Holt–Winters ────────────────────────────────────────────
 export class EtsForecastNode extends ClassicPreset.Node {
+  static inputRoles = { horizon: required, season: setting(1) };
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first: monthly sales, daily visits. Blanks are dropped.",
     horizon: "How many steps ahead to forecast.",
@@ -1054,9 +1055,10 @@ export class EtsForecastNode extends ClassicPreset.Node {
     const prep = forAggregate(inputs.values?.[0] ?? []);
     if (prep.error) { this.cachedResult = prep.error; this.cachedSeason = null; return { forecast: prep.error, detected: null }; }
     const y = prep.nums;
-    const horizon = readInput(inputs.horizon, this.literals.horizon ?? 6);
-    const seasonArg = readInput(inputs.season, this.literals.season ?? 1);
-    if (horizon === null || seasonArg === null || y.length < 3) return blank();
+    const horizon = readRole<number | SolError>(this, "horizon", inputs.horizon);
+    const seasonArg = readRole<number>(this, "season", inputs.season);
+    if (isSolError(horizon)) { this.cachedResult = horizon; this.cachedSeason = null; return { forecast: horizon, detected: null }; }
+    if (y.length < 3) return blank();
     const h = Math.max(1, Math.round(horizon));
     const m = seasonArg === 1 ? detectSeason(y) : Math.max(1, Math.round(seasonArg));
     const fit = fitEts(y, m) ?? (m > 1 ? fitEts(y, 1) : null);
@@ -1143,6 +1145,7 @@ export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; descr
 };
 
 export class DecomposeNode extends ClassicPreset.Node {
+  static inputRoles = { period: required };
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first; needs at least two full periods.",
     period: "Season length in steps: 12 for monthly data with a yearly cycle, 7 for daily with a weekly one.",
@@ -1170,8 +1173,9 @@ export class DecomposeNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | null | SolError)[][]; period?: number[] }): { decomposition: FrameValue | SolError | null } {
     const blank = (err: SolError | null = null) => { this.cachedResult = err; return { decomposition: err }; };
     const raw = inputs.values?.[0] ?? null;
-    const period = readInput(inputs.period, this.literals.period ?? 12);
-    if (raw === null || period === null) return blank();
+    const period = readRole<number | SolError>(this, "period", inputs.period);
+    if (isSolError(period)) return blank(period);
+    if (raw === null) return blank();
     const err = raw.find((v): v is SolError => isSolError(v));
     if (err) return blank(err);
     const nums = raw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
@@ -1190,6 +1194,7 @@ export class DecomposeNode extends ClassicPreset.Node {
 // ─── ODE Integrate (RK4) — scipy solve_ivp / R deSolve ─────────────────────────
 
 export class OdeIntegrateNode extends ClassicPreset.Node {
+  static inputRoles = { steps: setting(100) };
   static socketDocs: Record<string, string> = {
     y0: "The value of y at t0.",
     t0: "Start of the interval.",
@@ -1228,8 +1233,8 @@ export class OdeIntegrateNode extends ClassicPreset.Node {
     const y0 = readInput(inputs.y0, this.literals.y0 ?? 1);
     const t0 = readInput(inputs.t0, this.literals.t0 ?? 0);
     const t1 = readInput(inputs.t1, this.literals.t1 ?? 1);
-    const steps = readInput(inputs.steps, this.literals.steps ?? 100);
-    if (y0 === null || t0 === null || t1 === null || steps === null) { this.cachedResult = null; return { solution: null }; }
+    const steps = readRole<number>(this, "steps", inputs.steps);
+    if (y0 === null || t0 === null || t1 === null) { this.cachedResult = null; return { solution: null }; }
     const f = (t: number, y: number): number | null => {
       const r = fn(t, y);
       return typeof r === "number" && Number.isFinite(r) ? r : null;

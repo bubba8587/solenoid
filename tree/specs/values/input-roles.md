@@ -85,7 +85,7 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 ## What each input kind does today
 
-The roles replace an older per-kind table in which most non-data inputs propagated a blank. Rows marked `[decided 2026-09-26]` are settings under [[D86]] blankRoles that still propagate until the settings sweep reaches them (backlog); the declared functions (TAKE, DROP, EXPAND, INDEX, ROUND, CHOOSEROWS/COLS, SORT, SORTBY, UNIQUE, and TEXTJOIN, XMATCH and XLOOKUP's modes) are done.
+The roles replace an older per-kind table in which most non-data inputs propagated a blank. The settings sweep (2026-09-26, Claude's judgement, `docs/settings-audit.md` for review) declared about 150 formula functions and their cards. Rows still marked `[decided 2026-09-26]` are settings under [[D86]] blankRoles that still propagate.
 
 | Input kind | Role | A wired blank today | Example |
 |---|---|---|---|
@@ -93,14 +93,16 @@ The roles replace an older per-kind table in which most non-data inputs propagat
 | a member of a reduction | data | skipped, as SUM skips nulls ([[D36]] nullSkippedNotZero) | `CONCAT(blank, "b")` is `"b"` |
 | a figure's datum: a chart's values, a KPI's number | data | renders an empty figure, never a `SolError` out a `chart` socket | Gauge, KPI |
 | a filter predicate, one per row | data | drops that row | Filter |
-| a declared setting or pick | setting / picks | read by its role | TAKE's rows, INDEX's position, ROUND's digits |
-| a check's parameter: Expect's bound or pattern | setting | skips that check and passes the data through (already the setting reading) | Expect |
-| a presentation annotation: options, decimals, a color | setting | the neutral default, never the card's styling (already the setting reading) | chart Options |
-| a mode selector: basis, delimiter, pattern | setting `[decided 2026-09-26]` | propagates | `TEXTSPLIT(x, blank)` is blank |
-| a shape: rows, columns, count, wrap width | setting `[decided 2026-09-26]` | propagates | `MAKEARRAY(blank, 3)` is blank; Series' count |
-| an optional bound or tolerance | setting `[decided 2026-09-26]` | propagates | Clamp's min; an as-of Join's tolerance; Slice's end |
+| a distribution's parameter: a mean, a shape, a probability | data | propagates | `NORM.DIST(x, blank, 1, TRUE)` is blank |
+| a mode selector: basis, type, method, delimiter, cumulative | setting | its default; with none, `#SYNTAX!` | `NORM.DIST(x, 0, 1, blank)` is the density (FALSE); `TEXTSPLIT(x, blank)` is `#SYNTAX!` |
+| a shape or count: rows, columns, count, wrap width, window | setting | its default; with none, `#SYNTAX!` | `RUNNING("sum", x, blank)` is cumulative; `MAKEARRAY(blank, 3, f)` is `#SYNTAX!` |
+| an optional bound or tolerance | setting | no bound, or the default tolerance | Clamp's min; Is Close's tolerance; Slice's end |
+| a position | picks, or a required setting where a list must stay aligned | dropped (picks) or `#SYNTAX!` | INDEX's position; CHOOSE's index; Get Row |
+| a check's parameter: Expect's bound or pattern | setting | skips that check and passes the data through | Expect |
+| a presentation annotation: options, decimals, a color | setting | the neutral default, never the card's styling | chart Options |
+| a filter condition's column or comparison value | setting | the condition is left out, so it keeps every row, overturning [[C24]]'s blank-filter consequence | List Filter, Frame Filter, SUMIFS |
 | a column reference: which column to sort, group or look up by | setting or required `[decided 2026-09-26]` | propagates: a blank Frame out | Frame Sort, Get Column |
-| a filter condition's column or comparison value | setting `[decided 2026-09-26]`: a blank condition keeps every row, overturning [[C24]]'s blank-filter consequence | propagates: the whole result is blank | Filter, SUMIFS |
+| an as-of Join's tolerance | setting `[decided 2026-09-26]` | propagates | Join |
 | a control's bound: Slider min, max, step | setting `[decided 2026-09-26]`; its default is the bound the widget needs | falls back to the card's own value | Slider |
 
 Two dispositions keep their reason under the new roles:

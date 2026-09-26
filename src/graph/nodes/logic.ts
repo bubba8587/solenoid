@@ -1,6 +1,7 @@
 // [[D38]] kleeneLogic, [[D36]] nullSkippedNotZero
 import { ClassicPreset } from "rete";
-import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput, keepInputLast } from "./shared";
+import { numListIn, logicalComboOut, logicalComboIn, logicalIn, numIn, anyIn, trueAnyIn, trueAnyOut, staticTrueAnyOut, readInput, readRole, keepInputLast } from "./shared";
+import { rolesFrom } from "../inputRoles";
 import type { PassthroughSpec } from "./passthrough";
 import { isSolError, isNaError, solError, type SolError } from "../errorValue";
 import { kleeneAnd, kleeneOr, kleeneNot, isMissing, cellError, ifTest, type Tri } from "../valueKinds";
@@ -173,6 +174,7 @@ export class BetweenNode extends ClassicPreset.Node {
 }
 
 export class IsCloseNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("ISCLOSE", { tol: 2 });
   static socketDocs: Record<string, string> = {
     result: "TRUE when |A − B| ≤ tolerance: approximate equality for floats. Broadcasts element-wise. math.isclose.",
   };
@@ -194,9 +196,8 @@ export class IsCloseNode extends ClassicPreset.Node {
   data(inputs: { a?: unknown[]; b?: unknown[]; tol?: number[] }) {
     const a = (inputs.a?.length ? inputs.a[0] : this.literals.a) ?? null;
     const b = (inputs.b?.length ? inputs.b[0] : this.literals.b) ?? null;
-    const tol = readInput(inputs.tol, this.literals.tol ?? 1e-9);
-    const result: Tri | Tri[] = tol === null ? null
-      : broadcastEl<unknown, Tri>((x, y) => (typeof x === "number" && typeof y === "number" ? Math.abs(x - y) <= tol : null), a, b);
+    const tol = readRole<number | undefined>(this, "tol", inputs.tol) ?? 1e-9;
+    const result: Tri | Tri[] = broadcastEl<unknown, Tri>((x, y) => (typeof x === "number" && typeof y === "number" ? Math.abs(x - y) <= tol : null), a, b);
     this.cachedResult = result;
     return { result };
   }
@@ -519,6 +520,7 @@ export class NaNode extends ClassicPreset.Node {
 // ─── Choose ───────────────────────────────────────────────────────────────────
 
 export class ChooseNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("CHOOSE", { index: 0 });
   static socketDocs: Record<string, string> = {
     index: "A fractional index drops its fraction, like Excel, and an out-of-range one is #VALUE! rather than blank.",
   };
@@ -570,8 +572,8 @@ export class ChooseNode extends ClassicPreset.Node {
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const idxRaw = readInput(inputs.index as (number | null)[] | undefined, this.literals.index ?? 1);
-    if (idxRaw === null) { this.cachedResult = null; return { result: null }; }
+    const idxRaw = readRole<number | SolError>(this, "index", inputs.index);
+    if (isSolError(idxRaw)) { this.cachedResult = idxRaw; return { result: idxRaw }; }
     const idx = Math.trunc(idxRaw);
     const keys = this.valueInputKeys();
     const key = idx >= 1 && idx <= keys.length ? keys[idx - 1] : undefined;
