@@ -28,8 +28,8 @@ import {
   running, type RunningOp, argMinMax, containsValue, weighted, linspace, repeatValue,
   geometric, fibonacci, MAX_GENERATED, arrayCount, setOperation, setRelation, fillList, rangeList, rangeCount, setKey,
   shuffleList,
-  firstError as firstListError, sequenceList, uniqueList, sortList, sortByKeys,
-  takeSlice, dropSlice, filterByMask, randArrayRange, randArrayDraw, modeMult, frequencyBins,
+  firstError as firstListError, sequenceList, asRowsOf, backToList, sortGrid, sortGridByKeys, filterGrid, uniqueGrid,
+  takeSlice, dropSlice, randArrayRange, randArrayDraw, modeMult, frequencyBins,
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
@@ -675,10 +675,10 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   TOROW:      { returns: "any", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 3], native: true },
   SEQUENCE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 4], native: true },
 
-  UNIQUE:      { returns: "number", rank: "list", listArgs: true, arity: [1, 1] },
-  SORT:        { returns: "any", rank: "list", listArgs: true, arity: [1, 3] },
-  SORTBY:      { returns: "any", rank: "list", listArgs: true, arity: [2, 3], native: true },
-  FILTER:      { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
+  UNIQUE:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 3] },
+  SORT:        { returns: "any", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 4] },
+  SORTBY:      { returns: "any", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 255], native: true },
+  FILTER:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   TAKE:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   DROP:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3] },
   "MODE.MULT": { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "statistics" },
@@ -1825,37 +1825,47 @@ registerInternal("SEQUENCE", (rows, cols, start, step) => {
   return wrapCells(flat, c, "rows", () => null); // r × c cells fill exactly, so the pad never fires.
 });
 
-registerInternal("UNIQUE", (v) => (v == null ? null : uniqueList(toList(v))));
-registerInternal("SORT", (v, sortIndex, order) => {
+// [[D85]] columnsStayColumns: a list is one row, so these read it as Excel reads a 1 × n range. SORT and UNIQUE work on rows
+// unless by_col is TRUE, so on a list they change nothing without it, exactly as in Excel (the author's call, 2026-09-26).
+const sortOrder = (fn: string, o: unknown): boolean | SolError => {
+  const n = o == null ? 1 : toNum(o);
+  return n === 1 ? false : n === -1 ? true : solError("#VALUE!", `${fn}: sort_order is 1 or -1`);
+};
+const truthy = (v: unknown): boolean => v != null && v !== false && v !== 0;
+registerInternal("UNIQUE", (v, byCol, exactlyOnce) => {
   if (v == null) return null;
-  if (sortIndex != null && Number(sortIndex) !== 1) {
-    return solError("#SHAPE!", "A list has one column, so SORT's sort_index must be 1 or left out");
-  }
-  return sortList(toList(v) as ListCell[], Number(order ?? 1) === -1);
+  const { m, list } = asRowsOf(v);
+  return backToList(uniqueGrid(m, truthy(byCol), truthy(exactlyOnce)), list);
 });
-registerInternal("SORTBY", (v, by, order) => {
-  if (v == null || by == null) return null;
-  const arr = toList(v), keys = toList(by);
-  if (keys.length !== arr.length) return solError("#SHAPE!", `SORTBY's key list has ${keys.length} values but the list has ${arr.length}`);
-  const o = order == null ? 1 : toNum(order);
-  if (o !== 1 && o !== -1) return solError("#VALUE!", "SORTBY's sort_order is 1 or -1");
-  return sortByKeys(arr, keys, o === -1);
+registerInternal("SORT", (v, sortIndex, order, byCol) => {
+  if (v == null) return null;
+  const desc = sortOrder("SORT", order);
+  if (isSolError(desc)) return desc;
+  const { m, list } = asRowsOf(v);
+  const out = sortGrid(m, sortIndex == null ? 1 : toNum(sortIndex), desc, truthy(byCol));
+  return isSolError(out) ? out : backToList(out, list);
+});
+registerInternal("SORTBY", (v, ...pairs) => {
+  if (v == null) return null;
+  const keys: { key: unknown; desc: boolean }[] = [];
+  for (let i = 0; i < pairs.length; i += 2) {
+    if (pairs[i] == null) return null;
+    const desc = sortOrder("SORTBY", pairs[i + 1]);
+    if (isSolError(desc)) return desc;
+    keys.push({ key: pairs[i], desc });
+  }
+  const { m, list } = asRowsOf(v);
+  const out = sortGridByKeys(m, keys);
+  return isSolError(out) ? out : backToList(out, list);
 });
 registerInternal("FILTER", (v, include, ifEmpty) => {
   if (v == null || include == null) return null;
-  const arr = toList(v), mask = toList(include);
-  if (arr.length !== mask.length) {
-    return solError("#SHAPE!", "FILTER's include array must be the same size as the data");
-  }
-  const out = filterByMask(arr, mask);
+  const { m, list } = asRowsOf(v);
+  const out = filterGrid(m, include);
   if (isSolError(out)) return out;
-  if (out.length === 0 && ifEmpty !== undefined && ifEmpty !== null) return ifEmpty;
-  return out;
+  if ((out.length === 0 || out[0].length === 0) && ifEmpty !== undefined && ifEmpty !== null) return ifEmpty;
+  return list ? (out[0] ?? []) : out;
 });
-// [[D85]] columnsStayColumns: a list is one row, so its items are columns; the answer is a list again when one row is left.
-const asRowsOf = (v: unknown): { m: unknown[][]; list: boolean } =>
-  Array.isArray(v) && v.length > 0 && Array.isArray(v[0]) ? { m: v as unknown[][], list: false } : { m: [toList(v)], list: true };
-const backToList = (m: unknown[][], list: boolean): unknown => (list && m.length === 1 ? m[0] : m);
 registerInternal("TAKE", (v, rows, cols) => {
   // A blank count arrives as undefined and keeps its axis ([[D86]]).
   if (v == null) return null;

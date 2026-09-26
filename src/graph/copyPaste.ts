@@ -120,10 +120,12 @@ export const INIT_FIELD_ORDER = [
   "stamp", "split",
   "pageName",
   "scanBy", "skipCells", "indexAxes",
+  "byCol", "exactlyOnce",
 ] as const;
 
 export const INIT_EXTRA_FIELD_ORDER = [
   "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "varUnits", "bindings",
+  "keyOrder",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -147,6 +149,11 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
         .filter(([k]) => `value${k}` in liveInputs || `column${k}` in liveInputs)
         .map(([k, v]) => [k, { ...v }]),
     );
+  }
+  if (n.keyOrder && typeof n.keyOrder === "object") {
+    const liveInputs = (n.inputs ?? {}) as Record<string, unknown>;
+    const entries = Object.entries(n.keyOrder as Record<string, string>).filter(([k]) => `key${k}` in liveInputs);
+    if (entries.length) init.keyOrder = Object.fromEntries(entries);
   }
   if (n.fieldTypes && typeof n.fieldTypes === "object") {
     init.fieldTypes = { ...(n.fieldTypes as object) };

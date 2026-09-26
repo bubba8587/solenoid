@@ -44,7 +44,9 @@ warning is expected.
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass
   § Typed list literals) while `1,x,3` is `[1, null, 3]` and a wired blank stays in place.
-- [ ] **SORT and FILTER on a matrix** are `#SHAPE!` (SORT works on one list; FILTER on a 1 × N matrix too).
+- [ ] **Affordances for do-nothing sorts** (the author, 2026-09-26, if needed): SORT and UNIQUE on a list change nothing
+  without by_col. Options named: card toggles (built), a custom LISTSORT / ROWSORT with shortcut behavior, or `#SYNTAX!` on a
+  do-nothing setup ("drastic").
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Excel-signature parity check** (author asked 2026-09-26): a reference of Excel's real signatures and a test that
   fails when a registration's `arity` max is below Excel's. TOCOL and TOROW shipped one argument short of Excel's three

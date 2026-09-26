@@ -56,7 +56,7 @@ describe("error filter predicates", () => {
     // one condition row (value0), op noterror (no value needed)
     f.condConfig["0"] = { op: "noterror" };
     const out = f.data({ list: [[1, solError("#DIV/0!", "x"), 3, solError("#N/A", "y")]] });
-    expect(out.result!.map(code)).toEqual([1, 3]);
+    expect((out.result as unknown[]).map(code)).toEqual([1, 3]);
     expect(out.dropped!.map(code)).toEqual(["#DIV/0!", "#N/A"]);
   });
 
@@ -64,7 +64,7 @@ describe("error filter predicates", () => {
     const f = new FilterNode();
     f.condConfig["0"] = { op: "iserror" };
     const out = f.data({ list: [[1, solError("#DIV/0!", "x"), 3]] });
-    expect(out.result!.map(code)).toEqual(["#DIV/0!"]);
+    expect((out.result as unknown[]).map(code)).toEqual(["#DIV/0!"]);
   });
 
   it("filterRowsMulti drops rows whose column holds an error (frame path)", () => {

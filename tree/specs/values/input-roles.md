@@ -85,7 +85,7 @@ CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
 
 ## What each input kind does today
 
-The roles replace an older per-kind table in which most non-data inputs propagated a blank. Rows marked `[decided 2026-09-26]` are settings under [[D86]] blankRoles that still propagate until the settings sweep reaches them (backlog); the six declared functions (TAKE, DROP, EXPAND, INDEX, ROUND, CHOOSEROWS/COLS) and TEXTJOIN, XMATCH and XLOOKUP's modes are done.
+The roles replace an older per-kind table in which most non-data inputs propagated a blank. Rows marked `[decided 2026-09-26]` are settings under [[D86]] blankRoles that still propagate until the settings sweep reaches them (backlog); the declared functions (TAKE, DROP, EXPAND, INDEX, ROUND, CHOOSEROWS/COLS, SORT, SORTBY, UNIQUE, and TEXTJOIN, XMATCH and XLOOKUP's modes) are done.
 
 | Input kind | Role | A wired blank today | Example |
 |---|---|---|---|

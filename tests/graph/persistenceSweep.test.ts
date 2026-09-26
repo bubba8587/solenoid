@@ -201,7 +201,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     lambdaSig: "derived from the host's lambda config",
     equation: "parsed from expr", lhsEval: "compiled from expr", rhsEval: "compiled from expr",
     solvers: "derived solver table from expr", nextCondId: "counter re-derived from live row keys",
-    nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys",
+    nextInputId: "counter re-derived from live row keys", nextPairId: "counter re-derived from live row keys", nextKeyId: "counter re-derived from live row keys",
     effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
     // ── recomputed from inputs every engine pass ──
     chartOptions: "parsed per data() from the persisted options input/literal",

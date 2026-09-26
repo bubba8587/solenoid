@@ -200,12 +200,17 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   it("UNIQUE / SORT / SORTBY match their nodes (incl. blanks-last)", async () => {
     const { UniqueNode, SortNode } = await import("../../src/graph/nodes/list");
     const x = [3, 1, 3, null, 2];
-    expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual(new UniqueNode().data({ list: [[3, 1, 3, 2]] }).result);
-    expect(ev("SORT(x)", { x })).toEqual(new SortNode({ order: "asc" }).data({ list: [x] }).result);
-    expect(ev("SORT(x,,-1)", { x })).toEqual(new SortNode({ order: "desc" }).data({ list: [x] }).result);
-    // SORTBY is the Sort node's optional `by` input (equal-length ⇒ same as the formula's pad).
+    const m = [[2, "b"], [1, "a"], [2, "b"]];
+    expect(ev("UNIQUE(x, TRUE)", { x: [3, 1, 3, 2] })).toEqual(new UniqueNode({ byCol: true }).data({ list: [[3, 1, 3, 2]] }).result);
+    expect(ev("UNIQUE(m)", { m })).toEqual(new UniqueNode().data({ list: [m] }).result);
+    expect(ev("SORT(x,,,TRUE)", { x })).toEqual(new SortNode({ order: "asc", byCol: true }).data({ list: [x] }).result);
+    expect(ev("SORT(x,,-1,TRUE)", { x })).toEqual(new SortNode({ order: "desc", byCol: true }).data({ list: [x] }).result);
+    expect(ev("SORT(m)", { m })).toEqual(new SortNode().data({ list: [m] }).result);
+    // SORTBY is the Sort card's key rows.
     const a = ["x", "y", "z"], by = [3, 1, 2];
-    expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(new SortNode().data({ list: [a], by: [by] }).result);
+    const card = new SortNode();
+    const key = card.addValueInput();
+    expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(card.data({ list: [a], [key]: [by] }).result);
   });
 
   it("INDEX is the node's accessor — whole-axis and rank 2, not a 1-D pick", async () => {
@@ -269,7 +274,7 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
     expect(ev("FILTER(x, x > 99, 0)", { x })).toBe(0);      // if_empty
     expect(ev("FILTER(x, x > 99)", { x })).toEqual([]);      // no if_empty → empty list
     const r = ev("FILTER(x, y)", { x, y: [1, 0] });          // size mismatch
-    expect((r as { code?: string }).code).toBe("#SHAPE!");
+    expect((r as { code?: string }).code).toBe("#VALUE!");
   });
 
   it("FILTER reads its include array as conditions, like IF ([[E10]] pickVsAggregateErrors)", () => {
@@ -289,8 +294,8 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
   it("MODE.MULT and FREQUENCY are owned — no more element-wise garbage", () => {
     expect(ev("MODE.MULT(x)", { x: [1, 1, 2, 2, 3] })).toEqual([1, 2]);
     expect(ev("FREQUENCY(x, b)", { x: [1, 5, 9, 3], b: [4, 8] })).toEqual([2, 1, 1]);
-    // Pre-tranche: UNIQUE([3,1,3,2]) broadcast to [[3],[1],[3],[2]].
-    expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual([3, 1, 2]);
+    // Pre-tranche: UNIQUE([3,1,3,2]) broadcast to [[3],[1],[3],[2]]. A list is one row, so its items dedupe by column.
+    expect(ev("UNIQUE(x, TRUE)", { x: [3, 1, 3, 2] })).toEqual([3, 1, 2]);
   });
 
   it("RANDARRAY is volatile and shape-correct (the SHUFFLE precedent)", () => {

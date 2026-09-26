@@ -51,7 +51,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["list"]} />
+      <InlineInputs node={data} emit={emit} keys={data.inputs.column ? ["list", "column"] : ["list"]} />
       {keys.length > 1 && (
         <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
       )}

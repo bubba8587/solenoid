@@ -34,6 +34,10 @@ export const ARG_ROLES: Record<string, ArgRoles> = {
   ROUNDDOWN: { 1: setting(0) },
   CHOOSEROWS: { 1: picks({ required: true }), rest: picks({ required: true }) },
   CHOOSECOLS: { 1: picks({ required: true }), rest: picks({ required: true }) },
+  SORT: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT), 3: setting(LEFT_OUT) },
+  // SORTBY's by_arrays are data; each sort_order after one is a setting.
+  SORTBY: Object.fromEntries(Array.from({ length: 127 }, (_, k) => [2 + 2 * k, setting(LEFT_OUT)])),
+  UNIQUE: { 1: setting(LEFT_OUT), 2: setting(LEFT_OUT) },
 };
 
 export function argRole(name: string, i: number): InputRole | undefined {

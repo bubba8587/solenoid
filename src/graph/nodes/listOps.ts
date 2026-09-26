@@ -765,6 +765,107 @@ export function filterByMask<T>(arr: readonly T[], mask: readonly unknown[]): T[
   return arr.filter((_, i) => keep[i]);
 }
 
+// ─── Table sorts, filters and uniques ([[D85]] columnsStayColumns: a list is one row) ──────────
+// Excel's SORT, SORTBY, FILTER and UNIQUE on a table. The caller turns a list into its one row and back.
+
+/** [[D85]] columnsStayColumns: a list is one row, so its items are columns; a lone value is a 1 × 1 table. */
+export const asRowsOf = (v: unknown): { m: unknown[][]; list: boolean } =>
+  Array.isArray(v) && v.length > 0 && Array.isArray(v[0]) ? { m: v as unknown[][], list: false }
+  : { m: [Array.isArray(v) ? v : v == null ? [] : [v]], list: true };
+/** A list's answer is a list again while one row is left. */
+export const backToList = (m: unknown[][], list: boolean): unknown => (list && m.length === 1 ? m[0] : list && m.length === 0 ? [] : m);
+
+export const transposeGrid = <T>(m: readonly (readonly T[])[]): T[][] =>
+  (m[0] ?? []).map((_, j) => m.map((r) => r[j]));
+
+/** Stable order of `n` positions by several keys, earliest key first; a blank, error or NaN key goes last either way. */
+function sortedIndexByKeys(keys: readonly { vals: readonly unknown[]; desc: boolean }[], n: number): number[] {
+  const idx = Array.from({ length: n }, (_, i) => i);
+  idx.sort((i, j) => {
+    for (const { vals, desc } of keys) {
+      const ki = vals[i] ?? null, kj = vals[j] ?? null;
+      const ti = sortsLast(ki), tj = sortsLast(kj);
+      if (ti || tj) { if (ti && tj) continue; return ti ? 1 : -1; }
+      const c = compareListCells(ki, kj);
+      if (c !== 0) return desc ? -c : c;
+    }
+    return i - j;
+  });
+  return idx;
+}
+
+/** SORT: the rows by the values in column `index`, or with `byCol` the columns by the values in row `index`. */
+export function sortGrid<T>(m: readonly (readonly T[])[], index: number, desc: boolean, byCol: boolean): T[][] | SolError {
+  const g = byCol ? transposeGrid(m) : m.map((r) => [...r]);
+  const width = g[0]?.length ?? 0;
+  if (!(Number.isInteger(index) && index >= 1 && index <= width))
+    return solError("#VALUE!", `SORT: sort_index ${index} is outside the ${width} ${byCol ? "rows" : "columns"}`);
+  const out = sortedIndexByKeys([{ vals: g.map((r) => r[index - 1]), desc }], g.length).map((i) => g[i]);
+  return byCol ? transposeGrid(out) : out;
+}
+
+/** A key or mask's shape: a list or 1 × n table is a row, an n × 1 table a column, one value either; anything else neither. */
+function lineShape(v: unknown): { dir: "row" | "col" | "any" | null; vals: unknown[] } {
+  if (!Array.isArray(v)) return { dir: "any", vals: [v] };
+  if (!(v.length > 0 && Array.isArray(v[0]))) return { dir: v.length === 1 ? "any" : "row", vals: v };
+  const t = v as unknown[][];
+  if (t.length === 1) return { dir: t[0].length === 1 ? "any" : "row", vals: t[0] };
+  return t.every((r) => r.length === 1) ? { dir: "col", vals: t.map((r) => r[0]) } : { dir: null, vals: [] };
+}
+
+/** Rows when the lines are columns, columns when they are rows; lines that are all one value follow the table's long side. */
+function lineAxis(m: readonly (readonly unknown[])[], dirs: readonly ("row" | "col" | "any" | null)[]): "rows" | "cols" | null {
+  if (dirs.some((d) => d === null)) return null;
+  const set = dirs.filter((d) => d !== "any");
+  if (set.some((d) => d !== set[0])) return null;
+  if (set[0] === "col") return "rows";
+  if (set[0] === "row") return "cols";
+  return m.length === 1 ? "cols" : "rows";
+}
+
+/** SORTBY: keys that are columns sort the rows, keys that are rows (a list is one) sort the columns, as Excel reads each by_array. */
+export function sortGridByKeys<T>(m: readonly (readonly T[])[], keys: readonly { key: unknown; desc: boolean }[]): T[][] | SolError {
+  if (keys.length === 0) return m.map((r) => [...r]);
+  const lines = keys.map((k) => lineShape(k.key));
+  const axis = lineAxis(m, lines.map((l) => l.dir));
+  if (!axis) return solError("#VALUE!", "SORTBY: every sort key must be one row or one column, all the same way");
+  const n = axis === "rows" ? m.length : (m[0]?.length ?? 0);
+  const bad = lines.find((l) => l.vals.length !== n);
+  if (bad) return solError("#VALUE!", `SORTBY: a sort key has ${bad.vals.length} values but the table has ${n} ${axis === "rows" ? "rows" : "columns"}`);
+  const order = sortedIndexByKeys(lines.map((l, i) => ({ vals: l.vals, desc: keys[i].desc })), n);
+  return axis === "rows" ? order.map((i) => [...m[i]]) : m.map((r) => order.map((j) => r[j]));
+}
+
+/** FILTER: a column mask keeps rows, a row mask (a list is one) keeps columns; each value is read as IF reads a condition. */
+export function filterGrid<T>(m: readonly (readonly T[])[], include: unknown): T[][] | SolError {
+  const line = lineShape(include);
+  const axis = lineAxis(m, [line.dir]);
+  if (!axis) return solError("#VALUE!", "FILTER: include must be one row or one column");
+  const n = axis === "rows" ? m.length : (m[0]?.length ?? 0);
+  if (line.vals.length !== n) return solError("#VALUE!", `FILTER: include has ${line.vals.length} values but the data has ${n} ${axis === "rows" ? "rows" : "columns"}`);
+  const keep = filterByMask(Array.from({ length: n }, (_, i) => i), line.vals);
+  if (isSolError(keep)) return keep;
+  return axis === "rows" ? keep.map((i) => [...m[i]]) : m.map((r) => keep.map((j) => r[j]));
+}
+
+/** UNIQUE: distinct rows (or with `byCol` columns) in first-seen order; `exactlyOnce` keeps only those that appear once. */
+export function uniqueGrid<T>(m: readonly (readonly T[])[], byCol: boolean, exactlyOnce: boolean): T[][] {
+  const g = byCol ? transposeGrid(m) : m.map((r) => [...r]);
+  const keyOf = (r: readonly T[]) => JSON.stringify(r.map((v) => (isSolError(v) ? `\x00err:${v.code}` : setKey(v) ?? null)));
+  const keys = g.map(keyOf);
+  const counts = new Map<string, number>();
+  for (const k of keys) counts.set(k, (counts.get(k) ?? 0) + 1);
+  const seen = new Set<string>();
+  const out: T[][] = [];
+  for (const [i, r] of g.entries()) {
+    const k = keys[i];
+    if (seen.has(k) || (exactlyOnce && counts.get(k)! > 1)) continue;
+    seen.add(k);
+    out.push(r);
+  }
+  return byCol ? transposeGrid(out) : out;
+}
+
 export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
   const err = firstError(arr);
   if (err) return err;

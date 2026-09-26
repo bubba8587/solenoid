@@ -35,13 +35,17 @@ specific item.
   (count, size, mode, digits) is its default, overriding the typed value, item by item in a list; a blank pick is dropped;
   no fallback is `#SYNTAX!`. One declaration, `ARG_ROLES` (`inputRoles.ts`), read by formulas (`applyArgRoles`) and by
   cards (`static inputRoles = rolesFrom(...)`, `readRole`); spec [[input-roles]]. Nine functions declared so far.
+- **SORT, SORTBY, FILTER, UNIQUE on tables** ([[D85]], the author's call: strict Excel): formulas take tables and Excel's full
+  signatures; on a list SORT and UNIQUE change nothing without by_col. List Sort (Rows / Columns, key rows with their own
+  order), List Filter (a table's rows tested on one Column) and UNIQUE (Rows / Columns, Only singles) take `anydata`, so a
+  list stays a list. Kernels `sortGrid`, `sortGridByKeys`, `filterGrid`, `uniqueGrid`.
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
 - **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** the settings sweep (backlog, [[D86]]; six functions done); the Cubes and lists section of the backlog, next
-  up SORT and FILTER on a matrix; an Excel-signature parity check (backlog); the plugin release
+- **Open:** the settings sweep (backlog, [[D86]]; twelve functions declared); the Cubes and lists section of the backlog, next
+  up a blank in a typed list literal; an Excel-signature parity check (backlog); the plugin release
   (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The outbox is empty.
 
 ### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)

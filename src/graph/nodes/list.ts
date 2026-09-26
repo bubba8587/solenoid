@@ -9,8 +9,8 @@ import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, readRole, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn } from "./shared";
-import { rolesFrom } from "../inputRoles";
+import { readInput, readRole, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut, cubeAdoptIn, anyDataIn, adoptiveDataOut } from "./shared";
+import { rolesFrom, setting } from "../inputRoles";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
@@ -23,7 +23,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, uniqueList, sortList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
+import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, asRowsOf, backToList, sortGrid, sortGridByKeys, uniqueGrid, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { coerceListItem, isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -434,43 +434,92 @@ function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexRe
 
 export type SortDir = "asc" | "desc";
 
+/**
+ * SORT and SORTBY on one card, on a list or a table ([[D85]] columnsStayColumns: a list is one row, so sorting its rows
+ * leaves it as it is, as in Excel; Columns sorts its items). With no sort key it sorts by its own values at `index`;
+ * each added key row is one of SORTBY's by_arrays with its own order.
+ */
 export class SortNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    by: "Optional. Left empty, the List sorts by its own values. Otherwise it sorts by this parallel List of numbers, like names by their scores, and the List being sorted can be any type. A blank or error key sends its item to the end, and a length mismatch is an error.",
+    list: "A list is one row, so sorting rows leaves it as it is, as in Excel. Switch to Columns to sort a list's items.",
+    index: "Which column the rows sort by, or which row the columns sort by. Counts from 1; blank is 1. Sort keys, once added, decide instead.",
     result: "Blank and error cells sort to the end in either direction.",
   };
+  static inputRoles = rolesFrom("SORT", { index: 1 });
 
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
   order: SortDir;
-  cachedList: (number | string | boolean | null | SolError)[] | SolError | null = [];
-  width = 180;
-  height = 175;
+  byCol: boolean;
+  /** Keyed by the key row's id, the suffix of `key${id}`. */
+  keyOrder: Record<string, SortDir> = {};
+  nextKeyId = 0;
+  literals: Record<string, number> = { index: 1 };
+  cachedList: unknown = [];
+  width = 190;
+  height = 210;
 
-  constructor(init?: { label?: string; order?: SortDir }) {
+  constructor(init?: { label?: string; order?: SortDir; byCol?: boolean; keyOrder?: Record<string, SortDir>; valueKeys?: string[] }) {
     super("Sort");
     this.label = init?.label ?? "List Sort";
     this.order = init?.order ?? "asc";
-    this.addInput("list", anyListIn("List"));
-    this.addInput("by",   listIn("Sort by"));
-    this.addOutput("result", adoptiveListOut("Sorted"));
+    this.byCol = init?.byCol ?? false;
+    this.addInput("list", anyDataIn("List or table"));
+    this.addInput("index", numIn(this.byCol ? "Row" : "Column"));
+    for (const id of pairIdsFromKeys(init?.valueKeys?.filter((k) => k.startsWith("key")), "key")) {
+      this.addKeyWithId(id);
+      const o = init?.keyOrder?.[String(id)];
+      if (o) this.keyOrder[String(id)] = o;
+    }
+    this.addOutput("result", adoptiveDataOut("Sorted"));
   }
 
-  data(inputs: { list?: unknown[][]; by?: ((number | null | SolError)[] | null)[] }): { result: (number | string | boolean | null | SolError)[] | SolError | null } {
-    const arr = inputs.list?.[0] ?? [];
-    const desc = this.order === "desc";
-    const by = inputs.by?.[0];
-    if (Array.isArray(by)) {
-      if (by.length !== arr.length) {
-        this.cachedList = solError("#SHAPE!", `The sort-by list has ${by.length} values but the list has ${arr.length}`);
-        return { result: this.cachedList };
-      }
-      this.cachedList = sortByKeys(arr, by, desc) as (number | string | boolean | null | SolError)[];
-      return { result: this.cachedList };
+  /** The Rows / Columns toggle renames the index socket to what it counts. */
+  setByCol(byCol: boolean): void {
+    this.byCol = byCol;
+    const input = this.inputs.index;
+    if (input) input.label = byCol ? "Row" : "Column";
+  }
+
+  private addKeyWithId(id: number): void {
+    this.addInput(`key${id}`, anyDataIn(`Key ${id + 1}`));
+    this.keyOrder[String(id)] ??= "asc";
+    this.nextKeyId = Math.max(this.nextKeyId, id + 1);
+  }
+
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("key"));
+  }
+
+  addValueInput(): string {
+    const key = `key${this.nextKeyId}`;
+    this.addKeyWithId(this.nextKeyId);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+    // keyOrder stays so undoing the removal restores its order; reload prunes it.
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown } {
+    const raw = inputs.list?.[0];
+    const done = (r: unknown) => { this.cachedList = r; return { result: r }; };
+    if (raw == null) return done(null);
+    const { m, list } = asRowsOf(raw);
+    // An unwired key row adds nothing; a key is data, so a wired blank key blanks the answer.
+    const keys: { key: unknown; desc: boolean }[] = [];
+    for (const k of this.valueInputKeys()) {
+      if (!inputs[k]?.length) continue;
+      const key = inputs[k]![0];
+      if (key == null) return done(null);
+      keys.push({ key, desc: this.keyOrder[k.slice(3)] === "desc" });
     }
-    if ("by" in inputs) { this.cachedList = null; return { result: null }; }
-    this.cachedList = sortList(arr as ListCell[], desc) as (number | string | boolean | null | SolError)[];
-    return { result: this.cachedList };
+    // Once key rows exist they decide, and the card hides its own order, so unwired keys leave the data as it is.
+    const out = this.valueInputKeys().length
+      ? sortGridByKeys(m, keys)
+      : sortGrid(m, readRole<number | undefined>(this, "index", inputs.index) ?? 1, this.order === "desc", this.byCol);
+    return done(isSolError(out) ? out : backToList(out, list));
   }
 }
 
@@ -844,8 +893,11 @@ export function readFilterValue(wired: unknown[] | undefined, literal: string | 
 
 export class FilterNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "With no completed condition the whole list passes through unchanged.",
+    list: "A list keeps or drops its items. A table keeps or drops its rows, tested on one column.",
+    column: "Which column of the table the conditions test. Counts from 1; blank is 1.",
+    result: "With no completed condition the whole list or table passes through unchanged.",
   };
+  static inputRoles = { column: setting(1) };
 
   label: string;
   combine: FilterCombine;
@@ -853,7 +905,8 @@ export class FilterNode extends ClassicPreset.Node {
   condConfig: Record<string, FilterCondConfig> = {};
   stringLiterals: Record<string, string> = {};
   nextCondId = 0;
-  cachedResult: unknown[] | null = null;
+  literals: Record<string, number> = {};
+  cachedResult: unknown = null;
   cachedDropped: unknown[] | null = null;
   width = 200;
   height = 240;
@@ -867,7 +920,9 @@ export class FilterNode extends ClassicPreset.Node {
     super("Filter");
     this.label = init?.label ?? "List Filter";
     this.combine = init?.combine ?? "and";
-    this.addInput("list", anyListIn("List"));
+    this.addInput("list", anyDataIn("List or table"));
+    // The Column socket is saved among the live keys, so a reload rebuilds it before its cable lands.
+    if (init?.valueKeys?.includes("column")) this.addInput("column", numIn("Column"));
     const ids = pairIdsFromKeys(init?.valueKeys?.filter((k) => k.startsWith("value")), "value");
     if (ids.length) {
       for (const id of ids) this.addCondWithId(id);
@@ -878,8 +933,8 @@ export class FilterNode extends ClassicPreset.Node {
     } else {
       this.addValueInput();
     }
-    this.addOutput("result", adoptiveListOut("Kept"));
-    this.addOutput("dropped", adoptiveListOut("Dropped"));
+    this.addOutput("result", adoptiveDataOut("Kept"));
+    this.addOutput("dropped", adoptiveDataOut("Dropped"));
   }
 
   passthrough = (): PassthroughSpec[] => [
@@ -897,6 +952,20 @@ export class FilterNode extends ClassicPreset.Node {
     return Object.keys(this.inputs).filter((k) => k.startsWith("value"));
   }
 
+  /** The Column socket shows while a table is wired, and leaves (cables first) when a list replaces it. */
+  private reconcileColumn(raw: unknown): void {
+    const want = Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0]);
+    if (want === !!this.inputs.column) return;
+    queueMicrotask(() => {
+      void (async () => {
+        if (want === !!this.inputs.column) return;
+        if (want) this.addInput("column", numIn("Column"));
+        else { await dropInputCables(this.id, ["column"]); this.removeInput("column"); delete this.literals.column; }
+        await getOwningView(this.id)?.rerenderNode(this.id);
+      })();
+    });
+  }
+
   addValueInput(): string {
     const key = `value${this.nextCondId}`;
     this.addCondWithId(this.nextCondId);
@@ -909,12 +978,27 @@ export class FilterNode extends ClassicPreset.Node {
     // condConfig stays so undoing the removal restores its op; reload prunes it.
   }
 
-  data(inputs: Record<string, unknown[] | undefined>): { result: unknown[] | null; dropped: unknown[] | null } {
-    const arr = inputs.list?.[0] as unknown[] | null | undefined;
-    if (arr == null) {
+  data(inputs: Record<string, unknown[] | undefined>): { result: unknown; dropped: unknown[] | null } {
+    const raw = inputs.list?.[0];
+    if (raw == null) {
       this.cachedResult = null;
       this.cachedDropped = null;
       return { result: null, dropped: null };
+    }
+    this.reconcileColumn(raw);
+    const { m, list } = asRowsOf(raw);
+    // A table's conditions test one column, row by row; a list's test its items.
+    let arr: unknown[];
+    if (list) arr = m[0];
+    else {
+      const col = this.inputs.column ? readRole<number>(this, "column", inputs.column) : 1;
+      const width = m[0]?.length ?? 0;
+      if (!(Number.isInteger(col) && col >= 1 && col <= width)) {
+        this.cachedResult = solError("#VALUE!", `Column ${col} is outside the table's ${width} columns`);
+        this.cachedDropped = null;
+        return { result: this.cachedResult, dropped: null };
+      }
+      arr = m.map((r) => r[col - 1]);
     }
     // Unit tags arrive intact: predicates and type detection read magnitudes, the outputs keep the tagged cells.
     const mags = arr.map(stripUnitCells);
@@ -934,7 +1018,7 @@ export class FilterNode extends ClassicPreset.Node {
       conds.push({ op, value: val!, matchCase: cfg?.matchCase ?? false });
     }
     if (conds.length === 0) {
-      this.cachedResult = [...arr];
+      this.cachedResult = list ? [...arr] : m.map((r) => [...r]);
       this.cachedDropped = null;
       return { result: this.cachedResult, dropped: null };
     }
@@ -946,8 +1030,9 @@ export class FilterNode extends ClassicPreset.Node {
       const mag = mags[i] as FrameCell;
       const pass = (c: { op: FilterOp; value: string; matchCase: boolean }) =>
         passesFilter(mag, c.op, c.value, type, c.matchCase);
-      if (this.combine === "and" ? conds.every(pass) : conds.some(pass)) kept.push(arr[i]);
-      else dropped.push(arr[i]);
+      const item = list ? arr[i] : m[i];
+      if (this.combine === "and" ? conds.every(pass) : conds.some(pass)) kept.push(item);
+      else dropped.push(item);
     }
     this.cachedResult = kept;
     this.cachedDropped = dropped;
@@ -1112,23 +1197,34 @@ export class SumIfsNode extends ClassicPreset.Node {
 
 // ─── Array operation nodes ────────────────────────────────────────────────────
 
+/** UNIQUE on a list or a table ([[D85]] columnsStayColumns: a list is one row, so its rows are already unique; Columns dedupes its items). */
 export class UniqueNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A list is one row, so its rows are already unique, as in Excel. Switch to Columns to remove a list's repeated items.",
+  };
+
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  cachedList: unknown[] = [];
-  width = 180;
-  height = 120;
+  byCol: boolean;
+  exactlyOnce: boolean;
+  cachedList: unknown = [];
+  width = 190;
+  height = 150;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; byCol?: boolean; exactlyOnce?: boolean }) {
     super("Unique");
     this.label = init?.label ?? "UNIQUE";
-    this.addInput("list",   adoptiveListIn("List"));
-    this.addOutput("result", adoptiveListOut("Unique"));
+    this.byCol = init?.byCol ?? false;
+    this.exactlyOnce = init?.exactlyOnce ?? false;
+    this.addInput("list",   anyDataIn("List or table"));
+    this.addOutput("result", adoptiveDataOut("Unique"));
   }
 
-  data(inputs: { list?: unknown[][] }) {
-    const arr = inputs.list?.[0] ?? [];
-    this.cachedList = uniqueList(arr);
+  data(inputs: { list?: unknown[] }) {
+    const raw = inputs.list?.[0];
+    if (raw == null) { this.cachedList = null; return { result: null }; }
+    const { m, list } = asRowsOf(raw);
+    this.cachedList = backToList(uniqueGrid(m, this.byCol, this.exactlyOnce), list);
     return { result: this.cachedList };
   }
 }

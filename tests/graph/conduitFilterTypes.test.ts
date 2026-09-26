@@ -27,12 +27,12 @@ describe("Conduit lane accepts any cable (trueany, not scalar any)", () => {
 });
 
 describe("List Filter output adopts the input's concrete type", () => {
-  it("both outputs are anylist-based adoptive sockets (revert to anylist unwired)", () => {
+  it("both outputs are anydata-based adoptive sockets (a list stays a list, a table a table)", () => {
     const f = new FilterNode();
     for (const key of ["result", "dropped"]) {
       const s = f.outputs[key]!.socket;
       expect(s).toBeInstanceOf(AdoptiveSocket);
-      expect((s as AdoptiveSocket).base).toBe("anylist");
+      expect((s as AdoptiveSocket).base).toBe("anydata");
     }
   });
 
@@ -55,8 +55,8 @@ describe("List Filter preserves units (passthrough) while filtering by magnitude
     f.condConfig["0"] = { op: "gt" };
     f.stringLiterals["value0"] = "2";
     const out = f.data({ list: [list] });
-    expect(out.result!.every(isUnitCell)).toBe(true); // units survive the filter
-    expect(out.result!.map((c) => displayMagnitudeOf(c as never))).toEqual([3, 5]);
+    expect((out.result as unknown[]).every(isUnitCell)).toBe(true); // units survive the filter
+    expect((out.result as unknown[]).map((c) => displayMagnitudeOf(c as never))).toEqual([3, 5]);
     expect(out.dropped!.map((c) => displayMagnitudeOf(c as never))).toEqual([1]);
   });
 

@@ -790,37 +790,47 @@ describe("Aggregate — n<2 sample spreads are #DIV/0!; empty-list identities (a
 
 describe("Sort — nulls and per-cell errors last in both directions (frame blanks-last policy)", () => {
   const err = solError("#DIV/0!", "test");
+  // [[D85]] columnsStayColumns: a list is one row, so its items sort under Columns.
   it("ascending: values sort, null/error tail keeps input order", () => {
-    expect(new SortNode({ order: "asc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+    expect(new SortNode({ order: "asc", byCol: true }).data({ list: [[3, null, 1, err, 2]] }).result)
       .toEqual([1, 2, 3, null, err]);
   });
   it("descending: values flip, tail stays last", () => {
-    expect(new SortNode({ order: "desc" }).data({ list: [[3, null, 1, err, 2]] }).result)
+    expect(new SortNode({ order: "desc", byCol: true }).data({ list: [[3, null, 1, err, 2]] }).result)
       .toEqual([3, 2, 1, null, err]);
+  });
+  it("Rows leaves a list as it is, as Excel's SORT does on one row; a table sorts its rows by the chosen column", () => {
+    expect(new SortNode().data({ list: [[3, 1, 2]] }).result).toEqual([3, 1, 2]);
+    const n = new SortNode();
+    n.literals.index = 2;
+    expect(n.data({ list: [[[1, "c"], [2, "a"], [3, "b"]]] }).result).toEqual([[2, "a"], [3, "b"], [1, "c"]]);
   });
 });
 
-describe("Sort by a parallel key list (the absorbed SORTBY); length mismatch → #SHAPE!", () => {
-  it("a wired-blank `by` propagates — result unknown (role table)", () => {
-    expect(new SortNode().data({ list: [[3, 1, 2]], by: [null] }).result).toBeNull();
+describe("Sort by key rows (SORTBY): each key has its own order; a length mismatch is #VALUE!", () => {
+  const keyed = (keys: { v: unknown; desc?: boolean }[]) => {
+    const n = new SortNode();
+    const inputs: Record<string, unknown[]> = {};
+    for (const k of keys) { const key = n.addValueInput(); inputs[key] = [k.v]; if (k.desc) n.keyOrder[key.slice(3)] = "desc"; }
+    return { n, inputs };
+  };
+  it("a wired-blank key is blank data, so the answer is blank", () => {
+    const { n, inputs } = keyed([{ v: null }]);
+    expect(n.data({ list: [[3, 1, 2]], ...inputs }).result).toBeNull();
   });
-  it("sorts a TEXT array by a parallel numeric key (element-agnostic reorder)", () => {
-    // "names by scores": the array is any element type, only the keys are numeric.
-    expect(new SortNode().data({ list: [["Ann", "Bob", "Cy"]], by: [[3, 1, 2]] }).result)
-      .toEqual(["Bob", "Cy", "Ann"]);
-    // A date-serial array reorders the same way.
-    expect(new SortNode().data({ list: [[46000, 45000, 45500]], by: [[2, 3, 1]] }).result)
-      .toEqual([45500, 46000, 45000]);
+  it("sorts a TEXT list by a parallel numeric key (a list key is a row, so the items reorder)", () => {
+    const { n, inputs } = keyed([{ v: [3, 1, 2] }]);
+    expect(n.data({ list: [["Ann", "Bob", "Cy"]], ...inputs }).result).toEqual(["Bob", "Cy", "Ann"]);
   });
-  it("descending by key flips the value order, null/error keys stay last", () => {
-    expect(new SortNode({ order: "desc" }).data({ list: [["Ann", "Bob", "Cy"]], by: [[3, 1, 2]] }).result)
-      .toEqual(["Ann", "Cy", "Bob"]);
-    expect(new SortNode().data({ list: [[10, 20, 30]], by: [[2, null, 1]] }).result)
-      .toEqual([30, 10, 20]);
+  it("a descending key flips the order, null keys stay last; later keys break ties", () => {
+    const { n, inputs } = keyed([{ v: [3, 1, 2], desc: true }]);
+    expect(n.data({ list: [["Ann", "Bob", "Cy"]], ...inputs }).result).toEqual(["Ann", "Cy", "Bob"]);
+    const t = keyed([{ v: [[1], [1], [0]] }, { v: [[5], [4], [9]], desc: true }]);
+    expect(t.n.data({ list: [[["a"], ["b"], ["c"]]], ...t.inputs }).result).toEqual([["c"], ["a"], ["b"]]);
   });
-  it("a length mismatch between list and `by` is a loud #SHAPE!, never a silent pad", () => {
-    const r = new SortNode().data({ list: [[10, 20, 30]], by: [[2, 1]] }).result;
-    expect((r as { code?: string })?.code).toBe("#SHAPE!");
+  it("a length mismatch between the data and a key is a loud #VALUE!, never a silent pad", () => {
+    const { n, inputs } = keyed([{ v: [2, 1] }]);
+    expect((n.data({ list: [[10, 20, 30]], ...inputs }).result as { code?: string })?.code).toBe("#VALUE!");
   });
 });
 
@@ -881,9 +891,9 @@ describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
   it("dedupes text like the formula does, and passes its input type through", async () => {
     const { UniqueNode } = await import("../../../src/graph/nodes/list");
     const { compileEvaluator } = await import("../../../src/graph/excelFormula");
-    const n = new UniqueNode();
+    const n = new UniqueNode({ byCol: true });
     expect(n.data({ list: [["a", "b", "a"]] }).result).toEqual(["a", "b"]);
-    expect(compileEvaluator("UNIQUE(x)")!({ x: ["a", "b", "a"] })).toEqual(["a", "b"]);
+    expect(compileEvaluator("UNIQUE(x, TRUE)")!({ x: ["a", "b", "a"] })).toEqual(["a", "b"]);
     expect(n.passthrough()).toEqual([{ output: "result", inputs: ["list"], combine: "single" }]);
   });
   it("5 km and 5000 m are one member", async () => {
