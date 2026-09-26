@@ -509,7 +509,7 @@ Per-function behavior that the routing above does not decide. The node and the f
 
 - The bond, coupon, discount and T-bill functions (COUP*, ACCRINTM, INTRATE, RECEIVED, YIELDDISC, TBILLEQ, TBILLPRICE, TBILLYIELD, PRICEMAT, YIELDMAT, DURATION, MDURATION, PRICE, YIELD, ODDFPRICE, ODDFYIELD, ODDLPRICE, ODDLYIELD) run the finance nodes' kernels in Excel's argument order; an out-of-range argument answers blank. ODDF functions read an issue date and a first-coupon date; ODDL functions read only a last-interest date, so their argument lists differ in shape.
 - **IRR(values)**, **MIRR(values, finance_rate, reinvest_rate)** and **XIRR(values, dates)** prepare cash flows as the node does (`cashPrep`, `datedPrep`): a blank cash flow is 0 and a blank date makes the answer blank. Fewer than two cash flows answer blank. A failed solve is `#CONV!`, noting the cash flows may have no internal rate of return. XIRR refuses a date before the first with `#DOMAIN!` (Excel's `#NUM!`), since a negative exponent would otherwise break the solver and be blamed on the sign pattern.
-- **VDB** always switches to straight-line when that is the larger charge, which is Excel's default; a `no_switch` of TRUE is refused with `#VALUE!` rather than ignored. `factor` defaults to 2.
+- **VDB** switches to straight-line when that is the larger charge, Excel's default; a `no_switch` of TRUE stays on declining balance to the end, as Excel's. `factor` defaults to 2.
 - **The return-series functions** are the Returns card's ops: LOGRETURNS, CUMRETURNS, DRAWDOWN, MAXDRAWDOWN, CAGR(list, [periods per year]), VOLATILITY(list, [periods per year]), SHARPE(list, [risk-free rate per period], [periods per year]) and SORTINO (the same arguments). Periods per year defaults to 1 and the risk-free rate to 0.
 
 ### Lookup and reference
@@ -763,7 +763,7 @@ The finance nodes and the finance formulas share these kernels. Entry points tak
 - `priceMat` (PRICEMAT, YIELDMAT) spans three periods: issue to maturity for the total interest, settlement to maturity for discounting, and issue to settlement for the accrued interest deducted from the price.
 - `tbill` (TBILLPRICE, TBILLYIELD, TBILLEQ) counts actual days over 360. TBILLYIELD is a money-market yield on 360 days. TBILLEQ uses `365·rate / (360 − rate·DSM)` up to 182 days; past 182 days Excel switches to the bond-equivalent yield, the semiannual-compounding price equation solved in closed form.
 
-**Depreciation.** `vdb` (VDB) is the depreciation between two periods: each period takes the larger of the declining-balance charge (`book·factor/life`) and straight-line over the remaining life, never below salvage, with a fractional period charged pro rata. Out-of-range arguments are null. The VDB formula refuses Excel's `no_switch` of TRUE with `#VALUE!`, since the kernel always switches to straight-line.
+**Depreciation.** `vdb` (VDB) is the depreciation between two periods: each period takes the larger of the declining-balance charge (`book·factor/life`) and straight-line over the remaining life, never below salvage, with a fractional period charged pro rata. Out-of-range arguments are null. With `noSwitch` every period takes the declining-balance charge (Excel's `no_switch`).
 
 **Cash-flow preparation** ([[#Range functions]]):
 

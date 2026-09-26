@@ -125,8 +125,8 @@ describe("review pins: INDEX, RUNNING, VDB", () => {
     expect(isSolError(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], -2))).toBe(true);
     expect(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], 0)).toEqual([1, 3, 6]);
   });
-  it("VDB refuses no_switch = TRUE instead of ignoring it", () => {
-    expect(isSolError(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1, 2, true))).toBe(true);
+  it("VDB honors no_switch = TRUE instead of ignoring it", () => {
+    expect(resolveExcelFunction("VDB")!(1000, 0, 5, 4, 5, 2, true)).toBeCloseTo(51.84, 6);
     expect(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1)).toBeCloseTo(480, 6);
   });
 });

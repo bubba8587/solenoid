@@ -564,7 +564,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MDURATION:  { returns: "number", arity: [4, 6], family: "finance", native: true },
   PRICE:      { returns: "number", arity: [4, 6], family: "finance", native: true },
   YIELD:      { returns: "number", arity: [4, 6], family: "finance", native: true },
-  VDB:        { returns: "number", arity: [5, 6], family: "finance", native: true },
+  VDB:        { returns: "number", arity: [5, 7], family: "finance", native: true },
   ODDFPRICE:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDFYIELD:  { returns: "number", arity: [6, 8], family: "finance", native: true },
   ODDLPRICE:  { returns: "number", arity: [5, 7], family: "finance", native: true },
@@ -1361,10 +1361,8 @@ registerInternal("CHOOSE", (index, ...values) => {
   if (idx < 1 || idx > values.length) return solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${values.length}`);
   return values[idx - 1] ?? null;
 });
-registerInternal("VDB", (cost, salvage, life, start, end, factor, noSwitch) => {
-  if (noSwitch === true || (typeof noSwitch === "number" && noSwitch !== 0)) return solError("#VALUE!", "VDB's no_switch isn't supported; the depreciation always switches to straight-line");
-  return vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2));
-});
+registerInternal("VDB", (cost, salvage, life, start, end, factor, noSwitch) =>
+  vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2), isTrue(noSwitch)));
 registerInternal("ODDFPRICE", (settle, maturity, issue, firstCoupon, rate, yld, redemption, freq) =>
   oddCoupon("oddfprice", toNum(settle), toNum(maturity), toNum(issue), toNum(firstCoupon), toNum(rate), toNum(yld), optNum(redemption, 100), optNum(freq, 2)));
 registerInternal("ODDFYIELD", (settle, maturity, issue, firstCoupon, rate, pr, redemption, freq) =>

@@ -203,7 +203,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   MDURATION: "settlement, maturity, coupon, yld, [frequency], [basis]",
   PRICE: "settlement, maturity, rate, yld, [redemption], [frequency]",
   YIELD: "settlement, maturity, rate, pr, [redemption], [frequency]",
-  VDB: "cost, salvage, life, start_period, end_period, [factor]",
+  VDB: "cost, salvage, life, start_period, end_period, [factor], [no_switch]",
   ODDFPRICE: "settlement, maturity, issue, first_coupon, rate, yld, [redemption], [frequency]",
   ODDFYIELD: "settlement, maturity, issue, first_coupon, rate, pr, [redemption], [frequency]",
   ODDLPRICE: "settlement, maturity, last_interest, rate, yld, [redemption], [frequency]",

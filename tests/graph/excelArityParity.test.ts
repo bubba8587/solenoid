@@ -13,7 +13,6 @@ const KNOWN_SHORT: Record<string, string> = {
   ODDFYIELD: "no day-count basis argument yet",
   ODDLPRICE: "no day-count basis argument yet",
   ODDLYIELD: "no day-count basis argument yet",
-  VDB: "no_switch is not built",
   GROUPBY: "field_headers, total_depth, sort_order, filter_array and field_relationship are not built",
   GROWTH: "const (forcing the fit through b = 1) is not built",
   TREND: "const (forcing the fit through the origin) is not built",
@@ -77,5 +76,14 @@ describe("TEXTSPLIT, TEXTAFTER and TEXTBEFORE take Excel's options", () => {
     expect((m[1][1] as { code: string }).code).toBe("#N/A");
     expect(ev("TEXTSPLIT(t, \",\", \";\", FALSE, 0, \"-\")", { t: "a,b;c" })).toEqual([["a", "b"], ["c", "-"]]);
     expect(ev("TEXTSPLIT(t, \"X\", , , 1)", { t: "axb" })).toEqual(["a", "b"]);
+  });
+});
+
+describe("VDB's no_switch", () => {
+  it("stays on declining balance instead of switching to straight-line", () => {
+    const ev = (e: string) => compileEvaluator(e)!({});
+    expect(ev("VDB(1000, 0, 5, 4, 5, 2)")).toBeCloseTo(108, 6);
+    expect(ev("VDB(1000, 0, 5, 4, 5, 2, TRUE)")).toBeCloseTo(51.84, 6);
+    expect(ev("VDB(1000, 0, 5, 0, 1, 2, TRUE)")).toBeCloseTo(400, 6);
   });
 });

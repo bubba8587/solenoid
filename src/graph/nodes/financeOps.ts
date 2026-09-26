@@ -151,7 +151,8 @@ export function oddlPrice(
   return price;
 }
 
-export function vdbBookValue(cost: number, salvage: number, life: number, periodEnd: number, factor: number): number {
+/** With `noSwitch` the depreciation stays declining-balance to the end, as Excel's VDB no_switch; otherwise it switches to straight-line once that is larger. */
+export function vdbBookValue(cost: number, salvage: number, life: number, periodEnd: number, factor: number, noSwitch = false): number {
   let book = cost;
   const n = Math.min(Math.floor(periodEnd), life);
   const frac = periodEnd - Math.floor(periodEnd);
@@ -160,7 +161,7 @@ export function vdbBookValue(cost: number, salvage: number, life: number, period
     if (remLife <= 0) break;
     const ddb = (book * factor) / life;
     const sl = (book - salvage) / remLife;
-    let depr = Math.max(ddb, sl);
+    let depr = noSwitch ? ddb : Math.max(ddb, sl);
     depr = Math.min(depr, Math.max(0, book - salvage));
     book -= depr;
   }
@@ -169,7 +170,7 @@ export function vdbBookValue(cost: number, salvage: number, life: number, period
     if (remLife > 0) {
       const ddb = (book * factor) / life;
       const sl = (book - salvage) / remLife;
-      let depr = Math.max(ddb, sl) * frac;
+      let depr = (noSwitch ? ddb : Math.max(ddb, sl)) * frac;
       depr = Math.min(depr, Math.max(0, book - salvage));
       book -= depr;
     }
@@ -178,10 +179,10 @@ export function vdbBookValue(cost: number, salvage: number, life: number, period
 }
 
 export function vdb(
-  cost: number, salvage: number, life: number, start: number, end: number, factor = 2,
+  cost: number, salvage: number, life: number, start: number, end: number, factor = 2, noSwitch = false,
 ): number | null {
   if (!(cost >= 0 && salvage >= 0 && life > 0 && start >= 0 && end >= start && end <= life && factor > 0)) return null;
-  const result = Math.max(0, vdbBookValue(cost, salvage, life, start, factor) - vdbBookValue(cost, salvage, life, end, factor));
+  const result = Math.max(0, vdbBookValue(cost, salvage, life, start, factor, noSwitch) - vdbBookValue(cost, salvage, life, end, factor, noSwitch));
   return Number.isFinite(result) ? result : null;
 }
 
