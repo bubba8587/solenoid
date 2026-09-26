@@ -263,7 +263,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   "T.TEST": "array1, array2, tails, type",
   "F.TEST": "array1, array2",
   PROB: "x_range, prob_range, lower, [upper]",
-  "MODE.MULT": "array",
+  "MODE.MULT": "number1, [number2], …",
   FREQUENCY: "data_array, bins_array",
   INTERPOLATE: "known_ys, [known_xs], [new_xs]",
   TREND: "known_ys, [known_xs], [new_xs]",

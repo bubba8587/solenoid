@@ -681,7 +681,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   FILTER:      { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   TAKE:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3], native: true },
   DROP:        { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [2, 3] },
-  "MODE.MULT": { returns: "number", rank: "list", listArgs: true, arity: [1, 1], family: "statistics" },
+  "MODE.MULT": { returns: "number", rank: "list", listArgs: true, arity: [1, 255], family: "statistics" },
   FREQUENCY:   { returns: "number", rank: "list", listArgs: true, arity: [2, 2], family: "statistics" },
   RANDARRAY:   { returns: "number", rank: "matrix", listArgs: true, arity: [0, 5], native: true },
 
@@ -1885,7 +1885,7 @@ registerInternal("DROP", (v, rows, cols) => {
   if (gone(m.length, n) || gone(m[0]?.length ?? 0, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
   return backToList(dropSlice(m.map((r) => (cols == null ? [...r] : dropSlice(r, c))), n), list);
 });
-registerInternal("MODE.MULT", (v) => (v == null ? null : modeMult(toList(v))));
+registerInternal("MODE.MULT", (...vs) => (vs.every((v) => v == null) ? null : modeMult(vs.filter((v) => v != null).flatMap(toList))));
 registerInternal("FREQUENCY", (data, bins) => {
   if (data == null || bins == null) return null;
   return frequencyBins(numList(data), numList(bins));

@@ -48,10 +48,10 @@ warning is expected.
   without by_col. Options named: card toggles (built), a custom LISTSORT / ROWSORT with shortcut behavior, or `#SYNTAX!` on a
   do-nothing setup ("drastic").
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
-- [ ] **Excel-signature parity check** (author asked 2026-09-26): a reference of Excel's real signatures and a test that
-  fails when a registration's `arity` max is below Excel's. TOCOL and TOROW shipped one argument short of Excel's three
-  because both surfaces agreed with our own declaration, and nothing compared it with Excel. SORT and UNIQUE were short too (fixed
-  2026-09-26).
+- [ ] **Functions short of Excel's signature** (the parity check, `excelArityParity.test.ts`, lists each with its reason): the
+  day-count `basis` on PRICE, YIELD and the four odd-coupon functions; VDB's no_switch; GROUPBY's five trailing options;
+  TREND and GROWTH's const, LINEST and LOGEST's const and stats; MAP past three arrays; TEXTAFTER, TEXTBEFORE and
+  TEXTSPLIT's options. The reference (`fixtures/excelArity.ts`) covers the registered Excel names that declare an arity.
 - [ ] **List Sort and List Filter names** (author to rule): both take tables now; rename to Sort / Filter beside Frame Sort
   and Frame Filter, or keep the "List" names.
 - [ ] **Column types on nested Cube Input levels** ([[D80]] cubeColumnTypes' reopen condition), if wanted.
