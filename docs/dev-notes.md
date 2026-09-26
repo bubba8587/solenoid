@@ -36,7 +36,7 @@ specific item.
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** the blank-slot ruling for INDEX, EXPAND, TAKE and DROP (landed in f9f036e without the author's call; keep or revert); the Cubes and lists section of the backlog, next
+- **Open:** a wired blank in INDEX, EXPAND, TAKE and DROP's size slots (backlog; the typed blank slot is ruled); the Cubes and lists section of the backlog, next
   up SORT and FILTER on a matrix; an Excel-signature parity check (backlog); the plugin release
   (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The outbox is empty.
 

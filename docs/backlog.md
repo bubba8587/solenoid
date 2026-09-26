@@ -34,6 +34,8 @@ warning is expected.
 
 ## Cubes and lists (author 2026-09-26)
 
+- [ ] **A wired blank in a size or position slot** (author to rule; the author doubts today's answer): INDEX, EXPAND, TAKE and DROP
+  answer blank for a blank variable or cable in a row/col slot, formula and card alike. A typed blank slot is ruled ([[C80]]).
 - [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
   that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass

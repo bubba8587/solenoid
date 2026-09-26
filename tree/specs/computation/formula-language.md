@@ -218,7 +218,7 @@ A blank slot evaluates to `null`, the first-class missing value. An omitted trai
 | `EXPAND` | 1 (`rows`), 2 (`columns`), 3 (`pad_with`) | left out: that axis keeps its size |
 | `TAKE`, `DROP` | 1 (`rows`), 2 (`columns`) | left out: that axis is kept whole |
 
-A blank value in those slots (a variable or cable that is blank) is not a blank slot: INDEX, EXPAND, TAKE and DROP answer blank, as their cards do for a wired blank.
+A blank value in those slots (a variable or cable that is blank) is not a blank slot: INDEX, EXPAND, TAKE and DROP answer blank, as their cards do for a wired blank. That half is not yet ruled (backlog, Cubes and lists).
 
 So `TEXTJOIN(",",,"a","","b")` is `a,,b`, and `XMATCH(7, x, )` is an exact match. A blank `search_mode` becomes 0, which the implementation rejects as Excel does. Every other blank stays `null` and follows the route's missing-value rules. `IF(x,,y)` returns `null` for a true `x`, not 0.
 
