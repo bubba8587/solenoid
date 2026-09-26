@@ -35,7 +35,7 @@ warning is expected.
 ## Cubes and lists (author 2026-09-26)
 
 - [ ] **The settings sweep ([[D86]] blankRoles, [[input-roles]]).** Declared so far: TAKE, DROP, EXPAND, INDEX, ROUND(UP/DOWN),
-  CHOOSEROWS/COLS, TEXTJOIN, XMATCH, XLOOKUP. Give every other function its `ARG_ROLES` entry and every card `inputRoles`
+  CHOOSEROWS/COLS, SORT, SORTBY, UNIQUE, TEXTJOIN, XMATCH, XLOOKUP. Give every other function its `ARG_ROLES` entry and every card `inputRoles`
   (`rolesFrom` its formula twin, or inline), bring the author the list first, then clear the `[decided 2026-09-26]` rows of
   input-roles' "What each input kind does today". Known cases: Slice's end, Series' count, MAKEARRAY's sizes, TEXTSPLIT's
   delimiter, Clamp's bounds, as-of tolerance, column references, Slider bounds, Filter's condition value (overturns
@@ -50,7 +50,10 @@ warning is expected.
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Excel-signature parity check** (author asked 2026-09-26): a reference of Excel's real signatures and a test that
   fails when a registration's `arity` max is below Excel's. TOCOL and TOROW shipped one argument short of Excel's three
-  because both surfaces agreed with our own declaration, and nothing compared it with Excel.
+  because both surfaces agreed with our own declaration, and nothing compared it with Excel. SORT and UNIQUE were short too (fixed
+  2026-09-26).
+- [ ] **List Sort and List Filter names** (author to rule): both take tables now; rename to Sort / Filter beside Frame Sort
+  and Frame Filter, or keep the "List" names.
 - [ ] **Column types on nested Cube Input levels** ([[D80]] cubeColumnTypes' reopen condition), if wanted.
 
 ## Composites

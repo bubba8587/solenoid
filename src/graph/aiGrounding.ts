@@ -189,6 +189,8 @@ export function buildGroundingSpec(): string {
   w(`  keyed by row index as a STRING: \`{"0": {"op": "gt"}, "1": {"op": "contains", "matchCase": true}}\`.`);
   w(`  Row 0's column/value are the \`column0\`/\`value0\` sockets (inline via \`str:\`), row 1's`);
   w(`  are \`column1\`/\`value1\`, and so on. Ops: ${Object.entries(FILTER_OP_DOC).map(([op, d]) => `\`${op}\` (${d})`).join(", ")}.`);
+  w(`- \`keyOrder\` (List Sort) — each sort key's direction, keyed by row index as a STRING:`);
+  w(`  \`{"0": "desc"}\`; row 0 is the \`key0\` socket. \`byCol\` (List Sort, UNIQUE) sorts or dedupes columns.`);
   w(`- Row inputs like \`v0\`, \`value1\` on list-building nodes take comma-separated`);
   w(`  values per row (\`str:v0="1, 2, 3"\`); every row concatenates into one list.`);
   w();

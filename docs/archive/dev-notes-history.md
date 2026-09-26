@@ -1,6 +1,39 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-25b (the 09-24b digest, verbatim).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-26b (the 09-25b digest, verbatim).
+
+---
+
+## Sweep 2026-09-26b — session digest 2026-09-25b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)
+
+- **The demo video is generated, not edited by hand:** `scripts/demo-video/` films the real app in headless Chromium
+  and a real Obsidian running the Solenoid Properties plugin on a virtual display, then cuts it with ffmpeg: captions,
+  title cards, crossfades, callout boxes, post zooms and a synthesized soundtrack. Obsidian scenes are filmed live
+  (the plugin's look switched on, a 40-row Frame pasted into a new property, the written note opened); side-by-side
+  scenes pair a Solenoid screenshot with an Obsidian grab per state (palettes and light mode, the imported note).
+  Running and redoing it, and every mechanic that bit: `.claude/skills/demo-video/SKILL.md`.
+- **Two cuts** (`cuts.mjs`): `demo`, the app tour, kept as `assets/video/solenoid-demo.mp4` (2:27) with its poster;
+  and `obsidian`, a story for Obsidian users: meeting notes and an attendees String List property, the popup's Grid
+  and CSV views, then an emailed table typed into a Frame property through its Form view, all in Obsidian; then,
+  after a card that opens Solenoid, the note joined to a roster note and totaled with PIVOTBY, the chart written back
+  into the note, and the look in both apps. Its Solenoid scenes film Obsidian and a real Solenoid window side by side
+  on one display. Frame zero of each is its title card, also embedded as cover art. Renders land in `.dev/video/`
+  (gitignored).
+- **Solenoid Properties wordmark**: `src/logo/solenoidpropertieswordmark.svg`, the coil beside SOLENOID PROPERTIES in
+  Atkinson Hyperlegible Next 800, outlined at the Solenoid wordmark's size, baseline and spacing. The demo vault
+  gains `Sales/Q3 review` and `Sales/Divisions` for the obsidian cut's story.
+- **App fixes it found**, one commit each: opening a Report no longer takes the app down (a hook after an early
+  return); chart value axes write compact ticks in a gutter that fits them; the vault cards gate on `hasFs()` like
+  their nodes; Open in Obsidian on the Write card follows the write, not the shell; a frame's CSV edit types the
+  columns it adds from their values (`columnTypesAfterCsvEdit`, once the block is left or saved from); the demo
+  vault's showcase note no longer retypes every project's `budget` and `milestones` (its keys are `purchases` and
+  `inspections`; the projects' `milestones` is a Frame); an Equation linear in an unknown that appears more than
+  once (`p = n*25 - (f + n*10)`) solves it exactly instead of by bisection (`solveLinear`).
+- **Open:** the author listens to the soundtracks and picks where each video is published (backlog, Demo video); the
+  Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is shown
+  rigorous). The outbox still lists A1, B1, B2, B3, B7.
 
 ---
 

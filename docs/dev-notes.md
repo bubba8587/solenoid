@@ -34,45 +34,21 @@ specific item.
 - **Blank roles** ([[D86]] blankRoles, the author's call, absorbing D33 and E15): data blanks stay blank; a blank setting
   (count, size, mode, digits) is its default, overriding the typed value, item by item in a list; a blank pick is dropped;
   no fallback is `#SYNTAX!`. One declaration, `ARG_ROLES` (`inputRoles.ts`), read by formulas (`applyArgRoles`) and by
-  cards (`static inputRoles = rolesFrom(...)`, `readRole`); spec [[input-roles]]. Nine functions declared so far.
+  cards (`static inputRoles = rolesFrom(...)`, `readRole`); spec [[input-roles]], which also took value-semantics' role
+  table. A blank in a table of positions is `#SYNTAX!` in that cell. D86 is written in the author's words.
 - **SORT, SORTBY, FILTER, UNIQUE on tables** ([[D85]], the author's call: strict Excel): formulas take tables and Excel's full
   signatures; on a list SORT and UNIQUE change nothing without by_col. List Sort (Rows / Columns, key rows with their own
   order), List Filter (a table's rows tested on one Column) and UNIQUE (Rows / Columns, Only singles) take `anydata`, so a
   list stays a list. Kernels `sortGrid`, `sortGridByKeys`, `filterGrid`, `uniqueGrid`.
+- **Socket labels** carry no parentheticals: "(1-based)" moved to the Inspector's socket notes ([[C19]] namingModel, the
+  author's words); the rest are a backlog sweep.
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).
 - **Add-menu search:** Excel-name rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name
   is one op's formula name ([[C19]] namingModel, amended on the author's word); a search shows one row per thing placed
   (`places`); every row carries its card's family name; op `keywords` reach their rows. `npm run search-samples` prints
   46 sample queries, one per kind of searchable row, as a Markdown table (`searchSamples.test.ts` pins them).
-- **Open:** the settings sweep (backlog, [[D86]]; twelve functions declared); the Cubes and lists section of the backlog, next
-  up a blank in a typed list literal; an Excel-signature parity check (backlog); the plugin release
-  (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The outbox is empty.
-
-### SESSION DIGEST (2026-09-25b: the demo video, and what filming it found; author present)
-
-- **The demo video is generated, not edited by hand:** `scripts/demo-video/` films the real app in headless Chromium
-  and a real Obsidian running the Solenoid Properties plugin on a virtual display, then cuts it with ffmpeg: captions,
-  title cards, crossfades, callout boxes, post zooms and a synthesized soundtrack. Obsidian scenes are filmed live
-  (the plugin's look switched on, a 40-row Frame pasted into a new property, the written note opened); side-by-side
-  scenes pair a Solenoid screenshot with an Obsidian grab per state (palettes and light mode, the imported note).
-  Running and redoing it, and every mechanic that bit: `.claude/skills/demo-video/SKILL.md`.
-- **Two cuts** (`cuts.mjs`): `demo`, the app tour, kept as `assets/video/solenoid-demo.mp4` (2:27) with its poster;
-  and `obsidian`, a story for Obsidian users: meeting notes and an attendees String List property, the popup's Grid
-  and CSV views, then an emailed table typed into a Frame property through its Form view, all in Obsidian; then,
-  after a card that opens Solenoid, the note joined to a roster note and totaled with PIVOTBY, the chart written back
-  into the note, and the look in both apps. Its Solenoid scenes film Obsidian and a real Solenoid window side by side
-  on one display. Frame zero of each is its title card, also embedded as cover art. Renders land in `.dev/video/`
-  (gitignored).
-- **Solenoid Properties wordmark**: `src/logo/solenoidpropertieswordmark.svg`, the coil beside SOLENOID PROPERTIES in
-  Atkinson Hyperlegible Next 800, outlined at the Solenoid wordmark's size, baseline and spacing. The demo vault
-  gains `Sales/Q3 review` and `Sales/Divisions` for the obsidian cut's story.
-- **App fixes it found**, one commit each: opening a Report no longer takes the app down (a hook after an early
-  return); chart value axes write compact ticks in a gutter that fits them; the vault cards gate on `hasFs()` like
-  their nodes; Open in Obsidian on the Write card follows the write, not the shell; a frame's CSV edit types the
-  columns it adds from their values (`columnTypesAfterCsvEdit`, once the block is left or saved from); the demo
-  vault's showcase note no longer retypes every project's `budget` and `milestones` (its keys are `purchases` and
-  `inspections`; the projects' `milestones` is a Frame); an Equation linear in an unknown that appears more than
-  once (`p = n*25 - (f + n*10)`) solves it exactly instead of by bisection (`solveLinear`).
-- **Open:** the author listens to the soundtracks and picks where each video is published (backlog, Demo video); the
-  Frame popup's blank-header-line item in the backlog (the author held that behavior until a change is shown
-  rigorous). The outbox still lists A1, B1, B2, B3, B7.
+- **Open:** ratify D86 blankRoles (C80 could fold into it, on the author's word); the settings sweep (backlog, [[D86]];
+  twelve functions declared); whether List Sort and List Filter keep their names now they take tables; the Cubes and
+  lists section of the backlog, next up a blank in a typed list literal; an Excel-signature parity check (backlog); the
+  plugin release (its snapshot is on Solenoid-Properties `develop`). Array constants are deferred (`deferrals.md`). The
+  outbox is empty.
