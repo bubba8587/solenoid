@@ -52,10 +52,9 @@ and four functions arrive: `FLATTEN(array, [pad_value], [levels])`, `HAS(array, 
 
 - [ ] **INDEX on a one-row matrix** (the author holds it): `INDEX({1,2,3}, 2)` is `#REF!` here and 2 in Excel, where one
   index walks a one-row range. Lists already walk (`indexInto`); decide whether a 1 × N matrix follows.
-- [ ] **TAKE and DROP on a list** read its items as rows (`TAKE(x, 1)` is the first item), while a list is one row
-  ([[D85]] columnsStayColumns); `TAKE(x,,2)` and `DROP(x,,1)` are `#SHAPE!`. CHOOSEROWS already reads a list as one row
-  (`CHOOSEROWS(x, 2)` is `#VALUE!`, the author's ruling); CHOOSEROWS(x, 1) and CHOOSECOLS answer one-row matrices,
-  not lists.
+- [ ] **CHOOSEROWS(x, 1) and CHOOSECOLS on a list** answer one-row tables, not lists (list in, table out).
+- [ ] **A list read as a column** (the author, 2026-09-26): if TAKE/DROP ever need to count a list's items as rows,
+  that is a toggle on the card plus a formula argument, never an exception in [[D85]] columnsStayColumns.
 - [ ] **Blank in a typed list literal** (author to rule): `1,,3` in List Input is `[1, 3]` (empty fields drop, compute-pass
   § Typed list literals) while `1,x,3` is `[1, null, 3]` and a wired blank stays in place.
 - [ ] **INDEX with a blank position** (`INDEX(x,,2)`) answers blank, while TAKE and DROP read a blank count as "keep the

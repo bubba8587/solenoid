@@ -30,9 +30,10 @@ describe("TEXTJOIN — the ignore-empty mode", () => {
 });
 
 describe("DROP — the last-N direction is a negative count", () => {
-  it("removes the last N elements", () => {
+  // [[D85]] columnsStayColumns: a list is one row, so its items are columns.
+  it("removes the last N items of a list, counted as columns", () => {
     const node = new TakeDropNode({ op: "drop" });
-    node.literals.rows = -2; // sign is the direction: drop the last two
+    node.literals.cols = -2; // sign is the direction: drop the last two
     expect(node.data({ data: [[1, 2, 3, 4]] }).result).toEqual([1, 2]);
   });
 });

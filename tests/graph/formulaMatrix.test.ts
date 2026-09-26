@@ -230,21 +230,24 @@ describe("[[C15]] matricesInFormulas tranche 2 — the array-returning core, nod
       new TakeDropNode({ op: "take" }).data({ data: [data], rows: [rows], cols: [cols] }).result;
     const drop = (data: unknown, rows: number, cols = 0) =>
       new TakeDropNode({ op: "drop" }).data({ data: [data], rows: [rows], cols: [cols] }).result;
-    // LIST: the signed count is the direction (positive from the start, negative from
-    // the end). take 0 is take-ALL, matching the kernel — NOT the old list node's []-on-0.
+    // LIST: one row ([[D85]] columnsStayColumns), so its items are columns; the signed count is
+    // the direction (positive from the start, negative from the end), and a list comes back a list.
     const x = [1, 2, 3, 4];
+    expect(ev("TAKE(x, , 2)", { x })).toEqual([1, 2]);
+    expect(ev("TAKE(x, , 2)", { x })).toEqual(take(x, 0, 2));
+    expect(ev("TAKE(x, , -2)", { x })).toEqual(take(x, 0, -2));
+    expect(ev("TAKE(x, 2)", { x })).toEqual(x);
     expect(ev("TAKE(x, 2)", { x })).toEqual(take(x, 2));
-    expect(ev("TAKE(x, -2)", { x })).toEqual(take(x, -2));
-    expect(ev("DROP(x, 1)", { x })).toEqual(drop(x, 1));
+    expect(ev("DROP(x, , 1)", { x })).toEqual(drop(x, 0, 1));
+    expect(code(ev("DROP(x, 1)", { x }))).toBe("#DOMAIN!");
+    expect(code(drop(x, 1))).toBe("#DOMAIN!");
     // MATRIX: both axes, negative counts from the end.
     const m = [[1, 2, 3], [4, 5, 6]];
     expect(ev("TAKE(m, 1, 2)", { m })).toEqual(take(m, 1, 2));
     expect(ev("DROP(m, 1, -1)", { m })).toEqual(drop(m, 1, -1));
     // SCALAR: mirrors the formula's toList — a 1-element list.
     expect(ev("TAKE(s, 1)", { s: 5 })).toEqual(take(5, 1));
-    // A list (or scalar) with a cols argument is #SHAPE!, the same as the formula.
-    expect(code(ev("TAKE(x, 2, 1)", { x }))).toBe("#SHAPE!");
-    expect(code(take(x, 2, 1))).toBe("#SHAPE!");
+    expect(ev("TAKE(x, 1, 1)", { x })).toEqual(take(x, 1, 1));
   });
 
   it("TAKE / DROP with a blank row count keep every row, as in Excel", () => {

@@ -1851,32 +1851,27 @@ registerInternal("FILTER", (v, include, ifEmpty) => {
   if (out.length === 0 && ifEmpty !== undefined && ifEmpty !== null) return ifEmpty;
   return out;
 });
+// [[D85]] columnsStayColumns: a list is one row, so its items are columns; the answer is a list again when one row is left.
+const asRowsOf = (v: unknown): { m: unknown[][]; list: boolean } =>
+  Array.isArray(v) && v.length > 0 && Array.isArray(v[0]) ? { m: v as unknown[][], list: false } : { m: [toList(v)], list: true };
+const backToList = (m: unknown[][], list: boolean): unknown => (list && m.length === 1 ? m[0] : m);
 registerInternal("TAKE", (v, rows, cols) => {
   if (v == null || (rows == null && cols == null)) return null;
   const n = rows == null ? null : Math.round(Number(rows));
   const c = cols == null ? null : Math.round(Number(cols));
   if (n === 0 || c === 0) return solError("#DOMAIN!", "TAKE of 0 keeps nothing (Excel: #CALC!)");
-  if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
-    const m = (v as unknown[][]).map((r) => (c === null ? [...r] : takeSlice(r, c)));
-    return n === null ? m : takeSlice(m, n);
-  }
-  if (cols != null) return solError("#SHAPE!", "A list has no columns, so TAKE takes one count");
-  return takeSlice(toList(v), n ?? 0);
+  const { m, list } = asRowsOf(v);
+  const cut = m.map((r) => (c === null ? [...r] : takeSlice(r, c)));
+  return backToList(n === null ? cut : takeSlice(cut, n), list);
 });
 registerInternal("DROP", (v, rows, cols) => {
   if (v == null || (rows == null && cols == null)) return null;
   const n = rows == null ? 0 : Math.round(Number(rows));
+  const c = cols == null ? 0 : Math.round(Number(cols));
   const gone = (len: number, k: number) => len > 0 && Math.abs(k) >= len;
-  if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
-    const c = cols == null ? 0 : Math.round(Number(cols));
-    if (gone(v.length, n) || gone((v[0] as unknown[]).length, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
-    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, c)));
-    return dropSlice(m, n);
-  }
-  if (cols != null) return solError("#SHAPE!", "A list has no columns, so DROP takes one count");
-  const list = toList(v);
-  if (gone(list.length, n)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
-  return dropSlice(list, n);
+  const { m, list } = asRowsOf(v);
+  if (gone(m.length, n) || gone(m[0]?.length ?? 0, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+  return backToList(dropSlice(m.map((r) => (cols == null ? [...r] : dropSlice(r, c))), n), list);
 });
 registerInternal("MODE.MULT", (v) => (v == null ? null : modeMult(toList(v))));
 registerInternal("FREQUENCY", (data, bins) => {

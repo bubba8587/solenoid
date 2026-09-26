@@ -22,7 +22,8 @@ specific item.
 - **Lists** ([[D85]] columnsStayColumns, the author's call): a list is one row everywhere, so INDEX is strict on it
   (`INDEX(x, 2, 1)` is `#REF!`); TOCOL, BYROW and MAKEARRAY(n, 1) answer one-column tables; TOROW is the list and reads
   row by row as Excel's does; SEQUENCE(n) stays a list. TOCOL and TOROW take Excel's `ignore` and `scan_by_column`, on
-  the Table Reshape card as a By row / By column toggle and a skip picker. SORT, SORTBY and List Sort order text and
+  the Table Reshape card as a By row / By column toggle and a skip picker. TAKE and DROP count a list's items as
+  columns (`TAKE(x, , 2)`), on the formula and the TAKE / DROP card. SORT, SORTBY and List Sort order text and
   mixed kinds (`compareListCells`); SORTBY keeps its `sort_order`. Every list popup has the Source checkbox; a mixed
   list opens as text with a gray chip. Type Check gains ISERR.
 - **Card op switches** now reshape their sockets: Table Reshape (it never did) and By Axis (BYROW a table, BYCOL a list).

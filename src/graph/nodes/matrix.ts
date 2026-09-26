@@ -556,8 +556,8 @@ export class TableSelectNode extends ClassicPreset.Node {
 export type TakeDropOp = "take" | "drop";
 
 export const TAKEDROP_OP_META = {
-  take: { label: "TAKE", description: "Keeps elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, `0` keeps all. Excel: `TAKE`." },
-  drop: { label: "DROP", description: "Removes elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, `0` removes none. Excel: `DROP`." },
+  take: { label: "TAKE", description: "Keeps rows or columns from the edges of a table or list: positive counts from the start, negative from the end, `0` keeps all. A list is one row, so its items are columns. Excel: `TAKE`." },
+  drop: { label: "DROP", description: "Removes rows or columns from the edges of a table or list: positive counts from the start, negative from the end, `0` removes none. A list is one row, so its items are columns. Excel: `DROP`." },
 } satisfies Record<TakeDropOp, { label: string; description: string }>;
 
 export class TakeDropNode extends ClassicPreset.Node {
@@ -578,7 +578,7 @@ export class TakeDropNode extends ClassicPreset.Node {
     this.label = init?.label ?? "";
     // Labels stay op-neutral: the op swaps at runtime, and the sockets are fixed here.
     this.addInput("data", anyDataIn("List or table"));
-    this.addInput("rows", numIn("Count"));
+    this.addInput("rows", numIn("Rows"));
     this.addInput("cols", numIn("Cols"));
     this.addOutput("result", adoptiveDataOut("Result"));
   }
@@ -596,30 +596,16 @@ export class TakeDropNode extends ClassicPreset.Node {
     const nRows = Math.round(rRaw);
     const nCols = Math.round(cRaw);
     const gone = (len: number, k: number) => this.op === "drop" && len > 0 && Math.abs(k) >= len;
-    if (Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0])) {
-      const m = raw as CellMat;
-      if (gone(m.length, nRows) || gone(m[0].length, nCols)) {
-        const err = solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
-        this.cachedResult = err;
-        return { result: err };
-      }
-      const result = carryMatrixUnit(this.slice(m, nRows).map((r) => [...this.slice(r, nCols)]), m);
-      this.cachedResult = result;
-      return { result };
-    }
-    // A scalar wraps to a one-item list and a cols count is #SHAPE!, both as the formula does.
-    if (nCols !== 0) {
-      const err = solError("#SHAPE!", `${this.op === "take" ? "TAKE" : "DROP"} of a list has no columns — pass one count`);
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const arr = Array.isArray(raw) ? (raw as unknown[]) : [raw];
-    if (gone(arr.length, nRows)) {
+    // [[D85]] columnsStayColumns: a list is one row, so its items are columns; a list comes back as a list.
+    const isTable = Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0]);
+    const m = isTable ? (raw as CellMat) : [Array.isArray(raw) ? (raw as Cell[]) : [raw as Cell]];
+    if (gone(m.length, nRows) || gone(m[0].length, nCols)) {
       const err = solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
       this.cachedResult = err;
       return { result: err };
     }
-    const result = this.slice(arr, nRows);
+    const cut = this.slice(m, nRows).map((r) => [...this.slice(r, nCols)]);
+    const result = isTable ? carryMatrixUnit(cut, m) : (cut[0] ?? []);
     this.cachedResult = result;
     return { result };
   }

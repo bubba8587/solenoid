@@ -39,7 +39,9 @@ describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
     const drop = resolveExcelFunction("DROP")!;
     expect(isSolError(drop([1, 2, 3], 5)) && (drop([1, 2, 3], 5) as { code: string }).code).toBe("#DOMAIN!");
     expect(isSolError(drop([1, 2, 3], -3))).toBe(true);
-    expect(drop([1, 2, 3], 1)).toEqual([2, 3]);
+    // A list is one row ([[D85]] columnsStayColumns): dropping its row leaves nothing, and its items are columns.
+    expect(isSolError(drop([1, 2, 3], 1))).toBe(true);
+    expect(drop([1, 2, 3], undefined, 1)).toEqual([2, 3]);
     expect(isSolError(drop([[1, 2], [3, 4]], 0, 2))).toBe(true);
   });
   it("an exponential fit over a y at or below zero is #NUM! on both cards", async () => {
