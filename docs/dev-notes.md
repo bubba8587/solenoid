@@ -33,9 +33,10 @@ specific item.
   reverted. TAKE/DROP on lists, blank list literals, INDEX's blank position and
   SORT/FILTER on matrices wait on the author (backlog, Cubes and lists).
 - **Table Reshape and search:** TOCOL/TOROW take Excel's `ignore` and `scan_by_column`, and the card carries them as
-  a By row / By column toggle and a skip picker. The menu no longer offers "Type Check: ISERR" (the card has no such op,
-  the author's call); formula ISERR keeps Excel's answer and is a recorded gap (`EXCEL_GAP`). The reshape rows gain "table reshape" keywords, so the family name finds them.
-  Held for the author: Excel-alias rows ("List Sort: SORTBY") read as ops, but [[C19]] namingModel requires them.
+  a By row / By column toggle and a skip picker. Type Check gains ISERR (current Excel beside ISERROR). The reshape rows gain "table reshape" keywords, so the family name finds them.
+  Excel-alias rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name is one op's formula
+  name and the row places that op ([[C19]] namingModel, amended on the author's word); "Card: Op" is only ever an op.
+  Every row carries its card's family name (the hover hint's), so "bessel" or "is test" finds the family.
 - **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
   re-export (backlog, exported to Solenoid-Properties `develop`). The outbox is processed: A1, B1, B2, B3, B7 are ratified.
 

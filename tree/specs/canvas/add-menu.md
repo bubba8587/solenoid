@@ -81,7 +81,11 @@ A family's **hidden ops** (`hiddenOps`) are the ops with no leaf of their own: e
 `flattenLeaves` turns the tree into the flat list that search scores. Each entry carries its leaf plus its category path, the labels of the categories it sits under, outermost first. Beyond the tree's own leaves, it adds two kinds of generated row:
 
 - **Hidden-op rows.** Each hidden op gets a row built by `opEntry`, with type `` `${host}__op-${op}` ``. Picking the row places the host card already set to that op. Folding a family onto one card therefore never makes an op unfindable.
-- **Excel-alias rows.** For each Excel name in `CATALOG_TO_EXCEL` that the leaf answers to, `excelEntry` adds a row with type `` `${host}__excel-${name}` ``, unless the name is already worn: the leaf's own label, one of its hidden ops' labels, or any other card's or op's label in the catalog, so "Group Lists: GROUPBY" never sits beside the GROUPBY card. Each Excel name appears at most once per leaf in `NODE_EXCEL`. The match ignores case and a trailing parenthetical, so "T.TEST (paired)" already answers to T.TEST and "DATE (Build)" to DATE. The label is `` `${hostLabel}: ${name}` `` ("Table Size: ROWS"), so a user who types the Excel name sees it on the row they get. When the host label is itself a function name (all capitals, digits and dots, like "AVERAGE" or "LINEST"), the prefix would only repeat itself, so the label is the alias alone ("COUNTA"); the description still names the host. A family's primary op gets no hidden-op row, so an Excel name that is the primary op (Type Check's ISNUMBER) still gets its alias row.
+- **Excel-alias rows** ([[C19]] namingModel). Two sources, both through `excelEntry`, type `` `${host}__excel-${name}` ``:
+  - an op of the leaf's family whose formula name (`fx`) differs from its label gets a row that places the card set to that op, labeled `` `${name} → ${hostLabel}: ${opLabel}` `` ("NORM.DIST → Distributions: Normal", "SORTINO → Returns: Sortino ratio"); these come first, so they win over a card-level row for the same name;
+  - each Excel name in `CATALOG_TO_EXCEL` that the leaf answers to gets a row labeled `` `${name} → ${hostLabel}` `` ("ROWS → Table Size", "COUNTA → COUNT").
+
+  The Excel name comes first and the arrow sets it off, so an alias row never reads as an op row ("Host: Op"), which is what the old "Table Size: ROWS" shape did. A name already worn gets no row: the leaf's own label, a hidden op's label, any other card's or op's label, or a name an earlier alias row took, so "Group Lists: GROUPBY" never sits beside the GROUPBY card. Each Excel name appears at most once per leaf in `NODE_EXCEL`. The match ignores case and a trailing parenthetical, so "T.TEST (paired)" already answers to T.TEST and "DATE (Build)" to DATE. A family's primary op gets no hidden-op row, so an Excel name that is the primary op (Type Check's ISNUMBER) still gets its alias row.
 
 Both kinds are views of the host leaf ([[#The search rows]]): they spread the host and replace only what must differ. Both are generated at search time and never inserted into the tree, so code that walks the catalog does not count them as extra nodes. Neither carries the host's `keywords`, and neither carries the host's hidden-op list or its `{ }` mark, since a row that is one op has nothing folded up. A hidden-op row does carry the op's own `keywords`.
 
@@ -93,8 +97,8 @@ Both kinds are views of the host leaf ([[#The search rows]]): they spread the ho
 
 Two texts are built from the row, and both are deliberately wider than what the menu renders:
 
-- The **haystack**: label, Excel names, category path, the type with `-` and `_` read as spaces, and `keywords`. The description stays out: it is prose, and a subsequence scan over prose lets nearly any short query land on a row whose sentences happen to hold its letters in order.
-- The **word list**: the words of the label, the label with any leading op glyph stripped ("+ Add" becomes "Add"), the type words, `keywords`, the category path, the Excel names and the row's **retired names**: every `LEGACY_ALIASES` name whose replacement is one of the row's Excel names, its stripped label or its op name (MATCH on XMATCH, FLOOR.PRECISE on FLOOR, DSUM on SUM). The formula surface refuses those names with "Use X", so the menu lands them on X's card. Words split on anything that is not a letter, digit or dot, so a hyphenated query ("k-means") lands word by word.
+- The **haystack**: label, Excel names, category path, the type with `-` and `_` read as spaces, `keywords`, and the card's **family name** (`nodeTypeName`, the hover hint's name: "Table Reshape", "Bessel"), read off the class once per host type. The description stays out: it is prose, and a subsequence scan over prose lets nearly any short query land on a row whose sentences happen to hold its letters in order.
+- The **word list**: the family name's words, the words of the label, the label with any leading op glyph stripped ("+ Add" becomes "Add"), the type words, `keywords`, the category path, the Excel names and the row's **retired names**: every `LEGACY_ALIASES` name whose replacement is one of the row's Excel names, its stripped label or its op name (MATCH on XMATCH, FLOOR.PRECISE on FLOOR, DSUM on SUM). The formula surface refuses those names with "Use X", so the menu lands them on X's card. Words split on anything that is not a letter, digit or dot, so a hyphenated query ("k-means") lands word by word.
 
 En and em dashes in either text, and in the query, read as plain hyphens, so "savitzky-golay" finds a keyword spelled with an en dash.
 
@@ -108,7 +112,8 @@ A word that scores 90 or more as a word hit counts that score alone. Otherwise i
 On top of the word total, the row gets the best **whole-query bonus** from its fields (`fieldScore`): 1000 plus the subsequence score for an exact match, 400 for a prefix, 150 for a match at the start of any space-separated word, and the bare subsequence score otherwise. The fields are:
 
 - the label; the label followed by the category path; the type words; `keywords`; the label with its op glyph stripped (without the strip, "Add Column" would outrank the Add card for "add");
-- for a generated `Host: Name` row, the part after the colon, so an exact hit on an op's name ranks like an exact hit on a leaf's own label;
+- for a generated `Host: Name` row, the part after the colon, so an exact hit on an op's name ranks like an exact hit on a leaf's own label; for an alias row, the Excel name before the arrow;
+- the family name, scored 5 lower, so "table reshape" lands on the reshape ops and "bessel" on the Bessel functions;
 - each Excel name, scored 10 lower so an exact label still wins a tie;
 - each retired name, scored 20 lower, so a row that wears the name itself ("Sparkline: Column" for COLUMN) keeps first place.
 
@@ -166,7 +171,7 @@ A placed node knows only its class and its `op`. The catalog lookups index every
 |---|---|---|
 | **Name** | the catalog leaf label (`nodeCatalog.ts`), or for an op family the current op's label; the title rules are [[D22]] oneNamePerCard | card title, Navigator, Inspector title, Problems, Pins, Comments, status bar, Isolate, cable inspector, history and popup titles, all through `nodeDisplayName` (the user's own label wins) |
 | **Family name** | `nodeTypeName`, derived from the class name | only the card's hover type-hint, under the exception in [[D22]] |
-| **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description's closing "Excel: X."; and Add-menu search, as a row that shows the name ("Table Size: ROWS", built by `excelEntry` in the hidden-op row shape) whenever the Excel name is not already the row's own name or one of its ops |
+| **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description's closing "Excel: X."; and Add-menu search, as a row that shows the name before an arrow ("ROWS → Table Size", or "NORM.DIST → Distributions: Normal" for one op's formula name, built by `excelEntry`) whenever the Excel name is not already the row's own name or one of its ops |
 | **Op names** | the family's `OP_META` label, read by `nodeOps` | the op dropdown; hidden-op search rows ("Host: Op"); the card title when the op has its own leaf |
 | **Formula name** | `fx ?? despace(label)` in `nodeOps` | the formula surface; letter case per [[D23]] capsClaimsFunction |
 | **Socket labels** | `addInput` / `addOutput` | the card's rows; bare nouns, with hints in `socketDocs` (`socket-reference.md` §8) |

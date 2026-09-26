@@ -3,6 +3,7 @@ import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { LEGACY_ALIASES } from "./excelFunctions";
 import { fuzzyScoreLower, fieldScoreLower, tokenWordScore, withinOneEdit } from "./fuzzy";
 import { opsFor, opEntry, excelEntry } from "./nodeOps";
+import { nodeTypeName } from "./nodeNamer";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
@@ -23,8 +24,19 @@ export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = [])
     const decl = leaf.hiddenOps?.length ? opsFor(leaf.type) : undefined;
     // hiddenOps is set only for a declaration that lists ops, so `create` is present; the guard tells the type checker.
     if (decl?.create) for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
+    // An op whose formula name differs from its label gets a row that shows that name and places the op
+    // ("NORM.DIST → Distributions: Normal"); it wins over the card-level row for the same name.
+    const ops = opsFor(leaf.type);
+    if (ops?.create) {
+      for (const entry of ops.ops) {
+        const name = entry.fx?.toUpperCase();
+        if (!name || worn.has(name)) continue;
+        worn.add(name);
+        out.push({ leaf: excelEntry(leaf, entry.fx!, { decl: ops, entry }), categoryPath });
+      }
+    }
     for (const name of CATALOG_TO_EXCEL.get(leaf.type) ?? []) {
-      if (!worn.has(name.toUpperCase())) out.push({ leaf: excelEntry(leaf, name), categoryPath });
+      if (!worn.has(name.toUpperCase())) { worn.add(name.toUpperCase()); out.push({ leaf: excelEntry(leaf, name), categoryPath }); }
     }
   }
   return out;
@@ -83,26 +95,43 @@ function prepare(lc: LeafWithContext): Prepared {
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  const haystack = dashes(`${leaf.label} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`).toLowerCase();
+  const haystack = dashes(`${leaf.label} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords} ${familyOf(leaf)}`).toLowerCase();
   const bare = stripGlyphPrefix(leaf.label);
   const colon = leaf.label.indexOf(": ");
   const opName = colon > 0 && leaf.type.includes("__") ? leaf.label.slice(colon + 2) : null;
+  const arrow = leaf.label.indexOf(" → ");
+  const aliasName = arrow > 0 && leaf.type.includes("__excel-") ? leaf.label.slice(0, arrow) : null;
+  const family = familyOf(leaf);
   // A retired Excel spelling (MATCH, FLOOR.PRECISE) finds the card that answers to its replacement.
   const legacy = legacyNamesOf([...excelNames, bare, ...(opName ? [opName] : [])]);
-  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")} ${legacy.join(" ")}`)
+  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")} ${legacy.join(" ")} ${family}`)
     .toLowerCase().split(WORD_SEP).filter(Boolean);
   const own = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   if (bare && bare !== leaf.label) own.push(bare);
   if (opName) own.push(opName);
+  if (aliasName) own.push(aliasName);
   const fields: [string, number][] = [
     ...own.filter((f) => f.trim()).map((f): [string, number] => [f.toLowerCase(), 0]),
+    ...(family ? [[family.toLowerCase(), 5] as [string, number]] : []),
     ...excelNames.map((n): [string, number] => [n.toLowerCase(), 10]),
     ...legacy.map((n): [string, number] => [n.toLowerCase(), 20]),
   ];
-  const names = [leaf.label, bare, ...excelNames].map((n) => n.toLowerCase());
+  const names = [leaf.label, bare, ...excelNames, ...(aliasName ? [aliasName] : [])].map((n) => n.toLowerCase());
   const p = { haystack, words, fields, names };
   prepared.set(lc, p);
   return p;
+}
+
+// The card's family name, the hover hint's ("Table Reshape", "Bessel"), read off the class once per host type.
+const families = new Map<string, string>();
+function familyOf(leaf: NodeCatalogEntry): string {
+  const host = leaf.type.split("__")[0];
+  let f = families.get(host);
+  if (f === undefined) {
+    try { f = nodeTypeName(leaf.create() as { constructor: { name: string } }); } catch { f = ""; }
+    families.set(host, f);
+  }
+  return f;
 }
 
 type Query = { tokens: string[]; squashed: string; trimmed: string };

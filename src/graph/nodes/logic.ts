@@ -404,7 +404,7 @@ function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) =
 
 // ─── IS.TEST ──────────────────────────────────────────────────────────────────
 
-export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | "islogical" | "istext" | "isnontext";
+export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "iserr" | "isna" | "islogical" | "istext" | "isnontext";
 
 // ISBOOLEAN is Solenoid's name for ISLOGICAL (`formula-language.md` § Excel names on nodes); the `islogical` key stays because saves use it.
 export const IS_TEST_OP_META = {
@@ -412,6 +412,7 @@ export const IS_TEST_OP_META = {
   isblank:   { label: "ISBLANK",   description: "`TRUE` when the cell is empty. Excel: `ISBLANK`." },
   isnull:    { label: "ISNULL",    description: "`TRUE` when the value is missing." },
   iserror:   { label: "ISERROR",   description: "`TRUE` when the value is any error. Excel: `ISERROR`." },
+  iserr:     { label: "ISERR",     description: "`TRUE` when the value is any error but `#N/A`. Excel: `ISERR`." },
   isna:      { label: "ISNA",      description: "`TRUE` when the value is `#N/A`. Excel: `ISNA`." },
   islogical: { label: "ISBOOLEAN", description: "`TRUE` when the value is a Boolean. Excel: `ISLOGICAL`." },
   istext:    { label: "ISTEXT",    description: "`TRUE` when the value is text. Excel: `ISTEXT`." },
@@ -453,6 +454,7 @@ export class IsTestNode extends ClassicPreset.Node {
     if (isSolError(input)) {
       result =
         this.op === "iserror" ? 1 :
+        this.op === "iserr"   ? (isNaError(input) ? 0 : 1) :
         this.op === "isna"    ? (isNaError(input) ? 1 : 0) :
         0;
       this.cachedResult = toLogical(result);
@@ -478,6 +480,7 @@ export class IsTestNode extends ClassicPreset.Node {
         // A pure type test: only a real boolean passes, so the IS checks partition by type with no overlap.
         case "islogical": return typeof x === "boolean";
         case "iserror":   return isSolError(x);
+        case "iserr":     return isSolError(x) && !isNaError(x);
         case "isna":      return isNaError(x);
         default:          return false;
       }

@@ -215,7 +215,7 @@ describe("Excel-alias rows never repeat a name a card already wears", () => {
   const worn = new Set(all.filter((l) => !l.leaf.type.includes("__")).flatMap(({ leaf }) => [leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)]).map(bare));
 
   it("no alias row names another card or op", () => {
-    const clashes = all.filter((l) => l.leaf.type.includes("__excel-")).map((l) => l.leaf.label).filter((label) => worn.has(bare(label.split(": ").pop()!)));
+    const clashes = all.filter((l) => l.leaf.type.includes("__excel-")).map((l) => l.leaf.label).filter((label) => worn.has(bare(label.split(" → ")[0])));
     expect(clashes).toEqual([]);
   });
 
@@ -225,14 +225,27 @@ describe("Excel-alias rows never repeat a name a card already wears", () => {
     expect(search("GROUPBY").map((l) => l.label)).not.toContain("Group Lists: GROUPBY");
   });
 
-  // [[D73]] nodeCoversFormula: the Type Check card has no ISERR op, so no row may offer it there.
-  it("no row offers ISERR on Type Check, and ISERROR ranks its own op first", () => {
-    expect(search("ISERR").map((l) => l.type)).not.toContain("is-test__excel-ISERR");
+  // [[D73]] nodeCoversFormula: ISERR is current Excel, so it is a real Type Check op, not an alias row.
+  it("ISERR is a real Type Check op, and ISERROR ranks its own op first", () => {
+    expect(types("ISERR", 1)).toEqual(["is-test__op-iserr"]);
     expect(types("ISERROR", 1)).toEqual(["is-test__op-iserror"]);
   });
 
   it("the Table Reshape card's family name finds its four ops first", () => {
     expect(types("table reshape", 4).sort()).toEqual(["reshape-tocol", "reshape-torow", "reshape-wrapcols", "reshape-wraprows"]);
+  });
+
+  // An alias row shows the Excel name before an arrow, so it never reads as an op row ("Card: Op").
+  it("alias rows read Excel → Card, or Excel → Card: Op for one op's formula name", () => {
+    const labels = all.filter((l) => l.leaf.type.includes("__excel-")).map((l) => l.leaf.label);
+    expect(labels).toContain("SORTBY → List Sort");
+    expect(labels.every((l) => l.includes(" → "))).toBe(true);
+    expect(search("NORM.DIST")[0].label).toBe("NORM.DIST → Distributions: Normal");
+  });
+
+  it("a card's family name finds its rows", () => {
+    expect(types("bessel", 4).every((t) => t.startsWith("bessel-"))).toBe(true);
+    expect(types("coupon", 3).every((t) => t.startsWith("coupon-"))).toBe(true);
   });
 
   it("no card lists the same Excel name twice", () => {
@@ -266,8 +279,7 @@ describe("Add-menu search — the top hit for common queries", () => {
   it("every card and row label finds a row with that label first", () => {
     const misses = leaves.filter(({ leaf }) => search(leaf.label)[0]?.label !== leaf.label)
       .map(({ leaf }) => `${leaf.label} → ${search(leaf.label)[0]?.label}`);
-    // RAND's own type is "randbetween", so the host outranks its RANDBETWEEN alias row; both place the same card.
-    expect(misses).toEqual(["RANDBETWEEN → RAND"]);
+    expect(misses).toEqual([]);
   });
 
   it("a retired Excel name lands on the card that answers to its replacement", () => {

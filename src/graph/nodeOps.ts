@@ -259,12 +259,17 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
   return decl.ops.filter((o) => !own.has(o.op));
 }
 
-export function excelEntry(host: NodeCatalogEntry, name: string): NodeCatalogEntry {
-  const hostIsFunction = /^[A-Z][A-Z0-9.]*$/.test(host.label);
+/** "Excel → Card", or "Excel → Card: Op" when the Excel name is one op's formula name; the arrow tells it from an op row ("Card: Op"). */
+export function excelSearchLabel(name: string, hostLabel: string, opLabel?: string): string {
+  return `${name} → ${opLabel ? opSearchLabel(hostLabel, opLabel) : hostLabel}`;
+}
+
+export function excelEntry(host: NodeCatalogEntry, name: string, op?: { decl: NodeOpsDecl & { create: (op: string) => unknown }; entry: OpEntryDecl }): NodeCatalogEntry {
   return {
     ...host,
     type: `${host.type}__excel-${name}`,
-    label: hostIsFunction ? name : opSearchLabel(host.label, name),
+    label: excelSearchLabel(name, host.label, op?.entry.label),
+    ...(op ? { create: () => op.decl.create(op.entry.op) } : {}),
     keywords: undefined,
     hiddenOps: undefined,
     hideOpsMark: undefined,

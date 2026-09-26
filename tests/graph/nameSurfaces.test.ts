@@ -22,7 +22,7 @@ describe("[[C19]] namingModel — an Excel name a node answers to is a search ro
       for (const eq of equivs) {
         const name = eq.excel.toUpperCase();
         const top = searchLeaves(leaves, eq.excel).slice(0, 3);
-        const hit = top.some((l) => l.label.toUpperCase().replace(/\s*\([^)]*\)/g, "").split(/[:/,]/).map((t) => t.trim()).includes(name));
+        const hit = top.some((l) => l.label.toUpperCase().replace(/\s*\([^)]*\)/g, "").split(/[:/,→]/).map((t) => t.trim()).includes(name));
         if (!hit) bad.push(`${eq.excel} (${type}) → ${top.map((l) => l.label).join(" | ") || "nothing"}`);
       }
     }
