@@ -37,6 +37,10 @@ specific item.
   Excel-alias rows read "SORTBY → List Sort", or "NORM.DIST → Distributions: Normal" when the name is one op's formula
   name and the row places that op ([[C19]] namingModel, amended on the author's word); "Card: Op" is only ever an op.
   Every row carries its card's family name (the hover hint's), so "bessel" or "is test" finds the family.
+- **Search samples:** `scripts/search-samples.ts` (46 queries, one per kind of searchable row) runs in
+  `searchSamples.test.ts`; `SEARCH_SAMPLES_OUT` writes the table's JSON. It found two gaps, both fixed: an op's
+  keywords never reached its row (`fromMeta` dropped them), so "kanban" missed "Record: Board"; and List Sort had no
+  argument words ("descending").
 - **Open:** a one-row matrix under one INDEX index (the author holds it for now, backlog); the plugin snapshot
   re-export (backlog, exported to Solenoid-Properties `develop`). The outbox is processed: A1, B1, B2, B3, B7 are ratified.
 

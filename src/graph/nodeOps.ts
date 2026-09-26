@@ -69,8 +69,8 @@ export type NodeOpsDecl = NodeOpsBase & (
 
 export interface OpEntryDecl { op: string; label: string; fx?: string; keywords?: string }
 
-function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntryDecl[] {
-  return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}) }));
+function fromMeta(meta: Record<string, { label: string; fx?: string; keywords?: string }>): OpEntryDecl[] {
+  return Object.entries(meta).map(([op, m]) => ({ op, label: m.label, ...(m.fx ? { fx: m.fx } : {}), ...(m.keywords ? { keywords: m.keywords } : {}) }));
 }
 
 const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) => ({

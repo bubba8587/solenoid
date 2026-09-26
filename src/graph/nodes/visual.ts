@@ -1038,9 +1038,9 @@ export type RecordOp = "card" | "gallery" | "board" | "list";
 export const RECORD_OP_META = {
   card:    { label: "Card" },
   gallery: { label: "Gallery" },
-  board:   { label: "Board" },
+  board:   { label: "Board", keywords: "kanban lanes" },
   list:    { label: "List" },
-} satisfies Record<RecordOp, { label: string }>;
+} satisfies Record<RecordOp, { label: string; keywords?: string }>;
 
 function readCardSize(optStr: string | null): RecordSize | undefined {
   const m = optStr && /(?:^|;)\s*cardsize\s*=\s*([sml])\b/i.exec(optStr);

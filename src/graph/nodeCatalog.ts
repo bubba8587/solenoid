@@ -552,7 +552,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "list-filter",  label: "List Filter", description: "Keeps the List values that pass its condition rows, joined by AND or OR; the rest go to Dropped. Text tests ignore case unless a row's Match case is on. `No error` drops error cells and `Has error` keeps only them. For a table's rows, use Frame Filter. Excel: `FILTER`.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode(), keywords: "keep where condition predicate drop errors iserror noterror div0 remove errors clean" },
           { type: "list-fill",  label: "Fill", keywords: "coalesce fill missing null impute interpolate", description: "Handles missing cells: a constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in order like SQL `COALESCE`.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
           { type: "pair", children: [
-            { type: "list-sort",    label: "List Sort", description: "Sorts a list ascending or descending, by its own values or by a parallel key list (sort names by their scores). Excel: `SORT` / `SORTBY`.", create: () => new SortNode() },
+            { type: "list-sort",    label: "List Sort", description: "Sorts a list ascending or descending, by its own values or by a parallel key list (sort names by their scores). Excel: `SORT` / `SORTBY`.", keywords: "ascending descending order by key", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverses the order of the list", create: () => new ReverseNode() },
           ]},
           { type: "pair", children: [

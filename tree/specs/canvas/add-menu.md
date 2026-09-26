@@ -149,6 +149,12 @@ Quick-wire is a setting (`quickWire`, off by default). With it on, a cable dropp
 
 `.solenoid-add-menu__scroll` is a two-column CSS grid (`grid-template-columns: auto auto`) so the two halves of a pair share column tracks. Every child that is not a pair half (`--half`) spans both columns (`grid-column: 1 / -1`), and a spanning item's natural width is split across both auto tracks. Rows are `white-space: nowrap` and the panel has no `max-width`. The panel is therefore as wide as its widest single row. The tree view hides this because it renders one category at a time; search renders every matching row at once, so the widest row in the whole catalog can set the width on the first keystroke.
 
+## Search samples
+
+`scripts/search-samples.ts` holds one sample query per kind of searchable row (a card's label and its lower-case prefix, a card named after its function, a family name, an op label, an op's formula name, a card's Excel name, a Frame verb's Excel name, a retired Excel name, a keyword, a pack card's keyword, a one-edit typo, words in any order, an argument's words) with the row it must land on and how far down it may sit. `searchSamples.test.ts` runs them against the real catalog, and `SEARCH_SAMPLES_OUT=<file>` writes the results as JSON for a readable table. A sample whose row needs a pack searches with every pack on.
+
+An op's own `keywords` ride its row, declared on the family's `OP_META` beside its label (`fromMeta` carries them), so "kanban" lands on "Record: Board".
+
 ## Catalog checks
 
 `validateCatalog()` runs in development and only warns, never throws, so a stale entry cannot break the app. It reports every `NODE_EXCEL` type with no catalog node, and flags menu shape over a catalog built with every pack: a category with more than 12 rows (a pair counts as one row) or nested deeper than 3 submenu levels. The shape limits are advice, since packs extend the catalog at runtime and may push a category over.
