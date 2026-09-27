@@ -219,11 +219,24 @@
   border-radius: 6px;
 }
 .formula-popup__vars-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  margin-bottom: 6px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
 }
+.formula-popup__vars-title::-webkit-details-marker { display: none; }
+.formula-popup__vars-title:hover { color: var(--text); }
+.formula-popup__vars[open] .formula-popup__vars-title { margin-bottom: 6px; }
+.formula-popup__vars-chevron {
+  display: inline-flex;
+  transition: transform 0.12s;
+}
+.formula-popup__vars[open] .formula-popup__vars-chevron { transform: rotate(90deg); }
 .formula-popup__var-row {
   display: flex;
   align-items: center;

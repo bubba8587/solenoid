@@ -19,6 +19,7 @@ import { formatScalar } from "./format";
 import { PopupShell } from "./PopupShell";
 import "./FormulaPopup.css";
 import { nodeDisplayName } from "../catalogUtils";
+import { ChevronRightIcon } from "./Icons";
 
 // The step-by-step evaluator is shelved; true re-enables its intact wiring.
 const SHOW_STEPS = false;
@@ -89,8 +90,11 @@ function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHos
     host.setVarDescription?.(v, desc);
   };
   return (
-    <div className="formula-popup__vars">
-      <div className="formula-popup__vars-title">Variables</div>
+    <details className="formula-popup__vars">
+      <summary className="formula-popup__vars-title">
+        <span className="formula-popup__vars-chevron"><ChevronRightIcon size={10} strokeWidth={2} /></span>
+        Variable Definitions
+      </summary>
       {vars.map((v) => (
         <div key={v} className="formula-popup__var-row">
           <span className="formula-popup__var-name" dangerouslySetInnerHTML={{ __html: renderTex(v) }} />
@@ -103,7 +107,7 @@ function VariableDescriptions({ vars, host }: { vars: string[]; host: FormulaHos
           />
         </div>
       ))}
-    </div>
+    </details>
   );
 }
 
