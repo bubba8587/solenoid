@@ -53,23 +53,6 @@ describe("chart value", () => {
     expect(out.chart.values).toEqual([1, null, null, null, 5]);
   });
 
-  it("Composed reads the frame's numeric columns as series (col 0 label, rest series)", () => {
-    const frame: FrameValue = {
-      __frame: true,
-      columns: [
-        { name: "Q", type: "string", values: ["Q1", "Q2"] },
-        { name: "Rev", type: "number", values: [10, 20] },
-        { name: "Cost", type: "number", values: [4, 9] },
-      ],
-    };
-    const out = draw(new ChartNode({ op: "composed" }), { values: [frame] });
-    expect(out.chart.labels).toEqual(["Q1", "Q2"]);
-    expect(out.chart.series).toEqual([
-      { name: "Rev", values: [10, 20] },
-      { name: "Cost", values: [4, 9] },
-    ]);
-  });
-
   it("Bubble bypasses the label rule: the first three NUMBER columns are x / y / size", () => {
     const frame: FrameValue = {
       __frame: true,

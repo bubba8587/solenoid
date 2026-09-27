@@ -90,9 +90,9 @@ describe("Merge Plots node", () => {
     expect(err.message).toContain("pie");
   });
 
-  it("refuses composed and the non-plot figures", () => {
+  it("refuses the non-plot figures", () => {
     const n = new MergePlotsNode();
-    expect(isSolError(n.data({ p0: [chart("composed", [1])] }).chart)).toBe(true);
+    expect(isSolError(n.data({ p0: [chart("radar", [1])] }).chart)).toBe(true);
     expect(isSolError(n.data({ p0: [chart("kpi", null)] }).chart)).toBe(true);
   });
 

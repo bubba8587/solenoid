@@ -261,7 +261,7 @@ export type ChartBuilderKey =
 export type ChartTargetId =
   | "column" | "bar" | "line" | "area" | "scatter" | "xyline"
   | "pie" | "radar" | "radialbar" | "funnel"
-  | "composed" | "bubble" | "overlay"
+  | "bubble" | "overlay"
   | "histogram" | "histogram2d" | "kpi" | "scale" | "proportion" | "sankey"
   | "waterfall" | "candle" | "boxplot" | "calheat" | "gantt" | "record";
 
@@ -277,8 +277,6 @@ const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
 const RADAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "grid", "marker", "radarscale", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
-const COMPOSED_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const OVERLAY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "grid", "aspect", "xmin", "xmax", "ymin", "ymax", "linewidth", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
@@ -300,7 +298,6 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   radar:     { label: "Radar",            group: "Categorical",  op: "radar", keys: RADAR_KEYS },
   radialbar: { label: "Radial",           group: "Categorical",  op: "radialbar", keys: SLICE_KEYS },
   funnel:    { label: "Funnel",           group: "Categorical",  op: "funnel", keys: SLICE_KEYS },
-  composed:  { label: "Composed",         group: "Multi-series", op: "composed", keys: COMPOSED_KEYS },
   bubble:    { label: "Bubble",           group: "Multi-series", op: "bubble", keys: SCATTER_KEYS },
   overlay:   { label: "Merge Plots",      group: "Multi-series", op: "overlay", keys: OVERLAY_KEYS },
   histogram: { label: "Histogram",        group: "Figures",      op: "column", keys: XY_KEYS },

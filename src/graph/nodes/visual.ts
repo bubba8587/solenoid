@@ -72,7 +72,7 @@ export class SparklineNode extends ClassicPreset.Node {
 export type ChartOp =
   | "column" | "bar" | "line" | "area"
   | "pie" | "radar" | "radialbar" | "funnel" | "scatter" | "xyline"
-  | "composed" | "bubble";
+  | "bubble";
 
 export const CHART_OP_META = {
   column:    { label: "Column",   group: "Cartesian" },
@@ -85,7 +85,6 @@ export const CHART_OP_META = {
   radar:     { label: "Radar",    group: "Categorical" },
   radialbar: { label: "Radial",   group: "Categorical" },
   funnel:    { label: "Funnel",   group: "Categorical" },
-  composed:  { label: "Composed", group: "Multi-series" },
   bubble:    { label: "Bubble",   group: "Multi-series" },
 } satisfies Record<ChartOp, { label: string; group: string }>;
 

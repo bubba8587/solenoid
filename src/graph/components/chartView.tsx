@@ -26,7 +26,6 @@ const GaugeArcInner = lazy(() => import("./chartRender").then((m) => ({ default:
 const TornadoBarsInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TornadoBars })));
 const TreemapViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TreemapView })));
 const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.SankeyView })));
-const ComposedViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.ComposedView })));
 const XYViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.XYView })));
 const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.MultiSeriesView })));
 const OverlayViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.OverlayView })));
@@ -72,16 +71,6 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <SankeyViewInner {...props} />
-    </Suspense>
-  );
-}
-
-type SeriesArg = { name: string; values: (number | null)[] }[];
-
-export function ComposedView(props: { series: SeriesArg; labels?: (string | number)[]; width: number; height: number; opts?: ChartOptions; fscale?: number }) {
-  return (
-    <Suspense fallback={box(props.width, props.height)}>
-      <ComposedViewInner {...props} />
     </Suspense>
   );
 }
@@ -184,11 +173,6 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
   if (value.op === "gantt" && value.payload?.kind === "gantt")
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
-  const hasSeries = !!value.series && value.series.length > 0;
-  if (value.op === "composed") {
-    if (hasSeries) return <ComposedView series={value.series!} labels={value.labels} width={width} height={height} opts={value.options} fscale={fscale} />;
-    return renderSeries(value, "column", width, height, axes, fontScale);
-  }
   if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 }

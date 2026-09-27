@@ -190,16 +190,6 @@
       }
     },
     {
-      "id": "composed",
-      "type": "ChartNode",
-      "x": -5529,
-      "y": -236,
-      "init": {
-        "label": "Bars + line (composed)",
-        "op": "composed"
-      }
-    },
-    {
       "id": "bubble",
       "type": "ChartNode",
       "x": -5529,
@@ -519,8 +509,7 @@
         "label": "Series frame",
         "members": [
           "matrix",
-          "bubble",
-          "composed"
+          "bubble"
         ],
         "color": "lime",
         "collapsed": false,
@@ -663,12 +652,6 @@
       "sourceOutput": "frame",
       "target": "sankey",
       "targetInput": "frame"
-    },
-    {
-      "source": "matrix",
-      "sourceOutput": "frame",
-      "target": "composed",
-      "targetInput": "values"
     },
     {
       "source": "matrix",

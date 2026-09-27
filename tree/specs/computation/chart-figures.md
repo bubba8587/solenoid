@@ -25,13 +25,13 @@ Every consumer recognizes a value by its brand field, never by structure: `isCha
 | `__chart` | `true` | The brand. |
 | `op` | `ChartValueOp` | The figure kind. Picks the renderer (see Render dispatch). |
 | `values` | `number \| number[] \| null` | The raw 1-D numbers the figure plots. The series figures draw from it; for the payload figures it is a summary (see the per-node table) that no renderer reads. |
-| `series` | `{ name, values: (number \| null)[] }[]`, optional | Named series. For the cartesian ops it is set only when two or more numeric columns survive the label column, and `values` then mirrors the first series. Composed reads it as bar then lines. Sparkline always sets one series. The XY ops (Scatter, XY Line, Bubble) never set it; their series ride the `xy` payload. |
+| `series` | `{ name, values: (number \| null)[] }[]`, optional | Named series. For the cartesian ops it is set only when two or more numeric columns survive the label column, and `values` then mirrors the first series. Sparkline always sets one series. The XY ops (Scatter, XY Line, Bubble) never set it; their series ride the `xy` payload. |
 | `labels` | `(string \| number)[]`, optional | One category label per data point (a Frame's column 0), shown on the axis instead of the 1-based index. For Radar it is the spoke names. |
 | `payload` | `ChartPayload`, optional | Structured data for the figures that are not a numeric series. Its `kind` equals `op`. |
 | `options` | `ChartOptions` | The parsed options string (see The options string). Figures that take no options carry `{}`. |
 | `title` | string, optional | The display title: the options `title`, else the node label, else the node's default name. It labels the popup header, the Report embed bar and the chip; it is never drawn inside the figure (the in-figure title is `options.title`, see Titles). |
 
-`ChartValueOp` is the union of the Chart node's twelve ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `composed`, `bubble`, the keys of `CHART_OP_META`) and the fourteen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `quiver`, `record`, `overlay`, `gantt`). `chartValueOps()` enumerates all 26 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
+`ChartValueOp` is the union of the Chart node's eleven ops (`column`, `bar`, `line`, `area`, `scatter`, `xyline`, `pie`, `radar`, `radialbar`, `funnel`, `bubble`, the keys of `CHART_OP_META`) and the fourteen special ops in `CHART_SPECIAL_OPS` (`kpi`, `scale`, `proportion`, `sankey`, `surface`, `contour`, `waterfall`, `candle`, `boxplot`, `calheat`, `quiver`, `record`, `overlay`, `gantt`). `chartValueOps()` enumerates all 25 at runtime, and `chartPopupCoverage.test.ts` checks that every one reaches the shared popup path.
 
 ### Payloads
 
@@ -249,7 +249,6 @@ A key a renderer does not read is inert on that figure. For each Chart Builder t
 | Pie | `title`, `fontsize`, `pielabels` |
 | Radar | `title`, `grid`, `marker`, `radarscale`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha`, `fontsize` |
 | Radial, Funnel | `title`, `fontsize` |
-| Composed | `title`, `xlabel`, `ylabel`, `grid`, `marker`, `ymin`/`ymax`, `linewidth`, `markersize`, `alpha` (the bars), `fontsize` |
 | Merge Plots (`overlay`) | `title`, `xlabel`, `ylabel`, `grid`, `aspect`, `xmin`/`xmax`, `ymin`/`ymax`, `linewidth` (a fallback for series without one), `fontsize`; each series keeps its inherited `color`, `markersize`, `linewidth`, `alpha`, `marker` |
 | Histogram 2-D (`contour`), KPI, Gauge (`scale`), Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap | `title`, `fontsize` |
 | Record | `title`, `fontsize`, `cardsize`, `clamp` |
@@ -258,7 +257,7 @@ A key a renderer does not read is inert on that figure. For each Chart Builder t
 
 Exceptions a key list cannot see, because the builder does not know the data:
 
-- **Series count.** Two or more series paint from the palette, so `color` is inert on a multi-series Column, Bar, Line, Area, Scatter, XY Line or Bubble. `radarscale` is read only by a multi-series Radar, and with `radarscale=axis` (the default) the radius is `[0, 1]`, so `ymin`/`ymax` apply to a single-series or `shared` Radar only. A Composed with a single number column draws as Column and reads its keys.
+- **Series count.** Two or more series paint from the palette, so `color` is inert on a multi-series Column, Bar, Line, Area, Scatter, XY Line or Bubble. `radarscale` is read only by a multi-series Radar, and with `radarscale=axis` (the default) the radius is `[0, 1]`, so `ymin`/`ymax` apply to a single-series or `shared` Radar only.
 - **The data.** `markersize` is inert on points sized by an `s` column, so on a Bubble whose data has a third number column. `linewidth` is inert on a Scatter or Bubble with no `linestyle`. `aspect` and `xmin`/`xmax` are inert on a Merge Plots holding no XY source, and `aspect` on an XY figure whose x is a text column.
 - **Mode.** Gauge's Dial mode has no Options input and emits `{}`; the Gauge target covers the Bar mode. Surface (both views) and Vector Field have no Options input and no target.
 ### Serialization and the Chart Builder
@@ -285,7 +284,6 @@ The Chart Builder node has one input per field (37 text, 8 number) and one outpu
 | any op with an `xy` payload (`scatter`, `xyline`, `bubble`, an XY `overlay`) | `XYView` | recharts |
 | `overlay` | `OverlayView` | recharts |
 | `gantt` | `GanttView` (`GanttFigure` from `@solenoid/gantt-react`) | its own lazy chunk, DOM grid plus SVG |
-| `composed` | `ComposedView` with series; else the single-series path as `column` | recharts |
 | `scatter`, `xyline`, `bubble` with no payload | the empty dash | |
 | the other Chart ops | the series path | recharts |
 
@@ -305,7 +303,7 @@ Multi-series marks, categorical slices, treemap cells, Sankey nodes and waffle c
 
 ### Titles
 
-The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `XYView`, `ComposedView` and `RecordCardView`. For the figures that draw none themselves (KPI, Gauge, Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap, Contour and Gantt, `UNTITLED_FIGURES` in `chartTitle.tsx`), `ChartFigure` draws the same strip (`chartTitle.tsx`) above the figure and hands it the remaining height. The Sankey, KPI and Gauge cards draw through `ChartFigure`, so their options apply on the card as they do in a Display. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
+The in-figure title is `options.title`, drawn as a centered bold strip `ceil(16 · fs)` pixels tall at `11 · fs` pixels, taken out of the plot's height, by `ChartView`, `MultiSeriesView`, `OverlayView`, `XYView` and `RecordCardView`. For the figures that draw none themselves (KPI, Gauge, Proportion, Sankey, Waterfall, Candlestick, Boxplot, Calendar Heatmap, Contour and Gantt, `UNTITLED_FIGURES` in `chartTitle.tsx`), `ChartFigure` draws the same strip (`chartTitle.tsx`) above the figure and hands it the remaining height. The Sankey, KPI and Gauge cards draw through `ChartFigure`, so their options apply on the card as they do in a Display. The popup and a Report embed remove both `title` and `options.title` before drawing, because their header or bar already shows it.
 
 ## The recharts figures
 
@@ -321,7 +319,6 @@ All recharts figures run with animation off. Tick text is `9 · fs`, axis titles
 - **Radial.** A negative ring is dropped (`partSlices`) and a zero ring keeps its empty track; the rest keep their row's color. Rings from 18% to 92% radius, starting at 12 o'clock; a bottom legend names the rings only when `labels` exist, each name through `sanitizeChartLabel`.
 - **Funnel.** Palette-colored stages with the value labeled on the right. A negative stage is dropped (`partSlices`) and a zero stage kept; the stages keep their row's color.
 - **Multi-series.** The legend is a fixed 18 pixel DOM row under the plot, its height taken off the plot, inset by the y-axis width to center on the plot area. It is never recharts' `<Legend>`, which reserves a strip inside the plot, lays it out against the x-axis (landing on the x label) and re-reserves whenever its measured height changes, so the plot jumps on a click. Clicking an entry spotlights that series (the others drop to 0.18 opacity); clicking it again clears. A pointer press on the legend is stopped so the card does not start a drag.
-- **Composed.** Series 0 as bars, the rest as lines, gridded unless `grid=off`, with a legend when there are two or more series: the same DOM row under the plot as every multi-series chart (`SeriesLegend`), whose click spotlights a series.
 - **Overlay.** A series' inherited `alpha` is its line stroke, area fill or bar fill. One shared cartesian plane (a recharts `ComposedChart`) with each series in its own mark: line, area, and both `column` and `bar` as vertical bars, so every mark shares the x axis. A series without an inherited color takes the palette. Legend clicks spotlight by series index (the data key), never by name, since merged series names can collide.
 - **Treemap.** Cells sized by value (non-positive values dropped, blank names shown as `#n`); a name is drawn in white only in a cell wider than `46 · fs` and taller than `20 · fs`.
 - **Sankey.** Flows that are blank, self-loops or not positive are skipped; node width 10, padding 16; labels sit inward (left of nodes in the right half, right of the others). A flow is drawn at stroke opacity 0.5 and lifts to 0.85 under the pointer (`.sol-sankey .recharts-sankey-link:hover` in `chartView.css`), beside its value tooltip.
@@ -368,7 +365,7 @@ The same value draws at several sizes; the renderer is always given pixel width 
 - **Draws only the `Chart` chip:** Record and Gantt. The figure would be squashed at card width, so it draws wherever the output goes ([[C63]] oneRecordNode). The Record card keeps its own pager when Row is unwired. The Gantt card registers an SVG serializer for exports (see Exports).
 - **Collapsed:** a figure card shows the `Chart` chip in its hero box instead of the figure; Sparkline and the Dial square-collapse to a miniature; Mermaid shows a `Diagram` chip that re-expands the card.
 
-The `Chart` chip (`ChartChip`) opens the popup with the value, titled by the chip's label, else the value's title, else `Chart`. An expand button in the figure's top right corner does the same on the Chart, Merge Plots, Sparkline and Display surfaces; the Chart card omits it for Composed.
+The `Chart` chip (`ChartChip`) opens the popup with the value, titled by the chip's label, else the value's title, else `Chart`. An expand button in the figure's top right corner does the same on the Chart, Merge Plots, Sparkline and Display surfaces.
 
 The popup (`ChartPopup`, one instance mounted in App, state in `chartPopupStore`, a module store because it is opened from inside rete's React root) holds a snapshot of the value, not a subscription. Its state carries either the whole chart `value`, which every surface uses, or, for the Sparkline and Chart expand buttons, the series path (`op`, `axes`, `series`, `labels`, `opts`, `signColors`); with a `value` the series fields are ignored. It opens at the window size less its chrome (32 pixels of overlay margin, a 38 pixel header and 32 of chart padding), and the figure region has 16 pixels of padding a side. It draws through `ChartFigure`, with `virtualize` on for Gantt (windowed rows), and offers Copy SVG for a Gantt (`ganttSvg` at the current width). For a Record card whose Row is unwired it pages with the on-figure pager and the left and right arrow keys (ignored while focus is in a text field), stepping the node's Row literal and swapping in the fresh value. `recordNav.ts` finds the Record node by walking up to 8 single-inlet hops from the surface's node; the card is steppable only in the Card view, with Row unwired and two or more records. A step clamps to `1..total` and recomputes the node; a wired Row means the cable wins and no surface offers arrows. A Sparkline's popup is drawn from the series it was opened with.
 
@@ -389,7 +386,7 @@ The webpage export and Write to Obsidian take a chart as SVG from the source nod
 The `chart` family has one control, the text scale `chartFontScale` (×0.8, ×1 default, ×1.25, ×1.5, ×2), and nothing else ([[C94]] formatFamilyGates; the table is [[format-model]]). It is display-only: it never changes the value on the cable. The scale multiplies with the value's own `fontsize`: the payload figures get `fscale = chartFontScale · fontsize / 10`, and the recharts series figures compute the same product themselves.
 
 - **Where it is read:** the Chart and Merge Plots cards (the FC on their own output), Display (`resolveDisplayAnnotation`: an FC on the Display, else one on its source output or downstream), the popup (the FC on the node it was opened from) and a Report embed (the FC resolved for that reference). The other figure cards do not read it.
-- **Figures it affects:** every recharts series figure, Overlay, XY, Composed, Treemap and Sankey labels, KPI, the Bar gauge and Record (through `--chart-fscale`), Gantt, and the canvas text of Waterfall, Candlestick, Boxplot, Calendar Heatmap, Waffle and Contour. It has no effect on the Dial, Surface or Vector Field.
+- **Figures it affects:** every recharts series figure, Overlay, XY, Treemap and Sankey labels, KPI, the Bar gauge and Record (through `--chart-fscale`), Gantt, and the canvas text of Waterfall, Candlestick, Boxplot, Calendar Heatmap, Waffle and Contour. It has no effect on the Dial, Surface or Vector Field.
 
 ## Errors and empty inputs
 

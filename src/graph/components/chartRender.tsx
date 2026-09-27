@@ -618,68 +618,6 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
   );
 }
 
-export function ComposedView({ series, labels, width, height, opts, fscale = 1 }: {
-  series: { name: string; values: (number | null)[] }[];
-  labels?: (string | number)[];
-  width: number; height: number; opts?: ChartOptions; fscale?: number;
-}) {
-  const { grid, axis } = useChartColors();
-  const colors = useSeriesColors();
-  const [focus, setFocus] = useState<number | null>(null);
-  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
-  const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
-  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
-  const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
-  const data = Array.from({ length: n }, (_, i) => {
-    const o: Record<string, number | null> = { i };
-    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
-    return o;
-  });
-  const tickFmt = (i: number | string) => {
-    const idx = Math.round(Number(i));
-    if (!Number.isFinite(idx)) return "";
-    if (labels) { const lab = labels[idx]; return lab == null || typeof lab === "object" ? "" : typeof lab === "number" ? axisTick(lab) : String(lab); }
-    return idx >= 0 ? String(idx + 1) : "";
-  };
-  const lw = opts?.linewidth ?? 1.5;
-  const showMarkers = opts?.marker ?? false;
-  const dotR = opts?.markersize ?? LINE_DOT_R;
-  const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fscale, fill: axis } : undefined;
-  const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fscale, fill: axis } : undefined;
-  const title = opts?.title;
-  const legendH = series.length > 1 ? MULTI_LEGEND_H : 0;
-  const chartH = height - (title ? titleHeight(fscale) : 0) - legendH;
-  const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fscale, !!yLabel);
-  const margin = { top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 };
-  const chart = (
-    <ComposedChart width={width} height={chartH} data={data} margin={margin}>
-      {(opts?.grid ?? true) && <CartesianGrid stroke={grid} vertical={false} />}
-      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={n <= ALL_TICKS_UPTO ? 0 : undefined} label={xLabel} height={xLabel ? 28 : undefined} />
-      <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomainOf(opts)} label={yLabel} />
-      <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />
-      {series.map((s, j) => j === 0
-        ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} fillOpacity={(opts?.alpha ?? 1) * dim(j)} isAnimationActive={false} />
-        : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
-    </ComposedChart>
-  );
-  const legendPress = (e: SyntheticEvent) => {
-    if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
-  };
-  return (
-    <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>
-      {title && <ChartTitle text={title} fs={fscale} />}
-      {chart}
-      {legendH > 0 && (
-        <SeriesLegend
-          series={series} paint={(j) => colors[j % colors.length]} dim={dim} fs={fscale} color={axis}
-          insetLeft={yAxisW} insetRight={margin.right} lines={false}
-          onPick={(j) => setFocus((f) => (f === j ? null : j))}
-        />
-      )}
-    </div>
-  );
-}
-
 const LINE_DASH: Record<LineStyle, string | undefined> = {
   solid: undefined, dashed: "6 4", dotted: "1.5 3", dashdot: "6 3 1.5 3", none: undefined,
 };

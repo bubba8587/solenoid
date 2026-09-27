@@ -41,7 +41,6 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const opts = data.chartOptions;
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;
-  const noExpand = op === "composed";
   const series = toSeries(data.cachedResult);
   const err = data.cachedError;
   const hasData = series.length > 0 || !!data.cachedSeries || !!data.cachedPayload;
@@ -84,9 +83,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         ) : !collapsed && (
           <>
             <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
-            {!noExpand && (
-              <ChartExpandButton title={opts.title || nodeDisplayName(data)} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} value={cv} />
-            )}
+            <ChartExpandButton title={opts.title || nodeDisplayName(data)} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} value={cv} />
           </>
         )}
       </div>

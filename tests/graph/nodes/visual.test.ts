@@ -70,21 +70,6 @@ describe("visual nodes", () => {
     ]);
   });
 
-  it("composed reads the frame like the other cartesian ops: col 0 labels, columns as series", () => {
-    const frame: FrameValue = { __frame: true, columns: [
-      { name: "Month", type: "string", values: ["Jan", "Feb", "Mar"] },
-      { name: "Sales", type: "number", values: [120, 145, 98] },
-      { name: "Target", type: "number", values: [130, 130, 140] },
-    ] };
-    const out = draw(new ChartNode({ op: "composed" }), { values: [frame], options: ["title=Sales vs target"] }).chart;
-    expect(out.labels).toEqual(["Jan", "Feb", "Mar"]);
-    expect(out.series).toEqual([
-      { name: "Sales", values: [120, 145, 98] },
-      { name: "Target", values: [130, 130, 140] },
-    ]);
-    expect(out.options.title).toBe("Sales vs target");
-  });
-
   it("bubble names its axes after the x/y columns unless the options label them", () => {
     const frame: FrameValue = { __frame: true, columns: [
       { name: "Spend", type: "number", values: [12, 25] },
