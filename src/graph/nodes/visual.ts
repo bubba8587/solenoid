@@ -1,7 +1,7 @@
 // [[C63]], [[B11]]
 import { ClassicPreset } from "rete";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
-import { setting } from "../inputRoles";
+import { setting, picks } from "../inputRoles";
 import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d, equalWidthBins } from "./visualOps";
@@ -1058,7 +1058,7 @@ function readClamp(optStr: string | null): boolean {
 export const RECORD_CARD_CAP = 60;
 
 // [[D88]] cardsView: the plan reads every row up to PROFILE_ROWS, so the figure's cards match the Table popup's.
-function recordDeck(cols: FrameColumn[], drawn: number): RecordDeck {
+function recordDeck(cols: FrameColumn[], drawn: readonly number[]): RecordDeck {
   const total = cols[0]?.values.length ?? 0;
   const profiled = Math.min(total, PROFILE_ROWS);
   const rawText = (col: FrameColumn, r: number): string => {
@@ -1085,19 +1085,31 @@ function recordDeck(cols: FrameColumn[], drawn: number): RecordDeck {
     shown: Array.from({ length: profiled }, (_, r) => shownText(c, r)),
     chip: chipCols.includes(i),
   })));
-  const rows = Array.from({ length: drawn }, (_, r) => cols.map((c) => {
+  const rows = drawn.map((r) => cols.map((c) => {
     const v = c.values[r] ?? null;
     if (v === null) return null;
     if (typeof v === "number" && c.type === "number") return v;
     return shownText(c, r);
   }));
-  return { names, types: cols.map((c) => c.type), formats: cols.map((c) => c.format ?? null), chipCols, plan, rows };
+  return { names, types: cols.map((c) => c.type), formats: cols.map((c) => c.format ?? null), chipCols, plan, rows, rowNumbers: drawn.map((r) => r + 1) };
+}
+
+/** The 0-based rows `picks` names, in its order: 1-based, negative counts from the end (CHOOSEROWS), out of range dropped; no picks is every row. */
+export function recordRows(picked: unknown, total: number): number[] {
+  const want = typeof picked === "number" ? [picked] : Array.isArray(picked) ? picked : null;
+  if (!want) return Array.from({ length: total }, (_, i) => i);
+  return want.flatMap((p) => {
+    if (typeof p !== "number" || !Number.isFinite(p)) return [];
+    const n = Math.round(p);
+    const at = n < 0 ? total + n : n - 1;
+    return at >= 0 && at < total ? [at] : [];
+  });
 }
 
 export class RecordNode extends ClassicPreset.Node {
-  static inputRoles = { row: setting(1) };
+  static inputRoles = { rows: picks() };
   static socketDocs: Record<string, string> = {
-    row: "Selects the 1-based record for Detail. Blank or out of range shows the boxes empty.",
+    rows: "Picks the records, 1-based, in order: 3, or 1, 3, 5; -1 is the last. Blank shows every record. Detail pages through the picks.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
     layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns.",
     options: "title=Parts;fontsize=12;cardsize=l. Gallery and Cards tiles size s, m or l; clamp=on caps long values at three lines and folds a card past six fields.",
@@ -1105,8 +1117,9 @@ export class RecordNode extends ClassicPreset.Node {
 
   label: string;
   op: RecordOp;
-  literals: Record<string, number> = { row: 1 };
-  stringLiterals: Record<string, string> = {};
+  /** Detail's pager: the 1-based position among the picked rows. */
+  literals: Record<string, number> = { page: 1 };
+  stringLiterals: Record<string, string> = { rows: "" };
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
   width = 240;
@@ -1125,7 +1138,7 @@ export class RecordNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Record";
     this.op = init?.op ?? "detail";
     this.addInput("frame", frameIn("Frame"));
-    if (this.op === "detail") this.addInput("row", numIn("Row"));
+    this.addInput("rows", numListIn("Rows"));
     if (this.op === "board") this.addInput("by", strIn("Group by"));
     if (this.op !== "cards") this.addInput("layout", strIn("Layout"));
     this.addInput("options", strIn("Options"));
@@ -1135,26 +1148,21 @@ export class RecordNode extends ClassicPreset.Node {
   setOp(next: RecordOp): void {
     if (next === this.op) return;
     this.op = next;
-    if (next === "detail") { if (!this.inputs.row) this.addInput("row", numIn("Row")); }
-    else if (this.inputs.row) this.removeInput("row");
     if (next === "board") { if (!this.inputs.by) this.addInput("by", strIn("Group by")); }
     else if (this.inputs.by) this.removeInput("by");
     if (next !== "cards") { if (!this.inputs.layout) this.addInput("layout", strIn("Layout")); }
     else if (this.inputs.layout) this.removeInput("layout");
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; row?: number[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; rows?: unknown[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const fv = await readFrame(inputs.frame?.[0] ?? null);
     const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
-    const total = cols[0]?.values.length ?? 0;
+    const order = recordRows(readRole<unknown>(this, "rows", inputs.rows), cols[0]?.values.length ?? 0);
+    const total = order.length;
     let index = 0;
-    if (this.op === "detail") {
-      index = Math.round(readRole<number>(this, "row", inputs.row));
-      if (inputs.row?.[0] === undefined && total > 0) {
-        index = clamp(index, 1, total);
-        this.literals.row = index;
-      }
-      if (index < 1 || index > total) index = 0;
+    if (this.op === "detail" && total > 0) {
+      index = clamp(Math.round(this.literals.page ?? 1), 1, total);
+      this.literals.page = index;
     }
     const layIn = this.op === "cards" ? null : readInput(inputs.layout, this.stringLiterals.layout ?? null);
     const layStr = typeof layIn === "string" ? layIn : null;
@@ -1192,21 +1200,19 @@ export class RecordNode extends ClassicPreset.Node {
     let lanes: RecordPayload["lanes"];
     let more = 0;
     let deck: RecordDeck | undefined;
+    const drawn = order.slice(0, RECORD_CARD_CAP);
     if (this.op === "detail") {
-      cards = [cardAt(index >= 1 ? index - 1 : null)];
+      cards = [cardAt(index >= 1 ? order[index - 1] : null)];
     } else if (this.op === "cards") {
-      const drawn = Math.min(total, RECORD_CARD_CAP);
       deck = recordDeck(cols, drawn);
-      more = total - drawn;
+      more = total - drawn.length;
     } else if (this.op === "gallery" || this.op === "list") {
-      const drawn = Math.min(total, RECORD_CARD_CAP);
-      cards = Array.from({ length: drawn }, (_, r) => cardAt(r));
-      more = total - drawn;
+      cards = drawn.map((r) => cardAt(r));
+      more = total - drawn.length;
     } else if (byCol) {
-      const drawn = Math.min(total, RECORD_CARD_CAP);
       const laneList: NonNullable<RecordPayload["lanes"]> = [];
       const laneOf = new Map<string, number>();
-      for (let r = 0; r < drawn; r++) {
+      for (const r of drawn) {
         const cell = byCol.values[r] ?? null;
         const shown = cell === null ? null : formatFrameCell(byCol.type, cell);
         const label = shown === null ? "—" : String(shown);
@@ -1216,7 +1222,7 @@ export class RecordNode extends ClassicPreset.Node {
         cards.push(cardAt(r));
       }
       lanes = laneList;
-      more = total - drawn;
+      more = total - drawn.length;
     }
 
     const payload: RecordPayload = {

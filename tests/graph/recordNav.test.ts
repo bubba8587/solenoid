@@ -8,7 +8,7 @@ import { recordNavTarget } from "../../src/graph/components/recordNav";
 import type { FrameValue } from "../../src/graph/frame";
 
 // B3: the Record card popup pages with ←/→ + on-screen prev/next. recordNavTarget gates
-// WHEN the pager is offered — a card view over >1 rows with an unwired Row.
+// WHEN the pager is offered: a Detail view whose picked rows number more than one.
 const sock = new (class extends ClassicPreset.Socket {})("any");
 const frameOf = (n: number): FrameValue => ({
   __frame: true,
@@ -40,12 +40,15 @@ describe("recordNavTarget — when the Record pager (prev/next) is offered", () 
     expect(recordNavTarget((await setup("detail", 1)).rec.id)).toBeNull();
   });
 
-  it("a wired Row means the cable wins — no arrows", async () => {
-    const { editor, rec } = await setup("detail");
+  it("the pager steps its own page: Rows picks the set it steps through, so a wired list still pages", async () => {
+    const { editor, rec } = await setup("detail", 5);
     const src = new ClassicPreset.Node("Src");
     src.addOutput("out", new ClassicPreset.Output(sock, "o"));
     await editor.addNode(src as never);
-    await editor.addConnection(new ClassicPreset.Connection(src as never, "out", rec as never, "row") as never);
-    expect(recordNavTarget(rec.id)).toBeNull();
+    await editor.addConnection(new ClassicPreset.Connection(src as never, "out", rec as never, "rows") as never);
+    await rec.data({ frame: [frameOf(5)], rows: [[2, 4]] });
+    expect(recordNavTarget(rec.id)).toBe(rec.id);
+    await rec.data({ frame: [frameOf(5)], rows: [3] });
+    expect(recordNavTarget(rec.id)).toBeNull(); // one pick: nothing to step through
   });
 });

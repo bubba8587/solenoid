@@ -23,6 +23,12 @@ specific item.
   masonry (`MasonryGallery`), planned in the node over up to 2000 rows (`RecordDeck`). The card is one component,
   `AutoCard`, in both places. The popup's overflow menu adds **Add Record: Cards**, placing a wired Record node in the
   first clear spot right of the host. The Cards from files seed gained a Catalog gallery.
+- **Record Rows:** the scalar Row (Detail only) became **Rows** on every view: a number or a list (`numlist`, typed
+  `1, 3, 5`, `picks` role, negatives from the end), blank for every row. Detail's pager is its own `page` among the
+  picks, so a wired list still pages.
+- **Record Rows:** the scalar Row (Detail only) became **Rows** on every view: a number or a list (`numlist`, typed
+  `1, 3, 5`, `picks` role, negatives from the end), blank for every row. Detail's pager is its own `page` among the
+  picks, so a wired list still pages. The CSV field now takes a `(default X)` placeholder (`all` here).
 - **Cards demo data:** `scripts/gen-cards-demo.cjs` writes `demo-vault/Data/{crew,products,orders}.csv` (drawn
   `data:image` avatars and product pictures, tags, colors, ratings, progress, date ranges, links) and the
   **Cards from files** seed (Tables): Local File nodes into Filter, Sort, Head, a Computed Column, Keep lookups, two

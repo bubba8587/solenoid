@@ -4,7 +4,7 @@ import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
   boxplotStats, quantileSorted,
-  RecordNode, parseRecordLayout, recordImageSrc,
+  RecordNode, recordRows, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nodes/chartOptions";
@@ -560,7 +560,7 @@ describe("Record node", () => {
 
   it("cells format for display: dates as text, booleans as TRUE/FALSE, nulls empty, images detected", async () => {
     const n = new RecordNode();
-    n.literals.row = 2;
+    n.literals.page = 2;
     const f = frame([
       { name: "When", type: "date", values: [45000, 45001] },
       { name: "Done", type: "logical", values: [false, true] },
@@ -576,20 +576,51 @@ describe("Record node", () => {
     expect(by.Photo.image).toBe("https://x.test/b.png");
   });
 
-  it("Row is the record pick: a wired blank is row 1, out-of-range shows empty boxes; unwired clamps + mirrors", async () => {
+  it("Rows picks the records: a wired blank is every row, out-of-range picks are dropped, Detail pages through the picks", async () => {
     const n = new RecordNode();
-    const f = frame([{ name: "A", type: "number", values: [1, 2, 3] }]);
-    // Wired blank → the row left out, so record 1 ([[D86]] blankRoles).
-    let p = (await n.data({ frame: [f], row: [null as unknown as number] })).chart.payload as RecordPayload;
-    expect(p.index).toBe(1);
-    // Wired out-of-range → empty too, never clamped to a record the cable didn't pick.
-    p = (await n.data({ frame: [f], row: [7] })).chart.payload as RecordPayload;
-    expect(p.index).toBe(0);
-    // Unwired → the card's literal clamps into range and mirrors back.
-    n.literals.row = 99;
-    p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
-    expect(p.index).toBe(3);
-    expect(n.literals.row).toBe(3);
+    const f = frame([{ name: "A", type: "number", values: [10, 20, 30, 40, 50] }]);
+    const valueOf = (p: RecordPayload) => p.cards[0][0].value;
+    // Wired blank → the picks left out, so every row ([[D86]] blankRoles).
+    let p = (await n.data({ frame: [f], rows: [null] })).chart.payload as RecordPayload;
+    expect(p).toMatchObject({ index: 1, total: 5 });
+    // A list: Detail pages through those rows, in that order; the pager's page clamps and mirrors back.
+    n.literals.page = 99;
+    p = (await n.data({ frame: [f], rows: [[5, 1, 3]] })).chart.payload as RecordPayload;
+    expect(p).toMatchObject({ index: 3, total: 3 });
+    expect(valueOf(p)).toBe(30);
+    expect(n.literals.page).toBe(3);
+    n.literals.page = 1;
+    expect(valueOf((await n.data({ frame: [f], rows: [[5, 1, 3]] })).chart.payload as RecordPayload)).toBe(50);
+    // One number is one record; an out-of-range pick is dropped, and nothing left shows empty boxes.
+    expect(valueOf((await n.data({ frame: [f], rows: [2] })).chart.payload as RecordPayload)).toBe(20);
+    p = (await n.data({ frame: [f], rows: [7] })).chart.payload as RecordPayload;
+    expect(p).toMatchObject({ index: 0, total: 0 });
+    expect(valueOf(p)).toBeNull();
+  });
+
+  it("Rows narrows and orders Gallery, List, Board and Cards too", async () => {
+    const f = frame([
+      { name: "Item", type: "string", values: ["a", "b", "c", "d"] },
+      { name: "Status", type: "string", values: ["Open", "Done", "Open", "Done"] },
+    ]);
+    const gallery = new RecordNode({ op: "gallery" });
+    let p = (await gallery.data({ frame: [f], rows: [[4, 2]] })).chart.payload as RecordPayload;
+    expect(p.cards.map((c) => c[0].value)).toEqual(["d", "b"]);
+    const board = new RecordNode({ op: "board" });
+    board.stringLiterals.by = "Status";
+    p = (await board.data({ frame: [f], rows: [[3, 1, 2]] })).chart.payload as RecordPayload;
+    expect(p.lanes).toEqual([{ label: "Open", cards: [0, 1] }, { label: "Done", cards: [2] }]);
+    const cards = new RecordNode({ op: "cards" });
+    p = (await cards.data({ frame: [f], rows: [[-1, 1]] })).chart.payload as RecordPayload;
+    expect(p.deck?.rows.map((r) => r[0])).toEqual(["d", "a"]);
+    expect(p.deck?.rowNumbers).toEqual([4, 1]);
+  });
+
+  it("recordRows: 1-based picks in order, negatives from the end, junk and out of range dropped, none is every row", () => {
+    expect(recordRows(undefined, 3)).toEqual([0, 1, 2]);
+    expect(recordRows(2, 3)).toEqual([1]);
+    expect(recordRows([3, 1, 1], 3)).toEqual([2, 0, 0]);
+    expect(recordRows([-1, 0, 4, 2.4, "x"], 3)).toEqual([2, 1]);
   });
 
   it("a layout stands without a frame (draftable), and no inputs at all is empty", async () => {
@@ -649,20 +680,20 @@ describe("Record node", () => {
     expect(((await n.data({ frame: [f], by: [null as unknown as string] })).chart.payload as RecordPayload).cards).toEqual([]);
   });
 
-  it("setOp swaps the Row / Group-by sockets with the view", () => {
+  it("setOp swaps the Group-by and Layout sockets with the view; Rows stays on every view", () => {
     const n = new RecordNode();
-    expect(Object.keys(n.inputs)).toEqual(["frame", "row", "layout", "options"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("gallery");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("board");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "by"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options", "by"]);
     n.setOp("detail");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "row"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "layout", "options"]);
     n.setOp("cards");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "options"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options"]);
     n.setOp("list");
-    expect(Object.keys(n.inputs)).toEqual(["frame", "options", "layout"]);
-    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "options"]);
+    expect(Object.keys(n.inputs)).toEqual(["frame", "rows", "options", "layout"]);
+    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "rows", "options"]);
   });
 
   it("Cards plans the whole frame and ships the drawn rows, numbers raw and the rest as shown", async () => {

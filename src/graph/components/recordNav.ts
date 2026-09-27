@@ -23,10 +23,6 @@ function recordSourceOf(nodeId: string): RecordNode | null {
 export function recordNavTarget(nodeId: string): string | null {
   const rec = recordSourceOf(nodeId);
   if (!rec || rec.op !== "detail") return null;
-  const editor = getOwningEditor(rec.id);
-  if (!editor) return null;
-  const rowWired = editor.getConnections().some((c) => c.target === rec.id && c.targetInput === "row");
-  if (rowWired) return null;
   const total = rec.cachedChart?.payload?.kind === "record" ? rec.cachedChart.payload.total : 0;
   return total > 1 ? rec.id : null;
 }
@@ -37,9 +33,9 @@ export async function stepRecordRow(recordId: string, delta: number): Promise<Ch
   if (!(rec instanceof RecordNode)) return null;
   const total = rec.cachedChart?.payload?.kind === "record" ? rec.cachedChart.payload.total : 0;
   if (total < 1) return null;
-  const next = clamp((rec.literals.row ?? 1) + delta, 1, total);
-  if (next === rec.literals.row) return rec.cachedChart;
-  rec.literals.row = next;
+  const next = clamp((rec.literals.page ?? 1) + delta, 1, total);
+  if (next === rec.literals.page) return rec.cachedChart;
+  rec.literals.page = next;
   await processGraph(recordId);
   return rec.cachedChart;
 }

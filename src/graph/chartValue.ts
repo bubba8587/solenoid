@@ -93,7 +93,7 @@ export function titleIndexFor(fields: RecordField[]): number {
   return marked >= 0 ? marked : fields.length > 0 ? 0 : -1;
 }
 
-/** The Cards view's rows: every column's name, type and format, the plan, and each drawn row's cells (numbers raw, everything else as shown). */
+/** The Cards view's rows: every column's name, type and format, the plan, and each drawn row's cells (numbers raw, everything else as shown) and row number. */
 export interface RecordDeck {
   names: string[];
   types: CardColType[];
@@ -101,6 +101,8 @@ export interface RecordDeck {
   chipCols: number[];
   plan: CardPlan;
   rows: (number | string | null)[][];
+  /** Each drawn row's 1-based number in the frame. */
+  rowNumbers: number[];
 }
 export interface RecordPayload {
   kind: "record";

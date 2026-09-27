@@ -189,7 +189,7 @@ function RecordCards({ payload }: { payload: RecordPayload }) {
           chipColors={chipColors}
           texts={texts[r]}
           raw={(c) => String(deck.rows[r]?.[c] ?? "")}
-          rowNumber={r + 1}
+          rowNumber={deck.rowNumbers[r] ?? r + 1}
           fold={!!payload.clamp}
           open={open.has(r)}
           onToggle={() => toggle(r)}

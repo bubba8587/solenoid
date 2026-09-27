@@ -237,7 +237,7 @@ wire("order-lines", "by-category");
 node("by-status", "GroupByFrameNode", X1, 1500, { label: "GROUPBY Status → SUM(Total)", agg: "sum", totalDepth: 1 }, { stringLiterals: { keys: "Status", column: "Total" } });
 wire("orders", "by-status");
 
-node("products-cards", "RecordNode", X1, 1880, { label: "Record: Cards → the catalog", op: "cards" }, { stringLiterals: { options: "cardsize=m;clamp=on" } });
+node("products-cards", "RecordNode", X1, 1880, { label: "Record: Cards → the catalog", op: "cards" }, { stringLiterals: { rows: "", options: "cardsize=m;clamp=on" } });
 wire("products", "products-cards");
 node("catalog", "DisplayNode", X2, 1880, { label: "Catalog cards" }, { size: { w: 760, h: 640 } });
 connections.push({ source: "products-cards", sourceOutput: "chart", target: "catalog", targetInput: "in" });

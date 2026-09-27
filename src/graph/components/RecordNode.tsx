@@ -18,7 +18,6 @@ const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) 
 // A switch drops the departing keys' cables before the sockets go, or a cable would live on invisibly.
 async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void> {
   const departing: string[] = [];
-  if (node.op === "detail" && next !== "detail") departing.push("row");
   if (node.op !== "cards" && next === "cards") departing.push("layout");
   if (node.op === "board" && next !== "board") departing.push("by");
   if (departing.length) await dropInputCables(node.id, departing);
@@ -45,16 +44,15 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const setOp = useCallback((v: RecordOp) => { setOpState(v); void applyRecordOp(data, v); }, [data]);
   const connected = useConnectedInputs(data.id);
   const layoutWired = connected.has("layout");
-  const rowWired = connected.has("row");
   const cv = data.cachedChart;
   const payload = cv?.payload?.kind === "record" ? cv.payload : null;
   const total = payload?.total ?? 0;
   const index = payload?.index ?? 0;
 
   function step(delta: number) {
-    const next = Math.min(total, Math.max(1, (data.literals.row ?? 1) + delta));
-    if (next === data.literals.row) return;
-    data.literals.row = next;
+    const next = Math.min(total, Math.max(1, (data.literals.page ?? 1) + delta));
+    if (next === data.literals.page) return;
+    data.literals.page = next;
     void processGraph(data.id);
   }
 
@@ -74,7 +72,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const layoutPort = data.inputs.layout;
 
   const hasBoxes = !!payload && (payload.cards.some((c) => c.length > 0) || (payload.deck?.rows.length ?? 0) > 0);
-  const keys = ["frame", ...(op === "detail" ? ["row"] : op === "board" ? ["by"] : []), ...(collapsed && op !== "cards" ? ["layout"] : []), "options"];
+  const keys = ["frame", "rows", ...(op === "board" ? ["by"] : []), ...(collapsed && op !== "cards" ? ["layout"] : []), "options"];
 
   return (
     <NodeShell
@@ -92,7 +90,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
         </div>
       )}
       <div className="solenoid-node__section-divider" />
-      {!collapsed && op === "detail" && !rowWired && total > 0 && (
+      {!collapsed && op === "detail" && total > 0 && (
         <div className="solenoid-record__pager">
           <button
             type="button" className="solenoid-record__pager-btn" title="Previous record"

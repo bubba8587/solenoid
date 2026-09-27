@@ -271,6 +271,7 @@
         "op": "cards"
       },
       "stringLiterals": {
+        "rows": "",
         "options": "cardsize=m;clamp=on"
       }
     },

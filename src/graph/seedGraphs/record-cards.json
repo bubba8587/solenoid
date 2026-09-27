@@ -11,7 +11,7 @@
       "y": -52,
       "init": {
         "label": "Record cards",
-        "body": "# One row at a time\nThe **Record** node's **Detail** view shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`; repeating a name merges its cells, and `*2` widens one (the `Photo` box spans all four rows and two columns). The node itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the SKU column and drives **Row**, so the Detail view jumps to the matching part; unplug Row to flip records with the pager instead. A cell holding an image URL renders as the picture.",
+        "body": "# One row at a time\nThe **Record** node's **Detail** view shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`; repeating a name merges its cells, and `*2` widens one (the `Photo` box spans all four rows and two columns). The node itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the SKU column and drives **Rows**, so the Detail view jumps to the matching part. Unplug it to flip through every record with the pager, or type rows like `1, 3, 5` to flip through just those. A cell holding an image URL renders as the picture.",
         "color": "violet",
         "width": 360,
         "height": 272
@@ -39,9 +39,10 @@
         "label": "Part card"
       },
       "literals": {
-        "row": 1
+        "page": 1
       },
       "stringLiterals": {
+        "rows": "",
         "layout": "Item | Item | Photo*2\nSKU | Qty | Photo\nPrice | Updated | Photo\nIn Stock | In Stock | Photo"
       }
     },
@@ -145,6 +146,7 @@
         "op": "list"
       },
       "stringLiterals": {
+        "rows": "",
         "layout": "Item\nSKU\nQty\nPrice"
       }
     },
@@ -188,6 +190,7 @@
         "op": "gallery"
       },
       "stringLiterals": {
+        "rows": "",
         "layout": "#Item | Item\nSKU | Qty\nPrice | In Stock"
       }
     },
@@ -231,6 +234,7 @@
         "op": "gallery"
       },
       "stringLiterals": {
+        "rows": "",
         "layout": "Item\nSKU\nQty",
         "options": "cardsize=s"
       }
@@ -275,6 +279,7 @@
         "op": "gallery"
       },
       "stringLiterals": {
+        "rows": "",
         "layout": "#Item\nNotes",
         "options": "clamp=on"
       }
@@ -351,7 +356,7 @@
       "source": "xmatch",
       "sourceOutput": "result",
       "target": "card",
-      "targetInput": "row"
+      "targetInput": "rows"
     },
     {
       "source": "parts",
