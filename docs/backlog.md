@@ -69,8 +69,11 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Next plugin release:** the snapshot with `resolveToken`, the cube type button and Knap notes ([[D87]]) is
-  exported to Solenoid-Properties `develop` (2026-09-27); merge it to `main`, bump the version and release. The README fix waits on
+- [ ] **Plugin 0.1.4 ships with the next app version bump** (author 2026-09-27): the snapshot with `resolveToken`, the
+  cube type button and Knap notes in Reading view and Live Preview ([[D87]]) is on Solenoid-Properties `develop`;
+  bump `obsidian-plugin/manifest.json` to 0.1.4, re-export, merge there to `main` and release. The approved
+  `whatsnew` video goes to `assets/video/` then: re-render with `DEMO_FPS=60 node scripts/demo-video/record.mjs
+  whatsnew` and `compose.mjs whatsnew` (the build under test is copied into the rig's vault). The README fix waits on
   `claude/copy-editing-style-kytmz0` there.
 - [ ] **A Note card's bare `{{ list }}` on its own field prints Knap's JSON**; in Obsidian a Knap note draws the
   chip ([[D87]] knapNotes, as [[C68]] asks of a bare tag). Embed the card's own object fields as a Report does?

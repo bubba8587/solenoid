@@ -17,9 +17,11 @@ specific item.
 - **Module split** so the plugin can bundle Knap without the formula engine: `toTemplateValue` moved to
   `templateValue.ts`, `guessScalarText` to `scalarText.ts`; `bareTags` in `knapTemplate.ts` finds the bare tags
   `embedBareVariables` rewrites. The plugin's `main.js` is 581 kB (477 kB before; the difference is Knap).
-- **Live Preview renders Knap too** (piece by piece, source when the cursor enters); an error waits for a 1.5 s pause in
-  typing, and Up/Down enter a drawn block. **The `whatsnew` video cut** (`scripts/demo-video/whatsnew.mjs`, plugin
-  0.1.4) films it; the render is in `.dev/video/`, not committed until the author says so.
+- **Live Preview details:** an error waits for a 1.5 s pause in typing (a half-typed tag fails to render), and Up/Down
+  enter a drawn block, which the editor stepped over.
+- **The `whatsnew` video cut** (`scripts/demo-video/whatsnew.mjs`, plugin 0.1.4, 1080p60 via `DEMO_FPS=60`), approved by
+  the author; the render sits in `.dev/video/`, uncommitted. Plugin 0.1.4 and the video ship with the next app version
+  bump (`docs/backlog.md` § Obsidian).
 - **Rig in a cloud container:** Obsidian's Linux tarball unpacks to `/opt/Obsidian`; Xephyr is absent, so a stand-in
   script running `Xvfb` on the same display (and a no-op `metacity`) lets `npm run plugin:rig` run unchanged.
 
