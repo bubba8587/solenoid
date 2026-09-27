@@ -393,8 +393,8 @@ OpSelect, InlineOutputRows), `NodeCard.tsx`, `NodeSocket.tsx`
 (MeasuredSocketRow), `SocketComponent.tsx`, `inlineInput.tsx`,
 `ExtensibleInputs.tsx` (flat variadic value rows, optional fixed `leadingKeys`),
 `PairedExtensibleInputs.tsx` (variadic input PAIRS — IFS/SWITCH — with optional
-fixed leading/trailing rows), `ArrayChip` / `TablePopup` / `FormulaPopup` (+
-`popupChrome.css`), `FrameChip` / `FrameDisplay`, `SegToggle`, `SwatchGrid`, `PaletteEditor`
+fixed leading/trailing rows), `ArrayChip` / `TablePopup` (+ `TableCards`, its Cards view,
+planned by `cardLayout.ts`) / `FormulaPopup` (+ `popupChrome.css`), `FrameChip` / `FrameDisplay`, `SegToggle`, `SwatchGrid`, `PaletteEditor`
 (F-1 app custom-palette editor, Settings-only), `DocumentProperties` (F-2
 doc metadata + per-doc palette base modal), `ResizeHandle`, `RecalcButton`.
 Adding a node: see the `add-node` skill /

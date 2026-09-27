@@ -2,15 +2,15 @@
 aliases: ["Table popup"]
 tags: [spec, documents]
 ---
-<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams -->
+<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams, [[D88]] cardsView -->
 
 # Spec: Table popup
 
-Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin and [[D18]] frameLabelHint. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint and [[D88]] cardsView. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
-The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
+The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block, a frame as a stack of cards or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
 
-Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `PopupPinButton.tsx` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx` and `cubeEditCell.tsx` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx` and `columnHeadControls.tsx`.
+Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `PopupPinButton.tsx` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx` and `cubeEditCell.tsx` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx`, `columnHeadControls.tsx`, and `TableCards.tsx` with `cardLayout.ts` (the Cards view).
 
 ## The store and the openers
 
@@ -155,6 +155,31 @@ The entry widget follows the column type:
 
 In Formatted mode each field shows the formatted value until it is focused, and a cell whose text is an image source (`recordImageSrc`) shows the picture as well, as the Record figure does (`.sol-record__img`).
 
+## The Cards view
+
+Every frame popup, read-only or editable, has a Cards view ([[D88]] cardsView): each row is a card in one column at most 460 pixels wide, for reading a frame on a phone. A popup that opens at a viewport 640 pixels wide or less opens a frame in Cards; everything else opens in Grid. A list or matrix has no Cards view.
+
+**The plan.** `planCards` (`cardLayout.ts`) assigns each column to one part of the card, once per table, from the column names, types and raw cells, so every card has the same shape and the same frame always gets the same plan. It profiles at most the first 2000 rows (`PROFILE_ROWS`). Each step takes the leftmost column that fits, from the columns still free, in this order:
+
+| Part | Takes | Shows |
+|---|---|---|
+| Image | a text column where at least half the filled cells are image addresses (`recordImageSrc`) | a 44 pixel thumbnail left of the title |
+| Key | a column with no repeats that is named like an id (`ID`, `SKU`, `Code`, `#`, `… ID`), a text column of codes (`SO-1042`, `A12`), or a first number column counting up from one | a small accent-tinted tag before the title |
+| Prose | every text column averaging over 40 characters or with one over 90 | full width at the bottom, clamped to 3 lines; a tap on the card shows it whole |
+| Chips | every text column styled Chip, and every short text column (at most 24 characters) that repeats values and has at most 8 distinct ones (fewer on a short table; none under 3 rows) | category chips |
+| Title | the best-scoring remaining text column: a name-like header (`Name`, `Title`, `Product`, `Customer`, `City`…) scores 4, a column at least 90% distinct 2 (half distinct 1), a typical length of 2 to 32 characters 1; ties go left | the card's heading; `Row N` when no text column can carry it |
+| Subtitle | the next short text column, when there is a title | muted under the title |
+| Meta | the first date column | beside the subtitle, never broken across lines |
+| Hero | the number column whose name ranks first among total, grand, amount, balance, net, revenue, sales, profit, due, paid, salary, pay, budget, price, cost, value, score and sum; else the rightmost number column that is not a column of years | large on the card's right, with its column name under it |
+| Flags | every Boolean column | a check or cross pill named for the column; a blank cell shows nothing |
+| Stats | everything left, in column order | label-over-value tiles in a grid of 118 pixel minimum columns |
+
+**Values.** A card shows what the Grid shows: the column's format picks with Source off, the source text with it on. A blank cell is left off the card. Error codes wear the shared error chip, `NaN` is muted, and a computed column's label carries the accent dot, as in the Form view. A chip column styled Chip keeps the colors the grid gives it; the columns read as chips continue one run of colors, so two of them on one card never share a color.
+
+**The bar.** Above the cards: a filter that keeps rows whose shown text contains every word typed, ignoring case, with `n of N` beside it while it filters; a sort select (Source order, then each column) with an ascending and descending button. The select sets one sort key on the popup's shared sort, so Grid shows the same order. The cards follow the visual sort, 100 at a time, with Show More for the next 100.
+
+**Editing.** Cards only read. On an editable popup each card has an Edit in Form button that opens the Form view at that row.
+
 ## The CSV view
 
 The CSV view shows the same data as one text block (`CsvEditor`). A frame's block starts with a header line; a plain table or list has none.
@@ -215,7 +240,7 @@ The statistics run over every row: a read-only popup reads its value, an editabl
 - **The header** holds the title, `headerExtra` (dimensions, badges), then, when the popup has a host node (`pinNodeId`), Go to source and Pin, then `headerActions` (the overflow menu) and the close button. Go to source closes the popup and flies to the node that produced the value, resolved upstream through relays (`resolveValueOrigin`, [[type-propagation-on-in-place-socket-retype#Relays are transparent]]), searching within a drill-in's subgraph when the host lives there. Pin pins the host's value to the HUD (`pinNodeValue`) and shows the pinned state in the accent.
 - **The accent.** `popupCardVars` sets `--node-accent`, its contrasting ink `--node-accent-ink`, the darkened `--node-accent-dark` (the light theme's body border, as on the node card), and `--group-color` and `--group-color-dark` for a grouped host, which also adds the group framing (a 2 pixel group-colored body border and the lower-right membership triangle). The edited cell, the format selects, the CSV box and the footer's Save or Done wear the popup's own accent, so a frame popup reads violet like the frame it edits; two unrelated hues on one surface would clash. Only a popup with no host falls back to the app accent. On touch devices the footer's controls shrink so the row and column buttons and Cancel and Save share one row ([[obsidian-plugin]] has the measured sizes).
 - **The look** mirrors a node card, so a popup reads as an extension of the node it came from: the card's surface and 6 pixel radius, a header with a 2 pixel accent border on its top and sides, a tinted background and an inset bottom divider, and an uppercase accent-tinted title. The 1 pixel body border (sides and bottom, starting under the header at `--header-h`, which `PopupShell` publishes) is drawn on the card's own box, the same box as the header, so the two edges stay aligned at fractional zoom. In the light theme an ungrouped popup's body border is the darkened accent, as on the node card. The overlay pads the viewport by 10 pixels and the card never exceeds it. Popup buttons and selects use the app font; the grid inputs and the CSV block use the monospace font. On touch devices the header's close and pin targets grow.
-- **Resizing.** A popup given `resizable` has a corner grip, the same mark as the node and field grips (`PopupResizeGrip`, the screen-space sibling of `FieldResizeGrip`). The overlay keeps the card centered, so both edges move and the card grows by twice the pointer's travel, clamped between the given minimum and the viewport less 20 pixels. The drag lives at module scope so a re-render mid-gesture can't drop it, and the grip sets `touch-action: none` so a finger drag isn't taken for a scroll. Until the first drag the card keeps its content size (a figure popup passes `initial` to be sized from the start); once sized it is a flex column whose `.sol-popup__scroll` region fills. The Table and Cube popups' minimum is 320 by 220.
+- **Resizing.** A popup given `resizable` has a corner grip, the same mark as the node and field grips (`PopupResizeGrip`, the screen-space sibling of `FieldResizeGrip`). The overlay keeps the card centered, so both edges move and the card grows by twice the pointer's travel, clamped between the given minimum and the viewport less 20 pixels. The drag lives at module scope so a re-render mid-gesture can't drop it, and the grip sets `touch-action: none` so a finger drag isn't taken for a scroll. Until the first drag the card keeps its content size (a figure popup passes `initial` to be sized from the start); once sized it is a flex column whose `.sol-popup__scroll` region fills. The Table and Cube popups' minimum is 320 by 220. The formula popup (Expression, Equation, LAMBDA and the table lambdas) takes the same grip at a 360 by 260 minimum: before the first drag its editor has its own vertical grip, as the CSV block does, and once sized its body scrolls and the editor takes the spare height.
 - **The overflow menu** closes on a press outside it. It tests the press's composed path, because inside a shadow root (the Obsidian plugin) the event target is the host.
 - **Layering.** The overlay sits above the full-screen overlays (Report, Composite editor, Function Reference, z-index 9000) at 9500, so a popup opened from inside one lands on top, and below the transient socket context menu (9999). The header's floating panels (the format panel, the λ list, the suggestions) portal to `<body>` above the popup layer. The Table popup is `min(1100px, 94vw)` wide and its grid scrolls within 56% of the viewport height.
 
@@ -244,4 +269,4 @@ A Cube Input's chip opens the popup as an editor bound to the node (an edit bind
 
 ## Enforced by
 
-`tests/graph/displayPopupCoverage.test.ts` (every Display value kind has a popup), `tests/graph/nodes/tableInput.test.ts` (raw text survives), `tests/graph/tableFooterStats.test.ts`, `tests/graph/gridKeyboard.test.ts`, `tests/graph/columnSort.test.ts`, `tests/graph/nodes/computedColumn.test.ts` (the λ naming) and `tests/graph/listInputChip.test.ts`.
+`tests/graph/displayPopupCoverage.test.ts` (every Display value kind has a popup), `tests/graph/nodes/tableInput.test.ts` (raw text survives), `tests/graph/tableFooterStats.test.ts`, `tests/graph/gridKeyboard.test.ts`, `tests/graph/columnSort.test.ts`, `tests/graph/nodes/computedColumn.test.ts` (the λ naming), `tests/graph/listInputChip.test.ts` and `tests/graph/cardLayout.test.ts` (the Cards plan).

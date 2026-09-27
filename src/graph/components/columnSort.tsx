@@ -28,6 +28,7 @@ export function useColumnSort(resetKey?: unknown): {
   /** Call on any structural column change, so a key can't re-attach to whatever slides into its index. */
   remap: (fn: (col: number) => number | null) => void;
   clear: () => void;
+  set: (next: ColumnSort) => void;
 } {
   const [sort, setSort] = useState<ColumnSort>([]);
   const [seenKey, setSeenKey] = useState(resetKey);
@@ -40,6 +41,7 @@ export function useColumnSort(resetKey?: unknown): {
     cycle: (col) => setSort((s) => nextSort(s, col)),
     remap: (fn) => setSort((s) => remapSort(s, fn)),
     clear: () => setSort([]),
+    set: setSort,
   };
 }
 

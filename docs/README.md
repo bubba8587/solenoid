@@ -138,7 +138,7 @@ results get retried and settled rulings relapse.
 | `excelFunctions.ts` overrides / dispatch walk | `../tree/specs/computation/formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `../tree/specs/computation/formula-language.md` § Scalar operators |
 | `stringOrder.ts` | [[C59]] byteStringOrder (byte order, not locale) |
-| `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
+| `nodes/matrix.ts` Table Input parse, `TablePopup.tsx`, `TableCards.tsx`, `cardLayout.ts` | [[C58]] tableInputRawText (raw text is the stored truth); `../tree/specs/documents/table-popup.md` |
 | `palette.ts`, `appTheme.ts`, `themeVars.ts` | `../tree/specs/canvas/palette-and-theme.md`; `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `CommandPalette.tsx` | `../tree/specs/canvas/command-palette.md` |
 | `OutlinePanel.tsx` | `../tree/specs/canvas/outline-panel.md` |

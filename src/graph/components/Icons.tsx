@@ -70,3 +70,11 @@ const ARROW: Record<ArrowDir, string> = {
   "down-right": "m7 7 10 10M17 7v10H7",
 };
 export const ArrowIcon = ({ dir, ...p }: IconProps & { dir: ArrowDir }) => <Svg {...p}><path d={ARROW[dir]} /></Svg>;
+export const PencilIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+    <path d="m15 5 4 4" />
+  </Svg>
+);
+export const CheckIcon = (p: IconProps) => <Svg {...p}><path d="M20 6 9 17l-5-5" /></Svg>;
+export const SearchIcon = (p: IconProps) => <Svg {...p}><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></Svg>;

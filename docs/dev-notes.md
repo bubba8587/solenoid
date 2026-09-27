@@ -6,6 +6,17 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-27: Cards view, resizable formula popup; cloud session)
+
+- **Cards view** ([[D88]] cardsView, asked for by the author, who judges the result): every frame popup has Grid,
+  Cards, (Form,) CSV. Each row is a card in one narrow column; `planCards` (`cardLayout.ts`) derives the card's parts
+  (key, title, subtitle, date, headline number, chips, flags, stat tiles, clamped prose, thumbnail) from the column
+  names, types and cells, deterministically. A filter, a one-key sort and Show More sit above; Edit in Form jumps an
+  editable row to the Form view. A phone-width popup opens a frame in Cards. Spec: [[table-popup]] § The Cards view.
+  Checked in headless Chromium at 1400 and 390 pixels, both themes.
+- **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
+  the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.
+
 ### SESSION DIGEST (2026-09-27: Knap notes in the Obsidian plugin; cloud session)
 
 - **Knap notes** ([[D87]] knapNotes, asked for by the author): a note with `knap: true` renders its body in Reading view
