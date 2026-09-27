@@ -190,11 +190,26 @@ views in full (`previewMode.rerender(true)`).
 **An error** (a filter Knap lacks, a tag left open) leaves the whole body as its source, and the
 first body section shows the error lines, `line:column message`, counted in the note.
 
-**Live Preview** is the editor, so it shows the template. Only a bare tag on an object property is
-drawn as its chip (a CodeMirror replace decoration), and only while the selection does not touch
-it, so moving onto it shows the tag to edit. It reads the properties from the editor's own text
-(`getFrontMatterInfo`, `parseYaml`), which is ahead of Obsidian's cache while the user types. A tag
-that spans lines stays text. Source mode draws nothing.
+**Live Preview** renders the body too, a piece at a time, as Obsidian treats its own tables and
+callouts: a piece shows its output until the selection touches it, then its source to edit. A piece
+is each tag outside a block and each `if` or `for` block whole, from its opening tag to its closing
+one (`knapUnits`). `renderKnapUnits` renders the body once with every piece fenced, so each piece's
+output has the whole note in scope (a `set` above it, the properties). The note's properties come
+from the editor's own text (`getFrontMatterInfo`, `parseYaml`), which is ahead of Obsidian's cache
+while the user types; the render runs 150 ms after an edit settles, and until it lands the pieces
+keep their last output, moved with the edit, and a piece the edit lands in shows its source.
+
+- **Inline:** a piece on one line whose output is one line replaces the tag in the line. It takes
+  the bold, italic, highlight and strikethrough the syntax around it gives (`marksAt`, Obsidian's own
+  `cm-*` classes), since a widget stands outside the text Obsidian styles. A bare tag on an object
+  property is its chip; a tag that renders to itself (an unknown name) stays text.
+- **Block:** a piece that spans lines, or whose output does (a `table` filter), takes its whole lines
+  and every piece on them, and draws them as rendered markdown with chips. An empty block (a false
+  `if`, a comment) hides its lines. A press on a block puts the cursor in, except on a chip.
+- **An error** shows its lines above the first body line; the pieces show their source.
+
+Source mode draws nothing. Live Preview needs `@codemirror/language` for the syntax tree; Obsidian
+provides it, and like `@codemirror/state` and `/view` it stays out of the bundle.
 
 **Where it differs from a Note card.** In the app a Note's bare `{{ name }}` on a list or frame field
 prints its data (Knap's JSON); here it is the chip, which is what [[C68]] knapIsTheDocumentSyntax

@@ -10,7 +10,8 @@ specific item.
 
 - **Knap notes** ([[D87]] knapNotes, asked for by the author): a note with `knap: true` renders its body in Reading view
   as its Note card does, from its own properties; a bare `{{ name }}` on a List, Matrix, Frame or Cube property is the
-  property's chip in the body (Reading view and Live Preview), editing the property. Spec: [[obsidian-plugin]]
+  property's chip in the body, editing the property. Live Preview renders too, piece by piece: a tag, or an `if` /
+  `for` block whole, shows its output until the cursor enters it (`knapLive.ts`). Spec: [[obsidian-plugin]]
   § Knap notes. Checked in a real Obsidian 1.13.7 through the rig (loop and `if` across paragraphs, chip Save writing
   the property, refresh on a property change, errors, embeds, switching off).
 - **Module split** so the plugin can bundle Knap without the formula engine: `toTemplateValue` moved to

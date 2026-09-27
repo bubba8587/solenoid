@@ -71,7 +71,7 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
     "chrono-node", "knap", "papaparse", "react", "react-dom", "rete", "yaml",
   ]),
   devDependencies: pin([
-    "@codemirror/state", "@codemirror/view", "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
+    "@codemirror/language", "@codemirror/state", "@codemirror/view", "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
     "obsidian", "postcss", "rollup-plugin-license", "typescript", "vite",
   ]),
   // Pin the exact installed version: a patch bump minifies React differently.

@@ -4,6 +4,9 @@ import { guessScalarText } from "../../src/graph/scalarText";
 
 export const KNAP_PROPERTY = "knap";
 
+/** The internal span a bare tag on an object property becomes (`=name`, or `=name!` when highlighted). */
+export const SPAN_RE = /^=([A-Za-z_][A-Za-z0-9_]*)!?$/;
+
 export function isKnapNote(frontmatter: unknown): frontmatter is Record<string, unknown> {
   return !!frontmatter && typeof frontmatter === "object" && (frontmatter as Record<string, unknown>)[KNAP_PROPERTY] === true;
 }
@@ -108,4 +111,50 @@ export async function knapVariables(frontmatter: Record<string, unknown>): Promi
     vars[key] = guess.kind === "date" ? r.output.trim() : guess.value;
   }
   return vars;
+}
+
+export interface KnapUnit { from: number; to: number; output: string }
+
+/** The body's top-level template pieces, by offset: each tag outside a block, and each `if` or `for` block whole. */
+export function knapUnits(body: string): { from: number; to: number }[] {
+  const units: { from: number; to: number }[] = [];
+  let depth = 0;
+  let start = 0;
+  for (const m of body.matchAll(/\{#[\s\S]*?#\}|\{%\s*([A-Za-z]*)[\s\S]*?%\}|\{\{[\s\S]*?\}\}/g)) {
+    const from = m.index;
+    const to = from + m[0].length;
+    const word = m[1];
+    if (word === "if" || word === "for") {
+      if (depth++ === 0) start = from;
+    } else if (word === "endif" || word === "endfor") {
+      if (depth > 0 && --depth === 0) units.push({ from: start, to });
+    } else if (depth === 0) {
+      units.push({ from, to });
+    }
+  }
+  return units;
+}
+
+const UNIT_OPEN = "\u0003";
+const UNIT_CLOSE = "\u0004";
+
+/**
+ * Renders a body once with each top-level piece fenced, so each piece gets its own output with
+ * the whole note in scope (a `set` above it, a loop around nothing). `failed` when Knap refused
+ * the body; then there are no units.
+ */
+export async function renderKnapUnits(body: string, variables: Record<string, unknown>, chips: readonly string[]): Promise<{ units: KnapUnit[]; failed: boolean }> {
+  const spans = knapUnits(body);
+  if (spans.length === 0) return { units: [], failed: false };
+  let text = "";
+  let at = 0;
+  spans.forEach((s, i) => {
+    text += `${body.slice(at, s.from)}${UNIT_OPEN}${i}${UNIT_OPEN}${body.slice(s.from, s.to)}${UNIT_CLOSE}`;
+    at = s.to;
+  });
+  const r = await renderKnap(embedBareVariables(text + body.slice(at), chips), variables, { keepUnknown: true });
+  if (r.errors.length) return { units: [], failed: true };
+  const out = new Map<number, string>();
+  for (const m of r.output.matchAll(/\u0003(\d+)\u0003([^\u0004]*)\u0004/g)) out.set(Number(m[1]), m[2]);
+  return { units: spans.flatMap((s, i) => (out.has(i) ? [{ ...s, output: out.get(i)! }] : [])), failed: false };
 }

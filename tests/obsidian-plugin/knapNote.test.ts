@@ -1,6 +1,6 @@
 // [[D87]] knapNotes
 import { describe, it, expect } from "vitest";
-import { renderKnapNote, knapVariables, isKnapNote, bodyStartLine } from "../../obsidian-plugin/src/knapNote";
+import { renderKnapNote, renderKnapUnits, knapUnits, knapVariables, isKnapNote, bodyStartLine } from "../../obsidian-plugin/src/knapNote";
 import { bareTags } from "../../src/graph/knapTemplate";
 
 const NOTE = [
@@ -87,5 +87,26 @@ describe("bareTags", () => {
   it("finds a bare tag on a named value, not one a loop shadows", () => {
     const body = "{{ a }} {% for a in xs %}{{ a }}{% endfor %} {{ a | upper }}";
     expect(bareTags(body, ["a"])).toEqual([{ name: "a", from: 0, to: 7, highlight: false }]);
+  });
+});
+
+describe("Live Preview's pieces", () => {
+  const body = "Hi {{ name }}, {% set n = 2 %}{{ n }}.\n\n{% for r in rows %}\n- {{ r }}\n{% endfor %}\n\n{% if no %}\nnever\n{% endif %}\n{# note #} {{ grid }} {{ unknown }}";
+
+  it("fences each top-level tag and each block whole", () => {
+    expect(knapUnits(body).map((u) => body.slice(u.from, u.to))).toEqual([
+      "{{ name }}", "{% set n = 2 %}", "{{ n }}", "{% for r in rows %}\n- {{ r }}\n{% endfor %}",
+      "{% if no %}\nnever\n{% endif %}", "{# note #}", "{{ grid }}", "{{ unknown }}",
+    ]);
+  });
+
+  it("renders each piece with the whole note in scope", async () => {
+    const { units, failed } = await renderKnapUnits(body, { name: "Ana", rows: ["a", "b"], no: false, grid: [[1]] }, ["grid"]);
+    expect(failed).toBe(false);
+    expect(units.map((u) => u.output.trim())).toEqual(["Ana", "", "2", "- a\n- b", "", "", "`=grid`", "{{ unknown }}"]);
+  });
+
+  it("gives no pieces when Knap refuses the body", async () => {
+    expect(await renderKnapUnits("{{ x | nosuchfilter }}", { x: 1 }, [])).toEqual({ units: [], failed: true });
   });
 });

@@ -32,7 +32,7 @@ This file is the map.
 │                             #     plugin:build` writes it into obsidian-plugin/dist/ (ignored; the demo vault
 │                             #     installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping;
 │                             #     src/knapNote.ts renders a `knap: true` note's body, src/knapBody.ts draws it in
-│                             #     Obsidian ([[D87]] knapNotes)
+│                             #     Reading view, src/knapLive.ts in Live Preview ([[D87]] knapNotes)
 ├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
 │                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
 │                             #     dev server: undo position fidelity, socketBox12's rendering half, a

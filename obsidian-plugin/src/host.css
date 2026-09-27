@@ -44,3 +44,7 @@
   font-size: var(--font-smaller);
   white-space: pre-wrap;
 }
+
+.solenoid-knap-block {
+  white-space: normal;
+}
