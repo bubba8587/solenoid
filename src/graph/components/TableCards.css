@@ -80,6 +80,26 @@
 }
 .table-cards__dir:hover:not(:disabled) { border-color: var(--node-accent, var(--accent)); }
 .table-cards__dir:disabled { opacity: 0.4; cursor: default; }
+.table-cards__dir[aria-pressed="true"] {
+  color: var(--node-accent, var(--accent));
+  border-color: var(--node-accent, var(--accent));
+}
+.table-cards__rules {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto 8px;
+  padding: 2px 12px 8px;
+  box-sizing: border-box;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+.table-cards__rules .sol-md { font-size: 12px; line-height: 1.45; }
+.table-cards__rules .sol-md h2 { font-size: 13px; margin: 8px 0 6px; }
+.table-cards__rules .sol-md table { font-size: 11px; }
+.table-cards__rules .sol-md td:first-child,
+.table-cards__rules .sol-md code { white-space: nowrap; }
 .table-cards__count {
   flex: none;
   font-family: var(--font-mono);

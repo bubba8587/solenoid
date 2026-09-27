@@ -378,3 +378,7 @@
   background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 .fr-desc-row td strong { color: var(--text-dim); }
+
+/* The help docs are authored in the repo with no unbroken runs, so a table cell wraps only between words. */
+.fr-doc-scroll .sol-md th,
+.fr-doc-scroll .sol-md td { overflow-wrap: break-word; }

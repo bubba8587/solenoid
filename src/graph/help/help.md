@@ -94,6 +94,27 @@ Every document autosaves and comes back when you reopen. **Save / Open** read an
 
 `title` and `fontsize` apply as on every chart.
 
+## Cards
+
+A frame's popup has a **Cards** view, and **Record: Cards** draws the same cards as a chart. A card's layout comes from its columns: each column goes to one part of the card by its name, type and contents, the same way every time.
+
+| Part | Takes |
+|---|---|
+| Picture | text holding `data:image` pictures; a web image address stays text |
+| Key | unique IDs: a column named ID, SKU, Code or `#`, or ending in ID, Number or No; codes like `SO-1042`; a first column counting 1, 2, 3 |
+| Title | a First Name with its Last Name, else the most name-like text column: Name, Title, Product, Customer, City… |
+| Subtitle | the next short text column, then the first date. A Start date with an End date makes a range; with no date, a Year column |
+| Headline | a number named Total, Amount, Balance, Sales, Price, Cost…; else one shown in a currency; else the rightmost number |
+| Chips | short text that repeats, a column styled Chip, and Tags, Skills or Categories split at commas |
+| Swatches | hex colors like `#d94f3d` |
+| Stars | Rating or Stars, 0 to 5 |
+| Bars | numbers shown as percents, or named like Progress, Completion or Usage, from 0 to 1 or 0 to 100 |
+| Checks | Boolean columns |
+| Notes | long text, or a column named Notes, Description, Comments or Bio |
+| Fields | everything else, in column order |
+
+Blank cells are left off, and web addresses and emails are links. In the popup a card shows six fields until you tap it. On Record, **Rows** picks the rows (`1, 3, 5`; `-1` is the last), `cardsize=s`, `m` or `l` sets the card width, and `clamp=on` folds a card past six fields.
+
 ## Keyboard
 
 Single keys work when you're not typing in a field.

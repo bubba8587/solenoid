@@ -2,11 +2,15 @@
 import { useMemo, useState } from "react";
 import { planCards, cardMatches, PROFILE_ROWS, type CardColType, type CardColumnInput } from "../cardLayout";
 import { type ColumnSort, type SortDir } from "./columnSort";
-import { ArrowIcon, SearchIcon } from "./Icons";
+import { ArrowIcon, InfoIcon, SearchIcon } from "./Icons";
+import { Markdown } from "./Markdown";
+import { helpSection } from "../helpSection";
+import helpMd from "../help/help.md?raw";
 import { AutoCard, cardChipColors } from "./AutoCard";
 import "./TableCards.css";
 
 const PAGE = 100;
+const CARD_RULES = helpSection(helpMd, "Cards");
 
 /** `dataKey` changes whenever the cells or their shown text do; the plan, the chip colors and the row texts are cached on it. */
 export function TableCards({
@@ -29,6 +33,7 @@ export function TableCards({
   const [query, setQuery] = useState("");
   const [limit, setLimit] = useState(PAGE);
   const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
+  const [rulesOpen, setRulesOpen] = useState(false);
   const cols = names.length;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +124,18 @@ export function TableCards({
           <ArrowIcon dir={dir === "asc" ? "up" : "down"} size={12} />
         </button>
         {query.trim() !== "" && <span className="table-cards__count">{matched.length} of {rowCount}</span>}
+        <button
+          type="button"
+          className="table-cards__dir"
+          aria-pressed={rulesOpen}
+          title="How cards are laid out"
+          aria-label="How cards are laid out"
+          onClick={() => setRulesOpen((o) => !o)}
+        >
+          <InfoIcon size={14} />
+        </button>
       </div>
+      {rulesOpen && <div className="table-cards__rules"><Markdown md={CARD_RULES} /></div>}
       <div className="table-cards">
         {shown.map(card)}
         {matched.length === 0 && <div className="table-cards__empty">{rowCount === 0 ? "No rows" : "No matches"}</div>}
