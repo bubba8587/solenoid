@@ -795,7 +795,12 @@ export function TablePopup() {
                         value={colExprs[c] ?? ""}
                         lambdaOptions={state.lambdaOptions ?? []}
                         onDraft={(v) => setColExprs((prev) => { const next = [...prev]; next[c] = v; return next; })}
-                        onCommit={() => { if (colExprs[c] !== committedExprs.current[c]) void commitLive(); }}
+                        onCommit={(text) => {
+                          if (text === committedExprs.current[c]) return;
+                          const exprs = [...colExprs];
+                          exprs[c] = text;
+                          void commitLive({ exprs });
+                        }}
                         onRevert={() => {
                           const prev = committedExprs.current[c];
                           setColExprs((xs) => { const next = [...xs]; next[c] = prev; return next; });

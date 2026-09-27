@@ -385,6 +385,17 @@ export function rowRefNames(expr: string): string[] {
   return [...out];
 }
 
+/** [[C115]] closeParensOnCommit: a count of `(` against `)` outside quoted text, nothing more. */
+export function closeParens(text: string): string {
+  let open = 0, close = 0, inStr = false;
+  for (const ch of text) {
+    if (ch === '"') inStr = !inStr;
+    else if (!inStr && ch === "(") open++;
+    else if (!inStr && ch === ")") close++;
+  }
+  return open > close ? text.trimEnd() + ")".repeat(open - close) : text;
+}
+
 export function atColNames(expr: string): string[] {
   const ast = parseExpr(expr);
   if (!ast) return [];

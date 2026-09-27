@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
+import { closeParens } from "../excelFormula";
 
 type ColType = "number" | "string" | "date" | "logical";
 export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];
@@ -98,7 +99,7 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
   value: string;
   lambdaOptions: string[];
   onDraft: (next: string) => void;
-  onCommit: () => void;
+  onCommit: (text: string) => void;
   onRevert: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -145,7 +146,9 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
           setFocused(false);
           setSel(-1);
           if (escaped.current) { escaped.current = false; return; }
-          onCommit();
+          const text = closeParens(value);
+          if (text !== value) onDraft(text);
+          onCommit(text);
         }}
         onKeyDown={(e) => {
           if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {

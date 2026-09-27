@@ -105,6 +105,8 @@ Argument lists: `(` then zero or more slots separated by commas, then `)`. `F()`
 5. more `(` than `)`, naming the count; or more `)` than `(`;
 6. a trailing operator or comma: the formula ends mid-expression.
 
+Check 5's first half rarely shows after an edit: every formula surface commits through `closeParens`, which appends the missing `)` when the text has more `(` than `)` outside quoted text ([[C115]] closeParensOnCommit). The formula popup calls it in `commit`, and the Fx column row (`ColumnExprField`, shared by the Frame Input and Cube popups) calls it on blur. A formula with too many `)` is left for the hint.
+
 ## Names
 
 A bare name (`{ t: "name" }`) resolves, in order:

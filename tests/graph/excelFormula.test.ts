@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   extractVariables,
+  closeParens,
   compilePositional,
   compileEvaluator,
   RANGE_FUNCTIONS,
@@ -772,5 +773,21 @@ describe("type-honest operators and well-formed numbers", () => {
     expect(compileEvaluator("1.2.3")).toBeNull();
     expect(compileEvaluator("2e")).toBeNull();
     expect(compileEvaluator("2e3 + .5")!({})).toBe(2000.5);
+  });
+});
+
+describe("closeParens ([[C115]] closeParensOnCommit)", () => {
+  it("adds the missing closers at the end, counting only outside quoted text", () => {
+    expect(closeParens(`IFS(@x > QUARTILE(x, 3), "top", TRUE, "rest"`)).toBe(`IFS(@x > QUARTILE(x, 3), "top", TRUE, "rest")`);
+    expect(closeParens("ROUND(SUM(a, b), 2 ")).toBe("ROUND(SUM(a, b), 2)");
+    expect(closeParens("SUM((a + b")).toBe("SUM((a + b))");
+    expect(closeParens(`IF(a > 1, "(")`)).toBe(`IF(a > 1, "(")`);
+    expect(closeParens(`CONCAT("a)", b`)).toBe(`CONCAT("a)", b)`);
+  });
+  it("leaves balanced and over-closed formulas alone", () => {
+    expect(closeParens("SUM(a)")).toBe("SUM(a)");
+    expect(closeParens("a + b")).toBe("a + b");
+    expect(closeParens("SUM(a))")).toBe("SUM(a))");
+    expect(closeParens("")).toBe("");
   });
 });

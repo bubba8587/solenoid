@@ -5,7 +5,7 @@ import type { ClassicPreset } from "rete";
 import { formulaPopup } from "../formulaPopupStore";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
-import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
+import { formulaToLatex, evaluateSteps, extractVariables, closeParens } from "../excelFormula";
 import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
 import { appThemeStore } from "../appTheme";
@@ -152,9 +152,10 @@ export function FormulaPopup() {
     if (!id) return;
     const host = formulaHostOf(getOwningEditor(id)?.getNode(id));
     if (!host || host.locked) return;
-    if (textRef.current === committedRef.current) return;
-    committedRef.current = textRef.current;
-    void host.setText(textRef.current);
+    const next = closeParens(textRef.current);
+    if (next === committedRef.current) return;
+    committedRef.current = next;
+    void host.setText(next);
   }
 
   function commitAndClose() {

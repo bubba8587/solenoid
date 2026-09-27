@@ -1,6 +1,6 @@
 // Loads a graph into the live app and screenshots it, for seeing a change on a real canvas.
 // Starts the dev server if it is down. The graph opens as the only document of a fresh profile.
-//   node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click <css>]… [--wait ms] [--full]
+//   node scripts/shot-graph.mjs <graph.json> [--out file.png] [steps…] [--wait ms] [--full]
 // The graph is a saved graph (`.dev/current-graph.json` works as is) or the short form:
 //   { "nodes": [ { "id": "l1", "type": "LambdaNode", "init": { "params": "", "expr": "@x * 2" } },
 //                { "id": "f1", "type": "FrameInputNode", "lambdaKeys": ["fn1"],
@@ -9,7 +9,12 @@
 // A node without x/y is placed by its depth in the cable graph. `frame` builds a Frame Input's frameText
 // (a column's type is inferred from its cells unless given). Prints every node's text; the app re-ids
 // nodes on load, so each line starts with the node's title. Examples to copy: scripts/shot-graphs/.
-// --popup opens the Nth frame chip's table (1 by default) and shoots that instead of the canvas.
+// Steps run in order after the load, and every node's text is printed again after them:
+//   --popup [N]          open the Nth frame chip's table (1 by default); the shot is then that popup
+//   --click <css>        click the first match
+//   --type <css> <text>  focus the first match, select all, type the text
+//   --press <key>        press a key (Enter, Escape, Tab…)
+// Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__ta.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -18,17 +23,19 @@ import puppeteer from "puppeteer-core";
 import { browserPath } from "./browser.mjs";
 
 const argv = process.argv.slice(2);
-const opt = { out: join(tmpdir(), "solenoid-shot.png"), clicks: [], wait: 1500, popup: 0, full: false, file: null };
+const opt = { out: join(tmpdir(), "solenoid-shot.png"), steps: [], wait: 1500, full: false, file: null };
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === "--out") opt.out = argv[++i];
-  else if (a === "--click") opt.clicks.push(argv[++i]);
+  else if (a === "--click") opt.steps.push({ click: argv[++i] });
+  else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
+  else if (a === "--press") opt.steps.push({ press: argv[++i] });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
   else if (a === "--full") opt.full = true;
-  else if (a === "--popup") opt.popup = /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1;
+  else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css]… [--wait ms] [--full]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--type css text] [--press key]… [--wait ms] [--full]"); process.exit(2); }
 
 const inferType = (cells) => {
   const filled = cells.filter((c) => c !== "" && c != null);
@@ -94,20 +101,37 @@ try {
   await page.click(".solenoid-nav__btn--fit").catch(() => {});
   await new Promise((r) => setTimeout(r, opt.wait));
 
-  const texts = await page.evaluate(() => [...document.querySelectorAll(".react-flow__node")]
-    .map((n) => (n.innerText ?? "").replace(/\s*\n\s*/g, " | ").slice(0, 600)));
-  for (const t of texts) console.log(t);
+  const printTexts = async () => {
+    const texts = await page.evaluate(() => [...document.querySelectorAll(".react-flow__node")]
+      .map((n) => (n.innerText ?? "").replace(/\s*\n\s*/g, " | ").slice(0, 600)));
+    for (const t of texts) console.log(t);
+  };
+  await printTexts();
 
-  for (const sel of opt.clicks) {
-    await page.click(sel);
-    await new Promise((r) => setTimeout(r, 600));
+  let popupOpen = false;
+  for (const step of opt.steps) {
+    if (step.click) await page.click(step.click);
+    else if (step.type) {
+      await page.click(step.type);
+      await page.keyboard.down("Control");
+      await page.keyboard.press("KeyA");
+      await page.keyboard.up("Control");
+      await page.keyboard.type(step.text);
+    } else if (step.press) await page.keyboard.press(step.press);
+    else if (step.popup) {
+      const chips = await page.$$(".solenoid-array-chip--frame");
+      if (!chips[step.popup - 1]) throw new Error(`no frame chip #${step.popup} (found ${chips.length})`);
+      await chips[step.popup - 1].click();
+      popupOpen = true;
+    }
+    await new Promise((r) => setTimeout(r, 700));
+  }
+  if (opt.steps.length) {
+    console.log("--- after steps ---");
+    await printTexts();
   }
   let clip;
-  if (opt.popup) {
-    const chips = await page.$$(".solenoid-array-chip--frame");
-    if (!chips[opt.popup - 1]) throw new Error(`no frame chip #${opt.popup} (found ${chips.length})`);
-    await chips[opt.popup - 1].click();
-    await new Promise((r) => setTimeout(r, 1000));
+  if (popupOpen && await page.$(".table-popup")) {
     clip = await page.evaluate(() => {
       const p = document.querySelector(".table-popup");
       const r = p?.getBoundingClientRect();

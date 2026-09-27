@@ -162,7 +162,7 @@ function CubeExprField({ edit, column, expr }: { edit: CubeEditBinding; column: 
       value={draft}
       lambdaOptions={[]}
       onDraft={setDraft}
-      onCommit={() => { if (draft !== expr) setColumn(edit, column, (c) => ({ ...c, expr: draft })); }}
+      onCommit={(text) => { if (text !== expr) setColumn(edit, column, (c) => ({ ...c, expr: text })); }}
       onRevert={() => setDraft(expr)}
     />
   );
