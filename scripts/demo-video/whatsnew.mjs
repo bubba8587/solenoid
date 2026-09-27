@@ -48,11 +48,13 @@ const PROP_CHIP = '.metadata-property[data-property-key="orders"] .solenoid-prop
 const BODY_CHIP = ".markdown-source-view .solenoid-knap-chip .solenoid-property-chip";
 const KNAP_BOX = '.metadata-property[data-property-key="knap"] input[type="checkbox"]';
 
+const CALLOUT = "Knap reads this note's properties: the loop lists each order, and the last line counts them and totals the parts.";
+
 /** The note as it stands after `upTo` scenes, so any scene can be recorded alone. */
 const BODY = {
   typed: "1. in-line **Solenoid Properties** objects\n2. in-line {{Knap}} variable rendering\n",
   ref: "\nOrders: {{ orders }}\n",
-  knap: "\n{% for o in orders %}\n- {{ o.qty }} x {{ o.item }} at {{ o.cost | number_format:2 }}\n{% endfor %}\n\n{{ orders | length }} orders, {{ orders | map:\"qty\" | sum }} parts.\n",
+  knap: "\n> [!note] Using [knap.md](https://knap.md)\n> " + CALLOUT + "\n\n{% for o in orders %}\n- {{ o.qty }} x {{ o.item }} at {{ o.cost | number_format:2 }}\n{% endfor %}\n\n{{ orders | length }} orders, {{ orders | map:\"qty\" | sum }} parts.\n",
 };
 const ROWS = {
   start: null,
@@ -223,14 +225,26 @@ export const WHATSNEW = {
       await c.hand.show(900, 560);
     },
     async act(c) {
-      const { hand, sleep, page } = c;
+      const { hand, sleep } = c;
       await sleep(600);
-      await c.obs(() => window.app.workspace.getLeavesOfType("markdown")[0].view.editor.scrollTo(0, 120));
+      await c.obs(() => window.app.workspace.getLeavesOfType("markdown")[0].view.editor.scrollTo(0, 260));
       await sleep(500);
       const last = await editorLine(c, "Orders:");
       await hand.click({ x: last.x + last.w - 30, y: last.cy + last.h * 1.2 });
       await toEnd(c);
+      await hand.move(last.x + last.w - 60, last.y - 60, { ms: 500 });
       await sleep(250);
+      // What the Knap below does, as a callout. Enter continues the callout; a second Enter leaves it.
+      await hand.press("Enter");
+      await hand.type("> [!note] Using [knap.md](https://knap.md)", { cps: 16 });
+      await hand.press("Enter");
+      await hand.type(CALLOUT, { cps: 22 });
+      await hand.press("Enter");
+      await hand.press("Enter");
+      // Up, so the Knap is typed clear of the caption.
+      await c.obs(() => window.app.workspace.getLeavesOfType("markdown")[0].view.editor.cm.scrollDOM.scrollTo({ top: 500, behavior: "smooth" }));
+      await hand.move(1180, 300, { ms: 600 });
+      await sleep(200);
       await hand.press("Enter");
       await hand.type("{% for o in orders %}", { cps: 14 });
       await hand.press("Enter");
@@ -242,14 +256,25 @@ export const WHATSNEW = {
       await hand.press("Enter");
       await hand.type("{{ orders | length }} orders, {{ orders | map:\"qty\" | sum }} parts.", { cps: 16 });
       await hand.press("Enter");
-      await sleep(1500);
-      // The switch: off shows the template, on renders it again. The knap row is still in view, which keeps the
-      // note clear of the caption.
+      await sleep(2200);
+    },
+  },
+
+  "wn-switch": {
+    app: "obsidian",
+    async setup(c) {
+      await writeNote(c, ["typed", "ref", "knap"], ROWS.edited);
+      await noteView(c);
       await c.obs(() => window.app.workspace.getLeavesOfType("markdown")[0].view.editor.scrollTo(0, 120));
-      await sleep(300);
+      await c.hand.show(900, 400);
+    },
+    async act(c) {
+      const { hand, sleep, page } = c;
+      await sleep(700);
+      // The switch: off shows the template, on renders it again.
       const box = await need(page, KNAP_BOX);
       await hand.click(box);
-      await sleep(1600);
+      await sleep(1700);
       await hand.click(box);
       await sleep(1400);
       // Down through the note: each piece shows its source while the cursor is in it.
@@ -257,10 +282,10 @@ export const WHATSNEW = {
       await hand.click({ x: first.x + 4, y: first.cy });
       await sleep(300);
       await hand.hide();
-      const walk = ["ArrowDown", "ArrowDown", "ArrowDown", "End", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown"];
+      const walk = ["ArrowDown", "ArrowDown", "ArrowDown", "End", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown"];
       for (const key of walk) {
         await hand.press(key, key === "End" ? "End" : "↓");
-        await sleep(650);
+        await sleep(620);
       }
       await sleep(1200);
     },
@@ -270,7 +295,7 @@ export const WHATSNEW = {
     app: "obsidian",
     panels: ["obs"],
     hold: 7,
-    grid: { cols: 4, title: "Try the Solenoid Properties plugin!", crop: 0.84, y: 40 },
+    grid: { cols: 4, title: "Try the Solenoid Properties plugin!" },
     // Every palette, most accents, no pair twice; dark and light alternate like a checkerboard. Equinox keeps its
     // accents near neutral, so it gets one tile.
     states: [
@@ -278,16 +303,46 @@ export const WHATSNEW = {
       ["Orchard", "teal", "light"], ["Muted", "sky", "dark"], ["Default", "green", "light"], ["Orchard", "purple", "dark"],
       ["Solarized", "teal", "dark"], ["Blueprint", "gold", "light"], ["Blueprint", "pink", "dark"], ["Muted", "amber", "light"],
       ["Blueprint", "violet", "light"], ["Default", "sky", "dark"], ["Solarized", "green", "light"], ["Equinox", "gold", "dark"],
-    ].map(([palette, accent, mode]) => ({ palette, accent, mode })),
+    // The second and fourth columns have the Frame's editor open.
+    ].map(([palette, accent, mode], i) => ({ palette, accent, mode, popup: i % 2 === 1 })),
     async setup(c) {
       await writeNote(c, ["typed", "ref", "knap"], ROWS.edited);
       await noteView(c, { reading: true, zoom: 1 });
+      await c.obs(async (file) => {
+        const app = window.app;
+        app.vault.setConfig("showRibbon", true);
+        app.workspace.leftSplit.expand();
+        app.workspace.rightSplit.expand();
+        await app.workspace.getLeavesOfType("file-explorer")[0]?.view.revealInFolder?.(app.vault.getAbstractFileByPath(file));
+        // Every property with its type icon, in its type's color.
+        const right = app.workspace.getLeavesOfType("all-properties")[0] ?? app.workspace.getRightLeaf(false);
+        await right.setViewState({ type: "all-properties", active: true });
+        app.workspace.revealLeaf(right);
+        app.workspace.setActiveLeaf(app.workspace.getLeavesOfType("markdown")[0], { focus: false });
+      }, WN_NOTE);
+      await c.sleep(800);
     },
     async apply(c, state) {
+      await c.page.keyboard.press("Escape");
       await look(c, state);
+      // The top of the note, and the mouse parked where it raises no tooltip.
+      await c.obs(() => {
+        const el = window.app.workspace.getLeavesOfType("markdown")[0].view.containerEl.querySelector(".markdown-preview-view");
+        if (el) el.scrollTop = 0;
+      });
+      await c.page.mouse.move(600, 12);
+      await c.obs(() => { let el = document.activeElement; while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement; el?.blur?.(); document.activeElement?.blur?.(); });
       await c.sleep(400);
+      if (state.popup) {
+        const chip = await need(c.page, PROP_CHIP);
+        await c.page.mouse.click(chip.cx, chip.cy);
+        await c.sleep(700);
+      }
     },
-    async teardown(c) { await look(c); },
+    async teardown(c) {
+      await c.page.keyboard.press("Escape");
+      await look(c);
+    },
   },
 
   "wn-outro": {

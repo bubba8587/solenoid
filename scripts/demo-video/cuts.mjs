@@ -37,7 +37,7 @@ export const CUTS = {
     out: "solenoid-properties-0.1.4",
     intro: "wn-intro",
     outro: "wn-outro",
-    order: ["wn-type", "wn-frame", "wn-ref", "wn-knap", "wn-grid"],
+    order: ["wn-type", "wn-frame", "wn-ref", "wn-knap", "wn-switch", "wn-grid"],
     mark: "solenoidpropertieswordmark.svg",
     eyebrow: "What's new in",
     // The version under the wordmark, set small.
