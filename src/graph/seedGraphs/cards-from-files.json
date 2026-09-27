@@ -11,7 +11,7 @@
       "y": 60,
       "init": {
         "label": "Cards from files",
-        "body": "# Cards from files\nThree CSV files from the demo vault's **Data** folder (crew, products and orders), read by Local File nodes and run through table verbs.\n\nOrders join to a product lookup on SKU and to a rep lookup on the rep's full name, and a Keep picks the fields an order card needs.\n\n**Record: Cards** draws the same cards as a chart, packed into a gallery: the Catalog display below.\n\nOpen any Frame chip and switch the popup to **Cards**: the photos and product pictures are `data:image` cells, and the cards pick their title, headline number, chips, stars and meters from the columns.\n\nOn desktop, point **Settings ▸ Data** at your own folder and the same nodes read your files.",
+        "body": "# Files to cards\nLocal File nodes read three CSV files from the demo vault's **Data** folder: crew, products and orders. Table verbs run on them.\n\nOrders join a product lookup on SKU and a rep lookup on the rep's full name, and a Keep picks the fields an order card needs.\n\nOpen any Frame chip and switch the popup to **Cards**. The photos and product pictures are `data:image` cells.\n\n**Record: Cards** draws the same cards as a chart, in the Catalog display below.\n\nOn desktop, point **Settings ▸ Data** at your own folder to read your own files.",
         "width": 400,
         "height": 400
       }
