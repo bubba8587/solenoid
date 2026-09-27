@@ -52,3 +52,12 @@ export interface TablePopupState {
 }
 
 export const tablePopup = createValueStore<TablePopupState>();
+
+/** Adds a Record node in the Cards view wired to a popup's host. Installed by the app; the Obsidian plugin has no graph to add to, so it never is. */
+export interface RecordCardsAction {
+  canAdd(hostId: string): boolean;
+  add(hostId: string): Promise<unknown>;
+}
+let recordCardsAction: RecordCardsAction | null = null;
+export function setRecordCardsAction(action: RecordCardsAction | null): void { recordCardsAction = action; }
+export function getRecordCardsAction(): RecordCardsAction | null { return recordCardsAction; }

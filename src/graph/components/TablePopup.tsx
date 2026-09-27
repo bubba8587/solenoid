@@ -2,7 +2,7 @@
 import { neutralizeFormulaCell, csvField as csvText } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyText } from "../clipboard";
-import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
+import { tablePopup, getRecordCardsAction, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows } from "../csv";
@@ -31,7 +31,6 @@ import { ColumnFormatButton, ColumnExprField, COLTYPE_ORDER, COLTYPE_GLYPH, COLT
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
-import { addRecordCards, frameOutputOf } from "../recordCardsFromPopup";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
@@ -643,9 +642,10 @@ export function TablePopup() {
     setColumnTypes(refresh.columnTypes);
   }
   // The new node reads what the host outputs, so an editor's pending edits are saved first.
+  const recordCards = getRecordCardsAction();
   function addCardsChart(hostId: string) {
     if (editable) save(); else tablePopup.close();
-    void addRecordCards(hostId);
+    void recordCards?.add(hostId);
   }
   function save() {
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
@@ -718,7 +718,7 @@ export function TablePopup() {
             { label: "Export CSV…", onClick: exportCsv },
             ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
             ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
-            ...(cardsCapable && state.pinNodeId && frameOutputOf(state.pinNodeId) ? [{ label: "Add Record: Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
+            ...(cardsCapable && state.pinNodeId && recordCards?.canAdd(state.pinNodeId) ? [{ label: "Add Record: Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
           ]}
         />
       }

@@ -10,6 +10,7 @@ import { scheduleAutosave } from "./persistence";
 import { flyToNodeAndFlash } from "./flyToNode";
 import { RecordNode } from "./rete-nodes";
 import type { SolenoidConnection } from "./schemes";
+import { setRecordCardsAction } from "./tablePopupStore";
 
 const GAP = 80;
 const STEP = 40;
@@ -65,4 +66,10 @@ export async function addRecordCards(hostId: string): Promise<string | null> {
   await processGraph(rec.id);
   flyToNodeAndFlash(rec.id);
   return rec.id;
+}
+
+/** The app's startup hook; returns the uninstall, as `installExternalLinkGuard` does. */
+export function installRecordCardsAction(): () => void {
+  setRecordCardsAction({ canAdd: (hostId) => frameOutputOf(hostId) !== null, add: addRecordCards });
+  return () => setRecordCardsAction(null);
 }
