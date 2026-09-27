@@ -292,7 +292,7 @@ export class FrameInputNode extends ClassicPreset.Node {
         const lam = bare ? (usedLams[0] ?? null) : null;
         const deps = [
           ...(lam ? lam.params : ex ? [...ex.vars, ...rowRefNames(c.expr!)] : []),
-          ...usedLams.flatMap((l) => (l.expr ? rowRefNames(l.expr) : [])),
+          ...usedLams.flatMap((l) => [...(l.expr ? rowRefNames(l.expr) : []), ...(l.captured ?? [])]),
         ];
         if (deps.some((p) => { const d = nameToIdx.get(p); return d !== undefined && remaining.has(d); })) continue;
         remaining.delete(i);

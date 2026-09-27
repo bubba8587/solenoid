@@ -4,6 +4,7 @@ import { extractVariables, atColNames, compilePositional, formulaSyntaxHint, isF
 export { isLambdaValue, type LambdaValue } from "../lambdaValue";
 import { type LambdaValue } from "../lambdaValue";
 import { solError, type SolError } from "../errorValue";
+import { readCapturedColumn } from "../computedColumnCore";
 
 export function formatLambda(v: LambdaValue): string {
   return `λ(${v.params.join(", ")})`;
@@ -120,10 +121,15 @@ export class LambdaNode extends ClassicPreset.Node {
     ) {
       return { result: this.cachedValue };
     }
+    const captured = [...this.captured];
+    // [[C22]] rowFormulaRefs: inside a computed column a column outranks a capture.
     const fn: Compiled = (...args) =>
-      compiled(...args.slice(0, params.length), ...capturedVals);
+      compiled(...args.slice(0, params.length), ...captured.map((c, i) => {
+        const col = readCapturedColumn(c);
+        return col.hit ? col.v : capturedVals[i];
+      }));
     const descriptions = Object.keys(this.varDescriptions).length ? { ...this.varDescriptions } : undefined;
-    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured: [...this.captured], descriptions };
+    const value: LambdaValue = { __lambda: true, params, fn, expr: this.expr, captured, descriptions };
     this._lastBuild = { expr: this.expr, params: this.params, descJson, capturedVals };
     this.cachedValue = value;
     this.cachedError = null;

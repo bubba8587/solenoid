@@ -28,6 +28,7 @@ type RowFrame = {
   side: (name: string) => unknown;
   at: (name: string, v: unknown) => unknown;
   whole: (name: string) => unknown;
+  column: (name: string) => { hit: boolean; v?: unknown };
 };
 const rowStack: RowFrame[] = [];
 
@@ -46,6 +47,12 @@ export function readWholeColumn(name: unknown): unknown {
   const top = rowStack[rowStack.length - 1];
   if (!top) return solError("#REF!", "[column] reads a whole table column, so it only works inside a computed column");
   return top.whole(String(name));
+}
+
+/** A LAMBDA's bare captured name that names a column reads that whole column, since a column outranks a capture. */
+export function readCapturedColumn(name: string): { hit: boolean; v?: unknown } {
+  const top = rowStack[rowStack.length - 1];
+  return top ? top.column(name) : { hit: false };
 }
 
 function withRow<T>(frame: RowFrame, f: () => T): T {
@@ -180,6 +187,10 @@ function runColumn<C>(
       if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name — rename the variable or the column`);
       if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
       return sideCache.get(key);
+    },
+    column: (key) => {
+      const c = aliased(key) ?? colByName.get(key);
+      return c ? { hit: true, v: wholeOf(c) } : { hit: false };
     },
   };
 

@@ -162,6 +162,12 @@ describe("ComputedColumnNode — wired λ", () => {
     expect(getColumn(r, "margin")!.values).toEqual([8, 17, 26]);
   });
 
+  it("a column outranks a wired capture of the same name ([[C22]])", () => {
+    const fn = lambdaFor("@price / SUM(price)", "");
+    const r = run(named("", "share"), sales, { fn: [fn] }) as FrameValue;
+    expect(getColumn(r, "share")!.values).toEqual([10 / 60, 20 / 60, 30 / 60]);
+  });
+
 });
 
 describe("ComputedColumnNode — side inputs, row, and the output type", () => {
@@ -484,6 +490,21 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     const out = n.data({ fn1: [lam] }).frame as FrameValue;
     expect(getColumn(out, "c")!.values).toEqual([21, 61]);
     expect(getColumn(out, "d")!.values).toEqual([null, null]);
+  });
+
+  it("a λ's bare captured name that names a column reads the whole column, even ordered after a computed one ([[C22]])", () => {
+    const quart = `IFS(@x > QUARTILE(x, 3), "q4", @x > QUARTILE(x, 2), "q3", @x > QUARTILE(x, 1), "q2", TRUE, "q1")`;
+    const n = new FrameInputNode({
+      frameText: frameSourceToText([
+        { name: "band", type: "number", cells: [], expr: "λ1" }, // declared before the column it reads
+        { name: "x", type: "number", cells: [], expr: "@raw" },
+        { name: "raw", type: "number", cells: ["1", "2", "3", "4", "5", "6", "7", "8"] },
+      ]),
+      lambdaKeys: ["fn1"],
+    });
+    const lam = (new LambdaNode({ expr: quart, params: "" }).data({}) as { result: unknown }).result;
+    const out = n.data({ fn1: [lam] }).frame as FrameValue;
+    expect(getColumn(out, "band")!.values).toEqual(["q1", "q1", "q2", "q2", "q3", "q3", "q4", "q4"]);
   });
 
   it("a formula that keeps a date a date types the column Date; a span stays a number ([[D41]])", () => {
