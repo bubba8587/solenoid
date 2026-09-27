@@ -100,6 +100,9 @@ is parked there.
   19 computed-column surface → `archive/`); see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in
   `archive/dev-notes-history.md`.
+- **`review-plan.md`** — the 2026-09-27 bug-review plan: 44 blocks walking the commit history
+  back from head, checked against the tree and specs, each an agent's checklist. Review only;
+  a landed finding deletes its block, as a backlog line would.
 - **`settings-audit.md`** — the settings sweep's proposed roles for review ([[D86]] blankRoles); archived once
   the sweep lands.
 - Shipped release views are archived: `archive/release-plan-1.1.md` (the 1.1 cut),
