@@ -229,8 +229,9 @@ export function FormulaPopup() {
       cardStyle={style}
       headerExtra={locked && <span className="formula-popup__lock-tag" title="This formula can't be edited here.">Locked</span>}
       pinNodeId={node.id}
+      resizable={{ min: { w: 360, h: 260 } }}
     >
-      <div className="formula-popup__body">
+      <div className="formula-popup__body sol-popup__scroll">
         <div className="formula-popup__render" ref={renderRef}>
           {katexHtml != null ? (
             <span dangerouslySetInnerHTML={{ __html: katexHtml }} />
