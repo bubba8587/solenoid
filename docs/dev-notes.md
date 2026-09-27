@@ -20,8 +20,10 @@ specific item.
   `data:image` only, never fetched, as in the grid ([[D83]] imageTextCells); the first pass fetched web images.
 - **Cards demo data:** `scripts/gen-cards-demo.cjs` writes `demo-vault/Data/{crew,products,orders}.csv` (drawn
   `data:image` avatars and product pictures, tags, colors, ratings, progress, date ranges, links) and the
-  **Cards from files** seed (Tables): Local File nodes into Filter, Sort, Head, two Joins and two GROUPBYs. It runs on
-  the web build through the bundled demo vault. The joined frame led to two planner fixes: a second picture column
+  **Cards from files** seed (Tables): Local File nodes into Filter, Sort, Head, a Computed Column, Keep lookups, two
+  Joins, a Keep that picks the order card's fields, and two GROUPBYs. It runs on the web build through the bundled
+  demo vault. The data hangs together (skills and bios by team, Paid by status, backorder notes on out-of-stock
+  lines); joining whole tables made nonsense cards, so the joins take lean lookups. The joined frame led to two planner fixes: a second picture column
   draws as a picture, never prose, and a lone Last Name no longer counts as name-like.
 - **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
   the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.

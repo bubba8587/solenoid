@@ -47,33 +47,36 @@ const CREW = [
   ["Radia", "Perlman", "Signals", "Seattle"], ["Tim", "Berners-Lee", "Engines", "Geneva"],
   ["Mary", "Jackson", "Orbits", "Hampton"], ["Dennis", "Ritchie", "Compilers", "Murray Hill"],
 ];
-const SKILLS = ["math", "logic", "crypto", "compilers", "teaching", "networks", "hardware", "writing", "orbits", "testing", "design", "research"];
+const TEAM_SKILLS = {
+  Engines: ["hardware", "math", "design", "writing"],
+  Codes: ["crypto", "logic", "math", "research"],
+  Compilers: ["compilers", "testing", "teaching", "logic"],
+  Orbits: ["math", "orbits", "research", "testing"],
+  Signals: ["networks", "research", "hardware", "crypto"],
+};
+const TEAM_BIOS = {
+  Engines: ["Keeps the engine design notes and runs the Friday review.", "Builds the bench prototypes; ask before borrowing the good scope."],
+  Codes: ["Owns the key rotation schedule and the incident runbook.", "Reviews every change to the cipher library."],
+  Compilers: ["Leads the migration off the old build system, due this quarter.", "Mentors the new hires and writes most of the onboarding guide."],
+  Orbits: ["Checks every trajectory by hand before it goes to the review board.", "Runs the launch window calendar."],
+  Signals: ["Splits time between research and the support rota.", "Travels for the client workshops in spring and autumn."],
+};
 const HUES = ["#d94f3d", "#e0873a", "#d9a93b", "#8aab46", "#2fae7a", "#2aa3a3", "#3d7fd9", "#5b6ee1", "#8a63d2", "#c05dd1", "#d65c8f", "#7a8591"];
-const BIOS = [
-  "Keeps the team's design notes and runs the Friday review.",
-  "Owns the release checklist; ask before moving a deadline.",
-  "Mentors the new hires and writes most of the onboarding guide.",
-  "Leads the migration off the old build system, due this quarter.",
-  "",
-  "Splits time between research and support; mornings are best for questions.",
-  "Travels for the client workshops in spring and autumn.",
-  "",
-];
 
 function avatar(first, last, hue) {
   const initials = `${first[0]}${last.replace(/[^A-Za-z]/g, "")[0]}`;
   return svgData(`
     <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="10" fill="${hue}"/>
-      <circle cx="32" cy="25" r="11" fill="#fff" fill-opacity=".28"/>
-      <path d="M12 60c2-12 10-18 20-18s18 6 20 18z" fill="#fff" fill-opacity=".28"/>
-      <text x="32" y="38" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="700" fill="#fff">${initials}</text>
+      <text x="32" y="41" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="700" fill="#fff">${initials}</text>
     </svg>`);
 }
 
 const crewRows = CREW.map(([first, last, team, city], i) => {
   const hue = HUES[i % HUES.length];
-  const skills = [...new Set([pick(SKILLS), pick(SKILLS), pick(SKILLS)])].slice(0, between(1, 3));
+  const pool = TEAM_SKILLS[team];
+  const skills = pool.filter(() => rand() < 0.55);
+  if (skills.length === 0) skills.push(pool[0]);
   const start = between(0, 150);
   const end = rand() < 0.3 ? "" : isoDate(start + between(30, 200));
   const slug = `${first}-${last}`.toLowerCase().replace(/[^a-z-]/g, "");
@@ -81,13 +84,13 @@ const crewRows = CREW.map(([first, last, team, city], i) => {
     first, last, avatar(first, last, hue), `${first.toLowerCase()}@example.org`,
     rand() < 0.6 ? `https://example.org/people/${slug}` : "",
     team, skills.join(", "), hue, isoDate(start), end,
-    (between(6, 10) / 2).toString(), round2(rand()).toString(), (between(40, 220) * 100).toString(),
-    between(20, 44).toString(), rand() < 0.5 ? "TRUE" : "FALSE", city, pick(BIOS),
+    (between(6, 10) / 2).toString(), round2(rand()).toString(), (between(120, 900) * 100).toString(),
+    between(20, 44).toString(), rand() < 0.5 ? "TRUE" : "FALSE", city, rand() < 0.75 ? pick(TEAM_BIOS[team]) : "",
   ];
 });
 writeCsv("crew.csv", [
-  "First Name", "Last Name", "Photo", "Email", "Website", "Team", "Skills", "Favorite Color", "Start Date", "End Date",
-  "Rating", "Progress", "Budget", "Hours", "Remote", "City", "Bio",
+  "First Name", "Last Name", "Photo", "Email", "Website", "Team", "Skills", "Favorite Color", "Project Start", "Project End",
+  "Rating", "Goal Progress", "Sales YTD", "Hours per Week", "Remote", "City", "Bio",
 ], crewRows);
 
 // ── Products: a catalog with drawn thumbnails ─────────────────────────────────
@@ -148,15 +151,18 @@ writeCsv("products.csv", [
 // ── Orders: rows that join to both ────────────────────────────────────────────
 const CUSTOMERS = ["Acme Corp", "Globex", "Initech", "Umbrella", "Hooli", "Stark Industries", "Wayne Enterprises", "Wonka", "Soylent", "Tyrell"];
 const STATUSES = ["Open", "Shipped", "Delivered", "Delivered", "Delivered", "Cancelled"];
-const NOTES = ["Deliver to the loading dock after 2pm.", "Gift wrap, and leave out the receipt.", "Split across two shipments if the stock runs short.", ""];
+const NOTES = ["Deliver to the loading dock after 2pm.", "Gift wrap, and leave out the receipt.", "Call ahead; the office is closed Fridays."];
 const orderRows = Array.from({ length: 60 }, (_, i) => {
   const p = pick(productRows);
+  const [first, last] = pick(CREW);
   const qty = between(1, 12);
   const status = pick(STATUSES);
+  const paid = status === "Cancelled" ? false : status === "Delivered" ? true : status === "Shipped" ? rand() < 0.8 : rand() < 0.3;
+  const backordered = status === "Open" && p[8] === "0";
   return [
     `SO-${1001 + i}`, isoDate(between(0, 240)), pick(CUSTOMERS), p[0], qty.toString(),
-    (qty * Number(p[6])).toFixed(2), status, pick(CREW)[0],
-    status === "Cancelled" ? "FALSE" : rand() < 0.75 ? "TRUE" : "FALSE", rand() < 0.25 ? pick(NOTES) : "",
+    (qty * Number(p[6])).toFixed(2), status, `${first} ${last}`, paid ? "TRUE" : "FALSE",
+    backordered ? "Backordered until the next shipment arrives." : rand() < 0.2 ? pick(NOTES) : "",
   ];
 });
 writeCsv("orders.csv", ["Order", "Placed", "Customer", "SKU", "Qty", "Total", "Status", "Rep", "Paid", "Note"], orderRows);
@@ -168,51 +174,65 @@ const node = (id, type, x, y, init, extra = {}) => nodes.push({ id, type, x, y, 
 const wire = (source, target, targetInput = "frame", sourceOutput = "frame") =>
   connections.push({ source, sourceOutput, target, targetInput });
 
-const X0 = 0, X1 = 420, X2 = 840, X3 = 1260;
-node("note", "NoteNode", X0 - 480, -120, {
+const X0 = 0, X1 = 420, X2 = 840, X3 = 1260, X4 = 1680, X5 = 2100;
+node("note", "NoteNode", X0 - 480, 60, {
   label: "Cards from files",
   body: [
     "# Cards from files",
     "Three CSV files from the demo vault's **Data** folder (crew, products and orders), read by Local File nodes and run through table verbs.",
+    "",
+    "Orders join to a product lookup on SKU and to a rep lookup on the rep's full name, and a Keep picks the fields an order card needs.",
     "",
     "Open any Frame chip and switch the popup to **Cards**: the photos and product pictures are `data:image` cells, and the cards pick their title, headline number, chips, stars and meters from the columns.",
     "",
     "On desktop, point **Settings ▸ Data** at your own folder and the same nodes read your files.",
   ].join("\n"),
   width: 400,
-  height: 330,
+  height: 400,
 });
 
-node("crew", "LocalFileNode", X0, -560, { label: "Crew", fileName: "crew.csv" });
-node("products", "LocalFileNode", X0, 100, { label: "Products", fileName: "products.csv" });
-node("orders", "LocalFileNode", X0, 740, { label: "Orders", fileName: "orders.csv" });
+const filterEq = (label, column, value, op = "eq") => [
+  { label, condConfig: { 0: { op } }, valueKeys: ["frame", "column0", "value0"] },
+  { stringLiterals: { column0: column, value0: value } },
+];
 
-node("crew-remote", "FilterFrameNode", X1, -760, { label: "Filter → remote crew", condConfig: { 0: { op: "eq" } }, valueKeys: ["frame", "column0", "value0"] },
-  { stringLiterals: { column0: "Remote", value0: "TRUE" } });
+node("crew", "LocalFileNode", X0, -640, { label: "Crew", fileName: "crew.csv" });
+node("products", "LocalFileNode", X0, 380, { label: "Products", fileName: "products.csv" });
+node("orders", "LocalFileNode", X0, 1160, { label: "Orders", fileName: "orders.csv" });
+
+node("crew-remote", "FilterFrameNode", X1, -1000, ...filterEq("Filter → remote crew", "Remote", "TRUE"));
 wire("crew", "crew-remote");
-node("crew-sort", "SortFrameNode", X1, -420, { label: "Sort → rating, best first", dir: "desc" }, { stringLiterals: { column: "Rating" } });
+node("crew-sort", "SortFrameNode", X1, -660, { label: "Sort → rating, best first", dir: "desc" }, { stringLiterals: { column: "Rating" } });
 wire("crew", "crew-sort");
+node("rep-name", "ComputedColumnNode", X1, -320, { label: "Computed → Rep, the full name", expr: '@[First Name] & " " & @[Last Name]' },
+  { stringLiterals: { name: "Rep", after: "" } });
+wire("crew", "rep-name");
+node("rep-lookup", "ColumnsNode", X2, -320, { label: "Keep → rep lookup" }, { stringLiterals: { columns: "Rep, Photo, Team" } });
+wire("rep-name", "rep-lookup");
 
-node("top-rated", "FilterFrameNode", X1, -100, { label: "Filter → rated 4.5 and up", condConfig: { 0: { op: "gte" } }, valueKeys: ["frame", "column0", "value0"] },
-  { stringLiterals: { column0: "Rating", value0: "4.5" } });
+node("top-rated", "FilterFrameNode", X1, 60, ...filterEq("Filter → rated 4.5 and up", "Rating", "4.5", "gte"));
 wire("products", "top-rated");
-node("by-price", "SortFrameNode", X1, 240, { label: "Sort → price, high first", dir: "desc" }, { stringLiterals: { column: "Price" } });
+node("by-price", "SortFrameNode", X1, 400, { label: "Sort → price, high first", dir: "desc" }, { stringLiterals: { column: "Price" } });
 wire("products", "by-price");
-node("priciest", "HeadNode", X2, 240, { label: "Head → priciest five" }, { literals: { rows: 5 } });
+node("priciest", "HeadNode", X2, 400, { label: "Head → priciest five" }, { literals: { rows: 5 } });
 wire("by-price", "priciest");
+node("product-lookup", "ColumnsNode", X1, 740, { label: "Keep → product lookup" }, { stringLiterals: { columns: "SKU, Product, Image, Category, Price" } });
+wire("products", "product-lookup");
 
-node("order-lines", "JoinNode", X1, 560, { label: "Join Orders × Products (on SKU)", how: "left" }, { stringLiterals: { leftKey: "SKU", rightKey: "SKU" } });
+node("order-lines", "JoinNode", X2, 1100, { label: "Join Orders × product lookup (on SKU)", how: "left" }, { stringLiterals: { leftKey: "SKU", rightKey: "SKU" } });
 wire("orders", "order-lines", "left");
-wire("products", "order-lines", "right");
-node("open-lines", "FilterFrameNode", X2, 560, { label: "Filter → open orders", condConfig: { 0: { op: "eq" } }, valueKeys: ["frame", "column0", "value0"] },
-  { stringLiterals: { column0: "Status", value0: "Open" } });
+wire("product-lookup", "order-lines", "right");
+node("open-lines", "FilterFrameNode", X3, 1100, ...filterEq("Filter → open orders", "Status", "Open"));
 wire("order-lines", "open-lines");
-node("with-rep", "JoinNode", X3, 560, { label: "Join → the rep's crew card (Rep = First Name)", how: "left" }, { stringLiterals: { leftKey: "Rep", rightKey: "First Name" } });
+node("with-rep", "JoinNode", X4, 1100, { label: "Join → rep lookup (on Rep)", how: "left" }, { stringLiterals: { leftKey: "Rep", rightKey: "Rep" } });
 wire("open-lines", "with-rep", "left");
-wire("crew", "with-rep", "right");
-node("by-category", "GroupByFrameNode", X2, 920, { label: "GROUPBY Category → SUM(Total)", agg: "sum", totalDepth: 1 }, { stringLiterals: { keys: "Category", column: "Total" } });
+wire("rep-lookup", "with-rep", "right");
+node("order-card", "ColumnsNode", X5, 1100, { label: "Keep → the order card" },
+  { stringLiterals: { columns: "Order, Product, Image, Customer, Placed, Qty, Price, Total, Status, Category, Rep, Photo, Paid, Note" } });
+wire("with-rep", "order-card");
+node("by-category", "GroupByFrameNode", X3, 1460, { label: "GROUPBY Category → SUM(Total)", agg: "sum", totalDepth: 1 }, { stringLiterals: { keys: "Category", column: "Total" } });
 wire("order-lines", "by-category");
-node("by-status", "GroupByFrameNode", X1, 960, { label: "GROUPBY Status → SUM(Total)", agg: "sum", totalDepth: 1 }, { stringLiterals: { keys: "Status", column: "Total" } });
+node("by-status", "GroupByFrameNode", X1, 1500, { label: "GROUPBY Status → SUM(Total)", agg: "sum", totalDepth: 1 }, { stringLiterals: { keys: "Status", column: "Total" } });
 wire("orders", "by-status");
 
 const seed = { v: 2, order: 145, label: "Cards from files", group: "Tables", nodes, connections, standoffs: [] };

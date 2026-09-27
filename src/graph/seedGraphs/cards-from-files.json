@@ -8,19 +8,19 @@
       "id": "note",
       "type": "NoteNode",
       "x": -480,
-      "y": -120,
+      "y": 60,
       "init": {
         "label": "Cards from files",
-        "body": "# Cards from files\nThree CSV files from the demo vault's **Data** folder (crew, products and orders), read by Local File nodes and run through table verbs.\n\nOpen any Frame chip and switch the popup to **Cards**: the photos and product pictures are `data:image` cells, and the cards pick their title, headline number, chips, stars and meters from the columns.\n\nOn desktop, point **Settings ▸ Data** at your own folder and the same nodes read your files.",
+        "body": "# Cards from files\nThree CSV files from the demo vault's **Data** folder (crew, products and orders), read by Local File nodes and run through table verbs.\n\nOrders join to a product lookup on SKU and to a rep lookup on the rep's full name, and a Keep picks the fields an order card needs.\n\nOpen any Frame chip and switch the popup to **Cards**: the photos and product pictures are `data:image` cells, and the cards pick their title, headline number, chips, stars and meters from the columns.\n\nOn desktop, point **Settings ▸ Data** at your own folder and the same nodes read your files.",
         "width": 400,
-        "height": 330
+        "height": 400
       }
     },
     {
       "id": "crew",
       "type": "LocalFileNode",
       "x": 0,
-      "y": -560,
+      "y": -640,
       "init": {
         "label": "Crew",
         "fileName": "crew.csv"
@@ -30,7 +30,7 @@
       "id": "products",
       "type": "LocalFileNode",
       "x": 0,
-      "y": 100,
+      "y": 380,
       "init": {
         "label": "Products",
         "fileName": "products.csv"
@@ -40,7 +40,7 @@
       "id": "orders",
       "type": "LocalFileNode",
       "x": 0,
-      "y": 740,
+      "y": 1160,
       "init": {
         "label": "Orders",
         "fileName": "orders.csv"
@@ -50,7 +50,7 @@
       "id": "crew-remote",
       "type": "FilterFrameNode",
       "x": 420,
-      "y": -760,
+      "y": -1000,
       "init": {
         "label": "Filter → remote crew",
         "condConfig": {
@@ -73,7 +73,7 @@
       "id": "crew-sort",
       "type": "SortFrameNode",
       "x": 420,
-      "y": -420,
+      "y": -660,
       "init": {
         "label": "Sort → rating, best first",
         "dir": "desc"
@@ -83,10 +83,36 @@
       }
     },
     {
+      "id": "rep-name",
+      "type": "ComputedColumnNode",
+      "x": 420,
+      "y": -320,
+      "init": {
+        "label": "Computed → Rep, the full name",
+        "expr": "@[First Name] & \" \" & @[Last Name]"
+      },
+      "stringLiterals": {
+        "name": "Rep",
+        "after": ""
+      }
+    },
+    {
+      "id": "rep-lookup",
+      "type": "ColumnsNode",
+      "x": 840,
+      "y": -320,
+      "init": {
+        "label": "Keep → rep lookup"
+      },
+      "stringLiterals": {
+        "columns": "Rep, Photo, Team"
+      }
+    },
+    {
       "id": "top-rated",
       "type": "FilterFrameNode",
       "x": 420,
-      "y": -100,
+      "y": 60,
       "init": {
         "label": "Filter → rated 4.5 and up",
         "condConfig": {
@@ -109,7 +135,7 @@
       "id": "by-price",
       "type": "SortFrameNode",
       "x": 420,
-      "y": 240,
+      "y": 400,
       "init": {
         "label": "Sort → price, high first",
         "dir": "desc"
@@ -122,7 +148,7 @@
       "id": "priciest",
       "type": "HeadNode",
       "x": 840,
-      "y": 240,
+      "y": 400,
       "init": {
         "label": "Head → priciest five"
       },
@@ -131,12 +157,24 @@
       }
     },
     {
+      "id": "product-lookup",
+      "type": "ColumnsNode",
+      "x": 420,
+      "y": 740,
+      "init": {
+        "label": "Keep → product lookup"
+      },
+      "stringLiterals": {
+        "columns": "SKU, Product, Image, Category, Price"
+      }
+    },
+    {
       "id": "order-lines",
       "type": "JoinNode",
-      "x": 420,
-      "y": 560,
+      "x": 840,
+      "y": 1100,
       "init": {
-        "label": "Join Orders × Products (on SKU)",
+        "label": "Join Orders × product lookup (on SKU)",
         "how": "left"
       },
       "stringLiterals": {
@@ -147,8 +185,8 @@
     {
       "id": "open-lines",
       "type": "FilterFrameNode",
-      "x": 840,
-      "y": 560,
+      "x": 1260,
+      "y": 1100,
       "init": {
         "label": "Filter → open orders",
         "condConfig": {
@@ -170,22 +208,34 @@
     {
       "id": "with-rep",
       "type": "JoinNode",
-      "x": 1260,
-      "y": 560,
+      "x": 1680,
+      "y": 1100,
       "init": {
-        "label": "Join → the rep's crew card (Rep = First Name)",
+        "label": "Join → rep lookup (on Rep)",
         "how": "left"
       },
       "stringLiterals": {
         "leftKey": "Rep",
-        "rightKey": "First Name"
+        "rightKey": "Rep"
+      }
+    },
+    {
+      "id": "order-card",
+      "type": "ColumnsNode",
+      "x": 2100,
+      "y": 1100,
+      "init": {
+        "label": "Keep → the order card"
+      },
+      "stringLiterals": {
+        "columns": "Order, Product, Image, Customer, Placed, Qty, Price, Total, Status, Category, Rep, Photo, Paid, Note"
       }
     },
     {
       "id": "by-category",
       "type": "GroupByFrameNode",
-      "x": 840,
-      "y": 920,
+      "x": 1260,
+      "y": 1460,
       "init": {
         "label": "GROUPBY Category → SUM(Total)",
         "agg": "sum",
@@ -200,7 +250,7 @@
       "id": "by-status",
       "type": "GroupByFrameNode",
       "x": 420,
-      "y": 960,
+      "y": 1500,
       "init": {
         "label": "GROUPBY Status → SUM(Total)",
         "agg": "sum",
@@ -226,6 +276,18 @@
       "targetInput": "frame"
     },
     {
+      "source": "crew",
+      "sourceOutput": "frame",
+      "target": "rep-name",
+      "targetInput": "frame"
+    },
+    {
+      "source": "rep-name",
+      "sourceOutput": "frame",
+      "target": "rep-lookup",
+      "targetInput": "frame"
+    },
+    {
       "source": "products",
       "sourceOutput": "frame",
       "target": "top-rated",
@@ -244,13 +306,19 @@
       "targetInput": "frame"
     },
     {
+      "source": "products",
+      "sourceOutput": "frame",
+      "target": "product-lookup",
+      "targetInput": "frame"
+    },
+    {
       "source": "orders",
       "sourceOutput": "frame",
       "target": "order-lines",
       "targetInput": "left"
     },
     {
-      "source": "products",
+      "source": "product-lookup",
       "sourceOutput": "frame",
       "target": "order-lines",
       "targetInput": "right"
@@ -268,10 +336,16 @@
       "targetInput": "left"
     },
     {
-      "source": "crew",
+      "source": "rep-lookup",
       "sourceOutput": "frame",
       "target": "with-rep",
       "targetInput": "right"
+    },
+    {
+      "source": "with-rep",
+      "sourceOutput": "frame",
+      "target": "order-card",
+      "targetInput": "frame"
     },
     {
       "source": "order-lines",
