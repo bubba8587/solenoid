@@ -61,7 +61,7 @@ A bare tag embeds the value as the canvas shows it. Any other use of a name read
 
 ### The data form
 
-`toTemplateValue(value, sourceType)` turns a wired value into what Knap reads. `sourceType` is the data type of the source socket feeding the input, because a `trueany` input cannot tell a date serial from a number.
+`toTemplateValue(value, sourceType)` (`templateValue.ts`, apart from `knapTemplate.ts` so the Obsidian plugin can bundle the engine without the value modules) turns a wired value into what Knap reads. `sourceType` is the data type of the source socket feeding the input, because a `trueany` input cannot tell a date serial from a number.
 
 | Value | Data form |
 |---|---|

@@ -4,8 +4,9 @@ import { trueAnyIn, documentOut, documentIn, cubeIn } from "./shared";
 import { NoteNode } from "./annotation";
 import { isDocumentValue, makeDocument, PAGE_SEPARATOR, type DocumentValue, type DocumentPage } from "../documentValue";
 import {
-  embedBareVariables, extractKnapVariables, hasKnapSyntax, knapErrorText, renderKnap, renderKnapPages, toTemplateValue,
+  embedBareVariables, extractKnapVariables, hasKnapSyntax, knapErrorText, renderKnap, renderKnapPages,
 } from "../knapTemplate";
+import { toTemplateValue } from "../templateValue";
 import { isFrameRef, readFrame } from "../frameBackend";
 import { solError, type SolError } from "../errorValue";
 import { getOwningEditor, getOwningView } from "../activeGraph";

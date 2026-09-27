@@ -18,6 +18,7 @@ import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, 
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver, setAccentSlot } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } from "./lookTokens";
+import { KnapNotes } from "./knapBody";
 
 interface WidgetContext {
   app: App;
@@ -35,6 +36,7 @@ interface PropertyWidget {
 }
 interface MetadataTypeManager {
   registeredTypeWidgets: Record<string, PropertyWidget>;
+  getAssignedWidget(name: string): string | null;
 }
 
 interface Mount { host: HTMLElement; root: Root; attached: boolean }
@@ -64,6 +66,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     for (const kind of PROPERTY_KINDS) widgets[kind.id] = this.widgetFor(kind);
 
     this.renderPopups();
+    new KnapNotes(this).register();
 
     this.registerEvent(this.app.workspace.on("css-change", syncTheme));
     this.registerEvent(this.app.workspace.on("window-open", () => window.setTimeout(() => this.sweep(), 300)));
@@ -186,6 +189,35 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.mounts.delete(m);
   }
 
+  /** Unmounts what `mount` put inside `el`. */
+  release(el: Element): void {
+    for (const m of this.mounts) if (el.contains(m.host)) this.unmount(m);
+  }
+
+  /** The Solenoid type a property is assigned, when it is one with a chip. */
+  objectKind(key: string): PropertyKind | undefined {
+    const id = this.typeManager().getAssignedWidget(key);
+    return PROPERTY_KINDS.find((kind) => kind.id === id && kind.shape !== "scalar");
+  }
+
+  /** A property's chip in `el`, the same in the properties panel and in a note's body. */
+  chip(el: HTMLElement, kind: PropertyKind, key: string, value: unknown, onChange: (next: unknown) => void): ShadowRoot {
+    const shadow = this.mount(el, "solenoid-property-chip",
+      <PropertyChip
+        kind={kind}
+        label={key}
+        initial={value}
+        onChange={onChange}
+        columnTypes={this.data.columnTypes?.[key]}
+        onColumnTypes={(types, replace) => void this.setColumnTypes(key, types, replace)}
+      />);
+    shadow.host.addEventListener("pointerdown", () => {
+      if (homePopupLayer(shadow.host.ownerDocument)) this.renderPopups();
+      openPopupsOver(this.paneOf(shadow.host));
+    }, true);
+    return shadow;
+  }
+
   private widgetFor(kind: PropertyKind): PropertyWidget {
     return {
       type: kind.id,
@@ -194,19 +226,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       validate: (value) => validateYaml(kind, value),
       render: (el, value, ctx) => {
         if (kind.shape === "scalar") return scalarField(el, kind, value, ctx);
-        const shadow = this.mount(el, "solenoid-property-chip",
-          <PropertyChip
-            kind={kind}
-            label={ctx.key}
-            initial={value}
-            onChange={(next) => ctx.onChange(next)}
-            columnTypes={this.data.columnTypes?.[ctx.key]}
-            onColumnTypes={(types, replace) => void this.setColumnTypes(ctx.key, types, replace)}
-          />);
-        shadow.host.addEventListener("pointerdown", () => {
-          if (homePopupLayer(shadow.host.ownerDocument)) this.renderPopups();
-          openPopupsOver(this.paneOf(shadow.host));
-        }, true);
+        const shadow = this.chip(el, kind, ctx.key, value, (next) => ctx.onChange(next));
         return { focus: () => shadow.querySelector("button")?.focus() };
       },
     };

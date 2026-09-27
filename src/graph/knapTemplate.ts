@@ -1,16 +1,6 @@
 // [[C68]]
 
 import { createEngine, parse, standardFilters, type ASTNode, type Expression, type TemplateError } from "knap";
-import { type FrameValue, type CubeValue, type CubeCell, type FrameColType, isFrameValue, isCubeValue, frameRowCount } from "./frame";
-import { isDocumentValue } from "./documentValue";
-import { isMermaidValue } from "./mermaidValue";
-import { isLambdaValue } from "./lambdaValue";
-import { isUnitCell } from "./unitValue";
-import { displayMagnitudeOf } from "./unitBridge";
-import { isSolError } from "./errorValue";
-import { formatDateSerial } from "./nodes/dateSerial";
-import { mermaidToMarkdown, lambdaToMarkdown } from "./obsidianMarkdown";
-import { isDateType, type SocketDataType } from "./sockets";
 
 const TAG_RE = /\{\{|\{%|\{#/;
 
@@ -79,22 +69,38 @@ export function extractKnapVariables(body: string): string[] {
   return [...first.entries()].sort((a, b) => a[1] - b[1]).map(([k]) => k);
 }
 
-export function embedBareVariables(body: string, inputs: readonly string[]): string {
-  if (inputs.length === 0 || !body.includes("{{")) return body;
-  const wired = new Set(inputs);
+export interface BareTag { name: string; from: number; to: number; highlight: boolean }
+
+/** Each bare `{{ name }}` (or `{{ name | highlight }}`) on one of `names`, where no loop or `set` shadows it. */
+export function bareTags(body: string, names: readonly string[]): BareTag[] {
+  const out: BareTag[] = [];
+  if (names.length === 0 || !body.includes("{{")) return out;
+  const wired = new Set(names);
   const shadow: string[] = [];
   const setNames = new Set<string>();
-  return body.replace(/\{#[\s\S]*?#\}|\{%\s*([\s\S]*?)\s*%\}|\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g, (tag, block?: string, name?: string, hl?: string) => {
+  for (const m of body.matchAll(/\{#[\s\S]*?#\}|\{%\s*([\s\S]*?)\s*%\}|\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g)) {
+    const [tag, block, name, hl] = m;
     if (block !== undefined) {
       const forM = /^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\b/.exec(block);
       if (forM) shadow.push(forM[1]);
       else if (/^endfor\b/.test(block)) shadow.pop();
       else { const setM = /^set\s+([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(block); if (setM) setNames.add(setM[1]); }
-      return tag;
+      continue;
     }
-    if (!name || !wired.has(name) || shadow.includes(name) || setNames.has(name)) return tag;
-    return `\`=${name}${hl ? "!" : ""}\``;
-  });
+    if (!name || !wired.has(name) || shadow.includes(name) || setNames.has(name)) continue;
+    out.push({ name, from: m.index, to: m.index + tag.length, highlight: !!hl });
+  }
+  return out;
+}
+
+export function embedBareVariables(body: string, inputs: readonly string[]): string {
+  let out = "";
+  let at = 0;
+  for (const t of bareTags(body, inputs)) {
+    out += `${body.slice(at, t.from)}\`=${t.name}${t.highlight ? "!" : ""}\``;
+    at = t.to;
+  }
+  return at === 0 ? body : out + body.slice(at);
 }
 
 function templateLocals(body: string): Set<string> {
@@ -113,69 +119,6 @@ function templateLocals(body: string): Set<string> {
   visit(ast);
   return out;
 }
-
-
-function serialToIso(serial: number): string {
-  const whole = Number.isInteger(serial);
-  return formatDateSerial(serial, whole ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
-}
-
-function cellValue(v: unknown, type?: FrameColType): unknown {
-  if (isSolError(v)) return v.code;
-  if (type === "date" && typeof v === "number" && Number.isFinite(v)) return serialToIso(v);
-  return v ?? null;
-}
-
-export function frameToTemplateRows(f: FrameValue): Record<string, unknown>[] {
-  const n = frameRowCount(f);
-  const rows: Record<string, unknown>[] = [];
-  for (let i = 0; i < n; i++) {
-    const r: Record<string, unknown> = {};
-    for (const c of f.columns) r[c.name] = cellValue(c.values[i], c.type);
-    rows.push(r);
-  }
-  return rows;
-}
-
-function cubeCell(cell: CubeCell, type?: FrameColType): unknown {
-  if (cell == null) return null;
-  if (isCubeValue(cell)) return cubeToTemplateRows(cell);
-  if (isFrameValue(cell)) return frameToTemplateRows(cell);
-  if (isUnitCell(cell)) return displayMagnitudeOf(cell);
-  if (Array.isArray(cell)) return cell.map((c) => cubeCell(c));
-  return cellValue(cell, type);
-}
-
-export function cubeToTemplateRows(c: CubeValue): Record<string, unknown>[] {
-  const n = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
-  const rows: Record<string, unknown>[] = [];
-  for (let i = 0; i < n; i++) {
-    const r: Record<string, unknown> = {};
-    for (const col of c.columns) r[col.name] = cubeCell(col.cells[i] ?? null, col.type);
-    rows.push(r);
-  }
-  return rows;
-}
-
-export function toTemplateValue(v: unknown, type?: SocketDataType | null): unknown {
-  if (v === undefined || v === null) return null;
-  if (isSolError(v)) return v.code;
-  if (isFrameValue(v)) return frameToTemplateRows(v);
-  if (isCubeValue(v)) return cubeToTemplateRows(v);
-  if (isDocumentValue(v)) return v.body;
-  if (isMermaidValue(v)) return mermaidToMarkdown(v);
-  if (isLambdaValue(v)) return lambdaToMarkdown(v);
-  if (isUnitCell(v)) return displayMagnitudeOf(v);
-  if (Array.isArray(v)) {
-    const date = !!type && isDateType(type);
-    return v.map((x) => toTemplateValue(x, date ? "date" : null));
-  }
-  if (typeof v === "number") return type && isDateType(type) && Number.isFinite(v) ? serialToIso(v) : v;
-  if (typeof v === "string" || typeof v === "boolean") return v;
-  if (typeof v === "object" && ("__chart" in v || "__svg" in v || "__image" in v)) return null;
-  return v;
-}
-
 
 const engine = createEngine({ filters: standardFilters });
 

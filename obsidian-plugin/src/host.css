@@ -33,3 +33,14 @@
 .is-mobile .setting-item-control.solenoid-settings-palette {
   align-items: stretch;
 }
+
+.solenoid-knap-chip .solenoid-property-chip {
+  vertical-align: middle;
+}
+
+.solenoid-knap-error {
+  color: var(--text-error);
+  font-family: var(--font-monospace);
+  font-size: var(--font-smaller);
+  white-space: pre-wrap;
+}

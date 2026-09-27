@@ -1,9 +1,10 @@
 // [[C68]], [[D54]]
 import { describe, it, expect } from "vitest";
 import {
-  hasKnapSyntax, extractKnapVariables, embedBareVariables, toTemplateValue, frameToTemplateRows, renderKnap, renderKnapPages, knapErrorText,
+  hasKnapSyntax, extractKnapVariables, embedBareVariables, renderKnap, renderKnapPages, knapErrorText,
   batchTruncation, MAX_PAGES,
 } from "../../src/graph/knapTemplate";
+import { toTemplateValue, frameToTemplateRows } from "../../src/graph/templateValue";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { makeDocument } from "../../src/graph/documentValue";
 import { solError } from "../../src/graph/errorValue";

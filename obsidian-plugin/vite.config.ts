@@ -202,7 +202,7 @@ export default defineConfig({
     minify: !process.env.PLUGIN_DEBUG,
     lib: { entry: path.join(import.meta.dirname, "src/main.tsx"), formats: ["cjs"], fileName: () => "main.js" },
     rollupOptions: {
-      external: ["obsidian", "electron"],
+      external: ["obsidian", "electron", "@codemirror/state", "@codemirror/view"],
       // Tracing only: lets a build finish while a shim is still short an export.
       shimMissingExports: !!process.env.PLUGIN_TRACE,
       output: { exports: "default", codeSplitting: false },

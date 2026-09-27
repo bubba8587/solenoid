@@ -69,9 +69,13 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Next plugin release:** the snapshot with `resolveToken` and the cube type button is exported to
-  Solenoid-Properties `develop` (2026-09-26); merge it to `main`, bump the version and release. The README fix waits on
+- [ ] **Next plugin release:** the snapshot with `resolveToken`, the cube type button and Knap notes ([[D87]]) is
+  exported to Solenoid-Properties `develop` (2026-09-27); merge it to `main`, bump the version and release. The README fix waits on
   `claude/copy-editing-style-kytmz0` there.
+- [ ] **A Note card's bare `{{ list }}` on its own field prints Knap's JSON**; in Obsidian a Knap note draws the
+  chip ([[D87]] knapNotes, as [[C68]] asks of a bare tag). Embed the card's own object fields as a Report does?
+- [ ] **Knap notes on show:** a `knap: true` note in the demo vault and on the `/obsidian` page, once the plugin
+  release carrying it is in the community store (the demo vault installs from there).
 - [ ] **Plugin chip tap target on a phone** (review with the author): a chip is 15px tall on Obsidian's 41px phone
   row (measured 2026-09-22 in the rig's mobile emulation), under the "always `sm`" ruling in
   `tree/specs/integrations/obsidian-plugin.md`. Options: `md` under `body.is-phone`, or a taller hit area on the chip's button.

@@ -30,7 +30,9 @@ This file is the map.
 ├── obsidian-plugin/          # Solenoid Properties, the Obsidian plugin ([[C107]] obsidianPlugin): the real
 │                             #     chips + popups behind the shims in src/shims/, in Shadow DOM. `npm run
 │                             #     plugin:build` writes it into obsidian-plugin/dist/ (ignored; the demo vault
-│                             #     installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping
+│                             #     installs the plugin from the community store); src/yamlValue.ts is the pure YAML ⇄ value mapping;
+│                             #     src/knapNote.ts renders a `knap: true` note's body, src/knapBody.ts draws it in
+│                             #     Obsidian ([[D87]] knapNotes)
 ├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
 │                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
 │                             #     dev server: undo position fidelity, socketBox12's rendering half, a
@@ -152,7 +154,8 @@ src/
 | `saveTimeStore.ts` | The save-clock read seam (per-doc autosave + file-save stamps) documentStore injects, since node classes can't import it |
 | `noteFrontmatterSync.ts` | THE one cable-drop for cables stranded by a frontmatter re-sync (Note on-blur commit + Import file-load share it) |
 | `noteInlineRefs.ts` | The INTERNAL `` `=name` `` ref span (Expression's identifier grammar; trailing `!` is display-only tinting). Nobody types it: the Report's render emits it for a bare `{{ name }}` |
-| `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `embedBareVariables` rewrites a bare `{{ input }}` to the ref span so it embeds by kind, `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type, `renderKnap` wraps the `knap` engine (standard filters) |
+| `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `bareTags` finds a bare `{{ input }}` and `embedBareVariables` rewrites it to the ref span so it embeds by kind, `renderKnap` wraps the `knap` engine (standard filters). The only module that calls `knap`; the Obsidian plugin bundles it, so it imports no value modules |
+| `templateValue.ts` | `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type: what Knap reads for a value |
 | `reportStore.ts` + `reportExport.ts` | Report chrome seam (open/docked state) and the static HTML export (document-valued refs render as embed blocks) |
 
 ### Typing / sockets / units
@@ -180,6 +183,7 @@ src/
 | `conduitTrace.ts` | Conduit lane type adoption: `resolveTypedSource` traces an output lane back through chained Conduits to the real source socket (cable colors); `reconcileConduitTypes` makes lanes adopt the feeding type (fixpoint). Also `conduitPath` — the whole RUN a cable belongs to (origin producer, every terminal consumer, Conduits crossed), used by the Cable inspector and double-click cable selection |
 | `trigMode.ts` | `resolveTrigModes(editor)` — the ONE compute-time unit read: an Auto-mode trig `Math` node computes degrees when its input resolves to the `deg` unit, else radians (Excel parity). Run from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`. Main-editor only |
 | `noteFrontmatter.ts` | Pure parser: a Note body's YAML frontmatter → typed fields (→ NoteNode output sockets) + the markdown below the block |
+| `scalarText.ts` | `guessScalarText`: how a note reads one scalar's text (null, Boolean, number, ISO date, complex, else text), shared by the frontmatter parser, a Note's quoted Knap fields and the Obsidian plugin |
 | `frame.ts` | Frame value model (named typed columns) + helpers; also the Cube model (recursive cells), cached `depth`, and `relateFramesToCube`; `FrameSourceColumn` carries the column-source model (Data, or a formula `expr?` that may name a λ socket) |
 | `computedColumnCore.ts` | THE shared computed-column row-eval core (tableRefSemantics/noPerCellFormulas): binding resolution (bare name = whole column, `@` = this row), `readRowCell`/`readWholeColumn`, side values, `tagComputedCell` / `tagCubeComputedCell` — one home so the Frame Input popup, Cube Input and the Computed Column verb cannot disagree |
 | `cubeRows.ts` | `cubeRowTable`: a Cube as a row formula reads it (typed scalar columns, each row's list, `#SHAPE!` table cells) and `cubeCellsType` |

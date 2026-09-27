@@ -12,7 +12,9 @@ import { parseDateToSerial } from "./date";
 import { noteDateText } from "./dateSerial";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
-import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
+import { hasKnapSyntax, knapErrorText, renderKnap } from "../knapTemplate";
+import { toTemplateValue } from "../templateValue";
+import { guessScalarText } from "../scalarText";
 import { solError, type SolError } from "../errorValue";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
@@ -23,7 +25,6 @@ import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
   parseNoteFrontmatter,
-  guessScalarText,
   type FrontmatterFieldType,
   type FrontmatterScalar,
   type FrontmatterRow,

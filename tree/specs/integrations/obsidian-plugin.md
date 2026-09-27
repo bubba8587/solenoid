@@ -2,13 +2,14 @@
 aliases: ["Solenoid Properties (the Obsidian plugin)"]
 tags: [spec, integrations]
 ---
-<!-- [[C107]] obsidianPlugin, [[B3]] sameNodeEverywhere, [[B1]] obsidianBet; covers: obsidian-plugin/vite.config.ts, obsidian-plugin/src/*.ts, obsidian-plugin/src/*.tsx, obsidian-plugin/src/shims/*.ts -->
+<!-- [[C107]] obsidianPlugin, [[D87]] knapNotes, [[B3]] sameNodeEverywhere, [[B1]] obsidianBet; covers: obsidian-plugin/vite.config.ts, obsidian-plugin/src/*.ts, obsidian-plugin/src/*.tsx, obsidian-plugin/src/shims/*.ts -->
 
 # Spec: Solenoid Properties (the Obsidian plugin)
 
 Serves [[C107]] obsidianPlugin. The plugin adds every Solenoid object type that YAML can hold to
 Obsidian's properties: each one shows as the app's chip and opens the app's popup editor, and the
-note keeps plain YAML. This spec is what the plugin has, how it is built, and every place it
+note keeps plain YAML. A note that asks for it also reads as its Note card does in Solenoid
+([[#Knap notes]]). This spec is what the plugin has, how it is built, and every place it
 differs from the full app. A divergence lives here under the rule it bends, with what would remove
 it (`docs/dte.md` § Solenoid practice).
 
@@ -31,6 +32,10 @@ frame and the cube; and one scalar, Complex, the only element family Obsidian ha
 | `solenoid-table`, `-strtable`, `-datetable`, `-complextable`, `-logicaltable` | Numeric / String / Date / Complex / Boolean Matrix | sequence of sequences | `[R×C Table]` in the family's matrix shade | Table Input's raw grid |
 | `solenoid-frame` | Frame | sequence of `key: value` maps, scalar values | `[R×C Frame]` | Frame Input's literal-source editor (Grid, Form, CSV, Source toggle, column types, sort, summary footer) |
 | `solenoid-cube` | Cube | sequence of maps whose values may be lists or rows | `[R×C×D Cube]` | Cube Input's drill-stack editor |
+
+**Knap notes.** A note with `knap: true` in its properties renders its body as a Knap template from
+its own properties, and a bare `{{ name }}` on an object property is that property's chip, in the
+body ([[D87]] knapNotes; [[#Knap notes]]).
 
 **The Solenoid look.** One more setting, a toggle, off until the user turns it on, dresses
 Obsidian itself in Solenoid's palette and the accent chosen above. [[#The look]] is how it works.
@@ -150,6 +155,52 @@ the panel 4 px left so bare icons line up with the text; a bordered card lines u
 **Graph view.** A note is a node in the accent, and the active one is the ink. Tags and attachments
 keep their type's hue.
 
+## Knap notes
+
+Serves [[D87]] knapNotes. The switch is a property, `knap`, holding the Boolean `true` (Obsidian
+infers the Checkbox type); any other value, or none, leaves the body alone. It is per note, never a
+setting, because a vault's template notes hold `{{ }}` tags that are not meant to render.
+
+**What renders.** The body is rendered as a Note renders its own ([[reports-and-notes]] § Knap in a
+Note): the note's properties are the variables, a quoted Knap property reads as what it renders to
+(`guessScalarText`, a date kept as its ISO text), and an unknown tag stays as typed (keepUnknown).
+Obsidian hands every property over already in the form a Note's `toTemplateValue` makes (a date as
+ISO text, a frame as rows, a matrix as rows of cells), so the plugin passes them through. The
+frontmatter block is not rendered: the properties panel shows the properties.
+
+**Bare tags on objects.** Before the render, a bare `{{ name }}` whose name is one of the note's
+properties and is assigned a list, matrix, frame or cube type (`getAssignedWidget`) becomes the
+internal `` `=name` `` span (`bareTags` / `embedBareVariables`, the Report's own), so a loop or a `set`
+that shadows the name keeps it. After Obsidian draws the markdown, each such span is replaced by
+the property's chip: the same chip, editor and column-type picks as in the properties panel, and its
+Save writes the property (`processFrontMatter`). A tag used any other way (`{{ grid | length }}`,
+`{% for r in grid %}`) reads the data.
+
+**Reading view.** Obsidian draws a note section by section (a paragraph, a list, a heading) and runs
+the post-processor on each, and a loop or an `if` may span sections. So `knapNote.ts` renders the
+whole body once, with each source line that starts outside a tag led by a marker naming its line,
+and each section takes the output its lines produced, in output order: a loop's lines come back
+once per pass, a false `if`'s not at all, a tag line as nothing. A section whose share equals its
+source keeps Obsidian's own drawing; any other is drawn again from its share
+(`MarkdownRenderer.render`) and an empty share leaves the section empty. The render is kept per
+note until its text or properties change. A section can depend on every other and on any property,
+so a metadata change on a Knap note (or one that just stopped being one) redraws its open reading
+views in full (`previewMode.rerender(true)`).
+
+**An error** (a filter Knap lacks, a tag left open) leaves the whole body as its source, and the
+first body section shows the error lines, `line:column message`, counted in the note.
+
+**Live Preview** is the editor, so it shows the template. Only a bare tag on an object property is
+drawn as its chip (a CodeMirror replace decoration), and only while the selection does not touch
+it, so moving onto it shows the tag to edit. It reads the properties from the editor's own text
+(`getFrontMatterInfo`, `parseYaml`), which is ahead of Obsidian's cache while the user types. A tag
+that spans lines stays text. Source mode draws nothing.
+
+**Where it differs from a Note card.** In the app a Note's bare `{{ name }}` on a list or frame field
+prints its data (Knap's JSON); here it is the chip, which is what [[C68]] knapIsTheDocumentSyntax
+asks a bare tag to show. Knap renders tags inside code spans and fences, here as in the app, so a
+literal tag is written `{{ "{" }}{ x }}` (knap.md).
+
 ## Requirements
 
 1. **The chips and popups are the app's components, never redrawn** ([[B3]] sameNodeEverywhere).
@@ -247,12 +298,15 @@ keep their type's hue.
     so the build rewrites every free use in `src/graph/components/` to the layer's own
     (`pluginGlobals` in `vite.config.ts` → `popupDocument` / `popupWindow` in `shadow.ts`).
 11. **The plugin leaves nothing behind.** `onunload` removes the thirteen widgets, closes both
-    popups, unmounts every root and removes the popup layer.
+    popups, unmounts every root and removes the popup layer. The Knap post-processor, its metadata
+    listener and the Live Preview extension are registered through the plugin (`register*`), so
+    Obsidian drops them on unload; a chip's CodeMirror widget unmounts its root when destroyed.
 12. **Obsidian's widget API is undocumented and read from its source** (1.13.7): a widget is
     `{type, icon, name(), validate(value), render(el, value, ctx)}` in
     `app.metadataTypeManager.registeredTypeWidgets`, `ctx` is
-    `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. The
-    plugin touches nothing else private.
+    `{app, key, onChange, sourcePath, blur}`, and `render` returns an object with `focus()`. A Knap
+    note reads a property's assigned type from `app.metadataTypeManager.getAssignedWidget(name)`
+    (the type id, or null). The plugin touches nothing else private.
 
 ## Divergences from the full app
 
@@ -283,7 +337,8 @@ Each row is a deliberate difference. "Removes it" is what would have to exist fo
 
 ## Out of scope
 
-Computing anything. Reading or writing a note's body. A real phone: `isDesktopOnly` is false because
+Computing anything beyond a Knap note's template. Writing a note's body: a chip in the body writes
+its property, never the text around it. A real phone: `isDesktopOnly` is false because
 nothing in the bundle needs Electron, and the plugin is checked as a phone only through Obsidian's
 own mobile emulation in the rig (below), never on a device.
 

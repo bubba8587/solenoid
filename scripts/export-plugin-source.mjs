@@ -68,10 +68,10 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   scripts: { build: "tsc --noEmit && PLUGIN_OUT=dist VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts" },
   dependencies: pin([
     "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
-    "chrono-node", "papaparse", "react", "react-dom", "rete",
+    "chrono-node", "knap", "papaparse", "react", "react-dom", "rete", "yaml",
   ]),
   devDependencies: pin([
-    "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
+    "@codemirror/state", "@codemirror/view", "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
     "obsidian", "postcss", "rollup-plugin-license", "typescript", "vite",
   ]),
   // Pin the exact installed version: a patch bump minifies React differently.

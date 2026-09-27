@@ -2,7 +2,7 @@
 import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type Pair, type YAMLSeq } from "yaml";
 import { noteDateSerial } from "./nodes/dateSerial";
 import { typeAtRank } from "./sockets";
-import { parseCx } from "./cxValue";
+import { isComplexText, type ScalarKind } from "./scalarText";
 import { fencedLines } from "./managedBlock";
 
 
@@ -41,26 +41,6 @@ export interface ParsedFrontmatter {
   fields: FrontmatterField[];
   body: string;
   hasBlock: boolean;
-}
-
-const NUMERIC = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
-
-type ScalarKind = "number" | "string" | "logical" | "date" | "complex";
-
-
-const isComplexText = (t: string): boolean => /[ij]$/.test(t) && parseCx(t) !== null;
-
-export function guessScalarText(text: string): { value: FrontmatterScalar; kind: ScalarKind } {
-  const t = text.trim();
-  if (t === "" || t === "~" || t === "null") return { value: null, kind: "string" };
-  const lower = t.toLowerCase();
-  if (lower === "true") return { value: true, kind: "logical" };
-  if (lower === "false") return { value: false, kind: "logical" };
-  if (NUMERIC.test(t)) return { value: Number(t), kind: "number" };
-  const serial = noteDateSerial(t);
-  if (serial !== null) return { value: serial, kind: "date" };
-  if (isComplexText(t)) return { value: t, kind: "complex" };
-  return { value: t, kind: "string" };
 }
 
 function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; kind: ScalarKind; text?: string } {

@@ -49,7 +49,7 @@ Three specs govern whole classes of files through a `covers:` glob in their head
 |---|---|---|
 | `../tree/specs/documents/save-format.md` | the saved document, the text form, loading | `persistence.ts`, `textForm.ts`, `graphValidate.ts` |
 | `../tree/specs/documents/table-popup.md` | the Table popup: modes, editing, write-back, the Form view, copy and export | `components/TablePopup.tsx`, `tablePopupStore.ts` |
-| `../tree/specs/documents/reports-and-notes.md` | Notes, Reports and Knap: the body syntax, rendering, mail merge, vault writes, export | `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` |
+| `../tree/specs/documents/reports-and-notes.md` | Notes, Reports and Knap: the body syntax, rendering, mail merge, vault writes, export | `knapTemplate.ts`, `templateValue.ts`, `nodes/report.ts`, `nodes/annotation.ts` |
 | `../tree/specs/documents/addressable-model.md` | node names and name-addressed references | `nodeNameStore.ts`, `nodeNaming.ts` |
 | `../tree/specs/documents/per-doc-autosave-persistence.md` | per-document autosave slots | `documentStore.ts` |
 | `../tree/specs/documents/inline-literal-maps.md` | values edited on a card, and which classes restore them | node classes, `persistence.ts` |
