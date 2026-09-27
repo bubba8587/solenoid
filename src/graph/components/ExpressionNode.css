@@ -126,6 +126,18 @@
   font-family: var(--font-mono);
 }
 
+/* The parameter box fits its text and grows with it; the width is set inline in ch of the mono face. */
+.solenoid-lambda__params-row {
+  justify-content: flex-start;
+  gap: 2px;
+}
+
+.solenoid-lambda__params {
+  flex: 0 1 auto;
+  max-width: 100%;
+  text-align: left;
+}
+
 .solenoid-lambda__hint {
   padding: 0 8px 3px;
   font-size: 10px;

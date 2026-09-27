@@ -39,10 +39,11 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
 
   return (
     <NodeShell node={node} emit={emit}>
-      <div className="solenoid-node__io-row">
+      <div className="solenoid-node__io-row solenoid-lambda__params-row">
         <span className="solenoid-node__io-label">λ(</span>
         <input
-          className="solenoid-node__inline-input"
+          className="solenoid-node__inline-input solenoid-lambda__params"
+          style={{ width: `calc(${(params || "x, y").length + 1}ch + 14px)` }}
           value={params}
           placeholder="x, y"
           onChange={(e) => setParams(e.target.value)}
