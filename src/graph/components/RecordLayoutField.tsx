@@ -1,4 +1,4 @@
-// [[C63]] oneRecordNode, [[C95]] commitOnEnter
+// [[B11]] maximalMerge, [[C95]] commitOnEnter
 import { useLayoutEffect, useRef, useState } from "react";
 import { FieldResizeGrip } from "./FieldResizeGrip";
 

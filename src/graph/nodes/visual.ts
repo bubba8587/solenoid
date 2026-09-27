@@ -1,4 +1,4 @@
-// [[C63]], [[B11]]
+// [[B11]]
 import { ClassicPreset } from "rete";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting, picks } from "../inputRoles";

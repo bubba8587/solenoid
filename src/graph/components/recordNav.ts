@@ -1,4 +1,4 @@
-// [[C63]] oneRecordNode
+// [[B11]] maximalMerge
 import { getOwningEditor } from "../activeGraph";
 import { processGraph } from "../process";
 import { RecordNode } from "../rete-nodes";

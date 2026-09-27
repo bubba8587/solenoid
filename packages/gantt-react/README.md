@@ -56,7 +56,7 @@ GanttFigure({
   timeline keeps at least 80 px, and columns that no longer fit are dropped from the end, never
   clipped. The name column always stays, even when it alone is too wide.
 - **Rows.** On the canvas the figure draws at most the first 60 rows (the Record precedent,
-  [[C63]] oneRecordNode); in the popup (`virtualize`) it draws a window around the scroll position
+  [[C100]] chartIsAValue); in the popup (`virtualize`) it draws a window around the scroll position
   with a buffer of 6 rows, which works because every row has the same height. Links draw when
   either end is in or near the drawn band. The two panes share one vertical scroll.
 - **Collapse.** Per-row collapse is ephemeral viewer state. It is seeded from `view.collapse`, so

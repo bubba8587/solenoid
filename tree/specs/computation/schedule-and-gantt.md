@@ -2,7 +2,7 @@
 aliases: ["Schedule and Gantt"]
 tags: [spec, computation]
 ---
-<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D66]] daysMinutesModes, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C63]] oneRecordNode, [[C38]] sinkRunButtonOnly -->
+<!-- [[C70]] oneScheduleRule, [[C69]] ganttPackages, [[C71]] noBarEditing, [[C44]] dateSerials, [[D66]] daysMinutesModes, [[D68]] importUnsupportedIsNamed, [[E10]] pickVsAggregateErrors, [[C10]] socketLattice, [[C38]] sinkRunButtonOnly -->
 
 # Spec: Schedule and Gantt
 
@@ -186,7 +186,7 @@ The value's payload is data, not geometry: scheduled rows as serials, links, non
 
 ### Where it draws
 
-The Gantt card shows only the `[Chart]` chip, as Record does, because the figure would be squashed at card width ([[C63]] oneRecordNode). The figure draws in the resizable Display, the expand popup and a Report embed. Outside the popup it draws at most 60 rows (`CANVAS_CAP`), because the HTML-in-Canvas renderer rasterizes a figure card ([[html-in-canvas]]) and a scrolled virtualized child would clone blank. The popup virtualizes, so it is where thousands of rows scroll.
+The Gantt card shows only the `[Chart]` chip, as Record does, because the figure would be squashed at card width ([[C100]] chartIsAValue). The figure draws in the resizable Display, the expand popup and a Report embed. Outside the popup it draws at most 60 rows (`CANVAS_CAP`), because the HTML-in-Canvas renderer rasterizes a figure card ([[html-in-canvas]]) and a scrolled virtualized child would clone blank. The popup virtualizes, so it is where thousands of rows scroll.
 
 ### How it draws
 

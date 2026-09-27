@@ -1,4 +1,4 @@
-// [[C63]] oneRecordNode, [[C100]] chartIsAValue, [[C114]] cardsView
+// [[B11]] maximalMerge, [[C100]] chartIsAValue, [[C114]] cardsView
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { titleIndexFor } from "../chartValue";

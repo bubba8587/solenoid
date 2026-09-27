@@ -2,11 +2,11 @@
 aliases: ["Table popup"]
 tags: [spec, documents]
 ---
-<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams, [[C114]] cardsView -->
+<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams, [[C114]] cardsView -->
 
 # Spec: Table popup
 
-Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint and [[C114]] cardsView. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint and [[C114]] cardsView. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block, a frame as a stack of cards or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
 
@@ -141,7 +141,7 @@ The Form view exists only on a frame-source editor (`onSaveSource`). It shows on
 
 - **The cursor** is a source row index, independent of the sort, so it reaches rows past the grid's render cap. A pager (previous, `i / n`, `0 / 0` when empty, next) moves it. Add Record appends a blank record and jumps to it; − Record deletes the current one and is disabled when only one is left. Row order is otherwise untouched, so sort keys stay valid.
 - **Placement** follows the Record layout text (`formLayout`, parsed by `parseRecordLayout` with the Record figure's rules, [[chart-figures]] § The Record figure). A layout name matches a column by name, trimmed and ignoring case. A name that matches no column keeps an inert box that shows the layout's hint. A column not in the layout is not shown. An empty layout stacks every column in one column.
-- **The layout is authored on the Frame Input card, never in the popup** ([[C63]] oneRecordNode). The card's Form Layout button opens the layout field (`RecordLayoutField`); an unauthored layout stays behind the button so most cards carry no empty text box. The field's hide button sets `layoutHidden`, which keeps the text, and the button then reads Show Form Layout. An emptied layout deletes `stringLiterals.layout`, so the form falls back to stacked. The popup reads the node's `activeLayout`.
+- **The layout is authored on the Frame Input card, never in the popup**. The card's Form Layout button opens the layout field (`RecordLayoutField`); an unauthored layout stays behind the button so most cards carry no empty text box. The field's hide button sets `layoutHidden`, which keeps the text, and the button then reads Show Form Layout. An emptied layout deletes `stringLiterals.layout`, so the form falls back to stacked. The popup reads the node's `activeLayout`.
 - **The look** is the Record card made editable: touching square boxes with the label inside the box and the input as the box's value line.
 
 The entry widget follows the column type:

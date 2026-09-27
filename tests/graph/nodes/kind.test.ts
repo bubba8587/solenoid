@@ -1,4 +1,4 @@
-// [[C42]], [[C63]], [[B11]]
+// [[C42]], [[B11]]
 import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
 import { NumberInputNode, BooleanInputNode } from "../../../src/graph/nodes/input";

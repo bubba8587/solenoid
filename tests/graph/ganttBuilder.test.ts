@@ -1,4 +1,4 @@
-// [[C63]], [[B11]], [[C96]] chartOptionsAreMatplotlib
+// [[B11]], [[C96]] chartOptionsAreMatplotlib
 import { describe, it, expect } from "vitest";
 import { ChartBuilderNode } from "../../src/graph/nodes/visual";
 import { CHART_BUILDER_TARGETS, chartBuilderKeys } from "../../src/graph/nodes/chartOptions";

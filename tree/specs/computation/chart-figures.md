@@ -2,11 +2,11 @@
 aliases: ["Chart figures"]
 tags: [spec, computation]
 ---
-<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[C114]] cardsView -->
+<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C94]] formatFamilyGates, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[C114]] cardsView -->
 
 # Spec: Chart figures
 
-Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode and [[C94]] formatFamilyGates (the Format Controller's `chart` family). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing and [[C94]] formatFamilyGates (the Format Controller's `chart` family). It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 A chart in Solenoid is a value, not a drawing. Each figure node computes a small, self-describing figure value and sends it down a `chart` cable; whatever receives it (the node's own card, a Display, the chart popup, a Report embed) draws it at the size it has. This spec covers that value, the nodes that make it, the options string that styles it, and the renderers that draw it.
 
@@ -149,7 +149,7 @@ One node with op `surface` (3-D) or `contour` (Flat). `gridAxes(z, xs, ys)`: `z`
 
 ### The Record figure
 
-Record is one node whose views are ops `detail`, `cards`, `gallery`, `board`, `list` (`RECORD_OP_META`, each its own Add-menu row, [[C63]] oneRecordNode). The op owns sockets: `by` exists only on Board and `layout` on every view but Cards, whose layout is derived ([[C114]] cardsView); a switch prunes the departing cable before removing the socket.
+Record is one node whose views are ops `detail`, `cards`, `gallery`, `board`, `list` (`RECORD_OP_META`, each its own Add-menu row, [[B11]] maximalMerge). The op owns sockets: `by` exists only on Board and `layout` on every view but Cards, whose layout is derived ([[C114]] cardsView); a switch prunes the departing cable before removing the socket.
 
 - **Rows:** a number or a list (`numlist`, typed as `1, 3, 5` in the card's field; the Inspector's socket doc says how it reads), with the `picks` role: the 1-based records to show, in that order, a negative counting from the end as CHOOSEROWS does (`recordRows`). A blank pick is dropped, an out-of-range or non-numeric one too, and none given, or a wired blank, is every record. Every view draws only the picked records; Detail pages through them. Detail's pager position is its own literal `page` (1-based among the picks), clamped to `1..total` and written back so the pager and the card agree; `total` and `index` count the picks, so a single pick draws one record with no pager, and a pick list that names nothing draws the boxes empty (index 0).
 - **Layout:** `parseRecordLayout(text)`. One line per grid row, cells split on `|`; an empty cell or `.` is a gap; lines with no named cell are dropped. `Name*N` widens a cell to N columns (N clamped 1 to 12, expanded before the walk, so later cells shift right). A first `:` splits placeholder text (`Qty: e.g. 40`) kept as the box's `hint`, first authored hint wins. A leading `#` marks the title field. Repeating a name (case-insensitive, first spelling kept) claims the bounding rectangle of all its cells; when that rectangle overlaps one placed earlier, it shrinks to the cell where the name first appeared. Placements are 1-based CSS grid lines. The card's `cols` is the widest placed column. An empty layout stacks every column one per row (Board skips its grouping column there). A layout name that matches no column (case-insensitive) keeps its box with the name as the label and no value.
@@ -344,7 +344,7 @@ The same value draws at several sizes; the renderer is always given pixel width 
 ### What each card draws
 
 - **Draws its own figure:** Chart, Histogram, Merge Plots, Sankey, Surface (with the rotate pad on the 3-D view), Waterfall, Candlestick, Boxplot, Calendar Heatmap, Proportion, Vector Field (through `ChartFigure`); Sparkline (a bare `ChartView` without axes, win/loss bars colored green, vermilion, or grid color for zero); KPI (the card itself, not collapsible); Gauge (the Dial, or the Bar); Mermaid (the diagram under its source box).
-- **Draws only the `Chart` chip:** Record and Gantt. The figure would be squashed at card width, so it draws wherever the output goes ([[C63]] oneRecordNode). The Record node keeps its own pager in the Detail view. The Gantt card registers an SVG serializer for exports (see Exports).
+- **Draws only the `Chart` chip:** Record and Gantt. The figure would be squashed at card width, so it draws wherever the output goes ([[C100]] chartIsAValue). The Record node keeps its own pager in the Detail view. The Gantt card registers an SVG serializer for exports (see Exports).
 - **Collapsed:** a figure card shows the `Chart` chip in its hero box instead of the figure; Sparkline and the Dial square-collapse to a miniature; Mermaid shows a `Diagram` chip that re-expands the card.
 
 The `Chart` chip (`ChartChip`) opens the popup with the value, titled by the chip's label, else the value's title, else `Chart`. An expand button in the figure's top right corner does the same on the Chart, Merge Plots, Sparkline and Display surfaces; the Chart card omits it for Composed and Bubble.

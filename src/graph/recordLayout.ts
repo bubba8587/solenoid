@@ -1,4 +1,4 @@
-// [[C63]] oneRecordNode
+// [[B11]] maximalMerge
 
 export interface RecordPlacement {
   name: string;

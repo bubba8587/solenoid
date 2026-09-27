@@ -108,3 +108,4 @@ D84	2026-09-26	superseded	D85	claude	-	listEitherAxis: A list's position argumen
 D33	2026-09-26	superseded	D86	Claude Opus 5.5	the author	unwiredNotBlank: An unplugged input uses its typed value; a plugged-in blank stays blank
 E15	2026-09-26	superseded	D86	Claude Opus 5.5	the author	settingBlankIsLeftOut: A blank wired into a setting means the setting was left out
 D88	2026-09-27	moved	C114	Claude Opus 5.5	the author	cardsView: Table popups offer a mobile-friendly, deterministic Cards layout inferred from the data
+C63	2026-09-27	reverted	-	Claude Opus 5.5	the author	oneRecordNode: The Record views (Detail, Cards, Gallery, Board, List) are choices on one Record node
