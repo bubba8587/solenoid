@@ -48,11 +48,13 @@ This file is the map.
 │                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed browser: every Gantt seed's
 │                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts,
 │                             #     release-build.mjs, browser.mjs (the one browser-path resolver the puppeteer scripts share),
+│                             #     shot-graph.mjs (a graph JSON, short form or saved, loaded into the dev app and
+│                             #     screenshotted, canvas or a frame popup; examples in shot-graphs/; the shot-graph skill),
 │                             #     debug-icon.mjs (the bug-badged icon debug builds wear), install-linux-launchers.mjs
 │                             #     (pinnable .desktop launchers for the local release + debug apps),
 │                             #     demo-video/ (the demo video: scripted scenes filmed in Chromium and a real
 │                             #     Obsidian, cut with ffmpeg; the demo-video skill runs it)
-├── .claude/                  # Claude Code project config: skills/ (add-node, demo-video), commands/, settings.json
+├── .claude/                  # Claude Code project config: skills/ (add-node, demo-video, shot-graph), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), desktop-build.yml (solenoid.exe + the Linux AppImage / .deb),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
 ├── package.json              # JS deps + scripts (dev, build, test, tauri)
