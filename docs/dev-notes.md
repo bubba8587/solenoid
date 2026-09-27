@@ -18,6 +18,11 @@ specific item.
   colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
   hero, http and email cells are links, and a card past 6 fields folds behind Show All N Fields. Pictures are
   `data:image` only, never fetched, as in the grid ([[D83]] imageTextCells); the first pass fetched web images.
+- **Cards demo data:** `scripts/gen-cards-demo.cjs` writes `demo-vault/Data/{crew,products,orders}.csv` (drawn
+  `data:image` avatars and product pictures, tags, colors, ratings, progress, date ranges, links) and the
+  **Cards from files** seed (Tables): Local File nodes into Filter, Sort, Head, two Joins and two GROUPBYs. It runs on
+  the web build through the bundled demo vault. The joined frame led to two planner fixes: a second picture column
+  draws as a picture, never prose, and a lone Last Name no longer counts as name-like.
 - **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
   the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.
 

@@ -163,14 +163,14 @@ Every frame popup, read-only or editable, has a Cards view ([[D88]] cardsView): 
 
 | Part | Takes | Shows |
 |---|---|---|
-| Image | a text column where at least half the filled cells are `data:image` addresses | a 44 pixel thumbnail left of the title. A web image address is never fetched here, as in the grid ([[D83]] imageTextCells): Cards shows every row at once |
+| Image | a text column where at least half the filled cells are `data:image` addresses | a 44 pixel thumbnail left of the title; any further picture column draws as a 36 pixel picture in its tile, and is never prose, a chip or a title. A web image address is never fetched here, as in the grid ([[D83]] imageTextCells): Cards shows every row at once |
 | Swatches | every text column whose filled cells are all hex colors (`#abc`, `#aabbcc`) | a color square with its code, in the chips row |
 | Key | a column with no repeats that is named like an id (`ID`, `SKU`, `Code`, `#`, or ending in `ID`, `Number`, `No`, `Code`), a text column of codes (`SO-1042`, `A12`), or a first number column counting up from one | a small accent-tinted tag before the title |
 | Title from a name pair | a `First Name` (or Given, Forename) with a `Last Name` (or Family, Surname), and a `Middle Name` when there is one | the names joined with spaces |
 | Tags | every text column named Tags, Labels, Keywords, Categories, Skills, Topics or Genres | its comma- or semicolon-separated values as chips |
 | Prose | every text column averaging over 40 characters or with one over 90, and one named like a note (Description, Notes, Comments, Summary, Bio…) averaging over 20; never a column of web addresses | full width at the bottom, clamped to 3 lines |
 | Chips | every text column styled Chip, and every short text column (at most 24 characters) that repeats values and has at most 8 distinct ones (fewer on a short table; none under 3 rows) | category chips |
-| Title | with no name pair, the best-scoring remaining text column that isn't web addresses: a name-like header (`Name`, `Title`, `Product`, `Customer`, `City`…) scores 4, a column at least 90% distinct 2 (half distinct 1), a typical length of 2 to 32 characters 1; ties go left | the card's heading; `Row N` when no text column can carry it |
+| Title | with no name pair, the best-scoring remaining text column that isn't web addresses: a name-like header (`Name`, `Title`, `Product`, `Customer`, `City`…, but not a Last or Middle Name without its First Name) scores 4, a column at least 90% distinct 2 (half distinct 1), a typical length of 2 to 32 characters 1; ties go left | the card's heading; `Row N` when no text column can carry it |
 | Subtitle | the next short text column that isn't web addresses, when there is a title | muted under the title |
 | Meta | the first date column, and when its name says it starts (Start, From, Begin, Check-in…) the first date column whose name says it ends (End, To, Until, Due, Checkout…); with no date column, a number column named Year holding years | beside the subtitle, a range as `start – end`, never broken across lines |
 | Ratings | every number column named Rating or Stars whose values lie between 0 and 5 | five stars filled to the value, halves included, beside the number |

@@ -368,3 +368,11 @@
   cursor: pointer;
 }
 .table-cards__fields:hover { color: var(--node-accent, var(--accent)); }
+
+.table-cards__pic {
+  display: block;
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+}

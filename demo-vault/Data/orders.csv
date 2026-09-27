@@ -1,0 +1,61 @@
+Order,Placed,Customer,SKU,Qty,Total,Status,Rep,Paid,Note
+SO-1001,2026-05-07,Stark Industries,SKU-0104,2,29.98,Delivered,John,TRUE,
+SO-1002,2026-04-22,Soylent,SKU-0105,7,1203.93,Delivered,Mary,FALSE,
+SO-1003,2026-07-26,Acme Corp,SKU-0124,9,2654.91,Delivered,Donald,FALSE,
+SO-1004,2026-07-01,Stark Industries,SKU-0115,4,43.96,Delivered,Tim,TRUE,
+SO-1005,2026-06-11,Stark Industries,SKU-0102,6,149.94,Cancelled,Tim,FALSE,
+SO-1006,2026-04-11,Wonka,SKU-0119,7,1623.93,Shipped,Claude,TRUE,
+SO-1007,2026-04-24,Umbrella,SKU-0123,12,3179.88,Delivered,Hedy,TRUE,
+SO-1008,2026-03-11,Wonka,SKU-0123,2,529.98,Delivered,Tim,FALSE,
+SO-1009,2026-05-15,Soylent,SKU-0114,7,153.93,Delivered,Grace,TRUE,Deliver to the loading dock after 2pm.
+SO-1010,2026-07-26,Soylent,SKU-0111,6,275.94,Delivered,Alan,TRUE,Deliver to the loading dock after 2pm.
+SO-1011,2026-02-26,Stark Industries,SKU-0119,7,1623.93,Open,Frances,FALSE,
+SO-1012,2026-01-19,Acme Corp,SKU-0111,10,459.90,Cancelled,John,FALSE,
+SO-1013,2026-06-05,Stark Industries,SKU-0116,12,167.88,Cancelled,Radia,FALSE,Deliver to the loading dock after 2pm.
+SO-1014,2026-03-01,Globex,SKU-0117,2,105.98,Shipped,Radia,TRUE,
+SO-1015,2026-07-03,Acme Corp,SKU-0110,9,566.91,Delivered,Dennis,TRUE,
+SO-1016,2026-06-01,Stark Industries,SKU-0102,2,49.98,Open,Barbara,FALSE,
+SO-1017,2026-05-08,Stark Industries,SKU-0111,12,551.88,Delivered,Barbara,TRUE,
+SO-1018,2026-08-10,Initech,SKU-0104,10,149.90,Delivered,Katherine,TRUE,
+SO-1019,2026-02-26,Wonka,SKU-0103,11,175.89,Delivered,Frances,TRUE,
+SO-1020,2026-08-25,Acme Corp,SKU-0101,8,207.92,Cancelled,Frances,FALSE,
+SO-1021,2026-03-05,Wayne Enterprises,SKU-0102,12,299.88,Delivered,Dennis,TRUE,
+SO-1022,2026-01-14,Globex,SKU-0115,6,65.94,Delivered,Tim,TRUE,
+SO-1023,2026-04-11,Umbrella,SKU-0117,1,52.99,Shipped,Margaret,FALSE,
+SO-1024,2026-02-24,Soylent,SKU-0112,10,459.90,Delivered,Mary,TRUE,
+SO-1025,2026-08-05,Soylent,SKU-0122,5,789.95,Open,Hedy,TRUE,
+SO-1026,2026-04-18,Acme Corp,SKU-0118,4,823.96,Delivered,Alan,TRUE,
+SO-1027,2026-07-31,Acme Corp,SKU-0102,5,124.95,Shipped,Frances,TRUE,Split across two shipments if the stock runs short.
+SO-1028,2026-03-27,Initech,SKU-0121,10,859.90,Open,Grace,TRUE,
+SO-1029,2026-04-07,Soylent,SKU-0110,5,314.95,Shipped,Claude,TRUE,
+SO-1030,2026-04-04,Wonka,SKU-0106,1,36.99,Shipped,Tim,TRUE,
+SO-1031,2026-07-16,Umbrella,SKU-0103,3,47.97,Delivered,Grace,TRUE,
+SO-1032,2026-08-19,Initech,SKU-0102,7,174.93,Delivered,Edsger,TRUE,Split across two shipments if the stock runs short.
+SO-1033,2026-05-30,Umbrella,SKU-0121,2,171.98,Shipped,Radia,TRUE,
+SO-1034,2026-06-23,Wayne Enterprises,SKU-0101,4,103.96,Delivered,Dennis,FALSE,
+SO-1035,2026-02-26,Tyrell,SKU-0111,4,183.96,Delivered,Barbara,TRUE,
+SO-1036,2026-04-13,Wonka,SKU-0109,8,143.92,Delivered,Dennis,TRUE,
+SO-1037,2026-06-03,Initech,SKU-0102,3,74.97,Cancelled,Tim,FALSE,
+SO-1038,2026-04-13,Umbrella,SKU-0115,11,120.89,Shipped,Frances,FALSE,
+SO-1039,2026-07-28,Wonka,SKU-0114,5,109.95,Delivered,Alan,FALSE,
+SO-1040,2026-02-02,Wayne Enterprises,SKU-0120,6,965.94,Delivered,Radia,TRUE,
+SO-1041,2026-07-20,Tyrell,SKU-0103,5,79.95,Shipped,Alan,TRUE,Deliver to the loading dock after 2pm.
+SO-1042,2026-03-02,Soylent,SKU-0107,7,713.93,Delivered,Grace,TRUE,
+SO-1043,2026-04-20,Hooli,SKU-0110,5,314.95,Cancelled,Hedy,FALSE,
+SO-1044,2026-03-30,Stark Industries,SKU-0115,1,10.99,Delivered,Grace,TRUE,
+SO-1045,2026-01-30,Tyrell,SKU-0124,6,1769.94,Delivered,Donald,FALSE,
+SO-1046,2026-06-21,Acme Corp,SKU-0104,3,44.97,Delivered,Mary,FALSE,
+SO-1047,2026-06-17,Wayne Enterprises,SKU-0118,6,1235.94,Cancelled,Katherine,FALSE,
+SO-1048,2026-07-28,Globex,SKU-0119,2,463.98,Shipped,Radia,TRUE,
+SO-1049,2026-01-25,Umbrella,SKU-0121,1,85.99,Open,Katherine,TRUE,Deliver to the loading dock after 2pm.
+SO-1050,2026-04-02,Soylent,SKU-0124,5,1474.95,Open,Claude,FALSE,
+SO-1051,2026-02-12,Initech,SKU-0122,6,947.94,Delivered,Ada,TRUE,
+SO-1052,2026-03-09,Wonka,SKU-0105,6,1031.94,Delivered,Ada,TRUE,
+SO-1053,2026-01-12,Wonka,SKU-0102,12,299.88,Open,Tim,FALSE,
+SO-1054,2026-08-10,Hooli,SKU-0112,1,45.99,Open,Mary,FALSE,
+SO-1055,2026-04-30,Soylent,SKU-0106,6,221.94,Delivered,Donald,TRUE,
+SO-1056,2026-04-01,Stark Industries,SKU-0114,1,21.99,Cancelled,John,FALSE,Deliver to the loading dock after 2pm.
+SO-1057,2026-07-15,Soylent,SKU-0119,5,1159.95,Delivered,Donald,TRUE,
+SO-1058,2026-04-30,Umbrella,SKU-0101,4,103.96,Shipped,Radia,TRUE,
+SO-1059,2026-02-18,Initech,SKU-0124,9,2654.91,Delivered,Margaret,FALSE,"Gift wrap, and leave out the receipt."
+SO-1060,2026-06-07,Hooli,SKU-0105,2,343.98,Cancelled,Frances,FALSE,"Gift wrap, and leave out the receipt."

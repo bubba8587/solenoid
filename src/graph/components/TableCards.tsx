@@ -29,6 +29,8 @@ function CellText({ text }: { text: string }) {
     return <span className="sol-error-chip" title={ERROR_EXPLANATIONS[text.trim() as keyof typeof ERROR_EXPLANATIONS]}>{text.trim()}</span>;
   }
   if (text === "NaN") return <span className="table-cards__nan" title="Not a number: an undefined value in the data">NaN</span>;
+  const picture = cellImageSrc(text);
+  if (picture) return <img className="table-cards__pic" src={picture} alt="" draggable={false} />;
   const href = linkHref(text);
   if (href) {
     return (

@@ -174,6 +174,21 @@ describe("planCards: which part of the card each column fills", () => {
     expect(p.stats).toEqual([2]);
   });
 
+  it("keeps a second picture column out of the prose and the title, and a lone surname out of the title", () => {
+    const px = "data:image/png;base64," + "A".repeat(200);
+    const p = planCards([
+      col("Order", "string", ["SO-1", "SO-2", "SO-3"]),
+      col("Image", "string", [px, px, px]),
+      col("Product", "string", ["Earbuds", "Desk Lamp", "Stool"]),
+      col("Last Name", "string", ["Allen", "Hopper", "Turing"]),
+      col("Photo", "string", [px, px, px]),
+    ]);
+    expect(p.image).toBe(1);
+    expect(p.title).toBe(2);
+    expect(p.prose).toEqual([]);
+    expect(p.stats).toContain(4);
+  });
+
   it("draws a column of hex colors as swatches", () => {
     expect(planCards([col("Name", "string", ["a", "b"]), col("Color", "string", ["#ff0000", "#0f0"])]).swatches).toEqual([1]);
     expect(planCards([col("Name", "string", ["a", "b"]), col("Color", "string", ["#ff0000", "red"])]).swatches).toEqual([]);

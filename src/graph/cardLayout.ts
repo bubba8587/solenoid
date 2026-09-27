@@ -248,8 +248,10 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
   const isNum = (i: number) => cols[i].type === "number";
   const isDate = (i: number) => cols[i].type === "date";
   const isLinks = (i: number) => profiles[i].urls * 2 >= profiles[i].filled && profiles[i].urls > 0;
+  const isImages = (i: number) => profiles[i].images * 2 >= profiles[i].filled && profiles[i].images > 0;
+  const isPlainText = (i: number) => isText(i) && !isLinks(i) && !isImages(i);
 
-  const image = take(first((i) => isText(i) && profiles[i].images * 2 >= profiles[i].filled && profiles[i].images > 0));
+  const image = take(first((i) => isText(i) && isImages(i)));
   const swatches = takeAll(free((i) => profiles[i].hexColors));
 
   const key = take(first((i) => {
@@ -269,17 +271,17 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
     titleRest = takeAll(middleName !== null ? [middleName, lastName] : [lastName]);
   }
 
-  const tags = takeAll(free((i) => isText(i) && has(words[i], TAG_WORDS) && profiles[i].maxLen <= PROSE_MAX));
+  const tags = takeAll(free((i) => isPlainText(i) && has(words[i], TAG_WORDS) && profiles[i].maxLen <= PROSE_MAX));
 
   const prose = takeAll(free((i) => {
-    if (!isText(i) || isLinks(i)) return false;
+    if (!isPlainText(i)) return false;
     const p = profiles[i];
     return p.avgLen > PROSE_AVG || p.maxLen > PROSE_MAX || (has(words[i], PROSE_WORDS) && p.avgLen > PROSE_NAMED_AVG);
   }));
 
   const chipCap = Math.max(2, Math.min(CHIP_MAX_DISTINCT, Math.floor(rows / 2)));
   const chips = takeAll(free((i) => {
-    if (!isText(i) || isLinks(i)) return false;
+    if (!isPlainText(i)) return false;
     if (cols[i].chip) return true;
     const p = profiles[i];
     return rows >= 3 && p.distinct <= chipCap && p.distinct < p.filled && p.maxLen <= CHIP_MAX_LEN;
@@ -287,11 +289,13 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
 
   if (title === null) {
     let bestScore = -1;
-    for (const i of free((j) => isText(j) && !isLinks(j) && profiles[j].avgLen <= TITLE_MAX_AVG)) {
+    // A surname alone is half a name: without its First Name partner it takes no name bonus.
+    const nameLike = (i: number) => has(words[i], TITLE_WORDS) && !(LAST_NAME(words[i]) || MIDDLE_NAME(words[i]));
+    for (const i of free((j) => isPlainText(j) && profiles[j].avgLen <= TITLE_MAX_AVG)) {
       const p = profiles[i];
       const ratio = p.distinct / p.filled;
       const score =
-        (has(words[i], TITLE_WORDS) ? 4 : 0) +
+        (nameLike(i) ? 4 : 0) +
         (ratio >= 0.9 ? 2 : ratio >= 0.5 ? 1 : 0) +
         (p.avgLen >= 2 && p.avgLen <= 32 ? 1 : 0);
       if (score > bestScore) { bestScore = score; title = i; }
@@ -299,7 +303,7 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
     take(title);
   }
 
-  const subtitle = title === null ? null : take(first((i) => isText(i) && !isLinks(i) && profiles[i].avgLen <= PROSE_AVG));
+  const subtitle = title === null ? null : take(first((i) => isPlainText(i) && profiles[i].avgLen <= PROSE_AVG));
 
   let meta = take(first(isDate));
   let metaEnd: number | null = null;
