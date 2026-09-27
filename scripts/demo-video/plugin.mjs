@@ -68,10 +68,10 @@ function rectsIn(page, sel) {
 }
 
 /** Obsidian's whole-UI zoom, as Ctrl + = sets it: larger for a full-screen shot, 1 beside Solenoid. */
-const obsZoom = (c, f) => c.obs((z) => (window.electron?.webFrame ?? window.require("electron").webFrame).setZoomFactor(z), f);
+export const obsZoom = (c, f) => c.obs((z) => (window.electron?.webFrame ?? window.require("electron").webFrame).setZoomFactor(z), f);
 
 /** The plugin's look in a palette, accent and theme. */
-async function look(c, { palette = "Default", accent = "gold", mode = "dark" } = {}) {
+export async function look(c, { palette = "Default", accent = "gold", mode = "dark" } = {}) {
   await c.obs(async (p, a, m) => {
     const app = window.app, pl = app.plugins.plugins["solenoid-properties"];
     app.changeTheme(m === "light" ? "moonstone" : "obsidian");

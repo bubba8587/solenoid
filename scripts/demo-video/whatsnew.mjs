@@ -1,0 +1,301 @@
+// [[B3]] sameNodeEverywhere, [[C107]] obsidianPlugin, [[D87]] knapNotes
+// The What's New cut for Solenoid Properties 0.1.4: one note, filmed in Obsidian. The two new features are typed into
+// it as a list; a Frame property is edited in its popup; the same Frame is referenced in the body with Knap and edited
+// from there; more Knap renders in Live Preview and the `knap` switch turns it off and on; the finished note in sixteen
+// looks closes it.
+import { noteOnly } from "./obsidian.mjs";
+import { need, openNote, closeOtherWindows } from "./roundtrip.mjs";
+import { look, obsZoom } from "./plugin.mjs";
+
+export const WN_NOTE = "New in Solenoid Properties.md";
+const FRONTMATTER = [
+  "---", "knap: true", "orders:",
+  "  - item: Hinges", "    qty: 12", "    cost: 3.5",
+  "  - item: Brackets", "    qty: 8", "    cost: 6",
+  "---", "",
+].join("\n");
+const ZOOM = 1.25;
+
+/** Every visible match of sel in the page or its shadow roots, in document order. */
+const rectsIn = (page, sel) => page.evaluate((s) => {
+  const roots = [document, ...[...document.querySelectorAll("*")].filter((e) => e.shadowRoot).map((e) => e.shadowRoot)];
+  const out = [];
+  for (const root of roots) {
+    for (const el of root.querySelectorAll(s)) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) out.push({ x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2 });
+    }
+  }
+  return out;
+}, sel);
+
+/** The live-preview line that holds `text`. */
+const editorLine = (c, text) => c.obs((t) => {
+  const line = [...document.querySelectorAll(".markdown-source-view .cm-line")].find((l) => l.textContent.includes(t));
+  const r = line?.getBoundingClientRect();
+  return r && { x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2 };
+}, text);
+
+/** The cursor at the end of the note, as a click past the last line leaves it. */
+const toEnd = (c) => c.obs(() => {
+  const e = window.app.workspace.getLeavesOfType("markdown")[0].view.editor;
+  const last = e.lastLine();
+  e.setCursor({ line: last, ch: e.getLine(last).length });
+  e.focus();
+});
+
+const PROP_CHIP = '.metadata-property[data-property-key="orders"] .solenoid-property-chip';
+const BODY_CHIP = ".markdown-source-view .solenoid-knap-chip .solenoid-property-chip";
+const KNAP_BOX = '.metadata-property[data-property-key="knap"] input[type="checkbox"]';
+
+/** The note as it stands after `upTo` scenes, so any scene can be recorded alone. */
+const BODY = {
+  typed: "1. in-line **Solenoid Properties** objects\n2. in-line {{Knap}} variable rendering\n",
+  ref: "\nOrders: {{ orders }}\n",
+  knap: "\n{% for o in orders %}\n- {{ o.qty }} x {{ o.item }} at {{ o.cost | number_format:2 }}\n{% endfor %}\n\n{{ orders | length }} orders, {{ orders | map:\"qty\" | sum }} parts.\n",
+};
+const ROWS = {
+  start: null,
+  framed: [["Hinges", 12, 3.5], ["Brackets", 8, 6], ["Screws", 40, 0.2]],
+  edited: [["Hinges", 24, 3.5], ["Brackets", 8, 6], ["Screws", 40, 0.2]],
+};
+
+async function writeNote(c, parts, rows) {
+  await c.obs(async (file, fm, body, r) => {
+    const app = window.app;
+    app.metadataTypeManager.setType("orders", "solenoid-frame");
+    let text = fm + body;
+    if (r) text = text.replace(/orders:\n[\s\S]*?---/, `orders:\n${r.map(([i, q, k]) => `  - item: ${i}\n    qty: ${q}\n    cost: ${k}\n`).join("")}---`);
+    const f = app.vault.getAbstractFileByPath(file);
+    if (f) await app.vault.modify(f, text);
+    else await app.vault.create(file, text);
+  }, WN_NOTE, FRONTMATTER, parts.map((p) => BODY[p]).join(""), rows);
+  await c.sleep(400);
+}
+
+/** The note alone in Obsidian with the plugin's look on, in live preview unless `reading`. */
+async function noteView(c, { reading = false, zoom = ZOOM } = {}) {
+  await closeOtherWindows(c);
+  await noteOnly(c.page);
+  await obsZoom(c, zoom);
+  await look(c);
+  await c.obs(() => {
+    const app = window.app;
+    app.vault.setConfig("autoPairBrackets", false);
+    app.vault.setConfig("autoPairMarkdown", false);
+    for (const leaf of app.workspace.getLeavesOfType("markdown").slice(1)) leaf.detach();
+  });
+  await openNote(c, WN_NOTE, { reading });
+}
+
+export const WHATSNEW = {
+  "wn-intro": {
+    app: "obsidian",
+    fresh: true,
+    async setup(c) {
+      await writeNote(c, ["typed", "ref", "knap"], ROWS.edited);
+      await noteView(c, { reading: true });
+    },
+    async act(c) { await c.sleep(5200); },
+  },
+
+  "wn-type": {
+    app: "obsidian",
+    async setup(c) {
+      await writeNote(c, [], ROWS.start);
+      await noteView(c);
+      await c.hand.show(900, 520);
+    },
+    async act(c) {
+      const { hand, sleep } = c;
+      await sleep(700);
+      const add = await need(c.page, ".metadata-add-button");
+      await hand.click({ x: add.x + 40, y: add.y + add.h + 60 });
+      await toEnd(c);
+      await hand.move(add.x + 560, add.y + add.h + 150, { ms: 600 });
+      await sleep(200);
+      await hand.type("1. in-line **Solenoid Properties** objects", { cps: 14 });
+      await sleep(250);
+      await hand.press("Enter");
+      await sleep(250);
+      await hand.type("in-line {{Knap}} variable rendering", { cps: 14 });
+      await sleep(2200);
+    },
+  },
+
+  "wn-frame": {
+    app: "obsidian",
+    caption: ["Frame properties", "Solenoid Properties lets you store data objects in your frontmatter and makes them easy to edit."],
+    async setup(c) {
+      await writeNote(c, ["typed"], ROWS.start);
+      await noteView(c);
+      await c.hand.show(900, 520);
+    },
+    async act(c) {
+      const { hand, sleep, page } = c;
+      await sleep(700);
+      await hand.click(await need(page, PROP_CHIP));
+      await sleep(900);
+      // Down to the frame's size from the corner grip.
+      const grip = await need(page, ".sol-popup__resize");
+      await hand.drag({ x: grip.cx, y: grip.cy }, { x: grip.cx - 130, y: grip.cy + 10 }, { ms: 900 });
+      await sleep(500);
+      await hand.click(await need(page, "button", "Add Row"));
+      await sleep(500);
+      const cells = await rectsIn(page, "td.table-popup__cell");
+      const row = cells.slice(-3);
+      for (const [i, text] of ["Screws", "40", "0.2"].entries()) {
+        await hand.click(row[i]);
+        await sleep(150);
+        await hand.type(text, { cps: 12 });
+        await sleep(150);
+        await hand.press("Enter");
+        await sleep(200);
+      }
+      await sleep(500);
+      await hand.click(await need(page, "button", "Save"));
+      await sleep(900);
+      await c.box(await need(page, '.metadata-property[data-property-key="orders"]'), 4);
+      await sleep(1500);
+      await c.clearBoxes();
+    },
+  },
+
+  "wn-ref": {
+    app: "obsidian",
+    caption: ["Knap references", "Now you can put your Solenoid Properties in the body of your notes using Knap syntax."],
+    async setup(c) {
+      await writeNote(c, ["typed"], ROWS.framed);
+      await noteView(c);
+      await c.hand.show(900, 560);
+    },
+    async act(c) {
+      const { hand, sleep, page } = c;
+      await sleep(700);
+      const last = await editorLine(c, "variable rendering");
+      await hand.click({ x: last.x + last.w - 30, y: last.cy + last.h * 1.2 });
+      await toEnd(c);
+      await sleep(250);
+      await hand.press("Enter");
+      await hand.type("Orders: {{ orders }}", { cps: 13 });
+      await sleep(300);
+      await hand.press("Enter");
+      await sleep(900);
+      const chip = await need(page, BODY_CHIP);
+      await c.box(chip, 4);
+      await sleep(900);
+      await c.clearBoxes();
+      await hand.click(chip);
+      await sleep(900);
+      // Hinges' qty, 12 to 24.
+      const cells = await rectsIn(page, "td.table-popup__cell");
+      await hand.click(cells[1]);
+      await sleep(150);
+      await hand.chord("Control", "a");
+      await hand.type("24", { cps: 10 });
+      await hand.press("Enter");
+      await sleep(400);
+      await hand.click(await need(page, "button", "Save"));
+      await sleep(1000);
+      // The frontmatter holds the edit: both chips are the one property.
+      await c.box(await need(page, PROP_CHIP), 4);
+      await c.box(await need(page, BODY_CHIP), 4);
+      await sleep(1100);
+      await c.clearBoxes();
+      await hand.click(await need(page, PROP_CHIP));
+      await sleep(900);
+      const again = await rectsIn(page, "td.table-popup__cell");
+      await c.box(again[1], 3);
+      await hand.move(again[1].cx + 60, again[1].cy + 40, { ms: 700 });
+      await sleep(1600);
+      await c.clearBoxes();
+      await hand.click(await need(page, "button", "Cancel"));
+      await sleep(900);
+    },
+  },
+
+  "wn-knap": {
+    app: "obsidian",
+    caption: ["Knap notes", "Other Knap syntax works too. The knap property switches it on for the note."],
+    async setup(c) {
+      await writeNote(c, ["typed", "ref"], ROWS.edited);
+      await noteView(c);
+      await c.hand.show(900, 560);
+    },
+    async act(c) {
+      const { hand, sleep, page } = c;
+      await sleep(600);
+      await c.obs(() => window.app.workspace.getLeavesOfType("markdown")[0].view.editor.scrollTo(0, 120));
+      await sleep(500);
+      const last = await editorLine(c, "Orders:");
+      await hand.click({ x: last.x + last.w - 30, y: last.cy + last.h * 1.2 });
+      await toEnd(c);
+      await sleep(250);
+      await hand.press("Enter");
+      await hand.type("{% for o in orders %}", { cps: 14 });
+      await hand.press("Enter");
+      await hand.type("- {{ o.qty }} x {{ o.item }} at {{ o.cost | number_format:2 }}", { cps: 16 });
+      await hand.press("Enter");
+      await hand.press("Enter");
+      await hand.type("{% endfor %}", { cps: 14 });
+      await hand.press("Enter");
+      await hand.press("Enter");
+      await hand.type("{{ orders | length }} orders, {{ orders | map:\"qty\" | sum }} parts.", { cps: 16 });
+      await hand.press("Enter");
+      await sleep(1500);
+      // The switch: off shows the template, on renders it again. The knap row is still in view, which keeps the
+      // note clear of the caption.
+      await c.obs(() => window.app.workspace.getLeavesOfType("markdown")[0].view.editor.scrollTo(0, 120));
+      await sleep(300);
+      const box = await need(page, KNAP_BOX);
+      await hand.click(box);
+      await sleep(1600);
+      await hand.click(box);
+      await sleep(1400);
+      // Down through the note: each piece shows its source while the cursor is in it.
+      const first = await editorLine(c, "Solenoid Properties");
+      await hand.click({ x: first.x + 4, y: first.cy });
+      await sleep(300);
+      await hand.hide();
+      const walk = ["ArrowDown", "ArrowDown", "ArrowDown", "End", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown"];
+      for (const key of walk) {
+        await hand.press(key, key === "End" ? "End" : "↓");
+        await sleep(650);
+      }
+      await sleep(1200);
+    },
+  },
+
+  "wn-grid": {
+    app: "obsidian",
+    panels: ["obs"],
+    hold: 7,
+    grid: { cols: 4, title: "Try the Solenoid Properties plugin!", crop: 0.84, y: 40 },
+    // Every palette, most accents, no pair twice; dark and light alternate like a checkerboard. Equinox keeps its
+    // accents near neutral, so it gets one tile.
+    states: [
+      ["Default", "vermilion", "dark"], ["Orchard", "lime", "light"], ["Blueprint", "amber", "dark"], ["Solarized", "violet", "light"],
+      ["Orchard", "teal", "light"], ["Muted", "sky", "dark"], ["Default", "green", "light"], ["Orchard", "purple", "dark"],
+      ["Solarized", "teal", "dark"], ["Blueprint", "gold", "light"], ["Blueprint", "pink", "dark"], ["Muted", "amber", "light"],
+      ["Blueprint", "violet", "light"], ["Default", "sky", "dark"], ["Solarized", "green", "light"], ["Equinox", "gold", "dark"],
+    ].map(([palette, accent, mode]) => ({ palette, accent, mode })),
+    async setup(c) {
+      await writeNote(c, ["typed", "ref", "knap"], ROWS.edited);
+      await noteView(c, { reading: true, zoom: 1 });
+    },
+    async apply(c, state) {
+      await look(c, state);
+      await c.sleep(400);
+    },
+    async teardown(c) { await look(c); },
+  },
+
+  "wn-outro": {
+    app: "obsidian",
+    async setup(c) {
+      await writeNote(c, ["typed", "ref", "knap"], ROWS.edited);
+      await noteView(c, { reading: true });
+    },
+    async act(c) { await c.sleep(6200); },
+  },
+};

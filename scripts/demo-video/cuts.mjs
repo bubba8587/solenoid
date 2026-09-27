@@ -33,6 +33,22 @@ export const CUTS = {
     // Its backdrops are still screens, so compose.mjs pushes in on them.
     push: true,
   },
+  whatsnew: {
+    out: "solenoid-properties-0.1.4",
+    intro: "wn-intro",
+    outro: "wn-outro",
+    order: ["wn-type", "wn-frame", "wn-ref", "wn-knap", "wn-grid"],
+    mark: "solenoidpropertieswordmark.svg",
+    eyebrow: "What's new in",
+    // The version under the wordmark, set small.
+    version: "0.1.4",
+    end: {
+      lead: "Free in Obsidian's community plugins.",
+      sub: "Solenoid itself is free and open source, in the browser or on Windows and Linux.",
+      url: "solenoid-ngc.vercel.app/obsidian",
+    },
+    push: true,
+  },
 };
 
 /** The scenes a cut films, in filming order: the outro backdrop last, since it shows where the story ends. */

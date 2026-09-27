@@ -6,8 +6,8 @@ description: Record and cut Solenoid's marketing/demo video from the real app an
 # The demo video
 
 `scripts/demo-video/` films the real app and the real Obsidian plugin, never a mockup ([[B3]] sameNodeEverywhere),
-one scene at a time, and assembles a cut. There are two cuts (`cuts.mjs`): `demo`, the tour of the app, and
-`obsidian`, a one-minute story for Obsidian users about the plugin. Everything is reproducible: re-run it after UI
+one scene at a time, and assembles a cut. There are three cuts (`cuts.mjs`): `demo`, the tour of the app,
+`obsidian`, a one-minute story for Obsidian users about the plugin, and `whatsnew`, the plugin 0.1.4 release video. Everything is reproducible: re-run it after UI
 changes and the video follows the app.
 
 | File | Job |
@@ -15,6 +15,7 @@ changes and the video follows the app.
 | `scenes.mjs` | The Solenoid scenes: each `setup` builds a document off camera, `act` performs on camera; `caption` is `[title, sentence]` |
 | `roundtrip.mjs` | The demo cut's Obsidian round trip: the plugin's look, palettes side by side with the app, a Frame property, the imported note side by side, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
 | `plugin.mjs` | The obsidian cut: meeting notes and an `attendees` String List property, then the popup's Grid and CSV views and Priya's emailed table typed into the `q3` Frame property through its Form view, all in Obsidian; then Solenoid beside it joins the note to a roster note, totals it with PIVOTBY and writes the chart back into the note; the look in both apps |
+| `whatsnew.mjs` | The whatsnew cut, all in Obsidian on one note: the two features typed as a list, a Frame property resized and filled in its popup, the same Frame referenced in the body and edited from there, more Knap typed in Live Preview with the `knap` switch flipped and the cursor walked through it, then the note in sixteen looks as one `grid` card |
 | `cuts.mjs` | Each cut's backdrops, running order, title-card copy, wordmark and output name |
 | `record.mjs` | Runs a cut's scenes, or those named, into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig, `app: "both"` stills of both, `app: "split"` scenes with Obsidian and a Solenoid window side by side |
 | `rig.mjs` | Chromium launch (headless, or `launchWindow` as a real window on the rig's display), CDP screencast capture, frame-timestamp encoding, the scripted hand (move, click, drag, type, keys) |
@@ -138,6 +139,10 @@ stands and says so if the state it needs is missing.
   holds each `hold` seconds under a slow push-in. An `app: "obsidian"` or `app: "split"` scene with `states` and
   `panels: ["obs"]` grabs the whole display per state, full frame; a split one's `apply` can place the windows per
   state, so `pl-look` alternates Obsidian alone with both apps side by side. A scene with no `caption` gets none.
+- **Grid card** (`grid: { cols, title, crop, y }` on an `app: "obsidian"` stills scene): compose tiles the states'
+  shots into one card on a neutral ground, each cropped around the note with a rounded gray border, under the title,
+  and holds it `hold` seconds under a push-in. A cut's `version` sets a small version line under the intro wordmark
+  in place of the tagline.
 - **Chapter card**: a scene's `chapter: { eyebrow, mark }` opens it on its own first frame, blurred, under a wordmark
   for 1.9 s. The obsidian cut uses one where the story moves into Solenoid (`pl-reload`); keep that scene still for
   its first second, since the crossfade reveals it.

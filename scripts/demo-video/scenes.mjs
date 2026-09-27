@@ -6,6 +6,7 @@ import path from "node:path";
 import { ROOT } from "./rig.mjs";
 import { ROUNDTRIP } from "./roundtrip.mjs";
 import { PLUGIN } from "./plugin.mjs";
+import { WHATSNEW } from "./whatsnew.mjs";
 
 const num = (id, label, value, x, y) => ({ id, type: "NumberInputNode", x, y, init: { label, value } });
 const fc = (id, host, key, unit, x, y, extra = {}) => ({
@@ -389,4 +390,5 @@ export const SCENES = {
 
   ...ROUNDTRIP,
   ...PLUGIN,
+  ...WHATSNEW,
 };

@@ -41,6 +41,7 @@ export const captionHtml = ([title, body]) => `${HEAD}<style>
 </style><div class="cap"><div class="cap__title">${esc(title)}</div><div class="cap__body">${esc(body)}</div></div>`;
 
 export const introMarkHtml = (eyebrow, mark = "solenoidwordmark.svg") => `${HEAD}${eyebrow ? `<div class="center" style="top:208px;font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#b8bdc3">${esc(eyebrow)}</div>` : ""}<div class="center" style="top:${mark === "solenoidwordmark.svg" ? 250 : 262}px">${markDiv(mark, "intro")}</div>`;
+export const introVersionHtml = (version) => `${HEAD}<div class="center" style="top:362px;font-family:AHM,monospace;font-size:17px;letter-spacing:.08em;color:#b8bdc3">${esc(version)}</div>`;
 export const introLineHtml = (line) => `${HEAD}<div class="center" style="top:388px;font-size:27px;font-weight:500">${esc(line)}</div>`;
 
 export const outroHtml = ({ lead, sub, url }, mark = "solenoidwordmark.svg") => `${HEAD}
@@ -48,6 +49,20 @@ export const outroHtml = ({ lead, sub, url }, mark = "solenoidwordmark.svg") => 
 <div class="center" style="top:292px;font-size:30px;font-weight:600">${esc(lead)}</div>
 <div class="center" style="top:342px;font-size:19px;color:#b8bdc3">${esc(sub)}</div>
 <div class="center" style="top:410px;font-family:AHM,monospace;font-size:21px;color:#f5b914;letter-spacing:.02em">${esc(url)}</div>`;
+
+// A grid of full-screen shots on a neutral ground, each cropped to `crop` of its size, centered across and `y`% of the
+// way down, under a title.
+export const gridHtml = ({ title, cols, crop = 1, y = 0 }, shots) => {
+  const rows = Math.ceil(shots.length / cols), gap = 16, top = 84, bottom = 22;
+  const h = (720 - top - bottom - gap * (rows - 1)) / rows, w = h * 16 / 9;
+  return `${HEAD}<style>
+body { background: #1b1c1f; }
+.title { position: absolute; top: 24px; left: 0; right: 0; text-align: center; font-size: 30px; font-weight: 600; }
+.grid { position: absolute; top: ${top}px; left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: repeat(${cols}, ${w}px); gap: ${gap}px; }
+.tile { width: ${w}px; height: ${h}px; box-sizing: border-box; border: 2px solid #6b6e72; border-radius: 10px; overflow: hidden;
+  background-repeat: no-repeat; background-size: ${(100 / crop).toFixed(2)}% auto; background-position: 50% ${y}%; }
+</style><div class="title">${esc(title)}</div><div class="grid">${shots.map((s) => `<div class="tile" style="background-image:url(data:image/png;base64,${s})"></div>`).join("")}</div>`;
+};
 
 // Labels over the side-by-side panels of a stills scene; `at` is each label's left edge and the top, in CSS px.
 export const panelLabelsHtml = (labels, at) => `${HEAD}<style>

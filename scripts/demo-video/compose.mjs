@@ -9,7 +9,7 @@ import { browserPath } from "../browser.mjs";
 import { OUT, FFMPEG, FPS, VIEW } from "./rig.mjs";
 import { SCENES } from "./scenes.mjs";
 import { CUTS } from "./cuts.mjs";
-import { captionHtml, introMarkHtml, introLineHtml, outroHtml, panelLabelsHtml, fastBadgeHtml } from "./cards.mjs";
+import { captionHtml, introMarkHtml, introLineHtml, introVersionHtml, gridHtml, outroHtml, panelLabelsHtml, fastBadgeHtml } from "./cards.mjs";
 import { writeMusic } from "./music.mjs";
 
 const CUT_NAME = process.argv[2] ?? "demo";
@@ -58,7 +58,15 @@ for (const order of [["sol", "obs"], ["obs", "sol"]]) {
 }
 for (const rate of [2, 3, 4]) await png(fastBadgeHtml(rate), `fast-${rate}.png`);
 await png(introMarkHtml(CUT.eyebrow, CUT.mark), `${CUT_NAME}-intro-mark.png`);
-await png(introLineHtml(CUT.tagline), `${CUT_NAME}-intro-line.png`);
+await png(CUT.version ? introVersionHtml(CUT.version) : introLineHtml(CUT.tagline), `${CUT_NAME}-intro-line.png`);
+// A `grid` scene's shots, tiled on one card.
+for (const name of ORDER) {
+  const g = SCENES[name].grid;
+  if (!g) continue;
+  const dir = path.join(clips, name);
+  const shots = SCENES[name].states.map((_, i) => fs.readFileSync(path.join(dir, `${String(i).padStart(2, "0")}-obs.png`)).toString("base64"));
+  await png(gridHtml(g, shots), `grid-${name}.png`);
+}
 await png(outroHtml(CUT.end, CUT.mark), `${CUT_NAME}-outro.png`);
 await browser.close();
 
@@ -103,7 +111,13 @@ function stillsClip(name) {
   ff([...frames.flatMap((f) => ["-i", f]), "-filter_complex", graph, "-map", "[out]", "-t", total.toFixed(3), ...ENC, path.join(clips, `${name}.mp4`)]);
   fs.writeFileSync(path.join(clips, `${name}.json`), JSON.stringify({ duration: total }));
 }
-for (const name of ORDER) if (SCENES[name].states) stillsClip(name);
+// A grid scene is its one card under a slow push-in.
+function gridClip(name) {
+  const hold = SCENES[name].hold;
+  ff(["-loop", "1", "-framerate", String(FPS), "-i", path.join(cards, `grid-${name}.png`), "-vf", `scale=1920:1080,${pushIn(hold, 0.03)},format=yuv420p`, "-t", String(hold), ...ENC, path.join(clips, `${name}.mp4`)]);
+  fs.writeFileSync(path.join(clips, `${name}.json`), JSON.stringify({ duration: hold }));
+}
+for (const name of ORDER) if (SCENES[name].grid) gridClip(name); else if (SCENES[name].states) stillsClip(name);
 
 const blur = "gblur=sigma=11,eq=brightness=-0.1:saturation=0.85,vignette=angle=0.35";
 const backdrop = (total) => (CUT.push ? `${pushIn(total, 0.05)},${blur}` : blur);
