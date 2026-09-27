@@ -189,8 +189,7 @@ export function TablePopup() {
       setColLocal([]);
       setColInherited([]);
     }
-    const phone = typeof window !== "undefined" && !!window.matchMedia?.("(max-width: 640px)").matches;
-    setView(state.columnTypes && !state.list && phone ? "cards" : "grid");
+    setView("grid");
     setDisplayMode("formatted");
     setEditCell(null);
     setFormRow(0);

@@ -12,7 +12,7 @@ specific item.
   Cards, (Form,) CSV. Each row is a card in one narrow column; `planCards` (`cardLayout.ts`) derives the card's parts
   (key, title, subtitle, date, headline number, chips, flags, stat tiles, clamped prose, thumbnail) from the column
   names, types and cells, deterministically. A filter, a one-key sort and Show More sit above; Edit in Form jumps an
-  editable row to the Form view. A phone-width popup opens a frame in Cards. Spec: [[table-popup]] § The Cards view.
+  editable row to the Form view. Every popup opens in Grid; Cards is an option. Spec: [[table-popup]] § The Cards view.
   Checked in headless Chromium at 1400 and 390 pixels, both themes.
 - **Cards, second pass:** a name pair joins into the title, Start/End dates make a range, Tags split into chips, hex
   colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
