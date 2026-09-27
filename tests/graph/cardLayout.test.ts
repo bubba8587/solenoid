@@ -1,8 +1,16 @@
-// [[D88]] cardsView
+// [[D88]] cardsView, [[D83]] imageTextCells
 import { describe, it, expect } from "vitest";
-import { planCards, nameWords, cardMatches, type CardColumnInput, type CardColType } from "../../src/graph/cardLayout";
+import {
+  planCards, nameWords, cardMatches, linkHref, shortLink, splitTags, isHexColor,
+  type CardColumnInput, type CardColType, type CardPlan,
+} from "../../src/graph/cardLayout";
 
-const col = (name: string, type: CardColType, cells: string[], chip = false): CardColumnInput => ({ name, type, cells, chip });
+const col = (name: string, type: CardColType, cells: string[], extra: Partial<CardColumnInput> = {}): CardColumnInput => ({ name, type, cells, ...extra });
+
+const EMPTY: CardPlan = {
+  image: null, key: null, title: null, titleRest: [], subtitle: null, meta: null, metaEnd: null, hero: null,
+  chips: [], tags: [], swatches: [], flags: [], ratings: [], meters: [], stats: [], prose: [],
+};
 
 const people = [
   col("ID", "number", ["1", "2", "3", "4"]),
@@ -21,28 +29,21 @@ const people = [
   ]),
 ];
 
+const placed = (p: CardPlan): number[] =>
+  [p.image, p.key, p.title, ...p.titleRest, p.subtitle, p.meta, p.metaEnd, p.hero, ...p.chips, ...p.tags, ...p.swatches,
+    ...p.flags, ...p.ratings, ...p.meters.map((m) => m.col), ...p.stats, ...p.prose]
+    .filter((i): i is number => i !== null)
+    .sort((a, b) => a - b);
+
 describe("planCards: which part of the card each column fills", () => {
   it("lays a typical people table out as key, title, subtitle, meta, hero, chips, flags, stats and prose", () => {
-    expect(planCards(people)).toEqual({
-      image: null,
-      key: 0,
-      title: 1,
-      subtitle: 2,
-      meta: 4,
-      hero: 5,
-      chips: [3],
-      flags: [7],
-      stats: [6],
-      prose: [8],
-    });
+    expect(planCards(people)).toEqual({ ...EMPTY, key: 0, title: 1, subtitle: 2, meta: 4, hero: 5, chips: [3], flags: [7], stats: [6], prose: [8] });
   });
 
-  it("places every column exactly once", () => {
-    const p = planCards(people);
-    const all = [p.image, p.key, p.title, p.subtitle, p.meta, p.hero, ...p.chips, ...p.flags, ...p.stats, ...p.prose]
-      .filter((i): i is number => i !== null)
-      .sort((a, b) => a - b);
-    expect(all).toEqual(people.map((_, i) => i));
+  it("places every column exactly once, even an empty one", () => {
+    expect(placed(planCards(people))).toEqual(people.map((_, i) => i));
+    const withBlank = [...people, col("Spare", "string", ["", "", "", ""])];
+    expect(placed(planCards(withBlank))).toEqual(withBlank.map((_, i) => i));
   });
 
   it("is deterministic: the same columns always give the same plan", () => {
@@ -65,6 +66,18 @@ describe("planCards: which part of the card each column fills", () => {
     expect(q.subtitle).toBe(1);
   });
 
+  it("joins a first and last name into one title, a middle name between", () => {
+    const p = planCards([
+      col("Last Name", "string", ["Lovelace", "Turing"]),
+      col("Email", "string", ["ada@x.org", "alan@x.org"]),
+      col("First Name", "string", ["Ada", "Alan"]),
+      col("Middle Name", "string", ["", "Mathison"]),
+    ]);
+    expect(p.title).toBe(2);
+    expect(p.titleRest).toEqual([3, 0]);
+    expect(p.subtitle).toBe(1);
+  });
+
   it("takes the headline number by its name, a Total over a Price", () => {
     const p = planCards([
       col("Item", "string", ["a", "b", "c"]),
@@ -76,7 +89,7 @@ describe("planCards: which part of the card each column fills", () => {
     expect(p.stats).toEqual([1, 2]);
   });
 
-  it("with no named number, the headline is the rightmost one that isn't a year", () => {
+  it("with no named number, the headline is a currency column, else the rightmost one that isn't a year", () => {
     const p = planCards([
       col("Country", "string", ["NO", "PE", "IN"]),
       col("Population", "number", ["5", "33", "1400"]),
@@ -84,13 +97,27 @@ describe("planCards: which part of the card each column fills", () => {
       col("Year", "number", ["2024", "2024", "2023"]),
     ]);
     expect(p.hero).toBe(2);
-    expect(p.stats).toEqual([1, 3]);
+    expect(p.meta).toBe(3); // a Year column with no date column is the card's date line
+    expect(p.stats).toEqual([1]);
+    const q = planCards([
+      col("Thing", "string", ["a", "b"]),
+      col("Spend", "number", ["5", "6"], { shown: ["$5.00", "$6.00"] }),
+      col("Weight", "number", ["7", "8"]),
+    ]);
+    expect(q.hero).toBe(1);
+    const r = planCards([
+      col("Thing", "string", ["a", "b"]),
+      col("Bucks", "number", ["5", "6"], { shown: ["$5.00", "$6.00"] }),
+      col("Weight", "number", ["7", "8"]),
+    ]);
+    expect(r.hero).toBe(1);
   });
 
   it("reads a first column counting up from one as a key, but not a later one or a repeating one", () => {
     expect(planCards([col("n", "number", ["1", "2", "3"]), col("x", "number", ["9", "8", "7"])]).key).toBe(0);
     expect(planCards([col("x", "number", ["9", "8", "7"]), col("n", "number", ["1", "2", "3"])]).key).toBeNull();
     expect(planCards([col("ID", "number", ["1", "1", "2"])]).key).toBeNull();
+    expect(planCards([col("Invoice Number", "number", ["40", "12", "77"])]).key).toBe(0);
   });
 
   it("reads a column of unique codes as the key whatever its name", () => {
@@ -108,7 +135,7 @@ describe("planCards: which part of the card each column fills", () => {
     const p = planCards([
       col("Name", "string", ["a", "b", "c", "d"]),
       col("Status", "string", ["Open", "Done", "Open", "Open"]),
-      col("Tag", "string", ["x", "y", "z", "w"], true),
+      col("Kind", "string", ["x", "y", "z", "w"], { chip: true }),
     ]);
     expect(p.chips).toEqual([1, 2]);
   });
@@ -118,15 +145,64 @@ describe("planCards: which part of the card each column fills", () => {
     expect(planCards([col("Name", "string", ["a", "b"]), col("S", "string", ["p", "p"])]).chips).toEqual([]);
   });
 
-  it("puts long text full width, and a column of image addresses beside the title", () => {
+  it("splits a Tags column into chips", () => {
+    const p = planCards([col("Name", "string", ["a", "b"]), col("Tags", "string", ["red, blue", "blue; green"])]);
+    expect(p.tags).toEqual([1]);
+  });
+
+  it("puts long text full width, and short text too when its name says it is a note", () => {
     const p = planCards([
-      col("Photo", "string", ["https://x.org/a.png", "https://x.org/b.jpg", ""]),
+      col("Name", "string", ["Ada", "Bob", "Cyd"]),
+      col("Notes", "string", ["Call before the delivery", "Leave it at the side door", ""]),
+      col("Remark", "string", ["short", "x".repeat(120), ""]),
+      col("Colour Name", "string", ["Sunset orange with red", "Deep ocean blue green", ""]),
+    ]);
+    expect(p.prose).toEqual([1, 2]);
+    expect(p.subtitle).toBe(3);
+  });
+
+  it("shows only data:image pictures, never a web address, which stays text", () => {
+    const px = "data:image/png;base64,iVBORw0KGgo=";
+    const p = planCards([
+      col("Photo", "string", [px, px, ""]),
       col("Name", "string", ["a", "b", "c"]),
-      col("Notes", "string", ["short", "x".repeat(120), ""]),
+      col("Avatar", "string", ["https://x.org/a.png", "https://x.org/b.jpg", "https://x.org/c.gif"]),
     ]);
     expect(p.image).toBe(0);
     expect(p.title).toBe(1);
-    expect(p.prose).toEqual([2]);
+    expect(p.subtitle).toBeNull(); // a web address is never the subtitle
+    expect(p.stats).toEqual([2]);
+  });
+
+  it("draws a column of hex colors as swatches", () => {
+    expect(planCards([col("Name", "string", ["a", "b"]), col("Color", "string", ["#ff0000", "#0f0"])]).swatches).toEqual([1]);
+    expect(planCards([col("Name", "string", ["a", "b"]), col("Color", "string", ["#ff0000", "red"])]).swatches).toEqual([]);
+  });
+
+  it("gives a date range its end: a Start date with an End date", () => {
+    const p = planCards([
+      col("Trip", "string", ["Rome", "Oslo"]),
+      col("Start Date", "date", ["46000", "46100"]),
+      col("End Date", "date", ["46005", "46103"]),
+      col("Booked", "date", ["45900", "45950"]),
+    ]);
+    expect(p.meta).toBe(1);
+    expect(p.metaEnd).toBe(2);
+    expect(p.stats).toEqual([3]);
+    expect(planCards([col("Booked", "date", ["1"]), col("End", "date", ["2"])]).metaEnd).toBeNull();
+  });
+
+  it("stars a Rating of 0 to 5, never one past 5", () => {
+    expect(planCards([col("Name", "string", ["a", "b"]), col("Rating", "number", ["4", "3.5"])]).ratings).toEqual([1]);
+    expect(planCards([col("Name", "string", ["a", "b"]), col("Rating", "number", ["8", "9"])]).ratings).toEqual([]);
+  });
+
+  it("draws a meter for a percent column, and for a progress-like name on a 0 to 1 or 0 to 100 scale", () => {
+    expect(planCards([col("Name", "string", ["a"]), col("Win", "number", ["0.4"], { shown: ["40%"] })]).meters).toEqual([{ col: 1, max: 1 }]);
+    expect(planCards([col("Name", "string", ["a"]), col("Progress", "number", ["0.4"])]).meters).toEqual([{ col: 1, max: 1 }]);
+    expect(planCards([col("Name", "string", ["a"]), col("Done %", "number", ["40"])]).meters).toEqual([{ col: 1, max: 100 }]);
+    expect(planCards([col("Name", "string", ["a"]), col("Progress", "number", ["140"])]).meters).toEqual([]);
+    expect(planCards([col("Name", "string", ["a"]), col("Progress", "number", ["-0.1"])]).meters).toEqual([]);
   });
 
   it("leaves the title empty when no text column can carry it", () => {
@@ -138,21 +214,39 @@ describe("planCards: which part of the card each column fills", () => {
   });
 
   it("handles an empty frame", () => {
-    expect(planCards([])).toEqual({ image: null, key: null, title: null, subtitle: null, meta: null, hero: null, chips: [], flags: [], stats: [], prose: [] });
+    expect(planCards([])).toEqual(EMPTY);
   });
 });
 
-describe("nameWords", () => {
-  it("splits spaces, punctuation and camelCase, keeping #", () => {
+describe("cell helpers", () => {
+  it("nameWords splits spaces, punctuation and camelCase, keeping #", () => {
     expect(nameWords("Customer ID")).toEqual(["customer", "id"]);
     expect(nameWords("orderTotal")).toEqual(["order", "total"]);
     expect(nameWords("unit_price")).toEqual(["unit", "price"]);
     expect(nameWords("#")).toEqual(["#"]);
   });
-});
 
-describe("cardMatches", () => {
-  it("matches every word of the query, in any cell, ignoring case", () => {
+  it("linkHref links only http(s) and email addresses", () => {
+    expect(linkHref(" https://example.org/a ")).toBe("https://example.org/a");
+    expect(linkHref("ada@x.org")).toBe("mailto:ada@x.org");
+    expect(linkHref("javascript:alert(1)")).toBeNull();
+    expect(linkHref("ftp://x.org")).toBeNull();
+    expect(linkHref("see https://x.org")).toBeNull();
+  });
+
+  it("shortLink drops the scheme and www, and cuts a long path to its first part", () => {
+    expect(shortLink("https://www.example.org/")).toBe("example.org");
+    expect(shortLink("https://example.org/docs/guide/getting-started/installation?x=1")).toBe("example.org/docs…");
+  });
+
+  it("splitTags and isHexColor", () => {
+    expect(splitTags("red, blue;green ,, ")).toEqual(["red", "blue", "green"]);
+    expect(isHexColor("#abc")).toBe(true);
+    expect(isHexColor("#abcd12")).toBe(true);
+    expect(isHexColor("abc")).toBe(false);
+  });
+
+  it("cardMatches matches every word of the query, in any cell, ignoring case", () => {
     expect(cardMatches(["Ada Lovelace", "Math"], "")).toBe(true);
     expect(cardMatches(["Ada Lovelace", "Math"], "ada math")).toBe(true);
     expect(cardMatches(["Ada Lovelace", "Math"], "ada cs")).toBe(false);

@@ -14,6 +14,10 @@ specific item.
   names, types and cells, deterministically. A filter, a one-key sort and Show More sit above; Edit in Form jumps an
   editable row to the Form view. A phone-width popup opens a frame in Cards. Spec: [[table-popup]] § The Cards view.
   Checked in headless Chromium at 1400 and 390 pixels, both themes.
+- **Cards, second pass:** a name pair joins into the title, Start/End dates make a range, Tags split into chips, hex
+  colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
+  hero, http and email cells are links, and a card past 6 fields folds behind Show All N Fields. Pictures are
+  `data:image` only, never fetched, as in the grid ([[D83]] imageTextCells); the first pass fetched web images.
 - **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
   the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.
 
