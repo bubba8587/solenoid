@@ -1,4 +1,4 @@
-// [[D88]] cardsView, [[D83]] imageTextCells
+// [[C114]] cardsView, [[D83]] imageTextCells
 import { splitTags, isHexColor, linkHref, shortLink, type CardColType, type CardPlan } from "../cardLayout";
 import { categoryColorIndex } from "../categoryColor";
 import { cellImageSrc } from "../recordLayout";

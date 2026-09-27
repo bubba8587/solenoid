@@ -1,4 +1,4 @@
-// [[D88]] cardsView, [[D83]] imageTextCells
+// [[C114]] cardsView, [[D83]] imageTextCells
 import { decimalFromText } from "./valueKinds";
 import { cellImageSrc } from "./recordLayout";
 

@@ -2,11 +2,11 @@
 aliases: ["Table popup"]
 tags: [spec, documents]
 ---
-<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams, [[D88]] cardsView -->
+<!-- [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint, [[C59]] byteStringOrder, [[C103]] untrustedContentSeams, [[C114]] cardsView -->
 
 # Spec: Table popup
 
-Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint and [[D88]] cardsView. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
+Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecordNode, [[D41]] formatFlowsDownstream, [[C54]] noPerCellFormulas, [[C10]] socketLattice, [[C24]] arraySemantics, [[C95]] commitOnEnter, [[E9]] errorsKeepOrigin, [[D18]] frameLabelHint and [[C114]] cardsView. It covers what the system does and blocks, and the decision each behavior serves. A WHY that isn't in a node belongs in one.
 
 The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block, a frame as a stack of cards or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
 
@@ -157,7 +157,7 @@ In Formatted mode each field shows the formatted value until it is focused, and 
 
 ## The Cards view
 
-Every frame popup, read-only or editable, has a Cards view ([[D88]] cardsView): each row is a card in one column at most 460 pixels wide, for reading a frame on a phone. Every popup opens in Grid; Cards is chosen from the view switch. A list or matrix has no Cards view.
+Every frame popup, read-only or editable, has a Cards view ([[C114]] cardsView): each row is a card in one column at most 460 pixels wide, for reading a frame on a phone. Every popup opens in Grid; Cards is chosen from the view switch. A list or matrix has no Cards view.
 
 **The plan.** `planCards` (`cardLayout.ts`) assigns each column to one part of the card, once per table, from the column names, types, raw cells and shown text, so every card has the same shape and the same frame always gets the same plan. It profiles at most the first 2000 rows (`PROFILE_ROWS`); a column with no filled cell goes to the stats. Name words are the header split at spaces, punctuation and camelCase humps (`nameWords`). Each step takes the leftmost column that fits, from the columns still free, in this order:
 

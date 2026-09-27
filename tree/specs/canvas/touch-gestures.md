@@ -2,7 +2,7 @@
 aliases: ["Touch gestures"]
 tags: [spec, canvas]
 ---
-<!-- [[C93]] gestureByPointerType, [[C92]] pinchUnvetoable -->
+<!-- [[B20]] mobileFriendly, [[C93]] gestureByPointerType, [[C92]] pinchUnvetoable -->
 
 # Spec: Touch gestures
 

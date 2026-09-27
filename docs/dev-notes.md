@@ -8,7 +8,7 @@ specific item.
 
 ### SESSION DIGEST (2026-09-27: Cards view, resizable formula popup; cloud session)
 
-- **Cards view** ([[D88]] cardsView, asked for by the author, who judges the result): every frame popup has Grid,
+- **Cards view** ([[C114]] cardsView, asked for by the author, who judges the result): every frame popup has Grid,
   Cards, (Form,) CSV. Each row is a card in one narrow column; `planCards` (`cardLayout.ts`) derives the card's parts
   (key, title, subtitle, date, headline number, chips, flags, stat tiles, clamped prose, thumbnail) from the column
   names, types and cells, deterministically. A filter, a one-key sort and Show More sit above; Edit in Form jumps an
@@ -18,7 +18,7 @@ specific item.
   colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
   hero, http and email cells are links, and a card past 6 fields folds behind Show All N Fields. Pictures are
   `data:image` only, never fetched, as in the grid ([[D83]] imageTextCells); the first pass fetched web images.
-- **Record ↔ Cards** ([[C63]] oneRecordNode, [[D88]] cardsView): Record's single-record view is renamed **Detail**
+- **Record ↔ Cards** ([[C63]] oneRecordNode, [[C114]] cardsView): Record's single-record view is renamed **Detail**
   (`detail`), and a **Cards** view (`cards`, no layout socket) draws the popup's derived cards as a figure in the Gallery's
   masonry (`MasonryGallery`), planned in the node over up to 2000 rows (`RecordDeck`). The card is one component,
   `AutoCard`, in both places. The popup's overflow menu adds **Add Record: Cards**, placing a wired Record node in the

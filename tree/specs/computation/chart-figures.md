@@ -2,7 +2,7 @@
 aliases: ["Chart figures"]
 tags: [spec, computation]
 ---
-<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[D88]] cardsView -->
+<!-- [[C100]] chartIsAValue, [[C96]] chartOptionsAreMatplotlib, [[D75]] builderExposesEveryOption, [[B2]] webTryDesktopFull, [[C71]] noBarEditing, [[C63]] oneRecordNode, [[C94]] formatFamilyGates, [[C26]] opArgDistinct, [[C103]] untrustedContentSeams, [[C114]] cardsView -->
 
 # Spec: Chart figures
 
@@ -149,7 +149,7 @@ One node with op `surface` (3-D) or `contour` (Flat). `gridAxes(z, xs, ys)`: `z`
 
 ### The Record figure
 
-Record is one node whose views are ops `detail`, `cards`, `gallery`, `board`, `list` (`RECORD_OP_META`, each its own Add-menu row, [[C63]] oneRecordNode). The op owns sockets: `by` exists only on Board and `layout` on every view but Cards, whose layout is derived ([[D88]] cardsView); a switch prunes the departing cable before removing the socket.
+Record is one node whose views are ops `detail`, `cards`, `gallery`, `board`, `list` (`RECORD_OP_META`, each its own Add-menu row, [[C63]] oneRecordNode). The op owns sockets: `by` exists only on Board and `layout` on every view but Cards, whose layout is derived ([[C114]] cardsView); a switch prunes the departing cable before removing the socket.
 
 - **Rows:** a number or a list (`numlist`, typed as `1, 3, 5` in the card's field; the Inspector's socket doc says how it reads), with the `picks` role: the 1-based records to show, in that order, a negative counting from the end as CHOOSEROWS does (`recordRows`). A blank pick is dropped, an out-of-range or non-numeric one too, and none given, or a wired blank, is every record. Every view draws only the picked records; Detail pages through them. Detail's pager position is its own literal `page` (1-based among the picks), clamped to `1..total` and written back so the pager and the card agree; `total` and `index` count the picks, so a single pick draws one record with no pager, and a pick list that names nothing draws the boxes empty (index 0).
 - **Layout:** `parseRecordLayout(text)`. One line per grid row, cells split on `|`; an empty cell or `.` is a gap; lines with no named cell are dropped. `Name*N` widens a cell to N columns (N clamped 1 to 12, expanded before the walk, so later cells shift right). A first `:` splits placeholder text (`Qty: e.g. 40`) kept as the box's `hint`, first authored hint wins. A leading `#` marks the title field. Repeating a name (case-insensitive, first spelling kept) claims the bounding rectangle of all its cells; when that rectangle overlaps one placed earlier, it shrinks to the cell where the name first appeared. Placements are 1-based CSS grid lines. The card's `cols` is the widest placed column. An empty layout stacks every column one per row (Board skips its grouping column there). A layout name that matches no column (case-insensitive) keeps its box with the name as the label and no value.

@@ -112,7 +112,7 @@ sets `authorized_by` to the author.
 - **B — high-level strategy** that helps deliver A: pre-alpha break-freely (B7), the Obsidian bet (B1),
   web-vs-desktop (B2), the same node everywhere, marketing included (B3), the React Flow view (B10), one card per concept
   (B11), lossless saves (B12), the AI layer (B13), the design system (B14), a lean core plus packs
-  (B15), one function set on two surfaces under A5 (B16), the typed value model under A6 (B17).
+  (B15), one function set on two surfaces under A5 (B16), the typed value model under A6 (B17), working well on phones and tablets (B20).
 - **C — the product calls under each strategy** and the roots of each family (socketLattice,
   arraySemantics, firstClassUnits, calcModes, shareImpl);
   **D, E — the calls that refine them**. How the code carries a call out is spec content, at any

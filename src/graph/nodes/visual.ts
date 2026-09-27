@@ -1057,7 +1057,7 @@ function readClamp(optStr: string | null): boolean {
 
 export const RECORD_CARD_CAP = 60;
 
-// [[D88]] cardsView: the plan reads every row up to PROFILE_ROWS, so the figure's cards match the Table popup's.
+// [[C114]] cardsView: the plan reads every row up to PROFILE_ROWS, so the figure's cards match the Table popup's.
 function recordDeck(cols: FrameColumn[], drawn: readonly number[]): RecordDeck {
   const total = cols[0]?.values.length ?? 0;
   const profiled = Math.min(total, PROFILE_ROWS);
