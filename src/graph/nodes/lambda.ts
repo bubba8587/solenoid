@@ -21,6 +21,13 @@ export function undeclaredConsumerVars(captured: string[] | undefined, sig: Lamb
   return (captured ?? []).filter((c) => sig.vars.includes(c));
 }
 
+/** Parameters the body writes both bare and `@`: both read this row, so the bare one likely means the column ([[C22]] rowFormulaRefs). */
+export function perRowParamClashes(params: string[], expr: string): string[] {
+  const bare = new Set(extractVariables(expr));
+  const at = new Set(atColNames(expr));
+  return params.filter((p) => bare.has(p) && at.has(p));
+}
+
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 type Compiled = (...args: unknown[]) => unknown;

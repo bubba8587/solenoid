@@ -1,7 +1,7 @@
 // [[C22]], [[D43]]
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
-import { LambdaNode } from "../../../src/graph/nodes/lambda";
+import { LambdaNode, perRowParamClashes } from "../../../src/graph/nodes/lambda";
 import { compileEvaluator, rowRefNames } from "../../../src/graph/excelFormula";
 import { getColumn, frameSourceToText, parseFrameSource, type FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
@@ -505,6 +505,14 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
     const lam = (new LambdaNode({ expr: quart, params: "" }).data({}) as { result: unknown }).result;
     const out = n.data({ fn1: [lam] }).frame as FrameValue;
     expect(getColumn(out, "band")!.values).toEqual(["q1", "q1", "q2", "q2", "q3", "q3", "q4", "q4"]);
+  });
+
+  it("a parameter written both bare and @ is flagged: both read this row ([[C22]])", () => {
+    const quart = `IFS(@x > QUARTILE(x, 3), "top", TRUE, "rest")`;
+    expect(perRowParamClashes(["x"], quart)).toEqual(["x"]);
+    expect(perRowParamClashes([], quart)).toEqual([]);
+    expect(perRowParamClashes(["x"], "x * 2")).toEqual([]);
+    expect(perRowParamClashes(["x"], "@x > QUARTILE([x], 3)")).toEqual([]);
   });
 
   it("a formula that keeps a date a date types the column Date; a span stays a number ([[D41]])", () => {

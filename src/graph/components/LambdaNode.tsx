@@ -1,7 +1,7 @@
-// [[C50]] lambdaBindsByName, [[C95]] commitOnEnter
+// [[C50]] lambdaBindsByName, [[C95]] commitOnEnter, [[C22]] rowFormulaRefs
 import { useState, useEffect } from "react";
 import type { LambdaNode as LambdaNodeType } from "../rete-nodes";
-import { formatLambda } from "../nodes/lambda";
+import { formatLambda, perRowParamClashes } from "../nodes/lambda";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { FormulaField } from "./FormulaField";
@@ -64,6 +64,11 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
       {node.cachedError && (
         <div className="solenoid-expr__error">{node.cachedError}</div>
       )}
+      {perRowParamClashes(node.paramList(), node.expr).map((p) => (
+        <div key={p} className="solenoid-expr__lambda-hint">
+          {p} is a parameter, so {p} and @{p} both read this row. For the whole column, use [{p}] or take {p} off the parameter list.
+        </div>
+      ))}
       <InlineInputs
         node={node}
         emit={emit}
