@@ -66,7 +66,7 @@ export function LambdaComponent({ data: node, emit }: NodeProps<LambdaNodeType>)
       )}
       {perRowParamClashes(node.paramList(), node.expr).map((p) => (
         <div key={p} className="solenoid-expr__lambda-hint">
-          LAMBDA parameter `{p}` and body `@{p}` are per-row operators. For whole-column references, use `[{p}]` and/or exclude `{p}` from the parameters list &amp; place it only in the expression body.
+          LAMBDA parameter <code>{p}</code> and body <code>@{p}</code> are per-row operators. For whole-column references, use <code>[{p}]</code> and/or exclude <code>{p}</code> from the parameters list &amp; place it only in the expression body.
         </div>
       ))}
       <InlineInputs

@@ -122,6 +122,10 @@
   color: #e06c2e;
 }
 
+.solenoid-expr__lambda-hint code {
+  font-family: var(--font-mono);
+}
+
 .solenoid-lambda__hint {
   padding: 0 8px 3px;
   font-size: 10px;
