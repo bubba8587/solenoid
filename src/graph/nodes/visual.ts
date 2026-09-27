@@ -1,4 +1,4 @@
-// [[C63]], [[B11]]
+// [[C63]], [[B11]], [[C114]] xyChartFamily
 import { ClassicPreset } from "rete";
 import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { setting } from "../inputRoles";
@@ -79,13 +79,13 @@ export const CHART_OP_META = {
   bar:       { label: "Bar",      group: "Cartesian" },
   line:      { label: "Line",     group: "Cartesian" },
   area:      { label: "Area",     group: "Cartesian" },
-  scatter:   { label: "Scatter",  group: "Cartesian" },
-  xyline:    { label: "XY Line",  group: "Cartesian" },
+  scatter:   { label: "Scatter",  group: "XY" },
+  xyline:    { label: "XY Line",  group: "XY" },
+  bubble:    { label: "Bubble",   group: "XY" },
   pie:       { label: "Pie",      group: "Categorical" },
   radar:     { label: "Radar",    group: "Categorical" },
   radialbar: { label: "Radial",   group: "Categorical" },
   funnel:    { label: "Funnel",   group: "Categorical" },
-  bubble:    { label: "Bubble",   group: "Multi-series" },
 } satisfies Record<ChartOp, { label: string; group: string }>;
 
 export class ChartNode extends ClassicPreset.Node {
