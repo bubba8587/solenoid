@@ -10,7 +10,7 @@ Serves [[C58]] tableInputRawText, [[C28]] literalsIffEditable, [[C63]] oneRecord
 
 The Table popup is the one full-size viewer and editor for a table-shaped value: a list, a matrix or a Frame. It shows the value as a grid, a CSV text block, a frame as a stack of cards or, on a Frame Input, a one-record form. It sorts, formats, summarizes, copies and exports, and on a literal source it is the editor that writes back to the node. A Cube opens the sibling Cube popup, described at the end. Both sit in the shared popup shell.
 
-Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `PopupPinButton.tsx` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx` and `cubeEditCell.tsx` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx`, `columnHeadControls.tsx`, and `TableCards.tsx` with `cardLayout.ts` (the Cards view).
+Code: `src/graph/components/TablePopup.tsx` (the popup), `src/graph/tablePopupStore.ts` (its state), `src/graph/valuePopup.ts` (the openers), `FrameChip.tsx`, `ArrayChip.tsx`, `TableInputNode.tsx` and `FrameNodes.tsx` (the editing openers), `tableFooterStats.ts` (the summary footer), `PopupShell.tsx`, `PopupResizeGrip.tsx`, `PopupOverflowMenu.tsx` and `PopupPinButton.tsx` (the shell), `popupChrome.css` and `TablePopup.css`, and `CubePopup.tsx` with `cubeCell.tsx` and `cubeEditCell.tsx` (the Cube popup). The helpers it leans on have their own files: `columnSort.tsx`, `gridKeyboard.ts`, `CellEditAffix.tsx`, `CellSuggest.tsx`, `CsvEditor.tsx`, `columnHeadControls.tsx`, and `TableCards.tsx`, `AutoCard.tsx` and `cardLayout.ts` (the Cards view), `recordCardsFromPopup.ts` (Add Record: Cards).
 
 ## The store and the openers
 
@@ -187,6 +187,8 @@ Stats, ratings and meters share the tile grid in column order. A card shows its 
 
 **Editing.** Cards only read. On an editable popup each card has an Edit in Form button that opens the Form view at that row.
 
+**As a chart.** The card itself is `AutoCard` (`AutoCard.tsx`, `AutoCard.css`), shared with the Record node's Cards view ([[chart-figures]] § The Record figure), so a frame's cards look the same in the popup and in a Display, the chart popup or a Report. The overflow menu's Add Record: Cards (on a frame popup whose host outputs the frame, `frameOutputOf`) places a Record node in the Cards view beside the host, wired to that output, in the first clear spot scanning down the column to its right and then the columns beyond (`freeSpotRightOf`), and flies to it. An editable popup saves first, since the new node reads what the host outputs.
+
 ## The CSV view
 
 The CSV view shows the same data as one text block (`CsvEditor`). A frame's block starts with a header line; a plain table or list has none.
@@ -200,7 +202,7 @@ The CSV view shows the same data as one text block (`CsvEditor`). A frame's bloc
 
 ## Copy and export
 
-The header's overflow menu (⋯) holds Copy CSV (Copy for a list), Copy as Markdown, Export CSV…, Show or Hide summary footer (frames only) and Freeze or Unfreeze header (Grid view only).
+The header's overflow menu (⋯) holds Copy CSV (Copy for a list), Copy as Markdown, Export CSV…, Show or Hide summary footer (frames only), Freeze or Unfreeze header (Grid view only) and Add Record: Cards (a frame with a host node, § The Cards view).
 
 - **What is copied.** Every row of the dataset, never the rendered slice, in the visual sort order. The cells use the type's default format and follow the Source checkbox, but never a column's format picks. In the CSV view, Copy takes the block's text as it stands.
 - **A list** copies as one line of values joined by `, `, matching the node's list result box, in sort order when shown as a column.

@@ -1,4 +1,6 @@
 // [[C100]] chartIsAValue
+import type { CardColType, CardPlan } from "./cardLayout";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";
@@ -91,9 +93,19 @@ export function titleIndexFor(fields: RecordField[]): number {
   return marked >= 0 ? marked : fields.length > 0 ? 0 : -1;
 }
 
+/** The Cards view's rows: every column's name, type and format, the plan, and each drawn row's cells (numbers raw, everything else as shown). */
+export interface RecordDeck {
+  names: string[];
+  types: CardColType[];
+  formats: (FormatAnnotation | null)[];
+  chipCols: number[];
+  plan: CardPlan;
+  rows: (number | string | null)[][];
+}
 export interface RecordPayload {
   kind: "record";
-  view: "card" | "gallery" | "board" | "list";
+  view: "detail" | "cards" | "gallery" | "board" | "list";
+  deck?: RecordDeck;
   cols: number;
   cards: RecordField[][];
   lanes?: Array<{ label: string; cards: number[] }>;

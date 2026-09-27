@@ -533,7 +533,7 @@ describe("Record node", () => {
       { name: "Qty", type: "number", values: [40, 120] },
     ]);
     const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
-    expect(p).toMatchObject({ kind: "record", view: "card", cols: 1, index: 1, total: 2 });
+    expect(p).toMatchObject({ kind: "record", view: "detail", cols: 1, index: 1, total: 2 });
     expect(p.cards[0]).toEqual([
       { label: "Item", value: "Bolt", row: 1, col: 1, rowSpan: 1, colSpan: 1 },
       { label: "Qty", value: 40, row: 2, col: 1, rowSpan: 1, colSpan: 1 },
@@ -656,8 +656,34 @@ describe("Record node", () => {
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options"]);
     n.setOp("board");
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "by"]);
-    n.setOp("card");
+    n.setOp("detail");
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "row"]);
+    n.setOp("cards");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "options"]);
+    n.setOp("list");
+    expect(Object.keys(n.inputs)).toEqual(["frame", "options", "layout"]);
+    expect(Object.keys(new RecordNode({ op: "cards" }).inputs)).toEqual(["frame", "options"]);
+  });
+
+  it("Cards plans the whole frame and ships the drawn rows, numbers raw and the rest as shown", async () => {
+    const n = new RecordNode({ op: "cards" });
+    n.stringLiterals.layout = "Price"; // Cards is never authored: a leftover layout is ignored
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "Name", type: "string", values: Array.from({ length: 70 }, (_, i) => `Item ${i + 1}`) },
+      { name: "Price", type: "number", values: Array.from({ length: 70 }, (_, i) => i + 0.5), format: { format: "decimal", unit: "none" } },
+      { name: "Due", type: "date", values: Array.from({ length: 70 }, () => 46023) },
+      { name: "Ok", type: "logical", values: Array.from({ length: 70 }, (_, i) => i % 2 === 0) },
+    ] };
+    const p = (await n.data({ frame: [f] })).chart.payload as RecordPayload;
+    expect(p.view).toBe("cards");
+    expect(p.cards).toEqual([]);
+    expect(p.more).toBe(10);
+    const deck = p.deck!;
+    expect(deck.rows).toHaveLength(60);
+    expect(deck.names).toEqual(["Name", "Price", "Due", "Ok"]);
+    expect(deck.plan).toMatchObject({ title: 0, hero: 1, meta: 2, flags: [3] });
+    expect(deck.rows[0]).toEqual(["Item 1", 0.5, "01-Jan-2026", "TRUE"]);
+    expect(deck.formats[1]).toMatchObject({ format: "decimal" });
   });
 });
 

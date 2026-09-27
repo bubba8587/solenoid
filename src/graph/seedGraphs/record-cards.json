@@ -11,7 +11,7 @@
       "y": -52,
       "init": {
         "label": "Record cards",
-        "body": "# One row at a time\nThe **Record** node shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`; repeating a name merges its cells, and `*2` widens one (the `Photo` box spans all four rows and two columns). The card itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the SKU column and drives **Row**, so the card jumps to the matching part; unplug Row to flip records with the pager instead. A cell holding an image URL renders as the picture.",
+        "body": "# One row at a time\nThe **Record** node's **Detail** view shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`; repeating a name merges its cells, and `*2` widens one (the `Photo` box spans all four rows and two columns). The node itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the SKU column and drives **Row**, so the Detail view jumps to the matching part; unplug Row to flip records with the pager instead. A cell holding an image URL renders as the picture.",
         "color": "violet",
         "width": 360,
         "height": 272
@@ -63,7 +63,7 @@
       "x": 1236,
       "y": -519,
       "init": {
-        "label": "Card view",
+        "label": "Detail view",
         "width": 300,
         "height": 430
       }
@@ -124,7 +124,7 @@
       "x": 1177,
       "y": -735,
       "init": {
-        "label": "Card output",
+        "label": "Detail output",
         "members": [
           "report",
           "display"

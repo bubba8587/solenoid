@@ -22,7 +22,7 @@ function recordSourceOf(nodeId: string): RecordNode | null {
 
 export function recordNavTarget(nodeId: string): string | null {
   const rec = recordSourceOf(nodeId);
-  if (!rec || rec.op !== "card") return null;
+  if (!rec || rec.op !== "detail") return null;
   const editor = getOwningEditor(rec.id);
   if (!editor) return null;
   const rowWired = editor.getConnections().some((c) => c.target === rec.id && c.targetInput === "row");

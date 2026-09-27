@@ -15,7 +15,7 @@ const frameOf = (n: number): FrameValue => ({
   columns: [{ name: "Item", type: "string", values: Array.from({ length: n }, (_, i) => `r${i}`) }],
 });
 
-async function setup(op: "card" | "gallery" | "list", rows = 3) {
+async function setup(op: "detail" | "cards" | "gallery" | "list", rows = 3) {
   const editor = new NodeEditor<Schemes>();
   const rec = new RecordNode({ op });
   await editor.addNode(rec as never);
@@ -25,22 +25,23 @@ async function setup(op: "card" | "gallery" | "list", rows = 3) {
 }
 
 describe("recordNavTarget — when the Record pager (prev/next) is offered", () => {
-  it("a card view over >1 rows with Row unwired is steppable", async () => {
-    const { rec } = await setup("card");
+  it("a Detail view over >1 rows with Row unwired is steppable", async () => {
+    const { rec } = await setup("detail");
     expect(recordNavTarget(rec.id)).toBe(rec.id);
   });
 
-  it("a gallery/list view is not steppable (it already shows every row)", async () => {
+  it("a cards/gallery/list view is not steppable (it already shows every row)", async () => {
+    expect(recordNavTarget((await setup("cards")).rec.id)).toBeNull();
     expect(recordNavTarget((await setup("gallery")).rec.id)).toBeNull();
     expect(recordNavTarget((await setup("list")).rec.id)).toBeNull();
   });
 
   it("a single-row frame has nothing to flip through", async () => {
-    expect(recordNavTarget((await setup("card", 1)).rec.id)).toBeNull();
+    expect(recordNavTarget((await setup("detail", 1)).rec.id)).toBeNull();
   });
 
   it("a wired Row means the cable wins — no arrows", async () => {
-    const { editor, rec } = await setup("card");
+    const { editor, rec } = await setup("detail");
     const src = new ClassicPreset.Node("Src");
     src.addOutput("out", new ClassicPreset.Output(sock, "o"));
     await editor.addNode(src as never);

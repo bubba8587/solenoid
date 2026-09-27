@@ -31,6 +31,7 @@ import { ColumnFormatButton, ColumnExprField, COLTYPE_ORDER, COLTYPE_GLYPH, COLT
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
+import { addRecordCards, frameOutputOf } from "../recordCardsFromPopup";
 import { CellSuggest, type CellSuggestHandle } from "./CellSuggest";
 import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout";
 import { CellImage } from "./cubeCell";
@@ -641,6 +642,11 @@ export function TablePopup() {
     setLiveComputed(refresh.computedCells);
     setColumnTypes(refresh.columnTypes);
   }
+  // The new node reads what the host outputs, so an editor's pending edits are saved first.
+  function addCardsChart(hostId: string) {
+    if (editable) save(); else tablePopup.close();
+    void addRecordCards(hostId);
+  }
   function save() {
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
     else if (state?.onSaveSource) state.onSaveSource(buildSourceColumns({ types: settledColumnTypes() }));
@@ -712,6 +718,7 @@ export function TablePopup() {
             { label: "Export CSV…", onClick: exportCsv },
             ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
             ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
+            ...(cardsCapable && state.pinNodeId && frameOutputOf(state.pinNodeId) ? [{ label: "Add Record: Cards", onClick: () => addCardsChart(state.pinNodeId!) }] : []),
           ]}
         />
       }

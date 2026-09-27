@@ -258,7 +258,7 @@ export function planCards(cols: readonly CardColumnInput[]): CardPlan {
     const p = profiles[i];
     if (!p.unique) return false;
     if (isNum(i)) return p.ints && (isKeyName(words[i]) || (i === 0 && p.counting));
-    return isText(i) && (isKeyName(words[i]) || p.codes) && p.maxLen <= KEY_MAX_LEN;
+    return isText(i) && (isKeyName(words[i]) || (p.codes && !has(words[i], TITLE_WORDS))) && p.maxLen <= KEY_MAX_LEN;
   }));
 
   const firstName = first((i) => isText(i) && FIRST_NAME(words[i]) && words[i].includes("name"));

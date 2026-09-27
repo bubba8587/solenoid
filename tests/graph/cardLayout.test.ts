@@ -129,6 +129,7 @@ describe("planCards: which part of the card each column fills", () => {
     expect(p.title).toBe(1);
     expect(planCards([col("Order", "string", ["SO-1", "SO-1", "SO-2"])]).key).toBeNull();
     expect(planCards([col("Word", "string", ["alpha", "beta", "gamma"])]).key).toBeNull();
+    expect(planCards([col("Name", "string", ["Item 1", "Item 2", "Item 3"])]).key).toBeNull(); // a name-like header is a title
   });
 
   it("makes short repeating text a chip, and honors a column's Chip format", () => {

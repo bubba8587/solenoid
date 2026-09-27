@@ -1,10 +1,12 @@
-// [[C63]] oneRecordNode, [[C100]] chartIsAValue
-import { useLayoutEffect, useRef, useState } from "react";
+// [[C63]] oneRecordNode, [[C100]] chartIsAValue, [[D88]] cardsView
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
 import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
+import { formatNumberWithAnnotation, isDateStyle } from "../formatAnnotationStore";
+import { AutoCard, cardChipColors } from "./AutoCard";
 import "./chartCards.css";
 
 // A semantic state color, never a palette slot: a trend reads good or bad, not "teal".
@@ -69,12 +71,20 @@ const GALLERY_TRACK_BY_SIZE: Record<RecordSize, { ideal: number; min: number; ma
   l: { ideal: 230, min: 190, max: 340 },
 };
 
-function RecordGallery({ payload }: { payload: RecordPayload }) {
+type Track = { ideal: number; min: number; max: number };
+
+/** The masonry both galleries pack into; `layoutKey` changes when the tiles do, so they are re-measured. */
+function MasonryGallery({ count, track, className, layoutKey, tile }: {
+  count: number;
+  track: Track;
+  className: string;
+  layoutKey: unknown;
+  tile: (i: number) => React.ReactNode;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
   const shownOnce = useRef(false);
-  const n = payload.cards.length;
-  const track = GALLERY_TRACK_BY_SIZE[payload.size ?? "m"];
+  const n = count;
   const [box, setBox] = useState<{ w: number; heights: number[]; settled: boolean } | null>(null);
 
   useLayoutEffect(() => {
@@ -98,7 +108,8 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
     ro.observe(el);
     for (const t of tileRefs.current.slice(0, n)) if (t) ro.observe(t);
     return () => ro.disconnect();
-  }, [n, payload]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [n, layoutKey]);
 
   const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...track, items: n });
   const colWidth = Math.round(plan.colWidth);
@@ -106,8 +117,8 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
   const show = box !== null && (box.settled || shownOnce.current);
   const packed = box ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
   return (
-    <div ref={ref} className={`sol-record-gallery${payload.clamp ? " sol-record-gallery--clamp" : ""}`} style={show && packed ? { height: packed.height } : undefined}>
-      {payload.cards.map((c, i) => (
+    <div ref={ref} className={className} style={show && packed ? { height: packed.height } : undefined}>
+      {Array.from({ length: n }, (_, i) => (
         <div
           key={i}
           ref={(t) => { tileRefs.current[i] = t; }}
@@ -118,10 +129,73 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
               : { width: colWidth, visibility: "hidden" }
           }
         >
-          <RecordGrid fields={c} cols={payload.cols} />
+          {tile(i)}
         </div>
       ))}
     </div>
+  );
+}
+
+function RecordGallery({ payload }: { payload: RecordPayload }) {
+  return (
+    <MasonryGallery
+      count={payload.cards.length}
+      track={GALLERY_TRACK_BY_SIZE[payload.size ?? "m"]}
+      className={`sol-record-gallery${payload.clamp ? " sol-record-gallery--clamp" : ""}`}
+      layoutKey={payload}
+      tile={(i) => <RecordGrid fields={payload.cards[i]} cols={payload.cols} />}
+    />
+  );
+}
+
+// Wider than Gallery's tracks: a card carries a header row and a grid of field tiles.
+const CARDS_TRACK_BY_SIZE: Record<RecordSize, Track> = {
+  s: { ideal: 240, min: 210, max: 310 },
+  m: { ideal: 300, min: 250, max: 400 },
+  l: { ideal: 380, min: 320, max: 500 },
+};
+const NO_COMPUTED: ReadonlySet<number> = new Set();
+
+function RecordCards({ payload }: { payload: RecordPayload }) {
+  const deck = payload.deck;
+  const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
+  const texts = useMemo(() => (deck?.rows ?? []).map((row) => row.map((v, c) => {
+    if (v === null) return "";
+    if (typeof v !== "number") return v;
+    const fmt = deck!.formats[c];
+    return formatNumberWithAnnotation(v, fmt && !isDateStyle(fmt.format) ? { ...fmt, unit: "none" } : { format: "auto", unit: "none" });
+  })), [deck]);
+  const chipColors = useMemo(() => (deck
+    ? cardChipColors(deck.plan, new Set(deck.chipCols), deck.rows.length, (r, c) => String(deck.rows[r]?.[c] ?? ""))
+    : new Map<number, Map<string, number>>()), [deck]);
+  if (!deck) return null;
+  const toggle = (r: number) => setOpen((s) => {
+    const next = new Set(s);
+    if (next.has(r)) next.delete(r); else next.add(r);
+    return next;
+  });
+  return (
+    <MasonryGallery
+      count={deck.rows.length}
+      track={CARDS_TRACK_BY_SIZE[payload.size ?? "m"]}
+      className="sol-record-gallery"
+      layoutKey={`${deck.rows.length}|${[...open].join(",")}|${payload.clamp ? 1 : 0}`}
+      tile={(r) => (
+        <AutoCard
+          plan={deck.plan}
+          names={deck.names}
+          types={deck.types}
+          computed={NO_COMPUTED}
+          chipColors={chipColors}
+          texts={texts[r]}
+          raw={(c) => String(deck.rows[r]?.[c] ?? "")}
+          rowNumber={r + 1}
+          fold={!!payload.clamp}
+          open={open.has(r)}
+          onToggle={() => toggle(r)}
+        />
+      )}
+    />
   );
 }
 
@@ -168,6 +242,15 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
   const outer = { ...(width ? { width } : undefined), ...fscaleStyle(fscale) };
   const titleLine = title ? <div className="sol-record-figtitle">{title}</div> : null;
   const moreLine = payload.more ? <div className="sol-record__more">+{payload.more} more</div> : null;
+  if (payload.view === "cards") {
+    return (
+      <div style={outer}>
+        {titleLine}
+        <RecordCards payload={payload} />
+        {moreLine}
+      </div>
+    );
+  }
   if (payload.view === "gallery") {
     return (
       <div style={outer}>

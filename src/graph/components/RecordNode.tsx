@@ -18,7 +18,8 @@ const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) 
 // A switch drops the departing keys' cables before the sockets go, or a cable would live on invisibly.
 async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void> {
   const departing: string[] = [];
-  if (node.op === "card" && next !== "card") departing.push("row");
+  if (node.op === "detail" && next !== "detail") departing.push("row");
+  if (node.op !== "cards" && next === "cards") departing.push("layout");
   if (node.op === "board" && next !== "board") departing.push("by");
   if (departing.length) await dropInputCables(node.id, departing);
   node.setOp(next);
@@ -72,26 +73,26 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   });
   const layoutPort = data.inputs.layout;
 
-  const hasBoxes = !!payload && payload.cards.some((c) => c.length > 0);
-  const keys = ["frame", ...(op === "card" ? ["row"] : op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
+  const hasBoxes = !!payload && (payload.cards.some((c) => c.length > 0) || (payload.deck?.rows.length ?? 0) > 0);
+  const keys = ["frame", ...(op === "detail" ? ["row"] : op === "board" ? ["by"] : []), ...(collapsed && op !== "cards" ? ["layout"] : []), "options"];
 
   return (
     <NodeShell
       node={data}
       emit={emit}
-      leading={!collapsed && layoutPort && layoutTop !== undefined
+      leading={!collapsed && op !== "cards" && layoutPort && layoutTop !== undefined
         ? <NodeSocket side="input" socketKey="layout" nodeId={data.id} emit={emit} payload={layoutPort.socket} top={layoutTop} />
         : null}
     >
       <OpSelect value={op} onChange={setOp} options={OPTIONS} />
       <InlineInputs node={data} emit={emit} keys={keys} />
-      {!collapsed && (
+      {!collapsed && op !== "cards" && (
         <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
           <RecordLayoutField value={data.stringLiterals.layout ?? ""} wired={layoutWired} onCommit={commitLayout} />
         </div>
       )}
       <div className="solenoid-node__section-divider" />
-      {!collapsed && op === "card" && !rowWired && total > 0 && (
+      {!collapsed && op === "detail" && !rowWired && total > 0 && (
         <div className="solenoid-record__pager">
           <button
             type="button" className="solenoid-record__pager-btn" title="Previous record"

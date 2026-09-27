@@ -18,6 +18,11 @@ specific item.
   colors get swatches, Rating stars, percent and progress-like columns get meters, a currency column can be the
   hero, http and email cells are links, and a card past 6 fields folds behind Show All N Fields. Pictures are
   `data:image` only, never fetched, as in the grid ([[D83]] imageTextCells); the first pass fetched web images.
+- **Record ↔ Cards** ([[C63]] oneRecordNode, [[D88]] cardsView): Record's single-record view is renamed **Detail**
+  (`detail`), and a **Cards** view (`cards`, no layout socket) draws the popup's derived cards as a figure in the Gallery's
+  masonry (`MasonryGallery`), planned in the node over up to 2000 rows (`RecordDeck`). The card is one component,
+  `AutoCard`, in both places. The popup's overflow menu adds **Add Record: Cards**, placing a wired Record node in the
+  first clear spot right of the host. The Cards from files seed gained a Catalog gallery.
 - **Cards demo data:** `scripts/gen-cards-demo.cjs` writes `demo-vault/Data/{crew,products,orders}.csv` (drawn
   `data:image` avatars and product pictures, tags, colors, ratings, progress, date ranges, links) and the
   **Cards from files** seed (Tables): Local File nodes into Filter, Sort, Head, a Computed Column, Keep lookups, two

@@ -183,6 +183,8 @@ node("note", "NoteNode", X0 - 480, 60, {
     "",
     "Orders join to a product lookup on SKU and to a rep lookup on the rep's full name, and a Keep picks the fields an order card needs.",
     "",
+    "**Record: Cards** draws the same cards as a chart, packed into a gallery: the Catalog display below.",
+    "",
     "Open any Frame chip and switch the popup to **Cards**: the photos and product pictures are `data:image` cells, and the cards pick their title, headline number, chips, stars and meters from the columns.",
     "",
     "On desktop, point **Settings ▸ Data** at your own folder and the same nodes read your files.",
@@ -234,6 +236,11 @@ node("by-category", "GroupByFrameNode", X3, 1460, { label: "GROUPBY Category →
 wire("order-lines", "by-category");
 node("by-status", "GroupByFrameNode", X1, 1500, { label: "GROUPBY Status → SUM(Total)", agg: "sum", totalDepth: 1 }, { stringLiterals: { keys: "Status", column: "Total" } });
 wire("orders", "by-status");
+
+node("products-cards", "RecordNode", X1, 1880, { label: "Record: Cards → the catalog", op: "cards" }, { stringLiterals: { options: "cardsize=m;clamp=on" } });
+wire("products", "products-cards");
+node("catalog", "DisplayNode", X2, 1880, { label: "Catalog cards" }, { size: { w: 760, h: 640 } });
+connections.push({ source: "products-cards", sourceOutput: "chart", target: "catalog", targetInput: "in" });
 
 const seed = { v: 2, order: 145, label: "Cards from files", group: "Tables", nodes, connections, standoffs: [] };
 fs.writeFileSync(SEED, JSON.stringify(seed, null, 2) + "\n");

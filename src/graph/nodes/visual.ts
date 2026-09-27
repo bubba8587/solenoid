@@ -10,7 +10,7 @@ import { isChartValue } from "../chartValue";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload,
-  RecordPayload, RecordField, RecordSize, OverlaySeries, OverlayPayload,
+  RecordPayload, RecordField, RecordSize, RecordDeck, OverlaySeries, OverlayPayload,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
 import { columnUnitLabel } from "../unitColumn";
@@ -20,6 +20,8 @@ import type { FrameHint } from "../frameHint";
 import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type FrameColumn } from "../frame";
 import { isSolError } from "../errorValue";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
+import { planCards, PROFILE_ROWS } from "../cardLayout";
+import { formatNumberWithAnnotation, isDateStyle } from "../formatAnnotationStore";
 
 import type { SparklineOp } from "./visualOps";
 export type { SparklineOp };
@@ -1035,10 +1037,11 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
 
 export { parseRecordLayout, recordImageSrc, type RecordPlacement };
 
-export type RecordOp = "card" | "gallery" | "board" | "list";
+export type RecordOp = "detail" | "cards" | "gallery" | "board" | "list";
 
 export const RECORD_OP_META = {
-  card:    { label: "Card" },
+  detail:  { label: "Detail", keywords: "single one record form pager" },
+  cards:   { label: "Cards", keywords: "card stack deck profile people contacts auto layout mobile" },
   gallery: { label: "Gallery" },
   board:   { label: "Board", keywords: "kanban lanes" },
   list:    { label: "List" },
@@ -1054,13 +1057,50 @@ function readClamp(optStr: string | null): boolean {
 
 export const RECORD_CARD_CAP = 60;
 
+// [[D88]] cardsView: the plan reads every row up to PROFILE_ROWS, so the figure's cards match the Table popup's.
+function recordDeck(cols: FrameColumn[], drawn: number): RecordDeck {
+  const total = cols[0]?.values.length ?? 0;
+  const profiled = Math.min(total, PROFILE_ROWS);
+  const rawText = (col: FrameColumn, r: number): string => {
+    const v = col.values[r] ?? null;
+    if (v === null) return "";
+    if (isSolError(v)) return v.code;
+    if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+    return String(v);
+  };
+  const shownText = (col: FrameColumn, r: number): string => {
+    const v = col.values[r] ?? null;
+    if (typeof v === "number" && col.type === "number" && col.format && !isDateStyle(col.format.format)) {
+      return formatNumberWithAnnotation(v, { ...col.format, unit: "none" });
+    }
+    const f = v === null ? null : formatFrameCell(col.type, v, col.format);
+    return f === null ? "" : String(f);
+  };
+  const names = cols.map((c) => (c.unit ? `${c.name} (${columnUnitLabel(c.unit)})` : c.name));
+  const chipCols = cols.flatMap((c, i) => (c.type === "string" && c.format?.chip ? [i] : []));
+  const plan = planCards(cols.map((c, i) => ({
+    name: names[i],
+    type: c.type,
+    cells: Array.from({ length: profiled }, (_, r) => rawText(c, r)),
+    shown: Array.from({ length: profiled }, (_, r) => shownText(c, r)),
+    chip: chipCols.includes(i),
+  })));
+  const rows = Array.from({ length: drawn }, (_, r) => cols.map((c) => {
+    const v = c.values[r] ?? null;
+    if (v === null) return null;
+    if (typeof v === "number" && c.type === "number") return v;
+    return shownText(c, r);
+  }));
+  return { names, types: cols.map((c) => c.type), formats: cols.map((c) => c.format ?? null), chipCols, plan, rows };
+}
+
 export class RecordNode extends ClassicPreset.Node {
   static inputRoles = { row: setting(1) };
   static socketDocs: Record<string, string> = {
-    row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
+    row: "Selects the 1-based record for Detail. Blank or out of range shows the boxes empty.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
     layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns.",
-    options: "title=Parts;fontsize=12;cardsize=l. Gallery tiles size s, m or l; clamp=on caps long tile values at three lines.",
+    options: "title=Parts;fontsize=12;cardsize=l. Gallery and Cards tiles size s, m or l; clamp=on caps long values at three lines and folds a card past six fields.",
   };
 
   label: string;
@@ -1083,11 +1123,11 @@ export class RecordNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: RecordOp }) {
     super("Record");
     this.label = init?.label ?? "Record";
-    this.op = init?.op ?? "card";
+    this.op = init?.op ?? "detail";
     this.addInput("frame", frameIn("Frame"));
-    if (this.op === "card") this.addInput("row", numIn("Row"));
+    if (this.op === "detail") this.addInput("row", numIn("Row"));
     if (this.op === "board") this.addInput("by", strIn("Group by"));
-    this.addInput("layout", strIn("Layout"));
+    if (this.op !== "cards") this.addInput("layout", strIn("Layout"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
@@ -1095,10 +1135,12 @@ export class RecordNode extends ClassicPreset.Node {
   setOp(next: RecordOp): void {
     if (next === this.op) return;
     this.op = next;
-    if (next === "card") { if (!this.inputs.row) this.addInput("row", numIn("Row")); }
+    if (next === "detail") { if (!this.inputs.row) this.addInput("row", numIn("Row")); }
     else if (this.inputs.row) this.removeInput("row");
     if (next === "board") { if (!this.inputs.by) this.addInput("by", strIn("Group by")); }
     else if (this.inputs.by) this.removeInput("by");
+    if (next !== "cards") { if (!this.inputs.layout) this.addInput("layout", strIn("Layout")); }
+    else if (this.inputs.layout) this.removeInput("layout");
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; row?: number[]; by?: string[]; layout?: string[]; options?: string[] }): Promise<{ chart: ChartValue }> {
@@ -1106,7 +1148,7 @@ export class RecordNode extends ClassicPreset.Node {
     const cols: FrameColumn[] = isFrameValue(fv) ? fv.columns : [];
     const total = cols[0]?.values.length ?? 0;
     let index = 0;
-    if (this.op === "card") {
+    if (this.op === "detail") {
       index = Math.round(readRole<number>(this, "row", inputs.row));
       if (inputs.row?.[0] === undefined && total > 0) {
         index = clamp(index, 1, total);
@@ -1114,7 +1156,7 @@ export class RecordNode extends ClassicPreset.Node {
       }
       if (index < 1 || index > total) index = 0;
     }
-    const layIn = readInput(inputs.layout, this.stringLiterals.layout ?? null);
+    const layIn = this.op === "cards" ? null : readInput(inputs.layout, this.stringLiterals.layout ?? null);
     const layStr = typeof layIn === "string" ? layIn : null;
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
@@ -1149,8 +1191,13 @@ export class RecordNode extends ClassicPreset.Node {
     let cards: RecordField[][] = [];
     let lanes: RecordPayload["lanes"];
     let more = 0;
-    if (this.op === "card") {
+    let deck: RecordDeck | undefined;
+    if (this.op === "detail") {
       cards = [cardAt(index >= 1 ? index - 1 : null)];
+    } else if (this.op === "cards") {
+      const drawn = Math.min(total, RECORD_CARD_CAP);
+      deck = recordDeck(cols, drawn);
+      more = total - drawn;
     } else if (this.op === "gallery" || this.op === "list") {
       const drawn = Math.min(total, RECORD_CARD_CAP);
       cards = Array.from({ length: drawn }, (_, r) => cardAt(r));
@@ -1174,6 +1221,7 @@ export class RecordNode extends ClassicPreset.Node {
 
     const payload: RecordPayload = {
       kind: "record", view: this.op, cols: ncols, cards,
+      ...(deck ? { deck } : {}),
       ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
       ...(size ? { size } : {}),
       ...(clampTiles ? { clamp: true } : {}),
