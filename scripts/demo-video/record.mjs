@@ -5,13 +5,16 @@
 // a cut's name (cuts.mjs) films its scenes, and no names films every scene.
 import fs from "node:fs";
 import path from "node:path";
-import { launch, launchWindow, injectKit, injectCursor, Recorder, Hand, encodeClip, demo, sleep, OUT, VIEW } from "./rig.mjs";
+import { launch, launchWindow, injectKit, injectCursor, Recorder, Hand, encodeClip, demo, sleep, OUT, VIEW, FPS } from "./rig.mjs";
 import { resetVault, obsidianUp, obsidianWindow, windowOrigin, placeWindow, ScreenRecorder, bridgeVault, grabScreen, VAULT, SEAM, SOL_SCALE, OBS_LEFT, SOL_RIGHT } from "./obsidian.mjs";
 import { SCENES } from "./scenes.mjs";
 import { CUTS, cutScenes } from "./cuts.mjs";
 
 const APP_URL = process.env.URL ?? "http://localhost:1420";
 const wanted = process.argv.slice(2).flatMap((a) => (CUTS[a] ? cutScenes(CUTS[a]) : [a]));
+for (const a of process.argv.slice(2)) {
+  if (CUTS[a] && (CUTS[a].fps ?? 30) !== FPS) throw new Error(`the ${a} cut is ${CUTS[a].fps ?? 30} fps: run with DEMO_FPS=${CUTS[a].fps ?? 30}`);
+}
 const names = wanted.length ? wanted : Object.keys(SCENES);
 for (const n of names) if (!SCENES[n]) throw new Error(`unknown scene "${n}"; have ${Object.keys(SCENES).join(", ")}`);
 const inObsidian = (n) => SCENES[n].app === "obsidian";

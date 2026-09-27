@@ -12,7 +12,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.join(here, "..", "..");
 export const OUT = path.join(ROOT, ".dev", "video");
 export const FFMPEG = process.env.FFMPEG ?? "ffmpeg";
-export const FPS = 30;
+// A cut may ask for more (`fps` in cuts.mjs); x11grab holds 60 on the Obsidian rig.
+export const FPS = Number(process.env.DEMO_FPS ?? 30);
 export const VIEW = { width: 1280, height: 720, scale: 1.5 }; // 1920×1080 frames
 const KIT = fs.readFileSync(path.join(here, "kit.js"), "utf8");
 

@@ -139,6 +139,9 @@ stands and says so if the state it needs is missing.
   holds each `hold` seconds under a slow push-in. An `app: "obsidian"` or `app: "split"` scene with `states` and
   `panels: ["obs"]` grabs the whole display per state, full frame; a split one's `apply` can place the windows per
   state, so `pl-look` alternates Obsidian alone with both apps side by side. A scene with no `caption` gets none.
+- **Frame rate**: 30 unless a cut sets `fps`; `DEMO_FPS` must match it for record and compose (they refuse otherwise).
+  The whatsnew cut is 60: x11grab holds 60 on the Obsidian rig, while Chromium's screencast gives about 35, so the
+  Solenoid cuts stay at 30.
 - **Grid card** (`grid: { cols, title, crop, y }` on an `app: "obsidian"` stills scene): compose tiles the states'
   shots into one card on a neutral ground, each cropped around the note with a rounded gray border, under the title,
   and holds it `hold` seconds under a push-in. A cut's `version` sets a small version line under the intro wordmark

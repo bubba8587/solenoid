@@ -16,6 +16,7 @@ const CUT_NAME = process.argv[2] ?? "demo";
 const CUT = CUTS[CUT_NAME];
 if (!CUT) throw new Error(`unknown cut "${CUT_NAME}"; have ${Object.keys(CUTS).join(", ")}`);
 const ORDER = CUT.order;
+if ((CUT.fps ?? 30) !== FPS) throw new Error(`the ${CUT_NAME} cut is ${CUT.fps ?? 30} fps: run with DEMO_FPS=${CUT.fps ?? 30}`);
 const XF = 0.5; // crossfade between segments, s
 const INTRO_S = 4.6;
 const OUTRO_S = 5.6;
