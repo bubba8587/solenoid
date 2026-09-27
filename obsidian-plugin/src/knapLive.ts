@@ -1,8 +1,8 @@
 // [[D87]] knapNotes
 import { Component, MarkdownRenderer, editorInfoField, editorLivePreviewField } from "obsidian";
 import { syntaxTree } from "@codemirror/language";
-import { RangeSetBuilder, StateEffect, StateField, type EditorState, type Transaction } from "@codemirror/state";
-import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from "@codemirror/view";
+import { Prec, RangeSetBuilder, StateEffect, StateField, type EditorState, type Transaction } from "@codemirror/state";
+import { Decoration, EditorView, ViewPlugin, WidgetType, keymap, type DecorationSet, type ViewUpdate } from "@codemirror/view";
 import { SPAN_RE, type KnapUnit } from "./knapNote";
 import type { KnapNotes, LiveRender } from "./knapBody";
 import type { PropertyKind } from "./yamlValue";
@@ -157,8 +157,9 @@ export function knapLivePreview(notes: KnapNotes) {
     return name && kind ? new ChipWidget(kind, name, live.frontmatter[name], live.path) : null;
   };
 
-  const build = (state: EditorState, live: LiveRender): DecorationSet => {
+  const build = (state: EditorState, live: LiveRender): { deco: DecorationSet; blocks: Group[] } => {
     const builder = new RangeSetBuilder<Decoration>();
+    const blocks: Group[] = [];
     if (live.error) builder.add(live.errorAt, live.errorAt, Decoration.widget({ widget: new ErrorWidget(live.error), block: true, side: -1 }));
     for (const g of groups(state, live.units)) {
       if (touches(state, g.from, g.to)) continue;
@@ -175,13 +176,14 @@ export function knapLivePreview(notes: KnapNotes) {
         at = u.to;
       }
       md = (md + state.doc.sliceString(at, g.to)).trim();
+      blocks.push(g);
       builder.add(g.from, g.to, md ? Decoration.replace({ widget: new BlockWidget(md, live), block: true }) : Decoration.replace({ block: true }));
     }
-    return builder.finish();
+    return { deco: builder.finish(), blocks };
   };
 
-  const field = StateField.define<{ live: LiveRender | null; deco: DecorationSet }>({
-    create: () => ({ live: null, deco: Decoration.none }),
+  const field = StateField.define<{ live: LiveRender | null; deco: DecorationSet; blocks: Group[] }>({
+    create: () => ({ live: null, deco: Decoration.none, blocks: [] }),
     update(value, tr) {
       let live = value.live;
       for (const e of tr.effects) if (e.is(setLive)) live = e.value;
@@ -189,22 +191,27 @@ export function knapLivePreview(notes: KnapNotes) {
       const on = tr.state.field(editorLivePreviewField, false) ?? false;
       const flipped = on !== (tr.startState.field(editorLivePreviewField, false) ?? false);
       if (live === value.live && !tr.selection && !flipped) return value;
-      return { live, deco: live && on ? build(tr.state, live) : Decoration.none };
+      return { live, ...(live && on ? build(tr.state, live) : { deco: Decoration.none, blocks: [] }) };
     },
     provide: (f) => EditorView.decorations.from(f, (value) => value.deco),
   });
 
-  /** Renders the note after an edit settles and hands the result to the field. */
+  /** Renders the note after an edit settles and hands the result to the field. A half-typed tag fails to render, so
+   *  an error waits until the edits pause for ERROR_WAIT; until then the pieces keep their last output. */
+  const ERROR_WAIT = 1500;
   const renderer = ViewPlugin.fromClass(class {
     private timer = 0;
     private gone = false;
+    private edited = 0;
 
     constructor(private view: EditorView) {
       this.schedule(0);
     }
 
     update(update: ViewUpdate): void {
-      if (update.docChanged) this.schedule(150);
+      if (!update.docChanged) return;
+      this.edited = Date.now();
+      this.schedule(150);
     }
 
     destroy(): void {
@@ -222,10 +229,27 @@ export function knapLivePreview(notes: KnapNotes) {
       const text = this.view.state.doc.toString();
       const live = path ? await notes.live(text, path) : null;
       if (this.gone || this.view.state.doc.toString() !== text) return;
+      const quiet = Date.now() - this.edited;
+      if (live?.error && quiet < ERROR_WAIT) return this.schedule(ERROR_WAIT - quiet);
       if (!live && !this.view.state.field(field).live) return;
       this.view.dispatch({ effects: setLive.of(live) });
     }
   });
 
-  return [field, renderer];
+  /** Up or down onto a drawn block puts the cursor in it, which shows its source; the editor would step over it. */
+  const enterBlock = (down: boolean) => (view: EditorView): boolean => {
+    const { state } = view;
+    const sel = state.selection.main;
+    if (!sel.empty) return false;
+    const line = state.doc.lineAt(sel.head);
+    const n = line.number + (down ? 1 : -1);
+    if (n < 1 || n > state.doc.lines) return false;
+    const next = state.doc.line(n);
+    const g = state.field(field).blocks.find((b) => (down ? b.from === next.from : b.to === next.to));
+    if (!g) return false;
+    view.dispatch({ selection: { anchor: down ? g.from : g.to }, scrollIntoView: true });
+    return true;
+  };
+
+  return [field, renderer, Prec.highest(keymap.of([{ key: "ArrowDown", run: enterBlock(true) }, { key: "ArrowUp", run: enterBlock(false) }]))];
 }

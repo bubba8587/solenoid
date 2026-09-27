@@ -205,8 +205,11 @@ keep their last output, moved with the edit, and a piece the edit lands in shows
   property is its chip; a tag that renders to itself (an unknown name) stays text.
 - **Block:** a piece that spans lines, or whose output does (a `table` filter), takes its whole lines
   and every piece on them, and draws them as rendered markdown with chips. An empty block (a false
-  `if`, a comment) hides its lines. A press on a block puts the cursor in, except on a chip.
-- **An error** shows its lines above the first body line; the pieces show their source.
+  `if`, a comment) hides its lines. A press on a block puts the cursor in, except on a chip, and so does Down from
+  the line above it or Up from the line below (the editor would step over a drawn block, and a hidden one could not
+  be reached).
+- **An error** shows its lines above the first body line and the pieces show their source, once the edits have
+  paused for 1.5 s: a half-typed tag fails to render, so until then the pieces keep their last output.
 
 Source mode draws nothing. Live Preview needs `@codemirror/language` for the syntax tree; Obsidian
 provides it, and like `@codemirror/state` and `/view` it stays out of the bundle.
