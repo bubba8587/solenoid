@@ -78,7 +78,7 @@ export function knapLivePreview(notes: KnapNotes) {
     eq(other: ValueWidget): boolean { return other.md === this.md && other.path === this.path && other.marks === this.marks; }
 
     toDOM(view: EditorView): HTMLElement {
-      const span = view.dom.ownerDocument.createElement("span");
+      const span = (view.dom.ownerDocument.win as typeof window).createSpan();
       span.className = `solenoid-knap-value ${this.marks}`.trim();
       if (!/[*_`[\]<>#|~=!$\\]/.test(this.md)) {
         span.textContent = this.md;
@@ -103,7 +103,7 @@ export function knapLivePreview(notes: KnapNotes) {
     }
 
     toDOM(view: EditorView): HTMLElement {
-      const span = view.dom.ownerDocument.createElement("span");
+      const span = (view.dom.ownerDocument.win as typeof window).createSpan();
       span.className = "solenoid-knap-chip";
       notes.host.chip(span, this.kind, this.key, this.value, (next) => void notes.write(this.path, this.key, next));
       return span;
@@ -123,7 +123,7 @@ export function knapLivePreview(notes: KnapNotes) {
     }
 
     toDOM(view: EditorView): HTMLElement {
-      const div = view.dom.ownerDocument.createElement("div");
+      const div = (view.dom.ownerDocument.win as typeof window).createDiv();
       div.className = "solenoid-knap-block markdown-rendered";
       renderInto(div, this.md, this.live.path, () => notes.chipsIn(div, this.live.path, this.live.frontmatter));
       return div;
@@ -143,7 +143,7 @@ export function knapLivePreview(notes: KnapNotes) {
     eq(other: ErrorWidget): boolean { return other.error === this.error; }
 
     toDOM(view: EditorView): HTMLElement {
-      const div = view.dom.ownerDocument.createElement("div");
+      const div = (view.dom.ownerDocument.win as typeof window).createDiv();
       div.className = "solenoid-knap-error";
       div.textContent = this.error;
       return div;

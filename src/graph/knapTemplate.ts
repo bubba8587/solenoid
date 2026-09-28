@@ -128,7 +128,7 @@ export interface KnapRender {
 }
 
 const HOLD = "\u0001";
-const HOLD_RE = /\u0001(\d+)\u0001/g;
+const HOLD_RE = new RegExp(`${HOLD}(\\d+)${HOLD}`, "g");
 
 /** The tag's first variable read, by position; an operator (`not`) or a literal (`true`) is not one. */
 function leadingRoot(tag: string): string | undefined {

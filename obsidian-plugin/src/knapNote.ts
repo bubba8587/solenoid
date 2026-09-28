@@ -19,7 +19,7 @@ export function bodyStartLine(lines: readonly string[]): number {
 }
 
 const MARK = "\u0002";
-const MARK_RE = /\u0002(\d+)\u0002/;
+const MARK_RE = new RegExp(`${MARK}(\\d+)${MARK}`);
 const CLOSE: Record<string, string> = { "{{": "}}", "{%": "%}", "{#": "#}" };
 
 /** The tag still open at the end of `line`, by its closing delimiter. */
@@ -137,6 +137,7 @@ export function knapUnits(body: string): { from: number; to: number }[] {
 
 const UNIT_OPEN = "\u0003";
 const UNIT_CLOSE = "\u0004";
+const UNIT_RE = new RegExp(`${UNIT_OPEN}(\\d+)${UNIT_OPEN}([^${UNIT_CLOSE}]*)${UNIT_CLOSE}`, "g");
 
 /**
  * Renders a body once with each top-level piece fenced, so each piece gets its own output with
@@ -155,6 +156,6 @@ export async function renderKnapUnits(body: string, variables: Record<string, un
   const r = await renderKnap(embedBareVariables(text + body.slice(at), chips), variables, { keepUnknown: true });
   if (r.errors.length) return { units: [], failed: true };
   const out = new Map<number, string>();
-  for (const m of r.output.matchAll(/\u0003(\d+)\u0003([^\u0004]*)\u0004/g)) out.set(Number(m[1]), m[2]);
+  for (const m of r.output.matchAll(UNIT_RE)) out.set(Number(m[1]), m[2]);
   return { units: spans.flatMap((s, i) => (out.has(i) ? [{ ...s, output: out.get(i)! }] : [])), failed: false };
 }

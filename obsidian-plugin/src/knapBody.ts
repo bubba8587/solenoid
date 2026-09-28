@@ -72,8 +72,7 @@ export class KnapNotes {
       const name = SPAN_RE.exec(code.textContent ?? "")?.[1];
       const kind = name && name in frontmatter ? this.host.objectKind(name) : undefined;
       if (!name || !kind) continue;
-      const span = code.ownerDocument.createElement("span");
-      span.className = "solenoid-knap-chip";
+      const span = (code.ownerDocument.win as typeof window).createSpan({ cls: "solenoid-knap-chip" });
       code.replaceWith(span);
       this.host.chip(span, kind, name, frontmatter[name], (next) => void this.write(path, name, next));
     }
