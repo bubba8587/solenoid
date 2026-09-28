@@ -7,6 +7,7 @@ import {
   RANGE_FUNCTIONS,
   formulaToLatex,
   evaluateSteps,
+  formulaSyntaxHint,
 } from "../../src/graph/excelFormula";
 import { closeParens } from "../../src/graph/closeParens";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -783,6 +784,19 @@ describe("closeParens ([[C115]] closeParensOnCommit)", () => {
     expect(closeParens("SUM((a + b")).toBe("SUM((a + b))");
     expect(closeParens(`IF(a > 1, "(")`)).toBe(`IF(a > 1, "(")`);
     expect(closeParens(`CONCAT("a)", b`)).toBe(`CONCAT("a)", b)`);
+  });
+  it("skips parentheses inside [column] references, as the tokenizer reads them", () => {
+    expect(closeParens("SUM([Cost (draft]")).toBe("SUM([Cost (draft])");
+    expect(closeParens("ROUND([@[Size (cm]], 1")).toBe("ROUND([@[Size (cm]], 1)");
+    expect(closeParens(`LEN([Say "hi"]`)).toBe(`LEN([Say "hi"])`);
+  });
+  it("leaves an unterminated string or reference for the parser to name", () => {
+    expect(closeParens(`CONCAT("a `)).toBe(`CONCAT("a `);
+    expect(closeParens("SUM([Cost")).toBe("SUM([Cost");
+  });
+  it("names a ) that comes before its (", () => {
+    expect(formulaSyntaxHint(")a(")).toMatch(/comes before/);
+    expect(formulaSyntaxHint("SUM([Cost (draft])")).toBeNull();
   });
   it("leaves balanced and over-closed formulas alone", () => {
     expect(closeParens("SUM(a)")).toBe("SUM(a)");

@@ -14,6 +14,7 @@ import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
 import { EquationVarRow, EquationOutRow } from "./EquationNode";
 import type { DisplayValue } from "./valueDisplayFormat";
+import { iterMin, iterMax } from "../nodes/mathUtils";
 
 export function EmSpectrumComponent({ data, emit }: NodeProps<EmSpectrumNodeType>) {
   return (
@@ -68,13 +69,14 @@ function TriangleFigure({ t }: { t: Partial<TriangleSolved> }) {
   };
   const xs = Object.values(raw).map((p) => p.x);
   const ys = Object.values(raw).map((p) => p.y);
-  const spanX = Math.max(...xs) - Math.min(...xs);
-  const spanY = Math.max(...ys) - Math.min(...ys);
+  const minX = iterMin(xs), minY = iterMin(ys);
+  const spanX = iterMax(xs) - minX;
+  const spanY = iterMax(ys) - minY;
   if (!(spanX > 0) || !Number.isFinite(spanX) || !Number.isFinite(spanY)) return null;
   const scale = Math.min((W - 2 * PAD) / spanX, (H - 2 * PAD) / Math.max(spanY, spanX * 0.15));
   const px = (p: { x: number; y: number }) => ({
-    x: PAD + (p.x - Math.min(...xs)) * scale + (W - 2 * PAD - spanX * scale) / 2,
-    y: H - PAD - (p.y - Math.min(...ys)) * scale, // flip: SVG y runs down
+    x: PAD + (p.x - minX) * scale + (W - 2 * PAD - spanX * scale) / 2,
+    y: H - PAD - (p.y - minY) * scale, // flip: SVG y runs down
   });
   const P = { A: px(raw.A), B: px(raw.B), C: px(raw.C) };
   const centroid = {

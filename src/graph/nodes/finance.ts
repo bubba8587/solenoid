@@ -1,7 +1,7 @@
 // [[B11]], [[C113]]
 import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, readRole, BASIS_DOC } from "./shared";
-import { setting } from "../inputRoles";
+import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, readRole, BASIS_DOC, readAsRole } from "./shared";
+import { setting, argRole } from "../inputRoles";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
 import { solError, type SolError } from "../errorValue";
@@ -161,13 +161,13 @@ export class DepreciationNode extends ClassicPreset.Node {
     if (this.op === "vdb") {
       const start  = readInput(inputs.start, this.literals.start ?? 0);
       const end    = readInput(inputs.end, this.literals.end ?? 0);
-      const factor = readInput(inputs.factor, this.literals.factor ?? 2);
+      const factor = readAsRole<number | undefined>(this, "factor", inputs.factor, argRole("VDB", 5)!) ?? 2;
       result = (cost === null || salvage === null || life === null || start === null || end === null || factor === null)
         ? null
         : vdb(cost, salvage, life, start, end, factor);
     } else {
       const per    = readInput(inputs.per, this.literals.per ?? null);
-      const factor = readInput(inputs.factor, this.literals.factor ?? 2);
+      const factor = readAsRole<number | undefined>(this, "factor", inputs.factor, argRole("DDB", 4)!) ?? 2;
       if (cost !== null && salvage !== null && life !== null && life > 0) {
         if (this.op === "sln") {
           result = resolveExcelFunction("SLN")!(cost, salvage, life) as number;

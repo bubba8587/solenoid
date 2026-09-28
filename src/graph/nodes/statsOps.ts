@@ -178,11 +178,16 @@ export function covariance(xs: readonly number[], ys: readonly number[], sample:
   return guardFinite(sample ? cov / (n - 1) : cov / n, xs.concat(ys));
 }
 
-export function modes(arr: readonly number[]): number | number[] | null {
+/** Excel's MODE: with no value appearing twice there is no mode. */
+export const noMode = (): SolError => solError("#N/A", "No value repeats, so there is no mode");
+
+export function modes(arr: readonly number[]): number | number[] | SolError | null {
   if (arr.length === 0) return null;
+  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr) as SolError;
   const counts = new Map<number, number>();
   for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
   const maxCount = iterMax(counts.values());
+  if (maxCount < 2) return noMode();
   const ms = [...counts.entries()].filter(([, c]) => c === maxCount).map(([v]) => v).sort((a, b) => a - b);
   return ms.length === 1 ? ms[0] : ms;
 }
@@ -192,11 +197,13 @@ export function fisher(x: number, inverse: boolean): number | SolError {
   return x <= -1 || x >= 1 ? solError("#DOMAIN!", "FISHER requires −1 < x < 1") : Math.atanh(x);
 }
 
-export function modeSingle(arr: readonly number[]): number | null {
+export function modeSingle(arr: readonly number[]): number | SolError | null {
   if (arr.length === 0) return null;
+  if (arr.some((v) => Number.isNaN(v))) return guardFinite(NaN, arr) as SolError;
   const counts = new Map<number, number>();
   for (const v of arr) counts.set(v, (counts.get(v) ?? 0) + 1);
   const maxCount = iterMax(counts.values());
+  if (maxCount < 2) return noMode();
   for (const v of arr) if (counts.get(v) === maxCount) return v;
   return null;
 }

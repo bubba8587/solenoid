@@ -65,8 +65,8 @@ argument; a value is the typed blank it reads as.
 | CEILING.MATH | `significance` → omitted; `mode` → omitted |
 | CHISQ.DIST | `cumulative` → false |
 | CHOOSE | `index` → #SYNTAX! |
-| CHOOSECOLS | `col1` → pick, none left = #SYNTAX!; the rest → pick |
-| CHOOSEROWS | `row1` → pick, none left = #SYNTAX!; the rest → pick |
+| CHOOSECOLS | `col1` → pick, none left = #SYNTAX!; the rest → pick, none left = #SYNTAX! |
+| CHOOSEROWS | `row1` → pick, none left = #SYNTAX!; the rest → pick, none left = #SYNTAX! |
 | CLAMP | `min` → omitted; `max` → omitted |
 | COMBINATIONS | `k` → #SYNTAX! |
 | CONVERT | `from_unit` → #SYNTAX!; `to_unit` → #SYNTAX! |
@@ -157,6 +157,9 @@ argument; a value is the typed blank it reads as.
 | PRICEDISC | `basis` → omitted |
 | PRICEMAT | `basis` → omitted |
 | PV | `type` → omitted |
+| QUARTILE | `quart` → 0 |
+| QUARTILE.EXC | `quart` → #SYNTAX! |
+| QUARTILE.INC | `quart` → 0 |
 | RANDARRAY | `rows` → omitted; `columns` → omitted; `min` → omitted; `max` → omitted; `whole_number` → omitted |
 | RANDDIST | `n` → #SYNTAX! |
 | RANGE | `start` → #SYNTAX!; `step` → omitted |
@@ -254,6 +257,11 @@ still blank.
 | ETS Forecast | Steps ahead (#SYNTAX!), Season length (1) | |
 | TRIMMEAN | Trim % (#SYNTAX!) | |
 | Is Close | Tolerance (1e-9) | |
+| Year Frac / Days 360 (Date Diff) | Basis (0), from YEARFRAC / DAYS360, added 2026-09-28 | |
+| DDB / VDB (Depreciation) | Factor (2), from DDB / VDB, added 2026-09-28 | |
+| DOLLAR, FIXED | Decimals (2), from DOLLAR / FIXED, added 2026-09-28 | |
+| LOG, GESTEP (Two-Input Math) | Base (10), Step (0); B stays data under the other ops, added 2026-09-28 | |
+| Find Peaks | Min height, Min distance, Min prominence (no minimum), added 2026-09-28 | |
 | Bond Pricing, Accrued Interest, Duration, Coupon | Frequency (2), Basis (0) | |
 | Week Info | Return type (1) | |
 | Pad Text | Width (#SYNTAX!), Fill (" ") | |
@@ -275,6 +283,7 @@ still blank.
 | Table Reshape (WRAPROWS / WRAPCOLS) | Wrap count (#SYNTAX!) | |
 | Set Cell | | Row n, Column n (#SYNTAX!) |
 | MUNIT card | Size n (#SYNTAX!) | |
+| MAKEARRAY card | not swept: Rows, Cols are required in the formula, but a fresh card with nothing typed would then show #SYNTAX! | |
 | Spectrum | Sample rate (1) | |
 | Smooth | Window (5), Order (2) | |
 | ODE Integrate | Steps (100) | |

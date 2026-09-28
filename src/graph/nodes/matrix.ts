@@ -569,8 +569,8 @@ export const TAKEDROP_OP_META = {
 
 export class TakeDropNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rows: "Positive counts from the start, negative from the end, 0 keeps all.",
-    cols: "Positive counts from the start, negative from the end, 0 keeps all.",
+    rows: "Positive counts from the start, negative from the end, 0 keeps all. A list is one row, so this keeps it whole.",
+    cols: "Positive counts from the start, negative from the end, 0 keeps all. A list's items count as columns.",
   };
   static inputRoles = rolesFrom("TAKE", { rows: 1, cols: 2 });
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["data"], combine: "single" }];

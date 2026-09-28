@@ -1100,7 +1100,7 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   }
   const collect = (v: number, rset: readonly number[], cset: readonly number[]): FrameCell[] => {
     const acc: FrameCell[] = [];
-    for (const r of rset) for (const c of cset) acc.push(...cells[v][r][c]);
+    for (const r of rset) for (const c of cset) for (const x of cells[v][r][c]) acc.push(x);
     return acc;
   };
   const allRows = rowLeaves.map((_, i) => i), allCols = colLeaves.map((_, i) => i);

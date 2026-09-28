@@ -2291,9 +2291,10 @@ export class SmoothNode extends ClassicPreset.Node {
 
 // ─── FIND PEAKS ───────────────────────────────────────────────────────────────
 export class FindPeaksNode extends ClassicPreset.Node {
+  static inputRoles = { height: setting(LEFT_OUT), distance: setting(LEFT_OUT), prominence: setting(LEFT_OUT) };
   static socketDocs: Record<string, string> = {
     result: "One row per local maximum that passes every filter: Position (1-based) and Height.",
-    height: "Leave the field empty for no minimum. A wired blank here, or on either filter below, gives a blank result.",
+    height: "Empty, there is no minimum; the same for the two filters below.",
     distance: "Minimum spacing between kept peaks (in samples); the higher peak wins.",
     prominence: "Minimum rise above the higher of the two surrounding valleys: the filter that separates peaks from ripples.",
   };
@@ -2318,14 +2319,13 @@ export class FindPeaksNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }): { result: FrameValue | null } {
     const arr = inputs.list?.[0] ?? null;
-    const keys = ["height", "distance", "prominence"] as const;
-    const wiredBlank = keys.some((k) => inputs[k]?.length && inputs[k]![0] == null);
-    const opt = (k: (typeof keys)[number]) => {
-      const v = readInput(inputs[k], this.literals[k]);
-      return v === null || v === undefined || Number.isNaN(v) ? undefined : v;
-    };
-    if (arr === null || wiredBlank) { this.cachedResult = null; return { result: null }; }
-    const peaks = findPeaks(arr, { height: opt("height"), distance: opt("distance"), prominence: opt("prominence") });
+    const opt = (v: number | undefined) => (v === undefined || Number.isNaN(v) ? undefined : v);
+    if (arr === null) { this.cachedResult = null; return { result: null }; }
+    const peaks = findPeaks(arr, {
+      height: opt(readRole<number | undefined>(this, "height", inputs.height)),
+      distance: opt(readRole<number | undefined>(this, "distance", inputs.distance)),
+      prominence: opt(readRole<number | undefined>(this, "prominence", inputs.prominence)),
+    });
     const frame: FrameValue = {
       __frame: true,
       columns: [

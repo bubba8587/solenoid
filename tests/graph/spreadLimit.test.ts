@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { setCells } from "../../src/graph/nodes/matrixOps";
 import { coerceScriptResult } from "../../src/graph/nodes/scriptCoerce";
+import { pivotFrame } from "../../src/graph/frameVerbs";
 
 // A call takes about 125k arguments, so a kernel that spreads a list into one throws past that.
 const N = 150_000;
@@ -30,6 +31,15 @@ describe("kernels take a list longer than a call's argument limit", () => {
   it("Set Cells writing a long block", () => {
     const out = setCells(col.map(() => [null]), [{ r: 1, c: 1, v: col }]) as number[][];
     expect(out[N - 1]).toEqual([N - 1]);
+  });
+
+  it("a pivot with one group holding every row", () => {
+    const f = { __frame: true as const, columns: [
+      { name: "k", type: "string" as const, values: list.map(() => "a") },
+      { name: "x", type: "number" as const, values: list },
+    ] };
+    const out = pivotFrame(f, { rowFields: ["k"], colFields: [], values: ["x"], funcs: ["sum"] } as never);
+    expect(out.columns[out.columns.length - 1].values[0]).toBe((N * (N - 1)) / 2);
   });
 
   it("a script returning many rows", () => {

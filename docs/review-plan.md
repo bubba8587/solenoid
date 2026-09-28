@@ -17,21 +17,21 @@ Leaves: [[D86]] blankRoles, [[C80]] blankArgIsExcelBlank. Spec: `tree/specs/valu
 Why risky: one table now decides what a blank means for ~60 functions across BOTH formulas
 and cards; every card that grew `static inputRoles = rolesFrom(...)` changed behaviour for a
 wired blank. `docs/settings-audit.md` was the author's review sheet; verify code matches it.
-- [ ] Diff `ARG_ROLES` against `docs/settings-audit.md` row by row: every function listed in
+- [x] Diffed 2026-09-28: QUARTILE, QUARTILE.INC and QUARTILE.EXC were missing from the sheet (added) and CHOOSEROWS / CHOOSECOLS' rest was worded short; `settingsAudit.test.ts` now holds the formula table to the code. The `required` rows are Claude's calls awaiting the author's review, as the sheet says. Was: Diff `ARG_ROLES` against `docs/settings-audit.md` row by row: every function listed in
       one and not the other is a gap. Especially the `required` ones (MROUND, CEILING, FLOOR,
       LARGE, SMALL, PERCENTILE, MID, REPLACE, TEXT, REPT, DATEDIF): a blank now hard-errors
       `#SYNTAX!` where it used to coerce to 0. Confirm that is what the author ruled.
-- [ ] `rolesFrom(name, {socket: argIndex})` mapping: check each socket→index by hand against
+- [x] Checked 2026-09-28, all 61 mappings name the right argument (SEQUENCE start 2 / step 3, RANDARRAY min 2 / max 3, INDEX, TEXTSPLIT). Was: `rolesFrom(name, {socket: argIndex})` mapping: check each socket→index by hand against
       `formulaSignatures.ts` for that function. An off-by-one silently gives the wrong role.
       Spot-check: INDEX (`index:1, position:1, column:2`), RANDARRAY, SEQUENCE, TEXTSPLIT.
-- [ ] `rest` role + SORTBY's generated even-index table: a blank by_array (data) vs a blank
+- [x] Checked 2026-09-28 with three pairs: a blank second or third sort_order is left out (ascending), a blank by_array blanks the answer. Was: `rest` role + SORTBY's generated even-index table: a blank by_array (data) vs a blank
       sort_order (setting) at positions 1,3,5… vs 2,4,6…; test a formula with 3 pairs.
-- [ ] "Blank inside a list of settings is skipped at its spot" (2990affc): check the
+- [x] Ruled, not Excel's: [[D86]] blankRoles makes a blank pick dropped (Excel has no blank inside an array constant). Was: "Blank inside a list of settings is skipped at its spot" (2990affc): check the
       `picks` path in INDEX/CHOOSEROWS/CHOOSECOLS with `{1,,3}`-style lists; a dropped blank
       shifts later positions. Confirm this matches Excel rather than a zero-index error.
-- [ ] Cards with no `inputRoles` but a formula twin that HAS `ARG_ROLES`: parity break. Grep
+- [x] Swept 2026-09-28: Date Diff (Year Frac, Days 360) basis, Depreciation (DDB, VDB) factor, DOLLAR and FIXED decimals, LOG base and GESTEP step now read the twin's role (`wiredNull.test.ts` checks each against its formula); Find Peaks' minimums read as no minimum; MAKEARRAY left for the author (see the audit sheet). Was: Cards with no `inputRoles` but a formula twin that HAS `ARG_ROLES`: parity break. Grep
       every key of `ARG_ROLES`, find its card in `nodeExcel.ts`, confirm the card cites it.
-- [ ] Distribution `cumulative` blanks now read FALSE (NORM.DIST etc.): check the cards'
+- [x] Checked 2026-09-28: the Distributions card picks PDF / CDF / inverse from a dropdown, so no blank reaches `cumulative` there. Was: Distribution `cumulative` blanks now read FALSE (NORM.DIST etc.): check the cards'
       dropdown default agrees (sockets default TRUE in some old seeds?). `seeds.test.ts`.
 
 ## 2. "A list is one row" orientation change
@@ -40,19 +40,19 @@ Where: `nodes/matrix.ts`, `matrixOps.ts`, `indexAccess.ts`, `listOps.ts`, `table
 `excelFunctions.ts`, `src/graph/help/data-model.md`
 Why risky: a global axis convention flipped (list = 1×N row, not N×1 column) but three
 functions were exempted (TOCOL, BYROW, MAKEARRAY "keep their column"). Exemption lists rot.
-- [ ] Enumerate every matrix-taking function in `excelFunctions.ts` that accepts a list;
+- [x] Checked 2026-09-28 against [[D85]] columnsStayColumns, which settled this after the plan was written: TRANSPOSE, HSTACK / VSTACK, WRAPROWS / WRAPCOLS, CHOOSEROWS / CHOOSECOLS, EXPAND, MMULT both ways, SUMPRODUCT, SORT, UNIQUE, FILTER and MAKEARRAY all give Excel's answer for a one-row array, and INDEX is strict as D85 rules (`INDEX(x, 2, 1)` is `#REF!`, not "either axis"). EXPAND's blank padding and TAKE / DROP's `#DOMAIN!` for an empty result are documented choices (formula-language). Was: Enumerate every matrix-taking function in `excelFunctions.ts` that accepts a list;
       for each, decide row-vs-column by Excel's behaviour on a 1-D array, and check. Suspects:
       TRANSPOSE, HSTACK/VSTACK, WRAPROWS/WRAPCOLS, CHOOSEROWS/CHOOSECOLS, EXPAND, MMULT,
       SUMPRODUCT on list×matrix, INDEX(list, r, c) "reads either axis" (7484b745) — check
       INDEX(list, 2, 1) vs INDEX(list, 1, 2) both work and INDEX(list, 2, 2) errors.
-- [ ] TAKE/DROP on a list (ddfe18d5): `TAKE(list, 1)` now returns the whole list (one row);
+- [x] Checked 2026-09-28: the card agrees with the formula (Rows 1 keeps the list, Cols 2 takes two items); its tooltips now say a list is one row. Was: TAKE/DROP on a list (ddfe18d5): `TAKE(list, 1)` now returns the whole list (one row);
       `TAKE(list, ,2)` takes 2 items. Verify the card's Rows/Cols sockets follow the same
       reading and the socket labels say so.
-- [ ] BYROW/BYCOL over a list: BYROW(list) should give one result, BYCOL N results. Check
+- [x] Checked 2026-09-28: `BYROW(x, SUM)` is one total as a one-cell column, `BYCOL(x, SUM)` one per item, and D85's two motivating formulas come out right. Was: BYROW/BYCOL over a list: BYROW(list) should give one result, BYCOL N results. Check
       the "keep their column" exemption doesn't make BYROW(list) give N.
-- [ ] Round-trip: TOCOL(list) → list → TOROW: shape stable? And SPARKLINE "lists read per
+- [x] Checked 2026-09-28: `TOROW(TOCOL(x))` is `x`. SPARKLINE draws one picture of a matrix read row by row, as its spec says; "lists read per row" in 0a95b655's title was about INDEX. Was: Round-trip: TOCOL(list) → list → TOROW: shape stable? And SPARKLINE "lists read per
       row" (0a95b655) — a list input draws one sparkline, a matrix draws one per row.
-- [ ] `src/graph/help/data-model.md` wording vs code: the help is the user-facing contract.
+- [x] Checked 2026-09-28: "a List going into a 2-D input becomes one row" is what the code does; no help page says otherwise. Was: `src/graph/help/data-model.md` wording vs code: the help is the user-facing contract.
 
 ## 3. Aggregate kernels: NaN, infinity, spread limits
 Commits: bdf0b3c3, 7f691901, ea3e187c, 732a9043, ded279c5, 5f4d3fe7, 2537231b, 431b12f3, 9021770b
@@ -60,25 +60,25 @@ Where: `nodes/statsOps.ts`, `excelFunctions.ts`, `nodes/shared.ts` (guardFinite)
 `frameVerbs.ts`, `frameBackend.ts`, `listOps.ts`, `matrixOps.ts`, `scriptCoerce.ts`
 Why risky: numeric edge semantics changed in kernels shared by cards, formulas AND frame
 verbs; `guardFinite` signature changed (spread → array) across 7 files.
-- [ ] `guardFinite` callers: grep every call; any caller still passing spread args now passes
+- [x] Checked 2026-09-28: all 29 callers pass an array, and the parameter is typed `ReadonlyArray<unknown>`, so a stray scalar fails tsc. Was: `guardFinite` callers: grep every call; any caller still passing spread args now passes
       ONE array as arg 0 and type-checks if the param is `unknown[]`. tsc may not catch a
       caller that passes a single scalar (now wrapped? or treated as the array?).
-- [ ] NaN in aggregates is RULED, not open ([[D48]] classifyNonFinite, `tree/specs/values/value-semantics.md`,
+- [x] Conformance checked 2026-09-28 (formulas and the Aggregate card, NaN / ±∞ / ∞ with −∞). Fixed against D48: MODE / MODE.SNGL skipped a lone NaN, MODE.MULT and the Mode card passed NaN on bare, and PRODUCT (on Formula.js) answered `#VALUE!`; all are `#DOMAIN!` now, PRODUCT on the shared kernel. Also fixed for Excel parity: no value repeating is `#N/A` in the three MODEs and on the Mode card (was the first value, or every value). The native engine's guard needs the desktop run. Was: NaN in aggregates is RULED, not open ([[D48]] classifyNonFinite, `tree/specs/values/value-semantics.md`,
       `tree/specs/computation/frame-verbs.md` § groupBy): a NaN input makes the group `#DOMAIN!`, checked before
       aggregating; `count` counts NaN and errors; NaN "sorts into the tail, fails every
       predicate except neq". So the check is conformance: list SUM/AVG/MIN/MAX/MEDIAN/MODE/
       STDEV kernels (`statsOps.aggregate`) and `RANGE_RAW` COUNT against that table, and the
       same on the native engine (the guard "wraps every aggregate over a number or date
       column except count and percentof"). A deviation is a bug against D48, not a debate.
-- [ ] "Aggregate card and formulas agree on an infinity": which won, `#NUM!` or ±∞? Check
+- [x] Checked 2026-09-28: formulas and the Aggregate card agree on every ±∞ case (∞ passes, ∞ − ∞ is `#DOMAIN!`); the Polars path needs the desktop run. Was: "Aggregate card and formulas agree on an infinity": which won, `#NUM!` or ±∞? Check
       the frame verb path (Polars returns inf) agrees too.
 - [x] A-form "redirects" (5f4d3fe7): checked, `LEGACY_ALIASES` registers each as a `#NAME?`
       refusal naming the replacement, not a silent call. Same for VLOOKUP/HLOOKUP/MATCH and
       the D-functions. No argument-shape bug there. Open only: the inbox item d452bfbc on
       how aggregates read logicals/text still needs the author's ruling.
-- [ ] Spread limit (2537231b): `spreadLimit.test.ts` exists; grep for any remaining
+- [x] Swept 2026-09-28: `pivotFrame` spread one pivot cell's values into `push`, so a group of 150k rows threw on the web engine (fixed, `spreadLimit.test.ts`); the chart, calendar, XY, Surface and PackTool renderers spread plotted values into `Math.min` / `Math.max` (now `iterMin` / `iterMax`). The rest spread small fixed sets. Was: Spread limit (2537231b): `spreadLimit.test.ts` exists; grep for any remaining
       `Math.max(...` / `fn(...list)` on user-sized arrays in `nodes/*Ops.ts` and `frameVerbs.ts`.
-- [ ] Broadcasting "measures each operand once" (9021770b): a perf change to formula
+- [x] Checked 2026-09-28: ragged and shorter operands pad with blank, and an empty operand broadcasts to blanks, as formula-language § Broadcasting rules (only the shape builders pad `#N/A`). Was: Broadcasting "measures each operand once" (9021770b): a perf change to formula
       broadcasting; check ragged matrices and a 0-row operand still error, not silently
       broadcast to empty.
 
@@ -89,13 +89,13 @@ Where: `excelFormula.ts` (`closeParens`), `FormulaPopup.tsx`, `TablePopup.tsx`,
 Why risky: silently rewrites user text at four commit sites; one of them is a cube CELL editor.
 - [x] Checked: the closer lives only in the shared Fx expr-row editor (`table-popup__exprinput`);
       `cubeEditCell.tsx` just forwards the closed text as a column `expr`. Literal cells untouched.
-- [ ] `closeParens` treats `"` as the only quote; Excel's `""` escape inside a string toggles
+- [x] Fixed 2026-09-28: `"` is the formula language's only quote (single quotes aren't delimiters), but `[column]` and `[@[column]]` references were counted; the closer and the syntax hint now skip them as the tokenizer reads them. Was: `closeParens` treats `"` as the only quote; Excel's `""` escape inside a string toggles
       twice so is fine, but `'` (sheet/name quoting) and a `(` inside `[...]` column refs are
       counted. Check the parser's own quoting rules and mirror them.
-- [ ] FormulaPopup commit: `committedRef` gets the closed text but `textRef` keeps the raw
+- [x] Checked 2026-09-28: the popup commits only on close or a switch, and reopening seeds from the closed text, so there's nothing to repaint; the column row repaints its draft. The real `trimEnd` hazard was an unterminated string (`CONCAT("a ` became `CONCAT("a)`); the closer now leaves it for the parser. Was: FormulaPopup commit: `committedRef` gets the closed text but `textRef` keeps the raw
       text; does the visible editor repaint with the `)`? Also `trimEnd()` before appending
       strips trailing whitespace the user may have typed inside a string.
-- [ ] `)` first then `(` (`)a(`): counts balance, nothing added, parse fails. Fine, but
+- [x] Fixed 2026-09-28: no hint fired (counts balance); `formulaSyntaxHint` now names a `)` before its `(`. Was: `)` first then `(` (`)a(`): counts balance, nothing added, parse fails. Fine, but
       confirm the syntax hint still fires.
 
 ## 5. LAMBDA capture vs column precedence in computed columns
@@ -110,17 +110,17 @@ cached and may be called from anywhere.
       to a same-named column is the design. Only the card hint (`perRowParamClashes`) covers
       parameters, not captures: check whether a capture shadowed by a column gets ANY visible
       note on the LAMBDA card. If not, that is a small UX gap, not a bug.
-- [ ] `readCapturedColumn` reads the TOP of `rowStack`: a LAMBDA value built on frame A's
+- [x] Confirmed 2026-09-28: one LAMBDA (`@price / SUM(price)`) gives thirds over one frame and quarters over another; its captures resolve against whichever frame calls it. That is [[C22]] rowFormulaRefs' order (a column outranks a capture), so no inbox item; reported to the author. Was: `readCapturedColumn` reads the TOP of `rowStack`: a LAMBDA value built on frame A's
       canvas and called inside frame B's computed column resolves its captures against B's
       columns. That follows from the spec ("while a row context is up"), but it means the
       same LAMBDA answers differently per consumer. Confirm with two frames and one LAMBDA,
       and file an inbox item if the author hasn't seen it; don't change it.
-- [ ] Nested: computed column calls LAMBDA that calls another LAMBDA (via a captured
+- [x] Confirmed 2026-09-28: a LAMBDA applying a captured LAMBDA (`(g)(@price)`) resolves the inner one's `SUM(price)` against the outer frame. A call by name, `g(@price)`, is `#NAME?` by design (formula-language § LAMBDA: by-name calls apply parameters and λ sockets only). Was: Nested: computed column calls LAMBDA that calls another LAMBDA (via a captured
       LAMBDA value); rowStack top is still the outer frame. Probably fine, confirm.
-- [ ] Frame Input "orders a LAMBDA column after the columns its captures name": a capture
+- [x] Confirmed 2026-09-28: two λ columns capturing each other are `#REF!` "Circular computed columns: c1 → c2" in a few milliseconds. Was: Frame Input "orders a LAMBDA column after the columns its captures name": a capture
       naming a column that is ITSELF a LAMBDA column → cycle? Check the order function
       handles a cycle without hanging.
-- [ ] Cached `LambdaValue`: `capturedVals` snapshot vs live `readCapturedColumn` — the cache
+- [x] Confirmed 2026-09-28: the cache key holds expr and params, and the bare-and-@ note is computed at render from the card's current expr, never cached. The capture-shadowed-by-a-column note can't be static: which column shadows depends on the consuming frame. Was: Cached `LambdaValue`: `capturedVals` snapshot vs live `readCapturedColumn` — the cache
       key (`_lastBuild`) doesn't include column data, correct since columns are read live;
       but confirm the "bare AND @" flag (d62c45b7) is computed from `atColNames` on the same
       expr the cache was built from.
@@ -134,21 +134,21 @@ Where: `cardLayout.ts`, `TableCards.tsx/.css`, `TablePopup.tsx`, `RecordNode.tsx
 Leaves: [[C114]] cardsView, [[B20]] mobileFriendly; C63 retired.
 Why risky: 14-file commit, a node kind renamed (Card → Detail), a popup→node hook through
 the store, seed JSONs rewritten, and "pictures are data:image only" is a security-ish rule.
-- [ ] Record "Rows on every view, a number or a list" (391f0b86): `rowNumbers` is 1-based
+- [x] Checked 2026-09-28: Rows picks and the deck's `rowNumbers` are both the frame's own 1-based rows; the popup's sort never reaches the node. Was: Record "Rows on every view, a number or a list" (391f0b86): `rowNumbers` is 1-based
       frame numbers of DRAWN rows — after a sort/filter in the popup do they map to the
       source frame or the drawn order? Both consumers (RecordNode, chartCards) must agree.
-- [ ] Renamed view `Card`→`Detail`: grep seeds and `docs/node-coverage.md`, help.md, catalog
+- [x] Checked 2026-09-28: no `card` view left in seeds, docs, help or the catalog. An old save with `op: "card"` draws an empty figure: the loader is forgiving by design and `graphValidate` names the unknown op (save-format § The strict validator), so it stays. Was: Renamed view `Card`→`Detail`: grep seeds and `docs/node-coverage.md`, help.md, catalog
       for the old name; [[B7]] says no alias, so an old save with `view: "card"` must fail
       loudly not silently render blank. `seeds.test.ts`.
-- [ ] `recordCardsFromPopup.ts` + `tablePopupStore.ts` hook: the plugin build (Obsidian)
+- [x] Checked 2026-09-28: the plugin never registers the action, so the menu item doesn't show; nothing dangles. Was: `recordCardsFromPopup.ts` + `tablePopupStore.ts` hook: the plugin build (Obsidian)
       reaches Add Record through a hook; in the plugin build with no canvas, what happens on
       click — no-op, error, or dangling store entry?
-- [ ] `cardLayout.ts` derived rules ("pictures are data:image only"): confirm an `http(s):`
+- [x] Checked 2026-09-28: the grid, the Cards view and the Cube cells use `cellImageSrc` (`data:image/` only, so `data:text/html` and web addresses stay text); only the Form view and Record Detail take `recordImageSrc`'s image URLs, as the table-popup spec allows. Pinned in `visual.test.ts`. Was: `cardLayout.ts` derived rules ("pictures are data:image only"): confirm an `http(s):`
       image string is refused, not just not-rendered, and that a `data:text/html` prefix is
       also refused (prefix check must be `data:image/`).
-- [ ] Masonry layout on 0 rows, 1 row, and a frame with 0 columns.
-- [ ] "Every popup opens in Grid" (189afe68): the Cards choice isn't persisted — intended?
-- [ ] C63 retirement touched `nodeOps.ts` + `nodes/visual.ts`: check for a dead node kind or
+- [x] Checked 2026-09-28: `packMasonry`, `planCards` and every Record view handle 0 rows, 1 row and 0 columns without throwing. Was: Masonry layout on 0 rows, 1 row, and a frame with 0 columns.
+- [x] Ruled: [[C114]] cardsView, ratified, says Grid stays the default and Cards is an option. Was: "Every popup opens in Grid" (189afe68): the Cards choice isn't persisted — intended?
+- [x] Checked 2026-09-28: nothing cites C63; the catalog and node-coverage tests pass. Was: C63 retirement touched `nodeOps.ts` + `nodes/visual.ts`: check for a dead node kind or
       a catalog entry left behind (`formulaNodeCoverage.test.ts`, `docs/node-coverage.md`).
 
 ## 7. SORT / SORTBY / FILTER / UNIQUE take tables

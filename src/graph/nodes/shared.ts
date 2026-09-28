@@ -120,6 +120,12 @@ export function readRole<T = unknown>(node: ClassicPreset.Node, key: string, wir
   return readAsRole<T>(node, key, wired, role);
 }
 
+/** A setting read as left out takes the card's default, whole or item by item in a list ([[D86]] blankRoles). */
+export function leftOutAs<T>(v: T | readonly (T | undefined)[] | undefined, dflt: T): T | T[] {
+  if (v === undefined) return dflt;
+  return Array.isArray(v) ? v.map((x) => (x === undefined ? dflt : x)) : (v as T);
+}
+
 /** `readRole` with the role given, for a card whose roles change with its op (Series). */
 export function readAsRole<T = unknown>(node: ClassicPreset.Node, key: string, wired: readonly unknown[] | undefined, role: InputRole): T {
   const n = node as { literals?: Record<string, unknown>; stringLiterals?: Record<string, unknown> };

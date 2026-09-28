@@ -3,7 +3,7 @@ import { stringSocket } from "../sockets";
 import {
   strIn, strOut, strListIn, strListOut, anyListIn, anyComboOut,
   strComboIn, strComboOut, numIn, numListIn, numListOut, logicalComboOut,
-  broadcastCells, readInput, readRole, type CellResult, type BroadcastResult,
+  broadcastCells, readInput, readRole, leftOutAs, type CellResult, type BroadcastResult,
 } from "./shared";
 import { getRecalcGen } from "../process";
 import { hashText, uuidV4, type HashAlgorithm } from "./hashOps";
@@ -991,6 +991,7 @@ export const FIXED_NO_COMMAS_META: Record<FixedNoCommas, string> = {
 };
 
 export class FixedNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("FIXED", { decimals: 1 });
   label: string;
   noCommas: FixedNoCommas;
   cachedText: CellResult<string> = null;
@@ -1010,7 +1011,7 @@ export class FixedNode extends ClassicPreset.Node {
     const result = broadcastCells(
       (n: number, d: number) => resolveExcelFunction("FIXED")!(n, d, this.noCommas === "no_commas") as string,
       readInput(inputs.number,   this.literals.number   ?? 0),
-      readInput(inputs.decimals, this.literals.decimals ?? 2),
+      leftOutAs(readRole<number | (number | undefined)[] | undefined>(this, "decimals", inputs.decimals), 2),
     );
     this.cachedText = result;
     return { result };
@@ -1099,6 +1100,7 @@ export class RegexNode extends ClassicPreset.Node {
 // ─── DOLLAR (format number as currency string) ────────────────────────────────
 
 export class FormatDollarNode extends ClassicPreset.Node {
+  static inputRoles = rolesFrom("DOLLAR", { decimals: 1 });
   label: string;
   cachedText: CellResult<string> = null;
   literals: Record<string, number> = { number: 0 }; // decimals stays unset so the card shows its default 2 as a placeholder
@@ -1115,7 +1117,7 @@ export class FormatDollarNode extends ClassicPreset.Node {
   data(inputs: { number?: (number | number[])[]; decimals?: (number | number[])[] }): { result: CellResult<string> } {
     const result = broadcastCells((n: number, d: number) => resolveExcelFunction("DOLLAR")!(n, d) as string,
       readInput(inputs.number,   this.literals.number   ?? 0),
-      readInput(inputs.decimals, this.literals.decimals ?? 2));
+      leftOutAs(readRole<number | (number | undefined)[] | undefined>(this, "decimals", inputs.decimals), 2));
     this.cachedText = result;
     return { result };
   }

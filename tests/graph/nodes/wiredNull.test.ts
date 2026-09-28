@@ -27,6 +27,9 @@ import { readFrame } from "../../../src/graph/frameBackend";
 import { extractInit } from "../../../src/graph/copyPaste";
 import type { FrameValue } from "../../../src/graph/frame";
 import { solError, isSolError } from "../../../src/graph/errorValue";
+import { FormatDollarNode, FixedNode } from "../../../src/graph/nodes/text";
+import { TwoInputMathNode } from "../../../src/graph/nodes/scalar";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 // ─── A wired blank must not resurrect the typed literal ───────────────────────
 // The `inputs.x?.[0] ?? this.literals.x` idiom swallows a WIRED null into the
@@ -381,14 +384,17 @@ describe("figure sinks — empty figure for a datum, neutral default for styling
 });
 
 describe("Date mode-selector + active-op guard", () => {
-  // A basis is a MODE selector: a wired blank propagates (unknown basis -> unknown
-  // answer) on the ops that read it, but DAYS never reads basis so a blank there is
-  // ignored. (The propagate-vs-default disposition is the recorded author call.)
-  it("DAYS ignores a wired blank basis; YEARFRAC blanks on it", () => {
+  // A basis is a setting ([[D86]] blankRoles): a wired blank is the basis left out, as in YEARFRAC(a, b, ).
+  it("DAYS ignores a wired blank basis; YEARFRAC and DAYS360 read it as left out", () => {
     const days = new DateDiffNode({ op: "days" });
     expect(days.data({ start: [46000], end: [46010], basis: [null as unknown as number] }).result).toBe(10);
-    const yf = new DateDiffNode({ op: "yearfrac" });
-    expect(yf.data({ start: [46000], end: [46010], basis: [null as unknown as number] }).result).toBeNull();
+    for (const op of ["yearfrac", "days360"] as const) {
+      const n = new DateDiffNode({ op });
+      n.literals.basis = 1;
+      const blank = n.data({ start: [46000], end: [46100], basis: [null as unknown as number] }).result;
+      expect(blank).toBe(new DateDiffNode({ op }).data({ start: [46000], end: [46100] }).result);
+      expect(typeof blank).toBe("number");
+    }
   });
 });
 
@@ -860,11 +866,48 @@ describe("Set Cell — wired blank by role", () => {
   });
 });
 
-describe("FindPeaks — a wired blank minimum blanks the result", () => {
+// [[D86]] blankRoles: a card with a formula twin reads a blank setting as the twin does, so a wired blank on the card
+// and a blank argument in the formula agree.
+describe("cards agree with their formula twin on a blank setting", () => {
+  const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
+  const blank = [null as unknown as number];
+
+  it("DDB and VDB: a blank factor is the default 2", () => {
+    const ddb = new DepreciationNode({ op: "ddb" });
+    ddb.literals.factor = 3;
+    expect(ddb.data({ cost: [1000], salvage: [100], life: [5], per: [1], factor: blank }).result).toBe(ev("DDB(1000, 100, 5, 1, f)", { f: null }));
+    expect(ev("DDB(1000, 100, 5, 1, f)", { f: null })).toBe(ev("DDB(1000, 100, 5, 1)"));
+    const vdb = new DepreciationNode({ op: "vdb" });
+    vdb.literals.factor = 3;
+    expect(vdb.data({ cost: [1000], salvage: [100], life: [5], start: [0], end: [1], factor: blank }).result).toBe(ev("VDB(1000, 100, 5, 0, 1, f)", { f: null }));
+  });
+
+  it("DOLLAR and FIXED: a blank decimals is the default 2, item by item in a list", () => {
+    const d = new FormatDollarNode();
+    d.literals.decimals = 0;
+    expect(d.data({ number: [1234.567], decimals: blank }).result).toBe(ev("DOLLAR(1234.567, d)", { d: null }));
+    const f = new FixedNode();
+    expect(f.data({ number: [1234.567], decimals: [[0, null] as unknown as number] }).result).toEqual([ev("FIXED(1234.567, 0)"), ev("FIXED(1234.567)")]);
+  });
+
+  it("LOG's base and GESTEP's step are settings; B stays data under the other ops", () => {
+    const log = new TwoInputMathNode({ op: "log" });
+    log.literals.b = 2;
+    expect(log.data({ a: [100], b: blank }).result).toBe(ev("LOG(100, b)", { b: null }));
+    expect(log.data({ a: [100], b: blank }).result).toBeCloseTo(2);
+    const ge = new TwoInputMathNode({ op: "gestep" });
+    expect(ge.data({ a: [0.5], b: blank }).result).toBe(ev("GESTEP(0.5, s)", { s: null }));
+    expect(new TwoInputMathNode({ op: "hypot" }).data({ a: [3], b: blank }).result).toBeNull();
+  });
+});
+
+describe("FindPeaks — a blank minimum is no minimum ([[D86]] blankRoles)", () => {
   const Y = [[0, 1, 0, 3, 0, 2, 0]];
-  it("a wired blank height, distance or prominence gives a blank result", () => {
+  it("a wired blank height, distance or prominence filters nothing, overriding the typed value", () => {
     for (const k of ["height", "distance", "prominence"] as const) {
-      expect(new FindPeaksNode().data({ list: Y, [k]: [null as unknown as number] }).result).toBeNull();
+      const n = new FindPeaksNode();
+      n.literals[k] = 2.5;
+      expect(n.data({ list: Y, [k]: [null as unknown as number] }).result!.columns[0].values).toEqual([2, 4, 6]);
     }
   });
   it("an unwired empty field means no minimum", () => {

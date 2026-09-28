@@ -8,6 +8,7 @@ import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor } from "../palette";
 import { ChartTitle, titleHeight } from "./chartTitle";
+import { iterMin, iterMax } from "../nodes/mathUtils";
 
 const LINE_DOT_R = 2;
 const SCATTER_DOT_R = 3;
@@ -143,7 +144,7 @@ export function ChartView({
     );
   } else if (op === "bar") {
     const catW = labels
-      ? Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(Math.max(...series.map((d) => tickFmt(d.i).length)) * 5.2 * fs)))
+      ? Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(iterMax(series.map((d) => tickFmt(d.i).length)) * 5.2 * fs)))
       : 18;
     chart = (
       <BarChart width={width} height={chartH} data={series} layout="vertical" margin={margin}>
@@ -724,7 +725,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
   const xAxisH = xLabel ? 28 : 30;
 
   const ext = (vals: number[], lo?: number, hi?: number): [number, number] =>
-    [lo ?? Math.min(...vals), hi ?? Math.max(...vals)];
+    [lo ?? iterMin(vals), hi ?? iterMax(vals)];
   let xDomain: [number | string, number | string] = [opts?.xmin ?? "auto", opts?.xmax ?? "auto"];
   let yDomain: [number | string, number | string] = [opts?.ymin ?? "auto", opts?.ymax ?? "auto"];
   let xTicks: number[] | undefined = xcats && xcats.length <= ALL_TICKS_UPTO ? xcats.map((_, i) => i) : undefined;

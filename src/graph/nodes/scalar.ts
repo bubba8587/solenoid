@@ -1,7 +1,7 @@
 // [[B16]]
 import { ClassicPreset } from "rete";
-import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
-import { rolesFrom, required } from "../inputRoles";
+import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, readRole, numListIn, numListOut, numIn, numOut, listIn, readAsRole, leftOutAs, type BroadcastResult, type UnitOperand } from "./shared";
+import { rolesFrom, required, argRole } from "../inputRoles";
 import { lnGamma, roundDigits, gcdLcm } from "./mathUtils";
 import { solError, type SolError, isSolError } from "../errorValue";
 import { guardFinite, powerOf } from "../valueKinds";
@@ -455,8 +455,8 @@ export class BaseConvertNode extends ClassicPreset.Node {
 export class ClampNode extends ClassicPreset.Node {
   static inputRoles = rolesFrom("CLAMP", { min: 1, max: 2 });
   static socketDocs: Record<string, string> = {
-    min: "Empty and unwired, there is no floor. A wired blank makes the whole result blank.",
-    max: "Empty and unwired, there is no ceiling. A wired blank makes the whole result blank.",
+    min: "Empty, there is no floor; a blank item in a list of bounds is no floor for that item.",
+    max: "Empty, there is no ceiling; a blank item in a list of bounds is no ceiling for that item.",
   };
 
   label: string;
@@ -762,7 +762,10 @@ export class TwoInputMathNode extends ClassicPreset.Node {
 
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
     const a = readInput(inputs.a, this.literals.a);
-    const b = readInput(inputs.b, this.literals.b);
+    // LOG's base and GESTEP's step are settings; B is data under every other op.
+    const b = this.op === "log" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("LOG", 1)!), 10)
+      : this.op === "gestep" ? leftOutAs(readAsRole<number | (number | undefined)[] | undefined>(this, "b", inputs.b, argRole("GESTEP", 1)!), 0)
+      : readInput(inputs.b, this.literals.b);
     const domainErr = () => solError("#DOMAIN!", "LOG needs x > 0 and a base > 0, ≠ 1");
     let result: number | (number | SolError | null)[] | SolError | null = null;
     if (a !== null && b !== null) {

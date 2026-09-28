@@ -22,6 +22,14 @@ specific item.
   canvas; an Import Obsidian Note Refresh re-reads plugin picks for an unchanged note; every card component reads its
   own graph (`getOwning*`), pinned by `sourceInvariants.test.ts`. Left: the `engine.rs` auto-merges need `cargo test`
   on the desktop machine.
+- **Review plan block 1** (the settings sweep): cards whose formula twin has a blank role but ignored it now read it
+  (Date Diff basis, DDB / VDB factor, DOLLAR / FIXED decimals, LOG base, GESTEP step), Find Peaks' minimums read a blank
+  as no minimum, Clamp's tooltip matches its code, and the audit sheet gained the QUARTILE rows with
+  `settingsAudit.test.ts` holding its formula table to `ARG_ROLES`. MAKEARRAY's required Rows / Cols wait on the author.
+- **Review plan blocks 2 and 3:** the one-row list convention checks out against [[D85]] columnsStayColumns (TAKE / DROP
+  tooltips now say it). Against [[D48]] classifyNonFinite, the MODEs, the Mode card and PRODUCT answer `#DOMAIN!` on a
+  NaN (PRODUCT moved onto the shared kernel), and no repeated value is Excel's `#N/A`. A pivot group past a call's
+  argument limit no longer throws (`pivotFrame`), nor do the chart renderers on long data.
 - **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
   sums, means, extremes and dates read through the column's format (`statReadsAsCell`).
 
