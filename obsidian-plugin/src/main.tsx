@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin
+// [[C107]] obsidianPlugin, [[D89]] pluginApi
 import { Plugin, PluginSettingTab, Setting, addIcon, type App, type SettingDefinitionItem } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
@@ -46,10 +46,24 @@ interface PluginData { palette?: string; accent?: string; columnTypes?: Record<s
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
 
+const COLUMN_TYPES_EVENT = "solenoid-properties:column-types";
+const FRAME_KIND = PROPERTY_KINDS.find((kind) => kind.id === "solenoid-frame")!;
+
 export default class SolenoidPropertiesPlugin extends Plugin {
   private mounts = new Set<Mount>();
   private popups: Root | null = null;
   private data: PluginData = {};
+
+  readonly api = {
+    version: 1 as const,
+    COLUMN_TYPES_EVENT,
+    frameChip: (el: HTMLElement, key: string, value: unknown, onChange: (next: unknown) => void): void => {
+      this.chip(el, FRAME_KIND, key, value, onChange);
+    },
+    release: (el: Element): void => this.release(el),
+    columnTypes: (key: string): ColumnTypes => ({ ...this.data.columnTypes?.[key] }),
+    setColumnTypes: (key: string, types: ColumnTypes, replace = false): Promise<void> => this.setColumnTypes(key, types, replace),
+  };
 
   async onload(): Promise<void> {
     setObsidianApp(this.app);
@@ -154,6 +168,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   private async setColumnTypes(key: string, types: ColumnTypes, replace = false): Promise<void> {
     this.data.columnTypes = { ...this.data.columnTypes, [key]: replace ? { ...types } : { ...this.data.columnTypes?.[key], ...types } };
     await this.saveData(this.data);
+    this.app.workspace.trigger(COLUMN_TYPES_EVENT, key);
   }
 
   mount(el: HTMLElement, className: string, node: ReactNode): ShadowRoot {

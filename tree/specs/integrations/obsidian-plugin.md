@@ -448,6 +448,27 @@ the frame's `raw`, as Frame Input's literal source does: a picked type that cann
 shows NaN over the text, never a silent blank, and the note keeps its text ([[D72]]). The desktop file scope reaches that one path (`capabilities/default.json`). Tests:
 `pluginColumnTypes.test.ts`, `vaultCube.test.ts`, `noteFrontmatter.test.ts`, `noteNodeRanks.test.ts`.
 
+## The API for other plugins
+
+The plugin object carries `api`, a versioned API for another plugin that keeps its data in Solenoid
+Frame properties ([[D89]] pluginApi). The Decision Matrix Bases View is the first such plugin. A caller
+gets it with `app.plugins.getPlugin("solenoid-properties")?.api` and checks `api.version`. Within a
+version the shape only grows; a breaking change is version 2.
+
+| Member | What it does |
+|---|---|
+| `version` | `1` |
+| `frameChip(el, key, value, onChange)` | Mounts the Frame chip for property `key` holding `value` in `el`, the same chip the properties panel shows. It opens the Frame editor, and `onChange(next)` receives the YAML the editor saves; writing it to the note is the caller's job. The chip reads and records `key`'s column types as the panel's does. |
+| `release(el)` | Unmounts every chip `frameChip` mounted inside `el`. Call it before emptying `el`. |
+| `columnTypes(key)` | A copy of the column types recorded for Frame property `key`, `{ column: "number" \| "string" \| "date" \| "logical" }`; `{}` when none are. |
+| `setColumnTypes(key, types, replace?)` | Records column types for `key`, as the editor does on save: merged into what is there, or the whole map with `replace`. Awaits the write to `data.json`. |
+| `COLUMN_TYPES_EVENT` | `"solenoid-properties:column-types"`, triggered on `app.workspace` with the property key whenever its column types change, from the editor or through `setColumnTypes`. A caller listens with `registerEvent(app.workspace.on(api.COLUMN_TYPES_EVENT, (key) => ...))`: a type picked in the editor changes no YAML, so no metadata event says so. |
+
+A caller writes the Frame's YAML itself (`processFrontMatter`) and records the types of the columns
+it creates, so a Frame another plugin writes is typed the way the editor would type it. Release 0.1.5
+and earlier have no `api`; a caller that must support them falls back to the plugin's `chip`,
+`release` and `loadData`.
+
 ## Verifying against real Obsidian
 
 A fake `obsidian` module is not enough: it cannot show that the settings page is a separate
