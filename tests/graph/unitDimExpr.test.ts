@@ -62,8 +62,8 @@ describe("dimensional AST interpretation — functions", () => {
   });
   it("a lookup carries its return column's unit; the key is compared, not carried", () => {
     expect(evalExpr("XLOOKUP(k, ks, vs)", { k: TIME, ks: TIME, vs: LENGTH })).toEqual(LENGTH);
-    expect(evalExpr("VLOOKUP(k, t, 2)", { k: {}, t: MASS })).toEqual(MASS);
-    expect(evalExpr("LOOKUP(k, ks, vs)", { k: {}, ks: {}, vs: LENGTH })).toEqual(LENGTH);
+    // VLOOKUP and LOOKUP are retired spellings: no dimension, so the evaluator's #NAME? hint answers.
+    expect(evalExpr("VLOOKUP(k, t, 2)", { k: {}, t: MASS })).toBeNull();
     expect(evalExpr("CHOOSEROWS(t, 1)", { t: LENGTH })).toEqual(LENGTH);
   });
   it("SQRT halves the exponents", () => {

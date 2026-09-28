@@ -271,3 +271,32 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
   });
 });
 
+describe("a Work column beside a stray number column", () => {
+  it("reads Work for the duration; Cost is passthrough, never the duration", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A"] as CubeCell[] },
+      { name: "Cost", cells: [500] as CubeCell[] },
+      { name: "Work", cells: [16] as CubeCell[] },
+    ]);
+    const alone = cubeFromColumns([{ name: "Task", cells: ["A"] as CubeCell[] }, { name: "Work", cells: [16] as CubeCell[] }]);
+    const finish = (x: CubeValue) => scheduleTasks(x, { start: MON, workingDays: true }).output.tasks[0];
+    expect(finish(c)).toEqual(finish(alone));
+  });
+});
+
+describe("a Links frame row whose successor is inactive", () => {
+  it("is skipped, as the same link in the inactive row's own Predecessors cell is", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "Skip"], type: "string" },
+      { name: "Duration", cells: [1, 1, 1], type: "number" },
+      { name: "Active", cells: [true, true, false], type: "logical" },
+    ]);
+    const links = { __frame: true as const, columns: [
+      { name: "Successor", type: "string" as const, values: ["Skip"] },
+      { name: "Predecessor", type: "string" as const, values: ["A"] },
+    ] };
+    const r = scheduleTasks(c, { start: MON, workingDays: true, links });
+    expect(r.output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+    expect(col(r.cube, "Start")[2]).toBeNull();
+  });
+});

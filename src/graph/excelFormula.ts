@@ -238,12 +238,12 @@ export function parseFormula(expr: string): Ast | null {
 
 export function formulaSyntaxHint(expr: string): string | null {
   const s = expr.replace(/"[^"]*"?/g, '""').trim();
-  if (/[{}]/.test(s)) return "Braces { } aren't formula syntax — remove them (array literals aren't supported; wire a List or Table input instead)";
-  if (s.startsWith("=")) return "Drop the leading = — type just the formula body";
+  if (/[{}]/.test(s)) return "Braces { } aren't formula syntax. Remove them: array literals aren't supported, so wire a List or Table input instead";
+  if (s.startsWith("=")) return "Drop the leading =, and type just the formula body";
   if (/;/.test(s)) return "Separate arguments with commas, not semicolons";
   const openB = (s.match(/\[/g) ?? []).length;
   const closeB = (s.match(/\]/g) ?? []).length;
-  if (openB !== closeB) return "Unclosed [ — a whole column is [Name], this row's cell is @[Name]";
+  if (openB !== closeB) return "Unclosed [. A whole column is [Name], and this row's cell is @[Name]";
   const bare = s.replace(/\[@\[[^\]]*\]\]|\[[^\]]*\]/g, "[]");
   const open = (bare.match(/\(/g) ?? []).length;
   const close = (bare.match(/\)/g) ?? []).length;
@@ -803,7 +803,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       const redirect = LEGACY_ALIASES[name];
       if (redirect) return solError("#NAME?", `Use ${redirect}`);
       const frameNode = FRAME_SURFACE_NAMES[name];
-      if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node, or a Computed Column for row math`);
+      if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas. Use the ${frameNode} node, or a Computed Column for row math`);
       const nodeVerb = NODE_SURFACE_NAMES[name];
       if (nodeVerb) return solError("#NAME?", `Use the ${nodeVerb} node`);
       if (!resolveExcelFunction(name)) return solError("#NAME?", `Unknown function ${name}`);
@@ -817,7 +817,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       if (sol) return sol;
       if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
         if (RANGE_POSITIONAL.has(name)) {
-          return solError("#SHAPE!", `${name} over a matrix isn't supported yet — wire the matrix through its node`);
+          return solError("#SHAPE!", `${name} over a matrix isn't supported yet. Wire the matrix through its node`);
         }
         if (RANGE_FUNCTIONS.has(name)) {
           argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
@@ -827,7 +827,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       }
       if (!EXCEL_IMPL_META[name]?.cxArgs && !NULL_INSPECTING.has(name) && !takesWholeArgs(name)
           && argv.some(containsCx)) {
-        return solError("#TYPE!", `${name} doesn't compute on complex numbers — use the IM* family`);
+        return solError("#TYPE!", `${name} doesn't compute on complex numbers. Use the IM* family`);
       }
       if (takesWholeArgs(name)) {
         if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a, i) => !isArr(a) && isMissing(a) && !blanks.settled[i])) return null;

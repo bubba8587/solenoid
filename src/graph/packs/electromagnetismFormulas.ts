@@ -23,7 +23,7 @@ export const ELECTROMAGNETISM_PACK_FORMULAS: PackFormula[] = [
       if (id == null) return null;
       const k = String(id);
       const m = PHYS_CONSTANTS[k as PhysConstOp];
-      return m ? m.value : solError("#NAME?", `Unknown constant "${k}" — c, G, h, e, kb, na… (case matters)`);
+      return m ? m.value : solError("#NAME?", `Unknown constant "${k}". Try c, G, h, e, kb or na (case matters)`);
     },
     returns: "number", arity: [1, 1],
     signature: "id — c, G, h, e, kb, na…",

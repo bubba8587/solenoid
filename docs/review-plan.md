@@ -492,13 +492,13 @@ Leaves: [[D77]] constantsAlwaysWin, [[C50]] lambdaBindsByName.
 Commits: 3f83b611, 244cb2f5, 83806909, 35fbead5, 524514f5
 Where: `separateOverlaps`, `separateAll`, `groupPush.ts` (9 commits), `tidyArrange.ts`
 Leaves: [[C112]] noOverlapsEver, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast.
-- [ ] Greedy top-left placement "moves only right or down": a canvas that grows without
+- [x] Checked 2026-09-28: 12 random scenes × three expand/collapse patterns × 50 cycles: the box grows only while starting overlaps separate (the first few cycles), then stays fixed with no overlaps, since collapse restores every card. Was: Greedy top-left placement "moves only right or down": a canvas that grows without
       bound after repeated expand/collapse cycles (drift). Run 50 cycles, measure bbox.
-- [ ] Two locked groups that overlap each other: neither moves, pass ends with overlap;
+- [ ] NEEDS AUTHOR 2026-09-28: silent, and a layout action can create it (a locked group expanding onto another, or Tidy inside one widening it onto a locked neighbour); C112 says two locked groups that overlap are left alone. Options: keep it silent; have `separateAll` return the leftover fixed pairs and raise an alert naming both; or clamp a locked group's growth into another locked box (an exception under D63). Was: Two locked groups that overlap each other: neither moves, pass ends with overlap;
       is that reported or silent?
-- [ ] "What the op placed is preferred": Tidy on a selection inside a group inside a
+- [x] Checked 2026-09-28 (groups don't nest, so a selection inside a locked group): the group's corner holds, members stay inside, the neighbour the grown box covers moves right; unlocked, the grown group moves itself instead, per auto-arrange-tidy § After the layout. Was: "What the op placed is preferred": Tidy on a selection inside a group inside a
       locked group.
-- [ ] Undo after a layout pass: one undo step or one per moved card?
+- [x] Checked 2026-09-28: one; every layout move schedules the history, which merges calls within 400 ms into one record (25 moves over 33 ms gave one entry, one undo back to the start). Was: Undo after a layout pass: one undo step or one per moved card?
 
 ## 27. Generator caps
 Commits: 6e6bac53, 03b6662c, 63108591, 42a6a32e
@@ -508,7 +508,7 @@ Commits: 6e6bac53, 03b6662c, 63108591, 42a6a32e
       check is: every generator listed there (SEQUENCE, RANDARRAY, MAKEARRAY, LINSPACE,
       REPEAT, GEOMETRIC, RANGE, PADLEFT/RIGHT, EXPAND, MUNIT, DIAGONAL, OUTER) hits the cap
       on BOTH surfaces with `#OVERFLOW!`, and RANGE caps on `rangeCount` before allocating.
-- [ ] The cap error: same code and message on card and formula? What about a cap hit
+- [x] Fixed 2026-09-28: every listed generator refuses past a million on both surfaces with `#OVERFLOW!` except MAKEARRAY, whose card capped at 40,000 cells and rounded its size while the formula took a million and truncated; the card takes the shared cap and truncates now. The formula's `capped` compared the unrounded count, so `LINSPACE(0,1,1000000.4)` refused with "1000000 exceeds the 1000000 element limit" where the card built it; it rounds first now (`generatorCaps.test.ts`). NEEDS AUTHOR: six generators word the message differently per surface (same code); and a computed column caps each row but not the column, so 20 rows of `SEQUENCE(900000)` hold 18M elements (2.2 s, ~150 MB): options are a running column total past which rows are #OVERFLOW!, or one refusal for the column. Was: The cap error: same code and message on card and formula? What about a cap hit
       INSIDE a computed column (per row × rows)?
 
 ## 28. Test infrastructure: shared worker (isolate: false)
@@ -537,38 +537,38 @@ Commits: 94b25efb (nine bugs), 9c4dd3f8, 12bca4cb, 365e0fd7, ba686b25, 9afe6faf,
 - [ ] Reports export what the screen shows (ba686b25): a Report with a live card mid-fetch.
 
 ## 30. Smaller 09-23/24 items, one look each
-- [ ] e0ee9307 Chart Builder: every option offered is honored, pinned by `chartTitles.test.ts`
+- [ ] Test gap 2026-09-28, no bug reproduced: nothing lists what renderers read, so the reverse direction is unguarded; the one read not offered found by hand is Merge Plots over XY data (`opts.alpha`, `opts.markersize`), reach unconfirmed. Proposal: a per-op `RENDERER_READS` table beside the targets, with `reads ⊆ keys` tested. Was: e0ee9307 Chart Builder: every option offered is honored, pinned by `chartTitles.test.ts`
       key sets. The reverse: an option the RENDERER reads that the builder doesn't offer is
       only caught if the test enumerates renderer reads. Does it?
-- [ ] 06dbb7fb Sankey merges repeated From→To flows: a cycle (A→B, B→A) and a self-loop.
-- [ ] Schedule (c72928bd, 60799f21, 83dd630a, 4e23e39a, b3b48373, e591588e, d741d0f7):
+- [x] Checked 2026-09-28: A→B plus B→A keeps one direction, a self-loop stays in the payload and the renderer skips it, +10 and −10 net to nothing. Was: 06dbb7fb Sankey merges repeated From→To flows: a cycle (A→B, B→A) and a self-loop.
+- [x] Fixed 2026-09-28: a stray number column (Cost) was taken as the Duration even with a Work column there (Cost 500 and Work 16 scheduled 500 days); the numeric fallback applies only with no Work column now. A Links row whose successor is inactive errored "isn't in the plan" while the same link in the row's own cell scheduled fine; it is skipped now, and Gantt already skipped it (`scheduleCpm.test.ts`). Was: Schedule (c72928bd, 60799f21, 83dd630a, 4e23e39a, b3b48373, e591588e, d741d0f7):
       `scheduleCpm.ts` took 5 commits in a day. Minutes-mode day > 16 h; Duration fallback
       "skips dates and every named column"; a Links frame with a dependency on a row the
       Schedule dropped (b3b48373 says Gantt skips it; does CPM?).
-- [ ] 0d1a7526 column reads match by index only for plain digits: `"01"`, `" 1"`, `"1.0"`,
+- [x] Checked 2026-09-28: `"01"` and `" 1"` read column 1, `"1.0"`, `"1e0"`, `"+2"` read nothing, a column named "2" beats index 2, and the engine uses the same digit rule. Was: 0d1a7526 column reads match by index only for plain digits: `"01"`, `" 1"`, `"1.0"`,
       `"1e0"` as a column ref. Also a column literally NAMED "2".
-- [ ] bf4030df a throwing computed-column formula errors its ROW: a formula that throws
+- [x] Checked 2026-09-28: a throw on row 1 errors that row alone, on every row every row, and a throwing LAMBDA errors its row. Was: bf4030df a throwing computed-column formula errors its ROW: a formula that throws
       on row 1 only vs every row; and a throw inside a LAMBDA called by the column.
-- [ ] c8b1a2f0 Window runs linear per partition; Replace Values drops stale source text:
+- [x] Checked 2026-09-28: error partition keys group by code (frame-verbs § Identity keys); a one-row partition gives null for a window of 2 and itself for 1. Was: c8b1a2f0 Window runs linear per partition; Replace Values drops stale source text:
       a partition key that is an error cell; a partition of size 1 with a rolling window.
-- [ ] 0fbb3200 numeric solve near a domain's right edge: `SQRT(x) = 2` on [0, 4]; and a
+- [x] Checked 2026-09-28: `SQRT(x)=2` gives 4, roots exactly at the edge give 4, and no root gives `#SOLVE!`, never the edge. Was: 0fbb3200 numeric solve near a domain's right edge: `SQRT(x) = 2` on [0, 4]; and a
       root exactly AT the edge; and no root (must say so, not return the edge).
-- [ ] e7b885c1 gated file refused before the library: the check runs on the path or the
+- [x] Checked 2026-09-28: `loadRefusal` checks the parsed content, not the path; a binary renamed .csv fails `JSON.parse` first. Was: e7b885c1 gated file refused before the library: the check runs on the path or the
       content? A file renamed .csv but holding a binary.
-- [ ] 297ca71e name claims release the old name; 5f4017d6 rename Group By → Group Lists:
+- [x] Checked 2026-09-28: `claim` releases the old name, and nothing in src, seeds, help or docs still says Group By; one stale line in node-coverage (Group Lists' outputs) is fixed. Was: 297ca71e name claims release the old name; 5f4017d6 rename Group By → Group Lists:
       seeds, help, catalog, node-coverage all consistent (`nodeNames.test.ts` lost 38 lines
       in the test cut, item 13).
-- [ ] 2b45f2ab collapse/isolate drop hidden nodes from the selection; 7b58971d isolate via
+- [x] Checked 2026-09-28 by reading: selection lives in the model, React Flow's own delete is vetoed, delete reads the model's flags, and collapse and isolate rewrite that selection. Was: 2b45f2ab collapse/isolate drop hidden nodes from the selection; 7b58971d isolate via
       RF className: a keyboard shortcut (Delete, Ctrl+C) with a hidden node still in the
       RF selection state vs the model selection.
-- [ ] 8e957255 lookups carry the return column's unit in a formula; 71aa4d2a SUMIFS reads
+- [x] Checked 2026-09-28: XLOOKUP over a °C column gives a reading and follows block 16's table (two added #UNIT!, their difference 10 K, SUMIFS #UNIT!, AVERAGEIFS a reading). Was: 8e957255 lookups carry the return column's unit in a formula; 71aa4d2a SUMIFS reads
       Values in the column's unit: XLOOKUP returning a °C column → item 16's table applies.
-- [ ] a7a51da5 unit into an unknown function is #UNIT!: the dimension pass's function list
+- [x] Fixed 2026-09-28: IFS and SWITCH refused units IF carries, though each answers one of its branches; they carry the branches' unit now. A retired spelling on a united input said "#UNIT! doesn't carry units" instead of its `#NAME? Use …` hint; it answers the hint now, and the dead VLOOKUP, HLOOKUP, LOOKUP and SUMIF entries are gone (`unitWiring.test.ts`). NEEDS AUTHOR: functions that only rearrange or pick values (SORTBY, VSTACK/HSTACK, TOCOL/TOROW, REVERSE, SHIFT, the FILL* family, NTHELEMENT, CLAMP, COALESCE, TRIMMEAN, WAVG, RANGE, DIFF, RUNNING) are #UNIT! on a united input; options are adding them to the preserve and pick sets, keeping them loud and listing them in the spec, or a per-function unit role in the metadata. Was: a7a51da5 unit into an unknown function is #UNIT!: the dimension pass's function list
       vs the full catalog: any function missing from the list makes a united input error.
       Diff `unitDimExpr.ts`'s known-function set against `excelFunctions.ts` registrations.
-- [ ] 25c4dfd4 also fixed "demo vault cached a failed chunk load forever": confirmed
+- [x] Settled with block 35 (not a flood). Was: 25c4dfd4 also fixed "demo vault cached a failed chunk load forever": confirmed
       `demoVault.ts:49` retries on every read with no backoff or cap (see item 35).
-- [ ] Em-dash ban (c83525f8 "enforced over every shipped string"): `excelFormula.ts:815`
+- [x] Fixed 2026-09-28: 30 error messages, formula hints and validator messages across 16 files held an em dash; all rewritten, and `uiCopy.test.ts` sweeps messages built in code now. The bare "—" empty-value glyph stays. Was: Em-dash ban (c83525f8 "enforced over every shipped string"): `excelFormula.ts:815`
       ships "Frames don't flow through formulas — use the …" with an em dash inside a
       `solError` message. So the lint doesn't reach error messages built in code. Sweep
       `solError(` / `unitError(` message literals for `—`.

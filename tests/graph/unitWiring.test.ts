@@ -180,6 +180,14 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect((run("a * n") as { code?: string }).code).toBe("#UNIT!"); // a scale must be a constant
     expect(displayMagnitudeOf(run("n + a") as UnitCell)).toBeCloseTo(25, 9); // under + it is still a delta
   });
+  it("IFS and SWITCH carry their branches' unit, as IF does; a retired name keeps its #NAME? hint", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const m5 = applyFcUnit(5, "m"), m7 = applyFcUnit(7, "m");
+    const run = (expr: string, env: Record<string, unknown[]>) => new ExpressionNode({ expr }).data(env as never).result;
+    expect((run("IFS(c, a, TRUE, b)", { a: [m5], b: [m7], c: [false] }) as UnitCell).display).toBe("m");
+    expect((run("SWITCH(k, 1, a, b)", { a: [m5], b: [m7], k: [2] }) as UnitCell).value).toBe(7);
+    expect(run("STDEVP(a)", { a: [[m5, m7]] })).toMatchObject({ code: "#NAME?", message: "Use STDEV.P" });
+  });
   it("°F reads back as typed: 20 °F equals 20 and INT keeps it", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");

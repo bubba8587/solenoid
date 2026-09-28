@@ -94,7 +94,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
   const displayName = (sn: SavedNode): string => sn.name ?? sn.id;
 
   if (g.v !== CURRENT_SAVE_VERSION) {
-    issues.push({ line: null, node: null, message: `save version ${g.v} is not this build's ${CURRENT_SAVE_VERSION} — the loader only opens the current format.` });
+    issues.push({ line: null, node: null, message: `save version ${g.v} is not this build's ${CURRENT_SAVE_VERSION}. The loader opens only the current format.` });
   }
 
   // One headless instance per node: init can change the socket set, so a per-class cache would lie.
@@ -111,7 +111,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
 
     const Ctor = registry.get(sn.type);
     if (!Ctor) {
-      issues.push({ line: at(name), node: name, message: `unknown node type "${sn.type}"${nearest(sn.type, registry.keys())} — the permissive loader would keep it only as a Placeholder. Types are class names (\`npm run ai-grounding\` lists them all).` });
+      issues.push({ line: at(name), node: name, message: `unknown node type "${sn.type}"${nearest(sn.type, registry.keys())}: the permissive loader would keep it only as a Placeholder. Types are class names (\`npm run ai-grounding\` lists them all).` });
       instances.set(sn.id, null);
       continue;
     }
@@ -136,7 +136,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
     for (const k of Object.keys(sn.init ?? {})) {
       if (!initOk(k)) {
         const candidates = new Set<string>([...INIT_KEY_SET, ...litKeys, ...strKeys]);
-        issues.push({ line: at(name), node: name, message: `unknown init field "${k}"${nearest(k, candidates)} — ${sn.type} carries no such field, so this value would be silently ignored.` });
+        issues.push({ line: at(name), node: name, message: `unknown init field "${k}"${nearest(k, candidates)}: ${sn.type} carries no such field, so this value would be silently ignored.` });
       }
     }
 
@@ -169,14 +169,14 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
 
     for (const k of Object.keys(sn.literals ?? {})) {
       if (!info.hasLiterals) {
-        issues.push({ line: at(name), node: name, message: `lit:${k} — ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.` });
+        issues.push({ line: at(name), node: name, message: `lit:${k}: ${sn.type} takes no inline numeric literals (it declares no \`literals\` map), so the loader would silently drop this value.` });
       } else if (typeof sn.literals![k] !== "number") {
-        issues.push({ line: at(name), node: name, message: `lit:${k} must be a number (got ${JSON.stringify(sn.literals![k])}) — non-numeric inline values use str:.` });
+        issues.push({ line: at(name), node: name, message: `lit:${k} must be a number (got ${JSON.stringify(sn.literals![k])}). Non-numeric inline values use str:.` });
       }
     }
     for (const k of Object.keys(sn.stringLiterals ?? {})) {
       if (!info.hasStringLiterals) {
-        issues.push({ line: at(name), node: name, message: `str:${k} — ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.` });
+        issues.push({ line: at(name), node: name, message: `str:${k}: ${sn.type} takes no inline text literals (it declares no \`stringLiterals\` map), so the loader would silently drop this value.` });
       } else if (typeof sn.stringLiterals![k] !== "string") {
         issues.push({ line: at(name), node: name, message: `str:${k} must be a string (got ${JSON.stringify(sn.stringLiterals![k])}).` });
       }
@@ -232,7 +232,7 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
 
   const cycleNames = findCycle(g);
   if (cycleNames) {
-    issues.push({ line: null, node: null, severity: "warning", message: `dependency cycle: ${cycleNames.join(" → ")} — these nodes will compute as #CIRC!.` });
+    issues.push({ line: null, node: null, severity: "warning", message: `dependency cycle: ${cycleNames.join(" → ")}. These nodes will compute as #CIRC!.` });
   }
 
   return issues;
@@ -275,7 +275,7 @@ export function validateText(text: string): TextValidation {
   const allLines = text.split("\n");
   const sepIdx = allLines.indexOf("---");
   if (sepIdx === -1) {
-    issues.push({ line: null, node: null, message: `missing the "---" separator line — the sidecar JSON block after it is required (an empty graph's sidecar is just {}).` });
+    issues.push({ line: null, node: null, message: `missing the "---" separator line. The sidecar JSON block after it is required (an empty graph's sidecar is just {}).` });
   }
   const nodeLineEnd = sepIdx === -1 ? allLines.length : sepIdx;
 

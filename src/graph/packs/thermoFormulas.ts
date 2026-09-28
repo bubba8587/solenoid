@@ -13,7 +13,7 @@ export const THERMO_PACK_FORMULAS: PackFormula[] = [
       if (!Number.isFinite(z)) return null;
       const key = property == null ? "pressure" : String(property).toLowerCase();
       const field = ({ temp: "T", temperature: "T", pressure: "p", density: "rho", sound: "a" } as const)[key];
-      if (!field) return solError("#VALUE!", `Unknown property "${key}" — temp, pressure, density, sound`);
+      if (!field) return solError("#VALUE!", `Unknown property "${key}". Use temp, pressure, density or sound`);
       const pt = standardAtmosphere(z);
       return isSolError(pt) ? pt : pt[field];
     },
@@ -26,7 +26,7 @@ export const THERMO_PACK_FORMULAS: PackFormula[] = [
       if (substance == null || t == null) return null;
       const id = String(substance) as AntoineOp;
       const meta = ANTOINE[id];
-      if (!meta) return solError("#NAME?", `Unknown substance "${id}" — water, ethanol, acetone…`);
+      if (!meta) return solError("#NAME?", `Unknown substance "${id}". Try water, ethanol or acetone`);
       const tc = Number(t);
       if (!Number.isFinite(tc)) return null;
       return tc <= -meta.C

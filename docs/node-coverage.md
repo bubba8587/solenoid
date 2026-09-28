@@ -304,7 +304,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 
 ### Aggregation
 
-- **Group Lists**: a 1-D parallel-list group and aggregate (keys and values outputs).
+- **Group Lists**: a 1-D parallel-list group and aggregate (one Key, Value frame output).
 - **GROUPBY**: groups a Frame's rows by key columns and aggregates.
 - **SUMIFS** ([[C49]] filterOneJob): a conditional aggregate over one Frame.
   - An op selector (SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS), a Values-column field (hidden for COUNTIFS), and extensible criteria rows (column, test and value, AND like Excel's *IFS).

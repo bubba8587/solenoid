@@ -126,7 +126,7 @@ function runColumn<C>(
     if (p === "row") { bindings.push({ kind: "row" }); continue; }
     if (p === "rows") { bindings.push({ kind: "rows" }); continue; }
     if (reserved.includes(p)) {
-      return solError("#REF!", `"${p}" is a reserved input name — rename the variable or the column`);
+      return solError("#REF!", `"${p}" is a reserved input name. Rename the variable or the column`);
     }
     sideVars.push(p);
     bindings.push({ kind: "side", value: opts.sideValue?.(p, "var") });
@@ -153,7 +153,7 @@ function runColumn<C>(
     let m = atVerdict.get(key);
     if (!m || m.v !== v) {
       const err = v.some((x) => Array.isArray(x))
-        ? solError("#SHAPE!", `@${key} reads one value per row — a matrix has no single this-row value`)
+        ? solError("#SHAPE!", `@${key} reads one value per row, and a matrix has no single this-row value`)
         : v.length !== rows
           ? solError("#SHAPE!", `@${key}: ${v.length} value${v.length === 1 ? "" : "s"} for ${rows} row${rows === 1 ? "" : "s"}`)
           : null;
@@ -176,7 +176,7 @@ function runColumn<C>(
       return { hit: false };
     },
     side: (key) => {
-      if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name — rename the variable or the column`);
+      if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name. Rename the variable or the column`);
       if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
       return at(key, sideCache.get(key));
     },
@@ -184,7 +184,7 @@ function runColumn<C>(
     whole: (key) => {
       const c = aliased(key) ?? colByName.get(key);
       if (c) return wholeOf(c);
-      if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name — rename the variable or the column`);
+      if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name. Rename the variable or the column`);
       if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
       return sideCache.get(key);
     },

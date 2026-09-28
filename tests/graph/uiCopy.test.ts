@@ -1,5 +1,7 @@
 // [[B14]]
 import { describe, it, expect } from "vitest";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { uiStrings, attrStrings, collectCopyRecords, type Unit } from "../../src/graph/copyCorpus";
 import { NODE_EXCEL, EXCEL_GAP } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -346,5 +348,23 @@ describe("UI copy", () => {
       const hit = RULES.find((r) => r.re.test(text));
       expect(hit?.id, `false positive on: ${text}`).toBeUndefined();
     }
+  });
+});
+
+describe("messages built in code follow section 7 too", () => {
+  // The copy corpus reads catalog and component strings; an error message or a hint is assembled in code, so it is swept here.
+  const files = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+    e.isDirectory() ? files(path.join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [path.join(dir, e.name)] : []);
+  it("no error message, formula hint or thrown message holds an em dash", () => {
+    const offenders: string[] = [];
+    for (const f of files(path.resolve(__dirname, "../../src"))) {
+      fs.readFileSync(f, "utf8").split("\n").forEach((line, i) => {
+        if (/^\s*\/\//.test(line) || !line.includes("\u2014")) return;
+        if (/(solError|unitError|new Error)\(|message:|return "[^"]*\u2014/.test(line) && !/"\u2014"/.test(line) && !/Duplicate formula registration/.test(line)) {
+          offenders.push(`${path.relative(process.cwd(), f)}:${i + 1}`);
+        }
+      });
+    }
+    expect(offenders, "section 7 \"no em dashes\" in messages built in code").toEqual([]);
   });
 });

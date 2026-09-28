@@ -55,7 +55,7 @@ export function payoffPlan(debts: readonly Debt[], extra: number, order: PayoffO
   while (balances.some((b) => b > 0.005)) {
     if (++month > MAX_MONTHS) {
       const worst = rank.find((i) => balances[i] > 0.005) ?? 0;
-      throw new Error(`the payments never clear "${debts[worst].name}" — raise a minimum or the extra`);
+      throw new Error(`the payments never clear "${debts[worst].name}". Raise a minimum or the extra`);
     }
     let freed = pot;
     for (let i = 0; i < n; i++) {

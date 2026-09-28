@@ -1491,9 +1491,8 @@ function toList(x: unknown): unknown[] {
 const numList = (x: unknown) => toList(x) as ListCell[];
 function capped(fn: string, count: number, make: () => unknown[]): unknown[] | SolError {
   if (!Number.isFinite(count)) return VALUE(fn);
-  if (count > MAX_GENERATED) {
-    return solError("#OVERFLOW!", `${fn} count ${Math.round(count)} exceeds the ${MAX_GENERATED} element limit`);
-  }
+  const k = Math.round(count);
+  if (k > MAX_GENERATED) return solError("#OVERFLOW!", `${fn} count ${k} exceeds the ${MAX_GENERATED} element limit`);
   return make();
 }
 
@@ -1534,7 +1533,7 @@ const RUNNING_ARG_OPS: Record<string, RunningOp> = {
 registerInternal("RUNNING", (op, list, w) => {
   if (op == null || list == null) return null;
   const key = RUNNING_ARG_OPS[String(op).trim().toUpperCase()];
-  if (!key) return solError("#VALUE!", `RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT, STDEV — got "${String(op)}"`);
+  if (!key) return solError("#VALUE!", `RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT or STDEV, not "${String(op)}"`);
   if (w === undefined) return running(key, numList(list), null);
   if (w == null) return null;
   const n = Number(w);
@@ -2095,7 +2094,7 @@ function asCxArg(v: unknown, name: string): Cx | SolError {
   if (isCx(v)) return v;
   if (typeof v === "number") return cx(v, 0);
   if (typeof v === "string") {
-    return parseCx(v) ?? solError("#VALUE!", `${name}: "${v}" is not a complex number — the form is "a+bi"`);
+    return parseCx(v) ?? solError("#VALUE!", `${name}: "${v}" is not a complex number. Write it as "a+bi"`);
   }
   return solError("#TYPE!", `${name} expects a complex number`);
 }

@@ -134,7 +134,7 @@ describe("validateGraph — semantics", () => {
   it("flags a save version that is not this build's", () => {
     for (const v of [99, 1]) {
       const { issues } = validateText(`A: NumberInputNode value=1\n---\n{ "v": ${v} }`);
-      expect(issues.some((i) => i.message.includes("only opens the current format"))).toBe(true);
+      expect(issues.some((i) => i.message.includes("opens only the current format"))).toBe(true);
     }
   });
 

@@ -564,7 +564,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     }
     const listOp = conditions.find((c) => LIST_FILTER_OPS.has(c.op));
     if (listOp) {
-      const err = solError("#SHAPE!", `${listOp.op} needs a list column — connect a cube, not a frame`);
+      const err = solError("#SHAPE!", `${listOp.op} needs a list column. Connect a cube, not a frame`);
       return { ...(await emitFrame(this, gen, err)), dropped: this.publishDropped(gen, err) };
     }
     if (conditions.length === 0) {

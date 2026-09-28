@@ -123,7 +123,7 @@ export function combinationsOf(arr: readonly Cell[], k: number, kind: "combinati
   if (kind === "combinations") for (let i = 0; i < kk; i++) count = (count * (n - i)) / (i + 1);
   else for (let i = 0; i < kk; i++) count *= n - i;
   count = Math.round(count);
-  if (count > COMBO_CAP) return solError("#OVERFLOW!", `That makes ${count} ${kind} — over the ${COMBO_CAP} cap. Use a shorter list or a smaller k.`);
+  if (count > COMBO_CAP) return solError("#OVERFLOW!", `That makes ${count} ${kind}, over the ${COMBO_CAP} cap. Use a shorter list or a smaller k.`);
   const out: Cell[][] = [];
   const cur: Cell[] = [];
   if (kind === "combinations") {

@@ -22,7 +22,7 @@ export const FLUIDS_PACK_FORMULAS: PackFormula[] = [
       if (material == null) return null;
       const id = String(material);
       const row = PIPE_ROUGHNESS.find((m) => m.id === id);
-      return row ? row.mm : solError("#NAME?", `Unknown material "${id}" — pvc, copper, steel, castiron…`);
+      return row ? row.mm : solError("#NAME?", `Unknown material "${id}". Try pvc, copper, steel or castiron`);
     },
     returns: "number", arity: [1, 1],
     signature: "material — pvc, copper, steel, castiron…",

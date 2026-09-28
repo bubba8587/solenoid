@@ -6,6 +6,7 @@ import { compilePositional, parseFormula, formulaSyntaxHint, extractVariables } 
 import { isLambdaValue, type LambdaValue } from "./lambda";
 import { solError, isSolError, type SolError, type SolErrorCode } from "../errorValue";
 import { guardFinite } from "../valueKinds";
+import { MAX_GENERATED } from "./listOps";
 import { isUnitCell, tagDim, magnitudeOf, unitError, fromUnit, READINGS_FOLD, type UnitCell } from "../unitValue";
 import { dimEval, affineWeight, type DimEnv } from "../unitDimExpr";
 import { type Dim, type Unit, dimEqual, dimPowerOf, isDimensionless } from "../dimension";
@@ -411,7 +412,6 @@ export class ScanLambdaNode extends ClassicPreset.Node {
 
 // ─── MAKEARRAY ────────────────────────────────────────────────────────────────────
 
-const MAKEARRAY_MAX_CELLS = 40000;
 
 export class MakeArrayNode extends ClassicPreset.Node {
   /** Receives UnitCell tags intact and runs the dimension algebra itself. */
@@ -441,15 +441,15 @@ export class MakeArrayNode extends ClassicPreset.Node {
   data(inputs: { rows?: number[]; cols?: number[]; lambda?: unknown[] }): { result: Mat | SolError | null } {
     const rowsRaw = readInput(inputs.rows, this.literals.rows ?? 0);
     const colsRaw = readInput(inputs.cols, this.literals.cols ?? 0);
-    const rows = rowsRaw === null ? 0 : Math.round(rowsRaw);
-    const cols = colsRaw === null ? 0 : Math.round(colsRaw);
+    const rows = rowsRaw === null ? 0 : Math.floor(rowsRaw);
+    const cols = colsRaw === null ? 0 : Math.floor(colsRaw);
     const { fn, err, code } = resolveFn(
       inputs.lambda?.[0], this.stringLiterals.formula,
       "row * col", ["row", "col"], 2, true);
     if (!fn) { this.cachedResult = null; this.cachedError = err; return fnError(err!, code); }
     if (rows < 1 || cols < 1) { this.cachedResult = null; this.cachedError = null; return { result: null }; }
-    if (rows * cols > MAKEARRAY_MAX_CELLS) {
-      const msg = `Too large: ${rows}×${cols}`;
+    if (rows * cols > MAX_GENERATED) {
+      const msg = `MAKEARRAY count ${rows * cols} exceeds the ${MAX_GENERATED} element limit`;
       this.cachedResult = null;
       this.cachedError = msg;
       return fnError(msg, "#OVERFLOW!");

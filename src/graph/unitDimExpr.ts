@@ -6,7 +6,7 @@ import {
 } from "./dimension";
 import { unitError, READINGS_ADD, READINGS_SCALE, READINGS_FOLD } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
-import { resolveExcelFunction } from "./excelFunctions";
+import { resolveExcelFunction, LEGACY_ALIASES } from "./excelFunctions";
 
 export type DimResult = Dim | SolError | null;
 
@@ -50,17 +50,24 @@ const PICK_LIST_FNS = new Set(["SORT", "UNIQUE", "TAKE", "DROP", "FILTER", "TRAN
 
 /** Criteria aggregates and lookups: the dimension of the value argument; keys and criteria are compared, not carried. */
 const CRITERIA_VALUE_ARG: Record<string, (argc: number) => number> = {
-  SUMIF: (n) => (n > 2 ? 2 : 0), AVERAGEIF: (n) => (n > 2 ? 2 : 0),
+  AVERAGEIF: (n) => (n > 2 ? 2 : 0),
   SUMIFS: () => 0, AVERAGEIFS: () => 0, MAXIFS: () => 0, MINIFS: () => 0,
-  XLOOKUP: () => 2, VLOOKUP: () => 1, HLOOKUP: () => 1, LOOKUP: (n) => (n > 2 ? 2 : 1),
+  XLOOKUP: () => 2,
 };
-const CRITERIA_SUMS = new Set(["SUMIF", "SUMIFS"]);
+const CRITERIA_SUMS = new Set(["SUMIFS"]);
 
 /** The answer is one of these arguments, as IF's is one of its branches. */
 function branchArgs(fn: string, argc: number): number[] | null {
   if (fn === "IF") return argc > 2 ? [1, 2] : [1];
   if (fn === "IFERROR" || fn === "IFNA") return [0, 1];
   if (fn === "CHOOSE") return Array.from({ length: Math.max(0, argc - 1) }, (_, i) => i + 1);
+  if (fn === "IFS") return Array.from({ length: Math.floor(argc / 2) }, (_, i) => 2 * i + 1);
+  if (fn === "SWITCH") {
+    const out: number[] = [];
+    for (let i = 2; i < argc; i += 2) out.push(i);
+    if (argc > 1 && argc % 2 === 0) out.push(argc - 1);
+    return out;
+  }
   return null;
 }
 
@@ -94,6 +101,8 @@ function multiplyAll(args: DimResult[]): DimResult {
 
 function callDim(name: string, argDims: DimResult[]): DimResult {
   const fn = name.toUpperCase();
+  // A retired spelling answers #NAME? with its replacement's name, united input or not.
+  if (fn in LEGACY_ALIASES) return null;
 
   if (RESULT_DIMLESS_FNS.has(fn)) {
     for (const a of argDims) if (isSolError(a)) return a;

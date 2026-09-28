@@ -21,7 +21,7 @@ export const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
       const v = Number(value);
       if (!Number.isFinite(v)) return null;
       const s = (series == null ? "E24" : String(series).toUpperCase()) as ESeriesOp;
-      if (!(s in E_SERIES)) return solError("#VALUE!", `Unknown E-series "${s}" — E3, E6, E12, E24, E48, E96`);
+      if (!(s in E_SERIES)) return solError("#VALUE!", `Unknown E-series "${s}". Use E3, E6, E12, E24, E48 or E96`);
       if (v <= 0) return solError("#DOMAIN!", "A component value must be a positive number");
       return nearestESeries(v, s);
     },
@@ -36,7 +36,7 @@ export const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
       if (!Number.isFinite(n)) return null;
       const p = property == null ? "diameter" : String(property).toLowerCase();
       if (!["diameter", "area", "resistance", "ampacity"].includes(p)) {
-        return solError("#VALUE!", `Unknown property "${p}" — diameter, area, resistance, ampacity`);
+        return solError("#VALUE!", `Unknown property "${p}". Use diameter, area, resistance or ampacity`);
       }
       const w = awgWire(n);
       if (isSolError(w)) return w;

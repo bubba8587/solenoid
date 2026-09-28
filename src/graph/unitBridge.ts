@@ -58,7 +58,7 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
   const one = (v: unknown): unknown => {
     if (v === null || isSolError(v)) return v;
     if (isRatio(v)) {
-      return unitError("This is a pure ratio (its units canceled) — it can't be re-labeled with a unit. Multiply by a base quantity instead.");
+      return unitError("This is a pure ratio (its units canceled), so it can't be re-labeled with a unit. Multiply by a base quantity instead.");
     }
     if (isUnitCell(v)) {
       if (!dimEqual(v.dim, u.dim)) {

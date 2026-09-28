@@ -5,8 +5,9 @@ import { solError, isSolError, type SolError } from "../errorValue";
 
 // Serial 1 is 1900-01-01, so the Unix epoch is serial 25569.
 
+/** Rounded to the millisecond: `new Date` truncates, so 04:00 as a float serial would read 03:59:59.999. */
 export function serialToJsDate(serial: number): Date {
-  return new Date((serial - 25569) * 86400000);
+  return new Date(Math.round((serial - 25569) * 86400000));
 }
 
 export function jsDateToSerial(d: Date): number {
@@ -58,7 +59,7 @@ export function parseDate(s: string, opts?: ParseDateOptions): number | SolError
   if (num) {
     const a = +num[1], b = +num[2];
     if (a <= 12 && b <= 12 && a !== b) {
-      return solError("#AMBIGUOUS!", `"${t}" could be day/month or month/day — write the month as a name (3-Apr-2026) or use ISO (2026-04-03)`);
+      return solError("#AMBIGUOUS!", `"${t}" could be day/month or month/day. Write the month as a name (3-Apr-2026) or use ISO (2026-04-03)`);
     }
   }
   const r = chrono.parse(t, undefined, { forwardDate: false })[0];

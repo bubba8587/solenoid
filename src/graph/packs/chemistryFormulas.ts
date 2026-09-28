@@ -19,7 +19,7 @@ export const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
       if (p === "name") return meta.name;
       if (p === "symbol") return meta.symbol;
       if (p === "period") return meta.period;
-      return solError("#VALUE!", `Unknown property "${p}" — mass, number, name, symbol, period`);
+      return solError("#VALUE!", `Unknown property "${p}". Use mass, number, name, symbol or period`);
     },
     returns: "any", arity: [1, 2],
     signature: "symbol or atomic number, [property (mass)]",

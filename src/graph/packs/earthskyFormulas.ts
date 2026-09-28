@@ -24,7 +24,7 @@ export const EARTHSKY_PACK_FORMULAS: PackFormula[] = [
       if (p === "elevation") return r.elevation;
       if (p === "azimuth") return r.azimuth;
       if (p === "declination") return r.declination;
-      return solError("#VALUE!", `Unknown part "${p}" — elevation, azimuth, declination`);
+      return solError("#VALUE!", `Unknown part "${p}". Use elevation, azimuth or declination`);
     },
     returns: "number", arity: [3, 4],
     signature: "datetime UTC, lat, lon, [part (elevation)]",
@@ -67,7 +67,7 @@ export const EARTHSKY_PACK_FORMULAS: PackFormula[] = [
       if (p === "phase") return r.phase;
       if (p === "age") return r.age;
       if (p === "illumination") return r.illumination;
-      return solError("#VALUE!", `Unknown part "${p}" — phase, age, illumination`);
+      return solError("#VALUE!", `Unknown part "${p}". Use phase, age or illumination`);
     },
     returns: "number", arity: [1, 2],
     signature: "date, [part (phase)]",

@@ -80,7 +80,14 @@ const asCube = (v: CubeValue | FrameValue): CubeValue => (isCubeValue(v) ? v : f
 const LINK_SUCC_NAMES = ["successor", "task", "to"];
 const LINK_PRED_NAMES = ["predecessor", "predecessors", "from", "after", "depends on"];
 
-function applyLinksFrame(tasks: PlanTask[], links: FrameValue): void {
+function inactiveNames(level: Level | null, out = new Set<string>()): Set<string> {
+  if (!level) return out;
+  level.names.forEach((n, i) => { if (level.inactive[i]) out.add(n.trim().toLowerCase()); });
+  for (const child of level.childLevels) inactiveNames(child, out);
+  return out;
+}
+
+function applyLinksFrame(tasks: PlanTask[], links: FrameValue, inactive: ReadonlySet<string>): void {
   const succCol = links.columns.find((c) => LINK_SUCC_NAMES.includes(norm(c.name)));
   const predCol = links.columns.find((c) => LINK_PRED_NAMES.includes(norm(c.name)));
   if (!succCol || !predCol) throw solError("#VALUE!", "Schedule: the Links frame needs a Successor (or Task, To) column and a Predecessor (or From) column");
@@ -95,6 +102,7 @@ function applyLinksFrame(tasks: PlanTask[], links: FrameValue): void {
     const pred = String(predCol.values[i] ?? "").trim();
     if (!succ || !pred) continue;
     const task = byName.get(succ.toLowerCase());
+    if (!task && inactive.has(succ.toLowerCase())) continue;
     if (!task) throw solError("#VALUE!", `Schedule: the Links frame names task "${succ}", which isn't in the plan`);
     const typeRaw = String(typeCol?.values[i] ?? "FS").trim().toUpperCase();
     const type = (LINK_TYPES as readonly string[]).includes(typeRaw) ? (typeRaw as LinkType) : null;
@@ -189,8 +197,8 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
   if (!task) throw solError("#VALUE!", "Schedule needs a Task column (text) naming each task");
   const pred = findColumn(c, PRED_NAMES);
   const children = findColumn(c, CHILD_NAMES, (col) => col !== pred && col.cells.some((v) => isTable(v) && !!findColumn(asCube(v), TASK_NAMES, (cc) => cc.cells.some(isText))));
-  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && col.type !== "date" && !KNOWN_NAMES.has(norm(col.name)) && col.cells.some((v) => isNum(v) || isUnitCell(v)));
   const work = findColumn(c, WORK_NAMES);
+  const duration = findColumn(c, DURATION_NAMES, work ? undefined : (col) => col !== task && col !== children && col.type !== "date" && !KNOWN_NAMES.has(norm(col.name)) && col.cells.some((v) => isNum(v) || isUnitCell(v)));
   if (!duration && !children && !work) throw solError("#VALUE!", "Schedule needs a Duration column (number of days) or a Work column (hours)");
   const cols: Level["cols"] = {
     task, duration, pred, children,
@@ -354,7 +362,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
   const hoursPerDay = opts.hoursPerDay && opts.hoursPerDay > 0 ? opts.hoursPerDay : 8;
   const { level, tasks } = readLevel(c, hoursPerDay, 0);
   const merged = !!opts.links && isFrameValue(opts.links);
-  if (merged) applyLinksFrame(tasks, opts.links!);
+  if (merged) applyLinksFrame(tasks, opts.links!, inactiveNames(level));
   let output: ScheduleOutput;
   try {
     output = schedule({

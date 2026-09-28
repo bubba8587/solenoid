@@ -406,3 +406,10 @@ describe("Workdays — one node, op-switch mechanics", () => {
     expect(n.literals.days).toBe(5);
   });
 });
+
+describe("a clock time reads as the minute it is", () => {
+  it("04:00 as a float serial formats as 04:00, not 03:59", async () => {
+    const { formatDateSerial } = await import("../../../src/graph/nodes/dateSerial");
+    expect(formatDateSerial(46027 + 240 / 1440, "YYYY-MM-DD HH:mm")).toBe("2026-01-05 04:00");
+  });
+});
