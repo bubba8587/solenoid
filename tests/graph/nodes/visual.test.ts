@@ -1,4 +1,5 @@
 // [[B11]] maximalMerge
+import { cellImageSrc } from "../../../src/graph/recordLayout";
 import { describe, it, expect } from "vitest";
 import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
@@ -507,6 +508,15 @@ describe("Record node", () => {
     expect(recordImageSrc(" https://x.test/a.JPG?w=2 ")).toBe("https://x.test/a.JPG?w=2");
     expect(recordImageSrc("https://x.test/page.html")).toBeNull();
     expect(recordImageSrc("Bolt M4")).toBeNull();
+    expect(recordImageSrc("data:text/html,<script>alert(1)</script>")).toBeNull();
+    expect(recordImageSrc("javascript:alert(1)//.png")).toBeNull();
+  });
+  // [[D83]] imageTextCells: the grid and the Cards view show data:image text only, never a fetched address.
+  it("cellImageSrc: data:image only, so no web address and no other data: type", () => {
+    expect(cellImageSrc(" data:image/svg+xml,%3Csvg/%3E")).toBe("data:image/svg+xml,%3Csvg/%3E");
+    expect(cellImageSrc("https://x.test/a.png")).toBeNull();
+    expect(cellImageSrc("data:text/html,<b>x</b>")).toBeNull();
+    expect(cellImageSrc(42)).toBeNull();
   });
 
   it("no layout → the columns stack; row 1 is the default record", async () => {

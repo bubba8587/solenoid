@@ -134,21 +134,21 @@ Where: `cardLayout.ts`, `TableCards.tsx/.css`, `TablePopup.tsx`, `RecordNode.tsx
 Leaves: [[C114]] cardsView, [[B20]] mobileFriendly; C63 retired.
 Why risky: 14-file commit, a node kind renamed (Card → Detail), a popup→node hook through
 the store, seed JSONs rewritten, and "pictures are data:image only" is a security-ish rule.
-- [ ] Record "Rows on every view, a number or a list" (391f0b86): `rowNumbers` is 1-based
+- [x] Checked 2026-09-28: Rows picks and the deck's `rowNumbers` are both the frame's own 1-based rows; the popup's sort never reaches the node. Was: Record "Rows on every view, a number or a list" (391f0b86): `rowNumbers` is 1-based
       frame numbers of DRAWN rows — after a sort/filter in the popup do they map to the
       source frame or the drawn order? Both consumers (RecordNode, chartCards) must agree.
-- [ ] Renamed view `Card`→`Detail`: grep seeds and `docs/node-coverage.md`, help.md, catalog
+- [x] Checked 2026-09-28: no `card` view left in seeds, docs, help or the catalog. An old save with `op: "card"` draws an empty figure: the loader is forgiving by design and `graphValidate` names the unknown op (save-format § The strict validator), so it stays. Was: Renamed view `Card`→`Detail`: grep seeds and `docs/node-coverage.md`, help.md, catalog
       for the old name; [[B7]] says no alias, so an old save with `view: "card"` must fail
       loudly not silently render blank. `seeds.test.ts`.
-- [ ] `recordCardsFromPopup.ts` + `tablePopupStore.ts` hook: the plugin build (Obsidian)
+- [x] Checked 2026-09-28: the plugin never registers the action, so the menu item doesn't show; nothing dangles. Was: `recordCardsFromPopup.ts` + `tablePopupStore.ts` hook: the plugin build (Obsidian)
       reaches Add Record through a hook; in the plugin build with no canvas, what happens on
       click — no-op, error, or dangling store entry?
-- [ ] `cardLayout.ts` derived rules ("pictures are data:image only"): confirm an `http(s):`
+- [x] Checked 2026-09-28: the grid, the Cards view and the Cube cells use `cellImageSrc` (`data:image/` only, so `data:text/html` and web addresses stay text); only the Form view and Record Detail take `recordImageSrc`'s image URLs, as the table-popup spec allows. Pinned in `visual.test.ts`. Was: `cardLayout.ts` derived rules ("pictures are data:image only"): confirm an `http(s):`
       image string is refused, not just not-rendered, and that a `data:text/html` prefix is
       also refused (prefix check must be `data:image/`).
-- [ ] Masonry layout on 0 rows, 1 row, and a frame with 0 columns.
-- [ ] "Every popup opens in Grid" (189afe68): the Cards choice isn't persisted — intended?
-- [ ] C63 retirement touched `nodeOps.ts` + `nodes/visual.ts`: check for a dead node kind or
+- [x] Checked 2026-09-28: `packMasonry`, `planCards` and every Record view handle 0 rows, 1 row and 0 columns without throwing. Was: Masonry layout on 0 rows, 1 row, and a frame with 0 columns.
+- [x] Ruled: [[C114]] cardsView, ratified, says Grid stays the default and Cards is an option. Was: "Every popup opens in Grid" (189afe68): the Cards choice isn't persisted — intended?
+- [x] Checked 2026-09-28: nothing cites C63; the catalog and node-coverage tests pass. Was: C63 retirement touched `nodeOps.ts` + `nodes/visual.ts`: check for a dead node kind or
       a catalog entry left behind (`formulaNodeCoverage.test.ts`, `docs/node-coverage.md`).
 
 ## 7. SORT / SORTBY / FILTER / UNIQUE take tables
