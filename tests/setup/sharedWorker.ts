@@ -11,6 +11,9 @@ import { drawnCableStore } from "../../src/graph/drawnCables";
 import { cableSelectionStore } from "../../src/graph/cableState";
 import { forceDemoVault } from "../../src/graph/demoVault";
 import { resetPointerCensus } from "../../src/graph/pointerGesture";
+import { canvasLockStore } from "../../src/graph/canvasLock";
+import { tablePopup } from "../../src/graph/tablePopupStore";
+import { cubePopup } from "../../src/graph/cubePopupStore";
 
 const SNAPSHOT = Symbol.for("solenoid.test.globals");
 type Snap = Map<PropertyKey, PropertyDescriptor>;
@@ -38,6 +41,10 @@ afterAll(() => {
   forceDemoVault(false);
   // A finger left down in one file reads as a pinch to the next file's lasso.
   resetPointerCensus();
+  // Canvas-wide UI state no node owns: a lock or an open popup would carry into the next file.
+  canvasLockStore.set(false);
+  tablePopup.close();
+  cubePopup.close();
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) settingsStore.set(key, DEFAULT_SETTINGS[key] as never);
   vi.useRealTimers();
   vi.unstubAllGlobals();

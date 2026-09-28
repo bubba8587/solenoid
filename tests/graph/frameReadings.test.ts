@@ -3,7 +3,7 @@
 // the corpus (fixtures/frame-verbs, `readingScale`); this file pins the units and the lowering.
 import { describe, it, expect } from "vitest";
 import { applyVerb, groupByFrame, pivotFrame, windowFrame, windowCube, withUnitScales, type FrameOp } from "../../src/graph/frameVerbs";
-import { lowerForEngine } from "../../src/graph/frameBackend";
+import { lowerForEngine, withSchemaMeta } from "../../src/graph/frameBackend";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import { isUnitCell, READINGS_ADD, READINGS_SCALE, type UnitCell } from "../../src/graph/unitValue";
@@ -307,5 +307,24 @@ describe("a computed column over readings classifies as Expression does", () => 
     expect(col(out, "mid2").values).toEqual([23]);
     expect(refused(col(out, "bad").values)).toBe(true);
     expect(refused(col(out, "bad2").values)).toBe(true);
+  });
+});
+
+describe("a native pivot keeps its value columns' unit", () => {
+  it("the row-less shadow can't name the body columns, so their units come back by position", () => {
+    const km = unit("km");
+    const rowless = frame(
+      { name: "region", type: "string", values: [] },
+      { name: "q", type: "string", values: [] },
+      { name: "dist", type: "number", values: [], unit: km },
+    );
+    const { schema } = lowerForEngine(rowless, [{ kind: "pivot", rowFields: ["region"], colFields: ["q"], values: ["dist"], funcs: ["sum"] } as FrameOp]);
+    const native = [
+      { name: "region", type: "string" as const, values: ["n", "s"] },
+      { name: "q1", type: "number" as const, values: [1, 2] },
+      { name: "q2", type: "number" as const, values: [3, null] },
+    ];
+    const out = withSchemaMeta(native, schema);
+    expect(out.map((c) => (c as FrameColumn).unit?.display ?? null)).toEqual([null, km.display, km.display]);
   });
 });

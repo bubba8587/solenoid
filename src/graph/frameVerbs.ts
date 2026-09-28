@@ -1166,6 +1166,16 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   return frame([...keyColumns, ...bodyColumns]);
 }
 
+/** Each value field's unit on a pivot's body columns, which repeat the value fields in order after the row keys. A
+ *  row-less run of the pivot has no body columns, so the native engine's unit shadow takes them from here. */
+export function pivotBodyUnits(f: FrameValue, spec: PivotSpec): { from: number; units: (ColumnUnit | undefined)[] } | null {
+  const valueNames = spec.values.filter((s) => s.trim() !== "");
+  if (valueNames.length === 0) return null;
+  const funcs = valueNames.map((_, v) => spec.funcs[v] ?? spec.funcs[0] ?? "sum");
+  const units = valueNames.map((n, v) => aggUnitPlan(funcs[v] as AggOp, f.columns.find((c) => c.name === n)?.unit).unit);
+  return { from: spec.rowFields.filter((s) => s.trim() !== "").length, units };
+}
+
 // ─── Nest / Unnest (the flat ⟷ cube bridge) ───────────────────────────────────
 const cubeCellAt = (col: CubeColumn, i: number): CubeCell => (i < col.cells.length ? col.cells[i] : null);
 

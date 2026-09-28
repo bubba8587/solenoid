@@ -20,8 +20,7 @@ specific item.
   the editor no longer labels a flat nested table "Frame" by its contents.
 - **Review plan block 15** (the hand-resolved merges): `getOwningEditor` finds a node in a closed composite on any live
   canvas; an Import Obsidian Note Refresh re-reads plugin picks for an unchanged note; every card component reads its
-  own graph (`getOwning*`), pinned by `sourceInvariants.test.ts`. Left: the `engine.rs` auto-merges need `cargo test`
-  on the desktop machine.
+  own graph (`getOwning*`), pinned by `sourceInvariants.test.ts`. The `engine.rs` auto-merges pass `cargo test`.
 - **Review plan block 1** (the settings sweep): cards whose formula twin has a blank role but ignored it now read it
   (Date Diff basis, DDB / VDB factor, DOLLAR / FIXED decimals, LOG base, GESTEP step), Find Peaks' minimums read a blank
   as no minimum, Clamp's tooltip matches its code, and the audit sheet gained the QUARTILE rows with
@@ -32,6 +31,17 @@ specific item.
   argument limit no longer throws (`pivotFrame`), nor do the chart renderers on long data.
 - **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
   sums, means, extremes and dates read through the column's format (`statReadsAsCell`).
+- **Review plan, the rest (blocks 4–44):** every block is checked; what stands is recorded in place in
+  `docs/review-plan.md`, and the open lines left are author decisions or need the Obsidian rig. The fixes carry their
+  tests; the ones worth knowing: native Polars now runs in CI (`test.yml` `rust` job; the fuzzer then found and the
+  engine fixed a rolling-sum drift and a last-n-after-groupBy row loss), frontmatter reads and writes as Obsidian's
+  js-yaml does (CRLF, control characters, ambiguous keys, indented blocks), a vault Write subfolder can't climb out on
+  Windows, °F reads back as typed, a wired plain number beside °C readings is a reading, live cards drop a reply for a
+  URL they moved past, a locked canvas drops keyboard focus in cards, and the midnight rollover sees Cube Input and
+  Knap `'now'`. New leaf: [[C117]] usNumberText (US number text only, the author's rule). Inbox:
+  `temperature-difference-converts-by-scale`. For 1.6 in the backlog: Equation outputs vs the formula surface.
+- **Cloud sessions can run `cargo test`** once WebKitGTK's dev packages are installed (`libwebkit2gtk-4.1-dev
+  libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev`); the first build takes about six minutes.
 
 ### SESSION DIGEST (2026-09-27: Cards view, resizable formula popup; cloud session)
 

@@ -3,7 +3,7 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, withUnitScales, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
+import { applyVerb, withUnitScales, pivotBodyUnits, joinFrames, joinKeyTransform, appendFrames, bindColumns, sampleFrame, PCT_CHANGE_FROM_ZERO, ZERO_GROUP_TOTAL, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { READINGS_ADD, READINGS_SCALE } from "./unitValue";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite, DOMAIN_MESSAGE, OVERFLOW_MESSAGE } from "./valueKinds";
@@ -332,22 +332,32 @@ function shadow(run: () => FrameValue): FrameValue | null {
 
 /** Each op against the schema it will meet, so a reading column's aggregates reach the
  *  unit-blind engine with their reading scale, and the result's schema shadow. */
+/** A pivot's body columns are named from the data, which a row-less shadow never sees; their units ride here, by position. */
+const pivotTails = new WeakMap<FrameValue, { from: number; units: (FrameColumn["unit"] | undefined)[] }>();
+
 export function lowerForEngine(schema: FrameValue | null, ops: readonly FrameOp[]): { wire: FrameOp[]; schema: FrameValue | null } {
   let s = schema;
   const wire = ops.map((op) => {
     const w = s ? withUnitScales(s, op) : op;
     const cur = s;
     s = cur ? shadow(() => applyVerb(cur, op)) : null;
+    const tail = cur && s && op.kind === "pivot" ? pivotBodyUnits(cur, op) : null;
+    if (tail && s) pivotTails.set(s, tail);
     return w;
   });
   return { wire, schema: s };
 }
 
-function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[], schema: FrameValue | null | undefined): C[] {
+export function withSchemaMeta<C extends { name: string; type: FrameColType }>(cols: C[], schema: FrameValue | null | undefined): C[] {
   if (!schema) return cols;
   const byName = new Map(schema.columns.map((c) => [c.name, c] as const));
-  return cols.map((c) => {
+  const tail = pivotTails.get(schema);
+  return cols.map((c, i) => {
     const s = byName.get(c.name);
+    if (!s && tail && i >= tail.from && tail.units.length > 0) {
+      const unit = tail.units[(i - tail.from) % tail.units.length];
+      return unit && c.type === "number" ? { ...c, unit } : c;
+    }
     if (!s || s.type !== c.type) return c;
     return { ...c, ...(s.unit ? { unit: s.unit } : {}), ...(s.format ? { format: s.format } : {}) };
   });

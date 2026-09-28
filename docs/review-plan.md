@@ -515,26 +515,26 @@ Commits: 6e6bac53, 03b6662c, 63108591, 42a6a32e
 Commits: 25c4dfd4, f2ab84a9, 2bb7b2fa, 31a9b662, 1dee3cff
 Where: `vitest.config.ts` (ISOLATED list), `tests/setup/sharedWorker.ts`,
 `tests/graph/sourceInvariants.test.ts`
-- [ ] The suite passes at 6579 tests, but with a shared module cache a test can pass
+- [x] Checked 2026-09-28: shuffled under seeds 101, 202 and 303 the suite passes (6686 tests); and on a single worker (`--maxWorkers=1`). Was: The suite passes at 6579 tests, but with a shared module cache a test can pass
       BECAUSE an earlier file primed state. Run `vitest run --sequence.shuffle --seed N`
       for 3 seeds and `--maxWorkers 1`; any failure is a hidden dependency.
-- [ ] `sharedWorker.ts` resets a hand-written list of stores. Every NEW store since 09-23
+- [x] Fixed 2026-09-28: node-keyed stores reset through `forgetAllNodes` (the live-card timers included); the canvas lock and the table and cube popups are canvas-wide and weren't reset, so a test that locked or opened one would carry it into the next file. They reset now. The drill stack hangs off each composite, so it can't leak. Was: `sharedWorker.ts` resets a hand-written list of stores. Every NEW store since 09-23
       (tablePopupStore, canvasLockStore, connectionStore timers, drillStack) must be on it.
       Diff the store list in `docs/architecture.md` against the reset list.
-- [ ] `sourceInvariants` fails any `vi.mock` file left off ISOLATED. Good. Also needed:
+- [x] Checked 2026-09-28: `sharedWorker.ts` calls `vi.useRealTimers()` after every file, so fake timers can't leak whether or not a file restores them. Was: `sourceInvariants` fails any `vi.mock` file left off ISOLATED. Good. Also needed:
       any file using `vi.useFakeTimers` without restore (56687a38 hit exactly this).
 
 ## 29. 09-22 batch fixes (pre-fleet, still unreleased)
 Commits: 94b25efb (nine bugs), 9c4dd3f8, 12bca4cb, 365e0fd7, ba686b25, 9afe6faf, 4b9518d9
-- [ ] Polars keeps units by re-running each verb over a row-less schema in JS
+- [x] Fixed 2026-09-28: unpivot and groupBy shadows carry their units, but a pivot's body columns are named from the data, so the row-less shadow had none and a desktop pivot dropped its value columns' unit (the web kept `km` on q1, q2). The pivot's shadow now carries each value field's unit by position (`pivotBodyUnits`), which the native result takes for columns it can't match by name (`frameReadings.test.ts`). An op after a pivot in one fused pipeline still reads the key-only shadow. Was: Polars keeps units by re-running each verb over a row-less schema in JS
       (`frameBackend.ts` +85): verbs whose output columns depend on DATA (pivot, unpivot,
       groupBy with dynamic names, window with a computed output name) get the wrong schema
       from a row-less run. Test pivot + unit column on desktop.
-- [ ] "Text in arithmetic is #VALUE!" (9c4dd3f8) vs "Cast reads number text" (f81d2bff) vs
+- [x] Settled by block 44 and C117: `decimalFromText` is the one reader, operators refuse text by C10, and Cast, VALUE and NUMBERVALUE call the reader. Was: "Text in arithmetic is #VALUE!" (9c4dd3f8) vs "Cast reads number text" (f81d2bff) vs
       NUMBERVALUE empty = 0 (c2adb32b): three rules for text→number; one table, please.
-- [ ] `processGraph` now shares `invalidate` + `fetchAll` with `graphCompute` (9c4dd3f8):
+- [x] Checked 2026-09-28: one `fetchAll` (graphCompute, called by process) and the composite's marker pull; no third shape. Was: `processGraph` now shares `invalidate` + `fetchAll` with `graphCompute` (9c4dd3f8):
       D30 names the composite's "marker-only pull" as the one other shape. Confirm no third.
-- [ ] Reports export what the screen shows (ba686b25): a Report with a live card mid-fetch.
+- [x] Checked 2026-09-28: the export doesn't wait for a fetch in flight, so it carries what the card shows at that moment, which is ba686b25's rule. Was: Reports export what the screen shows (ba686b25): a Report with a live card mid-fetch.
 
 ## 30. Smaller 09-23/24 items, one look each
 - [ ] Test gap 2026-09-28, no bug reproduced: nothing lists what renderers read, so the reverse direction is unguarded; the one read not offered found by hand is Merge Plots over XY data (`opts.alpha`, `opts.markersize`), reach unconfirmed. Proposal: a per-op `RENDERER_READS` table beside the targets, with `reads ⊆ keys` tested. Was: e0ee9307 Chart Builder: every option offered is honored, pinned by `chartTitles.test.ts`
@@ -572,7 +572,7 @@ Commits: 94b25efb (nine bugs), 9c4dd3f8, 12bca4cb, 365e0fd7, ba686b25, 9afe6faf,
       ships "Frames don't flow through formulas — use the …" with an em dash inside a
       `solError` message. So the lint doesn't reach error messages built in code. Sweep
       `solError(` / `unitError(` message literals for `—`.
-- [ ] Churn × size: `nodes/list.ts` 2339 lines / 29 commits, `excelFunctions.ts` 2238 / 47,
+- [x] Noted 2026-09-28, a warning rather than a bug. Was: Churn × size: `nodes/list.ts` 2339 lines / 29 commits, `excelFunctions.ts` 2238 / 47,
       `frameVerbs.ts` 2121 / 19, `TablePopup.tsx` 1183 / 41 since 09-13. These four are
       where parallel agents will collide next; the item-15 merges already did. Not a bug,
       a warning for the fleet plan.
@@ -767,11 +767,11 @@ narrowing back down the ladder". `rules.test.ts` still passes because the file s
 line 1 is `// [[C10]]`: the test ("every MUST is enforced by a citing test or labelled
 Unenforced") checks citation presence only, by design; whether a citing test enforces its MUST
 is "a reader's job" (`docs/dte.md`). Confirmed, not inferred.
-- [ ] Either restore the sweep (the spec's req. 5 list is the checklist: every explicit
+- [x] Done 2026-09-28 with block 13: the within-family and cross-family sweeps are back in `socketConnect.test.ts`, deriving each answer from the rule; `socketReference.test.ts` covers every explicit pair against the doc. Was: Either restore the sweep (the spec's req. 5 list is the checklist: every explicit
       cross-type edge, both family-less adoption branches) or name the test that now covers
       each removed title. `socketReference.test.ts` checks the doc's connection lists against
       `accepts()`, which is a different, weaker check (the doc could be wrong the same way).
-- [ ] Same audit for the other big cuts in item 13, now with the specs' Enforcement sections
+- [x] Done 2026-09-28 with block 13 plus `formulaLambda` (its cuts have stand-ins; two old tests fail only where D85 changed the shape on purpose) and `formulaNodeParity` (its stale-pin checks guarded lists that are empty now). Restored: uiCopy's rule specimens, the lattice sweeps, XLOOKUP's approximate match. Was: Same audit for the other big cuts in item 13, now with the specs' Enforcement sections
       as the oracle: `formulaLambda`, `formulaNodeParity`, `frameVerbs` (190 lines), `composite`
       (86), `uiCopy` (98), `distributions` (64), `excelFunctions` (61). For each, open the spec
       the file routes to, find its "Enforced by / What pins this" table, and confirm the pinned
@@ -811,6 +811,7 @@ n = 5, x a logical.
 | 20 °C + 300 K | OPEN: inbox `kelvin-is-a-reading` proposes `#UNIT!` | not yet placed |
 An agent runs this table as one test per surface and reports the cells that disagree; a
 disagreement is a bug against [[C25]] firstClassUnits, and the fix goes where the spec says.
+- [x] Run 2026-09-28 (see block 16): every row answers as the table says on the card, the formula and GROUPBY/Window, °F included, after two fixes (a wired plain number beside readings, and °F read-back noise). REDUCE with MAX is 30 °C, a fold that adds readings #UNIT!, VAR and DEVSQ squared deltas; the window rows are pinned in `frameReadings.test.ts`. `20 °C + 300 K` stays with the inbox item.
 
 ## 43. Already in the inbox (don't re-file; cite the slug instead)
 Waiting on the author (`python3 tools/dte.py tree`, PENDING PLACEMENT): `kelvin-is-a-reading`
@@ -824,6 +825,7 @@ errors`, `lock-refuses-undo` (item 22; 703205c7 already built it), `paste-carrie
 `pack-node-input-units` (the backlog's "packs and units" line), `schedule-repeat-cap` (item 30).
 A finding that lands on one of these is evidence for the author, attached to the inbox note,
 not a new leaf and not a patch.
+- [x] Noted 2026-09-28: findings on these slugs went into the blocks above as evidence; nothing was patched against a pending inbox item (block 38's ghost cables cites `ghost-cables-feed-and-save`).
 
 ## 44. What the specs settle that Part A/B treated as open (one line each)
 - Item 1: `tree/specs/values/input-roles.md` names the three inputs NOT yet swept (column references, the as-of
@@ -861,6 +863,7 @@ not a new leaf and not a patch.
 - Item 29: "text in arithmetic is `#VALUE!`" vs "Cast reads number text" vs NUMBERVALUE is
   not three rules: `decimalFromText` is the one reader (`tree/specs/values/value-semantics.md` § Boundaries), the
   operators refuse text by [[C10]], and Cast/VALUE/NUMBERVALUE call the reader. One table exists.
+- [x] Checked 2026-09-28: item 4's one bug candidate is fixed (block 4): `SUM([Unit (Price)]` closes to `SUM([Unit (Price)])`, a bracket reference's text not counted; the rest are settled lines the blocks above cite.
 
 ## Reading order for the fleet (revised)
 39 (CI) and 40 (the sweep) first, they are one-afternoon fixes that make everything else
