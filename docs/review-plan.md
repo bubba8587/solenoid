@@ -40,19 +40,19 @@ Where: `nodes/matrix.ts`, `matrixOps.ts`, `indexAccess.ts`, `listOps.ts`, `table
 `excelFunctions.ts`, `src/graph/help/data-model.md`
 Why risky: a global axis convention flipped (list = 1×N row, not N×1 column) but three
 functions were exempted (TOCOL, BYROW, MAKEARRAY "keep their column"). Exemption lists rot.
-- [ ] Enumerate every matrix-taking function in `excelFunctions.ts` that accepts a list;
+- [x] Checked 2026-09-28 against [[D85]] columnsStayColumns, which settled this after the plan was written: TRANSPOSE, HSTACK / VSTACK, WRAPROWS / WRAPCOLS, CHOOSEROWS / CHOOSECOLS, EXPAND, MMULT both ways, SUMPRODUCT, SORT, UNIQUE, FILTER and MAKEARRAY all give Excel's answer for a one-row array, and INDEX is strict as D85 rules (`INDEX(x, 2, 1)` is `#REF!`, not "either axis"). EXPAND's blank padding and TAKE / DROP's `#DOMAIN!` for an empty result are documented choices (formula-language). Was: Enumerate every matrix-taking function in `excelFunctions.ts` that accepts a list;
       for each, decide row-vs-column by Excel's behaviour on a 1-D array, and check. Suspects:
       TRANSPOSE, HSTACK/VSTACK, WRAPROWS/WRAPCOLS, CHOOSEROWS/CHOOSECOLS, EXPAND, MMULT,
       SUMPRODUCT on list×matrix, INDEX(list, r, c) "reads either axis" (7484b745) — check
       INDEX(list, 2, 1) vs INDEX(list, 1, 2) both work and INDEX(list, 2, 2) errors.
-- [ ] TAKE/DROP on a list (ddfe18d5): `TAKE(list, 1)` now returns the whole list (one row);
+- [x] Checked 2026-09-28: the card agrees with the formula (Rows 1 keeps the list, Cols 2 takes two items); its tooltips now say a list is one row. Was: TAKE/DROP on a list (ddfe18d5): `TAKE(list, 1)` now returns the whole list (one row);
       `TAKE(list, ,2)` takes 2 items. Verify the card's Rows/Cols sockets follow the same
       reading and the socket labels say so.
-- [ ] BYROW/BYCOL over a list: BYROW(list) should give one result, BYCOL N results. Check
+- [x] Checked 2026-09-28: `BYROW(x, SUM)` is one total as a one-cell column, `BYCOL(x, SUM)` one per item, and D85's two motivating formulas come out right. Was: BYROW/BYCOL over a list: BYROW(list) should give one result, BYCOL N results. Check
       the "keep their column" exemption doesn't make BYROW(list) give N.
-- [ ] Round-trip: TOCOL(list) → list → TOROW: shape stable? And SPARKLINE "lists read per
+- [x] Checked 2026-09-28: `TOROW(TOCOL(x))` is `x`. SPARKLINE draws one picture of a matrix read row by row, as its spec says; "lists read per row" in 0a95b655's title was about INDEX. Was: Round-trip: TOCOL(list) → list → TOROW: shape stable? And SPARKLINE "lists read per
       row" (0a95b655) — a list input draws one sparkline, a matrix draws one per row.
-- [ ] `src/graph/help/data-model.md` wording vs code: the help is the user-facing contract.
+- [x] Checked 2026-09-28: "a List going into a 2-D input becomes one row" is what the code does; no help page says otherwise. Was: `src/graph/help/data-model.md` wording vs code: the help is the user-facing contract.
 
 ## 3. Aggregate kernels: NaN, infinity, spread limits
 Commits: bdf0b3c3, 7f691901, ea3e187c, 732a9043, ded279c5, 5f4d3fe7, 2537231b, 431b12f3, 9021770b
