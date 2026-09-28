@@ -12,6 +12,7 @@ const SAMPLE: Record<ChartBuilderKey, string> = {
   today: "off", status: "off", weekends: "off", labels: "off", histogram: "on", minutes: "on",
   window: "2026-01-01,2026-02-01", columns: "name", collapse: "0", week: "us", fiscal_start: "4", group_by: "off",
   cardsize: "l", clamp: "on",
+  x: "t", y: "a,b", s: "n", c: "k", annotate: "name", by: "group", linestyle: "--", aspect: "equal", xmin: "0", xmax: "5",
 };
 const RECORD_ONLY = new Set<ChartBuilderKey>(["cardsize", "clamp"]);
 

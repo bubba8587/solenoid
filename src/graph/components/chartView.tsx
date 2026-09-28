@@ -4,7 +4,7 @@ import type { ChartShape } from "./chartCore";
 import { toSeries, partSlices } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
-import type { ChartValue, ScalePayload, OverlayPayload } from "../chartValue";
+import type { ChartValue, ScalePayload, OverlayPayload, XYPayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors, useChartColors } from "./chartCore";
@@ -26,15 +26,14 @@ const GaugeArcInner = lazy(() => import("./chartRender").then((m) => ({ default:
 const TornadoBarsInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TornadoBars })));
 const TreemapViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.TreemapView })));
 const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.SankeyView })));
-const ComposedViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.ComposedView })));
-const BubbleViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.BubbleView })));
+const XYViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.XYView })));
 const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.MultiSeriesView })));
 const OverlayViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.OverlayView })));
 const GanttFigureInner = lazy(() => import("@solenoid/gantt-react").then((m) => ({ default: m.GanttFigure })));
 
 const GANTT_EXPORT_W = 1000;
 
-const MULTI_SERIES_OPS = new Set<ChartShape>(["column", "bar", "line", "area", "scatter", "radar"]);
+const MULTI_SERIES_OPS = new Set<ChartShape>(["column", "bar", "line", "area", "radar"]);
 
 function box(width: number | string, height: number): ReactNode {
   return <div style={{ width, height }} />;
@@ -76,20 +75,10 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   );
 }
 
-type SeriesArg = { name: string; values: (number | null)[] }[];
-
-export function ComposedView(props: { series: SeriesArg; labels?: (string | number)[]; width: number; height: number; opts?: ChartOptions; fscale?: number }) {
+export function XYView(props: { payload: XYPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
-      <ComposedViewInner {...props} />
-    </Suspense>
-  );
-}
-
-export function BubbleView(props: { series: SeriesArg; width: number; height: number; opts?: ChartOptions; fscale?: number }) {
-  return (
-    <Suspense fallback={box(props.width, props.height)}>
-      <BubbleViewInner {...props} />
+      <XYViewInner {...props} />
     </Suspense>
   );
 }
@@ -178,19 +167,13 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <QuiverView payload={value.payload} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")
     return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
+  if (value.payload?.kind === "xy")
+    return <XYView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
   if (value.op === "overlay" && value.payload?.kind === "overlay")
     return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
   if (value.op === "gantt" && value.payload?.kind === "gantt")
     return <GanttView payload={value.payload} width={width} height={height} virtualize={virtualize} fontScale={fscale} />;
-  const hasSeries = !!value.series && value.series.length > 0;
-  if (value.op === "composed") {
-    if (hasSeries) return <ComposedView series={value.series!} labels={value.labels} width={width} height={height} opts={value.options} fscale={fscale} />;
-    return renderSeries(value, "column", width, height, axes, fontScale);
-  }
-  if (value.op === "bubble") {
-    if (hasSeries) return <BubbleView series={value.series!} width={width} height={height} opts={value.options} fscale={fscale} />;
-    return renderSeries(value, "scatter", width, height, axes, fontScale);
-  }
+  if (value.op === "scatter" || value.op === "xyline" || value.op === "bubble") return EMPTY_FIGURE;
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
 }
 

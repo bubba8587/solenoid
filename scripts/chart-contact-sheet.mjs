@@ -14,7 +14,7 @@ const ZOOM = 1.6;
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 // Node ids are minted per load, so resolve every label to an id again after each seed.
-const FRAME_LABEL = "Bars + line (composed)";
+const FRAME_LABEL = "Points (bubble)";
 const FRAME_SRC_LABEL = "Series frame";
 const LIST_LABEL = "Profile (radar)";
 let ids = {};
@@ -50,7 +50,7 @@ const SHOTS = [
   { op: "line",      fam: "Cartesian",    variant: "base",           frame: "cart",   options: "" },
   { op: "line",      fam: "Cartesian",    variant: "marker",         frame: "cart",   options: "marker=on;linewidth=3" },
   { op: "area",      fam: "Cartesian",    variant: "base",           frame: "cart",   options: "" },
-  { op: "scatter",   fam: "Cartesian",    variant: "base",           frame: "cart",   options: "" },
+  { op: "scatter",   fam: "XY",           variant: "base",           frame: "cart",   options: "" },
   { op: "pie",       fam: "Categorical",  variant: "base",           frame: "pie",    options: "" },
   { op: "pie",       fam: "Categorical",  variant: "labels-outside", frame: "pie",    options: "pielabels=outside" },
   { op: "pie",       fam: "Categorical",  variant: "labels-inside",  frame: "pie",    options: "pielabels=inside" },
@@ -63,10 +63,7 @@ const SHOTS = [
   { op: "radar",     fam: "Categorical",  variant: "single-color",   list: true,      options: "color=#e2557b" },
   { op: "radialbar", fam: "Categorical",  variant: "base",           frame: "pie",    options: "" },
   { op: "funnel",    fam: "Categorical",  variant: "base",           frame: "pie",    options: "" },
-  { op: "composed",  fam: "Multi-series", variant: "base",           frame: "cart",   options: "" },
-  { op: "composed",  fam: "Multi-series", variant: "marker",         frame: "cart",   options: "marker=on;linewidth=3" },
-  { op: "composed",  fam: "Multi-series", variant: "title",          frame: "cart",   options: "title=Sales vs target" },
-  { op: "bubble",    fam: "Multi-series", variant: "base",           frame: "bubble", options: "" },
+  { op: "bubble",    fam: "XY",           variant: "base",           frame: "bubble", options: "" },
 ];
 
 // Pick through the card's own selects: the component holds `op` in React state; hover first, since LazySelect renders options only then.

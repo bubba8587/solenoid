@@ -27,7 +27,7 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
   // A non-plot input refuses the merge; cachedChart then holds the #TYPE! error.
   const err: SolError | null = cached && !isChartValue(cached) ? cached : null;
   const overlay = cached && isChartValue(cached) ? cached : null;
-  const hasData = !!overlay && overlay.payload?.kind === "overlay" && overlay.payload.series.length > 0;
+  const hasData = !!overlay && (overlay.payload?.kind === "overlay" || overlay.payload?.kind === "xy") && overlay.payload.series.length > 0;
   // The live card title tracks the node's name; the cable value keeps its own.
   const cv: ChartValue | null = overlay ? { ...overlay, title: overlay.options.title || nodeDisplayName(data) } : null;
 
