@@ -1,9 +1,13 @@
-// [[B3]] sameNodeEverywhere, [[C107]] obsidianPlugin, [[D87]] knapNotes
-// The What's New cut for Solenoid Properties 0.1.4: one note, filmed in Obsidian. The two new features are typed into
+// [[B3]] sameNodeEverywhere, [[C107]] obsidianPlugin, [[D87]] knapNotes, [[C114]] cardsView
+// The What's New cut for Solenoid Properties 0.1.5: one note, filmed in Obsidian. The two new features are typed into
 // it as a list; a Frame property is edited in its popup; the same Frame is referenced in the body with Knap and edited
-// from there; more Knap renders in Live Preview and the `knap` switch turns it off and on; the finished note in sixteen
-// looks closes it.
+// from there; more Knap renders in Live Preview, its totals held against the Frame's; the `knap` switch turns it off
+// and on; a crew Frame on a phone goes from Grid to Cards; the finished note in sixteen looks closes it.
+import fs from "node:fs";
+import Papa from "papaparse";
+import YAML from "yaml";
 import { noteOnly } from "./obsidian.mjs";
+import { injectCursor } from "./rig.mjs";
 import { need, openNote, closeOtherWindows } from "./roundtrip.mjs";
 import { look, obsZoom } from "./plugin.mjs";
 
@@ -43,6 +47,18 @@ const toEnd = (c) => c.obs(() => {
   e.setCursor({ line: last, ch: e.getLine(last).length });
   e.focus();
 });
+
+const CREW_NOTE = "Crew.md";
+const CREW_COLS = ["First Name", "Last Name", "Photo", "Team", "Skills", "Favorite Color", "Project Start", "Project End", "Rating", "Goal Progress", "Sales YTD", "City", "Bio"];
+/** The demo vault's crew table as a `crew` Frame property: a picture, name, team, skills, dates, stars and a bar per row. */
+function crewNote() {
+  const { data } = Papa.parse(fs.readFileSync(new URL("../../demo-vault/Data/crew.csv", import.meta.url), "utf8").trim(), { header: true });
+  const cell = (v) => (v === "" ? null : v === "TRUE" ? true : v === "FALSE" ? false : /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v);
+  const crew = data.map((row) => Object.fromEntries(CREW_COLS.map((k) => [k, cell(row[k])])));
+  return `---\n${YAML.stringify({ crew }, { lineWidth: 0 })}---\n\nThe crew for the autumn build.\n`;
+}
+// A phone-sized window centered on the screen, in the window's CSS px (the screen is 1280x720 of them).
+const PHONE = { x: 468, y: 0, width: 344, height: 720 };
 
 const PROP_CHIP = '.metadata-property[data-property-key="orders"] .solenoid-property-chip';
 const BODY_CHIP = ".markdown-source-view .solenoid-knap-chip .solenoid-property-chip";
@@ -116,11 +132,11 @@ export const WHATSNEW = {
       await toEnd(c);
       await hand.move(add.x + 560, add.y + add.h + 150, { ms: 600 });
       await sleep(200);
-      await hand.type("1. in-line **Solenoid Properties** objects", { cps: 14 });
+      await hand.type("1. in-line **Solenoid Properties** objects", { cps: 36 });
       await sleep(250);
       await hand.press("Enter");
       await sleep(250);
-      await hand.type("in-line {{Knap}} variable rendering", { cps: 14 });
+      await hand.type("in-line {{Knap}} variable rendering", { cps: 36 });
       await sleep(2200);
     },
   },
@@ -149,7 +165,7 @@ export const WHATSNEW = {
       for (const [i, text] of ["Screws", "40", "0.2"].entries()) {
         await hand.click(row[i]);
         await sleep(150);
-        await hand.type(text, { cps: 12 });
+        await hand.type(text, { cps: 30 });
         await sleep(150);
         await hand.press("Enter");
         await sleep(200);
@@ -179,7 +195,7 @@ export const WHATSNEW = {
       await toEnd(c);
       await sleep(250);
       await hand.press("Enter");
-      await hand.type("Orders: {{ orders }}", { cps: 13 });
+      await hand.type("Orders: {{ orders }}", { cps: 34 });
       await sleep(300);
       await hand.press("Enter");
       await sleep(900);
@@ -194,7 +210,7 @@ export const WHATSNEW = {
       await hand.click(cells[1]);
       await sleep(150);
       await hand.chord("Control", "a");
-      await hand.type("24", { cps: 10 });
+      await hand.type("24", { cps: 26 });
       await hand.press("Enter");
       await sleep(400);
       await hand.click(await need(page, "button", "Save"));
@@ -225,7 +241,7 @@ export const WHATSNEW = {
       await c.hand.show(900, 560);
     },
     async act(c) {
-      const { hand, sleep } = c;
+      const { hand, sleep, page } = c;
       await sleep(600);
       await c.obs(() => window.app.workspace.getLeavesOfType("markdown")[0].view.editor.scrollTo(0, 260));
       await sleep(500);
@@ -236,9 +252,9 @@ export const WHATSNEW = {
       await sleep(250);
       // What the Knap below does, as a callout. Enter continues the callout; a second Enter leaves it.
       await hand.press("Enter");
-      await hand.type("> [!note] Using [knap.md](https://knap.md)", { cps: 16 });
+      await hand.type("> [!note] Using [knap.md](https://knap.md)", { cps: 40 });
       await hand.press("Enter");
-      await hand.type(CALLOUT, { cps: 22 });
+      await hand.type(CALLOUT, { cps: 55 });
       await hand.press("Enter");
       await hand.press("Enter");
       // Up, so the Knap is typed clear of the caption.
@@ -246,17 +262,36 @@ export const WHATSNEW = {
       await hand.move(1180, 300, { ms: 600 });
       await sleep(200);
       await hand.press("Enter");
-      await hand.type("{% for o in orders %}", { cps: 14 });
+      await hand.type("{% for o in orders %}", { cps: 36 });
       await hand.press("Enter");
-      await hand.type("- {{ o.qty }} x {{ o.item }} at {{ o.cost | number_format:2 }}", { cps: 16 });
-      await hand.press("Enter");
-      await hand.press("Enter");
-      await hand.type("{% endfor %}", { cps: 14 });
+      await hand.type("- {{ o.qty }} x {{ o.item }} at {{ o.cost | number_format:2 }}", { cps: 40 });
       await hand.press("Enter");
       await hand.press("Enter");
-      await hand.type("{{ orders | length }} orders, {{ orders | map:\"qty\" | sum }} parts.", { cps: 16 });
+      await hand.type("{% endfor %}", { cps: 36 });
       await hand.press("Enter");
-      await sleep(2200);
+      await hand.press("Enter");
+      await hand.type("{{ orders | length }} orders, {{ orders | map:\"qty\" | sum }} parts.", { cps: 40 });
+      await hand.press("Enter");
+      await sleep(1400);
+      // What Knap made of the orders, then the orders it read, then the result again.
+      const out = [...await rectsIn(page, ".markdown-source-view .solenoid-knap-block"), await editorLine(c, "parts.")];
+      for (const r of out) await c.box(r, 4);
+      await hand.move(out[1].x + out[1].w + 80, out[1].cy, { ms: 700 });
+      await sleep(2000);
+      await c.clearBoxes();
+      await hand.click(await need(page, BODY_CHIP));
+      await sleep(900);
+      const cells = await rectsIn(page, "td.table-popup__cell");
+      for (const i of [1, 4, 7]) await c.box(cells[i], 3);
+      await c.box((await rectsIn(page, ".table-popup__statvalue"))[1], 5);
+      await hand.move(cells[7].cx + 60, cells[7].cy + 70, { ms: 700 });
+      await sleep(2600);
+      await c.clearBoxes();
+      await hand.click(await need(page, "button", "Cancel"));
+      await sleep(600);
+      for (const r of out) await c.box(r, 4);
+      await sleep(1800);
+      await c.clearBoxes();
     },
   },
 
@@ -288,6 +323,77 @@ export const WHATSNEW = {
         await sleep(620);
       }
       await sleep(1200);
+    },
+  },
+
+  "wn-cards": {
+    app: "obsidian",
+    caption: ["Cards view", "A Frame's popup lays each row out as a card. Every column finds its place by its name, type and contents."],
+    async setup(c) {
+      await c.obs(async (file, text) => {
+        const app = window.app;
+        app.metadataTypeManager.setType("crew", "solenoid-frame");
+        const f = app.vault.getAbstractFileByPath(file);
+        if (f) await app.vault.modify(f, text);
+        else await app.vault.create(file, text);
+      }, CREW_NOTE, crewNote());
+      await closeOtherWindows(c);
+      await noteOnly(c.page);
+      await obsZoom(c, 1);
+      await look(c);
+      await c.obs((b) => {
+        window.electron.remote.getCurrentWindow().setBounds(b);
+        if (!window.app.isMobile) window.app.emulateMobile(true);
+      }, PHONE);
+      // Entering the emulation reloads Obsidian, and the kit with it.
+      await c.sleep(4000);
+      await injectCursor(c.page);
+      await noteOnly(c.page);
+      await openNote(c, CREW_NOTE);
+      await c.sleep(600);
+      // Taps, not a pointer: the rings show where a finger lands.
+      await c.hand.hide();
+    },
+    async act(c) {
+      const { hand, sleep, page } = c;
+      await sleep(900);
+      await hand.click(await need(page, '.metadata-property[data-property-key="crew"] .solenoid-property-chip'));
+      await sleep(1300);
+      // Swipes; the emulated phone takes no wheel.
+      const swipe = (sel, to) => c.obs((s, t) => {
+        const roots = [document, ...[...document.querySelectorAll("*")].filter((e) => e.shadowRoot).map((e) => e.shadowRoot)];
+        roots.map((r) => r.querySelector(s)).find(Boolean)?.scrollTo({ ...t, behavior: "smooth" });
+      }, sel, to);
+      // Across the grid's thirteen columns first, then back.
+      const across = await c.obs(() => {
+        const roots = [document, ...[...document.querySelectorAll("*")].filter((e) => e.shadowRoot).map((e) => e.shadowRoot)];
+        const el = roots.map((r) => r.querySelector(".table-popup__grid-scroll")).find(Boolean);
+        return el.scrollWidth - el.clientWidth;
+      });
+      for (let x = 260; x < across + 260; x += 260) {
+        await swipe(".table-popup__grid-scroll", { left: Math.min(x, across) });
+        await sleep(520);
+      }
+      await sleep(600);
+      await swipe(".table-popup__grid-scroll", { left: 0 });
+      await sleep(1100);
+      await hand.click(await need(page, "button", "Cards"));
+      await sleep(1600);
+      await swipe(".table-cards-wrap", { top: 900 });
+      await sleep(2200);
+      await swipe(".table-cards-wrap", { top: 0 });
+      await sleep(1100);
+      await hand.click(await need(page, ".table-cards__filter input"));
+      await sleep(300);
+      await hand.type("logic", { cps: 26 });
+      await sleep(2600);
+    },
+    async teardown(c) {
+      await c.page.keyboard.press("Escape");
+      // Leaving the emulation reloads Obsidian: the pointer is injected again once it is back.
+      await c.obs(() => { if (window.app.isMobile) window.app.emulateMobile(false); }).catch(() => {});
+      await c.sleep(4000);
+      await injectCursor(c.page);
     },
   },
 

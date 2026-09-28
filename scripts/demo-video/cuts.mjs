@@ -34,14 +34,14 @@ export const CUTS = {
     push: true,
   },
   whatsnew: {
-    out: "solenoid-properties-0.1.4",
+    out: "solenoid-properties-0.1.5",
     intro: "wn-intro",
     outro: "wn-outro",
-    order: ["wn-type", "wn-frame", "wn-ref", "wn-knap", "wn-switch", "wn-grid"],
+    order: ["wn-type", "wn-frame", "wn-ref", "wn-knap", "wn-switch", "wn-cards", "wn-grid"],
     mark: "solenoidpropertieswordmark.svg",
     eyebrow: "What's new in",
     // The version under the wordmark, set small.
-    version: "0.1.4",
+    version: "0.1.5",
     // Filmed and cut with DEMO_FPS=60.
     fps: 60,
     end: {
