@@ -1,8 +1,8 @@
 // [[C44]], [[B11]], [[C113]], [[C17]] shareImpl, [[D41]] formatFlowsDownstream
 import { ClassicPreset } from "rete";
-import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, readRole, BASIS_DOC, type BroadcastResult } from "./shared";
-import { setting } from "../inputRoles";
-import { type SolError } from "../errorValue";
+import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, readRole, BASIS_DOC, readAsRole, type BroadcastResult } from "./shared";
+import { setting, argRole } from "../inputRoles";
+import { isSolError, type SolError } from "../errorValue";
 import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
 import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
@@ -303,9 +303,9 @@ export class DateDiffNode extends ClassicPreset.Node {
   data(inputs: { start?: (number | number[])[]; end?: (number | number[])[]; basis?: number[] }): { result: BroadcastResult } {
     let basis = 0;
     if (dateDiffNeedsBasis(this.op)) {
-      const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
-      if (basisRaw === null) { this.cachedResult = null; return { result: null }; }
-      basis = Math.floor(basisRaw);
+      const basisRaw = readAsRole<number | SolError | undefined>(this, "basis", inputs.basis, argRole(this.op === "days360" ? "DAYS360" : "YEARFRAC", 2)!);
+      if (isSolError(basisRaw)) { this.cachedResult = basisRaw; return { result: basisRaw }; }
+      basis = Math.floor(basisRaw ?? 0);
     }
     const result = broadcastErr((s, e) => dateDiff(this.op, s, e, basis), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;

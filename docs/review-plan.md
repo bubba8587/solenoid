@@ -17,21 +17,21 @@ Leaves: [[D86]] blankRoles, [[C80]] blankArgIsExcelBlank. Spec: `tree/specs/valu
 Why risky: one table now decides what a blank means for ~60 functions across BOTH formulas
 and cards; every card that grew `static inputRoles = rolesFrom(...)` changed behaviour for a
 wired blank. `docs/settings-audit.md` was the author's review sheet; verify code matches it.
-- [ ] Diff `ARG_ROLES` against `docs/settings-audit.md` row by row: every function listed in
+- [x] Diffed 2026-09-28: QUARTILE, QUARTILE.INC and QUARTILE.EXC were missing from the sheet (added) and CHOOSEROWS / CHOOSECOLS' rest was worded short; `settingsAudit.test.ts` now holds the formula table to the code. The `required` rows are Claude's calls awaiting the author's review, as the sheet says. Was: Diff `ARG_ROLES` against `docs/settings-audit.md` row by row: every function listed in
       one and not the other is a gap. Especially the `required` ones (MROUND, CEILING, FLOOR,
       LARGE, SMALL, PERCENTILE, MID, REPLACE, TEXT, REPT, DATEDIF): a blank now hard-errors
       `#SYNTAX!` where it used to coerce to 0. Confirm that is what the author ruled.
-- [ ] `rolesFrom(name, {socket: argIndex})` mapping: check each socket→index by hand against
+- [x] Checked 2026-09-28, all 61 mappings name the right argument (SEQUENCE start 2 / step 3, RANDARRAY min 2 / max 3, INDEX, TEXTSPLIT). Was: `rolesFrom(name, {socket: argIndex})` mapping: check each socket→index by hand against
       `formulaSignatures.ts` for that function. An off-by-one silently gives the wrong role.
       Spot-check: INDEX (`index:1, position:1, column:2`), RANDARRAY, SEQUENCE, TEXTSPLIT.
-- [ ] `rest` role + SORTBY's generated even-index table: a blank by_array (data) vs a blank
+- [x] Checked 2026-09-28 with three pairs: a blank second or third sort_order is left out (ascending), a blank by_array blanks the answer. Was: `rest` role + SORTBY's generated even-index table: a blank by_array (data) vs a blank
       sort_order (setting) at positions 1,3,5… vs 2,4,6…; test a formula with 3 pairs.
-- [ ] "Blank inside a list of settings is skipped at its spot" (2990affc): check the
+- [x] Ruled, not Excel's: [[D86]] blankRoles makes a blank pick dropped (Excel has no blank inside an array constant). Was: "Blank inside a list of settings is skipped at its spot" (2990affc): check the
       `picks` path in INDEX/CHOOSEROWS/CHOOSECOLS with `{1,,3}`-style lists; a dropped blank
       shifts later positions. Confirm this matches Excel rather than a zero-index error.
-- [ ] Cards with no `inputRoles` but a formula twin that HAS `ARG_ROLES`: parity break. Grep
+- [x] Swept 2026-09-28: Date Diff (Year Frac, Days 360) basis, Depreciation (DDB, VDB) factor, DOLLAR and FIXED decimals, LOG base and GESTEP step now read the twin's role (`wiredNull.test.ts` checks each against its formula); Find Peaks' minimums read as no minimum; MAKEARRAY left for the author (see the audit sheet). Was: Cards with no `inputRoles` but a formula twin that HAS `ARG_ROLES`: parity break. Grep
       every key of `ARG_ROLES`, find its card in `nodeExcel.ts`, confirm the card cites it.
-- [ ] Distribution `cumulative` blanks now read FALSE (NORM.DIST etc.): check the cards'
+- [x] Checked 2026-09-28: the Distributions card picks PDF / CDF / inverse from a dropdown, so no blank reaches `cumulative` there. Was: Distribution `cumulative` blanks now read FALSE (NORM.DIST etc.): check the cards'
       dropdown default agrees (sockets default TRUE in some old seeds?). `seeds.test.ts`.
 
 ## 2. "A list is one row" orientation change
