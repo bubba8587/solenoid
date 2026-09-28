@@ -60,25 +60,25 @@ Where: `nodes/statsOps.ts`, `excelFunctions.ts`, `nodes/shared.ts` (guardFinite)
 `frameVerbs.ts`, `frameBackend.ts`, `listOps.ts`, `matrixOps.ts`, `scriptCoerce.ts`
 Why risky: numeric edge semantics changed in kernels shared by cards, formulas AND frame
 verbs; `guardFinite` signature changed (spread → array) across 7 files.
-- [ ] `guardFinite` callers: grep every call; any caller still passing spread args now passes
+- [x] Checked 2026-09-28: all 29 callers pass an array, and the parameter is typed `ReadonlyArray<unknown>`, so a stray scalar fails tsc. Was: `guardFinite` callers: grep every call; any caller still passing spread args now passes
       ONE array as arg 0 and type-checks if the param is `unknown[]`. tsc may not catch a
       caller that passes a single scalar (now wrapped? or treated as the array?).
-- [ ] NaN in aggregates is RULED, not open ([[D48]] classifyNonFinite, `tree/specs/values/value-semantics.md`,
+- [x] Conformance checked 2026-09-28 (formulas and the Aggregate card, NaN / ±∞ / ∞ with −∞). Fixed against D48: MODE / MODE.SNGL skipped a lone NaN, MODE.MULT and the Mode card passed NaN on bare, and PRODUCT (on Formula.js) answered `#VALUE!`; all are `#DOMAIN!` now, PRODUCT on the shared kernel. Also fixed for Excel parity: no value repeating is `#N/A` in the three MODEs and on the Mode card (was the first value, or every value). The native engine's guard needs the desktop run. Was: NaN in aggregates is RULED, not open ([[D48]] classifyNonFinite, `tree/specs/values/value-semantics.md`,
       `tree/specs/computation/frame-verbs.md` § groupBy): a NaN input makes the group `#DOMAIN!`, checked before
       aggregating; `count` counts NaN and errors; NaN "sorts into the tail, fails every
       predicate except neq". So the check is conformance: list SUM/AVG/MIN/MAX/MEDIAN/MODE/
       STDEV kernels (`statsOps.aggregate`) and `RANGE_RAW` COUNT against that table, and the
       same on the native engine (the guard "wraps every aggregate over a number or date
       column except count and percentof"). A deviation is a bug against D48, not a debate.
-- [ ] "Aggregate card and formulas agree on an infinity": which won, `#NUM!` or ±∞? Check
+- [x] Checked 2026-09-28: formulas and the Aggregate card agree on every ±∞ case (∞ passes, ∞ − ∞ is `#DOMAIN!`); the Polars path needs the desktop run. Was: "Aggregate card and formulas agree on an infinity": which won, `#NUM!` or ±∞? Check
       the frame verb path (Polars returns inf) agrees too.
 - [x] A-form "redirects" (5f4d3fe7): checked, `LEGACY_ALIASES` registers each as a `#NAME?`
       refusal naming the replacement, not a silent call. Same for VLOOKUP/HLOOKUP/MATCH and
       the D-functions. No argument-shape bug there. Open only: the inbox item d452bfbc on
       how aggregates read logicals/text still needs the author's ruling.
-- [ ] Spread limit (2537231b): `spreadLimit.test.ts` exists; grep for any remaining
+- [x] Swept 2026-09-28: `pivotFrame` spread one pivot cell's values into `push`, so a group of 150k rows threw on the web engine (fixed, `spreadLimit.test.ts`); the chart, calendar, XY, Surface and PackTool renderers spread plotted values into `Math.min` / `Math.max` (now `iterMin` / `iterMax`). The rest spread small fixed sets. Was: Spread limit (2537231b): `spreadLimit.test.ts` exists; grep for any remaining
       `Math.max(...` / `fn(...list)` on user-sized arrays in `nodes/*Ops.ts` and `frameVerbs.ts`.
-- [ ] Broadcasting "measures each operand once" (9021770b): a perf change to formula
+- [x] Checked 2026-09-28: ragged and shorter operands pad with blank, and an empty operand broadcasts to blanks, as formula-language § Broadcasting rules (only the shape builders pad `#N/A`). Was: Broadcasting "measures each operand once" (9021770b): a perf change to formula
       broadcasting; check ragged matrices and a 0-row operand still error, not silently
       broadcast to empty.
 

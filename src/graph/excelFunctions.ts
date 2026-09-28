@@ -482,6 +482,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   POWER:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   QUOTIENT:    { returns: "number", arity: [2, 2], family: "scalar-math" },
   GCD:         { returns: "number", arity: [1, 255], family: "scalar-math" },
+  PRODUCT:     { returns: "number", arity: [1, 255], family: "scalar-math" },
   LCM:         { returns: "number", arity: [1, 255], family: "scalar-math" },
   ATAN2:       { returns: "number", arity: [2, 2], family: "scalar-math" },
   CONVERT:     { returns: "number", arity: [3, 3], family: "scalar-math" },
@@ -911,6 +912,8 @@ const AGG_FORMULAS: Array<[string, AggregateOp]> = [
   ["PTP", "ptp"], ["IQR", "iqr"], ["MAD", "mad"], ["SEM", "sem"], ["CV", "cv"], ["RMS", "rms"],
 ];
 for (const [name, op] of AGG_FORMULAS) registerInternal(name, (...a) => aggregate(op, numsOf(...a)));
+// On the shared kernel, so a NaN is #DOMAIN! as in every aggregate ([[D48]] classifyNonFinite); no numbers is Excel's 0.
+registerInternal("PRODUCT", (...a) => { const n = numsOf(...a); return n.length === 0 ? 0 : aggregate("product", n); });
 registerInternal("GCD", (...a) => gcdLcm("gcd", numsOf(...a)));
 registerInternal("LCM", (...a) => gcdLcm("lcm", numsOf(...a)));
 for (const [name, op] of [["MIN", "min"], ["MAX", "max"]] as const) {

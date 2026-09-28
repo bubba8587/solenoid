@@ -9,6 +9,7 @@ import type {
   WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload,
   ProportionPayload, QuiverPayload, ContourPayload,
 } from "../chartValue";
+import { iterMin, iterMax } from "../nodes/mathUtils";
 
 
 type Ctx = CanvasRenderingContext2D;
@@ -249,8 +250,8 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
   const byDay = new Map<number, number>();
   for (let i = 0; i < p.days.length; i++) byDay.set(p.days[i], (byDay.get(p.days[i]) ?? 0) + (p.values[i] ?? 0));
   const dayList = [...byDay.keys()];
-  const end = Math.max(...dayList);
-  const dataStart = Math.min(...dayList);
+  const end = iterMax(dayList);
+  const dataStart = iterMin(dayList);
   const padL = Math.round(14 * fs), padT = Math.round(11 * fs), padR = 1, padB = 1;
   const MIN_CELL = 3.2;
   const endMonday = end - mondayIndex(end);
@@ -453,8 +454,8 @@ function drawContour(canvas: HTMLCanvasElement, p: ContourPayload, W: number, H:
   if (zmin === zmax) zmax = zmin + 1;
 
   const padL = 6, padR = 6, padT = Math.round(12 * fs), padB = Math.round(12 * fs);
-  const xmin = Math.min(...xs), xmax = Math.max(...xs);
-  const ymin = Math.min(...ys), ymax = Math.max(...ys);
+  const xmin = iterMin(xs), xmax = iterMax(xs);
+  const ymin = iterMin(ys), ymax = iterMax(ys);
   const sx = (v: number) => padL + ((v - xmin) / (xmax - xmin || 1)) * (W - padL - padR);
   const sy = (v: number) => H - padB - ((v - ymin) / (ymax - ymin || 1)) * (H - padT - padB);
   const tz = (v: number) => (v - zmin) / (zmax - zmin);

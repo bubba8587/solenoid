@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { heightRampColor } from "../palette";
 import type { SurfacePayload } from "../chartValue";
+import { iterMin, iterMax } from "../nodes/mathUtils";
 
 
 type V3 = [number, number, number];
@@ -36,8 +37,8 @@ function drawSurface(canvas: HTMLCanvasElement, p: SurfacePayload, W: number, H:
   let zmin = Infinity, zmax = -Infinity;
   for (const row of z) for (const v of row) if (fin(v)) { if (v < zmin) zmin = v; if (v > zmax) zmax = v; }
   if (!Number.isFinite(zmin)) return;
-  const xmin = Math.min(...xs), xmax = Math.max(...xs);
-  const ymin = Math.min(...ys), ymax = Math.max(...ys);
+  const xmin = iterMin(xs), xmax = iterMax(xs);
+  const ymin = iterMin(ys), ymax = iterMax(ys);
   const nrm = (v: number, a: number, b: number) => (b > a ? (v - a) / (b - a) : 0.5);
   const gx = (ix: number) => nrm(xs[ix], xmin, xmax);
   const gy = (iy: number) => nrm(ys[iy], ymin, ymax);

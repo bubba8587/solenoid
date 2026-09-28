@@ -29,7 +29,7 @@ const SCALAR_RESULT: Array<[string, string]> = [
   ["SUMX2MY2", "SUMX2MY2(a, b)"],
   ["SUMX2PY2", "SUMX2PY2(a, b)"],
   ["SUMXMY2", "SUMXMY2(a, b)"],
-  ["MODE.SNGL", "MODE.SNGL(a)"],
+  ["MODE.SNGL", "MODE.SNGL(a, a)"],
   ["PROB", "PROB(a, p, 1, 3)"],
   ["SERIESSUM", "SERIESSUM(2, 1, 1, a)"],
   ["PEARSON", "PEARSON(a, b)"],

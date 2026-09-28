@@ -2,10 +2,10 @@
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
-import { forAggregate, ifTest, isMissing } from "../valueKinds";
+import { forAggregate, ifTest, isMissing, DOMAIN_MESSAGE } from "../valueKinds";
 import { compareStrings } from "../stringOrder";
 import { iterMin, iterMax } from "./mathUtils";
-import { percentileOf } from "./statsOps";
+import { percentileOf, noMode } from "./statsOps";
 
 export type Cell = number | null | SolError;
 
@@ -869,6 +869,7 @@ export function uniqueGrid<T>(m: readonly (readonly T[])[], byCol: boolean, exac
 export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
   const err = firstError(arr);
   if (err) return err;
+  if (arr.some((v) => typeof v === "number" && Number.isNaN(v))) return solError("#DOMAIN!", DOMAIN_MESSAGE);
   const counts = new Map<unknown, { v: unknown; n: number }>();
   for (const v of arr) {
     if (isMissing(v)) continue;
@@ -878,7 +879,7 @@ export function modeMult(arr: readonly unknown[]): unknown[] | SolError {
   }
   let best = 0;
   for (const e of counts.values()) best = Math.max(best, e.n);
-  if (best < 2) return [];
+  if (best < 2) return noMode();
   return [...counts.values()].filter((e) => e.n === best).map((e) => e.v);
 }
 

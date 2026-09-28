@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { FUNCTION_FAMILY, FAMILY_BACKING, internalFunctionNames } from "../../../src/graph/excelFunctions";
 import { AggregateNode } from "../../../src/graph/nodes/list";
-import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, FisherNode } from "../../../src/graph/nodes/stats";
+import { RankPercentileNode, CorrelNode, CovarianceNode, RegressionNode, FisherNode, ModeNode } from "../../../src/graph/nodes/stats";
 import { isSolError } from "../../../src/graph/errorValue";
 
 // capabilityParity / [[C17]] shareImpl for the STATISTICS family (the A1 backing flip): every
@@ -150,6 +150,22 @@ describe("MODE / FISHER", () => {
   it("MODE.SNGL is Excel's first-occurring tie; the node keeps every tie", () => {
     expect(ev("MODE.SNGL(x)", { x: [4, 2, 2, 4, 1] })).toBe(4);
     expect(ev("MODE(x)", { x: [4, 2, 2, 4, 1] })).toBe(4);
+  });
+  it("no value repeating is Excel's #N/A, in the formulas and on the card", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : v);
+    for (const f of ["MODE", "MODE.SNGL", "MODE.MULT"]) expect(code(ev(`${f}(x)`, { x: [1, 2, 3] })), f).toBe("#N/A");
+    expect(code(ev("MODE(5)"))).toBe("#N/A");
+    expect(code(new ModeNode().data({ list: [[1, 2, 3]] }).result)).toBe("#N/A");
+  });
+  // [[D48]] classifyNonFinite: a NaN in the data is #DOMAIN!, never skipped and never passed on bare.
+  it("a NaN makes MODE, MODE.MULT, the Mode card and PRODUCT #DOMAIN!", () => {
+    const code = (v: unknown) => (isSolError(v) ? v.code : v);
+    for (const f of ["MODE", "MODE.SNGL", "MODE.MULT", "PRODUCT"]) expect(code(ev(`${f}(x)`, { x: [1, NaN, 3] })), f).toBe("#DOMAIN!");
+    expect(code(new ModeNode().data({ list: [[1, NaN, NaN, 3]] }).result)).toBe("#DOMAIN!");
+  });
+  it("PRODUCT skips text, as Excel's does, and is 0 with no numbers", () => {
+    expect(ev("PRODUCT(x)", { x: [2, 3, null, "a"] })).toBe(6);
+    expect(ev("PRODUCT(x)", { x: ["a"] })).toBe(0);
   });
   it("FISHER / FISHERINV share the domain rule", () => {
     same(ev("FISHER(0.5)"), new FisherNode({ op: "fisher" }).data({ value: [0.5] }).result);
