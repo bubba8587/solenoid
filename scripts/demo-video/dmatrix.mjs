@@ -85,7 +85,7 @@ async function need(page, sel, text) {
 }
 
 export const BASE = "Untitled.base";
-const LOOK = { palette: "Solarized", accent: "violet", mode: "dark" };
+const LOOK = { palette: "Orchard", accent: "teal", mode: "dark" };
 /** The weights the story sets, in column order. */
 export const WEIGHTS = { rent: -3, commute: -2, size: 2, light: 3, noise: -1, laundry: 2, pets: 2 };
 const M = ".dmv-matrix";
@@ -322,7 +322,7 @@ export const DMATRIX_SCENES = {
       const select = await need(win, ".solenoid-settings-palette select");
       await wh.click(select);
       await sleep(700);
-      await wh.press("s");
+      await wh.press(LOOK.palette[0].toLowerCase());
       await sleep(250);
       await wh.press("Enter");
       await sleep(1300);
