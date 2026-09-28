@@ -1,12 +1,12 @@
 // [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D90]] cubeTypesAtDepth, [[E16]] cubeCellKinds
 import { useEffect, useState, type ReactNode } from "react";
 import { cubePopup, type CubeEditBinding, type DrillView } from "../cubePopupStore";
-import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth, typedCubeCell, coerceListItem, type CubeCell } from "../frame";
+import { recordsToCube, frameCellFromRecords, cubeRowCount, cubeDepth, typedCubeCell, coerceListItem, type CubeCell } from "../frame";
 import {
-  getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf, recordKeys, cellKindOf, convertCellKind, newColumnKey,
-  type CubePath, type CubeRecord, type CubeSource, type CubeSourceColumn,
+  getAtPath, setAtPath, parseCellText, cellTextOf, recordKeys, cellKindOf, convertCellKind, newColumnKey,
+  type CellKind, type CubePath, type CubeRecord, type CubeSource, type CubeSourceColumn,
 } from "../literalEditors";
-import { typesAt, withNestedType, renameNestedColumn, dropNestedColumn, dropNestedUnder, type NestedTypes } from "../cubeTypes";
+import { typesAt, isFrameAt, withFrame, withNestedType, renameNestedColumn, dropNestedColumn, dropNestedUnder, type NestedTables } from "../cubeTypes";
 import { stopDragStart } from "../coarse";
 import { elemChipClass } from "../valuePopup";
 import { isSolError } from "../errorValue";
@@ -21,12 +21,13 @@ const rowsAt = (records: CubeRecord[], path: CubePath): CubeRecord[] => {
 };
 
 /** A nested table as a cube, its columns read by the types declared for that one table. */
-export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTypes = {}): DrillView {
+export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
   return { kind: "cube", cube: recordsToCube(rowsAt(records, path), typesAt(nested, path), nested, path), label, path };
 }
 
-export function frameViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
-  return { kind: "frame", frame: frameFromRecords(rowsAt(records, path)), label, path };
+/** A nested Frame, its columns read by its own picks. */
+export function frameViewAt(records: CubeRecord[], path: CubePath, label: string, nested: NestedTables = {}): DrillView {
+  return { kind: "frame", frame: frameCellFromRecords(rowsAt(records, path), typesAt(nested, path)), label, path };
 }
 
 export function listViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
@@ -40,7 +41,7 @@ export function gridViewAt(records: CubeRecord[], path: CubePath, label: string)
   return { kind: "grid", cells, label, path };
 }
 
-function commitAt(edit: CubeEditBinding, path: CubePath, value: unknown, nested?: (n: NestedTypes) => NestedTypes) {
+function commitAt(edit: CubeEditBinding, path: CubePath, value: unknown, nested?: (n: NestedTables) => NestedTables) {
   const src = edit.source();
   const next: CubeSource = { ...src, rows: setAtPath(src.rows, path, value) };
   commitSource(edit, nested ? withNested(next, nested) : next);
@@ -51,7 +52,7 @@ function commitSource(edit: CubeEditBinding, next: CubeSource) {
   cubePopup.refresh();
 }
 
-function withNested(src: CubeSource, fn: (n: NestedTypes) => NestedTypes): CubeSource {
+function withNested(src: CubeSource, fn: (n: NestedTables) => NestedTables): CubeSource {
   const nested = fn(src.nested ?? {});
   const { nested: _old, ...rest } = src;
   return Object.keys(nested).length ? { ...rest, nested } : rest;
@@ -95,7 +96,7 @@ function columnTypeIn(edit: CubeEditBinding, tablePath: CubePath, column: string
   return typesAt(src.nested ?? {}, tablePath)[column];
 }
 
-/** The type declared for a cell: its own column's on a table level; on a list or matrix level, the column the list or matrix sits in. */
+/** The type declared for a cell: its own column's on a Frame or Cube level; on a list or table level, the column the list or table sits in. */
 export function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: string): ColType | undefined {
   if (column !== undefined) return columnTypeIn(edit, path, column);
   let k = path.length - 1;
@@ -103,7 +104,7 @@ export function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: s
   return k < 1 ? undefined : columnTypeIn(edit, path.slice(0, k - 1), path[k] as string);
 }
 
-/** What a typed cell reads as, printed: a table cell as a Frame cell reads, a list or matrix item as List Input reads it. */
+/** What a typed cell reads as, printed: a record's cell as a Frame cell reads, a list or table item as List Input reads it. */
 function shownAs(type: ColType, value: unknown, item: boolean): string {
   const v = value == null ? null : item ? coerceListItem(type, value) : typedCubeCell(type, value as CubeCell);
   return cubeCellToken(v as CubeCell, type);
@@ -112,15 +113,14 @@ function shownAs(type: ColType, value: unknown, item: boolean): string {
 const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
 const chipClass = (mod: "cube" | "frame" | "array") => `solenoid-array-chip solenoid-array-chip--${mod} solenoid-array-chip--sm`;
 
-/** A list, matrix or table held in a cell, as the chip that drills into it. */
-function NestedChip({ edit, cellPath, value, crumb, from, type }: {
-  edit: CubeEditBinding; cellPath: CubePath; value: unknown; crumb: string; from: { r: number; c?: number }; type?: ColType;
+/** A list, table, Frame or Cube held in a cell, as the chip that drills into it. */
+function NestedChip({ edit, cellPath, value, kind, crumb, from, type }: {
+  edit: CubeEditBinding; cellPath: CubePath; value: unknown; kind: CellKind; crumb: string; from: { r: number; c?: number }; type?: ColType;
 }): ReactNode {
   const src = edit.source();
   const records = src.rows;
   const drill = (view: DrillView) => (e: React.MouseEvent) => { stop(e); cubePopup.drill(view, from); };
-  const shape = recordsShape(value);
-  if (shape === "list" || shape === "empty") {
+  if (kind === "list") {
     const list = (value ?? []) as unknown[];
     const famClass = elemChipClass(list as Parameters<typeof elemChipClass>[0], false, type);
     return (
@@ -130,27 +130,27 @@ function NestedChip({ edit, cellPath, value, crumb, from, type }: {
       </button>
     );
   }
-  if (shape === "matrix") {
+  if (kind === "table") {
     const rows = value as unknown[][];
     const cols = rows.reduce((m, r) => Math.max(m, r.length), 0);
     const famClass = elemChipClass(rows as Parameters<typeof elemChipClass>[0], true, type);
     return (
-      <button type="button" className={chipClass("array") + famClass} title={`${rows.length}×${cols} matrix. Drill in and edit.`}
+      <button type="button" className={chipClass("array") + famClass} title={`${rows.length}×${cols} table. Drill in and edit.`}
         onPointerDown={stop} onMouseDown={stop} onClick={drill(gridViewAt(records, cellPath, crumb))}>
-        [{rows.length}×{cols} Matrix]
-      </button>
-    );
-  }
-  if (shape === "frame") {
-    const rows = value as CubeRecord[];
-    return (
-      <button type="button" className={chipClass("frame")} title={`Frame ${rows.length}×${Object.keys(rows[0] ?? {}).length}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={drill(frameViewAt(records, cellPath, crumb))}>
-        [{rows.length}×{Object.keys(rows[0] ?? {}).length} Frame]
+        [{rows.length}×{cols} Table]
       </button>
     );
   }
   const rows = Array.isArray(value) ? (value as CubeRecord[]) : [value as CubeRecord];
+  if (kind === "frame") {
+    const cols = recordKeys(rows).length;
+    return (
+      <button type="button" className={chipClass("frame")} title={`Frame ${rows.length}×${cols}. Drill in and edit.`}
+        onPointerDown={stop} onMouseDown={stop} onClick={drill(frameViewAt(records, cellPath, crumb, src.nested))}>
+        [{rows.length}×{cols} Frame]
+      </button>
+    );
+  }
   const c = recordsToCube(rows);
   const dims = `${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)}`;
   return (
@@ -161,22 +161,31 @@ function NestedChip({ edit, cellPath, value, crumb, from, type }: {
   );
 }
 
-/** One editing cell: a value types in place, anything else is a chip to drill into, and the edge menu switches between them ([[E16]] cubeCellKinds). A switch drops the types declared inside the cell. */
+/** What a kind switch does to the declarations inside the cell: a Frame and a Cube trade places keeping the table's own picks (a Frame drops what its now-blank cells held); anything else starts clean. */
+function redeclare(n: NestedTables, cellPath: CubePath, from: CellKind, to: CellKind): NestedTables {
+  const records = (k: CellKind) => k === "frame" || k === "cube";
+  const kept = records(from) && records(to);
+  const cleared = dropNestedUnder(n, cellPath, kept);
+  return to === "frame" ? withFrame(cleared, cellPath, true) : kept ? withFrame(cleared, cellPath, false) : cleared;
+}
+
+/** One editing cell: a value types in place, anything else is a chip to drill into, and the edge menu switches between them ([[E16]] cubeCellKinds). */
 function EditCell({ edit, cellPath, crumb, from, type, item, source, kinds = true }: {
   edit: CubeEditBinding; cellPath: CubePath; crumb: string; from: { r: number; c?: number }; type?: ColType; item: boolean; source: boolean;
-  /** A matrix item stays a value: no menu. */
+  /** A table's or a Frame's cell stays a value: no menu. */
   kinds?: boolean;
 }): ReactNode {
-  const value = getAtPath(edit.source().rows, cellPath);
-  const kind = cellKindOf(value);
+  const src = edit.source();
+  const value = getAtPath(src.rows, cellPath);
+  const kind = cellKindOf(value, isFrameAt(src.nested ?? {}, cellPath));
   const shownType = source ? undefined : type;
   const inline = kind === "value" || !kinds;
   return (
     <span className="cube-edit__cell">
       {inline
         ? <InlineCell value={value} shown={shownType && value != null ? shownAs(shownType, value, item) : undefined} onCommit={(text) => commitAt(edit, cellPath, parseCellText(text))} />
-        : <NestedChip edit={edit} cellPath={cellPath} value={value} crumb={crumb} from={from} type={type} />}
-      {kinds && <CellKindMenu kind={kind} onPick={(next) => commitAt(edit, cellPath, convertCellKind(value, next), (n) => dropNestedUnder(n, cellPath))} />}
+        : <NestedChip edit={edit} cellPath={cellPath} value={value} kind={kind} crumb={crumb} from={from} type={type} />}
+      {kinds && <CellKindMenu kind={kind} onPick={(next) => commitAt(edit, cellPath, convertCellKind(value, kind, next), (n) => redeclare(n, cellPath, kind, next))} />}
     </span>
   );
 }
@@ -195,7 +204,8 @@ export function CubeEditCell({ edit, path, row, column, source = false }: {
     const col = cube && !isSolError(cube) ? cube.columns.find((c) => c.name === column) : undefined;
     return <CubeCellChip cell={col?.cells[row] ?? null} crumb={column} size="sm" type={col?.type} at={{ r: row }} />;
   }
-  return <EditCell edit={edit} cellPath={[...path, row, column]} crumb={column} from={{ r: row }} type={declaredTypeAt(edit, path, column)} item={false} source={source} />;
+  const inFrame = path.length > 0 && isFrameAt(edit.source().nested ?? {}, path);
+  return <EditCell edit={edit} cellPath={[...path, row, column]} crumb={column} from={{ r: row }} type={declaredTypeAt(edit, path, column)} item={false} source={source} kinds={!inFrame} />;
 }
 
 export function ListEditCell({ edit, path, row, source = false }: { edit: CubeEditBinding; path: CubePath; row: number; source?: boolean }): ReactNode {
@@ -243,7 +253,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
       if (!r || typeof r !== "object" || Array.isArray(r)) return r;
       return Object.fromEntries(Object.entries(r as CubeRecord).map(([k, v]) => [k === column ? key : k, v]));
     });
-    const moved = (n: NestedTypes) => renameNestedColumn(n, path, column, key);
+    const moved = (n: NestedTables) => renameNestedColumn(n, path, column, key);
     if (path.length === 0) {
       commitSource(edit, withNested({ ...src, columns: src.columns.map((c) => (c.name === column ? { ...c, name: key } : c)), rows: renamed as CubeRecord[] }, moved));
       return;
@@ -332,7 +342,7 @@ export function CubeEditRows({ edit, view }: { edit: CubeEditBinding; view: Dril
       const { [last]: _dropped, ...rest } = r;
       return rest;
     });
-    const dropped = (n: NestedTypes) => dropNestedColumn(n, path, last);
+    const dropped = (n: NestedTables) => dropNestedColumn(n, path, last);
     if (cols) commitSource(edit, withNested({ ...src, columns: src.columns.filter((c) => c.name !== last), rows }, dropped));
     else commitAt(edit, path, rows, dropped);
   };

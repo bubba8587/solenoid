@@ -9,7 +9,7 @@ import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, type FxRate, type 
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, type MdbaseCollection } from "../mdbaseTypes";
 import { parseObsidianTypes } from "../obsidianTypes";
-import { parsePluginColumnTypes, parsePluginNestedTypes, PLUGIN_DATA_PATH, type PluginColumnTypes, type PluginNestedTypes } from "../pluginColumnTypes";
+import { parsePluginColumnTypes, parsePluginNestedTables, PLUGIN_DATA_PATH, type PluginColumnTypes, type PluginNestedTables } from "../pluginColumnTypes";
 import { parseDailyNotesConfig } from "../dailyNotesConfig";
 import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
@@ -961,10 +961,10 @@ export class VaultFolderNode extends ClassicPreset.Node {
     return out;
   }
 
-  private async readColumnPicks(vault: string): Promise<{ columns: PluginColumnTypes; nested: PluginNestedTypes }> {
+  private async readColumnPicks(vault: string): Promise<{ columns: PluginColumnTypes; nested: PluginNestedTables }> {
     try {
       const text = await readVaultFile(vault, PLUGIN_DATA_PATH);
-      return { columns: parsePluginColumnTypes(text), nested: parsePluginNestedTypes(text) };
+      return { columns: parsePluginColumnTypes(text), nested: parsePluginNestedTables(text) };
     } catch {
       return { columns: {}, nested: {} };
     }

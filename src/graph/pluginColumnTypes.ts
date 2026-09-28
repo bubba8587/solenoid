@@ -1,14 +1,14 @@
 // [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling, [[D90]] cubeTypesAtDepth
 // Column types a user picked in the Solenoid Properties plugin: a pick sits above the guesser and only refines a
 // table's columns (mdbase and `.obsidian/types.json` still say what a key is). Pure JSON.
-import { readColumnTypes, readNestedTypes, type ColumnTypes, type NestedTypes } from "./cubeTypes";
+import { readColumnTypes, readNestedTables, type ColumnTypes, type NestedTables } from "./cubeTypes";
 
 /** A frame or cube property's top-level picks, a type per column. */
 export type ColumnPicks = ColumnTypes;
 /** Keyed by property name, vault-wide, as Obsidian types a property. */
 export type PluginColumnTypes = Readonly<Record<string, ColumnPicks>>;
 /** The tables nested in one note's cube properties: note path, then property, then each table's records path. */
-export type PluginNestedTypes = Readonly<Record<string, Readonly<Record<string, NestedTypes>>>>;
+export type PluginNestedTables = Readonly<Record<string, Readonly<Record<string, NestedTables>>>>;
 
 export const PLUGIN_DATA_PATH = ".obsidian/plugins/solenoid-properties/data.json";
 
@@ -31,18 +31,18 @@ export function parsePluginColumnTypes(text: string): PluginColumnTypes {
 }
 
 /** The per-cell picks of nested tables, per note; a malformed body gives {}. */
-export function parsePluginNestedTypes(text: string): PluginNestedTypes {
-  return readPluginNestedTypes(readData(text).nestedTypes);
+export function parsePluginNestedTables(text: string): PluginNestedTables {
+  return readPluginNestedTables(readData(text).nestedTables);
 }
 
-export function readPluginNestedTypes(raw: unknown): PluginNestedTypes {
-  const out: Record<string, Record<string, NestedTypes>> = {};
+export function readPluginNestedTables(raw: unknown): PluginNestedTables {
+  const out: Record<string, Record<string, NestedTables>> = {};
   if (!isRecord(raw)) return out;
   for (const [note, props] of Object.entries(raw)) {
     if (!isRecord(props)) continue;
-    const byProp: Record<string, NestedTypes> = {};
+    const byProp: Record<string, NestedTables> = {};
     for (const [prop, nested] of Object.entries(props)) {
-      const n = readNestedTypes(nested);
+      const n = readNestedTables(nested);
       if (Object.keys(n).length) byProp[prop] = n;
     }
     if (Object.keys(byProp).length) out[note] = byProp;

@@ -9,14 +9,15 @@ specific item.
 ### SESSION DIGEST (2026-09-28: Cube types at every depth, cell kinds; cloud session)
 
 - **Cube types at every depth, cell by cell** ([[D90]] cubeTypesAtDepth, superseding D80 on the author's word): a
-  column's type holds its values, lists and matrices; each table nested in a cell has its own picks, set with the same
-  button on its level and kept in the source's `nested` map keyed by the table's records path (`cubeTypes.ts`), so one
-  column's rows can hold differently shaped, differently typed tables. The plugin keeps nested picks per note
-  (`nestedTypes` in `data.json`), which Vault Folder and Import Obsidian Note read. Specs: [[frame-verbs]] § The Cube
+  column's type holds its values, lists and Tables; each Frame or Cube nested in a cell has its own declarations, kept
+  in the source's `nested` map keyed by the table's records path (`cubeTypes.ts`: `{ frame?, types? }`), so one
+  column's rows can hold differently shaped, differently typed tables. The plugin keeps them per note
+  (`nestedTables` in `data.json`), which Vault Folder and Import Obsidian Note read. Specs: [[frame-verbs]] § The Cube
   value, [[table-popup]] § Editing a Cube Input.
-- **Cell kinds** ([[E16]] cubeCellKinds): every Cube editing cell, list items included, has a Value / List / Matrix /
-  Table menu at its edge (`CellKindMenu`, `convertCellKind`); a matrix drills to an editable grid. A 2-D cell's chip
-  reads `[R×C Matrix]` in the Cube popup.
+- **Cell kinds** ([[E16]] cubeCellKinds): every Cube editing cell, list items included, has a Value / List / Table /
+  Frame / Cube menu at its edge (`CellKindMenu`, `convertCellKind`), Table being the app's 2-D shape. A Frame cell is
+  declared, derives a real Frame (`frameCellFromRecords`) and holds only values; undeclared records are a Cube, so
+  the editor no longer labels a flat nested table "Frame" by its contents.
 - **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
   sums, means, extremes and dates read through the column's format (`statReadsAsCell`).
 

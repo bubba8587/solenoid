@@ -1,6 +1,6 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[D90]] cubeTypesAtDepth
 import { createValueStore } from "./storeKit";
-import { recordsToCube, frameFromRecords, type CubeValue, type FrameValue, type CubeCell, type FrameColType } from "./frame";
+import { recordsToCube, frameCellFromRecords, type CubeValue, type FrameValue, type CubeCell, type FrameColType } from "./frame";
 import { getAtPath, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";
 import { isSolError, type SolError } from "./errorValue";
 import { typesAt } from "./cubeTypes";
@@ -72,7 +72,7 @@ export const cubePopup = {
       const sub = v.path.length ? getAtPath(records, v.path) : records;
       const rows = Array.isArray(sub) ? (sub as CubeRecord[]) : [];
       if (v.kind === "cube") return { ...v, cube: editLevelCube(edit, v.path, rows) };
-      if (v.kind === "frame") return { ...v, frame: frameFromRecords(rows) };
+      if (v.kind === "frame") return { ...v, frame: frameCellFromRecords(rows, typesAt(edit.source().nested ?? {}, v.path)) };
       if (v.kind === "list") return { ...v, items: Array.isArray(sub) ? (sub as unknown[]) : [] };
       if (v.kind === "grid") return { ...v, cells: Array.isArray(sub) ? (sub as unknown[]).map((row) => (Array.isArray(row) ? (row as CubeCell[]) : [])) : [] };
       return v;

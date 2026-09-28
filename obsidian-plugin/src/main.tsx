@@ -15,8 +15,8 @@ import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
 import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, type PropertyKind, type ColumnTypes } from "./yamlValue";
-import { readPluginNestedTypes, type PluginNestedTypes } from "../../src/graph/pluginColumnTypes";
-import type { NestedTypes } from "../../src/graph/cubeTypes";
+import { readPluginNestedTables, type PluginNestedTables } from "../../src/graph/pluginColumnTypes";
+import type { NestedTables } from "../../src/graph/cubeTypes";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver, setAccentSlot } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } from "./lookTokens";
@@ -49,7 +49,7 @@ interface PluginData {
   accent?: string;
   columnTypes?: Record<string, ColumnTypes>;
   /** Note path, then property: the column types of the tables nested in that note's cube. */
-  nestedTypes?: PluginNestedTypes;
+  nestedTables?: PluginNestedTables;
   look?: boolean;
 }
 
@@ -81,7 +81,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       palette: stored.palette,
       accent: isAccentSlot(stored.accent) ? stored.accent : DEFAULT_ACCENT,
       columnTypes: readColumnTypes(stored.columnTypes),
-      nestedTypes: readPluginNestedTypes(stored.nestedTypes),
+      nestedTables: readPluginNestedTables(stored.nestedTables),
       look: stored.look === true,
     };
     paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
@@ -94,8 +94,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.renderPopups();
     new KnapNotes(this).register();
 
-    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => void this.moveNestedTypes(oldPath, file.path)));
-    this.registerEvent(this.app.vault.on("delete", (file) => void this.moveNestedTypes(file.path, null)));
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => void this.moveNestedTables(oldPath, file.path)));
+    this.registerEvent(this.app.vault.on("delete", (file) => void this.moveNestedTables(file.path, null)));
     this.registerEvent(this.app.workspace.on("css-change", syncTheme));
     this.registerEvent(this.app.workspace.on("window-open", () => window.setTimeout(() => this.sweep(), 300)));
     this.registerEvent(this.app.workspace.on("layout-change", () => this.sweep()));
@@ -231,18 +231,18 @@ export default class SolenoidPropertiesPlugin extends Plugin {
 
   /** A property's chip in `el`, the same in the properties panel and in a note's body. */
   /** A note's nested-table types follow it when it's renamed, and go when it's deleted. */
-  private async moveNestedTypes(from: string, to: string | null): Promise<void> {
-    const { [from]: moved, ...rest } = this.data.nestedTypes ?? {};
+  private async moveNestedTables(from: string, to: string | null): Promise<void> {
+    const { [from]: moved, ...rest } = this.data.nestedTables ?? {};
     if (!moved) return;
-    this.data.nestedTypes = to ? { ...rest, [to]: moved } : rest;
+    this.data.nestedTables = to ? { ...rest, [to]: moved } : rest;
     await this.saveData(this.data);
   }
 
-  private async setNestedTypes(note: string, key: string, nested: NestedTypes): Promise<void> {
-    const { [note]: props = {}, ...others } = this.data.nestedTypes ?? {};
+  private async setNestedTables(note: string, key: string, nested: NestedTables): Promise<void> {
+    const { [note]: props = {}, ...others } = this.data.nestedTables ?? {};
     const { [key]: _old, ...otherProps } = props;
     const nextProps = Object.keys(nested).length ? { ...otherProps, [key]: nested } : otherProps;
-    this.data.nestedTypes = Object.keys(nextProps).length ? { ...others, [note]: nextProps } : others;
+    this.data.nestedTables = Object.keys(nextProps).length ? { ...others, [note]: nextProps } : others;
     await this.saveData(this.data);
   }
 
@@ -256,8 +256,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
         onChange={onChange}
         columnTypes={this.data.columnTypes?.[key]}
         onColumnTypes={(types, replace) => void this.setColumnTypes(key, types, replace)}
-        nestedTypes={sourcePath ? this.data.nestedTypes?.[sourcePath]?.[key] : undefined}
-        onNestedTypes={sourcePath ? (nested) => void this.setNestedTypes(sourcePath, key, nested) : undefined}
+        nestedTables={sourcePath ? this.data.nestedTables?.[sourcePath]?.[key] : undefined}
+        onNestedTables={sourcePath ? (nested) => void this.setNestedTables(sourcePath, key, nested) : undefined}
       />);
     shadow.host.addEventListener("pointerdown", () => {
       if (homePopupLayer(shadow.host.ownerDocument)) this.renderPopups();

@@ -6,7 +6,7 @@ import { FrameChip } from "../../src/graph/components/FrameChip";
 import { CubeChip } from "../../src/graph/components/CubeChip";
 import { deriveFrame, recordsToCube } from "../../src/graph/frame";
 import { recordKeys, type CubeRecord, type CubeSource } from "../../src/graph/literalEditors";
-import type { NestedTypes } from "../../src/graph/cubeTypes";
+import type { NestedTables } from "../../src/graph/cubeTypes";
 import {
   coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, columnTypesOf, rawCell,
   type PropertyKind, type Family, type YamlRecord, type ColumnTypes,
@@ -22,7 +22,7 @@ function typeAccent(kind: PropertyKind, resolveToken: (token: string) => string 
   return resolveToken(token);
 }
 
-export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, nestedTypes, onNestedTypes, resolveToken = tokenHex }: {
+export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, nestedTables, onNestedTables, resolveToken = tokenHex }: {
   kind: PropertyKind;
   label: string;
   initial: unknown;
@@ -31,8 +31,8 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   /** `replace` sets the property's whole map, so a cube column switched back to none loses its pick. */
   onColumnTypes?: (types: ColumnTypes, replace?: boolean) => void;
   /** A cube's nested tables' types, this note's own; without the callback they are shown but not kept. */
-  nestedTypes?: NestedTypes;
-  onNestedTypes?: (nested: NestedTypes) => void;
+  nestedTables?: NestedTables;
+  onNestedTables?: (nested: NestedTables) => void;
   resolveToken?: (token: string) => string | undefined;
 }) {
   const [yaml, setYaml] = useState<unknown>(initial);
@@ -41,7 +41,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   // The cube popup keeps the binding it opened with, so its reads go through a ref.
   const pickedRef = useRef<ColumnTypes>(picked);
   pickedRef.current = picked;
-  const nestedRef = useRef<NestedTypes>(nestedTypes ?? {});
+  const nestedRef = useRef<NestedTables>(nestedTables ?? {});
   const commit = (next: unknown) => {
     latest.current = next;
     setYaml(next);
@@ -136,7 +136,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           setPicked(types);
           onColumnTypes?.(types, true);
           const nested = source.nested ?? {};
-          if (JSON.stringify(nested) !== JSON.stringify(nestedRef.current)) { nestedRef.current = nested; onNestedTypes?.(nested); }
+          if (JSON.stringify(nested) !== JSON.stringify(nestedRef.current)) { nestedRef.current = nested; onNestedTables?.(nested); }
           commit(source.rows);
         },
         cube: () => { const s = cubeSource(); return recordsToCube(s.rows, typesOf(s), s.nested); },

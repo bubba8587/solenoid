@@ -6,7 +6,7 @@ import {
 } from "../../src/graph/literalEditors";
 import { CubeInputNode } from "../../src/graph/rete-nodes";
 import { extractInit } from "../../src/graph/copyPaste";
-import { isCubeValue, type CubeValue } from "../../src/graph/frame";
+import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../../src/graph/frame";
 import { isSolError } from "../../src/graph/errorValue";
 
 // The literal inputs' shared editing helpers + the Cube Input node (the fourth literal
@@ -31,9 +31,9 @@ describe("parseCubeSource / cubeSourceToText", () => {
 
   // [[D90]] cubeTypesAtDepth
   it("a nested table's types ride under its records path and round-trip; a bad key or pick is dropped", () => {
-    const typed = { columns: [{ name: "tasks" }], rows: [{ tasks: [{ hours: 1 }] }], nested: { '[0,"tasks"]': { hours: "number" as const } } };
+    const typed = { columns: [{ name: "tasks" }], rows: [{ tasks: [{ hours: 1 }] }], nested: { '[0,"tasks"]': { frame: true as const, types: { hours: "number" as const } } } };
     expect(parseCubeSource(cubeSourceToText(typed))).toEqual({ source: typed });
-    const bad = JSON.stringify({ columns: [{ name: "t" }], rows: [], nested: { nope: { a: "number" }, '[0,"t"]': { a: "frame" } } });
+    const bad = JSON.stringify({ columns: [{ name: "t" }], rows: [], nested: { nope: { types: { a: "number" } }, '[0,"t"]': { types: { a: "frame" }, frame: "yes" } } });
     expect((parseCubeSource(bad) as { source: unknown }).source).toEqual({ columns: [{ name: "t" }], rows: [] });
   });
 
@@ -64,26 +64,27 @@ describe("paths + shapes + cell text", () => {
     expect(recordsShape(null)).toBe("scalar");
   });
   // [[E16]] cubeCellKinds
-  it("a cell switches between a value, a list and a table, keeping what it can", () => {
-    expect([cellKindOf(3), cellKindOf(null), cellKindOf([]), cellKindOf([1]), cellKindOf([[1, 2], [3]]), cellKindOf([{ a: 1 }]), cellKindOf({ a: 1 })])
-      .toEqual(["value", "value", "list", "list", "matrix", "table", "table"]);
-    expect(convertCellKind(3, "list")).toEqual([3]);
-    expect(convertCellKind(null, "list")).toEqual([]);
-    expect(convertCellKind(3, "table")).toEqual([{ "Column 1": 3 }]);
-    expect(convertCellKind(null, "table")).toEqual([{ "Column 1": null }]);
-    expect(convertCellKind([1, "b"], "table")).toEqual([{ "Column 1": 1 }, { "Column 1": "b" }]);
-    expect(convertCellKind([], "table")).toEqual([{ "Column 1": null }]);
-    expect(convertCellKind([{ a: 1, b: 2 }, { a: 3 }], "list")).toEqual([1, 3]);
-    expect(convertCellKind([7, 8], "value")).toBe(7);
-    expect(convertCellKind([[1], 2], "value")).toBeNull();
-    expect(convertCellKind([{ a: "x" }], "value")).toBe("x");
-    expect(convertCellKind("same", "value")).toBe("same");
-    expect(convertCellKind(3, "matrix")).toEqual([[3]]);
-    expect(convertCellKind([1, 2], "matrix")).toEqual([[1, 2]]);
-    expect(convertCellKind([{ a: 1, b: 2 }, { a: 3 }], "matrix")).toEqual([[1, 2], [3, null]]);
-    expect(convertCellKind([[1, 2], [3, 4]], "table")).toEqual([{ "Column 1": 1, "Column 2": 2 }, { "Column 1": 3, "Column 2": 4 }]);
-    expect(convertCellKind([[1, 2], [3, 4]], "list")).toEqual([1, 2]);
-    expect(convertCellKind([[5]], "value")).toBe(5);
+  it("a cell switches between a value, a list, a table, a Frame and a Cube, keeping what it can", () => {
+    expect([cellKindOf(3), cellKindOf(null), cellKindOf([]), cellKindOf([1]), cellKindOf([[1, 2], [3]]), cellKindOf([{ a: 1 }]), cellKindOf([{ a: 1 }], true), cellKindOf({ a: 1 })])
+      .toEqual(["value", "value", "list", "list", "table", "cube", "frame", "cube"]);
+    expect(convertCellKind(3, "value", "list")).toEqual([3]);
+    expect(convertCellKind(null, "value", "list")).toEqual([]);
+    expect(convertCellKind(3, "value", "table")).toEqual([[3]]);
+    expect(convertCellKind([1, 2], "list", "table")).toEqual([[1, 2]]);
+    expect(convertCellKind([[1, 2], [3, 4]], "table", "list")).toEqual([1, 2]);
+    expect(convertCellKind(3, "value", "frame")).toEqual([{ "Column 1": 3 }]);
+    expect(convertCellKind(null, "value", "cube")).toEqual([{ "Column 1": null }]);
+    expect(convertCellKind([1, "b"], "list", "cube")).toEqual([{ "Column 1": 1 }, { "Column 1": "b" }]);
+    expect(convertCellKind([], "list", "frame")).toEqual([{ "Column 1": null }]);
+    expect(convertCellKind([{ a: 1, b: 2 }, { a: 3 }], "cube", "list")).toEqual([1, 3]);
+    expect(convertCellKind([{ a: 1, b: 2 }, { a: 3 }], "frame", "table")).toEqual([[1, 2], [3, null]]);
+    expect(convertCellKind([[1, 2], [3, 4]], "table", "frame")).toEqual([{ "Column 1": 1, "Column 2": 2 }, { "Column 1": 3, "Column 2": 4 }]);
+    expect(convertCellKind([{ a: 1, t: [1, 2] }], "cube", "frame")).toEqual([{ a: 1, t: null }]);
+    expect(convertCellKind([{ a: 1 }], "frame", "cube")).toEqual([{ a: 1 }]);
+    expect(convertCellKind([7, 8], "list", "value")).toBe(7);
+    expect(convertCellKind([[5]], "table", "value")).toBe(5);
+    expect(convertCellKind([{ a: "x" }], "cube", "value")).toBe("x");
+    expect(convertCellKind("same", "value", "value")).toBe("same");
   });
 
   it("parseCellText / cellTextOf round-trip scalars; lists show as JSON", () => {
@@ -150,7 +151,7 @@ describe("Cube Input typed and formula columns", () => {
         { tasks: ["4", "y"] },
         { tasks: [["1", "z"]] },
       ],
-      nested: { '[0,"tasks"]': { hours: "number", note: "string" }, '[0,"tasks",0,"steps"]': { due: "date" }, '[1,"tasks"]': { note: "number" } },
+      nested: { '[0,"tasks"]': { types: { hours: "number", note: "string" } }, '[0,"tasks",0,"steps"]': { types: { due: "date" } }, '[1,"tasks"]': { types: { note: "number" } } },
     });
     const cells = col(c, "tasks").cells;
     const t0 = cells[0] as CubeValue;
@@ -165,6 +166,18 @@ describe("Cube Input typed and formula columns", () => {
     expect(Number.isNaN(t1.columns[1].cells[0])).toBe(true);
     expect(cells[2]).toEqual([4, null]);
     expect(cells[3]).toEqual([[1, null]]);
+  });
+
+  it("a cell declared a Frame is a flat, typed Frame; the same records undeclared are a Cube", () => {
+    const c = cube({
+      columns: [{ name: "t" }],
+      rows: [{ t: [{ a: "1", b: [2] }] }, { t: [{ a: "1" }] }],
+      nested: { '[0,"t"]': { frame: true, types: { a: "number" } } },
+    });
+    const [f, k] = col(c, "t").cells;
+    expect(isFrameValue(f)).toBe(true);
+    expect((f as FrameValue).columns.map((x) => [x.name, x.type, x.values[0]])).toEqual([["a", "number", 1], ["b", "string", null]]);
+    expect(isCubeValue(k)).toBe(true);
   });
 
   it("a formula column reads this row's list and sits where it was declared", () => {

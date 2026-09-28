@@ -1,6 +1,6 @@
 // [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling, [[D90]] cubeTypesAtDepth
 import { describe, it, expect } from "vitest";
-import { parsePluginColumnTypes, parsePluginNestedTypes, PLUGIN_DATA_PATH } from "../../src/graph/pluginColumnTypes";
+import { parsePluginColumnTypes, parsePluginNestedTables, PLUGIN_DATA_PATH } from "../../src/graph/pluginColumnTypes";
 
 describe("the plugin's picked column types", () => {
   it("reads columnTypes, property then column, keeping only real types", () => {
@@ -9,9 +9,9 @@ describe("the plugin's picked column types", () => {
   });
 
   it("reads each note's nested-table picks, per property, per records path", () => {
-    const text = JSON.stringify({ nestedTypes: { "Log/Mon.md": { tasks: { '[0,"items"]': { hours: "number", odd: "frame" } }, junk: 3 }, bad: [] } });
-    expect(parsePluginNestedTypes(text)).toEqual({ "Log/Mon.md": { tasks: { '[0,"items"]': { hours: "number" } } } });
-    expect(parsePluginNestedTypes("{")).toEqual({});
+    const text = JSON.stringify({ nestedTables: { "Log/Mon.md": { tasks: { '[0,"items"]': { frame: true, types: { hours: "number", odd: "frame" } } }, junk: 3 }, bad: [] } });
+    expect(parsePluginNestedTables(text)).toEqual({ "Log/Mon.md": { tasks: { '[0,"items"]': { frame: true, types: { hours: "number" } } } } });
+    expect(parsePluginNestedTables("{")).toEqual({});
   });
 
   it("is empty for a malformed or pick-less file", () => {

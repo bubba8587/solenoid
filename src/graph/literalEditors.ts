@@ -1,7 +1,7 @@
 // [[C28]] literalsIffEditable
 // Shared editing helpers for the literal inputs (Table, Frame, List and Cube Input all edit through the table popup).
 // Pure: text to records and back.
-import { isColumnType, readNestedTypes, type ColumnTypes, type NestedTypes } from "./cubeTypes";
+import { isColumnType, readNestedTables, type ColumnTypes, type NestedTables } from "./cubeTypes";
 
 /** A cell is a scalar, a list of scalars, or a list of records (a nested table, or a nested cube). */
 export type CubeRecord = Record<string, unknown>;
@@ -22,7 +22,7 @@ export interface CubeSourceColumn {
 export interface CubeSource {
   columns: CubeSourceColumn[];
   rows: CubeRecord[];
-  nested?: NestedTypes;
+  nested?: NestedTables;
 }
 
 export function recordKeys(rows: readonly unknown[]): string[] {
@@ -38,7 +38,7 @@ export function parseCubeSource(text: string): { source: CubeSource } | { error:
   let v: unknown;
   try { v = JSON.parse(t); } catch (e) { return { error: `Cube Input: ${e instanceof Error ? e.message : "not JSON"}` }; }
   const declared: CubeSourceColumn[] = [];
-  let nested: NestedTypes = {};
+  let nested: NestedTables = {};
   if (v && typeof v === "object" && !Array.isArray(v)) {
     const o = v as { columns?: unknown; rows?: unknown; nested?: unknown };
     if (!Array.isArray(o.rows) || !Array.isArray(o.columns)) return { error: "Cube Input: the text must be a JSON array of records, or { columns, rows }" };
@@ -52,7 +52,7 @@ export function parseCubeSource(text: string): { source: CubeSource } | { error:
         ...(typeof expr === "string" ? { expr } : {}),
       });
     }
-    nested = readNestedTypes(o.nested);
+    nested = readNestedTables(o.nested);
     v = o.rows;
   }
   if (!Array.isArray(v)) return { error: "Cube Input: the text must be a JSON array of records" };
@@ -126,43 +126,50 @@ export function parseCellText(text: string): unknown {
   return text;
 }
 
-/** What an editing cell holds ([[E16]] cubeCellKinds): a value, a list, a matrix (rows of values), or a table (records). */
-export type CellKind = "value" | "list" | "matrix" | "table";
+/** What an editing cell holds ([[E16]] cubeCellKinds): a value, a list, a table (rows of values, the app's 2-D shape), a Frame or a Cube (records). */
+export type CellKind = "value" | "list" | "table" | "frame" | "cube";
 
-export function cellKindOf(v: unknown): CellKind {
+/** Records are a Frame only where the cell is declared one (`isFrameAt`); otherwise a Cube. */
+export function cellKindOf(v: unknown, frame = false): CellKind {
   const shape = recordsShape(v);
-  return shape === "list" || shape === "empty" ? "list" : shape === "matrix" ? "matrix" : shape === "frame" || shape === "cube" ? "table" : "value";
+  if (shape === "list" || shape === "empty") return "list";
+  if (shape === "matrix") return "table";
+  if (shape === "frame" || shape === "cube") return frame ? "frame" : "cube";
+  return "value";
 }
 
 export const newColumnKey = (n: number): string => `Column ${n}`;
 
 const isPlainValue = (v: unknown): boolean => v === null || typeof v !== "object";
 const tableRows = (v: unknown): CubeRecord[] => (Array.isArray(v) ? (v as CubeRecord[]) : v && typeof v === "object" ? [v as CubeRecord] : []);
+const isRecords = (k: CellKind): boolean => k === "frame" || k === "cube";
 
-/** The cell's contents as rows of values: a value one cell, a list one row, a table its rows in key order. */
+/** The cell's contents as rows of values: a value one cell, a list one row, records their rows in key order. */
 function asGrid(v: unknown, kind: CellKind): unknown[][] {
   if (kind === "value") return [[v ?? null]];
   if (kind === "list") return [v as unknown[]];
-  if (kind === "matrix") return (v as unknown[][]).map((row) => [...row]);
+  if (kind === "table") return (v as unknown[][]).map((row) => [...row]);
   const rows = tableRows(v);
   const keys = recordKeys(rows);
   return rows.map((r) => keys.map((k) => r[k] ?? null));
 }
 
-/** The cell switched to `to`, keeping what it can: a value becomes the first item or cell; a list is a matrix's first row and a table's first column, and back; a table's rows are a matrix's and back (the column names go); Value keeps the first plain value found. */
-export function convertCellKind(v: unknown, to: CellKind): unknown {
-  const from = cellKindOf(v);
+/** The cell switched from `from` to `to`, keeping what it can: a value becomes the first item or cell; a list is a table's first row and a Frame's or Cube's first column, and back; records' rows become a table's and back (the column names go); a Cube and a Frame keep their records, a Frame blanking any nested cell; Value keeps the first plain value found. */
+export function convertCellKind(v: unknown, from: CellKind, to: CellKind): unknown {
   if (from === to) return v;
+  if (isRecords(from) && isRecords(to)) {
+    return to === "cube" ? v : tableRows(v).map((r) => Object.fromEntries(Object.entries(r).map(([k, x]) => [k, isPlainValue(x) ? x : null])));
+  }
   const grid = asGrid(v, from).filter((row) => row.length > 0);
   if (to === "value") {
     const first = grid[0]?.[0];
     return first !== undefined && isPlainValue(first) ? first : null;
   }
-  if (to === "list") return from === "value" && v == null ? [] : (from === "table" ? grid.map((row) => row[0] ?? null) : grid[0] ?? []);
-  if (to === "matrix") return grid.length ? grid : [[null]];
+  if (to === "list") return from === "value" && v == null ? [] : (isRecords(from) ? grid.map((row) => row[0] ?? null) : grid[0] ?? []);
+  if (to === "table") return grid.length ? grid : [[null]];
   const rows = from === "list" ? grid[0]?.map((x) => [x]) ?? [] : grid;
   if (!rows.length) rows.push([null]);
-  return rows.map((row) => Object.fromEntries(row.map((x, j) => [newColumnKey(j + 1), x ?? null])));
+  return rows.map((row) => Object.fromEntries(row.map((x, j) => [newColumnKey(j + 1), to === "frame" && !isPlainValue(x) ? null : x ?? null])));
 }
 
 export function cellTextOf(v: unknown): string {

@@ -6,8 +6,8 @@ import {
 import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
 import { parseDate, noteDateText } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
-import type { PluginColumnTypes, PluginNestedTypes, ColumnPicks } from "./pluginColumnTypes";
-import type { NestedTypes } from "./cubeTypes";
+import type { PluginColumnTypes, PluginNestedTables, ColumnPicks } from "./pluginColumnTypes";
+import type { NestedTables } from "./cubeTypes";
 import { fencedLines } from "./managedBlock";
 
 export interface VaultNote {
@@ -23,7 +23,7 @@ export interface VaultTypeSources {
   obsidian: TypeMap;
   columns?: PluginColumnTypes;
   /** Per note, the types of tables nested in its cube properties. */
-  nested?: PluginNestedTypes;
+  nested?: PluginNestedTables;
 }
 
 export interface VaultCubeOptions {
@@ -250,7 +250,7 @@ function resolveHint(key: string, parsed: ParsedNote[], sources: VaultTypeSource
   return sources.obsidian[key] ?? null;
 }
 
-function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[], picks?: ColumnPicks, nested?: PluginNestedTypes): { name: string; cells: CubeCell[]; type?: FrameColType } {
+function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[], picks?: ColumnPicks, nested?: PluginNestedTables): { name: string; cells: CubeCell[]; type?: FrameColType } {
   const shape: TypeHint = hint ?? guessShape(key, parsed);
   const cells: CubeCell[] = parsed.map((p) => { const f = p.fields.get(key); return cellFor(f?.value, shape, picks, f?.guessed, nested?.[p.path]?.[key]); });
   const kind = shape.kind === "list" || shape.kind === "matrix" ? shape.elem : shape.kind;
@@ -305,7 +305,7 @@ function datesToText(value: FrontmatterValueLoose | undefined): FrontmatterValue
   return one(value) as FrontmatterValueLoose | undefined;
 }
 
-function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}, guessed?: string, nested?: NestedTypes): CubeCell {
+function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}, guessed?: string, nested?: NestedTables): CubeCell {
   const textShape = "elem" in shape ? shape.elem === "string" : shape.kind === "string";
   if (textShape && guessed !== undefined && guessed.startsWith("date")) value = datesToText(value);
   if (value === undefined || value === null) return null;

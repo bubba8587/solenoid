@@ -21,7 +21,7 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { isFrameValue, recordsToCube, coerceFrameCell, guessNoteColumnType, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
-import type { NestedTypes } from "../cubeTypes";
+import type { NestedTables } from "../cubeTypes";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
@@ -110,7 +110,7 @@ function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar 
 }
 
 /** `guessed` is what the reader saw: a date pinned to text keeps the ISO text written, not its serial. */
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks, guessed?: FrontmatterFieldType, nested?: NestedTypes): EmittedValue {
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks, guessed?: FrontmatterFieldType, nested?: NestedTables): EmittedValue {
   if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : [], dateColumns, picks);
   if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks, nested);
   const base = elementFamilyOf(type) as FieldBase;
@@ -136,7 +136,7 @@ export class NoteNode extends ClassicPreset.Node {
   fieldTypes: Record<string, FrontmatterFieldType>;
   columnPicks: PluginColumnTypes = {};
   /** This note's nested-table picks, per property ([[D90]] cubeTypesAtDepth). */
-  nestedPicks: Readonly<Record<string, NestedTypes>> = {};
+  nestedPicks: Readonly<Record<string, NestedTables>> = {};
 
   private _renderBody = "";
   private _fieldKeys: string[] = [];
