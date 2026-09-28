@@ -154,9 +154,9 @@ export const WHATSNEW = {
       await sleep(700);
       await hand.click(await need(page, PROP_CHIP));
       await sleep(900);
-      // Down to the frame's size from the corner grip.
+      // Narrower from the corner grip, and tall enough for the added row above the footer.
       const grip = await need(page, ".sol-popup__resize");
-      await hand.drag({ x: grip.cx, y: grip.cy }, { x: grip.cx - 130, y: grip.cy + 10 }, { ms: 900 });
+      await hand.drag({ x: grip.cx, y: grip.cy }, { x: grip.cx - 130, y: grip.cy + 40 }, { ms: 900 });
       await sleep(500);
       await hand.click(await need(page, "button", "Add Row"));
       await sleep(500);
