@@ -8,6 +8,8 @@ import {
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
 import { LazySelect } from "./LazySelect";
+import { useDraftCommit } from "./inlineInput";
+import { stopDragStart } from "../coarse";
 
 // The FC's flow states (authored ← →, inherited → →, dictated ← ←): tree/specs/values/format-model.md.
 
@@ -260,5 +262,31 @@ export function UnitSelect({ value, onChange, className, title, disabled }: {
     >
       {unitOptions(opts)}
     </LazySelect>
+  );
+}
+
+/** A Custom style's pattern, committed on Enter or blur ([[C95]] commitOnEnter); a blank entry keeps the pattern shown. */
+export function CustomPatternField({ value, date, onCommit, className }: {
+  value: string;
+  date: boolean;
+  onCommit: (pattern: string) => void;
+  className?: string;
+}) {
+  const field = useDraftCommit(value, (v) => v, (t) => t.trim() || value, onCommit);
+  return (
+    <input
+      type="text"
+      className={className}
+      value={field.draft}
+      spellCheck={false}
+      aria-label="Custom format pattern"
+      title={date ? "Date pattern: DD, MMM, YYYY, HH, mm and so on" : "Number pattern: 0, # and . for digits, a comma for grouping"}
+      placeholder={date ? "pattern, for example YYYY-MM-DD" : 'format, for example "0.00"'}
+      onChange={(e) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={(e) => { e.stopPropagation(); field.onKeyDown(e); }}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+    />
   );
 }

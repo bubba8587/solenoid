@@ -5,6 +5,7 @@ import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { FORMAT_STYLE_LABELS, LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, type FormatAnnotation, type FormatStyle } from "./formatAnnotationStore";
 import { precisionApplies } from "./formatModel";
 import type { FrameColType } from "./frame";
+import { DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 
 /** The annotation's `unit` field is ignored — a column's unit is its value's. */
 export interface FrameColumnFormat {
@@ -65,6 +66,17 @@ registerNodeForgetAll(() => frameFormatStore.clear());
 export interface ColumnFormatRow {
   value: string;
   hint?: string;
+  /** The pattern box under a Custom pick: its text, and whether it reads as a date pattern. */
+  pattern?: { text: string; date: boolean };
+}
+
+const DEFAULT_NUMBER_PATTERN = "0.00";
+
+/** A Custom style's pattern, the one it renders with when none was typed. */
+function patternOf(ann: FormatAnnotation): { text: string; date: boolean } | undefined {
+  if (ann.format === "custom") return { text: ann.customPattern || DEFAULT_NUMBER_PATTERN, date: false };
+  if (ann.format === "date_custom") return { text: ann.customPattern || DEFAULT_DATE_FORMAT, date: true };
+  return undefined;
 }
 
 function styleValueOf(ann: FormatAnnotation, type: FrameColType): string {
@@ -77,6 +89,8 @@ export function describeAnnotation(ann: FormatAnnotation, type: FrameColType): s
   if (type === "logical") return LOGICAL_STYLE_LABELS[ann.logicalStyle ?? "truefalse"];
   if (type === "string") return ann.chip ? "Chip" : TEXT_CASE_LABELS[ann.textCase ?? "none"];
   const label = FORMAT_STYLE_LABELS[ann.format as FormatStyle] ?? ann.format;
+  const pattern = patternOf(ann);
+  if (pattern) return `${label.replace(/…$/, "")} · ${pattern.text}`;
   if (!precisionApplies(ann.format)) return label;
   const d = ann.decimalDigits ?? 2;
   const noun = ann.decimalMode === "sigfigs" ? "sig fig" : "place";
@@ -88,6 +102,9 @@ export function columnFormatRow(
   inherited: FormatAnnotation | undefined,
   type: FrameColType = "number",
 ): ColumnFormatRow {
-  if (local) return { value: styleValueOf(local, type) };
+  if (local) {
+    const pattern = type === "number" || type === "date" ? patternOf(local) : undefined;
+    return { value: styleValueOf(local, type), ...(pattern ? { pattern } : {}) };
+  }
   return inherited ? { value: "", hint: `← ${describeAnnotation(inherited, type)}` } : { value: "" };
 }

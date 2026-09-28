@@ -182,6 +182,20 @@ describe("the format row's current value and hint", () => {
     expect(columnFormatRow({ format: "auto", unit: "none" }, DEC3)).toEqual({ value: "auto" });
   });
 
+  // The gap: Custom was offered in every table popup with no pattern box to type into.
+  it("a local Custom pick carries its pattern box, with the rendering default when none was typed", () => {
+    expect(columnFormatRow({ format: "custom", unit: "none" }, undefined)).toEqual({ value: "custom", pattern: { text: "0.00", date: false } });
+    expect(columnFormatRow({ format: "custom", unit: "none", customPattern: "#,##0.0" }, undefined).pattern).toEqual({ text: "#,##0.0", date: false });
+    expect(columnFormatRow({ format: "date_custom", unit: "none" }, undefined, "date").pattern).toEqual({ text: "DD-MMM-YYYY", date: true });
+    expect(columnFormatRow(DEC0, undefined).pattern).toBeUndefined();
+    expect(columnFormatRow(undefined, { format: "custom", unit: "none", customPattern: "0.0" }).pattern).toBeUndefined();
+  });
+
+  it("an inherited Custom names its pattern in the hint", () => {
+    expect(columnFormatRow(undefined, { format: "custom", unit: "none", customPattern: "0.0" }).hint).toBe("← Custom · 0.0");
+    expect(columnFormatRow(undefined, { format: "date_custom", unit: "none", customPattern: "YYYY" }, "date").hint).toBe("← Custom · YYYY");
+  });
+
   it("neither: blank and silent", () => {
     expect(columnFormatRow(undefined, undefined)).toEqual({ value: "" });
   });

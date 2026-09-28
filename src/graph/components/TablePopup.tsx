@@ -19,7 +19,7 @@ import { frameFormatStore, columnFormatRow, type ColumnFormatRow } from "../fram
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { formatListCell } from "./valueDisplayFormat";
-import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
+import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect, CustomPatternField } from "./fcControls";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
 import { applyTextCase } from "../formatAnnotationStore";
@@ -323,6 +323,12 @@ export function TablePopup() {
     const { hint } = fmtRow(c);
     return hint ? <span className="table-popup__fmthint">{hint}</span> : null;
   };
+  const fmtPattern = (c: number) => {
+    const { pattern } = fmtRow(c);
+    return pattern
+      ? <CustomPatternField className="table-popup__fmtpattern" value={pattern.text} date={pattern.date} onCommit={(p) => persistColFmt(c, { customPattern: p })} />
+      : null;
+  };
   const colFmtControls = showFmtControls && state.formatControls === "columns";
   const fmtButton = (c: number) => {
     const type = colTypeAt(c);
@@ -337,6 +343,7 @@ export function TablePopup() {
         ) : (
           <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
         )}
+        {fmtPattern(c)}
         {fmtHint(c)}
         {type !== "number" ? null : state.unitTaggable ? (
           <UnitSelect
@@ -733,6 +740,7 @@ export function TablePopup() {
           ) : (
             <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           )}
+          {fmtPattern(0)}
           {fmtHint(0)}
           {state.unitTaggable && cellType === "number" ? (
             <UnitSelect
