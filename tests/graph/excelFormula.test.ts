@@ -2,13 +2,13 @@
 import { describe, it, expect } from "vitest";
 import {
   extractVariables,
-  closeParens,
   compilePositional,
   compileEvaluator,
   RANGE_FUNCTIONS,
   formulaToLatex,
   evaluateSteps,
 } from "../../src/graph/excelFormula";
+import { closeParens } from "../../src/graph/closeParens";
 import { isSolError, solError } from "../../src/graph/errorValue";
 
 describe("extractVariables", () => {

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
-import { closeParens } from "../excelFormula";
+import { closeParens } from "../closeParens";
 
 type ColType = "number" | "string" | "date" | "logical";
 export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];

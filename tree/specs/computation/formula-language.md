@@ -18,6 +18,7 @@ The per-name reasons Solenoid overrides a Formula.js function are [[formulajs-di
 |---|---|
 | `src/graph/excelFormula.ts` | Tokenizer, parser, AST, the evaluator (`compileEvaluator`, `compilePositional`), argument routing and preparation, broadcasting (`mapCells`), the operator table (`applyOp`), the error-handler family, LAMBDA as a special form, static analyses (`extractVariables` and siblings), LaTeX rendering and the step trace. |
 | `src/graph/excelFunctions.ts` | The function registry (`registerInternal`, `resolveExcelFunction`), the declared contracts (`EXCEL_IMPL_META`), the Formula.js fallthrough and its error mapping, the blocklist (`LEGACY_ALIASES`), the wrong-surface names (`FRAME_SURFACE_NAMES`, `NODE_SURFACE_NAMES`), and every internal registration, including the LAMBDA hosts. |
+| `src/graph/closeParens.ts` | `closeParens` ([[C115]] closeParensOnCommit), alone so a caller outside the engine (the Obsidian plugin's column head) does not pull the engine in. |
 | `src/graph/formulaSignatures.ts` | Display-only argument hints per function name. |
 | `src/graph/formulaExtensions.ts` | Pack formula registration and the advertised (autocomplete) name set. |
 | `src/graph/formulaSyntax.ts` | Editor highlighting, caret word, suggestions, enclosing-call detection. |
