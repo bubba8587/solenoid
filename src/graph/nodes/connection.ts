@@ -103,6 +103,7 @@ export class WebSourceNode extends ClassicPreset.Node {
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const { text: body, contentType } = await fetchText(ref);
+      if (this.inflightKey !== key) return { frame: this.cachedResult };
       const frame = remoteTextToFrame(body, contentType, ref);
       this.cachedResult = frame;
       this.lastKey = key;
@@ -114,6 +115,7 @@ export class WebSourceNode extends ClassicPreset.Node {
       });
       return { frame };
     } catch (e) {
+      if (this.inflightKey !== key) return { frame: this.cachedResult };
       this.cachedResult = null;
       this.lastKey = key;
       const msg = e instanceof Error ? e.message : String(e);

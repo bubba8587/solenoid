@@ -92,6 +92,29 @@ describe("a heavy composite holding a live card", () => {
   });
 });
 
+describe("a reply for a URL the card has moved past lands nowhere", () => {
+  it("Web Source keeps the newer URL's data when the older reply comes back last", async () => {
+    const resolvers = new Map<string, (body: string) => void>();
+    globalThis.fetch = vi.fn((url: string) => new Promise((res) => {
+      resolvers.set(String(url), (body) => res({
+        ok: true, status: 200, statusText: "OK",
+        headers: { get: () => "text/csv" }, text: async () => body,
+      }));
+    })) as unknown as typeof fetch;
+    const card = new WebSourceNode({ url: "https://a.example/a.csv" });
+    run(card);
+    card.url = "https://b.example/b.csv";
+    run(card);
+    await vi.waitFor(() => expect(resolvers.size).toBe(2));
+    resolvers.get("https://b.example/b.csv")!("v\n2");
+    await vi.waitFor(() => expect(connectionStore.getState(card.id).status).toBe("ok"));
+    resolvers.get("https://a.example/a.csv")!("v\n1");
+    await new Promise((r) => setTimeout(r, 0));
+    const frame = run(card) as { frame: { columns: { values: unknown[] }[] } };
+    expect(frame.frame.columns[0].values).toEqual([2]);
+  });
+});
+
 describe("auto-refresh runs from the card's data(), not its component", () => {
   it("a card inside a composite refreshes on its cadence, and a deleted one stops", async () => {
     vi.useFakeTimers();

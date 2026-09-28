@@ -77,6 +77,7 @@ export class DataFeedNode extends ClassicPreset.Node {
     connectionStore.setState(this.id, { status: "loading" });
     try {
       const { text } = await fetchText(url);
+      if (this.inflightKey !== cacheKey) return;
       const frame = this.preset().parse(text);
       this.cachedResult = frame;
       this.lastKey = cacheKey;
@@ -87,6 +88,7 @@ export class DataFeedNode extends ClassicPreset.Node {
         fetchedAt: Date.now(),
       });
     } catch (e) {
+      if (this.inflightKey !== cacheKey) return;
       this.cachedResult = null;
       this.lastKey = cacheKey;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });

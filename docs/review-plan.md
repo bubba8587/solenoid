@@ -368,15 +368,15 @@ Leaves: [[C77]] compositeIsSubgraph, [[B12]] losslessSaves, [[C35]] unknownViaPl
 Commits: e41ec46f, 6cfb51c3, 56687a38, d5d8dea4, 5dca7eb4
 Where: `connectionStore.ts`, `nodes/connection.ts` (12 commits), `activeGraph.ts`
 Leaf: D32 refreshOutsideRebuild (retired 09-24; the rule lives in `tree/specs/computation/live-connections.md`), [[C103]] untrustedContentSeams.
-- [ ] Overtaken responses (e41ec46f): the token/sequence check per card. Weather, Geocode,
+- [x] Fixed 2026-09-28: nine fetch sites, one pattern (a key taken before the await, compared after it) in seven; Web Source and the data feed card wrote their reply without the check, so an older URL's reply landing after the newer one's stuck the card on the old data. Both drop a reply whose key has been replaced now (`liveCardUnmounted.test.ts`, which fails on the old code). Was: Overtaken responses (e41ec46f): the token/sequence check per card. Weather, Geocode,
       Holidays, Currency, Task Notes, Vault Folder: six cards, one pattern? Or six copies?
       A copy that's missing the check is the bug.
-- [ ] Timer moved into `connectionStore` "kept in step by the card's data()": a card whose
+- [x] Checked 2026-09-28: intended, the live-connections spec runs auto-refresh from the card's data(); a timer whose card is gone clears on its next fire (block 44), and a document switch clears every timer (`registerNodeForgetAll`). Was: Timer moved into `connectionStore` "kept in step by the card's data()": a card whose
       data() never runs (unwired output, collapsed, inside a never-solved composite) never
       ticks. Is that intended? And on document switch: timers of the OLD document cleared?
-- [ ] `nodeExists` walks main + drill-in + owned canvases "deep" (56687a38) vs
+- [x] Checked with block 15 on 2026-09-28: `nodeExists` descends into composites itself, and `getOwningEditor` now walks every top editor, so the two walkers find the same nodes. Was: `nodeExists` walks main + drill-in + owned canvases "deep" (56687a38) vs
       `getOwningEditor`'s depth-16 walk (item 15): two walkers again.
-- [ ] Cadence field autosaves: a save-format change; `tree/specs/documents/save-format.md` updated?
+- [x] Checked 2026-09-28: the save format carries a card's fields generically (`extractInit`), with `persistenceSweep.test.ts` holding every field saved or declared transient, so a new field needs no spec line. Was: Cadence field autosaves: a save-format change; `tree/specs/documents/save-format.md` updated?
 
 ## 20. Polars engine vs JS oracle parity
 Commits: 54bd9e3b, 996a8ec1, 9bb10669, d1a4f44d, b4c90711, 94b25efb (units after native verb)
