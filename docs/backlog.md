@@ -113,6 +113,15 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
 
+## Decision Matrix (author 2026-09-28)
+
+- [ ] **Flip points** ([[C64]] decisionMatrixFamily): per criterion, the nearest weight at which a different
+  option takes first place with the other weights held, the way the Decision Matrix Bases View plugin shows them
+  under each weight (`flipWeights` in its `src/scoring.ts`, tested there). Pairwise order is linear in each
+  weight since every score shares Σ|w|; the plugin ignores `round4`, so the flip weight lands on a near-tie
+  rather than a clean handover. A home here: a Breakdown column or a Decision Sensitivity mode. Weigh it
+  against `v2.0/10`'s ±N% affordance first, which answers the same "how close is the call" question.
+
 ## Charts
 
 - [ ] **Radar `ymin`/`ymax` under Scale = per axis (author to pick):** a multi-series radar normalizes each axis,
