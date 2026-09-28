@@ -69,9 +69,9 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Publish plugin 0.1.4** (author 2026-09-28: ahead of the app): the snapshot of solenoid@1abf7e3e and the
-  README fix are on Solenoid-Properties `main`, built and typechecked. Left: run its Release workflow from the
-  Actions tab (version `0.1.4`, which creates the tag), or push the tag from the dev machine.
+- [ ] **Publish plugin 0.1.5** (0.1.4's release failed the Obsidian review on TableCards' directives): the fixed
+  snapshot is on Solenoid-Properties `main`, and the recommended `eslint-plugin-obsidianmd` run adds nothing over
+  0.1.3's standing findings. Left: run its Release workflow from the Actions tab with `0.1.5`.
 - [ ] **`whatsnew` video with the next app bump**: to `assets/video/`, re-rendered with `DEMO_FPS=60 node
   scripts/demo-video/record.mjs whatsnew` and `compose.mjs whatsnew` (the build under test is copied into the rig's vault).
 - [ ] **A Note card's bare `{{ list }}` on its own field prints Knap's JSON**; in Obsidian a Knap note draws the
