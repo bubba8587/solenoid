@@ -221,6 +221,14 @@ describe("EquationNode", () => {
     expect(isSolError(none.x)).toBe(true);
   });
 
+  it("a form that only looks linear or quadratic at the probes falls back to root-finding", () => {
+    const near = (v: unknown, want: number) => expect(Math.abs((v as number) - want)).toBeLessThan(1e-6);
+    near(node("MIN(x,50) + x = 200").data({}).x, 150);
+    near(node("IF(x>100, x-200, x-150) = 0").data({}).x, 200);
+    near(node("MIN(x,30)*x = 1600").data({}).x, -40);
+    near(node("IF(x>100, 20101-200*x, x*x+1) = 0").data({}).x, 100.505);
+  });
+
   it("numeric fallback still drives non-polynomial multi-occurrence equations", () => {
     const n = node("x^3 + x = c");
     const out = n.data({ c: [10] });

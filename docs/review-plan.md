@@ -155,7 +155,7 @@ the store, seed JSONs rewritten, and "pictures are data:image only" is a securit
 Commits: afbf53bc
 Where: `FilterNode.tsx`, `SortNode.tsx`, `UniqueNode.tsx`, `copyPaste.ts`, `excelFunctions.ts`,
 `nodeCatalog.ts`, `inputRoles.ts` (10 files)
-- [x] Checked 2026-09-28: `by_col` sorts and dedupes columns, `exactly_once` keeps the singles. Found beside it: `INDEX(m, 0, c)` answers a list (a row), so `SORTBY(m, INDEX(m, 0, 2))` sorts columns and `m / INDEX(m, 0, 1)` divides the wrong way; the spec says a whole column is a list and the help leans on it, so it waits on the author (`inbox/index-whole-column-is-a-column.md`). Was: "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
+- [x] Checked 2026-09-28: `by_col` sorts and dedupes columns, `exactly_once` keeps the singles. Found beside it: `INDEX(m, 0, c)` answers a list (a row), so `SORTBY(m, INDEX(m, 0, 2))` sorts columns and `m / INDEX(m, 0, 1)` divides the wrong way; the spec says a whole column is a list and the help leans on it, so it waits on the author (`tree/decisions/inbox/index-whole-column-is-a-column.md`). Was: "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
       columns; check it isn't a no-op. UNIQUE(table, by_col, exactly_once) same.
 - [x] Checked 2026-09-28: a matrix `include` is `#VALUE!`; a column mask filters rows and a one-row mask filters columns. Was: FILTER(table, include, if_empty): `include` must be a 1-D boolean the height of the
       table; a matrix `include` → Excel `#VALUE!`. Check.
@@ -168,49 +168,49 @@ Where: `FilterNode.tsx`, `SortNode.tsx`, `UniqueNode.tsx`, `copyPaste.ts`, `exce
 Commits: 88c95dc6
 Where: `copyPaste.ts`, `persistence.ts`, `nodes/placeholder.ts` (`placeholderFor`), `nodes/composite.ts`
 Spec: `tree/specs/documents/save-format.md`.
-- [ ] `nodeNameStore.ensure(clone.id, type)` changed from `constructor.name` to the saved
+- [x] Checked 2026-09-28: `savedNodeBody` gives a non-placeholder `constructor.name` as its type, so the name is unchanged; a placeholder gives its missing type, which is the right name. Was: `nodeNameStore.ensure(clone.id, type)` changed from `constructor.name` to the saved
       `type`: for a NON-placeholder clone these must be equal, or every pasted node gets a
       different default name. Assert in `copyPasteSnapshot.test.ts`.
-- [ ] A pasted placeholder inside a group/composite: `ref = clone.savedInit` for members/
+- [x] Checked 2026-09-28: the paste remap rewrites members, hostNodeId and steps inside `savedInit` for a placeholder, as for a live node. Was: A pasted placeholder inside a group/composite: `ref = clone.savedInit` for members/
       hostNodeId/steps — the id remap must rewrite ids INSIDE `savedInit` too, or the
       placeholder points at pre-paste ids.
-- [ ] `placeholderFor(sn, phSockets)` with `phSockets` undefined: no sockets → cables to it
+- [x] Checked 2026-09-28: sockets come from the node's saved cables (`deriveMissingNodeSockets`), so none means no cables to prune. Was: `placeholderFor(sn, phSockets)` with `phSockets` undefined: no sockets → cables to it
       pruned? (`tree/specs/canvas/input-cable-pruning.md`).
 
 ## 9. Frame edits and joins
 Commits: 3e776d37, b4c90711, e5f51eb1
 Where: `frame.ts`, `frameVerbs.ts`, `TablePopup.tsx`
-- [ ] CSV edit "types the columns it adds from their values": the inference for a column
+- [x] Checked 2026-09-28: `1, x, blank` and an all-blank column read as Text, numbers with blanks as Number; a column already typed keeps its type when the CSV adds columns, so a later text cell shows NaN over its text ([[D72]]). Was: CSV edit "types the columns it adds from their values": the inference for a column
       with mixed `1`, `x`, blank; and a column that is all blank (text? number?). A column
       inferred number then a later edit adds text — does the column retype or error?
-- [ ] Nest Join keys "survive unit conversion noise": tolerance-based key matching. What
+- [x] Checked 2026-09-28: the key rounds at the 15th significant digit of the larger term (`roundAtLargerTerm`, frame-verbs § Nest Join), so only keys equal to float precision collide; Nest Join builds a Cube in JS, so there is no Polars twin. Was: Nest Join keys "survive unit conversion noise": tolerance-based key matching. What
       epsilon, is it relative, and can two distinct keys within epsilon collide? Polars path
       vs JS oracle: does Polars join with the same tolerance? (`frameBackend.test.ts`).
 
 ## 10. Equation solver
 Commits: f6f5dfac
 Where: `equationSolve.ts`, `nodes/equation.ts`
-- [ ] "Linear in a repeated unknown solves exactly": the linearity detector. Try `x*x - x = 0`
+- [x] Fixed 2026-09-28: the four listed forms were right (`x*x - x = 0` → [0, 1], `SIN(x) + x = 1` falls to numeric), but a piecewise form matching a line or parabola at the seven probes got a wrong "exact" answer (`MIN(x,50) + x = 200` gave 100, an `IF` switching past 41.5 gave the wrong branch's root or a false "no real solution"). Every sniffed root is now put back in (`rootHolds`), and a negative discriminant defers to numeric root-finding first (`equationSolve.test.ts`). Was: "Linear in a repeated unknown solves exactly": the linearity detector. Try `x*x - x = 0`
       (not linear), `2*x + 3*x = 10` (linear), `x/2 + x = 3`, `SIN(x) + x = 1` (falls back to
       numeric?). Check it never claims exactness on a non-linear form.
 
 ## 11. Add-menu search rework
 Commits: 387543fd, ae4a4c46, c818581c, bf9d76c7, dd71077c, f38039c1
 Where: `catalogSearch.ts`, `AddNodeMenu.tsx`, `nodeOps.ts`, `nodeExcel.ts`, `nodeCatalog.ts`
-- [ ] "One row per thing placed" dedup: a function that is both an op alias and a card
+- [x] Checked 2026-09-28: the key is `places ?? type`, and every alias row's `places` names exactly what its `create` places (the host for its primary op, else `host__op-X`, the op row's own type), so the best-scoring row wins and places the right thing. Was: "One row per thing placed" dedup: a function that is both an op alias and a card
       shows once — which row wins and does Enter place the right one?
-- [ ] "Descriptions out of the haystack": a query that only matched a description now finds
+- [x] Fixed 2026-09-28: the 50 samples all land and no common query came back empty, but plain words for a function had lost their card with the descriptions ("uppercase", "absolute", "square root", "text length", "convert units", "remove duplicates"). Those cards got keywords, and four of them are samples now. Was: "Descriptions out of the haystack": a query that only matched a description now finds
       nothing; check `npm run search-samples` output for empty results.
-- [ ] Per-leaf/per-query caching (bf9d76c7): cache keyed on the query string; case and
+- [x] Checked 2026-09-28: nothing is cached per query string (each query is parsed per call, and case or space variants give identical lists); the per-leaf prep is a WeakMap on leaf objects, rebuilt whenever the catalog is. The per-type caches are safe only because packs are code; the custom-packs backlog item now says they must clear. Was: Per-leaf/per-query caching (bf9d76c7): cache keyed on the query string; case and
       trailing-space variants, and invalidation when custom packs load.
 
 ## 12. SPARKLINE in cells and typed Cube columns (25 files)
 Commits: 0a95b655, 595b3675
 Where: `ArrayChip.tsx`, `CubeDisplay.tsx`, `CubeInputNode.tsx`, `CubePopup.tsx`, `FrameDisplay.tsx`,
 `TablePopup.tsx`, `columnHeadControls.tsx`, `visualOps.ts` and more
-- [ ] A cell holding a sparkline value: copy/paste, CSV export, save/load round-trip
+- [x] Checked 2026-09-28: a sparkline is `data:image/svg+xml` text (single quotes, commas, spaces), and it comes back unchanged through CSV quoting, the Frame CSV writer and reader, the note frontmatter patch, `yamlScalar` and JSON save; Copy as Markdown gives the text, not a picture. Two of the round-trips are pinned in `sparklineFormula.test.ts`. Was: A cell holding a sparkline value: copy/paste, CSV export, save/load round-trip
       (`tree/specs/documents/save-format.md`), and the Obsidian write path — each must either serialize or refuse.
-- [ ] Typed Cube columns + Fx Cube columns: a column typed number receiving a formula that
+- [x] Checked 2026-09-28: a column is typed or Fx, never both (the picker replaces one with the other and `sourcePicks` skips a formula column), so an Fx column's type is what its formula answers; text in a number-typed column blanks as a Frame's does, the source keeping the text. Fx columns fill in dependency order (`@c + 1` before `c` works) and a cycle is `#REF!` naming the loop. Was: Typed Cube columns + Fx Cube columns: a column typed number receiving a formula that
       yields text; a Fx column whose formula references a later Fx column (order).
 
 ## 13. Deleted tests (verify nothing load-bearing went)
@@ -219,9 +219,9 @@ Why: "assertions that can only pass" and "tests the rest of the suite already de
 judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) went entirely;
 `uiCopy.test.ts` lost 98, `composite.test.ts` 86, `distributions.test.ts` 64,
 `excelFunctions.test.ts` 61, `frameVerbs.test.ts` 190.
-- [ ] For each of those six: read the deleted block (`git show 9a419d55 -- tests/graph/<f>`),
+- [ ] Partly done 2026-09-28: composite and distributions are covered (every deleted assertion named against a surviving one, the rest were tautologies); uiCopy's two rule-specimen tests had no stand-in and are restored; frameVerbs and excelFunctions still to check. For each of those six: read the deleted block (`git show 9a419d55 -- tests/graph/<f>`),
       name the OTHER test that "already decides" it. If none can be named, restore the block.
-- [ ] `socketConnect.test.ts`: socket lattice connect rules ([[socket-lattice]] spec). Confirm
+- [x] Checked 2026-09-28: 425 of 491 lines went, and every deleted pair is still pinned by `socketReference.test.ts` (31 types × both directions against `docs/socket-reference.md`). That compares against a hand-written doc, so the two rule-derived sweeps (families stay apart, values widen, logical↔number the one bridge) are back in `socketConnect.test.ts`. Was: `socketConnect.test.ts`: socket lattice connect rules ([[socket-lattice]] spec). Confirm
       `socketFamilyCompleteness.test.ts` + the lattice spec tests cover every deleted pair.
 - [x] Checked: `unitLattice.ts` lost only `dimensionsMultiply`, a dead always-true helper. Harmless.
 
@@ -233,11 +233,11 @@ judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) w
       `ReportOverlay.tsx`; find the root cause commit and check no sibling overlay has the
       same pattern (boundary rule in `tree/specs/canvas/react-flow-surface-contract.md`).
 - [ ] 7576af3d chart axis ticks/gutter: negative values, log-scale, and a 0-range axis.
-- [ ] e472fac4 LEFT/RIGHT/FIND/SEARCH "refuse what Excel refuses": negative num_chars,
+- [x] Fixed 2026-09-28: negative num_chars and start 0 refuse as Excel does, but an empty find_text past one-beyond-the-end answered the last position; FIND and SEARCH now say `#VALUE!` there (`formulaTier1.test.ts`). SEARCH wildcards stay a backlog item. Was: e472fac4 LEFT/RIGHT/FIND/SEARCH "refuse what Excel refuses": negative num_chars,
       start_num 0, start_num > length. Also SEARCH wildcards are still a backlog item.
-- [ ] eea14b00 YEARFRAC basis 1 (actual/actual): leap-year spans across Feb 29 in the second
+- [x] Checked 2026-09-28 against Excel's rule (366 with a Feb 29 in a span of a year or less, the average year length past a year), three cases pinned in `formulaTier1.test.ts`. Was: eea14b00 YEARFRAC basis 1 (actual/actual): leap-year spans across Feb 29 in the second
       year; Excel's rule is notoriously odd. Compare to a known table.
-- [ ] 66367a4d GCD/LCM truncate; 802b6033 uppercase hex; b9e450ff VDB no_switch; 4315304e
+- [x] Checked 2026-09-28, one hand-derived Excel case each pinned in `formulaTier1.test.ts`. Was: 66367a4d GCD/LCM truncate; 802b6033 uppercase hex; b9e450ff VDB no_switch; 4315304e
       TREND/GROWTH const=FALSE: each a one-function Excel parity change; one Excel-verified
       case each in `formulaTier*.test.ts` is enough.
 - [ ] ebd1d68b Knap notes (`noteFrontmatter.ts`, `knapTemplate.ts`, `nodes/report.ts`): a

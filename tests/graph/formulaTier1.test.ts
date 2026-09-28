@@ -217,3 +217,32 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
     expect(leaked, `blocked names still range-routed: ${leaked.join(", ")}`).toEqual([]);
   });
 });
+
+describe("one-function Excel parity, each checked against Excel", () => {
+  const err = (expr: string) => (ev(expr) as { code?: string }).code;
+  it("FIND and SEARCH take an empty find_text one past the end, and no further", () => {
+    expect(ev('FIND("","abc",4)')).toBe(4);
+    expect(err('FIND("","abc",5)')).toBe("#VALUE!");
+    expect(err('SEARCH("","abc",5)')).toBe("#VALUE!");
+    expect(err('LEFT("abc",-1)')).toBe("#VALUE!");
+  });
+  it("YEARFRAC basis 1 uses 366 when a Feb 29 falls in the span, and the average year past one year", () => {
+    expect(ev("YEARFRAC(DATE(2011,12,15),DATE(2012,3,1),1)")).toBeCloseTo(77 / 366, 12);
+    expect(ev("YEARFRAC(DATE(2012,12,15),DATE(2013,3,1),1)")).toBeCloseTo(76 / 365, 12);
+    expect(ev("YEARFRAC(DATE(2011,2,28),DATE(2012,2,29),1)")).toBeCloseTo(366 / 365.5, 12);
+  });
+  it("GCD and LCM truncate, hex is upper case", () => {
+    expect(ev("GCD(5.9,10.2)")).toBe(5);
+    expect(ev("LCM(2.5,3)")).toBe(6);
+    expect(ev("DEC2HEX(255)")).toBe("FF");
+  });
+  it("VDB with no_switch stays on the declining balance", () => {
+    expect(ev("VDB(10000,1000,5,3,5,1.5,TRUE())")).toBeCloseTo(1749.3, 9);
+    expect(ev("VDB(10000,1000,5,3,5,1.5,FALSE())")).toBeCloseTo(2430, 9);
+  });
+  it("TREND and GROWTH with const FALSE fit through the origin and through 1", () => {
+    expect((ev("TREND(y,x,4,FALSE())", { y: [1, 3, 4], x: [1, 2, 3] }) as number[])[0]).toBeCloseTo(76 / 14, 12);
+    const m = Math.exp((Math.log(3) + 2 * Math.log(4) + 3 * Math.log(8)) / 14);
+    expect((ev("GROWTH(g,x,4,FALSE())", { g: [3, 4, 8], x: [1, 2, 3] }) as number[])[0]).toBeCloseTo(m ** 4, 9);
+  });
+});

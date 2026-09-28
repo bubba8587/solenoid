@@ -32,8 +32,10 @@ The layers run in this order.
 
 - both roots as an ascending list, computed in the numerically stable form;
 - one scalar for a double root (a discriminant within 10⁻¹² of zero, relative);
-- `#SOLVE!` "No real solution: the quadratic's discriminant is negative" for a negative discriminant;
+- `#SOLVE!` "No real solution: the quadratic's discriminant is negative" for a negative discriminant, once numeric root-finding (layer 3) has also come up empty; a root it finds wins;
 - nothing when a is effectively zero (degree below 2), so solving falls through to the next layer, except for a line whose unknown appears more than once, which isolation can't take: that one solves exactly as −c/b (`solveLinear`) instead of by root-finding, so `p = r·u − f − c·u` gives 400, not 400.0000000001.
+
+Seven probes can't tell a polynomial from a piecewise form that matches one at those points (`MIN(x, 30)·x`, an `IF` that switches beyond 41.5), so every root, quadratic or linear, is put back into the residual (`rootHolds`, 10⁻⁹ of the fit's term sizes at that root). A root that misses sends the whole equation to the later layers, which never claim more than they checked.
 
 This runs before symbolic isolation because isolation would take the principal square root and lose a root: x² = 36 must give [−6, 6], not 6.
 

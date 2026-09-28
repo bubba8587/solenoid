@@ -154,7 +154,7 @@ const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
 
 
 const STR = NODE_KIND_ACCENTS.string;
-const textXformLeaf         = (op: TextTransformOp):   NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_TRANSFORM_OP_META[op].label,        description: TEXT_TRANSFORM_OP_META[op].description,        create: () => new TextTransformNode({ op }),     parity: false });
+const textXformLeaf         = (op: TextTransformOp, keywords?: string): NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_TRANSFORM_OP_META[op].label,        description: TEXT_TRANSFORM_OP_META[op].description,        create: () => new TextTransformNode({ op }),     parity: false, ...(keywords ? { keywords } : {}) });
 const textSliceLeaf         = (op: TextSliceOp):       NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_SLICE_OP_META[op].label,            description: TEXT_SLICE_OP_META[op].description,            create: () => new TextSliceNode({ op }),         parity: false });
 const textFindLeaf          = (op: TextFindOp):        NodeCatalogEntry => ({ type: `text-find-${op}`,         label: TEXT_FIND_OP_META[op].label,             description: TEXT_FIND_OP_META[op].description,             create: () => new TextFindNode({ op }),           parity: false });
 const charCodeLeaf          = (op: CharCodeOp):        NodeCatalogEntry => ({ type: `char-code-${op}`,         label: op === "char" ? "CHAR" : "CODE",         description: op === "char" ? "Character at Unicode code point N (1–1114111). Excel: `CHAR` / `UNICHAR`." : "Unicode code point of the first character. Excel: `CODE` / `UNICODE`.", create: () => new CharCodeNode({ op }), parity: false });
@@ -276,7 +276,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       { type: "pair", children: [
-        { type: "convert", label: "Convert", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
+        { type: "convert", label: "Convert", keywords: "units", description: "Converts a value to another unit and rescales the number: length, mass, temperature, time, speed, energy and more. Excel: `CONVERT`.", create: () => new ConvertNode() },
         { type: "cast", label: "Cast", description: "Changes a value's type to number, text, date, `TRUE`/`FALSE` or complex, item by item on Lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
       { type: "group", label: "Node Group", description: "A container: drop it around nodes, or select them and press G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
@@ -337,8 +337,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Functions", description: "Single-input math functions.",
         children: [
-          { type: "pair", children: [mathLeaf("abs"), mathLeaf("sign")] },
-          { type: "pair", children: [mathLeaf("sqrt"), mathLeaf("sqrtpi")] },
+          { type: "pair", children: [mathLeaf("abs", { keywords: "absolute value" }), mathLeaf("sign")] },
+          { type: "pair", children: [mathLeaf("sqrt", { keywords: "square root" }), mathLeaf("sqrtpi")] },
           mathLeaf("exp"),
           { type: "pair", children: [mathLeaf("erf"), mathLeaf("erfc")] },
           { type: "pair", children: [mathLeaf("gamma"), mathLeaf("gammaln")] },
@@ -559,7 +559,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-slice", label: "SLICE",  description: "Sublist from Start to End, 1-based inclusive. Leave End blank to run to the end.", create: () => new SliceNode() },
             { type: "list-pad",   label: "Pad", description: "Extends a list to a target length by prepending or appending a fill value. Excel: `PADLEFT` / `PADRIGHT`.", create: () => new PadNode() },
           ]},
-          { type: "list-unique",  label: "UNIQUE", description: "Removes repeated rows, keeping the first of each; with Columns it removes repeated columns, and a list is one row, so Columns dedupes its items. Only singles keeps what appears exactly once. Excel: `UNIQUE`.", create: () => new UniqueNode() },
+          { type: "list-unique",  label: "UNIQUE", keywords: "remove duplicates dedupe distinct", description: "Removes repeated rows, keeping the first of each; with Columns it removes repeated columns, and a list is one row, so Columns dedupes its items. Only singles keeps what appears exactly once. Excel: `UNIQUE`.", create: () => new UniqueNode() },
           { type: "list-sets",  label: "Sets", description: "Set operations on two lists: union, intersection, difference, symmetric difference; the relations equal, subset, superset, disjoint give `TRUE` or `FALSE`. Excel builds these from `COUNTIF`.", create: () => new SetsNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric relation equal same identical subset superset disjoint overlap contains all within compare two lists distinct dedupe subtract exclude common membership issubset issuperset predicate test boolean" },
           { type: "pair", children: [
             { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorders the list, Fisher-Yates. With a weight per element, higher weights tend to land earlier: a weighted draw without replacement.", create: () => new ShuffleNode(), keywords: "shuffle random reorder permutation weighted weights sample without replacement np.random.choice pick draw lottery" },
@@ -822,8 +822,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Transform", description: "Case, whitespace, and character manipulation.",
         children: [
-          { type: "pair", children: [textXformLeaf("upper"), textXformLeaf("lower")] },
-          { type: "pair", children: [textXformLeaf("trim"),  textXformLeaf("proper")] },
+          { type: "pair", children: [textXformLeaf("upper", "uppercase capitals"), textXformLeaf("lower", "lowercase")] },
+          { type: "pair", children: [textXformLeaf("trim", "spaces"),  textXformLeaf("proper", "title case capitalize")] },
           { type: "pair", children: [textXformLeaf("clean"), textXformLeaf("unaccent")] },
           textXformLeaf("slugify"),
           { type: "pair", children: [
@@ -858,7 +858,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Measure & Encode", description: "String length, comparison, and character encoding.",
         children: [
-          { type: "text-len",   label: "LEN",   description: "Number of characters in the string. Excel: `LEN`.",                          create: () => new TextLenNode(), parity: false },
+          { type: "text-len",   label: "LEN",   keywords: "length characters", description: "Number of characters in the string. Excel: `LEN`.",                          create: () => new TextLenNode(), parity: false },
           { type: "text-exact", label: "EXACT", description: "`1` if two strings are identical (case-sensitive), else `0`. Excel: `EXACT`.", create: () => new ExactNode(),   parity: false },
           { type: "pair", children: [
             { type: "text-similarity", label: "Text Similarity", description: "How alike two strings are: Levenshtein, Damerau, Jaro-Winkler, or the raw edit distance. `rapidfuzz`, R `stringdist`. Excel: the Fuzzy Lookup add-in.", create: () => new TextSimilarityNode(), parity: false, keywords: "similarity fuzzy levenshtein edit distance jaro winkler damerau stringdist rapidfuzz typo match" },

@@ -3,6 +3,10 @@ import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { sparklineSeries, sparklineImage, SPARKLINE_MAX_POINTS } from "../../src/graph/nodes/visualOps";
 import { isSolError, solError } from "../../src/graph/errorValue";
+import { parse } from "yaml";
+import { csvField } from "../../src/graph/csvSafety";
+import { parseCsvRows } from "../../src/graph/csv";
+import { patchFrontmatter } from "../../src/graph/frontmatterPatch";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const svgOf = (url: unknown) => decodeURIComponent(String(url).replace(/^data:image\/svg\+xml,/, ""));
@@ -50,5 +54,16 @@ describe("SPARKLINE", () => {
     const b = sparklineImage(long.slice(0, 400), "column")!;
     expect(a.length).toBeLessThan(3000);
     expect(Math.abs(a.length - b.length)).toBeLessThan(400);
+  });
+});
+
+describe("a sparkline cell leaves the app as the same text", () => {
+  const url = sparklineImage([1, -2, 3, 4, -1], "line")!;
+  it("through CSV", () => {
+    expect(parseCsvRows(`${csvField(url, true)},x`)[0][0]).toBe(url);
+  });
+  it("through a note's frontmatter", () => {
+    const text = patchFrontmatter("---\na: 1\n---\nbody\n", { spark: url }).text;
+    expect(parse(text.split("---\n")[1]).spark).toBe(url);
   });
 });
