@@ -231,7 +231,8 @@ export class ExpressionNode extends ClassicPreset.Node {
         // Readings in different offset units (°C and °F) run in base SI, but still classify.
         let point: 0 | 1 | null = null;
         if (sd ? sd.unit.offset : allReadings(united.map((v) => rawEnv[v]))) {
-          const w = affineWeight(this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))));
+          const bare = new Set(this.varNames.filter((v) => !united.includes(v)));
+          const w = affineWeight(this.ast, new Set(united), new Set(united.filter((v) => Array.isArray(rawEnv[v]))), undefined, bare);
           if (isSolError(w)) {
             this.cachedResult = w; this.cachedError = null;
             return { result: w };

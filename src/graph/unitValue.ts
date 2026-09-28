@@ -280,3 +280,12 @@ export function sharedMatrixUnit(mats: readonly unknown[]): ColumnUnit | undefin
   }
   return first;
 }
+
+const decimalExponent = (x: number): number => Number(Math.abs(x).toExponential().split("e")[1]);
+
+/** `y` rounded at the 15th significant digit of `t`, the larger term of the conversion that produced it. */
+export function roundAtLargerTerm(y: number, t: number): number {
+  if (!Number.isFinite(y) || y === 0 || !Number.isFinite(t)) return y;
+  const p = decimalExponent(y) - decimalExponent(t) + 15;
+  return p < 1 ? 0 : p > 100 ? y : Number(y.toPrecision(p));
+}

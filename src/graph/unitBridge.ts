@@ -1,7 +1,7 @@
 // [[C25]], [[D43]]
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS, isFcUnit, unitById } from "./formatAnnotationStore";
-import { fromUnit, formatUnitCell, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
+import { fromUnit, formatUnitCell, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, matrixUnitOf, roundAtLargerTerm, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT, type ColumnUnit } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 const DIRECT: Record<string, Unit> = {
@@ -104,7 +104,7 @@ function redisplayMatrix(m: unknown[][], held: ColumnUnit, u: Unit, displayId: s
 export function displayMagnitudeOf(cell: UnitCellT): number {
   if (cell.display) {
     const u = fcUnitToUnit(cell.display);
-    if (u && dimEqual(u.dim, cell.dim)) return (cell.value - (u.offset ?? 0)) / u.scale;
+    if (u && dimEqual(u.dim, cell.dim)) return roundAtLargerTerm((cell.value - (u.offset ?? 0)) / u.scale, Math.max(Math.abs(cell.value), Math.abs(u.offset ?? 0)) / u.scale);
   }
   return cell.value;
 }

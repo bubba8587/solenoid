@@ -169,6 +169,29 @@ describe("Expression — dimensional interpretation over the formula (step 3)", 
     expect(code(run("SUM(a)", list))).toBe("#UNIT!");
     expect(magnitudeOf(run("MAX(a) - MIN(a)", list) as UnitCell)).toBeCloseTo(10, 9); // 10 K
   });
+  it("a wired plain number beside readings is a reading, as a literal is and as the Aggregate card reads it", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    const t20 = applyFcUnit(20, "degC"), t30 = applyFcUnit(30, "degC");
+    const run = (expr: string) => new ExpressionNode({ expr }).data({ a: [t20 as never], b: [t30 as never], n: [5 as never], x: [true as never] }).result;
+    expect(displayMagnitudeOf(run("MIN(a, n)") as UnitCell)).toBeCloseTo(5, 9);
+    expect(displayMagnitudeOf(run("MEDIAN(a, b, n)") as UnitCell)).toBeCloseTo(20, 9);
+    expect((run("IF(x, a, n)") as UnitCell).display).toBe("degC");
+    expect((run("a * n") as { code?: string }).code).toBe("#UNIT!"); // a scale must be a constant
+    expect(displayMagnitudeOf(run("n + a") as UnitCell)).toBeCloseTo(25, 9); // under + it is still a delta
+  });
+  it("°F reads back as typed: 20 °F equals 20 and INT keeps it", async () => {
+    const { ExpressionNode } = await import("../../src/graph/nodes/expression");
+    const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");
+    for (const v of [20, 32, 98.6, 212, -40]) {
+      const a = applyFcUnit(v, "degF");
+      expect(displayMagnitudeOf(a as UnitCell)).toBe(v);
+      expect(new ExpressionNode({ expr: `a = ${v}` }).data({ a: [a as never] }).result).toBe(true);
+    }
+    const int = new ExpressionNode({ expr: "INT(a)" }).data({ a: [applyFcUnit(20, "degF") as never] }).result as UnitCell;
+    expect(displayMagnitudeOf(int)).toBe(20);
+    expect(new ExpressionNode({ expr: "a = 36.6" }).data({ a: [applyFcUnit(36.6, "degC") as never] }).result).toBe(true);
+  });
   it("a bare branch adopts the other branch's unit: IF(c, a, 0) keeps km and °C", async () => {
     const { ExpressionNode } = await import("../../src/graph/nodes/expression");
     const { displayMagnitudeOf } = await import("../../src/graph/unitBridge");

@@ -3,10 +3,10 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn, roundAtLargerTerm,
+  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
-import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, type ColumnUnit } from "./unitValue";
+import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
 import { dimEqual, dimPow, formatDim } from "./dimension";
 import { fcUnitToUnit } from "./unitBridge";
 import { forAggregate, coerceLogical, guardFinite, decimalFromText } from "./valueKinds";

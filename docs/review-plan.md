@@ -304,20 +304,20 @@ Leaves: [[C25]] firstClassUnits, [[C25]] firstClassUnits (D40 unitOnValue folded
 Why risky: a static "point weight" classifier replaced a run-twice heuristic; every aggregate,
 comparison and arithmetic op got a reading-vs-delta rule; a bare number's meaning now depends on
 the op (reading in MIN/compare, delta in +/−). That is a lot of per-op special cases.
-- [ ] Build a truth table and test it on the card, the formula and the frame verb: for
+- [x] Fixed 2026-09-28: the whole list run on the formula, the Arithmetic/Comparison/Aggregate/Math cards and GROUPBY, in °C and °F. Readings add to #UNIT!, subtract to a delta in K, average and pick as readings, spreads give deltas, and all three surfaces agree now. Two bugs: a wired plain number beside readings (`MIN(a, n)`, `MEDIAN(a, b, n)`, `IF(x, a, n)`) was #UNIT! in the formula though the card and a literal read it as a reading (`affineWeight` takes the plain-number names now, Expression passes them); and °F read back with float noise, so `a = 20` was FALSE for 20 °F and `INT(20 °F)` was 19 (`displayMagnitudeOf` rounds at the conversion's larger term). `unitWiring.test.ts`. A Frame computed column still reads a plain column beside a reading as a delta, since there a column could be a temperature difference. Was: Build a truth table and test it on the card, the formula and the frame verb: for
       a = 20 °C, b = 30 °C, n = 5 → a+b, a−b, a*2, a/2, (a+b)/2, n+a, a>n, MIN(a,n), SUM(a,b),
       AVERAGE(a,b), STDEV(a,b), ABS(a), INT(a), MOD(a,7), ROUND(a), IF(x,a,n), IF(x,a,b−a).
       Every cell: expected unit (reading / delta K / #UNIT!). Three surfaces must agree.
-- [ ] `affineWeight`: a reading scaled by a non-constant (a * n where n is a wired number) →
+- [x] Checked 2026-09-28: `a * n` with a wired n is #UNIT! (a scale must be a constant the formula can read; its value isn't known before the run), a LAMBDA parameter takes its argument's weight, a reading column ref is a reading. Was: `affineWeight`: a reading scaled by a non-constant (a * n where n is a wired number) →
       weight? Commit says "scales only by a constant". A LAMBDA parameter, a column ref?
-- [ ] `adoptReading` in `compareUnits`: `25 °C > 30` reads 30 as 30 °C. But `25 °C > 300`
+- [x] Checked 2026-09-28: unit-flow § Unit algebra states it (`25 °C > 30` is FALSE, the bare number read as a reading in the display unit), on the card and the formula alike; kelvin meant as a bare number is a Convert first. Was: `adoptReading` in `compareUnits`: `25 °C > 30` reads 30 as 30 °C. But `25 °C > 300`
       where the user meant kelvin? Confirm the ruling text in C25 covers comparison.
-- [ ] Spreads drop the affine display (b9cfcfe5): result unit is K (delta). Does the FC /
+- [x] Confirmed 2026-09-28, not fixed: a difference is a displayless kelvin cell, indistinguishable from a kelvin reading, so Convert or the FC to °C puts the offset back (30 °C − 20 °C → −263.15 °C, and −441.67 °F). Inbox: `tree/decisions/inbox/temperature-difference-converts-by-scale.md`. Was: Spreads drop the affine display (b9cfcfe5): result unit is K (delta). Does the FC /
       Convert node then let the user convert a delta-K to °C (wrong) or to delta-°F (right)?
-- [ ] Frame verbs on °C columns (753f0062): groupBy SUM of a °C column → #UNIT!? Polars path
+- [x] Checked 2026-09-28: GROUPBY SUM of a °C column is #UNIT! in every group; the native `group_sum` under `readingScale` answers `ERR_UNIT_ADD_BITS`, and `frameReadings.test.ts` plus the corpus hold both engines to it. Was: Frame verbs on °C columns (753f0062): groupBy SUM of a °C column → #UNIT!? Polars path
       never sees units; PolarsBackend sends `readingScale`; check the native `group_sum`
       returns `ERR_UNIT_ADD_BITS` for affine columns and the oracle agrees.
-- [ ] °F: everything above with Fahrenheit, whose scale AND offset differ from K.
+- [x] Checked 2026-09-28 with the truth table above: the °F-only bug was the read-back noise, fixed. Was: °F: everything above with Fahrenheit, whose scale AND offset differ from K.
 
 ## 17. #TYPE! strictness through wildcard cables
 Commits: 6663ad35, dbec53dd, 95a48fdf, 4ff1d2bc, f81d2bff, 10bb4cfa

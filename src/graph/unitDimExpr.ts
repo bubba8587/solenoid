@@ -363,9 +363,10 @@ export function formulaResultDim(node: Ast, env: DimEnv): Dim | null {
 // over or to the power of anything but a constant is #UNIT!, as in `arithmeticCell`.
 // `list` marks a value spread over a list, whose SUM has no weight until its length
 // is known. `scaled` marks a weight a constant factor produced, so `@t * 2` reports a
-// scaled reading rather than a sum.
+// scaled reading rather than a sum. `bare` marks a wired plain number, which MIN and IF read as they
+// read a literal.
 
-type Aff = { w: number; list: boolean; konst: number | null; scaled?: boolean };
+type Aff = { w: number; list: boolean; konst: number | null; scaled?: boolean; bare?: boolean };
 const affErr = (): SolError => unitError(READINGS_SCALE);
 const sumErr = (): SolError => unitError(READINGS_ADD);
 const ZERO: Aff = { w: 0, list: false, konst: null };
@@ -379,7 +380,7 @@ const isLiteral = (n: Ast | undefined): boolean =>
   !n || n.t === "str" || n.t === "bool" || n.t === "blank" || constNum(n) !== null;
 
 /** The columns and variables that are readings, and the names a lambda binds. */
-type AffScope = { points: ReadonlySet<string>; lists: ReadonlySet<string>; locals: ReadonlyMap<string, Aff>; fns: ReadonlyMap<string, Lam> };
+type AffScope = { points: ReadonlySet<string>; lists: ReadonlySet<string>; locals: ReadonlyMap<string, Aff>; fns: ReadonlyMap<string, Lam>; bare: ReadonlySet<string> };
 
 function affApply(lam: Lam, args: Aff[], scope: AffScope): Aff | SolError {
   const locals = new Map(scope.locals);
@@ -409,18 +410,18 @@ function affHost(fn: string, args: Ast[], host: Host, lam: Lam, scope: AffScope)
 }
 
 function affEval(node: Ast, scope: AffScope): Aff | SolError {
-  const { points, lists, locals, fns } = scope;
+  const { points, lists, locals, fns, bare } = scope;
   const sub = (n: Ast) => affEval(n, scope);
   const isVar = (n: string) => locals.has(n) || points.has(n) || lists.has(n);
   switch (node.t) {
     case "num": return { w: 0, list: false, konst: Number(node.v) };
-    case "name": return locals.get(node.name) ?? { w: points.has(node.name) ? 1 : 0, list: lists.has(node.name), konst: null };
+    case "name": return locals.get(node.name) ?? { w: points.has(node.name) ? 1 : 0, list: lists.has(node.name), konst: null, bare: bare.has(node.name) };
     case "atcol": return { w: points.has(node.name) ? 1 : 0, list: false, konst: null };
     case "wholecol": return { w: points.has(node.name) ? 1 : 0, list: true, konst: null };
     case "unary": {
       const a = sub(node.arg);
       if (isSolError(a)) return a;
-      return node.op === "-" ? { w: -a.w, list: a.list, konst: a.konst === null ? null : -a.konst, scaled: a.scaled } : a;
+      return node.op === "-" ? { w: -a.w, list: a.list, konst: a.konst === null ? null : -a.konst, scaled: a.scaled, bare: a.bare } : a;
     }
     case "percent": {
       const a = sub(node.arg);
@@ -465,8 +466,8 @@ function affEval(node: Ast, scope: AffScope): Aff | SolError {
       if (named) return affApply(named, args, scope);
       if (RESULT_DIMLESS_FNS.has(fn)) return ZERO;
       if (AFF_SELECT.has(fn)) {
-        // A bare constant beside readings is a reading (MIN(a, 30)); the rest must agree.
-        const ws = args.filter((a) => a.konst === null).map((a) => a.w);
+        // A bare number beside readings is a reading (MIN(a, 30), MIN(a, n)); the rest must agree.
+        const ws = args.filter((a) => a.konst === null && !a.bare).map((a) => a.w);
         if (ws.some((w) => w !== ws[0])) return affErr();
         return { w: ws[0] ?? 0, list: false, konst: null };
       }
@@ -490,9 +491,9 @@ function affEval(node: Ast, scope: AffScope): Aff | SolError {
       }
       const branches = branchArgs(fn, args.length);
       if (branches) {
-        // A literal branch beside readings is a reading (IF(c, a, 0)), as in MIN(a, 30).
+        // A literal or wired bare branch beside readings is a reading (IF(c, a, 0)), as in MIN(a, 30).
         const bs = branches.map((i) => args[i] ?? ZERO);
-        const ws = branches.filter((i) => !isLiteral(node.args[i])).map((i) => args[i]?.w ?? 0);
+        const ws = branches.filter((i) => !isLiteral(node.args[i]) && !args[i]?.bare).map((i) => args[i]?.w ?? 0);
         if (ws.some((w) => w !== ws[0])) return affErr();
         return { w: ws[0] ?? 0, list: bs.some((b) => b.list), konst: null };
       }
@@ -525,8 +526,9 @@ function affEval(node: Ast, scope: AffScope): Aff | SolError {
  *  plain number, `#UNIT!` for anything an offset scale can't answer. */
 export function affineWeight(
   node: Ast, points: ReadonlySet<string>, lists: ReadonlySet<string> = new Set(), fns: ReadonlyMap<string, Lam> = new Map(),
+  bare: ReadonlySet<string> = new Set(),
 ): 0 | 1 | SolError {
-  const r = affEval(node, { points, lists, locals: new Map(), fns });
+  const r = affEval(node, { points, lists, locals: new Map(), fns, bare });
   if (isSolError(r)) return r;
   if (Math.abs(r.w - 1) < 1e-12) return 1;
   if (Math.abs(r.w) < 1e-12) return 0;
