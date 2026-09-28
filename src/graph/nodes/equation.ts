@@ -3,7 +3,7 @@
 import { ClassicPreset } from "rete";
 import { numListIn, numListOut, logicalComboOut } from "./shared";
 import { extractVariables, compileEvaluator, type ExprEvaluator } from "../excelFormula";
-import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
+import { parseEquation, compileSolver, solveNumeric, sniffQuadratic, solveQuadratic, solveLinear, rootHolds, equalsWithin, isolate, countOccurrences, type ParsedEquation } from "../equationSolve";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { dimEval, dimEvalWithCode, type DimEnv, type CodeEnv } from "../unitDimExpr";
 import { isUnitCell, tagDim, unitError, type UnitCell } from "../unitValue";
@@ -270,16 +270,23 @@ export class EquationNode extends ClassicPreset.Node {
     if (scalarKnowns) {
       const quad = sniffQuadratic(residual);
       if (quad) {
+        const holds = (x: number) => rootHolds(quad, residual, x);
         const roots = solveQuadratic(quad);
-        if (roots !== null) {
+        if (isSolError(roots)) {
+          const found = solveNumeric(residual);
+          values[unknown] = isSolError(found) ? roots : found;
+          tagUnknown();
+          return finish(null);
+        }
+        if (roots !== null && (Array.isArray(roots) ? roots.every(holds) : holds(roots))) {
           values[unknown] = roots;
           tagUnknown();
           return finish(null);
         }
         const eq = this.equation;
         const repeated = !!eq && countOccurrences(eq.lhs, unknown) + countOccurrences(eq.rhs, unknown) > 1;
-        const root = repeated ? solveLinear(quad) : null;
-        if (root !== null) {
+        const root = repeated && roots === null ? solveLinear(quad) : null;
+        if (root !== null && holds(root)) {
           values[unknown] = root;
           tagUnknown();
           return finish(null);

@@ -271,7 +271,8 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Voice lint over option tables.** `uiCopy.test.ts` skips the `tsx-opt-*` records `copyCorpus.ts` already
   collects (dropdown rows, op-meta labels and descriptions); widen the lint to them, a sweep of its own.
 - [ ] **Custom packs.** Settings shows `customPacksFolder()`, but `loadCustomPacks()` is a stub returning none until
-  filesystem access and a pack format are settled.
+  filesystem access and a pack format are settled. When they load, the Add menu's per-type caches (`catalogSearch.ts`
+  `_sigCache`, `families`) must clear, since a reloaded pack can change a type's sockets.
 
 ## From the 2026-09-24 review rounds (unverified leads; product questions are in `tree/decisions/inbox/`)
 - [ ] **Verify on the next desktop build:** the window still closes (Windows: overlay title bar and Alt+F4; Linux: the

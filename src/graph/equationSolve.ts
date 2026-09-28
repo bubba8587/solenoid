@@ -201,6 +201,13 @@ export function solveQuadratic(q: QuadraticFit): number | number[] | SolError | 
   return r1 < r2 ? [r1, r2] : [r2, r1];
 }
 
+/** The seven probes can't tell a parabola from a piecewise form that matches it there (MIN(x,30)*x), so every root is put back in. */
+export function rootHolds(q: QuadraticFit, residual: (x: number) => number | null, x: number): boolean {
+  const f = residual(x);
+  if (f === null) return false;
+  return Math.abs(f) <= 1e-9 * Math.max(1, Math.abs(q.a * x * x), Math.abs(q.b * x), Math.abs(q.c));
+}
+
 /** The root of a fit with no x² term, −c/b, or null when it has no x term either. */
 export function solveLinear(q: QuadraticFit): number | null {
   const scale = Math.max(Math.abs(q.a), Math.abs(q.b), Math.abs(q.c));

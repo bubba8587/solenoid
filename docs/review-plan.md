@@ -155,7 +155,7 @@ the store, seed JSONs rewritten, and "pictures are data:image only" is a securit
 Commits: afbf53bc
 Where: `FilterNode.tsx`, `SortNode.tsx`, `UniqueNode.tsx`, `copyPaste.ts`, `excelFunctions.ts`,
 `nodeCatalog.ts`, `inputRoles.ts` (10 files)
-- [x] Checked 2026-09-28: `by_col` sorts and dedupes columns, `exactly_once` keeps the singles. Found beside it: `INDEX(m, 0, c)` answers a list (a row), so `SORTBY(m, INDEX(m, 0, 2))` sorts columns and `m / INDEX(m, 0, 1)` divides the wrong way; the spec says a whole column is a list and the help leans on it, so it waits on the author (`inbox/index-whole-column-is-a-column.md`). Was: "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
+- [x] Checked 2026-09-28: `by_col` sorts and dedupes columns, `exactly_once` keeps the singles. Found beside it: `INDEX(m, 0, c)` answers a list (a row), so `SORTBY(m, INDEX(m, 0, 2))` sorts columns and `m / INDEX(m, 0, 1)` divides the wrong way; the spec says a whole column is a list and the help leans on it, so it waits on the author (`tree/decisions/inbox/index-whole-column-is-a-column.md`). Was: "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
       columns; check it isn't a no-op. UNIQUE(table, by_col, exactly_once) same.
 - [x] Checked 2026-09-28: a matrix `include` is `#VALUE!`; a column mask filters rows and a one-row mask filters columns. Was: FILTER(table, include, if_empty): `include` must be a 1-D boolean the height of the
       table; a matrix `include` → Excel `#VALUE!`. Check.
@@ -190,18 +190,18 @@ Where: `frame.ts`, `frameVerbs.ts`, `TablePopup.tsx`
 ## 10. Equation solver
 Commits: f6f5dfac
 Where: `equationSolve.ts`, `nodes/equation.ts`
-- [ ] "Linear in a repeated unknown solves exactly": the linearity detector. Try `x*x - x = 0`
+- [x] Fixed 2026-09-28: the four listed forms were right (`x*x - x = 0` → [0, 1], `SIN(x) + x = 1` falls to numeric), but a piecewise form matching a line or parabola at the seven probes got a wrong "exact" answer (`MIN(x,50) + x = 200` gave 100, an `IF` switching past 41.5 gave the wrong branch's root or a false "no real solution"). Every sniffed root is now put back in (`rootHolds`), and a negative discriminant defers to numeric root-finding first (`equationSolve.test.ts`). Was: "Linear in a repeated unknown solves exactly": the linearity detector. Try `x*x - x = 0`
       (not linear), `2*x + 3*x = 10` (linear), `x/2 + x = 3`, `SIN(x) + x = 1` (falls back to
       numeric?). Check it never claims exactness on a non-linear form.
 
 ## 11. Add-menu search rework
 Commits: 387543fd, ae4a4c46, c818581c, bf9d76c7, dd71077c, f38039c1
 Where: `catalogSearch.ts`, `AddNodeMenu.tsx`, `nodeOps.ts`, `nodeExcel.ts`, `nodeCatalog.ts`
-- [ ] "One row per thing placed" dedup: a function that is both an op alias and a card
+- [x] Checked 2026-09-28: the key is `places ?? type`, and every alias row's `places` names exactly what its `create` places (the host for its primary op, else `host__op-X`, the op row's own type), so the best-scoring row wins and places the right thing. Was: "One row per thing placed" dedup: a function that is both an op alias and a card
       shows once — which row wins and does Enter place the right one?
-- [ ] "Descriptions out of the haystack": a query that only matched a description now finds
+- [x] Fixed 2026-09-28: the 50 samples all land and no common query came back empty, but plain words for a function had lost their card with the descriptions ("uppercase", "absolute", "square root", "text length", "convert units", "remove duplicates"). Those cards got keywords, and four of them are samples now. Was: "Descriptions out of the haystack": a query that only matched a description now finds
       nothing; check `npm run search-samples` output for empty results.
-- [ ] Per-leaf/per-query caching (bf9d76c7): cache keyed on the query string; case and
+- [x] Checked 2026-09-28: nothing is cached per query string (each query is parsed per call, and case or space variants give identical lists); the per-leaf prep is a WeakMap on leaf objects, rebuilt whenever the catalog is. The per-type caches are safe only because packs are code; the custom-packs backlog item now says they must clear. Was: Per-leaf/per-query caching (bf9d76c7): cache keyed on the query string; case and
       trailing-space variants, and invalidation when custom packs load.
 
 ## 12. SPARKLINE in cells and typed Cube columns (25 files)
