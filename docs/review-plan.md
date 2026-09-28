@@ -155,14 +155,14 @@ the store, seed JSONs rewritten, and "pictures are data:image only" is a securit
 Commits: afbf53bc
 Where: `FilterNode.tsx`, `SortNode.tsx`, `UniqueNode.tsx`, `copyPaste.ts`, `excelFunctions.ts`,
 `nodeCatalog.ts`, `inputRoles.ts` (10 files)
-- [ ] "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
+- [x] Checked 2026-09-28: `by_col` sorts and dedupes columns, `exactly_once` keeps the singles. Found beside it: `INDEX(m, 0, c)` answers a list (a row), so `SORTBY(m, INDEX(m, 0, 2))` sorts columns and `m / INDEX(m, 0, 1)` divides the wrong way; the spec says a whole column is a list and the help leans on it, so it waits on the author (`inbox/index-whole-column-is-a-column.md`). Was: "Strictly as Excel's do": SORT(table, col, order, by_col) — `by_col=TRUE` sorts
       columns; check it isn't a no-op. UNIQUE(table, by_col, exactly_once) same.
-- [ ] FILTER(table, include, if_empty): `include` must be a 1-D boolean the height of the
+- [x] Checked 2026-09-28: a matrix `include` is `#VALUE!`; a column mask filters rows and a one-row mask filters columns. Was: FILTER(table, include, if_empty): `include` must be a 1-D boolean the height of the
       table; a matrix `include` → Excel `#VALUE!`. Check.
-- [ ] Cards vs formulas: the frame verb Sort/Filter/Unique nodes are a different subsystem
+- [x] Checked 2026-09-28: the formulas and the List Sort / UNIQUE cards share `sortGrid`, `sortGridByKeys` and `uniqueGrid`; Frames go through the frame verbs, a separate value kind, so there is no second implementation of one thing. Was: Cards vs formulas: the frame verb Sort/Filter/Unique nodes are a different subsystem
       (`frameVerbs.ts`); do these table-taking formula forms route through the verb, or a
       second implementation? Two implementations = parity risk on desktop Polars.
-- [ ] `copyPaste.ts` touched: a socket rename? Confirm old clipboard entries fail cleanly.
+- [x] Checked 2026-09-28: only `byCol` and `exactlyOnce` appended to the init field order, which is safe. Was: `copyPaste.ts` touched: a socket rename? Confirm old clipboard entries fail cleanly.
 
 ## 8. Placeholder paste + persistence refactor
 Commits: 88c95dc6
