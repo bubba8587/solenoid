@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { useState, type SyntheticEvent, type ReactElement, type ComponentProps } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, partSlices, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, niceTicks, partSlices, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor } from "../palette";
@@ -654,17 +654,6 @@ function XYTooltip({ active, payload, names, xcats, multi, seriesName }: {
 }
 
 const rampCss = (t: number) => { const [r, g, b] = heightRampColor(t); return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`; };
-
-/** Round-number ticks inside [lo, hi], about `count` of them. */
-function niceTicks(lo: number, hi: number, count = 5): number[] {
-  const raw = (hi - lo) / count;
-  if (!(raw > 0) || !Number.isFinite(raw)) return [lo];
-  const mag = 10 ** Math.floor(Math.log10(raw));
-  const step = ([1, 2, 2.5, 5, 10].find((m) => m * mag >= raw) ?? 10) * mag;
-  const out: number[] = [];
-  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(Number(v.toPrecision(12)));
-  return out;
-}
 
 /** Pads [lo, hi] so a unit spans the same pixels on both axes. */
 function equalDomains(x: [number, number], y: [number, number], pw: number, ph: number): { x: [number, number]; y: [number, number] } {

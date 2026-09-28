@@ -39,19 +39,33 @@ export function axisTick(n: number): string {
 
 const sig3 = (n: number): string => String(Number(n.toPrecision(3)));
 
-/** A value-axis tick: three significant figures, with K, M, B above a thousand. */
+/** A value-axis tick: three significant figures, with K, M, B, T above a thousand. It rounds before it picks the
+ *  unit, so 999,999 reads 1M, not 1000K. */
 export function compactTick(n: number): string {
   if (!Number.isFinite(n)) return "";
-  const a = Math.abs(n);
-  if (a >= 1e9) return `${sig3(n / 1e9)}B`;
-  if (a >= 1e6) return `${sig3(n / 1e6)}M`;
-  if (a >= 1e3) return `${sig3(n / 1e3)}K`;
-  return sig3(n);
+  const r = Number(n.toPrecision(3));
+  const a = Math.abs(r);
+  if (a >= 1e12) return `${sig3(r / 1e12)}T`;
+  if (a >= 1e9) return `${sig3(r / 1e9)}B`;
+  if (a >= 1e6) return `${sig3(r / 1e6)}M`;
+  if (a >= 1e3) return `${sig3(r / 1e3)}K`;
+  return sig3(r);
 }
 
-/** A value axis's gutter in px: its widest compact tick at 5.8 · fs a character (never under three), with the
- *  data's extremes rounded to two figures standing in for recharts' nice end ticks, plus recharts' 8 px of tick
- *  spacing and 14 for an axis title. */
+/** Round-number ticks inside [lo, hi], about `count` of them. */
+export function niceTicks(lo: number, hi: number, count = 5): number[] {
+  const raw = (hi - lo) / count;
+  if (!(raw > 0) || !Number.isFinite(raw)) return [lo];
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = ([1, 2, 2.5, 5, 10].find((m) => m * mag >= raw) ?? 10) * mag;
+  const out: number[] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(Number(v.toPrecision(12)));
+  return out;
+}
+
+/** A value axis's gutter in px: its widest compact tick at 5.8 · fs a character (never under three), measured over
+ *  the data's extremes rounded to two figures (recharts' nice ends) and the round ticks between them, since a 0–1
+ *  axis's 0.25 is wider than either end. Plus recharts' 8 px of tick spacing and 14 for an axis title. */
 export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = false): number {
   let lo = 0, hi = 0;
   for (const v of values) {
@@ -59,8 +73,9 @@ export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = f
     if (v < lo) lo = v;
     if (v > hi) hi = v;
   }
-  const ends = [lo, hi].map((n) => compactTick(Number(n.toPrecision(2))).length);
-  return Math.ceil(Math.max(3, ...ends) * 5.8 * fs + 8) + (titled ? 14 : 0);
+  const ends = [lo, hi].map((n) => Number(n.toPrecision(2)));
+  const ticks = [...ends, ...niceTicks(ends[0], ends[1], 4)];
+  return Math.ceil(Math.max(3, ...ticks.map((n) => compactTick(n).length)) * 5.8 * fs + 8) + (titled ? 14 : 0);
 }
 
 export function toSeries(v: unknown): { i: number; v: number }[] {

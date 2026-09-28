@@ -28,6 +28,12 @@ describe("compactTick", () => {
     expect(compactTick(1234567)).toBe("1.23M");
     expect(compactTick(-2500000000)).toBe("-2.5B");
   });
+  it("rounds before it picks the unit, so a value just under a boundary takes the next one", () => {
+    expect(compactTick(999.5)).toBe("1K");
+    expect(compactTick(999999)).toBe("1M");
+    expect(compactTick(-999.7)).toBe("-1K");
+    expect(compactTick(2.5e12)).toBe("2.5T");
+  });
   it("returns empty string for non-finite", () => {
     expect(compactTick(NaN)).toBe("");
     expect(compactTick(Infinity)).toBe("");
@@ -39,6 +45,9 @@ describe("valueAxisWidth", () => {
     expect(valueAxisWidth([1, 5, 80], 1)).toBe(26);
     expect(valueAxisWidth([1, 5, 80], 1, true)).toBe(40);
     expect(valueAxisWidth([], 1)).toBe(26);
+  });
+  it("measures the round ticks between the ends too: a 0–1 axis has 0.25", () => {
+    expect(valueAxisWidth([0, 1], 1)).toBe(32);
   });
   it("grows to the widest end tick, rounded the way the axis rounds its ends", () => {
     expect(valueAxisWidth([120000, 176319], 1)).toBe(32); // ends at 180K
