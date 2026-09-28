@@ -36,7 +36,6 @@ export function TableCards({
   const [rulesOpen, setRulesOpen] = useState(false);
   const cols = names.length;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const rowCache = useMemo(() => new Map<number, string[]>(), [dataKey]);
   const row = (r: number): string[] => {
     let v = rowCache.get(r);
@@ -54,10 +53,8 @@ export function TableCards({
       chip: chipCols.has(c),
     }));
     return planCards(input);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataKey]);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const chipColors = useMemo(() => cardChipColors(plan, chipCols, rowCount, rawAt), [dataKey, plan]);
 
   const matched = query.trim() === "" ? order : order.filter((r) => cardMatches(row(r), query));
