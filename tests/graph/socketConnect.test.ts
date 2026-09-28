@@ -64,3 +64,34 @@ describe("adoptTypeForBase / projectTypeToBase — one answer per connectable pa
     expect(adoptTypeForBase("anylist", "strtable")).toBe("strtable");
   });
 });
+
+// socketReference.test.ts pins every pair against docs/socket-reference.md; this derives the answers from the rule itself, so editing the doc can't make a broken lattice pass.
+describe("the lattice rule: families stay apart, values widen", () => {
+  const FAM = {
+    number:  { scalar: "number",  list: "list",        combo: "numlist",      matrix: "table" },
+    string:  { scalar: "string",  list: "strlist",     combo: "strcombo",     matrix: "strtable" },
+    date:    { scalar: "date",    list: "datelist",    combo: "datecombo",    matrix: "datetable" },
+    complex: { scalar: "complex", list: "complexlist", combo: "complexcombo", matrix: "complextable" },
+    logical: { scalar: "logical", list: "logicallist", combo: "logicalcombo", matrix: "logicaltable" },
+  } as const satisfies Record<string, Record<string, SocketDataType>>;
+  const RANK = { scalar: 0, list: 1, combo: 1, matrix: 2 } as const;
+  const DIMS = ["scalar", "list", "combo", "matrix"] as const;
+  const fams = Object.keys(FAM) as (keyof typeof FAM)[];
+  const bridged = (a: string, b: string) => (a === "number" && b === "logical") || (a === "logical" && b === "number");
+  const dimFlows = (dOut: keyof typeof RANK, dIn: keyof typeof RANK) => RANK[dOut] <= RANK[dIn] || (dOut === "combo" && dIn === "scalar");
+
+  it("within a family a value widens up (and a combo reaches its scalar), never narrows", () => {
+    for (const f of fams) for (const dOut of DIMS) for (const dIn of DIMS) {
+      expect(canConnect(FAM[f][dOut], FAM[f][dIn])).toBe(dimFlows(dOut, dIn));
+    }
+  });
+
+  it("across families only logical and number connect, by the same widening rule", () => {
+    for (const fOut of fams) for (const fIn of fams) {
+      if (fOut === fIn) continue;
+      for (const dOut of DIMS) for (const dIn of DIMS) {
+        expect(canConnect(FAM[fOut][dOut], FAM[fIn][dIn])).toBe(bridged(fOut, fIn) && dimFlows(dOut, dIn));
+      }
+    }
+  });
+});

@@ -219,9 +219,9 @@ Why: "assertions that can only pass" and "tests the rest of the suite already de
 judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) went entirely;
 `uiCopy.test.ts` lost 98, `composite.test.ts` 86, `distributions.test.ts` 64,
 `excelFunctions.test.ts` 61, `frameVerbs.test.ts` 190.
-- [ ] For each of those six: read the deleted block (`git show 9a419d55 -- tests/graph/<f>`),
+- [ ] Partly done 2026-09-28: composite and distributions are covered (every deleted assertion named against a surviving one, the rest were tautologies); uiCopy's two rule-specimen tests had no stand-in and are restored; frameVerbs and excelFunctions still to check. For each of those six: read the deleted block (`git show 9a419d55 -- tests/graph/<f>`),
       name the OTHER test that "already decides" it. If none can be named, restore the block.
-- [ ] `socketConnect.test.ts`: socket lattice connect rules ([[socket-lattice]] spec). Confirm
+- [x] Checked 2026-09-28: 425 of 491 lines went, and every deleted pair is still pinned by `socketReference.test.ts` (31 types × both directions against `docs/socket-reference.md`). That compares against a hand-written doc, so the two rule-derived sweeps (families stay apart, values widen, logical↔number the one bridge) are back in `socketConnect.test.ts`. Was: `socketConnect.test.ts`: socket lattice connect rules ([[socket-lattice]] spec). Confirm
       `socketFamilyCompleteness.test.ts` + the lattice spec tests cover every deleted pair.
 - [x] Checked: `unitLattice.ts` lost only `dimensionsMultiply`, a dead always-true helper. Harmless.
 
@@ -233,11 +233,11 @@ judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) w
       `ReportOverlay.tsx`; find the root cause commit and check no sibling overlay has the
       same pattern (boundary rule in `tree/specs/canvas/react-flow-surface-contract.md`).
 - [ ] 7576af3d chart axis ticks/gutter: negative values, log-scale, and a 0-range axis.
-- [ ] e472fac4 LEFT/RIGHT/FIND/SEARCH "refuse what Excel refuses": negative num_chars,
+- [x] Fixed 2026-09-28: negative num_chars and start 0 refuse as Excel does, but an empty find_text past one-beyond-the-end answered the last position; FIND and SEARCH now say `#VALUE!` there (`formulaTier1.test.ts`). SEARCH wildcards stay a backlog item. Was: e472fac4 LEFT/RIGHT/FIND/SEARCH "refuse what Excel refuses": negative num_chars,
       start_num 0, start_num > length. Also SEARCH wildcards are still a backlog item.
-- [ ] eea14b00 YEARFRAC basis 1 (actual/actual): leap-year spans across Feb 29 in the second
+- [x] Checked 2026-09-28 against Excel's rule (366 with a Feb 29 in a span of a year or less, the average year length past a year), three cases pinned in `formulaTier1.test.ts`. Was: eea14b00 YEARFRAC basis 1 (actual/actual): leap-year spans across Feb 29 in the second
       year; Excel's rule is notoriously odd. Compare to a known table.
-- [ ] 66367a4d GCD/LCM truncate; 802b6033 uppercase hex; b9e450ff VDB no_switch; 4315304e
+- [x] Checked 2026-09-28, one hand-derived Excel case each pinned in `formulaTier1.test.ts`. Was: 66367a4d GCD/LCM truncate; 802b6033 uppercase hex; b9e450ff VDB no_switch; 4315304e
       TREND/GROWTH const=FALSE: each a one-function Excel parity change; one Excel-verified
       case each in `formulaTier*.test.ts` is enough.
 - [ ] ebd1d68b Knap notes (`noteFrontmatter.ts`, `knapTemplate.ts`, `nodes/report.ts`): a

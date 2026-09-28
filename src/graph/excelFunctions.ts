@@ -851,12 +851,16 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
 
 const atLeast = (name: string, i: number, min: number, what: string) => (a: unknown[]): SolError | null =>
   a[i] != null && Math.trunc(toNum(a[i])) < min ? solError("#VALUE!", `${name} ${what}`) : null;
+// Excel lets an empty find_text match one past the end, and no further.
+const findStart = (name: string) => (a: unknown[]): SolError | null =>
+  atLeast(name, 2, 1, "starts at 1 or later")(a) ??
+  (a[2] != null && Math.trunc(toNum(a[2])) > toStr(a[1]).length + 1 ? solError("#VALUE!", `${name} starts past the end of the text`) : null);
 const TEXT_PASS_THROUGHS: Record<string, { text: number[]; check?: (a: unknown[]) => SolError | null }> = {
   LEFT: { text: [0], check: atLeast("LEFT", 1, 0, "takes 0 or more characters") },
   RIGHT: { text: [0], check: atLeast("RIGHT", 1, 0, "takes 0 or more characters") },
   UPPER: { text: [0] }, LOWER: { text: [0] }, TRIM: { text: [0] }, REPLACE: { text: [0, 3] }, EXACT: { text: [0, 1] },
-  FIND: { text: [0, 1], check: atLeast("FIND", 2, 1, "starts at 1 or later") },
-  SEARCH: { text: [0, 1], check: atLeast("SEARCH", 2, 1, "starts at 1 or later") },
+  FIND: { text: [0, 1], check: findStart("FIND") },
+  SEARCH: { text: [0, 1], check: findStart("SEARCH") },
 };
 for (const [name, { text, check }] of Object.entries(TEXT_PASS_THROUGHS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
