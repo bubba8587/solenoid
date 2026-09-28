@@ -38,7 +38,7 @@ const copy = (rel) => {
 const appFiles = new Set(modules.filter((rel) => rel.startsWith("src/")));
 const pluginFiles = run("git", ["ls-files", "obsidian-plugin"]).split("\n").filter(Boolean);
 // Also take type-only imports: the directory's review lints with types, and an unresolved module types as `any`.
-const shimmed = new Set(fs.readdirSync(path.join(ROOT, "obsidian-plugin/src/shims")).map((f) => `src/graph/${f}`));
+const shimmed = new Set(fs.readdirSync(path.join(ROOT, "obsidian-plugin/src/shims"), { recursive: true }).map((f) => `src/graph/${f}`));
 const resolveApp = (from, spec) => {
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(from), spec));
   return [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((c) => /\.tsx?$/.test(c) && fs.existsSync(path.join(ROOT, c)));
@@ -58,6 +58,26 @@ pluginFiles.forEach(copy);
 
 const manifest = JSON.parse(fs.readFileSync(path.join(ROOT, "obsidian-plugin/manifest.json"), "utf8"));
 const pin = (names) => Object.fromEntries(names.map((n) => [n, installed(n)]));
+const dependencies = pin([
+  "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
+  "chrono-node", "knap", "papaparse", "react", "react-dom", "rete", "yaml",
+]);
+const devDependencies = pin([
+  "@codemirror/language", "@codemirror/state", "@codemirror/view", "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
+  "obsidian", "postcss", "rollup-plugin-license", "typescript", "vite",
+]);
+// A package a copied file imports but the lists above leave out fails the snapshot's `tsc` in its release workflow.
+const unpinned = new Set();
+for (const rel of [...appFiles, ...pluginFiles].filter((f) => /\.tsx?$/.test(f))) {
+  for (const [, spec] of fs.readFileSync(path.join(ROOT, rel), "utf8").matchAll(/(?:\bfrom\s+|\bimport\s*\(?\s*)["']([@\w][^"'\s]*)["']/g)) {
+    const name = spec.match(/^(@[^/]+\/[^/]+|[^/]+)/)[1];
+    if (!name.startsWith("node:") && !(name in dependencies) && !(name in devDependencies)) unpinned.add(`${name} (${rel})`);
+  }
+}
+if (unpinned.size) {
+  console.error(`export: not pinned in the snapshot's package.json:\n  ${[...unpinned].join("\n  ")}`);
+  process.exit(1);
+}
 fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   name: manifest.id,
   version: manifest.version,
@@ -66,14 +86,8 @@ fs.writeFileSync(path.join(target, "package.json"), JSON.stringify({
   description: manifest.description,
   license: "MIT",
   scripts: { build: "tsc --noEmit && PLUGIN_OUT=dist VITE_CONFIG_NATIVE_IGNORE_WARNING=true vite build --config obsidian-plugin/vite.config.ts" },
-  dependencies: pin([
-    "@fontsource-variable/atkinson-hyperlegible-mono", "@fontsource-variable/atkinson-hyperlegible-next",
-    "chrono-node", "knap", "papaparse", "react", "react-dom", "rete", "yaml",
-  ]),
-  devDependencies: pin([
-    "@codemirror/language", "@codemirror/state", "@codemirror/view", "@types/papaparse", "@types/react", "@types/react-dom", "@vitejs/plugin-react", "estree-walker", "magic-string",
-    "obsidian", "postcss", "rollup-plugin-license", "typescript", "vite",
-  ]),
+  dependencies,
+  devDependencies,
   // Pin the exact installed version: a patch bump minifies React differently.
   overrides: pin(["rolldown"]),
 }, null, 2) + "\n");
