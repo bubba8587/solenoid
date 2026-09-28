@@ -8,7 +8,7 @@ export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
 
-/** VALUE's text reading, shared by the formula and Cast ([[B16]] oneFormulaSurface): `decimalFromText` after the currency, percent and parenthesis marks. */
+/** VALUE's text reading, shared by the formula and Cast ([[B16]] oneFormulaSurface), in the US form only ([[C117]] usNumberText): `decimalFromText` after the currency, percent and parenthesis marks. */
 export function parseValueText(text: string): number {
   let t = text.trim(), pct = 0, neg = false;
   while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
