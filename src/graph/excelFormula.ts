@@ -244,10 +244,13 @@ export function formulaSyntaxHint(expr: string): string | null {
   const openB = (s.match(/\[/g) ?? []).length;
   const closeB = (s.match(/\]/g) ?? []).length;
   if (openB !== closeB) return "Unclosed [ — a whole column is [Name], this row's cell is @[Name]";
-  const open = (s.match(/\(/g) ?? []).length;
-  const close = (s.match(/\)/g) ?? []).length;
+  const bare = s.replace(/\[@\[[^\]]*\]\]|\[[^\]]*\]/g, "[]");
+  const open = (bare.match(/\(/g) ?? []).length;
+  const close = (bare.match(/\)/g) ?? []).length;
   if (open > close) return `Missing ${open - close} closing parenthesis${open - close === 1 ? "" : "es"}`;
   if (close > open) return `${close - open} extra closing parenthesis${close - open === 1 ? "" : "es"}`;
+  let depth = 0;
+  for (const ch of bare) if ((depth += ch === "(" ? 1 : ch === ")" ? -1 : 0) < 0) return "A ) comes before the ( it would close";
   if (/[+\-*/^&,<>=]$/.test(s)) return "The formula ends mid-expression (trailing operator)";
   return null;
 }

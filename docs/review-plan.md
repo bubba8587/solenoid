@@ -89,13 +89,13 @@ Where: `excelFormula.ts` (`closeParens`), `FormulaPopup.tsx`, `TablePopup.tsx`,
 Why risky: silently rewrites user text at four commit sites; one of them is a cube CELL editor.
 - [x] Checked: the closer lives only in the shared Fx expr-row editor (`table-popup__exprinput`);
       `cubeEditCell.tsx` just forwards the closed text as a column `expr`. Literal cells untouched.
-- [ ] `closeParens` treats `"` as the only quote; Excel's `""` escape inside a string toggles
+- [x] Fixed 2026-09-28: `"` is the formula language's only quote (single quotes aren't delimiters), but `[column]` and `[@[column]]` references were counted; the closer and the syntax hint now skip them as the tokenizer reads them. Was: `closeParens` treats `"` as the only quote; Excel's `""` escape inside a string toggles
       twice so is fine, but `'` (sheet/name quoting) and a `(` inside `[...]` column refs are
       counted. Check the parser's own quoting rules and mirror them.
-- [ ] FormulaPopup commit: `committedRef` gets the closed text but `textRef` keeps the raw
+- [x] Checked 2026-09-28: the popup commits only on close or a switch, and reopening seeds from the closed text, so there's nothing to repaint; the column row repaints its draft. The real `trimEnd` hazard was an unterminated string (`CONCAT("a ` became `CONCAT("a)`); the closer now leaves it for the parser. Was: FormulaPopup commit: `committedRef` gets the closed text but `textRef` keeps the raw
       text; does the visible editor repaint with the `)`? Also `trimEnd()` before appending
       strips trailing whitespace the user may have typed inside a string.
-- [ ] `)` first then `(` (`)a(`): counts balance, nothing added, parse fails. Fine, but
+- [x] Fixed 2026-09-28: no hint fired (counts balance); `formulaSyntaxHint` now names a `)` before its `(`. Was: `)` first then `(` (`)a(`): counts balance, nothing added, parse fails. Fine, but
       confirm the syntax hint still fires.
 
 ## 5. LAMBDA capture vs column precedence in computed columns

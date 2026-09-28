@@ -103,10 +103,10 @@ Argument lists: `(` then zero or more slots separated by commas, then `)`. `F()`
 2. a leading `=`: drop it;
 3. a `;`: use commas;
 4. unbalanced `[` and `]`;
-5. more `(` than `)`, naming the count; or more `)` than `(`;
+5. more `(` than `)`, naming the count; or more `)` than `(`; or, balanced, a `)` before the `(` it would close (`)a(`). Parentheses inside a `[column]` or `[@[column]]` reference don't count;
 6. a trailing operator or comma: the formula ends mid-expression.
 
-Check 5's first half rarely shows after an edit: every formula surface commits through `closeParens`, which appends the missing `)` when the text has more `(` than `)` outside quoted text ([[C115]] closeParensOnCommit). The formula popup calls it in `commit`, and the Fx column row (`ColumnExprField`, shared by the Frame Input and Cube popups) calls it on blur. A formula with too many `)` is left for the hint.
+Check 5's first half rarely shows after an edit: every formula surface commits through `closeParens`, which appends the missing `)` when the text has more `(` than `)` outside quoted text and `[column]` references, read as the tokenizer reads them (`referenceEnd`); an unterminated string or reference is left as typed, so the parser names it rather than a `)` landing inside it ([[C115]] closeParensOnCommit). The formula popup calls it in `commit`, and the Fx column row (`ColumnExprField`, shared by the Frame Input and Cube popups) calls it on blur. A formula with too many `)` is left for the hint.
 
 ## Names
 
