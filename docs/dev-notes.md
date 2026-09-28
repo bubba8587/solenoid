@@ -39,11 +39,15 @@ specific item.
 - **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
   the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.
 
-### SESSION DIGEST (2026-09-28: plugin 0.1.4 readied to ship ahead of the app; cloud session)
+### SESSION DIGEST (2026-09-28: plugin 0.1.5 on Solenoid-Properties main, its whatsnew video; cloud session)
 
 - **Plugin 0.1.5 replaces 0.1.4** (whose release failed the Obsidian review): TableCards' dead eslint directives are
   gone, the Knap marker regexes are built from their constants, and the Knap views use `createSpan`/`createDiv`. Only
   the Release run is left (`docs/backlog.md` § Obsidian).
+- **The whatsnew cut is 0.1.5's** (author approved the render): typing about 2.5x faster, the Knap totals held against
+  the Frame's qty column and its footer Sum, and `wn-cards`, a crew Frame on Obsidian's phone emulation panned across
+  in Grid, then Cards and a filter. Recorded in a cloud container; the setup that works there is in the `demo-video`
+  skill. Not yet in `assets/video/` (backlog).
 - **The plugin's `main.js` is 626 kB again** (960 kB after 09-27): `closeParens` moved to its own `closeParens.ts`, since
   importing it from `excelFormula.ts` pulled Formula.js and jstat into the plugin; the plugin draws the Cards rules with
   Obsidian's `MarkdownRenderer` through a `components/Markdown` shim, so `marked` stays out (spec: [[obsidian-plugin]]).

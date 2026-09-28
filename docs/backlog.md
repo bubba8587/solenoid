@@ -72,8 +72,10 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Publish plugin 0.1.5** (0.1.4's release failed the Obsidian review on TableCards' directives): the fixed
   snapshot is on Solenoid-Properties `main`, and the recommended `eslint-plugin-obsidianmd` run adds nothing over
   0.1.3's standing findings. Left: run its Release workflow from the Actions tab with `0.1.5`.
-- [ ] **`whatsnew` video with the next app bump**: to `assets/video/`, re-rendered with `DEMO_FPS=60 node
-  scripts/demo-video/record.mjs whatsnew` and `compose.mjs whatsnew` (the build under test is copied into the rig's vault).
+- [ ] **`whatsnew` video (plugin 0.1.5, approved 2026-09-28) to `assets/video/`** on the author's word: re-render with
+  `DEMO_FPS=60`, recording `wn-cards` in its own run after the rest (`demo-video` skill).
+- [ ] **Cards sort box on a phone:** the "Source" label runs under its chevron ("Source ov") in a 344 px popup
+  (seen in the whatsnew recording, `TableCards.tsx` `.table-cards__sort`).
 - [ ] **A Note card's bare `{{ list }}` on its own field prints Knap's JSON**; in Obsidian a Knap note draws the
   chip ([[D87]] knapNotes, as [[C68]] asks of a bare tag). Embed the card's own object fields as a Report does?
 - [ ] **Knap notes on show:** a `knap: true` note in the demo vault and on the `/obsidian` page, once the plugin

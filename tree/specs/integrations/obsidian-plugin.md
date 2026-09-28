@@ -412,7 +412,9 @@ the snapshot carries whole files): `localStorage` in `palette.ts` and `settingsS
 normal-CDF coefficients in `mathUtils.ts`, printed as published (the footer's `aggregate` pulls
 the file in; 310 bytes of it ship); in CSS, the `vh` line before each `dvh` one (the fallback),
 `:has()`, and the browser-support notes. Reproduce the review before a release with
-`eslint-plugin-obsidianmd`'s recommended config, run in the exported snapshot. `test.yml` builds the plugin on every push, so `develop` cannot break the build the
+`eslint-plugin-obsidianmd`'s recommended config, run in the exported snapshot. The review fails an eslint
+directive that has no description or names a rule its config doesn't load (`react-hooks`), and fails `no-control-regex`,
+so the snapshot's files carry no directives and build marker regexes from their constants. `test.yml` builds the plugin on every push, so `develop` cannot break the build the
 release workflow depends on.
 
 ## What Solenoid reads back

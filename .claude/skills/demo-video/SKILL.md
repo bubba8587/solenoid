@@ -37,7 +37,9 @@ changes and the video follows the app.
    download the AppImage from the obsidianmd/obsidian-releases GitHub release and run it with `--appimage-extract`;
    the binary is `squashfs-root/obsidian`. It also needs `Xvfb`, and `npm run plugin:build` first (the rig copies
    `obsidian-plugin/dist` into the vault).
-4. **Fonts**: a bare container has only DejaVu, which makes stock Obsidian look wrong. Install Inter (the static
+   A cloud container can't reach GitHub release assets: take the Snap instead (`api.snapcraft.io/v2/snaps/info/obsidian`
+   with header `Snap-Device-Series: 16` gives the download URL), `unsquashfs` it, run `squashfs-root/app/obsidian`.
+4. **Fonts**: (in the cloud: `npm pack inter-ui@3`, convert its `Inter (web)` woff2 files to ttf with fontTools) a bare container has only DejaVu, which makes stock Obsidian look wrong. Install Inter (the static
    `extras/ttf/Inter-*.ttf` from rsms/inter, family "Inter") into `~/.local/share/fonts` and make it the fontconfig
    default for `sans-serif` and `system-ui` (`~/.config/fontconfig/fonts.conf`), then `fc-cache -f`.
 5. **Dev server**: `node scripts/dev-up.mjs`. The kit imports app modules by their Vite dev URLs
