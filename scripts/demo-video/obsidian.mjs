@@ -23,8 +23,9 @@ async function answers() {
   try { return (await fetch(`http://127.0.0.1:${PORT}/json/version`)).ok; } catch { return false; }
 }
 
-/** The demo vault as a first-time user has it: plugin installed, its look off, no snippet, no saved layout. */
-export function resetVault() {
+/** The demo vault as a first-time user has it: plugin installed, its look off, no snippet, no saved layout. A cut
+ *  with a vault of its own passes `prepare`, which gets the fresh copy last. */
+export function resetVault(prepare) {
   fs.rmSync(VAULT, { recursive: true, force: true });
   fs.cpSync(path.join(ROOT, "demo-vault"), VAULT, { recursive: true });
   const cfg = path.join(VAULT, ".obsidian");
@@ -36,6 +37,7 @@ export function resetVault() {
   const plugin = path.join(cfg, "plugins", "solenoid-properties");
   fs.cpSync(build, plugin, { recursive: true });
   fs.writeFileSync(path.join(plugin, "data.json"), JSON.stringify({ look: false }));
+  prepare?.(VAULT);
 }
 
 export async function obsidianDown() {

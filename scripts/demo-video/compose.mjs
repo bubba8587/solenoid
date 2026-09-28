@@ -9,7 +9,7 @@ import { browserPath } from "../browser.mjs";
 import { OUT, FFMPEG, FPS, VIEW } from "./rig.mjs";
 import { SCENES } from "./scenes.mjs";
 import { CUTS } from "./cuts.mjs";
-import { captionHtml, introMarkHtml, introLineHtml, introVersionHtml, gridHtml, outroHtml, panelLabelsHtml, fastBadgeHtml } from "./cards.mjs";
+import { captionHtml, quoteHtml, chapterLineHtml, introMarkHtml, introLineHtml, introVersionHtml, gridHtml, outroHtml, panelLabelsHtml, fastBadgeHtml } from "./cards.mjs";
 import { writeMusic } from "./music.mjs";
 
 const CUT_NAME = process.argv[2] ?? "demo";
@@ -49,7 +49,7 @@ async function png(html, file) {
 for (const name of ORDER) if (SCENES[name].caption) await png(captionHtml(SCENES[name].caption), `cap-${name}.png`);
 for (const name of ORDER) {
   const ch = SCENES[name].chapter;
-  if (ch) await png(introMarkHtml(ch.eyebrow, ch.mark ?? "solenoidwordmark.svg"), `chapter-${name}.png`);
+  if (ch) await png(ch.line ? chapterLineHtml(ch.line) : introMarkHtml(ch.eyebrow, ch.mark ?? "solenoidwordmark.svg"), `chapter-${name}.png`);
 }
 // Side-by-side panels for a stills scene: Solenoid left, Obsidian right, in 1920×1080 px.
 const PANEL = { w: 936, h: 527, x: [16, 968], y: 236 };
@@ -58,8 +58,9 @@ for (const order of [["sol", "obs"], ["obs", "sol"]]) {
   await png(panelLabelsHtml(order.map((k) => LABEL[k]), { x: PANEL.x.map((x) => x / VIEW.scale), y: (PANEL.y - 34) / VIEW.scale }), `panel-labels-${order.join("-")}.png`);
 }
 for (const rate of [2, 3, 4]) await png(fastBadgeHtml(rate), `fast-${rate}.png`);
-await png(introMarkHtml(CUT.eyebrow, CUT.mark), `${CUT_NAME}-intro-mark.png`);
-await png(CUT.version ? introVersionHtml(CUT.version) : introLineHtml(CUT.tagline), `${CUT_NAME}-intro-line.png`);
+// A cut that opens on its story (`quote`) has words for a title card, not a wordmark.
+await png(CUT.quote ? quoteHtml(CUT.quote) : introMarkHtml(CUT.eyebrow, CUT.mark), `${CUT_NAME}-intro-mark.png`);
+await png(CUT.version ? introVersionHtml(CUT.version) : introLineHtml(CUT.tagline ?? ""), `${CUT_NAME}-intro-line.png`);
 // A `grid` scene's shots, tiled on one card.
 for (const name of ORDER) {
   const g = SCENES[name].grid;

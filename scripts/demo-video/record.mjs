@@ -24,7 +24,9 @@ const inSplit = (n) => SCENES[n].app === "split";
 fs.mkdirSync(path.join(OUT, "clips"), { recursive: true });
 
 // A cut's first scene starts from a fresh copy of the demo vault; a later scene recorded alone keeps the vault it left.
-if (names.some((n) => SCENES[n].fresh) || !fs.existsSync(VAULT)) resetVault();
+// A `fresh` that is a function prepares a vault of the cut's own on the copy.
+const fresh = names.map((n) => SCENES[n].fresh).find(Boolean);
+if (fresh || !fs.existsSync(VAULT)) resetVault(typeof fresh === "function" ? fresh : undefined);
 const obsidian = names.some((n) => inObsidian(n) || inBoth(n) || inSplit(n)) ? await obsidianUp() : null;
 if (obsidian) await injectCursor(obsidian.page);
 

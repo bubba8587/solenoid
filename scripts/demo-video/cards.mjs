@@ -41,11 +41,14 @@ export const captionHtml = ([title, body]) => `${HEAD}<style>
 </style><div class="cap"><div class="cap__title">${esc(title)}</div><div class="cap__body">${esc(body)}</div></div>`;
 
 export const introMarkHtml = (eyebrow, mark = "solenoidwordmark.svg") => `${HEAD}${eyebrow ? `<div class="center" style="top:208px;font-weight:600;font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:#b8bdc3">${esc(eyebrow)}</div>` : ""}<div class="center" style="top:${mark === "solenoidwordmark.svg" ? 250 : 262}px">${markDiv(mark, "intro")}</div>`;
+/** A title card in words alone: a line someone might say, set large, for a cut that opens on its story. */
+export const quoteHtml = (text) => `${HEAD}<div class="center" style="top:300px;padding:0 160px;font-size:40px;font-weight:600;line-height:1.3;text-wrap:balance">${esc(text)}</div>`;
+export const chapterLineHtml = (line) => `${HEAD}<div class="center" style="top:322px;font-size:38px;font-weight:600;color:#f5b914">${esc(line)}</div>`;
 export const introVersionHtml = (version) => `${HEAD}<div class="center" style="top:362px;font-family:AHM,monospace;font-size:17px;letter-spacing:.08em;color:#b8bdc3">${esc(version)}</div>`;
 export const introLineHtml = (line) => `${HEAD}<div class="center" style="top:388px;font-size:27px;font-weight:500">${esc(line)}</div>`;
 
-export const outroHtml = ({ lead, sub, url }, mark = "solenoidwordmark.svg") => `${HEAD}
-<div class="center" style="top:${mark === "solenoidwordmark.svg" ? 178 : 184}px">${markDiv(mark, "outro")}</div>
+export const outroHtml = ({ title, lead, sub, url }, mark = "solenoidwordmark.svg") => `${HEAD}
+${title ? `<div class="center" style="top:196px;font-size:44px;font-weight:700;color:#f5b914">${esc(title)}</div>` : `<div class="center" style="top:${mark === "solenoidwordmark.svg" ? 178 : 184}px">${markDiv(mark, "outro")}</div>`}
 <div class="center" style="top:292px;font-size:30px;font-weight:600">${esc(lead)}</div>
 <div class="center" style="top:342px;font-size:19px;color:#b8bdc3">${esc(sub)}</div>
 <div class="center" style="top:410px;font-family:AHM,monospace;font-size:21px;color:#f5b914;letter-spacing:.02em">${esc(url)}</div>`;

@@ -6,8 +6,9 @@ description: Record and cut Solenoid's marketing/demo video from the real app an
 # The demo video
 
 `scripts/demo-video/` films the real app and the real Obsidian plugin, never a mockup ([[B3]] sameNodeEverywhere),
-one scene at a time, and assembles a cut. There are three cuts (`cuts.mjs`): `demo`, the tour of the app,
-`obsidian`, a one-minute story for Obsidian users about the plugin, and `whatsnew`, the plugin 0.1.5 release video. Everything is reproducible: re-run it after UI
+one scene at a time, and assembles a cut. There are four cuts (`cuts.mjs`): `demo`, the tour of the app,
+`obsidian`, a one-minute story for Obsidian users about the plugin, `whatsnew`, the plugin 0.1.5 release video, and
+`dmatrix`, choosing an apartment with the Decision Matrix Bases View plugin. Everything is reproducible: re-run it after UI
 changes and the video follows the app.
 
 | File | Job |
@@ -16,6 +17,7 @@ changes and the video follows the app.
 | `roundtrip.mjs` | The demo cut's Obsidian round trip: the plugin's look, palettes side by side with the app, a Frame property, the imported note side by side, Import Obsidian Note, Write to Obsidian, the note opened in Obsidian |
 | `plugin.mjs` | The obsidian cut: meeting notes and an `attendees` String List property, then the popup's Grid and CSV views and Priya's emailed table typed into the `q3` Frame property through its Form view, all in Obsidian; then Solenoid beside it joins the note to a roster note, totals it with PIVOTBY and writes the chart back into the note; the look in both apps |
 | `whatsnew.mjs` | The whatsnew cut, all in Obsidian on one note: the two features typed as a list, a Frame property resized and filled in its popup, the same Frame referenced in the body and edited from there, a "Using knap.md" callout and more Knap typed in Live Preview, the Knap's totals held against the Frame's own sum, the `knap` switch flipped and the cursor walked through it, a crew Frame on an emulated phone panned across in Grid and then shown as Cards and filtered, then the note in sixteen palette and accent pairs as one `grid` card, with the sidebars on and the Frame editor open in half the tiles |
+| `dmatrix.mjs` | The dmatrix cut, all in Obsidian on a vault of its own (`prepareVault`, four apartment notes): both plugins switched on and the look picked in Settings, scores Frames typed as CSV and shown in Form view (one fast-forwarded, the studio's light left blank), a base inserted into a new note, filtered to the folder and set to the Decision Matrix layout, the weights set (negative for rent, commute, noise), the Rankings view embedded below, commute pushed past its flip point, Breakdown, the blank scored as the median, a criterion added from the table, and the result written to properties. It needs the plugin built in a sibling `dmatrix-bases-view` checkout (or `DMATRIX`). Its intro card is a line of words (`quote`), its first chapter card a `line`, its outro a `title` |
 | `cuts.mjs` | Each cut's backdrops, running order, title-card copy, wordmark and output name |
 | `record.mjs` | Runs a cut's scenes, or those named, into `.dev/video/clips/<scene>.mp4` + `.json`: Solenoid scenes in Chromium, `app: "obsidian"` scenes on the rig, `app: "both"` stills of both, `app: "split"` scenes with Obsidian and a Solenoid window side by side |
 | `rig.mjs` | Chromium launch (headless, or `launchWindow` as a real window on the rig's display), CDP screencast capture, frame-timestamp encoding, the scripted hand (move, click, drag, type, keys) |

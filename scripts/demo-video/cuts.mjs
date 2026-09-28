@@ -51,6 +51,24 @@ export const CUTS = {
     },
     push: true,
   },
+  dmatrix: {
+    out: "decision-matrix-bases-view",
+    intro: "dm-intro",
+    outro: "dm-outro",
+    order: [
+      "dm-plugins", "dm-look", "dm-score", "dm-score-more", "dm-base", "dm-weights",
+      "dm-ranking", "dm-flip", "dm-breakdown", "dm-blank", "dm-add", "dm-result",
+    ],
+    // The story's opening line in place of a wordmark; the answer is the first scene's chapter card.
+    quote: "\u201cFour apartments. I like all of them, but I just can't decide.\u201d",
+    end: {
+      title: "Decision Matrix Bases View",
+      lead: "Free and open source.",
+      sub: "It needs Solenoid Properties, and runs on Obsidian's desktop and mobile apps.",
+      url: "github.com/bubba8587/dmatrix-bases-view",
+    },
+    push: true,
+  },
 };
 
 /** The scenes a cut films, in filming order: the outro backdrop last, since it shows where the story ends. */
