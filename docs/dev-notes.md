@@ -41,8 +41,8 @@ specific item.
 
 ### SESSION DIGEST (2026-09-28: plugin 0.1.4 readied to ship ahead of the app; cloud session)
 
-- **Plugin 0.1.4 releases on its own** (author): the manifest is 0.1.4; the export, commit and release in
-  Solenoid-Properties are the author's (`docs/backlog.md` § Obsidian).
+- **Plugin 0.1.4 is on Solenoid-Properties `main`** (author: releases on its own): exported from 1abf7e3e with the
+  README fix; only the Release run is left (`docs/backlog.md` § Obsidian).
 - **The plugin's `main.js` is 626 kB again** (960 kB after 09-27): `closeParens` moved to its own `closeParens.ts`, since
   importing it from `excelFormula.ts` pulled Formula.js and jstat into the plugin; the plugin draws the Cards rules with
   Obsidian's `MarkdownRenderer` through a `components/Markdown` shim, so `marked` stays out (spec: [[obsidian-plugin]]).

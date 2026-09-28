@@ -69,10 +69,9 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **Release plugin 0.1.4 ahead of the app** (author 2026-09-28: independent of the app bump; `resolveToken`, the
-  cube type button, Knap notes in Reading view and Live Preview ([[D87]])): the manifest here is 0.1.4. From the dev
-  machine: `npm run plugin:export -- "<Solenoid-Properties clone>"`, commit and push there, merge there to `main`,
-  release (tag `0.1.4`). The README fix there waits on `claude/copy-editing-style-kytmz0`; merge it first or ship without.
+- [ ] **Publish plugin 0.1.4** (author 2026-09-28: ahead of the app): the snapshot of solenoid@1abf7e3e and the
+  README fix are on Solenoid-Properties `main`, built and typechecked. Left: run its Release workflow from the
+  Actions tab (version `0.1.4`, which creates the tag), or push the tag from the dev machine.
 - [ ] **`whatsnew` video with the next app bump**: to `assets/video/`, re-rendered with `DEMO_FPS=60 node
   scripts/demo-video/record.mjs whatsnew` and `compose.mjs whatsnew` (the build under test is copied into the rig's vault).
 - [ ] **A Note card's bare `{{ list }}` on its own field prints Knap's JSON**; in Obsidian a Knap note draws the
