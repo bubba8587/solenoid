@@ -19,6 +19,11 @@ describe("volatileDates (R5 midnight rollover)", () => {
     expect(hasVolatileDates([cube])).toBe(true);
     expect(hasVolatileDates([new CubeInputNode()])).toBe(false);
   });
+  it("spots a Note or Report template that dates 'now'", () => {
+    expect(hasVolatileDates([{ body: "Updated {{ 'now' | date: '%d %b' }}" }])).toBe(true);
+    expect(hasVolatileDates([{ body: 'day: "{{ "now" | date }}"' }])).toBe(true);
+    expect(hasVolatileDates([{ body: "Written {{ created | date }}, not now" }])).toBe(false);
+  });
   it("spots a Today / Now card, and a volatile node inside a composite", () => {
     expect(hasVolatileDates([new TodayNowNode()])).toBe(true);
     expect(hasVolatileDates([{ internalEditor: { getNodes: () => [{ expr: "NOW()" }] } }])).toBe(true);

@@ -22,8 +22,8 @@ function labelFromId(id: string): string {
 
 export type SeedId = string;
 
-// Insertion order is the menu order (consumers map Object.entries).
-export const SEEDS: Record<string, { label: string; group: string; graph: SavedGraph }> = {};
+// Insertion order is the menu order (consumers map Object.entries). No prototype, so `?seed=constructor` names no seed.
+export const SEEDS: Record<string, { label: string; group: string; graph: SavedGraph }> = Object.create(null);
 export const SEED_GROUPS: { head: string; ids: SeedId[] }[] = [];
 const ordered = Object.entries(modules)
   .map(([path, mod]) => ({ id: idFromPath(path), mod, order: mod.order ?? DEFAULT_ORDER }))

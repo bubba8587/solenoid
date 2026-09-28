@@ -5,7 +5,7 @@ import { copyText } from "../clipboard";
 import { tablePopup, getRecordCardsAction, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
-import { parseCsvRows } from "../csv";
+import { parseCsvRows, joinCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
 import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, type FrameSourceColumn } from "../frame";
@@ -74,7 +74,7 @@ function csvField(c: string, cellType: CellType, escapeFormulas = false): string
   return csvText(cell(c, cellType), escapeFormulas);
 }
 function toCSV(grid: string[][], cellType: CellType, columnTypes?: CellType[], escapeFormulas = false): string {
-  return grid.map((row) => row.map((c, j) => csvField(c, typeAt(j, cellType, columnTypes), escapeFormulas)).join(",")).join("\n");
+  return joinCsvRows(grid.map((row) => row.map((c, j) => csvField(c, typeAt(j, cellType, columnTypes), escapeFormulas))));
 }
 function listToText(grid: string[][], cellType: CellType, escapeFormulas = false): string {
   return grid.flat().map((c) => (escapeFormulas ? neutralizeFormulaCell(cell(c, cellType)) : cell(c, cellType))).join(", ");
@@ -129,6 +129,7 @@ export function TablePopup() {
   const [displayMode, setDisplayMode] = useState<"formatted" | "source">("formatted");
   // The draft is a ref, so Escape can reset it and blur synchronously without a stale closure.
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
+  const distinctMemo = useRef<{ grid: unknown; c: number; values: string[] } | null>(null);
   const [formRow, setFormRow] = useState(0);
 
   const editDraft = useRef("");
@@ -406,11 +407,14 @@ export function TablePopup() {
 
   // A plain computation, not a hook: it sits below the `if (!state)` guard.
   const isErrCode = (s: string): boolean => Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, s.trim());
+  // Only the edited column suggests, and a keystroke re-renders, so scan that one column once per grid.
   const textColDistinct = new Map<number, string[]>();
-  for (let c = 0; c < viewCols; c++) {
-    if ((vertical ? cellType : colTypeAt(c)) === "string") {
-      textColDistinct.set(c, distinctColumnValues(grid.map((r) => r[c]), isErrCode));
-    }
+  const ec = editCell?.c;
+  if (ec !== undefined && ec >= 0 && ec < viewCols && (vertical ? cellType : colTypeAt(ec)) === "string") {
+    const hit = distinctMemo.current;
+    const values = hit && hit.grid === grid && hit.c === ec ? hit.values : distinctColumnValues(grid.map((r) => r[ec]), isErrCode);
+    distinctMemo.current = { grid, c: ec, values };
+    textColDistinct.set(ec, values);
   }
 
   const sortOrder = sortedOrder(viewRows, sort, (r, c) =>
@@ -893,6 +897,7 @@ export function TablePopup() {
                         data-vi={vi}
                         data-c={c}
                         onKeyDown={canEdit ? (e) => {
+                          if (e.nativeEvent.isComposing) return;
                           if (suggestRef.current?.onKey(e)) return;
                           const k = gridKeyOf(e);
                           if (!k) return; // Escape belongs to the shell's capture-phase onEscape
@@ -1042,6 +1047,7 @@ export function TablePopup() {
                         }}
                         onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
                         onKeyDown={(e) => {
+                          if (e.nativeEvent.isComposing) return;
                           if (suggestRef.current?.onKey(e)) return;
                           if (e.key === "Enter") e.currentTarget.blur();
                         }}

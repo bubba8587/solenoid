@@ -288,3 +288,10 @@ for (const [path, mod] of Object.entries(seedModules)) {
     });
   });
 }
+
+describe("a seed name from a link", () => {
+  it("names no seed when it is an object's built-in property", async () => {
+    const { SEEDS } = await import("../../src/graph/seeds");
+    for (const id of ["constructor", "__proto__", "toString", "hasOwnProperty"]) expect(SEEDS[id], id).toBeUndefined();
+  });
+});

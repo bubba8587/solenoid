@@ -26,6 +26,11 @@ export function parseCsvRows(text: string, opts: CsvOptions = {}): string[][] {
   return rows;
 }
 
+/** Rows of already-escaped fields as CSV text. A row that is one blank field writes as `""`: an empty line would read back as the final newline's phantom, and the row would drop. */
+export function joinCsvRows(rows: readonly (readonly string[])[]): string {
+  return rows.map((r) => r.join(",") || '""').join("\n");
+}
+
 export function parseCsvLine(line: string, opts: CsvOptions = {}): string[] {
   return parseCsvRows(line, opts)[0] ?? [""];
 }

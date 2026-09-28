@@ -1,6 +1,6 @@
 // [[C103]] untrustedContentSeams
 import { describe, it, expect } from "vitest";
-import { parseCsvLine, parseCsvRows, csvFieldSpans } from "../../src/graph/csv";
+import { parseCsvLine, parseCsvRows, csvFieldSpans, joinCsvRows } from "../../src/graph/csv";
 
 describe("csvFieldSpans", () => {
   const cut = (text: string) => csvFieldSpans(text).map((s) => [s.row, s.col, text.slice(s.start, s.end)]);
@@ -96,5 +96,15 @@ describe("parseCsvRows", () => {
       ["a", "b"],
       ["1", "2"],
     ]);
+  });
+});
+
+describe("joinCsvRows", () => {
+  it("a blank one-column row survives the round trip, a trailing one and a lone one too", () => {
+    const back = (rows: string[][]) => parseCsvRows(joinCsvRows(rows), { keepBlankLines: true });
+    expect(back([["a"], [""]])).toEqual([["a"], [""]]);
+    expect(back([[""]])).toEqual([[""]]);
+    expect(back([["a"], [""], ["b"]])).toEqual([["a"], [""], ["b"]]);
+    expect(back([["a", "b"], ["", ""]])).toEqual([["a", "b"], ["", ""]]);
   });
 });

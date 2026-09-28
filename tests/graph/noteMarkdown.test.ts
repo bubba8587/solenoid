@@ -83,3 +83,11 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
     expect(html).not.toContain("sol-md__");
   });
 });
+
+describe("a tag starts a word", () => {
+  it("a # inside a word is plain text; after a space, a bracket or a line break it is a tag", () => {
+    const tagged = (md: string) => renderNoteMarkdown(md).includes("sol-md__tag");
+    for (const md of ["a#b c", "foo#bar#baz"]) expect(tagged(md), md).toBe(false);
+    for (const md of ["#start", "x #tag", "(#paren)", "**#bold**", "line\n#next"]) expect(tagged(md), md).toBe(true);
+  });
+});

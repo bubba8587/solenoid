@@ -450,14 +450,14 @@ Where: `canvasLock.ts`, gated in `FlowSurface.tsx`, `canvasKeyboard.ts`, `menuMo
 Commits: b1829af0, 1463356b, 93284865, bcca0654
 Where: `draftFlush.ts` (30 lines), `documentStore.ts`, `fileSession.ts`, `persistence.ts`,
 `src-tauri` close listener (`core:window:allow-destroy`).
-- [ ] The registry is keyed by object; a component that unmounts while dirty without
+- [x] Checked 2026-09-28: `usePendingDraft` registers inside an effect whose cleanup unregisters, so an unmount (dirty or not) removes its flush. Was: The registry is keyed by object; a component that unmounts while dirty without
       unregistering leaks a flush closure that writes into a node that may be gone.
-- [ ] `flushDrafts()` runs before `captureCurrent`; if a flush throws (node deleted), does
+- [x] Checked 2026-09-28: each flush runs in its own try/catch, so one that throws is logged and the save still happens. Was: `flushDrafts()` runs before `captureCurrent`; if a flush throws (node deleted), does
       the save still happen, or is the whole save lost?
-- [ ] Desktop close: JS listener destroys the window itself. If the flush's autosave is
+- [x] Checked 2026-09-28: the close handler flushes and captures synchronously (`persist` writes local storage slots, no await), so the last write lands before the window goes; `kill -9` loses what came after the last autosave, which no handler can help. The backlog's next-desktop-build check stands. Was: Desktop close: JS listener destroys the window itself. If the flush's autosave is
       async and the destroy is sync, the last write is lost. Backlog already asks to verify
       on the next desktop build; add "kill -9 vs close" and "close during a long autosave".
-- [ ] "Idle autosave keeps drafts local so a half-typed frontmatter never prunes cables":
+- [x] Checked 2026-09-28: C95's Consequences make a switch, save or close commit drafts and the background autosave never; a half-typed key committing on a switch is the rule (block 44). Was: "Idle autosave keeps drafts local so a half-typed frontmatter never prunes cables":
       but a document SWITCH flushes → a half-typed frontmatter key commits → cables pruned.
       Confirm that's acceptable or that switch should confirm.
 
@@ -644,21 +644,21 @@ Where: `noteFrontmatter.ts`, `nodes/annotation.ts` (Note), `nodes/obsidian.ts`, 
 Commits: 44ee5b41, 8f08c807, 6c5c8f50, a92e5931, 88c4f1ed, 110f66c3, 845a753b, 89dcf042,
 f36fc0d3, 47cb4d04, 2686eccf, 25d764dc, cde82932, a4dc1250, 3e776d37 (Part A)
 Where: `TablePopup.tsx` (24 commits then 17 more), `columnHeadControls.tsx`, `csv.ts`
-- [ ] One CSV writer for view/Copy/Export (110f66c3): a cell holding a newline, a `"`, a
+- [x] Fixed 2026-09-28: a newline, `"`, a leading `=+-@`, `a,b` and `1,234.50` all round-trip, and Export neutralizes formulas; but a one-column blank row wrote an empty line that read back as the final newline's phantom, so the row dropped (a lone blank cell read back as no rows). It writes as `""` now (`joinCsvRows`, `csv.test.ts`). NEEDS AUTHOR: the CSV view trims every cell on read, per the spec, while § Copy says text keeps its spaces, so one keystroke in the block trims untouched text cells; options are trimming only non-text columns, or only unquoted fields with the writer quoting edge whitespace. Was: One CSV writer for view/Copy/Export (110f66c3): a cell holding a newline, a `"`, a
       leading `=`/`+`/`-`/`@` (CSV injection into Excel), a cell that is only whitespace,
       a formatted number with a locale comma. Read-back through the CSV EDIT path
       (89dcf042 "edit in Formatted mode") must round-trip each.
-- [ ] Editing in Formatted mode: the user edits "1,234.50" and types "1,235"; parsed as
+- [x] Checked 2026-09-28: a focused cell edits the raw text and `decimalFromText("1,235")` is 1235; the locale is fixed en-US ([[C117]] usNumberText); unquoted `1,235` in the CSV block is two fields, as CSV is. Was: Editing in Formatted mode: the user edits "1,234.50" and types "1,235"; parsed as
       1235 or as 1 and 235 (two fields)? Depends on the format's thousands separator.
-- [ ] In-app suggestions replaced the native datalist (44ee5b41): keyboard nav, Escape
+- [x] Fixed 2026-09-28: Escape reverts and blurs without committing; Tab with nothing highlighted commits the typed text. The list rescanned every text column on every keystroke (18 ms at 10k rows, 170 ms at 250k); it scans only the edited column now, once per grid (looked at live). Nothing checked `isComposing`, so an Enter that confirms an IME candidate could commit the cell; the cell editors skip keys while composing (not verifiable headless). Was: In-app suggestions replaced the native datalist (44ee5b41): keyboard nav, Escape
       closes without committing, Tab commits the highlighted vs the typed, IME composition
       (CJK), 10k distinct values in the column (perf of the list).
-- [ ] Computed columns keep a date (cde82932): the type is read from the DEFINITION
+- [ ] NEEDS AUTHOR 2026-09-28, not a bug per computed-columns ("anything else stays a number"): `@d + 1.5`, `(@d)+1` and an IF chaining a date column read as dates; `MAX(@a,@b)`, `IF(c,@a,0)`, IFERROR, CHOOSE, IFS, `LET(x,@a,x+1)` and `DATE()+@a` read as numbers, and `addAs` can pin Date. Proposal: MIN/MAX/IFERROR/CHOOSE/IFS over all-date value arguments, LET passing a date, and DATE() read as dates. Was: Computed columns keep a date (cde82932): the type is read from the DEFINITION
       (`returns: "date"`, date ± days, IF over dates). `date - date` is a number. What about
       `MAX(dateA, dateB)`, `IF(c, dateA, 0)`, `dateA + 1.5`, a LAMBDA returning a date,
       a column referencing another computed date column? Each is a place the static reader
       may disagree with the value.
-- [ ] Popups "only the sort button sorts" (2686eccf) + Part A's `rowNumbers` (item 6):
+- [x] Checked 2026-09-28: the popup sort is visual and never reaches the node; the Record numbers its own order indices. Was: Popups "only the sort button sorts" (2686eccf) + Part A's `rowNumbers` (item 6):
       after a popup sort, the Record node's row numbers must be source-frame numbers.
 
 ## 34. Blank arguments, take one (7b0f3628, 09-16) — the origin of items 1 and 29
@@ -674,12 +674,12 @@ Where: `TablePopup.tsx` (24 commits then 17 more), `columnHeadControls.tsx`, `cs
 ## 35. Demo vault seam and seeds
 Commits: c09fd5fe, 03f0426f, 4d31006d, ce54e6db, 1a96b434, 108e68af, 7dd39e3d, 25c4dfd4 (retry)
 Where: `demoVault.ts` (124 lines), `src/graph/seedGraphs/` (28 files), `tests/fixtures/`
-- [ ] Failed chunk load retries "on the next read" with no backoff or cap (demoVault.ts:49):
+- [x] Checked 2026-09-28, not a flood: reads come from compute and refresh (nothing polls but a card's refresh timer), so a broken deploy costs one import per action or refresh period. Unverified caveat: Chromium caches a failed dynamic import, so the retry may need a reload to succeed. Was: Failed chunk load retries "on the next read" with no backoff or cap (demoVault.ts:49):
       on the preview a broken deploy = one fetch per read forever. Cap it.
-- [ ] Demo vault is a FALLBACK when no vault is set (D62): a desktop user who removes their
+- [x] Checked 2026-09-28: with no vault set, Write ends "The demo vault is read-only" and `writeTextFilePath` into the demo root throws the same (`fsDispatch` routes it to the read-only demo fs). Was: Demo vault is a FALLBACK when no vault is set (D62): a desktop user who removes their
       vault path silently gets demo data in Vault Folder. The card says "Demo vault"
       (7dd39e3d), but a Write node? Must refuse, not write into the bundle.
-- [ ] Seeds cut 40 → 26 → now 28. Read `seeds.test.ts`: it pins STRUCTURE only (save
+- [ ] NEEDS AUTHOR 2026-09-28, premise partly wrong: `seedsCompute.test.ts` runs every seed through a real engine and fails on an unexpected error cell, and 11 per-seed suites pin values (about 180 asserts); about 17 of 28 seeds have no value pinned. Options: a golden snapshot per seed, regenerated on purpose, or pins on the showcase seeds only. Was: Seeds cut 40 → 26 → now 28. Read `seeds.test.ts`: it pins STRUCTURE only (save
       version, node types known, connections resolve, group members / FC hosts / standoff
       ends exist). No computed value is pinned anywhere. So a seed whose numbers changed
       after items 1/2/3/16 passes silently. Proposal for the author: one golden-value
@@ -689,45 +689,45 @@ Where: `demoVault.ts` (124 lines), `src/graph/seedGraphs/` (28 files), `tests/fi
 Commits: b56f3b15, 61b59513, b04edf2d, f9c859de, ea5352b6, 2b0a5026, 44f76acd, 1463356b (Part B)
 Where: `src-tauri/src/linux_webview.rs` (FFI into WebKit settings), `tauri.conf.json` fs scope,
 `.github/workflows/desktop-build.yml`
-- [ ] `linux_webview.rs` FFI turns off two WebKit features by name through a settings API
+- [ ] NEEDS AUTHOR 2026-09-28 (small hardening): it turns off one feature now (`AsyncOverflowScrolling`, still present in WebKitGTK 2.52.6). An older runtime fails loud at startup (direct symbols); a renamed identifier fails silent (the loop matches nothing). Proposal: log when no identifier matched, and `bundle.linux.deb.depends: ["libwebkit2gtk-4.1-0 (>= 2.42)"]`. Was: `linux_webview.rs` FFI turns off two WebKit features by name through a settings API
       "that postdates the Rust bindings": pin the WebKitGTK version in the build image, or
       a distro update silently changes the symbol and the crisp-zoom fix dies.
-- [ ] fs scope `$HOME/**/.obsidian/*.json`: a vault outside `$HOME` (a mounted drive, `/srv`)
+- [ ] NEEDS AUTHOR 2026-09-28: every read, write, rename and stat scope sits under `$HOME`, so a vault on `/mnt`, `/media`, `/srv` or a Windows `D:\\` is denied on every OS. The dot-dir rule is not a security boundary (Script nodes run in a Worker with no `__TAURI__`). Options: widen the scope at runtime from a Rust command when the vault or CSV folder is set, or document "vault under home". Was: fs scope `$HOME/**/.obsidian/*.json`: a vault outside `$HOME` (a mounted drive, `/srv`)
       fails silently on Linux, exactly the bug f9c859de fixed for dot-dirs. And Windows:
       `requireLiteralLeadingDot` false, so the scope is broader there; is anything relying on
       the narrower Linux scope for safety?
-- [ ] Release on tag "once both builds pass": a Windows-only failure leaves a tag with no
+- [ ] NEEDS AUTHOR 2026-09-28, a docs gap: no recovery path is written. A flaky run: "Re-run failed jobs" on the tag's run, and the release job follows. A code fix: delete the tag, fix on develop, merge, re-tag. Home: beside the release paragraph in CLAUDE.md or architecture.md. Side note: `desktop-build.yml` triggers on `claude/**` but not `develop`. Was: Release on tag "once both builds pass": a Windows-only failure leaves a tag with no
       release; the recovery path (retag? rerun?) should be in `docs/`.
 
 ## 37. Charts and Chart Builder (09-15, 09-23)
 Commits: 0ac39856, ddc316aa, 0917b398, 169234fd, e0ee9307, 229c4433, 289ac6b9, 9dc85a6e, 80120604
-- [ ] Multi-series legend moved into the DOM below the plot (ddc316aa): export to webpage
+- [x] Fixed 2026-09-28: the export serialized only the plot's SVG, so the webpage Charts section and vault PNGs lost the legend and the series couldn't be told apart. `nodeChartSvgString` draws the DOM legend into the SVG as a row under the plot (`chartLegendSvg.test.ts`, looked at on a live two-series chart). The colorbar, category legend and chart title are DOM too and still drop. Was: Multi-series legend moved into the DOM below the plot (ddc316aa): export to webpage
       / Report / SVG export includes it? (338c51a1 webpage export embeds SVG values; a DOM
       legend is not in the SVG.)
-- [ ] Pie drops zero and negative slices (80120604) and all-negative draws the empty dash
+- [x] Checked 2026-09-28: `[5, -5]` is one slice at 100 %, `[0, -1]` the empty dash, both per chart-figures; a single-series Pie has no legend to list a dropped category. Was: Pie drops zero and negative slices (80120604) and all-negative draws the empty dash
       (9dc85a6e): a Pie of [5, -5]: one slice at 100 %, or empty? And the legend still lists
       the dropped category?
-- [ ] Every renderer routed through ChartFigure (229c4433): Sankey/KPI/Gauge previously
+- [x] Checked 2026-09-28 where it can run: KPI and bullet render at 210×130 and 60×40; Sankey and the dial are client-drawn recharts (UI-only); a collapsed Display shows its chip, a collapsed Gauge nothing. Was: Every renderer routed through ChartFigure (229c4433): Sankey/KPI/Gauge previously
       drew directly; check the Display node path and the collapsed-card preview still render
       them at the small size.
 
 ## 38. Pre-release items, one look each
-- [ ] 3a334d10 Knap inside frontmatter: the socket carries the rendered value: a template
+- [x] Fixed 2026-09-28: a Note or Report template dating `'now'` renders fresh each pass (fine under D46), but the midnight rollover didn't see it, so it stayed on yesterday; `hasVolatileDates` reads `body` for a Knap `'now' | date` now (`volatileDates.test.ts`). Was: 3a334d10 Knap inside frontmatter: the socket carries the rendered value: a template
       whose render depends on TODAY (item 21) freezes per calc?
-- [ ] 947b0a24 / b2d982f0: vault file watcher dropped, refresh is manual. Import Obsidian
+- [ ] NEEDS AUTHOR 2026-09-28: a note edited in Obsidian shows no staleness until Refresh. Options: an mtime check on window focus, a "file changed" badge from the existing `stat`, or keep manual refresh and say so on the card. Was: 947b0a24 / b2d982f0: vault file watcher dropped, refresh is manual. Import Obsidian
       Note "reloads on Refresh all connections"; a note edited in Obsidian while Solenoid
       shows it: no indication of staleness until refresh. Product call; note it.
-- [ ] 2204d7ce Input Switch pending-reconnect ghosts; 1d83b0bc "ghosts feed data and aren't
+- [x] Already in the inbox (`ghost-cables-feed-and-save`): Input Switch's pending ghosts drop the connection and feed nothing; only the other ghost kind feeds. Was: 2204d7ce Input Switch pending-reconnect ghosts; 1d83b0bc "ghosts feed data and aren't
       saved": a ghost that feeds data into a computed value that IS saved.
-- [ ] d66ef283 Tidy uses the measured box: first Tidy after load, before React Flow has
+- [x] Checked 2026-09-28: one ladder, `measuredBox` (RF-measured, then DOM, then declared), declared only before first paint. Was: d66ef283 Tidy uses the measured box: first Tidy after load, before React Flow has
       measured (item 26's `D64 (retired)` reads stored size): two sources of size.
-- [ ] fb5f8bb9 Triangle Solver reads any angle unit in degrees: radians input → wrong
+- [x] Checked 2026-09-28: C = π/2 rad, 90 deg and 100 grad all give c = 5; a length on the angle is #UNIT! "C is an angle"; a bare number reads as degrees. Was: fb5f8bb9 Triangle Solver reads any angle unit in degrees: radians input → wrong
       unless converted; check the unit is READ, not assumed.
-- [ ] 8b10122c `?seed=` deep link: an unknown seed name, a seed name with path chars.
-- [ ] 5fbd3021 etc. tag chips / wikilinks in Note surfaces: a `[[link|alias]]`, a
+- [x] Fixed 2026-09-28: `SEEDS` was a plain object, so `?seed=constructor` found a "seed" and saved a document with no graph; it has no prototype now (`seeds.test.ts`). An unknown name or path characters were already ignored. Was: 8b10122c `?seed=` deep link: an unknown seed name, a seed name with path chars.
+- [x] Fixed 2026-09-28: aliases, headings, nested tags, code spans and fences and `#REF!` render right, but `a#b` chipped `#b`: marked tries the tokenizer at every offset, so the word-start check in `start` didn't gate it; the tokenizer checks the character before it now (`noteMarkdown.test.ts`). `![[pic.png|200]]` shows 200 as the alias where Obsidian reads a size (UI-only, open). Was: 5fbd3021 etc. tag chips / wikilinks in Note surfaces: a `[[link|alias]]`, a
       `[[link#heading]]`, a `#tag/nested`, a `#` inside a code span (ff417bdc says code is
       excluded for Vault Folder; the Note renderer too?).
-- [ ] 413c6ff0 renames Distribution → Distributions, Set → Sets: seeds and saved docs from
+- [x] Checked 2026-09-28: an unknown type loads as a placeholder with an error notice naming the type, so it is loud; the notice's pack hint is wrong for a rename, acceptable under B7. Was: 413c6ff0 renames Distribution → Distributions, Set → Sets: seeds and saved docs from
       before 1.4.0 fail loudly ([[B7]])? Or does the placeholder path (C35) swallow them as
       Missing cards with no message?
 

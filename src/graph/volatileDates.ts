@@ -1,19 +1,21 @@
 // [[D46]] freezeVolatilePerCalc, [[C44]] dateSerials
-// Midnight rollover: TODAY, NOW and relative Date Inputs answer for the calendar day, so at each local midnight a
+// Midnight rollover: TODAY, NOW, a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
 // document holding any of them recomputes once. One timer, re-armed after each firing.
 
 import { isRelativeDateText } from "./nodes/dateSerial";
 
 const VOLATILE_FN = /\b(TODAY|NOW)\s*\(/i;
+const KNAP_NOW = /["']now["']\s*\|\s*date\b/;
 
 export function hasVolatileDates(nodes: readonly unknown[]): boolean {
   for (const n of nodes) {
-    const o = n as { expr?: unknown; frameText?: unknown; cubeText?: unknown; stringLiterals?: Record<string, unknown>; internalEditor?: { getNodes(): readonly unknown[] } };
+    const o = n as { expr?: unknown; frameText?: unknown; cubeText?: unknown; body?: unknown; stringLiterals?: Record<string, unknown>; internalEditor?: { getNodes(): readonly unknown[] } };
     if (o.constructor?.name === "TodayNowNode") return true;
     if (o.internalEditor && hasVolatileDates(o.internalEditor.getNodes())) return true;
     if (typeof o.expr === "string" && VOLATILE_FN.test(o.expr)) return true;
     if (typeof o.frameText === "string" && VOLATILE_FN.test(o.frameText)) return true;
     if (typeof o.cubeText === "string" && VOLATILE_FN.test(o.cubeText)) return true;
+    if (typeof o.body === "string" && KNAP_NOW.test(o.body)) return true;
     const date = o.stringLiterals?.date;
     if (typeof date === "string" && isRelativeDateText(date)) return true;
   }

@@ -99,11 +99,46 @@ export function nodeChartSvgProvided(nodeId: string): string | null {
   return chartSvgProviders.get(nodeId)?.() ?? null;
 }
 
+export interface LegendEntry { color: string; label: string }
+
+const xmlText = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+export const LEGEND_ROW_H = 18;
+
+/** A multi-series legend as one centered SVG row of swatches and names, `width` wide. */
+export function legendToSvg(entries: readonly LegendEntry[], width: number, textColor: string, fontSize = 9, fontFamily = "sans-serif"): string {
+  const itemW = entries.map((e) => 12 + e.label.length * fontSize * 0.6);
+  const total = itemW.reduce((a, w) => a + w, 0) + 10 * Math.max(0, entries.length - 1);
+  let x = Math.max(0, (width - total) / 2);
+  const mid = LEGEND_ROW_H / 2;
+  const parts = entries.map((e, i) => {
+    const g = `<rect x="${x.toFixed(1)}" y="${mid - 4}" width="8" height="8" rx="2" fill="${xmlText(e.color)}"/>`
+      + `<text x="${(x + 12).toFixed(1)}" y="${mid}" dominant-baseline="central" font-size="${fontSize}" font-family="${xmlText(fontFamily)}" fill="${xmlText(textColor)}">${xmlText(e.label)}</text>`;
+    x += itemW[i] + 10;
+    return g;
+  });
+  return `<g class="sol-chart-legend">${parts.join("")}</g>`;
+}
+
 export function nodeChartSvgString(nodeId: string): string | null {
   const provided = nodeChartSvgProvided(nodeId);
   if (provided) return provided;
   const el = nodeChartSvg(nodeId);
-  return el ? serializeSvgWithComputedStyles(el) : null;
+  if (!el) return null;
+  const svg = serializeSvgWithComputedStyles(el);
+  // The multi-series legend is DOM beside the plot, so an export of the plot's SVG alone can't tell the series apart.
+  const legend = getView()?.nodeElement(nodeId)?.querySelector(".sol-chart-legend");
+  if (!legend) return svg;
+  const entries: LegendEntry[] = Array.from(legend.children).map((item) => ({
+    color: getComputedStyle(item.firstElementChild as Element).backgroundColor,
+    label: (item.textContent ?? "").trim(),
+  })).filter((e) => e.label);
+  if (entries.length === 0) return svg;
+  const box = el.getBoundingClientRect();
+  const w = Math.round(box.width), h = Math.round(box.height);
+  const style = getComputedStyle(legend);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + LEGEND_ROW_H}" viewBox="0 0 ${w} ${h + LEGEND_ROW_H}">`
+    + `${svg}<g transform="translate(0,${h})">${legendToSvg(entries, w, style.color, 9, style.fontFamily)}</g></svg>`;
 }
 
 export function nodeChartSvg(nodeId: string): SVGSVGElement | null {

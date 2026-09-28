@@ -42,7 +42,10 @@ const hashtag: TokenizerAndRendererExtension = {
     }
     return -1;
   },
-  tokenizer(src): TagToken | undefined {
+  // `start` only suggests where to look; marked still tries the tokenizer at every offset, so the word-start rule is checked here too.
+  tokenizer(src, tokens): TagToken | undefined {
+    const prev = tokens[tokens.length - 1]?.raw.slice(-1) ?? "";
+    if (prev !== "" && !/[\s([{]/.test(prev)) return undefined;
     const m = TAG.exec(src);
     if (!m) return undefined;
     const after = src[m[0].length] ?? "";
