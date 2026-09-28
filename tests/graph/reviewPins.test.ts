@@ -222,6 +222,10 @@ describe("review pins: vault reads stay inside the vault", () => {
     expect(isInsideVault("notes/weekly.md")).toBe(true);
     expect(isInsideVault("../../.ssh/config")).toBe(false);
     expect(isInsideVault("notes/../../x.md")).toBe(false);
+    const { vaultSubfolderParts } = await import("../../src/graph/obsidianWrite");
+    expect(vaultSubfolderParts("..\\..\\Windows")).toEqual(["Windows"]);
+    expect(vaultSubfolderParts("C:\\Users/x")).toEqual(["Users", "x"]);
+    expect(vaultSubfolderParts(" Notes / ./Daily ")).toEqual(["Notes", "Daily"]);
     expect(isInsideVault("/etc/passwd")).toBe(false);
     expect(isInsideVault("C:/secrets.md")).toBe(false);
     expect(isInsideVault("")).toBe(false);

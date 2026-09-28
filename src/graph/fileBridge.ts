@@ -153,7 +153,7 @@ export async function readVaultFile(root: string, relPath: string): Promise<stri
 
 /** Needs the `fs:allow-stat` capability; null off desktop or when the platform omits a time. */
 export async function statVaultFile(root: string, relPath: string): Promise<{ mtimeMs: number | null; birthtimeMs: number | null } | null> {
-  if (!canReadRoot(root)) return null;
+  if (!canReadRoot(root) || !isInsideVault(relPath)) return null;
   try {
     const path = await fs().join(root, ...relPath.split("/"));
     return await fs().stat(path);

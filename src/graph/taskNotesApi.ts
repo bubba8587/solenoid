@@ -43,6 +43,7 @@ export function isoToSerial(s: unknown): number | null {
   if (typeof s !== "string" || !s.trim()) return null;
   const t = s.trim();
   if (/T/.test(t)) {
+    if (!Number.isFinite(parseDateToSerial(t.slice(0, t.indexOf("T"))))) return null;
     const ms = Date.parse(t);
     return Number.isFinite(ms) ? jsDateToSerial(new Date(ms)) : null;
   }

@@ -128,15 +128,19 @@ export interface WriteVaultResult {
   pages: number;
 }
 
+/** A subfolder setting as path segments that stay inside the vault: a backslash separates too (Windows), and `.`, `..`
+ *  and a drive segment, which would climb out or reset the join, are dropped. */
+export function vaultSubfolderParts(p: string): string[] {
+  return p.split(/[\\/]/).map((s) => s.trim()).filter((s) => s && s !== "." && s !== ".." && !/^[A-Za-z]:$/.test(s));
+}
+
 export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultOptions): Promise<WriteVaultResult> {
   if (!hasFs()) throw new Error("Desktop app only");
-  const cleanParts = (p: string) =>
-    p.split("/").map((s) => s.trim()).filter((s) => s && s !== "." && s !== "..");
-  const subParts = cleanParts(opts.subfolder);
+  const subParts = vaultSubfolderParts(opts.subfolder);
   const noteDir = subParts.length ? await joinPath(opts.vault, ...subParts) : opts.vault;
   await ensureDir(noteDir);
 
-  const assetParts = cleanParts(opts.assetSubfolder);
+  const assetParts = vaultSubfolderParts(opts.assetSubfolder);
   const assetDir = assetParts.length ? await joinPath(opts.vault, ...assetParts) : noteDir;
 
   let assetCount = 0;

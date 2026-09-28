@@ -137,3 +137,10 @@ describe("calendar + stats", () => {
     expect(parseStats('{"success":true,"data":{"total":1}}').overdue).toBeNull();
   });
 });
+
+describe("a timestamp whose day the month does not have", () => {
+  it("is no date, as the date alone is not, rather than rolling into the next month", () => {
+    expect(isoToSerial("2026-02-30T10:00:00")).toBeNull();
+    expect(isoToSerial("2026-03-02T12:00:00")).toBeCloseTo(46083.5, 6);
+  });
+});

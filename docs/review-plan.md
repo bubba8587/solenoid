@@ -472,21 +472,21 @@ Leaves: [[C101]] onePatchPath, [[C103]] untrustedContentSeams, [[B1]] obsidianBe
       a note with TWO frontmatter blocks, empty frontmatter `---\n---`.
 - [x] Fixed 2026-09-28: every listed spelling is quoted and reads back the same in `yaml`, js-yaml and the reader, but a raw control character went out plain, and js-yaml refuses the whole block over one; it is escaped as `\xNN` now. Keys went bare where YAML reads them as something else (`007` → 7, `1.50` → 1.5, `null`/`~` dropped, `<<` a merge key that makes js-yaml throw); a key is quoted by the text rules now, `<<` always (`obsidianMarkdown.test.ts`, reports-and-notes § Frontmatter YAML). Was: `yamlScalar` quoting: `yes/no/on/off/null/~`, `0o17`, `0x1F`, `1_000`, `.NaN`,
       a value that is only spaces, a value with a trailing `#` comment.
-- [ ] Path guard (d4cfe3c9): backslash fixed; also `%2e%2e`, a symlink inside the vault
+- [x] Fixed 2026-09-28: the write path's subfolder split only on `/`, so on Windows `..\\..\\x` stayed one segment, passed the `..` filter and climbed out of the vault when joined, the same bug d4cfe3c9 fixed on the read side; it splits on both separators and drops drive segments now (`vaultSubfolderParts`, `reviewPins.test.ts`), and `statVaultFile` takes the read guard too. `%2e%2e` is a literal file name (nothing decodes it), `\\0` is refused by the filesystem, and a symlink the user made inside their own vault is followed, as their intent. Was: Path guard (d4cfe3c9): backslash fixed; also `%2e%2e`, a symlink inside the vault
       pointing out, an absolute path on Windows `C:\`, a UNC path, a path with `\0`.
-- [ ] Name uniqueness (bee16b34): case-fold collision numbering is stable across TWO writes
+- [x] Checked 2026-09-28: the taken-name sets start empty on every write and are never seeded from the vault, so numbering is a function of page order alone; a rerun gets the same names and overwrites its own files. Was: Name uniqueness (bee16b34): case-fold collision numbering is stable across TWO writes
       (a rerun must not renumber and orphan links).
-- [ ] Date read as text (fbc0fb49): `2026-02-30` refused everywhere `parseDate` reads;
+- [x] Fixed 2026-09-28: ISO, `30-Feb-2026`, `02/30/2026`, `Feb 30 2026` and a non-leap Feb 29 all refuse; the one roll left was a TaskNotes timestamp with a time (`2026-02-30T10:00` read as March 2), whose date part goes through `parseDateToSerial` first now (`taskNotesApi.test.ts`). Was: Date read as text (fbc0fb49): `2026-02-30` refused everywhere `parseDate` reads;
       grep for other date parsers (`Date.parse`, `new Date(` in src/graph) that still roll.
 
 ## 25. LAMBDA naming rules
 Commits: 5219ee9b, d2090f9a, c76f414e, 07abd235, 94b25efb (part)
 Leaves: [[D77]] constantsAlwaysWin, [[C50]] lambdaBindsByName.
-- [ ] Two reversals in one day (shadow-a-constant landed then was undone). Grep tests for
+- [x] Checked 2026-09-28: one fixture, `formulaLambda.test.ts`, and it asserts the current rule (refused, `#NAME?`). D77's text said the formula answers `#VALUE!`; code and test have always said `#NAME?` on both surfaces, so the leaf's sentence is corrected. Was: Two reversals in one day (shadow-a-constant landed then was undone). Grep tests for
       `LAMBDA(e,` and `LAMBDA(pi` fixtures asserting the OLD behaviour.
-- [ ] Case: `E`, `Pi`, `PHI` as parameter names: are constants case-insensitive? A column
+- [x] Checked 2026-09-28: constants are case-insensitive, so `E`, `Pi` and `PHI` are refused like `e`; inside a computed column bare `e` is the constant and `@e` reads a column named e. Was: Case: `E`, `Pi`, `PHI` as parameter names: are constants case-insensitive? A column
       named `e` in a computed column with the item-5 precedence rule.
-- [ ] Reserved words beyond constants: `TRUE`, `FALSE`, a function name as a parameter.
+- [x] Checked 2026-09-28: `TRUE`/`FALSE` are refused ("LAMBDA parameters must be plain names"); a function name works as a parameter (`LAMBDA(SUM, SUM+1)(1)` is 2), since a call and a name are told apart by the parenthesis. Was: Reserved words beyond constants: `TRUE`, `FALSE`, a function name as a parameter.
 
 ## 26. Layout: no overlaps ever
 Commits: 3f83b611, 244cb2f5, 83806909, 35fbead5, 524514f5
@@ -667,7 +667,7 @@ Where: `TablePopup.tsx` (24 commits then 17 more), `columnHeadControls.tsx`, `cs
       dispatch ladder puts it at step 6. Nothing else to find; `inputRoles.test.ts` pins the
       declaration. (D86 supersedes D33/E15; the lookup family's old blank-is-omitted
       convention is gone per C80's Why.)
-- [ ] "MATCH / VLOOKUP / HLOOKUP are blocked spellings": the Add-menu alias rows (ae4a4c46)
+- [x] Checked 2026-09-28: MATCH answers `#NAME? Use XMATCH`, VLOOKUP, HLOOKUP and LOOKUP `#NAME? Use XLOOKUP`, and now also on a united input (block 30). Was: "MATCH / VLOOKUP / HLOOKUP are blocked spellings": the Add-menu alias rows (ae4a4c46)
       route them to XMATCH/XLOOKUP; the formula parser must still refuse them with a hint
       naming the replacement, not `#NAME?`.
 
