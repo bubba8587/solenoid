@@ -280,7 +280,11 @@ export const DMATRIX_SCENES = {
       await wh.click((await row("Solenoid Properties")).toggle);
       await sleep(900);
       await wh.click((await row("Decision Matrix")).toggle);
-      await sleep(1600);
+      // The caption waits for both switches: it covers the list's lower rows.
+      await sleep(500);
+      c.rec.at("caption");
+      await wh.move(1100, 180, { ms: 700 });
+      await sleep(3600);
     },
   },
 
@@ -686,7 +690,10 @@ export const DMATRIX_SCENES = {
       await sleep(1400);
       const order = await c.obs((sel) => [...document.querySelectorAll(`${sel} .dmv-row .dmv-td-option`)].map((e) => e.textContent), M);
       const spots = { "Maple St loft": "0", "Harbor View 4B": "1", "Elm Court garden": "2", "Downtown studio": "0" };
-      await hand.click(await need(page, cellBox("parking", order[0])));
+      const first = await need(page, cellBox("parking", order[0]));
+      await hand.click(first);
+      // Off the cell, so its tooltip stays away while the column fills.
+      await hand.move(first.cx + 90, first.cy + 150, { ms: 500 });
       await sleep(200);
       for (const name of order) {
         await hand.type(spots[name], { cps: 6 });
