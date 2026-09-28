@@ -19,6 +19,7 @@ import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, 
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } from "./lookTokens";
 import { KnapNotes } from "./knapBody";
+import { setObsidianApp } from "./obsidianApp";
 
 interface WidgetContext {
   app: App;
@@ -51,6 +52,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   private data: PluginData = {};
 
   async onload(): Promise<void> {
+    setObsidianApp(this.app);
     const stored = ((await this.loadData()) ?? {}) as PluginData;
     this.data = {
       palette: stored.palette,

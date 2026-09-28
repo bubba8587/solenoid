@@ -230,7 +230,7 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
    `obsidian-plugin/vite.config.ts` replaces, at build time, each app module that reaches the
    graph with a file in `src/shims/`: `persistence`, `process`, `fileBridge`, `frameBackend`,
    `activeGraph`, `flyToNode`, `packs`, `formulaSyntax`, `perfProbe`, `nativeAccent`, `appTheme`,
-   `clipboard` and `mobileUa`. Each stands in for something a note cannot have:
+   `clipboard`, `mobileUa` and `components/Markdown`. Each stands in for something a note cannot have:
 
    | Shim | Why it can stand in |
    |---|---|
@@ -246,6 +246,7 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
    | `appTheme` | The app's theme store writes its tokens onto `<html>` on every palette change, which requirement 3 forbids. The stand-in follows the plugin's own theme tick, and the tokens live in the shadow hosts; the pure `themeVars()` lives apart in `themeVars.ts`. |
    | `clipboard` | Obsidian is always a secure context, so the `execCommand` fallback cannot be reached. |
    | `mobileUa` | Obsidian's `Platform` answers instead of the user agent, which the directory's review refuses. |
+   | `components/Markdown` | Obsidian's `MarkdownRenderer` draws the text (the Cards view's rules), so the bundle carries no parser; the output keeps the `sol-md` class and its styles. `obsidianApp.ts` hands the shim Obsidian's `app`. |
 
    A shim keeps the app module's signatures, parameters included: the plugin's
    repository typechecks the app's calls against it (§ Publishing). A shim may only stand in for something
