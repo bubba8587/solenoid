@@ -208,9 +208,9 @@ Where: `catalogSearch.ts`, `AddNodeMenu.tsx`, `nodeOps.ts`, `nodeExcel.ts`, `nod
 Commits: 0a95b655, 595b3675
 Where: `ArrayChip.tsx`, `CubeDisplay.tsx`, `CubeInputNode.tsx`, `CubePopup.tsx`, `FrameDisplay.tsx`,
 `TablePopup.tsx`, `columnHeadControls.tsx`, `visualOps.ts` and more
-- [ ] A cell holding a sparkline value: copy/paste, CSV export, save/load round-trip
+- [x] Checked 2026-09-28: a sparkline is `data:image/svg+xml` text (single quotes, commas, spaces), and it comes back unchanged through CSV quoting, the Frame CSV writer and reader, the note frontmatter patch, `yamlScalar` and JSON save; Copy as Markdown gives the text, not a picture. Two of the round-trips are pinned in `sparklineFormula.test.ts`. Was: A cell holding a sparkline value: copy/paste, CSV export, save/load round-trip
       (`tree/specs/documents/save-format.md`), and the Obsidian write path — each must either serialize or refuse.
-- [ ] Typed Cube columns + Fx Cube columns: a column typed number receiving a formula that
+- [x] Checked 2026-09-28: a column is typed or Fx, never both (the picker replaces one with the other and `sourcePicks` skips a formula column), so an Fx column's type is what its formula answers; text in a number-typed column blanks as a Frame's does, the source keeping the text. Fx columns fill in dependency order (`@c + 1` before `c` works) and a cycle is `#REF!` naming the loop. Was: Typed Cube columns + Fx Cube columns: a column typed number receiving a formula that
       yields text; a Fx column whose formula references a later Fx column (order).
 
 ## 13. Deleted tests (verify nothing load-bearing went)
