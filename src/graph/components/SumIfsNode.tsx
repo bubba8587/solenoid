@@ -4,7 +4,7 @@ import { COND_AGG_OP_META } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -40,14 +40,14 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
 
   async function addPair() {
     data.addValuePair();
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(colKey: string, valKey: string) {
     await dropInputCables(data.id, [colKey, valKey]);
     data.removeValuePair(colKey);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }

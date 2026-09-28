@@ -6,7 +6,7 @@ import { ELEMENT_BY_SYMBOL } from "../nodes/chemistryOps";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { makeNodeComponent } from "./standardNode";
 import { elementPicker } from "../elementPickerStore";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
 
@@ -19,7 +19,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
       symbol: data.symbol,
       onPick: (symbol) => {
         data.symbol = symbol;
-        void getActiveView()?.rerenderNode(data.id);
+        void getOwningView(data.id)?.rerenderNode(data.id);
         void processGraph();
       },
     });

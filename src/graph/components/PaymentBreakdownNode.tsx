@@ -2,7 +2,7 @@ import { useState } from "react";
 import { PAYMENT_BREAKDOWN_OP_META, PAYMENT_TIMING_META } from "../rete-nodes";
 import type { PaymentBreakdownNode as PaymentBreakdownNodeType, PaymentBreakdownOp, PaymentTiming } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
@@ -27,7 +27,7 @@ export function PaymentBreakdownComponent({ data, emit }: NodeProps<PaymentBreak
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
     setOpState(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 

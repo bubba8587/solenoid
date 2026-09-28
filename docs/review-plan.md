@@ -270,21 +270,21 @@ BOTH parents, i.e. someone typed the resolution:
 | 5ca9413a | `nodes/annotation.ts` | 13 |
 Agent recipe per row: `git show --cc <merge> -- <file>`; then `git log <merge>^1..<merge>^2 -- <file>`
 and the reverse, list each side's INTENT from its commit bodies, and confirm each intent is in HEAD.
-- [ ] `copyPaste.ts` (f34bc6a0): one side added `copySet` (group members + docked FCs, never a
+- [x] `copyPaste.ts` (f34bc6a0): checked 2026-09-28, `copySelected` takes `copySet` and snapshots through `snapshotEntry`, and `cloneNode` / placeholder sockets go through both. Was: one side added `copySet` (group members + docked FCs, never a
       boundary marker), the other extracted `snapshotEntry`. Check the merged `copy()` uses
       `copySet` AND `snapshotEntry`, and that 49f8f572 (paste via savedNodeBody) and 88c95dc6
       (placeholder sockets) that came AFTER still go through both. `copyPasteSnapshot.test.ts`.
-- [ ] `activeGraph.ts` (5ca9413a): `getOwningEditor` gained a closed-subgraph walk (depth 16)
+- [x] `activeGraph.ts` (5ca9413a): checked 2026-09-28. `allTopEditors`' one caller (`connectionStore.nodeExists`) descends itself; the real gap was `getOwningEditor` walking closed composites under the main canvas only, now every live top editor (`activeGraph.test.ts`). Was: `getOwningEditor` gained a closed-subgraph walk (depth 16)
       on one side and `allTopEditors` on the other. Does `allTopEditors` also need to descend
       into closed composites, or do its callers (auto-refresh 56687a38 "walks deep") do that
       themselves? Two different "find the node" walkers = one of them will miss a case.
-- [ ] `nodes/obsidian.ts` (5cb0c58a): a `force` flag and an `applyFile` split were merged with
+- [x] `nodes/obsidian.ts` (5cb0c58a): confirmed and fixed 2026-09-28, an unchanged note now re-reads its picks and re-syncs when they changed (`importNoteRepick.test.ts`). Was: a `force` flag and an `applyFile` split were merged with
       an early-return `content === this.body` guard. A note whose content is unchanged but
       whose column picks changed (types edited in the plugin) now returns early. Check.
 - [x] `valueKinds.ts` (83538d61): checked, `powerOf` has 4 call sites (formula, functions,
       scalar card, unitValue). Fine.
 - [x] `frameVerbs.ts` (e0c95f08): checked, no dangling `isUnitCell`/`tagFrameCellUnit`.
-- [ ] `text.ts`, `annotation.ts`: these two files moved from `getActiveView` to `getOwningView`
+- [x] `text.ts`, `annotation.ts`: swept 2026-09-28. 86 call sites by then; every card component now reads `getOwningEditor` / `getOwningView` (components floor rule 10), chrome keeps the active pair, and `sourceInvariants.test.ts` pins it with the chrome named. Was: these two files moved from `getActiveView` to `getOwningView`
       (the view that owns the node, closed composites included). `getActiveView` still has
       144 call sites. Each one that runs on behalf of a NODE (rerender, fly-to, popup anchor,
       socket flip) is wrong for a node inside a closed composite or an owned canvas. Triage

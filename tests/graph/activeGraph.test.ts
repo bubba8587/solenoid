@@ -10,6 +10,7 @@ import {
   getActiveEditor,
   getOwningEditor,
   getOwningView,
+  registerOwnedGraph,
   editScopeFor,
   MAIN_EDIT_SCOPE,
 } from "../../src/graph/activeGraph";
@@ -60,6 +61,15 @@ describe("activeGraph resolver", () => {
     setActiveGraph({ editor: sub, view: fakeView });
     expect(getOwningEditor("s1")).toBe(sub); // internal node → internal editor
     expect(getOwningEditor("m1")).toBe(main); // a MAIN node is never routed to the override
+  });
+
+  it("a node in a closed composite on an owned canvas resolves to that composite's editor, not main", () => {
+    const inner = fakeEditor(["deep"]);
+    const scene = fakeEditor(["c1"]);
+    (scene.getNode("c1") as unknown as { internalEditor: NodeEditor<Schemes> }).internalEditor = inner;
+    const off = registerOwnedGraph({ editor: scene, view: fakeView });
+    try { expect(getOwningEditor("deep")).toBe(inner); } finally { off(); }
+    expect(getOwningEditor("deep")).toBe(main);
   });
 
   it("getOwningView mirrors getOwningEditor (per-node, not per-surface)", () => {

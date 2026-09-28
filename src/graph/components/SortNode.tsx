@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { SortNode as SortNodeType, SortDir } from "../rete-nodes";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -31,7 +31,7 @@ export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
   async function setAxis(next: Axis) {
     data.setByCol(next === "cols");
     setAxisState(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
   const setKeyDir = (id: string, dir: SortDir) => {
@@ -41,13 +41,13 @@ export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
   };
   async function addKey() {
     data.addValueInput();
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
   async function removeKey(key: string) {
     await dropInputCables(data.id, [key]);
     data.removeValueInput(key);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }

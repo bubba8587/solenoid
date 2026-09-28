@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { rawCellsToText } from "../nodes/matrix";
 import { TableDisplay } from "./TableDisplay";
@@ -20,8 +20,8 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: string; title: 
 /** An in-place retype drops the cables it can't feed and re-adapts downstream FCs itself. */
 async function applyTableType(node: TableInputNodeType, dt: TableElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
   if (editor && view) await retypeOutputCables(editor, view, node.id, "table");
   if (view) await view.rerenderNode(node.id);
   await processGraph();

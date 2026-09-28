@@ -9,7 +9,7 @@ import { documentStore } from "../documentStore";
 import { isDocumentValue } from "../documentValue";
 import { isFrameValue } from "../frame";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
@@ -56,7 +56,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
     if (willRetype) await dropInputCables(d.id, ["in"]);
     d.setFormat(next);
     setFormat(next);
-    const view = getActiveView();
+    const view = getOwningView(d.id);
     if (view) await view.rerenderNode(d.id);
     await processGraph();
   }
@@ -204,7 +204,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   }, [files, search]);
 
   function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
-  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getActiveView()?.rerenderNode(d.id); void processGraph(); }
+  function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); void processGraph(); }
   function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); }
   function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); }
   function toggleArmed() { d.enabled = !d.enabled; setArmed(d.enabled); }
@@ -227,7 +227,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     d.subfolder = folder; setSubfolder(folder);
     (d.stringLiterals ??= {}).path = base;
     setPickerOpen(false);
-    void getActiveView()?.rerenderNode(d.id);
+    void getOwningView(d.id)?.rerenderNode(d.id);
     void processGraph();
   }
 

@@ -2,7 +2,7 @@
 import type { GetColumnNode, AddColumnNode, SplitFrameNode } from "../rete-nodes";
 import { getColumnOutput, addColumnInput, splitMatrixOutput, type GetColumnReadAs, type AddColumnAddAs, type SplitColType } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { dropInputCables } from "./cablePrune";
 import { retypeOutputCables, reconcileFcTypes } from "../fcReconcile";
 
@@ -11,8 +11,8 @@ export async function applyGetColumnReadAs(node: GetColumnNode, readAs: GetColum
   if (node.readAs === readAs) return;
   node.readAs = readAs;
 
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
   const out = node.outputs.values;
   if (out) out.socket = getColumnOutput(readAs).socket;
   if (editor && view) await retypeOutputCables(editor, view, node.id, "values");
@@ -25,8 +25,8 @@ export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnA
   if (node.addAs === addAs) return;
   node.addAs = addAs;
 
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
   await dropInputCables(node.id, ["values"]);
   const inp = node.inputs.values;
   if (inp) inp.socket = addColumnInput(addAs).socket;
@@ -41,8 +41,8 @@ export async function applySplitColType(node: SplitFrameNode, colType: SplitColT
   if (node.colType === colType) return;
   node.colType = colType;
 
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
   const out = node.outputs.matrix;
   if (out) out.socket = splitMatrixOutput(colType).socket;
   if (editor && view) await retypeOutputCables(editor, view, node.id, "matrix");

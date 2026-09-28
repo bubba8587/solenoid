@@ -7,7 +7,7 @@ import { descriptionText } from "../descriptionMd";
 import { useKatexRender } from "./katexLoader";
 import { NodeShell, OpSelect, ValueDisplay, type NodeProps, type OpOption } from "./nodeKit";
 import type { DisplayValue } from "./valueDisplayFormat";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { processGraph } from "../process";
 import "./SetOpNode.css";
@@ -25,8 +25,8 @@ export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void>
   const crossed = isSetRelationOp(node.op) !== isSetRelationOp(op);
   node.op = op;
   if (crossed) {
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(node.id);
+    const view = getOwningView(node.id);
     const out = node.outputs.result;
     if (out) out.socket = (isSetRelationOp(op) ? logicalOut("Result") : adoptiveListOut("Result")).socket;
     if (editor && view) await retypeOutputCables(editor, view, node.id, "result");

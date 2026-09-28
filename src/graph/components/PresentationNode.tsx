@@ -12,7 +12,7 @@ import { nodeDisplayNames } from "../nodeNames";
 import type { NodeProps } from "./nodeKit";
 import { stopDragStart } from "../coarse";
 import "./PresentationNode.css";
-import { getActiveEditor } from "../activeGraph";
+import { getOwningEditor } from "../activeGraph";
 import { PlayIcon } from "./Icons";
 import { useDraftCommit, useEditableLabel } from "./inlineInput";
 
@@ -54,7 +54,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   function refresh() { bump((v) => v + 1); scheduleAutosave(); }
 
   function addStep() {
-    const selected = (getActiveEditor()?.getNodes() ?? []).filter((n) => n.selected && n.id !== data.id);
+    const selected = (getOwningEditor(data.id)?.getNodes() ?? []).filter((n) => n.selected && n.id !== data.id);
     const n = data.steps.length + 1;
     data.addStep(`Step ${n}`, selected.map((s) => s.id));
     refresh();
@@ -71,7 +71,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   function next() { goTo(data.activeIndex + 1); }
   function prev() { goTo(data.activeIndex - 1); }
 
-  const editor = getActiveEditor();
+  const editor = getOwningEditor(data.id);
   const names = editor ? nodeDisplayNames(editor.getNodes()) : new Map<string, string>();
   const mode = appThemeStore.getMode();
   const themed = themeAccent(resolveColor(color), mode);

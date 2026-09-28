@@ -1,6 +1,6 @@
 import { useRef } from "react";
 // Owning accessors: a node inside a drill-in isn't in the main editor, so the grip wouldn't render.
-import { getOwningEditor, getActiveView } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { useFlowResizeGrip } from "../flowSurface";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { scheduleAutosave } from "../persistence";
@@ -20,7 +20,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
 
   const onResizeStart = (size: { width: number; height: number }) => {
     // --box-h is the body's CSS height (padding outside it); clientHeight is layout px, so no zoom division.
-    const box = getActiveView()?.nodeElement(nodeId)?.querySelector<HTMLElement>(".solenoid-node__body");
+    const box = getOwningView(nodeId)?.nodeElement(nodeId)?.querySelector<HTMLElement>(".solenoid-node__body");
     let boxH = size.height;
     if (box) {
       const cs = getComputedStyle(box);
@@ -41,7 +41,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
   };
   const onResizeEnd = () => {
     start.current = null;
-    void getActiveView()?.rerenderNode(nodeId);
+    void getOwningView(nodeId)?.rerenderNode(nodeId);
     scheduleAutosave();
   };
 

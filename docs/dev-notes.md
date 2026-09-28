@@ -18,6 +18,10 @@ specific item.
   Frame / Cube menu at its edge (`CellKindMenu`, `convertCellKind`), Table being the app's 2-D shape. A Frame cell is
   declared, derives a real Frame (`frameCellFromRecords`) and holds only values; undeclared records are a Cube, so
   the editor no longer labels a flat nested table "Frame" by its contents.
+- **Review plan block 15** (the hand-resolved merges): `getOwningEditor` finds a node in a closed composite on any live
+  canvas; an Import Obsidian Note Refresh re-reads plugin picks for an unchanged note; every card component reads its
+  own graph (`getOwning*`), pinned by `sourceInvariants.test.ts`. Left: the `engine.rs` auto-merges need `cargo test`
+  on the desktop machine.
 - **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
   sums, means, extremes and dates read through the column's format (`statReadsAsCell`).
 
@@ -98,8 +102,8 @@ specific item.
   label or row position, bars are `#TYPE!`. The old index-plotted Scatter and `BubbleView` paths are gone.
 - Chart Builder gains the ten XY rows; chart-showcase seed has a Lissajous XY Line group. Contests recorded on
   [[C96]] chartOptionsAreMatplotlib and [[D75]] builderExposesEveryOption (keep).
-- **Unverified:** the demo video isn't re-filmed; no Display, Report or Composite-boundary shot of an XY value was
-  taken (they route through `ChartFigure`, so they should match the card and popup).
+- **Checked after the merge (2026-09-28):** an XY Line draws right in a Display and embedded in a Report (equal aspect,
+  colorbar). Not yet: a Composite boundary shot, and the demo video isn't re-filmed.
 
 ### SESSION DIGEST (2026-09-26: SPARKLINE, typed Cube columns, lists, Add-menu search; author present)
 

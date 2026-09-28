@@ -380,6 +380,20 @@ describe("[[D16]] retypeReconciles — a node class reconciles on the editor tha
     }
     expect(offenders).toEqual([]);
   });
+
+  // tree/specs/floors/components.md rule 10: a card acts on its own graph; only chrome reads the surface on screen.
+  it("no component reads getActiveEditor / getActiveView except the chrome that acts on the surface on screen", () => {
+    const CHROME = new Set([
+      "CableInspector.tsx", "ConnectionDialog.tsx", "FieldResizeGrip.tsx", "InspectorPanel.tsx",
+      "IsolateEndpoints.tsx", "Minimap.tsx", "PinLayer.tsx", "SelectionActionsBar.tsx",
+    ]);
+    const offenders: string[] = [];
+    for (const file of walk(path.join(SRC, "components"))) {
+      if (CHROME.has(path.basename(file))) continue;
+      if (codeLines(file).some((l) => /\bgetActive(?:Editor|View)\b/.test(l))) offenders.push(rel(file));
+    }
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe("[[D86]] blankRoles — a wired blank never falls back to a literal or default", () => {

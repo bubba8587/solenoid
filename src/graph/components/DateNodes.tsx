@@ -17,7 +17,7 @@ import {
   TODAY_NOW_OP_META, DATE_TIME_VALUE_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
   DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
-import { getActiveView, getActiveEditor } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
@@ -76,8 +76,8 @@ export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNo
     if (next === data.op) return;
     data.setOp(next);
     // In-place output retype ([[D16]] retypeReconciles).
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
@@ -141,7 +141,7 @@ export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
       await dropInputCables(data.id, ["basis"]);
     }
     setOp(next);
-    if (data.syncBasisInput()) await getActiveView()?.rerenderNode(data.id);
+    if (data.syncBasisInput()) await getOwningView(data.id)?.rerenderNode(data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -183,8 +183,8 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
     // In-place output retype ([[D16]] retypeReconciles).
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);

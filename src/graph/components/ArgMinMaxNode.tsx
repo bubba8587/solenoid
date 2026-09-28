@@ -4,7 +4,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { processGraph } from "../process";
 const OPS = (Object.keys(ARG_MIN_MAX_OP_META) as ArgMinMaxOp[]).map((op) => ({
   value: op,
@@ -20,8 +20,8 @@ export function ArgMinMaxComponent({ data, emit }: NodeProps<ArgMinMaxNodeType>)
     // retype; the output rank swap (number ↔ list) prunes after.
     if ((next === "which") !== (data.op === "which")) await dropInputCables(data.id, ["list"]);
     const { outputChanged } = data.setOp(next);
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);

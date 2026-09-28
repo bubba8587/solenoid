@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { SolenoidSocket, canConnect } from "../sockets";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -20,8 +20,8 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: s
 export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   // Active graph: a List Input inside a drill-in retypes its own graph's cables.
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
   if (editor && view) {
     // The row input sockets were retyped too, and retypeOutputCables only walks outputs.
     const inType = (node.valueSocket as SolenoidSocket).dataType;

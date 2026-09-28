@@ -67,7 +67,8 @@ export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   const main = getEditor();
   if (main?.getNode(nodeId)) return main;
   for (const g of owned) if (g.editor.getNode(nodeId)) return g.editor;
-  return (main && closedSubgraphOf(main, nodeId)) ?? main;
+  for (const top of allTopEditors()) { const inner = closedSubgraphOf(top, nodeId); if (inner) return inner; }
+  return main;
 }
 
 type Subgraphed = { internalEditor?: NodeEditor<Schemes> };

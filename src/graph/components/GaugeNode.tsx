@@ -4,7 +4,7 @@ import type { GaugeNode as GaugeNodeType, GaugeStyle } from "../rete-nodes";
 import { GAUGE_STYLE_OPTIONS } from "../rete-nodes";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -29,7 +29,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
     await dropInputCables(data.id, data.keysDropped(next));
     data.setMode(next);
     setMode(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 

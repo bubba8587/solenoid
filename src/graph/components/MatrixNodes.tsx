@@ -27,7 +27,7 @@ import { NodeShell, OpSelect, ArgSelect, ValueDisplay, InlineOutputRows, useNode
 import type { DisplayValue } from "./valueDisplayFormat";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { makeToggleNodeComponent } from "./standardNode";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { nodeDisplayName } from "../catalogUtils";
 
@@ -42,8 +42,8 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
     data.setOp(next);
     // The output retyped in place (number ↔ table): drop cables the new type can't feed
     // and let docked FCs re-resolve — no connection event fires.
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);
@@ -169,8 +169,8 @@ export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNode
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     const { outputChanged } = data.setOp(next);
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (outputChanged && editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);

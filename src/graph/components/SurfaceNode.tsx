@@ -7,7 +7,7 @@ import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { OpToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
@@ -64,7 +64,7 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
     if (next === "surface") await dropInputCables(data.id, ["levels"]);
     data.setOp(next);
     setOp(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 

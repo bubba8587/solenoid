@@ -7,7 +7,7 @@ import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { RecordLayoutField } from "./RecordLayoutField";
@@ -22,7 +22,7 @@ async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void
   if (node.op === "board" && next !== "board") departing.push("by");
   if (departing.length) await dropInputCables(node.id, departing);
   node.setOp(next);
-  const view = getActiveView();
+  const view = getOwningView(node.id);
   if (view) await view.rerenderNode(node.id);
   await processGraph();
 }

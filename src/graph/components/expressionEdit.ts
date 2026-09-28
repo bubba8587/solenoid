@@ -1,7 +1,8 @@
 // [[C15]] matricesInFormulas
 import type { ExpressionNode, LambdaNode, EquationNode, ScriptNode } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
+import type { View } from "../view";
 import { dropInputCables } from "./cablePrune";
 import { INPUT_ROW_PITCH } from "./inlineInput";
 
@@ -16,7 +17,7 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
   node.expr = newExpr;
   const { removed } = node._rebuild();
 
-  const view = getActiveView();
+  const view = getOwningView(node.id);
 
   if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
@@ -38,7 +39,7 @@ export async function applyScriptChange(node: ScriptNode, src: string): Promise<
   node.expr = src;
   const { removed } = node._rebuild();
 
-  const view = getActiveView();
+  const view = getOwningView(node.id);
 
   if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
@@ -60,8 +61,8 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   node.expr = newExpr;
   const { removed } = node._rebuild();
 
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
 
   // Not dropInputCables: an Equation variable owns an output socket too, so this is the one prune that covers both directions.
   if (editor && removed.length > 0) {
@@ -91,7 +92,7 @@ export async function applyLambdaChange(
   if (change.params !== undefined) node.params = change.params;
   const { removed } = node._rebuild();
 
-  const view = getActiveView();
+  const view = getOwningView(node.id);
 
   if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
@@ -105,7 +106,7 @@ export async function applyLambdaChange(
 }
 
 /** The wrapper's first non-span child; width is left alone, since only the vertical pin overflows. */
-function clearPinnedHeight(view: NonNullable<ReturnType<typeof getActiveView>>, nodeId: string): void {
+function clearPinnedHeight(view: View, nodeId: string): void {
   const card = view.nodeElement(nodeId)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
   if (card) card.style.height = "";
 }

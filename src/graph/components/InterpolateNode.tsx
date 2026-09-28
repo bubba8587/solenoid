@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../rete-nodes";
 import { INTERPOLATE_MODE_META } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ResultDisplay } from "./ResultDisplay";
@@ -23,8 +23,8 @@ export async function applyInterpolateMode(node: InterpolateNodeType, mode: Inte
   if (node.mode === mode) return;
   node.mode = mode;
 
-  const editor = getActiveEditor();
-  const view = getActiveView();
+  const editor = getOwningEditor(node.id);
+  const view = getOwningView(node.id);
   if (editor) {
     const conns = editor.getConnections().filter((c) => c.target === node.id || c.source === node.id);
     for (const c of conns) await editor.removeConnection(c.id);

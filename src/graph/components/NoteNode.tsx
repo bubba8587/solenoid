@@ -12,10 +12,9 @@ import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { useEditableLabel } from "./inlineInput";
-// getActiveEditor and getActiveView: a Note inside a drill-in must prune and refresh on its own graph.
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { standoffStore, settleStandoffs } from "../standoffs";
@@ -127,8 +126,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     if (!force && data.body === lastSyncRef.current) return;
     lastSyncRef.current = data.body;
     const { removed, retyped } = data.syncFields();
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setFieldsVersion((v) => v + 1);
     await view?.rerenderNode(data.id);
@@ -173,7 +172,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(NOTE_MIN_W, size.width);
     data.height = Math.max(minNoteH, size.height);
-    void getActiveView()?.rerenderNode(data.id);
+    void getOwningView(data.id)?.rerenderNode(data.id);
   }
   function onResizeEnd() {
     scheduleAutosave();
@@ -206,7 +205,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         data.body = next;
         scheduleAutosave();
         // A bare setBody leaves the old text on the canvas renderer; view.update re-captures it.
-        void getActiveView()?.rerenderNode(data.id);
+        void getOwningView(data.id)?.rerenderNode(data.id);
         void processGraph(data.id);
       }
       return;
@@ -215,7 +214,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   }
 
   // A bare setColor re-renders only rete's root, leaving the canvas renderer on the old color.
-  function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getOwningView(data.id)?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const mode = appThemeStore.getMode();

@@ -475,14 +475,20 @@ export class ImportObsidianNode extends NoteNode {
     } catch { /* unreadable (moved / renamed / off-desktop) — keep the current body */ }
   }
 
+  /** An unchanged note still re-reads its column picks, which the plugin edits without touching the note. */
   private async applyFile(vault: string, rel: string, content: string): Promise<void> {
-    if (content === this.body && rel === this.fileName) return;
-    this.body = content;
-    this.fileName = rel;
-    if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
-      this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
+    if (content === this.body && rel === this.fileName) {
+      const before = JSON.stringify([this.columnPicks, this.nestedPicks]);
+      await this.loadColumnPicks(vault);
+      if (JSON.stringify([this.columnPicks, this.nestedPicks]) === before) return;
+    } else {
+      this.body = content;
+      this.fileName = rel;
+      if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
+        this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
+      }
+      await this.loadColumnPicks(vault);
     }
-    await this.loadColumnPicks(vault);
     const { removed, retyped } = this.syncFields();
     const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
     await dropStrandedFrontmatterCables(this.id, removed, retyped);

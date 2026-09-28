@@ -9,7 +9,7 @@ import type {
 } from "../rete-nodes";
 import { isLambdaValue, formatLambda, formatLambdaSig, undeclaredConsumerVars, type LambdaSig } from "../nodes/lambda";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { formulaPopup } from "../formulaPopupStore";
 import { cableValueStore } from "../cableValueStore";
@@ -107,8 +107,8 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
   const [op, setOpField] = useNodeField(data, "op");
   async function pickOp(next: ByAxis) {
     if (!data.setOp(next)) return;
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
     if (view) await view.rerenderNode(data.id);
     setOpField(next);

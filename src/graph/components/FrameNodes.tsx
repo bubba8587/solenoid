@@ -67,7 +67,7 @@ function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | 
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
-import { getActiveView, getActiveEditor, getOwningEditor, getOwningView } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { SolenoidSocket } from "../sockets";
 import { cableGhostStore } from "../cableState";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
@@ -321,14 +321,14 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
 
   async function addPair() {
     data.addValuePair();
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
     await dropInputCables(data.id, [aKey, bKey]);
     data.removeValuePair(aKey);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }
@@ -764,7 +764,7 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
     if (next === data.mode) return;
     data.setMode(next);
     setModeMirror(next);
-    const ed = getActiveEditor();
+    const ed = getOwningEditor(data.id);
     const inSock = data.inputs.in?.socket;
     if (ed && inSock) {
       for (const c of ed.getConnections()) {
@@ -774,9 +774,9 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
         if (fits) cableGhostStore.commit(c.id); else cableGhostStore.mark(c.id);
       }
     }
-    const view = getActiveView();
+    const view = getOwningView(data.id);
     if (ed && view) reconcileTypesAfterEdit(ed, view);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
 

@@ -8,7 +8,7 @@ import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
 import { isChipSummaryPeek } from "../valuePeekKind";
 import { cableValueStore } from "../cableValueStore";
-import { getActiveEditor } from "../activeGraph";
+import { getOwningEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 import { SocketComponent, LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./SocketComponent";
 
@@ -18,7 +18,7 @@ const PEEK_DELAY_MS = 400;
 
 function hintFor(side: Side, nodeId: string, socketKey: string): FrameHint | undefined {
   if (side !== "input") return undefined;
-  const node = getActiveEditor()?.getNode(nodeId);
+  const node = getOwningEditor(nodeId)?.getNode(nodeId);
   return node ? frameHintFor(node, socketKey) : undefined;
 }
 
@@ -156,7 +156,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
 
   const resolvePeekValue = (): { value: unknown; nodeId: string } | null => {
     if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId };
-    const conn = getActiveEditor()?.getConnections()
+    const conn = getOwningEditor(nodeId)?.getConnections()
       .find((c) => c.target === nodeId && c.targetInput === socketKey);
     if (!conn) return null;
     return { value: cableValueStore.get(conn.source, conn.sourceOutput), nodeId: conn.source };

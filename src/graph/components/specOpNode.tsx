@@ -1,7 +1,7 @@
 import { InlineInputs, type InlineNode } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type OpOption, type ShellNode } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { processGraph } from "../process";
 
 interface SpecOpNode<Op extends string> {
@@ -27,7 +27,7 @@ export function makeSpecOpComponent<Op extends string, N extends SpecOpNode<Op> 
       const departing = data.keysDroppedBySwitch(next);
       if (departing.length > 0) await dropInputCables(data.id, departing);
       data.setOp(next);
-      await getActiveView()?.rerenderNode(data.id);
+      await getOwningView(data.id)?.rerenderNode(data.id);
       setOpField(next);
       await processGraph();
     }

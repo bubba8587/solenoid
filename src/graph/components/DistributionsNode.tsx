@@ -2,7 +2,7 @@
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import {
   DIST_SPECS, DIST_FORM_META, isInverseForm,
   type DistributionsNode as DistributionNodeType, type DistKey, type DistForm,
@@ -22,7 +22,7 @@ export function DistributionsComponent({ data, emit }: NodeProps<DistributionNod
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
     setFormField(data.form); // the switch may have remapped the form
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     setOpField(next);
   }
 
@@ -31,7 +31,7 @@ export function DistributionsComponent({ data, emit }: NodeProps<DistributionNod
     const crossing = isInverseForm(next) !== isInverseForm(data.form);
     if (crossing) await dropInputCables(data.id, [isInverseForm(next) ? data.xKey : "prob"]);
     data.setForm(next);
-    if (crossing) await getActiveView()?.rerenderNode(data.id);
+    if (crossing) await getOwningView(data.id)?.rerenderNode(data.id);
     setFormField(next);
   }
 

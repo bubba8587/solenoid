@@ -40,7 +40,7 @@ import { frameRowCount, cubeRowCount } from "../frame";
 import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
 import { dropInputCables, dropOutputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
-import { getActiveView } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { FX_MODE_META, type FxMode } from "../rete-nodes";
 
 function statusText(s: ConnectionState): string {
@@ -667,7 +667,7 @@ async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => vo
   if (departing.outputs.length > 0) await dropOutputCables(data.id, departing.outputs);
   data.setMode(next);
   set(next);
-  await getActiveView()?.rerenderNode(data.id);
+  await getOwningView(data.id)?.rerenderNode(data.id);
   await processGraph();
 }
 
@@ -864,7 +864,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
     if (departing.outputs.length > 0) await dropStrandedFrontmatterCables(data.id, departing.outputs, []);
     data.setProvider(next);
     setProvider(next);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
   function commitToken() {

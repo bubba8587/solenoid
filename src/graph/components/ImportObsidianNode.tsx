@@ -15,7 +15,7 @@ import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { hasFs, isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
-import { getActiveView, getActiveEditor } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { processGraph } from "../process";
 import { connectionStore } from "../connectionStore";
 import { bumpConnectionVersion } from "../graphSignals";
@@ -89,8 +89,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setBody(content);
     setFieldsVersion((v) => v + 1);
-    const editor = getActiveEditor();
-    const view = getActiveView();
+    const editor = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     await view?.rerenderNode(data.id);
     if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion();
@@ -112,7 +112,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     catch { /* file gone — keep what's loaded */ }
   }
 
-  function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getOwningView(data.id)?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const fieldKeys = data.fieldKeys();
@@ -150,7 +150,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(MIN_W, size.width);
     data.height = Math.max(minH, size.height);
-    void getActiveView()?.rerenderNode(data.id);
+    void getOwningView(data.id)?.rerenderNode(data.id);
   }
 
   return (

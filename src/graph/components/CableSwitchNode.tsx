@@ -2,10 +2,9 @@
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
-// getActiveEditor and getActiveView, not getEditor and getView: a drill-in Input Switch retypes, prunes and refreshes on its own graph.
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveEditor, getActiveView } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables, reconcileTypesAfterEdit } from "../fcReconcile";
 import { snapshotOutgoing, reconcilePendingOnRetype } from "../cablePendingReconnect";
 import { collapseStore } from "../collapseStore";
@@ -78,7 +77,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
       else delete data.titles[keyName];
       // A title relabels the multi-select Cube's `name` column, so Many mode recomputes; One mode only re-renders.
       if (data.multiSelect) void processGraph();
-      else void getActiveView()?.rerenderNode(data.id);
+      else void getOwningView(data.id)?.rerenderNode(data.id);
     },
   );
   const input = data.inputs[keyName];
@@ -145,8 +144,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     data.activeIndex = i;
     setSelected(i);
     // In One mode the output passes the active input through, so switching it can move the derived type (Cube to Frame) with no connection event; re-settle here.
-    const ed = getActiveEditor();
-    const view = getActiveView();
+    const ed = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (ed && view) reconcileTypesAfterEdit(ed, view);
     void processGraph();
   }
@@ -159,8 +158,8 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     setMulti(many);
     // Retyping drops downstream cables the new type can't feed; each is ghosted (cablePendingReconnect) and re-materializes when a flip back fits again.
     const changed = data.syncOutputType();
-    const ed = getActiveEditor();
-    const view = getActiveView();
+    const ed = getOwningEditor(data.id);
+    const view = getOwningView(data.id);
     if (changed && ed && view) {
       const before = snapshotOutgoing(ed, data.id, "out");
       await retypeOutputCables(ed, view, data.id, "out");
@@ -178,7 +177,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   }
   async function addRow() {
     data.addValueInput();
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     await processGraph();
   }
   async function removeRow(key: string) {
@@ -186,7 +185,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     data.removeValueInput(key);
     setSelKeys(data.selectedKeys);
     setSelected(data.activeIndex);
-    await getActiveView()?.rerenderNode(data.id);
+    await getOwningView(data.id)?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }
