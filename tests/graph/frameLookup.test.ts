@@ -265,3 +265,36 @@ describe("XLOOKUP node coercion — retiring the rawInputs bypass (A4)", () => {
     expect(isSolError(r) && (r as { code: string }).code).toBe("#VALUE!");
   });
 });
+
+describe("lookupFrameCell — approximate match (XLOOKUP match_mode -1/1)", () => {
+  const prices: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "qty", type: "number", values: [1, 10, 50, 100] },
+      { name: "discount", type: "number", values: [0, 0.05, 0.1, 0.2] },
+    ],
+  };
+
+  it("exact mode (default) only matches an equal cell", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10")).toBe(0.05);
+    expect(lookupFrameCell(prices, "qty", "discount", "20")).toBeUndefined();
+  });
+
+  it("nextSmaller: exact match wins, else the closest smaller key", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined(); // below every key
+  });
+
+  it("nextLarger: exact match wins, else the closest larger key", () => {
+    expect(lookupFrameCell(prices, "qty", "discount", "10", "nextLarger")).toBe(0.05); // exact
+    expect(lookupFrameCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1); // between 10 and 50
+    expect(lookupFrameCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined(); // above every key
+  });
+
+  it("approximate mode requires a numeric/date column", () => {
+    const named: FrameValue = { __frame: true, columns: [{ name: "n", type: "string", values: ["a", "b"] }, { name: "v", type: "number", values: [1, 2] }] };
+    const err = (() => { try { lookupFrameCell(named, "n", "v", "a", "nextSmaller"); } catch (e) { return e; } })();
+    expect(isSolError(err) && err.code).toBe("#VALUE!");
+  });
+});
