@@ -39,6 +39,17 @@ specific item.
 - **The formula popup resizes** (Expression, Equation, LAMBDA, the table lambdas): the Table popup's corner grip, and
   the editor's own vertical grip before the first drag, as the CSV block has; once sized the editor fills.
 
+### SESSION DIGEST (2026-09-28: plugin 0.1.4 readied to ship ahead of the app; cloud session)
+
+- **Plugin 0.1.4 releases on its own** (author): the manifest is 0.1.4; the export, commit and release in
+  Solenoid-Properties are the author's (`docs/backlog.md` § Obsidian).
+- **The plugin's `main.js` is 626 kB again** (960 kB after 09-27): `closeParens` moved to its own `closeParens.ts`, since
+  importing it from `excelFormula.ts` pulled Formula.js and jstat into the plugin; the plugin draws the Cards rules with
+  Obsidian's `MarkdownRenderer` through a `components/Markdown` shim, so `marked` stays out (spec: [[obsidian-plugin]]).
+  The Cards view itself is the rest of the growth over 581 kB. Checked in a real Obsidian 1.13.7 through the rig.
+- **The export refuses an unpinned package:** a copied file importing a package missing from the snapshot's
+  `package.json` stops `plugin:export` (it had shipped a snapshot whose `tsc` failed on `marked` and Formula.js).
+
 ### SESSION DIGEST (2026-09-27: Knap notes in the Obsidian plugin; cloud session)
 
 - **Knap notes** ([[D87]] knapNotes, asked for by the author): a note with `knap: true` renders its body in Reading view
@@ -53,8 +64,7 @@ specific item.
 - **Live Preview details:** an error waits for a 1.5 s pause in typing (a half-typed tag fails to render), and Up/Down
   enter a drawn block, which the editor stepped over.
 - **The `whatsnew` video cut** (`scripts/demo-video/whatsnew.mjs`, plugin 0.1.4, 1080p60 via `DEMO_FPS=60`), approved by
-  the author; the render sits in `.dev/video/`, uncommitted. Plugin 0.1.4 and the video ship with the next app version
-  bump (`docs/backlog.md` § Obsidian).
+  the author; the render sits in `.dev/video/`, uncommitted, and ships with the next app version bump.
 - **Rig in a cloud container:** Obsidian's Linux tarball unpacks to `/opt/Obsidian`; Xephyr is absent, so a stand-in
   script running `Xvfb` on the same display (and a no-op `metacity`) lets `npm run plugin:rig` run unchanged.
 
