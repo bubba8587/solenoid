@@ -4662,6 +4662,74 @@
      }
     ]
    }
+  },
+  {
+   "name": "rolling_avg sums each window fresh, so a large value leaving it leaves no rounding behind",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        0,
+        1e-15,
+        10,
+        null,
+        -1e-300,
+        -2.5,
+        0.30000000000000004,
+        2,
+        1e-15
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "a",
+    "orderDir": "desc",
+    "fn": "rolling_avg",
+    "column": "a",
+    "as": "b",
+    "n": 3
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "a",
+      "type": "number",
+      "values": [
+       0,
+       1e-15,
+       10,
+       null,
+       -1e-300,
+       -2.5,
+       0.30000000000000004,
+       2,
+       1e-15
+      ]
+     },
+     {
+      "name": "b",
+      "type": "number",
+      "values": [
+       6.666666666666667e-16,
+       0.7666666666666669,
+       null,
+       null,
+       3.3333333333333336e-16,
+       -0.8333333333333334,
+       4.1000000000000005,
+       null,
+       0.10000000000000069
+      ]
+     }
+    ]
+   }
   }
  ]
 }

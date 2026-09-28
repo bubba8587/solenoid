@@ -558,3 +558,17 @@ describe("column units ride the reshaping verbs (unitFlow, review pins)", () => 
     expect(rank.columns.find((c) => c.name === "R")!.unit).toBeUndefined();
   });
 });
+
+describe("sampleFrame (sketch mode's preview rows)", () => {
+  const f: FrameValue = { __frame: true, columns: [{ name: "n", type: "number", values: Array.from({ length: 10 }, (_, i) => i) }] };
+  it("takes n evenly spaced rows, first row included and in order", async () => {
+    const { sampleFrame } = await import("../../src/graph/frameVerbs");
+    expect(sampleFrame(f, 5).columns[0].values).toEqual([0, 2, 4, 6, 8]);
+    expect(sampleFrame(f, 3).columns[0].values).toEqual([0, 3, 6]);
+  });
+  it("hands back the frame itself when it is no longer than n, or n is not positive", async () => {
+    const { sampleFrame } = await import("../../src/graph/frameVerbs");
+    expect(sampleFrame(f, 10)).toBe(f);
+    expect(sampleFrame(f, 0)).toBe(f);
+  });
+});

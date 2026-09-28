@@ -949,9 +949,16 @@ fn lazy_window(
             // Polars 0.46's null-aware rolling min/max kernel overflows, so blanks are filled with
             // each op's identity. This row is present, so a window never holds only fill.
             let filled = |fill: f64| vnum().fill_null(lit(fill));
+            // Polars' rolling sum keeps a running total, whose rounding outlives a large value leaving the window.
+            // A window up to FRESH_SUM_MAX rows is summed fresh, oldest first, as the oracle sums it, so the two agree
+            // to the bit; a longer one keeps the kernel (frame-verbs § The parity corpus names the exception).
+            let fresh_sum = || {
+                (0..nn as i64).rev().fold(lit(0.0), |acc, k| acc + filled(0.0).shift(lit(k)).fill_null(lit(0.0)))
+            };
+            let window_sum = || if nn as usize <= FRESH_SUM_MAX { fresh_sum() } else { filled(0.0).rolling_sum(opts.clone()) };
             let rolled = match func {
-                "rolling_sum" => filled(0.0).rolling_sum(opts),
-                "rolling_avg" => filled(0.0).rolling_sum(opts.clone())
+                "rolling_sum" => window_sum(),
+                "rolling_avg" => window_sum()
                     / vnum().is_not_null().cast(DataType::Float64).rolling_sum(opts),
                 "rolling_min" => filled(f64::INFINITY).rolling_min(opts),
                 _ => filled(f64::NEG_INFINITY).rolling_max(opts),
@@ -1111,7 +1118,7 @@ fn lazy_slice_rows(plan: Plan, mode: &str, n: f64, to: Option<f64>) -> Result<Pl
     let count = n.trunc().max(0.0);
     let lf = match mode {
         "first" => plan.lf.limit(count as IdxSize),
-        "last" => plan.lf.tail(count as IdxSize),
+        "last" => plan.lf.reverse().limit(count as IdxSize).reverse(),
         "skip" => plan.lf.slice(count as i64, IdxSize::MAX),
         _ => {
             let start = (n.trunc() - 1.0).max(0.0);
@@ -1361,6 +1368,8 @@ const ERR_DOMAIN_BITS: u64 = 0x7ff8_0000_0000_0d01;
 const ERR_OVERFLOW_BITS: u64 = 0x7ff8_0000_0000_0f02;
 const ERR_DIV0_BITS: u64 = 0x7ff8_0000_0000_0d03;
 const ERR_UNIT_ADD_BITS: u64 = 0x7ff8_0000_0000_0e04;
+/// Windows this long or shorter are summed fresh per row, matching the oracle to the bit.
+const FRESH_SUM_MAX: usize = 64;
 const ERR_UNIT_SCALE_BITS: u64 = 0x7ff8_0000_0000_0e05;
 const ERR_DIV0_TOTAL_BITS: u64 = 0x7ff8_0000_0000_0d06;
 

@@ -385,7 +385,7 @@ Where: `src-tauri/src/engine.rs` (2458 lines, 104 fns), `frameBackend.ts` (667),
 Leaves: [[C16]] polarsEngine, D29 oneVerbCorpus (retired; now `tree/specs/computation/frame-verbs.md` § The parity corpus), D78 textErrorsOnOracle (retired; same spec, § PolarsBackend).
 Why risky: cloud sessions cannot run the Rust side, so every 09-24 engine change was verified
 only by whoever had the desktop. Error cells ride as reserved quiet-NaN bit patterns.
-- [ ] Reserved NaN (54bd9e3b, `ERR_*_BITS` at engine.rs:1360): a REAL NaN produced by Polars
+- [x] Checked 2026-09-28, now natively: groupBy, distinct, sort, filter, fillBlanks, window and join each have error-cell corpus cases, and the groupBy and distinct ones mix `#N/A`, `#DIV/0!` and a real NaN, which stay three buckets on both engines (`cargo test`, 33 passing). Was: Reserved NaN (54bd9e3b, `ERR_*_BITS` at engine.rs:1360): a REAL NaN produced by Polars
       arithmetic (0/0 inside the engine) has bits 0x7ff8000000000000, distinct from the
       reserved codes, fine; but does any verb canonicalise NaN (e.g. `fill_nan`, sort,
       `is_nan` filters) and thereby erase the code? Also: Polars `unique`/`group_by` on f64
@@ -404,16 +404,16 @@ only by whoever had the desktop. Error cells ride as reserved quiet-NaN bit patt
       the JS table's six keys (domain, overflow, pct_change_from_zero, zero_total,
       readings_add, readings_scale) all appear as reason strings in `engine.rs`
       (`error_of` → `ErrWhy::Reason`). Closed.
-- [ ] D78: a frame with an error in a text/logical column "stays on the oracle on desktop".
+- [x] Checked 2026-09-28: by design (frame-verbs § PolarsBackend); the row-less JS run that restores units is over the schema alone, so its cost doesn't grow with the frame. Was: D78: a frame with an error in a text/logical column "stays on the oracle on desktop".
       So desktop silently runs JS for some frames: perf cliff on a big frame with one bad
       text cell, and a unit/format path that differs (94b25efb restores units via a
       row-less JS run of the same verb: two verb executions per native call).
-- [ ] Join key transform with offset (d1a4f44d): `rightKeyScale/rightKeyOffset` for °C keys.
+- [x] Checked 2026-09-28: `convert_key` in engine.rs rounds at the 15th digit of the larger term exactly as `convertKey` does, and the corpus's unit-key join case passes on both engines. Was: Join key transform with offset (d1a4f44d): `rightKeyScale/rightKeyOffset` for °C keys.
       Float equality after scaling: b4c90711 later added tolerance "noise". Is the tolerance
       applied natively too, or only in the oracle? Corpus case: 5 km vs 5000.0000001 m.
-- [ ] Fuzzer: "5400-case runs over six seeds agree". Is the fuzzer in CI or only run by hand?
+- [x] Fixed 2026-09-28: by hand only, never in CI. Run from the cloud over seven seeds (150 cases a verb), it found two native divergences: `rolling_avg`/`rolling_sum` drifted in the last bits (Polars keeps a running total; short windows are summed fresh now, as the oracle sums them), and a `sliceRows` last-n longer than the frame returned no rows after a key-less groupBy (a Polars tail bug; last-n is reverse, limit, reverse now). Both are named corpus cases; every seed passes. Worth a run at each release (`npx tsx scripts/fuzz-frame-verbs.ts <seed> 150`, then `cargo test corpus_cases`). Was: Fuzzer: "5400-case runs over six seeds agree". Is the fuzzer in CI or only run by hand?
       If by hand, the plan should say: run it on the desktop at each release.
-- [ ] Fixture coverage (counted): window 56 cases, groupBy 42, filter 40, join 32, sort 17,
+- [x] Checked 2026-09-28: `crossJoinFrames` is `join` with `how: "cross"` (corpus cases on both engines); every JS-only verb has a unit test except `sampleFrame`, which has one now (`frameVerbs.test.ts`). Was: Fixture coverage (counted): window 56 cases, groupBy 42, filter 40, join 32, sort 17,
       filterMulti 16, pipeline 14, replaceValues 10, distinct 10, head 8, sliceRows 6, select 5,
       unpivot 4, rename 4, fillBlanks 4, drop 4, bindColumns 3, append 3, pivot 2. Thin:
       pivot (2), append/bindColumns (3). Verbs with NO fixture: nestFrame/unnestCube,
@@ -780,6 +780,7 @@ is "a reader's job" (`docs/dte.md`). Confirmed, not inferred.
 ## 41. E9 provenance across the native wire: the weak registry (new, small)
 See item 20's corrected bullet. The design is right; the window is a GC'd original between an
 upload and a re-flushed download. Pin it or accept it in the spec with one line.
+- [x] Accepted in frame-verbs § PolarsBackend 2026-09-28: once the original is collected the cell downloads code-only with the code's standard message; a forced-GC pin isn't possible under vitest.
 
 ## 42. The °C table, with the spec's expected answers (replaces item 16's first bullet)
 From `tree/specs/values/unit-flow.md` § Expression and § Reducing a list, and `tree/specs/computation/frame-verbs.md` § groupBy. Three

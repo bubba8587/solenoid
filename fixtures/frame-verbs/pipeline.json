@@ -874,6 +874,56 @@
      }
     ]
    }
+  },
+  {
+   "name": "last n past a key-less groupBy's one row keeps that row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "b",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "pipeline",
+    "ops": [
+     {
+      "kind": "groupBy",
+      "keys": [],
+      "aggs": [
+       {
+        "column": "b",
+        "op": "sum",
+        "as": "c"
+       }
+      ]
+     },
+     {
+      "kind": "sliceRows",
+      "mode": "last",
+      "n": 5
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       6
+      ]
+     }
+    ]
+   }
   }
  ]
 }
