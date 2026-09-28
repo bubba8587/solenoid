@@ -437,13 +437,13 @@ Leaves: [[C44]] dateSerials, [[D46]] freezeVolatilePerCalc.
 Commits: 703205c7, fa328067, 1f182781, d58772c2, 83806909
 Where: `canvasLock.ts`, gated in `FlowSurface.tsx`, `canvasKeyboard.ts`, `menuModel.ts`,
 `MenuBar.tsx`, `NavMenu.tsx`, `SelectionActionsBar.tsx` (7 files).
-- [ ] The gate is per entry point, not per mutation. List every mutation path
+- [x] Checked 2026-09-28: every structural path is gated. RF gets draggable/connectable/selectable false; the context menu, cable drops, quick-wire and the Add menu stand down at the surface (`addMenuRequest` is gated where it is received, so the A key, the menu bar and the mobile button all stop there); the keyboard gate covers Delete, nudge, paste, Tidy, group, Wrap, rotate and undo/redo, and the menu bar, palette and touch bar press those keys (`fireMenuKey`, so the mobile Undo too); the CSS half blocks every press on card chrome (FC dock, socket flip, grips, rename, comments, standoff drags). The hole was the keyboard: a card field focused before the lock, or reached by Tab, still edited. The surface now drops focus inside a card while locked (pointer-gestures § Locking). A model-layer gate would catch a future entry point the surface misses; proposed here, not built. Was: The gate is per entry point, not per mutation. List every mutation path
       (`editor.addNode/removeNode/addConnection`, `flowModel` edits, paste, drop from the
       file system, drag from the Add menu, touch gestures, FC dock/undock, socket flip,
       resize grip, group rename, comment edit, standoff drag, undo/redo) and mark which of
       the 7 files gates it. Anything unmarked is a hole. Better: one gate in the model
       layer; propose it, don't build it.
-- [ ] Drop of a CSV/JSON file onto a locked canvas. Keyboard Delete. Enter on a draft field
+- [x] Checked 2026-09-28: there is no file drop onto the canvas at all; Delete stands down at the keyboard gate; Enter on a field focused before the lock can't happen now, since locking blurs it. Was: Drop of a CSV/JSON file onto a locked canvas. Keyboard Delete. Enter on a draft field
       that was focused before the lock.
 
 ## 23. Draft flush (data loss guard)

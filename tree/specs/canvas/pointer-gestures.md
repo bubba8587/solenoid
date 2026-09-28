@@ -111,7 +111,7 @@ The main canvas (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay
 
 Locking is CSS plus React Flow props, and both surfaces apply both halves.
 
-- The wrapper gets `.solenoid-canvas--locked`, which sets `pointer-events: none !important` on node and group chrome and on cable hit paths (`canvas.css`). Presses and wheels fall through to the pane, so pan and zoom stay live, but nothing can be wired, selected or edited.
+- The wrapper gets `.solenoid-canvas--locked`, which sets `pointer-events: none !important` on node and group chrome and on cable hit paths (`canvas.css`). Presses and wheels fall through to the pane, so pan and zoom stay live, but nothing can be wired, selected or edited. The keyboard ignores `pointer-events`, so while locked the surface also drops focus inside a card or group: the field that held it when the lock came on blurs (committing its draft, as any blur does), and a Tab that lands in one blurs again.
 - The surface passes `nodesDraggable`, `nodesConnectable` and `elementsSelectable` as `!locked`.
 - The Add menu does not open on a locked surface, from the A key, the menu bar, the pane's right-click or a dropped cable, since a pick would add a card. For the same reason `[` and `]` rotate nothing and Ctrl+Shift+G makes no composite while locked, beside the keys the contract's gate list names.
 

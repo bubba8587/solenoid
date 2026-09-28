@@ -733,6 +733,15 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const globalLocked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   const locked = hooks.locked || globalLocked;
   const cabling = useSyncExternalStore(cableDragStore.subscribe, cableDragStore.get);
+  useEffect(() => {
+    const root = wrapperRef.current;
+    if (!locked || !root) return;
+    const inCard = (el: Element | null) => !!el?.closest(".solenoid-node, .solenoid-group") && root.contains(el);
+    if (inCard(document.activeElement)) (document.activeElement as HTMLElement).blur();
+    const onFocusIn = (e: FocusEvent) => { if (inCard(e.target as Element)) (e.target as HTMLElement).blur(); };
+    root.addEventListener("focusin", onFocusIn);
+    return () => root.removeEventListener("focusin", onFocusIn);
+  }, [locked]);
   const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   useEffect(() => {
     if (!IS_COARSE) return;
