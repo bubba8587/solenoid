@@ -139,6 +139,12 @@ function splitLines(text: string): { lines: string[]; nl: string } {
   return { lines: text.split("\n").map((l) => l.replace(/\r$/, "")), nl: text.includes("\r\n") ? "\r\n" : "\n" };
 }
 
+/** A block whose every line is indented reads as one map in YAML; the scan and the rendered lines work without that indent. */
+function dedent(block: string[]): { base: string; lines: string[] } {
+  const base = /^ */.exec(block.find((l) => l.trim() !== "") ?? "")![0];
+  return { base, lines: base ? block.map((l) => (l.startsWith(base) ? l.slice(base.length) : l)) : block };
+}
+
 function fenceClose(lines: string[]): number {
   if (lines[0]?.trim() !== FENCE) return -1;
   for (let i = 1; i < lines.length; i++) if (lines[i].trim() === FENCE) return i;
@@ -155,7 +161,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   const close = fenceClose(lines);
   if (close === -1) return { text: [FENCE, ...rendered(), FENCE, "", ...lines].join(nl) };
 
-  const interior = lines.slice(1, close);
+  const { base, lines: interior } = dedent(lines.slice(1, close));
   const spans = scanKeys(interior);
 
   const replacements = new Map<number, { end: number; lines: string[] }>();
@@ -177,7 +183,7 @@ export function patchFrontmatter(text: string, patch: Record<string, YamlValue>)
   }
   out.push(...appends);
 
-  const rebuilt = [lines[0], ...out, ...lines.slice(close)];
+  const rebuilt = [lines[0], ...out.map((l) => (base && l.trim() ? base + l : l)), ...lines.slice(close)];
   return { text: rebuilt.join(nl) };
 }
 
@@ -281,7 +287,7 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
   const { lines } = splitLines(text);
   const close = fenceClose(lines);
   if (close === -1) return { action: "add", before: "" };
-  const interior = lines.slice(1, close);
+  const interior = dedent(lines.slice(1, close)).lines;
   const span = scanKeys(interior).get(key);
   if (!span) return { action: "add", before: "" };
   const existing = interior.slice(span.start, span.end + 1);

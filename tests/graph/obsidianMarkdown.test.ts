@@ -51,6 +51,18 @@ describe("frontmatterToYaml", () => {
     const texts = ["+1", "-.5", "+.5", "-.inf", "+.INF", ".NaN", "'quoted'", "0x1F", "1e3", "~", "Null", "- x", "a #b", "plain", "-item", "it's"];
     for (const t of texts) expect(parseYaml(`k: ${yamlScalar(t)}`), t).toEqual({ k: t });
   });
+  it("a control character is escaped, since Obsidian's reader refuses a block holding one raw", () => {
+    for (const t of ["\u0001ctl", "a\u007fb", "a: \u0002", "x\u0080"]) {
+      const y = yamlScalar(t);
+      expect(y, JSON.stringify(t)).toMatch(/^".*\\x[0-9a-f]{2}/);
+      expect(parseYaml(`k: ${y}`)).toEqual({ k: t });
+    }
+  });
+  it("a key YAML would read as something else is quoted, so it reads back as typed", () => {
+    for (const k of ["007", "1.50", "+1", "0x1F", "null", "~", "<<", "2024", "a b", "-item", "yes"]) {
+      expect(Object.keys(parseYaml(frontmatterToYaml({ [k]: 5 }).replace(/^---\n|---\n$/g, ""))), k).toEqual([k]);
+    }
+  });
   it("renders a list as a YAML block sequence", () => {
     expect(frontmatterToYaml({ tags: ["finance", "q3"] })).toBe(
       "---\ntags:\n  - finance\n  - q3\n---\n",

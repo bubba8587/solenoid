@@ -98,7 +98,7 @@ A Note persists `label`, `body`, `color` (a palette slot id, default `amber`), `
 
 - The block exists only when the first line trims to `---` and a later line trims to `---`. Without a closing fence there is no block and the whole text is the body.
 - The render body is everything after the closing fence, with leading blank lines removed.
-- The YAML between the fences is parsed with the `yaml` package (core schema, duplicate keys allowed). A key that repeats keeps its first occurrence. A parse failure yields no fields but still strips the block.
+- The YAML between the fences is parsed with the `yaml` package (core schema, duplicate keys allowed). A line's trailing carriage return is dropped first, so a note saved with Windows line endings reads as Obsidian reads it. Where the core schema and Obsidian's js-yaml type a plain spelling differently, Obsidian wins: a signed dot-float (`-.5`) is text, and a signed or binary radix literal (`+0x1F`, `0b101`, `-0o17`) is a number. A key that repeats keeps its first occurrence. A parse failure yields no fields but still strips the block.
 - Keys are trimmed; an empty key is skipped.
 
 The field types are a subset of the socket data types with identical names, so the node maps a field to its socket by identity (`FIELD_SOCKETS` in `nodes/annotation.ts`). Each key's value is guessed into one:
@@ -299,9 +299,9 @@ A note that does not exist yet is written as the markdown (wrapped in markers fo
 
 - null is empty, a finite number is bare, a non-finite number is quoted, and a logical is `true` or `false`;
 - text is quoted when it is empty, has surrounding whitespace, contains any of `:#[]{}",` or a newline or tab, reads as `true`, `false`, `null`, `yes`, `no`, `on` or `off` in any case, starts like a YAML number (an optional sign, then a digit or a dot and a digit: `+1`, `-.5`), starts with a YAML indicator (`*&!|>%@'` or a backtick, or `~`), is a bare or space-followed `-` or `?`, or is an infinity or NaN word (`.inf`, `-.inf`, `.nan`, any case); a test reads every such value back through the `yaml` package;
-- quoted text is a double-quoted scalar with backslash, quote, newline, carriage return and tab escaped, so a multi-line value stays valid on one line.
+- quoted text is a double-quoted scalar with backslash, quote, newline, carriage return and tab escaped, so a multi-line value stays valid on one line; text holding a character YAML calls non-printable (a C0 or C1 control other than tab and line breaks) is quoted with it escaped as `\xNN`, since js-yaml refuses a block that holds one raw.
 
-A key is quoted when it is empty, contains any of `:#[]{}",'|>%@` or a backtick, starts with `-`, `?`, `!`, `&`, `*` or whitespace, or ends with whitespace.
+A key is quoted by the same rules as text, so a key YAML would read as anything but itself (`007`, `1.50`, `null`, `~`, `yes`) reads back as typed, and `<<` is always quoted, since js-yaml takes a bare one as a merge key and refuses the block.
 
 **Stamp.** When `stamp` is on and exactly one note was written, the note's frontmatter gains a `solenoid:` link to a `Solenoid/<doc>` stub note through `patchFrontmatter` ([[C101]] onePatchPath), and the stub note is merged. Stamping never fails the write. This is the only frontmatter write on the document path; a Note's own frontmatter reaches the vault as the text of its body.
 

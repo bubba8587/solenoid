@@ -48,6 +48,11 @@ function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; 
   const v = node.value;
   const quoted = node.type === Scalar.QUOTE_DOUBLE || node.type === Scalar.QUOTE_SINGLE;
   if (v === null || v === undefined) return { value: null, kind: "string" };
+  const src = node.type === Scalar.PLAIN ? String(node.source ?? "") : "";
+  if (typeof v === "number" && /^[-+]\./.test(src)) return { value: src, kind: "string" };
+  if (typeof v === "string" && /^[-+]?0(?:b[01]+|o[0-7]+|x[0-9a-fA-F]+)$/.test(src)) {
+    return { value: (src[0] === "-" ? -1 : 1) * Number(src.replace(/^[-+]/, "")), kind: "number" };
+  }
   if (typeof v === "boolean") return { value: v, kind: "logical" };
   if (typeof v === "number") return { value: Number.isFinite(v) ? v : null, kind: "number" };
   if (typeof v === "bigint") return { value: Number(v), kind: "number" };
@@ -172,7 +177,7 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
   const body = lines.slice(close + 1).join("\n").replace(/^\n+/, "");
   const fields: FrontmatterField[] = [];
   const seen = new Set<string>();
-  const src = lines.slice(1, close).join("\n");
+  const src = lines.slice(1, close).map((l) => l.replace(/\r$/, "")).join("\n");
   let doc;
   try {
     doc = parseDocument(src, { uniqueKeys: false, schema: "core" });

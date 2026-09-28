@@ -206,3 +206,24 @@ describe("parseNoteFrontmatter", () => {
     expect(r.body).toBe("body");
   });
 });
+
+describe("a note saved with Windows line endings reads as Obsidian reads it", () => {
+  it("the last line of the block keeps its type, with no stray carriage return", () => {
+    expect(parseNoteFrontmatter("---\r\nk: 1\r\nz: true\r\n---\r\nbody").fields).toEqual([
+      { key: "k", value: 1, guessed: "number" },
+      { key: "z", value: true, guessed: "logical" },
+    ]);
+  });
+});
+
+describe("a hand-typed number spelling reads as Obsidian types it", () => {
+  const val = (y: string) => parseNoteFrontmatter(`---\nk: ${y}\n---\n`).fields[0]?.value;
+  it("a signed dot-float is text; a signed or binary radix literal is a number", () => {
+    expect(val("-.5")).toBe("-.5");
+    expect(val(".5")).toBe(0.5);
+    expect(val("0b101")).toBe(5);
+    expect(val("+0x1F")).toBe(31);
+    expect(val("-0o17")).toBe(-15);
+    expect(val("'0b1'")).toBe("0b1");
+  });
+});

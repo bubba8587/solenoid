@@ -248,3 +248,11 @@ describe("patchFrontmatter never swallows a line it does not own", () => {
     expect(resolveKey("---\n\"a: b\": 1\n---\n", "a: b", 1).action).toBe("unchanged");
   });
 });
+
+describe("a frontmatter block indented as a whole", () => {
+  it("updates its key in place and adds a new one at the block's indent", () => {
+    expect(patchFrontmatter("---\n  k: 1\n---\n", { k: 42 }).text).toBe("---\n  k: 42\n---\n");
+    expect(patchFrontmatter("---\n  k: 1\n---\n", { j: 2 }).text).toBe("---\n  k: 1\n  j: 2\n---\n");
+    expect(resolveKey("---\n  k: 1\n---\n", "k", 42)).toEqual({ action: "update", before: "1" });
+  });
+});

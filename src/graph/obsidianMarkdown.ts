@@ -53,6 +53,8 @@ export function lambdaToMarkdown(v: LambdaValue): string {
 }
 
 
+const YAML_NONPRINTABLE = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x84\x86-\x9f]/g;
+
 export function yamlScalar(v: unknown): string {
   if (v === null || v === undefined) return "";
   if (typeof v === "number") return Number.isFinite(v) ? String(v) : `"${v}"`;
@@ -63,6 +65,7 @@ export function yamlScalar(v: unknown): string {
     s !== s.trim() ||
     /[:#\[\]{}",]/.test(s) ||
     /[\n\r\t]/.test(s) ||
+    /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x84\x86-\x9f]/.test(s) ||
     /^(true|false|null|yes|no|on|off)$/i.test(s) ||
     /^[-+]?\.?\d/.test(s) ||
     /^[*&!|>%@`~']/.test(s) ||
@@ -74,12 +77,13 @@ export function yamlScalar(v: unknown): string {
     .replace(/"/g, '\\"')
     .replace(/\n/g, "\\n")
     .replace(/\r/g, "\\r")
-    .replace(/\t/g, "\\t");
+    .replace(/\t/g, "\\t")
+    .replace(YAML_NONPRINTABLE, (c) => `\\x${c.charCodeAt(0).toString(16).padStart(2, "0")}`);
   return `"${esc}"`;
 }
 
 export function yamlKey(key: string): string {
-  return key === "" || /[:#\[\]{}",'|>%@`]|^[-?!&*\s]|\s$/.test(key) ? yamlScalar(key) : key;
+  return key === "<<" ? '"<<"' : yamlScalar(key);
 }
 
 function yamlLine(key: string, v: unknown): string {

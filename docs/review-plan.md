@@ -467,10 +467,10 @@ ff417bdc, 09150636, e3b0c02f, 77eaf69b, eb4dcbd3
 Where: `noteFrontmatter.ts` (226), `obsidianWrite.ts` (202), `fileBridge.ts`,
 `noteFrontmatterSync.ts`, plugin shares readers.
 Leaves: [[C101]] onePatchPath, [[C103]] untrustedContentSeams, [[B1]] obsidianBet.
-- [ ] Round-trip fuzz on the frontmatter patcher: keys with `:` in values, multi-line
+- [x] Fixed 2026-09-28: a block indented as a whole got its key appended unindented, a second key that broke the block for js-yaml; the patcher and `resolveKey` now work without the common indent and put it back (`frontmatterPatch.test.ts`). Fine as they were: `:` in values, `|`/`>` blocks, lists of maps, a tab, a BOM, empty `---\n---`, `---` inside a value and two blocks (the first fence line closes, as Obsidian does); mixed CRLF and LF re-joins with CRLF, touching the body's line ends. The reader, not the patcher, broke on CRLF: the block's last line kept its `\r` (`"true\r"`, a date lost); fixed in `parseNoteFrontmatter` (`noteFrontmatter.test.ts`). Was: Round-trip fuzz on the frontmatter patcher: keys with `:` in values, multi-line
       strings (`|`, `>`), lists of maps, tabs, BOM, CRLF+LF mixed, a `---` inside a value,
       a note with TWO frontmatter blocks, empty frontmatter `---\n---`.
-- [ ] `yamlScalar` quoting: `yes/no/on/off/null/~`, `0o17`, `0x1F`, `1_000`, `.NaN`,
+- [x] Fixed 2026-09-28: every listed spelling is quoted and reads back the same in `yaml`, js-yaml and the reader, but a raw control character went out plain, and js-yaml refuses the whole block over one; it is escaped as `\xNN` now. Keys went bare where YAML reads them as something else (`007` → 7, `1.50` → 1.5, `null`/`~` dropped, `<<` a merge key that makes js-yaml throw); a key is quoted by the text rules now, `<<` always (`obsidianMarkdown.test.ts`, reports-and-notes § Frontmatter YAML). Was: `yamlScalar` quoting: `yes/no/on/off/null/~`, `0o17`, `0x1F`, `1_000`, `.NaN`,
       a value that is only spaces, a value with a trailing `#` comment.
 - [ ] Path guard (d4cfe3c9): backslash fixed; also `%2e%2e`, a symlink inside the vault
       pointing out, an absolute path on Windows `C:\`, a UNC path, a path with `\0`.
@@ -605,39 +605,39 @@ found three that a fake module had passed) and shares readers with the app, so a
 in the app silently changes the plugin.
 - [x] CI covers the plugin's typecheck and bundle (test.yml). Behaviour: nothing. The only
       check is the `plugin:rig` (real Obsidian over CDP), run by hand.
-- [ ] Type switch through Obsidian's Update dialog: `coerceYaml` "reshapes anything into the
+- [ ] NEEDS AUTHOR 2026-09-28: probed (`yamlValue.ts` is pure). A cube coerced to a list keeps only its first scalar per row (`[{a:1,tags:[p,q],sub:[…]}]` → `[1]` on Save), a frame to a list drops its column names, a matrix to a frame takes `Col1…`; nothing is lost until Save, and Obsidian's own dialog is the only warning. The spec's "only a container in a frame cell is missing" understates it. Options: fix the sentence and accept; keep a container cell as its YAML text; or have Save refuse or warn when the coercion lost a container or keys. Was: Type switch through Obsidian's Update dialog: `coerceYaml` "reshapes anything into the
       kind": a frame → list, a cube → matrix, a matrix → frame: what is lost and is the
       user told before Save?
-- [ ] Per-document stylesheets (settings window, popped-out notes): a third window kind
+- [x] Checked 2026-09-28 by reading: hosts are built in `el.ownerDocument` and the sweep re-adopts the sheet on `window-open` and `layout-change`; hover popovers and canvas embeds live in their window's document, and Settings is a modal, not a window. Was: Per-document stylesheets (settings window, popped-out notes): a third window kind
       (Obsidian's "open in new window" of the settings tab itself, canvas embeds, hover
       preview popovers). Each is a new document that needs the sheet.
-- [ ] Mount sweep "dropped only once seen attached": a property row that is built but
+- [ ] Confirmed by reading 2026-09-28, not fixed: `main.tsx` unmounts only a mount that was once `isConnected`, so a host built and never attached stays until the plugin unloads. How often Obsidian discards an unattached row is a rig question; a fix drops a never-attached mount after a few sweeps. Was: Mount sweep "dropped only once seen attached": a property row that is built but
       never attached (a cancelled edit) leaks a mount forever.
-- [ ] `data.json` column types (b984af85): app reads them beside `types.json`. Two sources
+- [x] Checked 2026-09-28: obsidian-plugin § The app reads the picks settles it (`types.json` says what a key is; `data.json` picks refine a frame's columns), and Vault Folder and Import Obsidian Note both read through `parsePluginColumnTypes`. Was: `data.json` column types (b984af85): app reads them beside `types.json`. Two sources
       disagreeing on one key: which wins, and is it the same answer in Vault Folder and in
       Import Obsidian Note?
-- [ ] Palette from `data.json` (40cd262b): the app's `paletteStore` still reads localStorage;
+- [x] Checked 2026-09-28: the plugin build rewrites every free `localStorage` in app code to memory (`obsidian-plugin/vite.config.ts`), so the store never reaches real storage; the palette persists through `saveData`. Was: Palette from `data.json` (40cd262b): the app's `paletteStore` still reads localStorage;
       inside the plugin two writers to one store. Confirm the plugin path never writes it.
-- [ ] Mobile (f2ebf098 measured the rig): touch targets in the popup footer; the phone
+- [ ] Needs the rig's mobile emulation 2026-09-28; nothing to probe in node. Was: Mobile (f2ebf098 measured the rig): touch targets in the popup footer; the phone
       keyboard covering the Save row.
 
 ## 32. Frontmatter reader/writer (YAML package adoption, 8072a2d1) and note typing
 Commits: 8072a2d1, 50d270a4, 20ab4615, f9174966, 47cb4d04, 3a334d10, 843b7aa5 (Part B)
 Where: `noteFrontmatter.ts`, `nodes/annotation.ts` (Note), `nodes/obsidian.ts`, `vaultCube.ts`
-- [ ] The parser went from hand-rolled to the `yaml` package: YAML 1.1 vs 1.2 differences
+- [x] Fixed 2026-09-28 against js-yaml 4 (Obsidian's reader): `yes`, `0755`, `0o17`, `0x1F`, `1_000`, `1:30` and `~` agree; a signed dot-float (`-.5`) was a number here and text there, and a signed or binary radix literal (`+0x1F`, `0b101`) the reverse. The reader follows Obsidian now, from the scalar's source text (`noteFrontmatter.test.ts`). `.inf`/`.nan` read as blank on purpose (`Number.isFinite`). Was: The parser went from hand-rolled to the `yaml` package: YAML 1.1 vs 1.2 differences
       the package resolves differently from Obsidian (`yes`→true, `0755` octal, `1_000`,
       sexagesimal `1:30`, `~`). Obsidian's own reader is js-yaml (1.2-ish). Compare on a
       corpus of real notes; a mismatch means the app reads a property Obsidian shows as text
       as a number.
-- [ ] "Plain ISO dates become serials" at parse time, and typing decides later (b984af85):
+- [x] Checked 2026-09-28: a column with `2026-13-01` beside real dates stays text as a whole, never a NaN cell (obsidian-plugin § What Solenoid reads back). Was: "Plain ISO dates become serials" at parse time, and typing decides later (b984af85):
       `2026-03-20` in a list with text stays text, alone becomes a date. A column of dates
       where one row is `2026-13-01` (invalid): whole column text, or one cell NaN?
-- [ ] Matrix guessing (20ab4615): a list of lists "padded rectangular": `[[1,2],[3]]` pads
+- [x] Checked 2026-09-28, app side: `[[1,2],[3]]` pads to `[[1,2],[3,null]]`, and a Note never rewrites its own YAML, so B12 holds. Plugin side needs the rig: `matrixToYaml` keeps a ragged original, but if the popup hands Save a padded grid it writes `[3, null]`. Was: Matrix guessing (20ab4615): a list of lists "padded rectangular": `[[1,2],[3]]` pads
       with what (blank? 0?) and does write-back preserve the ragged original? [[B12]].
-- [ ] Complex text `3+4i` "never a quoted one": `"3+4i"` stays text, `3+4i` is complex. But
+- [x] Checked 2026-09-28: `1e5` is 100000 in both readers, `12-34` is text, `3+4i` complex and `"3+4i"` text; a list mixing `1e5` and `12-34` is a text list. Was: Complex text `3+4i` "never a quoted one": `"3+4i"` stays text, `3+4i` is complex. But
       YAML plain `3+4i` is a string either way; the distinction is Solenoid's. A user who
       types a serial number like `1e5` or `12-34` in a plain scalar: parsed how?
-- [ ] Note node reading a cube row whose value is a table (2c963d58 "now nests"): depth 3
+- [x] Checked 2026-09-28: the reader nests to any depth (a 3000-deep nest parses without overflowing the stack). Was: Note node reading a cube row whose value is a table (2c963d58 "now nests"): depth 3
       (table in a row in a table): recursion bound?
 
 ## 33. Table popup: CSV view, suggestions, cell editors (09-19, 24 commits)
