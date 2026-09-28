@@ -229,7 +229,7 @@ judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) w
 - [ ] 2b7596f4 `@xyflow/react` 12.12.0 bump + "bare click on a grip is not a resize": read
       the React Flow 12.12 changelog for resizer/selection changes; check group resize,
       touch-gestures spec.
-- [ ] 5e5af11d "Opening a Report no longer takes the app down": a crash fix in
+- [x] Checked 2026-09-28: the root cause was a hook below an early return (rules of hooks), broken since 5915f3c. A one-off `react-hooks/rules-of-hooks` scan over `src/` and the plugin finds no other case (its one hit, `use30` in `financeOps.ts`, is a plain function whose name starts with "use"). The repo runs no ESLint, so nothing stops the next one. Was: 5e5af11d "Opening a Report no longer takes the app down": a crash fix in
       `ReportOverlay.tsx`; find the root cause commit and check no sibling overlay has the
       same pattern (boundary rule in `tree/specs/canvas/react-flow-surface-contract.md`).
 - [ ] 7576af3d chart axis ticks/gutter: negative values, log-scale, and a 0-range axis.
