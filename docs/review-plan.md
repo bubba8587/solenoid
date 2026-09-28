@@ -168,22 +168,22 @@ Where: `FilterNode.tsx`, `SortNode.tsx`, `UniqueNode.tsx`, `copyPaste.ts`, `exce
 Commits: 88c95dc6
 Where: `copyPaste.ts`, `persistence.ts`, `nodes/placeholder.ts` (`placeholderFor`), `nodes/composite.ts`
 Spec: `tree/specs/documents/save-format.md`.
-- [ ] `nodeNameStore.ensure(clone.id, type)` changed from `constructor.name` to the saved
+- [x] Checked 2026-09-28: `savedNodeBody` gives a non-placeholder `constructor.name` as its type, so the name is unchanged; a placeholder gives its missing type, which is the right name. Was: `nodeNameStore.ensure(clone.id, type)` changed from `constructor.name` to the saved
       `type`: for a NON-placeholder clone these must be equal, or every pasted node gets a
       different default name. Assert in `copyPasteSnapshot.test.ts`.
-- [ ] A pasted placeholder inside a group/composite: `ref = clone.savedInit` for members/
+- [x] Checked 2026-09-28: the paste remap rewrites members, hostNodeId and steps inside `savedInit` for a placeholder, as for a live node. Was: A pasted placeholder inside a group/composite: `ref = clone.savedInit` for members/
       hostNodeId/steps — the id remap must rewrite ids INSIDE `savedInit` too, or the
       placeholder points at pre-paste ids.
-- [ ] `placeholderFor(sn, phSockets)` with `phSockets` undefined: no sockets → cables to it
+- [x] Checked 2026-09-28: sockets come from the node's saved cables (`deriveMissingNodeSockets`), so none means no cables to prune. Was: `placeholderFor(sn, phSockets)` with `phSockets` undefined: no sockets → cables to it
       pruned? (`tree/specs/canvas/input-cable-pruning.md`).
 
 ## 9. Frame edits and joins
 Commits: 3e776d37, b4c90711, e5f51eb1
 Where: `frame.ts`, `frameVerbs.ts`, `TablePopup.tsx`
-- [ ] CSV edit "types the columns it adds from their values": the inference for a column
+- [x] Checked 2026-09-28: `1, x, blank` and an all-blank column read as Text, numbers with blanks as Number; a column already typed keeps its type when the CSV adds columns, so a later text cell shows NaN over its text ([[D72]]). Was: CSV edit "types the columns it adds from their values": the inference for a column
       with mixed `1`, `x`, blank; and a column that is all blank (text? number?). A column
       inferred number then a later edit adds text — does the column retype or error?
-- [ ] Nest Join keys "survive unit conversion noise": tolerance-based key matching. What
+- [x] Checked 2026-09-28: the key rounds at the 15th significant digit of the larger term (`roundAtLargerTerm`, frame-verbs § Nest Join), so only keys equal to float precision collide; Nest Join builds a Cube in JS, so there is no Polars twin. Was: Nest Join keys "survive unit conversion noise": tolerance-based key matching. What
       epsilon, is it relative, and can two distinct keys within epsilon collide? Polars path
       vs JS oracle: does Polars join with the same tolerance? (`frameBackend.test.ts`).
 
