@@ -28,6 +28,14 @@ warning is expected.
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
   node (`docs/dte.md` § Solenoid practice; `archive/1.4-plan.md` D3).
 
+## For 1.6 (author 2026-09-28; 1.5 is the release in progress)
+- [ ] **Equation outputs vs the formula surface.** The Equation node takes the whole formula
+  surface, but every variable's output is a number socket ([[C47]] equationNode: "every real root"),
+  so a relation whose answer is complex (`x^2 + 1 = 0`, expected ±i), text, a date or a logical has
+  nowhere to go: a negative discriminant is `#SOLVE!`. The fix decides what an unknown's output is
+  when its answer leaves the number family (a retype, [[D16]] retypeReconciles, or fixed wider
+  sockets) and amends C47. Quadratic Roots already answers the conjugate pair.
+
 ## Node merges (parked by the author, [[B11]] maximalMerge)
 
 - [ ] **Paired-list aggregate**: SUMPRODUCT, the SUMX functions, CORREL, COVARIANCE and a weighted average as one two-list Aggregate (the author said to wait), and the remaining smaller pairs.
