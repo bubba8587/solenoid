@@ -1,22 +1,26 @@
-// [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D80]] cubeColumnTypes
+// [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D90]] cubeTypesAtDepth, [[E16]] cubeCellKinds
 import { useEffect, useState, type ReactNode } from "react";
 import { cubePopup, type CubeEditBinding, type DrillView } from "../cubePopupStore";
 import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth, typedCubeCell, coerceListItem, type CubeCell } from "../frame";
 import {
-  getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf, recordKeys,
+  getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf, recordKeys, sourceSchema, withSourceSchema, schemaPathOf,
+  cellKindOf, convertCellKind,
   type CubePath, type CubeRecord, type CubeSource, type CubeSourceColumn,
 } from "../literalEditors";
+import { schemaAt, pickType, withPickType, renamePick, dropPick, type CubeSchema } from "../cubeSchema";
 import { stopDragStart } from "../coarse";
 import { elemChipClass } from "../valuePopup";
 import { isSolError } from "../errorValue";
 import { cubeCellToken, CubeCellChip } from "./cubeCell";
+import { CellKindMenu } from "./CellKindMenu";
 import { ColumnExprField, COLTYPE_ORDER, COLTYPE_GLYPH, COLTYPE_NAME } from "./columnHeadControls";
 
 
-export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
+/** A nested level's records as a cube, its columns read by that level's declared types. */
+export function cubeViewAt(records: CubeRecord[], path: CubePath, label: string, schema: CubeSchema = {}): DrillView {
   const sub = path.length ? getAtPath(records, path) : records;
   const rows = Array.isArray(sub) ? (sub as CubeRecord[]) : [];
-  return { kind: "cube", cube: recordsToCube(rows), label, path };
+  return { kind: "cube", cube: recordsToCube(rows, schema), label, path };
 }
 
 export function frameViewAt(records: CubeRecord[], path: CubePath, label: string): DrillView {
@@ -40,7 +44,7 @@ function commitSource(edit: CubeEditBinding, next: CubeSource) {
   cubePopup.refresh();
 }
 
-/** Typed and formula columns live on the root level only. */
+/** Formula columns live on the root level only; the root's column list is its order too. */
 const rootColumns = (edit: CubeEditBinding, path: CubePath): CubeSourceColumn[] | null =>
   path.length === 0 ? edit.source().columns : null;
 
@@ -68,12 +72,15 @@ function InlineCell({ value, shown, onCommit }: { value: unknown; shown?: string
 
 type ColType = NonNullable<CubeSourceColumn["type"]>;
 
-/** The declared type in force at a level: a root column's own, or, deeper, the root column the level sits under ([[D80]] cubeColumnTypes). */
+/** The type declared for a cell at `path`: its own column's on a table level, the column a list sits in on a list level ([[D90]] cubeTypesAtDepth). */
 export function declaredTypeAt(edit: CubeEditBinding, path: CubePath, column?: string): ColType | undefined {
-  const root = path.length === 0 ? column : path[1];
-  const col = edit.source().columns.find((c) => c.name === root);
-  return col && col.expr === undefined ? col.type : undefined;
+  const names = column === undefined ? schemaPathOf(path) : [...schemaPathOf(path), column];
+  const last = names.pop();
+  return last === undefined ? undefined : pickType(schemaAt(sourceSchema(edit.source()), names)[last]);
 }
+
+/** The declared types of the table at `path`. */
+export const levelSchemaAt = (edit: CubeEditBinding, path: CubePath): CubeSchema => schemaAt(sourceSchema(edit.source()), schemaPathOf(path));
 
 /** What a typed cell reads as, printed: a table cell as a Frame cell reads, a list item as List Input reads it. */
 function shownAs(type: ColType, value: unknown, listItem: boolean): string {
@@ -83,6 +90,59 @@ function shownAs(type: ColType, value: unknown, listItem: boolean): string {
 
 const stop = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
 const chipClass = (mod: "cube" | "frame" | "array") => `solenoid-array-chip solenoid-array-chip--${mod} solenoid-array-chip--sm`;
+
+/** A list or table held in a cell, as the chip that drills into it. */
+function NestedChip({ edit, cellPath, value, crumb, from, type }: {
+  edit: CubeEditBinding; cellPath: CubePath; value: unknown; crumb: string; from: { r: number; c?: number }; type?: ColType;
+}): ReactNode {
+  const records = edit.source().rows;
+  const shape = recordsShape(value);
+  if (shape === "list" || shape === "empty") {
+    const list = (value ?? []) as unknown[];
+    const famClass = elemChipClass(list as Parameters<typeof elemChipClass>[0], false, type);
+    return (
+      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell)}. Drill in and edit.`}
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(listViewAt(records, cellPath, crumb), from); }}>
+        [{list.length}× List]
+      </button>
+    );
+  }
+  if (shape === "frame") {
+    const rows = value as CubeRecord[];
+    return (
+      <button type="button" className={chipClass("frame")} title={`Frame ${rows.length}×${Object.keys(rows[0] ?? {}).length}. Drill in and edit.`}
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(frameViewAt(records, cellPath, crumb), from); }}>
+        [{rows.length}×{Object.keys(rows[0] ?? {}).length} Frame]
+      </button>
+    );
+  }
+  const rows = Array.isArray(value) ? (value as CubeRecord[]) : [value as CubeRecord];
+  const c = recordsToCube(rows);
+  const dims = `${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)}`;
+  return (
+    <button type="button" className={chipClass("cube")} title={`Cube ${dims} (rows × cols × depth). Drill in and edit.`}
+      onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(cubeViewAt(records, cellPath, crumb, levelSchemaAt(edit, cellPath)), from); }}>
+      [{dims} Cube]
+    </button>
+  );
+}
+
+/** One editing cell: a value types in place, a list or table is a chip to drill into, and the edge menu switches between them ([[E16]] cubeCellKinds). */
+function EditCell({ edit, cellPath, crumb, from, type, listItem, source }: {
+  edit: CubeEditBinding; cellPath: CubePath; crumb: string; from: { r: number; c?: number }; type?: ColType; listItem: boolean; source: boolean;
+}): ReactNode {
+  const value = getAtPath(edit.source().rows, cellPath);
+  const kind = cellKindOf(value);
+  const shownType = source ? undefined : type;
+  return (
+    <span className="cube-edit__cell">
+      {kind === "value"
+        ? <InlineCell value={value} shown={shownType && value != null ? shownAs(shownType, value, listItem) : undefined} onCommit={(text) => commitAt(edit, cellPath, parseCellText(text))} />
+        : <NestedChip edit={edit} cellPath={cellPath} value={value} crumb={crumb} from={from} type={type} />}
+      <CellKindMenu kind={kind} onPick={(next) => commitAt(edit, cellPath, convertCellKind(value, next))} />
+    </span>
+  );
+}
 
 export function CubeEditCell({ edit, path, row, column, source = false }: {
   edit: CubeEditBinding;
@@ -98,49 +158,11 @@ export function CubeEditCell({ edit, path, row, column, source = false }: {
     const col = cube && !isSolError(cube) ? cube.columns.find((c) => c.name === column) : undefined;
     return <CubeCellChip cell={col?.cells[row] ?? null} crumb={column} size="sm" type={col?.type} at={{ r: row }} />;
   }
-  const records = edit.source().rows;
-  const cellPath: CubePath = [...path, row, column];
-  const value = getAtPath(records, cellPath);
-  const shape = recordsShape(value);
-  if (shape === "list" || shape === "empty") {
-    const list = (value ?? []) as unknown[];
-    const declared = rootColumns(edit, path)?.find((c) => c.name === column)?.type;
-    const famClass = elemChipClass(list as Parameters<typeof elemChipClass>[0], false, declared);
-    return (
-      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell)}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(listViewAt(records, cellPath, column), { r: row }); }}>
-        [{list.length}× List]
-      </button>
-    );
-  }
-  if (shape === "frame") {
-    const rows = value as CubeRecord[];
-    return (
-      <button type="button" className={chipClass("frame")} title={`Frame ${rows.length}×${Object.keys(rows[0] ?? {}).length}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(frameViewAt(records, cellPath, column), { r: row }); }}>
-        [{rows.length}×{Object.keys(rows[0] ?? {}).length} Frame]
-      </button>
-    );
-  }
-  if (shape === "cube") {
-    const rows = Array.isArray(value) ? (value as CubeRecord[]) : [value as CubeRecord];
-    const c = recordsToCube(rows);
-    const dims = `${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)}`;
-    return (
-      <button type="button" className={chipClass("cube")} title={`Cube ${dims} (rows × cols × depth). Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(cubeViewAt(records, cellPath, column), { r: row }); }}>
-        [{dims} Cube]
-      </button>
-    );
-  }
-  const type = source ? undefined : declaredTypeAt(edit, path, column);
-  return <InlineCell value={value} shown={type && value != null ? shownAs(type, value, false) : undefined} onCommit={(text) => commitAt(edit, cellPath, parseCellText(text))} />;
+  return <EditCell edit={edit} cellPath={[...path, row, column]} crumb={column} from={{ r: row }} type={declaredTypeAt(edit, path, column)} listItem={false} source={source} />;
 }
 
 export function ListEditCell({ edit, path, row, source = false }: { edit: CubeEditBinding; path: CubePath; row: number; source?: boolean }): ReactNode {
-  const value = getAtPath(edit.source().rows, [...path, row]);
-  const type = source ? undefined : declaredTypeAt(edit, path);
-  return <InlineCell value={value} shown={type && value != null ? shownAs(type, value, true) : undefined} onCommit={(text) => commitAt(edit, [...path, row], parseCellText(text))} />;
+  return <EditCell edit={edit} cellPath={[...path, row]} crumb="item" from={{ r: row }} type={declaredTypeAt(edit, path)} listItem source={source} />;
 }
 
 type ColumnKind = CubeSourceColumn["type"] | "fx";
@@ -170,6 +192,7 @@ function CubeExprField({ edit, column, expr }: { edit: CubeEditBinding; column: 
 
 export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; path: CubePath; column: string }): ReactNode {
   const cols = rootColumns(edit, path);
+  const schemaPath = schemaPathOf(path);
   const rename = (next: string) => {
     const key = next.trim();
     if (!key || key === column) return;
@@ -180,10 +203,11 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
       if (!r || typeof r !== "object" || Array.isArray(r)) return r;
       return Object.fromEntries(Object.entries(r as CubeRecord).map(([k, v]) => [k === column ? key : k, v]));
     });
-    commitSource(edit, {
-      columns: src.columns.map((c) => (path.length === 0 && c.name === column ? { ...c, name: key } : c)),
-      rows: path.length ? setAtPath(src.rows, path, renamed) : (renamed as CubeRecord[]),
-    });
+    if (path.length === 0) {
+      commitSource(edit, { columns: src.columns.map((c) => (c.name === column ? { ...c, name: key } : c)), rows: renamed as CubeRecord[] });
+      return;
+    }
+    commitSource(edit, withSourceSchema({ ...src, rows: setAtPath(src.rows, path, renamed) }, (s) => renamePick(s, schemaPath, column, key)));
   };
   const nameInput = (
     <input
@@ -202,12 +226,14 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
     />
   );
   const col = cols?.find((c) => c.name === column);
-  if (!col) return nameInput;
-  const kind = kindOf(col);
+  if (cols && !col) return nameInput;
+  const kind: ColumnKind = col ? kindOf(col) : pickType(levelSchemaAt(edit, path)[column]);
+  const formulas = !!col && !edit.noFormulaColumns;
   const cycle = () => {
-    const order = edit.noFormulaColumns ? KIND_ORDER.filter((k) => k !== "fx") : KIND_ORDER;
+    const order = formulas ? KIND_ORDER : KIND_ORDER.filter((k) => k !== "fx");
     const next = order[(order.indexOf(kind) + 1) % order.length];
-    setColumn(edit, column, () => (next === "fx" ? { name: column, expr: "" } : next ? { name: column, type: next } : { name: column }));
+    if (col) setColumn(edit, column, (c) => (next === "fx" ? { name: column, expr: "" } : { name: column, ...(next ? { type: next } : {}), ...(c.columns ? { columns: c.columns } : {}) }));
+    else commitSource(edit, withSourceSchema(edit.source(), (s) => withPickType(s, schemaPath, column, next === "fx" ? undefined : next)));
   };
   return (
     <>
@@ -215,14 +241,14 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
         <button
           type="button"
           className={`table-popup__coltype${kind === "fx" ? " table-popup__coltype--fx" : ""}`}
-          title={`Column type: ${KIND_NAME(kind)}. Cycle None / Number / Text / Date / Boolean${edit.noFormulaColumns ? "" : " / Formula"}.`}
+          title={`Column type: ${KIND_NAME(kind)}. Cycle None / Number / Text / Date / Boolean${formulas ? " / Formula" : ""}.`}
           onClick={(e) => { e.stopPropagation(); cycle(); }}
         >
           {KIND_GLYPH(kind)}
         </button>
         {nameInput}
       </div>
-      {kind === "fx" && <CubeExprField edit={edit} column={column} expr={col.expr ?? ""} />}
+      {kind === "fx" && col && <CubeExprField edit={edit} column={column} expr={col.expr ?? ""} />}
     </>
   );
 }
@@ -255,7 +281,7 @@ export function CubeEditRows({ edit, view }: { edit: CubeEditBinding; view: Dril
       return rest;
     });
     if (cols) commitSource(edit, { columns: src.columns.filter((c) => c.name !== last), rows });
-    else commitAt(edit, path, rows);
+    else commitSource(edit, withSourceSchema({ ...src, rows: setAtPath(src.rows, path, rows) }, (s) => dropPick(s, schemaPathOf(path), last)));
   };
   return (
     <>

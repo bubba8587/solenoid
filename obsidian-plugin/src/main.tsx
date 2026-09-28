@@ -15,6 +15,7 @@ import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
 import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, type PropertyKind, type ColumnTypes } from "./yamlValue";
+import { flatTypes, type CubeSchema } from "../../src/graph/cubeSchema";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver, setAccentSlot } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } from "./lookTokens";
@@ -42,7 +43,7 @@ interface MetadataTypeManager {
 
 interface Mount { host: HTMLElement; root: Root; attached: boolean }
 
-interface PluginData { palette?: string; accent?: string; columnTypes?: Record<string, ColumnTypes>; look?: boolean }
+interface PluginData { palette?: string; accent?: string; columnTypes?: Record<string, CubeSchema>; look?: boolean }
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
 
@@ -61,7 +62,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       this.chip(el, FRAME_KIND, key, value, onChange);
     },
     release: (el: Element): void => this.release(el),
-    columnTypes: (key: string): ColumnTypes => ({ ...this.data.columnTypes?.[key] }),
+    columnTypes: (key: string): ColumnTypes => flatTypes(this.data.columnTypes?.[key] ?? {}),
     setColumnTypes: (key: string, types: ColumnTypes, replace = false): Promise<void> => this.setColumnTypes(key, types, replace),
   };
 
@@ -165,7 +166,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     await this.saveData(this.data);
   }
 
-  private async setColumnTypes(key: string, types: ColumnTypes, replace = false): Promise<void> {
+  private async setColumnTypes(key: string, types: CubeSchema, replace = false): Promise<void> {
     this.data.columnTypes = { ...this.data.columnTypes, [key]: replace ? { ...types } : { ...this.data.columnTypes?.[key], ...types } };
     await this.saveData(this.data);
     this.app.workspace.trigger(COLUMN_TYPES_EVENT, key);

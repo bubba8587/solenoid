@@ -1,14 +1,15 @@
-// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText
+// [[C107]] obsidianPlugin, [[D72]] pluginSaveWritesSourceText, [[D90]] cubeTypesAtDepth
 import { useRef, useState, useSyncExternalStore } from "react";
 import { ArrayChip, arrayAccentFor } from "../../src/graph/components/ArrayChip";
 import { themeVersion, tokenHex } from "./shadow";
 import { FrameChip } from "../../src/graph/components/FrameChip";
 import { CubeChip } from "../../src/graph/components/CubeChip";
 import { deriveFrame, recordsToCube } from "../../src/graph/frame";
-import { recordKeys, type CubeRecord, type CubeSource } from "../../src/graph/literalEditors";
+import { recordKeys, sourceSchema, type CubeRecord, type CubeSource } from "../../src/graph/literalEditors";
+import { pickType, pickColumns, type CubeSchema } from "../../src/graph/cubeSchema";
 import {
   coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, columnTypesOf, rawCell,
-  type PropertyKind, type Family, type YamlRecord, type ColumnTypes,
+  type PropertyKind, type Family, type YamlRecord,
 } from "./yamlValue";
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
@@ -26,16 +27,16 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   label: string;
   initial: unknown;
   onChange: (next: unknown) => void;
-  columnTypes?: ColumnTypes;
+  columnTypes?: CubeSchema;
   /** `replace` sets the property's whole map, so a cube column switched back to none loses its pick. */
-  onColumnTypes?: (types: ColumnTypes, replace?: boolean) => void;
+  onColumnTypes?: (types: CubeSchema, replace?: boolean) => void;
   resolveToken?: (token: string) => string | undefined;
 }) {
   const [yaml, setYaml] = useState<unknown>(initial);
   const latest = useRef<unknown>(initial);
-  const [picked, setPicked] = useState<ColumnTypes>(columnTypes ?? {});
+  const [picked, setPicked] = useState<CubeSchema>(columnTypes ?? {});
   // The cube popup keeps the binding it opened with, so its reads go through a ref.
-  const pickedRef = useRef<ColumnTypes>(picked);
+  const pickedRef = useRef<CubeSchema>(picked);
   pickedRef.current = picked;
   const commit = (next: unknown) => {
     latest.current = next;
@@ -112,10 +113,16 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   const cubeSource = (): CubeSource => {
     const rows = coerceYaml(kind, latest.current) as CubeRecord[];
     const types = pickedRef.current;
-    return { columns: recordKeys(rows).map((name) => (types[name] ? { name, type: types[name] } : { name })), rows };
+    return {
+      columns: recordKeys(rows).map((name) => {
+        const type = pickType(types[name]);
+        const columns = pickColumns(types[name]);
+        return { name, ...(type ? { type } : {}), ...(Object.keys(columns).length ? { columns } : {}) };
+      }),
+      rows,
+    };
   };
-  const typesOf = (source: CubeSource): ColumnTypes =>
-    Object.fromEntries(source.columns.flatMap((c) => (c.type ? [[c.name, c.type]] : [])));
+  const typesOf = sourceSchema;
   return (
     <CubeChip
       value={recordsToCube(items as YamlRecord[], picked)}

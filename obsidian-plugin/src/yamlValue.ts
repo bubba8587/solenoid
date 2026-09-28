@@ -3,6 +3,7 @@ import { parseDateToSerial, noteDateSerial, noteDateText } from "../../src/graph
 import { parseCellText } from "../../src/graph/literalEditors";
 import { parseCx } from "../../src/graph/cxValue";
 import { guessNoteColumnType, type FrameColType, type FrameSourceColumn } from "../../src/graph/frame";
+import { readSchema, pickType, type CubeSchema } from "../../src/graph/cubeSchema";
 
 export type Family = "number" | "string" | "date" | "logical" | "complex";
 export type Shape = "scalar" | "list" | "matrix" | "frame" | "cube";
@@ -158,30 +159,24 @@ export function rawCell(v: unknown): string {
   return typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
 }
 
+/** A Frame's picks, one type per column. */
 export type ColumnTypes = Record<string, FrameColType>;
 
-const COLUMN_TYPES: readonly FrameColType[] = ["number", "string", "date", "logical"];
-const isColumnType = (t: unknown): t is FrameColType => COLUMN_TYPES.includes(t as FrameColType);
-
-export function readColumnTypes(raw: unknown): Record<string, ColumnTypes> {
-  const out: Record<string, ColumnTypes> = {};
+/** Every property's picks; a cube's may type its nested tables too ([[D90]] cubeTypesAtDepth). */
+export function readColumnTypes(raw: unknown): Record<string, CubeSchema> {
+  const out: Record<string, CubeSchema> = {};
   if (!isPlainObject(raw)) return out;
-  for (const [key, cols] of Object.entries(raw)) {
-    if (!isPlainObject(cols)) continue;
-    const types: ColumnTypes = {};
-    for (const [name, t] of Object.entries(cols)) if (isColumnType(t)) types[name] = t;
-    out[key] = types;
-  }
+  for (const [key, cols] of Object.entries(raw)) if (isPlainObject(cols)) out[key] = readSchema(cols);
   return out;
 }
 
-export function frameSourceFromYaml(value: unknown, picked: ColumnTypes = {}): FrameSourceColumn[] {
+export function frameSourceFromYaml(value: unknown, picked: CubeSchema = {}): FrameSourceColumn[] {
   const records = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
   return keys.map((name) => {
     const values = records.map((rec) => (isScalar(rec[name]) ? rec[name] : null));
-    return { name, type: picked[name] ?? guessNoteColumnType(values, (v) => fitsFamily(v, "date")), cells: values.map(rawCell) };
+    return { name, type: pickType(picked[name]) ?? guessNoteColumnType(values, (v) => fitsFamily(v, "date")), cells: values.map(rawCell) };
   });
 }
 

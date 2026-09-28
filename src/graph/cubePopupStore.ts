@@ -1,8 +1,9 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[D90]] cubeTypesAtDepth
 import { createValueStore } from "./storeKit";
 import { recordsToCube, frameFromRecords, type CubeValue, type FrameValue, type CubeCell, type FrameColType } from "./frame";
-import { getAtPath, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";
+import { getAtPath, sourceSchema, schemaPathOf, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";
 import { isSolError, type SolError } from "./errorValue";
+import { schemaAt } from "./cubeSchema";
 
 export interface CubeEditBinding {
   source(): CubeSource;
@@ -13,13 +14,13 @@ export interface CubeEditBinding {
   noFormulaColumns?: boolean;
 }
 
-/** The root level shows the derived cube; a nested level its records as they are. */
+/** The root level shows the derived cube; a nested level its records, read by that level's declared types. */
 export function editLevelCube(edit: CubeEditBinding, path: CubePath, rows: CubeRecord[]): CubeValue {
   if (path.length === 0) {
     const c = edit.cube();
     if (c && !isSolError(c)) return c;
   }
-  return recordsToCube(rows);
+  return recordsToCube(rows, schemaAt(sourceSchema(edit.source()), schemaPathOf(path)));
 }
 
 export interface CellRef { r: number; c?: number }

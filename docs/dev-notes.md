@@ -6,6 +6,16 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-28: Cube types at every depth, cell kinds; cloud session)
+
+- **Cube types at every depth** ([[D90]] cubeTypesAtDepth, superseding D80 on the author's word): a column's type holds
+  its values and list items; a table nested in it keeps its own columns' types, set with the same button on any nested
+  level and stored under the column as a `CubeSchema` (`cubeSchema.ts`: a bare type, or `{ type?, columns }`). One
+  schema form serves Cube Input's `cubeText` and the plugin's `data.json`; a flat map of types is still a whole schema,
+  and the plugin API stays flat. Specs: [[frame-verbs]] § The Cube value, [[table-popup]] § Editing a Cube Input.
+- **Cell kinds** ([[E16]] cubeCellKinds): every Cube editing cell, list items included, has a Value / List / Table
+  menu at its edge (`CellKindMenu`, `convertCellKind`), so a list, Frame or Cube can be entered by hand at any depth.
+
 ### SESSION DIGEST (2026-09-27: Cards view, resizable formula popup; cloud session)
 
 - **Cards view** ([[C114]] cardsView, asked for by the author, who judges the result): every frame popup has Grid,
@@ -79,9 +89,9 @@ specific item.
   Sparkline node's types; Default gold, win/loss in green and vermilion), averaged to 40 points past that ([[D82]]
   sparklineCell). A text cell holding a `data:image` picture shows as the picture in Frame and Cube cards and popups
   ([[D83]] imageTextCells).
-- **Typed Cube columns** ([[D80]] cubeColumnTypes): Cube Input's root header has the type button (None, Number, Text,
+- **Typed Cube columns** ([[D90]] cubeTypesAtDepth): Cube Input's root header has the type button (None, Number, Text,
   Date, Boolean, Formula). A type overrides every kind in its column: scalars read as Frame cells (NaN when
-  unreadable), list items as List Input's (blank when unreadable), nested tables column by column. `cubeText` stays
+  unreadable), list items as List Input's (blank when unreadable). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
   plain records until a column is typed or computed, then `{ columns, rows }`. The plugin's cube editor has the button
   without Formula and saves the picks as a Frame's.
 - **Cube formulas read lists** ([[D81]] cubeRowLists): in Cube Input's Fx columns and the Computed Column node over a

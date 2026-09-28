@@ -1,7 +1,7 @@
 // [[C10]] socketLattice (the Cube is the lattice supremum), [[C28]] literalsIffEditable
 import { ClassicPreset } from "rete";
 import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } from "./shared";
-import { parseCubeSource, recordKeys, DEFAULT_CUBE_TEXT, type CubeSource } from "../literalEditors";
+import { parseCubeSource, recordKeys, sourceSchema, DEFAULT_CUBE_TEXT, type CubeSource } from "../literalEditors";
 import { compileEvaluator, extractVariables, rowRefNames } from "../excelFormula";
 import { computeCubeColumnCells } from "../computedColumnCore";
 import { cubeRowTable, cubeCellsType } from "../cubeRows";
@@ -282,11 +282,9 @@ export class CubeRollupNode extends ClassicPreset.Node {
   }
 }
 
-/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D80]] cubeColumnTypes), then formula columns fill in dependency order ([[D81]] cubeRowLists). */
+/** The typed Cube a Cube Input's source derives: typed columns read their cells as the type ([[D90]] cubeTypesAtDepth), then formula columns fill in dependency order ([[D81]] cubeRowLists). */
 export function cubeFromSource(source: CubeSource): CubeValue {
-  const data = recordsToCube(source.rows, Object.fromEntries(
-    source.columns.flatMap((c) => (c.type && c.expr === undefined ? [[c.name, c.type]] : [])),
-  ));
+  const data = recordsToCube(source.rows, sourceSchema(source));
   const keys = recordKeys(source.rows);
   const rows = source.rows.length;
   const empty = (): CubeCell[] => Array.from({ length: rows }, () => null);

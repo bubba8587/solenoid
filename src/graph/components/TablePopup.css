@@ -158,6 +158,15 @@
   align-items: center;
 }
 .table-popup__affix .table-popup__form-box-check { margin: 0; cursor: pointer; }
+/* A Cube editing cell: the value or chip, and the Value / List / Table menu at its edge, shown on hover or focus ([[E16]] cubeCellKinds). */
+.cube-edit__cell { position: relative; display: flex; align-items: center; min-width: 0; }
+.cube-edit__cell > .table-popup__input { padding-right: 22px; }
+.cube-edit__cell > .solenoid-array-chip { margin-right: 20px; }
+.cube-edit__kind { right: 2px; opacity: 0; }
+.cube-edit__cell:hover .cube-edit__kind,
+.cube-edit__cell:focus-within .cube-edit__kind,
+.cube-edit__kind:has([aria-expanded="true"]) { opacity: 1; }
+@media (hover: none) { .cube-edit__kind { opacity: 1; } }
 .table-popup__affix-btn {
   display: inline-flex;
   align-items: center;

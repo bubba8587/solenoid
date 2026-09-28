@@ -2,7 +2,9 @@
 import { describe, it, expect } from "vitest";
 import {
   parseCubeSource, cubeSourceToText, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
+  cellKindOf, convertCellKind, sourceSchema, withSourceSchema, schemaPathOf,
 } from "../../src/graph/literalEditors";
+import { withPickType } from "../../src/graph/cubeSchema";
 import { CubeInputNode } from "../../src/graph/rete-nodes";
 import { extractInit } from "../../src/graph/copyPaste";
 import { isCubeValue, type CubeValue } from "../../src/graph/frame";
@@ -20,12 +22,30 @@ describe("parseCubeSource / cubeSourceToText", () => {
     expect((parseCubeSource("[1]") as { error: string }).error).toMatch(/row 1/);
   });
 
-  // [[D80]] cubeColumnTypes
+  // [[D90]] cubeTypesAtDepth
   it("writes plain records until a column is typed or computed, then { columns, rows }", () => {
     const rows = [{ a: 1 }];
     expect(cubeSourceToText({ columns: [{ name: "a" }], rows })).toBe('[\n  {\n    "a": 1\n  }\n]');
     const typed = { columns: [{ name: "a", type: "number" as const }, { name: "f", expr: "@a*2" }], rows };
     expect(parseCubeSource(cubeSourceToText(typed))).toEqual({ source: typed });
+  });
+
+  // [[D90]] cubeTypesAtDepth
+  it("a nested level's types ride on their top-level column and round-trip; a bad nested pick is dropped", () => {
+    const typed = { columns: [{ name: "tasks", columns: { hours: "number" as const, parts: { type: "string" as const, columns: { w: "date" as const } } } }], rows: [{ tasks: [{ hours: 1 }] }] };
+    expect(parseCubeSource(cubeSourceToText(typed))).toEqual({ source: typed });
+    const bad = JSON.stringify({ columns: [{ name: "t", columns: { a: "nope", b: { columns: {} } } }], rows: [] });
+    expect((parseCubeSource(bad) as { source: unknown }).source).toEqual({ columns: [{ name: "t" }], rows: [] });
+  });
+
+  it("a nested type set through the schema lands on its column; clearing it goes back to plain records", () => {
+    const src = { columns: [{ name: "tasks" }, { name: "f", expr: "1" }], rows: [{ tasks: [{ hours: 1 }] }] };
+    const typed = withSourceSchema(src, (s) => withPickType(s, ["tasks"], "hours", "number"));
+    expect(typed.columns).toEqual([{ name: "tasks", columns: { hours: "number" } }, { name: "f", expr: "1" }]);
+    expect(sourceSchema(typed)).toEqual({ tasks: { columns: { hours: "number" } } });
+    const cleared = withSourceSchema(typed, (s) => withPickType(s, ["tasks"], "hours", undefined));
+    expect(cleared.columns[0]).toEqual({ name: "tasks" });
+    expect(schemaPathOf([0, "tasks", 2, "parts"])).toEqual(["tasks", "parts"]);
   });
 
   it("declared columns keep their order; undeclared record keys follow; a bad type is none", () => {
@@ -54,6 +74,22 @@ describe("paths + shapes + cell text", () => {
     expect(recordsShape("x")).toBe("scalar");
     expect(recordsShape(null)).toBe("scalar");
   });
+  // [[E16]] cubeCellKinds
+  it("a cell switches between a value, a list and a table, keeping what it can", () => {
+    expect([cellKindOf(3), cellKindOf(null), cellKindOf([]), cellKindOf([1]), cellKindOf([{ a: 1 }]), cellKindOf({ a: 1 })]).toEqual(["value", "value", "list", "list", "table", "table"]);
+    expect(convertCellKind(3, "list")).toEqual([3]);
+    expect(convertCellKind(null, "list")).toEqual([]);
+    expect(convertCellKind(3, "table")).toEqual([{ "Column 1": 3 }]);
+    expect(convertCellKind(null, "table")).toEqual([{ "Column 1": null }]);
+    expect(convertCellKind([1, "b"], "table")).toEqual([{ "Column 1": 1 }, { "Column 1": "b" }]);
+    expect(convertCellKind([], "table")).toEqual([{ "Column 1": null }]);
+    expect(convertCellKind([{ a: 1, b: 2 }, { a: 3 }], "list")).toEqual([1, 3]);
+    expect(convertCellKind([7, 8], "value")).toBe(7);
+    expect(convertCellKind([[1], 2], "value")).toBeNull();
+    expect(convertCellKind([{ a: "x" }], "value")).toBe("x");
+    expect(convertCellKind("same", "value")).toBe("same");
+  });
+
   it("parseCellText / cellTextOf round-trip scalars; lists show as JSON", () => {
     expect(parseCellText("3.5")).toBe(3.5);
     expect(parseCellText("TRUE")).toBe(true);
@@ -82,7 +118,7 @@ describe("CubeInputNode", () => {
   });
 });
 
-// [[D80]] cubeColumnTypes, [[D81]] cubeRowLists
+// [[D90]] cubeTypesAtDepth, [[D81]] cubeRowLists
 describe("Cube Input typed and formula columns", () => {
   const cube = (source: object) => new CubeInputNode({ cubeText: JSON.stringify(source) }).data().cube as CubeValue;
   const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!;
@@ -95,8 +131,8 @@ describe("Cube Input typed and formula columns", () => {
     expect(col(cube({ columns: [{ name: "name" }, { name: "h" }], rows }), "h").cells).toEqual([[1, "2", 3], [4, "x"]]);
   });
 
-  it("a declared type overrides a list's and a nested table's own kinds; the source text is untouched", () => {
-    const text = JSON.stringify({ columns: [{ name: "d", type: "date" }], rows: [{ d: ["10-sept-2026", "apple", "banana"] }, { d: "2026-09-01" }, { d: "pear" }, { d: [{ when: "2026-09-02" }] }] });
+  it("a declared type overrides a list's items but never a nested table's; the source text is untouched", () => {
+    const text = JSON.stringify({ columns: [{ name: "d", type: "date" }], rows: [{ d: ["10-sept-2026", "apple", "banana"] }, { d: "2026-09-01" }, { d: "pear" }, { d: [{ when: "2026-09-02", n: 4 }] }] });
     const n = new CubeInputNode({ cubeText: text });
     const c = n.data().cube as CubeValue;
     const cells = col(c, "d").cells;
@@ -104,9 +140,30 @@ describe("Cube Input typed and formula columns", () => {
     expect(typeof cells[1]).toBe("number");
     expect(Number.isNaN(cells[2])).toBe(true);
     const nested = cells[3] as CubeValue;
-    expect(nested.columns[0].type).toBe("date");
-    expect(typeof nested.columns[0].cells[0]).toBe("number");
+    expect(nested.columns.map((x) => x.cells[0])).toEqual(["2026-09-02", 4]);
+    expect(nested.columns[1].type).toBe("number");
     expect(n.cubeText).toBe(text);
+  });
+
+  it("a nested table types its own columns at any depth, in every row, beside its column's own type", () => {
+    const c = cube({
+      columns: [{ name: "tasks", type: "number", columns: { hours: "number", note: "string", steps: { columns: { due: "date" } } } }],
+      rows: [
+        { tasks: [{ hours: "3", note: 12, steps: [{ due: "2026-09-02", x: "5" }] }] },
+        { tasks: [{ hours: "x", note: "ok" }] },
+        { tasks: ["4", "y"] },
+      ],
+    });
+    const cells = col(c, "tasks").cells;
+    const t0 = cells[0] as CubeValue;
+    expect(t0.columns.find((x) => x.name === "hours")!.cells).toEqual([3]);
+    expect(t0.columns.find((x) => x.name === "note")!.cells).toEqual(["12"]);
+    const steps = t0.columns.find((x) => x.name === "steps")!.cells[0] as CubeValue;
+    expect(steps.columns[0].type).toBe("date");
+    expect(steps.columns[0].cells[0]).toBe(46267);
+    expect(steps.columns[1].cells[0]).toBe("5");
+    expect(Number.isNaN((cells[1] as CubeValue).columns[0].cells[0])).toBe(true);
+    expect(cells[2]).toEqual([4, null]);
   });
 
   it("a formula column reads this row's list and sits where it was declared", () => {

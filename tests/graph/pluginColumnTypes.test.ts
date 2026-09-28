@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling
+// [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling, [[D90]] cubeTypesAtDepth
 import { describe, it, expect } from "vitest";
 import { parsePluginColumnTypes, PLUGIN_DATA_PATH } from "../../src/graph/pluginColumnTypes";
 
@@ -6,6 +6,11 @@ describe("the plugin's picked column types", () => {
   it("reads columnTypes, property then column, keeping only real types", () => {
     const text = JSON.stringify({ palette: "Orchard", look: true, columnTypes: { budget: { item: "string", cost: "number", ordered: "date", paid: "logical", odd: "frame" }, junk: "no", empty: {} } });
     expect(parsePluginColumnTypes(text)).toEqual({ budget: { item: "string", cost: "number", ordered: "date", paid: "logical" } });
+  });
+
+  it("reads a cube's nested picks, level by level", () => {
+    const text = JSON.stringify({ columnTypes: { log: { day: "date", tasks: { columns: { hours: "number", odd: "frame" } } } } });
+    expect(parsePluginColumnTypes(text)).toEqual({ log: { day: "date", tasks: { columns: { hours: "number" } } } });
   });
 
   it("is empty for a malformed or pick-less file", () => {

@@ -21,6 +21,7 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { isFrameValue, recordsToCube, coerceFrameCell, guessNoteColumnType, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
+import { pickType } from "../cubeSchema";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
@@ -82,7 +83,7 @@ function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = []
       return typeof first === "object" ? null : first;
     });
     const isDate = dateColumns.includes(name);
-    const type = picks[name] ?? guessNoteColumnType(cells, () => isDate);
+    const type = pickType(picks[name]) ?? guessNoteColumnType(cells, () => isDate);
     const raw = cells.map((c) => (c === null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
     return { name, type, values: raw.map((r) => coerceFrameCell(type, r)), raw };
   });

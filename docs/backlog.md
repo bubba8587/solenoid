@@ -44,6 +44,11 @@ warning is expected.
 - [ ] **Affordances for do-nothing sorts** (the author, 2026-09-26, if needed): SORT and UNIQUE on a list change nothing
   without by_col. Options named: card toggles (built), a custom LISTSORT / ROWSORT with shortcut behavior, or `#SYNTAX!` on a
   do-nothing setup ("drastic").
+- [ ] **A single-record cell in the Cube editor** (a YAML mapping, or `{ ... }` typed into `cubeText`, not `[{ ... }]`):
+  its chip drills to an empty level, since each level edits a records array at its path (`cubeViewAt`). Read it as a
+  one-row array and write edits back through it.
+- [ ] **Formula columns on nested Cube Input levels**, if wanted; types reach every level ([[D90]] cubeTypesAtDepth),
+  Fx stays top-level.
 - [ ] **Cube Input λ inputs** for Fx columns, as Frame Input has (`lambdaKeys`); today a name that is no column is `#REF!`.
 - [ ] **Functions short of Excel's signature** (the parity check, `excelArityParity.test.ts`, lists each with its reason): the
   day-count `basis` on PRICE, YIELD and the four odd-coupon functions; GROUPBY's five trailing options;
@@ -51,7 +56,6 @@ warning is expected.
   TEXTSPLIT read one delimiter, not Excel's array of them (formula-language § the text kernels). The reference (`fixtures/excelArity.ts`) covers the registered Excel names that declare an arity.
 - [ ] **List Sort and List Filter names** (author to rule): both take tables now; rename to Sort / Filter beside Frame Sort
   and Frame Filter, or keep the "List" names.
-- [ ] **Column types on nested Cube Input levels** ([[D80]] cubeColumnTypes' reopen condition), if wanted.
 
 ## Composites
 
