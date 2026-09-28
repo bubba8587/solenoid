@@ -290,7 +290,7 @@ and the reverse, list each side's INTENT from its commit bodies, and confirm eac
       socket flip) is wrong for a node inside a closed composite or an owned canvas. Triage
       the 144 into "UI chrome, active is right" vs "node-scoped, must be owning". Expect
       a dozen bugs of the "works on the main canvas, not inside a composite" kind.
-- [ ] Also 0-line rows for merges touching `engine.rs` twice (bb6314a7, e0c95f08): both
+- [x] Checked 2026-09-28: `cargo test` runs in the cloud container once WebKitGTK's dev packages are installed; all 33 engine tests pass at this head, `corpus_cases` included, and CI runs them now (block 39). Was: Also 0-line rows for merges touching `engine.rs` twice (bb6314a7, e0c95f08): both
       sides changed the Rust engine and git auto-merged. Auto-merge in Rust across two
       agents' verbs = build passed but behaviour may not. Run `cargo test` corpus cases
       (`corpus_cases`) on the desktop machine; cloud can't.
@@ -750,11 +750,11 @@ corpus cases"; `corpus_cases` in `src-tauri/src/engine/tests.rs` runs the fixtur
 push and the Rust half gates nothing: the 09-24 fleet's two auto-merged `engine.rs` changes
 (item 15), the reserved-NaN error cells (54bd9e3b), the window/join parity closes (996a8ec1) and
 the °C `readingScale` plumbing were verified only by whoever ran cargo by hand.
-- [ ] Add `cargo test --manifest-path src-tauri/Cargo.toml` (at least `corpus_cases`) to
+- [x] Done 2026-09-28: `test.yml` has a `rust` job (the desktop build's apt prerequisites, then `cargo test --manifest-path src-tauri/Cargo.toml`); frame-verbs § The parity corpus says both halves gate every push. Was: Add `cargo test --manifest-path src-tauri/Cargo.toml` (at least `corpus_cases`) to
       `test.yml`. It compiles already (`tauri build --no-bundle`), so the cost is the test run.
       Governing leaf: [[C16]] polarsEngine ("a shared set of test cases both must pass"), which
       the spec turns into a MUST that is currently *Unenforced* in CI without saying so.
-- [ ] Until it runs: an agent with the desktop machine runs it once on this head and reports.
+- [x] Done 2026-09-28 from the cloud session: with `libwebkit2gtk-4.1-dev` and friends installed the crate builds in a container, and all 33 engine tests pass on this head, `corpus_cases` included. Was: Until it runs: an agent with the desktop machine runs it once on this head and reports.
       A cloud session cannot ([[B2]] webTryDesktopFull; CLAUDE.md § Environment constraints).
 
 ## 40. The socket-lattice sweep test is gone; the spec still cites it (new)
