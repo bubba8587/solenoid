@@ -58,6 +58,10 @@ export function footerStatValue(stat: FooterStat, s: ColSummary): number | null 
   }
 }
 
+/** A statistic in the column's own units (a sum, a mean, the latest date), which reads through the column's format like a cell; the rest are counts. */
+const IN_COLUMN_UNITS: ReadonlySet<FooterStat> = new Set(["sum", "avg", "min", "max", "median", "range", "stddev", "earliest", "latest"]);
+export const statReadsAsCell = (stat: FooterStat): boolean => IN_COLUMN_UNITS.has(stat);
+
 export function formatFooterStat(stat: FooterStat, v: number | null): string {
   if (v == null) return "—";
   if (stat === "earliest" || stat === "latest") return formatDateSerial(v, DEFAULT_DATE_FORMAT);

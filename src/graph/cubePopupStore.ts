@@ -1,9 +1,9 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[D90]] cubeTypesAtDepth
 import { createValueStore } from "./storeKit";
 import { recordsToCube, frameFromRecords, type CubeValue, type FrameValue, type CubeCell, type FrameColType } from "./frame";
-import { getAtPath, sourceSchema, schemaPathOf, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";
+import { getAtPath, type CubePath, type CubeRecord, type CubeSource } from "./literalEditors";
 import { isSolError, type SolError } from "./errorValue";
-import { schemaAt } from "./cubeSchema";
+import { typesAt } from "./cubeTypes";
 
 export interface CubeEditBinding {
   source(): CubeSource;
@@ -14,13 +14,14 @@ export interface CubeEditBinding {
   noFormulaColumns?: boolean;
 }
 
-/** The root level shows the derived cube; a nested level its records, read by that level's declared types. */
+/** The root level shows the derived cube; a nested level its records, read by the types declared for that one table. */
 export function editLevelCube(edit: CubeEditBinding, path: CubePath, rows: CubeRecord[]): CubeValue {
   if (path.length === 0) {
     const c = edit.cube();
     if (c && !isSolError(c)) return c;
   }
-  return recordsToCube(rows, schemaAt(sourceSchema(edit.source()), schemaPathOf(path)));
+  const nested = edit.source().nested ?? {};
+  return recordsToCube(rows, typesAt(nested, path), nested, path);
 }
 
 export interface CellRef { r: number; c?: number }
@@ -28,7 +29,7 @@ export interface CellRef { r: number; c?: number }
 export type DrillView = (
   | { kind: "cube"; label: string; cube: CubeValue; /** Records path when the popup is an editor. */ path?: CubePath }
   | { kind: "frame"; label: string; frame: FrameValue; path?: CubePath }
-  | { kind: "grid"; label: string; cells: CubeCell[][]; path?: undefined }
+  | { kind: "grid"; label: string; cells: CubeCell[][]; path?: CubePath }
   | { kind: "list"; label: string; items: unknown[]; path?: CubePath; /** The column's declared type, when the list came out of a typed column. */ type?: FrameColType }
 ) & { from?: CellRef; focus?: CellRef };
 
@@ -73,6 +74,7 @@ export const cubePopup = {
       if (v.kind === "cube") return { ...v, cube: editLevelCube(edit, v.path, rows) };
       if (v.kind === "frame") return { ...v, frame: frameFromRecords(rows) };
       if (v.kind === "list") return { ...v, items: Array.isArray(sub) ? (sub as unknown[]) : [] };
+      if (v.kind === "grid") return { ...v, cells: Array.isArray(sub) ? (sub as unknown[]).map((row) => (Array.isArray(row) ? (row as CubeCell[]) : [])) : [] };
       return v;
     });
     core.open({ ...s, stack });

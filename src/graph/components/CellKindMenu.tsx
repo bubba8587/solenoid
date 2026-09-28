@@ -7,7 +7,8 @@ import type { CellKind } from "../literalEditors";
 const KINDS: { kind: CellKind; label: string; tip?: string }[] = [
   { kind: "value", label: "Value" },
   { kind: "list", label: "List" },
-  { kind: "table", label: "Table", tip: "Rows and columns: a Frame while its cells are flat, a Cube once one holds a list or table" },
+  { kind: "matrix", label: "Matrix", tip: "Rows of values, with no column names" },
+  { kind: "table", label: "Table", tip: "Named columns: a Frame while its cells are flat, a Cube once one holds a list, matrix or table" },
 ];
 
 /** Opens from the cell's edge; a press here must not blur a focused cell, or the edit commits and re-renders under the menu. */
@@ -38,7 +39,7 @@ export function CellKindMenu({ kind, onPick }: { kind: CellKind; onPick: (kind: 
       <button
         type="button"
         className="table-popup__affix-btn"
-        title="Value, List or Table"
+        title="Value, List, Matrix or Table"
         aria-label="Change what this cell holds"
         aria-haspopup="menu"
         aria-expanded={open}

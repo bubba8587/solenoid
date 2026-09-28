@@ -6,7 +6,7 @@ import type { PropertyKind } from "./yamlValue";
 
 export interface KnapHost extends Plugin {
   objectKind(key: string): PropertyKind | undefined;
-  chip(el: HTMLElement, kind: PropertyKind, key: string, value: unknown, onChange: (next: unknown) => void): ShadowRoot;
+  chip(el: HTMLElement, kind: PropertyKind, key: string, value: unknown, onChange: (next: unknown) => void, sourcePath?: string): ShadowRoot;
   release(el: Element): void;
 }
 
@@ -74,7 +74,7 @@ export class KnapNotes {
       if (!name || !kind) continue;
       const span = (code.ownerDocument.win as typeof window).createSpan({ cls: "solenoid-knap-chip" });
       code.replaceWith(span);
-      this.host.chip(span, kind, name, frontmatter[name], (next) => void this.write(path, name, next));
+      this.host.chip(span, kind, name, frontmatter[name], (next) => void this.write(path, name, next), path);
     }
   }
 

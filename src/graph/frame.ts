@@ -9,7 +9,8 @@ import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrix
 import { displayMagnitudeOf, fcUnitToUnit } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 import { dateAnnotationPattern, type FormatAnnotation } from "./formatAnnotationStore";
-import { pickType, pickColumns, type CubeSchema } from "./cubeSchema";
+import { typesAt, type ColumnTypes, type NestedTypes } from "./cubeTypes";
+import type { CubePath } from "./literalEditors";
 
 export type FrameColType = "number" | "string" | "date" | "logical";
 
@@ -436,26 +437,31 @@ export function typedCubeCell(type: FrameColType, c: CubeCell): CubeCell {
   return isUnitCell(c) ? c : pickedCell(type, c);
 }
 
-/** Records to a Cube, each level's columns read by that level of `schema` ([[D90]] cubeTypesAtDepth). */
-export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>, schema: CubeSchema = {}): CubeValue {
+/** Records to a Cube: `picks` types the top level's columns, and each table nested in a cell takes the types `nested` keeps for its own records path, under `base` ([[D90]] cubeTypesAtDepth). */
+export function recordsToCube(
+  records: ReadonlyArray<Record<string, unknown>>,
+  picks: ColumnTypes = {},
+  nested: NestedTypes = {},
+  base: CubePath = [],
+): CubeValue {
   const keys: string[] = [];
   for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
   const names = makeHeaders(keys, keys.length);
-  const toCell = (v: unknown, nested: CubeSchema): CubeCell => {
+  const toCell = (v: unknown, at: CubePath): CubeCell => {
     if (v == null) return null;
     if (Array.isArray(v)) {
       const present = v.filter((x) => x != null);
       const objs = present.filter((x) => typeof x === "object" && !Array.isArray(x));
-      if (present.length > 0 && objs.length === present.length) return recordsToCube(v.map((x) => (x ?? {}) as Record<string, unknown>), nested);
-      return v.map((x) => toCell(x, nested));
+      if (present.length > 0 && objs.length === present.length) return recordsToCube(v.map((x) => (x ?? {}) as Record<string, unknown>), typesAt(nested, at), nested, at);
+      return v.map((x, i) => toCell(x, [...at, i]));
     }
-    if (typeof v === "object") return recordsToCube([v as Record<string, unknown>], nested);
+    if (typeof v === "object") return recordsToCube([v as Record<string, unknown>], typesAt(nested, at), nested, at);
     return v as FrameCell;
   };
   return cubeFromColumns(keys.map((key, j) => {
-    const cells = records.map((r) => toCell(r[key], pickColumns(schema[key])));
+    const cells = records.map((r, i) => toCell(r[key], [...base, i, key]));
     const scalarOnly = cells.every((c) => c == null || (typeof c !== "object"));
-    const pick = pickType(schema[key]);
+    const pick = picks[key];
     if (!scalarOnly) return pick ? { name: names[j], cells: cells.map((c) => typedCubeCell(pick, c)), type: pick } : { name: names[j], cells };
     if (pick) return { name: names[j], cells: cells.map((c) => pickedCell(pick, c)), type: pick };
     const inferred = inferColumn(names[j], cells);

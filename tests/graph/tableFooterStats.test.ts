@@ -10,6 +10,7 @@ import {
   defaultFooterStat,
   footerStatValue,
   formatFooterStat,
+  statReadsAsCell,
   FOOTER_STAT_LABEL,
 } from "../../src/graph/components/tableFooterStats";
 
@@ -90,6 +91,10 @@ describe("formatFooterStat", () => {
   it("renders other stats as plain numbers", () => {
     expect(formatFooterStat("sum", 1234.5)).toBe(formatScalar(1234.5));
     expect(formatFooterStat("checked", 3)).toBe(formatScalar(3));
+  });
+  it("a statistic in the column's units reads through the column's format; a count never does", () => {
+    for (const s of ["sum", "avg", "min", "max", "median", "range", "stddev", "earliest", "latest"] as const) expect(statReadsAsCell(s)).toBe(true);
+    for (const s of ["count", "distinct", "blank", "error", "checked", "unchecked"] as const) expect(statReadsAsCell(s)).toBe(false);
   });
   it("shows an em dash for a missing value", () => {
     expect(formatFooterStat("range", null)).toBe("—");

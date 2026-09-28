@@ -36,7 +36,7 @@ import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout
 import { CellImage } from "./cubeCell";
 import "./chartCards.css"; // .sol-record__img, for the Form's image cells
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
-import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, defaultFooterStat, footerStatValue, formatFooterStat } from "./tableFooterStats";
+import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, defaultFooterStat, footerStatValue, formatFooterStat, statReadsAsCell } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
@@ -953,7 +953,10 @@ export function TablePopup() {
                             {choices.map((k) => <option key={k} value={k}>{FOOTER_STAT_LABEL[k]}</option>)}
                           </select>
                         </span>
-                        <span className="table-popup__statvalue">{formatFooterStat(stat, footerStatValue(stat, colSummaries[c]))}</span>
+                        <span className="table-popup__statvalue">{(() => {
+                          const v = footerStatValue(stat, colSummaries[c]);
+                          return formatRenderActive && v != null && statReadsAsCell(stat) ? controlledCell(v, c) : formatFooterStat(stat, v);
+                        })()}</span>
                       </td>
                     );
                   })}

@@ -1,7 +1,7 @@
 // [[C10]] socketLattice
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, type DrillView } from "../cubePopupStore";
-import { CubeEditCell, ListEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";
+import { CubeEditCell, ListEditCell, GridEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
 import { CubeCellChip, frameCellNode, cubeCellToken } from "./cubeCell";
@@ -236,7 +236,9 @@ export function CubePopup() {
                     {editView && state.edit
                       ? (editView.kind === "list"
                           ? <ListEditCell edit={state.edit} path={editView.path!} row={listVertical ? r : c} source={sourceMode} />
-                          : <CubeEditCell edit={state.edit} path={editView.path!} row={r} column={headers?.[c] ?? String(c)} source={sourceMode} />)
+                          : editView.kind === "grid"
+                            ? <GridEditCell edit={state.edit} path={editView.path!} row={r} col={c} source={sourceMode} />
+                            : <CubeEditCell edit={state.edit} path={editView.path!} row={r} column={headers?.[c] ?? String(c)} source={sourceMode} />)
                       : cell(r, c)}
                   </td>
                 ))}

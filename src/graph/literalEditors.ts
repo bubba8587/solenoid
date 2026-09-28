@@ -1,7 +1,7 @@
 // [[C28]] literalsIffEditable
 // Shared editing helpers for the literal inputs (Table, Frame, List and Cube Input all edit through the table popup).
 // Pure: text to records and back.
-import { readSchema, makePick, isColumnType, pickType, pickColumns, type CubeSchema, type ColumnPick } from "./cubeSchema";
+import { isColumnType, readNestedTypes, type ColumnTypes, type NestedTypes } from "./cubeTypes";
 
 /** A cell is a scalar, a list of scalars, or a list of records (a nested table, or a nested cube). */
 export type CubeRecord = Record<string, unknown>;
@@ -11,18 +11,18 @@ export const DEFAULT_CUBE_TEXT = `[
   { "name": "B", "tags": [], "n": 2 }
 ]`;
 
-/** A Cube Input column: no `type` is untyped, `columns` types a table nested in it ([[D90]] cubeTypesAtDepth); `expr` makes it a formula column. */
+/** A Cube Input column: no `type` is untyped ([[D90]] cubeTypesAtDepth); `expr` makes it a formula column. */
 export interface CubeSourceColumn {
   name: string;
   type?: "number" | "string" | "date" | "logical";
-  columns?: CubeSchema;
   expr?: string;
 }
 
-/** Cube Input's stored truth: the records as typed, and every column in its order. */
+/** Cube Input's stored truth: the records as typed, every column in its order, and the types of the tables nested in its cells, each keyed by where it sits. */
 export interface CubeSource {
   columns: CubeSourceColumn[];
   rows: CubeRecord[];
+  nested?: NestedTypes;
 }
 
 export function recordKeys(rows: readonly unknown[]): string[] {
@@ -38,21 +38,21 @@ export function parseCubeSource(text: string): { source: CubeSource } | { error:
   let v: unknown;
   try { v = JSON.parse(t); } catch (e) { return { error: `Cube Input: ${e instanceof Error ? e.message : "not JSON"}` }; }
   const declared: CubeSourceColumn[] = [];
+  let nested: NestedTypes = {};
   if (v && typeof v === "object" && !Array.isArray(v)) {
-    const o = v as { columns?: unknown; rows?: unknown };
+    const o = v as { columns?: unknown; rows?: unknown; nested?: unknown };
     if (!Array.isArray(o.rows) || !Array.isArray(o.columns)) return { error: "Cube Input: the text must be a JSON array of records, or { columns, rows }" };
     for (const c of o.columns) {
       const name = c && typeof c === "object" && typeof (c as CubeSourceColumn).name === "string" ? (c as CubeSourceColumn).name : "";
       if (!name || declared.some((d) => d.name === name)) continue;
-      const { type, expr, columns } = c as CubeSourceColumn;
-      const nested = readSchema(columns);
+      const { type, expr } = c as CubeSourceColumn;
       declared.push({
         name,
         ...(isColumnType(type) ? { type } : {}),
-        ...(Object.keys(nested).length ? { columns: nested } : {}),
         ...(typeof expr === "string" ? { expr } : {}),
       });
     }
+    nested = readNestedTypes(o.nested);
     v = o.rows;
   }
   if (!Array.isArray(v)) return { error: "Cube Input: the text must be a JSON array of records" };
@@ -60,51 +60,24 @@ export function parseCubeSource(text: string): { source: CubeSource } | { error:
   if (bad >= 0) return { error: `Cube Input: row ${bad + 1} is not a record ({ ... })` };
   const rows = v as CubeRecord[];
   const columns = [...declared, ...recordKeys(rows).filter((k) => !declared.some((d) => d.name === k)).map((name) => ({ name }))];
-  return { source: { columns, rows } };
+  return { source: { columns, rows, ...(Object.keys(nested).length ? { nested } : {}) } };
 }
 
-const hasNested = (c: CubeSourceColumn): boolean => !!c.columns && Object.keys(c.columns).length > 0;
+const hasNested = (source: CubeSource): boolean => !!source.nested && Object.keys(source.nested).length > 0;
 
-/** Plain records while no column is typed or computed, so an untyped cube reads as the JSON it is. */
+/** Plain records while nothing is typed or computed, so an untyped cube reads as the JSON it is. */
 export function cubeSourceToText(source: CubeSource): string {
-  const plain = source.columns.every((c) => !c.type && !hasNested(c) && c.expr === undefined)
+  const plain = !hasNested(source) && source.columns.every((c) => !c.type && c.expr === undefined)
     && recordKeys(source.rows).join("\u0000") === source.columns.map((c) => c.name).join("\u0000");
   if (plain) return JSON.stringify(source.rows, null, 2);
-  const columns = source.columns.map((c) => ({
-    name: c.name,
-    ...(c.type ? { type: c.type } : {}),
-    ...(hasNested(c) ? { columns: c.columns } : {}),
-    ...(c.expr !== undefined ? { expr: c.expr } : {}),
-  }));
-  return JSON.stringify({ columns, rows: source.rows }, null, 2);
+  const columns = source.columns.map((c) => ({ name: c.name, ...(c.type ? { type: c.type } : {}), ...(c.expr !== undefined ? { expr: c.expr } : {}) }));
+  return JSON.stringify({ columns, rows: source.rows, ...(hasNested(source) ? { nested: source.nested } : {}) }, null, 2);
 }
 
-/** Every declared type, level by level; a formula column declares none of its own. */
-export function sourceSchema(source: CubeSource): CubeSchema {
-  const out: Record<string, ColumnPick> = {};
-  for (const c of source.columns) {
-    const pick = c.expr === undefined ? makePick(c.type, c.columns) : undefined;
-    if (pick) out[c.name] = pick;
-  }
-  return out;
+/** The top level's declared types; a formula column declares none. */
+export function sourcePicks(source: CubeSource): ColumnTypes {
+  return Object.fromEntries(source.columns.flatMap((c) => (c.type && c.expr === undefined ? [[c.name, c.type]] : [])));
 }
-
-/** Writes a changed schema back onto the columns, formula columns untouched. */
-export function withSourceSchema(source: CubeSource, fn: (schema: CubeSchema) => CubeSchema): CubeSource {
-  const next = fn(sourceSchema(source));
-  return {
-    ...source,
-    columns: source.columns.map((c) => {
-      if (c.expr !== undefined) return c;
-      const type = pickType(next[c.name]);
-      const columns = pickColumns(next[c.name]);
-      return { name: c.name, ...(type ? { type } : {}), ...(Object.keys(columns).length ? { columns } : {}) };
-    }),
-  };
-}
-
-/** The column names along a records path: the chain a nested level's types hang from. */
-export const schemaPathOf = (path: CubePath): string[] => path.filter((s): s is string => typeof s === "string");
 
 /** Alternating row index and key, repeated per nesting level. */
 export type CubePath = (number | string)[];
@@ -132,11 +105,12 @@ export function setAtPath(records: readonly CubeRecord[], path: CubePath, value:
   return next;
 }
 
-/** Frame-shaped when every value is scalar; cube-shaped when some value is a list or nested records. */
-export function recordsShape(v: unknown): "frame" | "cube" | "list" | "scalar" | "empty" {
+/** Frame-shaped when every value is scalar; cube-shaped when some value is a list or nested records; a matrix when every item is a row of its own. */
+export function recordsShape(v: unknown): "frame" | "cube" | "matrix" | "list" | "scalar" | "empty" {
   if (v == null) return "scalar";
   if (!Array.isArray(v)) return typeof v === "object" ? "cube" : "scalar";
   if (v.length === 0) return "empty";
+  if (v.every((x) => Array.isArray(x))) return "matrix";
   const allRecords = v.every((x) => x && typeof x === "object" && !Array.isArray(x));
   if (!allRecords) return "list";
   const nested = v.some((r) => Object.values(r as CubeRecord).some((x) => x != null && typeof x === "object"));
@@ -152,35 +126,43 @@ export function parseCellText(text: string): unknown {
   return text;
 }
 
-/** What an editing cell holds ([[E16]] cubeCellKinds): a value, a list, or a table (records). */
-export type CellKind = "value" | "list" | "table";
+/** What an editing cell holds ([[E16]] cubeCellKinds): a value, a list, a matrix (rows of values), or a table (records). */
+export type CellKind = "value" | "list" | "matrix" | "table";
 
 export function cellKindOf(v: unknown): CellKind {
   const shape = recordsShape(v);
-  return shape === "list" || shape === "empty" ? "list" : shape === "frame" || shape === "cube" ? "table" : "value";
+  return shape === "list" || shape === "empty" ? "list" : shape === "matrix" ? "matrix" : shape === "frame" || shape === "cube" ? "table" : "value";
 }
 
-export const NEW_TABLE_KEY = "Column 1";
+export const newColumnKey = (n: number): string => `Column ${n}`;
 
 const isPlainValue = (v: unknown): boolean => v === null || typeof v !== "object";
 const tableRows = (v: unknown): CubeRecord[] => (Array.isArray(v) ? (v as CubeRecord[]) : v && typeof v === "object" ? [v as CubeRecord] : []);
 
-/** The cell switched to `to`, keeping what it can: a value is a list's first item or a table's one cell, a list a table's first column and back. */
+/** The cell's contents as rows of values: a value one cell, a list one row, a table its rows in key order. */
+function asGrid(v: unknown, kind: CellKind): unknown[][] {
+  if (kind === "value") return [[v ?? null]];
+  if (kind === "list") return [v as unknown[]];
+  if (kind === "matrix") return (v as unknown[][]).map((row) => [...row]);
+  const rows = tableRows(v);
+  const keys = recordKeys(rows);
+  return rows.map((r) => keys.map((k) => r[k] ?? null));
+}
+
+/** The cell switched to `to`, keeping what it can: a value becomes the first item or cell; a list is a matrix's first row and a table's first column, and back; a table's rows are a matrix's and back (the column names go); Value keeps the first plain value found. */
 export function convertCellKind(v: unknown, to: CellKind): unknown {
   const from = cellKindOf(v);
   if (from === to) return v;
+  const grid = asGrid(v, from).filter((row) => row.length > 0);
   if (to === "value") {
-    const first = from === "list" ? (v as unknown[])[0] : (() => { const rows = tableRows(v); const k = recordKeys(rows)[0]; return k === undefined ? null : rows[0]?.[k]; })();
+    const first = grid[0]?.[0];
     return first !== undefined && isPlainValue(first) ? first : null;
   }
-  if (to === "list") {
-    if (from === "value") return v == null ? [] : [v];
-    const rows = tableRows(v);
-    const k = recordKeys(rows)[0];
-    return k === undefined ? [] : rows.map((r) => r[k] ?? null);
-  }
-  const items = from === "value" ? [v ?? null] : (v as unknown[]);
-  return (items.length ? items : [null]).map((x) => ({ [NEW_TABLE_KEY]: x ?? null }));
+  if (to === "list") return from === "value" && v == null ? [] : (from === "table" ? grid.map((row) => row[0] ?? null) : grid[0] ?? []);
+  if (to === "matrix") return grid.length ? grid : [[null]];
+  const rows = from === "list" ? grid[0]?.map((x) => [x]) ?? [] : grid;
+  if (!rows.length) rows.push([null]);
+  return rows.map((row) => Object.fromEntries(row.map((x, j) => [newColumnKey(j + 1), x ?? null])));
 }
 
 export function cellTextOf(v: unknown): string {

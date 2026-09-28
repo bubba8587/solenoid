@@ -21,7 +21,7 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { isFrameValue, recordsToCube, coerceFrameCell, guessNoteColumnType, type FrameValue, type FrameColumn, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ColumnPicks, PluginColumnTypes } from "../pluginColumnTypes";
-import { pickType } from "../cubeSchema";
+import type { NestedTypes } from "../cubeTypes";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
@@ -83,7 +83,7 @@ function rowsToFrame(rows: FrontmatterRow[], dateColumns: readonly string[] = []
       return typeof first === "object" ? null : first;
     });
     const isDate = dateColumns.includes(name);
-    const type = pickType(picks[name]) ?? guessNoteColumnType(cells, () => isDate);
+    const type = picks[name] ?? guessNoteColumnType(cells, () => isDate);
     const raw = cells.map((c) => (c === null ? "" : typeof c === "boolean" ? (c ? "TRUE" : "FALSE") : String(c)));
     return { name, type, values: raw.map((r) => coerceFrameCell(type, r)), raw };
   });
@@ -110,9 +110,9 @@ function coerceScalar(v: FrontmatterScalar, base: FieldBase): FrontmatterScalar 
 }
 
 /** `guessed` is what the reader saw: a date pinned to text keeps the ISO text written, not its serial. */
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks, guessed?: FrontmatterFieldType): EmittedValue {
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType, dateColumns?: readonly string[], picks?: ColumnPicks, guessed?: FrontmatterFieldType, nested?: NestedTypes): EmittedValue {
   if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : [], dateColumns, picks);
-  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks);
+  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : [], picks, nested);
   const base = elementFamilyOf(type) as FieldBase;
   const rank = latticeRank(type);
   const datesAsText = guessed !== undefined && elementFamilyOf(guessed) === "date" && (base === "string" || base === "complex");
@@ -135,6 +135,8 @@ export class NoteNode extends ClassicPreset.Node {
   collapsed: boolean;
   fieldTypes: Record<string, FrontmatterFieldType>;
   columnPicks: PluginColumnTypes = {};
+  /** This note's nested-table picks, per property ([[D90]] cubeTypesAtDepth). */
+  nestedPicks: Readonly<Record<string, NestedTypes>> = {};
 
   private _renderBody = "";
   private _fieldKeys: string[] = [];
@@ -190,7 +192,7 @@ export class NoteNode extends ClassicPreset.Node {
         else this.fieldTypes[f.key] = pin;
       }
       const type = pin ?? guessed;
-      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key], guessed), type });
+      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type, f.dateColumns, this.columnPicks[f.key], guessed, this.nestedPicks[f.key]), type });
     }
     for (const k of [...this._knapRendered.keys()]) if (!this._knapRaw.has(k)) this._knapRendered.delete(k);
     for (const k of Object.keys(this.fieldTypes)) if (!wanted.has(k)) delete this.fieldTypes[k];

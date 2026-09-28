@@ -6,7 +6,8 @@ import {
 import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
 import { parseDate, noteDateText } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
-import type { PluginColumnTypes, ColumnPicks } from "./pluginColumnTypes";
+import type { PluginColumnTypes, PluginNestedTypes, ColumnPicks } from "./pluginColumnTypes";
+import type { NestedTypes } from "./cubeTypes";
 import { fencedLines } from "./managedBlock";
 
 export interface VaultNote {
@@ -21,6 +22,8 @@ export interface VaultTypeSources {
   mdbaseFor: (path: string) => TypeMap;
   obsidian: TypeMap;
   columns?: PluginColumnTypes;
+  /** Per note, the types of tables nested in its cube properties. */
+  nested?: PluginNestedTypes;
 }
 
 export interface VaultCubeOptions {
@@ -227,7 +230,7 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
 
   for (const key of fmKeys) {
     const hint = resolveHint(key, parsed, sources);
-    columns.push(buildColumn(key, hint, parsed, sources.columns?.[key]));
+    columns.push(buildColumn(key, hint, parsed, sources.columns?.[key], sources.nested));
   }
 
   return cubeFromColumns(columns);
@@ -247,9 +250,9 @@ function resolveHint(key: string, parsed: ParsedNote[], sources: VaultTypeSource
   return sources.obsidian[key] ?? null;
 }
 
-function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[], picks?: ColumnPicks): { name: string; cells: CubeCell[]; type?: FrameColType } {
+function buildColumn(key: string, hint: TypeHint | null, parsed: ParsedNote[], picks?: ColumnPicks, nested?: PluginNestedTypes): { name: string; cells: CubeCell[]; type?: FrameColType } {
   const shape: TypeHint = hint ?? guessShape(key, parsed);
-  const cells: CubeCell[] = parsed.map((p) => { const f = p.fields.get(key); return cellFor(f?.value, shape, picks, f?.guessed); });
+  const cells: CubeCell[] = parsed.map((p) => { const f = p.fields.get(key); return cellFor(f?.value, shape, picks, f?.guessed, nested?.[p.path]?.[key]); });
   const kind = shape.kind === "list" || shape.kind === "matrix" ? shape.elem : shape.kind;
   const type: FrameColType | undefined =
     kind === "frame" ? undefined
@@ -302,13 +305,13 @@ function datesToText(value: FrontmatterValueLoose | undefined): FrontmatterValue
   return one(value) as FrontmatterValueLoose | undefined;
 }
 
-function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}, guessed?: string): CubeCell {
+function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, picks: ColumnPicks = {}, guessed?: string, nested?: NestedTypes): CubeCell {
   const textShape = "elem" in shape ? shape.elem === "string" : shape.kind === "string";
   if (textShape && guessed !== undefined && guessed.startsWith("date")) value = datesToText(value);
   if (value === undefined || value === null) return null;
   if (shape.kind === "frame") {
     if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
-      return recordsToCube(value as FrontmatterRow[], picks);
+      return recordsToCube(value as FrontmatterRow[], picks, nested);
     }
     return null;
   }

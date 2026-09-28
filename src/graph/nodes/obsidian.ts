@@ -419,9 +419,12 @@ export class ImportObsidianNode extends NoteNode {
 
   async loadColumnPicks(vault: string): Promise<void> {
     const { readVaultFile } = await import("../fileBridge");
-    const { parsePluginColumnTypes, PLUGIN_DATA_PATH } = await import("../pluginColumnTypes");
-    try { this.columnPicks = parsePluginColumnTypes(await readVaultFile(vault, PLUGIN_DATA_PATH)); }
-    catch { this.columnPicks = {}; }
+    const { parsePluginColumnTypes, parsePluginNestedTypes, PLUGIN_DATA_PATH } = await import("../pluginColumnTypes");
+    try {
+      const text = await readVaultFile(vault, PLUGIN_DATA_PATH);
+      this.columnPicks = parsePluginColumnTypes(text);
+      this.nestedPicks = parsePluginNestedTypes(text)[this.fileName] ?? {};
+    } catch { this.columnPicks = {}; this.nestedPicks = {}; }
   }
 
   private _wiredPath = "";

@@ -8,13 +8,17 @@ specific item.
 
 ### SESSION DIGEST (2026-09-28: Cube types at every depth, cell kinds; cloud session)
 
-- **Cube types at every depth** ([[D90]] cubeTypesAtDepth, superseding D80 on the author's word): a column's type holds
-  its values and list items; a table nested in it keeps its own columns' types, set with the same button on any nested
-  level and stored under the column as a `CubeSchema` (`cubeSchema.ts`: a bare type, or `{ type?, columns }`). One
-  schema form serves Cube Input's `cubeText` and the plugin's `data.json`; a flat map of types is still a whole schema,
-  and the plugin API stays flat. Specs: [[frame-verbs]] § The Cube value, [[table-popup]] § Editing a Cube Input.
-- **Cell kinds** ([[E16]] cubeCellKinds): every Cube editing cell, list items included, has a Value / List / Table
-  menu at its edge (`CellKindMenu`, `convertCellKind`), so a list, Frame or Cube can be entered by hand at any depth.
+- **Cube types at every depth, cell by cell** ([[D90]] cubeTypesAtDepth, superseding D80 on the author's word): a
+  column's type holds its values, lists and matrices; each table nested in a cell has its own picks, set with the same
+  button on its level and kept in the source's `nested` map keyed by the table's records path (`cubeTypes.ts`), so one
+  column's rows can hold differently shaped, differently typed tables. The plugin keeps nested picks per note
+  (`nestedTypes` in `data.json`), which Vault Folder and Import Obsidian Note read. Specs: [[frame-verbs]] § The Cube
+  value, [[table-popup]] § Editing a Cube Input.
+- **Cell kinds** ([[E16]] cubeCellKinds): every Cube editing cell, list items included, has a Value / List / Matrix /
+  Table menu at its edge (`CellKindMenu`, `convertCellKind`); a matrix drills to an editable grid. A 2-D cell's chip
+  reads `[R×C Matrix]` in the Cube popup.
+- **Table popup formats:** a Custom column format gets its pattern box (`CustomPatternField`), and the summary footer's
+  sums, means, extremes and dates read through the column's format (`statReadsAsCell`).
 
 ### SESSION DIGEST (2026-09-27: Cards view, resizable formula popup; cloud session)
 

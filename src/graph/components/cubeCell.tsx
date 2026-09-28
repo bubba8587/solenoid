@@ -23,7 +23,7 @@ export function CellImage({ src }: { src: string }): ReactNode {
 const LIST_PREVIEW = 3;
 const HOVER_PREVIEW = 8;
 function listToken(cell: unknown[], max = LIST_PREVIEW, type?: FrameColType): string {
-  if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length} Table]`;
+  if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length} Matrix]`;
   const items = cell.slice(0, max).map((x) => cubeCellToken(x as CubeCell, type));
   return `[${items.join(", ")}${cell.length > max ? "…" : ""}]`;
 }
@@ -110,12 +110,12 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
       <button
         type="button"
         className={chip("array") + famClass}
-        title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} table. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW, type)}. Drill in.`}
+        title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} matrix. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW, type)}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb, type }, at); }}
       >
-        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length} Table` : `${cell.length}× List`}]
+        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length} Matrix` : `${cell.length}× List`}]
       </button>
     );
   }

@@ -1,6 +1,6 @@
 // [[C107]] obsidianPlugin, [[C67]] mdbaseCeiling, [[D90]] cubeTypesAtDepth
 import { describe, it, expect } from "vitest";
-import { parsePluginColumnTypes, PLUGIN_DATA_PATH } from "../../src/graph/pluginColumnTypes";
+import { parsePluginColumnTypes, parsePluginNestedTypes, PLUGIN_DATA_PATH } from "../../src/graph/pluginColumnTypes";
 
 describe("the plugin's picked column types", () => {
   it("reads columnTypes, property then column, keeping only real types", () => {
@@ -8,9 +8,10 @@ describe("the plugin's picked column types", () => {
     expect(parsePluginColumnTypes(text)).toEqual({ budget: { item: "string", cost: "number", ordered: "date", paid: "logical" } });
   });
 
-  it("reads a cube's nested picks, level by level", () => {
-    const text = JSON.stringify({ columnTypes: { log: { day: "date", tasks: { columns: { hours: "number", odd: "frame" } } } } });
-    expect(parsePluginColumnTypes(text)).toEqual({ log: { day: "date", tasks: { columns: { hours: "number" } } } });
+  it("reads each note's nested-table picks, per property, per records path", () => {
+    const text = JSON.stringify({ nestedTypes: { "Log/Mon.md": { tasks: { '[0,"items"]': { hours: "number", odd: "frame" } }, junk: 3 }, bad: [] } });
+    expect(parsePluginNestedTypes(text)).toEqual({ "Log/Mon.md": { tasks: { '[0,"items"]': { hours: "number" } } } });
+    expect(parsePluginNestedTypes("{")).toEqual({});
   });
 
   it("is empty for a malformed or pick-less file", () => {

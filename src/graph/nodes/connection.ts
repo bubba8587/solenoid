@@ -9,7 +9,7 @@ import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, type FxRate, type 
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, type MdbaseCollection } from "../mdbaseTypes";
 import { parseObsidianTypes } from "../obsidianTypes";
-import { parsePluginColumnTypes, PLUGIN_DATA_PATH, type PluginColumnTypes } from "../pluginColumnTypes";
+import { parsePluginColumnTypes, parsePluginNestedTypes, PLUGIN_DATA_PATH, type PluginColumnTypes, type PluginNestedTypes } from "../pluginColumnTypes";
 import { parseDailyNotesConfig } from "../dailyNotesConfig";
 import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
@@ -916,8 +916,8 @@ export class VaultFolderNode extends ClassicPreset.Node {
 
       const collections = await this.discoverMdbase(readRoot, files);
       const obsidian = await this.readObsidianTypes(vault);
-      const columns = await this.readColumnPicks(vault);
-      const sources: VaultTypeSources = { mdbaseFor: (p) => mdbaseHintFor(collections, folder, p), obsidian, columns };
+      const { columns, nested } = await this.readColumnPicks(vault);
+      const sources: VaultTypeSources = { mdbaseFor: (p) => mdbaseHintFor(collections, folder, p), obsidian, columns, nested };
       const nameFormat = this.nameFormat.trim() || (await this.defaultNameFormat(vault, folder));
       const cube = notesToCube(notes, sources, { nameFormat, includeBody: this.includeBody });
 
@@ -961,11 +961,12 @@ export class VaultFolderNode extends ClassicPreset.Node {
     return out;
   }
 
-  private async readColumnPicks(vault: string): Promise<PluginColumnTypes> {
+  private async readColumnPicks(vault: string): Promise<{ columns: PluginColumnTypes; nested: PluginNestedTypes }> {
     try {
-      return parsePluginColumnTypes(await readVaultFile(vault, PLUGIN_DATA_PATH));
+      const text = await readVaultFile(vault, PLUGIN_DATA_PATH);
+      return { columns: parsePluginColumnTypes(text), nested: parsePluginNestedTypes(text) };
     } catch {
-      return {};
+      return { columns: {}, nested: {} };
     }
   }
 

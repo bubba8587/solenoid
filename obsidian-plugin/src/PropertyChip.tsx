@@ -5,11 +5,11 @@ import { themeVersion, tokenHex } from "./shadow";
 import { FrameChip } from "../../src/graph/components/FrameChip";
 import { CubeChip } from "../../src/graph/components/CubeChip";
 import { deriveFrame, recordsToCube } from "../../src/graph/frame";
-import { recordKeys, sourceSchema, type CubeRecord, type CubeSource } from "../../src/graph/literalEditors";
-import { pickType, pickColumns, type CubeSchema } from "../../src/graph/cubeSchema";
+import { recordKeys, type CubeRecord, type CubeSource } from "../../src/graph/literalEditors";
+import type { NestedTypes } from "../../src/graph/cubeTypes";
 import {
   coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, columnTypesOf, rawCell,
-  type PropertyKind, type Family, type YamlRecord,
+  type PropertyKind, type Family, type YamlRecord, type ColumnTypes,
 } from "./yamlValue";
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
@@ -22,22 +22,26 @@ function typeAccent(kind: PropertyKind, resolveToken: (token: string) => string 
   return resolveToken(token);
 }
 
-export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, resolveToken = tokenHex }: {
+export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, nestedTypes, onNestedTypes, resolveToken = tokenHex }: {
   kind: PropertyKind;
   label: string;
   initial: unknown;
   onChange: (next: unknown) => void;
-  columnTypes?: CubeSchema;
+  columnTypes?: ColumnTypes;
   /** `replace` sets the property's whole map, so a cube column switched back to none loses its pick. */
-  onColumnTypes?: (types: CubeSchema, replace?: boolean) => void;
+  onColumnTypes?: (types: ColumnTypes, replace?: boolean) => void;
+  /** A cube's nested tables' types, this note's own; without the callback they are shown but not kept. */
+  nestedTypes?: NestedTypes;
+  onNestedTypes?: (nested: NestedTypes) => void;
   resolveToken?: (token: string) => string | undefined;
 }) {
   const [yaml, setYaml] = useState<unknown>(initial);
   const latest = useRef<unknown>(initial);
-  const [picked, setPicked] = useState<CubeSchema>(columnTypes ?? {});
+  const [picked, setPicked] = useState<ColumnTypes>(columnTypes ?? {});
   // The cube popup keeps the binding it opened with, so its reads go through a ref.
-  const pickedRef = useRef<CubeSchema>(picked);
+  const pickedRef = useRef<ColumnTypes>(picked);
   pickedRef.current = picked;
+  const nestedRef = useRef<NestedTypes>(nestedTypes ?? {});
   const commit = (next: unknown) => {
     latest.current = next;
     setYaml(next);
@@ -113,19 +117,14 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   const cubeSource = (): CubeSource => {
     const rows = coerceYaml(kind, latest.current) as CubeRecord[];
     const types = pickedRef.current;
-    return {
-      columns: recordKeys(rows).map((name) => {
-        const type = pickType(types[name]);
-        const columns = pickColumns(types[name]);
-        return { name, ...(type ? { type } : {}), ...(Object.keys(columns).length ? { columns } : {}) };
-      }),
-      rows,
-    };
+    const nested = nestedRef.current;
+    return { columns: recordKeys(rows).map((name) => (types[name] ? { name, type: types[name] } : { name })), rows, ...(Object.keys(nested).length ? { nested } : {}) };
   };
-  const typesOf = sourceSchema;
+  const typesOf = (source: CubeSource): ColumnTypes =>
+    Object.fromEntries(source.columns.flatMap((c) => (c.type ? [[c.name, c.type]] : [])));
   return (
     <CubeChip
-      value={recordsToCube(items as YamlRecord[], picked)}
+      value={recordsToCube(items as YamlRecord[], picked, nestedRef.current)}
       label={label}
       size="sm"
       accent={accent}
@@ -136,9 +135,11 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           pickedRef.current = types;
           setPicked(types);
           onColumnTypes?.(types, true);
+          const nested = source.nested ?? {};
+          if (JSON.stringify(nested) !== JSON.stringify(nestedRef.current)) { nestedRef.current = nested; onNestedTypes?.(nested); }
           commit(source.rows);
         },
-        cube: () => { const s = cubeSource(); return recordsToCube(s.rows, typesOf(s)); },
+        cube: () => { const s = cubeSource(); return recordsToCube(s.rows, typesOf(s), s.nested); },
         noFormulaColumns: true,
       }}
     />

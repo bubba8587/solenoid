@@ -1,4 +1,4 @@
-// [[C107]] obsidianPlugin, [[D89]] pluginApi
+// [[C107]] obsidianPlugin, [[D89]] pluginApi, [[D90]] cubeTypesAtDepth
 import { Plugin, PluginSettingTab, Setting, addIcon, type App, type SettingDefinitionItem } from "obsidian";
 import { createRoot, type Root } from "react-dom/client";
 import "@fontsource-variable/atkinson-hyperlegible-next/index.css";
@@ -15,7 +15,8 @@ import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
 import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, type PropertyKind, type ColumnTypes } from "./yamlValue";
-import { flatTypes, type CubeSchema } from "../../src/graph/cubeSchema";
+import { readPluginNestedTypes, type PluginNestedTypes } from "../../src/graph/pluginColumnTypes";
+import type { NestedTypes } from "../../src/graph/cubeTypes";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver, setAccentSlot } from "./shadow";
 import { CUSTOM_ICONS, kindIcon } from "./icons";
 import { LOOK_CLASS, DEFAULT_ACCENT, paletteClass, accentClass, isAccentSlot } from "./lookTokens";
@@ -43,7 +44,14 @@ interface MetadataTypeManager {
 
 interface Mount { host: HTMLElement; root: Root; attached: boolean }
 
-interface PluginData { palette?: string; accent?: string; columnTypes?: Record<string, CubeSchema>; look?: boolean }
+interface PluginData {
+  palette?: string;
+  accent?: string;
+  columnTypes?: Record<string, ColumnTypes>;
+  /** Note path, then property: the column types of the tables nested in that note's cube. */
+  nestedTypes?: PluginNestedTypes;
+  look?: boolean;
+}
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
 
@@ -62,7 +70,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       this.chip(el, FRAME_KIND, key, value, onChange);
     },
     release: (el: Element): void => this.release(el),
-    columnTypes: (key: string): ColumnTypes => flatTypes(this.data.columnTypes?.[key] ?? {}),
+    columnTypes: (key: string): ColumnTypes => ({ ...this.data.columnTypes?.[key] }),
     setColumnTypes: (key: string, types: ColumnTypes, replace = false): Promise<void> => this.setColumnTypes(key, types, replace),
   };
 
@@ -73,6 +81,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       palette: stored.palette,
       accent: isAccentSlot(stored.accent) ? stored.accent : DEFAULT_ACCENT,
       columnTypes: readColumnTypes(stored.columnTypes),
+      nestedTypes: readPluginNestedTypes(stored.nestedTypes),
       look: stored.look === true,
     };
     paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
@@ -85,6 +94,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     this.renderPopups();
     new KnapNotes(this).register();
 
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => void this.moveNestedTypes(oldPath, file.path)));
+    this.registerEvent(this.app.vault.on("delete", (file) => void this.moveNestedTypes(file.path, null)));
     this.registerEvent(this.app.workspace.on("css-change", syncTheme));
     this.registerEvent(this.app.workspace.on("window-open", () => window.setTimeout(() => this.sweep(), 300)));
     this.registerEvent(this.app.workspace.on("layout-change", () => this.sweep()));
@@ -166,7 +177,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     await this.saveData(this.data);
   }
 
-  private async setColumnTypes(key: string, types: CubeSchema, replace = false): Promise<void> {
+  private async setColumnTypes(key: string, types: ColumnTypes, replace = false): Promise<void> {
     this.data.columnTypes = { ...this.data.columnTypes, [key]: replace ? { ...types } : { ...this.data.columnTypes?.[key], ...types } };
     await this.saveData(this.data);
     this.app.workspace.trigger(COLUMN_TYPES_EVENT, key);
@@ -219,7 +230,24 @@ export default class SolenoidPropertiesPlugin extends Plugin {
   }
 
   /** A property's chip in `el`, the same in the properties panel and in a note's body. */
-  chip(el: HTMLElement, kind: PropertyKind, key: string, value: unknown, onChange: (next: unknown) => void): ShadowRoot {
+  /** A note's nested-table types follow it when it's renamed, and go when it's deleted. */
+  private async moveNestedTypes(from: string, to: string | null): Promise<void> {
+    const { [from]: moved, ...rest } = this.data.nestedTypes ?? {};
+    if (!moved) return;
+    this.data.nestedTypes = to ? { ...rest, [to]: moved } : rest;
+    await this.saveData(this.data);
+  }
+
+  private async setNestedTypes(note: string, key: string, nested: NestedTypes): Promise<void> {
+    const { [note]: props = {}, ...others } = this.data.nestedTypes ?? {};
+    const { [key]: _old, ...otherProps } = props;
+    const nextProps = Object.keys(nested).length ? { ...otherProps, [key]: nested } : otherProps;
+    this.data.nestedTypes = Object.keys(nextProps).length ? { ...others, [note]: nextProps } : others;
+    await this.saveData(this.data);
+  }
+
+  /** `sourcePath` is the note the chip edits; without one (another plugin's Frame), nested types are neither read nor kept. */
+  chip(el: HTMLElement, kind: PropertyKind, key: string, value: unknown, onChange: (next: unknown) => void, sourcePath?: string): ShadowRoot {
     const shadow = this.mount(el, "solenoid-property-chip",
       <PropertyChip
         kind={kind}
@@ -228,6 +256,8 @@ export default class SolenoidPropertiesPlugin extends Plugin {
         onChange={onChange}
         columnTypes={this.data.columnTypes?.[key]}
         onColumnTypes={(types, replace) => void this.setColumnTypes(key, types, replace)}
+        nestedTypes={sourcePath ? this.data.nestedTypes?.[sourcePath]?.[key] : undefined}
+        onNestedTypes={sourcePath ? (nested) => void this.setNestedTypes(sourcePath, key, nested) : undefined}
       />);
     shadow.host.addEventListener("pointerdown", () => {
       if (homePopupLayer(shadow.host.ownerDocument)) this.renderPopups();
@@ -244,7 +274,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       validate: (value) => validateYaml(kind, value),
       render: (el, value, ctx) => {
         if (kind.shape === "scalar") return scalarField(el, kind, value, ctx);
-        const shadow = this.chip(el, kind, ctx.key, value, (next) => ctx.onChange(next));
+        const shadow = this.chip(el, kind, ctx.key, value, (next) => ctx.onChange(next), ctx.sourcePath);
         return { focus: () => shadow.querySelector("button")?.focus() };
       },
     };

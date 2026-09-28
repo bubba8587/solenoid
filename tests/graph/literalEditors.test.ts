@@ -2,9 +2,8 @@
 import { describe, it, expect } from "vitest";
 import {
   parseCubeSource, cubeSourceToText, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
-  cellKindOf, convertCellKind, sourceSchema, withSourceSchema, schemaPathOf,
+  cellKindOf, convertCellKind,
 } from "../../src/graph/literalEditors";
-import { withPickType } from "../../src/graph/cubeSchema";
 import { CubeInputNode } from "../../src/graph/rete-nodes";
 import { extractInit } from "../../src/graph/copyPaste";
 import { isCubeValue, type CubeValue } from "../../src/graph/frame";
@@ -31,21 +30,11 @@ describe("parseCubeSource / cubeSourceToText", () => {
   });
 
   // [[D90]] cubeTypesAtDepth
-  it("a nested level's types ride on their top-level column and round-trip; a bad nested pick is dropped", () => {
-    const typed = { columns: [{ name: "tasks", columns: { hours: "number" as const, parts: { type: "string" as const, columns: { w: "date" as const } } } }], rows: [{ tasks: [{ hours: 1 }] }] };
+  it("a nested table's types ride under its records path and round-trip; a bad key or pick is dropped", () => {
+    const typed = { columns: [{ name: "tasks" }], rows: [{ tasks: [{ hours: 1 }] }], nested: { '[0,"tasks"]': { hours: "number" as const } } };
     expect(parseCubeSource(cubeSourceToText(typed))).toEqual({ source: typed });
-    const bad = JSON.stringify({ columns: [{ name: "t", columns: { a: "nope", b: { columns: {} } } }], rows: [] });
+    const bad = JSON.stringify({ columns: [{ name: "t" }], rows: [], nested: { nope: { a: "number" }, '[0,"t"]': { a: "frame" } } });
     expect((parseCubeSource(bad) as { source: unknown }).source).toEqual({ columns: [{ name: "t" }], rows: [] });
-  });
-
-  it("a nested type set through the schema lands on its column; clearing it goes back to plain records", () => {
-    const src = { columns: [{ name: "tasks" }, { name: "f", expr: "1" }], rows: [{ tasks: [{ hours: 1 }] }] };
-    const typed = withSourceSchema(src, (s) => withPickType(s, ["tasks"], "hours", "number"));
-    expect(typed.columns).toEqual([{ name: "tasks", columns: { hours: "number" } }, { name: "f", expr: "1" }]);
-    expect(sourceSchema(typed)).toEqual({ tasks: { columns: { hours: "number" } } });
-    const cleared = withSourceSchema(typed, (s) => withPickType(s, ["tasks"], "hours", undefined));
-    expect(cleared.columns[0]).toEqual({ name: "tasks" });
-    expect(schemaPathOf([0, "tasks", 2, "parts"])).toEqual(["tasks", "parts"]);
   });
 
   it("declared columns keep their order; undeclared record keys follow; a bad type is none", () => {
@@ -76,7 +65,8 @@ describe("paths + shapes + cell text", () => {
   });
   // [[E16]] cubeCellKinds
   it("a cell switches between a value, a list and a table, keeping what it can", () => {
-    expect([cellKindOf(3), cellKindOf(null), cellKindOf([]), cellKindOf([1]), cellKindOf([{ a: 1 }]), cellKindOf({ a: 1 })]).toEqual(["value", "value", "list", "list", "table", "table"]);
+    expect([cellKindOf(3), cellKindOf(null), cellKindOf([]), cellKindOf([1]), cellKindOf([[1, 2], [3]]), cellKindOf([{ a: 1 }]), cellKindOf({ a: 1 })])
+      .toEqual(["value", "value", "list", "list", "matrix", "table", "table"]);
     expect(convertCellKind(3, "list")).toEqual([3]);
     expect(convertCellKind(null, "list")).toEqual([]);
     expect(convertCellKind(3, "table")).toEqual([{ "Column 1": 3 }]);
@@ -88,6 +78,12 @@ describe("paths + shapes + cell text", () => {
     expect(convertCellKind([[1], 2], "value")).toBeNull();
     expect(convertCellKind([{ a: "x" }], "value")).toBe("x");
     expect(convertCellKind("same", "value")).toBe("same");
+    expect(convertCellKind(3, "matrix")).toEqual([[3]]);
+    expect(convertCellKind([1, 2], "matrix")).toEqual([[1, 2]]);
+    expect(convertCellKind([{ a: 1, b: 2 }, { a: 3 }], "matrix")).toEqual([[1, 2], [3, null]]);
+    expect(convertCellKind([[1, 2], [3, 4]], "table")).toEqual([{ "Column 1": 1, "Column 2": 2 }, { "Column 1": 3, "Column 2": 4 }]);
+    expect(convertCellKind([[1, 2], [3, 4]], "list")).toEqual([1, 2]);
+    expect(convertCellKind([[5]], "value")).toBe(5);
   });
 
   it("parseCellText / cellTextOf round-trip scalars; lists show as JSON", () => {
@@ -145,14 +141,16 @@ describe("Cube Input typed and formula columns", () => {
     expect(n.cubeText).toBe(text);
   });
 
-  it("a nested table types its own columns at any depth, in every row, beside its column's own type", () => {
+  it("each nested table types its own columns, per cell and at any depth, beside its column's own type", () => {
     const c = cube({
-      columns: [{ name: "tasks", type: "number", columns: { hours: "number", note: "string", steps: { columns: { due: "date" } } } }],
+      columns: [{ name: "tasks", type: "number" }],
       rows: [
         { tasks: [{ hours: "3", note: 12, steps: [{ due: "2026-09-02", x: "5" }] }] },
         { tasks: [{ hours: "x", note: "ok" }] },
         { tasks: ["4", "y"] },
+        { tasks: [["1", "z"]] },
       ],
+      nested: { '[0,"tasks"]': { hours: "number", note: "string" }, '[0,"tasks",0,"steps"]': { due: "date" }, '[1,"tasks"]': { note: "number" } },
     });
     const cells = col(c, "tasks").cells;
     const t0 = cells[0] as CubeValue;
@@ -162,8 +160,11 @@ describe("Cube Input typed and formula columns", () => {
     expect(steps.columns[0].type).toBe("date");
     expect(steps.columns[0].cells[0]).toBe(46267);
     expect(steps.columns[1].cells[0]).toBe("5");
-    expect(Number.isNaN((cells[1] as CubeValue).columns[0].cells[0])).toBe(true);
+    const t1 = cells[1] as CubeValue;
+    expect(t1.columns[0].cells[0]).toBe("x");
+    expect(Number.isNaN(t1.columns[1].cells[0])).toBe(true);
     expect(cells[2]).toEqual([4, null]);
+    expect(cells[3]).toEqual([[1, null]]);
   });
 
   it("a formula column reads this row's list and sits where it was declared", () => {
