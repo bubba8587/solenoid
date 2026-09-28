@@ -110,17 +110,17 @@ cached and may be called from anywhere.
       to a same-named column is the design. Only the card hint (`perRowParamClashes`) covers
       parameters, not captures: check whether a capture shadowed by a column gets ANY visible
       note on the LAMBDA card. If not, that is a small UX gap, not a bug.
-- [ ] `readCapturedColumn` reads the TOP of `rowStack`: a LAMBDA value built on frame A's
+- [x] Confirmed 2026-09-28: one LAMBDA (`@price / SUM(price)`) gives thirds over one frame and quarters over another; its captures resolve against whichever frame calls it. That is [[C22]] rowFormulaRefs' order (a column outranks a capture), so no inbox item; reported to the author. Was: `readCapturedColumn` reads the TOP of `rowStack`: a LAMBDA value built on frame A's
       canvas and called inside frame B's computed column resolves its captures against B's
       columns. That follows from the spec ("while a row context is up"), but it means the
       same LAMBDA answers differently per consumer. Confirm with two frames and one LAMBDA,
       and file an inbox item if the author hasn't seen it; don't change it.
-- [ ] Nested: computed column calls LAMBDA that calls another LAMBDA (via a captured
+- [x] Confirmed 2026-09-28: a LAMBDA applying a captured LAMBDA (`(g)(@price)`) resolves the inner one's `SUM(price)` against the outer frame. A call by name, `g(@price)`, is `#NAME?` by design (formula-language § LAMBDA: by-name calls apply parameters and λ sockets only). Was: Nested: computed column calls LAMBDA that calls another LAMBDA (via a captured
       LAMBDA value); rowStack top is still the outer frame. Probably fine, confirm.
-- [ ] Frame Input "orders a LAMBDA column after the columns its captures name": a capture
+- [x] Confirmed 2026-09-28: two λ columns capturing each other are `#REF!` "Circular computed columns: c1 → c2" in a few milliseconds. Was: Frame Input "orders a LAMBDA column after the columns its captures name": a capture
       naming a column that is ITSELF a LAMBDA column → cycle? Check the order function
       handles a cycle without hanging.
-- [ ] Cached `LambdaValue`: `capturedVals` snapshot vs live `readCapturedColumn` — the cache
+- [x] Confirmed 2026-09-28: the cache key holds expr and params, and the bare-and-@ note is computed at render from the card's current expr, never cached. The capture-shadowed-by-a-column note can't be static: which column shadows depends on the consuming frame. Was: Cached `LambdaValue`: `capturedVals` snapshot vs live `readCapturedColumn` — the cache
       key (`_lastBuild`) doesn't include column data, correct since columns are read live;
       but confirm the "bare AND @" flag (d62c45b7) is computed from `atColNames` on the same
       expr the cache was built from.
