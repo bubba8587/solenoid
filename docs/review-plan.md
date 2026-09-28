@@ -226,7 +226,7 @@ judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) w
 - [x] Checked: `unitLattice.ts` lost only `dimensionsMultiply`, a dead always-true helper. Harmless.
 
 ## 14. Smaller items, one look each
-- [ ] 2b7596f4 `@xyflow/react` 12.12.0 bump + "bare click on a grip is not a resize": read
+- [x] Checked 2026-09-28: 12.12.0 (from 12.11.6, system 0.0.83) changes only the resizer: onResizeEnd always follows onResizeStart, and a fix when `shouldResize` returns false. `FlowResizeGrip` is the app's one resizer (group grips included), forwards the end only after a move, and sets no `shouldResize`. Was: 2b7596f4 `@xyflow/react` 12.12.0 bump + "bare click on a grip is not a resize": read
       the React Flow 12.12 changelog for resizer/selection changes; check group resize,
       touch-gestures spec.
 - [x] Checked 2026-09-28: the root cause was a hook below an early return (rules of hooks), broken since 5915f3c. A one-off `react-hooks/rules-of-hooks` scan over `src/` and the plugin finds no other case (its one hit, `use30` in `financeOps.ts`, is a plain function whose name starts with "use"). The repo runs no ESLint, so nothing stops the next one. Was: 5e5af11d "Opening a Report no longer takes the app down": a crash fix in
@@ -240,7 +240,7 @@ judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) w
 - [x] Checked 2026-09-28, one hand-derived Excel case each pinned in `formulaTier1.test.ts`. Was: 66367a4d GCD/LCM truncate; 802b6033 uppercase hex; b9e450ff VDB no_switch; 4315304e
       TREND/GROWTH const=FALSE: each a one-function Excel parity change; one Excel-verified
       case each in `formulaTier*.test.ts` is enough.
-- [ ] ebd1d68b Knap notes (`noteFrontmatter.ts`, `knapTemplate.ts`, `nodes/report.ts`): a
+- [x] Checked 2026-09-28: a `knap: true` note with no tags renders as itself (`hasKnapSyntax`), one whose `{{ }}` is prose or code renders it (the switch is the author's, per note, [[D87]] knapNotes) and a parse error leaves the source with the error on top. An unknown tag stays as typed in the plugin and the Note (keepUnknown); a Report blanks it, but every Report tag is its own input, so only an unwired one is blank. Batch pages blank a mistyped `{{ record.field }}` silently, which keepUnknown can't see (the lead name `record` is known): that is a strict-fields question for the author. Live Preview cannot race autosave: a save changes no editor text, the render only reads, and a render that finishes after more typing is dropped. Was: ebd1d68b Knap notes (`noteFrontmatter.ts`, `knapTemplate.ts`, `nodes/report.ts`): a
       `knap: true` frontmatter on a note that is NOT a knap template; a template with an
       unresolved `{{var}}`; Live Preview error timing (3d0bd58a) races with autosave.
 - [x] Checked 2026-09-28: with no filesystem the folder and file listings answer empty (`canReadRoot`), Write says "Writing needs the desktop app" and Preview "Preview needs the desktop app" as a card status before `writeDocumentToVault` could throw; the demo vault still reads. Was: f7a9998b / da908cda vault cards gate on `hasFs()`: the web preview has no fs; confirm
