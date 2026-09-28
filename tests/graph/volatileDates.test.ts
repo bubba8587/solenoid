@@ -4,6 +4,7 @@ import { hasVolatileDates, msUntilNextMidnight, armMidnightRollover } from "../.
 import { TodayNowNode } from "../../src/graph/nodes/date";
 import { wallClockSerial, serialToJsDate } from "../../src/graph/nodes/dateSerial";
 import { compileEvaluator } from "../../src/graph/excelFormula";
+import { CubeInputNode } from "../../src/graph/nodes/cube";
 
 describe("volatileDates (R5 midnight rollover)", () => {
   it("spots TODAY()/NOW() in an expression or a frame's formulas, and a relative Date Input", () => {
@@ -12,6 +13,11 @@ describe("volatileDates (R5 midnight rollover)", () => {
     expect(hasVolatileDates([{ frameText: '[{"name":"Age","expr":"TODAY()-[Born]"}]' }])).toBe(true);
     expect(hasVolatileDates([{ stringLiterals: { date: "next friday" } }])).toBe(true);
     expect(hasVolatileDates([{ expr: "a + b" }, { stringLiterals: { date: "05-Jan-2026" } }, {}])).toBe(false);
+  });
+  it("spots TODAY() in a Cube Input's formula column", () => {
+    const cube = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "a" }, { name: "d", expr: "TODAY()" }], rows: [{ a: 1 }] }) });
+    expect(hasVolatileDates([cube])).toBe(true);
+    expect(hasVolatileDates([new CubeInputNode()])).toBe(false);
   });
   it("spots a Today / Now card, and a volatile node inside a composite", () => {
     expect(hasVolatileDates([new TodayNowNode()])).toBe(true);

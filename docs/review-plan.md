@@ -426,11 +426,11 @@ only by whoever had the desktop. Error cells ride as reserved quiet-NaN bit patt
 ## 21. TODAY / NOW / volatile freeze
 Commits: 719591dd, 2c2d5b9b
 Leaves: [[C44]] dateSerials, [[D46]] freezeVolatilePerCalc.
-- [ ] `wallClockSerial` local vs UTC: a doc saved in one TZ, opened in another: relative
+- [x] Checked 2026-09-28: block 44 answers the time zone (the local calendar day as a UTC-labelled serial, C44); at a DST fall-back NOW repeats an hour of serials, as Excel's local-time NOW does. Was: `wallClockSerial` local vs UTC: a doc saved in one TZ, opened in another: relative
       Date Input "today" changes; is that stated in the spec? Serial for NOW at DST switch.
-- [ ] Midnight rollover: the Today card inside a composite recalculates; a formula TODAY()
+- [x] Fixed 2026-09-28: the rollover finds TODAY/NOW in an `expr` (Expression, Computed Column, LAMBDA, Equation), a Frame Input's formula columns and composites, but not a Cube Input's formula columns (`cubeText`), which it reads now (`volatileDates.test.ts`). Was: Midnight rollover: the Today card inside a composite recalculates; a formula TODAY()
       inside a computed column? A LAMBDA host?
-- [ ] "A coalesced F9 stays exact in sketch mode" (2c2d5b9b): what is coalesced and can two
+- [x] Checked 2026-09-28: what coalesces is the rerun a second F9 queues while a pass runs, so two presses are one recalc and one new draw; D46 freezes a card's draw across recomputes, and `RAND() - RAND()` inside one formula is two draws, as in Excel. Was: "A coalesced F9 stays exact in sketch mode" (2c2d5b9b): what is coalesced and can two
       F9 presses in one frame produce two different RAND draws in one calc? D46 says freeze.
 
 ## 22. Locked canvas
