@@ -243,9 +243,9 @@ judgement made in one pass over 215 files. `socketConnect.test.ts` (425 lines) w
 - [ ] ebd1d68b Knap notes (`noteFrontmatter.ts`, `knapTemplate.ts`, `nodes/report.ts`): a
       `knap: true` frontmatter on a note that is NOT a knap template; a template with an
       unresolved `{{var}}`; Live Preview error timing (3d0bd58a) races with autosave.
-- [ ] f7a9998b / da908cda vault cards gate on `hasFs()`: the web preview has no fs; confirm
+- [x] Checked 2026-09-28: with no filesystem the folder and file listings answer empty (`canReadRoot`), Write says "Writing needs the desktop app" and Preview "Preview needs the desktop app" as a card status before `writeDocumentToVault` could throw; the demo vault still reads. Was: f7a9998b / da908cda vault cards gate on `hasFs()`: the web preview has no fs; confirm
       the cards render a disabled state, not a thrown error, on Vercel.
-- [ ] 80fe6cdb "display node kind goes": grep seeds + saves for `"kind": "display"`; [[B7]]
+- [x] Checked 2026-09-28: no seed or save carries `"kind": "display"`; the kind was an accent category in code, never written into a save, so there is nothing to fail loudly. Was: 80fe6cdb "display node kind goes": grep seeds + saves for `"kind": "display"`; [[B7]]
       says break, but the break should be a loud load error.
 
 ---
