@@ -13,7 +13,10 @@ export function parseValueText(text: string): number {
   let t = text.trim(), pct = 0, neg = false;
   while (t.endsWith("%")) { pct++; t = t.slice(0, -1).trim(); }
   if (/^\(.*\)$/.test(t)) { neg = true; t = t.slice(1, -1).trim(); }
-  t = t.replace(/^([+-]?)\$/, "$1").replace(/,/g, "");
+  t = t.replace(/^([+-]?)\$/, "$1");
+  const dot = t.indexOf(".");
+  if (dot >= 0 && t.slice(dot + 1).includes(",")) return NaN;
+  t = t.replace(/,/g, "");
   const n = decimalFromText(t);
   return Number.isNaN(n) ? NaN : (neg ? -n : n) / Math.pow(100, pct);
 }

@@ -326,16 +326,16 @@ Leaves: [[B17]] typedValueModel, [[C10]] socketLattice (D11 noAutoCross, D13 wid
 Why risky: two agents fixed the same bug differently and the merge "kept both intents"; a
 value of another family on a typed port is now a per-cell #TYPE!. Number→date still bridges,
 logical↔number still bridges. The set of allowed bridges is a hand-written list.
-- [ ] Enumerate the bridge matrix (from family × to family) in `familyCells` and compare to
+- [x] Checked 2026-09-28: `familyCell` lets through its own family, logical↔number (the lattice's one bridge), a number into date (a date is a serial at runtime) and anything into complex; every other crossing is a per-cell #TYPE!. The lattice allows no cross-family connection beyond those, so no cable connects and then errors except through a wildcard, which is B17's rule. Was: Enumerate the bridge matrix (from family × to family) in `familyCells` and compare to
       the socket lattice spec's table. Any bridge the lattice allows at connect time but
       `familyCells` refuses at compute time is a cable that connects then errors.
-- [ ] XLOOKUP's trueany result, a passthrough Conduit, a Composite output port, a Switch:
+- [x] Checked 2026-09-28, no per-pair tests added: the check runs in `wrapNodeData` on the receiving card, on the value alone, and never reads which card sent it, so one test per family covers every wildcard source. Was: XLOOKUP's trueany result, a passthrough Conduit, a Composite output port, a Switch:
       each wildcard source feeding each typed family. One test per pair.
-- [ ] "Text on a list rung is one #TYPE! cell rather than a failed node": a list-of-text
+- [x] Checked 2026-09-28: `["a", "b", 3]` on Arithmetic's list input answers `[#TYPE!, #TYPE!, 4]`, one error per bad cell; a scalar rung fails the node, and Aggregate's SUM answers one #TYPE! as an error in a range does. Was: "Text on a list rung is one #TYPE! cell rather than a failed node": a list-of-text
       onto a number LIST port → N #TYPE! cells, not one. Confirm shape.
-- [ ] Cast (f81d2bff): "reads number text as VALUE does" — locale decimal comma, thousands
+- [x] Fixed 2026-09-28: Cast and VALUE share `parseValueText` and read Excel's US forms ("$5", "(5)", "5%", "1e3", " 5 ", "-$1,234.50"; "€5" and "" are #VALUE!), but "1.234,5" read as 1.2345 because every comma was dropped; a comma after the decimal point is #VALUE! now (`formulaTier1.test.ts`). A decimal comma is NUMBERVALUE's job. Was: Cast (f81d2bff): "reads number text as VALUE does" — locale decimal comma, thousands
       separator, leading currency symbol, "1e3", " 5 " with spaces, "" (blank vs 0).
-- [ ] `coerceInputs.test.ts` is in vitest's ISOLATED list because it stubs a global before
+- [x] Checked 2026-09-28: no global; it `vi.mock`s `frameBackend.readFrame` to test lazy frame reads, and every `vi.mock` file is isolated by the repo's rule. Was: `coerceInputs.test.ts` is in vitest's ISOLATED list because it stubs a global before
       import. A test that must run isolated to pass is suspicious: what global?
 
 ## 18. Composite subgraphs (hydrate, ids, side tables, errors, solve)
