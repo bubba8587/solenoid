@@ -231,6 +231,7 @@ export class CompositeNode extends ClassicPreset.Node {
   solveInsideOnly = false;
   lastSolveKey: string | null = null;
   stale = false;
+  private unsettled = false;
   internalEditSeq = 0;
   runSeq = 0;
   private _lastRunMode: CompositeRunMode | null = null;
@@ -742,14 +743,15 @@ export class CompositeNode extends ClassicPreset.Node {
       const key = this.solveKey(inputs);
       if (this.solveRequested) {
         const solveInputs = this.solveInsideOnly ? {} : inputs;
-        const outputs = await this.solveSettled(solveInputs);
+        const { outputs, settled } = await this.solveSettled(solveInputs);
         this.cachedOutputs = outputs;
         // Key on the real inputs, not solveInputs, to match the hold branch.
         this.lastSolveKey = this.solveKey(inputs);
         this.solveRequested = false;
         this.solveInsideOnly = false;
-        this.stale = false;
-        compositeStaleStore.set(this.id, false);
+        this.unsettled = !settled;
+        this.stale = this.unsettled;
+        compositeStaleStore.set(this.id, this.stale);
         return outputs;
       }
       if (this.lastSolveKey === null) {
@@ -765,7 +767,7 @@ export class CompositeNode extends ClassicPreset.Node {
         compositeStaleStore.set(this.id, true);
         return blank;
       }
-      this.stale = key !== this.lastSolveKey;
+      this.stale = this.unsettled || key !== this.lastSolveKey;
       compositeStaleStore.set(this.id, this.stale);
       return this.cachedOutputs;
     }
@@ -777,18 +779,19 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   /** A fetch that lands mid-solve runs it again; chained live cards (a Geocode feeding a Weather) land one link per round. */
-  private async solveSettled(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+  private async solveSettled(inputs: Record<string, unknown[]>): Promise<{ outputs: Record<string, unknown>; settled: boolean }> {
     const ids = nestedNodeIds(this.internalEditor);
     let landed = connectionStore.landedCount(ids);
     let outputs = await this.runActiveMode(inputs);
     for (let round = 0; round < SOLVE_FETCH_ROUNDS; round++) {
       await whenConnectionsSettled(ids);
       const now = connectionStore.landedCount(ids);
-      if (now === landed) break;
+      if (now === landed) return { outputs, settled: true };
       landed = now;
       outputs = await this.runActiveMode(inputs);
     }
-    return outputs;
+    await whenConnectionsSettled(ids);
+    return { outputs, settled: connectionStore.landedCount(ids) === landed };
   }
 
   isHeavyMode(): boolean {

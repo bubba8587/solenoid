@@ -6,7 +6,7 @@ import type { View } from "../../src/graph/view";
 import { CompositeNode, CompositeOutputNode } from "../../src/graph/nodes/composite";
 import { WebSourceNode, FxNode } from "../../src/graph/nodes/connection";
 import { NumberInputNode } from "../../src/graph/nodes/input";
-import { connectionStore, refreshConnection, refreshAllConnections, scheduleConnectionRecalc } from "../../src/graph/connectionStore";
+import { connectionStore, refreshConnection, refreshAllConnections, scheduleConnectionRecalc, fetchInBackground } from "../../src/graph/connectionStore";
 import { registerOwnedGraph } from "../../src/graph/activeGraph";
 
 const realFetch = globalThis.fetch;
@@ -64,6 +64,22 @@ describe("a heavy composite holding a live card", () => {
     const out = await c.data({});
     expect(Object.values(out)[0]).toBe(0.9);
     expect(c.stale).toBe(false);
+  });
+
+  it("a Solve that runs out of rounds while fetches still land stays stale", async () => {
+    class Restless extends ClassicPreset.Node {
+      runs = 0;
+      constructor() { super("Restless"); this.addOutput("value", new ClassicPreset.Output(new ClassicPreset.Socket("number"))); }
+      data() { this.runs++; fetchInBackground(this.id, Promise.resolve()); return { value: this.runs }; }
+    }
+    const card = new Restless();
+    const c = await manualCompositeWith(card as unknown as Schemes["Node"], "value");
+    c.requestSolve();
+    await c.data({});
+    expect(card.runs).toBeGreaterThan(1);
+    expect(c.stale).toBe(true);
+    await c.data({});
+    expect(c.stale).toBe(true);
   });
 
   it("holds when a refresh-all has no live card inside it", async () => {

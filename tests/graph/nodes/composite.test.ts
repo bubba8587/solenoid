@@ -162,6 +162,29 @@ describe("CompositeNode shell", () => {
     expect((await reloaded.data({}))[outerPort]).toBe(42);
   });
 
+  it("three levels deep, a composite computes after a reload, and after a reload of that reload", async () => {
+    const wrap = async (child: Schemes["Node"], childPort: string, label: string) => {
+      const c = new CompositeNode({ label });
+      const out = new CompositeOutputNode({ label: "V" });
+      await c.internalEditor.addNode(child);
+      await c.internalEditor.addNode(out as unknown as Schemes["Node"]);
+      await connect(c.internalEditor, child, childPort, out, "value");
+      return { c, port: c.addOutputPort({ label: "V", tier: "basic", internalNodeId: out.id }) };
+    };
+    const l1 = await wrap(new NumberInputNode({ value: 7 }) as unknown as Schemes["Node"], "value", "L1");
+    const l2 = await wrap(l1.c as unknown as Schemes["Node"], l1.port, "L2");
+    const l3 = await wrap(l2.c as unknown as Schemes["Node"], l2.port, "L3");
+    expect((await l3.c.data({}))[l3.port]).toBe(7);
+    const load = async (from: CompositeNode) => {
+      const r = new CompositeNode(extractInit(from) as ConstructorParameters<typeof CompositeNode>[0]);
+      await r.hydrate(ctorRegistry());
+      return r;
+    };
+    const once = await load(l3.c);
+    expect((await once.data({}))[l3.port]).toBe(7);
+    expect((await (await load(once)).data({}))[l3.port]).toBe(7);
+  });
+
   it("an unknown internal type loads as a Placeholder and re-saves as the original ([[C35]] unknownViaPlaceholder)", async () => {
     const outMarker = new CompositeOutputNode({ label: "Result" });
     const snapshot = {

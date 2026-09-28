@@ -345,23 +345,23 @@ Where: `nodes/composite.ts` (1086 lines, 17 commits in 5 days), `savedNodeBody.t
 `flow/drillStack.ts`, `flow/FlowCompositeOverlay.tsx`, `activeGraph.ts`
 Leaves: [[C77]] compositeIsSubgraph, [[B12]] losslessSaves, [[C35]] unknownViaPlaceholder,
 [[D35]] errorInErrorOut, [[D86]] blankRoles (D33 unwiredNotBlank superseded).
-- [ ] Id remapping (38726731): hydrate remaps Group members and FC hosts, snapshot maps back.
+- [x] Checked 2026-09-28: the node-held references are an FC's `hostNodeId`, a Group's `members` and a Presentation's step `nodeIds` (all in `remapNodeRefs`), and the ports' `internalNodeId` (remapped on hydrate, mapped back on save). The other `nodeId` fields are a card's own id in an alert or a computed result, and Goal Seek names port ids. Pins, comments, formats and standoffs are side tables, restored under the fresh ids by `restoreSideTables`. Was: Id remapping (38726731): hydrate remaps Group members and FC hosts, snapshot maps back.
       Enumerate EVERY node field that holds another node's id (grep `nodeId|hostNodeId|
       members|steps.*nodeIds|targetId|sourceId` in nodes/) and check each is in
       `remapNodeRefs`. Alerts, Standoffs, Pins, Conduit sequence numbers, Record nav?
-- [ ] Nested hydrate (19090f25): depth-3 composite save → load → Solve → value. Also
+- [x] Checked 2026-09-28: a depth-3 composite computes after a reload and after a reload of that reload (`composite.test.ts`); copy and Duplicate go through the same extract and reload, which `compositeInnerSideTables.test.ts` runs. Was: Nested hydrate (19090f25): depth-3 composite save → load → Solve → value. Also
       paste of a nested composite, and Duplicate.
-- [ ] Side tables (e4d1a478): pins/comments/formats/standoffs travel with the composite.
+- [x] Checked 2026-09-28: `compositeInnerSideTables.test.ts` carries them through the snapshot, a copy, a drill-in undo, a save and load and the main undo; `relocationKeepsStores.test.ts` forgets them two levels deep on a real delete, and an undo reloads the recursive snapshot. Was: Side tables (e4d1a478): pins/comments/formats/standoffs travel with the composite.
       Delete the composite (a68628ed) → are they forgotten at every depth? Undo the delete
       → are they back?
-- [ ] Solve waits for fetches (d5d8dea4): "up to four rounds". A chain of 5 live cards
+- [x] Fixed 2026-09-28: a Solve that ran out of its four rounds while fetches were still landing (a chain longer than four, or a card on a cadence) answered as if settled. It stays stale now until the next Solve (`unsettled`, `liveCardUnmounted.test.ts`, which fails on the old code). Was: Solve waits for fetches (d5d8dea4): "up to four rounds". A chain of 5 live cards
       inside one composite → stale on first Solve, silently. Should it flag stale instead?
-- [ ] Error crossing boundary (2494d74d): IFERROR inside sees the error now. But a composite
+- [x] Checked 2026-09-28: `composite.test.ts` § an error crossing the boundary: with two lanes and one bad input, only the lane that reads it errors. Was: Error crossing boundary (2494d74d): IFERROR inside sees the error now. But a composite
       with 2 outputs and one bad input: does ONLY the dependent output error?
-- [ ] Wired blank beats default (db08c964): a source sweep refuses `?.[0] ?? x` in nodes/
+- [x] Checked 2026-09-28: the sanctioned list is one read (Goal Seek's seed, with its reason), and a companion test drops stale entries. The sweep matches only `inputs…?.[0] ??`, so a grep for the same shape under other names found one more, the Alert card's message text (`got?.[0] ?? lit`), unreachable in practice but now read through `readInput`. Was: Wired blank beats default (db08c964): a source sweep refuses `?.[0] ?? x` in nodes/
       and packs/. `sourceInvariants.test.ts` enforces it; check the sanctioned-per-read list
       hasn't grown into an allowlist that defeats the sweep.
-- [ ] FC docks settle on every cable change (4f3c86f3): perf on a composite with 50 cables;
+- [x] Checked 2026-09-28: `reconcileFcTypes` retypes sockets and asks for rerenders but never adds or removes a cable, so a settle can't trigger another; its cost is one pass over the inner cards per cable change. Was: FC docks settle on every cable change (4f3c86f3): perf on a composite with 50 cables;
       any re-entrancy (settle → cable change → settle)?
 
 ## 19. Live cards and refresh (races)

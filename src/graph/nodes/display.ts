@@ -156,7 +156,7 @@ export class AlertNode extends ClassicPreset.Node {
     const name = (this.label ?? "").trim() || "Alert";
     const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 1000) / 1000));
     const num = (got: (number | number[])[] | undefined, lit: number) => {
-      const v = got?.[0] ?? lit;
+      const v = scalarish(got, lit);
       return typeof v === "number" ? fmt(v) : "value";
     };
     switch (this.condition) {
