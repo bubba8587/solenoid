@@ -15,7 +15,7 @@ The Script card runs a user-written JavaScript function on its inputs. Each para
 | `nodes/script.ts` | The card: sockets from the function's parameters, arguments in, result out |
 | `nodes/scriptRun.ts` | The evaluator: parse, compile, call, make the result clonable |
 | `scriptWorker.ts` | The worker: removes the input and output routes, then answers calls |
-| `scriptExecutor.ts` | The main-thread client: one shared worker, request ids, the time limit |
+| `scriptExecutor.ts` | The main-thread client: one shared worker, the call queue, the time limit |
 | `nodes/scriptCoerce.ts` | Converts the arguments to JavaScript and folds the returned value onto the value model |
 
 ## The source
@@ -85,15 +85,15 @@ The one global a script sees is `Solenoid`, frozen, with a single method. JavaSc
 
 ## The worker
 
-- One shared module worker, spawned on the first call.
+- One shared module worker, spawned on the first call. It holds one call at a time; the executor queues the rest and sends the next when the running call settles.
 - Before its first call, the worker deletes these names from its global scope and every object on its prototype chain: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `WebTransport`, `RTCPeerConnection`, `importScripts`, `indexedDB`, `caches`, `BroadcastChannel`, `Worker`, `SharedWorker`, `Notification`, `navigator` and `postMessage`. It keeps a private handle to `postMessage` for its replies. `import()` is syntax and cannot be removed, so this is containment against accidents, not a security boundary; the author of a document wrote its scripts.
 - `scriptRun.ts` imports nothing from the app. It is the worker's whole bundle, with no React and no module that touches the DOM when loaded, and it is also the inline evaluator on hosts without Workers.
 
 ## The time limit
 
-The timer lives in the executor, not the worker, because a stuck worker cannot answer. A call still running after `SCRIPT_TIMEOUT_MS` (1000 ms) resolves to `#VALUE!` "Timed out after 1 s". The executor then terminates the worker, spawns a replacement, and sends every other in-flight call to the replacement with a fresh timer; those calls did nothing wrong.
+The timer lives in the executor, not the worker, because a stuck worker cannot answer. It starts when the call is sent to the worker, so time spent waiting in the queue does not count. A call still running after `SCRIPT_TIMEOUT_MS` (1000 ms) resolves to `#VALUE!` "Timed out after 1 s"; the executor terminates the worker and the next queued call starts on a fresh one.
 
-If the worker itself fails (a policy forbidding eval, a bundling fault), every in-flight call resolves to `#VALUE!` with the reason, and the next call spawns a fresh worker. A failure posting a request resolves that call to `#VALUE!`.
+An uncaught error in the worker (a script throwing from a timer, a policy forbidding eval, a bundling fault) resolves the running call to `#VALUE!` with the reason and retires the worker; the queue carries on with a fresh one. An error thrown late by a call that already settled lands on whichever call is running then. A failure posting a request resolves that call to `#VALUE!`.
 
 ## Hosts without Workers
 
