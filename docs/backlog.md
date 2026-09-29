@@ -310,7 +310,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 ## From the 2026-09-29 commit-walk review (09-25 to 09-29; open leads, each verified against HEAD unless marked)
 - [ ] **TEXTSPLIT rows only** (author's call, `settings-audit.md` col_delimiter): `TEXTSPLIT(A1,,";")` is `#SYNTAX!`; relaxing the role alone would split each row into letters (`splitText` on "").
 - [ ] **Logical text reads blank, not NaN** ([[D93]] oneTextReading says NaN): `coerceLogical` gives null for "maybe", and yes/no now blank too. Author: NaN, or narrow D93 to number and date.
-- [ ] **Merge Plots of XY charts** (`visual.ts` mergeXY): keeps the first source's x categories, so a second plot's categories in another order land on wrong ticks; a numeric source under category ticks is clamped off; axis names drop.
 - [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
 - [ ] **Chart compact ticks** (`chartCore.ts` compactTick): three significant figures ignore the tick step, so close ticks on a narrow range (100000, 100250, 100500) all read "100K". The per-value `tickFormatter` never sees the step; a formatter built per axis from its domain would.
 - [ ] **YEARFRAC basis -0.5** floors to -1 (`#DOMAIN!`); Excel truncates toward zero, if it truncates that way (unconfirmed).

@@ -293,16 +293,35 @@ function mergeOverlay(sources: { cv: ChartValue }[]): OverlayPayload {
   return { kind: "overlay", series, labels };
 }
 
+/** Text x values are indices into their own plot's categories, so they move onto one shared list; text beside numbers has no one axis. */
 function mergeXY(sources: { cv: ChartValue; plotNo: number }[]): XYPayload | SolError {
-  const series: XYSeries[] = [];
-  let xcats: string[] | undefined;
+  const got: { plotNo: number; series: XYSeries[]; xcats?: string[] }[] = [];
   for (const { cv, plotNo } of sources) {
-    const got = sourceAsXY(cv, plotNo);
-    if (isSolError(got)) return got;
-    series.push(...got.series);
-    xcats ??= got.xcats;
+    const g = sourceAsXY(cv, plotNo);
+    if (isSolError(g)) return g;
+    if (g.series.some((s) => s.points.some((p) => p !== null))) got.push({ plotNo, ...g });
   }
-  return { kind: "xy", series, ...(xcats ? { xcats } : {}), names: {} };
+  const textX = got.find((g) => g.xcats);
+  const numX = got.find((g) => !g.xcats);
+  if (textX && numX) {
+    return solError("#TYPE!", `Plot ${textX.plotNo} plots against text x values and plot ${numX.plotNo} against numbers, so they have no one x axis`);
+  }
+  const xcats: string[] = [];
+  const at = new Map<string, number>();
+  const series = got.flatMap((g) => {
+    if (!g.xcats) return g.series;
+    const to = g.xcats.map((c) => { if (!at.has(c)) { at.set(c, xcats.length); xcats.push(c); } return at.get(c)!; });
+    return g.series.map((s) => ({ ...s, points: s.points.map((p) => (p === null ? null : { ...p, x: to[p.x] ?? p.x })) }));
+  });
+  const axisName = (k: "x" | "y") => {
+    const all = sources.map(({ cv }) => (cv.payload?.kind === "xy" ? cv.payload.names[k] : undefined));
+    return all[0] !== undefined && all.every((n) => n === all[0]) ? all[0] : undefined;
+  };
+  const names: XYPayload["names"] = {};
+  const nx = axisName("x"), ny = axisName("y");
+  if (nx) names.x = nx;
+  if (ny) names.y = ny;
+  return { kind: "xy", series, ...(textX ? { xcats } : {}), names };
 }
 
 // ─── Histogram ────────────────────────────────────────────────────────────────

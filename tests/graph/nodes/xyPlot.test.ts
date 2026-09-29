@@ -148,6 +148,23 @@ describe("Merge Plots, XY", () => {
     expect(a.message).toContain("Plot 2");
     expect((new MergePlotsNode().data({ p0: [months], p1: [sc("x=x;y=y")] }).chart as SolError).code).toBe("#TYPE!");
   });
+
+  it("puts every plot's text x values on one shared category axis, and keeps the axis names they agree on", () => {
+    const shop = (regions: string[], sales: number[]): FrameValue => ({ __frame: true, columns: [
+      { name: "region", type: "string", values: regions },
+      { name: "sales", type: "number", values: sales },
+    ] });
+    const a = new ChartNode({ op: "scatter" }).data({ values: [shop(["East", "West"], [1, 2])], options: ["x=region;y=sales"] }).chart as ChartValue;
+    const b = new ChartNode({ op: "scatter" }).data({ values: [shop(["West", "North"], [3, 4])], options: ["x=region;y=sales"] }).chart as ChartValue;
+    const p = (new MergePlotsNode().data({ p0: [a], p1: [b] }).chart as ChartValue).payload as XYPayload;
+    expect(p.xcats).toEqual(["East", "West", "North"]);
+    const at = (i: number) => p.series[i].points.map((q) => (q ? p.xcats![q.x] : null));
+    expect(at(0)).toEqual(["East", "West"]);
+    expect(at(1)).toEqual(["West", "North"]);
+    expect(p.names).toEqual({ x: "region", y: "sales" });
+    const e = new MergePlotsNode().data({ p0: [a], p1: [sc("x=x;y=y")] }).chart as SolError;
+    expect(e.code).toBe("#TYPE!");
+  });
 });
 
 describe("XY option keys", () => {
