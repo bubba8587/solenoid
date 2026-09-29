@@ -31,8 +31,11 @@ export function indexRefError(n: number, max: number, what: string): SolError {
   return solError("#REF!", `${what} ${n} is outside 1…${max}`);
 }
 
+/** An empty list of positions is the positions left out ([[D86]] blankRoles). */
 export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: UnitTagger): unknown {
   if (v === null || v === undefined) return null;
+  if (Array.isArray(row) && row.length === 0) row = undefined;
+  if (Array.isArray(col) && col.length === 0) col = undefined;
   if (Array.isArray(row) || Array.isArray(col)) return indexMany(v, row, col, tagUnit);
   const ax = resolveAxes(row as IndexPosition, col as IndexPosition);
   if (ax.blank) return null;

@@ -9,6 +9,7 @@ import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { TakeDropNode, ExpandNode, TableSelectNode } from "../../src/graph/nodes/matrix";
 import { RoundNNode } from "../../src/graph/nodes/scalar";
 import { ListIndexNode } from "../../src/graph/nodes/list";
+import { indexInto } from "../../src/graph/nodes/indexAccess";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 const blank = [null as unknown as number];
@@ -92,6 +93,13 @@ describe("[[D86]] blankRoles — data stays blank, a setting left blank is its d
     expect(ev("INDEX(x, p)", { x, p: [3, null, 1] })).toEqual([30, 10]);
     expect(ev("INDEX(x, p)", { x, p: [null, null] })).toEqual(x);
     expect(new ListIndexNode().data({ list: [x], index: [[3, null as unknown as number]] }).result).toEqual([30]);
+  });
+
+  it("INDEX: an empty list of positions is the positions left out, on the card, in a formula and in the shared kernel", () => {
+    expect(ev("INDEX(m, 0, c)", { m, c: [] })).toEqual(m);
+    expect(new ListIndexNode().data({ list: [m], index: [0], column: [[]] }).result).toEqual(m);
+    expect(indexInto(m, 0, [])).toEqual(m);
+    expect(indexInto(m, [], 2)).toEqual([2, 5, 8]);
   });
 
   it("CHOOSEROWS: the indices have no default, so blank is #SYNTAX!; a blank index is skipped", () => {
