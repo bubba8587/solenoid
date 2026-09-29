@@ -6,10 +6,10 @@ export type CountWorkingDays = (from: number, to: number) => number;
 
 export function plannedFraction(plannedStart: number | null, plannedFinish: number | null, status: number, count: CountWorkingDays): number {
   if (plannedStart == null || plannedFinish == null) return 0;
-  if (status <= plannedStart) return 0;
+  if (Math.floor(status) < Math.floor(plannedStart)) return 0;
   if (status >= plannedFinish) return 1;
   const total = count(plannedStart, plannedFinish);
-  if (total <= 0) return status >= plannedStart ? 1 : 0;
+  if (total <= 0) return 1;
   return Math.min(1, count(plannedStart, status) / total);
 }
 

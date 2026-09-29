@@ -631,7 +631,7 @@ The kernels are `nodes/earnedValueOps.ts`. They are unit-free, magnitudes in and
 - BCWP (earned value, EV) is BAC × percent complete / 100.
 - ACWP (actual cost, AC) is the Actual cost column when present, else BCWP.
 
-The planned fraction (`plannedFraction`) is the share of the baseline span, counted in working days, elapsed by the status date: 0 without a baseline or on or before its start, 1 on or after its finish, and otherwise `count(start, status) / count(start, finish)`. The card injects the engine's `Calendar.countBetween` (inclusive of both ends) as the counter, so weekends and holidays match the schedule.
+The planned fraction (`plannedFraction`) is the share of the baseline span, counted in working days, elapsed by the end of the status date: 0 without a baseline or before its start day, 1 on or after its finish, and otherwise `count(start, status) / count(start, finish)`, so the start day itself is 1 / total. The card injects the engine's `Calendar.countBetween` (inclusive of both ends) as the counter, so weekends and holidays match the schedule.
 
 The metrics are SV = BCWP − BCWS, CV = BCWP − ACWP, SPI = BCWP / BCWS, CPI = BCWP / ACWP, EAC = BAC / CPI (or BAC when CPI is unknown or not positive, assuming the rest runs to budget), VAC = BAC − EAC and TCPI = (BAC − BCWP) / (BAC − ACWP). A ratio whose denominator is 0 is null and draws blank. Project totals compute each ratio from the summed components, never by averaging the tasks' ratios, the project-management convention.
 
