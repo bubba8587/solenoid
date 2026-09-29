@@ -3,7 +3,7 @@
 import {
   hasFs, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath, readTextFilePath, listVaultFiles,
 } from "./fileBridge";
-import { nodeChartSvg, nodeChartSvgProvided, serializeSvgWithComputedStyles } from "./canvasCapture";
+import { nodeChartSvgString } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
 import { isImageValue, type ImageValue } from "./imageValue";
@@ -91,11 +91,6 @@ async function rasterizeSvgMarkup(markup: string, size?: { w: number; h: number 
 }
 
 /** Sized from the measured box, since a recharts root has no reliable intrinsic size until drawn. */
-async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
-  const box = svgEl.getBoundingClientRect();
-  return rasterizeSvgMarkup(serializeSvgWithComputedStyles(svgEl), { w: box.width, h: box.height });
-}
-
 export type ObsidianWriteMode = "overwrite" | "append" | "block";
 
 export function mergeNoteText(existing: string | null, md: string, mode: ObsidianWriteMode, blockName: string): string {
@@ -177,13 +172,8 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
       return refPreview(value, doc.sourceId ? resolveRefAnnotation(doc.sourceId, name) : undefined);
     }
     const srcId = opts.refSources.get(name);
-    const provided = srcId ? nodeChartSvgProvided(srcId) : null;
-    const bytes = provided
-      ? await rasterizeSvgMarkup(provided)
-      : await (async () => {
-          const svg = srcId ? nodeChartSvg(srcId) : null;
-          return svg ? rasterizeSvg(svg) : null;
-        })();
+    const markup = srcId ? nodeChartSvgString(srcId) : null;
+    const bytes = markup ? await rasterizeSvgMarkup(markup) : null;
     if (!bytes) return "";
     return writeAsset(name, bytes, "png");
   }

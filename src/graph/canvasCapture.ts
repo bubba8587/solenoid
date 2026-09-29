@@ -95,7 +95,7 @@ export function registerChartSvgProvider(nodeId: string, provider: ChartSvgProvi
   return () => { if (chartSvgProviders.get(nodeId) === provider) chartSvgProviders.delete(nodeId); };
 }
 
-export function nodeChartSvgProvided(nodeId: string): string | null {
+function nodeChartSvgProvided(nodeId: string): string | null {
   return chartSvgProviders.get(nodeId)?.() ?? null;
 }
 
@@ -120,25 +120,32 @@ export function legendToSvg(entries: readonly LegendEntry[], width: number, text
   return `<g class="sol-chart-legend">${parts.join("")}</g>`;
 }
 
+/** An element's size in canvas units: its screen box with the React Flow zoom taken out. */
+function canvasSizeOf(el: Element): { w: number; h: number } {
+  const viewport = el.closest<HTMLElement>(".react-flow__viewport");
+  const zoom = viewport ? new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a || 1 : 1;
+  const box = el.getBoundingClientRect();
+  return { w: Math.round(box.width / zoom), h: Math.round(box.height / zoom) };
+}
+
+/** A chart card's SVG for export, its root sized in canvas units, with a multi-series legend drawn under the plot. */
 export function nodeChartSvgString(nodeId: string): string | null {
   const provided = nodeChartSvgProvided(nodeId);
   if (provided) return provided;
   const el = nodeChartSvg(nodeId);
   if (!el) return null;
   const svg = serializeSvgWithComputedStyles(el);
+  const { w, h } = canvasSizeOf(el);
   // The multi-series legend is DOM beside the plot, so an export of the plot's SVG alone can't tell the series apart.
   const legend = getView()?.nodeElement(nodeId)?.querySelector(".sol-chart-legend");
-  if (!legend) return svg;
-  const entries: LegendEntry[] = Array.from(legend.children).map((item) => ({
+  const entries: LegendEntry[] = legend ? Array.from(legend.children).map((item) => ({
     color: getComputedStyle(item.firstElementChild as Element).backgroundColor,
     label: (item.textContent ?? "").trim(),
-  })).filter((e) => e.label);
-  if (entries.length === 0) return svg;
-  const box = el.getBoundingClientRect();
-  const w = Math.round(box.width), h = Math.round(box.height);
-  const style = getComputedStyle(legend);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + LEGEND_ROW_H}" viewBox="0 0 ${w} ${h + LEGEND_ROW_H}">`
-    + `${svg}<g transform="translate(0,${h})">${legendToSvg(entries, w, style.color, 9, style.fontFamily)}</g></svg>`;
+  })).filter((e) => e.label) : [];
+  const legendH = entries.length > 0 ? LEGEND_ROW_H : 0;
+  const style = legend && legendH ? getComputedStyle(legend) : null;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h + legendH}" viewBox="0 0 ${w} ${h + legendH}">${svg}`
+    + `${style ? `<g transform="translate(0,${h})">${legendToSvg(entries, w, style.color, 9, style.fontFamily)}</g>` : ""}</svg>`;
 }
 
 export function nodeChartSvg(nodeId: string): SVGSVGElement | null {
