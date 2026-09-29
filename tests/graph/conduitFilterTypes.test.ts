@@ -69,3 +69,19 @@ describe("List Filter preserves units (passthrough) while filtering by magnitude
     expect(out.dropped).toEqual([1, 2]);
   });
 });
+
+describe("Filter's Column socket", () => {
+  const flush = () => new Promise((r) => setTimeout(r, 0));
+  it("shows for a table and stays when the table runs out of rows", async () => {
+    const f = new FilterNode();
+    f.data({ list: [[[1, 2], [3, 4]]] });
+    await flush();
+    expect(f.inputs.column).toBeDefined();
+    f.data({ list: [[]] });
+    await flush();
+    expect(f.inputs.column).toBeDefined();
+    f.data({ list: [[1, 2, 3]] });
+    await flush();
+    expect(f.inputs.column).toBeUndefined();
+  });
+});

@@ -66,6 +66,13 @@ describe("the INDEX card swaps Row and Column for Position on a list", () => {
     await flush();
     expect(Object.keys(n.inputs)).toEqual(["list", "position"]);
   });
+
+  it("an empty array keeps the Row and Column sockets, so a table that runs out of rows keeps its cables", async () => {
+    const n = new ListIndexNode();
+    n.data({ list: [[]] });
+    await flush();
+    expect(Object.keys(n.inputs)).toEqual(["list", "index", "column"]);
+  });
 });
 
 describe("the INDEX card's positions are number lists", () => {
