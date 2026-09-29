@@ -47,7 +47,7 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
   const rowHeight = Math.round(DEFAULT_ROW_HEIGHT * fontScale);
   const tierHeight = Math.round(TIER_HEIGHT * fontScale);
 
-  const columns = useMemo(() => buildColumns(payload), [payload]);
+  const columns = useMemo(() => buildColumns(payload, fontScale), [payload, fontScale]);
   const gridNaturalW = useMemo(() => columns.reduce((s, c) => s + c.width, 0), [columns]);
 
   const [gridWRaw, setGridW] = useState(() => {

@@ -4,6 +4,7 @@ import { serialFromCivil } from "./serial";
 import { layoutGantt } from "./layout";
 import { buildRows, collapsedAtLevel } from "./rows";
 import { buildColumns } from "./columns";
+import { estimateWidth } from "./bars";
 import { formatCell } from "./cell";
 import { ganttSvg } from "./svg";
 import type { GanttPayload, GanttTask, GanttViewOptions } from "./payload";
@@ -228,5 +229,16 @@ describe("collapsedAtLevel", () => {
   it("seeds the same rows the static collapse level shows", () => {
     const p = payload(tasks, { collapse: 1, group_by: false });
     expect(buildRows(p, 24, collapsedAtLevel(p)).map((r) => r.id)).toEqual(buildRows(p, 24).map((r) => r.id));
+  });
+});
+
+describe("column widths follow the font scale", () => {
+  const p = payload([task({ id: "a", start: S(2026, 9, 7), finish: S(2026, 9, 9) })], { columns: ["name", "start"] });
+  it("scales every width by fontScale, so a date column keeps its fit at a larger face", () => {
+    const base = buildColumns(p);
+    const big = buildColumns(p, 1.5);
+    expect(big.map((c) => c.width)).toEqual(base.map((c) => Math.round(c.width * 1.5)));
+    const start = big.find((c) => c.key === "start")!;
+    expect(estimateWidth("07-Sep-2026", 12 * 1.5)).toBeLessThan(start.width);
   });
 });
