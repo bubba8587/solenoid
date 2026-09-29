@@ -115,6 +115,17 @@ describe("updateCurrentGraph", () => {
     expect(lib.documents[0].graph.nodes.length).toBe(1);
   });
 
+  it("keeps the library as it was when the graph has not changed, whatever its key order or file stamp", () => {
+    const stored: SavedGraph = { v: 2, nodes: [{ id: "n", type: "ConstantNode", x: 0, y: 0, init: {} }], connections: [] as never, meta: { foreign: true, networkAllowed: undefined }, savedAt: 7 } as SavedGraph;
+    let lib = addDocument(emptyLibrary(), { id: "a", name: "A", graph: stored, updatedAt: 7 });
+    lib = addDocument(lib, doc("b", "B", 8));
+    lib = setCurrent(lib, "a");
+    const live = { meta: { foreign: true }, connections: [], nodes: [{ init: {}, y: 0, x: 0, type: "ConstantNode", id: "n" }], v: 2 } as unknown as SavedGraph;
+    expect(updateCurrentGraph(lib, live, 99)).toBe(lib);
+    const moved = { ...live, nodes: [{ ...live.nodes[0], x: 5 }] };
+    expect(getCurrent(updateCurrentGraph(lib, moved, 99))?.updatedAt).toBe(99);
+  });
+
   it("is a no-op when there is no current doc", () => {
     const lib = emptyLibrary();
     expect(updateCurrentGraph(lib, graph(), 5)).toEqual(lib);

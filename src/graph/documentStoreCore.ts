@@ -71,9 +71,26 @@ export function setDocFileSaved(lib: DocLibrary, id: string, at: number): DocLib
   };
 }
 
+/** Equal as JSON would write them: key order, keys holding `undefined` and the file's `savedAt` stamp don't count. */
+function sameGraph(a: SavedGraph, b: SavedGraph): boolean {
+  return sameJson({ ...a, savedAt: undefined }, { ...b, savedAt: undefined });
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) || Array.isArray(b)) {
+    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => sameJson(x, b[i]));
+  }
+  const ra = a as Record<string, unknown>, rb = b as Record<string, unknown>;
+  const ka = Object.keys(ra).filter((k) => ra[k] !== undefined);
+  return ka.length === Object.keys(rb).filter((k) => rb[k] !== undefined).length && ka.every((k) => sameJson(ra[k], rb[k]));
+}
+
+/** Leaves the library as it was when the graph is unchanged, so the autosave clock marks the last real edit. */
 export function updateCurrentGraph(lib: DocLibrary, graph: SavedGraph, now: number): DocLibrary {
   const cur = getCurrent(lib);
-  if (!cur) return lib;
+  if (!cur || sameGraph(cur.graph, graph)) return lib;
   const updated: SolDoc = { ...cur, graph, updatedAt: now };
   const rest = lib.documents.filter((d) => d.id !== cur.id);
   return { ...lib, documents: [updated, ...rest] };

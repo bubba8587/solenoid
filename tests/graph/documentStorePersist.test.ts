@@ -21,9 +21,12 @@ const localStorageStub = {
 
 // A switch the tests flip to make serializeGraph throw, as a text-form refusal would.
 const captureFault = { on: false };
+// A graph the tests hand the capture in place of the editor-less null.
+const liveGraph: { g: unknown } = { g: null };
 vi.mock("../../src/graph/persistence", async (orig) => {
   const real = await orig<typeof import("../../src/graph/persistence")>();
-  return { ...real, serializeGraph: () => { if (captureFault.on) throw new Error("capture fault"); return real.serializeGraph(); } };
+  return { ...real, serializeGraph: () => { if (captureFault.on) throw new Error("capture fault"); return liveGraph.g ?? real.serializeGraph(); },
+    loadGraph: async (g: Parameters<typeof real.loadGraph>[0]) => (liveGraph.g ? true : real.loadGraph(g)) };
 });
 
 const { documentStore } = await import("../../src/graph/documentStore");
@@ -117,6 +120,20 @@ describe("the save clock — saveTimeStore reads the CURRENT doc through the pro
     // The autosave clock (updatedAt) reads the file's stamp too — autosave is the
     // primary save, so a traveled doc shows when its content was last saved.
     expect(stored.some((s) => s.doc?.updatedAt === 1786871100000)).toBe(true);
+  });
+
+  it("a capture of the unchanged imported graph keeps the file's stamp as the autosave time; an edit moves it", async () => {
+    liveGraph.g = { v: 2, nodes: [], connections: [], meta: { foreign: true } };
+    try {
+      await documentStore.importAsDocument({ v: 2, nodes: [], connections: [], savedAt: 1786871100000 }, "Kept", "/elsewhere/Kept.json");
+      documentStore.captureCurrent();
+      expect(saveTimeStore.lastAutosaveAt()).toBe(1786871100000);
+      liveGraph.g = { v: 2, nodes: [{ id: "n", type: "ConstantNode", x: 0, y: 0, init: {} }], connections: [], meta: { foreign: true } };
+      documentStore.captureCurrent();
+      expect(saveTimeStore.lastAutosaveAt()).toBeGreaterThan(1786871100000);
+    } finally {
+      liveGraph.g = null;
+    }
   });
 
   it("importAsDocument leaves the clocks fresh/blank for a file with no stamp (old saves)", async () => {

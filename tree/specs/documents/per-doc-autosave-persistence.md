@@ -54,6 +54,8 @@ A text field's draft stays local until blur ([[C95]] commitOnEnter), so a captur
 
 `persist()` decides a document changed by comparing object references (`_lastPersisted.get(id) === doc` skips the write). **MUST:** every `documentStoreCore` transform returns a new `SolDoc` for each document it changes (`{ ...d, … }`), and never mutates a document in place. An in-place mutation still updates the screen, but `persist()` sees the same reference and never writes it, so the edit vanishes on the next reload ([[B12]] losslessSaves). Mutating a document you just created, before its first persist, is fine; `importAsDocument` does this. A future transform that needs to touch a document copies it first.
 
+A capture whose graph equals the stored one leaves the library as it was (`updateCurrentGraph`), so the document keeps its `updatedAt` and is not rewritten. Equal means equal as JSON would write it: key order, keys holding `undefined` and the file's `savedAt` stamp don't count. `updatedAt` is the autosave time the Save Times card reads, so it marks the last real edit, and an imported file keeps its own stamp until it is edited; the swap verbs and a file save capture without moving it.
+
 ## Restore
 
 `restore()` runs on startup:
