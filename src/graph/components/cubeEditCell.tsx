@@ -250,12 +250,13 @@ function CubeExprField({ edit, column, expr }: { edit: CubeEditBinding; column: 
 
 export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; path: CubePath; column: string }): ReactNode {
   const cols = rootColumns(edit, path);
-  const rename = (next: string) => {
+  /** False when the name is refused (blank, or another column's), so the field goes back to the column's name. */
+  const rename = (next: string): boolean => {
     const key = next.trim();
-    if (!key || key === column) return;
+    if (!key || key === column) return false;
     const src = edit.source();
     const level = (path.length ? getAtPath(src.rows, path) : src.rows) as unknown[];
-    if (!Array.isArray(level) || recordKeys(level).includes(key) || (cols && cols.some((c) => c.name === key))) return;
+    if (!Array.isArray(level) || recordKeys(level).includes(key) || (cols && cols.some((c) => c.name === key))) return false;
     const renamed = level.map((r) => {
       if (!r || typeof r !== "object" || Array.isArray(r)) return r;
       return Object.fromEntries(Object.entries(r as CubeRecord).map(([k, v]) => [k === column ? key : k, v]));
@@ -263,9 +264,10 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
     const moved = (n: NestedTables) => renameNestedColumn(n, path, column, key);
     if (path.length === 0) {
       commitSource(edit, withNested({ ...src, columns: src.columns.map((c) => (c.name === column ? { ...c, name: key } : c)), rows: renamed as CubeRecord[] }, moved));
-      return;
+      return true;
     }
     commitAt(edit, path, renamed, moved);
+    return true;
   };
   const nameInput = (
     <input
@@ -276,7 +278,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
       onClick={(e) => e.stopPropagation()}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
-      onBlur={(e) => rename(e.currentTarget.value)}
+      onBlur={(e) => { if (!rename(e.currentTarget.value)) e.currentTarget.value = column; }}
       onKeyDown={(e) => {
         if (e.key === "Enter") e.currentTarget.blur();
         if (e.key === "Escape") { e.currentTarget.value = column; e.currentTarget.blur(); e.stopPropagation(); }
