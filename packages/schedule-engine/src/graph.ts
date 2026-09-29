@@ -1,6 +1,7 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[E10]] pickVsAggregateErrors
 
 import { ScheduleError, type CalendarSpec, type LinkType, type PlanDependency, type PlanTask } from "./types";
+import { hoursPerDayOf } from "./calendar";
 
 export const LINK_TYPES: readonly LinkType[] = ["FS", "SS", "FF", "SF"];
 
@@ -45,7 +46,7 @@ export interface Graph {
   byKey: Map<string, number>;
 }
 
-function flatten(tasks: PlanTask[]): FlatTask[] {
+function flatten(tasks: PlanTask[], calendar: CalendarSpec | undefined): FlatTask[] {
   const out: FlatTask[] = [];
   const seen = new Map<string, number>();
   function visit(t: PlanTask, level: number, parent: number | null, wbs: string) {
@@ -54,7 +55,7 @@ function flatten(tasks: PlanTask[]): FlatTask[] {
     if (!name) throw new ScheduleError(`row ${row} has no task name`);
     const k = nameKey(name);
     if (seen.has(k)) throw new ScheduleError(`task "${name}" is named twice`, name);
-    const hoursPerDay = 8;
+    const hoursPerDay = hoursPerDayOf(t.calendar?.intervals ?? calendar?.intervals);
     const fromWork = t.work != null && Number.isFinite(t.work) ? t.work / (Math.max(0.01, t.units ?? 1) * hoursPerDay) : null;
     const dur = t.duration == null ? (fromWork ?? 0) : t.duration;
     if (!Number.isFinite(dur) || dur < 0) throw new ScheduleError(`task "${name}" needs a duration of 0 or more days`, name);
@@ -86,8 +87,8 @@ function leavesUnder(tasks: FlatTask[], i: number): number[] {
   return t.children.flatMap((c) => leavesUnder(tasks, c));
 }
 
-export function buildGraph(plan: PlanTask[]): Graph {
-  const tasks = flatten(plan);
+export function buildGraph(plan: PlanTask[], calendar?: CalendarSpec): Graph {
+  const tasks = flatten(plan, calendar);
   const byKey = new Map(tasks.map((t) => [nameKey(t.name), t.index]));
   const edges: Edge[] = [];
   const succ: number[][] = tasks.map(() => []);

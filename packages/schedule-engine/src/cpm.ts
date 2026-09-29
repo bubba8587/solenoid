@@ -16,7 +16,7 @@ interface Pass {
 }
 
 export function schedule(input: ScheduleInput): ScheduleOutput {
-  const { tasks, edges, order } = buildGraph(input.tasks);
+  const { tasks, edges, order } = buildGraph(input.tasks, input.calendar);
   const n = tasks.length;
   const project = new Calendar(input.start, input.calendar);
 

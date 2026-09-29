@@ -86,6 +86,13 @@ describe("longest path (P6) and effort-driven durations (rule 16)", () => {
     expect(by(o, "B").duration).toBe(2.5);
     expect(iso(by(o, "B").finish)).toBe("2026-01-07"); // 2.5 days rounds up to 3 whole days
   });
+
+  it("work divides by the calendar's hours a day, the task's own calendar first", () => {
+    const tenHours = { workingDays: true, intervals: [[420, 1020]] as Array<[number, number]> };
+    const o = run([t("A", 0, [], { duration: undefined as never, work: 40 }), t("B", 0, [], { duration: undefined as never, work: 40, calendar: { intervals: [[480, 720]] } })], { calendar: tenHours });
+    expect(by(o, "A").duration).toBe(4);
+    expect(by(o, "B").duration).toBe(10);
+  });
 });
 
 describe("progress (rule 13)", () => {

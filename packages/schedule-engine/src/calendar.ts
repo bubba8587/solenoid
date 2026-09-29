@@ -49,6 +49,18 @@ export function intervalsForHours(hours: number): Array<[number, number]> {
   return [[start, start + minutes]];
 }
 
+function workIntervals(intervals: CalendarSpec["intervals"]): ReadonlyArray<readonly [number, number]> {
+  const iv = (intervals?.length ? intervals : DEFAULT_INTERVALS)
+    .map(([a, b]) => [Math.max(0, Math.min(MINUTES_PER_DAY, a)), Math.max(0, Math.min(MINUTES_PER_DAY, b))] as [number, number])
+    .filter(([a, b]) => b > a)
+    .sort((x, y) => x[0] - y[0]);
+  return iv.length ? iv : DEFAULT_INTERVALS;
+}
+
+export function hoursPerDayOf(intervals: CalendarSpec["intervals"]): number {
+  return workIntervals(intervals).reduce((m, [a, b]) => m + (b - a), 0) / 60;
+}
+
 export function calendarKey(spec: CalendarSpec): string {
   return JSON.stringify([spec.workingDays, spec.weekendCode ?? 1, [...(spec.holidays ?? [])].filter((h): h is number => typeof h === "number").sort((a, b) => a - b), spec.precision ?? "days", spec.intervals ?? null]);
 }
@@ -74,11 +86,7 @@ export class Calendar {
     if (this.weekend.size >= 7) throw new Error("A calendar needs at least one working day a week");
     this.anchor = dayKey(anchorSerial);
     this.minutes = spec.precision === "minutes";
-    const iv = (spec.intervals?.length ? spec.intervals : DEFAULT_INTERVALS)
-      .map(([a, b]) => [Math.max(0, Math.min(MINUTES_PER_DAY, a)), Math.max(0, Math.min(MINUTES_PER_DAY, b))] as [number, number])
-      .filter(([a, b]) => b > a)
-      .sort((x, y) => x[0] - y[0]);
-    this.intervals = iv.length ? iv : DEFAULT_INTERVALS;
+    this.intervals = workIntervals(spec.intervals);
     this.unitsPerDay = this.minutes ? this.intervals.reduce((m, [a, b]) => m + (b - a), 0) : 1;
   }
 
