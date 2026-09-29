@@ -2,6 +2,7 @@
 import { useMemo, useSyncExternalStore } from "react";
 import { useDraftCommit } from "./inlineInput";
 import { connectionVersionStore } from "../graphSignals";
+import { compositePassStore } from "../compositeEditorStore";
 import { getOwningEditor } from "../activeGraph";
 import { makeFrameShapeResolver } from "../frameShapeResolver";
 import { columnNamesOf } from "../frameShape";
@@ -15,8 +16,9 @@ export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeho
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
-  // Resolve once per wiring change: the memo depends only on the connection version and ids, so typing never re-walks.
+  // Resolve once per wiring change or graph pass (an upstream rename reaches the shape only through a pass), so typing never re-walks.
   const connVersion = useSyncExternalStore(connectionVersionStore.subscribe, connectionVersionStore.get);
+  const passVersion = useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   const columns = useMemo(() => {
     const editor = getOwningEditor(nodeId);
     if (!editor) return [];
@@ -24,7 +26,7 @@ export function ColumnPickerField({ nodeId, frameInput, value, onChange, placeho
     if (!feed) return [];
     return columnNamesOf(makeFrameShapeResolver(editor).outShape(feed.source, feed.sourceOutput));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeId, frameInput, connVersion]);
+  }, [nodeId, frameInput, connVersion, passVersion]);
 
   const field = useDraftCommit(value ?? "", (v) => v, (t) => t, onChange);
   const listId = `colpick-${nodeId}-${frameInput}`;

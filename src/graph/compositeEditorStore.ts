@@ -37,7 +37,7 @@ export const compositeEditorStore = {
   },
 };
 
-// process.ts ticks this after every pass; only the overlay knows its own area plugin, so nothing else can update the internal views.
+// process.ts ticks this after every pass: the drill-in overlay re-renders its inner views on it, and config-derived readouts (column pickers) re-resolve.
 const pass = createNotifier();
 export const compositePassStore = {
   version: pass.version,
