@@ -1000,28 +1000,24 @@ body.solenoid-scrubbing * {
   -webkit-box-orient: vertical;
 }
 
-/* An input card's Open (Frame Input, Table Input): the one accent-washed button on a card body. */
+/* An input card's edit button (Frame Input, Table Input): the full accent fill with its ink, the card's front door. */
 .solenoid-node__open-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
+  display: block;
   width: 100%;
   box-sizing: border-box;
   margin-bottom: 4px;
-  padding: 4px 0;
+  padding: 5px 0;
   border-radius: 4px;
-  border: 1px solid color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-emphasis), var(--border));
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 14%, transparent);
-  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
+  border: none;
+  background: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink));
   font-family: inherit;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 80ms ease;
 }
 .solenoid-node__open-btn:hover {
-  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, transparent);
+  filter: brightness(1.1);
 }
 
 /* CardSection: a small caption naming the rows under it, set on the row labels' left edge.
@@ -1044,13 +1040,20 @@ body.solenoid-scrubbing * {
 }
 /* The foldable caption is a bare button: the chevron alone says it folds. */
 .solenoid-node__section-caption--toggle {
+  position: relative;
   width: 100%;
   background: none;
   border: none;
   font-family: inherit;
   text-align: left;
   cursor: pointer;
-  padding-left: 1px;
+}
+/* The chevron hangs in the body's left padding, so the caption text lines up with the rows either way. */
+.solenoid-node__section-caption--toggle > svg {
+  position: absolute;
+  left: -7px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 .solenoid-node__section-caption--toggle:hover {
   color: var(--text);

@@ -62,7 +62,7 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
       node={data}
       emit={emit}
     >
-      <CardOpenButton title="Open the table editor" onOpen={openEditor} />
+      <CardOpenButton label="Edit Table" onOpen={openEditor} />
       <SegToggle
         value={dt}
         options={TYPE_OPTIONS}

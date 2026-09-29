@@ -7,7 +7,7 @@ import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
-import { themeAccent, darkenAccent } from "../palette";
+import { themeAccent, darkenAccent, contrastInk } from "../palette";
 
 // Under this many px a header pointer is a tap, not a drag; shared with the title label.
 export const HEADER_TAP_SLOP = 4;
@@ -146,6 +146,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const style: CSSProperties = {};
   if (accent) (style as Record<string, string>)["--node-accent"] = accent;
   if (accent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(accent);
+  if (accent) (style as Record<string, string>)["--node-accent-ink"] = contrastInk(accent);
   if (groupColor) (style as Record<string, string>)["--group-color"] = themeAccent(groupColor, mode);
   if (groupColor) (style as Record<string, string>)["--group-color-dark"] = darkenAccent(groupColor);
   if (size) {

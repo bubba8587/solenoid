@@ -45,7 +45,7 @@ export function CardSection({ label, title, collapsible, defaultOpen = true, pin
           setOpen(!open);
         }}
       >
-        {open ? <ChevronDownIcon size={10} strokeWidth={2.4} /> : <ChevronRightIcon size={10} strokeWidth={2.4} />}
+        {open ? <ChevronDownIcon size={8} strokeWidth={3} /> : <ChevronRightIcon size={8} strokeWidth={3} />}
         {label}
       </button>
       {open && children}

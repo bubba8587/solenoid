@@ -152,7 +152,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
   return (
     <NodeShell node={data} emit={emit}>
       <CardOpenButton
-        title="Open the table editor"
+        label="Edit Frame"
         onOpen={(el) => openFrameChipPopup(el, {
           value: isFrameValue(data.cachedResult) ? data.cachedResult : { __frame: true, columns: [] },
           label: nodeDisplayName(data), hostId: data.id, source, onSaveSource, onCommitSource,

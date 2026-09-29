@@ -41,7 +41,8 @@ specific item.
   chips draw `TypeIcon` (`#`, `Aa`, calendar, checkbox, double-struck C) instead of words or `T`/`D`/`B`.
 - **Card sections and the input card's Open** (DESIGN.md § Card sections, § Buttons): `CardSection` captions a run of
   rows and can fold them (Cast's Separators, Frame Input's Advanced holding Add LAMBDA and Form Layout; Decision
-  Matrix's captions moved onto it). Frame Input and Table Input got an accent-washed Open button at the top.
+  Matrix's captions moved onto it). Frame Input and Table Input open with a full-accent Edit Frame / Edit Table button (`NodeCard` now publishes
+  `--node-accent-ink`).
 - **The Table popup asks before dropping edits** (`tree/specs/documents/table-popup.md` § Closing): a close with
   unsaved edits raises Save your changes? (Discard / Keep Editing / Save) inside the popup. `shot-graph` gained
   `--click-edge` to press a popup's overlay outside the card.
