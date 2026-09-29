@@ -577,6 +577,20 @@ describe("Hypothesis Test — one node, six tests", () => {
     expect(cp).toBeLessThanOrEqual(1);
   });
 
+  it("Z reads σ from the card when unwired, skips blanks, and agrees with Z.TEST", () => {
+    const z = new HypothesisTestNode({ op: "z" });
+    z.literals.x = 2;
+    const sampleSd = z.data({ a: [A] }).result!;
+    z.literals.sigma = 10;
+    const typed = z.data({ a: [A] }).result!;
+    expect(typed).not.toBeCloseTo(sampleSd, 6);
+    expect(typed).toBeCloseTo(compileEvaluator("Z.TEST(x, 2, 10)")!({ x: A }) as number, 12);
+    delete z.literals.sigma;
+    const gappy = z.data({ a: [[1, 2, null, 3, 4, 5] as unknown as number[]] }).result!;
+    expect(gappy).toBeCloseTo(sampleSd, 12);
+    expect(compileEvaluator("Z.TEST(x, 2)")!({ x: [1, 2, null, 3, 4, 5] })).toBeCloseTo(sampleSd, 12);
+  });
+
   it("a switch between two-sample tests keeps both cables and relabels the rows", () => {
     const n = new HypothesisTestNode({ op: "t-equal" });
     expect(n.keysDroppedBySwitch("f")).toEqual([]);

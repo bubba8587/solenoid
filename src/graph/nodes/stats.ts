@@ -665,7 +665,7 @@ const T_KERNEL_OP = { "t-paired": "paired", "t-equal": "equal-var", "t-welch": "
 
 export class HypothesisTestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    sigma: "Left unwired, the sample's own standard deviation is used. A wired blank instead blanks the result.",
+    sigma: "Left unset, the sample's own standard deviation is used. A wired blank instead blanks the result.",
   };
 
   label: string;
@@ -749,11 +749,12 @@ export class HypothesisTestNode extends ClassicPreset.Node {
       result = k === null || n === null || p0 === null ? null : binomTestP(k, n, p0);
     } else if (this.op === "z") {
       const x = readInput(inputs.x, this.literals.x ?? 0);
-      const sigma = inputs.sigma === undefined ? undefined : (inputs.sigma[0] ?? null);
-      if (a && a.length >= 2 && x !== null && sigma !== null) {
-        const n = a.length;
-        const m = arrMean(a);
-        const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(a));
+      const sigma = readInput<number | undefined>(inputs.sigma, this.literals.sigma);
+      const xs = a?.filter((v) => typeof v === "number" && Number.isFinite(v));
+      if (xs && xs.length >= 2 && x !== null && sigma !== null) {
+        const n = xs.length;
+        const m = arrMean(xs);
+        const std = (sigma !== undefined && sigma > 0) ? sigma : Math.sqrt(arrSampleVar(xs));
         if (std > 0) result = 1 - stdNormCDF((m - x) / (std / Math.sqrt(n)));
       }
     } else if (this.op === "chisq") {
