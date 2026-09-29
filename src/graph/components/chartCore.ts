@@ -99,6 +99,15 @@ export function valueAxisWidth(values: Iterable<unknown>, fs: number, titled = f
   return Math.ceil(Math.max(3, ...ticks.map((n) => compactTick(n).length)) * 5.8 * fs + 8) + (titled ? 14 : 0);
 }
 
+/** A horizontal Bar's category gutter in px: its widest tick at 5.2 · fs a character plus 8, at least 18, at most a
+ *  third of the width, and at least 32 under an axis title. */
+export function categoryAxisWidth(ticks: Iterable<string>, width: number, fs: number, titled = false): number {
+  let longest = 0;
+  for (const t of ticks) longest = Math.max(longest, t.length);
+  const w = Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(longest * 5.2 * fs)));
+  return titled ? Math.max(32, w) : w;
+}
+
 export function toSeries(v: unknown): { i: number; v: number }[] {
   if (v == null) return [];
   const arr: unknown[] = Array.isArray(v) ? v : [v];

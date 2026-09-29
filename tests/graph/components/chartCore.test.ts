@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, compactTick, valueAxisWidth, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
+import { axisTick, categoryAxisWidth, compactTick, valueAxisWidth, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -97,5 +97,16 @@ describe("spotlightIndex", () => {
   });
   it("drops a moved spotlight whose name is ambiguous", () => {
     expect(spotlightIndex({ index: 2, name: "" }, ["", ""])).toBeNull();
+  });
+});
+
+describe("categoryAxisWidth", () => {
+  it("fits the widest label, at least 18, at most a third of the width", () => {
+    expect(categoryAxisWidth(["1", "2"], 300, 1)).toBe(18);
+    expect(categoryAxisWidth(["North America", "EU"], 300, 1)).toBe(8 + Math.ceil(13 * 5.2));
+    expect(categoryAxisWidth(["x".repeat(80)], 300, 1)).toBe(100);
+  });
+  it("keeps room for an axis title", () => {
+    expect(categoryAxisWidth(["a"], 300, 1, true)).toBe(32);
   });
 });

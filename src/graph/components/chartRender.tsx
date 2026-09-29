@@ -3,7 +3,7 @@ import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, Cartesia
 import { type SyntheticEvent, type ComponentProps } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, niceTicks, partSlices, useSeriesSpotlight, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, categoryAxisWidth, niceTicks, partSlices, useSeriesSpotlight, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor } from "../palette";
@@ -143,14 +143,12 @@ export function ChartView({
       </AreaChart>
     );
   } else if (op === "bar") {
-    const catW = labels
-      ? Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(iterMax(series.map((d) => tickFmt(d.i).length)) * 5.2 * fs)))
-      : 18;
+    const catW = categoryAxisWidth(series.map((d) => tickFmt(d.i)), width, fs, !!yLabel);
     chart = (
       <BarChart width={width} height={chartH} data={series} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} tickFormatter={compactTick} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? Math.max(32, catW) : catW} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={catW} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={fillAlpha < 1 && opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false} />
       </BarChart>
@@ -360,7 +358,8 @@ export function MultiSeriesView({
   const chartH = height - titleH - MULTI_LEGEND_H;
   const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
-  const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? (yLabel ? 52 : 40) : yAxisW;
+  const catW = op === "bar" ? categoryAxisWidth(data.map((d) => tickFmt(d.i as number)), width, fs, !!yLabel) : 0;
+  const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? catW : yAxisW;
   const legend = (
     <SeriesLegend
       series={series} paint={paint} dim={dim} fs={fs} color={axis}
@@ -390,7 +389,7 @@ export function MultiSeriesView({
       <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} tickFormatter={compactTick} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 52 : 40} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={catW} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {tip}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={markAlpha * dim(j)} isAnimationActive={false} />)}
       </BarChart>
