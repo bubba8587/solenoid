@@ -313,5 +313,5 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
 - [ ] **Chart compact ticks** (`chartCore.ts` compactTick): three significant figures ignore the tick step, so close ticks on a narrow range (100000, 100250, 100500) all read "100K". The per-value `tickFormatter` never sees the step; a formatter built per axis from its domain would.
 - [ ] **YEARFRAC basis -0.5** floors to -1 (`#DOMAIN!`); Excel truncates toward zero, if it truncates that way (unconfirmed).
-- [ ] **Decimal places setting** (plausible): CubeDisplay doesn't subscribe to `numberDecimals`, so a Cube card keeps its old digits ([[D94]] oneNumberDisplay: what is on screen redraws; an open popup waiting for a reopen is intended). Record chart text is baked at compute.
+- [ ] **Record chart text** is baked at compute (`visual.ts` formatNumberWithAnnotation), so a Decimal places change shows on it only after the next recompute ([[D94]] oneNumberDisplay).
 - [ ] **VARP / STDEVP** still listed in `unitDimExpr.ts` SQUARE sets and `FUNCTION_FAMILY` though both are legacy aliases; delete if nothing reads them by the old name.

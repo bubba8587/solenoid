@@ -52,6 +52,15 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: Form
   return String(cell);
 }
 
+/** A cell as a card shows it: a typed number in the General style ([[D94]] oneNumberDisplay), anything else as its token, which copies keep. */
+export function cubeCellShown(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
+  if (type && cell !== null && typeof cell !== "object") {
+    const f = formatFrameCell(type, cell, format);
+    if (typeof f === "number") return formatScalar(f);
+  }
+  return cubeCellToken(cell, type, format);
+}
+
 export function frameCellNode(type: FrameColType, cell: FrameCell, format?: FormatAnnotation): ReactNode {
   if (cell === null || cell === undefined || cell === "") {
     return <span style={{ color: "var(--text-muted)" }}>—</span>;
