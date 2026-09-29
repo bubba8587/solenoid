@@ -354,3 +354,4 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Binomial sampling** goes through BINOM.INV per draw (~18 ms at n = 1e5); the single-pass `sampleQuantiles` doesn't reach it.
 - [ ] **Append units**: Append drops unit and format by spec; keep them when every frame agrees?
 - [ ] **Blank where [[D70]] nullNotEnoughData wants an error** (the finance kernels now answer #DOMAIN!; same class, not yet changed): distributions' invalid parameter and BETA.* with B ≤ A (formula-language.md § distributions, `compute`, `sampleQuantile`); LOG2 of x ≤ 0 (`scalar.ts`); LOGEST and GROWTH (const FALSE) with a Y ≤ 0 answer `[]`; the Depreciation card's SLN/SYD/DDB/DB answer blank where their formulas give #DOMAIN! (`finance.ts`).
+- [ ] **PERCENTRANK.EXC of one value** answers 0.5, unchecked in Excel; **an imported file's first autosave** may still move its time if the load normalizes the graph (`updateCurrentGraph` compares serialized forms).

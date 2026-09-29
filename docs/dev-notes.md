@@ -20,6 +20,7 @@ specific item.
 - Out-of-order odd-coupon dates, T-bills past a year and PRICEMAT after maturity are refused; XIRR's date check is one helper for node and formula; QUARTILE truncates; REGEXREPLACE counts a negative occurrence from the end (author).
 - Out-of-range finance arguments (frequency, basis, date order, T-bill term, amounts) are #DOMAIN! with a message naming the need, on node and formula alike; a missing date stays blank ([[D70]] nullNotEnoughData, the author's ruling).
 - DAYS360, YEARFRAC basis 0 and the coupon 30/360 follow Excel's end-of-February rules (unchecked in Excel: backlog).
+- NETWORKDAYS counts calendar days with its own kernel (`networkDays`, off Formula.js); PERCENTRANK skips blanks; the Z test reads a typed σ; Save Times shows the wall clock; a document's autosave time moves only when its graph changed.
 - Tests that assert a module's first state or mock a module run in the ISOLATED project (`noteMarkdown`, `sketchExport`, `localFileRace`, `flowHistory`).
 - Open leads the walk found and left: `backlog.md` § From the 2026-09-29 commit-walk review.
 
