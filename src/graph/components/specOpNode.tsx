@@ -3,11 +3,12 @@ import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps, type O
 import { dropInputCables } from "./cablePrune";
 import { getOwningView } from "../activeGraph";
 import { processGraph } from "../process";
+import type { SolError } from "../errorValue";
 
 interface SpecOpNode<Op extends string> {
   id: string;
   op: Op;
-  cachedResult: number | null;
+  cachedResult: number | SolError | null;
   keysDroppedBySwitch(next: Op): string[];
   setOp(next: Op): void;
 }
