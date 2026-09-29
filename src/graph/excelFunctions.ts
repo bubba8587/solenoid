@@ -7,7 +7,7 @@ import { criteriaAggregate } from "./excelCriteria";
 import { roundDigits, bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots, gcdLcm } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
-import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
+import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, addWorkdays, weekendDays, type EpochUnit } from "./nodes/dateOps";
@@ -1081,9 +1081,7 @@ registerInternal("RANDDIST", (family, n, ...params) => {
   const spec = DIST_SPECS[key];
   const ps = spec.params.map((p, i) => (params[i] == null ? p.def : toNum(params[i])));
   if (ps.some((v) => Number.isNaN(v))) return VALUE("RANDDIST");
-  const out: (number | null)[] = [];
-  for (let i = 0; i < count; i++) { const v = sampleQuantile(key, Math.random(), ps); out.push(v !== null && Number.isFinite(v) ? v : null); }
-  return out;
+  return sampleQuantiles(key, Array.from({ length: count }, () => Math.random()), ps);
 });
 registerInternal("BETA.DIST", (x, a, b, cum, A, B) => {
   const lo = A == null ? 0 : toNum(A), hi = B == null ? 1 : toNum(B);

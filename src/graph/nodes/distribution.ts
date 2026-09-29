@@ -1,7 +1,7 @@
 // [[C61]], [[C113]], [[D46]] freezeVolatilePerCalc
 import { ClassicPreset } from "rete";
 import { numIn, numListIn, numListOut, readInput, broadcast, type BroadcastResult } from "./shared";
-import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantile, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
+import { DIST_SPECS, isInverseForm, formAfterSwitch, sampleQuantiles, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
 import { mulberry32 } from "../monteCarlo";
 import { getRecalcGen } from "../process";
 export { DIST_SPECS, DIST_FORM_META, isInverseForm, formAfterSwitch, type DistForm, type DistKey, type DistSpec } from "./distributionOps";
@@ -109,8 +109,7 @@ export class DistributionsNode extends ClassicPreset.Node {
         this.sampleSeed = h >>> 0;
       }
       const rng = mulberry32(this.sampleSeed);
-      const out: (number | null)[] = [];
-      for (let i = 0; i < n; i++) { const v = sampleQuantile(this.op, rng(), ps); out.push(v !== null && Number.isFinite(v) ? v : null); }
+      const out = sampleQuantiles(this.op, Array.from({ length: n }, () => rng()), ps);
       this.cachedResult = out;
       return { result: out };
     }
