@@ -11,7 +11,7 @@ import {
   DepreciationNode,
   FvScheduleNode,
 } from "../../../src/graph/nodes/finance";
-import { securityDisc } from "../../../src/graph/nodes/financeOps";
+import { securityDisc, priceMat } from "../../../src/graph/nodes/financeOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 import { EquationNode } from "../../../src/graph/nodes/equation";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
@@ -232,6 +232,31 @@ describe("TBILL — money-market day-count conventions", () => {
     // =TBILLEQ(DATE(2024,1,15), DATE(2024,12,15), 0.05); DSM = 335 > 182.
     expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] }).result)
       .toBeCloseTo(0.052539935, 9);
+  });
+});
+
+describe("TBILL and PRICEMAT refuse what Excel answers #NUM!", () => {
+  const d = (s: string) => parseDateToSerial(s);
+  const noNumber = (r: unknown) => expect(typeof r === "number" && Number.isFinite(r)).toBe(false);
+  it("a T-bill maturing more than one year after settlement has no answer", () => {
+    const tb = new DiscountSecurityNode({ op: "tbillprice" });
+    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] }).result).toBeNull();
+    noNumber(ev("TBILLPRICE(s, m, 0.05)", { s: d("2024-01-15"), m: d("2025-02-20") }));
+    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] }).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
+  });
+  it("a zero or negative discount or price has no answer", () => {
+    const s = d("2024-01-15"), m = d("2024-07-15");
+    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [s], maturity: [m], discount: [0] }).result).toBeNull();
+    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [s], maturity: [m], discount: [-0.05] }).result).toBeNull();
+    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [s], maturity: [m], pr: [0] }).result).toBeNull();
+    noNumber(ev("TBILLYIELD(s, m, -1)", { s, m }));
+  });
+  it("PRICEMAT and YIELDMAT refuse a settlement on or after maturity", () => {
+    const issue = d("2023-01-01"), s = d("2025-01-01"), m = d("2024-06-01");
+    expect(priceMat("pricemat", s, m, issue, 0.05, 0.06)).toBeNull();
+    expect(priceMat("yieldmat", s, m, issue, 0.05, 99)).toBeNull();
+    expect(priceMat("pricemat", m, m, issue, 0.05, 0.06)).toBeNull();
+    noNumber(ev("PRICEMAT(s, m, i, 0.05, 0.06)", { s, m, i: issue }));
   });
 });
 

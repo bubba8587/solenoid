@@ -226,7 +226,11 @@ export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
 
 export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | null {
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  if (maturitySerial <= settleSerial) return null;
+  if (maturitySerial <= settleSerial || x <= 0) return null;
+  const s = serialToJsDate(settleSerial);
+  const lastDay = new Date(Date.UTC(s.getUTCFullYear() + 1, s.getUTCMonth() + 1, 0)).getUTCDate();
+  const yearOn = jsDateToSerial(new Date(Date.UTC(s.getUTCFullYear() + 1, s.getUTCMonth(), Math.min(s.getUTCDate(), lastDay))));
+  if (maturitySerial > yearOn) return null;
   const dsm = Math.round(maturitySerial - settleSerial);
   switch (op) {
     case "tbillprice": return 100 * (1 - x * dsm / 360);
@@ -283,6 +287,7 @@ export function priceMat(
   rate: number, yldOrPrice: number, basis = 0,
 ): number | null {
   if (![settleSerial, maturitySerial, issueSerial].every(Number.isFinite)) return null;
+  if (settleSerial >= maturitySerial) return null;
   const b = Math.round(basis);
   const settle = serialToJsDate(settleSerial);
   const maturity = serialToJsDate(maturitySerial);
