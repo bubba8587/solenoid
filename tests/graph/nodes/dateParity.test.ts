@@ -63,6 +63,23 @@ describe("date formulas == date nodes", () => {
     expect((card as { code: string }).code).toBe("#DOMAIN!");
   });
 
+  it("US 30/360 counts a start on the last day of February as the 30th", () => {
+    const d360 = (a: string, b: string) => ev("DAYS360(a, b)", { a: d(a), b: d(b) });
+    expect(d360("2026-02-28", "2026-03-31")).toBe(30);
+    expect(d360("2024-02-29", "2024-03-31")).toBe(30);
+    expect(d360("2026-02-28", "2026-03-15")).toBe(15);
+    expect(d360("2024-02-28", "2024-03-15")).toBe(17);   // not the last day in a leap year
+    expect(d360("2026-02-28", "2027-02-28")).toBe(358);  // DAYS360 leaves an end in February alone
+    expect(ev("DAYS360(a, b, TRUE)", { a: d("2026-02-28"), b: d("2026-03-31") })).toBe(32);
+    // YEARFRAC basis 0 is the NASD chain: both ends last-of-February count as the 30th; a 31st end stays when the start was not the 30th or 31st.
+    const yf0 = (a: string, b: string) => (ev("YEARFRAC(a, b, 0)", { a: d(a), b: d(b) }) as number) * 360;
+    expect(yf0("2026-02-28", "2027-02-28")).toBeCloseTo(360, 9);
+    expect(yf0("2026-02-28", "2026-03-15")).toBeCloseTo(15, 9);
+    expect(yf0("2026-02-28", "2026-03-31")).toBeCloseTo(31, 9);
+    expect(yf0("2026-01-31", "2026-03-31")).toBeCloseTo(60, 9);
+    expect(new DateDiffNode({ op: "days360" }).data({ start: [d("2026-02-28")], end: [d("2026-03-31")], basis: [0] }).result).toBe(30);
+  });
+
   it("DAYS / DAYS360 / YEARFRAC / DATEDIF", () => {
     const s = d("2024-01-31"), z = d("2026-03-01");
     same(ev("DAYS(z, s)", { s, z }), new DateDiffNode({ op: "days" }).data({ start: [s], end: [z] }).result);

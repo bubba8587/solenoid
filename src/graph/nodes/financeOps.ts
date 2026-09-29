@@ -19,7 +19,8 @@ export function days30_360(d1: Date, d2: Date): number {
   const y1 = d1.getUTCFullYear(), m1 = d1.getUTCMonth() + 1;
   let v1 = d1.getUTCDate();
   const y2 = d2.getUTCFullYear(), m2 = d2.getUTCMonth() + 1, v2raw = d2.getUTCDate();
-  if (v1 === 31) v1 = 30;
+  const lastOfFeb = m1 === 2 && new Date(Date.UTC(y1, 1, v1 + 1)).getUTCMonth() === 2;
+  if (v1 === 31 || lastOfFeb) v1 = 30;
   const v2 = (v2raw === 31 && v1 === 30) ? 30 : v2raw;
   return (y2 - y1) * 360 + (m2 - m1) * 30 + (v2 - v1);
 }

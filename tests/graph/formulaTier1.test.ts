@@ -175,6 +175,12 @@ describe("finance functions: formula matches node", () => {
       .toBe(bs.data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result);
   });
 
+  it("COUPDAYBS on 30/360 counts a coupon on the last day of February as the 30th", () => {
+    // previous coupon 28-Feb-2026, settlement 15-Mar-2026, maturity 28-Aug-2030
+    expect(ev(`COUPDAYBS(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(15);
+    expect(ev(`COUPDAYSNC(${settle}, DATE(2030,8,28), 2, 0)`)).toBe(165);
+  });
+
   it("PRICE / YIELD round-trip through each other", () => {
     const priceNode = new BondPricingNode({ op: "price" });
     const price = ev(`PRICE(${settle}, ${maturity}, 0.065, 0.07, 100, 2)`);

@@ -126,11 +126,16 @@ export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): numbe
   const sd = serialToJsDate(s), ed = serialToJsDate(e);
   const sy = sd.getUTCFullYear(), sm = sd.getUTCMonth(), sday = sd.getUTCDate();
   const ey = ed.getUTCFullYear(), em = ed.getUTCMonth(), eday = ed.getUTCDate();
-  const thirty360 = (euro: boolean): number => {
+  const lastOfFeb = (y: number, m: number, day: number) => m === 1 && day === (isLeapYear(y) ? 29 : 28);
+  const thirty360 = (rule: "us" | "nasd" | "euro"): number => {
     let d1 = sday, d2 = eday;
     const m1 = sm + 1, m2 = em + 1;
-    if (euro) { if (d1 === 31) d1 = 30; if (d2 === 31) d2 = 30; }
-    else      { if (d1 === 31) d1 = 30; if (d2 === 31 && d1 === 30) d2 = 30; }
+    const feb1 = lastOfFeb(sy, sm, sday), feb2 = lastOfFeb(ey, em, eday);
+    if (rule === "euro") { if (d1 === 31) d1 = 30; if (d2 === 31) d2 = 30; }
+    else if (rule === "us") { if (d1 === 31 || feb1) d1 = 30; if (d2 === 31 && d1 === 30) d2 = 30; }
+    else if (d1 === 31) { d1 = 30; if (d2 === 31) d2 = 30; }
+    else if (d1 === 30 && d2 === 31) d2 = 30;
+    else if (feb1) { d1 = 30; if (feb2) d2 = 30; }
     return (ey - sy) * 360 + (m2 - m1) * 30 + (d2 - d1);
   };
   switch (op) {
@@ -149,13 +154,13 @@ export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): numbe
       if (base > ed) base.setUTCFullYear(ey - 1);
       return Math.round((ed.getTime() - base.getTime()) / 86400000);
     }
-    case "days360": return thirty360(basis !== 0);
+    case "days360": return thirty360(basis !== 0 ? "euro" : "us");
     case "yearfrac": {
       const days = (ed.getTime() - sd.getTime()) / 86400000;
-      if (basis === 0) return thirty360(false) / 360;
+      if (basis === 0) return thirty360("nasd") / 360;
       if (basis === 2) return days / 360;
       if (basis === 3) return days / 365;
-      if (basis === 4) return thirty360(true) / 360;
+      if (basis === 4) return thirty360("euro") / 360;
       return days / actualYearLength(sd, ed);
     }
   }
