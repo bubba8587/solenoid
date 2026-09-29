@@ -1,3 +1,4 @@
+// [[B3]] sameNodeEverywhere
 import { describe, it, expect } from "vitest";
 import { latestOnlyQueue } from "../../src/graph/landing/landingCompute";
 

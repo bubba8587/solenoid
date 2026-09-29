@@ -1,3 +1,4 @@
+// [[C58]] tableInputRawText
 import { describe, it, expect } from "vitest";
 import { suggestionCells } from "../../src/graph/components/TablePopup";
 import { distinctColumnValues } from "../../src/graph/frameVerbs";
