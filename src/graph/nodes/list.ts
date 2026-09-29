@@ -2249,9 +2249,10 @@ export class SpectrumNode extends ClassicPreset.Node {
 
   data(inputs: { list?: ListCell[][]; rate?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    const rate = readRole<number>(this, "rate", inputs.rate);
+    const rate = readRole<number | SolError>(this, "rate", inputs.rate);
     if (arr.length === 0) { this.cachedResult = null; return { result: null }; }
     const rows = spectrum(arr, rate);
+    if (isSolError(rows)) { this.cachedResult = null; return { result: rows }; }
     this.cachedResult = rows.map((r) => [r.frequency, r.magnitude, r.phase]);
     return { result: this.cachedResult };
   }

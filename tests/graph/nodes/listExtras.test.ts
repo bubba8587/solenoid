@@ -1,11 +1,11 @@
 // [[C60]]
 import { describe, it, expect } from "vitest";
 import { shiftList, pctChangeList, zscoreList, binIndex } from "../../../src/graph/nodes/listOps";
-import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode } from "../../../src/graph/nodes/list";
+import { ShiftNode, DiffNode, NormalizeNode, BinNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, SpectrumNode } from "../../../src/graph/nodes/list";
 import { BetweenNode, IsCloseNode } from "../../../src/graph/nodes/logic";
 import { combinationsOf, crossProduct, polyfitEval } from "../../../src/graph/nodes/listOps";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
-import { isSolError } from "../../../src/graph/errorValue";
+import { isSolError, solError } from "../../../src/graph/errorValue";
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
@@ -157,5 +157,19 @@ describe("formulas dispatch (non-Excel, numpy/pandas-style)", () => {
     expect(ev("CROSSPRODUCT(a, b)", { a: [1, 0, 0], b: [0, 1, 0] })).toEqual([0, 0, 1]);
     expect(ev("RLE(x)", { x: [1, 1, 2] })).toEqual([[1, 2], [2, 1]]);
     expect(ev("ISCLOSE(1, 1.0000001, 0.001)")).toBe(true);
+  });
+});
+
+describe("Spectrum propagates an error ([[E10]] pickVsAggregateErrors)", () => {
+  const div0 = solError("#DIV/0!", "x");
+  it("an error cell in the signal is the whole answer, on the node and in SPECTRUM", () => {
+    const node = new SpectrumNode().data({ list: [[1, div0 as never, 3, 4]] }).result;
+    expect(isSolError(node) && (node as { code: string }).code).toBe("#DIV/0!");
+    const f = ev("SPECTRUM(x)", { x: [1, div0, 3, 4] });
+    expect(isSolError(f) && (f as { code: string }).code).toBe("#DIV/0!");
+  });
+  it("a wired error rate is the answer", () => {
+    const node = new SpectrumNode().data({ list: [[1, 2, 3, 4]], rate: [div0 as never] }).result;
+    expect(isSolError(node) && (node as { code: string }).code).toBe("#DIV/0!");
   });
 });

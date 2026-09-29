@@ -995,7 +995,10 @@ function fftInPlace(re: number[], im: number[], inverse: boolean): void {
 }
 
 export interface SpectrumRow { bin: number; frequency: number; magnitude: number; phase: number }
-export function spectrum(x: readonly Cell[], rate = 1): SpectrumRow[] {
+export function spectrum(x: readonly Cell[], rate: number | SolError = 1): SpectrumRow[] | SolError {
+  if (isSolError(rate)) return rate;
+  const err = firstError(x);
+  if (err) return err;
   const sig = x.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
   const n = sig.length;
   if (n === 0) return [];

@@ -15,7 +15,7 @@ import { amortizationSchedule } from "../../../src/graph/nodes/financeOps";
 import { anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP } from "../../../src/graph/nodes/statsOps";
 import { HypothesisTestNode } from "../../../src/graph/nodes/stats";
 import { matTrace, matRank, matNorm, matSolve, matEigh } from "../../../src/graph/nodes/matrixOps";
-import { fftReal, spectrum } from "../../../src/graph/nodes/listOps";
+import { fftReal, spectrum, type SpectrumRow } from "../../../src/graph/nodes/listOps";
 import { MatDetNode, MatSolveNode, MatEigenNode } from "../../../src/graph/nodes/matrix";
 import { SpectrumNode } from "../../../src/graph/nodes/list";
 import { levenshtein, damerauLevenshtein, jaroWinkler, textSimilarity, fuzzyBest } from "../../../src/graph/nodes/textOps";
@@ -336,14 +336,14 @@ describe("Spectrum (FFT) — numpy.fft reference", () => {
   });
   it("a 5 Hz sine of amplitude 3 on a 1 V offset, sampled 64/s: bin 5 reads 3 at 5 Hz, DC reads 1", () => {
     const sig = Array.from({ length: 64 }, (_, i) => 3 * Math.sin((2 * Math.PI * 5 * i) / 64) + 1);
-    const rows = spectrum(sig, 64);
+    const rows = spectrum(sig, 64) as SpectrumRow[];
     expect(rows).toHaveLength(33);
     expect(rows[5].frequency).toBe(5);
     expect(rows[5].magnitude).toBeCloseTo(3, 10);
     expect(rows[0].magnitude).toBeCloseTo(1, 10);
     expect(rows[7].magnitude).toBeCloseTo(0, 10);
     const node = new SpectrumNode(); node.literals.rate = 64;
-    const out = node.data({ list: [sig] }).result!;
+    const out = node.data({ list: [sig] }).result as number[][];
     expect(out[5][0]).toBe(5); expect(out[5][1] as number).toBeCloseTo(3, 10);
     const viaFormula = ev("SPECTRUM(s, 64)", { s: sig }) as number[][];
     expect(viaFormula[5][1]).toBeCloseTo(3, 10);

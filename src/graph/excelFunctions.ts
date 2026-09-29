@@ -1791,7 +1791,10 @@ registerInternal("SOLVE", (m, b) => {
 });
 registerInternal("EIGENVALUES", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.values : solError("#SHAPE!", "EIGENVALUES needs a square, symmetric matrix"); });
 registerInternal("EIGENVECTORS", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.vectors : solError("#SHAPE!", "EIGENVECTORS needs a square, symmetric matrix"); });
-registerInternal("SPECTRUM", (list, rate) => spectrum(numList(list), rate == null ? 1 : Number(rate)).map((r) => [r.frequency, r.magnitude, r.phase]));
+registerInternal("SPECTRUM", (list, rate) => {
+  const rows = spectrum(numList(list), rate == null ? 1 : isSolError(rate) ? rate : Number(rate));
+  return isSolError(rows) ? rows : rows.map((r) => [r.frequency, r.magnitude, r.phase]);
+});
 // [[D82]] sparklineCell
 registerInternal("SPARKLINE", (range, type) => {
   const items = Array.isArray(range) ? flat(range) : [range];
