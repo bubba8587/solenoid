@@ -1186,7 +1186,7 @@ export function TablePopup() {
           markedCols={computedColSet}
           firstBodyRow={hasHeaderLine ? 1 : 0}
           error={csvError}
-          onFocus={() => { if (editable && formattedPreview) setCsvText(buildText(false, "source")); }}
+          onFocus={() => { if (editable && !csvError && formattedPreview) setCsvText(buildText(false, "source")); }}
           onBlur={() => { if (editable && !csvError && (formattedPreview || computedColSet.size > 0)) setCsvText(csvViewText()); }}
         />
       )}
