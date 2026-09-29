@@ -39,7 +39,7 @@ import { parseRecordLayout, recordImageSrc, cellImageSrc } from "../recordLayout
 import { CellImage } from "./cubeCell";
 import "./chartCards.css"; // .sol-record__img, for the Form's image cells
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
-import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, defaultFooterStat, footerStatValue, formatFooterStat, statReadsAsCell } from "./tableFooterStats";
+import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, footerStatFor, footerStatValue, formatFooterStat, statReadsAsCell } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
@@ -1041,7 +1041,7 @@ export function TablePopup() {
                   <th className="table-popup__corner" />
                   {Array.from({ length: viewCols }, (_, c) => {
                     const type = colTypeAt(c);
-                    const stat: FooterStat = colStat[c] ?? defaultFooterStat(type);
+                    const stat = footerStatFor(type, colStat[c]);
                     const choices = STATS_BY_TYPE[type];
                     return (
                       <td key={c} className="table-popup__statcell">

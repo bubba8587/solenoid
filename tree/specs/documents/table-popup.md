@@ -231,7 +231,7 @@ A list is one row of N cells. The footer's Row and Column switch lays it across 
 
 ## The summary footer
 
-Frame popups can show a footer with one statistic per column, toggled from the menu and remembered in the setting `tablePopupSummary`. Each column's statistic is picked from a select laid invisibly over the statistic's name, so the picker never widens the column. Until one is picked, a number column shows Sum and every other column Count.
+Frame popups can show a footer with one statistic per column, toggled from the menu and remembered in the setting `tablePopupSummary`. Each column's statistic is picked from a select laid invisibly over the statistic's name, so the picker never widens the column. Until one is picked, and whenever the column's type no longer offers the pick (`footerStatFor`), a number column shows Sum and every other column Count.
 
 | Column type | Statistics offered, in order |
 |---|---|

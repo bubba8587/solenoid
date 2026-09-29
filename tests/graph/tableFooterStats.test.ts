@@ -8,6 +8,7 @@ import {
   type ColSummary,
   STATS_BY_TYPE,
   defaultFooterStat,
+  footerStatFor,
   footerStatValue,
   formatFooterStat,
   statReadsAsCell,
@@ -98,5 +99,19 @@ describe("formatFooterStat", () => {
   });
   it("shows an em dash for a missing value", () => {
     expect(formatFooterStat("range", null)).toBe("—");
+  });
+});
+
+describe("footerStatFor", () => {
+  it("keeps a pick the column's type still offers", () => {
+    expect(footerStatFor("date", "latest")).toBe("latest");
+    expect(footerStatFor("number", "count")).toBe("count");
+  });
+  it("falls back to the type's default when the column's type no longer offers the pick", () => {
+    expect(footerStatFor("number", "latest")).toBe("sum");
+    expect(footerStatFor("string", "sum")).toBe("count");
+  });
+  it("shows the default with no pick", () => {
+    expect(footerStatFor("number", undefined)).toBe("sum");
   });
 });

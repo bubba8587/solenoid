@@ -37,6 +37,11 @@ export function defaultFooterStat(type: FooterColType): FooterStat {
   return type === "number" ? "sum" : "count";
 }
 
+/** The statistic a column's footer shows: the pick while the column's type still offers it, else the type's default. */
+export function footerStatFor(type: FooterColType, picked: FooterStat | undefined): FooterStat {
+  return picked !== undefined && STATS_BY_TYPE[type].includes(picked) ? picked : defaultFooterStat(type);
+}
+
 export function footerStatValue(stat: FooterStat, s: ColSummary): number | null {
   const p = s.profile;
   switch (stat) {
