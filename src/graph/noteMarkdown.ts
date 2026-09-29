@@ -3,6 +3,7 @@ import { Marked, type TokenizerAndRendererExtension, type Tokens } from "marked"
 import { getKatexRenderer } from "./components/katexLoader";
 import { TAG_BODY, isTagBody } from "./vaultCube";
 import { fencedLines } from "./managedBlock";
+import { parseNoteFrontmatter } from "./noteFrontmatter";
 
 const WIKILINK = /^(!?)\[\[([^[\]|#]+?)(#[^[\]|]+)?(?:\|([^[\]]+))?\]\]/;
 const TAG = new RegExp(`^#(${TAG_BODY})`, "u");
@@ -196,4 +197,20 @@ export function renderNoteMarkdown(md: string, opts?: { math?: "html" | "mathml"
   } finally {
     _mathOutput = "html";
   }
+}
+
+const checkboxStates = (md: string): boolean[] =>
+  (renderNoteMarkdown(parseNoteFrontmatter(md).body).match(/<input\b[^>]*\btype="checkbox"[^>]*>/g) ?? []).map((tag) => /\schecked\b/.test(tag));
+
+/** Flips the source marker behind the `index`th checkbox of the read view; a marker is found by flipping it and watching which box the renderer changes. */
+export function toggleTaskMarker(body: string, index: number): string {
+  const before = checkboxStates(body);
+  if (index < 0 || index >= before.length) return body;
+  for (const m of body.matchAll(/\[([ xX])\]/g)) {
+    const at = m.index + 1;
+    const next = body.slice(0, at) + (m[1] === " " ? "x" : " ") + body.slice(at + 1);
+    const after = checkboxStates(next);
+    if (after.length === before.length && after[index] !== before[index] && after.every((c, i) => i === index || c === before[i])) return next;
+  }
+  return body;
 }

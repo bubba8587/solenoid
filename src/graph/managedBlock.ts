@@ -9,8 +9,7 @@ export function beginMarker(name: string): string { return `%% solenoid:begin ${
 export const END_MARKER = "%% solenoid:end %%";
 
 /** Which lines sit in a code fence, its own fence lines included. A fence closes on a bare run of its
- *  character at least as long as the one that opened it (CommonMark), and an unclosed one runs to the end.
- *  The task toggle shares it. */
+ *  character at least as long as the one that opened it (CommonMark), and an unclosed one runs to the end. */
 export function fencedLines(lines: readonly string[]): boolean[] {
   const out = lines.map(() => false);
   let open: string | null = null;

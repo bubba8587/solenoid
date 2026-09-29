@@ -1,7 +1,7 @@
 // [[C68]], [[B1]] obsidianBet, [[C10]] socketLattice
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "../../../src/graph/nodes/annotation";
-import { toggleTaskMarker } from "../../../src/graph/noteFrontmatter";
+import { toggleTaskMarker } from "../../../src/graph/noteMarkdown";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";

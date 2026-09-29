@@ -22,7 +22,7 @@ import { SOCKET_COLORS, isDateType } from "../sockets";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
+import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeDepth, type FrameValue, type CubeValue } from "../frame";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
@@ -31,7 +31,7 @@ import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
-import { renderNoteMarkdown } from "../noteMarkdown";
+import { renderNoteMarkdown, toggleTaskMarker } from "../noteMarkdown";
 import { useKatexReady } from "./katexLoader";
 
 type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
@@ -191,7 +191,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [renderBody, rendered, body, tex],
   );
-  // Checkbox order in the rendered body is source order: a nested item's box still follows its parent's.
   const renderedRef = useRef<HTMLDivElement>(null);
   function onRenderedClick(e: React.MouseEvent<HTMLDivElement>) {
     const target = e.target;

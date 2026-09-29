@@ -1,7 +1,7 @@
 // [[B1]] obsidianBet
 import { describe, it, expect } from "vitest";
 import { spliceBlock, readBlock, beginMarker, END_MARKER, fencedLines } from "../../src/graph/managedBlock";
-import { toggleTaskMarker } from "../../src/graph/noteFrontmatter";
+import { toggleTaskMarker } from "../../src/graph/noteMarkdown";
 
 // Bundle item C, `mode: block`: the writer owns the span between its markers.
 

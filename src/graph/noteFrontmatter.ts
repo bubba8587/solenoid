@@ -3,7 +3,6 @@ import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type 
 import { noteDateSerial } from "./nodes/dateSerial";
 import { typeAtRank } from "./sockets";
 import { isComplexText, type ScalarKind } from "./scalarText";
-import { fencedLines } from "./managedBlock";
 
 
 export type FrontmatterFieldType =
@@ -194,40 +193,4 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
     }
   }
   return { fields, body, hasBlock: true };
-}
-
-export function toggleTaskMarker(body: string, index: number): string {
-  const lines = body.split("\n");
-  let start = 0;
-  if (lines[0]?.trim() === "---") {
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trim() === "---") { start = i + 1; break; }
-    }
-  }
-  const marker = /^(\s*[-*+]\s+)\[([ xX])\](?=\s|$)/;
-  let count = -1;
-  const fenced = fencedLines(lines.slice(start));
-  let prevBlank = true, prevItem = false, inCode = false;
-  for (let i = start; i < lines.length; i++) {
-    const line = lines[i];
-    if (fenced[i - start]) {
-      prevBlank = false; prevItem = false; inCode = false;
-      continue;
-    }
-    const blank = line.trim() === "";
-    const indented = /^(?: {4,}|\t)/.test(line);
-    const indentedCode: boolean = !blank && indented && (inCode || (prevBlank && !prevItem));
-    if (!blank) inCode = indentedCode;
-    const m = indentedCode ? null : marker.exec(line);
-    prevBlank = blank;
-    if (!blank) prevItem = indentedCode ? prevItem : /^\s*(?:[-*+]|\d+[.)])\s/.test(line);
-    if (!m) continue;
-    count++;
-    if (count === index) {
-      const checked = m[2].toLowerCase() === "x";
-      lines[i] = m[1] + (checked ? "[ ]" : "[x]") + lines[i].slice(m[0].length);
-      break;
-    }
-  }
-  return lines.join("\n");
 }
