@@ -228,7 +228,6 @@ const RAD2DEG = 180 / Math.PI;
 
 const MATHFN_PRESERVE = new Set<MathFnOp>(["abs", "trunc", "int", "even", "odd"]);
 const MATHFN_FORWARD_TRIG = FORWARD_TRIG_OPS;
-const MATHFN_INVERSE_TRIG = INVERSE_TRIG_OPS;
 
 /** Returns the result dim, #UNIT! for a dimensioned argument the op cannot take, or "strip" for a dimensionless input. */
 export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip" {
@@ -241,7 +240,6 @@ export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip
     return dimEqual(dim, { angle: 1 }) ? DIMENSIONLESS
       : unitError(`${op.toUpperCase()} needs an angle or a plain number.`);
   }
-  if (MATHFN_INVERSE_TRIG.has(op)) return { angle: 1 };
   return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
 }
 
@@ -348,11 +346,11 @@ export class MathFXNode extends ClassicPreset.Node {
     let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (input !== null) {
       if (anyDimensioned(input as UnitOperand | UnitOperand[])) {
-        // A UnitCell angle is already base radians and carries its own unit; a bare cell follows the node's angle mode, so one list can mix both.
+        // A UnitCell angle is already base radians and carries its own unit; a plain or dimensionless cell follows the node's angle mode, so one list can mix both.
         result = broadcastUnit((cell) => {
           const rd = mathFnResultDim(this.op, dimOf(cell));
           if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
-          const bare = !isUnitCell(cell);
+          const bare = !isUnitCell(cell) || rd === "strip";
           // abs / int / even… act on the number the user reads (5 km, 20.5 °C), never
           // its base-SI magnitude, and the reading keeps its display unit.
           const shown = !bare && cell.display && MATHFN_PRESERVE.has(this.op) ? fcUnitToUnit(cell.display) : null;
