@@ -8,7 +8,7 @@ const MAX_DEPTH = 80;
 const MAX_BYTES = 16 * 1024 * 1024;
 const COALESCE_MS = 400;
 
-type Entry = { json: string; time: number; label: string };
+type Entry = { json: string; time: number; label: string; baseline?: true };
 
 let _stack: Entry[] = [];
 let _index = -1;
@@ -44,7 +44,7 @@ export const flowHistory = {
       _timer = null;
     }
     const s = capture();
-    _stack = s ? [{ json: s, time: Date.now(), label: "Opened" }] : [];
+    _stack = s ? [{ json: s, time: Date.now(), label: "Opened", baseline: true }] : [];
     _index = _stack.length - 1;
   },
 
@@ -79,7 +79,7 @@ export const flowHistory = {
     _stack.push({ json: s, time: Date.now(), label });
     if (_stack.length > MAX_DEPTH) _stack.shift();
     let bytes = _stack.reduce((n, e) => n + e.json.length * 2, 0);
-    while (_stack.length > 1 && bytes > MAX_BYTES) bytes -= _stack.shift()!.json.length * 2;
+    while (_stack.length > 2 && bytes > MAX_BYTES) bytes -= _stack.shift()!.json.length * 2;
     _index = _stack.length - 1;
   },
 
@@ -104,7 +104,7 @@ export const flowHistory = {
   },
 
   records: (): Array<{ time: number; label: string }> =>
-    _stack.slice(1, _index + 1).map(({ time, label }) => ({ time, label })),
+    _stack.slice(0, _index + 1).filter((e) => !e.baseline).map(({ time, label }) => ({ time, label })),
 
   _state: () => ({ depth: _stack.length, index: _index }),
   _stack: () => _stack,

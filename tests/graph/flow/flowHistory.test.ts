@@ -84,3 +84,29 @@ describe("undo and redo flush a pending edit", () => {
     expect((h.doc as SavedGraph).nodes[0].init).toEqual({ value: 5 });
   });
 });
+
+describe("the byte budget", () => {
+  const big = (n: number) => doc("a", String(n).repeat(4_500_000));
+
+  it("keeps the entry before the current one, so an edit to a large document stays undoable", () => {
+    h.doc = big(1);
+    flowHistory.reset();
+    for (const n of [2, 3, 4]) {
+      h.doc = big(n);
+      flowHistory.recordNow();
+      expect(flowHistory.canUndo()).toBe(true);
+    }
+    expect(flowHistory._state()).toEqual({ depth: 2, index: 1 });
+  });
+
+  it("lists every surviving action once the baseline is trimmed away", () => {
+    h.doc = big(1);
+    flowHistory.reset();
+    expect(flowHistory.records()).toEqual([]);
+    h.doc = big(2);
+    flowHistory.recordNow();
+    h.doc = big(3);
+    flowHistory.recordNow();
+    expect(flowHistory.records()).toHaveLength(2);
+  });
+});
