@@ -7,7 +7,7 @@ import type { Schemes } from "./schemes";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { docMetaStore } from "./docMetaStore";
 import { settingsStore } from "./settingsStore";
-import { pushNotice } from "./noticeStore";
+import { pushNotice, dismissNotice } from "./noticeStore";
 
 export type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
 
@@ -114,6 +114,8 @@ export function networkAllowed(): boolean {
 const _gated = new Set<string>();
 let _prompted = false;
 let _promptQueued = false;
+let _promptNotice: number | undefined;
+let _docGeneration = 0;
 
 export function requestNetwork(id: string): boolean {
   if (networkAllowed()) { _gated.delete(id); return true; }
@@ -126,11 +128,12 @@ export function requestNetwork(id: string): boolean {
       if (_prompted || networkAllowed() || _gated.size === 0) return;
       _prompted = true;
       const n = _gated.size;
-      pushNotice(
+      const generation = _docGeneration;
+      _promptNotice = pushNotice(
         `This document connects to ${n} ${n === 1 ? "service" : "services"}. Allow it to fetch?`,
         "warn",
         0,
-        { label: "Allow", onClick: () => allowNetwork() },
+        { label: "Allow", onClick: () => { if (generation === _docGeneration) allowNetwork(); } },
       );
     }, 0);
   }
@@ -153,6 +156,8 @@ registerNodeForgetAll(() => {
   for (const id of [..._timers.keys()]) clearTimer(id);
   _gated.clear();
   _prompted = false;
+  _docGeneration++;
+  if (_promptNotice !== undefined) { dismissNotice(_promptNotice); _promptNotice = undefined; }
   if (had) notify();
 });
 

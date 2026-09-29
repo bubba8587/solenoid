@@ -9,6 +9,8 @@ import { connectionStore, refreshConnection, networkAllowed, requestNetwork, all
 import { docMetaStore } from "../../src/graph/docMetaStore";
 import { settingsStore } from "../../src/graph/settingsStore";
 import { alertStore } from "../../src/graph/alertStore";
+import { noticeStore } from "../../src/graph/noticeStore";
+import { forgetAllNodes } from "../../src/graph/nodeStoreRegistry";
 import { isGraphRebuilding } from "../../src/graph/process";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
@@ -124,6 +126,19 @@ describe("C2 — per-document network permission gate", () => {
     settingsStore.set("alwaysAllowNetwork", true);
     expect(networkAllowed()).toBe(true);
     expect(requestNetwork("n4")).toBe(true);
+  });
+
+  it("a stale Allow from the previous document neither grants nor lingers after a switch", async () => {
+    docMetaStore.setDocMeta({ foreign: true });
+    requestNetwork("docA-src");
+    await new Promise((r) => setTimeout(r, 0));
+    const notice = noticeStore.get().find((n) => n.action?.label === "Allow");
+    expect(notice).toBeDefined();
+    forgetAllNodes();
+    docMetaStore.setDocMeta({ foreign: true });
+    expect(noticeStore.get().some((n) => n.id === notice!.id)).toBe(false);
+    notice!.action!.onClick();
+    expect(docMetaStore.networkAllowed()).toBeUndefined();
   });
 
   it("a prior grant persists in the meta and is honored on reload", () => {
