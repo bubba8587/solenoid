@@ -1,9 +1,10 @@
 import type { Emit } from "./nodeKit";
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { NodeSocket } from "./NodeSocket";
+import { socketRingVar } from "./SocketComponent";
 import { stopDragStart } from "../coarse";
 import "./nodeCard.css";
 
@@ -57,7 +58,7 @@ export function CollapsedInputPill({
         className={`solenoid-node__input-pill${onOpen ? " solenoid-node__input-pill--open" : ""}`}
         viewBox="0 0 12 28"
         aria-hidden
-        style={top === undefined ? undefined : { top: top - 8 }}
+        style={{ ...(top === undefined ? null : { top: top - 8 }), ...(socketRingVar(pillColor) ? { "--socket-ring": socketRingVar(pillColor) } : null) } as CSSProperties}
         onPointerDown={onOpen ? stopDragStart : undefined}
         onMouseDown={onOpen ? (e) => e.stopPropagation() : undefined}
         onClick={onOpen ? (e) => { e.stopPropagation(); onOpen(); } : undefined}

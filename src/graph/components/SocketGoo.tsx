@@ -1,5 +1,6 @@
 // [[B14]] oneDesignSystem (DESIGN.md § Card sections, the fold's liquid merge)
 import { useId, useLayoutEffect, useRef } from "react";
+import { socketRingColor } from "./SocketComponent";
 
 /** One socket dot in the goo: its socket-top (the NodeSocket wrapper's top, content coordinates) and its fill. */
 export type GooDrop = { top: number; color: string };
@@ -18,7 +19,7 @@ const wobble = (t: number) => Math.sin(t * Math.PI * 3.5) * (1 - t) ** 2;
 
 /** The liquid fold: socket dots run together into a pill (merge) or bud off it back to their rows (split).
  *  Drawn over the socket column through a gooey filter (a blur, then an alpha threshold), so shapes that near fuse
- *  with a neck that stretches and snaps. Every frame writes attributes on refs; React renders it once. */
+ *  with a neck that stretches and snaps; each shape's ring-colored twin sits under it, 2px bigger, as its border. Every frame writes attributes on refs; React renders it once. */
 export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H, onDone }: {
   mode: "merge" | "split";
   drops: GooDrop[];
@@ -30,8 +31,9 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
   onDone: () => void;
 }) {
   const filterId = `sol-goo-${useId().replace(/:/g, "")}`;
-  const dropRefs = useRef<(SVGEllipseElement | null)[]>([]);
-  const pillRef = useRef<SVGRectElement | null>(null);
+  // Two layers share every shape: [0] in ring colors, [1] in fill colors shrunk by the ring's width.
+  const dropRefs = useRef<(SVGEllipseElement | null)[][]>([[], []]);
+  const pillRefs = useRef<(SVGRectElement | null)[]>([null, null]);
   const done = useRef(onDone);
   done.current = onDone;
 
@@ -48,20 +50,22 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
     const start = performance.now();
     let raf = 0;
     const setPill = (h: number, w: number) => {
-      const el = pillRef.current;
-      if (!el) return;
-      el.setAttribute("x", String(cx - w / 2));
-      el.setAttribute("y", String(pillCy - y0 - h / 2));
-      el.setAttribute("width", String(w));
-      el.setAttribute("height", String(Math.max(0, h)));
-      el.setAttribute("rx", String(Math.min(w, h) / 2));
+      for (const el of pillRefs.current) {
+        if (!el) continue;
+        el.setAttribute("x", String(cx - w / 2));
+        el.setAttribute("y", String(pillCy - y0 - h / 2));
+        el.setAttribute("width", String(w));
+        el.setAttribute("height", String(Math.max(0, h)));
+        el.setAttribute("rx", String(Math.min(w, h) / 2));
+      }
     };
     const frame = () => {
       const t = clamp01((performance.now() - start) / total);
       let absorbed = 0;
       drops.forEach((d, i) => {
-        const el = dropRefs.current[i];
-        if (!el) return;
+        const layers = dropRefs.current.map((l) => l[i]).filter((e): e is SVGEllipseElement => !!e);
+        if (layers.length === 0) return;
+        const set = (k: string, v: string) => layers.forEach((e) => e.setAttribute(k, v));
         const rowCy = d.top + R;
         if (mode === "merge") {
           // Each drop falls up into the caption, accelerating, stretched along its path by its speed.
@@ -71,9 +75,9 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
           const cy = rowCy + (pillCy - rowCy) * p;
           const stretch = Math.min(0.9, speed * 0.35);
           const shrink = local >= 1 ? 0 : 1 - 0.25 * p;
-          el.setAttribute("cy", String(cy - y0));
-          el.setAttribute("rx", String(R * shrink / (1 + stretch * 0.5)));
-          el.setAttribute("ry", String(R * shrink * (1 + stretch)));
+          set("cy", String(cy - y0));
+          set("rx", String(R * shrink / (1 + stretch * 0.5)));
+          set("ry", String(R * shrink * (1 + stretch)));
           absorbed += p;
         } else {
           // Each drop buds off the pill and springs to its row, overshooting and stretched while it moves fast.
@@ -83,9 +87,9 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
           const speed = Math.abs(easeOutBack(clamp01(local + 0.02)) - p) * 50;
           const stretch = Math.min(0.8, speed * 0.3);
           const grow = 0.55 + 0.45 * clamp01(local * 1.6);
-          el.setAttribute("cy", String(cy - y0));
-          el.setAttribute("rx", String(R * grow / (1 + stretch * 0.5)));
-          el.setAttribute("ry", String(R * grow * (1 + stretch)));
+          set("cy", String(cy - y0));
+          set("rx", String(R * grow / (1 + stretch * 0.5)));
+          set("ry", String(R * grow * (1 + stretch)));
           absorbed += 1 - clamp01(local * 1.4);
         }
       });
@@ -118,25 +122,38 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
       style={{ top: y0, left: `calc(var(--node-socket-x, -5px) + ${R}px - ${PAD}px)` }}
     >
       <defs>
+        {/* Liquid: a blur, then an alpha threshold, so shapes that near fuse with a neck. */}
         <filter id={filterId} x="-50%" y="-20%" width="200%" height="140%" colorInterpolationFilters="sRGB">
           <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="blur" />
           <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -9" />
         </filter>
+        {/* The same field cut at a higher level: an even 2px inset (the socket ring's width), necks included, laid over
+            the ring-colored layer so the ring shows as its border. 0.64 is the blurred dot's level 2px in from the 0.43 edge. */}
+        <filter id={`${filterId}-in`} x="-50%" y="-20%" width="200%" height="140%" colorInterpolationFilters="sRGB">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="3.2" result="blur" />
+          <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 22 -13.6" />
+        </filter>
       </defs>
-      <g filter={`url(#${filterId})`}>
-        <rect ref={pillRef} fill={pillColor} x={cx} y={pillCy - y0} width={0} height={0} />
-        {drops.map((d, i) => (
-          <ellipse
-            key={i}
-            ref={(el) => { dropRefs.current[i] = el; }}
-            fill={d.color}
-            cx={cx}
-            cy={(mode === "merge" ? d.top + R : pillCy) - y0}
-            rx={mode === "merge" ? R : 0}
-            ry={mode === "merge" ? R : 0}
+      {[0, 1].map((layer) => (
+        <g key={layer} filter={`url(#${filterId}${layer === 1 ? "-in" : ""})`}>
+          <rect
+            ref={(el) => { pillRefs.current[layer] = el; }}
+            fill={layer === 0 ? socketRingColor(pillColor) : pillColor}
+            x={cx} y={pillCy - y0} width={0} height={0}
           />
-        ))}
-      </g>
+          {drops.map((d, i) => (
+            <ellipse
+              key={i}
+              ref={(el) => { dropRefs.current[layer][i] = el; }}
+              fill={layer === 0 ? socketRingColor(d.color) : d.color}
+              cx={cx}
+              cy={(mode === "merge" ? d.top + R : pillCy) - y0}
+              rx={mode === "merge" ? R : 0}
+              ry={mode === "merge" ? R : 0}
+            />
+          ))}
+        </g>
+      ))}
     </svg>
   );
 }

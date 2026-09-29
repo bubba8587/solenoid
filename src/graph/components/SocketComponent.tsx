@@ -21,14 +21,20 @@ export const COMBO_COLORS: Record<string, [string, string]> = {
   anycombo:     [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
 };
 
+/** A socket fill's own ring shade (`--sock-<type>-ring`), so every stroke darkens its fill by a constant step; a fill
+ *  outside the palette (`#888`) has none and keeps the global `--socket-ring`. */
+export function socketRingVar(color: string): string | undefined {
+  return /^var\(--sock-/.test(color) ? color.replace(/\)\s*$/, "-ring)") : undefined;
+}
+export const socketRingColor = (color: string): string => socketRingVar(color) ?? "var(--socket-ring)";
+
 export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   // Unique per instance: duplicate SVG ids make the clip resolve to nothing.
   const clipId = `sq-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const dataType =
     data instanceof Object && "dataType" in data ? (data as SolenoidSocket).dataType : undefined;
   const color = dataType ? SOCKET_COLORS[dataType] ?? "#888" : "#888";
-  // The ring takes this fill's own border shade, so every stroke darkens the fill by a constant step; `#888` keeps the global ring.
-  const ringVar = /^var\(--sock-/.test(color) ? color.replace(/\)\s*$/, "-ring)") : undefined;
+  const ringVar = socketRingVar(color);
   const ringStyle = ringVar ? ({ "--socket-ring": ringVar } as CSSProperties) : undefined;
 
   const combo  = dataType !== undefined ? COMBO_COLORS[dataType] : undefined;
