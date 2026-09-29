@@ -36,3 +36,16 @@ tools/dte.py
 dte-rules/*
 # The author's Obsidian config for the tree vault (git-ignored, local).
 .obsidian
+# Git-ignored local files the coverage gauge must not count: logs, editor state, generated copy-rewrite files.
+logs
+*.log
+dist-ssr
+*.local
+.vscode
+.idea
+.DS_Store
+*.sw?
+*.suo
+*~lock~
+copy-inventory.md
+copy-inventory.md.orig.json
