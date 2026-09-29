@@ -1,6 +1,6 @@
 // [[C25]] firstClassUnits: a join reads the right key in the left key's unit.
 import { describe, it, expect } from "vitest";
-import { joinFrames, joinKeyTransform } from "../../src/graph/frameVerbs";
+import { joinFrames, joinKeyTransform, bindColumns } from "../../src/graph/frameVerbs";
 import { columnUnitFromSpec } from "../../src/graph/unitColumn";
 import { isSolError } from "../../src/graph/errorValue";
 import { relateFramesToCube, frameRowCount, type FrameColumn, type FrameValue } from "../../src/graph/frame";
@@ -91,5 +91,23 @@ describe("a join keeps its columns' units and formats", () => {
     const right = frame({ name: "id", type: "number", values: [1] }, { name: "len", type: "number", values: [2], unit: unit("km") });
     const out = joinFrames(left, right, { leftKey: "id", rightKey: "id", how: "inner" });
     expect(out.columns.map((c) => c.unit?.display)).toEqual([undefined, "kg", "km"]);
+  });
+});
+
+describe("cross join and bind columns keep each column's unit and format", () => {
+  const fmt = { kind: "number", decimals: 2 } as unknown as FrameColumn["format"];
+  const left = frame({ name: "d", type: "number", values: [1, 2], unit: unit("km"), format: fmt });
+  const right = frame({ name: "d", type: "number", values: [3], unit: unit("s") });
+  it("cross join", () => {
+    const out = joinFrames(left, right, { leftKey: "", rightKey: "", how: "cross" });
+    expect(out.columns.map((c) => c.unit?.display)).toEqual(["km", "s"]);
+    expect(out.columns[0].format).toEqual(fmt);
+    expect(out.columns.map((c) => c.name)).toEqual(["d", "d2"]);
+  });
+  it("bind columns", () => {
+    const out = bindColumns([left, right]);
+    expect(out.columns.map((c) => c.unit?.display)).toEqual(["km", "s"]);
+    expect(out.columns[0].format).toEqual(fmt);
+    expect(out.columns.map((c) => c.name)).toEqual(["d", "d2"]);
   });
 });

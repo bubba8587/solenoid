@@ -483,7 +483,7 @@ Output layout for the equality and as-of joins: every left column, then every ri
 | `semi` | Left rows with a match, in order, no fan-out, left columns only. |
 | `anti` | Left rows without a match (null and non-finite keys included), in order, left columns only. |
 | `asof` | Every left row once, in order, paired with at most one right row (no fan-out). |
-| `cross` | Every left row with every right row, left-major; all columns of both sides, names through `makeHeaders`; no keys. An empty side gives no rows and the full header. |
+| `cross` | Every left row with every right row, left-major; all columns of both sides, each keeping its unit and format, names through `makeHeaders`; no keys. An empty side gives no rows and the full header. |
 
 As-of: both keys must be number or date (`#VALUE!`, `As-of join requires a numeric or date key`). Right rows with a finite key are sorted ascending (ties by row order). `backward` (the default) takes the last right key ≤ the left key; `forward` the first right key ≥ it; `nearest` whichever is closer, with a tie going backward. An exact key tie matches. When `asofTolerance` is set, a pick farther than it is no match. A left row with a blank or non-finite key has no match.
 
@@ -497,7 +497,7 @@ The Join card: a blank Right key reuses the Left key; a blank Left key yields no
 
 ### bindColumns
 
-`bindColumns(frames)`. Places every column of every frame side by side in order, names through `makeHeaders`; the row count is the longest frame's, and shorter frames pad with blanks. A frame with no columns contributes nothing. Columns carry name, type and values only. The card passes a single frame through.
+`bindColumns(frames)`. Places every column of every frame side by side in order, names through `makeHeaders`; the row count is the longest frame's, and shorter frames pad with blanks. A frame with no columns contributes nothing. Every column keeps its unit and format. The card passes a single frame through.
 
 ## Eager verbs outside the seam
 

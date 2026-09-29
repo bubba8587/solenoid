@@ -684,12 +684,12 @@ export function crossJoinFrames(left: FrameValue, right: FrameValue): FrameValue
   left.columns.forEach((c, ci) => {
     const values: FrameCell[] = [];
     for (let i = 0; i < ln; i++) { const v = cellAt(c, i); for (let j = 0; j < rn; j++) values.push(v); }
-    out.push({ name: names[ci], type: c.type, values });
+    out.push({ ...withoutRaw(c), name: names[ci], values });
   });
   right.columns.forEach((c, ri) => {
     const values: FrameCell[] = [];
     for (let i = 0; i < ln; i++) for (let j = 0; j < rn; j++) values.push(cellAt(c, j));
-    out.push({ name: names[left.columns.length + ri], type: c.type, values });
+    out.push({ ...withoutRaw(c), name: names[left.columns.length + ri], values });
   });
   return frame(out);
 }
@@ -1403,7 +1403,7 @@ export function bindColumns(frames: readonly FrameValue[]): FrameValue {
   return frame(all.map((c, i) => {
     const values: FrameCell[] = [];
     for (let r = 0; r < rows; r++) values.push(cellAt(c, r));
-    return { name: names[i], type: c.type, values };
+    return { ...withoutRaw(c), name: names[i], values };
   }));
 }
 
