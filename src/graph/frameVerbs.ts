@@ -3,7 +3,7 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn,
+  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows, cubeCellsFromColumn, flatCubeToFrame,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
 import { sameColumnUnit, isAffineDisplay, unitError, READINGS_ADD, READINGS_SCALE, roundAtLargerTerm, type ColumnUnit } from "./unitValue";
@@ -273,7 +273,10 @@ function cubeScalarColumn(cube: CubeValue, name: string): FrameColumn {
       throw solError("#SHAPE!", `"${name}" has list or table cells; this needs a scalar column`);
     }
   }
-  return inferColumn(name, col.cells);
+  // Read as a Frame reads it, so a declared type, unit and format hold.
+  const f = flatCubeToFrame(cube, [name]);
+  if (isSolError(f)) throw f;
+  return f.columns[0];
 }
 
 export function passesListFilter(cell: CubeCell, op: FilterOp, value: FrameCell, matchCase: boolean): boolean {

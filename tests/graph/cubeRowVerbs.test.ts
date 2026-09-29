@@ -5,7 +5,7 @@ import {
   type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
 import {
-  sortCube, distinctCube, sliceCube, filterCube, passesListFilter,
+  sortCube, windowCube, distinctCube, sliceCube, filterCube, passesListFilter,
   sortByColumn, distinctRows, sliceRows, filterRowsMulti,
   type FilterCond,
 } from "../../src/graph/frameVerbs";
@@ -283,5 +283,24 @@ describe("passesListFilter", () => {
     expect(passesListFilter("home", "listContains", "home", false)).toBe(true);
     expect(passesListFilter(null, "listEmpty", "", false)).toBe(true);
     expect(passesListFilter([], "listEmpty", "", false)).toBe(true);
+  });
+});
+
+describe("the Cube verbs read a column by its declared type", () => {
+  const cube = () => cubeFromColumns([
+    { name: "id", type: "string", cells: ["010", "9", "2"] },
+    { name: "due", type: "date", cells: [46000, 46010, 46020] },
+    { name: "tags", cells: [["a"], ["b"], ["c"]] },
+  ]);
+  it("Window's lag of a date column is a date column, and first of a text ID keeps its text", () => {
+    const lag = windowCube(cube(), { fn: "lag", column: "due", as: "prev", partitionBy: [], n: 1 } as never);
+    const prev = lag.columns.find((c) => c.name === "prev")!;
+    expect(prev.type).toBe("date");
+    expect(prev.cells).toEqual([null, 46000, 46010]);
+    const first = windowCube(cube(), { fn: "first", column: "id", as: "firstId", partitionBy: [] } as never);
+    expect(first.columns.find((c) => c.name === "firstId")!.cells[0]).toBe("010");
+  });
+  it("Sort orders a declared text column as text", () => {
+    expect(colCells(sortCube(cube(), "id", "asc"), "id")).toEqual(["010", "2", "9"]);
   });
 });
