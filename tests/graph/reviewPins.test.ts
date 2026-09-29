@@ -115,6 +115,13 @@ describe("review pins: formula surface parity", () => {
     expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 5, "0000011", [mon + 1])).toBe(mon + 8);
     expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 1, 1)).toBe(mon + 1); // the numeric code still works
   });
+  it("RANK with a text order is #VALUE!, not an ascending rank", () => {
+    for (const fn of ["RANK", "RANK.EQ", "RANK.AVG"]) {
+      const r = resolveExcelFunction(fn)!(3, [1, 3, 5], "x");
+      expect(isSolError(r) && r.code).toBe("#VALUE!");
+      expect(resolveExcelFunction(fn)!(3, [1, 3, 5], 1)).toBe(2);
+    }
+  });
   it("SUBSTITUTE truncates its instance like Excel", () => {
     expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b", 1.5)).toBe("baa");
     expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b")).toBe("bbb");

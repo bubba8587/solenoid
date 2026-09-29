@@ -996,10 +996,13 @@ registerInternal("STEYX",     (y, x) => regression(numsOf(x), numsOf(y), "steyx"
 registerInternal("FISHER",    (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHER") : fisher(n, false); });
 registerInternal("FISHERINV", (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE("FISHERINV") : fisher(n, true); });
 
-const rankOrder = (order: unknown) => order != null && toNum(order) !== 0;
-registerInternal("RANK",     (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], false, rankOrder(order)));
-registerInternal("RANK.EQ",  (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], false, rankOrder(order)));
-registerInternal("RANK.AVG", (v, ref, order) => excelRank(toNum(v), (ref as number[]) ?? [], true, rankOrder(order)));
+const rank = (avg: boolean) => (v: unknown, ref: unknown, order: unknown) => {
+  const o = order == null ? 0 : toNum(order);
+  return Number.isNaN(o) ? VALUE("RANK") : excelRank(toNum(v), (ref as number[]) ?? [], avg, o !== 0);
+};
+registerInternal("RANK",     rank(false));
+registerInternal("RANK.EQ",  rank(false));
+registerInternal("RANK.AVG", rank(true));
 registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? [], toNum(pct)));
 for (const [name, exc] of [["PERCENTRANK", false], ["PERCENTRANK.INC", false], ["PERCENTRANK.EXC", true]] as const) {
   registerInternal(name, (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), exc));
