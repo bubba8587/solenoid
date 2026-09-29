@@ -499,10 +499,10 @@ export function fibonacci(count: number): number[] {
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
 // JavaScript Sets key objects by reference, so a complex value canonicalizes to a string; primitives key as themselves.
-/** Equal values share a key: complex by parts, a unit cell by base-SI magnitude and dimension, so 5 km and 5000 m are one member ([[C25]] firstClassUnits). */
+/** Equal values share a key: complex by parts, a unit cell by base-SI magnitude (15 significant digits) and dimension, so 5 km and 5000 m, or 1.1 h and 3960 s, are one member ([[C25]] firstClassUnits). */
 export function setKey(v: unknown): unknown {
   if (isCx(v)) return `\x00cx:${v.re},${v.im}`;
-  if (isUnitCell(v)) return `\x00u:${v.value}:${Object.keys(v.dim).sort().map((k) => `${k}${v.dim[k]}`).join(",")}`;
+  if (isUnitCell(v)) return `\x00u:${+v.value.toPrecision(15)}:${Object.keys(v.dim).sort().map((k) => `${k}${v.dim[k]}`).join(",")}`;
   return v;
 }
 

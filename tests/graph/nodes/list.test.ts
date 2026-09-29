@@ -895,4 +895,12 @@ describe("UNIQUE takes any element family ([[D73]] nodeCoversFormula)", () => {
     const s = fromUnit(5, parseUnit("s")!, "s");
     expect(uniqueList([km, m, s])).toEqual([km, s]);
   });
+  it("1.1 h and 3960 s are one member despite the float residue", async () => {
+    const { uniqueList } = await import("../../../src/graph/nodes/listOps");
+    const { fromUnit } = await import("../../../src/graph/unitValue");
+    const { parseUnit } = await import("../../../src/graph/dimension");
+    const h = fromUnit(1.1, parseUnit("h")!, "h");
+    const s = fromUnit(3960, parseUnit("s")!, "s");
+    expect(uniqueList([h, s])).toEqual([h]);
+  });
 });
