@@ -58,6 +58,7 @@ function readCalendar(root: XmlNode, unsupported: string[], wantUid?: string): C
   const base = baseUid && baseUid !== "-1" ? list.find((c) => text(c, "UID") === baseUid) : undefined;
   if (base && !child(cal, "WeekDays")) cal = { ...cal, children: [...base.children.filter((c) => c.name === "WeekDays"), ...cal.children] };
   const off: number[] = [];
+  const workingTypes = new Set<number>();
   const holidays: number[] = [];
   let intervals: Array<[number, number]> | undefined;
   const wd = child(cal, "WeekDays");
@@ -65,6 +66,7 @@ function readCalendar(root: XmlNode, unsupported: string[], wantUid?: string): C
     const type = num(text(day, "DayType"));
     const working = flag(text(day, "DayWorking"));
     if (type != null && type >= 1 && type <= 7 && working === false) off.push(type - 1);
+    if (type != null && type >= 1 && type <= 7 && working === true) workingTypes.add(type);
     if (type === 0) {
       const from = isoToSerial(text(child(day, "TimePeriod"), "FromDate")), to = isoToSerial(text(child(day, "TimePeriod"), "ToDate"));
       if (working === false && from != null && to != null) for (let s = from; s <= to; s++) holidays.push(s);
@@ -85,7 +87,16 @@ function readCalendar(root: XmlNode, unsupported: string[], wantUid?: string): C
     for (let s = from; s <= to; s++) holidays.push(s);
   }
   const code = weekendCodeFor(off, unsupported);
-  return { workingDays: true, weekendCode: code, holidays, ...(intervals ? { intervals } : {}) };
+  const spec: CalendarSpec = { workingDays: !(off.length === 0 && workingTypes.size === 7), weekendCode: code, holidays, ...(intervals ? { intervals } : {}) };
+  sevenDayWeek(spec, unsupported);
+  return spec;
+}
+
+/** A week with no day off counts every day ([[D68]] importUnsupportedIsNamed): the engine has no weekend code for none, and holidays only apply to a working-day calendar, so they are named as not carried over. */
+export function sevenDayWeek(cal: CalendarSpec, unsupported: string[]): void {
+  if (cal.workingDays) return;
+  if (cal.holidays?.length) unsupported.push("holidays on a seven-day week");
+  delete cal.holidays;
 }
 
 function clockMinutes(s: string | undefined): number | null {

@@ -1,7 +1,7 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D68]] importUnsupportedIsNamed
 
 import { child, children, text, type XmlNode } from "./xml";
-import { isoToSerial } from "./mspdi";
+import { isoToSerial, sevenDayWeek } from "./mspdi";
 import type { CalendarSpec, LinkType, PlanTask, ScheduleOutput } from "./types";
 
 export interface ImportedPlanFile {
@@ -92,6 +92,7 @@ export function readGan(xml: string): ImportedPlanFile {
       const key = off.join(",");
       const table: Record<string, number> = { "0,6": 1, "0,1": 2, "1,2": 3, "2,3": 4, "3,4": 5, "4,5": 6, "5,6": 7, "0": 11, "1": 12, "2": 13, "3": 14, "4": 15, "5": 16, "6": 17 };
       if (key in table) cal.weekendCode = table[key]; else if (key) unsupported.push(`weekend pattern [${key}]`);
+      if (key === "") cal.workingDays = false;
     }
     const hol: number[] = [];
     for (const d of cals.children.filter((c) => c.name === "date") as N[]) {
@@ -102,6 +103,7 @@ export function readGan(xml: string): ImportedPlanFile {
     }
     if (hol.length) cal.holidays = hol;
   }
+  sevenDayWeek(cal, unsupported);
   const starts = [...byId.values()].map((t) => t.start ?? null);
   void starts;
   const projectStart = isoToSerial((tasksEl?.children.find((c) => c.name === "task") as N | undefined)?.attrs.start);
@@ -203,17 +205,19 @@ function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
   if (daysAt >= 0) {
     const week = parenBody(blob, daysAt + "DaysOfWeek()".length);
     const off: number[] = [];
+    let seen = 0;
     let intervals: Array<[number, number]> | undefined;
     for (const m of week.matchAll(/\(0\|\|([1-7])\(\)\(/g)) {
       const day = Number(m[1]) - 1;
       const body = parenBody(week, (m.index ?? 0) + m[0].length - 1);
       const times = [...body.matchAll(/s\|(\d{2}):(\d{2})\|f\|(\d{2}):(\d{2})/g)].map((w) => [Number(w[1]) * 60 + Number(w[2]), Number(w[3]) * 60 + Number(w[4])] as [number, number]);
+      seen++;
       if (!times.length) off.push(day);
       else if (!intervals) intervals = times;
     }
     const key = [...new Set(off)].sort((a, b) => a - b).join(",");
     const table: Record<string, number> = { "0,6": 1, "0,1": 2, "1,2": 3, "2,3": 4, "3,4": 5, "4,5": 6, "5,6": 7, "0": 11, "1": 12, "2": 13, "3": 14, "4": 15, "5": 16, "6": 17 };
-    if (key === "") cal.workingDays = true;
+    if (key === "" && seen >= 7) cal.workingDays = false;
     if (key in table) cal.weekendCode = table[key]; else if (key) unsupported.push(`weekend pattern [${key}] is not a WORKDAY.INTL code`);
     if (intervals && !(intervals.length === 2 && intervals[0][0] === 480 && intervals[1][1] === 1020)) cal.intervals = intervals;
   }
@@ -226,8 +230,10 @@ function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
     }
     if (hol.length) cal.holidays = hol.sort((a, b) => a - b);
   }
+  sevenDayWeek(cal, unsupported);
   return cal;
 }
+
 
 function xerDate(s: string | undefined): number | null {
   if (!s) return null;

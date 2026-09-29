@@ -123,3 +123,27 @@ describe("format border edge cases", () => {
     expect(xml).toContain("<Finish>2026-03-02T");
   });
 });
+
+describe("a seven-day week imports as every day counting", () => {
+  const WORKDAY = "(0||0(s|08:00|f|12:00)())(0||1(s|13:00|f|17:00)())";
+  const xerWeek = (days: number[]) => XER.replace(/\(0\|\|DaysOfWeek\(\)\([\s\S]*?\)\)\)\)\(0\|\|Exceptions/, () =>
+    `(0||DaysOfWeek()(${[1, 2, 3, 4, 5, 6, 7].map((d) => `(0||${d}()(${days.includes(d) ? WORKDAY : ""}))`).join("")}))(0||Exceptions`);
+  it("GanttProject with no day off", () => {
+    const p = readGan(GAN.replace('sun="1"', 'sun="0"').replace('sat="1"', 'sat="0"'));
+    expect(p.calendar.workingDays).toBe(false);
+    expect(p.unsupported).toContain("holidays on a seven-day week");
+  });
+  it("P6 with work on all seven days, and a five-day P6 week stays Mon–Fri", () => {
+    const seven = readXer(xerWeek([1, 2, 3, 4, 5, 6, 7]));
+    expect(seven.calendar.workingDays).toBe(false);
+    const five = readXer(xerWeek([2, 3, 4, 5, 6]));
+    expect(five.calendar.workingDays).toBe(true);
+    expect(five.calendar.weekendCode).toBe(1);
+  });
+  it("Project XML only when all seven days are listed as working; no WeekDays is still the standard week", () => {
+    const day = (t: number) => `<WeekDay><DayType>${t}</DayType><DayWorking>1</DayWorking></WeekDay>`;
+    const xml = (weekDays: string) => `<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><Calendars><Calendar><UID>1</UID><Name>Standard</Name>${weekDays}</Calendar></Calendars><Tasks><Task><UID>1</UID><Name>A</Name><Duration>PT8H0M0S</Duration></Task></Tasks></Project>`;
+    expect(readMspdi(xml(`<WeekDays>${[1, 2, 3, 4, 5, 6, 7].map(day).join("")}</WeekDays>`)).calendar.workingDays).toBe(false);
+    expect(readMspdi(xml("")).calendar.workingDays).toBe(true);
+  });
+});
