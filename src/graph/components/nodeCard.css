@@ -825,6 +825,12 @@ body.solenoid-scrubbing * {
 }
 
 /* Dots hide by opacity, so their wrappers still take cables and drops. */
+/* A folded CardSection's pill reopens the section, so it takes the pointer the card's own pill lets through. */
+.solenoid-node__input-pill--open {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 .solenoid-node__pill-socket .solenoid-socket-dot {
   opacity: 0;
 }

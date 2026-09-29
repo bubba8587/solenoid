@@ -93,6 +93,9 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
     ? sockets.keys.filter((k) => sockets.node.inputs[k])
     : [];
   const at = cardCollapsed ? undefined : top;
+  // A pill stands in for the chevron: it and the caption are the reopen button.
+  const pill = !!sockets && tucked.length >= 2 && (cardCollapsed || top !== undefined);
+  const openTitle = `Show ${label.toLowerCase()}`;
   return (
     <>
       <button
@@ -106,11 +109,11 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
           onToggle();
         }}
       >
-        {open ? <ChevronDownIcon size={8} strokeWidth={3} /> : <ChevronRightIcon size={8} strokeWidth={3} />}
+        {pill ? null : open ? <ChevronDownIcon size={8} strokeWidth={3} /> : <ChevronRightIcon size={8} strokeWidth={3} />}
         {label}
       </button>
-      {sockets && tucked.length >= 2 && (cardCollapsed || top !== undefined) && (
-        <CollapsedInputPill node={sockets.node} emit={sockets.emit} keys={tucked} top={at} />
+      {pill && (
+        <CollapsedInputPill node={sockets!.node} emit={sockets!.emit} keys={tucked} top={at} onOpen={cardCollapsed ? undefined : onToggle} openTitle={cardCollapsed ? undefined : openTitle} />
       )}
       {sockets && tucked.length === 1 && (cardCollapsed || top !== undefined) && (
         <NodeSocket side="input" socketKey={tucked[0]} nodeId={sockets.node.id} emit={sockets.emit} payload={sockets.node.inputs[tucked[0]]!.socket} top={at} />

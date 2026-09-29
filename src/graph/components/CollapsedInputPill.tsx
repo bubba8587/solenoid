@@ -4,6 +4,7 @@ import type { ClassicPreset } from "rete";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { NodeSocket } from "./NodeSocket";
+import { stopDragStart } from "../coarse";
 import "./nodeCard.css";
 
 type PillNode = {
@@ -18,11 +19,16 @@ export function CollapsedInputPill({
   emit,
   keys,
   top,
+  onOpen,
+  openTitle,
 }: {
   node: PillNode;
   emit: Emit;
   keys: string[];
   top?: number;
+  /** Makes the pill a button that reopens what it stands for (a folded CardSection). */
+  onOpen?: () => void;
+  openTitle?: string;
 }) {
   const hlVersion = useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
   void hlVersion;
@@ -47,7 +53,16 @@ export function CollapsedInputPill({
         ) : null;
       })}
       {/* Inset ring fully inside the fill, so it doesn't straddle the edge. */}
-      <svg className="solenoid-node__input-pill" viewBox="0 0 12 28" aria-hidden style={top === undefined ? undefined : { top: top - 8 }}>
+      <svg
+        className={`solenoid-node__input-pill${onOpen ? " solenoid-node__input-pill--open" : ""}`}
+        viewBox="0 0 12 28"
+        aria-hidden
+        style={top === undefined ? undefined : { top: top - 8 }}
+        onPointerDown={onOpen ? stopDragStart : undefined}
+        onMouseDown={onOpen ? (e) => e.stopPropagation() : undefined}
+        onClick={onOpen ? (e) => { e.stopPropagation(); onOpen(); } : undefined}
+      >
+        {openTitle && <title>{openTitle}</title>}
         <rect x="0" y="0" width="12" height="28" rx="6" fill={pillColor} />
         <rect x="1" y="1" width="10" height="26" rx="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         {lit && (
