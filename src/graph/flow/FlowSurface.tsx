@@ -719,8 +719,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             : null;
         if (newKey && originNode) {
           // connect, not addConnection: it evicts the cable already in a single-connection input.
-          if (side === "output") await connect(s, originId, originKey, node.id, newKey);
-          else await connect(s, node.id, newKey, originId, originKey);
+          try {
+            if (side === "output") await connect(s, originId, originKey, node.id, newKey);
+            else await connect(s, node.id, newKey, originId, originKey);
+          } catch { /* a refused connection leaves the new node unwired */ }
         }
       }
 
