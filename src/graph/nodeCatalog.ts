@@ -62,7 +62,6 @@ import {
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
   EtsForecastNode, InterpolateNode, LinestNode, BinomDistRangeNode,
-  NODE_KIND_ACCENTS,
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
   COMBINATORICS_OP_META, ARG_MIN_MAX_OP_META,
   SUM_PRODUCT_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
@@ -118,7 +117,7 @@ const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
 const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: TEST_LEAF_TYPE[op], label: HYPOTHESIS_TEST_OP_META[op].label, description: HYPOTHESIS_TEST_OP_META[op].description, create: () => new HypothesisTestNode({ op }), ...overrides, keywords: ["hypothesis test", overrides?.keywords].filter(Boolean).join(" ") });
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
-const DT = NODE_KIND_ACCENTS.date;
+const DT = "date";
 // NODE_EXCEL keys on `date-value` and `time-value`, so they don't follow the op names.
 const dateTimeValueLeaf = (op: DateTimeValueOp): NodeCatalogEntry => ({ type: op === "date" ? "date-value" : "time-value", label: DATE_TIME_VALUE_OP_META[op].label, description: DATE_TIME_VALUE_OP_META[op].description, create: () => new DateTimeValueNode({ op }), parity: false });
 const datePartLeaf  = (op: DatePartOp):  NodeCatalogEntry => ({ type: `date-part-${op}`,  label: DATE_PART_OP_META[op].label,  description: DATE_PART_OP_META[op].description,  create: () => new DatePartNode({ op }),  parity: false });
@@ -131,7 +130,7 @@ const durationLeaf  = (op: DurationOp):  NodeCatalogEntry => ({ type: `duration-
 
 const couponLeaf = (op: CouponOp): NodeCatalogEntry => ({ type: `coupon-${op}`, label: COUPON_OP_META[op].label, description: COUPON_OP_META[op].description, create: () => new CouponNode({ op }), parity: false });
 
-const CX = NODE_KIND_ACCENTS.complex;
+const CX = "complex";
 const complexUnaryLeaf  = (op: ComplexUnaryOp):  NodeCatalogEntry => ({ type: `cx-unary-${op}`,  label: COMPLEX_UNARY_OP_META[op].label,  description: COMPLEX_UNARY_OP_META[op].description,  create: () => new ComplexUnaryNode({ op }),  parity: false });
 const complexBinaryLeaf = (op: ComplexBinaryOp): NodeCatalogEntry => ({ type: `cx-binary-${op}`, label: COMPLEX_BINARY_OP_META[op].label, description: COMPLEX_BINARY_OP_META[op].description, create: () => new ComplexBinaryNode({ op }), parity: false });
 
@@ -153,7 +152,7 @@ const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
 
 
 
-const STR = NODE_KIND_ACCENTS.string;
+const STR = "string";
 const textXformLeaf         = (op: TextTransformOp, keywords?: string): NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_TRANSFORM_OP_META[op].label,        description: TEXT_TRANSFORM_OP_META[op].description,        create: () => new TextTransformNode({ op }),     parity: false, ...(keywords ? { keywords } : {}) });
 const textSliceLeaf         = (op: TextSliceOp):       NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_SLICE_OP_META[op].label,            description: TEXT_SLICE_OP_META[op].description,            create: () => new TextSliceNode({ op }),         parity: false });
 const textFindLeaf          = (op: TextFindOp):        NodeCatalogEntry => ({ type: `text-find-${op}`,         label: TEXT_FIND_OP_META[op].label,             description: TEXT_FIND_OP_META[op].description,             create: () => new TextFindNode({ op }),           parity: false });
@@ -167,17 +166,17 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Input", description: "Source nodes: where values enter your graph.",
     children: [
-      { type: "number-input",        label: "Number Input",  description: "A literal number value.", accent: NODE_KIND_ACCENTS.input, keywords: "scalar value literal", create: () => new NumberInputNode() },
-      { type: "list-input",  label: "List Input",    description: "Concatenates comma-separated values and other wired-in Lists into a single-row List.", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
+      { type: "number-input",        label: "Number Input",  description: "A literal number value.", accent: "input", keywords: "scalar value literal", create: () => new NumberInputNode() },
+      { type: "list-input",  label: "List Input",    description: "Concatenates comma-separated values and other wired-in Lists into a single-row List.", accent: "list", keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
       { type: "text-input",    label: "Text Input",    description: "A literal string value.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },
-      { type: "boolean-input", label: "Boolean Input", description: "A `TRUE` or `FALSE` toggle that outputs a logical. It coerces to `1` or `0` where a number is needed.", accent: NODE_KIND_ACCENTS.logic, create: () => new BooleanInputNode() },
+      { type: "boolean-input", label: "Boolean Input", description: "A `TRUE` or `FALSE` toggle that outputs a logical. It coerces to `1` or `0` where a number is needed.", accent: "logic", create: () => new BooleanInputNode() },
       { type: "date-input",    label: "Date Input",    description: "A single date value.", accent: DT, create: () => new DateInputNode(), parity: false, keywords: "date calendar day picker serial input" },
-      { type: "table-input",   label: "Table Input",   description: "A grid you type in, one row per line with commas between cells. Every cell shares one type; for columns of different types, use Frame Input. A cell that doesn't parse shows `NaN` but keeps what you typed.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },
-      { type: "frame-input",   label: "Frame Input", description: "A data table you type in, with named, typed columns. An `Fx` column is calculated from the others, like Computed Column.", accent: NODE_KIND_ACCENTS.frame, create: () => new FrameInputNode(), parity: false },
-      { type: "cube-input", label: "Cube Input", description: "A typed-in Cube: rows of records whose values can be numbers, text, lists, or nested tables. Each cell edits in place in a popup.", accent: NODE_KIND_ACCENTS.frame, create: () => new CubeInputNode(), parity: false, keywords: "cube input literal type records nested list json source" },
+      { type: "table-input",   label: "Table Input",   description: "A grid you type in, one row per line with commas between cells. Every cell shares one type; for columns of different types, use Frame Input. A cell that doesn't parse shows `NaN` but keeps what you typed.", accent: "table", create: () => new TableInputNode() },
+      { type: "frame-input",   label: "Frame Input", description: "A data table you type in, with named, typed columns. An `Fx` column is calculated from the others, like Computed Column.", accent: "frame", create: () => new FrameInputNode(), parity: false },
+      { type: "cube-input", label: "Cube Input", description: "A typed-in Cube: rows of records whose values can be numbers, text, lists, or nested tables. Each cell edits in place in a popup.", accent: "frame", create: () => new CubeInputNode(), parity: false, keywords: "cube input literal type records nested list json source" },
       { type: "pair", children: [
         { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: `COMPLEX`.", accent: CX, create: () => new ComplexFromNode(), parity: false },
-        { type: "lambda-make",   label: "LAMBDA",      description: "A reusable formula for MAP, BYROW, REDUCE and computed columns. Parameters fill in order, and any other variable becomes an input. Excel: `LAMBDA`.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
+        { type: "lambda-make",   label: "LAMBDA",      description: "A reusable formula for MAP, BYROW, REDUCE and computed columns. Parameters fill in order, and any other variable becomes an input. Excel: `LAMBDA`.", accent: "lambda", create: () => new LambdaNode(), parity: false },
       ]},
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
       { type: "pair", children: [
@@ -187,7 +186,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Control", description: "Interactive widgets that drive values in your graph.",
         children: [
-          { type: "slider",      label: "Slider",      description: "A slider value, with configurable min, max, and step.", accent: NODE_KIND_ACCENTS.input, create: () => new SliderInputNode() },
+          { type: "slider",      label: "Slider",      description: "A slider value, with configurable min, max, and step.", accent: "input", create: () => new SliderInputNode() },
           { type: "angle-dial",  label: "Angle Dial",  description: "A rotary dial: spin or type to set an angle in degrees, 0–359.", create: () => new AngleDialNode() },
           { type: "date-range",  label: "Date Range",  description: "Picks a start and end date. It outputs both serials. Subtract them for a duration.", create: () => new DateRangeNode(), parity: false, keywords: "date range period start end duration between from to picker" },
           { type: "xy-pad",      label: "XY Pad",      description: "Two values at once, from a handle in a square pad. Each is 0–1. Scale them with arithmetic for any range.", create: () => new XYPadNode(), parity: false },
@@ -228,7 +227,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Output", description: "Display, convert, and visualize values at the end of a chain.",
     children: [
-      { type: "display",   label: "Display",  description: "Shows a value and passes it on unchanged.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
+      { type: "display",   label: "Display",  description: "Shows a value and passes it on unchanged.", create: () => new DisplayNode(), accent: "util" },
       { type: "format-controller", label: "Format Controller", description: "Sets how a docked socket's value reads (decimals, fractions, percent, currency, a date style) and its unit, like `°C`, `m` or `kg`. A value that already has a unit locks it; Convert changes it.", create: () => new FormatControllerNode() },
       {
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
@@ -317,10 +316,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
     children: [
       { type: "pair", children: [
-        { type: "expression", label: "Expression", description: "A formula like `a*b+1`, where each variable becomes an input. Works on single values, Lists and matrices, with the Excel functions and the constants `pi`, `tau`, `e` and `phi`. For Frames, use a computed column.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
-        { type: "equation", label: "Equation", description: "A relation like `V = I * R`: the one empty variable solves, a quadratic giving every real root. All given, Check turns `TRUE` or `FALSE`.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
+        { type: "expression", label: "Expression", description: "A formula like `a*b+1`, where each variable becomes an input. Works on single values, Lists and matrices, with the Excel functions and the constants `pi`, `tau`, `e` and `phi`. For Frames, use a computed column.", create: () => new ExpressionNode(), accent: "math" },
+        { type: "equation", label: "Equation", description: "A relation like `V = I * R`: the one empty variable solves, a quadratic giving every real root. All given, Check turns `TRUE` or `FALSE`.", create: () => new EquationNode(), accent: "math", keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
       ]},
-      { type: "script", label: "Script", description: "Runs JavaScript. Return `[ ]` for a List, `[[ ]]` for a table, `[{name: value}, …]` for a Frame or `[{name: [rows]}, …]` for a Cube; `Solenoid.date(serial)` returns a date. Runs sandboxed, with a 1-second limit.", keywords: "script javascript js code function program custom", create: () => new ScriptNode(), accent: NODE_KIND_ACCENTS.math },
+      { type: "script", label: "Script", description: "Runs JavaScript. Return `[ ]` for a List, `[[ ]]` for a table, `[{name: value}, …]` for a Frame or `[{name: [rows]}, …]` for a Cube; `Solenoid.date(serial)` returns a date. Runs sandboxed, with a 1-second limit.", keywords: "script javascript js code function program custom", create: () => new ScriptNode(), accent: "math" },
       {
         type: "category", label: "Arithmetic", description: "Two-input operations on numbers.",
         children: [
@@ -494,7 +493,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Build", description: "Create lists.",
         children: [
-          seriesLeaf("range", { accent: NODE_KIND_ACCENTS.list }),
+          seriesLeaf("range", { accent: "list" }),
           seriesLeaf("linspace"),
           { type: "list-concat",   label: "Concat Lists", description: "Joins lists end-to-end, in row order. A lone value counts as a 1-element list. Any element type. To stack lists as rows of a table instead, use `VSTACK`.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate push" },
           seriesLeaf("repeat"),
@@ -549,8 +548,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Shape", description: "Reorder, trim, and filter lists.",
         children: [
-          { type: "list-filter",  label: "List Filter", description: "Keeps the list items, or the table rows, that pass its condition rows, joined by AND or OR; the rest go to Dropped. A table is tested on its Column. Text tests ignore case unless a row's Match case is on. `No error` drops error cells and `Has error` keeps only them. Excel: `FILTER`.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode(), keywords: "keep where condition predicate drop errors iserror noterror div0 remove errors clean" },
-          { type: "list-fill",  label: "Fill", keywords: "coalesce fill missing null impute interpolate", description: "Handles missing cells: a constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in order like SQL `COALESCE`.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
+          { type: "list-filter",  label: "List Filter", description: "Keeps the list items, or the table rows, that pass its condition rows, joined by AND or OR; the rest go to Dropped. A table is tested on its Column. Text tests ignore case unless a row's Match case is on. `No error` drops error cells and `Has error` keeps only them. Excel: `FILTER`.", accent: "list", create: () => new FilterNode(), keywords: "keep where condition predicate drop errors iserror noterror div0 remove errors clean" },
+          { type: "list-fill",  label: "Fill", keywords: "coalesce fill missing null impute interpolate", description: "Handles missing cells: a constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in order like SQL `COALESCE`.", accent: "list", create: () => new FillNode() },
           { type: "pair", children: [
             { type: "list-sort",    label: "List Sort", description: "Sorts a table's rows by one column, or with Columns its columns by one row; a list is one row, so Columns sorts its items. Add sort keys to sort by other lists, like names by their scores, each with its own order. Excel: `SORT` / `SORTBY`.", keywords: "ascending descending order by key", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverses the order of the list", create: () => new ReverseNode() },
@@ -594,7 +593,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Find", description: "Look up values and positions.",
         children: [
           { type: "pair", children: [
-            { type: "lookup-xlookup", label: "XLOOKUP", description: "Finds a value in one column of a Frame or Cube and returns the matching cell from another. A List of lookup values returns one match each, and Return = `*` gives the whole row. Exact match by default; ≤ or ≥ falls back to the closest smaller or larger number or date. First or Last picks which duplicate wins, and If not found replaces `#N/A`. For two Lists, combine them with Frame from Lists first. Excel: `XLOOKUP`, `VLOOKUP`.", accent: NODE_KIND_ACCENTS.frame, keywords: "xlookup vlookup hlookup lookup frame cube table list match find nested column", create: () => new XLookupNode() },
+            { type: "lookup-xlookup", label: "XLOOKUP", description: "Finds a value in one column of a Frame or Cube and returns the matching cell from another. A List of lookup values returns one match each, and Return = `*` gives the whole row. Exact match by default; ≤ or ≥ falls back to the closest smaller or larger number or date. First or Last picks which duplicate wins, and If not found replaces `#N/A`. For two Lists, combine them with Frame from Lists first. Excel: `XLOOKUP`, `VLOOKUP`.", accent: "frame", keywords: "xlookup vlookup hlookup lookup frame cube table list match find nested column", create: () => new XLookupNode() },
             { type: "lookup-xmatch",  label: "XMATCH",  description: "1-based position with match mode selector (exact / next larger / next smaller); a list of lookup values returns one position each. Supersedes the classic `MATCH`. Excel: `XMATCH`.", create: () => new XMatchNode() },
           ]},
           { type: "pair", children: [
@@ -659,7 +658,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Logic", description: "Decisions, comparisons, boolean operations, and fallback handling.",
     children: [
-      { type: "if", label: "IF", description: "Returns Value if true when Condition is true, and Value if false otherwise. Excel: `IF`.", create: () => new IfNode(), accent: NODE_KIND_ACCENTS.logic },
+      { type: "if", label: "IF", description: "Returns Value if true when Condition is true, and Value if false otherwise. Excel: `IF`.", create: () => new IfNode(), accent: "logic" },
       { type: "comparison", label: "Comparison",  description: "Compares two values (`=`, `≠`, `<`, `>`, `≤`, `≥`) and emits a logical `TRUE` or `FALSE`. Broadcasts over a list.", keywords: "compare", create: () => new ComparisonNode() },
       { type: "choose",  label: "CHOOSE",        description: "Returns one of several values by a 1-based index. Excel: `CHOOSE`.", create: () => new ChooseNode() },
       { type: "switch",  label: "SWITCH",         description: "Matches a value against as many cases as you add and returns the matching result, or a default. Excel: `SWITCH`.", create: () => new SwitchNode() },

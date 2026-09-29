@@ -1,9 +1,15 @@
 // [[D5]] searchWiderThanLabel
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { IS_COARSE } from "./coarse";
 import { descriptionText } from "./descriptionMd";
 import "./AddNodeMenu.css";
+import { NODE_KIND_ACCENTS, type NodeKind } from "./nodes/shared";
+import { themeAccent } from "./palette";
+import { appThemeStore } from "./appTheme";
+
+/** A row takes its kind's color as a card of that kind shows it: the current palette, adjusted for light mode. */
+const leafAccent = (kind: NodeKind): string => themeAccent(NODE_KIND_ACCENTS[kind], appThemeStore.getMode());
 import { ChevronRightIcon } from "./components/Icons";
 
 export type NodeCatalogEntry = {
@@ -11,7 +17,8 @@ export type NodeCatalogEntry = {
   label: string;
   description?: string;
   create: () => unknown;
-  accent?: string;
+  /** The node kind whose palette color tints the row, resolved when the menu draws so a palette switch reaches it. */
+  accent?: NodeKind;
   parity?: boolean;
   hidden?: boolean;
   packs?: string[];
@@ -196,7 +203,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
             className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
             title={leaf.description && descriptionText(leaf.description)}
-            style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
+            style={leaf.accent ? ({ "--item-accent": leafAccent(leaf.accent) } as CSSProperties) : undefined}
             onMouseEnter={() => onHover([...prefix, i])}
             onClick={(e) => { e.stopPropagation(); onSelect(leaf); }}
           >
@@ -222,6 +229,8 @@ type AddNodeMenuProps = {
 };
 
 export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, compatibleTypes }: AddNodeMenuProps) {
+  // A palette or theme switch while the menu is open repaints its row tints (the theme store notifies on both).
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -367,7 +376,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
                 ref={i === activeIndex ? activeRef : undefined}
                 className={`solenoid-add-menu__item${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}${isDim(leaf) ? " solenoid-add-menu__item--incompatible" : ""}`}
                 title={leaf.description && descriptionText(leaf.description)}
-                style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
+                style={leaf.accent ? ({ "--item-accent": leafAccent(leaf.accent) } as CSSProperties) : undefined}
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => select(leaf)}
               >

@@ -261,3 +261,11 @@ describe("date-valued ports are typed date", () => {
     expect(broken, broken.join("; ")).toEqual([]);
   });
 });
+
+describe("Add menu row tints follow the palette", () => {
+  it("a catalog accent names a node kind, resolved when the menu draws, never a color copied at load", async () => {
+    const { NODE_KIND_SLOTS } = await import("../../src/graph/nodes/shared");
+    const bad = [...FLAT_CATALOG.values()].filter((e) => e.accent !== undefined && !(e.accent in NODE_KIND_SLOTS)).map((e) => `${e.type}: ${e.accent}`);
+    expect(bad).toEqual([]);
+  });
+});

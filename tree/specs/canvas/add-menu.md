@@ -30,7 +30,7 @@ The tree is curated to read well: general plotters stay at the top of Visuals wh
 | `label` | The name shown in the menu and, by default, on the card ([[D22]] oneNamePerCard). |
 | `description` | Shown on hover in the menu, on the card header and in the Inspector. |
 | `create` | Builds a fresh node. |
-| `accent` | The node-kind accent, drawn as a filled rounded rectangle on the row; it marks user-input nodes. |
+| `accent` | The node kind (`"frame"`, `"input"`…) whose accent tints the row, drawn as a filled rounded rectangle; it marks user-input nodes. The menu resolves it when it draws (`leafAccent`: the current palette's kind color, adjusted for light mode as a card's is) and redraws on a palette or theme switch, so a stored color can never freeze the startup palette; `catalogRegistry.test.ts` requires a kind. |
 | `parity` | `true` (the default) when the node fully matches its Excel counterparts; `false` when it has known limitations. |
 | `hidden` | The type stays registered so saved graphs load, but it is left out of the menu and the Function Reference, so no new one can be made. |
 | `packs` | The ids of the packs contributing the node, set by the catalog builder; empty means built in. |
