@@ -26,6 +26,7 @@ const ISOLATED = [
   "tests/graph/obsidianWriteBatch.test.ts",
   "tests/graph/polarsBackend.test.ts",
   "tests/graph/saveTimeStore.test.ts",
+  "tests/graph/sketchExport.test.ts",
 ];
 
 export default defineConfig({
