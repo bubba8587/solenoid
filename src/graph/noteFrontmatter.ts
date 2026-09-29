@@ -49,7 +49,7 @@ function readScalar(node: Node | null | undefined): { value: FrontmatterScalar; 
   const quoted = node.type === Scalar.QUOTE_DOUBLE || node.type === Scalar.QUOTE_SINGLE;
   if (v === null || v === undefined) return { value: null, kind: "string" };
   const src = node.type === Scalar.PLAIN ? String(node.source ?? "") : "";
-  if (typeof v === "number" && /^[-+]\./.test(src)) return { value: src, kind: "string" };
+  if (typeof v === "number" && /^[-+]\.(?!(?:inf|Inf|INF)$)/.test(src)) return { value: src, kind: "string" };
   if (typeof v === "string" && /^[-+]?0(?:b[01]+|o[0-7]+|x[0-9a-fA-F]+)$/.test(src)) {
     return { value: (src[0] === "-" ? -1 : 1) * Number(src.replace(/^[-+]/, "")), kind: "number" };
   }
