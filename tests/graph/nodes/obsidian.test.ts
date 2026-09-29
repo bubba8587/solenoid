@@ -140,6 +140,17 @@ describe("ImportObsidianNode", () => {
     expect(isDocumentValue(out.document)).toBe(true);
   });
 
+  it("a picked note names the card until the author renames it", () => {
+    const n = new ImportObsidianNode();
+    n.adoptFile("notes/Weekly.md");
+    expect(n.label).toBe("Weekly");
+    n.adoptFile("notes/Monthly.md");
+    expect([n.fileName, n.label]).toEqual(["notes/Monthly.md", "Monthly"]);
+    n.label = "My review";
+    n.adoptFile("notes/Yearly.md");
+    expect([n.fileName, n.label]).toEqual(["notes/Yearly.md", "My review"]);
+  });
+
   it("persists the source fileName + inherited note fields through extractInit", () => {
     const n = new ImportObsidianNode({ fileName: "notes/weekly.md", body: "---\na: 1\n---\nhi", color: "violet" });
     const init = extractInit(n);

@@ -80,10 +80,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   // The Note's on-blur reconcile: re-derive the frontmatter sockets, then drop the cables a removed or retyped key stranded.
   async function applyBody(content: string, sourcePath: string) {
     data.body = content;
-    data.fileName = sourcePath;
-    if (sourcePath && (data.label === "Import Obsidian Note" || data.label.trim() === "")) {
-      data.label = baseName(sourcePath); // the card's name elsewhere (stubs, the Inspector)
-    }
+    data.adoptFile(sourcePath);
     await data.loadColumnPicks(vault);
     const { removed, retyped } = data.syncFields();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);

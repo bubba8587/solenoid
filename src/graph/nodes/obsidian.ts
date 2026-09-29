@@ -488,6 +488,16 @@ export class ImportObsidianNode extends NoteNode {
     } catch { /* unreadable (moved / renamed / off-desktop) — keep the current body */ }
   }
 
+  /** The label follows the note while it is the default, blank, or the previous note's name. */
+  adoptFile(rel: string): void {
+    const baseOf = (p: string) => (p.split("/").pop() ?? p).replace(/\.md$/i, "");
+    const label = this.label.trim();
+    if (rel && (label === "" || label === "Import Obsidian Note" || (this.fileName !== "" && label === baseOf(this.fileName)))) {
+      this.label = baseOf(rel);
+    }
+    this.fileName = rel;
+  }
+
   /** An unchanged note still re-reads its column picks, which the plugin edits without touching the note. */
   private async applyFile(vault: string, rel: string, content: string): Promise<void> {
     if (content === this.body && rel === this.fileName) {
@@ -496,10 +506,7 @@ export class ImportObsidianNode extends NoteNode {
       if (JSON.stringify([this.columnPicks, this.nestedPicks]) === before) return;
     } else {
       this.body = content;
-      this.fileName = rel;
-      if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
-        this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
-      }
+      this.adoptFile(rel);
       await this.loadColumnPicks(vault);
     }
     const { removed, retyped } = this.syncFields();
