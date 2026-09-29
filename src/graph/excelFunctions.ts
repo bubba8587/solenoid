@@ -2262,13 +2262,15 @@ registerInternal("LINEST", (ys, xs) => {
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
   const fit = linearFitR2(pair.xs, pair.ys);
-  return fit ? [fit.slope, fit.intercept, fit.r2] : null;
+  if (fit) return [fit.slope, fit.intercept, fit.r2];
+  return pair.xs.length >= 2 ? solError("#DIV/0!", "Known Xs have zero variance") : null;
 });
 registerInternal("LOGEST", (ys, xs) => {
   if (ys == null) return null;
   const pair = regressionPair(ys, xs);
   if (pair.error) return pair.error;
   const fit = expFit(pair.xs, pair.ys);
-  return fit ? [fit.m, fit.b] : [];
+  if (fit) return [fit.m, fit.b];
+  return pair.xs.length >= 2 && pair.ys.every((y) => y > 0) ? solError("#DIV/0!", "Known Xs have zero variance") : [];
 });
 

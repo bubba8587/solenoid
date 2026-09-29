@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { ForecastNode, LinestNode } from "../../src/graph/nodes/stats";
+import { isSolError } from "../../src/graph/errorValue";
 
 // ─── Range routing: the SHAPE guard ───────────────────────────────────────────
 // `RANGE_FUNCTIONS` is hand-kept, and a function missing from it fails SILENTLY in the
@@ -147,8 +148,8 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect(ev("LINEST(y, x)", { y: YS, x: XS }))
       .toEqual([nodeOut.slope, nodeOut.intercept, nodeOut.r2]);
     expect(ev("LINEST(y, x)", { y: YS, x: XS })).toEqual([2, 1, 1]);
-    // Degenerate fit (zero X variance) → null, the node's null outputs.
-    expect(ev("LINEST(y, x)", { y: YS, x: [2, 2, 2, 2] })).toBeNull();
+    const flat = ev("LINEST(y, x)", { y: YS, x: [2, 2, 2, 2] });
+    expect(isSolError(flat) && flat.code).toBe("#DIV/0!");
   });
 
   it("LOGEST is the Fit card's exponential op — m, b on the slope/intercept sockets", () => {

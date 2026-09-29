@@ -211,6 +211,19 @@ describe("review pins: whole-argument formulas", () => {
     const out = new LinestNode({ op: "linear" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] });
     expect(isSolError(out.slope) && out.slope.code).toBe("#DIV/0!");
   });
+  it("an exponential Fit over collinear x is #DIV/0! like the linear op, and so are LINEST and LOGEST", async () => {
+    const { LinestNode } = await import("../../src/graph/nodes/stats");
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
+    const out = new LinestNode({ op: "exponential" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] });
+    for (const v of [out.slope, out.intercept, out.r2]) {
+      expect(isSolError(v) && [v.code, v.message]).toEqual(["#DIV/0!", "Known Xs have zero variance"]);
+    }
+    for (const f of ["LINEST(y, x)", "LOGEST(y, x)"]) {
+      const r = ev(f, { y: [1, 2, 3], x: [5, 5, 5] });
+      expect(isSolError(r) && r.code).toBe("#DIV/0!");
+    }
+  });
 });
 
 describe("review pins: one-element lists into list-consuming matrix nodes", () => {

@@ -925,23 +925,21 @@ export class LinestNode extends ClassicPreset.Node {
       this.cachedSlope = this.cachedIntercept = this.cachedR2 = error;
       return { slope: error, intercept: error, r2: error };
     }
+    const fail = (err: SolError) => {
+      this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
+      return { slope: err, intercept: err, r2: err };
+    };
     let fit: { slope: number; intercept: number; r2: number } | null;
     if (this.op === "exponential") {
       const e = expFitR2(xs, ys);
       if (!e && xs.length >= 2 && ys.some((y) => !(y > 0))) {
-        const err = solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
-        this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
-        return { slope: err, intercept: err, r2: err };
+        return fail(solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)"));
       }
       fit = e ? { slope: e.m, intercept: e.b, r2: e.r2 } : null;
     } else {
       fit = linearFitR2(xs, ys);
-      if (!fit && xs.length >= 2) {
-        const err = solError("#DIV/0!", "Known Xs have zero variance");
-        this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
-        return { slope: err, intercept: err, r2: err };
-      }
     }
+    if (!fit && xs.length >= 2) return fail(solError("#DIV/0!", "Known Xs have zero variance"));
     this.cachedSlope     = fit?.slope ?? null;
     this.cachedIntercept = fit?.intercept ?? null;
     this.cachedR2        = fit?.r2 ?? null;
