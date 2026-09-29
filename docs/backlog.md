@@ -345,3 +345,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Running on unit lists** (`listOps.ts` running): unit cells are dropped, so [1 kg, 2 kg, 3 kg] runs to zeros; go through `forAggregateUnits` as Reduce does, and check RUNNING agrees.
 - [ ] **AI Apply** (`CommandPalette.tsx`) loads the reply without checking the document changed while the diff was open, so edits made meanwhile are reverted (or a doc switch loads A's rewrite into B). Keep the base text; refuse or re-diff when it moved.
 - [ ] **CHISQ/F/GAMMA densities at x = 0** answer 0 (Excel: CHISQ.DIST(0,2,FALSE) = 0.5, GAMMA.DIST(0,1,2,FALSE) = 0.5), and a negative x answers 0 where Excel gives #NUM!.
+- [ ] **Sketch sample aliasing**: the stride sample `floor(i × total / n)` (frame-verbs.md § Sketch mode, `engine.rs` verb_sample) aliases on periodic data (alternating keys at stride 4 keep only one). A fixed-seed well-mixed sample would fix it; spec line plus both samplers.
+- [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
+- [ ] **SUMIFS and Get Column** write `cachedResult` after an await with no pass check (the Pivot race, now guarded there).
+- [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.
