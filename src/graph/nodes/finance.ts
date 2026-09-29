@@ -108,7 +108,7 @@ const DEPRECIATION_INPUTS: Record<DepreciationOp, ReadonlyArray<{ key: string; l
 export class DepreciationNode extends ClassicPreset.Node {
   label: string;
   op: DepreciationOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = {};
   width = 180; height = 310;
 
@@ -157,7 +157,7 @@ export class DepreciationNode extends ClassicPreset.Node {
     const cost    = readInput(inputs.cost, this.literals.cost ?? null);
     const salvage = readInput(inputs.salvage, this.literals.salvage ?? null);
     const life    = readInput(inputs.life, this.literals.life ?? null);
-    let result: number | null = null;
+    let result: number | SolError | null = null;
     if (this.op === "vdb") {
       const start  = readInput(inputs.start, this.literals.start ?? 0);
       const end    = readInput(inputs.end, this.literals.end ?? 0);
@@ -185,7 +185,7 @@ export class DepreciationNode extends ClassicPreset.Node {
         }
       }
     }
-    if (result !== null && !Number.isFinite(result)) result = null;
+    if (typeof result === "number" && !Number.isFinite(result)) result = null;
     this.cachedResult = result;
     return { result };
   }
@@ -608,7 +608,7 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
   };
   label: string;
   op: DiscountSecurityOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { discount: 0.05, pr: 97.5, redemption: 100, investment: 1000, rate: 0.06, yld: 0.065, basis: 0 };
   width = 180; height = 230;
 
@@ -633,13 +633,13 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
     this.height = 149 + 27 * after.length;
   }
 
-  data(inputs: Record<string, number[] | undefined>): { result: number | null } {
+  data(inputs: Record<string, number[] | undefined>): { result: number | SolError | null } {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
     const fail = () => { this.cachedResult = null; return { result: null }; };
     if (s == null || m == null) return fail();
     const read = (k: string) => readInput(inputs[k], this.literals[k] ?? 0);
-    let result: number | null;
+    let result: number | SolError | null;
     switch (this.op) {
       case "tbilleq": case "tbillprice": case "tbillyield": {
         const x = read(this.op === "tbillyield" ? "pr" : "discount");
@@ -699,7 +699,7 @@ export class CouponNode extends ClassicPreset.Node {
   };
   label: string;
   op: CouponOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { frequency: 2, basis: 0 };
   width = 180; height = 235;
 
@@ -714,7 +714,7 @@ export class CouponNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; frequency?: number[]; basis?: number[] }): { result: number | null } {
+  data(inputs: { settle?: number[]; maturity?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
@@ -753,7 +753,7 @@ export class AccruedInterestNode extends ClassicPreset.Node {
   };
   label: string;
   op: AccruedInterestOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.06, par: 1000, frequency: 2, basis: 0 };
   width = 180; height = 280;
 
@@ -789,7 +789,7 @@ export class AccruedInterestNode extends ClassicPreset.Node {
     this.height = next === "periodic" ? 280 : 245;
   }
 
-  data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; frequency?: number[]; basis?: number[] }): { result: number | null } {
+  data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
     const is = inputs.issue?.[0], ss = inputs.settle?.[0];
     const fail = () => { this.cachedResult = null; return { result: null }; };
     if (is == null || ss == null) return fail();
@@ -797,7 +797,7 @@ export class AccruedInterestNode extends ClassicPreset.Node {
     const par   = readInput(inputs.par, this.literals.par ?? 1000);
     const basis = readRole<number>(this, "basis", inputs.basis);
     if (rate === null || par === null) return fail();
-    let result: number | null;
+    let result: number | SolError | null;
     if (this.op === "periodic") {
       const freq = readRole<number>(this, "frequency", inputs.frequency);
       result = accrint(is, ss, rate, par, freq, basis);
@@ -967,7 +967,7 @@ export class DurationNode extends ClassicPreset.Node {
   };
   label: string;
   op: DurationOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { coupon: 0.08, yld: 0.09, frequency: 2, basis: 0 };
   width = 180; height = 265;
 
@@ -984,7 +984,7 @@ export class DurationNode extends ClassicPreset.Node {
     this.addOutput("result", numOut("Years"));
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; coupon?: number[]; yld?: number[]; frequency?: number[]; basis?: number[] }): { result: number | null } {
+  data(inputs: { settle?: number[]; maturity?: number[]; coupon?: number[]; yld?: number[]; frequency?: number[]; basis?: number[] }): { result: number | SolError | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
     if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
     const coupon = readInput(inputs.coupon, this.literals.coupon ?? 0.08);
@@ -1039,7 +1039,7 @@ export class BondPricingNode extends ClassicPreset.Node {
   };
   label: string;
   op: BondPricingOp;
-  cachedResult: number | null = null;
+  cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.065, yld: 0.07, pr: 97.5, redemption: 100, frequency: 2 };
   width = 180; height = 280;
 
@@ -1064,7 +1064,7 @@ export class BondPricingNode extends ClassicPreset.Node {
     this.height = 149 + 27 * after.length;
   }
 
-  data(inputs: Record<string, number[] | undefined>): { result: number | null } {
+  data(inputs: Record<string, number[] | undefined>): { result: number | SolError | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
     const fail = () => { this.cachedResult = null; return { result: null }; };
     if (s == null || m == null) return fail();
@@ -1077,7 +1077,7 @@ export class BondPricingNode extends ClassicPreset.Node {
       ? readInput(inputs.yld, this.literals.yld ?? 0.07)
       : readInput(inputs.pr, this.literals.pr ?? 97.5);
     if (yldOrPrice === null) return fail();
-    let result: number | null;
+    let result: number | SolError | null;
     if (isOddFirst(this.op) || isOddLast(this.op)) {
       const fl = isOddFirst(this.op) ? inputs.firstcoupon?.[0] : inputs.lastinterest?.[0];
       if (fl == null) return fail();

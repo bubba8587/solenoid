@@ -239,13 +239,14 @@ describe("ONE Bond Pricing card: the odd-coupon dates are their own sockets", ()
 });
 
 describe("odd-coupon date order", () => {
-  it("ODD* dates out of Excel's order give no price instead of throwing", () => {
+  it("ODD* dates out of Excel's order are #DOMAIN!, not a throw ([[D70]] nullNotEnoughData)", () => {
     const first = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], rate: [0.0575], redemption: [100], frequency: [2], yld: [0.06] };
     // issue after the first coupon
-    expect(new BondPricingNode({ op: "oddfprice" }).data({ ...first, issue: [d("2024-08-01")], firstcoupon: [d("2024-07-01")] }).result).toBeNull();
+    expect(new BondPricingNode({ op: "oddfprice" }).data({ ...first, issue: [d("2024-08-01")], firstcoupon: [d("2024-07-01")] }).result).toMatchObject({ code: "#DOMAIN!" });
     // settlement on or after the first coupon
-    expect(new BondPricingNode({ op: "oddfprice" }).data({ ...first, issue: [d("2023-11-11")], firstcoupon: [d("2024-01-01")] }).result).toBeNull();
+    expect(new BondPricingNode({ op: "oddfprice" }).data({ ...first, issue: [d("2023-11-11")], firstcoupon: [d("2024-01-01")] }).result).toMatchObject({ code: "#DOMAIN!" });
     // settlement before the last interest date
-    expect(new BondPricingNode({ op: "oddlprice" }).data({ settle: [d("2023-09-01")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2], yld: [0.0405] }).result).toBeNull();
+    expect(new BondPricingNode({ op: "oddlprice" }).data({ settle: [d("2023-09-01")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2], yld: [0.0405] }).result)
+      .toMatchObject({ code: "#DOMAIN!", message: "ODDLPRICE needs maturity after settlement, and settlement after the last interest date" });
   });
 });

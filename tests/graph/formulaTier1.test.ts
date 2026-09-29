@@ -208,9 +208,9 @@ describe("finance functions: formula matches node", () => {
     }).result);
   });
 
-  it("returns a blank, not a number, when an argument is out of range", () => {
-    expect(ev(`COUPNUM(${settle}, ${maturity}, 3)`)).toBeNull(); // frequency must be 1/2/4
-    expect(ev("VDB(10000, 1000, 10, 5, 2)")).toBeNull();          // end before start
+  it("answers #DOMAIN!, not a number, when an argument is out of range ([[D70]] nullNotEnoughData)", () => {
+    expect(ev(`COUPNUM(${settle}, ${maturity}, 3)`)).toMatchObject({ code: "#DOMAIN!", message: "COUPNUM needs a frequency of 1, 2 or 4" });
+    expect(ev("VDB(10000, 1000, 10, 5, 2)")).toMatchObject({ code: "#DOMAIN!", message: "VDB needs 0 ≤ start ≤ end ≤ life" });
   });
 });
 

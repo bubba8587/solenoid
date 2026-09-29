@@ -235,28 +235,34 @@ describe("TBILL — money-market day-count conventions", () => {
   });
 });
 
-describe("TBILL and PRICEMAT refuse what Excel answers #NUM!", () => {
+describe("TBILL and PRICEMAT answer #DOMAIN! where Excel answers #NUM! ([[D70]] nullNotEnoughData)", () => {
   const d = (s: string) => parseDateToSerial(s);
-  const noNumber = (r: unknown) => expect(typeof r === "number" && Number.isFinite(r)).toBe(false);
-  it("a T-bill maturing more than one year after settlement has no answer", () => {
+  const domain = (r: unknown) => expect(r).toMatchObject({ code: "#DOMAIN!" });
+  it("a T-bill maturing more than one year after settlement is an error", () => {
     const tb = new DiscountSecurityNode({ op: "tbillprice" });
-    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] }).result).toBeNull();
-    noNumber(ev("TBILLPRICE(s, m, 0.05)", { s: d("2024-01-15"), m: d("2025-02-20") }));
+    expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-02-20")], discount: [0.05] }).result)
+      .toMatchObject({ code: "#DOMAIN!", message: "TBILLPRICE needs the maturity date within one year of settlement" });
+    domain(ev("TBILLPRICE(s, m, 0.05)", { s: d("2024-01-15"), m: d("2025-02-20") }));
     expect(tb.data({ settle: [d("2024-01-15")], maturity: [d("2025-01-15")], discount: [0.05] }).result).toBeCloseTo(100 * (1 - 0.05 * 366 / 360), 9);
   });
-  it("a zero or negative discount or price has no answer", () => {
+  it("a zero or negative discount or price is an error", () => {
     const s = d("2024-01-15"), m = d("2024-07-15");
-    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [s], maturity: [m], discount: [0] }).result).toBeNull();
-    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [s], maturity: [m], discount: [-0.05] }).result).toBeNull();
-    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [s], maturity: [m], pr: [0] }).result).toBeNull();
-    noNumber(ev("TBILLYIELD(s, m, -1)", { s, m }));
+    domain(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [s], maturity: [m], discount: [0] }).result);
+    domain(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [s], maturity: [m], discount: [-0.05] }).result);
+    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [s], maturity: [m], pr: [0] }).result)
+      .toMatchObject({ code: "#DOMAIN!", message: "TBILLYIELD needs a price above 0" });
+    domain(ev("TBILLYIELD(s, m, -1)", { s, m }));
+  });
+  it("a missing date stays a quiet blank", () => {
+    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ maturity: [d("2024-07-15")], discount: [0.05] }).result).toBeNull();
   });
   it("PRICEMAT and YIELDMAT refuse a settlement on or after maturity", () => {
     const issue = d("2023-01-01"), s = d("2025-01-01"), m = d("2024-06-01");
-    expect(priceMat("pricemat", s, m, issue, 0.05, 0.06)).toBeNull();
-    expect(priceMat("yieldmat", s, m, issue, 0.05, 99)).toBeNull();
-    expect(priceMat("pricemat", m, m, issue, 0.05, 0.06)).toBeNull();
-    noNumber(ev("PRICEMAT(s, m, i, 0.05, 0.06)", { s, m, i: issue }));
+    expect(priceMat("pricemat", s, m, issue, 0.05, 0.06))
+      .toMatchObject({ code: "#DOMAIN!", message: "PRICEMAT needs the settlement date before the maturity date" });
+    domain(priceMat("yieldmat", s, m, issue, 0.05, 99));
+    domain(priceMat("pricemat", m, m, issue, 0.05, 0.06));
+    domain(ev("PRICEMAT(s, m, i, 0.05, 0.06)", { s, m, i: issue }));
   });
 });
 

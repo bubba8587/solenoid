@@ -1,5 +1,5 @@
 // [[C17]] shareImpl, [[D37]] errorBeatsMissing, [[D48]] classifyNonFinite, [[C44]] dateSerials, [[C24]] arraySemantics, [[D70]] nullNotEnoughData
-// Must not import `finance.ts` (import cycle). Invalid input answers null, never a throw or a fabricated number; each surface tags its own failure.
+// Must not import `finance.ts` (import cycle). A missing date answers null; a wrong argument answers a `#DOMAIN!` naming it, never a throw or a fabricated number.
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { solError, isSolError, type SolError } from "../errorValue";
 
@@ -54,6 +54,18 @@ export function coupPeriodDays(
 }
 
 const VALID_FREQ = [1, 2, 4];
+
+const domain = (op: string, need: string): SolError => solError("#DOMAIN!", `${op.toUpperCase()} needs ${need}`);
+
+/** Excel's `#NUM!` checks as a `#DOMAIN!`, or null when all hold; an undefined frequency or basis goes unchecked. */
+function argsError(
+  op: string, settleSerial: number, maturitySerial: number, freq?: number, basis?: number,
+): SolError | null {
+  if (freq !== undefined && !VALID_FREQ.includes(freq)) return domain(op, "a frequency of 1, 2 or 4");
+  if (basis !== undefined && !(basis >= 0 && basis <= 4)) return domain(op, "a basis from 0 to 4");
+  if (!(settleSerial < maturitySerial)) return domain(op, "the settlement date before the maturity date");
+  return null;
+}
 
 export function solveYield(priceAt: (y: number) => number, target: number, couponRate: number): number {
   let yld = couponRate > 0 ? couponRate : 0.05;
@@ -169,8 +181,9 @@ export function vdbBookValue(cost: number, salvage: number, life: number, period
 
 export function vdb(
   cost: number, salvage: number, life: number, start: number, end: number, factor = 2, noSwitch = false,
-): number | null {
-  if (!(cost >= 0 && salvage >= 0 && life > 0 && start >= 0 && end >= start && end <= life && factor > 0)) return null;
+): number | SolError | null {
+  if (!(cost >= 0 && salvage >= 0 && life > 0 && factor > 0)) return domain("vdb", "a cost and salvage of 0 or more, and a life and factor above 0");
+  if (!(start >= 0 && end >= start && end <= life)) return domain("vdb", "0 ≤ start ≤ end ≤ life");
   const result = Math.max(0, vdbBookValue(cost, salvage, life, start, factor, noSwitch) - vdbBookValue(cost, salvage, life, end, factor, noSwitch));
   return Number.isFinite(result) ? result : null;
 }
@@ -179,10 +192,11 @@ export type CouponOp = "coupdaybs" | "coupdays" | "coupdaysnc" | "coupncd" | "co
 
 export function couponValue(
   op: CouponOp, settleSerial: number, maturitySerial: number, freq = 2, basis = 0,
-): number | null {
+): number | SolError | null {
   const f = Math.round(freq), b = Math.round(basis);
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  if (!VALID_FREQ.includes(f)) return null;
+  const bad = argsError(op, settleSerial, maturitySerial, f, b);
+  if (bad) return bad;
   const settle = serialToJsDate(settleSerial);
   const maturity = serialToJsDate(maturitySerial);
   const { prev, next } = coupDates(settle, maturity, f);
@@ -199,13 +213,24 @@ export function couponValue(
   }
 }
 
+function accrualError(
+  op: string, issueSerial: number, settleSerial: number, rate: number, par: number, freq: number | undefined, basis: number,
+): SolError | null {
+  if (freq !== undefined && !VALID_FREQ.includes(freq)) return domain(op, "a frequency of 1, 2 or 4");
+  if (!(basis >= 0 && basis <= 4)) return domain(op, "a basis from 0 to 4");
+  if (!(issueSerial < settleSerial)) return domain(op, "the issue date before the settlement date");
+  if (rate <= 0 || par <= 0) return domain(op, "a rate and par above 0");
+  return null;
+}
+
 export function accrint(
   issueSerial: number, settleSerial: number, rate: number, par = 1000, frequency = 2, basis = 0,
-): number | null {
+): number | SolError | null {
   if (!Number.isFinite(issueSerial) || !Number.isFinite(settleSerial)) return null;
   const freq = Math.round(frequency);
-  if (![1, 2, 4].includes(freq)) return null;
   const b = Math.round(basis);
+  const bad = accrualError("accrint", issueSerial, settleSerial, rate, par, freq, b);
+  if (bad) return bad;
   const issue = serialToJsDate(issueSerial), settle = serialToJsDate(settleSerial);
   const a = b === 0 || b === 4 ? days30_360(issue, settle) : actualDays(issue, settle);
   const e = b === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq)) : b === 3 ? 365 / freq : 360 / freq;
@@ -214,9 +239,11 @@ export function accrint(
 
 export function accrintM(
   issueSerial: number, settleSerial: number, rate: number, par = 1000, basis = 0,
-): number | null {
+): number | SolError | null {
   if (!Number.isFinite(issueSerial) || !Number.isFinite(settleSerial)) return null;
   const b = Math.round(basis);
+  const bad = accrualError("accrintm", issueSerial, settleSerial, rate, par, undefined, b);
+  if (bad) return bad;
   const issue = serialToJsDate(issueSerial), settle = serialToJsDate(settleSerial);
   const a = dayCount(b, issue, settle);
   const d = b === 3 ? 365 : b === 1 ? actualDays(issue, coupAddMonths(issue, 12)) : 360;
@@ -225,13 +252,15 @@ export function accrintM(
 
 export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
 
-export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | null {
+export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | SolError | null {
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  if (maturitySerial <= settleSerial || x <= 0) return null;
+  const bad = argsError(op, settleSerial, maturitySerial);
+  if (bad) return bad;
+  if (x <= 0) return domain(op, op === "tbillyield" ? "a price above 0" : "a discount above 0");
   const s = serialToJsDate(settleSerial);
   const lastDay = new Date(Date.UTC(s.getUTCFullYear() + 1, s.getUTCMonth() + 1, 0)).getUTCDate();
   const yearOn = jsDateToSerial(new Date(Date.UTC(s.getUTCFullYear() + 1, s.getUTCMonth(), Math.min(s.getUTCDate(), lastDay))));
-  if (maturitySerial > yearOn) return null;
+  if (maturitySerial > yearOn) return domain(op, "the maturity date within one year of settlement");
   const dsm = Math.round(maturitySerial - settleSerial);
   switch (op) {
     case "tbillprice": return 100 * (1 - x * dsm / 360);
@@ -247,12 +276,20 @@ export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number,
 
 export type SecurityDiscOp = "disc" | "intrate" | "received";
 
+const SECURITY_DISC_POSITIVE: Record<SecurityDiscOp, string> = {
+  disc: "a price and redemption above 0",
+  intrate: "an investment and redemption above 0",
+  received: "an investment and discount above 0",
+};
+
 export function securityDisc(
   op: SecurityDiscOp, settleSerial: number, maturitySerial: number, a: number, b: number, basis = 0,
-): number | null {
+): number | SolError | null {
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  if (maturitySerial <= settleSerial) return null;
   const basisCode = Math.round(basis);
+  const bad = argsError(op, settleSerial, maturitySerial, undefined, basisCode);
+  if (bad) return bad;
+  if (a <= 0 || b <= 0) return domain(op, SECURITY_DISC_POSITIVE[op]);
   const dsm = dayCount(basisCode, serialToJsDate(settleSerial), serialToJsDate(maturitySerial));
   const bd = basisDays(basisCode);
   switch (op) {
@@ -260,7 +297,7 @@ export function securityDisc(
     case "intrate": return ((b - a) / a) * (bd / dsm);
     case "received": {
       const denom = 1 - b * dsm / bd;
-      return denom <= 0 ? null : a / denom;
+      return denom <= 0 ? domain(op, "a discount below 100% over the term") : a / denom;
     }
   }
 }
@@ -270,9 +307,12 @@ export type PriceDiscOp = "pricedisc" | "yielddisc";
 export function priceDisc(
   op: PriceDiscOp, settleSerial: number, maturitySerial: number, rateOrPrice: number,
   redemption = 100, basis = 0,
-): number | null {
+): number | SolError | null {
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
   const b = Math.round(basis);
+  const bad = argsError(op, settleSerial, maturitySerial, undefined, b);
+  if (bad) return bad;
+  if (rateOrPrice <= 0 || redemption <= 0) return domain(op, op === "pricedisc" ? "a discount and redemption above 0" : "a price and redemption above 0");
   const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
   const dsm = dayCount(b, settle, maturity);
   const B = b === 3 ? 365 : 360;
@@ -286,10 +326,13 @@ export type PriceMatOp = "pricemat" | "yieldmat";
 export function priceMat(
   op: PriceMatOp, settleSerial: number, maturitySerial: number, issueSerial: number,
   rate: number, yldOrPrice: number, basis = 0,
-): number | null {
+): number | SolError | null {
   if (![settleSerial, maturitySerial, issueSerial].every(Number.isFinite)) return null;
-  if (settleSerial >= maturitySerial) return null;
   const b = Math.round(basis);
+  const bad = argsError(op, settleSerial, maturitySerial, undefined, b);
+  if (bad) return bad;
+  if (rate < 0) return domain(op, "a rate of 0 or more");
+  if (op === "pricemat" ? yldOrPrice < 0 : yldOrPrice <= 0) return domain(op, op === "pricemat" ? "a yield of 0 or more" : "a price above 0");
   const settle = serialToJsDate(settleSerial);
   const maturity = serialToJsDate(maturitySerial);
   const issue = serialToJsDate(issueSerial);
@@ -309,14 +352,15 @@ export type DurationOp = "duration" | "mduration";
 export function durationValue(
   op: DurationOp, settleSerial: number, maturitySerial: number,
   coupon: number, yld: number, freq = 2, basis = 0,
-): number | null {
+): number | SolError | null {
   const f = Math.round(freq), b = Math.round(basis);
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  if (!VALID_FREQ.includes(f)) return null;
+  const bad = argsError(op, settleSerial, maturitySerial, f, b);
+  if (bad) return bad;
+  if (coupon < 0 || yld < 0) return domain(op, "a coupon and yield of 0 or more");
   const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
   const { prev, next } = coupDates(settle, maturity, f);
   const period = coupPeriodDays(prev, next, settle, f, b);
-  if (period.e === 0) return null;
   const dsc = period.dsc / period.e;
   const N = bondCouponCount(next, maturity, f);
   const C = coupon / f * 100;
@@ -329,20 +373,27 @@ export function durationValue(
     price += pv;
     durNum += t * pv;
   }
-  if (price === 0) return null;
   const durYears = durNum / price / f;
   return op === "duration" ? durYears : durYears / (1 + y);
 }
 
 export type BondPriceOp = "price" | "yield";
 
+function priceArgsError(op: string, isPrice: boolean, rate: number, yldOrPrice: number, redemption: number): SolError | null {
+  if (rate < 0) return domain(op, "a coupon rate of 0 or more");
+  if (isPrice ? yldOrPrice < 0 : yldOrPrice <= 0) return domain(op, isPrice ? "a yield of 0 or more" : "a price above 0");
+  if (redemption <= 0) return domain(op, "a redemption above 0");
+  return null;
+}
+
 export function bondPriceYield(
   op: BondPriceOp, settleSerial: number, maturitySerial: number,
   rate: number, yldOrPrice: number, redemption = 100, freq = 2,
-): number | null {
+): number | SolError | null {
   const f = Math.round(freq);
   if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
-  if (!VALID_FREQ.includes(f)) return null;
+  const bad = argsError(op, settleSerial, maturitySerial, f) ?? priceArgsError(op, op === "price", rate, yldOrPrice, redemption);
+  if (bad) return bad;
   const settle = serialToJsDate(settleSerial), maturity = serialToJsDate(maturitySerial);
   const r = op === "price"
     ? bondPrice(settle, maturity, rate, yldOrPrice, redemption, f)
@@ -355,20 +406,23 @@ export type OddCouponOp = "oddfprice" | "oddfyield" | "oddlprice" | "oddlyield";
 export function oddCoupon(
   op: OddCouponOp, settleSerial: number, maturitySerial: number, issueSerial: number,
   flSerial: number, rate: number, yldOrPrice: number, redemption = 100, freq = 2,
-): number | null {
+): number | SolError | null {
   const f = Math.round(freq);
   if (![settleSerial, maturitySerial, flSerial].every(Number.isFinite)) return null;
-  if (!VALID_FREQ.includes(f)) return null;
+  if (!VALID_FREQ.includes(f)) return domain(op, "a frequency of 1, 2 or 4");
   const settle = serialToJsDate(settleSerial);
   const maturity = serialToJsDate(maturitySerial);
   const fl = serialToJsDate(flSerial);
   const isFirst = op === "oddfprice" || op === "oddfyield";
   const issueAt = Number.isFinite(issueSerial) ? issueSerial : settleSerial;
-  // Excel's date order: maturity > first coupon > settlement ≥ issue, or maturity > settlement > last interest.
   const ordered = isFirst
     ? maturitySerial > flSerial && flSerial > settleSerial && settleSerial >= issueAt
     : maturitySerial > settleSerial && settleSerial > flSerial;
-  if (!ordered) return null;
+  if (!ordered) return domain(op, isFirst
+    ? "maturity after the first coupon, the first coupon after settlement, and settlement on or after issue"
+    : "maturity after settlement, and settlement after the last interest date");
+  const bad = priceArgsError(op, op === "oddfprice" || op === "oddlprice", rate, yldOrPrice, redemption);
+  if (bad) return bad;
   const issue = isFirst ? serialToJsDate(issueAt) : settle;
   const priceAt = (y: number) => isFirst
     ? oddfPrice(settle, maturity, issue, fl, rate, y, redemption, f)
