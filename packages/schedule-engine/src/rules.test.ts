@@ -74,11 +74,10 @@ describe("longest path (P6) and effort-driven durations (rule 16)", () => {
     const byPath = run(tasks, { longestPath: true });
     expect(byFloat.tasks.map((x) => x.critical)).toEqual([false, true, false, true]);
     expect(byPath.tasks.map((x) => x.critical)).toEqual([false, true, false, true]);
-    // A drives nothing (B's floor won) → not on the longest path either way; the float rule and
-    // the path rule differ when a task with float lies on the driving chain:
-    const gap = [t("A", 1), t("B", 1, ["A"], { deadline: S(2026, 1, 30) }), t("C", 5)];
-    expect(run(gap).tasks.map((x) => x.critical)).toEqual([false, false, true]);
-    expect(run(gap, { longestPath: true }).tasks.map((x) => x.critical)).toEqual([false, false, true]);
+    // A tight deadline zeroes A and B's float without putting them on the chain that drives the finish.
+    const due = [t("A", 1), t("B", 1, ["A"], { deadline: S(2026, 1, 6) }), t("C", 5)];
+    expect(run(due).tasks.map((x) => x.critical)).toEqual([true, true, true]);
+    expect(run(due, { longestPath: true }).tasks.map((x) => x.critical)).toEqual([false, false, true]);
   });
 
   it("work over units gives the duration when none is typed", () => {
