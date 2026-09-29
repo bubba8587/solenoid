@@ -1,10 +1,11 @@
-// [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle
+// [[C52]] visibleSelection, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast
 
 import type { View } from "./view";
 import { GroupNode } from "./rete-nodes";
 import { repositionDockedNodes, unselectAllNodes, selectNode } from "./canvasCommands";
 import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
-import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
+import { standoffStore, standoffClusters, settleStandoffs, liveStandoffs } from "./standoffs";
+import { groupCollapseStore } from "./groupCollapse";
 import { collapseStore } from "./collapseStore";
 import { scheduleAutosave } from "./persistence";
 import { measuredBox, type NodeBox } from "./nodeSize";
@@ -24,9 +25,13 @@ function boxOf(view: View, id: string): Box | null {
   return measuredBox(view, id, getEditor() ?? undefined);
 }
 
-export function expandMoveSet(editor: Editor, seedIds: Iterable<string>): Set<string> {
+export function expandMoveSet(
+  editor: Editor,
+  seedIds: Iterable<string>,
+  isHidden: (id: string) => boolean = groupCollapseStore.isNodeHidden,
+): Set<string> {
   const clusterOf = new Map<string, string[]>();
-  for (const c of standoffClusters()) for (const id of c) clusterOf.set(id, c);
+  for (const c of standoffClusters(liveStandoffs(isHidden))) for (const id of c) clusterOf.set(id, c);
   const toMove = new Set<string>();
   const queue: string[] = [];
   const locked = (id: string) => { const n = editor.getNode(id); return n instanceof GroupNode && n.lockedPosition; };

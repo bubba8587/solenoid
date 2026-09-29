@@ -4,6 +4,7 @@ import { NodeEditor } from "rete";
 import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
 import { GroupNode, DisplayNode } from "../../src/graph/rete-nodes";
 import type { Schemes } from "../../src/graph/schemes";
+import { standoffStore } from "../../src/graph/standoffs";
 
 const box = (id: string, x: number, y: number, w: number, h: number): Placed =>
   ({ id, box: { x, y, w, h } });
@@ -110,5 +111,20 @@ describe("expandMoveSet", () => {
     expect([...expandMoveSet(editor, [m.id])]).toEqual([m.id]);
     g.lockedPosition = false;
     expect(new Set(expandMoveSet(editor, [g.id]))).toEqual(new Set([g.id, m.id]));
+  });
+
+  it("leaves a standoff partner hidden in a collapsed group where it is", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const loose = new DisplayNode();
+    const member = new DisplayNode();
+    await editor.addNode(loose as never);
+    await editor.addNode(member as never);
+    const tie = standoffStore.add({ nodeId: loose.id, anchor: "e" }, { nodeId: member.id, anchor: "w" }, 30, 60);
+    try {
+      expect(new Set(expandMoveSet(editor, [loose.id], () => false))).toEqual(new Set([loose.id, member.id]));
+      expect([...expandMoveSet(editor, [loose.id], (id) => id === member.id)]).toEqual([loose.id]);
+    } finally {
+      standoffStore.remove(tie.id);
+    }
   });
 });
