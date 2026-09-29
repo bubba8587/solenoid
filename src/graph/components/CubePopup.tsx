@@ -145,10 +145,12 @@ export function CubePopup() {
   const view = state.stack[state.stack.length - 1];
   const { headers, rows, cols, depth, cell, sortKey } = describe(view, listVertical, sourceMode);
   const sortable = !(view.kind === "list" && !listVertical);
-  const MAX_VISIBLE_ROWS = 1000;
-  const rowsTruncated = rows > MAX_VISIBLE_ROWS;
+  const MAX_VISIBLE = 1000;
+  const rowsTruncated = rows > MAX_VISIBLE;
+  const colsTruncated = cols > MAX_VISIBLE;
+  const shownCols = colsTruncated ? MAX_VISIBLE : cols;
   const sortOrder = sortedOrder(rows, sort, sortKey);
-  const visibleOrder = rowsTruncated ? sortOrder.slice(0, MAX_VISIBLE_ROWS) : sortOrder;
+  const visibleOrder = rowsTruncated ? sortOrder.slice(0, MAX_VISIBLE) : sortOrder;
 
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
@@ -167,7 +169,7 @@ export function CubePopup() {
       resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={
         <>
-          <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
+          <span className="table-popup__dims">{view.kind === "list" ? `${view.items.length} items` : `${rows}×${cols}`}{rowsTruncated || colsTruncated ? ` · first ${MAX_VISIBLE.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
               className="table-popup__dims"
@@ -221,7 +223,7 @@ export function CubePopup() {
                   <HeaderHelpButton formulas={(editView.path ?? []).length === 0 && !state.edit.noFormulaColumns} lambdas={false} cube />
                 )}
               </th>
-              {Array.from({ length: cols }, (_, c) => (
+              {Array.from({ length: shownCols }, (_, c) => (
                 <th
                   key={c}
                   title={headers?.[c]}
@@ -239,7 +241,7 @@ export function CubePopup() {
             {visibleOrder.map((r) => (
               <tr key={r}>
                 <th className="table-popup__rowhead">{r + 1}</th>
-                {Array.from({ length: cols }, (_, c) => (
+                {Array.from({ length: shownCols }, (_, c) => (
                   <td key={c} className="table-popup__cell" data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
                     {editView && state.edit
                       ? (editView.kind === "list"
