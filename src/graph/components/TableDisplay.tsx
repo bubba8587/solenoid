@@ -69,7 +69,7 @@ export function TableDisplay({ table, label, full, kind, elem, ann: annProp, pop
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
           <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
-          <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+          <div className="solenoid-table-display__chip">
             <ArrayChip value={[[0]]} label={label} size="sm" elem={elem} popupOverrides={popupOverrides} />
           </div>
         </div>
@@ -109,7 +109,7 @@ export function TableDisplay({ table, label, full, kind, elem, ann: annProp, pop
         </tbody>
       </table>
       {!full && !peek && (
-        <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+        <div className="solenoid-table-display__chip">
           <ArrayChip value={table} label={label} size="sm" elem={elem} popupOverrides={popupOverrides} />
         </div>
       )}

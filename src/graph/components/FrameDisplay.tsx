@@ -72,7 +72,7 @@ export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSourc
       return (
         <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
           <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
-          <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+          <div className="solenoid-table-display__chip">
             <FrameChip value={stub} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
           </div>
         </div>
@@ -130,7 +130,7 @@ export function FrameDisplay({ frame, label, source, onSaveSource, onCommitSourc
         </tbody>
       </table>
       {!full && !peek && (
-        <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+        <div className="solenoid-table-display__chip">
           <FrameChip value={frame} label={label} size="sm" source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
         </div>
       )}
