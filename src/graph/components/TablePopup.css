@@ -205,7 +205,23 @@
   max-width: 320px;
   cursor: pointer;
 }
-.table-popup__suggest-detail { margin-left: 8px; color: var(--text-muted); font-size: 11px; }
+.table-popup__suggest-types { display: inline-flex; gap: 2px; margin-left: 8px; vertical-align: middle; }
+/* The type button's glyph, as a label: a name typed more than one way shows each ([[D92]] columnNameSuggest). */
+.table-popup__typeglyph {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--node-accent, var(--text));
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+}
 .table-popup__suggest-item:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
 .table-popup__suggest-item--on,
 .table-popup__suggest-item--on:hover { background: color-mix(in srgb, var(--node-accent, var(--accent)) 24%, transparent); }

@@ -336,8 +336,8 @@ that is still assigned the Frame or Cube type, the property being edited include
 note's `scores` Frame offers the first one's columns). A name typed under several properties counts
 once per property, the most used names come first, and each carries every type it is typed as.
 Picking a name typed one way sets the column's type to it; the type button still cycles after. A
-name the vault types more than one way (`cost` a Number in one Frame, Text in another) shows its
-types after it ("Number or Text"), and picking it sets the name only: the column keeps its type,
+name the vault types more than one way (`cost` a Number in one Frame, Text in another) shows each
+type's glyph after it, the type button's own (`#` `T`), and picking it sets the name only: the column keeps its type,
 since either choice would be a guess. A name
 another column of the same Frame already has is left out. The list is read when the header takes
 focus (`columnNameOptions`, a function on the popup state), so a column typed a moment ago in another

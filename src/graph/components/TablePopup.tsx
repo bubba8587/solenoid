@@ -824,7 +824,15 @@ export function TablePopup() {
                                   options={nameOptions}
                                   draft={headerNames[c] ?? ""}
                                   onPick={(v) => pickHeaderName(c, v)}
-                                  detail={(v) => { const types = editHead?.options.find((o) => o.name === v)?.types ?? []; return types.length > 1 ? types.map((t) => COLTYPE_NAME[t]).join(" or ") : undefined; }}
+                                  detail={(v) => {
+                                    const types = editHead?.options.find((o) => o.name === v)?.types ?? [];
+                                    if (types.length < 2) return null;
+                                    return (
+                                      <span className="table-popup__suggest-types" title={`Typed as ${types.map((t) => COLTYPE_NAME[t]).join(" and ")} in other frames`}>
+                                        {types.map((t) => <span key={t} className="table-popup__typeglyph">{COLTYPE_GLYPH[t]}</span>)}
+                                      </span>
+                                    );
+                                  }}
                                   opener={{ title: "Column names", label: "Show column names used in other frames" }}
                                 />
                               )}

@@ -1,4 +1,4 @@
-import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
+import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { useHangUnder } from "./columnHeadControls";
 
@@ -14,8 +14,8 @@ export function CellSuggest({ options, draft, onPick, handle, detail, opener = {
   onPick: (value: string) => void;
   handle: Ref<CellSuggestHandle>;
   opener?: { title: string; label: string };
-  /** A dim note after a value, when there is one to add. */
-  detail?: (value: string) => string | undefined;
+  /** Drawn after a value, when there is something to add. */
+  detail?: (value: string) => ReactNode;
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLUListElement>(null);
@@ -104,7 +104,7 @@ export function CellSuggest({ options, draft, onPick, handle, detail, opener = {
               onClick={() => pick(v)}
             >
               {v}
-              {detail?.(v) && <span className="table-popup__suggest-detail">{detail(v)}</span>}
+              {detail?.(v)}
             </li>
           ))}
         </ul>,
