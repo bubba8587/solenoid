@@ -349,3 +349,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Sketch Run** (`withExactPass`): a sink's Run in Sketch mode leaves the canvas on exact values until the next edit, as F9 does; the table popup's Copy/Export CSV still export the sampled table it shows.
 - [ ] **SUMIFS and Get Column** write `cachedResult` after an await with no pass check (the Pivot race, now guarded there).
 - [ ] **Record Detail/Gallery/Board/List** now show an unformatted number as Cards does (Auto), not `formatScalar`; confirm.
+- [ ] **30/360 against real Excel**: DAYS360 now counts a last-of-February start as the 30th and YEARFRAC basis 0 follows NASD (both ends of February → 30), from Excel's documented rules, not checked in Excel; `docs/upstream-formulajs.md` claims DAYS360(31-Jan-2024, 1-Mar-2024) is 30 where the rules give 31. Check both in Excel.
+- [ ] **Finance basis 4** (`financeOps.ts`) uses the US 30/360 rule, not the European one; **coupon schedules** stepping back from a 31-Aug maturity land on 3 Mar, not the end of February.
+- [ ] **Binomial sampling** goes through BINOM.INV per draw (~18 ms at n = 1e5); the single-pass `sampleQuantiles` doesn't reach it.
+- [ ] **Append units**: Append drops unit and format by spec; keep them when every frame agrees?
