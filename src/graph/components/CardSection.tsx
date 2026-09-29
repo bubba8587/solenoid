@@ -125,7 +125,7 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
       if (open) {
         const drops = wired.flatMap((k) => {
           const el = socketEl(content, k);
-          return el ? [{ top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) }] : [];
+          return el ? [{ key: k, top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) }] : [];
         });
         if (drops.length > 0) setGoo({ mode: "merge", drops, pillTop: top, pillColor: firstColor, pillHeight: tuckHeight, hidden: [] });
       } else {
@@ -158,7 +158,7 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
       els.forEach(({ el }) => { el.style.opacity = "0"; });
       setGoo({
         mode: "split",
-        drops: els.map(({ el, k }) => ({ top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) })),
+        drops: els.map(({ el, k }) => ({ key: k, top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) })),
         pillTop: from, pillColor: firstColor, pillHeight: tuckHeight, hidden: els.map(({ el }) => el),
       });
     });
@@ -192,7 +192,7 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
         <NodeSocket side="input" socketKey={tucked[0]} nodeId={sockets.node.id} emit={sockets.emit} payload={sockets.node.inputs[tucked[0]]!.socket} top={at} />
       )}
       {goo && (
-        <SocketGoo key={goo.mode} mode={goo.mode} drops={goo.drops} pillTop={goo.pillTop} pillColor={goo.pillColor} pillHeight={goo.pillHeight} onDone={gooDone} />
+        <SocketGoo key={goo.mode} nodeId={sockets!.node.id} mode={goo.mode} drops={goo.drops} pillTop={goo.pillTop} pillColor={goo.pillColor} pillHeight={goo.pillHeight} onDone={gooDone} />
       )}
     </>
   );

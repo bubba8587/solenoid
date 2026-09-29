@@ -1,9 +1,10 @@
 // [[B14]] oneDesignSystem (DESIGN.md § Card sections, the fold's liquid merge)
 import { useId, useLayoutEffect, useRef } from "react";
 import { socketRingColor } from "./SocketComponent";
+import { cableEndMotion } from "../cableEndMotion";
 
 /** One socket dot in the goo: its socket-top (the NodeSocket wrapper's top, content coordinates) and its fill. */
-export type GooDrop = { top: number; color: string };
+export type GooDrop = { key: string; top: number; color: string };
 
 const R = 6; // a socket dot's radius
 const PILL_H = 28;
@@ -20,7 +21,9 @@ const wobble = (t: number) => Math.sin(t * Math.PI * 3.5) * (1 - t) ** 2;
 /** The liquid fold: socket dots run together into a pill (merge) or bud off it back to their rows (split).
  *  Drawn over the socket column through a gooey filter (a blur, then an alpha threshold), so shapes that near fuse
  *  with a neck that stretches and snaps; each shape's ring-colored twin sits under it, 2px bigger, as its border. Every frame writes attributes on refs; React renders it once. */
-export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H, onDone }: {
+export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight = PILL_H, onDone }: {
+  /** The card: its drops' cables ride along (cableEndMotion). */
+  nodeId: string;
   mode: "merge" | "split";
   drops: GooDrop[];
   /** The caption's socket top: where the pill sits. */
@@ -34,6 +37,7 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
   // Two layers share every shape: [0] in ring colors, [1] in fill colors shrunk by the ring's width.
   const dropRefs = useRef<(SVGEllipseElement | null)[][]>([[], []]);
   const pillRefs = useRef<(SVGRectElement | null)[]>([null, null]);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const done = useRef(onDone);
   done.current = onDone;
 
@@ -49,6 +53,16 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
     const stagger = n > 1 ? 0.12 / (n - 1) : 0;
     const start = performance.now();
     let raf = 0;
+    // Each drop's cable end follows the drop: its svg y placed on the canvas through the viewport's own transform,
+    // so a card nested in a group's sub-flow lands right too (the viewport box's top-left is the flow origin on screen).
+    const carryCables = (ends: [string, number][]) => {
+      const svg = svgRef.current;
+      const viewport = svg?.closest<HTMLElement>(".react-flow__viewport");
+      if (!svg || !viewport) return;
+      const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a || 1;
+      const svgTop = (svg.getBoundingClientRect().top - viewport.getBoundingClientRect().top) / zoom;
+      cableEndMotion.setYs(nodeId, ends.map(([k, y]) => [k, svgTop + y] as const));
+    };
     const setPill = (h: number, w: number) => {
       for (const el of pillRefs.current) {
         if (!el) continue;
@@ -62,6 +76,7 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
     const frame = () => {
       const t = clamp01((performance.now() - start) / total);
       let absorbed = 0;
+      const ends: [string, number][] = [];
       drops.forEach((d, i) => {
         const layers = dropRefs.current.map((l) => l[i]).filter((e): e is SVGEllipseElement => !!e);
         if (layers.length === 0) return;
@@ -76,6 +91,7 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
           const stretch = Math.min(0.9, speed * 0.35);
           const shrink = local >= 1 ? 0 : 1 - 0.25 * p;
           set("cy", String(cy - y0));
+          ends.push([d.key, cy - y0]);
           set("rx", String(R * shrink / (1 + stretch * 0.5)));
           set("ry", String(R * shrink * (1 + stretch)));
           absorbed += p;
@@ -88,6 +104,7 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
           const stretch = Math.min(0.8, speed * 0.3);
           const grow = 0.55 + 0.45 * clamp01(local * 1.6);
           set("cy", String(cy - y0));
+          ends.push([d.key, cy - y0]);
           set("rx", String(R * grow / (1 + stretch * 0.5)));
           set("ry", String(R * grow * (1 + stretch)));
           absorbed += 1 - clamp01(local * 1.4);
@@ -105,16 +122,18 @@ export function SocketGoo({ mode, drops, pillTop, pillColor, pillHeight = PILL_H
         const h = pillHeight * share * (1 + 0.15 * Math.sin(clamp01(t / 0.35) * Math.PI));
         setPill(h, R * 2 * (0.7 + 0.3 * share));
       }
+      carryCables(ends);
       if (t < 1) raf = requestAnimationFrame(frame);
       else done.current();
     };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); cableEndMotion.clear(nodeId, drops.map((d) => d.key)); };
     // One run per mount; the fold remounts it for the next.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <svg
+      ref={svgRef}
       className="solenoid-node__socket-goo"
       aria-hidden
       width={PAD * 2}

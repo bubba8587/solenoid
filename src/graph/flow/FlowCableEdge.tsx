@@ -4,6 +4,7 @@ import { FlowRevealContext } from "../flowSurface";
 import { getCablePath, intoSocket, Position as CablePosition } from "../cablePaths";
 import { cableShapeStore, type CableShape } from "../cableShape";
 import { cableAngleStore } from "../cableAngleStore";
+import { cableEndMotion } from "../cableEndMotion";
 import { socketFlipStore } from "../socketFlipStore";
 import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHoverCableStore, dragSocketKey } from "../cableState";
 import { cableValueStore } from "../cableValueStore";
@@ -176,6 +177,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   const targetAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(target, conn.targetInput));
   const sourceFlipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(source));
   const targetFlipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(target));
+  const movingEndY = useSyncExternalStore(cableEndMotion.subscribe, () => cableEndMotion.getY(target, conn.targetInput));
   useLayoutEffect(() => () => { _pathCache.delete(id); }, [id]);
 
   if (groupCollapseStore.isConnHidden(id)) return null;
@@ -189,9 +191,11 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   const cs = pillPoint(groupCollapseStore.outPillFor(source, conn.sourceOutput))
     ?? conduitLanePoint(source, "out", conn.sourceOutput)
     ?? { x: intoSocket(sourceX, sourceFlipped ? CablePosition.Left : CablePosition.Right), y: sourceY };
-  const ce = pillPoint(groupCollapseStore.inPillFor(target, conn.targetInput))
+  const ceSocket = pillPoint(groupCollapseStore.inPillFor(target, conn.targetInput))
     ?? conduitLanePoint(target, "in", conn.targetInput)
     ?? { x: intoSocket(targetX, targetFlipped ? CablePosition.Right : CablePosition.Left), y: targetY };
+  // A socket riding an animation (a section fold's liquid) carries its cable end with it.
+  const ce = movingEndY === undefined ? ceSocket : { x: ceSocket.x, y: movingEndY };
 
   const stroke = selected ? SELECTED_COLOR : typeColor;
   const activeHover = hovered || socketHovered;
