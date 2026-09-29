@@ -230,7 +230,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     const arrangeFn = makeArrangeFn({
       editor: comp.internalEditor,
       view: s.view as unknown as View,
-      container: s.handlers.getContainer() ?? document.body,
       ensureElk,
       repositionDockedTo,
       isDestroyed: () => false,

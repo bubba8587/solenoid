@@ -219,7 +219,6 @@ async function buildScene() {
   const ensureElk = makeEnsureElk(() => false);
   const arrangeFn = makeArrangeFn({
     editor, view,
-    container: {} as HTMLElement,
     ensureElk,
     repositionDockedTo: () => {},
     isDestroyed: () => false,
@@ -393,7 +392,6 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor, view,
-      container: {} as HTMLElement,
       ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
@@ -475,7 +473,6 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor, view,
-      container: {} as HTMLElement,
       ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
@@ -554,7 +551,7 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     addView(b.id, 400, 100, 180, 80);
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
-      editor, view, container: {} as HTMLElement, ensureElk,
+      editor, view, ensureElk,
       repositionDockedTo: () => {}, isDestroyed: () => false,
     });
     return { view, arrangeFn, a, b };
@@ -594,7 +591,7 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     addView(mid.id, 400, 100, 180, 100);
     addView(sink.id, 700, 100, 180, 80);
     const arrangeFn = makeArrangeFn({
-      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      editor, view, ensureElk: makeEnsureElk(() => false),
       repositionDockedTo: () => {}, isDestroyed: () => false,
     });
     return { view, arrangeFn, src, mid, sink };
@@ -681,7 +678,7 @@ describe("Tidy reserves a plain card's MEASURED box, not its declared size", () 
     addView(tall.id, 400, 100, 180, 280);
     addView(other.id, 400, 300, 180, 80);
     const arrangeFn = makeArrangeFn({
-      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      editor, view, ensureElk: makeEnsureElk(() => false),
       repositionDockedTo: () => {}, isDestroyed: () => false,
     });
     await arrangeFn({ skipConfirm: true });

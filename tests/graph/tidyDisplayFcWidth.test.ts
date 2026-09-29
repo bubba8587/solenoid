@@ -44,6 +44,7 @@ interface FakeView {
 
 function makeFakeView() {
   const nodeViews = new Map<string, FakeView>();
+  const pane = { reads: 0, socketsDrawn: false };
   // rootClass models the card root's CSS class: "solenoid-node" for standard
   // NodeCard roots, "solenoid-note" etc. for React-sized roots the pin-drop
   // loop must leave alone.
@@ -60,7 +61,9 @@ function makeFakeView() {
         get offsetHeight() { return (view.stampedH ?? view.naturalH) + BORDER; },
         querySelector(sel: string) {
           // The socket lookups the FC-footprint path makes have no DOM here.
-          if (sel.startsWith("[data-socket")) return null;
+          if (sel.startsWith("[data-socket")) {
+            return pane.socketsDrawn ? { getBoundingClientRect: () => ({ left: 500, top: 300, width: 10, height: 10 }) } : null;
+          }
           // The pin-drop loop selects the card and clears the inline dims.
           return {
             classList: { contains: (c: string) => c === rootClass },
@@ -83,6 +86,8 @@ function makeFakeView() {
   };
   const view = {
     fakes: nodeViews,
+    pane,
+    container: { getBoundingClientRect: () => { pane.reads++; return { left: 0, top: 120, width: 1000, height: 700 }; } },
     hasNode: (id: string) => nodeViews.has(id),
     position: (id: string) => nodeViews.get(id)?.position,
     nodeElement: (id: string) => (nodeViews.get(id)?.element ?? null) as unknown as HTMLElement | null,
@@ -95,7 +100,7 @@ function makeFakeView() {
     async rerenderNode() { /* no-op headless */ },
     transform: { k: 1, x: 0, y: 0 },
   };
-  return { view: view as unknown as View & { fakes: Map<string, FakeView> }, add };
+  return { view: view as unknown as View & { fakes: Map<string, FakeView>; pane: typeof pane }, add };
 }
 
 let rafQueue: FrameRequestCallback[] = [];
@@ -150,7 +155,6 @@ async function buildScene() {
 
   const arrangeFn = makeArrangeFn({
     editor, view,
-    container: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 700 }) } as unknown as HTMLElement,
     ensureElk: makeEnsureElk(() => false),
     repositionDockedTo: () => {},
     isDestroyed: () => false,
@@ -191,6 +195,17 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
 
     // The card carries the manual width (re-applied), not a dropped/CSS default.
     expect(fv.stampedW).toBe(260);
+  });
+
+  // A drill-in's arrange is built before its surface mounts, so the pane must come from the view at Tidy time.
+  it("measures a docked FC's host socket against the view's own pane", async () => {
+    const { view, arrangeFn } = await buildScene();
+    view.pane.socketsDrawn = true;
+
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+
+    expect(view.pane.reads).toBeGreaterThan(0);
   });
 
   // Regression: "Tidy makes Notes very very wide (sockets misaligned), fixed by

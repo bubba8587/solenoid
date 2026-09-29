@@ -157,7 +157,6 @@ function FlowCanvasInner() {
     const arrangeFn = makeArrangeFn({
       editor: s.editor,
       view: s.view,
-      container: s.handlers.getContainer() ?? document.body,
       ensureElk,
       repositionDockedTo,
       isDestroyed: () => false,

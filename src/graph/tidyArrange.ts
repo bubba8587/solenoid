@@ -26,7 +26,6 @@ const TIDY_CONFIRM_THRESHOLD = 12;
 export interface TidyDeps {
   editor: NodeEditor<Schemes>;
   view: View;
-  container: HTMLElement;
   ensureElk: () => Promise<Elk | null>;
   repositionDockedTo: (hostId: string) => void;
   isDestroyed: () => boolean;
@@ -195,7 +194,7 @@ export async function elkTidyLayout(
 }
 
 export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
-  const { editor, view, container, ensureElk, repositionDockedTo, isDestroyed } = deps;
+  const { editor, view, ensureElk, repositionDockedTo, isDestroyed } = deps;
   return async (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => {
     const all = editor.getNodes();
     const selected = all.filter((n) => (n as { selected?: boolean }).selected);
@@ -350,7 +349,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const fcBox = measuredBox(view, fcId, editor) ?? { w: fc.width, h: fc.height };
       const sc = getSocketScreenCenter(view, fc.hostNodeId, fc.socketKey, "output");
       const socketLocalY = sc
-        ? screenToCanvas(view, container, sc.x, sc.y).y - hostPos.y
+        ? screenToCanvas(view, view.container, sc.x, sc.y).y - hostPos.y
         : hostBox.h / 2;
       const prev = hostFootprint.get(fc.hostNodeId) ?? { w: hostBox.w, h: hostBox.h };
       hostFootprint.set(fc.hostNodeId, {
