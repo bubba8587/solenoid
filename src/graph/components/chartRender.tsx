@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
-import { useState, type SyntheticEvent, type ReactElement, type ComponentProps } from "react";
+import { useState, type SyntheticEvent, type ComponentProps } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, niceTicks, partSlices, type ChartShape } from "./chartCore";
@@ -291,12 +291,12 @@ function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
 const LEGEND_H = 16;
 const MULTI_LEGEND_H = 18;
 
-function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, lines }: {
+function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, isLine }: {
   series: { name: string }[];
   paint: (j: number) => string;
   dim: (j: number) => number;
   onPick: (j: number) => void;
-  fs: number; color: string; insetLeft: number; insetRight: number; lines: boolean;
+  fs: number; color: string; insetLeft: number; insetRight: number; isLine: (j: number) => boolean;
 }) {
   return (
     <div
@@ -305,7 +305,7 @@ function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetR
     >
       {series.map((s, j) => (
         <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: dim(j) }}>
-          <span aria-hidden="true" style={{ width: 8, height: lines ? 2 : 8, borderRadius: lines ? 1 : 2, background: paint(j), flex: "none" }} />
+          <span aria-hidden="true" style={{ width: 8, height: isLine(j) ? 2 : 8, borderRadius: isLine(j) ? 1 : 2, background: paint(j), flex: "none" }} />
           {s.name}
         </span>
       ))}
@@ -366,7 +366,7 @@ export function MultiSeriesView({
     <SeriesLegend
       series={series} paint={paint} dim={dim} fs={fs} color={axis}
       insetLeft={legendInsetLeft} insetRight={op === "radar" ? 0 : margin.right}
-      lines={op === "line"}
+      isLine={() => op === "line"}
       onPick={(j) => setFocus((f) => (f === j ? null : j))}
     />
   );
@@ -473,17 +473,17 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
     : undefined;
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const chartH = height - titleH;
+  const chartH = height - titleH - MULTI_LEGEND_H;
   const xLabel = opts?.xlabel ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis } : undefined;
   const yLabel = opts?.ylabel ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis } : undefined;
   const margin = { top: PLOT_TOP, right: 8, bottom: xLabel ? 18 : 4, left: 0 };
+  const yAxisW = valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel);
   const legend = (
-    <Legend
-      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
-      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
-      // Focus by dataKey, never by name: merged series names can collide.
-      onClick={(e) => { const j = Number(String((e as { dataKey?: unknown }).dataKey ?? "").replace(/^s/, "")); if (Number.isInteger(j)) setFocus((f) => (f === j ? null : j)); }}
-      formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
+    <SeriesLegend
+      series={series} paint={paint} dim={dim} fs={fs} color={axis}
+      insetLeft={yAxisW} insetRight={margin.right}
+      isLine={(j) => series[j]?.kind === "line"}
+      onPick={(j) => setFocus((f) => (f === j ? null : j))}
     />
   );
   const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
@@ -492,8 +492,8 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
     <ComposedChart width={width} height={chartH} data={data} margin={margin}>
       {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
       <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} allowDuplicatedCategory={false} label={xLabel} height={xLabel ? 28 : undefined} />
-      <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={valueAxisWidth([...series.flatMap((s) => s.values), opts?.ymin, opts?.ymax], fs, !!yLabel)} domain={yDomain} label={yLabel} />
-      {tip}{legend}
+      <YAxis tick={AXIS} tickLine={false} tickFormatter={compactTick} width={yAxisW} domain={yDomain} label={yLabel} />
+      {tip}
       {series.map((s, j) => {
         const c = paint(j);
         const o = dim(j);
@@ -511,17 +511,16 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
     </ComposedChart>
   );
 
-  // rete's drag would otherwise steal the legend's click.
+  // rete's drag takes pointer capture on mousedown and would steal the legend's click.
   const legendPress = (e: SyntheticEvent) => {
-    if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
+    if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
   };
-  const wrap = (el: ReactElement) => <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>{el}</div>;
-  if (!title) return wrap(chart);
-  return wrap(
-    <>
-      <ChartTitle text={title} fs={fs} />
+  return (
+    <div style={{ width, height }} onPointerDown={legendPress} onMouseDown={legendPress}>
+      {title && <ChartTitle text={title} fs={fs} />}
       {chart}
-    </>,
+      {legend}
+    </div>
   );
 }
 
@@ -798,14 +797,14 @@ export function XYView({ payload, width, height, opts, fontScale }: {
       {multi && (
         <SeriesLegend
           series={series} paint={paint} dim={dim} fs={fs} color={axis}
-          insetLeft={yAxisW} insetRight={margin.right} lines={series.some((s) => s.line !== "none")}
+          insetLeft={yAxisW} insetRight={margin.right} isLine={() => series.some((s) => s.line !== "none")}
           onPick={(j) => setFocus((f) => (f === j ? null : j))}
         />
       )}
       {catLegend && (
         <SeriesLegend
           series={cats!.map((name) => ({ name }))} paint={(k) => colors[k % colors.length]} dim={() => 1} fs={fs} color={axis}
-          insetLeft={yAxisW} insetRight={margin.right} lines={false} onPick={() => {}}
+          insetLeft={yAxisW} insetRight={margin.right} isLine={() => false} onPick={() => {}}
         />
       )}
       {colorbar}
