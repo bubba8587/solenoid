@@ -57,7 +57,7 @@ The Schedule node's `links` socket takes the same dependencies as a flat Frame, 
 
 ### Hierarchy
 
-Hierarchy is nesting. A parent row holding its children as a nested table is the work breakdown, at any depth, which Cube Input already edits (drill in on the breadcrumb, `+ Col`). The engine flattens the cube for the dependency graph. A parent's dates roll up from its children, and a link to a parent applies to every leaf beneath it. Because names are global, a dependency may name a task in any subtree.
+Hierarchy is nesting. A parent row holding its children as a nested table is the work breakdown, at any depth, which Cube Input already edits (drill in on the breadcrumb, `Add Column`). The engine flattens the cube for the dependency graph. A parent's dates roll up from its children, and a link to a parent applies to every leaf beneath it. Because names are global, a dependency may name a task in any subtree.
 
 There is no `parent_id`, indent level or `1.2.3` WBS column in a plan. Those exist only in import formats (MSPDI `OutlineLevel`, XER's PROJWBS) and are converted to nesting in one pass. There is no `order` column: row order is the order, and Sort exists.
 

@@ -274,7 +274,7 @@ Which steps keep a value's meaning ([[D41]] formatFlowsDownstream):
 
 ## The one compute-time unit read (`trigMode.ts`)
 
-A Math node's trig op in **Auto** angle mode computes in degrees when the value feeding it carries a `deg` format annotation, from a producer that emits bare degrees (Triangle Solver, inverse trig in degrees), read through `makeAnnotationResolver.inAnnotation`. An angle with a real dimension is already stored in base radians, so `MathFnNode`'s unit-aware path computes on its magnitude directly. Only a `deg` annotation switches the op to degrees; a `grad` annotation reads as radians, because the toggle offers no gradian mode and a Convert bridges it. `resolveTrigModes(editor)` runs from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`, and returns only the nodes whose resolved mode changed. Machine-checked by `trigMode.test.ts`.
+A Math node's trig op in **Auto** angle mode computes in degrees when the value feeding it carries a `deg` format annotation, from a producer that emits bare degrees (Triangle Solver, inverse trig in degrees), read through `makeAnnotationResolver.inAnnotation`. An angle with a real dimension is already stored in base radians, so `MathFXNode`'s unit-aware path computes on its magnitude directly. Only a `deg` annotation switches the op to degrees; a `grad` annotation reads as radians, because the toggle offers no gradian mode and a Convert bridges it. `resolveTrigModes(editor)` runs from `processGraph` before the engine pull, stamps a transient `_resolvedAngleMode`, and returns only the nodes whose resolved mode changed. Machine-checked by `trigMode.test.ts`.
 
 ## Enforcement
 

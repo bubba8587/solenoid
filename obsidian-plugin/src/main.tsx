@@ -246,7 +246,6 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     return PROPERTY_KINDS.find((kind) => kind.id === id && kind.shape !== "scalar");
   }
 
-  /** A property's chip in `el`, the same in the properties panel and in a note's body. */
   /** A note's nested-table types follow it when it's renamed, and go when it's deleted. */
   private async moveNestedTables(from: string, to: string | null): Promise<void> {
     const { [from]: moved, ...rest } = this.data.nestedTables ?? {};
@@ -263,7 +262,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     await this.saveData(this.data);
   }
 
-  /** `sourcePath` is the note the chip edits; without one (another plugin's Frame), nested types are neither read nor kept. */
+  /** A property's chip in `el`, the same in the properties panel and in a note's body. `sourcePath` is the note the chip edits; without one (another plugin's Frame), nested types are neither read nor kept. */
   chip(el: HTMLElement, kind: PropertyKind, key: string, value: unknown, onChange: (next: unknown) => void, sourcePath?: string): ShadowRoot {
     const shadow = this.mount(el, "solenoid-property-chip",
       <PropertyChip

@@ -22,8 +22,8 @@ const PROFILE = path.join(RIG, "profile");
 const DISPLAY = process.env.RIG_DISPLAY ?? ":7";
 const PORT = Number(process.env.RIG_PORT ?? 9333);
 const OBSIDIAN = process.env.OBSIDIAN ?? "/opt/Obsidian/obsidian";
-// `pkill -f` matches its own shell on a plain pattern; the bracket keeps it off itself.
 const BUILD = path.join(ROOT, "obsidian-plugin", "dist");
+// `pkill -f` matches its own shell on a plain pattern; the bracket keeps it off itself.
 const bracket = (s) => `[${s[0]}]${s.slice(1)}`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

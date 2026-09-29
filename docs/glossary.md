@@ -240,7 +240,7 @@ Geometry (offsets, z-index, reflow) is `tree/specs/canvas/layout-chrome.md`; thi
   (`.solenoid-node` / `.solenoid-note` / `.solenoid-group` / `.solenoid-conduit`); map a DOM
   event → node via `view.nodeElement` containment, never a class.
 - **Header label**: the user-editable text in a node's header (`node.label`); blank falls back
-  to the family name as its placeholder. "Label" not "title", so it never reads as the HTML
+  to the op name (`nodeName`) as its placeholder. "Label" not "title", so it never reads as the HTML
   `title=`/tooltip. Rendered `.solenoid-node__label-display`, edited via `useDraftCommit` (the raw
   text shows while editing). A global display-only case setting (`settingsStore` `headerTitleCase`
   → an `html.hdr-case-*` class → a `text-transform` on the display) can force UPPER or Proper case;

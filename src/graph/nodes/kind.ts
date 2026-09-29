@@ -242,7 +242,6 @@ const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
   // Set's output swaps between list and logical per op.
   node instanceof SetsNode;
 
-/** Resolves the socket CSS vars a <canvas> cannot read, so the minimap and canvas snapshot paint the accent the card shows. */
 const NO_FAMILY_OUTPUTS = new Set(["number", "list", "numlist", "table", "any", "anylist", "anycombo", "anydata", "anytable", "trueany"]);
 
 function unfiledOutput(node: ClassicPreset.Node): SolenoidSocket | null {
@@ -253,6 +252,7 @@ function unfiledOutput(node: ClassicPreset.Node): SolenoidSocket | null {
   return socket instanceof SolenoidSocket && !NO_FAMILY_OUTPUTS.has(socket.dataType) ? socket : null;
 }
 
+/** Resolves the socket CSS vars a <canvas> cannot read, so the minimap and canvas snapshot paint the accent the card shows. */
 export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): string {
   const kindAccent = themeAccent(NODE_KIND_ACCENTS[nodeKindOf(node)], mode);
   const unfiled = unfiledOutput(node);

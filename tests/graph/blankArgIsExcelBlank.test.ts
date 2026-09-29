@@ -57,7 +57,7 @@ describe("[[C80]] blankArgIsExcelBlank — a blank slot is Excel's typed blank, 
     expect(ev("TAKE(m, b)", { m, b: null })).toEqual(m);
   });
 
-  it("an undeclared blank still propagates as missing, never a fabricated 0", () => {
-    expect(ev("SQRT()")).not.toBe(0);
+  it("a blank value in an undeclared parameter still propagates as missing, never a fabricated 0", () => {
+    expect(ev("SQRT(x)", { x: null })).toBeNull();
   });
 });
