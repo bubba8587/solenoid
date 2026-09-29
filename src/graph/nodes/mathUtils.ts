@@ -288,12 +288,13 @@ export function expFitR2(
 function bracket(axis: number[], x: number): [number, number, number] {
   const last = axis.length - 1;
   if (x <= axis[0]) return [0, 0, 0];
-  if (x >= axis[last]) return [last, last, 0];
+  if (x > axis[last]) return [last, last, 0];
   let lo = 0, hi = last;
   while (hi - lo > 1) {
     const mid = (lo + hi) >> 1;
     if (axis[mid] <= x) lo = mid; else hi = mid;
   }
+  if (axis[hi] === x) lo = hi;
   if (axis[lo] === x) {
     while (lo > 0 && axis[lo - 1] === x) lo--;
     return [lo, lo, 0];

@@ -214,6 +214,7 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
   it("resolves a duplicated x to its first-seen y (no divide-by-zero)", () => {
     expect(interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [5])).toEqual([50]);
     expect(interpolateLinear([5, 5, 10], [50, 999, 100], [5])).toEqual([50]);
+    expect(interpolateLinear([0, 1, 1], [0, 5, 9], [1])).toEqual([5]);
     // Past the repeat, the line leaves from the later point.
     expect(interpolateLinear([0, 5, 5, 10], [0, 50, 999, 100], [7.5])).toEqual([549.5]);
   });
