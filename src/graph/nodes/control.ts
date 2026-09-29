@@ -147,7 +147,7 @@ export class DateInputNode extends ClassicPreset.Node {
     this.addOutput("result", dateOut("Date serial"));
   }
 
-  private lastRelativeSerial: number | null = null;
+  private lastRelative: { text: string; serial: number } | null = null;
 
   static relativeAllowed(): boolean { return settingsStore.get("relativeDates"); }
 
@@ -158,16 +158,17 @@ export class DateInputNode extends ClassicPreset.Node {
     if (isSolError(r)) return { result: r };
     const serial = Number.isFinite(r) ? Math.floor(r) : null;
     if (relative && serial !== null) {
-      if (this.lastRelativeSerial !== null && this.lastRelativeSerial !== serial && !isGraphRebuilding()) {
+      const was = this.lastRelative;
+      if (was !== null && was.text === text && was.serial !== serial && !isGraphRebuilding()) {
         const name = (this.label ?? "").trim() || "Date Input";
         fireAlert({
           nodeId: this.id, label: name, kind: "warning",
-          message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(this.lastRelativeSerial, DEFAULT_DATE_FORMAT)})`,
+          message: `${name}: "${text}" now resolves to ${formatDateSerial(serial, DEFAULT_DATE_FORMAT)} (was ${formatDateSerial(was.serial, DEFAULT_DATE_FORMAT)})`,
         });
       }
-      this.lastRelativeSerial = serial;
+      this.lastRelative = { text, serial };
     } else {
-      this.lastRelativeSerial = null;
+      this.lastRelative = null;
     }
     return { result: serial };
   }

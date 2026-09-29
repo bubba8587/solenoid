@@ -55,12 +55,20 @@ describe("Date Input under the opt-in", () => {
     n.data(); // same day → no alert
     expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(0);
     // Simulate the clock crossing midnight by moving the remembered day back one.
-    (n as unknown as { lastRelativeSerial: number }).lastRelativeSerial = first - 1;
+    (n as unknown as { lastRelative: { text: string; serial: number } }).lastRelative = { text: "today", serial: first - 1 };
     n.data();
     const fired = alertStore.list().filter((e) => e.nodeId === n.id);
     expect(fired).toHaveLength(1);
     expect(fired[0].kind).toBe("warning");
     expect(fired[0].message).toContain("now resolves to");
+  });
+  it("editing the phrase is not a shift: no Alert when the text itself changed", () => {
+    settingsStore.set("relativeDates", true);
+    const n = new DateInputNode({ date: "today" });
+    n.data();
+    n.stringLiterals.date = "tomorrow";
+    n.data();
+    expect(alertStore.list().filter((e) => e.nodeId === n.id)).toHaveLength(0);
   });
   it("an absolute date keeps its fixed serial regardless of the setting", () => {
     settingsStore.set("relativeDates", true);
