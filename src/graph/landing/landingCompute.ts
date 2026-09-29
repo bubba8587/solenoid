@@ -12,7 +12,7 @@ export function computeStack(stack: SurfaceStack, keepGlobal = false): Promise<v
     const prevView = getView();
     setEditorRefs(stack.editor, stack.engine, stack.view);
     try {
-      await processGraph();
+      await processGraph(undefined, undefined, { force: true });
     } finally {
       if (!keepGlobal && prevEditor && prevEngine && prevView) {
         setEditorRefs(prevEditor, prevEngine, prevView);
