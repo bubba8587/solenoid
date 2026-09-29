@@ -245,7 +245,7 @@ KaTeX loads lazily (`katexLoader.ts`): `useKatexRender` starts the load, `useKat
 
 ## The overlay
 
-`ReportOverlay.tsx` is the editing surface. `reportStore` holds which node is open and whether the panel is docked. While one is open and docked, the root element carries `html.sol-report-docked` (see [[layout-chrome]]). Closing clears the dock. The Document chip opens whichever Report or Note produced a document.
+`ReportOverlay.tsx` is the editing surface. `reportStore` holds which node is open and whether the panel is docked. While one is open and docked, the root element carries `html.sol-report-docked` (see [[layout-chrome]]). Closing clears the dock. The Document chip opens whichever Report or Note produced a document, in whichever graph holds it (`documentSource.ts`), a composite's inside included; the overlay resolves the open id the same way and shows nothing, with Esc idle, when it finds no such node.
 
 Opened on a **Note**, the panel is read-only: the title, the dock and close buttons, and the note's raw body rendered with its frontmatter stripped. This panel does not run the Knap render.
 

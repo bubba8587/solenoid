@@ -46,7 +46,7 @@ The sanctioned direct callers, each with a genuinely different shape:
 | `components/ConnectionDialog.tsx` | Deletes one user-selected cable (and, on an edit, the cable it replaces). |
 | `components/InterpolateNode.tsx` | The List / Grid variant switch swaps the entire socket set, so it prunes inputs and outputs together. |
 | `components/ListInputNode.tsx` | A type-compatibility filter: it keeps the cables the new element type still accepts (`canConnect`) and drops the rest. |
-| `components/ReportOverlay.tsx` | Targets the main editor explicitly (`getEditor`), because a Report edits main-graph references even while a drill-in is active. |
+| `components/ReportOverlay.tsx` | Targets the Report's owning editor (`getOwningEditor`), never the surface on screen, so a main-graph Report edits main-graph references while a drill-in is open and a Report inside a composite edits its own. |
 | `components/expressionEdit.ts` | The Equation prune covers both directions, because a variable owns an output socket too. Expression and LAMBDA already use the helper. |
 
 A new direct caller needs its reason added to that list in the test.

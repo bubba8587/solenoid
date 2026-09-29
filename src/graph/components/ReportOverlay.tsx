@@ -5,7 +5,9 @@ import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";
 import { reportStore } from "../reportStore";
 import { siteChrome } from "../siteChrome";
-import { getEditor, getView, processGraph } from "../process";
+import { processGraph } from "../process";
+import { getOwningEditor, getOwningView } from "../activeGraph";
+import { documentSourceNode } from "../documentSource";
 import { scheduleAutosave } from "../persistence";
 import { NoteNode, ReportNode } from "../rete-nodes";
 import type { SolenoidConnection } from "../schemes";
@@ -36,8 +38,7 @@ export function ReportOverlay() {
   const nodeId = useSyncExternalStore(reportStore.subscribe, reportStore.openNodeId);
   const docked = useSyncExternalStore(reportStore.subscribe, reportStore.isDocked);
   const chrome = useSyncExternalStore(siteChrome.subscribe, siteChrome.get);
-  const editor = getEditor();
-  const opened = nodeId ? editor?.getNode(nodeId) : undefined;
+  const opened = documentSourceNode(nodeId);
   const node = opened instanceof ReportNode ? opened : undefined;
   const note = opened instanceof NoteNode ? opened : undefined;
 
@@ -93,7 +94,7 @@ export function ReportOverlay() {
     if (!node || node.pageName === pageName) return;
     node.pageName = pageName;
     scheduleAutosave();
-    await processGraph();
+    await processGraph(node.id);
     setRenderVersion((v) => v + 1);
   }
 
@@ -102,7 +103,7 @@ export function ReportOverlay() {
     if (node) { void commitPageName(); void commitBody(); }
     reportStore.close();
   }
-  useEscapeToClose(closeReport, !!nodeId);
+  useEscapeToClose(closeReport, !!opened);
   usePendingDraft(!!node && body !== lastSyncRef.current, () => void commitBody());
   usePendingDraft(!!node && pageName !== node.pageName, () => void commitPageName());
 
@@ -121,7 +122,7 @@ export function ReportOverlay() {
     [note, note?.body, tex],
   );
 
-  if (!nodeId) return null;
+  if (!opened) return null;
 
   if (note) {
     const closeNote = () => reportStore.close();
@@ -189,7 +190,7 @@ export function ReportOverlay() {
     node!.body = current;
     scheduleAutosave();
     const { removedInputs } = node!.syncRefs();
-    const ed = getEditor();
+    const ed = getOwningEditor(node!.id);
     if (ed && removedInputs.length) {
       for (const c of ed.getConnections()) {
         if (c.target === node!.id && removedInputs.includes(c.targetInput)) {
@@ -197,11 +198,12 @@ export function ReportOverlay() {
         }
       }
     }
-    await getView()?.rerenderNode(node!.id);
-    await processGraph();
+    await getOwningView(node!.id)?.rerenderNode(node!.id);
+    await processGraph(node!.id);
     setRenderVersion((v) => v + 1);
   }
 
+  const editor = getOwningEditor(node.id);
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);
   const embeddable = notes;
@@ -231,14 +233,14 @@ export function ReportOverlay() {
     setEmbedPickerOpen(false);
     node!.body = draftRef.current;
     node!.syncRefs(); // mint the input now so the wire has a socket
-    const ed = getEditor();
+    const ed = editor;
     if (ed && !ed.getConnections().some((c) => c.target === node!.id && c.targetInput === refName)) {
       await ed.addConnection(new ClassicPreset.Connection(note, "document", node!, refName) as SolenoidConnection);
     }
     lastSyncRef.current = node!.body;
     scheduleAutosave();
-    await getView()?.rerenderNode(node!.id);
-    await processGraph();
+    await getOwningView(node!.id)?.rerenderNode(node!.id);
+    await processGraph(node!.id);
   }
 
   async function doExport() {
