@@ -23,6 +23,8 @@ function scalarRead(col: CubeColumn, rows: number): CubeRowColumn {
   return read;
 }
 
+const atRef = (name: string): string => `@${/^[A-Za-z_][\w.]*$/.test(name) ? name : `[${name}]`}`;
+
 /**
  * A column of lists read whole is its rows stacked, one list per row, padded with blanks to the longest
  * ([[D81]] cubeRowLists, [[D85]] columnsStayColumns): a list is a row, so a column of them is a table.
@@ -30,30 +32,34 @@ function scalarRead(col: CubeColumn, rows: number): CubeRowColumn {
  */
 function stackedRows(col: CubeColumn, values: readonly unknown[]): unknown {
   if (values.some((v) => Array.isArray(v) && v.some(Array.isArray))) {
-    return solError("#SHAPE!", `"${col.name}" holds a grid in a row, so it has no single table to read. Use @${/^[A-Za-z_][\w.]*$/.test(col.name) ? col.name : `[${col.name}]`} to read this row's.`);
+    return solError("#SHAPE!", `"${col.name}" holds a grid in a row, so it has no single table to read. Use ${atRef(col.name)} to read this row's.`);
   }
   const rows = values.map((v) => (Array.isArray(v) ? v : v === null ? [] : [v]));
   const width = Math.max(1, ...rows.map((r) => r.length));
   return rows.map((r) => [...r, ...Array<unknown>(width - r.length).fill(null)]);
 }
 
-/** Scalar columns read as typed columns, a column of lists reads each row's list and whole as its stacked rows, and a column holding tables reads `#SHAPE!`. */
+/** Scalar columns read as typed columns, a column of lists reads each row's list and whole as its stacked rows, and a row holding a table reads `#SHAPE!` on that row alone. */
 export function cubeRowTable(cube: CubeValue): { columns: CubeRowColumn[] } {
   const rows = cube.columns.reduce((m, c) => Math.max(m, c.cells.length), 0);
   return {
     columns: cube.columns.map((col): CubeRowColumn => {
-      if (col.cells.some(isTableCell)) {
-        const err = solError("#SHAPE!", `"${col.name}" has table cells; a formula reads values and lists`);
-        return { name: col.name, type: "string", values: col.cells.map(() => err) };
-      }
-      if (!col.cells.some(Array.isArray)) return scalarRead(col, rows);
-      const values = Array.from({ length: rows }, (_, i) => itemMagnitude(col.cells[i] ?? null));
-      const items = values.flatMap((v) => (Array.isArray(v) ? v.flat() : [v]));
+      const tables = col.cells.some(isTableCell);
+      if (!tables && !col.cells.some(Array.isArray)) return scalarRead(col, rows);
+      // A table cell refuses on its own row only; the column's other rows still read ([[D81]] cubeRowLists).
+      const tableErr = solError("#SHAPE!", `This row of "${col.name}" holds a table; a formula reads values and lists`);
+      const values = Array.from({ length: rows }, (_, i) => {
+        const c = col.cells[i] ?? null;
+        return isTableCell(c) ? tableErr : itemMagnitude(c);
+      });
+      const items = values.flatMap((v) => (v === tableErr ? [] : Array.isArray(v) ? v.flat() : [v]));
       return {
         name: col.name,
         type: col.type ?? inferColumn(col.name, items).type,
         values,
-        whole: stackedRows(col, values),
+        whole: tables
+          ? solError("#SHAPE!", `"${col.name}" holds a table in some row, so it has no single table to read. Use ${atRef(col.name)} to read this row's.`)
+          : stackedRows(col, values),
       };
     }),
   };

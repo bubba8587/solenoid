@@ -214,6 +214,19 @@ describe("Computed Column over a cube", () => {
     expect((cells[0] as { message: string }).message).toContain("@g");
   });
 
+  it("a table in one row refuses on that row alone; the column's other rows still compute", () => {
+    const mixed = cubeFromColumns([{ name: "tags", cells: [sub0, [1, 2, 3], 5] }]);
+    const n = new ComputedColumnNode({ expr: "SUM(@tags)" });
+    n.stringLiterals.name = "x";
+    const cells = colCells(n.data({ frame: [mixed] as never }).frame as CubeValue, "x");
+    expect(isSolError(cells[0]) && (cells[0] as { code: string }).code).toBe("#SHAPE!");
+    expect(cells.slice(1)).toEqual([6, 5]);
+    const whole = new ComputedColumnNode({ expr: "SUM(tags)" });
+    whole.stringLiterals.name = "x";
+    const w = colCells(whole.data({ frame: [mixed] as never }).frame as CubeValue, "x");
+    expect(w.every((v) => isSolError(v) && v.code === "#SHAPE!")).toBe(true);
+  });
+
   it("a nested table column stays out of formulas", () => {
     const withSub = cubeFromColumns([{ name: "a", cells: [1] }, { name: "sub", cells: [sub0] }]);
     const n = new ComputedColumnNode({ expr: "@sub" });
