@@ -77,6 +77,14 @@ describe("Primavera XER", () => {
   });
 });
 
+describe("Primavera XER pruning", () => {
+  it("drops a WBS with no tasks, and one holding only such WBSs", () => {
+    const xer = XER.replace(/(%R\t12\t1\t10\t3\tFinish)/, "$1\n%R\t13\t1\t10\t4\tEmpty\n%R\t14\t1\t13\t5\tEmptier");
+    expect(xer).toContain("Emptier");
+    expect(readXer(xer).tasks[0].children!.map((t) => t.name)).toEqual(["Build", "Finish"]);
+  });
+});
+
 describe("MSPDI write", () => {
   it("round-trips through the reader to the same schedule, in both modes", () => {
     const tasks = readGan(GAN).tasks;

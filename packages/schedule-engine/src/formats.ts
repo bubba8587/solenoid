@@ -180,7 +180,7 @@ export function readXer(text: string): ImportedPlanFile {
     const lagHours = Number(p.lag_hr_cnt ?? 0) || 0;
     to.predecessors.push({ task: from.name, type: XER_LINK[p.pred_type] ?? "FS", lag: Math.round((lagHours / hoursPerDay) * 1000) / 1000 });
   }
-  const prune = (list: PlanTask[]): PlanTask[] => list.filter((t) => !(t.children && t.children.length === 0 && !byTaskId.has(t.name))).map((t) => (t.children ? { ...t, children: prune(t.children) } : t)).filter((t) => !(t.children && t.children.length === 0));
+  const prune = (list: PlanTask[]): PlanTask[] => list.map((t) => (t.children ? { ...t, children: prune(t.children) } : t)).filter((t) => !(t.children && t.children.length === 0));
   const tasks = prune(roots);
   const clndr = tables.get("CALENDAR")?.find((c) => c.clndr_id === project?.clndr_id);
   const cal: CalendarSpec = clndr?.clndr_data ? xerCalendar(clndr.clndr_data, unsupported) : { workingDays: true, weekendCode: 1 };
