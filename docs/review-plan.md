@@ -526,7 +526,7 @@ Where: `vitest.config.ts` (ISOLATED list), `tests/setup/sharedWorker.ts`,
 
 ## 29. 09-22 batch fixes (pre-fleet, still unreleased)
 Commits: 94b25efb (nine bugs), 9c4dd3f8, 12bca4cb, 365e0fd7, ba686b25, 9afe6faf, 4b9518d9
-- [x] Fixed 2026-09-28: unpivot and groupBy shadows carry their units, but a pivot's body columns are named from the data, so the row-less shadow had none and a desktop pivot dropped its value columns' unit (the web kept `km` on q1, q2). The pivot's shadow now carries each value field's unit by position (`pivotBodyUnits`), which the native result takes for columns it can't match by name (`frameReadings.test.ts`). An op after a pivot in one fused pipeline still reads the key-only shadow. Was: Polars keeps units by re-running each verb over a row-less schema in JS
+- [x] Checked 2026-09-29: Pivot never reaches the native engine (it has no pivot verb; `PivotNode` runs `pivotFrame` in JS over columns `backend.column()` hands back with their units), so its body columns keep their units on desktop too. A 2026-09-28 by-position unit tail for a native pivot was dead code and is removed. Was: Polars keeps units by re-running each verb over a row-less schema in JS
       (`frameBackend.ts` +85): verbs whose output columns depend on DATA (pivot, unpivot,
       groupBy with dynamic names, window with a computed output name) get the wrong schema
       from a row-less run. Test pivot + unit column on desktop.
