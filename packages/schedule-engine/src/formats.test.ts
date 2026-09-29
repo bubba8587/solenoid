@@ -98,6 +98,21 @@ describe("MSPDI write", () => {
   });
 });
 
+describe("MSPDI write: a typed start", () => {
+  it("a start-no-earlier-than floor writes its date, so the re-read task keeps the floor", () => {
+    const floor = isoToSerial("2026-03-11")!;
+    for (const precision of ["days", "minutes"] as const) {
+      const o = schedule({
+        start: isoToSerial("2026-03-02")!, calendar: { workingDays: true, precision },
+        tasks: [{ name: "A", duration: 2, predecessors: [] }, { name: "B", duration: 1, predecessors: [{ task: "A", type: "FS", lag: 0 }], start: floor }],
+      });
+      expect(o.tasks[1].floored).toBe(true);
+      const back = readMspdi(writeMspdi(o, { formatIso: iso, minutes: precision === "minutes" }));
+      expect(back.tasks[1].start == null ? null : iso(back.tasks[1].start)).toBe("2026-03-11");
+    }
+  });
+});
+
 describe("format border edge cases", () => {
   it("XER: a Sun-Thu week with 07:00-15:00 hours reads its weekend code and intervals", () => {
     const day = (n: number, on: boolean) => `(0||${n}()(${on ? "(0||0(s|07:00|f|15:00)())" : ""}))`;
