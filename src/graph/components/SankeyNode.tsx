@@ -28,6 +28,11 @@ export function SankeyComponent({ data, emit }: NodeProps<SankeyNodeType>) {
           ? <ChartFigure value={chartValue} width={W} height={H} />
           : !has && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
       </div>
+      {has && !collapsed && data.droppedLoops > 0 && (
+        <div className="solenoid-node__text-empty">
+          {data.droppedLoops} looped {data.droppedLoops === 1 ? "flow" : "flows"} dropped
+        </div>
+      )}
       <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={chartValue} /></div>
     </NodeShell>
   );
