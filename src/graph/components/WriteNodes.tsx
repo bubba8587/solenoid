@@ -8,7 +8,7 @@ import { settingsStore } from "../settingsStore";
 import { documentStore } from "../documentStore";
 import { isDocumentValue } from "../documentValue";
 import { isFrameValue } from "../frame";
-import { processGraph } from "../process";
+import { notifyGraphChanged, processGraph } from "../process";
 import { getOwningView } from "../activeGraph";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
@@ -63,13 +63,17 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
 
   function commitPath() {
     const next = path.trim();
-    d.path = next;
     setPath(next);
+    if (next === d.path) return;
+    d.path = next;
+    notifyGraphChanged();
   }
 
   async function browse() {
+    const before = d.path;
     await d.browse();
     setPath(d.path);
+    if (d.path !== before) notifyGraphChanged();
   }
 
   function toggleArmed() {
@@ -205,12 +209,12 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
 
   function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
   function pickTarget(v: WriteObsidianTarget) { d.target = v; setTarget(v); void getOwningView(d.id)?.rerenderNode(d.id); void processGraph(); }
-  function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); }
-  function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); }
+  function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); notifyGraphChanged(); }
+  function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); notifyGraphChanged(); }
   function toggleArmed() { d.enabled = !d.enabled; setArmed(d.enabled); }
-  function toggleStamp() { d.stamp = !d.stamp; setStamp(d.stamp); }
+  function toggleStamp() { d.stamp = !d.stamp; setStamp(d.stamp); notifyGraphChanged(); }
   function toggleAddMissing() { d.addMissing = !d.addMissing; setAddMissing(d.addMissing); void processGraph(); }
-  function toggleWriteBase() { d.writeBase = !d.writeBase; setWriteBase(d.writeBase); }
+  function toggleWriteBase() { d.writeBase = !d.writeBase; setWriteBase(d.writeBase); notifyGraphChanged(); }
   function commitKeys() {
     const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
     setKeys(next);
