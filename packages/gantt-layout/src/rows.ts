@@ -50,6 +50,14 @@ export function buildRows(payload: GanttPayload, rowHeight: number, collapsedIds
   return out;
 }
 
+/** The summary rows `view.collapse` folds, as the starting set for an interactive figure's collapsedIds. */
+export function collapsedAtLevel(payload: GanttPayload): Set<string> {
+  const out = new Set<string>();
+  const lvl = payload.view.collapse;
+  if (lvl != null) for (const t of payload.tasks) if (t.summary && t.level >= lvl) out.add(t.id);
+  return out;
+}
+
 export function cullRows(rows: FrameRow[], top: number, height: number, bufferRows = 5): { start: number; end: number } {
   if (!rows.length) return { start: 0, end: 0 };
   const rowH = rows[0].h;

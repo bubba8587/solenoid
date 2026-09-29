@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, UIEvent, PointerEvent as ReactPointerEvent, ReactElement } from "react";
 import {
   buildRows,
+  collapsedAtLevel,
   buildScale,
   buildBars,
   buildLinks,
@@ -57,12 +58,13 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
   const visibleCols = useMemo(() => fitColumns(columns, gridW), [columns, gridW]);
   const timelineW = Math.max(MIN_TIMELINE_W, width - gridW - 1);
 
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
-    const s = new Set<string>();
-    const lvl = payload.view.collapse;
-    if (lvl != null) for (const t of payload.tasks) if (t.summary && t.level >= lvl) s.add(t.id);
-    return s;
-  });
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => collapsedAtLevel(payload));
+  // A new collapse= reseeds the folds; toggles made since are dropped.
+  const [seededLevel, setSeededLevel] = useState(payload.view.collapse);
+  if (seededLevel !== payload.view.collapse) {
+    setSeededLevel(payload.view.collapse);
+    setCollapsed(collapsedAtLevel(payload));
+  }
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
   const rows = useMemo(() => buildRows(payload, rowHeight, collapsed), [payload, rowHeight, collapsed]);

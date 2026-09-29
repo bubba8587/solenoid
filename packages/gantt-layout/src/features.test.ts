@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { serialFromCivil } from "./serial";
 import { layoutGantt } from "./layout";
-import { buildRows } from "./rows";
+import { buildRows, collapsedAtLevel } from "./rows";
 import { buildColumns } from "./columns";
 import { formatCell } from "./cell";
 import { ganttSvg } from "./svg";
@@ -211,5 +211,22 @@ describe("collapse level", () => {
       24,
     );
     expect(rows.map((r) => r.id)).toEqual(["parent"]);
+  });
+});
+
+describe("collapsedAtLevel", () => {
+  const tasks = [
+    task({ id: "P", start: S(2026, 1, 5), finish: S(2026, 1, 20), level: 0, summary: true }),
+    task({ id: "Q", start: S(2026, 1, 5), finish: S(2026, 1, 9), level: 1, summary: true }),
+    task({ id: "q1", start: S(2026, 1, 5), finish: S(2026, 1, 9), level: 2 }),
+  ];
+  it("folds the summaries at or below the collapse level, and none without one", () => {
+    expect([...collapsedAtLevel(payload(tasks, { collapse: 1 }))]).toEqual(["Q"]);
+    expect([...collapsedAtLevel(payload(tasks, { collapse: 0 }))]).toEqual(["P", "Q"]);
+    expect(collapsedAtLevel(payload(tasks)).size).toBe(0);
+  });
+  it("seeds the same rows the static collapse level shows", () => {
+    const p = payload(tasks, { collapse: 1, group_by: false });
+    expect(buildRows(p, 24, collapsedAtLevel(p)).map((r) => r.id)).toEqual(buildRows(p, 24).map((r) => r.id));
   });
 });

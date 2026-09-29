@@ -3,7 +3,7 @@ export * from "./payload";
 export * from "./frame";
 export { layoutGantt, xForSerial, TIER_HEIGHT, type LayoutOptions } from "./layout";
 export { buildScale, resolveWindow, resolveZoom, type Zoom } from "./scale";
-export { buildRows, cullRows, DEFAULT_ROW_HEIGHT, INDENT_PER_LEVEL } from "./rows";
+export { buildRows, collapsedAtLevel, cullRows, DEFAULT_ROW_HEIGHT, INDENT_PER_LEVEL } from "./rows";
 export { buildBars, estimateWidth, ellipsize } from "./bars";
 export { buildLinks } from "./links";
 export { buildColumns } from "./columns";
