@@ -314,7 +314,5 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
 - [ ] **Chart compact ticks** (`chartCore.ts` compactTick): 999,500 prints "1000K"; close ticks on a narrow range all read "100K". Pick the suffix after rounding and the precision from the step.
 - [ ] **YEARFRAC basis -0.5** floors to -1 (`#DOMAIN!`); Excel truncates toward zero, if it truncates that way (unconfirmed).
-- [ ] **Frontmatter `-.inf` / `+.inf`** read as text (`noteFrontmatter.ts` readScalar's `^[-+]\.` rule); js-yaml reads them as infinities.
-- [ ] **Web Source A→B→A** (plausible): B's late reply can land while the card shows A; clear `inflightKey` on the `key === lastKey` early return.
-- [ ] **Decimal places setting** (plausible): CubeDisplay and open Table / Cube popups don't subscribe to `numberDecimals`; Record chart text is baked at compute.
+- [ ] **Decimal places setting** (plausible): CubeDisplay doesn't subscribe to `numberDecimals`, so a Cube card keeps its old digits ([[D94]] oneNumberDisplay: what is on screen redraws; an open popup waiting for a reopen is intended). Record chart text is baked at compute.
 - [ ] **VARP / STDEVP** still listed in `unitDimExpr.ts` SQUARE sets and `FUNCTION_FAMILY` though both are legacy aliases; delete if nothing reads them by the old name.

@@ -8,7 +8,7 @@ export type TextAfterBeforeOp = "after" | "before";
 export type UrlEncodeOp = "encode" | "decode" | "base64" | "unbase64";
 export type RegexOp = "test" | "extract" | "extract_all" | "extract_groups" | "replace";
 
-/** VALUE's reading, and Cast to Number's ([[B16]] oneFormulaSurface): `$`, `(5)` for negatives and trailing `%`, with the decimal and group separators a caller names (blank: `.` decimal, and `,` group unless the decimal is `,`, as NUMBERVALUE's). */
+/** VALUE's reading, and Cast to Number's ([[B16]] oneFormulaSurface): `$`, `(5)` for negatives and trailing `%`, with the decimal and group separators a caller names (blank: the US form, [[C117]] usNumberText, with no group when the decimal is `,`, as NUMBERVALUE's). */
 export function parseValueText(text: string, decimalSep = "", groupSep = ""): number {
   const d = (decimalSep || ".")[0];
   const g: string | null = groupSep !== "" ? groupSep[0] : d === "," ? null : ",";
