@@ -29,7 +29,7 @@ export function buildQrPayload(template: QrTemplate, f: Partial<QrFields>): stri
     if (ssid === "") return "";
     const auth = f.wifiAuth || "WPA";
     const hidden = f.wifiHidden ? "H:true;" : "";
-    if (auth === "nopass") return `WIFI:T:nopass;S:${escWifi(ssid)};;${hidden}`;
+    if (auth === "nopass") return `WIFI:T:nopass;S:${escWifi(ssid)};${hidden};`;
     return `WIFI:T:${auth};S:${escWifi(ssid)};P:${escWifi(f.wifiPass ?? "")};${hidden};`;
   }
   if (template === "vcard") {

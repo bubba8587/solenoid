@@ -30,6 +30,10 @@ describe("buildQrPayload — wifi", () => {
     expect(buildQrPayload("wifi", { ssid: "N", wifiPass: "p", wifiAuth: "WPA", wifiHidden: true }))
       .toBe("WIFI:T:WPA;S:N;P:p;H:true;;");
   });
+  it("hidden with no password keeps H:true before the closing ;;", () => {
+    expect(buildQrPayload("wifi", { ssid: "N", wifiAuth: "nopass", wifiHidden: true }))
+      .toBe("WIFI:T:nopass;S:N;H:true;;");
+  });
   it("no SSID → empty (no code)", () => {
     expect(buildQrPayload("wifi", { ssid: "", wifiPass: "p" })).toBe("");
   });
