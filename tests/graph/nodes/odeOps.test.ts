@@ -24,6 +24,14 @@ describe("rk4 (ODE integrate)", () => {
     expect(r.y[r.y.length - 1]).toBeCloseTo(2, 10); // 2²/2 = 2
   });
 
+  it("each time is t0 + i·h and the last lands exactly on t1", () => {
+    const r = rk4((_, y) => y, 1, 0, 1, 100)!;
+    expect(r.t[100]).toBe(1);
+    expect(r.t[30]).toBe(0.3);
+    const h = (0.7 - 0.1) / 3;
+    expect(rk4((_, y) => y, 1, 0.1, 0.7, 3)!.t).toEqual([0.1, 0.1 + h, 0.1 + 2 * h, 0.7]);
+  });
+
   it("steps clamp to at least 1", () => {
     const r = rk4((t) => t, 0, 0, 1, 0)!;
     expect(r.t).toEqual([0, 1]); // one step

@@ -1,6 +1,6 @@
 // [[C17]] shareImpl
 
-/** Fixed-step RK4 answering `steps + 1` points (t0 included); null for a non-finite bound, a null or non-finite `f`, or a blow-up. */
+/** Fixed-step RK4 answering `steps + 1` points at t0 + i·h, the last exactly t1; null for a non-finite bound, a null or non-finite `f`, or a blow-up. */
 export function rk4(
   f: (t: number, y: number) => number | null,
   y0: number, t0: number, t1: number, steps: number,
@@ -25,7 +25,7 @@ export function rk4(
     const k4 = deriv(t + h, y + h * k3);
     if (k4 === null) return null;
     y = y + (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
-    t = t + h;
+    t = i + 1 === n ? t1 : t0 + (i + 1) * h;
     if (!Number.isFinite(y)) return null;
     ts.push(t);
     ys.push(y);
