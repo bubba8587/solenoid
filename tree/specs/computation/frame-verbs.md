@@ -176,9 +176,9 @@ Every runner catches a throw and returns it as a `SolError` value (`asErrorValue
 | Full collect | `readFrame(v)` | A FrameValue. Memoized per ref per pass, so a ref fanned out to several consumers collects once. A FrameValue, `null` or SolError passes through. |
 | Card preview | `collectPreview(out, n = 100)` | If the frame has at most `n` rows, the full frame (through `readFrame`). Otherwise a FrameValue of the first `n` rows with `__totalRows` set to the true count and `__ref` set to `out`. |
 | Schema | `collectPreview(ref, 0)` | Column names and types with no rows. Pivot uses it. |
-| One column | `backend.column(handle, name)` | One `FrameColumn` or `null`. Get Column, Pivot and the aggregate guard use it. |
+| One column | `readRefColumn(ref, name)` | One `FrameColumn` or `null`, read with `backend.column` on the flushed handle. Get Column, SUMIFS, Pivot and Slicer use it; the aggregate guard reads its source column with `backend.column` directly. |
 
-Both collect paths apply sketch scaling and then the aggregate guard (below) before returning, both keyed by the flushed handle. A consumer that awaits a boundary wraps it in `materialize(p)`, which returns a throw as a SolError instead of letting it escape `data()` (where the error guard would flatten it to `#ERROR!`).
+Every boundary applies sketch scaling and then the aggregate guard (below) before returning, both keyed by the flushed handle. A consumer that awaits a boundary wraps it in `materialize(p)`, which returns a throw as a SolError instead of letting it escape `data()` (where the error guard would flatten it to `#ERROR!`).
 
 ### Who receives a ref
 

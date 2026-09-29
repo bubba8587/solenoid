@@ -24,7 +24,7 @@ import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../d
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
 import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, asRowsOf, backToList, sortGrid, sortGridByKeys, uniqueGrid, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
-import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
+import { isFrameRef, readRefColumn, materialize } from "../frameBackend";
 import { coerceListItem, coerceFrameCell, isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -1172,10 +1172,7 @@ export class SumIfsNode extends ClassicPreset.Node {
       const vn = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
       if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
       return (async () => {
-        const cols = await materialize((async () => {
-          const h = await flushRef(raw);
-          return Promise.all([...names].map(async (n) => [n, await frameBackend().column(h, n)] as const));
-        })());
+        const cols = await materialize(Promise.all([...names].map(async (n) => [n, await readRefColumn(raw, n)] as const)));
         if (isSolError(cols)) return finish(cols);
         const byName = new Map(cols);
         const slice: FrameValue = { __frame: true, columns: cols.map(([, c]) => c).filter((c): c is FrameColumn => c != null) };

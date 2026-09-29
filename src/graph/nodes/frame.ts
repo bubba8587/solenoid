@@ -46,7 +46,7 @@ import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, materialize, readRefColumn, type FrameInput, type FrameRef } from "../frameBackend";
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
@@ -885,10 +885,7 @@ export class PivotNode extends ClassicPreset.Node {
       for (const raw of [inputs.rowFields, inputs.colFields, inputs.values]) for (const n of readColumnList(raw) ?? []) if (have.has(n)) wanted.add(n);
       for (const key of ["rowFields", "colFields", "values"] as const) for (const n of (this.stringLiterals[key] ?? "").split(",")) if (have.has(n.trim())) wanted.add(n.trim());
       for (const n of Object.keys(this.filterExclude)) if (have.has(n)) wanted.add(n);
-      const cols = await materialize((async () => {
-        const h = await flushRef(f);
-        return Promise.all([...wanted].map((n) => frameBackend().column(h, n)));
-      })());
+      const cols = await materialize(Promise.all([...wanted].map((n) => readRefColumn(f, n))));
       if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
       const byName = new Map(cols.filter((c): c is FrameColumn => c != null).map((c) => [c.name, c]));
       this.sourceColumns = schema.columns.map((c) => ({ name: c.name, type: c.type, distinct: byName.has(c.name) ? distinctKeys(byName.get(c.name)!.values) : [] }));
@@ -2280,7 +2277,7 @@ export class GetColumnNode extends ClassicPreset.Node {
     // The engine awaits a promise-returning data(); the cast keeps the sync signature.
     if (isFrameRef(fr)) {
       return (async () => {
-        const col = await materialize((async () => frameBackend().column(await flushRef(fr), name))());
+        const col = await materialize(readRefColumn(fr, name));
         if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
         if (!col) { this.cachedResult = null; return { values: null }; }
         return { values: this.readColumn(col) };

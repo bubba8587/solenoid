@@ -132,6 +132,15 @@ function previewToFrame(p: FramePreview): FrameValue {
   return f;
 }
 
+/** One column of a ref by `getColumn` rules, sketch-scaled and aggregate-guarded as a collect is. */
+export async function readRefColumn(ref: FrameRef, name: string): Promise<FrameColumn | null> {
+  const handle = await flushRef(ref);
+  const col = await frameBackend().column(handle, name);
+  if (!col) return null;
+  const f = await applyAggGuard(handle, applySketchScaling(handle, { __frame: true, columns: [col] }));
+  return f.columns[0];
+}
+
 export async function collectPreview(out: FrameInput | SolError | null, n = CARD_PREVIEW_ROWS): Promise<FrameValue | SolError | null> {
   if (out == null) return null;
   if (isSolError(out)) return out;

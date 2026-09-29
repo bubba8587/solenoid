@@ -6,7 +6,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { FrameShapeContext } from "./frameShapeHook";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeCell } from "../frame";
-import { runFrameUnary, collectPreview, isFrameRef, flushRef, materialize, frameBackend, type FrameRef } from "../frameBackend";
+import { runFrameUnary, collectPreview, isFrameRef, materialize, readRefColumn, type FrameRef } from "../frameBackend";
 import { beginPass, passFrame, emitFrame } from "./frame";
 import type { FilterCond } from "../frameVerbs";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
@@ -288,7 +288,7 @@ export class SlicerNode extends ClassicPreset.Node {
       const colNames = isFrameValue(schema) ? schema.columns.map((c) => c.name) : [];
       const colName = this.selectedColumn && colNames.includes(this.selectedColumn) ? this.selectedColumn : colNames[0] ?? "";
       const col = colName
-        ? await materialize((async () => frameBackend().column(await flushRef(raw), colName))())
+        ? await materialize(readRefColumn(raw, colName))
         : null;
       // Write UI state only from the latest pass, or a stale one flickers the buttons.
       if (gen === this._gen) {

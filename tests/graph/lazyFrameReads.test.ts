@@ -1,8 +1,11 @@
 // [[C16]] polarsEngine
 // Readers on a lazy upstream answer as they do on the same frame held eagerly.
-import { describe, it, expect, beforeEach } from "vitest";
-import { runFrameUnary, resetFrameBackendToJs, clearCollectMemo } from "../../src/graph/frameBackend";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { runFrameUnary, resetFrameBackendToJs, clearCollectMemo, readFrame, SKETCH_SAMPLE_ROWS, type FrameRef } from "../../src/graph/frameBackend";
+import { calcModeStore } from "../../src/graph/calcModeStore";
 import { SumIfsNode } from "../../src/graph/nodes/list";
+import { GetColumnNode, PivotNode } from "../../src/graph/nodes/frame";
+import { SlicerNode } from "../../src/graph/nodes/control";
 import type { FrameValue } from "../../src/graph/frame";
 
 const abc: FrameValue = {
@@ -29,5 +32,51 @@ describe("SUMIFS resolves a positional column against the upstream frame", () =>
   it.each([["C", "1", 3], ["3", "A", 3], ["2", "3", 300]])("condition %s, values %s", async (cond, values, want) => {
     expect(await sumifs(cond, values, false)).toBe(want);
     expect(await sumifs(cond, values, true)).toBe(want);
+  });
+});
+
+describe("one-column readers downstream of GROUPBY scale as the GROUPBY card does (Sketch)", () => {
+  const rows = SKETCH_SAMPLE_ROWS * 4;
+  const big: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "k", type: "string", values: Array.from({ length: rows }, () => "x") },
+      { name: "qty", type: "number", values: Array.from({ length: rows }, () => 1) },
+    ],
+  };
+  const grouped = async () => (await runFrameUnary(big, { kind: "groupBy", keys: ["k"], aggs: [{ column: "qty", op: "sum", as: "total" }] })) as FrameRef;
+
+  beforeEach(() => { calcModeStore.setMode("sketch"); });
+  afterEach(() => { calcModeStore.setMode("auto"); });
+
+  it("the GROUPBY card itself reads the scaled total", async () => {
+    const f = await readFrame(await grouped());
+    expect((f as FrameValue).columns[1].values).toEqual([rows]);
+  });
+
+  it("SUMIFS", async () => {
+    const n = new SumIfsNode({ op: "sumifs" });
+    n.condConfig["0"] = { op: "notblank" };
+    n.stringLiterals.column0 = "k";
+    n.stringLiterals.values = "total";
+    expect((await n.data({ frame: [await grouped()] } as never)).result).toBe(rows);
+  });
+
+  it("Get Column", async () => {
+    const n = new GetColumnNode();
+    n.stringLiterals.name = "total";
+    expect((await n.data({ frame: [await grouped()] } as never)).values).toEqual([rows]);
+  });
+
+  it("Pivot", async () => {
+    const n = new PivotNode();
+    const out = (await n.data({ frame: [await grouped()], rowFields: [["k"]], values: [["total"]] })).frame as FrameValue;
+    expect(out.columns[1].values).toEqual([rows]);
+  });
+
+  it("Slicer", async () => {
+    const n = new SlicerNode({ selectedColumn: "total" });
+    await n.data({ frame: [await grouped()] });
+    expect(n.cachedUniqueValues).toEqual([rows]);
   });
 });
