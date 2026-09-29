@@ -8,7 +8,7 @@ import { formatScalar } from "./format";
 import { parseCsvRows, joinCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/dateSerial";
-import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, type FrameSourceColumn } from "../frame";
+import { coerceFrameCell, formatFrameCell, columnTypesAfterCsvEdit, makeHeaders, type FrameSourceColumn } from "../frame";
 import { describeColumn, distinctColumnValues } from "../frameVerbs";
 import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
@@ -158,6 +158,8 @@ export function TablePopup() {
   const cardsKey = useRef<{ deps: unknown[]; key: object }>({ deps: [], key: {} });
   // What Save would write, as of the last save or live commit; a close that differs asks first.
   const savedSnapshot = useRef("");
+  // The column names the host outputs now, which key its column formats until the next save or live commit.
+  const liveNames = useRef<string[]>([]);
   const [askClose, setAskClose] = useState(false);
 
   useEffect(() => {
@@ -172,6 +174,7 @@ export function TablePopup() {
     const types = Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType);
     const exprs = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
     setHeaderNames(names);
+    liveNames.current = state.headers ? [...state.headers] : [];
     setColumnTypes(types);
     setColExprs(exprs);
     committedExprs.current = exprs;
@@ -296,9 +299,18 @@ export function TablePopup() {
       return next;
     });
   }
-  // Must match the key FrameDisplay reads: the derived column name, or "*" for a matrix.
+  // Must match the key FrameDisplay reads: the host's output column name, or "*" for a matrix.
   function colFmtKey(c: number): string | undefined {
-    return state?.formatControls === "matrix" ? "*" : state?.headers?.[c];
+    if (state?.formatControls === "matrix") return "*";
+    if (!editableHeaders) return state?.headers?.[c];
+    return liveNames.current[c] ?? makeHeaders(headerNames, cols)[c];
+  }
+  function rekeyColFormats() {
+    const nodeId = state?.pinNodeId;
+    if (!nodeId || !editableHeaders || state?.formatControls !== "columns") return;
+    const next = makeHeaders(headerNames, cols);
+    frameFormatStore.rekey(nodeId, liveNames.current, next);
+    liveNames.current = next;
   }
   function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
@@ -680,6 +692,7 @@ export function TablePopup() {
     if (!state?.onCommitSource) return;
     committedExprs.current = [...(overrides?.exprs ?? colExprs)];
     savedSnapshot.current = editSnapshot(grid, headerNames, overrides?.types ?? columnTypes, committedExprs.current);
+    rekeyColFormats();
     const refresh = await state.onCommitSource(buildSourceColumns(overrides));
     if (!refresh) return;
     setLiveComputed(refresh.computedCells);
@@ -704,6 +717,7 @@ export function TablePopup() {
   const csvBlocksSave = view === "csv" && !!csvError;
   function save(): boolean {
     if (csvBlocksSave) { setAskClose(false); return false; }
+    rekeyColFormats();
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
     else if (state?.onSaveSource) state.onSaveSource(buildSourceColumns({ types: settledColumnTypes() }));
     tablePopup.close();

@@ -45,6 +45,24 @@ export const frameFormatStore = {
   delete(nodeId: string, column: string): void {
     if (_store.delete(key(nodeId, column))) notify();
   },
+  /** Moves each column's format from its name at position i in `from` to the name at i in `to`, and drops the formats of names that left. */
+  rekey(nodeId: string, from: ReadonlyArray<string | undefined>, to: ReadonlyArray<string>): void {
+    const moved = from.map((name, i) =>
+      name !== undefined && to[i] !== undefined && name !== to[i] ? _store.get(key(nodeId, name))?.ann : undefined);
+    const kept = new Set(to);
+    let changed = false;
+    for (const name of from) {
+      if (name !== undefined && !kept.has(name) && _store.delete(key(nodeId, name))) changed = true;
+    }
+    from.forEach((name, i) => {
+      const next = to[i];
+      if (name === undefined || next === undefined || name === next) return;
+      const ann = moved[i];
+      if (ann) { _store.set(key(nodeId, next), { nodeId, column: next, ann }); changed = true; }
+      else if (_store.delete(key(nodeId, next))) changed = true;
+    });
+    if (changed) notify();
+  },
   removeForNode(nodeId: string): void {
     let changed = false;
     for (const [k, v] of _store) if (v.nodeId === nodeId) { _store.delete(k); changed = true; }

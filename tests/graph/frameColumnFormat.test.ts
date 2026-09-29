@@ -239,3 +239,30 @@ describe("describeAnnotation — the one shared inherit/column hint wording", ()
     expect(distinct.size, "each column type reads a different axis").toBe(3);
   });
 });
+
+// [[B12]] losslessSaves: a column's format follows the column through a rename in the Frame Input popup.
+describe("frameFormatStore.rekey", () => {
+  it("moves a renamed column's format to its new name", async () => {
+    const input = new FrameInputNode({ frameText: source([{ name: "B", type: "number", cells: ["1.23456"] }]) });
+    frameFormatStore.set(input.id, "B", DEC3);
+    frameFormatStore.rekey(input.id, ["B"], ["Price"]);
+    input.frameText = source([{ name: "Price", type: "number", cells: ["1.23456"] }]);
+    expect(frameFormatStore.get(input.id, "B")).toBeUndefined();
+    expect(col(await collected(await chain([input])), "Price").format).toEqual(DEC3);
+  });
+
+  it("drops a removed column's format, so a later column of that name starts plain", () => {
+    frameFormatStore.set("n", "A", DEC0);
+    frameFormatStore.set("n", "B", DEC3);
+    frameFormatStore.rekey("n", ["A", "B"], ["A"]);
+    expect(frameFormatStore.get("n", "B")).toBeUndefined();
+    expect(frameFormatStore.get("n", "A")).toEqual(DEC0);
+  });
+
+  it("swaps formats when two columns swap names", () => {
+    frameFormatStore.set("n", "A", DEC0);
+    frameFormatStore.rekey("n", ["A", "B"], ["B", "A"]);
+    expect(frameFormatStore.get("n", "B")).toEqual(DEC0);
+    expect(frameFormatStore.get("n", "A")).toBeUndefined();
+  });
+});
