@@ -811,13 +811,17 @@ export function excelTrimmean(values: ReadonlyArray<number>, percent: number): n
   return kept.reduce((a, b) => a + b, 0) / kept.length;
 }
 
+/** Blanks and text in `arr` are skipped; an error in it is the answer. */
 export function excelPercentRank(
-  arr: ReadonlyArray<number>, x: number, sig = 3, exc = false,
+  arr: ReadonlyArray<unknown>, x: number, sig = 3, exc = false,
 ): number | SolError {
-  const s = [...arr].sort((a, b) => a - b);
+  const err = arr.find(isSolError);
+  if (err) return err;
+  const s = arr.filter((v): v is number => typeof v === "number" && Number.isFinite(v)).sort((a, b) => a - b);
   const n = s.length;
   if (n === 0 || Number.isNaN(x)) return VALUE("PERCENTRANK");
   if (x < s[0] || x > s[n - 1]) return solError("#N/A", "Value is outside the range of the data");
+  if (n === 1 && !exc) return 1;
   const below = s.filter((v) => v < x).length;
   const pos = s[below] === x
     ? below
@@ -1005,7 +1009,7 @@ registerInternal("RANK.EQ",  rank(false));
 registerInternal("RANK.AVG", rank(true));
 registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? [], toNum(pct)));
 for (const [name, exc] of [["PERCENTRANK", false], ["PERCENTRANK.INC", false], ["PERCENTRANK.EXC", true]] as const) {
-  registerInternal(name, (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), exc));
+  registerInternal(name, (arr, x, sig) => excelPercentRank(Array.isArray(arr) ? arr.flat() : arr == null ? [] : [arr], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), exc));
 }
 
 const domErr = () => solError("#DOMAIN!", "Input is outside this function's domain");

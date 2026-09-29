@@ -129,6 +129,22 @@ describe("PERCENTRANK", () => {
     const dups = [[2, 4, 4, 4, 5, 5, 7, 9]];
     expect(new RankPercentileNode({ op: "percentrank-inc" }).data({ list: dups, value: [4], significance: [3] }).result).toBe(0.142);
   });
+  it("skips blanks, ranks within a single value, and truncates a fractional significance, node and formula alike", () => {
+    const node = (op: "percentrank-inc" | "percentrank-exc", list: (number | null)[], value: number, significance = 3) =>
+      new RankPercentileNode({ op }).data({ list: [list], value: [value], significance: [significance] }).result;
+    const fx = (expr: string, x: (number | null)[]) => compileEvaluator(expr)!({ x });
+    expect(node("percentrank-inc", [1, null, 3, 5], 3)).toBe(0.5);
+    expect(fx("PERCENTRANK.INC(x, 3)", [1, null, 3, 5])).toBe(0.5);
+    expect(node("percentrank-exc", [1, null, 3, 5], 3)).toBe(0.5);
+    expect(fx("PERCENTRANK.EXC(x, 3)", [1, null, 3, 5])).toBe(0.5);
+    expect(node("percentrank-inc", [5], 5)).toBe(1);
+    expect(fx("PERCENTRANK.INC(x, 5)", [5])).toBe(1);
+    expect(node("percentrank-exc", [5], 5)).toBe(0.5);
+    expect(fx("PERCENTRANK.EXC(x, 5)", [5])).toBe(0.5);
+    const dups = [2, 4, 4, 4, 5, 5, 7, 9];
+    expect(node("percentrank-inc", dups, 4, 2.6)).toBe(0.14);
+    expect(fx("PERCENTRANK.INC(x, 4, 2.6)", dups)).toBe(0.14);
+  });
   it("returns #N/A for a value outside the data range", () => {
     const r = new RankPercentileNode({ op: "percentrank-inc" }).data({ list: [[1, 2, 3]], value: [9], significance: [3] }).result;
     expect(isSolError(r) && r.code).toBe("#N/A");

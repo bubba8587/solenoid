@@ -128,7 +128,7 @@ export class RankPercentileNode extends ClassicPreset.Node {
       if (family === "percentrank") {
         const sigRaw = readRole<number | undefined>(this, "significance", inputs.significance) ?? 3;
         if (!arr || arr.length === 0 || v === null) { this.cachedResult = null; return { result: null }; }
-        const result = excelPercentRank(arr as number[], v, Math.round(sigRaw), exc);
+        const result = excelPercentRank(arr, v, Math.trunc(sigRaw), exc);
         this.cachedResult = result;
         return { result };
       }
