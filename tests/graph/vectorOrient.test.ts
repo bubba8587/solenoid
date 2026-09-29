@@ -2,12 +2,16 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
+import { initPackFormulas } from "../../src/graph/formulaExtensions";
 import { isSolError } from "../../src/graph/errorValue";
 import { ComputedColumnNode } from "../../src/graph/nodes/frame";
 import { getColumn, type FrameValue } from "../../src/graph/frame";
 
 const flat = (v: unknown): string => (isSolError(v) ? `ERR ${v.code}` : JSON.stringify(Array.isArray(v) ? v.flat(3) : v));
 const VOLATILE = /^(RAND|SHUFFLE|UUID|SAMPLE|NOW|TODAY)/;
+
+// Pack formulas join the table when packs load, so load them here rather than rely on another file having done it.
+initPackFormulas();
 
 describe("every list-taking function declares whether a vector's direction matters", () => {
   it("each listArgs entry has an orient", () => {

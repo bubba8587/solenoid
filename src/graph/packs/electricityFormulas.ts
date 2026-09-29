@@ -11,7 +11,7 @@ export const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
       const cells = args.flatMap((a) => (Array.isArray(a) ? a : a == null ? [] : [a]));
       return parallelCombine(cells as Parameters<typeof parallelCombine>[0]);
     },
-    returns: "number", listArgs: true, arity: [1, 255],
+    returns: "number", listArgs: true, orient: "free", arity: [1, 255],
     signature: "value1, [value2], …",
   },
   {

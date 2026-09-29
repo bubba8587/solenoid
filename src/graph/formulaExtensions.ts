@@ -39,7 +39,7 @@ export function initPackFormulas(): void {
       EXCEL_IMPL_META[name] = {
         returns: f.returns, arity: f.arity, native: true,
         ...(f.rank ? { rank: f.rank } : {}),
-        ...(f.listArgs ? { listArgs: true } : {}),
+        ...(f.listArgs ? { listArgs: true, orient: f.orient } : {}),
       };
     }
   }

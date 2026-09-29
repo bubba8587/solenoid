@@ -10,13 +10,13 @@ export const SETS_PACK_FORMULAS: PackFormula[] = [
   {
     name: "ISIN",
     impl: (a, b) => isInMask(asList(a), asList(b)),
-    returns: "logical", rank: "list", listArgs: true, arity: [2, 2],
+    returns: "logical", rank: "list", listArgs: true, orient: "free", arity: [2, 2],
     signature: "values, set — mask aligned to values",
   },
   {
     name: "TALLY",
     impl: (v) => tallyPairs(asList(v)).counts,
-    returns: "number", rank: "list", listArgs: true, arity: [1, 1],
+    returns: "number", rank: "list", listArgs: true, orient: "free", arity: [1, 1],
     signature: "values — counts per distinct value, first seen",
   },
 ];

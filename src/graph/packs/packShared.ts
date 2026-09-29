@@ -5,10 +5,10 @@
 import type { NodeCatalogEntry, ExcelEquiv } from "../AddNodeMenu";
 import type { PackUnit, PackFormat } from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
-import type { ExcelReturn, ExcelRank } from "../excelFunctions";
+import type { ExcelReturn, ExcelRank, VectorOrient } from "../excelFunctions";
 import { ExpressionNode, EquationNode } from "../rete-nodes";
 
-export interface PackFormula {
+interface PackFormulaBase {
   /** Dispatch name, UPPERCASE. */
   name: string;
   /** Returns a value or a `SolError`, never throws, like a core `registerInternal` impl. */
@@ -16,11 +16,15 @@ export interface PackFormula {
   returns: ExcelReturn;
   /** Default "scalar". */
   rank?: ExcelRank;
-  /** The evaluator hands whole lists over instead of broadcasting the call. */
-  listArgs?: boolean;
   arity: [number, number];
   signature?: string;
 }
+
+/** A formula that takes whole lists declares whether a vector's direction matters to it ([[D85]] columnsStayColumns). */
+export type PackFormula = PackFormulaBase & (
+  | { listArgs?: false; orient?: undefined }
+  | { listArgs: true; orient: VectorOrient }
+);
 
 export interface FormulaPackEntry {
   type: string;          // prefixed by pack: "geo-circle-area"
