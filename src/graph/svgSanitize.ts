@@ -18,11 +18,14 @@ export function scrubSvgText(text: string): string {
   return out;
 }
 
+export const SVG_PURIFY_CONFIG = {
+  USE_PROFILES: { svg: true, svgFilters: true },
+  FORBID_TAGS: ["script", "foreignObject", "style"],
+  ADD_ATTR: ["inkscape:label"],
+};
+
 export function sanitizeSvg(text: string): string {
   const scrubbed = scrubSvgText(text);
   if (!DOMPurify.isSupported) return scrubbed;
-  return DOMPurify.sanitize(scrubbed, {
-    USE_PROFILES: { svg: true, svgFilters: true },
-    FORBID_TAGS: ["script", "foreignObject", "style"],
-  });
+  return DOMPurify.sanitize(scrubbed, SVG_PURIFY_CONFIG);
 }

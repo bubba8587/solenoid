@@ -31,9 +31,19 @@ export function resolveLayer<T extends SvgLike>(target: T, root: T): { el: T; na
 /** Text-level, since the headless graph has no DOM, so a saved pick never outlives the picture it was made on. */
 export function sourceHasLayer(source: string, name: string): boolean {
   if (!name) return false;
-  const re = /\b(?:inkscape:label|data-name|aria-label|id)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
-  for (const m of source.matchAll(re)) if ((m[1] ?? m[2] ?? "").trim() === name) return true;
+  const re = /\s(?:inkscape:label|data-name|aria-label|id)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+  for (const m of source.matchAll(re)) if (decodeEntities(m[1] ?? m[2] ?? "").trim() === name) return true;
   return false;
+}
+
+const NAMED_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: "\u00a0" };
+
+function decodeEntities(text: string): string {
+  return text.replace(/&(?:#(\d+)|#x([0-9a-f]+)|([a-z]+));/gi, (m, dec, hex, named) => {
+    if (named) return NAMED_ENTITIES[named.toLowerCase()] ?? m;
+    const code = dec ? Number(dec) : parseInt(hex, 16);
+    return code <= 0x10ffff ? String.fromCodePoint(code) : m;
+  });
 }
 
 export function resolveLayerName(target: SvgLike, root: SvgLike): string | null {

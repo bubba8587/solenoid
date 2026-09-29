@@ -1,6 +1,6 @@
 // [[C68]]
 import { describe, it, expect } from "vitest";
-import { scrubSvgText, sanitizeSvg } from "../../src/graph/svgSanitize";
+import { scrubSvgText, sanitizeSvg, SVG_PURIFY_CONFIG } from "../../src/graph/svgSanitize";
 import { sourceHasLayer } from "../../src/graph/svgLayer";
 import { SvgPickerNode } from "../../src/graph/nodes/annotation";
 
@@ -44,6 +44,16 @@ describe("a persisted layer pick never outlives its picture", () => {
     expect(sourceHasLayer('<svg><g inkscape:label="Roof"/></svg>', "Roof")).toBe(true);
     expect(sourceHasLayer('<svg><g id="roof"/></svg>', "Roof")).toBe(false);
     expect(sourceHasLayer("<svg/>", "")).toBe(false);
+  });
+  it("sourceHasLayer reads a name as the DOM does: entities decoded, only the name attributes themselves", () => {
+    expect(sourceHasLayer('<svg><g inkscape:label="Roof &amp; eaves"/></svg>', "Roof & eaves")).toBe(true);
+    expect(sourceHasLayer("<svg><g aria-label='&#76;oft &#x26; more'/></svg>", "Loft & more")).toBe(true);
+    expect(sourceHasLayer('<svg><g data-id="roof"/></svg>', "roof")).toBe(false);
+    expect(sourceHasLayer('<svg><g xml:id="roof"/></svg>', "roof")).toBe(false);
+    expect(sourceHasLayer('<svg><g\nid="roof"/></svg>', "roof")).toBe(true);
+  });
+  it("the browser sanitizer keeps an Inkscape layer's label, the name the picker shows", () => {
+    expect(SVG_PURIFY_CONFIG.ADD_ATTR).toContain("inkscape:label");
   });
   it("the layer output is blank once the source no longer names the pick", () => {
     const n = new SvgPickerNode({ source: '<svg><rect id="roof"/></svg>', selectedLayer: "roof" });
