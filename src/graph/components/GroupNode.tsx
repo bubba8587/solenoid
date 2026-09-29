@@ -30,6 +30,7 @@ import { useEditableLabel } from "./inlineInput";
 import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
 import { getOwningView, getOwningEditor } from "../activeGraph";
+import { socketRingColor } from "./SocketComponent";
 
 function formatReadout(v: unknown, annNodeId: string, outKey?: string): string {
   if (v === undefined || v === null) return "—";
@@ -349,7 +350,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
               <svg className="solenoid-node__input-pill" style={{ top: pillY(ip.index) - 11, height: 22 }}
                    viewBox="0 0 12 22" aria-hidden>
                 <rect x="0" y="0" width="12" height="22" rx="6" fill={pillColor} />
-                <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+                <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke={socketRingColor(pillColor)} strokeWidth="2" />
                 {pillLit && (
                   <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
                 )}
@@ -370,7 +371,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                 <svg className="solenoid-node__output-pill" style={{ top: pillY(i) - 11, height: 22 }}
                      viewBox="0 0 12 22" aria-hidden>
                   <rect x="0" y="0" width="12" height="22" rx="6" fill={pillColor} />
-                  <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
+                  <rect x="1" y="1" width="10" height="20" rx="5" fill="none" stroke={socketRingColor(pillColor)} strokeWidth="2" />
                   {pillLit && (
                     <rect x="0" y="0" width="12" height="22" rx="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
                   )}
