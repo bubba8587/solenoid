@@ -180,6 +180,18 @@ describe("review pins: whole-argument formulas", () => {
     expect(ev("NETWORKDAYS(s, f, h)", { s: mon, f: fri, h: [mon + 1, mon + 2] })).toBe(3);
     expect(ev("WORKDAY(s, 2, h)", { s: mon, h: [mon + 1, mon + 2] })).toBe(mon + 4);
   });
+  it("only the holiday list of the workday functions is whole; start, end and days blank-gate and broadcast", async () => {
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
+    const mon = 46027, fri = 46031;
+    expect(ev("WORKDAY(a, 5)", { a: null })).toBe(null);
+    expect(ev("NETWORKDAYS(a, f)", { a: null, f: fri })).toBe(null);
+    expect(ev("WORKDAY(s, 1)", { s: [mon, mon + 1] })).toEqual([mon + 1, mon + 2]);
+    expect(ev("NETWORKDAYS(s, f)", { s: [mon, mon + 3], f: fri })).toEqual([5, 2]);
+    expect(ev("WORKDAY(s, 2, h)", { s: mon, h: [mon + 1, null] })).toBe(mon + 3);
+    expect(ev("NETWORKDAYS.INTL(s, f, 1, h)", { s: mon, f: fri, h: [mon + 1, null] })).toBe(4);
+    expect(ev("WORKDAY.INTL(s, n, 1, h)", { s: mon, n: [1, 2], h: [mon + 1] })).toEqual([mon + 2, mon + 3]);
+  });
   it("a linear Fit over collinear x is #DIV/0! like SLOPE, not three blanks", async () => {
     const { LinestNode } = await import("../../src/graph/nodes/stats");
     const out = new LinestNode({ op: "linear" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] });

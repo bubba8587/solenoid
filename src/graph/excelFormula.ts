@@ -427,7 +427,6 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
   "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC",
   "GCD", "LCM", "MULTINOMIAL",
-  "NETWORKDAYS", "NETWORKDAYS.INTL", "WORKDAY", "WORKDAY.INTL",
   "CORREL", "PEARSON", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR",
   "AND", "OR", "XOR",
@@ -723,12 +722,28 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
 
 const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISBOOLEAN", "ISREF", "N", "T", "TYPE", "IF", "IFS", "CHOOSE"]);
 
+// [[D86]] blankRoles: the one argument read as a whole list, its blanks dropped, while the others blank-gate and broadcast.
+const WHOLE_LIST_ARG: Record<string, number> = { WORKDAY: 2, "WORKDAY.INTL": 3, NETWORKDAYS: 2, "NETWORKDAYS.INTL": 3 };
+
 function broadcastCall(name: string, argv: unknown[], blankSlots: readonly boolean[] = []): unknown {
+  const wholeAt = WHOLE_LIST_ARG[name];
+  if (wholeAt !== undefined && isArr(argv[wholeAt])) {
+    const items = (argv[wholeAt] as unknown[]).flat();
+    const err = items.find(isSolError);
+    if (err) return err;
+    const whole = items.filter((v) => v != null);
+    const rest = argv.filter((_, i) => i !== wholeAt);
+    return broadcastWith(rest, blankSlots.filter((_, i) => i !== wholeAt), NULL_INSPECTING.has(name),
+      (...args) => dispatch(name, ...args.slice(0, wholeAt), whole, ...args.slice(wholeAt)));
+  }
+  return broadcastWith(argv, blankSlots, NULL_INSPECTING.has(name), (...args) => dispatch(name, ...args));
+}
+
+function broadcastWith(argv: unknown[], blankSlots: readonly boolean[], inspectsNull: boolean, fn: (...args: unknown[]) => unknown): unknown {
   const call = (...args: unknown[]): unknown => {
-    const r = dispatch(name, ...args);
+    const r = fn(...args);
     return typeof r === "number" ? guardFinite(r, args) : r;
   };
-  const inspectsNull = NULL_INSPECTING.has(name);
   if (!argv.some(isArr)) {
     return !inspectsNull && argv.some((v, i) => isMissing(v) && !blankSlots[i]) ? null : call(...argv);
   }
