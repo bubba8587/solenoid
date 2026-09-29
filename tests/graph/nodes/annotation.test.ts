@@ -260,6 +260,11 @@ describe("toggleTaskMarker — code is not a checkbox", () => {
     expect(toggleTaskMarker(body, 1)).toBe("```\n- [ ] fake\n```\n- [ ] real\n\npara\n\n    - [ ] code\n- [x] last");
   });
 
+  it("every line of an indented code block is code, not just its first", () => {
+    const body = "Intro\n\n    - [ ] a\n    - [ ] b\n\n    - [ ] c\n- [ ] real";
+    expect(toggleTaskMarker(body, 0)).toBe("Intro\n\n    - [ ] a\n    - [ ] b\n\n    - [ ] c\n- [x] real");
+  });
+
   it("a nested item indented four spaces under a list still counts", () => {
     const body = "- [ ] top\n    - [ ] nested";
     expect(toggleTaskMarker(body, 1)).toBe("- [ ] top\n    - [x] nested");

@@ -207,15 +207,17 @@ export function toggleTaskMarker(body: string, index: number): string {
   const marker = /^(\s*[-*+]\s+)\[([ xX])\](?=\s|$)/;
   let count = -1;
   const fenced = fencedLines(lines.slice(start));
-  let prevBlank = true, prevItem = false;
+  let prevBlank = true, prevItem = false, inCode = false;
   for (let i = start; i < lines.length; i++) {
     const line = lines[i];
     if (fenced[i - start]) {
-      prevBlank = false; prevItem = false;
+      prevBlank = false; prevItem = false; inCode = false;
       continue;
     }
     const blank = line.trim() === "";
-    const indentedCode: boolean = !blank && /^(?: {4,}|\t)/.test(line) && prevBlank && !prevItem;
+    const indented = /^(?: {4,}|\t)/.test(line);
+    const indentedCode: boolean = !blank && indented && (inCode || (prevBlank && !prevItem));
+    if (!blank) inCode = indentedCode;
     const m = indentedCode ? null : marker.exec(line);
     prevBlank = blank;
     if (!blank) prevItem = indentedCode ? prevItem : /^\s*(?:[-*+]|\d+[.)])\s/.test(line);
