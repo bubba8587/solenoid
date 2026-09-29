@@ -50,7 +50,7 @@ Three distinctions carry the most weight:
   - a `±Infinity` result from all-finite inputs is `#OVERFLOW!`;
   - a `±Infinity` result with an infinite input passes through, since it is definable.
 
-  So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or an unparseable typed cell through `coerceFrameCell`) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
+  So a computation cannot produce NaN. The remaining NaN sources are data entry (dirty imported data, or an unparseable typed cell or List Input item through `coerceFrameCell`) and one class of bug: a `UnitCell` that escapes the unit-blind boundary reaches `coerceNumber` as NaN, which `stripUnitCells` exists to prevent.
 - **`null`** comes from data (blank cells, CSV holes), from padding a ragged list, from an empty aggregation (`AVG([])`), and from Kleene logic that really cannot answer.
 
 ## Propagation, by context

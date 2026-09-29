@@ -254,6 +254,8 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     passthrough: "the passthrough() declaration (a class-field function)",
     pairLabels: "readonly row-label declaration", errorOnlyOutput: "class-constant declaration",
     unitAware: "class-constant declaration (perInputUnitBlind)",
+    ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[D93]] listInputReadsLikeFrame)",
+    cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
     // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
     lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",

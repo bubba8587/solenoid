@@ -118,7 +118,7 @@ The Source checkbox appears on a literal-source editor, and on a read-only popup
 - **Literal source, Formatted:** each raw cell is coerced by its column type and formatted (`coerceFrameCell`, `formatFrameCell`). An editable cell shows the formatted text until focused, then the raw text, and shows the formatted text again after the commit.
 - **Literal source, Source:** the raw text throughout.
 - **Read-only, Formatted:** a date column formats its serials in the default date format. A blank date cell stays blank, because `Number("")` is 0, a real serial (30-Dec-1899).
-- **Read-only, Source:** the typed text from `sourceCells` (a frame's `raw`) when there is one; otherwise the underlying form, so a logical shows `1` or `0`, a date its serial and a number its full digits. A purely computed column has no `raw`, so it shows the underlying form.
+- **Read-only, Source:** the typed text from `sourceCells` (a frame's `raw`, or List Input's typed items as one row, [[D93]] listInputReadsLikeFrame) when there is one; otherwise the underlying form, so a logical shows `1` or `0`, a date its serial and a number its full digits. A purely computed column has no `raw`, so it shows the underlying form.
 
 A list's popup takes its element type from its items (`elemFamilyOfCells`). A list mixing kinds has nothing to render as, so it opens as text and shows each item as it is; its chip wears the neutral `--sock-any` gray rather than claiming a kind (`elemChipClass`).
 

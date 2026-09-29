@@ -33,8 +33,13 @@ function parseBoolText(p: string): boolean | null {
   return coerceLogical(p);
 }
 
+/** A list literal's items as typed: split like CSV, trimmed, blanks dropped. */
+export function listLiteralItems(csv: string): string[] {
+  return parseCsvLine(csv).map((s) => s.trim()).filter((s) => s !== "");
+}
+
 export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
-  const parts = parseCsvLine(csv).map((s) => s.trim()).filter((s) => s !== "");
+  const parts = listLiteralItems(csv);
   if (dt === "numlist" || dt === "list") return parts.map((p) => (p !== "" && Number.isFinite(Number(p)) ? Number(p) : null));
   if (dt === "datelist") return parts.map((p) => {
     const d = parseDate(p);
@@ -201,6 +206,8 @@ type NodeLike = {
   inputs?: Record<string, { socket?: unknown } | undefined>;
   stringLiterals?: Record<string, string>;
   rawInputs?: ReadonlySet<string>;
+  /** The node reads its own typed list text, keeping it beside the values ([[D93]] listInputReadsLikeFrame). */
+  ownsListLiterals?: boolean;
   noWidenInputs?: ReadonlySet<string>;
   unitAware?: boolean;
   __coerced?: boolean;
@@ -256,7 +263,7 @@ export function wrapNodeData(node: NodeLike) {
       if (noWiden?.has(key)) { coerced[key] = arr.map((v) => coerceValueNoWiden(dt, v)); continue; }
       coerced[key] = arr.map((v) => coerceValue(dt, v));
     }
-    const lits = node.stringLiterals;
+    const lits = node.ownsListLiterals ? undefined : node.stringLiterals;
     if (lits && node.inputs) {
       for (const key of Object.keys(node.inputs)) {
         if ((coerced[key]?.length ?? 0) > 0) continue;

@@ -5,7 +5,7 @@ import { resolveExcelFunction } from "../excelFunctions";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
-import { parseListLiteral } from "../coerceInputs";
+import { listLiteralItems } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
@@ -25,7 +25,7 @@ import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
 import { MAX_GENERATED, arrayCount, randArrayRange, randArrayDraw, shuffleList, asRowsOf, backToList, sortGrid, sortGridByKeys, uniqueGrid, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS, isInMask, tallyPairs } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
-import { coerceListItem, isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
+import { coerceListItem, coerceFrameCell, isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, flatCubeToFrame, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
 // ─── List Input ─────────────────────────────────────────────────────────────
@@ -39,8 +39,10 @@ const LIST_ELEM_SOCKET: Record<ListElemType, SolenoidSocket> = {
   logical: logicalListSocket,
 };
 
-function parseCsvList(dt: ListElemType, s: string | undefined): AnyCell[] {
-  return s ? (parseListLiteral(s, LIST_ELEM_SOCKET[dt].dataType) as AnyCell[]) : [];
+/** A row's typed items, each read as a Frame cell of the list's type, the text kept beside each value ([[D93]] listInputReadsLikeFrame). */
+function parseCsvList(dt: ListElemType, s: string | undefined): { values: AnyCell[]; source: string[] } {
+  const source = s ? listLiteralItems(s) : [];
+  return { values: source.map((t) => coerceFrameCell(dt, t) as AnyCell), source };
 }
 
 const coerceElem = (dt: ListElemType, v: unknown): AnyCell => coerceListItem(dt, v) as AnyCell;
@@ -52,6 +54,9 @@ export class ListInputNode extends ClassicPreset.Node {
 
   label: string;
   cachedList: AnyCell[] = [];
+  /** The typed text behind each item of `cachedList`, null for a wired one: the popup's Source view. */
+  cachedSource: (string | null)[] = [];
+  readonly ownsListLiterals = true;
   dataType: ListElemType;
   stringLiterals: Record<string, string> = {};
   nextInputId = 0;
@@ -106,6 +111,7 @@ export class ListInputNode extends ClassicPreset.Node {
 
   data(inputs: Record<string, unknown[] | undefined>) {
     const list: AnyCell[] = [];
+    const source: (string | null)[] = [];
     for (const key of Object.keys(this.inputs)) {
       // A connected cable wins even carrying null; testing `wired != null` would bring back the row's text.
       const slot = inputs[key];
@@ -115,12 +121,16 @@ export class ListInputNode extends ClassicPreset.Node {
         // Null and per-cell errors pass unchanged, so the list stays aligned with any parallel one.
         for (const v of arr) {
           list.push(v === null || isSolError(v) ? (v as AnyCell) : coerceElem(this.dataType, v));
+          source.push(null);
         }
       } else {
-        for (const v of parseCsvList(this.dataType, this.stringLiterals[key])) list.push(v);
+        const typed = parseCsvList(this.dataType, this.stringLiterals[key]);
+        list.push(...typed.values);
+        source.push(...typed.source);
       }
     }
     this.cachedList = list;
+    this.cachedSource = source;
     return { list };
   }
 }

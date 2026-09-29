@@ -6,7 +6,7 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-09-29b: ROW() hint, Frame Input header legend; cloud session)
+### SESSION DIGEST (2026-09-29b: ROW() hint, Frame Input header legend, List Input Source; cloud session)
 
 - **ROW and COLUMN leave `LEGACY_ALIASES`** for their own `POSITION_NAMES` table ([[C14]] currentExcelParity,
   contested, keep won; the ROW/COLUMN consequence amended): still `#NAME?`, but ROW's message names the
@@ -14,6 +14,11 @@ specific item.
   source of a blocked name's message. Spec: [[formula-language]] § Blocked and wrong-surface names.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's root also offers Fx and has no legend yet.
+- **List Input reads typed items as Frame Input cells** ([[D93]] listInputReadsLikeFrame): `coerceFrameCell`, so an
+  unreadable item is NaN, and the typed text rides beside each value (`cachedSource`) into the list popup's Source
+  view. The node sets `ownsListLiterals`, so `coerceInputs` no longer pre-parses its rows (that pre-parse is why the
+  node-level tests passed while the app still showed blanks). Open: `dateFormatDisplay` still blanks a NaN date
+  in any date list's value box and popup, where a Frame's date column shows `NaN` ([[format-model]]).
 
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 

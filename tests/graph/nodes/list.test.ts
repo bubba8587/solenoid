@@ -1,4 +1,5 @@
 // [[C24]] arraySemantics
+import { coerceFrameCell } from "../../../src/graph/frame";
 import { describe, it, expect } from "vitest";
 import type { CondAggOp } from "../../../src/graph/nodes/list";
 import {
@@ -95,13 +96,10 @@ describe("List Input (multi-type)", () => {
     n.stringLiterals["v0"] = "apple, pear, fig";
     expect(n.data({}).list).toEqual(["apple", "pear", "fig"]);
   });
-  it("logical type parses booleans (true/false/1/0/yes/no); junk is null, not FALSE", () => {
-    // "maybe" is UNKNOWN, so it's Kleene null — the old `?? false` asserted a FALSE the
-    // user never typed. (This test used to pin the DEAD in-file parser, which dropped
-    // junk; production ran parseListLiteral and returned false. Both are now null.)
+  it("logical type reads a cell as Frame Input does: true/false/1/0, anything else blank", () => {
     const n = new ListInputNode({ dataType: "logical" });
-    n.stringLiterals["v0"] = "true, false, 1, 0, yes, no, maybe";
-    expect(n.data({}).list).toEqual([true, false, true, false, true, false, null]);
+    n.stringLiterals["v0"] = "true, false, 1, 0, maybe";
+    expect(n.data({}).list).toEqual([true, false, true, false, null]);
   });
   it("setDataType is a no-op (returns false) when unchanged", () => {
     expect(new ListInputNode().setDataType("number")).toBe(false);
@@ -171,19 +169,14 @@ describe("List Input (multi-type)", () => {
     expect([fields("number"), fields("string"), fields("date"), fields("logical")]).toEqual([2, 2, 2, 2]);
   });
 
-  it("an unparseable typed cell is null (MISSING) in EVERY type — never dropped, never NaN", () => {
-    // Number mode dropped it (shifting positions), Date mode emitted a NaN, Logical mode
-    // coerced it to FALSE. Three different answers to the same question; now one.
-    const parse = (t: "number" | "string" | "date" | "logical", text: string) => {
+  it("a typed item reads exactly as a Frame Input cell of the same type: unreadable is NaN, never dropped", () => {
+    const text = "abc, 5, 2024, 01-Jan-2026, true";
+    for (const t of ["number", "string", "date", "logical"] as const) {
       const n = new ListInputNode({ dataType: t });
       n.stringLiterals["v0"] = text;
-      return n.data({}).list;
-    };
-    expect(parse("number", "abc, 5")).toEqual([null, 5]);
-    expect(parse("date", "abc, 01-Jan-2026")).toEqual([null, 46023]);
-    // NaN is never a cell — it reads as a number but means "undefined", so it would
-    // slip past every isMissing/isSolError guard downstream.
-    expect(parse("date", "1, 2, 3").every((c) => !Number.isNaN(c as number))).toBe(true);
+      const items = text.split(",").map((x) => x.trim());
+      expect(n.data({}).list, t).toEqual(items.map((x) => coerceFrameCell(t, x)));
+    }
   });
   it("concatenates rows + a wired list, keeping only elements of the current type", () => {
     const n = new ListInputNode();

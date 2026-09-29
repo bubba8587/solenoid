@@ -29,6 +29,7 @@ import { nodeSizeStore } from "../nodeSizeStore";
 import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
+import type { TablePopupState } from "../tablePopupStore";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
@@ -440,6 +441,7 @@ export function ValueDisplay({
   toClipboard,
   full,
   socketKey,
+  popupOverrides,
 }: {
   value: DisplayValue;
   empty?: ReactNode;
@@ -449,6 +451,8 @@ export function ValueDisplay({
   full?: boolean;
   /** The output socket this box displays, so an FC wired to one output formats only its box. */
   socketKey?: string;
+  /** Passed to a list or table chip's popup: List Input's typed text for the Source view. */
+  popupOverrides?: Partial<TablePopupState>;
 }) {
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -593,8 +597,8 @@ export function ValueDisplay({
             ann?.chip ? <ChipList items={value as (string | null | SolError)[]} cased={cased} />
             : listInline ? (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ")
             // dateFormatDisplay turned a date list's serials into strings, so without `elem` the chip would read "text".
-            : <ArrayChip value={value as string[]} elem={elemFam} />)
-        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar, ann)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} />)
+            : <ArrayChip value={value as string[]} elem={elemFam} popupOverrides={popupOverrides} />)
+        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar, ann)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} popupOverrides={popupOverrides} />)
         : typeof value === "number" && Number.isNaN(value) ? (
             <span className="solenoid-node__nan" title="Not a number: an undefined value in the data">NaN</span>
           )

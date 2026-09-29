@@ -1,4 +1,4 @@
-// [[D16]] retypeReconciles, [[C113]] controlDrivenRetype, [[C26]] opArgDistinct (the type toggle is an argument)
+// [[D93]] listInputReadsLikeFrame, [[D16]] retypeReconciles, [[C113]] controlDrivenRetype, [[C26]] opArgDistinct (the type toggle is an argument)
 import { useEffect, useState } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";
@@ -48,7 +48,10 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
         onChange={(next) => { setDt(next); void applyListType(data, next); }}
       />
       <ExtensibleInputs node={data} emit={emit} />
-      <ValueDisplay value={data.cachedList as DisplayValue} />
+      <ValueDisplay
+        value={data.cachedList as DisplayValue}
+        popupOverrides={data.cachedSource.some((t) => t !== null) ? { sourceCells: [data.cachedSource] } : undefined}
+      />
     </NodeShell>
   );
 }
