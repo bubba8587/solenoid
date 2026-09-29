@@ -218,17 +218,10 @@ export function coerceListItem(type: FrameColType, v: unknown): FrameCell {
     case "number": {
       if (typeof v === "number") return Number.isFinite(v) ? v : null;
       if (typeof v === "boolean") return v ? 1 : 0;
-      if (typeof v === "string") { const n = decimalFromText(v); return Number.isFinite(n) ? n : null; }
       return null;
     }
     case "date": {
-      if (typeof v === "number") return Number.isFinite(v) ? v : null;
-      if (typeof v === "string") {
-        const d = parseDate(v);
-        if (isSolError(d)) return d;
-        return d !== null && Number.isFinite(d) ? d : null;
-      }
-      return null;
+      return typeof v === "number" && Number.isFinite(v) ? v : null;
     }
     case "string":
       if (typeof v === "string") return v;
