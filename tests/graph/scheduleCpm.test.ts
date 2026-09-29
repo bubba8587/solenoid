@@ -285,6 +285,19 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     ]);
     expect(scheduleTasks(c, { start: MON, workingDays: true }).output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
   });
+
+  it("whitespace is blank; an unreadable or error Active cell is the row's fault, never a quiet drop", () => {
+    const run = (active: CubeCell) => scheduleTasks(cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Duration", cells: [1, 1], type: "number" },
+      { name: "Active", cells: [true, active] },
+    ]), { start: MON, workingDays: true });
+    expect(run("  ").output.tasks.map((t) => t.name)).toEqual(["A", "B"]);
+    const caught = (active: CubeCell) => { try { run(active); return null; } catch (e) { return e as { code: string; message: string }; } };
+    expect(caught("maybe")?.code).toBe("#VALUE!");
+    expect(caught(NaN)?.message).toContain('"B"');
+    expect(caught({ __solError: true, code: "#REF!", message: "x" } as never)?.code).toBe("#REF!");
+  });
 });
 
 describe("a Work column beside a stray number column", () => {

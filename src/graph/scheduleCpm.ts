@@ -175,7 +175,15 @@ export function readLogicalCell(cell: CubeCell | undefined): boolean {
 
 /** An Active cell that is set and false leaves its row, and the row's subtree, out of the schedule. */
 export function isInactive(cell: CubeCell | undefined): boolean {
-  return cell != null && cell !== "" && !readLogicalCell(cell);
+  return cell != null && !(isText(cell) && cell.trim() === "") && !readLogicalCell(cell);
+}
+
+/** An Active cell that is an error or reads as neither true nor false is the row's fault, never a quiet drop. */
+function checkActiveCell(cell: CubeCell | undefined, task: string): void {
+  if (cell == null || typeof cell === "boolean" || isNum(cell)) return;
+  if (isSolError(cell)) throw solError(cell.code, `Schedule: task "${task}" has an Active that is an error`);
+  if (isText(cell) && (cell.trim() === "" || ["true", "yes", "y", "1", "on", "false", "no", "n", "0", "off"].includes(norm(cell)))) return;
+  throw solError("#VALUE!", `Schedule: task "${task}" has an Active that is neither true nor false`);
 }
 
 interface Level {
@@ -218,6 +226,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     const name = String(task.cells[i] ?? "").trim();
     if (!name) throw solError("#VALUE!", `Schedule: row ${i + 1} has no task name`);
     names.push(name);
+    checkActiveCell(cols.active?.cells[i], name);
     const off = isInactive(cols.active?.cells[i]);
     inactive.push(off);
     if (off) { childLevels.push(null); continue; }
