@@ -28,6 +28,9 @@ describe("parseDate with relative phrases", () => {
     expect(parseDate("friday", { relative: true, now: wed })).toBe(d("2026-03-20"));      // the coming Friday (forward-looking)
     expect(parseDate("next friday", { relative: true, now: wed })).toBe(d("2026-03-27")); // chrono: the Friday of NEXT week
     expect(parseDate("next week", { relative: true, now: wed })).toBe(d("2026-03-25"));
+    expect(parseDate("last monday", { relative: true, now: wed })).toBe(d("2026-03-16")); // "last" looks back
+    expect(parseDate("last friday", { relative: true, now: wed })).toBe(d("2026-03-13"));
+    expect(parseDate("last wednesday", { relative: true, now: wed })).toBe(d("2026-03-11"));
     expect(parseDate("in 2 weeks", { relative: true, now: wed })).toBe(d("2026-04-01"));
     expect(parseDate("nonsense today foo", { relative: true, now: wed })).toBeNaN(); // trailing noise still fails
     expect(parseDate("15 March 1996", { relative: true, now: wed })).toBe(d("1996-03-15")); // absolute text unaffected

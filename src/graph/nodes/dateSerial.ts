@@ -42,7 +42,7 @@ export function parseDate(s: string, opts?: ParseDateOptions): number | SolError
   if (isRelativeDateText(t)) {
     if (!opts?.relative) return NaN;
     const ref = opts.now ?? new Date();
-    const r = chrono.parse(t, ref, { forwardDate: true })[0];
+    const r = chrono.parse(t, ref, { forwardDate: !/\blast\b/i.test(t) })[0];
     if (!r || r.index !== 0 || !/^[\s.,]*$/.test(t.slice(r.text.length))) return NaN;
     return wallClockSerial(r.start.date(), true);
   }
