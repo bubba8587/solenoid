@@ -1,0 +1,30 @@
+# Run by hand (Actions → Plugin build → Run workflow, pick a branch): builds Solenoid Properties
+# and keeps it as a download on the run's page (Summary → Artifacts), to try in a vault without a
+# release. Publishing stays with bubba8587/Solenoid-Properties ([[obsidian-plugin]] § Publishing).
+name: Plugin build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run plugin:build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solenoid-properties
+          path: |
+            obsidian-plugin/dist/main.js
+            obsidian-plugin/dist/manifest.json
+            obsidian-plugin/dist/styles.css

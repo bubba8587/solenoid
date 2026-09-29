@@ -408,6 +408,10 @@ stand-in for types as the build's swap resolves it for code. Its `npm run build`
 `tsc --noEmit` first, which is the guard on a shim's signatures. Its
 README is for users, so the release steps live here:
 
+To try a branch in a vault without a release, run Actions → Plugin build here (`plugin-build.yml`,
+by hand only): the run keeps `main.js`, `manifest.json` and `styles.css` as a download, which goes
+into the vault's `.obsidian/plugins/solenoid-properties/`.
+
 1. Here, set the version in `obsidian-plugin/manifest.json`, commit and push `develop`.
 2. `npm run plugin:export -- "<clone>"`, then commit and push there.
 3. There, run Actions → Release → Run workflow with the version and "publish" OFF: it only builds.
