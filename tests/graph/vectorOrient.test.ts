@@ -1,4 +1,4 @@
-// [[E17]] vectorOrient
+// [[D85]] columnsStayColumns
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";

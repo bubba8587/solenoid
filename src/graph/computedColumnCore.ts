@@ -118,7 +118,7 @@ function runColumn<C>(
 
   const colKind = spec.kind === "lambda" ? ("col" as const) : ("wholecol" as const);
   const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
-  // A wired list with one value per row is per-row data, so it reads as a column beside the table's ([[E17]] vectorOrient).
+  // A wired list with one value per row is per-row data, so it reads as a column beside the table's ([[D85]] columnsStayColumns).
   const aligned = (v: unknown): unknown =>
     Array.isArray(v) && v.length === rows && rows > 1 && !v.some(Array.isArray) ? v.map((x) => [x]) : v;
   const bindings: Binding[] = [];

@@ -23,7 +23,21 @@ function scalarRead(col: CubeColumn, rows: number): CubeRowColumn {
   return read;
 }
 
-/** Scalar columns read as typed columns, a column of lists reads each row's list (its whole is `#SHAPE!`), and a column holding tables reads `#SHAPE!`. */
+/**
+ * A column of lists read whole is its rows stacked, one list per row, padded with blanks to the longest
+ * ([[D81]] cubeRowLists, [[D85]] columnsStayColumns): a list is a row, so a column of them is a table.
+ * A blank is no value here, so SUM and AVERAGE read only the items that exist.
+ */
+function stackedRows(col: CubeColumn, values: readonly unknown[]): unknown {
+  if (values.some((v) => Array.isArray(v) && v.some(Array.isArray))) {
+    return solError("#SHAPE!", `"${col.name}" holds a grid in a row, so it has no single table to read. Use @${/^[A-Za-z_][\w.]*$/.test(col.name) ? col.name : `[${col.name}]`} to read this row's.`);
+  }
+  const rows = values.map((v) => (Array.isArray(v) ? v : v === null ? [] : [v]));
+  const width = Math.max(1, ...rows.map((r) => r.length));
+  return rows.map((r) => [...r, ...Array<unknown>(width - r.length).fill(null)]);
+}
+
+/** Scalar columns read as typed columns, a column of lists reads each row's list and whole as its stacked rows, and a column holding tables reads `#SHAPE!`. */
 export function cubeRowTable(cube: CubeValue): { columns: CubeRowColumn[] } {
   const rows = cube.columns.reduce((m, c) => Math.max(m, c.cells.length), 0);
   return {
@@ -39,7 +53,7 @@ export function cubeRowTable(cube: CubeValue): { columns: CubeRowColumn[] } {
         name: col.name,
         type: col.type ?? inferColumn(col.name, items).type,
         values,
-        whole: solError("#SHAPE!", `"${col.name}" holds a list in each row. Use @${/^[A-Za-z_][\w.]*$/.test(col.name) ? col.name : `[${col.name}]`} to read this row's list.`),
+        whole: stackedRows(col, values),
       };
     }),
   };

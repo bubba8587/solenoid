@@ -12,12 +12,15 @@ specific item.
   ([[C22]] rowFormulaRefs, [[C14]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
   `ROWS(price)` is the row count, and a column may be named `row`. COLUMN stays blocked (`POSITION_NAMES`,
   `blockedNameMessage`).
-- **Every list-taking function declares `orient`** ([[E17]] vectorOrient): `free` (direction means nothing; a
+- **One shape model, D85 columnsStayColumns** (E17 folded in and retired): a List is one CSV row, a Frame column a
+  one-column table, Frame from Lists the named transposer.
+- **Every list-taking function declares `orient`** ([[D85]] columnsStayColumns): `free` (direction means nothing; a
   one-column or one-row table reads as its items and a list answer comes back the way it went in) or `axis`
   (the Excel shapers read rows and columns themselves). `readVectors` / `asColumn` in `excelFormula.ts` apply it;
   `vectorOrient.test.ts` runs every `free` function on a list and a column. A computed column's row-aligned wired
   list reads as a column. INTERPOLATE and DIAGONAL are `free` for their vector mode and keep their grid mode.
-  A Cube column of list cells stays `#SHAPE!` read whole, `ROWS(prices)` included; it could answer the row count.
+  A Cube column of list cells reads whole as its rows stacked, padded with blanks ([[D81]] cubeRowLists), so
+  `SUM(prices)`, `ROWS(prices)` and `INDEX(prices, ROW(), 2)` work; a grid in some row keeps it `#SHAPE!`.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
 - **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode

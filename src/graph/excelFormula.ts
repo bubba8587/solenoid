@@ -469,7 +469,7 @@ const NULLABLE_SCALARS_OK = new Set([
   "SUMIFS", "COUNTIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIF", "AVERAGEIF",
 ]);
 
-/** A `free` function's vector arguments ([[E17]] vectorOrient): a one-column or one-row table reads as its items; `column` when the first vector was a column. */
+/** A `free` function's vector arguments ([[D85]] columnsStayColumns): a one-column or one-row table reads as its items; `column` when the first vector was a column. */
 function readVectors(argv: unknown[]): { argv: unknown[]; column: boolean } | null {
   let first: boolean | undefined;
   let changed = false;

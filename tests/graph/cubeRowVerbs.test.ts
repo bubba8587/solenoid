@@ -185,10 +185,33 @@ describe("Computed Column over a cube", () => {
     expect(up.columns.find((k) => k.name === "up")!.type).toBe("string");
   });
 
-  it("a bare list column is #SHAPE! pointing at @", () => {
-    const cells = colCells(compute("COUNTA(tags)", "x"), "x");
+  // [[D81]] cubeRowLists, [[D85]] columnsStayColumns: a column of lists read whole is its rows stacked, padded with blanks.
+  it("a bare list column reads as its rows stacked, padded with blanks that totals skip", () => {
+    expect(colCells(compute("COUNTA(tags)", "x"), "x")).toEqual([3, 3]);
+    expect(colCells(compute("ROWS(tags)", "x"), "x")).toEqual([2, 2]);
+    expect(colCells(compute("COLUMNS(tags)", "x"), "x")).toEqual([2, 2]);
+    expect(colCells(compute("INDEX(tags, ROW(), 1)", "x"), "x")).toEqual(["work", "home"]);
+    const prices = cubeFromColumns([
+      { name: "k", cells: ["A", "B"] },
+      { name: "prices", cells: [[1, 2, 3], [10]] },
+    ]);
+    const run = (expr: string) => {
+      const n = new ComputedColumnNode({ expr });
+      n.stringLiterals.name = "x";
+      return colCells(n.data({ frame: [prices] as never }).frame as CubeValue, "x");
+    };
+    expect(run("SUM(prices)")).toEqual([16, 16]);
+    expect(run("SUM(@prices) / SUM(prices)")).toEqual([6 / 16, 10 / 16]);
+    expect(run("AVERAGE(prices)")).toEqual([4, 4]);
+  });
+
+  it("a list column with a grid in a row has no single table, so read whole it is #SHAPE! pointing at @", () => {
+    const grid = cubeFromColumns([{ name: "g", cells: [[[1, 2], [3, 4]], [5]] }]);
+    const n = new ComputedColumnNode({ expr: "SUM(g)" });
+    n.stringLiterals.name = "x";
+    const cells = colCells(n.data({ frame: [grid] as never }).frame as CubeValue, "x");
     expect(cells.every((v) => isSolError(v) && v.code === "#SHAPE!")).toBe(true);
-    expect((cells[0] as { message: string }).message).toContain("@tags");
+    expect((cells[0] as { message: string }).message).toContain("@g");
   });
 
   it("a nested table column stays out of formulas", () => {

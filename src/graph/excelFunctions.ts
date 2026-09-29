@@ -320,7 +320,7 @@ export type ExcelReturn = "number" | "string" | "logical" | "date" | "complex" |
 export type ExcelRank = "scalar" | "list" | "matrix";
 
 /**
- * How a list-taking function reads a vector's direction ([[E17]] vectorOrient). Every `listArgs` function declares it.
+ * How a list-taking function reads a vector's direction ([[D85]] columnsStayColumns). Every `listArgs` function declares it.
  * `free`: direction means nothing to it. A one-column or one-row table reads as its items, and a list answer
  * comes back the way the first vector came in, so a column in is a column out. A table of more than one row and
  * column stays a table, so a function with a grid mode (INTERPOLATE, DIAGONAL) still gets its grid.

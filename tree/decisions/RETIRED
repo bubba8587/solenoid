@@ -110,3 +110,4 @@ E15	2026-09-26	superseded	D86	Claude Opus 5.5	the author	settingBlankIsLeftOut: 
 D88	2026-09-27	moved	C114	Claude Opus 5.5	the author	cardsView: Table popups offer a mobile-friendly, deterministic Cards layout inferred from the data
 C63	2026-09-27	reverted	-	Claude Opus 5.5	the author	oneRecordNode: The Record views (Detail, Cards, Gallery, Board, List) are choices on one Record node
 D80	2026-09-28	superseded	D90	Claude (agent)	the author	cubeColumnTypes: A Cube column may declare a type or none; a declared type holds every cell and list item to it
+E17	2026-09-29	superseded	D85	Claude Opus 5.5	the author	vectorOrient: A Frame column is a one-column table; each list function declares whether a vector's direction matters
