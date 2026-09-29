@@ -105,6 +105,11 @@ function dateCellToISO(raw: string): string {
   return Number.isFinite(serial) && serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
 }
 
+/** A list's items in the view's order: a vertical list sorts, a horizontal one keeps its order. */
+export function listInViewOrder(line: string[], vertical: boolean, order: number[]): string[] {
+  return vertical ? order.map((i) => line[i] ?? "") : line;
+}
+
 /** The cells a text edit suggests from: a list's items (its grid is one row), else column c. */
 export function suggestionCells(grid: string[][], c: number, list: boolean): string[] {
   return list ? (grid[0] ?? []) : grid.map((r) => r[c]);
@@ -618,7 +623,7 @@ export function TablePopup() {
     const order = inSortOrder ? sortOrder : Array.from({ length: viewRows }, (_, i) => i);
     if (state!.list) {
       const line = displayRowAt(0, as);
-      return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType, !editable);
+      return listToText([listInViewOrder(line, vertical, order)], cellType, !editable);
     }
     const body = toCSV(order.map((r) => displayRowAt(r, as)), cellType, typesShown, !editable);
     return hasHeaderLine
@@ -665,7 +670,7 @@ export function TablePopup() {
     void copyText(text);
   }
   function copyMarkdown() {
-    const gridForMd = state?.list ? [displayRowAt(0)] : sortOrder.map((r) => displayRowAt(r));
+    const gridForMd = state?.list ? [listInViewOrder(displayRowAt(0), vertical, sortOrder)] : sortOrder.map((r) => displayRowAt(r));
     void copyText(toMarkdown(gridForMd, cellType, columnTypes, headers, !!state?.list));
   }
   function exportCsv() {
