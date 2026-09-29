@@ -1,4 +1,4 @@
-// [[C44]] dateSerials, [[D54]] relativeDatesOptIn
+// [[C44]] dateSerials, [[D54]] relativeDatesOptIn, [[C95]] commitOnEnter
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DateInputNode as DateInputNodeType } from "../rete-nodes";
 import { jsDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
@@ -29,6 +29,7 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(raw);
+  const canceled = useRef(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const infoBtnRef = useRef<HTMLButtonElement>(null);
   const infoPopRef = useRef<HTMLDivElement>(null);
@@ -51,10 +52,14 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
           style={{ flex: 1, minWidth: 0, color: bad ? "var(--sol-error)" : undefined }}
           onFocus={() => { setDraft(raw); setEditing(true); }}
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => { commit(draft); setEditing(false); }}
+          onBlur={() => {
+            if (canceled.current) canceled.current = false;
+            else commit(draft);
+            setEditing(false);
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-            else if (e.key === "Escape") { setDraft(raw); setEditing(false); e.currentTarget.blur(); }
+            else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
           }}
           onPointerDown={stop}
           onMouseDown={stop}
