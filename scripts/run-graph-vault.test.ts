@@ -115,6 +115,26 @@ describe("run-graph --vault", () => {
     expect(after.startsWith(fmBefore)).toBe(true);          // the frontmatter block untouched
   }, 30_000);
 
+  it("Write Properties writes a stamp key the cube sets as the cube's value, not now", async () => {
+    tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
+    cpSync(DEMO, tmp, { recursive: true });
+    const noteRel = path.join("Tasks", "Order cabinets.md");
+    setFsProvider(nodeFsProvider);
+    settingsStore.set("obsidianVault", tmp);
+    const n = new WriteObsidianNode({ target: "properties" });
+    const cube: CubeValue = { __cube: true, depth: 1, columns: [
+      { name: "path", cells: ["Tasks/Order cabinets.md"], type: "string" },
+      { name: "status", cells: ["done"], type: "string" },
+      { name: "dateModified", cells: ["2020-01-02T03:04:05"], type: "string" },
+    ] };
+    n.data({ rows: [cube] });
+    n.enabled = true;
+    await n.run();
+    const after = readFileSync(path.join(tmp, noteRel), "utf8");
+    expect(after).toContain("status: done");
+    expect(after).toContain("dateModified: 2020-01-02T03:04:05");
+  }, 30_000);
+
   it("--run a Write Properties over the vault writes current scalar values back with no byte change", async () => {
     tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
     cpSync(DEMO, tmp, { recursive: true });

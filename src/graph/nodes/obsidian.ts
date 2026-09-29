@@ -360,6 +360,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
           if (typeName) newTypes.set(r.key, typeName);
         }
         for (const stampKey of ["dateModified", "updated"]) {
+          if (rows.some((r) => r.key === stampKey)) continue;
           const cur = resolveKey(text, stampKey, "");
           if (cur.action !== "add") patch[stampKey] = formatDateSerial(nowSerial(), /^\d{4}-\d{2}-\d{2}$/.test(cur.before) ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
         }
