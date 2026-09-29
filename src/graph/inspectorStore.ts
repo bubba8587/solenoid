@@ -7,6 +7,7 @@ const s = createToggleStore();
 let _focus: string | null = null;
 
 function syncClass(): void {
+  if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("sol-inspector-docked", s.get());
 }
 
@@ -25,6 +26,7 @@ export const inspectorStore = {
     syncClass();
   },
   close(): void {
+    _focus = null;
     s.close();
     syncClass();
   },
