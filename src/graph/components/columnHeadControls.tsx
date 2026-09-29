@@ -4,11 +4,11 @@ import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
 import { InfoIcon } from "./Icons";
+import { TypeIcon } from "./TypeIcon";
 import { closeParens } from "../closeParens";
 
 type ColType = "number" | "string" | "date" | "logical";
 export const COLTYPE_ORDER: ColType[] = ["number", "string", "date", "logical"];
-export const COLTYPE_GLYPH: Record<ColType, string> = { number: "#", string: "T", date: "D", logical: "B" };
 export const COLTYPE_NAME: Record<ColType, string> = { number: "Number", string: "Text", date: "Date", logical: "Boolean" };
 
 
@@ -132,7 +132,7 @@ export function HeaderHelpButton({ formulas, lambdas, cube = false }: { formulas
           <div className="table-popup__helphead">Column Type</div>
           <dl className="table-popup__helplist">
             {cube && <div><dt>–</dt><dd>None, any kind per cell</dd></div>}
-            {COLTYPE_ORDER.map((t) => <div key={t}><dt>{COLTYPE_GLYPH[t]}</dt><dd>{COLTYPE_NAME[t]}</dd></div>)}
+            {COLTYPE_ORDER.map((t) => <div key={t}><dt><TypeIcon type={t} size={12} /></dt><dd>{COLTYPE_NAME[t]}</dd></div>)}
             {formulas && <div><dt>Fx</dt><dd>a formula, run once per row</dd></div>}
           </dl>
           {formulas && (

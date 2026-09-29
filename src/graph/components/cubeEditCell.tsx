@@ -12,7 +12,8 @@ import { elemChipClass } from "../valuePopup";
 import { isSolError } from "../errorValue";
 import { cubeCellToken, CubeCellChip } from "./cubeCell";
 import { CellKindMenu } from "./CellKindMenu";
-import { ColumnExprField, COLTYPE_ORDER, COLTYPE_GLYPH, COLTYPE_NAME } from "./columnHeadControls";
+import { ColumnExprField, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
+import { TypeIcon } from "./TypeIcon";
 
 
 const rowsAt = (records: CubeRecord[], path: CubePath): CubeRecord[] => {
@@ -219,7 +220,7 @@ export function GridEditCell({ edit, path, row, col, source = false }: { edit: C
 type ColumnKind = CubeSourceColumn["type"] | "fx";
 const KIND_ORDER: ColumnKind[] = [undefined, ...COLTYPE_ORDER, "fx"];
 const kindOf = (c: CubeSourceColumn): ColumnKind => (c.expr !== undefined ? "fx" : c.type);
-const KIND_GLYPH = (k: ColumnKind): string => (k === "fx" ? "Fx" : k ? COLTYPE_GLYPH[k] : "–");
+const KIND_GLYPH = (k: ColumnKind): ReactNode => (k === "fx" ? "Fx" : k ? <TypeIcon type={k} size={12} /> : "–");
 const KIND_NAME = (k: ColumnKind): string => (k === "fx" ? "Formula" : k ? COLTYPE_NAME[k] : "None");
 
 function setColumn(edit: CubeEditBinding, name: string, patch: (c: CubeSourceColumn) => CubeSourceColumn) {

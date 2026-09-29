@@ -1,11 +1,13 @@
 // [[C26]] opArgDistinct
+import type { ReactNode } from "react";
 import "./SegToggle.css";
 import { stopDragStart } from "../coarse";
 
 type SegProps<T extends string> = {
   value: T;
   onChange: (next: T) => void;
-  options: ReadonlyArray<{ value: T; label: string; title?: string }>;
+  /** An icon label takes its `title` as its accessible name. */
+  options: ReadonlyArray<{ value: T; label: ReactNode; title?: string }>;
   className?: string;
 };
 
@@ -18,6 +20,7 @@ function Seg<T extends string>({ value, onChange, options, className }: SegProps
           type="button"
           className={`solenoid-segbtn${value === o.value ? " solenoid-segbtn--on" : ""}`}
           title={o.title}
+          aria-label={typeof o.label === "string" ? undefined : o.title}
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           onPointerDown={stopDragStart}

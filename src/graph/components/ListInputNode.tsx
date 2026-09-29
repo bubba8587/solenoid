@@ -1,5 +1,5 @@
 // [[D93]] oneTextReading, [[D16]] retypeReconciles, [[C113]] controlDrivenRetype, [[C26]] opArgDistinct (the type toggle is an argument)
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
@@ -8,13 +8,14 @@ import { SolenoidSocket, canConnect } from "../sockets";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 import type { DisplayValue } from "./valueDisplayFormat";
 
-const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: string }> = [
-  { value: "number",  label: "Num",  title: "Number list" },
-  { value: "string",  label: "Text", title: "Text list" },
-  { value: "date",    label: "Date", title: "Date list" },
-  { value: "logical", label: "Bool", title: "TRUE or FALSE list" },
+const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: ReactNode; title: string }> = [
+  { value: "number",  label: <TypeIcon type="number" />, title: "Number list" },
+  { value: "string",  label: <TypeIcon type="string" />, title: "Text list" },
+  { value: "date",    label: <TypeIcon type="date" />, title: "Date list" },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Boolean list: TRUE or FALSE" },
 ];
 
 export async function applyListType(node: ListInputNodeType, dt: ListElemType): Promise<void> {

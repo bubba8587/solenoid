@@ -1,5 +1,5 @@
 // [[C58]] tableInputRawText
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type MouseEvent, type ReactNode } from "react";
 import type {
   FrameInputNode as FrameInputNodeType,
   BuildFrameNode as BuildFrameNodeType,
@@ -86,6 +86,7 @@ import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
 import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
@@ -843,12 +844,12 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
 
 // ─── SPLIT FRAME ───────────────────────────────────────────────────────────────
 
-const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: string; title: string }[] = [
+const SPLIT_COLTYPE_OPTIONS: { value: SplitColType; label: ReactNode; title: string }[] = [
   { value: "all", label: "All", title: "Keep every column" },
-  { value: "number", label: "Num", title: "Keep only number columns" },
-  { value: "date", label: "Date", title: "Keep only date columns. The Matrix carries serials." },
-  { value: "logical", label: "Bool", title: "Keep only logical columns. The Matrix carries 1/0." },
-  { value: "string", label: "Text", title: "Keep only text columns. Headers only, since text has no numeric Matrix." },
+  { value: "number", label: <TypeIcon type="number" />, title: "Keep only number columns" },
+  { value: "date", label: <TypeIcon type="date" />, title: "Keep only date columns. The Matrix carries serials." },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Keep only logical columns. The Matrix carries 1/0." },
+  { value: "string", label: <TypeIcon type="text" />, title: "Keep only text columns. Headers only, since text has no numeric Matrix." },
 ];
 
 export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType>) {
@@ -882,11 +883,11 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
 
 // ─── GET COLUMN ────────────────────────────────────────────────────────────────
 
-const GET_COLUMN_READ_OPTIONS: { value: GetColumnReadAs; label: string; title: string }[] = [
-  { value: "number", label: "Number", title: "Read the column as numbers" },
-  { value: "text", label: "Text", title: "Read the column as text" },
-  { value: "date", label: "Date", title: "Read the column as dates, stored as Excel serials" },
-  { value: "logical", label: "Boolean", title: "Read the column as logicals (TRUE/FALSE). A 0/1 or true/false column coerces." },
+const GET_COLUMN_READ_OPTIONS: { value: GetColumnReadAs; label: ReactNode; title: string }[] = [
+  { value: "number", label: <TypeIcon type="number" />, title: "Read the column as numbers" },
+  { value: "text", label: <TypeIcon type="text" />, title: "Read the column as text" },
+  { value: "date", label: <TypeIcon type="date" />, title: "Read the column as dates, stored as Excel serials" },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Read the column as logicals (TRUE/FALSE). A 0/1 or true/false column coerces." },
 ];
 
 export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>) {
@@ -908,11 +909,11 @@ export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>)
 
 // ─── ADD COLUMN ────────────────────────────────────────────────────────────────
 
-const ADD_COLUMN_OPTIONS: { value: AddColumnAddAs; label: string; title: string }[] = [
-  { value: "number", label: "Number", title: "Add a numeric column" },
-  { value: "text", label: "Text", title: "Add a text column" },
-  { value: "date", label: "Date", title: "Add a date column of Excel serials" },
-  { value: "logical", label: "Boolean", title: "Add a logical column (TRUE/FALSE). A 0/1 list coerces." },
+const ADD_COLUMN_OPTIONS: { value: AddColumnAddAs; label: ReactNode; title: string }[] = [
+  { value: "number", label: <TypeIcon type="number" />, title: "Add a numeric column" },
+  { value: "text", label: <TypeIcon type="text" />, title: "Add a text column" },
+  { value: "date", label: <TypeIcon type="date" />, title: "Add a date column of Excel serials" },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Add a logical column (TRUE/FALSE). A 0/1 list coerces." },
 ];
 
 export function AddColumnComponent({ data, emit }: NodeProps<AddColumnNodeType>) {

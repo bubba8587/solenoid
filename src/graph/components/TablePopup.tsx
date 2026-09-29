@@ -27,7 +27,8 @@ import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
-import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, COLTYPE_ORDER, COLTYPE_GLYPH, COLTYPE_NAME } from "./columnHeadControls";
+import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, COLTYPE_ORDER, COLTYPE_NAME } from "./columnHeadControls";
+import { TypeIcon } from "./TypeIcon";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
@@ -804,7 +805,7 @@ export function TablePopup() {
                           title={`Column type: ${colExprs[c] !== undefined ? "Formula" : COLTYPE_NAME[colTypeAt(c)]}. Cycle Number / Text / Date / Boolean${fxColumns ? " / Formula" : ""}.`}
                           onClick={(e) => { e.stopPropagation(); cycleColumnKind(c); }}
                         >
-                          {colExprs[c] !== undefined ? "Fx" : COLTYPE_GLYPH[colTypeAt(c)]}
+                          {colExprs[c] !== undefined ? "Fx" : <TypeIcon type={colTypeAt(c)} size={12} />}
                         </button>
                         {(() => {
                           const nameOptions = headerNameOptions(c);
@@ -831,7 +832,7 @@ export function TablePopup() {
                                     if (types.length < 2) return null;
                                     return (
                                       <span className="table-popup__suggest-types" title={`Typed as ${types.map((t) => COLTYPE_NAME[t]).join(" and ")} in other frames`}>
-                                        {types.map((t) => <span key={t} className="table-popup__typeglyph">{COLTYPE_GLYPH[t]}</span>)}
+                                        {types.map((t) => <span key={t} className="table-popup__typeglyph"><TypeIcon type={t} size={12} /></span>)}
                                       </span>
                                     );
                                   }}

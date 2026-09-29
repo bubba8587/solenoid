@@ -37,6 +37,8 @@ specific item.
 - **Sparklines paint in the palette's gold, green and red** ([[D82]] sparklineCell): a SPARKLINE picture keeps the
   Default hexes in its text, and `CellImage` (every grid, card and record picture) repaints them in the active
   palette; the Sparkline node's line and columns paint gold.
+- **Type icons** (DESIGN.md § Type icons): every type segment, column type button, the (i) legend and the Pivot
+  chips draw `TypeIcon` (`#`, `Aa`, calendar, checkbox, double-struck C) instead of words or `T`/`D`/`B`.
 
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 

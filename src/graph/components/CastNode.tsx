@@ -9,13 +9,14 @@ import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 
 const SEPARATOR_KEYS = ["decimal_sep", "group_sep"];
 
 const CAST_TARGET_OPTIONS = (Object.keys(CAST_TARGET_META) as CastTarget[]).map((value) => ({
   value,
-  label: CAST_TARGET_META[value].label,
-  title: CAST_TARGET_META[value].title,
+  label: <TypeIcon type={value} />,
+  title: `${CAST_TARGET_META[value].label}: ${CAST_TARGET_META[value].title}`,
 }));
 
 export async function applyCastTarget(node: CastNodeType, target: CastTarget): Promise<void> {

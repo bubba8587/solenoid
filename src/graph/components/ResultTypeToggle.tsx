@@ -6,6 +6,7 @@ import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 
 type Producer = {
   id: string;
@@ -15,7 +16,7 @@ type Producer = {
 
 const RESULT_TYPE_OPTIONS = (Object.keys(RESULT_TYPE_META) as ResultType[]).map((value) => ({
   value,
-  label: RESULT_TYPE_META[value].label,
+  label: value === "auto" ? RESULT_TYPE_META[value].label : <TypeIcon type={value} />,
   title: RESULT_TYPE_META[value].title,
 }));
 

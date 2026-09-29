@@ -1,5 +1,5 @@
 // [[C58]] tableInputRawText, [[D16]] retypeReconciles
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
@@ -8,13 +8,14 @@ import { rawCellsToText } from "../nodes/matrix";
 import { TableDisplay } from "./TableDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { TypeIcon } from "./TypeIcon";
 import { nodeDisplayName } from "../catalogUtils";
 
-const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: string; title: string }> = [
-  { value: "number",  label: "Num",  title: "Number table" },
-  { value: "string",  label: "Text", title: "Text table" },
-  { value: "date",    label: "Date", title: "Date table" },
-  { value: "logical", label: "Bool", title: "TRUE / FALSE table" },
+const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: ReactNode; title: string }> = [
+  { value: "number",  label: <TypeIcon type="number" />, title: "Number table" },
+  { value: "string",  label: <TypeIcon type="string" />, title: "Text table" },
+  { value: "date",    label: <TypeIcon type="date" />, title: "Date table" },
+  { value: "logical", label: <TypeIcon type="logical" />, title: "Boolean table: TRUE or FALSE" },
 ];
 
 /** An in-place retype drops the cables it can't feed and re-adapts downstream FCs itself. */
