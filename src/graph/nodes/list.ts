@@ -1166,23 +1166,31 @@ export class SumIfsNode extends ClassicPreset.Node {
     if (isFrameRef(raw)) {
       const names = new Set<string>();
       for (const [colKey] of this.valuePairKeys()) {
-        const n = readInput(inputs[colKey] as string[] | undefined, this.stringLiterals[colKey] ?? "");
-        if (n != null && String(n).trim() !== "") names.add(String(n).trim());
+        const n = readConditionValue(inputs[colKey], this.stringLiterals[colKey]).trim();
+        if (n !== "") names.add(n);
       }
       const vn = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
       if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
       return (async () => {
         const cols = await materialize((async () => {
           const h = await flushRef(raw);
-          return Promise.all([...names].map((n) => frameBackend().column(h, n)));
+          return Promise.all([...names].map(async (n) => [n, await frameBackend().column(h, n)] as const));
         })());
         if (isSolError(cols)) return finish(cols);
-        const slice: FrameValue = { __frame: true, columns: cols.filter((c): c is FrameColumn => c != null) };
-        return this.data({ ...inputs, frame: [slice] });
+        const byName = new Map(cols);
+        const slice: FrameValue = { __frame: true, columns: cols.map(([, c]) => c).filter((c): c is FrameColumn => c != null) };
+        return finish(this.compute(inputs, slice, (n) => byName.get(n) ?? null));
       })() as unknown as { result: number | UnitCell | SolError | null };
     }
     const f = raw as FrameValue | null | undefined;
     if (!isFrameValue(f)) return finish(null);
+    return finish(this.compute(inputs, f, (n) => getColumn(f, n)));
+  }
+
+  /** `col` resolves a name or 1-based position against the upstream frame, which `f` may only slice. */
+  private compute(
+    inputs: Record<string, unknown[] | undefined>, f: FrameValue, col: (name: string) => FrameColumn | null,
+  ): number | UnitCell | SolError | null {
     interface Crit { col: FrameColumn; op: FilterOp; value: string; matchCase: boolean }
     const crits: Crit[] = [];
     for (const [colKey, valKey] of this.valuePairKeys()) {
@@ -1194,12 +1202,12 @@ export class SumIfsNode extends ClassicPreset.Node {
       const valueless = op === "isblank" || op === "notblank";
       const name = nameRaw.trim();
       if (name === "" || (!valueless && val.trim() === "")) continue;
-      const col = getColumn(f, name);
-      if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
-      try { requireTextColumn(op, col.type, name); } catch (e) { return finish(e as SolError); }
-      crits.push({ col, op, value: val, matchCase: cfg?.matchCase ?? false });
+      const c = col(name);
+      if (!c) return solError("#REF!", `No column "${name}" in the frame`);
+      try { requireTextColumn(op, c.type, name); } catch (e) { return e as SolError; }
+      crits.push({ col: c, op, value: val, matchCase: cfg?.matchCase ?? false });
     }
-    if (crits.length === 0) return finish(null);
+    if (crits.length === 0) return null;
     const n = frameRowCount(f);
     const test = (c: Crit, i: number) =>
       passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase);
@@ -1208,28 +1216,28 @@ export class SumIfsNode extends ClassicPreset.Node {
     if (this.op === "countifs") {
       let count = 0;
       for (let i = 0; i < n; i++) if (passes(i)) count++;
-      return finish(count);
+      return count;
     }
     const vnameRaw = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
-    if (vnameRaw === null) return finish(null);
+    if (vnameRaw === null) return null;
     const vname = String(vnameRaw).trim();
-    if (vname === "") return finish(null);
-    const vcol = getColumn(f, vname);
-    if (!vcol) return finish(solError("#REF!", `No column "${vname}" in the frame`));
+    if (vname === "") return null;
+    const vcol = col(vname);
+    if (!vcol) return solError("#REF!", `No column "${vname}" in the frame`);
     const kept: unknown[] = [];
     for (let i = 0; i < n; i++) if (passes(i)) kept.push(vcol.values[i] ?? null);
     const prep = forAggregate(kept);
-    if (prep.error) return finish(prep.error);
+    if (prep.error) return prep.error;
     const nums = prep.nums;
     // The cells are as typed in the column's unit; readings have no sum, as SUMIFS in a formula ([[C25]]).
     const cu = vcol.unit;
-    if (this.op === "sumifs" && readingScaleOf(cu) !== undefined) return finish(unitError(READINGS_ADD));
+    if (this.op === "sumifs" && readingScaleOf(cu) !== undefined) return unitError(READINGS_ADD);
     const tag = (n: number): number | UnitCell => (cu ? tagFrameCellUnit(n, cu) as number | UnitCell : n);
     switch (this.op) {
-      case "sumifs":     return finish(tag(nums.reduce((a, b) => a + b, 0)));
-      case "averageifs": return finish(nums.length ? tag(nums.reduce((a, b) => a + b, 0) / nums.length) : solError("#DIV/0!", "No rows matched the criteria"));
-      case "minifs":     return finish(tag(nums.length ? iterMin(nums) : 0));
-      case "maxifs":     return finish(tag(nums.length ? iterMax(nums) : 0));
+      case "sumifs":     return tag(nums.reduce((a, b) => a + b, 0));
+      case "averageifs": return nums.length ? tag(nums.reduce((a, b) => a + b, 0) / nums.length) : solError("#DIV/0!", "No rows matched the criteria");
+      case "minifs":     return tag(nums.length ? iterMin(nums) : 0);
+      case "maxifs":     return tag(nums.length ? iterMax(nums) : 0);
     }
   }
 }
