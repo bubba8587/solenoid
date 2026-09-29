@@ -1,5 +1,5 @@
 // [[D46]] freezeVolatilePerCalc, [[C44]] dateSerials
-// Midnight rollover: TODAY, NOW, a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
+// Midnight rollover: TODAY, NOW, the Today, Holidays and World Clock cards, a Knap `'now' | date` and relative Date Inputs answer for the calendar day, so at each local midnight a
 // document holding any of them recomputes once. One timer, re-armed after each firing.
 
 import { isRelativeDateText } from "./nodes/dateSerial";
@@ -7,6 +7,7 @@ import { getRecalcGen } from "./process";
 
 const VOLATILE_FN = /\b(TODAY|NOW)\s*\(/i;
 const KNAP_NOW = /["']now["']\s*\|\s*date\b/;
+const CLOCK_NODES = new Set(["TodayNowNode", "HolidaysNode", "WorldClockNode"]);
 
 /** A memo key part: the recalc generation when the formula text calls TODAY or NOW, else -1, so a cached answer refreshes on F9 and at midnight. */
 export function volatileStamp(text: string | undefined): number {
@@ -16,7 +17,7 @@ export function volatileStamp(text: string | undefined): number {
 export function hasVolatileDates(nodes: readonly unknown[]): boolean {
   for (const n of nodes) {
     const o = n as { expr?: unknown; frameText?: unknown; cubeText?: unknown; body?: unknown; stringLiterals?: Record<string, unknown>; internalEditor?: { getNodes(): readonly unknown[] } };
-    if (o.constructor?.name === "TodayNowNode") return true;
+    if (CLOCK_NODES.has(o.constructor?.name ?? "")) return true;
     if (o.internalEditor && hasVolatileDates(o.internalEditor.getNodes())) return true;
     if (typeof o.expr === "string" && VOLATILE_FN.test(o.expr)) return true;
     if (typeof o.frameText === "string" && VOLATILE_FN.test(o.frameText)) return true;

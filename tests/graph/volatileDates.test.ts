@@ -1,7 +1,8 @@
 // [[C44]] dateSerials
 import { describe, it, expect, vi } from "vitest";
 import { hasVolatileDates, msUntilNextMidnight, armMidnightRollover } from "../../src/graph/volatileDates";
-import { TodayNowNode } from "../../src/graph/nodes/date";
+import { TodayNowNode, WorldClockNode } from "../../src/graph/nodes/date";
+import { HolidaysNode } from "../../src/graph/nodes/connection";
 import { wallClockSerial, serialToJsDate } from "../../src/graph/nodes/dateSerial";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { CubeInputNode } from "../../src/graph/nodes/cube";
@@ -26,8 +27,10 @@ describe("volatileDates (R5 midnight rollover)", () => {
     expect(hasVolatileDates([{ body: 'day: "{{ "now" | date }}"' }])).toBe(true);
     expect(hasVolatileDates([{ body: "Written {{ created | date }}, not now" }])).toBe(false);
   });
-  it("spots a Today / Now card, and a volatile node inside a composite", () => {
+  it("spots a Today / Now, Holidays or World Clock card, and a volatile node inside a composite", () => {
     expect(hasVolatileDates([new TodayNowNode()])).toBe(true);
+    expect(hasVolatileDates([new HolidaysNode()])).toBe(true);
+    expect(hasVolatileDates([new WorldClockNode()])).toBe(true);
     expect(hasVolatileDates([{ internalEditor: { getNodes: () => [{ expr: "NOW()" }] } }])).toBe(true);
   });
   it("TODAY and NOW read the local wall clock, the same day the midnight rollover and a relative date use", () => {

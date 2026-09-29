@@ -565,7 +565,7 @@ export class HolidaysNode extends ClassicPreset.Node {
   data(): { frame: FrameValue; dates: number[]; next: number | null } {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const country = this.country.trim();
-    const year = this.year || new Date().getUTCFullYear();
+    const year = this.year || new Date().getFullYear();
     const key = connectionStore.key(this.id, country ? `${country},${year}` : "");
     if (key !== this._lastKey) {
       if (country === "") {
