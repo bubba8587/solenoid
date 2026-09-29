@@ -109,7 +109,10 @@ function globToRegExp(glob: string): RegExp {
   for (let i = 0; i < glob.length; i++) {
     const ch = glob[i];
     if (ch === "*") {
-      if (glob[i + 1] === "*") { re += ".*"; i++; }
+      if (glob[i + 1] === "*") {
+        // `**/` also matches no folder at all, so `**/*.md` takes a note at the root.
+        if (glob[i + 2] === "/") { re += "(?:.*/)?"; i += 2; } else { re += ".*"; i++; }
+      }
       else re += "[^/]*";
     } else if (ch === "?") {
       re += "[^/]";

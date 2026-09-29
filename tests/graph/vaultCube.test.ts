@@ -276,3 +276,13 @@ describe("a typed property reads its text as a Frame cell of that type does", ()
     expect(cellAt(cube, "ok", 0)).toBe(null);
   });
 });
+
+describe("an mdbase path_glob with **/", () => {
+  const typeFile = (glob: string) => `---\nkind: mdbase.type\nname: t\nmatch:\n  path_glob: "${glob}"\nschema:\n  value:\n    type: object\n    properties:\n      n:\n        type: number\n---\n`;
+  it("matches a note at the collection root as well as in folders", () => {
+    const c = parseMdbaseCollection("spec_version: 0.3.0\nname: C\n", [typeFile("**/*.md")]);
+    expect(mdbaseTypeFor(c, "note.md")).toEqual(mdbaseTypeFor(c, "a/b/note.md"));
+    expect(Object.keys(mdbaseTypeFor(c, "note.md"))).toContain("n");
+    expect(Object.keys(mdbaseTypeFor(c, "note.txt"))).not.toContain("n");
+  });
+});
