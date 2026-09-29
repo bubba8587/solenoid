@@ -1,7 +1,7 @@
 // [[B10]] reactFlowView (the snapshot history), [[B12]] losslessSaves
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
-import { getView, isGraphRebuilding } from "../process";
+import { getView, isGraphRebuilding, withGraphRebuild } from "../process";
 import { describeGraphDelta, sameIgnoringDims } from "./flowHistoryDigest";
 
 const MAX_DEPTH = 80;
@@ -25,7 +25,7 @@ async function restore(json: string): Promise<void> {
   try {
     const view = getView();
     const t = view ? { ...view.transform } : null;
-    await loadGraph(JSON.parse(json) as SavedGraph, { curtain: false });
+    await withGraphRebuild(() => loadGraph(JSON.parse(json) as SavedGraph, { curtain: false }));
     if (view && t) {
       await view.pan(t.x, t.y);
       await view.zoom(t.k);
@@ -88,6 +88,7 @@ export const flowHistory = {
 
   async undo(): Promise<void> {
     if (_restoring) return;
+    // Flushed before restore opens its rebuild scope, inside which recordNow stands down.
     if (_timer) flowHistory.recordNow();
     if (_index <= 0) return;
     _index--;

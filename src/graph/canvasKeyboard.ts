@@ -3,7 +3,7 @@ import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { processGraph, requestRecalc, withGraphRebuild, notifyGraphChanged } from "./process";
+import { processGraph, requestRecalc, notifyGraphChanged } from "./process";
 import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph, deleteSelected } from "./canvasCommands";
 import { bumpConduitAngle } from "./graphSignals";
 import { copySelected, pasteClipboard } from "./copyPaste";
@@ -266,10 +266,9 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       }
       const history = historyRef.current;
       if (!history || locked) return;
-      // withGraphRebuild settles once instead of once per restored cable.
-      if (e.code === "KeyZ" && !e.shiftKey) { void withGraphRebuild(() => history.undo()); e.preventDefault(); return; }
-      if (e.code === "KeyZ" &&  e.shiftKey) { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }
-      if (e.code === "KeyY")                { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }
+      if (e.code === "KeyZ" && !e.shiftKey) { void history.undo(); e.preventDefault(); return; }
+      if (e.code === "KeyZ" &&  e.shiftKey) { void history.redo(); e.preventDefault(); return; }
+      if (e.code === "KeyY")                { void history.redo(); e.preventDefault(); return; }
       return;
     }
   }

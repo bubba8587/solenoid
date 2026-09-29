@@ -17,6 +17,7 @@ const ISOLATED = [
   "tests/graph/demoVault.test.ts",
   "tests/graph/documentStorePersist.test.ts",
   "tests/graph/fileSession.test.ts",
+  "tests/graph/flow/flowHistory.test.ts",
   "tests/graph/importNoteRepick.test.ts",
   "tests/graph/lazyChain.test.ts",
   "tests/graph/nodes/sink.test.ts",
