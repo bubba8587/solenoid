@@ -23,6 +23,11 @@ describe("SORT, SORTBY, FILTER and UNIQUE take a table, as Excel's do", () => {
     expect(ev("UNIQUE(x, TRUE)", { x: [1, 1, 2] })).toEqual([1, 2]);
   });
 
+  it("an empty list sorts to an empty list, never a sort_index error", () => {
+    expect(ev("SORT(x)", { x: [] })).toEqual([]);
+    expect(ev("SORT(x, , -1, TRUE)", { x: [] })).toEqual([]);
+  });
+
   it("SORTBY: column keys sort rows, earlier keys first, each with its own order", () => {
     const t = [["a"], ["b"], ["c"], ["d"]];
     expect(ev("SORTBY(t, k1, 1, k2, -1)", { t, k1: [[2], [1], [2], [1]], k2: [[1], [5], [9], [3]] }))

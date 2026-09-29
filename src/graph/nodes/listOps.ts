@@ -798,6 +798,8 @@ function sortedIndexByKeys(keys: readonly { vals: readonly unknown[]; desc: bool
 export function sortGrid<T>(m: readonly (readonly T[])[], index: number, desc: boolean, byCol: boolean): T[][] | SolError {
   const g = byCol ? transposeGrid(m) : m.map((r) => [...r]);
   const width = g[0]?.length ?? 0;
+  // Nothing to sort is nothing sorted, never a sort_index out of range.
+  if (g.length === 0 || width === 0) return m.map((r) => [...r]);
   if (!(Number.isInteger(index) && index >= 1 && index <= width))
     return solError("#VALUE!", `SORT: sort_index ${index} is outside the ${width} ${byCol ? "rows" : "columns"}`);
   const out = sortedIndexByKeys([{ vals: g.map((r) => r[index - 1]), desc }], g.length).map((i) => g[i]);
