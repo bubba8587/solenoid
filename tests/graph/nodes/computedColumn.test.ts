@@ -189,15 +189,20 @@ describe("ComputedColumnNode — side inputs, row, and the output type", () => {
       .toEqual(["0.1667", "0.3333", "0.5000"]);
   });
 
-  it("`row` is the 1-based row number; a column named row shadows it at @", () => {
-    const r = run(named("row * 10", "idx"), sales) as FrameValue;
+  it("ROW() is the 1-based row number, and a column named row is just a column beside it", () => {
+    const r = run(named("ROW() * 10", "idx"), sales) as FrameValue;
     expect(getColumn(r, "idx")!.values).toEqual([10, 20, 30]);
     const withRowCol: FrameValue = {
       __frame: true,
       columns: [{ name: "row", type: "number", values: [7, 8, 9] }],
     };
-    const shadowed = run(named("@row * 10", "idx"), withRowCol) as FrameValue;
-    expect(getColumn(shadowed, "idx")!.values).toEqual([70, 80, 90]);
+    const both = run(named("@row * 10 + ROW()", "idx"), withRowCol) as FrameValue;
+    expect(getColumn(both, "idx")!.values).toEqual([71, 82, 93]);
+  });
+
+  it("ROW() outside a computed column says where it works", () => {
+    const r = compileEvaluator("ROW()")!({});
+    expect(isSolError(r) && r.code).toBe("#NAME?");
   });
 
   it("a reserved input name refuses with #REF!", () => {
@@ -258,9 +263,11 @@ describe("ComputedColumnNode — bracket references, rows, and placement", () =>
     expect(n.sideVars).toContain("nope");
   });
 
-  it("`rows` is the total row count (a column named rows shadows it)", () => {
-    const r = run(named("row / rows", "frac"), sales) as FrameValue;
+  it("a whole column is a column, as in an Excel table: ROWS(price) is the row count", () => {
+    const r = run(named("ROW() / ROWS(price)", "frac"), sales) as FrameValue;
     expect(getColumn(r, "frac")!.values).toEqual([1 / 3, 2 / 3, 1]);
+    const first = run(named("INDEX(price, 1, 1) + COLUMNS(price)", "p1"), sales) as FrameValue;
+    expect(getColumn(first, "p1")!.values).toEqual([11, 11, 11]);
   });
 
   it("After places a NEW column right after the anchor; blank appends at the end", () => {
@@ -289,7 +296,7 @@ describe("ComputedColumnNode — bracket references, rows, and placement", () =>
 
 describe("ComputedColumnNode — kitchen sink", () => {
   it("text functions, IF chains, and mixed builtins compose in one row formula", () => {
-    const r = run(named('IF(@qty > 2, UPPER(@city), LOWER(@city)) & " #" & TEXT(row, "0")', "tag"), sales) as FrameValue;
+    const r = run(named('IF(@qty > 2, UPPER(@city), LOWER(@city)) & " #" & TEXT(ROW(), "0")', "tag"), sales) as FrameValue;
     expect(getColumn(r, "tag")!.values).toEqual(["oslo #1", "BERGEN #2", "TROMSØ #3"]);
   });
 
@@ -304,8 +311,8 @@ describe("ComputedColumnNode — kitchen sink", () => {
     expect(vals[2]).toBe(3);
   });
 
-  it("a bracket read, an @ read, row, and a side input all mix in one formula", () => {
-    const n = named("[@qty] * @price + row + base", "mix");
+  it("a bracket read, an @ read, ROW(), and a side input all mix in one formula", () => {
+    const n = named("[@qty] * @price + ROW() + base", "mix");
     const r = run(n, sales, { base: [[1000]] }) as FrameValue;
     expect(getColumn(r, "mix")!.values).toEqual([2 * 10 + 1 + 1000, 3 * 20 + 2 + 1000, 4 * 30 + 3 + 1000]);
   });

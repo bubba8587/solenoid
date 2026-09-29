@@ -63,6 +63,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "comb-permutationa": [{ excel: "PERMUTATIONA", syntax: "=PERMUTATIONA(n, k)" }],
   "confidence-norm": [{ excel: "CONFIDENCE.NORM", syntax: "=CONFIDENCE.NORM(α, σ, n)", parity: true }],
   "confidence-t": [{ excel: "CONFIDENCE.T", syntax: "=CONFIDENCE.T(α, σ, n)", parity: true }],
+  "computed-column": [{ excel: "ROW", syntax: "=ROW()", parity: false, note: "This row's number, inside a computed column's formula. There are no cell references, so ROW takes no argument." }],
   "constant": [
     { excel: "PI", syntax: "=PI()", parity: true },
     { excel: "FALSE", syntax: "=FALSE()", parity: true },
@@ -553,7 +554,6 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "LOOKUP", syntax: "=LOOKUP(x, lookup_vector, result)", category: "Lookup & Reference", superseded: true, note: "Use XLOOKUP." },
   { excel: "MATCH", syntax: "=MATCH(x, array, type)", category: "Lookup & Reference", superseded: true, note: "Use XMATCH." },
   { excel: "OFFSET", syntax: "=OFFSET(ref, rows, cols)", category: "Lookup & Reference", oos: true, note: "Returns a reference offset from a cell." },
-  { excel: "ROW", syntax: "=ROW(reference)", category: "Lookup & Reference", oos: true, note: "Returns a cell reference's row number. In a computed column, row is this row's number." },
   { excel: "RTD", syntax: "=RTD(prog_id, server, ...)", category: "Lookup & Reference", oos: true, note: "Pulls real-time data from a COM server." },
   { excel: "VLOOKUP", syntax: "=VLOOKUP(x, table, col)", category: "Lookup & Reference", superseded: true, note: "Use XLOOKUP." },
   { excel: "CELL", syntax: "=CELL(info_type, ref)", category: "Info", oos: true, note: "Returns a cell's metadata." },

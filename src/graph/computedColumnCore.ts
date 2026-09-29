@@ -19,8 +19,6 @@ export interface RowTable { columns: readonly RowColumn[] }
 type Binding =
   | { kind: "col"; col: RowColumn }
   | { kind: "wholecol"; col: RowColumn }
-  | { kind: "row" }
-  | { kind: "rows" }
   | { kind: "side"; value: unknown };
 
 type RowFrame = {
@@ -29,6 +27,7 @@ type RowFrame = {
   at: (name: string, v: unknown) => unknown;
   whole: (name: string) => unknown;
   column: (name: string) => { hit: boolean; v?: unknown };
+  index: () => number;
 };
 const rowStack: RowFrame[] = [];
 
@@ -49,6 +48,12 @@ export function readWholeColumn(name: unknown): unknown {
   return top.whole(String(name));
 }
 
+/** ROW(): this row's 1-based number, read from the innermost computed column. */
+export function currentRowNumber(): number | SolError {
+  const top = rowStack[rowStack.length - 1];
+  return top ? top.index() : solError("#NAME?", "ROW() is this row's number, so it only works inside a computed column");
+}
+
 /** A LAMBDA's bare captured name that names a column reads that whole column, since a column outranks a capture. */
 export function readCapturedColumn(name: string): { hit: boolean; v?: unknown } {
   const top = rowStack[rowStack.length - 1];
@@ -60,7 +65,8 @@ function withRow<T>(frame: RowFrame, f: () => T): T {
   try { return f(); } finally { rowStack.pop(); }
 }
 
-const wholeOf = (c: RowColumn): unknown => ("whole" in c ? c.whole : c.values);
+/** A whole column is a column, as an Excel table column is: a one-column table, so ROWS(price) is the row count. */
+const wholeOf = (c: RowColumn): unknown => ("whole" in c ? c.whole : c.values.map((v) => [v]));
 
 export function tagComputedCell(v: unknown): FrameCell {
   if (isSolError(v)) return v;
@@ -123,8 +129,6 @@ function runColumn<C>(
     }
     const col = f.columns.find((c) => c.name === p);
     if (col) { bindings.push({ kind: colKind, col }); continue; }
-    if (p === "row") { bindings.push({ kind: "row" }); continue; }
-    if (p === "rows") { bindings.push({ kind: "rows" }); continue; }
     if (reserved.includes(p)) {
       return solError("#REF!", `"${p}" is a reserved input name. Rename the variable or the column`);
     }
@@ -132,7 +136,7 @@ function runColumn<C>(
     bindings.push({ kind: "side", value: opts.sideValue?.(p, "var") });
   }
   for (const p of opts.rowRefs ?? []) {
-    if (p === "row" || p === "rows" || reserved.includes(p)) continue;
+    if (reserved.includes(p)) continue;
     const target = opts.alias?.[p];
     if (target !== undefined) {
       if (!f.columns.some((c) => c.name === target)) return solError("#REF!", `No column "${target}" to bind "${p}" to`);
@@ -170,10 +174,7 @@ function runColumn<C>(
   const rowFrame: RowFrame = {
     strong: (key) => {
       const c = aliased(key) ?? colByName.get(key);
-      if (c) return { hit: true, v: c.values[cursor] ?? null };
-      if (key === "row") return { hit: true, v: cursor + 1 };
-      if (key === "rows") return { hit: true, v: rows };
-      return { hit: false };
+      return c ? { hit: true, v: c.values[cursor] ?? null } : { hit: false };
     },
     side: (key) => {
       if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name. Rename the variable or the column`);
@@ -192,6 +193,7 @@ function runColumn<C>(
       const c = aliased(key) ?? colByName.get(key);
       return c ? { hit: true, v: wholeOf(c) } : { hit: false };
     },
+    index: () => cursor + 1,
   };
 
   const cells: C[] = [];
@@ -200,8 +202,6 @@ function runColumn<C>(
     const rowCells = bindings.map((b) =>
       b.kind === "col" ? (b.col.values[i] ?? null)
       : b.kind === "wholecol" ? wholeOf(b.col)
-      : b.kind === "row" ? i + 1
-      : b.kind === "rows" ? rows
       : b.value);
     const errIdx = bindings.findIndex((b, k) => b.kind === "col" && isSolError(rowCells[k]));
     if (errIdx >= 0) { cells.push(rowCells[errIdx] as C); continue; }

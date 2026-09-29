@@ -536,10 +536,11 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   TBILLEQ: "settlement, maturity, discount",
   TBILLPRICE: "settlement, maturity, discount",
   TBILLYIELD: "settlement, maturity, pr",
-  // No entry for a blocked name (the D* family, COLUMN, ROW): a hint would advertise a refused name.
+  // No entry for a blocked name (the D* family, COLUMN): a hint would advertise a refused name.
   // lookup / arrays
   COLUMNS: "array",
   ROWS: "array",
+  ROW: "",
   CHOOSECOLS: "array, col1, …",
   CHOOSEROWS: "array, row1, …",
   EXPAND: "array, rows, [columns], [pad_with]",

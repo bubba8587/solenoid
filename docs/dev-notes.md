@@ -8,10 +8,11 @@ specific item.
 
 ### SESSION DIGEST (2026-09-29b: ROW() hint, Frame Input header legend, List Input Source; cloud session)
 
-- **ROW and COLUMN leave `LEGACY_ALIASES`** for their own `POSITION_NAMES` table ([[C14]] currentExcelParity,
-  contested, keep won; the ROW/COLUMN consequence amended): still `#NAME?`, but ROW's message names the
-  computed column's `row` and `rows`, COLUMN's says columns are read by name. `blockedNameMessage` is the one
-  source of a blocked name's message. Spec: [[formula-language]] § Blocked and wrong-surface names.
+- **`ROW()` replaces the bare `row`/`rows` names; a computed column's whole column is a one-column table**
+  ([[C22]] rowFormulaRefs, [[C14]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
+  `ROWS(price)` is the row count, and a column may be named `row`. COLUMN stays blocked (`POSITION_NAMES`,
+  `blockedNameMessage`). Open: ~80 list functions answer `#SHAPE!` on a one-column table; each gets an
+  orientation declaration next.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
 - **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode

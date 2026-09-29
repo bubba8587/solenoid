@@ -206,7 +206,7 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
     }
   });
 
-  it("ROW points at the computed column's row builtin, COLUMN says columns go by name", () => {
+  it("COLUMN says columns go by name", () => {
     for (const [name, message] of Object.entries(POSITION_NAMES)) {
       for (const expr of [`${name}()`, `${name}(x)`]) {
         const r = ev(expr, { x: [1, 2, 3] });
@@ -215,7 +215,6 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
         expect(isSolError(resolveExcelFunction(name)!()), name).toBe(true);
       }
     }
-    expect(POSITION_NAMES.ROW).toMatch(/\brow\b.*\brows\b/);
   });
 
   it("no blocked spelling is advertised (autocomplete/highlighting)", () => {

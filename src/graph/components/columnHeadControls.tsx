@@ -100,8 +100,8 @@ const FX_LEGEND: [string, string][] = [
   ["@price", "this row's price"],
   ["price", "the whole price column"],
   ["@[Unit Price]", "a name with spaces"],
-  ["row", "this row's number"],
-  ["rows", "the row count"],
+  ["ROW()", "this row's number"],
+  ["ROWS(price)", "the row count"],
   ["@price / SUM(price)", "this row's share of the total"],
 ];
 

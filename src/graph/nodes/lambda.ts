@@ -71,7 +71,7 @@ export class LambdaNode extends ClassicPreset.Node {
     const params = this.paramList();
     const prev = new Set(this.captured);
     const next = [...new Set([...extractVariables(this.expr), ...atColNames(this.expr)])]
-      .filter((v) => !params.includes(v) && v !== "row" && v !== "rows");
+      .filter((v) => !params.includes(v));
     const nextSet = new Set(next);
 
     const added: string[] = [];

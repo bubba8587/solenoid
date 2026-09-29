@@ -19,6 +19,7 @@ import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d, sparklineImage, SPARKLINE_OPS, type SparklineOp } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
+import { currentRowNumber } from "./computedColumnCore";
 import { matrixShape } from "./nodes/coerce";
 import { matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, matRows, matCols, wrapCount, wrapCells, stackH, stackV, chooseAxis, expandMat, flattenCells, SKIP_BY_CODE, type NumMat } from "./nodes/matrixOps";
 import {
@@ -292,9 +293,8 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   SUMIF: "SUMIFS",
 };
 
-/** Cell-position functions: not superseded, so no replacement function, only a message. */
+/** Cell-position functions with no graph meaning: not superseded, so no replacement function, only a message. */
 export const POSITION_NAMES: Readonly<Record<string, string>> = {
-  ROW: "In a computed column, row is this row's number and rows is the row count",
   COLUMN: "Columns are read by name, so there is no column number",
 };
 
@@ -674,6 +674,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   MINVERSE:   { returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   COLUMNS:    { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   ROWS:       { returns: "number", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
+  ROW:        { returns: "number", arity: [0, 0] },
   HSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
   VSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
   XSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 256], native: true },
@@ -1714,6 +1715,8 @@ registerInternal("TRANSPOSE", (v) => {
 });
 registerInternal("COLUMNS", (v) => matrixShape(v).cols);
 registerInternal("ROWS", (v) => matrixShape(v).rows);
+// [[C22]] rowFormulaRefs: ROW() is the computed column's current row.
+registerInternal("ROW", () => currentRowNumber());
 registerInternal("HSTACK", (...args) => {
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? stackH(mats) : null;
