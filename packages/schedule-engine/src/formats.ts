@@ -1,7 +1,7 @@
 // [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C44]] dateSerials, [[D68]] importUnsupportedIsNamed
 
 import { child, children, text, type XmlNode } from "./xml";
-import { isoToSerial, sevenDayWeek } from "./mspdi";
+import { isoToSerial, sevenDayWeek, uniqueNames } from "./mspdi";
 import type { CalendarSpec, LinkType, PlanTask, ScheduleOutput } from "./types";
 
 export interface ImportedPlanFile {
@@ -53,8 +53,7 @@ export function readGan(xml: string): ImportedPlanFile {
   const byId = new Map<string, PlanTask>();
   const links: Array<{ from: string; to: string; type: LinkType; lag: number }> = [];
   type N = typeof root;
-  const seen = new Set<string>();
-  const uniq = (n: string) => { let k = n, i = 2; while (seen.has(k.toLowerCase())) k = `${n} (${i++})`; seen.add(k.toLowerCase()); return k; };
+  const uniq = uniqueNames();
   const readTask = (el: N, depth: number): PlanTask => {
     const id = attr(el, "id") ?? "";
     const name = uniq((attr(el, "name") ?? `Task ${id}`).trim());
@@ -141,8 +140,7 @@ export function readXer(text: string): ImportedPlanFile {
   const nodes = new Map<string, PlanTask>();
   const roots: PlanTask[] = [];
   const wbsSorted = [...wbs].sort((a, b) => Number(a.seq_num ?? 0) - Number(b.seq_num ?? 0));
-  const seen = new Set<string>();
-  const uniq = (n: string) => { let k = n, i = 2; while (seen.has(k.toLowerCase())) k = `${n} (${i++})`; seen.add(k.toLowerCase()); return k; };
+  const uniq = uniqueNames();
   for (const w of wbsSorted) {
     const t: PlanTask = { name: uniq((w.wbs_name ?? w.wbs_short_name ?? w.wbs_id).trim()), duration: 0, predecessors: [], children: [] };
     nodes.set(w.wbs_id, t);

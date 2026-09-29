@@ -113,6 +113,12 @@ function weekendCodeFor(off: number[], unsupported: string[]): number {
   return code;
 }
 
+/** Returns a namer that gives a repeated task name a " (2)", " (3)" suffix, since the engine keys tasks by name. */
+export function uniqueNames(): (name: string) => string {
+  const seen = new Set<string>();
+  return (n) => { let k = n, i = 2; while (seen.has(k.toLowerCase())) k = `${n} (${i++})`; seen.add(k.toLowerCase()); return k; };
+}
+
 export function readMspdi(xml: string): MspdiPlan {
   const root = parseXml(xml);
   if (root.name !== "Project") throw new Error("Not an MSPDI file: the root element is not <Project>");
@@ -125,12 +131,14 @@ export function readMspdi(xml: string): MspdiPlan {
   const byUid = new Map<string, string>();
   interface Rec { task: PlanTask; level: number; uid: string; summary: boolean; golden: MspdiGolden }
   const recs: Rec[] = [];
+  const uniq = uniqueNames();
   for (const el of raw) {
     const uid = text(el, "UID") ?? "";
-    const name = (text(el, "Name") ?? "").trim() || `Task ${uid}`;
+    const given = (text(el, "Name") ?? "").trim() || `Task ${uid}`;
     const level = num(text(el, "OutlineLevel")) ?? 1;
     if (level === 0 || text(el, "IsNull") === "1") continue;
-    if (flag(text(el, "Active")) === false) { unsupported.push(`inactive task "${name}"`); continue; }
+    if (flag(text(el, "Active")) === false) { unsupported.push(`inactive task "${given}"`); continue; }
+    const name = uniq(given);
     if (child(el, "Recurring") && flag(text(el, "Recurring"))) unsupported.push(`recurring task "${name}"`);
     byUid.set(uid, name);
     const hours = xsdDurationToHours(text(el, "Duration")) ?? 0;

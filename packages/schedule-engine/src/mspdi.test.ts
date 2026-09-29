@@ -81,6 +81,14 @@ describe("review pins: elapsed durations and lags, a missing StartDate", () => {
     expect(plan.tasks[3].predecessors[0]).toEqual({ task: "A", type: "FS", lag: 1 }); // 39 = estimated days, not elapsed
   });
 
+  it("two tasks with the same name read as distinct names, and links follow the UID", () => {
+    const link = `<PredecessorLink><PredecessorUID>2</PredecessorUID><Type>1</Type></PredecessorLink>`;
+    const plan = readMspdi(file(task(1, "Review", "PT8H0M0S", 7) + task(2, "Review", "PT8H0M0S", 7) + task(3, "Ship", "PT8H0M0S", 7, link)));
+    expect(plan.tasks.map((t) => t.name)).toEqual(["Review", "Review (2)", "Ship"]);
+    expect(plan.tasks[2].predecessors[0].task).toBe("Review (2)");
+    expect(() => schedule({ start: plan.start!, calendar: plan.calendar, tasks: plan.tasks })).not.toThrow();
+  });
+
   it("a file with no StartDate starts at its earliest stored task start", () => {
     const plan = readMspdi(file(task(1, "A", "PT8H0M0S", 7)));
     expect(iso(plan.start)).toBe("2026-01-05");
