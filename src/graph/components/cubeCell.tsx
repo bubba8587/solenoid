@@ -1,5 +1,5 @@
 // [[C24]] arraySemantics, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import {
   isFrameValue, isCubeValue, cubeRowCount, cubeDepth, frameRowCount, formatFrameCell,
   type CubeCell, type FrameColType, type FrameCell,
@@ -13,11 +13,18 @@ import { formatListCell } from "./valueDisplayFormat";
 import { elemFamilyOfCells, elemChipClass, type ElemFamily } from "../valuePopup";
 import { errorTip } from "./ErrorChip";
 import { cellImageSrc } from "../recordLayout";
+import { appThemeStore } from "../appTheme";
+import { resolveColor } from "../palette";
+import { repaintSparkline, SPARK_SLOTS } from "../nodes/visualOps";
 import "./ArrayChip.css";
 
-/** A text cell holding a data:image picture ([[D83]] imageTextCells). */
-export function CellImage({ src }: { src: string }): ReactNode {
-  return <img className="sol-cell-img" src={src} alt="" draggable={false} />;
+/** A text cell holding a data:image picture ([[D83]] imageTextCells); a sparkline paints in the active palette ([[D82]] sparklineCell). */
+export function CellImage({ src, className = "sol-cell-img", alt = "" }: { src: string; className?: string; alt?: string }): ReactNode {
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const shown = repaintSparkline(src, {
+    line: resolveColor(SPARK_SLOTS.line), pos: resolveColor(SPARK_SLOTS.pos), neg: resolveColor(SPARK_SLOTS.neg),
+  });
+  return <img className={className} src={shown} alt={alt} draggable={false} />;
 }
 
 const LIST_PREVIEW = 3;

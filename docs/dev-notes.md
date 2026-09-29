@@ -34,6 +34,9 @@ specific item.
   `coerceFrameCell`, so unreadable text is NaN, never blank, and `dateFormatDisplay` shows a NaN date as `NaN`.
   `parseBoolText` (yes/no in list fields) is gone. List Input keeps its typed text (`cachedSource`) for the
   popup's Source view and sets `ownsListLiterals` so `coerceInputs` doesn't pre-parse its rows.
+- **Sparklines paint in the palette's gold, green and red** ([[D82]] sparklineCell): a SPARKLINE picture keeps the
+  Default hexes in its text, and `CellImage` (every grid, card and record picture) repaints them in the active
+  palette; the Sparkline node's line and columns paint gold.
 
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 

@@ -1121,7 +1121,7 @@ export function TablePopup() {
                       )}
                       </span>
                     )}
-                    {image && <img className="sol-record__img" src={image} alt={label} draggable={false} />}
+                    {image && <CellImage className="sol-record__img" src={image} alt={label} />}
                   </label>
                 );
               };

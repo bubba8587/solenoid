@@ -1,4 +1,5 @@
 // [[B11]] maximalMerge, [[C100]] chartIsAValue, [[C114]] cardsView
+import { CellImage } from "./cubeCell";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
 import { titleIndexFor } from "../chartValue";
@@ -52,7 +53,7 @@ export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][nu
         >
           {f.isTitle ? null : <div className="sol-record__label">{f.label}</div>}
           {f.image ? (
-            <img className="sol-record__img" src={f.image} alt={f.label} draggable={false} />
+            <CellImage className="sol-record__img" src={f.image} alt={f.label} />
           ) : (
             <div className={`sol-record__value${f.value === null ? (f.hint ? " sol-record__value--hint" : " sol-record__value--empty") : ""}`}>
               {f.value === null ? (f.hint ?? "—") : typeof f.value === "number" ? formatScalar(f.value) : f.value}

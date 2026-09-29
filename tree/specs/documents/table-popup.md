@@ -122,7 +122,7 @@ The Source checkbox appears on a literal-source editor, and on a read-only popup
 
 A list's popup takes its element type from its items (`elemFamilyOfCells`). A list mixing kinds has nothing to render as, so it opens as text and shows each item as it is; its chip wears the neutral `--sock-any` gray rather than claiming a kind (`elemChipClass`).
 
-**Picture cells** ([[D83]] imageTextCells). A text cell whose text is a `data:image/` address (`cellImageSrc`) shows as the picture, 1.3em tall (`CellImage`, `.sol-cell-img`), in the Frame and Cube cards, the Cube popup and the Table popup's read-only cells. The value stays the text, so Copy and Export give the text. An http image address stays text in a grid; the Form view and the Record figure keep their wider `recordImageSrc`.
+**Picture cells** ([[D83]] imageTextCells). A text cell whose text is a `data:image/` address (`cellImageSrc`) shows as the picture, 1.3em tall (`CellImage`, `.sol-cell-img`; every grid, card and record picture goes through `CellImage`, which paints a SPARKLINE picture in the active palette, [[D82]] sparklineCell), in the Frame and Cube cards, the Cube popup and the Table popup's read-only cells. The value stays the text, so Copy and Export give the text. An http image address stays text in a grid; the Form view and the Record figure keep their wider `recordImageSrc`.
 
 ## Column formats
 

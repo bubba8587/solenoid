@@ -1,5 +1,6 @@
 // [[C17]] shareImpl
 import { clamp, iterMin, iterMax } from "./mathUtils";
+import { PALETTE } from "../palette";
 
 /** Equal-width bins over `[min, max]` (min < max): the lower edges, and each value's bin by those same edges, the last bin closed. */
 export function equalWidthBins(min: number, max: number, bins: number): { edges: number[]; idx: (v: number) => number } {
@@ -41,7 +42,11 @@ export const SPARKLINE_OPS: readonly SparklineOp[] = ["line", "column", "winloss
 export const SPARKLINE_MAX_POINTS = 40;
 const SPARK_W = 80;
 const SPARK_H = 20;
-const SPARK_COLOR = { line: "#f5b914", pos: "#00b862", neg: "#e0473a" } as const;
+/** The palette slots a sparkline paints in. The picture carries their Default palette hexes; a display repaints them in the active palette. */
+export const SPARK_SLOTS = { line: "gold", pos: "green", neg: "vermilion" } as const;
+export const SPARK_COLOR = { line: PALETTE.gold, pos: PALETTE.green, neg: PALETTE.vermilion } as const;
+const SPARK_MARK = "class='sol-spark'";
+const SPARK_HEX_RE = new RegExp(`%23(${Object.values(SPARK_COLOR).map((h) => h.slice(1)).join("|")})`, "gi");
 
 /** The numbers in order, averaged into `SPARKLINE_MAX_POINTS` buckets past the cap; anything else is skipped. */
 export function sparklineSeries(values: readonly unknown[]): number[] {
@@ -104,6 +109,13 @@ export function sparklineImage(values: readonly unknown[], op: SparklineOp): str
     const posColor = op === "winloss" ? SPARK_COLOR.pos : SPARK_COLOR.line;
     body = (pos ? `<path d='${pos}' fill='${posColor}'/>` : "") + (neg ? `<path d='${neg}' fill='${SPARK_COLOR.neg}'/>` : "");
   }
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${SPARK_W} ${SPARK_H}' width='${SPARK_W}' height='${SPARK_H}'>${body}</svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' ${SPARK_MARK} viewBox='0 0 ${SPARK_W} ${SPARK_H}' width='${SPARK_W}' height='${SPARK_H}'>${body}</svg>`;
   return `data:image/svg+xml,${svg.replace(/%/g, "%25").replace(/#/g, "%23").replace(/</g, "%3C").replace(/>/g, "%3E")}`;
+}
+
+/** A sparkline picture repainted in `colors` (hexes by slot); any other picture comes back as it is. */
+export function repaintSparkline(src: string, colors: Record<keyof typeof SPARK_SLOTS, string>): string {
+  if (!src.startsWith("data:image/svg+xml,") || !src.includes(SPARK_MARK)) return src;
+  const bySlot = new Map(Object.entries(SPARK_COLOR).map(([k, h]) => [h.slice(1).toLowerCase(), colors[k as keyof typeof SPARK_SLOTS]]));
+  return src.replace(SPARK_HEX_RE, (m, hex: string) => (bySlot.get(hex.toLowerCase()) ?? m).replace("#", "%23"));
 }

@@ -1,4 +1,5 @@
 // [[C114]] cardsView, [[D83]] imageTextCells
+import { CellImage } from "./cubeCell";
 import { splitTags, isHexColor, linkHref, shortLink, type CardColType, type CardPlan } from "../cardLayout";
 import { categoryColorIndex } from "../categoryColor";
 import { cellImageSrc } from "../recordLayout";
@@ -28,7 +29,7 @@ function CellText({ text }: { text: string }) {
   }
   if (text === "NaN") return <span className="sol-card__nan" title="Not a number: an undefined value in the data">NaN</span>;
   const picture = cellImageSrc(text);
-  if (picture) return <img className="sol-card__pic" src={picture} alt="" draggable={false} />;
+  if (picture) return <CellImage className="sol-card__pic" src={picture} />;
   const href = linkHref(text);
   if (href) {
     return (
@@ -148,7 +149,7 @@ export function AutoCard({
       onClick={opens && toggleOnClick ? onToggle : undefined}
     >
       <header className="sol-card__head">
-        {img && <img className="sol-card__thumb" src={img} alt="" draggable={false} />}
+        {img && <CellImage className="sol-card__thumb" src={img} />}
         <div className="sol-card__titles">
           <div className="sol-card__title-line">
             {key !== "" && <span className="sol-card__key">{key}</span>}

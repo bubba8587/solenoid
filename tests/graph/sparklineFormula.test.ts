@@ -1,7 +1,7 @@
 // [[D82]] sparklineCell
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { sparklineSeries, sparklineImage, SPARKLINE_MAX_POINTS } from "../../src/graph/nodes/visualOps";
+import { sparklineSeries, sparklineImage, repaintSparkline, SPARKLINE_MAX_POINTS } from "../../src/graph/nodes/visualOps";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import { parse } from "yaml";
 import { csvField } from "../../src/graph/csvSafety";
@@ -12,6 +12,17 @@ const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator
 const svgOf = (url: unknown) => decodeURIComponent(String(url).replace(/^data:image\/svg\+xml,/, ""));
 
 describe("SPARKLINE", () => {
+  it("a display repaints the picture's gold, green and red in the active palette, and leaves other pictures alone", () => {
+    const colors = { line: "#111111", pos: "#222222", neg: "#333333" };
+    expect(svgOf(repaintSparkline(String(ev("SPARKLINE(x)", { x: [1, 3, 2] })), colors))).toContain("#111111");
+    const wl = svgOf(repaintSparkline(String(ev("SPARKLINE(x, \"winloss\")", { x: [1, -2] })), colors));
+    expect(wl).toContain("#222222");
+    expect(wl).toContain("#333333");
+    expect(wl).not.toMatch(/#00b862|#e0473a/);
+    const other = "data:image/svg+xml,%3Csvg%3E%3Cpath fill='%23f5b914'/%3E%3C/svg%3E";
+    expect(repaintSparkline(other, colors)).toBe(other);
+  });
+
   it("answers data:image/svg+xml text with one path for a line", () => {
     const r = ev("SPARKLINE(x)", { x: [1, 3, 2, 5] });
     expect(typeof r).toBe("string");
