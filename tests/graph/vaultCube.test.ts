@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { notesToCube, dateFromName, extractInlineTags, type VaultNote, type VaultTypeSources } from "../../src/graph/vaultCube";
-import { parseMdbaseCollection, mdbaseTypeFor, mdbaseSchemaFor, validateAgainst } from "../../src/graph/mdbaseTypes";
+import { parseMdbaseCollection, mdbaseTypeFor, mdbaseSchemaFor, validateAgainst, nearestMdbaseSchema } from "../../src/graph/mdbaseTypes";
 import { parseObsidianTypes } from "../../src/graph/obsidianTypes";
 import { parseDailyNotesConfig } from "../../src/graph/dailyNotesConfig";
 import { isCubeValue, type CubeValue, type CubeColumn } from "../../src/graph/frame";
@@ -250,6 +250,18 @@ describe("mdbase validation (Write Properties, item B)", () => {
     expect(validateAgainst(1850.5, sch.constraints.budget)).toBeNull();
   });
 })
+
+describe("Write Properties takes the nearest mdbase collection, as Vault Folder does ([[C67]] mdbaseCeiling)", () => {
+  it("a nearer collection with no type for the note ends the walk; with no nearer collection an ancestor's type applies", async () => {
+    const project = read("Projects/_types/project.md");
+    const all = parseMdbaseCollection("spec_version: 0.3.0", [project.replace('path_glob: "*.md"', 'path_glob: "**/*.md"')]);
+    const none = parseMdbaseCollection("spec_version: 0.3.0", [project.replace('path_glob: "*.md"', 'path_glob: "other-*.md"')]);
+    const at = (colls: Record<string, typeof all>) => async (folder: string) => colls[folder] ?? null;
+    expect(await nearestMdbaseSchema("Sub/n.md", at({ "": all, Sub: none }))).toBeNull();
+    expect(await nearestMdbaseSchema("Sub/Deep/n.md", at({ "": all }))).not.toBeNull();
+    expect(await nearestMdbaseSchema("Sub/other-1.md", at({ "": all, Sub: none }))).not.toBeNull();
+  });
+});
 
 describe("review pins: path_glob `?`", () => {
   it("matches exactly one path character, never a regex quantifier", () => {

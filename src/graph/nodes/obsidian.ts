@@ -13,7 +13,7 @@ import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { connectionStore, trackInflight, scheduleConnectionRecalc } from "../connectionStore";
 import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, frontmatterTags, keepDateTime, displayValue, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
-import { mdbaseSchemaFor, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
+import { nearestMdbaseSchema, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 
@@ -275,16 +275,11 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     } catch { return null; }
   }
 
-  private async schemaFor(vault: string, relPath: string): Promise<{ constraints: Record<string, PropConstraint>; required: string[] } | null> {
-    const parts = relPath.split("/");
-    parts.pop();
-    for (let i = parts.length; i >= 0; i--) {
-      const folder = parts.slice(0, i).join("/");
+  private schemaFor(vault: string, relPath: string): Promise<{ constraints: Record<string, PropConstraint>; required: string[] } | null> {
+    return nearestMdbaseSchema(relPath, async (folder) => {
       if (!this._mdbaseCache.has(folder)) this._mdbaseCache.set(folder, await this.loadCollection(vault, folder));
-      const coll = this._mdbaseCache.get(folder)!;
-      if (coll) { const collRel = folder ? relPath.slice(folder.length + 1) : relPath; const sch = mdbaseSchemaFor(coll, collRel); if (sch) return sch; }
-    }
-    return null;
+      return this._mdbaseCache.get(folder)!;
+    });
   }
 
   private validateRows(rows: PlanRow[], sch: { constraints: Record<string, PropConstraint>; required: string[] } | null): void {

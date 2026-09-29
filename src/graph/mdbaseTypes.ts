@@ -155,3 +155,18 @@ export function validateAgainst(value: unknown, c: PropConstraint): string | nul
   }
   return null;
 }
+
+/** The nearest enclosing collection decides, as Vault Folder types a note: a collection with no type for the note ends the walk. */
+export async function nearestMdbaseSchema(
+  relPath: string,
+  collectionAt: (folder: string) => Promise<MdbaseCollection | null>,
+): Promise<{ constraints: Record<string, PropConstraint>; required: string[] } | null> {
+  const parts = relPath.split("/");
+  parts.pop();
+  for (let i = parts.length; i >= 0; i--) {
+    const folder = parts.slice(0, i).join("/");
+    const coll = await collectionAt(folder);
+    if (coll) return mdbaseSchemaFor(coll, folder ? relPath.slice(folder.length + 1) : relPath);
+  }
+  return null;
+}
