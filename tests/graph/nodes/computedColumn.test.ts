@@ -532,11 +532,13 @@ describe("Frame Input Formula columns (surface slice 2)", () => {
         { name: "pick", type: "number", cells: [], expr: "IF(@days > 5, @due, @start)" },
         { name: "span", type: "number", cells: [], expr: "@due - @start" },
         { name: "scaled", type: "number", cells: [], expr: "@start * 2" },
+        { name: "half", type: "number", cells: [], expr: "IF(@days > 0, @start)" },
       ]),
     });
     const out = n.data({}).frame as FrameValue;
     const type = (name: string) => getColumn(out, name)!.type;
     expect([type("due"), type("later"), type("pick")]).toEqual(["date", "date", "date"]);
+    expect(type("half")).toBe("number"); // the omitted else is FALSE, so one date branch doesn't make a date column
     expect([type("span"), type("scaled")]).toEqual(["number", "number"]);
     expect(getColumn(out, "span")!.values).toEqual([5, 7]);
   });

@@ -333,7 +333,7 @@ export function exprYieldsDate(expr: string, isDateName: (name: string) => boole
       case "call": {
         const name = n.name.toUpperCase();
         if (EXCEL_IMPL_META[name]?.returns === "date") return true;
-        if (name === "IF") {
+        if (name === "IF" && n.args.length === 3) {
           const branches = n.args.slice(1).filter((a) => a.t !== "blank");
           return branches.length > 0 && branches.every(isDate);
         }
