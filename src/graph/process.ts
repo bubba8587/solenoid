@@ -59,6 +59,20 @@ export async function requestRecalc() {
   }
 }
 
+/** Runs `fn` after an exact full pass when Sketch is selected, so a sink's Run writes every row, not the sample. */
+export async function withExactPass<T>(fn: () => Promise<T>): Promise<T> {
+  if (!calcModeStore.isSketch()) return fn();
+  calcModeStore.beginForceExact();
+  try {
+    // A pass in flight would only queue this one and return before it ran.
+    while (_passActive) await new Promise((r) => setTimeout(r, 16));
+    await processGraph(undefined, undefined, { force: true });
+    return await fn();
+  } finally {
+    calcModeStore.endForceExact();
+  }
+}
+
 // A registered hook, because importing persistence would cycle.
 let _graphChanged: () => void = () => {};
 

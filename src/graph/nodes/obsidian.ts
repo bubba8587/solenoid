@@ -7,6 +7,7 @@ import { NoteNode } from "./annotation";
 import { type FrontmatterFieldType } from "../noteFrontmatter";
 import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
+import { withExactPass } from "../process";
 import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, readFileText, pathExists } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
@@ -153,7 +154,11 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     return out;
   }
 
-  async run(): Promise<void> {
+  run(): Promise<void> {
+    return withExactPass(() => this.write());
+  }
+
+  private async write(): Promise<void> {
     if (this.status === "writing" || this.status === "previewing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     const vault = getVaultRoot().trim();

@@ -105,6 +105,7 @@ A targeted pass is correct only for a change whose effect flows solely through c
 | Paste | `bulkSettle(pastedIds)`: an additive pass rendering only the pasted nodes |
 | Delete, composite create or unpack, undo, redo | a rebuild scope, then one `bulkSettle()` (a full pass) |
 | F9, Calculate now, the status bar's Calculate, switching to Automatic or Sketch, local midnight when the document holds a volatile date | `requestRecalc()` |
+| A sink's Run (Write File, Write Obsidian, Write Tasks) while Sketch is selected | `withExactPass(write)`: waits out a pass in flight, then `processGraph()` with `{ force: true }` inside a `beginForceExact` bracket held through the write; no new generation |
 | A live-data connection refresh or a background load landing | `processGraph()` outside any rebuild scope ([[#A refresh never runs inside a rebuild scope]]) |
 
 `bulkSettle(renderOnly?)` calls the settle the canvas registered with `setBulkSettle`: FC type reconcile, a connection-version bump, the FC unit-mismatch rescan, `processGraph(undefined, renderOnly)`, then the group-collapse sync. Its default before registration is a bare `processGraph(undefined, renderOnly)`.

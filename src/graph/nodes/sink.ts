@@ -7,6 +7,7 @@ import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type
 import { formatDateSerial } from "./date";
 import { isSolError, type SolError } from "../errorValue";
 import { isFrameRef, readFrame, collectPreview, type FrameInput } from "../frameBackend";
+import { withExactPass } from "../process";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
 export type SinkStatus = "idle" | "writing" | "ok" | "error";
@@ -93,7 +94,11 @@ export class WriteFileNode extends ClassicPreset.Node {
   }
 
   /** Keep the re-entrancy guard: the button disables only after the await, so two quick clicks would race. */
-  async run(): Promise<void> {
+  run(): Promise<void> {
+    return withExactPass(() => this.write());
+  }
+
+  private async write(): Promise<void> {
     if (this.status === "writing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     if (!isDesktop()) { this.status = "error"; this.statusMessage = "Desktop app only"; return; }

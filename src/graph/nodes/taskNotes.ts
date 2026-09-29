@@ -17,6 +17,7 @@ import {
 import { cubeIn, frameOut as frameOutPort } from "./shared";
 import { fetchJson } from "../httpBridge";
 import { type Shape } from "../frameShape";
+import { withExactPass } from "../process";
 
 
 const INPUTS: Record<TaskNotesProvider, string[]> = { tasks: [], calendar: ["from", "to"], stats: [] };
@@ -261,7 +262,11 @@ export class WriteTasksNode extends ClassicPreset.Node {
     }
   }
 
-  async run(): Promise<void> {
+  run(): Promise<void> {
+    return withExactPass(() => this.write());
+  }
+
+  private async write(): Promise<void> {
     if (this.status === "writing" || this.status === "previewing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     if (isSolError(this.cachedCube)) { this.status = "error"; this.statusMessage = this.cachedCube.code; return; }
