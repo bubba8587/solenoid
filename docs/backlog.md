@@ -335,3 +335,5 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Vault Folder mdbase**: it finds collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule for both.
 - [ ] **UUID and undo**: `UuidNode` saves its generated `init.value`, which changes on every compute, so an undo on a document holding one records a stray history entry and wipes Redo. Stop saving the value, or have the history ignore it.
 - [ ] **List text predicates on a mixed list** (`list.ts` requireTextList, [[D49]] textPredicateNeedsText): `["apple", 1]` and `[1, "apple"]` are both #TYPE! now; confirm that reading of D49.
+- [ ] **Series op switch**: a typed value equal to the old op's default (Start 0 on Range) reads as untouched and gives way to the next op's default; keeping it needs a saved "edited keys" field.
+- [ ] **Section folds** inside a card (`CardSection.setOpen`) autosave but record no undo step, unlike a card collapse.
