@@ -688,7 +688,7 @@ export function TablePopup() {
   // The new node reads what the host outputs, so an editor's pending edits are saved first.
   const recordCards = getRecordCardsAction();
   function addCardsChart(hostId: string) {
-    if (editable) save(); else tablePopup.close();
+    if (editable) { if (!save()) return; } else tablePopup.close();
     void recordCards?.add(hostId);
   }
   function hasUnsavedEdits(): boolean {
@@ -701,10 +701,13 @@ export function TablePopup() {
     if (hasUnsavedEdits()) setAskClose(true);
     else tablePopup.close();
   }
-  function save() {
+  const csvBlocksSave = view === "csv" && !!csvError;
+  function save(): boolean {
+    if (csvBlocksSave) { setAskClose(false); return false; }
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
     else if (state?.onSaveSource) state.onSaveSource(buildSourceColumns({ types: settledColumnTypes() }));
     tablePopup.close();
+    return true;
   }
 
   const grouped = !!state.groupColor;
@@ -1265,7 +1268,7 @@ export function TablePopup() {
         {editable ? (
           <div className="table-popup__actions">
             <button className="table-popup__btn" onClick={() => tablePopup.close()}>Cancel</button>
-            <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={view === "csv" && !!csvError}>Save</button>
+            <button className="table-popup__btn table-popup__btn--primary" onClick={save} disabled={csvBlocksSave}>Save</button>
           </div>
         ) : (
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
