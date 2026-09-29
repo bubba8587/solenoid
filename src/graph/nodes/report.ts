@@ -8,7 +8,7 @@ import {
 } from "../knapTemplate";
 import { toTemplateValue } from "../templateValue";
 import { isFrameRef, readFrame } from "../frameBackend";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { dropInputCables } from "../components/cablePrune";
 import { SolenoidSocket, type SocketDataType } from "../sockets";
@@ -155,6 +155,10 @@ export class ReportNode extends ClassicPreset.Node {
   data(inputs?: Record<string, unknown[]>): { document: DocumentValue | SolError } | Promise<{ document: DocumentValue | SolError }> {
     this._computed = true;
     const tpl = inputs?.template?.[0];
+    // A broken template or records passes its error on, and the template's inputs stay wired until it is fixed.
+    const recErr = inputs?.records?.[0];
+    const upstreamErr: SolError | null = isSolError(tpl) ? tpl : isSolError(recErr) ? recErr : null;
+    if (upstreamErr) { this._pages = null; return { document: upstreamErr }; }
     this._templateDoc = isDocumentValue(tpl) ? tpl : null;
     this._recordsValue = inputs?.records?.[0] ?? null;
     if (!isFrameRef(this._recordsValue)) this._recordsFrame = undefined;

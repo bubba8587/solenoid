@@ -1,7 +1,7 @@
 // [[C68]], [[C24]]
 import { describe, it, expect } from "vitest";
 import { ReportNode } from "../../../src/graph/nodes/report";
-import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";
+import { installErrorGuards, isSolError, solError, type SolError } from "../../../src/graph/errorValue";
 import { isDocumentValue, type DocumentValue } from "../../../src/graph/documentValue";
 
 const body = (out: { document: DocumentValue | SolError }) => (out.document as DocumentValue).body;
@@ -191,5 +191,18 @@ describe("ReportNode — an unwired input is absent to the template, not null", 
     expect(body(out)).toBe("1. a\n2. b none");
     expect(n.templateVars).toEqual({ items: ["a", "b"] });
     expect(n.refValue("numbered")).toBeNull(); // the card still shows the empty socket
+  });
+});
+
+describe("ReportNode — a broken template passes its error and keeps its inputs", () => {
+  it("a #SYNTAX! template leaves the variable inputs wired and answers the error", async () => {
+    const tpl = { __document: true, body: "Dear {{ name }}", refs: {} };
+    const n = new ReportNode({ body: "" });
+    await n.data({ template: [tpl as never], name: ["Ada"] });
+    expect(Object.keys(n.inputs)).toContain("name");
+    const bad = solError("#SYNTAX!", "unclosed if");
+    const out = await n.data({ template: [bad], name: ["Ada"] });
+    expect(isSolError(out.document) && out.document.code).toBe("#SYNTAX!");
+    expect(Object.keys(n.inputs)).toContain("name");
   });
 });
