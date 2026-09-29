@@ -436,7 +436,7 @@ function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexRe
     if (!rowAll && (r < 0 || r >= rows)) return indexRefError(r + 1, rows, "Row");
     if (!colAll && (c < 0 || c >= v.columns.length)) return indexRefError(c + 1, v.columns.length, "Column");
     if (rowAll) return cubeFromColumns([v.columns[c]]);
-    if (colAll) return cubeFromColumns(v.columns.map((col) => ({ name: col.name, type: col.type, cells: [col.cells[r] ?? null] })));
+    if (colAll) return cubeFromColumns(v.columns.map((col) => ({ ...col, cells: [col.cells[r] ?? null] })));
     return v.columns[c].cells[r] ?? null;
   }
 

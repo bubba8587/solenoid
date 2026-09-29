@@ -226,6 +226,12 @@ describe("cube XLOOKUP on a TYPED date column (typed CubeColumn — frame→cube
     const idx = lookupRowIndex(events, "when", "2025-06-30");
     expect(cubeRowAt(events, idx).columns[0].type).toBe("date");
   });
+
+  it("cubeRowAt keeps a column's authored format", () => {
+    const fmt = { format: "custom", customPattern: "DD-MMM-YYYY HH:mm" } as never;
+    const timed = cubeFromColumns([{ name: "Start", type: "date", format: fmt, cells: [d1, d2] }]);
+    expect(cubeRowAt(timed, 1).columns[0].format).toBe(fmt);
+  });
 });
 
 // A4: the XLookup node's `frame` input used to carry `rawInputs` (skip ALL coercion) purely

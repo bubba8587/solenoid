@@ -1357,7 +1357,7 @@ export function frameRowAt(f: FrameValue, i: number): FrameValue {
 
 export function cubeRowAt(c: CubeValue, i: number): CubeValue {
   return cubeFromColumns(
-    c.columns.map((col) => ({ name: col.name, type: col.type, cells: [i < col.cells.length ? col.cells[i] ?? null : null] })),
+    c.columns.map((col) => ({ ...col, cells: [i < col.cells.length ? col.cells[i] ?? null : null] })),
   );
 }
 

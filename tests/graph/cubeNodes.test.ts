@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildFrame, isCubeValue, isFrameValue, cubeDepth, cubeRowCount, frameRowCount,
-  relateFramesToCube, relateCubeToFrame, type CubeValue, type FrameValue,
+  relateFramesToCube, relateCubeToFrame, cubeFromColumns, type CubeValue, type FrameValue,
 } from "../../src/graph/frame";
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode } from "../../src/graph/nodes/cube";
 import { ListIndexNode } from "../../src/graph/nodes/list";
@@ -204,6 +204,15 @@ describe("ListIndexNode (INDEX) — reads a cell out of any container", () => {
     const n = new ListIndexNode();
     const frame = buildFrame([[1, 2], [3, 4]], ["a", "b"]);
     expect(n.data({ list: [frame], index: [2], column: [2] }).result).toBe(4);
+  });
+
+  it("cube: a whole row keeps each column's authored format", () => {
+    const fmt = { format: "custom", customPattern: "DD-MMM-YYYY HH:mm" } as never;
+    const cube = cubeFromColumns([{ name: "Start", type: "date", format: fmt, cells: [46000.5, 46001.25] }]);
+    const n = new ListIndexNode();
+    const row = n.data({ list: [cube], index: [2], column: [0] }).result as CubeValue;
+    expect(row.columns[0].format).toBe(fmt);
+    expect(row.columns[0].cells).toEqual([46001.25]);
   });
 
   it("cube: a nested-frame cell comes out WHOLE (as a frame)", () => {
