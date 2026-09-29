@@ -216,7 +216,10 @@ export function TablePopup() {
   const formattedPreview = literalSource && displayMode === "formatted";
   const fxColumns = !!state.onSaveSource && !state.noFormulaColumns;
   const editableHeaders = editable && !!state.editableHeaders;
-  const colTypeAt = (c: number): CellType => columnTypes[c] ?? cellType;
+  const typesShown: CellType[] = view === "csv" && csvTypesFrom.current !== null
+    ? columnTypesAfterCsvEdit(columnTypes, csvTypesFrom.current, grid)
+    : columnTypes;
+  const colTypeAt = (c: number): CellType => typesShown[c] ?? cellType;
   const rows = grid.length;
   const cols = grid.reduce((m, r) => Math.max(m, r.length), 0);
 
@@ -600,7 +603,7 @@ export function TablePopup() {
       const line = displayRowAt(0, as);
       return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType, !editable);
     }
-    const body = toCSV(order.map((r) => displayRowAt(r, as)), cellType, columnTypes, !editable);
+    const body = toCSV(order.map((r) => displayRowAt(r, as)), cellType, typesShown, !editable);
     return hasHeaderLine
       ? `${headers.map((h) => csvField(h, "string", !editable)).join(",")}\n${body}`
       : body;
@@ -609,14 +612,14 @@ export function TablePopup() {
   const csvViewText = (mode: "formatted" | "source" = displayMode) =>
     buildText(!editable, mode === "source" ? "source" : "shown");
   function showCSV() {
+    if (view === "csv") return;
     setCsvText(csvViewText());
     setCsvError(null);
     const blank = !!headers?.every((h) => !(h ?? "").trim()) && grid.every((r) => r.every((c) => !c.trim()));
     csvTypesFrom.current = editable && hasHeaderLine ? (blank ? 0 : cols) : null;
     setView("csv");
   }
-  const settledColumnTypes = (): CellType[] =>
-    view === "csv" && csvTypesFrom.current !== null ? columnTypesAfterCsvEdit(columnTypes, csvTypesFrom.current, grid) : columnTypes;
+  const settledColumnTypes = (): CellType[] => typesShown;
   function leaveCsv(next: "grid" | "form" | "cards") {
     if (view === "csv") setColumnTypes(settledColumnTypes());
     setView(next);
