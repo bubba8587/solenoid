@@ -138,8 +138,8 @@ describe("Payment Breakdown (IPMT / PPMT / CUMIPMT / CUMPRINC)", () => {
 
   it("IPMT + PPMT = PMT for the period", () => {
     const args = { rate: [0.05], per: [3], nper: [12], pv: [1000], fv: [0] };
-    const ipmt = new PaymentBreakdownNode({ op: "ipmt" }).data(args).result!;
-    const ppmt = new PaymentBreakdownNode({ op: "ppmt" }).data(args).result!;
+    const ipmt = new PaymentBreakdownNode({ op: "ipmt" }).data(args).result as number;
+    const ppmt = new PaymentBreakdownNode({ op: "ppmt" }).data(args).result as number;
     const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
     expect(ipmt + ppmt).toBeCloseTo(pmt, 6);
   });
@@ -149,23 +149,48 @@ describe("Payment Breakdown (IPMT / PPMT / CUMIPMT / CUMPRINC)", () => {
 
   // =CUMIPMT(0.05,12,1000,1,12) = -353.90, =CUMPRINC(0.05,12,1000,1,12) = -1000 (Excel).
   it("CUMIPMT equals the sum of each period's IPMT and matches Excel", () => {
-    const cum = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result!;
+    const cum = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result as number;
     let sum = 0;
     for (let per = 1; per <= 12; per++) {
-      sum += new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [per], nper: [12], pv: [1000], fv: [0] }).result!;
+      sum += new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [per], nper: [12], pv: [1000], fv: [0] }).result as number;
     }
     expect(cum).toBeCloseTo(sum, 6);
     expect(cum).toBeCloseTo(-353.90, 2);
   });
 
   it("CUMPRINC repays the whole principal over the full term (Excel -1000)", () => {
-    const cum = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result!;
+    const cum = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result as number;
     expect(cum).toBeCloseTo(-1000, 6);
   });
 
+  it("IPMT and PPMT at rate 0 are 0 and the flat payment, as in Excel", () => {
+    const args = { rate: [0], per: [1], nper: [10], pv: [1000], fv: [0] };
+    expect(new PaymentBreakdownNode({ op: "ipmt" }).data(args).result).toBe(0);
+    expect(new PaymentBreakdownNode({ op: "ppmt" }).data(args).result).toBe(-100);
+  });
+
+  it("CUMIPMT / CUMPRINC outside Excel's domain are #DOMAIN!, as the formula answers", async () => {
+    const { compileEvaluator } = await import("../../../src/graph/excelFormula");
+    const bad = [
+      { rate: 0, nper: 10, pv: 1000, start: 1, end: 2 },
+      { rate: 0.01, nper: 10, pv: -1000, start: 1, end: 2 },
+      { rate: 0.01, nper: 0, pv: 1000, start: 1, end: 2 },
+      { rate: 0.01, nper: 10, pv: 1000, start: 0, end: 2 },
+      { rate: 0.01, nper: 10, pv: 1000, start: 3, end: 2 },
+    ];
+    for (const op of ["cumipmt", "cumprinc"] as const) {
+      for (const a of bad) {
+        const node = new PaymentBreakdownNode({ op }).data({ rate: [a.rate], nper: [a.nper], pv: [a.pv], start: [a.start], end: [a.end] }).result;
+        const formula = compileEvaluator(`${op.toUpperCase()}(${a.rate},${a.nper},${a.pv},${a.start},${a.end},0)`)!({});
+        expect((node as { code?: string } | null)?.code, `${op} ${JSON.stringify(a)}`).toBe("#DOMAIN!");
+        expect((formula as { code?: string }).code).toBe("#DOMAIN!");
+      }
+    }
+  });
+
   it("CUMIPMT + CUMPRINC over all periods equals total payments", () => {
-    const ci = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result!;
-    const cp = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result!;
+    const ci = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result as number;
+    const cp = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result as number;
     const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
     expect(ci + cp).toBeCloseTo(pmt * 12, 6);
   });
