@@ -8,6 +8,7 @@ import { CubeCellChip, frameCellNode, cubeCellToken } from "./cubeCell";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton, type SortKey } from "./columnSort";
+import { HeaderHelpButton } from "./columnHeadControls";
 import { copyText } from "../clipboard";
 import { saveCsvFileDialog } from "../fileBridge";
 import { csvField } from "../csvSafety";
@@ -212,7 +213,11 @@ export function CubePopup() {
         <table className="table-popup__grid">
           <thead>
             <tr>
-              <th className="table-popup__corner" />
+              <th className="table-popup__corner">
+                {editView && state.edit && headers && editView.kind !== "list" && editView.kind !== "grid" && (
+                  <HeaderHelpButton formulas={(editView.path ?? []).length === 0 && !state.edit.noFormulaColumns} lambdas={false} cube />
+                )}
+              </th>
               {Array.from({ length: cols }, (_, c) => (
                 <th
                   key={c}

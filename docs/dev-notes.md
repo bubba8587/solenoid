@@ -13,7 +13,9 @@ specific item.
   computed column's `row` and `rows`, COLUMN's says columns are read by name. `blockedNameMessage` is the one
   source of a blocked name's message. Spec: [[formula-language]] § Blocked and wrong-surface names.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
-  The Cube popup's root also offers Fx and has no legend yet.
+  The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
+- **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode
+  it was handed and read the not-yet-updated toggle. It now takes the mode like the table path.
 - **One text reading** ([[D93]] oneTextReading): every place text becomes a typed value (List Input typed or
   wired, every inline list field via `parseListLiteral`, typed Cube list items via `coerceListItem`, Get Column's Number/Date read, the vault reader's typed properties) reads it with
   `coerceFrameCell`, so unreadable text is NaN, never blank, and `dateFormatDisplay` shows a NaN date as `NaN`.

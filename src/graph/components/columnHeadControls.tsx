@@ -105,7 +105,8 @@ const FX_LEGEND: [string, string][] = [
   ["@price / SUM(price)", "this row's share of the total"],
 ];
 
-export function HeaderHelpButton({ formulas, lambdas }: { formulas: boolean; lambdas: boolean }) {
+/** `cube`: the Cube popup's legend, which adds the None type and a list column's `@` read ([[D81]] cubeRowLists). */
+export function HeaderHelpButton({ formulas, lambdas, cube = false }: { formulas: boolean; lambdas: boolean; cube?: boolean }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -130,6 +131,7 @@ export function HeaderHelpButton({ formulas, lambdas }: { formulas: boolean; lam
         <div ref={panelRef} className="table-popup__helppanel" style={style} {...stopAll}>
           <div className="table-popup__helphead">Column Type</div>
           <dl className="table-popup__helplist">
+            {cube && <div><dt>–</dt><dd>None, any kind per cell</dd></div>}
             {COLTYPE_ORDER.map((t) => <div key={t}><dt>{COLTYPE_GLYPH[t]}</dt><dd>{COLTYPE_NAME[t]}</dd></div>)}
             {formulas && <div><dt>Fx</dt><dd>a formula, run once per row</dd></div>}
           </dl>
@@ -140,6 +142,7 @@ export function HeaderHelpButton({ formulas, lambdas }: { formulas: boolean; lam
                 {FX_LEGEND.map(([code, meaning]) => (
                   <div key={code}><dt>{code}</dt><dd>{meaning}</dd></div>
                 ))}
+                {cube && <div><dt>COUNTA(@tags)</dt><dd>how many tags this row's list holds</dd></div>}
                 {lambdas && <div><dt>λ1</dt><dd>runs that LAMBDA, each parameter reading the column of its name</dd></div>}
               </dl>
             </>
