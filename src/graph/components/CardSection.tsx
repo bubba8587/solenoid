@@ -12,7 +12,8 @@ import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { prefersReducedMotion } from "../coarse";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { NodeSocket, useRowSocketTop } from "./NodeSocket";
-import { SocketGoo, type GooDrop } from "./SocketGoo";
+import { SocketGoo, flowYOf, type GooDrop } from "./SocketGoo";
+import { cableEndMotion } from "../cableEndMotion";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import "./nodeCard.css";
 
@@ -89,6 +90,7 @@ function tuckTarget(caption: HTMLElement): HTMLElement | SVGElement | null {
   }
   return null;
 }
+const R = 6; // a socket dot's radius: its center sits this far below the socket's top
 const socketColor = (sock: ClassicPreset.Socket) => (sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888");
 
 type Goo = { mode: "merge" | "split"; drops: GooDrop[]; pillTop: number; pillColor: string; pillHeight: number; hidden: (HTMLElement | SVGElement)[] };
@@ -122,14 +124,30 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
   function toggle() {
     const content = ref.current?.closest<HTMLElement>(".solenoid-node__content");
     if (content && sockets && wired.length > 0 && !cardCollapsed && top !== undefined && !prefersReducedMotion()) {
+      // The cables hold where they are from this click until the liquid carries them: the fold re-lays the card at
+      // once, but the liquid's first frame (and the split's, a frame later) would otherwise show them at the sockets.
+      const nodeId = sockets.node.id;
       if (open) {
-        const drops = wired.flatMap((k) => {
+        const held = wired.flatMap((k) => {
           const el = socketEl(content, k);
-          return el ? [{ key: k, top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) }] : [];
+          const y = el ? flowYOf(el, R) : undefined;
+          return el && y !== undefined ? [{ k, el, y }] : [];
         });
-        if (drops.length > 0) setGoo({ mode: "merge", drops, pillTop: top, pillColor: firstColor, pillHeight: tuckHeight, hidden: [] });
+        if (held.length > 0) {
+          cableEndMotion.setYs(nodeId, held.map(({ k, y }) => [k, y] as const));
+          setGoo({
+            mode: "merge",
+            drops: held.map(({ k, el }) => ({ key: k, top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) })),
+            pillTop: top, pillColor: firstColor, pillHeight: tuckHeight, hidden: [],
+          });
+        }
       } else {
-        splitFrom.current = top;
+        const pillEl = ref.current ? tuckTarget(ref.current) : null;
+        const y = pillEl ? flowYOf(pillEl, tuckHeight / 2) : undefined;
+        if (y !== undefined) {
+          cableEndMotion.setYs(nodeId, wired.map((k) => [k, y] as const));
+          splitFrom.current = top;
+        }
       }
     }
     onToggle();
@@ -154,7 +172,8 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
     // that frame paints. Not cancelled on cleanup: this effect re-runs on the very next render, which would drop it.
     requestAnimationFrame(() => {
       const els = wired.flatMap((k) => { const el = socketEl(content, k); return el ? [{ el, k }] : []; });
-      if (els.length === 0) return;
+      // No liquid to take the held cables over, so let them go to their sockets.
+      if (els.length === 0) { cableEndMotion.clear(sockets.node.id, wired); return; }
       els.forEach(({ el }) => { el.style.opacity = "0"; });
       setGoo({
         mode: "split",

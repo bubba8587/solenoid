@@ -3,6 +3,16 @@ import { useId, useLayoutEffect, useRef } from "react";
 import { socketRingColor } from "./SocketComponent";
 import { cableEndMotion } from "../cableEndMotion";
 
+/** The flow y of a point `dy` screen-unscaled px below the top of `el`, a node on the React Flow canvas: through the
+ *  viewport's own transform, so a card nested in a group's sub-flow lands right too (the viewport box's top-left is
+ *  the flow origin on screen). Undefined off the canvas. */
+export function flowYOf(el: Element, dy: number): number | undefined {
+  const viewport = el.closest<HTMLElement>(".react-flow__viewport");
+  if (!viewport) return undefined;
+  const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a || 1;
+  return (el.getBoundingClientRect().top - viewport.getBoundingClientRect().top) / zoom + dy;
+}
+
 /** One socket dot in the goo: its socket-top (the NodeSocket wrapper's top, content coordinates) and its fill. */
 export type GooDrop = { key: string; top: number; color: string };
 
@@ -53,14 +63,11 @@ export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight 
     const stagger = n > 1 ? 0.12 / (n - 1) : 0;
     const start = performance.now();
     let raf = 0;
-    // Each drop's cable end follows the drop: its svg y placed on the canvas through the viewport's own transform,
-    // so a card nested in a group's sub-flow lands right too (the viewport box's top-left is the flow origin on screen).
+    // Each drop's cable end follows the drop.
     const carryCables = (ends: [string, number][]) => {
       const svg = svgRef.current;
-      const viewport = svg?.closest<HTMLElement>(".react-flow__viewport");
-      if (!svg || !viewport) return;
-      const zoom = new DOMMatrixReadOnly(getComputedStyle(viewport).transform).a || 1;
-      const svgTop = (svg.getBoundingClientRect().top - viewport.getBoundingClientRect().top) / zoom;
+      const svgTop = svg ? flowYOf(svg, 0) : undefined;
+      if (svgTop === undefined) return;
       cableEndMotion.setYs(nodeId, ends.map(([k, y]) => [k, svgTop + y] as const));
     };
     const setPill = (h: number, w: number) => {
@@ -126,7 +133,8 @@ export function SocketGoo({ nodeId, mode, drops, pillTop, pillColor, pillHeight 
       if (t < 1) raf = requestAnimationFrame(frame);
       else done.current();
     };
-    raf = requestAnimationFrame(frame);
+    // The first frame draws now, before paint, so the cables never show a frame at their sockets' stale spots.
+    frame();
     return () => { cancelAnimationFrame(raf); cableEndMotion.clear(nodeId, drops.map((d) => d.key)); };
     // One run per mount; the fold remounts it for the next.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
