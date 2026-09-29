@@ -44,6 +44,7 @@ In `InlineInputs` (the fixed rows of most cards):
 | `string`, `strcombo` | text field, or a column picker when the node declares that key as a Frame column picker | `stringLiterals` |
 | `strlist`, `datelist`, `logicallist`, an opted-in `numlist` | CSV field, with no quote marks, which would suggest one string | `stringLiterals` |
 | `any`, `anydata`, `trueany` on a node with `autoLiterals` | the auto field (below) | either |
+| `any`, `anydata`, `trueany` on a node with `textLiterals` | text field, kept exactly as typed | `stringLiterals` |
 | anything else | none | none |
 
 A combo (`numlist`, `strcombo`) edits in place as a scalar; it becomes a list only when a cable brings one.
@@ -53,5 +54,7 @@ In `ExtensibleInputs` (rows that can be added and removed), `string` and the lis
 ## Wildcard slots
 
 A node opts its wildcard rows into typed literals with `autoLiterals` (`AutoLiteralHost`, `takesAutoLiteral`). The value selectors opt in, since their wildcard rows are value branches, and so do the Cube builders, whose rows are cells. A wildcard sink or relay (Display, Cast, Report) leaves it off and stays wire-only. The opt-in covers `any`, `anydata` and `trueany`; a list or a matrix still arrives only by wire.
+
+A node whose op reads a wildcard slot as text opts in with `textLiterals` instead (`takesTextLiteral`): its rows get the plain text field, so a space, `007` or `1.50` reaches the op exactly as typed rather than trimmed or read as a number. Replace Values' Find and Replace take this field; a wired value of any type still connects.
 
 The auto field (`InlineAutoField`) holds a number or text. An entry that reads as a number (`Number(t)`, not `parseFloat`, so "12abc" is text) commits as a number into `literals`; anything else commits as text into `stringLiterals`, and the quote marks appear to show which landed, since a SWITCH case of `12` is not a case of `"12"`. The field keeps the number field's drag-to-scrub while it holds a number. Each commit deletes the key from both maps before writing one, so a wildcard slot lives in exactly one map and a reader never has to break a tie.

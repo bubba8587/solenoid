@@ -418,11 +418,19 @@ export function InlineAutoField({
 
 export interface AutoLiteralHost {
   autoLiterals?: boolean;
+  /** Wildcard rows take text exactly as typed, for a node whose op reads the value as text. */
+  textLiterals?: boolean;
   stringLiterals?: Record<string, string>;
 }
 
+const isWildcard = (dt: string | undefined) => dt === "any" || dt === "anydata" || dt === "trueany";
+
 export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
-  return !!node.autoLiterals && (dt === "any" || dt === "anydata" || dt === "trueany");
+  return !!node.autoLiterals && isWildcard(dt);
+}
+
+export function takesTextLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
+  return !!node.textLiterals && isWildcard(dt);
 }
 
 const DEFAULT_LABEL_RE = /^(.*?)\s*\(default\s+(.+?)\)\s*$/;
@@ -467,6 +475,7 @@ export type InlineNode = {
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
   autoLiterals?: boolean;
+  textLiterals?: boolean;
 };
 
 type Props = {
@@ -587,6 +596,8 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
             ) : cableOnlyKeys?.has(key) ? null
               : takesAutoLiteral(node, dt) ? (
               <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} placeholder={placeholder} />
+            ) : takesTextLiteral(node, dt) ? (
+              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
             ) : isNumber ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
             ) : isStr ? (

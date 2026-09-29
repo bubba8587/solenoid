@@ -257,6 +257,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     ownsListLiterals: "class-constant declaration: List Input reads its own typed rows ([[D93]] oneTextReading)",
     cachedSource: "List Input's typed text per item, for the popup's Source view; re-split from stringLiterals on every compute",
     autoLiterals: "class-constant declaration — the VALUES land in literals/stringLiterals, which persist",
+    textLiterals: "class-constant declaration — the VALUES land in stringLiterals, which persist",
     // ── runtime edge-detection ([[D79]] effectsEdgeTriggered) ──
     lastStatusKey: "effectsEdgeTriggered edge state", lastEvalOp: "effectsEdgeTriggered edge state",
     // ── constructor-only tuning knobs: no UI edits them today; whitelist the day one does ──

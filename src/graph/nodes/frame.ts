@@ -1329,9 +1329,8 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
   label: string;
   mode: ReplaceMode;
   cachedResult: FrameValue | SolError | null = null;
-  literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { column: "", find: "", replace: "" };
-  autoLiterals = true;
+  textLiterals = true;
   width = 200; height = 205;
 
   constructor(init?: { label?: string; mode?: ReplaceMode }) {
@@ -1345,27 +1344,20 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  private findReplaceLiteral(key: string): string {
-    const s = this.stringLiterals[key];
-    if (s !== undefined && s !== "") return s;
-    const n = this.literals[key];
-    return n !== undefined ? String(n) : "";
-  }
-
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
     if (!input || ctx.wired("column")) return null;
     return shapeOf({
       kind: "replaceValues", column: this.stringLiterals.column ?? "",
-      find: this.findReplaceLiteral("find"), replaceWith: this.findReplaceLiteral("replace"), mode: this.mode,
+      find: this.stringLiterals.find ?? "", replaceWith: this.stringLiterals.replace ?? "", mode: this.mode,
     }, input);
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
     const f = inputs.frame?.[0] ?? null;
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const find = readFilterValue(inputs.find, this.findReplaceLiteral("find"));
-    const replace = readFilterValue(inputs.replace, this.findReplaceLiteral("replace"));
+    const find = readFilterValue(inputs.find, this.stringLiterals.find ?? "");
+    const replace = readFilterValue(inputs.replace, this.stringLiterals.replace ?? "");
     if (f == null || column === null || find === null || replace === null) return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "replaceValues", column, find, replaceWith: replace, mode: this.mode }));
   }

@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, resetFrameBackendToJs, SKETCH_SAMPLE_ROWS } from "../../src/graph/frameBackend";
 import { calcModeStore } from "../../src/graph/calcModeStore";
 import { ReplaceValuesNode } from "../../src/graph/nodes/frame";
+import { takesAutoLiteral, takesTextLiteral } from "../../src/graph/components/inlineInput";
 import {
   selectColumns, dropColumns, renameColumns, sortByColumn, distinctRows, headRows,
   filterRows, groupByFrame, pivotFrame, unpivotFrame, joinFrames, appendFrames,
@@ -237,5 +238,18 @@ describe("Replace Values — Find/Replace take a wired value of any type", () =>
     const n = new ReplaceValuesNode({ mode: "cell" });
     n.stringLiterals.column = "qty";
     expect((await n.data({ frame: [f], find: [null], replace: [0] })).frame).toBeNull();
+  });
+
+  it("the card's typed Find and Replace are text kept exactly as typed", async () => {
+    resetFrameBackendToJs();
+    const n = new ReplaceValuesNode({ mode: "substring" });
+    expect(takesAutoLiteral(n, "any")).toBe(false);
+    expect(takesTextLiteral(n, "any")).toBe(true);
+    const f: FrameValue = { __frame: true, columns: [{ name: "s", type: "string", values: ["a_b", "007"] }] };
+    n.stringLiterals.find = "_";
+    n.stringLiterals.replace = " ";
+    const out = await collect(n, { frame: [f] });
+    if (isSolError(out) || out == null) throw new Error("expected a frame");
+    expect(out.columns[0].values).toEqual(["a b", "007"]);
   });
 });
