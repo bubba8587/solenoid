@@ -339,7 +339,6 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Section folds** inside a card (`CardSection.setOpen`) autosave but record no undo step, unlike a card collapse.
 - [ ] **LOGEST with a Y at or below 0** answers an empty list while the Fit card answers #DOMAIN!; a test pins the difference against [[C17]] shareImpl. Pick one.
 - [ ] **`tree/specs/values/value-semantics.md`** says only the value selectors use `autoLiterals`; Cube, Script, XMATCH and Set Cell do too.
-- [ ] **REGEXREPLACE negative occurrence** now counts from the end (-1 is the last match), per Excel's docs; confirm.
 - [ ] **XNPV node** runs through Formula.js with no check for a date before the first date (XIRR now refuses it); **LARGE/SMALL** round a fractional k (`nthExtreme`), unchecked against Excel.
 - [ ] **Distribution form switch** (`DistributionsNode.tsx` pickForm, `distribution.ts` setForm): cdf/pdf ↔ Sample drops `x`/`count` without pruning its cable, and Sample → Inverse prunes the wrong key. Prune from a `keysDroppedByForm` built like `keysDroppedBySwitch`, and rerender.
 - [ ] **Distribution op switch** keeps a surviving socket's old label (Normal → Lognormal still reads Mean/Stdev) until reload; refresh labels in `setOp`.
