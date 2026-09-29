@@ -102,7 +102,7 @@ export function percentile(arr: readonly number[], p: number, exc: boolean): num
 }
 
 export function quartile(arr: readonly number[], q: number, exc: boolean): number | SolError | null {
-  const qi = Math.round(q);
+  const qi = Math.trunc(q);
   if (arr.length === 0) return null;
   if (qi < 0 || qi > 4) return solError("#DOMAIN!", "Quartile must be 0, 1, 2, 3, or 4");
   if (exc && (qi === 0 || qi === 4)) return solError("#DOMAIN!", "QUARTILE.EXC is undefined for quartile 0 or 4");

@@ -86,6 +86,18 @@ describe("QUARTILE", () => {
     const fx = compileEvaluator("QUARTILE.INC(x, 5)")!({ x: [1, 2, 3, 4, 5] });
     expect(isSolError(fx) && fx.code).toBe("#DOMAIN!");
   });
+  it("a fractional quart truncates like Excel, node and formula alike", () => {
+    const fx = (expr: string) => compileEvaluator(expr)!({ x: [1, 2, 3, 4, 5] });
+    const node = (op: "quartile-inc" | "quartile-exc", q: number) => new RankPercentileNode({ op }).data({ list: data, q: [q] }).result;
+    expect(fx("QUARTILE(x, 2.6)")).toBe(3);
+    expect(node("quartile-inc", 2.6)).toBe(3);
+    expect(fx("QUARTILE(x, 0.5)")).toBe(1);
+    expect(node("quartile-inc", 0.5)).toBe(1);
+    expect(fx("QUARTILE.EXC(x, 3.9)")).toBe(4.5);
+    expect(node("quartile-exc", 3.9)).toBe(4.5);
+    const exc = fx("QUARTILE.EXC(x, 0.5)");
+    expect(isSolError(exc) && exc.code).toBe("#DOMAIN!");
+  });
   it("EXC interpolates the in-domain quartiles (= PERCENTILE.EXC(q/4))", () => {
     expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [1] }).result).toBe(1.5);
     expect(new RankPercentileNode({ op: "quartile-exc" }).data({ list: data, q: [2] }).result).toBe(3);

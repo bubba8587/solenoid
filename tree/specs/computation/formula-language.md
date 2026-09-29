@@ -694,7 +694,7 @@ The Aggregate, Rank & Percentile, Correlation, Covariance, Mode, Fisher and Hypo
 
 - `percentileOf(sorted, p, exc)` interpolates at index `p·(n − 1)` (inclusive) or `p·(n + 1) − 1` (exclusive) of a sorted list.
 - `percentile` applies Excel's domains: INC needs 0 ≤ p ≤ 1, EXC needs p between 1/(n + 1) and n/(n + 1). Outside is `#DOMAIN!` (Excel's `#NUM!`). An empty list is null.
-- `quartile` is the percentile at `round(q)/4`; q outside 0 to 4 is `#DOMAIN!`. INC's quartile 0 is the minimum and 4 the maximum; EXC refuses 0 and 4, and at small n an interior quartile can still fall outside the EXC domain.
+- `quartile` is the percentile at `trunc(q)/4`, as Excel truncates; q outside 0 to 4 after truncation is `#DOMAIN!`. INC's quartile 0 is the minimum and 4 the maximum; EXC refuses 0 and 4, and at small n an interior quartile can still fall outside the EXC domain.
 - `nthExtreme` is LARGE and SMALL: the k-th largest or smallest, 1-based; k out of range is null.
 
 **Correlation and regression** over paired numbers (the caller has already dropped pairs with a blank), using the shorter list's length:
