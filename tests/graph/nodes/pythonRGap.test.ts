@@ -208,6 +208,15 @@ describe("Correlation Matrix (df.corr / cor)", () => {
     expect(cov.columns[1].values[0]).toBeCloseTo(2.5, 12);    // var(a) sample
     expect(new CorrMatrixNode({ method: "spearman" }).data({ frame: [f] }).frame).toEqual(correlationMatrix(f, "spearman"));
   });
+  it("a number column named `column` gets a distinct header", () => {
+    const g: FrameValue = { __frame: true, columns: [
+      { name: "column", type: "number", values: [1, 2, 3] },
+      { name: "b", type: "number", values: [2, 4, 7] },
+    ] };
+    const out = correlationMatrix(g, "pearson");
+    expect(out.columns.map((c) => c.name)).toEqual(["column", "column2", "b"]);
+    expect(out.columns[0].values).toEqual(["column", "b"]);
+  });
 });
 
 describe("Amortization schedule", () => {

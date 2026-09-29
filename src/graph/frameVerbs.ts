@@ -1925,8 +1925,9 @@ export function correlationMatrix(f: FrameValue, method: CorrMethod): FrameValue
       : covariance(xs, ys, true);
     return typeof v === "number" ? v : null;
   };
-  const out: FrameColumn[] = [{ name: "column", type: "string", values: cols.map((c) => c.name) }];
-  cols.forEach((cj, j) => out.push({ name: cj.name, type: "number", values: cols.map((_, i) => cell(i, j)) }));
+  const names = makeHeaders(["column", ...cols.map((c) => c.name)], cols.length + 1);
+  const out: FrameColumn[] = [{ name: names[0], type: "string", values: cols.map((c) => c.name) }];
+  cols.forEach((_, j) => out.push({ name: names[j + 1], type: "number", values: cols.map((_, i) => cell(i, j)) }));
   return { __frame: true, columns: out };
 }
 
