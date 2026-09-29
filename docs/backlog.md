@@ -338,4 +338,4 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Series op switch**: a typed value equal to the old op's default (Start 0 on Range) reads as untouched and gives way to the next op's default; keeping it needs a saved "edited keys" field.
 - [ ] **Section folds** inside a card (`CardSection.setOpen`) autosave but record no undo step, unlike a card collapse.
 - [ ] **LOGEST with a Y at or below 0** answers an empty list while the Fit card answers #DOMAIN!; a test pins the difference against [[C17]] shareImpl. Pick one.
-- [ ] **`value-semantics.md`** says only the value selectors use `autoLiterals`; Cube, Script, XMATCH and Set Cell do too.
+- [ ] **`tree/specs/values/value-semantics.md`** says only the value selectors use `autoLiterals`; Cube, Script, XMATCH and Set Cell do too.
