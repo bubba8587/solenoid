@@ -900,3 +900,23 @@
   color: var(--node-accent, var(--accent));
 }
 .table-popup__helplist dd { margin: 0; color: var(--text-dim); }
+
+/* The unsaved-changes prompt dims the popup it guards, so it sits in the popup's own layer. */
+.table-popup__unsaved {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: rgba(0, 0, 0, 0.45);
+}
+.table-popup__unsaved .solenoid-confirm__btn--primary {
+  background: var(--node-accent, var(--accent));
+  border-color: var(--node-accent, var(--accent));
+  color: var(--node-accent-ink, var(--accent-ink));
+}
+.table-popup__unsaved-discard {
+  margin-right: auto;
+}

@@ -12,6 +12,7 @@
 // Steps run in order after the load, and every node's text is printed again after them:
 //   --popup [N]          open the Nth frame chip's table (1 by default); the shot is then that popup
 //   --click <css>        click the first match
+//   --click-edge <css>   click the first match 5px in from its top-left corner (a popup's overlay, outside the card)
 //   --type <css> <text>  focus the first match, select all, type the text
 //   --press <key>        press a key (Enter, Escape, Tab…)
 // Card formulas edit in the formula popup: --click .solenoid-expr__rendered, then --type .fx-editor__ta.
@@ -28,6 +29,7 @@ for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === "--out") opt.out = argv[++i];
   else if (a === "--click") opt.steps.push({ click: argv[++i] });
+  else if (a === "--click-edge") opt.steps.push({ click: argv[++i], edge: true });
   else if (a === "--type") opt.steps.push({ type: argv[++i], text: argv[++i] });
   else if (a === "--press") opt.steps.push({ press: argv[++i] });
   else if (a === "--wait") opt.wait = Number(argv[++i]);
@@ -35,7 +37,7 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--popup") opt.steps.push({ popup: /^\d+$/.test(argv[i + 1] ?? "") ? Number(argv[++i]) : 1 });
   else opt.file = a;
 }
-if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--type css text] [--press key]… [--wait ms] [--full]"); process.exit(2); }
+if (!opt.file) { console.error("usage: node scripts/shot-graph.mjs <graph.json> [--out file.png] [--popup [N]] [--click css] [--click-edge css] [--type css text] [--press key]… [--wait ms] [--full]"); process.exit(2); }
 
 const inferType = (cells) => {
   const filled = cells.filter((c) => c !== "" && c != null);
@@ -110,7 +112,7 @@ try {
 
   let popupOpen = false;
   for (const step of opt.steps) {
-    if (step.click) await page.click(step.click);
+    if (step.click) await page.click(step.click, step.edge ? { offset: { x: 5, y: 5 } } : undefined);
     else if (step.type) {
       await page.click(step.type);
       await page.keyboard.down("Control");

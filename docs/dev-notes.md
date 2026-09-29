@@ -42,6 +42,9 @@ specific item.
 - **Card sections and the input card's Open** (DESIGN.md § Card sections, § Buttons): `CardSection` captions a run of
   rows and can fold them (Cast's Separators, Frame Input's Advanced holding Add LAMBDA and Form Layout; Decision
   Matrix's captions moved onto it). Frame Input and Table Input got an accent-washed Open button at the top.
+- **The Table popup asks before dropping edits** (`tree/specs/documents/table-popup.md` § Closing): a close with
+  unsaved edits raises Save your changes? (Discard / Keep Editing / Save) inside the popup. `shot-graph` gained
+  `--click-edge` to press a popup's overlay outside the card.
 - **Cast absorbs NUMBERVALUE** (the NumberValue card is gone): to Text takes a `format`, to Number takes Decimal and
   Group separators under a small Separators label, read by VALUE's own reader (`parseValueText`); a retarget drops
   the departing inputs' cables. Cast sits on the default width tiers now that its segments are icons.

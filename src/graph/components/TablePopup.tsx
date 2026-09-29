@@ -24,6 +24,8 @@ import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { useFocusTrap } from "./useFocusTrap";
+import "./confirmDialog.css";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
@@ -154,6 +156,9 @@ export function TablePopup() {
   const summaryCache = useRef<{ deps: unknown[]; value: ColSummary[] | null }>({ deps: [], value: null });
   const csvTypesFrom = useRef<number | null>(null);
   const cardsKey = useRef<{ deps: unknown[]; key: object }>({ deps: [], key: {} });
+  // What Save would write, as of the last save or live commit; a close that differs asks first.
+  const savedSnapshot = useRef("");
+  const [askClose, setAskClose] = useState(false);
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -163,10 +168,15 @@ export function TablePopup() {
     const g = toGrid(state.data, baseType, state.columnTypes);
     setGrid(g);
     const ncols = g.reduce((m, r) => Math.max(m, r.length), 0);
-    setHeaderNames(Array.from({ length: ncols }, (_, j) => state.headers?.[j] ?? ""));
-    setColumnTypes(Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType));
-    setColExprs(Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]));
-    committedExprs.current = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
+    const names = Array.from({ length: ncols }, (_, j) => state.headers?.[j] ?? "");
+    const types = Array.from({ length: ncols }, (_, j) => state.columnTypes?.[j] ?? baseType);
+    const exprs = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
+    setHeaderNames(names);
+    setColumnTypes(types);
+    setColExprs(exprs);
+    committedExprs.current = exprs;
+    savedSnapshot.current = editSnapshot(g, names, types, exprs);
+    setAskClose(false);
     setLiveComputed(null);
     const fmtNodeId = state.pinNodeId;
     const localAt = (colName: string | undefined): FormatAnnotation | undefined =>
@@ -666,6 +676,7 @@ export function TablePopup() {
   async function commitLive(overrides?: Parameters<typeof buildSourceColumns>[0]) {
     if (!state?.onCommitSource) return;
     committedExprs.current = [...(overrides?.exprs ?? colExprs)];
+    savedSnapshot.current = editSnapshot(grid, headerNames, overrides?.types ?? columnTypes, committedExprs.current);
     const refresh = await state.onCommitSource(buildSourceColumns(overrides));
     if (!refresh) return;
     setLiveComputed(refresh.computedCells);
@@ -676,6 +687,16 @@ export function TablePopup() {
   function addCardsChart(hostId: string) {
     if (editable) save(); else tablePopup.close();
     void recordCards?.add(hostId);
+  }
+  function hasUnsavedEdits(): boolean {
+    if (!editable) return false;
+    const midEdit = !!editCell && editDraft.current !== (grid[editCell.r]?.[editCell.c] ?? "");
+    return midEdit || editSnapshot(grid, headerNames, settledColumnTypes(), colExprs) !== savedSnapshot.current;
+  }
+  // The overlay, the close button, Escape and Go to source all land here; the footer's Cancel discards outright.
+  function requestClose() {
+    if (hasUnsavedEdits()) setAskClose(true);
+    else tablePopup.close();
   }
   function save() {
     if (state?.onSaveRaw) state.onSaveRaw(grid.map((row) => [...row]));
@@ -724,15 +745,17 @@ export function TablePopup() {
       editDraft.current = grid[editCell.r]?.[editCell.c] ?? "";
       setEditCell(null);
       (document.activeElement as HTMLElement | null)?.blur?.();
+    } else if (askClose) {
+      setAskClose(false);
     } else {
-      tablePopup.close();
+      requestClose();
     }
   };
 
   return (
     <PopupShell
       title={state.title}
-      onClose={() => tablePopup.close()}
+      onClose={requestClose}
       onEscape={onGridEscape}
       cardClassName="table-popup"
       grouped={grouped}
@@ -1245,6 +1268,33 @@ export function TablePopup() {
           <button className="table-popup__btn table-popup__btn--primary" onClick={() => tablePopup.close()}>Done</button>
         )}
       </div>
+      {askClose && <UnsavedChangesPrompt onSave={save} onDiscard={() => tablePopup.close()} onKeepEditing={() => setAskClose(false)} />}
     </PopupShell>
+  );
+}
+
+/** Formula columns infer their type, so only a Data column's type counts as an edit. */
+function editSnapshot(grid: string[][], names: string[], types: CellType[], exprs: (string | undefined)[]): string {
+  return JSON.stringify([grid, names, types.map((t, j) => (exprs[j] !== undefined ? "fx" : t)), exprs]);
+}
+
+function UnsavedChangesPrompt({ onSave, onDiscard, onKeepEditing }: {
+  onSave: () => void;
+  onDiscard: () => void;
+  onKeepEditing: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(true, ref);
+  return (
+    <div className="table-popup__unsaved" onPointerDown={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) onKeepEditing(); }}>
+      <div ref={ref} className="solenoid-confirm__dialog" role="alertdialog" aria-modal="true" aria-labelledby="table-popup-unsaved-msg">
+        <div id="table-popup-unsaved-msg" className="solenoid-confirm__message">Save your changes?</div>
+        <div className="solenoid-confirm__buttons">
+          <button type="button" className="solenoid-confirm__btn table-popup__unsaved-discard" onClick={onDiscard}>Discard</button>
+          <button type="button" className="solenoid-confirm__btn" onClick={onKeepEditing}>Keep Editing</button>
+          <button type="button" className="solenoid-confirm__btn solenoid-confirm__btn--primary" onClick={onSave} autoFocus>Save</button>
+        </div>
+      </div>
+    </div>
   );
 }
