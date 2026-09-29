@@ -101,7 +101,6 @@ export function oddfPrice(
   settle: Date, maturity: Date, issue: Date, firstCoupon: Date,
   couponRate: number, yld: number, redemption: number, freq: number,
 ): number {
-  if (settle >= firstCoupon) return bondPrice(settle, maturity, couponRate, yld, redemption, freq);
   const step = 12 / freq;
   const E = 360 / freq;
   const periods: [Date, Date][] = [];
@@ -134,21 +133,10 @@ export function oddlPrice(
   const oddDays = days30_360(lastInterest, maturity);
   const Nc = oddDays / E;
   const finalCF = redemption + couponRate / freq * 100 * Nc;
-  if (settle >= lastInterest) {
-    const DSC = days30_360(settle, maturity);
-    const A = days30_360(lastInterest, settle);
-    const price = finalCF / (1 + (DSC / E) * (yld / freq));
-    return price - couponRate / freq * 100 * A / E;
-  }
-  const { prev, next } = coupDates(settle, lastInterest, freq);
-  const DSC = days30_360(settle, next);
-  const A = days30_360(prev, settle);
-  const N = bondCouponCount(next, lastInterest, freq);
-  const y = yld / freq, C = couponRate / freq * 100;
-  let price = finalCF / Math.pow(1 + y, N - 1 + DSC / E + Nc);
-  for (let k = 1; k <= N; k++) price += C / Math.pow(1 + y, k - 1 + DSC / E);
-  price -= C * A / E;
-  return price;
+  const DSC = days30_360(settle, maturity);
+  const A = days30_360(lastInterest, settle);
+  const price = finalCF / (1 + (DSC / E) * (yld / freq));
+  return price - couponRate / freq * 100 * A / E;
 }
 
 /** With `noSwitch` the depreciation stays declining-balance to the end, as Excel's VDB no_switch; otherwise it switches to straight-line once that is larger. */
@@ -369,7 +357,13 @@ export function oddCoupon(
   const maturity = serialToJsDate(maturitySerial);
   const fl = serialToJsDate(flSerial);
   const isFirst = op === "oddfprice" || op === "oddfyield";
-  const issue = isFirst ? serialToJsDate(Number.isFinite(issueSerial) ? issueSerial : settleSerial) : settle;
+  const issueAt = Number.isFinite(issueSerial) ? issueSerial : settleSerial;
+  // Excel's date order: maturity > first coupon > settlement ≥ issue, or maturity > settlement > last interest.
+  const ordered = isFirst
+    ? maturitySerial > flSerial && flSerial > settleSerial && settleSerial >= issueAt
+    : maturitySerial > settleSerial && settleSerial > flSerial;
+  if (!ordered) return null;
+  const issue = isFirst ? serialToJsDate(issueAt) : settle;
   const priceAt = (y: number) => isFirst
     ? oddfPrice(settle, maturity, issue, fl, rate, y, redemption, f)
     : oddlPrice(settle, maturity, fl, rate, y, redemption, f);
