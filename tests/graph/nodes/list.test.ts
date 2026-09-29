@@ -529,6 +529,22 @@ describe("Filter — condition rows over the list's own values ([[C49]] filterOn
       .toThrowError(expect.objectContaining({ code: "#TYPE!" }));
   });
 
+  it("a text predicate on an empty or all-blank list keeps nothing and drops the blanks ([[D49]] textPredicateNeedsText)", () => {
+    for (const op of ["contains", "startsWith", "endsWith"] as const) {
+      expect(mk([{ op, value: "a" }]).data({ list: [[]] }).result).toEqual([]);
+      const out = mk([{ op, value: "a" }]).data({ list: [[null, null]] });
+      expect(out.result).toEqual([]);
+      expect(out.dropped).toEqual([null, null]);
+    }
+  });
+
+  it("a text predicate on a list mixing text and numbers is #TYPE! whichever comes first", () => {
+    for (const list of [[1, "apple"], ["apple", 1]]) {
+      expect(() => mk([{ op: "contains", value: "a" }]).data({ list: [list] }))
+        .toThrowError(expect.objectContaining({ code: "#TYPE!" }));
+    }
+  });
+
   it("AND narrows, OR unions", () => {
     const arr = [1, 5, 10, 20];
     expect(mk([{ op: "gt", value: "2" }, { op: "lt", value: "15" }], "and").data({ list: [arr] }).result).toEqual([5, 10]);

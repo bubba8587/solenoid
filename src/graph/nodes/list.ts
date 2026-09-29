@@ -914,6 +914,12 @@ function listElemColType(arr: readonly unknown[]): FrameColType {
   return "number";
 }
 
+/** What the text-predicate gate sees: text only when every filled item is text, so an empty or all-blank list passes. */
+function listTextGateType(arr: readonly unknown[]): FrameColType {
+  const other = arr.find((v) => v != null && !isSolError(v) && typeof v !== "string");
+  return other === undefined ? "string" : listElemColType([other]);
+}
+
 /** Null means a wired blank; any other wired value stringifies (an error to its code) to match a typed literal. */
 export function readFilterValue(wired: unknown[] | undefined, literal: string | undefined): string | null {
   const raw: unknown = wired === undefined || wired.length === 0 ? (literal ?? "") : (wired[0] ?? null);
@@ -1055,7 +1061,8 @@ export class FilterNode extends ClassicPreset.Node {
       return { result: this.cachedResult, dropped: null };
     }
     // [[D49]] textPredicateNeedsText: a text predicate on a non-text list is #TYPE!.
-    for (const c of conds) requireTextList(c.op, type);
+    const gate = listTextGateType(mags);
+    for (const c of conds) requireTextList(c.op, gate);
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
     for (let i = 0; i < arr.length; i++) {
