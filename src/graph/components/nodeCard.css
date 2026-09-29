@@ -191,7 +191,8 @@
   background: var(--group-color-dark, var(--border-strong));
 }
 
-.solenoid-node--collapsed .solenoid-node__body > *:not(.solenoid-node__display-value):not(.solenoid-node__value-input):not(.solenoid-node__quoted):not([data-socket-side]):not(.solenoid-node__input-pill):not(.solenoid-node__io-row--output):not(.solenoid-node__collapsed-only) {
+/* A CardSection is layout-transparent, so its rows collapse exactly as if they sat on the body. */
+.solenoid-node--collapsed :is(.solenoid-node__body, .solenoid-node__section) > *:not(.solenoid-node__display-value):not(.solenoid-node__value-input):not(.solenoid-node__quoted):not([data-socket-side]):not(.solenoid-node__input-pill):not(.solenoid-node__io-row--output):not(.solenoid-node__collapsed-only):not(.solenoid-node__section) {
   display: none;
 }
 
@@ -999,8 +1000,39 @@ body.solenoid-scrubbing * {
   -webkit-box-orient: vertical;
 }
 
-/* A small group label naming the rows under it (Cast's Separators), set on the row labels' left edge. */
-.solenoid-node__row-caption {
+/* An input card's Open (Frame Input, Table Input): the one accent-washed button on a card body. */
+.solenoid-node__open-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 4px;
+  padding: 4px 0;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-emphasis), var(--border));
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 14%, transparent);
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 80ms ease;
+}
+.solenoid-node__open-btn:hover {
+  background: color-mix(in srgb, var(--node-accent, var(--accent)) 22%, transparent);
+}
+
+/* CardSection: a small caption naming the rows under it, set on the row labels' left edge.
+   The section itself draws no box, so its rows stay flex items of the body. */
+.solenoid-node__section {
+  display: contents;
+}
+.solenoid-node__section-caption {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   margin: 6px 0 0;
   padding: 0 4px;
   font-size: 9px;
@@ -1009,6 +1041,27 @@ body.solenoid-scrubbing * {
   line-height: 1.4;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+/* The foldable caption is a bare button: the chevron alone says it folds. */
+.solenoid-node__section-caption--toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding-left: 1px;
+}
+.solenoid-node__section-caption--toggle:hover {
+  color: var(--text);
+}
+.solenoid-node__section-caption--toggle:focus-visible {
+  outline: 1px solid var(--node-accent, var(--accent));
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+.solenoid-node__section > .solenoid-node__add-input {
+  margin-top: 3px;
 }
 /* A separator is one character, so its field is sized for one and sits at the row's right edge. */
 .solenoid-node__cast-seps .solenoid-node__quoted--inline,
@@ -1019,13 +1072,6 @@ body.solenoid-scrubbing * {
 .solenoid-node__cast-seps .solenoid-node__quoted-input {
   width: 5ch;
   text-align: center;
-}
-
-.solenoid-node__dm-caption {
-  margin-top: 4px;
-  font-size: 10px;
-  line-height: 1.3;
-  color: var(--text-muted, #9aa0a6);
 }
 
 /* Chromium and WebView2 paint the OS option popup from these backgrounds; its outer frame is not styleable. */

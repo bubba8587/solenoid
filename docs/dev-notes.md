@@ -39,6 +39,9 @@ specific item.
   palette; the Sparkline node's line and columns paint gold.
 - **Type icons** (DESIGN.md § Type icons): every type segment, column type button, the (i) legend and the Pivot
   chips draw `TypeIcon` (`#`, `Aa`, calendar, checkbox, double-struck C) instead of words or `T`/`D`/`B`.
+- **Card sections and the input card's Open** (DESIGN.md § Card sections, § Buttons): `CardSection` captions a run of
+  rows and can fold them (Cast's Separators, Frame Input's Advanced holding Add LAMBDA and Form Layout; Decision
+  Matrix's captions moved onto it). Frame Input and Table Input got an accent-washed Open button at the top.
 - **Cast absorbs NUMBERVALUE** (the NumberValue card is gone): to Text takes a `format`, to Number takes Decimal and
   Group separators under a small Separators label, read by VALUE's own reader (`parseValueText`); a retarget drops
   the departing inputs' cables. Cast sits on the default width tiers now that its segments are icons.

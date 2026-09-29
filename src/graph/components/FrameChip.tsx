@@ -22,6 +22,59 @@ export function FrameRefChip({ frameRef, label, size = "sm", accent }: {
   return <FrameChip value={value} label={label} size={size} accent={accent} />;
 }
 
+type FrameOpenProps = {
+  value: FrameValue;
+  label?: string;
+  hostId?: string | null;
+  accent?: string;
+  source?: FrameSourceColumn[];
+  onSaveSource?: (columns: FrameSourceColumn[]) => void;
+  onCommitSource?: (columns: FrameSourceColumn[]) => Promise<SourceCommitRefresh | null>;
+  lambdaOptions?: string[];
+  formLayout?: string;
+  popupOverrides?: Partial<TablePopupState>;
+};
+
+/** What a frame chip's click opens: the grid editor for a source, else the value popup. `el` lends the popup its accent and group colors. */
+export function openFrameChipPopup(el: HTMLElement, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides }: FrameOpenProps): void {
+  const st = readChipPopupStyle(el, "--sock-frame");
+  if (!source || !onSaveSource) {
+    void openFramePopup(value, {
+      label, hostId,
+      accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
+    });
+    return;
+  }
+  const rowCount = source.reduce((m, c) => Math.max(m, c.cells.length), 0);
+  tablePopup.open({
+    title: label || "Frame",
+    data: Array.from({ length: rowCount }, (_, r) => source.map((c) => c.cells[r] ?? "")),
+    headers: source.map((c) => c.name),
+    columnTypes: source.map((c, j) => (c.expr ? (value.columns[j]?.type ?? "number") : c.type)),
+    cellType: "number",
+    formatControls: "columns",
+    columnUnits: value.columns.map((c) => c.unit),
+    columnFormats: value.columns.map((c) => c.format),
+    unitTaggable: true,
+    editableHeaders: true,
+    onSaveSource,
+    onCommitSource,
+    accent: accent || st.accent,
+    groupColor: st.groupColor,
+    groupColorDark: st.groupColorDark,
+    pinNodeId: hostId ?? undefined,
+    formLayout,
+    lambdaOptions: lambdaOptions ?? [],
+    sourceExprs: source.map((c) => c.expr),
+    computedCells: Array.from(
+      { length: Math.max(rowCount, frameRowCount(value)) },
+      (_, r) => source.map((c, j) =>
+        c.expr ? (value.columns[j]?.values[r] ?? null) : null),
+    ),
+    ...popupOverrides,
+  });
+}
+
 export function FrameChip({ value, label, size = "md", accent, source, onSaveSource, onCommitSource, pinNodeId, lambdaOptions, formLayout, popupOverrides }: {
   value: FrameValue;
   label?: string;
@@ -50,43 +103,7 @@ export function FrameChip({ value, label, size = "md", accent, source, onSaveSou
       title={`${approx ? "≈ " : ""}${totalRows}×${cols} frame${approx ? ", extrapolated from a sketch-mode sample" : ""}${computedCols ? `, ${computedCols} computed column${computedCols === 1 ? "" : "s"}` : ""}. ${onSaveSource ? "Edit" : "View"}.`}
       onClick={(e) => {
         e.stopPropagation();
-        const st = readChipPopupStyle(e.currentTarget, "--sock-frame");
-        const isSource = !!source && !!onSaveSource;
-        if (!isSource) {
-          void openFramePopup(value, {
-            label, hostId,
-            accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
-          });
-          return;
-        }
-        const rowCount = source.reduce((m, c) => Math.max(m, c.cells.length), 0);
-        tablePopup.open({
-          title: label || "Frame",
-          data: Array.from({ length: rowCount }, (_, r) => source.map((c) => c.cells[r] ?? "")),
-          headers: source.map((c) => c.name),
-          columnTypes: source.map((c, j) => (c.expr ? (value.columns[j]?.type ?? "number") : c.type)),
-          cellType: "number",
-          formatControls: "columns",
-          columnUnits: value.columns.map((c) => c.unit),
-          columnFormats: value.columns.map((c) => c.format),
-          unitTaggable: true,
-          editableHeaders: true,
-          onSaveSource,
-          onCommitSource,
-          accent: accent || st.accent,
-          groupColor: st.groupColor,
-          groupColorDark: st.groupColorDark,
-          pinNodeId: hostId ?? undefined,
-          formLayout,
-          lambdaOptions: lambdaOptions ?? [],
-          sourceExprs: source.map((c) => c.expr),
-          computedCells: Array.from(
-            { length: Math.max(rowCount, frameRowCount(value)) },
-            (_, r) => source.map((c, j) =>
-              c.expr ? (value.columns[j]?.values[r] ?? null) : null),
-          ),
-          ...popupOverrides,
-        });
+        openFrameChipPopup(e.currentTarget, { value, label, hostId, accent, source, onSaveSource, onCommitSource, lambdaOptions, formLayout, popupOverrides });
       }}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}

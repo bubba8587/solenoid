@@ -77,7 +77,8 @@ import { InlineInputs, InlineTextField, useConnectedInputs } from "./inlineInput
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
-import { FrameChip } from "./FrameChip";
+import { FrameChip, openFrameChipPopup } from "./FrameChip";
+import { CardOpenButton } from "./CardOpenButton";
 import { FormulaField } from "./FormulaField";
 import { formulaPopup } from "../formulaPopupStore";
 import { ResultDisplay } from "./ResultDisplay";
@@ -87,6 +88,7 @@ import { readChipPopupStyle } from "./chipStyle";
 import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
+import { CardSection } from "./CardSection";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
@@ -145,35 +147,51 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     scheduleAutosave();
   }
   const hasLayout = !!data.stringLiterals.layout;
+  const connected = useConnectedInputs(data.id);
 
   return (
     <NodeShell node={data} emit={emit}>
-      {/* A column formula in the grid editor reaches each λ input by its socket name. */}
-      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
-      {!layoutHidden && (hasLayout || showLayout) ? (
-        <div className="solenoid-layout-field">
-          <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+      <CardOpenButton
+        title="Open the table editor"
+        onOpen={(el) => openFrameChipPopup(el, {
+          value: isFrameValue(data.cachedResult) ? data.cachedResult : { __frame: true, columns: [] },
+          label: nodeDisplayName(data), hostId: data.id, source, onSaveSource, onCommitSource,
+          lambdaOptions: data.lambdaKeys.map(lambdaSocketName), formLayout: data.activeLayout,
+        })}
+      />
+      <CardSection
+        label="Advanced"
+        collapsible
+        defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden)}
+        pinnedOpen={data.lambdaKeys.some((k) => connected.has(k))}
+      >
+        {/* A column formula in the grid editor reaches each λ input by its socket name. */}
+        <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
+        {!layoutHidden && (hasLayout || showLayout) ? (
+          <div className="solenoid-layout-field">
+            <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+            <button
+              type="button"
+              className="solenoid-layout-field__hide"
+              title="Hide the form layout"
+              aria-label="Hide the form layout"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => { e.stopPropagation(); setHidden(true); }}
+            >
+              <CloseIcon size={10} />
+            </button>
+          </div>
+        ) : (
           <button
             type="button"
-            className="solenoid-layout-field__hide"
-            title="Hide the form layout"
-            aria-label="Hide the form layout"
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={(e) => { e.stopPropagation(); setHidden(true); }}
+            className="solenoid-node__add-input"
+            onClick={(e) => { e.stopPropagation(); if (layoutHidden) setHidden(false); setShowLayout(true); }}
           >
-            <CloseIcon size={10} />
+            {layoutHidden && hasLayout ? "Show Form Layout" : "Form Layout"}
           </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="solenoid-node__add-input"
-          onClick={(e) => { e.stopPropagation(); if (layoutHidden) setHidden(false); setShowLayout(true); }}
-        >
-          {layoutHidden && hasLayout ? "Show Form Layout" : "Form Layout"}
-        </button>
-      )}
+        )}
+      </CardSection>
       <FrameDisplay
         frame={data.cachedResult} label={nodeDisplayName(data)} source={source}
         onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys.map(lambdaSocketName)}
@@ -688,10 +706,12 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <div className="solenoid-node__dm-caption" title="The fallback for a criterion whose Weights-frame Norm cell is blank.">Normalize</div>
-      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
-      <div className="solenoid-node__dm-caption">Output</div>
-      <SegToggle value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
+      <CardSection label="Normalize" title="The fallback for a criterion whose Weights-frame Norm cell is blank.">
+        <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      </CardSection>
+      <CardSection label="Output">
+        <SegToggle value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
+      </CardSection>
       <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -704,8 +724,9 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <div className="solenoid-node__dm-caption" title="The fallback for a criterion whose Norm cell is blank; applies across every scenario.">Normalize</div>
-      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      <CardSection label="Normalize" title="The fallback for a criterion whose Norm cell is blank; applies across every scenario.">
+        <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      </CardSection>
       <CubeDisplay cube={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );

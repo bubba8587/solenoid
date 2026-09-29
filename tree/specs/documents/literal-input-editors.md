@@ -16,6 +16,8 @@ Three literal sources edit through the table popup:
 - **Frame Input**: the literal-source grid, through `onSaveSource` / `onCommitSource`.
 - **Cube Input**: the cube popup in edit mode. A nested cell drills to an editable list, table or Cube level on the breadcrumb, in one window and never a popup above a popup, with each level bound to a records path.
 
+Table Input and Frame Input open that popup two ways: the chip at the foot of the value box, and the Open button at the top of the card (`CardOpenButton`, DESIGN.md § Buttons). Both call one opener (`openArrayPopup` with the card's `popupOverrides`; `openFrameChipPopup` in `FrameChip.tsx`), so the two can't drift. Cube Input keeps its chip alone.
+
 The stored truth is always text on the node (`tableText`, `frameText`, `cubeText`), the rule [[C58]] tableInputRawText sets for Table Input. A Save rewrites that text and recomputes; it never writes a derived value back.
 
 **Reopen if:** a literal source grows its own editor widget instead of binding the popup, or an editor writes a derived value back.

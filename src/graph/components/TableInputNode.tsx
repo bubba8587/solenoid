@@ -10,6 +10,10 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
 import { nodeDisplayName } from "../catalogUtils";
+import { openArrayPopup } from "../valuePopup";
+import type { TablePopupState } from "../tablePopupStore";
+import { readChipPopupStyle } from "./chipStyle";
+import { CardOpenButton } from "./CardOpenButton";
 
 const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: ReactNode; title: string }> = [
   { value: "number",  label: <TypeIcon type="number" />, title: "Number table" },
@@ -31,12 +35,34 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
 export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType>) {
   const [dt, setDt] = useState<TableElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
+  const popupOverrides: Partial<TablePopupState> = {
+    data: data.rawCells().length ? data.rawCells() : [[""]],
+    cellType: dt,
+    onSaveRaw: (cells) => {
+      data.tableText = rawCellsToText(cells);
+      void processGraph(data.id);
+    },
+    ...(dt === "number"
+      ? {
+          unitTaggable: true,
+          onSaveMatrixUnit: (u: string) => {
+            data.unit = u;
+            void processGraph(data.id);
+          },
+        }
+      : {}),
+  };
+  function openEditor(el: HTMLElement) {
+    const table = Array.isArray(data.cachedResult) && data.cachedResult.length ? data.cachedResult : [[0]];
+    openArrayPopup(table, { label: nodeDisplayName(data), hostId: data.id, elem: dt, popupOverrides, ...readChipPopupStyle(el, "--sock-table") });
+  }
 
   return (
     <NodeShell
       node={data}
       emit={emit}
     >
+      <CardOpenButton title="Open the table editor" onOpen={openEditor} />
       <SegToggle
         value={dt}
         options={TYPE_OPTIONS}
@@ -47,23 +73,7 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
         label={nodeDisplayName(data)}
         elem={dt}
         kind={dt === "date" ? "date" : dt === "string" ? "text" : undefined}
-        popupOverrides={{
-          data: data.rawCells().length ? data.rawCells() : [[""]],
-          cellType: dt,
-          onSaveRaw: (cells) => {
-            data.tableText = rawCellsToText(cells);
-            void processGraph(data.id);
-          },
-          ...(dt === "number"
-            ? {
-                unitTaggable: true,
-                onSaveMatrixUnit: (u: string) => {
-                  data.unit = u;
-                  void processGraph(data.id);
-                },
-              }
-            : {}),
-        }}
+        popupOverrides={popupOverrides}
       />
     </NodeShell>
   );
