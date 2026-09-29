@@ -10,7 +10,7 @@ import { makeFlowView } from "../flow/flowView";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
 import { setEditorRefs, processGraph } from "../process";
-import { computeStack } from "./landingCompute";
+import { computeStack, latestOnlyQueue } from "./landingCompute";
 import { nodeNameStore } from "../nodeNameStore";
 import { TableInputNode } from "../nodes/matrix";
 import { InterpolateNode } from "../nodes/stats";
@@ -220,16 +220,21 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
   const [sceneIdx, setSceneIdx] = useState(0);
   const activeBuild = scenes ? scenes[sceneIdx].build : build!;
 
+  // Each build clears the editor and then adds node by node, so two builds must never interleave.
+  const builds = useMemo(latestOnlyQueue, []);
+
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
-    void activeBuild(stack).then(() => computeStack(stack, true));
+    void builds(() => activeBuild(stack).then(() => computeStack(stack, true)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
   const rebuild = (b: (s: SurfaceStack) => Promise<void>) =>
-    void b(stack)
-      .then(() => computeStack(stack, true))
-      .then(() => setResetNonce((n) => n + 1));
+    void builds(async () => {
+      await b(stack);
+      await computeStack(stack, true);
+      setResetNonce((n) => n + 1);
+    });
 
   const selectScene = (i: number) => {
     if (i === sceneIdx) { rebuild(scenes![i].build); return; }

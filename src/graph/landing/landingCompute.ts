@@ -21,3 +21,15 @@ export function computeStack(stack: SurfaceStack, keepGlobal = false): Promise<v
   });
   return chain;
 }
+
+/** Runs tasks one at a time; a task superseded by a newer one before it starts is dropped. */
+export function latestOnlyQueue(): (task: () => Promise<void>) => Promise<void> {
+  let tail: Promise<void> = Promise.resolve();
+  let latest = 0;
+  return (task) => {
+    const gen = ++latest;
+    const run = tail.then(() => (gen === latest ? task() : undefined));
+    tail = run.catch(() => {});
+    return run;
+  };
+}
