@@ -143,11 +143,17 @@ function NestedChip({ edit, cellPath, value, kind, crumb, from, type }: {
     );
   }
   const rows = Array.isArray(value) ? (value as CubeRecord[]) : [value as CubeRecord];
+  // A lone record is a one-row table; it is saved as one before the drill, since the drill's edits address rows by index.
+  const drillRecords = (view: (recs: CubeRecord[]) => DrillView) => (e: React.MouseEvent) => {
+    stop(e);
+    if (!Array.isArray(value)) commitAt(edit, cellPath, rows);
+    cubePopup.drill(view(edit.source().rows), from);
+  };
   if (kind === "frame") {
     const cols = recordKeys(rows).length;
     return (
       <button type="button" className={chipClass("frame")} title={`Frame ${rows.length}×${cols}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={drill(frameViewAt(records, cellPath, crumb, src.nested))}>
+        onPointerDown={stop} onMouseDown={stop} onClick={drillRecords((recs) => frameViewAt(recs, cellPath, crumb, src.nested))}>
         [{rows.length}×{cols} Frame]
       </button>
     );
@@ -156,7 +162,7 @@ function NestedChip({ edit, cellPath, value, kind, crumb, from, type }: {
   const dims = `${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)}`;
   return (
     <button type="button" className={chipClass("cube")} title={`Cube ${dims} (rows × cols × depth). Drill in and edit.`}
-      onPointerDown={stop} onMouseDown={stop} onClick={drill(cubeViewAt(records, cellPath, crumb, src.nested))}>
+      onPointerDown={stop} onMouseDown={stop} onClick={drillRecords((recs) => cubeViewAt(recs, cellPath, crumb, src.nested))}>
       [{dims} Cube]
     </button>
   );
