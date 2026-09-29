@@ -181,25 +181,34 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     const doc = this.cachedDoc;
     if (isSolError(doc)) { this.status = "error"; this.statusMessage = doc.code; return; }
     if (!isDocumentValue(doc)) { this.status = "error"; this.statusMessage = "Nothing to write. Connect a Note or Report."; return; }
-    const rel = `${[subfolder, finalName].filter(Boolean).join("/")}.md`;
     this.status = "previewing";
     try {
-      let existing: string | null = null;
-      try { existing = await readVaultFile(vault, rel); } catch { existing = null; }
-      const verb = existing === null ? "Create" : this.mode === "overwrite" ? "Overwrite" : this.mode === "append" ? "Append to" : "Rewrite the block in";
-      const size = this.docBodyLength();
+      const { pageNoteNames, vaultSubfolderParts } = await import("../obsidianWrite");
+      const folder = vaultSubfolderParts(subfolder).join("/");
+      const rels = pageNoteNames(doc, finalName).map((base) => `${folder ? `${folder}/` : ""}${base}.md`);
+      const bodies = (doc.pages ?? [{ body: doc.body }]).map((p) => p.body);
+      const existing = await Promise.all(rels.map((rel) => readVaultFile(vault, rel).catch(() => null)));
+      const verbOf = (on: string | null) => on === null ? "Create" : this.mode === "overwrite" ? "Overwrite" : this.mode === "append" ? "Append to" : "Rewrite the block in";
+      const chars = (n: number) => `${n} char${n === 1 ? "" : "s"}`;
       this.status = "idle";
-      this.statusMessage = existing === null
-        ? `${verb} ${rel} (${size} char${size === 1 ? "" : "s"})`
-        : `${verb} ${rel} (${existing.length} char${existing.length === 1 ? "" : "s"} on disk)`;
+      if (rels.length === 0) { this.statusMessage = "The merge has no rows, so no note would be written"; return; }
+      if (rels.length === 1) {
+        const on = existing[0];
+        this.statusMessage = `${verbOf(on)} ${rels[0]} (${on === null ? chars(bodies[0].length) : `${chars(on.length)} on disk`})`;
+        return;
+      }
+      const count = doc.total && doc.total > rels.length ? `${rels.length} of ${doc.total}` : `${rels.length}`;
+      const names = rels.map((r) => r.slice(folder ? folder.length + 1 : 0));
+      const listed = names.slice(0, 3).join(", ") + (names.length > 3 ? ", …" : "");
+      const onDisk = existing.filter((e) => e !== null).length;
+      const where = `${count} notes${folder ? ` in ${folder}` : ""}`;
+      this.statusMessage = onDisk === 0
+        ? `Create ${where}: ${listed}`
+        : `${where}: ${rels.length - onDisk} to create, ${onDisk} to ${verbOf("").toLowerCase()}: ${listed}`;
     } catch (e) {
       this.status = "error";
       this.statusMessage = e instanceof Error ? e.message : String(e);
     }
-  }
-
-  private docBodyLength(): number {
-    return isDocumentValue(this.cachedDoc) ? this.cachedDoc.body.length : 0;
   }
 
   private async runNote(vault: string): Promise<void> {

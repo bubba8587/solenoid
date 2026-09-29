@@ -129,6 +129,14 @@ export function vaultSubfolderParts(p: string): string[] {
   return p.split(/[\\/]/).map((s) => s.trim()).filter((s) => s && s !== "." && s !== ".." && !/^[A-Za-z]:$/.test(s));
 }
 
+/** The file base name each page writes to, in page order; Preview and Run both name notes with this. */
+export function pageNoteNames(doc: DocumentValue, name: string): string[] {
+  const sinkName = sanitizeName(name, "note");
+  const taken = new Set<string>();
+  const pages = doc.pages ?? [{ name, body: doc.body }];
+  return pages.map((page, i) => claimName(sanitizeName(page.name, doc.pages ? `${sinkName}-${i + 1}` : sinkName), "md", taken));
+}
+
 export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultOptions): Promise<WriteVaultResult> {
   if (!hasFs()) throw new Error("Desktop app only");
   const subParts = vaultSubfolderParts(opts.subfolder);
@@ -140,9 +148,8 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
 
   let assetCount = 0;
   const pages = doc.pages ?? [{ name: opts.name, body: doc.body }];
-  const sinkName = sanitizeName(opts.name, "note");
-  let base = sinkName;
-  const takenNotes = new Set<string>();
+  const bases = pageNoteNames(doc, opts.name);
+  let base = sanitizeName(opts.name, "note");
   const takenAssets = new Set<string>();
   let vaultFiles: Promise<string[]> | null = null;
 
@@ -181,7 +188,7 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   const mode = opts.mode ?? "overwrite";
   let first = "";
   for (const [i, page] of pages.entries()) {
-    base = claimName(sanitizeName(page.name, doc.pages ? `${sinkName}-${i + 1}` : sinkName), "md", takenNotes);
+    base = bases[i];
     const md = await assembleDocumentMarkdown({ ...doc, body: page.body }, resolveRef);
     const notePath = await joinPath(noteDir, `${base}.md`);
     let existing: string | null = null;

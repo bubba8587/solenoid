@@ -98,6 +98,30 @@ describe("WriteObsidianNode re-plans the Properties target", () => {
   });
 });
 
+describe("WriteObsidianNode previews a mail merge as the notes Run writes", () => {
+  afterEach(() => forceDemoVault(false));
+
+  it("names one note per page, numbered as the writer numbers them", async () => {
+    forceDemoVault(true);
+    const doc = makeDocument("", {}, undefined, undefined, { pages: [{ name: "", body: "a" }, { name: "Kept", body: "b" }] });
+    const n = new WriteObsidianNode({ subfolder: "Out" });
+    n.stringLiterals.path = "Letters";
+    n.data({ in: [doc] });
+    await n.preview();
+    expect(n.status).toBe("idle");
+    expect(n.statusMessage).toBe("Create 2 notes in Out: Letters-1.md, Kept.md");
+  });
+
+  it("a merge with no rows previews no note", async () => {
+    forceDemoVault(true);
+    const n = new WriteObsidianNode();
+    n.stringLiterals.path = "Letters";
+    n.data({ in: [makeDocument("", {}, undefined, undefined, { pages: [] })] });
+    await n.preview();
+    expect(n.statusMessage).toBe("The merge has no rows, so no note would be written");
+  });
+});
+
 describe("ImportObsidianNode", () => {
   it("is a Note (inherits the frontmatter-socket + document machinery)", async () => {
     const n = new ImportObsidianNode({ body: "---\ntitle: Weekly\ncount: 5\n---\n# Body" });
