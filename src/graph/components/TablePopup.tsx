@@ -586,7 +586,7 @@ export function TablePopup() {
   function buildText(inSortOrder: boolean, as: "auto" | "shown" | "source" = "auto"): string {
     const order = inSortOrder ? sortOrder : Array.from({ length: viewRows }, (_, i) => i);
     if (state!.list) {
-      const line = displayRowAt(0);
+      const line = displayRowAt(0, as);
       return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType, !editable);
     }
     const body = toCSV(order.map((r) => displayRowAt(r, as)), cellType, columnTypes, !editable);
