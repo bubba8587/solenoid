@@ -3,11 +3,12 @@
 import type { View } from "./view";
 import { GroupNode } from "./rete-nodes";
 import { repositionDockedNodes, unselectAllNodes, selectNode } from "./canvasCommands";
-import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
+import { getActiveEditor as getEditor, getActiveView as getView, getOwningView } from "./activeGraph";
 import { standoffStore, standoffClusters, settleStandoffs, liveStandoffs } from "./standoffs";
 import { groupCollapseStore } from "./groupCollapse";
 import { collapseStore } from "./collapseStore";
 import { scheduleAutosave } from "./persistence";
+import { notifyGraphChanged } from "./process";
 import { measuredBox, type NodeBox } from "./nodeSize";
 import type { Schemes } from "./schemes";
 import type { NodeEditor } from "rete";
@@ -165,8 +166,20 @@ export function collapseSelection(collapsed: boolean): void {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return;
+  let changed = false;
   for (const id of selectedNodeIds(editor)) {
     const el = view.nodeElement(id);
-    if (el && isCollapsible(el)) collapseStore.set(id, collapsed);
+    if (el && isCollapsible(el) && collapseStore.get(id) !== collapsed) {
+      collapseStore.set(id, collapsed);
+      changed = true;
+    }
   }
+  if (changed) notifyGraphChanged();
+}
+
+/** A card's chevron: flips the collapse, re-renders the card, and saves and records the change. */
+export function toggleNodeCollapsed(nodeId: string): void {
+  collapseStore.toggle(nodeId);
+  void getOwningView(nodeId)?.rerenderNode(nodeId);
+  notifyGraphChanged();
 }

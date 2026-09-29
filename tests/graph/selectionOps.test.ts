@@ -1,7 +1,9 @@
 // [[C52]], [[D63]] lockedGroupIsObstacle
 import { describe, it, expect } from "vitest";
 import { NodeEditor } from "rete";
-import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, type Placed } from "../../src/graph/selectionOps";
+import { alignDeltas, distributeDeltas, expandMoveSet, DISTRIBUTE_GAP, toggleNodeCollapsed, type Placed } from "../../src/graph/selectionOps";
+import { collapseStore } from "../../src/graph/collapseStore";
+import { setGraphChanged } from "../../src/graph/process";
 import { GroupNode, DisplayNode } from "../../src/graph/rete-nodes";
 import type { Schemes } from "../../src/graph/schemes";
 import { standoffStore } from "../../src/graph/standoffs";
@@ -126,5 +128,18 @@ describe("expandMoveSet", () => {
     } finally {
       standoffStore.remove(tie.id);
     }
+  });
+});
+
+describe("toggleNodeCollapsed", () => {
+  it("flips the collapse and reports a graph change, so it saves and records an undo step", () => {
+    let changes = 0;
+    setGraphChanged(() => { changes++; });
+    toggleNodeCollapsed("n1");
+    expect(collapseStore.get("n1")).toBe(true);
+    toggleNodeCollapsed("n1");
+    expect(collapseStore.get("n1")).toBe(false);
+    expect(changes).toBe(2);
+    setGraphChanged(() => {});
   });
 });

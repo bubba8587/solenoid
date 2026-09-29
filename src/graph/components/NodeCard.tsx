@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties } from "react";
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../canvasCommands";
+import { toggleNodeCollapsed } from "../selectionOps";
 import { getOwningView } from "../activeGraph";
 import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";
@@ -156,10 +157,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const styleProp = accent || groupColor || size ? style : undefined;
 
   function doToggle() {
-    if (node) {
-      collapseStore.toggle(node.id);
-      void getOwningView(node.id)?.rerenderNode(node.id);
-    }
+    if (node) toggleNodeCollapsed(node.id);
   }
   function toggleCollapse(e: React.MouseEvent) {
     e.stopPropagation();
