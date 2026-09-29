@@ -1,5 +1,5 @@
 // [[D16]] retypeReconciles
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CastNode as CastNodeType } from "../rete-nodes";
 import { CAST_TARGET_META, type CastTarget } from "../rete-nodes";
 import { dropInputCables } from "./cablePrune";
@@ -11,6 +11,7 @@ import { CardSection, useRowsInUse } from "./CardSection";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
+import { collapseStore } from "../collapseStore";
 
 const SEPARATOR_KEYS = ["decimal_sep", "group_sep"];
 
@@ -39,11 +40,12 @@ export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {
   const [target, setTarget] = useState<CastTarget>(data.target);
   useEffect(() => { setTarget(data.target); }, [data.target]);
   const seps = useRowsInUse(data, SEPARATOR_KEYS);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
 
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} keys={Object.keys(data.inputs).filter((k) => !SEPARATOR_KEYS.includes(k))} />
-      {target === "number" && (
+      <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : Object.keys(data.inputs).filter((k) => !SEPARATOR_KEYS.includes(k))} />
+      {target === "number" && !collapsed && (
         <CardSection label="Separators" className="solenoid-node__cast-seps" collapsible defaultOpen={seps} sockets={{ node: data, emit, keys: SEPARATOR_KEYS }}>
           <InlineInputs node={data} emit={emit} keys={SEPARATOR_KEYS} />
         </CardSection>

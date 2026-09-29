@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import type { ScheduleNode as ScheduleNodeType } from "../rete-nodes";
 import { SCHEDULE_DEFAULT_LITERALS, SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS, SCHEDULE_PROGRESS_OPTIONS } from "../nodes/schedule";
 import { NodeShell, InlineOutputRows, useNodeField, type NodeProps, type OutputRowValue } from "./nodeKit";
@@ -9,6 +10,7 @@ import { dateFormatDisplay } from "./valueDisplayFormat";
 import { nodeDisplayName } from "../catalogUtils";
 import { isCubeValue, isFrameValue } from "../frame";
 import { CardSection, useRowsInUse } from "./CardSection";
+import { collapseStore } from "../collapseStore";
 
 function ganttSummary(data: ScheduleNodeType): OutputRowValue {
   const g = data.cachedGantt;
@@ -27,7 +29,6 @@ function diagnosticsSummary(data: ScheduleNodeType): OutputRowValue {
   return n === 0 ? "none" : `${n} finding${n === 1 ? "" : "s"}`;
 }
 
-// The last three outputs are labeled rows, so each keeps its own socket dot.
 const CALENDAR_KEYS = ["holidays", "weekend_code", "hours"];
 
 export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
@@ -37,10 +38,11 @@ export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
   const [criticalPaths, setCriticalPaths] = useNodeField(data, "criticalPaths");
   const cubeOut = data.outputs.cube;
   const calendar = useRowsInUse(data, CALENDAR_KEYS, SCHEDULE_DEFAULT_LITERALS);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["tasks", "links", "start", "status"]} />
-      <CardSection
+      <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : ["tasks", "links", "start", "status"]} />
+      {!collapsed && <CardSection
         label="Calendar"
         collapsible
         defaultOpen={calendar || mode !== "working" || precision !== "days"}
@@ -49,7 +51,7 @@ export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
         <SegToggle value={mode} options={SCHEDULE_MODE_OPTIONS} onChange={setMode} />
         <InlineInputs node={data} emit={emit} keys={CALENDAR_KEYS} />
         <SegToggle value={precision} options={SCHEDULE_PRECISION_OPTIONS} onChange={setPrecision} />
-      </CardSection>
+      </CardSection>}
       <CardSection label="Rules" collapsible defaultOpen={criticalPaths !== "one" || progress !== "split"}>
         <SegToggle value={criticalPaths} options={SCHEDULE_CRITICAL_OPTIONS} onChange={setCriticalPaths} />
         <SegToggle value={progress} options={SCHEDULE_PROGRESS_OPTIONS} onChange={setProgress} />

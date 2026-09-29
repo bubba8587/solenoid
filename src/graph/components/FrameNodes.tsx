@@ -1043,10 +1043,11 @@ export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
   const [matchMode, setMatchMode] = useNodeField(data, "matchMode");
   const [searchMode, setSearchMode] = useNodeField(data, "searchMode");
   const fallback = useRowsInUse(data, XLOOKUP_OPTION_KEYS);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} keys={XLOOKUP_MAIN_KEYS} />
-      <CardSection
+      <InlineInputs node={data} emit={emit} keys={collapsed ? undefined : XLOOKUP_MAIN_KEYS} />
+      {!collapsed && <CardSection
         label="Options"
         collapsible
         defaultOpen={fallback || matchMode !== "exact" || searchMode !== "first"}
@@ -1055,7 +1056,7 @@ export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
         <InlineInputs node={data} emit={emit} keys={XLOOKUP_OPTION_KEYS} />
         <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
         <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
-      </CardSection>
+      </CardSection>}
       {/* ResultDisplay routes a whole-row or nested-cell return to its display. */}
       <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
