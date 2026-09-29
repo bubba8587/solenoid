@@ -373,6 +373,15 @@ describe("setCells kernel (Set Cell)", () => {
     expect((badCol as SolError).message).toContain("Column 5 is outside 1");
   });
 
+  it("a Row or Column that is not a number is #VALUE!, not a crash", () => {
+    const badRow = setCells(m(), [{ r: Number("abc"), c: 1, v: 0 }]);
+    expect((badRow as SolError).code).toBe("#VALUE!");
+    expect((badRow as SolError).message).toBe("Row must be a number");
+    const badCol = setCells(m(), [{ r: 1, c: "x" as unknown as number, v: 0 }]);
+    expect((badCol as SolError).code).toBe("#VALUE!");
+    expect((badCol as SolError).message).toBe("Column must be a number");
+  });
+
   it("normalizes a ragged input to a full grid (missing cells blank) before writing", () => {
     expect(setCells([[1, 2], [3]], [{ r: 2, c: 2, v: 9 }])).toEqual([[1, 2], [3, 9]]);
   });

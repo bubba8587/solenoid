@@ -196,6 +196,8 @@ export function setCells(
     Array.from({ length: cols }, (_, j) => (j < (m[i]?.length ?? 0) ? m[i][j] : null)));
   for (const w of writes) {
     const r = Math.round(w.r), c = Math.round(w.c);
+    if (!Number.isFinite(r)) return solError("#VALUE!", "Row must be a number");
+    if (!Number.isFinite(c)) return solError("#VALUE!", "Column must be a number");
     const block: Cell[][] = Array.isArray(w.v)
       ? (w.v.length === 0 ? [] : Array.isArray(w.v[0]) ? (w.v as Cell[][]) : [w.v as Cell[]])
       : [[w.v]];
