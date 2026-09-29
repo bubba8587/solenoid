@@ -341,3 +341,8 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **`tree/specs/values/value-semantics.md`** says only the value selectors use `autoLiterals`; Cube, Script, XMATCH and Set Cell do too.
 - [ ] **REGEXREPLACE negative occurrence** now counts from the end (-1 is the last match), per Excel's docs; confirm.
 - [ ] **XNPV node** runs through Formula.js with no check for a date before the first date (XIRR now refuses it); **LARGE/SMALL** round a fractional k (`nthExtreme`), unchecked against Excel.
+- [ ] **Distribution form switch** (`DistributionsNode.tsx` pickForm, `distribution.ts` setForm): cdf/pdf ↔ Sample drops `x`/`count` without pruning its cable, and Sample → Inverse prunes the wrong key. Prune from a `keysDroppedByForm` built like `keysDroppedBySwitch`, and rerender.
+- [ ] **Distribution op switch** keeps a surviving socket's old label (Normal → Lognormal still reads Mean/Stdev) until reload; refresh labels in `setOp`.
+- [ ] **Running on unit lists** (`listOps.ts` running): unit cells are dropped, so [1 kg, 2 kg, 3 kg] runs to zeros; go through `forAggregateUnits` as Reduce does, and check RUNNING agrees.
+- [ ] **AI Apply** (`CommandPalette.tsx`) loads the reply without checking the document changed while the diff was open, so edits made meanwhile are reverted (or a doc switch loads A's rewrite into B). Keep the base text; refuse or re-diff when it moved.
+- [ ] **CHISQ/F/GAMMA densities at x = 0** answer 0 (Excel: CHISQ.DIST(0,2,FALSE) = 0.5, GAMMA.DIST(0,1,2,FALSE) = 0.5), and a negative x answers 0 where Excel gives #NUM!.
