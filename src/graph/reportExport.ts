@@ -20,31 +20,28 @@ import { sanitizeSvg } from "./svgSanitize";
 import { fmtCell } from "./components/FrameDisplay";
 import { substituteRefCodes, escapeHtml } from "./noteInlineRefs";
 import type { FormatAnnotation } from "./formatAnnotationStore";
-import { frameFormatStore } from "./frameFormatStore";
 
 
 const REF_RE = /`=([A-Za-z_][A-Za-z0-9_]*)(!?)`/g;
 
 const IMAGE_SRC_RE = /^(https?:\/\/|data:image\/(png|jpeg|gif|webp|svg\+xml);base64,)/i;
 
-/** A column's format: the source card's own pick, else the one the column carries, as on screen. */
-export type ColumnFormat = (column: string) => FormatAnnotation | undefined;
-
-export function frameToHtmlTable(frame: FrameValue, columnFormat?: ColumnFormat): string {
+/** Each column under the format it carries, which includes the source card's pick (stamped on its output). */
+export function frameToHtmlTable(frame: FrameValue): string {
   const cols = frame.columns;
   if (cols.length === 0) return "";
   const rows = cols.reduce((m, c) => Math.max(m, c.values.length), 0);
   const cell = (c: FrameValue["columns"][number], i: number) =>
-    escapeHtml(fmtCell(c.values[i] ?? null, c.type, columnFormat?.(c.name) ?? c.format));
+    escapeHtml(fmtCell(c.values[i] ?? null, c.type, c.format));
   const head = `<tr>${cols.map((c) => `<th>${escapeHtml(c.name)}</th>`).join("")}</tr>`;
   const body = Array.from({ length: rows }, (_, i) => `<tr>${cols.map((c) => `<td>${cell(c, i)}</td>`).join("")}</tr>`);
   return `<table><thead>${head}</thead><tbody>${body.join("")}</tbody></table>`;
 }
 
 /** The export's markup for one span's value; null leaves the span (an unwired fixed input). Values are escaped here, after the markdown render, so their text never reads as markdown or HTML. */
-export function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined, columnFormat?: ColumnFormat): { html: string; block?: boolean } | null {
+export function frozenRefHtml(value: unknown, highlight: boolean, ann: FormatAnnotation | undefined): { html: string; block?: boolean } | null {
   if (value === undefined) return null;
-  if (isFrameValue(value)) return { html: frameToHtmlTable(value, columnFormat), block: true };
+  if (isFrameValue(value)) return { html: frameToHtmlTable(value), block: true };
   if (isSvgValue(value) && value.source) {
     const h = Number.isFinite(value.height) && value.height > 0 ? Math.round(value.height) : 160;
     return { html: `<div class="report-export__svg" style="height:${h}px">${sanitizeSvg(value.source)}</div>`, block: true };
@@ -72,11 +69,10 @@ export function exportBodyHtml(
   refValue: (key: string) => unknown,
   annotation: (key: string) => FormatAnnotation | undefined,
   render: (md: string) => string = renderMarkdown,
-  columnFormat?: (key: string, column: string) => FormatAnnotation | undefined,
 ): string {
   const renderSegment = (md: string) => substituteRefCodes(render(md), (name, hl) =>
     refKeys.includes(name)
-      ? frozenRefHtml(refValue(name), hl, annotation(name), columnFormat && ((column) => columnFormat(name, column)))
+      ? frozenRefHtml(refValue(name), hl, annotation(name))
       : null);
   const parts: string[] = [];
   const re = new RegExp(REF_RE);
@@ -163,11 +159,6 @@ export function buildReportExportHtml(
     [...report.refKeys(), "template", "records"],
     (k) => report.refValue(k),
     (k) => resolveRefAnnotation(report.id, k),
-    undefined,
-    (k, column) => {
-      const src = connections.find((c) => c.target === report.id && c.targetInput === k)?.source;
-      return src ? frameFormatStore.get(src, column) : undefined;
-    },
   );
 
   const noteIds = new Set(allNodes.filter((n): n is NoteNode => n instanceof NoteNode).map((n) => n.id));

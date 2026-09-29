@@ -4,6 +4,8 @@ import { exportBodyHtml, exportFileName, buildExportCss, reportReferencedNodeIds
 import { renderNoteMarkdown } from "../../src/graph/noteMarkdown";
 import { makeDocument } from "../../src/graph/documentValue";
 import { solError } from "../../src/graph/errorValue";
+import { wrapNodeData } from "../../src/graph/coerceInputs";
+import { frameFormatStore } from "../../src/graph/frameFormatStore";
 
 const md = (m: string) => renderNoteMarkdown(m);
 const body = (src: string, values: Record<string, unknown>) =>
@@ -59,9 +61,16 @@ describe("exportBodyHtml freezes spans after the markdown render", () => {
       { name: "b", type: "number", values: [2.5] },
       { name: "c", type: "number", values: [0.1 + 0.2] },
     ] };
-    const out = exportBodyHtml("`=f`", ["f"], () => frame, () => undefined, md,
-      (key, column) => (key === "f" && column === "b" ? dec(2) : undefined));
-    expect(out).toContain("<td>1.2</td><td>2.50</td><td>0.3</td>");
+    // The source card's output carries its pick: the data wrapper stamps it onto the column.
+    const src = { id: "export-src", data: (_inputs: Record<string, unknown[]>) => ({ result: frame }) };
+    wrapNodeData(src);
+    frameFormatStore.set("export-src", "b", dec(2));
+    try {
+      const wired = (src.data({}) as { result: unknown }).result;
+      expect(exportBodyHtml("`=f`", ["f"], () => wired, () => undefined, md)).toContain("<td>1.2</td><td>2.50</td><td>0.3</td>");
+    } finally {
+      frameFormatStore.removeForNode("export-src");
+    }
   });
 
   it("renders a wired document as its own block, its spans resolved from its own refs", () => {
