@@ -26,13 +26,17 @@ export function buildHistogram(payload: GanttPayload, scale: Scale): FrameHistog
   // units[day - from][resourceIndex]
   const days = scale.to - scale.from;
   const perDay: Float64Array[] = Array.from({ length: days }, () => new Float64Array(resources.length));
+  const off = new Uint8Array(days);
+  for (const [a, b] of payload.nonWorking) {
+    for (let d = Math.max(a, scale.from); d <= Math.min(b, scale.to - 1); d++) off[d - scale.from] = 1;
+  }
   for (const t of payload.tasks) {
     if (t.summary || t.milestone || !t.resource) continue;
     const ri = idxOf.get(t.resource)!;
     const units = t.units == null ? 1 : Math.max(0, t.units);
     const s = Math.max(Math.floor(t.start), scale.from);
     const e = Math.min(drawnLastDay(t.finish, minutes), scale.to - 1);
-    for (let d = s; d <= e; d++) perDay[d - scale.from][ri] += units;
+    for (let d = s; d <= e; d++) if (!off[d - scale.from]) perDay[d - scale.from][ri] += units;
   }
 
   let maxUnits = 1;

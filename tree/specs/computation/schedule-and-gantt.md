@@ -190,7 +190,7 @@ The Gantt card shows only the `[Chart]` chip, as Record does, because the figure
 
 ### How it draws
 
-The tree grid and labels are HTML with the ARIA `treegrid` roles and a keyboard map. The timeline is three layered SVGs over the content: the non-working shading, the bars (bars, diamonds, summary brackets, progress and baseline ghosts), and an overlay for dependency paths, where each path has a wide invisible hit path that carries the pointer events. A resource histogram, when on, is a fourth SVG below.
+The tree grid and labels are HTML with the ARIA `treegrid` roles and a keyboard map. The timeline is three layered SVGs over the content: the non-working shading, the bars (bars, diamonds, summary brackets, progress and baseline ghosts), and an overlay for dependency paths, where each path has a wide invisible hit path that carries the pointer events. A resource histogram, when on, is a fourth SVG below; it stacks each resource's units per working day and adds nothing on a non-working day (`payload.nonWorking`), so a weekend never shows as over-allocated.
 
 The figure's root carries `nowheel`, `nodrag` and `nokeys`, so wheel, drag and keys stay in the figure ([[react-flow-surface-contract]]). `canvasKeyboard.ts` ignores keys whose target is inside a `.nokeys` element, except F9, so a focused grid cell does not nudge nodes or open the Add menu.
 
