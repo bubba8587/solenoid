@@ -125,7 +125,7 @@ function displayList(out: (CastScalar | SolError)[], target: CastTarget): (numbe
 /** The typed-in arguments each target takes ([[B11]] maximalMerge: Cast absorbs the NUMBERVALUE card's separators and TEXT's format). */
 const CAST_TARGET_INPUTS: Record<CastTarget, readonly { key: string; label: string }[]> = {
   text: [{ key: "format", label: "Format" }],
-  number: [{ key: "decimal_sep", label: "Decimal" }, { key: "group_sep", label: "Group" }],
+  number: [{ key: "decimal_sep", label: "Decimal (default .)" }, { key: "group_sep", label: "Group (default ,)" }],
   date: [],
   complex: [],
   logical: [],
