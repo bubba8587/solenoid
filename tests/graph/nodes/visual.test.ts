@@ -278,6 +278,15 @@ describe("histogram2d (numpy histogram2d)", () => {
     expect(isSolError(chart) && chart.code).toBe("#DOMAIN!");
   });
 
+  it("a live mode switch relabels Values and Bins as a fresh card of that mode reads", () => {
+    const n = new HistogramNode();
+    n.setMode("2d");
+    const fresh = new HistogramNode({ mode: "2d" });
+    expect([n.inputs.values?.label, n.inputs.bins?.label]).toEqual([fresh.inputs.values?.label, fresh.inputs.bins?.label]);
+    n.setMode("1d");
+    expect([n.inputs.values?.label, n.inputs.bins?.label]).toEqual(["Values", "Bins"]);
+  });
+
   it("no finite pair → null", () => {
     expect(histogram2d([null, null], [1, 2], 2, 2)).toBeNull();
     expect(histogram2d([], [], 2, 2)).toBeNull();

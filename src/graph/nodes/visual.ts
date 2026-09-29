@@ -366,8 +366,9 @@ export class HistogramNode extends ClassicPreset.Node {
     super("Histogram");
     this.label = init?.label ?? "Histogram";
     this.mode = init?.mode === "2d" ? "2d" : "1d";
-    this.addInput("values", numListIn(this.mode === "2d" ? "X" : "Values"));
-    this.addInput("bins", numIn(this.mode === "2d" ? "X bins" : "Bins"));
+    this.addInput("values", numListIn(""));
+    this.addInput("bins", numIn(""));
+    this.labelModeInputs();
     if (this.mode === "2d") {
       this.addInput("y", numListIn("Y"));
       this.addInput("ybins", numIn("Y bins"));
@@ -380,9 +381,15 @@ export class HistogramNode extends ClassicPreset.Node {
     return next === "1d" ? ["y", "ybins"] : [];
   }
 
+  private labelModeInputs(): void {
+    this.inputs.values!.label = this.mode === "2d" ? "X" : "Values";
+    this.inputs.bins!.label = this.mode === "2d" ? "X bins" : "Bins";
+  }
+
   setMode(next: HistogramMode): void {
     if (next === this.mode) return;
     this.mode = next;
+    this.labelModeInputs();
     // Re-add Options so it stays the last row.
     if (this.inputs.options) this.removeInput("options");
     if (next === "2d") {
