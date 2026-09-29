@@ -209,6 +209,16 @@ describe("SUMIFS reads the column in its unit", () => {
     expect(avg.display).toBe("degC");
   });
 
+  it("MINIFS and MAXIFS with no match are 0 in the column's unit, not 0 K", () => {
+    for (const op of ["minifs", "maxifs"]) {
+      const s = new SumIfsNode({ op: op as never });
+      s.stringLiterals.values = "t"; s.stringLiterals.column0 = "k"; s.stringLiterals.value0 = "zzz";
+      const r = s.data({ frame: [temps("degC")] }).result as UnitCell;
+      expect(r.display).toBe("degC");
+      expect(r.value).toBeCloseTo(273.15, 9);
+    }
+  });
+
   it("a cube (a vault table) keeps its column's unit on the way in", () => {
     const avg = ifs("averageifs", frameToCube(temps("degC"))) as UnitCell;
     expect(avg.display).toBe("degC");

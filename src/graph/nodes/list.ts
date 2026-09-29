@@ -1220,8 +1220,8 @@ export class SumIfsNode extends ClassicPreset.Node {
     switch (this.op) {
       case "sumifs":     return finish(tag(nums.reduce((a, b) => a + b, 0)));
       case "averageifs": return finish(nums.length ? tag(nums.reduce((a, b) => a + b, 0) / nums.length) : solError("#DIV/0!", "No rows matched the criteria"));
-      case "minifs":     return finish(nums.length ? tag(iterMin(nums)) : 0);
-      case "maxifs":     return finish(nums.length ? tag(iterMax(nums)) : 0);
+      case "minifs":     return finish(tag(nums.length ? iterMin(nums) : 0));
+      case "maxifs":     return finish(tag(nums.length ? iterMax(nums) : 0));
     }
   }
 }
