@@ -10,7 +10,8 @@ import { flyToNode } from "../flyToNode";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { formatScalar } from "./format";
 import { useHostNodeId } from "./nodeContext";
-import { resolveDisplayAnnotation } from "./valueDisplayFormat";
+import { resolveMatrixAnnotation } from "./valueDisplayFormat";
+import { frameFormatStore } from "../frameFormatStore";
 import {
   formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, applyTextCase,
   type FormatAnnotation,
@@ -48,7 +49,8 @@ export function TableDisplay({ table, label, full, kind, elem, ann: annProp, pop
   ann?: FormatAnnotation;
 }) {
   const hostId = useHostNodeId();
-  const hostAnn = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveDisplayAnnotation(hostId));
+  useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
+  const hostAnn = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveMatrixAnnotation(hostId));
   const ann = annProp ?? hostAnn;
 
   if (isSolError(table)) {

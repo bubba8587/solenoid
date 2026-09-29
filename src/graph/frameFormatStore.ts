@@ -15,6 +15,9 @@ export interface FrameColumnFormat {
   ann: FormatAnnotation;
 }
 
+/** The key a matrix popup's one format pick is stored under. */
+export const MATRIX_FORMAT_KEY = "*";
+
 function key(nodeId: string, column: string): string {
   return `${nodeId}::${column}`;
 }

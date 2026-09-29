@@ -15,7 +15,7 @@ import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type Format
 import { isUnitCell } from "../unitValue";
 import { decimalFromText } from "../valueKinds";
 import { columnUnitLabel } from "../unitColumn";
-import { frameFormatStore, columnFormatRow, type ColumnFormatRow } from "../frameFormatStore";
+import { frameFormatStore, MATRIX_FORMAT_KEY, columnFormatRow, type ColumnFormatRow } from "../frameFormatStore";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { formatListCell } from "./valueDisplayFormat";
@@ -190,7 +190,7 @@ export function TablePopup() {
       return { ...saved, format: fmt, unit: dflt.unit };
     };
     if (state.formatControls === "matrix") {
-      const local = localAt("*");
+      const local = localAt(MATRIX_FORMAT_KEY);
       setColFmt([seedFormat(local, typeDefaultAnn(state, 0))]);
       setColLocal([!!local]);
       setColInherited([undefined]);
@@ -299,9 +299,9 @@ export function TablePopup() {
       return next;
     });
   }
-  // Must match the key FrameDisplay reads: the host's output column name, or "*" for a matrix.
+  // Must match the key FrameDisplay reads: the host's output column name, or MATRIX_FORMAT_KEY for a matrix.
   function colFmtKey(c: number): string | undefined {
-    if (state?.formatControls === "matrix") return "*";
+    if (state?.formatControls === "matrix") return MATRIX_FORMAT_KEY;
     if (!editableHeaders) return state?.headers?.[c];
     return liveNames.current[c] ?? makeHeaders(headerNames, cols)[c];
   }

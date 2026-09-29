@@ -11,6 +11,7 @@ import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
 import { dimEqual } from "../dimension";
 import { formatScalar } from "./format";
+import { frameFormatStore, MATRIX_FORMAT_KEY } from "../frameFormatStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
 
 export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: string): FormatAnnotation | undefined {
@@ -31,6 +32,11 @@ export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: stri
     if (a) return a;
   }
   return undefined;
+}
+
+/** A matrix card's format: its own popup pick, else the Format Controller that governs it. */
+export function resolveMatrixAnnotation(nodeId: string | null): FormatAnnotation | undefined {
+  return (nodeId ? frameFormatStore.get(nodeId, MATRIX_FORMAT_KEY) : undefined) ?? resolveDisplayAnnotation(nodeId);
 }
 
 export type RowCell = number | boolean | string | Cx | SolError | null;
