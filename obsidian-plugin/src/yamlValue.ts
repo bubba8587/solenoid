@@ -175,6 +175,25 @@ export function readColumnTypes(raw: unknown): Record<string, ColumnTypes> {
   return out;
 }
 
+export interface ColumnNameOption { name: string; type: FrameColType; properties: string[] }
+
+/** Every column name typed under the given properties, each with its most used type; the most used names first. */
+export function columnNameOptions(columnTypes: Record<string, ColumnTypes>, keys: string[]): ColumnNameOption[] {
+  const seen = new Map<string, { counts: Map<FrameColType, number>; properties: string[] }>();
+  for (const key of keys) {
+    for (const [name, type] of Object.entries(columnTypes[key] ?? {})) {
+      if (!name.trim()) continue;
+      const entry = seen.get(name) ?? { counts: new Map<FrameColType, number>(), properties: [] };
+      entry.counts.set(type, (entry.counts.get(type) ?? 0) + 1);
+      entry.properties.push(key);
+      seen.set(name, entry);
+    }
+  }
+  return [...seen.entries()]
+    .sort(([a, ea], [b, eb]) => eb.properties.length - ea.properties.length || a.localeCompare(b))
+    .map(([name, { counts, properties }]) => ({ name, type: [...counts.entries()].sort((x, y) => y[1] - x[1])[0][0], properties }));
+}
+
 export function frameSourceFromYaml(value: unknown, picked: ColumnTypes = {}): FrameSourceColumn[] {
   const records = Array.isArray(value) ? value.filter(isPlainObject) : [];
   const keys: string[] = [];

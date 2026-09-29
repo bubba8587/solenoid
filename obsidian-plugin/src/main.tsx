@@ -14,7 +14,7 @@ import { paletteStore, type PaletteName } from "../../src/graph/palette";
 import type { ReactNode } from "react";
 import { PropertyChip } from "./PropertyChip";
 import { PaletteSwatches } from "./PaletteSwatches";
-import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, type PropertyKind, type ColumnTypes } from "./yamlValue";
+import { PROPERTY_KINDS, validateYaml, readColumnTypes, scalarText, cellToYaml, columnNameOptions, type PropertyKind, type ColumnTypes, type ColumnNameOption } from "./yamlValue";
 import { readPluginNestedTables, type PluginNestedTables } from "../../src/graph/pluginColumnTypes";
 import type { NestedTables } from "../../src/graph/cubeTypes";
 import { createShadowHost, releaseShadowHost, popupLayerRoot, removePopupLayer, homePopupLayer, adoptSheets, syncTheme, refreshTokens, openPopupsOver, setAccentSlot } from "./shadow";
@@ -51,6 +51,8 @@ interface PluginData {
   /** Note path, then property: the column types of the tables nested in that note's cube. */
   nestedTables?: PluginNestedTables;
   look?: boolean;
+  /** Off only when the user turns it off ([[D92]] columnNameSuggest). */
+  suggestColumns?: boolean;
 }
 
 const SOLENOID_LINKS = ["https://solenoid-ngc.vercel.app", "https://github.com/bubba8587/solenoid"];
@@ -72,6 +74,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
     release: (el: Element): void => this.release(el),
     columnTypes: (key: string): ColumnTypes => ({ ...this.data.columnTypes?.[key] }),
     setColumnTypes: (key: string, types: ColumnTypes, replace = false): Promise<void> => this.setColumnTypes(key, types, replace),
+    columnNames: (): ColumnNameOption[] => this.columnNames(),
   };
 
   async onload(): Promise<void> {
@@ -83,6 +86,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
       columnTypes: readColumnTypes(stored.columnTypes),
       nestedTables: readPluginNestedTables(stored.nestedTables),
       look: stored.look === true,
+      suggestColumns: stored.suggestColumns !== false,
     };
     paletteStore.setActiveBase((this.data.palette ?? "Default") as PaletteName);
     setAccentSlot(this.accent);
@@ -139,6 +143,19 @@ export default class SolenoidPropertiesPlugin extends Plugin {
 
   get look(): boolean { return this.data.look === true; }
   get accent(): string { return this.data.accent ?? DEFAULT_ACCENT; }
+  get suggestColumns(): boolean { return this.data.suggestColumns !== false; }
+
+  async setSuggestColumns(on: boolean): Promise<void> {
+    this.data.suggestColumns = on;
+    await this.saveData(this.data);
+  }
+
+  /** The column names typed in the vault's Frame and Cube properties, or none when the setting is off. */
+  columnNames(): ColumnNameOption[] {
+    if (!this.suggestColumns) return [];
+    const types = this.data.columnTypes ?? {};
+    return columnNameOptions(types, Object.keys(types).filter((key) => this.objectKind(key)?.shape === "frame" || this.objectKind(key)?.shape === "cube"));
+  }
 
   async setLook(on: boolean): Promise<void> {
     this.data.look = on;
@@ -256,6 +273,7 @@ export default class SolenoidPropertiesPlugin extends Plugin {
         onChange={onChange}
         columnTypes={this.data.columnTypes?.[key]}
         onColumnTypes={(types, replace) => void this.setColumnTypes(key, types, replace)}
+        columnNameOptions={() => this.columnNames()}
         nestedTables={sourcePath ? this.data.nestedTables?.[sourcePath]?.[key] : undefined}
         onNestedTables={sourcePath ? (nested) => void this.setNestedTables(sourcePath, key, nested) : undefined}
       />);
@@ -334,6 +352,12 @@ class SolenoidSettingTab extends PluginSettingTab {
             await this.plugin.setLook(on);
             this.plugin.wearLook(setting.settingEl.ownerDocument);
           }));
+        },
+      },
+      {
+        name: "Suggest column names",
+        render: (setting) => {
+          setting.addToggle((toggle) => toggle.setValue(this.plugin.suggestColumns).onChange((on) => void this.plugin.setSuggestColumns(on)));
         },
       },
       {

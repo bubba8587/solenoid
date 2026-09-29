@@ -9,7 +9,7 @@ import { recordKeys, type CubeRecord, type CubeSource } from "../../src/graph/li
 import type { NestedTables } from "../../src/graph/cubeTypes";
 import {
   coerceYaml, listFromYaml, matrixFromYaml, listToYaml, matrixToYaml, frameSourceFromYaml, frameSourceToYaml, columnTypesOf, rawCell,
-  type PropertyKind, type Family, type YamlRecord, type ColumnTypes,
+  type PropertyKind, type Family, type YamlRecord, type ColumnTypes, type ColumnNameOption,
 } from "./yamlValue";
 
 const popupCellType = (family: Family) => (family === "complex" ? "string" : family);
@@ -22,7 +22,7 @@ function typeAccent(kind: PropertyKind, resolveToken: (token: string) => string 
   return resolveToken(token);
 }
 
-export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, nestedTables, onNestedTables, resolveToken = tokenHex }: {
+export function PropertyChip({ kind, label, initial, onChange, columnTypes, onColumnTypes, columnNameOptions, nestedTables, onNestedTables, resolveToken = tokenHex }: {
   kind: PropertyKind;
   label: string;
   initial: unknown;
@@ -30,6 +30,8 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
   columnTypes?: ColumnTypes;
   /** `replace` sets the property's whole map, so a cube column switched back to none loses its pick. */
   onColumnTypes?: (types: ColumnTypes, replace?: boolean) => void;
+  /** The frame editor's header suggestions ([[D92]] columnNameSuggest). */
+  columnNameOptions?: () => ColumnNameOption[];
   /** A cube's nested tables' types, this note's own; without the callback they are shown but not kept. */
   nestedTables?: NestedTables;
   onNestedTables?: (nested: NestedTables) => void;
@@ -109,7 +111,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           onColumnTypes?.(types);
           commit(frameSourceToYaml(columns, yaml));
         }}
-        popupOverrides={{ unitTaggable: false, noFormulaColumns: true }}
+        popupOverrides={{ unitTaggable: false, noFormulaColumns: true, columnNameOptions }}
       />
     );
   }

@@ -235,6 +235,8 @@
   align-items: center;
   gap: 4px;
 }
+.table-popup__colhead-field { position: relative; display: flex; flex: 1 1 auto; min-width: 0; }
+.table-popup__colhead-field--affix .table-popup__colhead-input { padding-right: 24px; }
 .table-popup__coltype {
   flex: 0 0 auto;
   width: 18px;

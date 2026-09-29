@@ -8,11 +8,12 @@ export interface CellSuggestHandle { onKey: (e: { key: string; preventDefault: (
 const MAX_ITEMS = 50;
 
 /** Never opens on focus alone and never constrains; the host input keeps focus throughout, so a press here must not blur it. */
-export function CellSuggest({ options, draft, onPick, handle }: {
+export function CellSuggest({ options, draft, onPick, handle, opener = { title: "Existing values", label: "Show this column's existing values" } }: {
   options: string[];
   draft: string;
   onPick: (value: string) => void;
   handle: Ref<CellSuggestHandle>;
+  opener?: { title: string; label: string };
 }) {
   const anchorRef = useRef<HTMLElement | null>(null);
   const menuRef = useRef<HTMLUListElement>(null);
@@ -68,14 +69,14 @@ export function CellSuggest({ options, draft, onPick, handle }: {
     <span
       className="table-popup__affix"
       onMouseDown={keepFocus}
-      // The list hangs under the whole cell (or Form box), not under this small button.
-      ref={(el) => { anchorRef.current = el?.closest<HTMLElement>("td, .table-popup__form-box") ?? null; }}
+      // The list hangs under the whole cell (or header, or Form box), not under this small button.
+      ref={(el) => { anchorRef.current = el?.closest<HTMLElement>("td, th, .table-popup__form-box") ?? null; }}
     >
       <button
         type="button"
         className="table-popup__affix-btn"
-        title="Existing values"
-        aria-label="Show this column's existing values"
+        title={opener.title}
+        aria-label={opener.label}
         aria-expanded={open}
         tabIndex={-1}
         onClick={() => { if (open) close(draft); else { setAllAt(draft); setSel(-1); } }}

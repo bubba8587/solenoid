@@ -146,6 +146,8 @@ export function TablePopup() {
   const [colExprs, setColExprs] = useState<(string | undefined)[]>([]);
   const committedExprs = useRef<(string | undefined)[]>([]);
   const suggestRef = useRef<CellSuggestHandle>(null);
+  const headSuggestRef = useRef<CellSuggestHandle>(null);
+  const [editHead, setEditHead] = useState<{ c: number; options: { name: string; type: CellType }[] } | null>(null);
   const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
   const initedFor = useRef<TablePopupState | null>(null);
   const summaryCache = useRef<{ deps: unknown[]; value: ColSummary[] | null }>({ deps: [], value: null });
@@ -446,6 +448,22 @@ export function TablePopup() {
       next[c] = v;
       return next;
     });
+  }
+  function pickHeaderName(c: number, name: string) {
+    setHeaderName(c, name);
+    const type = editHead?.options.find((o) => o.name === name)?.type;
+    if (!type || colExprs[c] !== undefined) return;
+    setColumnTypes((t) => {
+      const next = t.slice();
+      while (next.length <= c) next.push("number");
+      next[c] = type;
+      return next;
+    });
+  }
+  function headerNameOptions(c: number): string[] {
+    if (editHead?.c !== c) return [];
+    const taken = new Set(headerNames.filter((_, j) => j !== c).map((h) => (h ?? "").trim().toLowerCase()));
+    return editHead.options.map((o) => o.name).filter((n) => !taken.has(n.trim().toLowerCase()));
   }
   function toggleColumnType(c: number) {
     setColumnTypes((t) => {
@@ -785,13 +803,32 @@ export function TablePopup() {
                         >
                           {colExprs[c] !== undefined ? "Fx" : COLTYPE_GLYPH[colTypeAt(c)]}
                         </button>
-                        <input
-                          className="table-popup__input table-popup__input--text table-popup__colhead-input"
-                          value={headerNames[c] ?? ""}
-                          placeholder={colLabel(c)}
-                          spellCheck={false}
-                          onChange={(e) => setHeaderName(c, e.target.value)}
-                        />
+                        {(() => {
+                          const nameOptions = headerNameOptions(c);
+                          return (
+                            <span className={`table-popup__colhead-field${nameOptions.length ? " table-popup__colhead-field--affix" : ""}`}>
+                              <input
+                                className="table-popup__input table-popup__input--text table-popup__colhead-input"
+                                value={headerNames[c] ?? ""}
+                                placeholder={colLabel(c)}
+                                spellCheck={false}
+                                onFocus={state.columnNameOptions ? () => setEditHead({ c, options: state.columnNameOptions?.() ?? [] }) : undefined}
+                                onBlur={state.columnNameOptions ? () => setEditHead(null) : undefined}
+                                onKeyDown={(e) => { if (!e.nativeEvent.isComposing) headSuggestRef.current?.onKey(e); }}
+                                onChange={(e) => setHeaderName(c, e.target.value)}
+                              />
+                              {nameOptions.length > 0 && (
+                                <CellSuggest
+                                  handle={headSuggestRef}
+                                  options={nameOptions}
+                                  draft={headerNames[c] ?? ""}
+                                  onPick={(v) => pickHeaderName(c, v)}
+                                  opener={{ title: "Column names", label: "Show column names used in other frames" }}
+                                />
+                              )}
+                            </span>
+                          );
+                        })()}
                         {colFmtControls && fmtButton(c)}
                       </div>
                     ) : colFmtControls ? (

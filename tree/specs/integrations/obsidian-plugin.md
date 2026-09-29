@@ -2,7 +2,7 @@
 aliases: ["Solenoid Properties (the Obsidian plugin)"]
 tags: [spec, integrations]
 ---
-<!-- [[C107]] obsidianPlugin, [[D87]] knapNotes, [[B3]] sameNodeEverywhere, [[B1]] obsidianBet; covers: obsidian-plugin/vite.config.ts, obsidian-plugin/src/*.ts, obsidian-plugin/src/*.tsx, obsidian-plugin/src/shims/*.ts -->
+<!-- [[C107]] obsidianPlugin, [[D87]] knapNotes, [[D92]] columnNameSuggest, [[B3]] sameNodeEverywhere, [[B1]] obsidianBet; covers: obsidian-plugin/vite.config.ts, obsidian-plugin/src/*.ts, obsidian-plugin/src/*.tsx, obsidian-plugin/src/shims/*.ts -->
 
 # Spec: Solenoid Properties (the Obsidian plugin)
 
@@ -55,7 +55,8 @@ a cube keep their socket glyph's outline (from `SocketLegend.tsx` and `cubeGlyph
 built-in palettes, persisted in the plugin's `data.json`, which also holds the accent and the frame
 column types below) with the app's accent picker stacked under it: the toolbar's `SwatchGrid`, the
 twelve slots and the gray swatch's neutral cycle, following the palette. The accent is a slot
-id, gold by default; the chips' sheet (`shadow.ts`) and the look wear it. One more item,
+id, gold by default; the chips' sheet (`shadow.ts`) and the look wear it. A toggle, Suggest column
+names, on until the user turns it off, governs [[#Column name suggestions]]. One more item,
 "Solenoid", carries two links and no prose: the app's deploy and its GitHub repository, each shown
 as its URL, which never breaks inside itself; on a phone the links stack. The manifest description
 is one sentence naming the four shapes. Both follow DESIGN.md § 7: nothing explains how to use a
@@ -327,6 +328,20 @@ literal tag is written `{{ "{" }}{ x }}` (knap.md).
     note reads a property's assigned type from `app.metadataTypeManager.getAssignedWidget(name)`
     (the type id, or null). The plugin touches nothing else private.
 
+## Column name suggestions
+
+Serves [[D92]] columnNameSuggest. While a Frame editor's header name is focused, the popup offers
+the column names typed in the vault: every column of every property in `data.json`'s `columnTypes`
+that is still assigned the Frame or Cube type, the property being edited included (so a second
+note's `scores` Frame offers the first one's columns). A name typed under several properties counts
+once per property, the most used names come first, and each carries the type it has most often.
+Picking a name also sets the column's type to it; the type button still cycles after. A name
+another column of the same Frame already has is left out. The list is read when the header takes
+focus (`columnNameOptions`, a function on the popup state), so a column typed a moment ago in another
+note is offered. It is the table popup's own `CellSuggest` ([[table-popup]] § Editing a cell): it never
+opens on focus alone and anything new still types. With the setting off the list is empty and the
+header is as it was. The same list is the API's `columnNames()`.
+
 ## Divergences from the full app
 
 Each row is a deliberate difference. "Removes it" is what would have to exist for the row to go.
@@ -462,6 +477,7 @@ version the shape only grows; a breaking change is version 2.
 | `release(el)` | Unmounts every chip `frameChip` mounted inside `el`. Call it before emptying `el`. |
 | `columnTypes(key)` | A copy of the column types recorded for Frame property `key`, `{ column: "number" \| "string" \| "date" \| "logical" }`; `{}` when none are. |
 | `setColumnTypes(key, types, replace?)` | Records column types for `key`, as the editor does on save: merged into what is there, or the whole map with `replace`. Awaits the write to `data.json`. |
+| `columnNames()` | The names [[#Column name suggestions]] offers, `{ name, type, properties }[]` (`properties`: the Frame and Cube properties that type the name), the most used first; `[]` when the user has turned Suggest column names off. A caller filters it (by type, or out of its own bookkeeping properties) to suit its own name field. |
 | `COLUMN_TYPES_EVENT` | `"solenoid-properties:column-types"`, triggered on `app.workspace` with the property key whenever its column types change, from the editor or through `setColumnTypes`. A caller listens with `registerEvent(app.workspace.on(api.COLUMN_TYPES_EVENT, (key) => ...))`: a type picked in the editor changes no YAML, so no metadata event says so. |
 
 A caller writes the Frame's YAML itself (`processFrontMatter`) and records the types of the columns

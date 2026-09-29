@@ -6,6 +6,16 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
+
+- **Frame headers suggest column names** ([[D92]] columnNameSuggest): the plugin hands the Frame editor a
+  `columnNameOptions` function (read on header focus) over every column typed under a Frame or Cube property;
+  the header runs the popup's own `CellSuggest`, a pick sets the column's type, and a Suggest column names toggle
+  (on by default) turns it off. API v1 grows `columnNames()`, which the Decision Matrix view's Add criterion reads.
+  Specs: [[obsidian-plugin]] § Column name suggestions, [[table-popup]] § Editing a cell. Not yet exported to
+  Solenoid-Properties or checked in the rig (no Obsidian in the cloud container); the header list was checked in
+  the app's popup through the dev server.
+
 ### SESSION DIGEST (2026-09-28: Cube types at every depth, cell kinds; cloud session)
 
 - **Cube types at every depth, cell by cell** ([[D90]] cubeTypesAtDepth, superseding D80 on the author's word): a
