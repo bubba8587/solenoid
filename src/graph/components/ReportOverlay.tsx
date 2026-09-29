@@ -18,6 +18,7 @@ import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { useKnapRender, type KnapBatch } from "./useKnapRender";
 import { highlightKnap } from "../knapHighlight";
+import { batchTruncation } from "../knapTemplate";
 import { standardFilterMetadata } from "knap";
 
 const FILTERS = Object.entries(standardFilterMetadata)
@@ -77,7 +78,8 @@ export function ReportOverlay() {
   const pageCount = pages?.length ?? 0;
   const shownPage = pageCount ? Math.min(pageIndex, pageCount - 1) : 0;
   const recordTotal = node?.records?.length ?? 0;
-  const capped = recordTotal > pageCount;
+  const truncation = batchTruncation(recordTotal);
+  const capped = truncation.truncated && pageCount === truncation.shown;
   const previewText = pages ? (pages[shownPage]?.body ?? "") : rendered;
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filterQuery, setFilterQuery] = useState("");
