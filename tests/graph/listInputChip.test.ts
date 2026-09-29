@@ -1,4 +1,4 @@
-// [[D93]] listInputReadsLikeFrame
+// [[D93]] oneTextReading
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { ListInputNode } from "../../src/graph/nodes/list";

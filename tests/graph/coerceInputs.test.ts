@@ -60,8 +60,8 @@ describe("a numlist input is typeable only where the node opts in", () => {
     wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
     return { run: (inputs: Record<string, unknown[]>) => { node.data(inputs); return received ?? {}; } };
   }
-  it("declared key → the CSV parses to a number list (an unparseable part is null)", () => {
-    expect(mockNode({ xs: "1, 2.5, x, 4" }).run({}).xs).toEqual([[1, 2.5, null, 4]]);
+  it("declared key → the CSV parses to a number list (an unparseable part is NaN, as in a Frame cell)", () => {
+    expect(mockNode({ xs: "1, 2.5, x, 4" }).run({}).xs).toEqual([[1, 2.5, NaN, 4]]);
   });
   it("no key → nothing injected (the scalar literal stays the node's own read)", () => {
     expect(mockNode({}, { xs: 3 }).run({}).xs).toBeUndefined();

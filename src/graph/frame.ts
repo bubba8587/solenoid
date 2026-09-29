@@ -211,8 +211,9 @@ export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   return NaN;
 }
 
-/** A list item read as a type, as List Input reads one: what the type can't read is blank. Converts, never filters; the caller passes null and per-cell errors through. */
+/** A list item read as a type. Text reads as a Frame cell does, so what the type can't read is NaN ([[D93]] oneTextReading). Converts, never filters; the caller passes null and per-cell errors through. */
 export function coerceListItem(type: FrameColType, v: unknown): FrameCell {
+  if (typeof v === "string" && type !== "string") return coerceFrameCell(type, v);
   switch (type) {
     case "number": {
       if (typeof v === "number") return Number.isFinite(v) ? v : null;

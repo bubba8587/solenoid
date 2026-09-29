@@ -39,7 +39,7 @@ const LIST_ELEM_SOCKET: Record<ListElemType, SolenoidSocket> = {
   logical: logicalListSocket,
 };
 
-/** A row's typed items, each read as a Frame cell of the list's type, the text kept beside each value ([[D93]] listInputReadsLikeFrame). */
+/** A row's typed items, each read as a Frame cell of the list's type, the text kept beside each value ([[D93]] oneTextReading). */
 function parseCsvList(dt: ListElemType, s: string | undefined): { values: AnyCell[]; source: string[] } {
   const source = s ? listLiteralItems(s) : [];
   return { values: source.map((t) => coerceFrameCell(dt, t) as AnyCell), source };

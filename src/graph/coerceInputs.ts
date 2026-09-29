@@ -4,9 +4,7 @@ import type { Schemes } from "./schemes";
 import { declaredTypeOf, elementFamilyOf, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
-import { isFrameValue, frameFromRows, toCube } from "./frame";
-import { parseDate } from "./nodes/dateSerial";
-import { coerceLogical } from "./valueKinds";
+import { isFrameValue, frameFromRows, toCube, coerceFrameCell, type FrameColType } from "./frame";
 import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
 import { isSolError, solError, SEES_ERRORS } from "./errorValue";
@@ -26,28 +24,18 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
 
 export const TYPEABLE_LIST: ReadonlySet<string> = new Set(["strlist", "datelist", "logicallist"]);
 
-function parseBoolText(p: string): boolean | null {
-  const t = p.trim().toLowerCase();
-  if (t === "yes" || t === "y" || t === "t") return true;
-  if (t === "no"  || t === "n" || t === "f") return false;
-  return coerceLogical(p);
-}
-
 /** A list literal's items as typed: split like CSV, trimmed, blanks dropped. */
 export function listLiteralItems(csv: string): string[] {
   return parseCsvLine(csv).map((s) => s.trim()).filter((s) => s !== "");
 }
 
+const LITERAL_READ: Partial<Record<SocketDataType, FrameColType>> = { numlist: "number", list: "number", datelist: "date", logicallist: "logical" };
+
+/** Each typed item reads as a Frame cell of the list's type ([[D93]] oneTextReading). */
 export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   const parts = listLiteralItems(csv);
-  if (dt === "numlist" || dt === "list") return parts.map((p) => (p !== "" && Number.isFinite(Number(p)) ? Number(p) : null));
-  if (dt === "datelist") return parts.map((p) => {
-    const d = parseDate(p);
-    if (isSolError(d)) return d;
-    return Number.isFinite(d) ? d : null;
-  });
-  if (dt === "logicallist") return parts.map(parseBoolText);
-  return parts;
+  const type = LITERAL_READ[dt];
+  return type ? parts.map((p) => coerceFrameCell(type, p)) : parts;
 }
 
 type Numeric = number | number[] | number[][];
@@ -206,7 +194,7 @@ type NodeLike = {
   inputs?: Record<string, { socket?: unknown } | undefined>;
   stringLiterals?: Record<string, string>;
   rawInputs?: ReadonlySet<string>;
-  /** The node reads its own typed list text, keeping it beside the values ([[D93]] listInputReadsLikeFrame). */
+  /** The node reads its own typed list text, keeping it beside the values ([[D93]] oneTextReading). */
   ownsListLiterals?: boolean;
   noWidenInputs?: ReadonlySet<string>;
   unitAware?: boolean;

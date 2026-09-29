@@ -121,9 +121,9 @@ describe("Cube Input typed and formula columns", () => {
   const col = (c: CubeValue, name: string) => c.columns.find((x) => x.name === name)!;
   const rows = [{ name: "A", h: [1, "2", 3] }, { name: "B", h: [4, "x"] }];
 
-  it("a typed list column reads every item as List Input would; what it can't read is blank; untyped keeps the items", () => {
+  it("a typed list column reads every item as a Frame cell would; what it can't read is NaN; untyped keeps the items", () => {
     const typed = cube({ columns: [{ name: "name" }, { name: "h", type: "number" }], rows });
-    expect(col(typed, "h").cells).toEqual([[1, 2, 3], [4, null]]);
+    expect(col(typed, "h").cells).toEqual([[1, 2, 3], [4, NaN]]);
     expect(col(typed, "h").type).toBe("number");
     expect(col(cube({ columns: [{ name: "name" }, { name: "h" }], rows }), "h").cells).toEqual([[1, "2", 3], [4, "x"]]);
   });
@@ -133,7 +133,7 @@ describe("Cube Input typed and formula columns", () => {
     const n = new CubeInputNode({ cubeText: text });
     const c = n.data().cube as CubeValue;
     const cells = col(c, "d").cells;
-    expect(cells[0]).toEqual([46275, null, null]);
+    expect(cells[0]).toEqual([46275, NaN, NaN]);
     expect(typeof cells[1]).toBe("number");
     expect(Number.isNaN(cells[2])).toBe(true);
     const nested = cells[3] as CubeValue;
@@ -164,8 +164,8 @@ describe("Cube Input typed and formula columns", () => {
     const t1 = cells[1] as CubeValue;
     expect(t1.columns[0].cells[0]).toBe("x");
     expect(Number.isNaN(t1.columns[1].cells[0])).toBe(true);
-    expect(cells[2]).toEqual([4, null]);
-    expect(cells[3]).toEqual([[1, null]]);
+    expect(cells[2]).toEqual([4, NaN]);
+    expect(cells[3]).toEqual([[1, NaN]]);
   });
 
   it("a cell declared a Frame is a flat, typed Frame; the same records undeclared are a Cube", () => {
@@ -183,7 +183,7 @@ describe("Cube Input typed and formula columns", () => {
   it("a formula column reads this row's list and sits where it was declared", () => {
     const c = cube({ columns: [{ name: "name" }, { name: "spark", expr: "SPARKLINE(@h)" }, { name: "h", type: "number" }, { name: "n", expr: "COUNT(@h)" }], rows });
     expect(c.columns.map((x) => x.name)).toEqual(["name", "spark", "h", "n"]);
-    expect(col(c, "n").cells).toEqual([3, 1]);
+    expect(col(c, "n").cells).toEqual([3, 2]);
     expect(col(c, "spark").cells.every((v) => typeof v === "string" && v.startsWith("data:image/svg+xml,"))).toBe(true);
   });
 

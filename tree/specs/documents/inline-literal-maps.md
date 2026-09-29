@@ -24,7 +24,7 @@ A wire-driven card declares neither map. The Equation family (Equation, TVM, Tri
 
 ## A typeable list implies the declaration
 
-A socket of type `strlist`, `datelist` or `logicallist` (the `TYPEABLE_LIST` set in `coerceInputs.ts`) is typeable: the card shows a CSV editor for it. Any node with such an input must declare `stringLiterals`, because the editor stores its raw text there. When the input is unwired, `coerceInputs` parses that text with `parseListLiteral` and injects the list as the input's value; blank text injects nothing, and a wired cable always wins. List Input sets `ownsListLiterals` and reads its rows itself ([[D93]] listInputReadsLikeFrame). A `numlist` input is typeable the same way, but only when the node opts in by putting that input's key in its `stringLiterals`.
+A socket of type `strlist`, `datelist` or `logicallist` (the `TYPEABLE_LIST` set in `coerceInputs.ts`) is typeable: the card shows a CSV editor for it. Any node with such an input must declare `stringLiterals`, because the editor stores its raw text there. When the input is unwired, `coerceInputs` parses that text with `parseListLiteral` and injects the list as the input's value; blank text injects nothing, and a wired cable always wins. List Input sets `ownsListLiterals` and reads its rows itself ([[D93]] oneTextReading). A `numlist` input is typeable the same way, but only when the node opts in by putting that input's key in its `stringLiterals`.
 
 The `FLAT_CATALOG` sweep in `coerceInputs.test.ts` constructs every catalog entry and fails for any node with a typeable input and no `stringLiterals`, so a new node cannot silently lose the user's typed CSV on reload.
 

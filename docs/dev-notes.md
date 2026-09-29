@@ -14,11 +14,11 @@ specific item.
   source of a blocked name's message. Spec: [[formula-language]] § Blocked and wrong-surface names.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's root also offers Fx and has no legend yet.
-- **List Input reads typed items as Frame Input cells** ([[D93]] listInputReadsLikeFrame): `coerceFrameCell`, so an
-  unreadable item is NaN, and the typed text rides beside each value (`cachedSource`) into the list popup's Source
-  view. The node sets `ownsListLiterals`, so `coerceInputs` no longer pre-parses its rows (that pre-parse is why the
-  node-level tests passed while the app still showed blanks). Open: `dateFormatDisplay` still blanks a NaN date
-  in any date list's value box and popup, where a Frame's date column shows `NaN` ([[format-model]]).
+- **One text reading** ([[D93]] oneTextReading): every place text becomes a typed value (List Input typed or
+  wired, every inline list field via `parseListLiteral`, typed Cube list items via `coerceListItem`) reads it with
+  `coerceFrameCell`, so unreadable text is NaN, never blank, and `dateFormatDisplay` shows a NaN date as `NaN`.
+  `parseBoolText` (yes/no in list fields) is gone. List Input keeps its typed text (`cachedSource`) for the
+  popup's Source view and sets `ownsListLiterals` so `coerceInputs` doesn't pre-parse its rows.
 
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 

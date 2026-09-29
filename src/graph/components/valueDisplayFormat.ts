@@ -177,8 +177,8 @@ export function dateFormatDisplay(value: DisplayValue, dateLike: boolean, hasAnn
     return (value as (number | string | boolean | null | SolError)[]).map((v) => {
       if (isSolError(v)) return v.code;
       if (v === null) return "";
-      // A non-finite serial is dirty data with no date to show, so it is blank.
-      if (typeof v === "number") return Number.isFinite(v) ? fmtSerial(v) : "";
+      // A non-finite serial is dirty data: it shows as NaN, as in a Frame's date column.
+      if (typeof v === "number") return Number.isFinite(v) ? fmtSerial(v) : "NaN";
       return v;
     });
   }

@@ -79,8 +79,8 @@ describe("dateFormatDisplay", () => {
     expect(shown).toEqual(["13-Apr-2026", "#AMBIGUOUS!"]);
   });
 
-  it("renders a non-finite serial in a list as blank, not NaN text", () => {
-    expect(dateFormatDisplay([ser(2026, 1, 3), NaN], true, false)).toEqual(["03-Jan-2026", ""]);
+  it("renders a non-finite serial in a list as NaN, as a Frame's date column does", () => {
+    expect(dateFormatDisplay([ser(2026, 1, 3), NaN], true, false)).toEqual(["03-Jan-2026", "NaN"]);
   });
 });
 

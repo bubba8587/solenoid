@@ -122,9 +122,9 @@ describe("List Input (multi-type)", () => {
     expect(run("number", ["1", "2.5"])).toEqual([1, 2.5]);
     expect(run("string", [1, 2])).toEqual(["1", "2"]);
     expect(run("logical", ["yes"])).toEqual([null]); // coerceLogical's vocabulary, wired
-    // Genuinely unconvertible is null (MISSING) — never a dropped element.
-    expect(run("number", ["abc", 5])).toEqual([null, 5]);
-    expect(run("date", ["nope"])).toEqual([null]);
+    // Text the type can't read is NaN, as typed text and a Frame cell read it; never dropped.
+    expect(run("number", ["abc", 5])).toEqual([NaN, 5]);
+    expect(run("date", ["nope"])).toEqual([NaN]);
   });
 
   it("a WILDCARD source can't silently empty the list (any / anylist / trueany)", () => {
