@@ -33,6 +33,36 @@ describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] par
   });
 });
 
+describe("WORKDAY jumps whole weeks and stays inside the calendar", () => {
+  const walk = (start: number, days: number, off: Set<number>, hol: Set<number>) => {
+    let d = start, left = Math.abs(days);
+    const step = days < 0 ? -1 : 1;
+    while (left > 0) { d += step; if (!off.has(serialToJsDate(d).getUTCDay()) && !hol.has(d)) left--; }
+    return d;
+  };
+  it("agrees with a day-by-day walk, holidays included", async () => {
+    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    const intl = resolveExcelFunction("WORKDAY.INTL")!;
+    const hol = [MON + 3, MON + 10, MON + 11, MON + 40, MON - 9, MON - 30];
+    for (const days of [1, 4, 5, 6, 13, 50, 101, -1, -5, -6, -37, -120]) {
+      expect(intl(MON, days, "0000011", hol)).toBe(walk(MON, days, new Set([6, 0]), new Set(hol)));
+      expect(intl(MON + 2, days, "0110001", hol)).toBe(walk(MON + 2, days, new Set([2, 3, 0]), new Set(hol)));
+      expect(new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [days], holidays: [hol] }).result)
+        .toBe(walk(MON, days, new Set([6, 0]), new Set(hol)));
+    }
+  });
+  it("a count past year 9999 is an error at once, not a frozen walk", async () => {
+    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    for (const f of [() => resolveExcelFunction("WORKDAY.INTL")!(MON, 1e9, "0000011"), () => resolveExcelFunction("WORKDAY")!(MON, -1e9),
+      () => new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [1e9] }).result]) {
+      const t = Date.now();
+      const r = f();
+      expect(Date.now() - t).toBeLessThan(500);
+      expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+    }
+  });
+});
+
 describe("DATE — numeric year is literal (no century guessing)", () => {
   const yr = (serial: number) => serialToJsDate(serial).getUTCFullYear();
   it("a small year is that literal year, not 1900+year", () => {

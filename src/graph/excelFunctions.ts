@@ -10,7 +10,7 @@ import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spear
 import { DIST_SPECS, sampleQuantile, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, addWorkdays, weekendDays, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
@@ -1212,9 +1212,9 @@ registerInternal("INDEX", (list, row, col) => {
 
 // Formula.js returns local-midnight Dates; rounding the UTC-read serial removes the time-zone offset, which is safe only for date-only results.
 const toSerialIfDate = (v: unknown): unknown => (v instanceof Date ? Math.round(jsDateToSerial(v)) : v);
-for (const fn of ["EDATE", "WORKDAY"]) {
-  const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[fn];
-  if (typeof f === "function") registerInternal(fn, (...a) => toSerialIfDate(f(...a)));
+{
+  const f = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>).EDATE;
+  if (typeof f === "function") registerInternal("EDATE", (...a) => toSerialIfDate(f(...a)));
 }
 registerInternal("DATE", (y, m, d) => {
   const yn = toNum(y), mn = toNum(m), dn = optNum(d, 0);
@@ -1250,25 +1250,25 @@ registerInternal("DATEDIF",  (start, end, unit) => {
   return dateDiff(op, s, e) ?? solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
 });
 {
-  const f = (FX as unknown as { WORKDAY?: { INTL?: (...a: unknown[]) => unknown } }).WORKDAY?.INTL;
-  const maskWalk = (start: number, days: number, mask: string, holidays: unknown): number | SolError => {
-    if (!/^[01]{7}$/.test(mask) || mask === "1111111") return solError("#VALUE!", "WORKDAY.INTL weekend mask must be seven 0/1 characters with a working day");
-    const off = new Set<number>();
-    for (let i = 0; i < 7; i++) if (mask[i] === "1") off.add((i + 1) % 7); // The mask starts on Monday; JavaScript's getUTCDay has Sunday = 0.
-    const hol = new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
-    const working = (d: number) => !off.has(serialToJsDate(d).getUTCDay()) && !hol.has(d);
-    let d = Math.floor(start), left = Math.trunc(days);
-    const step = left < 0 ? -1 : 1;
-    while (left !== 0) { d += step; if (working(d)) left -= step; }
-    return d;
-  };
-  if (typeof f === "function") registerInternal("WORKDAY.INTL", (start, days, weekend, holidays) => {
+  const weekendOf = (weekend: unknown): Set<number> | null => {
+    if (weekend == null) return weekendDays(1);
     if (typeof weekend === "string" && weekend.length === 7) {
-      const s = toNum(start), n = toNum(days);
-      return badNum(s, n) ? VALUE("WORKDAY.INTL") : maskWalk(s, n, weekend, holidays);
+      if (!/^[01]{7}$/.test(weekend) || weekend === "1111111") return null;
+      // The mask starts on Monday; getUTCDay has Sunday = 0.
+      return new Set([...weekend].flatMap((c, i) => (c === "1" ? [(i + 1) % 7] : [])));
     }
-    return toSerialIfDate(f(start, days, weekend, holidays));
-  });
+    const code = toNum(weekend);
+    return Number.isNaN(code) ? null : weekendDays(code);
+  };
+  const workday = (name: string) => (start: unknown, days: unknown, weekend: unknown, holidays: unknown) => {
+    const s = toNum(start), n = toNum(days), off = weekendOf(weekend);
+    if (badNum(s, n)) return VALUE(name);
+    if (!off) return solError("#VALUE!", `${name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day`);
+    const hol = new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
+    return addWorkdays(s, n, off, hol);
+  };
+  registerInternal("WORKDAY", (start, days, holidays) => workday("WORKDAY")(start, days, undefined, holidays));
+  registerInternal("WORKDAY.INTL", workday("WORKDAY.INTL"));
 }
 {
   const flat = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>).NETWORKDAYS;

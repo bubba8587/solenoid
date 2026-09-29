@@ -206,3 +206,37 @@ export function dateTrunc(serial: number, unit: DateTruncUnit, ceiling = false):
     case "year":     return jsDateToSerial(new Date(Date.UTC(floor.getUTCFullYear() + 1, 0, 1)));
   }
 }
+
+const WEEKEND_CODES: Record<number, number[]> = {
+  1: [6, 0], 2: [0, 1], 3: [1, 2], 4: [2, 3], 5: [3, 4], 6: [4, 5], 7: [5, 6],
+  11: [0], 12: [1], 13: [2], 14: [3], 15: [4], 16: [5], 17: [6],
+};
+
+/** Excel's weekend code as getUTCDay numbers; null for a code Excel doesn't define. */
+export function weekendDays(code: number): Set<number> | null {
+  const days = WEEKEND_CODES[Math.round(code)];
+  return days ? new Set(days) : null;
+}
+
+const FIRST_DAY = dateFromParts(1, 1, 1) as number, LAST_DAY = dateFromParts(9999, 12, 31) as number;
+
+/** The day `days` working days (truncated) from `start`; `off` holds the weekend's getUTCDay numbers, `holidays` whole-day serials. */
+export function addWorkdays(start: number, days: number, off: ReadonlySet<number>, holidays: ReadonlySet<number>): number | SolError {
+  const outside = solError("#DOMAIN!", "WORKDAY lands outside the years 1 to 9999");
+  let d = Math.floor(start), left = Math.abs(Math.trunc(days));
+  if (left > LAST_DAY - FIRST_DAY) return outside;
+  const step = days < 0 ? -1 : 1, perWeek = 7 - off.size;
+  const weekday = (s: number) => serialToJsDate(s).getUTCDay();
+  const workingHolidays = [...holidays].filter((h) => !off.has(weekday(h)));
+  while (left > perWeek) {
+    const weeks = Math.floor((left - 1) / perWeek), next = d + step * 7 * weeks;
+    const skipped = workingHolidays.filter((h) => (step > 0 ? h > d && h <= next : h < d && h >= next)).length;
+    d = next;
+    left -= weeks * perWeek - skipped;
+  }
+  while (left > 0) {
+    d += step;
+    if (!off.has(weekday(d)) && !holidays.has(d)) left--;
+  }
+  return d < FIRST_DAY || d > LAST_DAY ? outside : d;
+}

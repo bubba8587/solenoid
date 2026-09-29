@@ -71,8 +71,8 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 ## Dates
 
 - **YEAR, MONTH, DAY, HOUR, MINUTE, SECOND** read Solenoid's serial through `serialToJsDate` and the UTC getters, the one serial model the Date Part node uses, not Formula.js's Date and 1900 conventions.
-- **EDATE, WORKDAY, WORKDAY.INTL** wrap Formula.js and convert its result, a local-midnight `Date`, to a serial with `toSerialIfDate`. `jsDateToSerial` reads UTC, so the raw serial is off by the machine's time-zone offset; rounding recovers the day because these results are date-only. WORKDAY.INTL lives under `FX.WORKDAY.INTL`, not as a flat key, so it is wrapped on its own; unwrapped, it would leak a shifted `Date` into serial arithmetic.
-- **WORKDAY.INTL's weekend mask.** Formula.js takes only the numeric weekend codes. Excel also takes a seven-character mask of `0` and `1`, Monday first, where 1 is a day off. A mask walks the days directly, skipping days off and holidays; an all-ones mask, or any other string, is `#VALUE!`.
+- **EDATE** wraps Formula.js and converts its result, a local-midnight `Date`, to a serial with `toSerialIfDate`. `jsDateToSerial` reads UTC, so the raw serial is off by the machine's time-zone offset; rounding recovers the day because the result is date-only.
+- **WORKDAY, WORKDAY.INTL** never reach Formula.js, which walks one day at a time (a count of 1e9 hangs) and takes only the numeric weekend codes. Both run `addWorkdays` (`nodes/dateOps.ts`), shared with the Workdays node: it jumps whole weeks, then walks the remainder, and an answer outside the years 1 to 9999 is `#DOMAIN!` (Excel: `#NUM!`). WORKDAY.INTL also takes Excel's seven-character mask of `0` and `1`, Monday first, where 1 is a day off; an all-ones mask, any other string or an undefined code is `#VALUE!`.
 - **NETWORKDAYS, NETWORKDAYS.INTL**: Formula.js miscounts a reversed span (start after end). Excel defines it as exactly the negation of the forward count, so the override swaps the dates and negates, and never reaches Formula.js's reversed path.
 
 ## Finance

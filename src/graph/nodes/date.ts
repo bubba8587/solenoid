@@ -9,7 +9,7 @@ import { type Shape } from "../frameShape";
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./dateSerial";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, addWorkdays, weekendDays, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
@@ -24,25 +24,6 @@ function holidaySet(holidays?: (number | null)[]): Set<number> {
   return s;
 }
 
-function weekendSet(code: number): Set<number> {
-  switch (Math.round(code)) {
-    case 1:  return new Set([6, 0]);
-    case 2:  return new Set([0, 1]);
-    case 3:  return new Set([1, 2]);
-    case 4:  return new Set([2, 3]);
-    case 5:  return new Set([3, 4]);
-    case 6:  return new Set([4, 5]);
-    case 7:  return new Set([5, 6]);
-    case 11: return new Set([0]);
-    case 12: return new Set([1]);
-    case 13: return new Set([2]);
-    case 14: return new Set([3]);
-    case 15: return new Set([4]);
-    case 16: return new Set([5]);
-    case 17: return new Set([6]);
-    default: return new Set([6, 0]);
-  }
-}
 
 
 // ─── TODAY / NOW ──────────────────────────────────────────────────────────────
@@ -435,20 +416,10 @@ export class WorkdaysNode extends ClassicPreset.Node {
   data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
     const codeRaw = readRole<number>(this, "weekend_code", inputs.weekend_code);
     const code = Math.floor(codeRaw);
-    const off  = weekendSet(code);
+    const off  = weekendDays(code) ?? weekendDays(1)!;
     const hol  = holidaySet(inputs.holidays?.[0]);
     const result = this.op === "workday"
-      ? broadcast((s, rawN) => {
-          const n    = Math.floor(rawN);
-          let cur    = serialToJsDate(s);
-          const sign = n >= 0 ? 1 : -1;
-          let rem    = Math.abs(n);
-          while (rem > 0) {
-            cur = new Date(cur.getTime() + sign * 86400000);
-            if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) rem--;
-          }
-          return jsDateToSerial(cur);
-        }, inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5))
+      ? broadcastErr((s, n) => addWorkdays(s, n, off, hol), inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5))
       : broadcast((s, e) => {
           const sign = e >= s ? 1 : -1;
           const lo   = serialToJsDate(Math.min(s, e));
