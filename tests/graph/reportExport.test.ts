@@ -143,3 +143,17 @@ describe("buildExportCss — colors-only branding", () => {
     expect(branded).toContain(".report-export__chart-label { font-size: 11px;");
   });
 });
+
+describe("the exported webpage's math needs no stylesheet", () => {
+  it("the export's KaTeX load fills the renderer cache, and its math renders as bare MathML", async () => {
+    const { loadKatexRenderer, getKatexRenderer } = await import("../../src/graph/components/katexLoader");
+    await loadKatexRenderer();
+    expect(getKatexRenderer()).not.toBeNull();
+    const out = renderNoteMarkdown("Ratio $\\frac{a}{b_1}$ here.", { math: "mathml" });
+    expect(out).toContain("<math");
+    expect(out).toContain("<mfrac>");
+    expect(out).not.toContain("katex-html");
+    expect(out).not.toContain("<annotation");
+    expect(renderNoteMarkdown("$x$")).toContain("katex-html"); // the app keeps KaTeX's HTML
+  });
+});

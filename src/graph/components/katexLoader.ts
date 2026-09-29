@@ -6,16 +6,21 @@ import type { KatexOptions } from "katex";
 export type TexRenderer = (latex: string, options?: KatexOptions) => string;
 
 let cached: TexRenderer | null = null;
-let started = false;
+let loading: Promise<TexRenderer> | null = null;
 const listeners = new Set<() => void>();
 
-function load(): void {
-  if (started) return;
-  started = true;
-  void import("./katexRender").then((m) => {
+/** Loads the chunk once and fills the cache the sync accessors read. */
+export function loadKatexRenderer(): Promise<TexRenderer> {
+  loading ??= import("./katexRender").then((m) => {
     cached = m.renderTex;
     listeners.forEach((l) => l());
+    return m.renderTex;
   });
+  return loading;
+}
+
+function load(): void {
+  void loadKatexRenderer();
 }
 
 /** Sync accessor for non-hook callers: kicks off the one-time load, null until it

@@ -74,12 +74,17 @@ const highlight: TokenizerAndRendererExtension = {
 };
 
 interface MathToken extends Tokens.Generic { type: "mathInline" | "mathBlock"; tex: string }
+let _mathOutput: "html" | "mathml" = "html";
+// DOMPurify drops <semantics>/<annotation> but keeps their text, which would print the TeX beside the formula.
+const TEX_ANNOTATION = /<annotation encoding="application\/x-tex">[\s\S]*?<\/annotation>/g;
+
 function renderMath(tex: string, display: boolean): string {
   const katex = getKatexRenderer();
   const cls = `sol-md__math${display ? " sol-md__math--block" : ""}`;
   if (!katex) return `<span class="${cls} sol-md__math--pending">${esc(display ? `$$${tex}$$` : `$${tex}$`)}</span>`;
   try {
-    return `<span class="${cls}">${katex(tex, { displayMode: display, throwOnError: false })}</span>`;
+    const html = katex(tex, { displayMode: display, throwOnError: false, output: _mathOutput });
+    return `<span class="${cls}">${_mathOutput === "mathml" ? html.replace(TEX_ANNOTATION, "") : html}</span>`;
   } catch {
     return `<span class="${cls} sol-md__math--error">${esc(tex)}</span>`;
   }
@@ -183,6 +188,12 @@ const noteMarked = new Marked({
   renderer: { blockquote: blockquoteRenderer as never },
 });
 
-export function renderNoteMarkdown(md: string): string {
-  return noteMarked.parse(prepare(md), { async: false }) as string;
+/** `math: "mathml"` renders formulas as MathML, which lays out with no KaTeX stylesheet or fonts (a standalone export). */
+export function renderNoteMarkdown(md: string, opts?: { math?: "html" | "mathml" }): string {
+  _mathOutput = opts?.math ?? "html";
+  try {
+    return noteMarked.parse(prepare(md), { async: false }) as string;
+  } finally {
+    _mathOutput = "html";
+  }
 }

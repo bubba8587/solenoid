@@ -12,6 +12,7 @@ import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
 import { APP_LOCALE } from "./locale";
 import { renderNoteMarkdown } from "./noteMarkdown";
+import { loadKatexRenderer } from "./components/katexLoader";
 import { isFrameValue, type FrameValue } from "./frame";
 import { isImageValue } from "./imageValue";
 import { isSvgValue } from "./svgValue";
@@ -61,7 +62,7 @@ export function exportFileName(label: string | undefined): string {
 }
 
 function renderMarkdown(md: string): string {
-  return DOMPurify.sanitize(renderNoteMarkdown(md));
+  return DOMPurify.sanitize(renderNoteMarkdown(md, { math: "mathml" }));
 }
 
 /** A document value splits the body and renders as its own block, its spans resolved from its own refs as on screen. */
@@ -208,7 +209,7 @@ export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
   try {
     const body = await report.renderedBody();
     const embeds = report.refKeys().map((k) => report.refValue(k)).filter(isDocumentValue);
-    if (body.includes("$") || embeds.some((d) => d.body.includes("$"))) await import("./components/katexRender");
+    if (body.includes("$") || embeds.some((d) => d.body.includes("$"))) await loadKatexRenderer();
     const canvasImage = await captureCanvasImage();
     const html = buildReportExportHtml(report, { canvasImage, body });
     const name = exportFileName(report.label);
