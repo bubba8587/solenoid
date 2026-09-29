@@ -147,7 +147,7 @@ export class CastNode extends ClassicPreset.Node {
   // Unset so the card shows each default as a placeholder.
   stringLiterals: Record<string, string> = {};
   cachedResult: number | (number | null | SolError)[] | string | (string | null)[] | boolean | (boolean | null | SolError)[] | SolError | null = null;
-  width = 252; height = 190; // 252 fits the five-segment type SegToggle (.solenoid-node--cast)
+  width = 180; height = 190;
 
   constructor(init?: { label?: string; target?: CastTarget }) {
     super("Cast");

@@ -76,11 +76,6 @@
   width: 240px;
 }
 
-.solenoid-node--cast {
-  width: 252px;
-  min-width: 252px;
-}
-
 .solenoid-node.solenoid-node--display-grow {
   width: max-content;
   min-width: 180px;

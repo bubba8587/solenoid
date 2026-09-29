@@ -39,7 +39,7 @@ export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {
   useEffect(() => { setTarget(data.target); }, [data.target]);
 
   return (
-    <NodeShell node={data} emit={emit} className="solenoid-node--cast">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} keys={Object.keys(data.inputs).filter((k) => !SEPARATOR_KEYS.includes(k))} />
       {target === "number" && (
         <div className="solenoid-node__cast-seps">
