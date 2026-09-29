@@ -185,7 +185,6 @@ export class SeriesNode extends ClassicPreset.Node {
   }
 
   private seedLiterals(): void {
-    // Only declared defaults seed, so Range's Stop and SEQUENCE's Start and Step stay unset across an op switch.
     for (const i of SERIES_SPECS[this.op]) if (i.def !== undefined) this.literals[i.key] ??= i.def;
   }
 
@@ -197,6 +196,8 @@ export class SeriesNode extends ClassicPreset.Node {
   setOp(next: SeriesOp): void {
     if (next === this.op) return;
     const before = SERIES_SPECS[this.op];
+    // A value still at the old op's default was never typed, so it yields to the next op's default (or none).
+    for (const i of before) if (i.def !== undefined && this.literals[i.key] === i.def) delete this.literals[i.key];
     this.op = next;
     const after = SERIES_SPECS[next];
     for (const i of before) if (!after.some((j) => j.key === i.key)) this.removeInput(i.key);

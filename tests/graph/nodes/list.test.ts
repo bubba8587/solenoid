@@ -881,6 +881,29 @@ describe("Series — one arithmetic-progression node, op-switch mechanics", () =
     expect(n.literals.stop).toBeUndefined();
     expect(n.data({}).list).toEqual([]);
   });
+
+  it("a seeded default gives way to the next op's own default", () => {
+    const n = new SeriesNode({ op: "range" });
+    n.setOp("sequence");
+    expect(n.literals.start).toBeUndefined();
+    expect(n.data({}).list).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    const g = new SeriesNode({ op: "geometric" });
+    g.setOp("range");
+    expect(g.literals.start).toBe(0);
+    g.setOp("linspace");
+    expect(g.literals.count).toBe(10);
+  });
+
+  it("a value the user typed survives the switch", () => {
+    const n = new SeriesNode({ op: "range" });
+    n.literals.start = 5;
+    n.setOp("sequence");
+    expect(n.literals.start).toBe(5);
+    const g = new SeriesNode({ op: "geometric" });
+    g.literals.count = 3;
+    g.setOp("linspace");
+    expect(g.literals.count).toBe(3);
+  });
 });
 
 describe("Running — the window's domain", () => {
