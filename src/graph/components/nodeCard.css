@@ -825,6 +825,21 @@ body.solenoid-scrubbing * {
 }
 
 /* Dots hide by opacity, so their wrappers still take cables and drops. */
+/* A folded CardSection's sockets flying up into its pill (CardSection.tsx); drawn like a socket dot, gone when the flight ends. */
+.solenoid-node__fold-ghost {
+  position: absolute;
+  left: var(--node-socket-x, -5px);
+  width: var(--socket-size, 12px);
+  height: var(--socket-size, 12px);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--socket-ring);
+  z-index: 8;
+  pointer-events: none;
+}
+.solenoid-node__fold-ghost--square {
+  border-radius: 2px;
+}
+
 /* A folded CardSection's pill reopens the section, so it takes the pointer the card's own pill lets through. */
 .solenoid-node__input-pill--open {
   pointer-events: auto;
