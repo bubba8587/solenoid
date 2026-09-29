@@ -11,6 +11,7 @@ import { aggregateGroup, aggUnitPlan, type AggOp } from "../frameVerbs";
 import { matrixCellsFromList, tagFrameCellUnit } from "../unitColumn";
 import type { ColumnUnit } from "../unitValue";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { volatileStamp } from "../volatileDates";
 
 function literalCell(node: { literals: Record<string, number>; stringLiterals: Record<string, string> }, key: string): CubeCell {
   if (key in node.literals) return node.literals[key] as CubeCell;
@@ -340,6 +341,7 @@ export class CubeInputNode extends ClassicPreset.Node {
   cachedResult: CubeValue | SolError | null = null;
   width = 240; height = 200;
   private _builtFrom: string | undefined;
+  private _builtStamp = -1;
 
   constructor(init?: { label?: string; cubeText?: string }) {
     super("CubeInput");
@@ -349,10 +351,12 @@ export class CubeInputNode extends ClassicPreset.Node {
   }
 
   data(): { cube: CubeValue | SolError | null } {
-    if (this.cachedResult && this._builtFrom === this.cubeText) return { cube: this.cachedResult };
+    const stamp = volatileStamp(this.cubeText);
+    if (this.cachedResult && this._builtFrom === this.cubeText && this._builtStamp === stamp) return { cube: this.cachedResult };
     const parsed = parseCubeSource(this.cubeText);
     this.cachedResult = "error" in parsed ? solError("#VALUE!", parsed.error) : cubeFromSource(parsed.source);
     this._builtFrom = this.cubeText;
+    this._builtStamp = stamp;
     return { cube: this.cachedResult };
   }
 }

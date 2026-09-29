@@ -5,6 +5,8 @@ import { TodayNowNode } from "../../src/graph/nodes/date";
 import { wallClockSerial, serialToJsDate } from "../../src/graph/nodes/dateSerial";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { CubeInputNode } from "../../src/graph/nodes/cube";
+import { FrameInputNode, ComputedColumnNode } from "../../src/graph/nodes/frame";
+import { requestRecalc } from "../../src/graph/process";
 
 describe("volatileDates (R5 midnight rollover)", () => {
   it("spots TODAY()/NOW() in an expression or a frame's formulas, and a relative Date Input", () => {
@@ -57,6 +59,45 @@ describe("volatileDates (R5 midnight rollover)", () => {
     disarm();
     vi.advanceTimersByTime(24 * 3600 * 1000);
     expect(recalc).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+});
+
+describe("volatile formula columns refresh on a recalc", () => {
+  const dayOf = (serial: unknown) => serialToJsDate(serial as number).getUTCDate();
+  it("a Frame Input formula column reads the new day after midnight", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 7, 23, 59, 0));
+    const node = new FrameInputNode({ frameText: JSON.stringify([{ name: "a", values: [1] }, { name: "d", expr: "TODAY()" }]) });
+    const cell = () => node.data({}).frame.columns.find((c) => c.name === "d")!.values[0];
+    expect(dayOf(cell())).toBe(7);
+    vi.setSystemTime(new Date(2026, 8, 8, 0, 0, 1));
+    await requestRecalc();
+    expect(dayOf(cell())).toBe(8);
+    vi.useRealTimers();
+  });
+  it("a Cube Input formula column reads the new day after midnight", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 7, 23, 59, 0));
+    const node = new CubeInputNode({ cubeText: JSON.stringify({ columns: [{ name: "a" }, { name: "d", expr: "TODAY()" }], rows: [{ a: 1 }] }) });
+    const cell = () => JSON.stringify(node.data().cube);
+    const before = cell();
+    vi.setSystemTime(new Date(2026, 8, 8, 0, 0, 1));
+    await requestRecalc();
+    expect(cell()).not.toBe(before);
+    vi.useRealTimers();
+  });
+  it("a Computed Column calling TODAY reads the new day after F9, with the same input frame", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 7, 23, 59, 0));
+    const node = new ComputedColumnNode({ expr: "TODAY()" });
+    node.stringLiterals.name = "d";
+    const frame = { __frame: true as const, columns: [{ name: "a", type: "number" as const, values: [1] }] };
+    const cell = () => (node.data({ frame: [frame] }).frame as { columns: { name: string; values: unknown[] }[] }).columns.find((c) => c.name === "d")!.values[0];
+    expect(dayOf(cell())).toBe(7);
+    vi.setSystemTime(new Date(2026, 8, 8, 0, 0, 1));
+    await requestRecalc();
+    expect(dayOf(cell())).toBe(8);
     vi.useRealTimers();
   });
 });

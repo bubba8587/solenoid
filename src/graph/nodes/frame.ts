@@ -7,6 +7,7 @@ import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
 import { affineWeight, type Lam } from "../unitDimExpr";
 import { isLambdaValue, type LambdaValue } from "../lambdaValue";
+import { volatileStamp } from "../volatileDates";
 import { computeColumnCells, computeCubeColumnCells } from "../computedColumnCore";
 import { cubeRowTable, cubeCellsType } from "../cubeRows";
 import { dropInputCables } from "../components/cablePrune";
@@ -226,7 +227,7 @@ export class FrameInputNode extends ClassicPreset.Node {
 
   private _exprCache = new Map<string, CompiledColumnExpr | null>();
 
-  private _computedFrom: { text: string; lams: unknown[] } | null = null;
+  private _computedFrom: { text: string; lams: unknown[]; stamp: number } | null = null;
 
   frameShape(): Shape {
     return shapeOfFrameValue(frameFromInputText(this.frameText));
@@ -243,8 +244,9 @@ export class FrameInputNode extends ClassicPreset.Node {
       return { frame: this.cachedResult };
     }
     const lams = this.lambdaKeys.map((k) => inputs[k]?.[0]);
+    const stamp = volatileStamp([this.frameText, ...lams.map((l) => (isLambdaValue(l) ? l.expr : ""))].join("\n"));
     if (
-      this.cachedResult && this._computedFrom && this._computedFrom.text === this.frameText &&
+      this.cachedResult && this._computedFrom && this._computedFrom.text === this.frameText && this._computedFrom.stamp === stamp &&
       this._computedFrom.lams.length === lams.length &&
       this._computedFrom.lams.every((v, i) => Object.is(v, lams[i]))
     ) {
@@ -341,7 +343,7 @@ export class FrameInputNode extends ClassicPreset.Node {
     this._exprCache = compiled;
     this.cachedResult = frame;
     this._builtFrom = undefined;
-    this._computedFrom = { text: this.frameText, lams };
+    this._computedFrom = { text: this.frameText, lams, stamp };
     return { frame };
   }
 }
@@ -2491,17 +2493,18 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
     const sideVals = this.sideVars.map((p) => readInput(inputs[p] as (number | null)[] | undefined, this.literals[p] ?? 0));
     const bindJson = JSON.stringify(this.bindings);
+    const stamp = volatileStamp(wired ? wired.expr : this.expr);
     const k = this._lastKey;
     if (
       this.cachedResult && !isSolError(this.cachedResult) && k &&
       Object.is(k.f, rawF) && Object.is(k.lam, wired) && k.expr === this.expr && k.addAs === this.addAs &&
-      k.name === name && k.after === after && k.bindings === bindJson &&
+      k.name === name && k.after === after && k.bindings === bindJson && k.stamp === stamp &&
       k.sideVals.length === sideVals.length && k.sideVals.every((v, i) => Object.is(v, sideVals[i]))
     ) {
       return { frame: this.cachedResult };
     }
     const remember = (frame: FrameValue | CubeValue) => {
-      this._lastKey = { f: rawF, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals };
+      this._lastKey = { f: rawF, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals, stamp };
       return out(frame);
     };
 
@@ -2550,7 +2553,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
   private _lastKey: {
     f: unknown; lam: unknown; expr: string; addAs: ComputedColumnAs;
-    name: string; after: string; bindings: string; sideVals: unknown[];
+    name: string; after: string; bindings: string; sideVals: unknown[]; stamp: number;
   } | null = null;
 }
 

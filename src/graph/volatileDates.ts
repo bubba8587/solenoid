@@ -3,9 +3,15 @@
 // document holding any of them recomputes once. One timer, re-armed after each firing.
 
 import { isRelativeDateText } from "./nodes/dateSerial";
+import { getRecalcGen } from "./process";
 
 const VOLATILE_FN = /\b(TODAY|NOW)\s*\(/i;
 const KNAP_NOW = /["']now["']\s*\|\s*date\b/;
+
+/** A memo key part: the recalc generation when the formula text calls TODAY or NOW, else -1, so a cached answer refreshes on F9 and at midnight. */
+export function volatileStamp(text: string | undefined): number {
+  return text && VOLATILE_FN.test(text) ? getRecalcGen() : -1;
+}
 
 export function hasVolatileDates(nodes: readonly unknown[]): boolean {
   for (const n of nodes) {
