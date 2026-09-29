@@ -155,8 +155,8 @@ export function nodeChartSvg(nodeId: string): SVGSVGElement | null {
   let bestArea = 40 * 40;
   for (const svg of Array.from(el.querySelectorAll("svg"))) {
     if (svg.classList.contains("solenoid-node__frame")) continue;
-    const box = svg.getBoundingClientRect();
-    const area = box.width * box.height;
+    const { w, h } = canvasSizeOf(svg);
+    const area = w * h;
     if (area > bestArea) { bestArea = area; best = svg; }
   }
   return best;
