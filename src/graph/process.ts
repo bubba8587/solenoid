@@ -120,6 +120,7 @@ let _passActive = false;
 let _rerunQueued = false;
 let _rerunForce = false;
 let _rerunExact = false;
+const _rerunChanged = new Set<string>();
 
 export async function processGraph(changedNodeId?: string, renderOnly?: Set<string>, opts?: { force?: boolean; topology?: boolean }) {
   if (calcModeStore.isManual() && !opts?.force && !isGraphRebuilding()) {
@@ -130,6 +131,7 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
     _rerunQueued = true;
     _rerunForce ||= opts?.force === true;
     _rerunExact ||= calcModeStore.forcingExact();
+    if (changedNodeId) _rerunChanged.add(changedNodeId);
     return;
   }
   _passActive = true;
@@ -144,6 +146,9 @@ export async function processGraph(changedNodeId?: string, renderOnly?: Set<stri
   if (_rerunQueued) {
     const force = _rerunForce, exact = _rerunExact;
     _rerunQueued = false; _rerunForce = false; _rerunExact = false;
+    // The full rerun has no changed node to retarget, so a coalesced composite-internal edit marks its chain here.
+    if (_editor) for (const id of _rerunChanged) if (!_editor.getNode(id)) markInternalEditChain(_editor, id);
+    _rerunChanged.clear();
     if (exact) calcModeStore.beginForceExact();
     try {
       await processGraph(undefined, undefined, force ? { force } : undefined);

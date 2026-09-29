@@ -113,4 +113,31 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
       calcModeStore.setMode("auto");
     }
   });
+
+  it("an edit inside a composite made during a pass still marks the composite on the rerun", async () => {
+    const inner = new NodeEditor<Schemes>();
+    const innerNode = new Src("inner");
+    await inner.addNode(innerNode as unknown as Schemes["Node"]);
+    class Owner extends Src {
+      internalEditor = inner;
+      marks = 0;
+      markInternalEdit() { this.marks++; }
+    }
+    const editor = new NodeEditor<Schemes>();
+    const engine = new DataflowEngine<Schemes>();
+    editor.use(engine);
+    const owner = new Owner("owner");
+    await editor.addNode(owner as unknown as Schemes["Node"]);
+    let reentered = false;
+    const view = {
+      rerenderNode: async () => {
+        if (reentered) return;
+        reentered = true;
+        await processGraph(innerNode.id);
+      },
+    } as unknown as View;
+    setEditorRefs(editor, engine, view);
+    await processGraph();
+    expect(owner.marks).toBe(1);
+  });
 });
