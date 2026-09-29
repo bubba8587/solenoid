@@ -333,3 +333,5 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Matrix format precedence**: the matrix popup's own pick now wins over an FC wired to the same card (as a Frame column's own pick does); the reverse is defensible.
 - [ ] **Gantt font scale** keeps the dragged grid width, so wider columns can run off the right instead of truncating with "…".
 - [ ] **Vault Folder mdbase**: it finds collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule for both.
+- [ ] **UUID and undo**: `UuidNode` saves its generated `init.value`, which changes on every compute, so an undo on a document holding one records a stray history entry and wipes Redo. Stop saving the value, or have the history ignore it.
+- [ ] **List text predicates on a mixed list** (`list.ts` requireTextList, [[D49]] textPredicateNeedsText): `["apple", 1]` and `[1, "apple"]` are both #TYPE! now; confirm that reading of D49.
