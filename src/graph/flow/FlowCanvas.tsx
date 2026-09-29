@@ -32,7 +32,7 @@ import { withLockedGroupsPinned } from "../groupLogic";
 import { measuredBox } from "../nodeSize";
 import { translateEntityBy } from "../groupPush";
 import { repositionDockedFor } from "../fcDocking";
-import { setDrawnCommit } from "../drawnCables";
+import { drawnCableStore, setDrawnCommit } from "../drawnCables";
 import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
@@ -144,7 +144,7 @@ function FlowCanvasInner() {
     });
     setDeleteSelected(async () => {
       const doomed = s.editor.getNodes().some((n) => (n as { selected?: boolean }).selected);
-      if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected()) return;
+      if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected() && !drawnCableStore.selected()) return;
       await deleteSelection(s.editor, s.view);
       scheduleAutosave();
     });
