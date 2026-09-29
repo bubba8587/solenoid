@@ -6,6 +6,7 @@ import { groupingApplies, scaleApplies, negativeApplies, COMPLEX_FORMAT_STYLES }
 import { assembleCx, type Cx } from "./cxValue";
 import { APP_LOCALE } from "./locale";
 import { createNotifier } from "./storeKit";
+import { settingsStore } from "./settingsStore";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
 export type FormatStyle =
@@ -446,6 +447,13 @@ const _store = new Map<string, FormatAnnotation>();
 // Indexed by node because every value box calls getForNode on every render.
 const _byNode = new Map<string, Map<string, FormatAnnotation>>();
 const { notify, subscribe, version } = createNotifier();
+
+// A new "Decimal places" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
+let _decimals = settingsStore.get("numberDecimals");
+settingsStore.subscribe(() => {
+  const d = settingsStore.get("numberDecimals");
+  if (d !== _decimals) { _decimals = d; notify(); }
+});
 
 function key(nodeId: string, socketKey: string): string {
   return `${nodeId}::${socketKey}`;

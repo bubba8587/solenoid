@@ -132,11 +132,10 @@ describe("formatNumberWithAnnotation — auto format", () => {
     expect(fwn(-7)).toBe("-7");
   });
 
-  it("formats floats to 6 significant figures via toPrecision", () => {
-    // parseFloat(n.toPrecision(6)) trims trailing zeros
-    expect(fwn(1.23456789)).toBe("1.23457");
+  it("formats floats as every unformatted number shows, to the Decimal places setting (4) with trailing zeros dropped", () => {
+    expect(fwn(1.23456789)).toBe("1.2346");
     expect(fwn(100.1)).toBe("100.1");
-    expect(fwn(0.000123456)).toBe("0.000123456");
+    expect(fwn(0.000123456)).toBe("0.0001");
   });
 });
 
@@ -230,8 +229,8 @@ describe("formatNumberWithAnnotation — fraction format", () => {
     expect(fwn(1 / 3, { format: "fraction" })).toBe("1/3");
     // A random float that has no low-denominator rational
     const result = fwn(0.123456789, { format: "fraction" });
-    // Falls back to autoFormat — 6 sig figs
-    expect(result).toMatch(/0\.12345/);
+    // Falls back to the auto (General) display: the Decimal places setting, 4 by default.
+    expect(result).toBe("0.1235");
   });
 
   it("renders 0 as '0'", () => {

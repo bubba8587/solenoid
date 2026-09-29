@@ -38,6 +38,8 @@ export interface Settings {
   headerTitleCase: HeaderTitleCase;
   commandPaletteAlwaysOn: boolean;
   relativeDates: boolean;
+  /** How many decimal places a number with no format shows; a string so the segment control stores it directly. */
+  numberDecimals: "2" | "3" | "4" | "6";
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -62,6 +64,7 @@ export const DEFAULT_SETTINGS: Settings = {
   headerTitleCase: "upper",
   commandPaletteAlwaysOn: false,
   relativeDates: false,
+  numberDecimals: "4",
 };
 
 export interface SettingField {
@@ -169,6 +172,18 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "hideGridDots",
         label: "Hide grid dots",
+      },
+      {
+        key: "numberDecimals",
+        label: "Decimal places",
+        help: "For numbers without a format. Trailing zeros are dropped.",
+        type: "segment",
+        options: [
+          { value: "2", label: "2" },
+          { value: "3", label: "3" },
+          { value: "4", label: "4" },
+          { value: "6", label: "6" },
+        ],
       },
       {
         key: "commandPaletteAlwaysOn",

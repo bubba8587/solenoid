@@ -1,6 +1,7 @@
 // [[D41]] formatFlowsDownstream
 
 import { createNotifier } from "./storeKit";
+import { settingsStore } from "./settingsStore";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { FORMAT_STYLE_LABELS, LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, type FormatAnnotation, type FormatStyle } from "./formatAnnotationStore";
 import { precisionApplies } from "./formatModel";
@@ -20,6 +21,13 @@ function key(nodeId: string, column: string): string {
 
 const _store = new Map<string, FrameColumnFormat>();
 const { notify, subscribe, version } = createNotifier();
+
+// A new "Decimal places" setting redraws every value shown through this store ([[D94]] oneNumberDisplay).
+let _decimals = settingsStore.get("numberDecimals");
+settingsStore.subscribe(() => {
+  const d = settingsStore.get("numberDecimals");
+  if (d !== _decimals) { _decimals = d; notify(); }
+});
 
 export const frameFormatStore = {
   get(nodeId: string, column: string): FormatAnnotation | undefined {

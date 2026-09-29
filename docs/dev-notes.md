@@ -24,7 +24,7 @@ specific item.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
 - **One number display** ([[D94]] oneNumberDisplay): `formatScalar` is the FC's General style (integer as is,
-  else 6 significant digits trimmed, extremes scientific) and every unformatted display uses it: value boxes, Frame
+  else the "Decimal places" setting, default 4, trimmed; extremes scientific) and every unformatted display uses it: value boxes, Frame
   and Table cards, the Table and Cube popups, complex parts, unit suffixes, Alert messages. `formatCx` (data) keeps
   4 decimals; the Constant and Physics Constant cards and chart ticks keep theirs. `listPreview` was dead and went.
 - **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode

@@ -283,11 +283,10 @@ describe("evaluateSteps", () => {
     expect(falseResult!.value).toBe(0);
   });
 
-  it("rounds displayed numbers to 6 significant figures", () => {
+  it("shows its numbers as every unformatted number shows ([[D94]] oneNumberDisplay)", () => {
     const result = evaluateSteps("pi + 0", {});
-    // 0 is a literal, pi is a constant; "pi + 0" emits one step
-    // cleanNum(Math.PI) → 6 sig figs → "3.14159"
-    expect(result!.steps[0].latex).toContain("3.14159");
+    // 0 is a literal, pi is a constant; "pi + 0" emits one step, pi at the default 4 decimal places
+    expect(result!.steps[0].latex).toContain("3.1416");
   });
 });
 

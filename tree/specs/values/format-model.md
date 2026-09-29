@@ -115,7 +115,7 @@ Both are display-only and ride the annotation like `logicalStyle`. The lambda's 
 
 | Style | Renders | Notes |
 |---|---|---|
-| `auto` | canonical trim | `formatScalar` (`format.ts`), the one display of every unformatted number ([[D94]] oneNumberDisplay): `extremeSci` forces scientific for extreme magnitudes; an integer prints as is; anything else is `toPrecision(6)` with trailing zeros dropped |
+| `auto` | canonical trim | `formatScalar` (`format.ts`), the one display of every unformatted number ([[D94]] oneNumberDisplay): an integer prints as is; anything else to the "Decimal places" setting (2, 3, 4 or 6; default 4) with trailing zeros dropped; `extremeSci` forces scientific at 1e12 and above and below the smallest shown decimal, so a small value never reads as 0 |
 | `decimal` | `d` places or `d` significant figures, grouped | |
 | `integer` | `1,235` | rounded, grouped |
 | `percent` | ×100, then `d` places or significant figures, then `%` | |

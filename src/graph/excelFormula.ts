@@ -1,6 +1,7 @@
 // [[C22]], [[C80]], [[B16]] oneFormulaSurface (RANGE_* policies), [[C14]] currentExcelParity
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, blockedNameMessage, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
+import { formatScalar } from "./components/format";
 import { isMissing, guardFinite, powerOf } from "./valueKinds";
 import { applyArgRoles } from "./inputRoles";
 import { compareStrings } from "./stringOrder";
@@ -1006,11 +1007,8 @@ export function formulaToLatex(expr: string): string | null {
 
 // ─── Step-by-step evaluation ─────────────────────────────────────────────────
 
-const cleanNum = (v: number): string => {
-  if (!Number.isFinite(v)) return String(v);
-  if (Number.isInteger(v)) return String(v);
-  return parseFloat(v.toPrecision(6)).toString();
-};
+// A step shows its numbers as every unformatted number shows ([[D94]] oneNumberDisplay).
+const cleanNum = (v: number): string => (Number.isFinite(v) ? formatScalar(v) : String(v));
 
 function applyBin(op: string, l: number, r: number): number {
   switch (op) {
