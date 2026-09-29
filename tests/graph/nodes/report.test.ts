@@ -164,6 +164,8 @@ describe("ReportNode — records: a mail merge, one page per record", () => {
     expect(doc.refs.records).toBe(people);
     // The card and the export read the same span through refValue, not only the vault write.
     expect(n.refValue("records")).toBe(people);
+    await n.data({ records: [null] });
+    expect(n.refValue("records")).toBeUndefined();
     expect(n.refValue("template")).toBeUndefined(); // unwired
   });
 

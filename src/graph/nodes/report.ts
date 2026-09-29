@@ -157,6 +157,7 @@ export class ReportNode extends ClassicPreset.Node {
     const tpl = inputs?.template?.[0];
     this._templateDoc = isDocumentValue(tpl) ? tpl : null;
     this._recordsValue = inputs?.records?.[0] ?? null;
+    if (!isFrameRef(this._recordsValue)) this._recordsFrame = undefined;
     this._recordsWired = inputs?.records !== undefined;
     const source = this.activeSource();
 
