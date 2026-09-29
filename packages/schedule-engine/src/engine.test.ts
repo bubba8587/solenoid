@@ -242,6 +242,9 @@ describe("predecessor grammar and text", () => {
     });
     expect(parsePredecessorText("9FS", names).errors).toEqual(["9FS"]);
     expect(predecessorText([{ task: "A", type: "FS", lag: 0 }, { task: "B", type: "SS", lag: 2 }, { task: "C", type: "FS", lag: -1 }])).toBe("A, B SS+2, C FS-1");
+    const elapsed = [{ task: "A", type: "FS" as const, lag: 2, elapsed: true }];
+    expect(predecessorText(elapsed)).toBe("A FS+2ed");
+    expect(parsePredecessorText(predecessorText(elapsed), names).deps).toEqual(elapsed);
   });
 });
 

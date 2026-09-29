@@ -33,7 +33,7 @@ export function parsePredecessorText(text: string, names: readonly string[]): { 
 export function predecessorText(deps: readonly PlanDependency[]): string {
   return deps.map((d) => {
     const type = d.type === "FS" ? "" : ` ${d.type}`;
-    const lag = d.lag === 0 ? "" : `${type ? "" : " FS"}${d.lag > 0 ? "+" : ""}${d.lag}`;
+    const lag = d.lag === 0 ? "" : `${type ? "" : " FS"}${d.lag > 0 ? "+" : ""}${d.lag}${d.elapsed ? "ed" : ""}`;
     return `${d.task}${type}${lag}`;
   }).join(", ");
 }
