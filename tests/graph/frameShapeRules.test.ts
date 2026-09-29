@@ -260,6 +260,20 @@ describe("a wired config socket makes the shape unknown", () => {
     }
   });
 
+  it("totals turn a non-text key that holds a Total label into text, as the run does", async () => {
+    const DATED = "Year, Qtr, Qty\n2024, 1, 5\n2024, 2, 7\n2025, 1, 3";
+    const g = new GroupByFrameNode({ totalDepth: 1 });
+    g.stringLiterals.keys = "Year, Qtr";
+    g.stringLiterals.column = "Qty";
+    expect(cols(await shapeOf(g, "frame", DATED))).toEqual(["Year:string", "Qtr:number", "Qty:number"]);
+    g.totalDepth = 2;
+    expect(cols(await shapeOf(g, "frame", DATED))).toEqual(["Year:string", "Qtr:string", "Qty:number"]);
+    const p = new PivotNode({ rowTotalDepth: -1 });
+    p.stringLiterals.rowFields = "Year, Qtr";
+    p.stringLiterals.values = "Qty";
+    expect(cols(await shapeOf(p, "frame", DATED))).toEqual(["Year:string", "Qtr:number"]);
+  });
+
   it("Unpivot reads the typed columns, and goes unknown once Keep or Melt is wired", async () => {
     const u = new UnpivotNode();
     u.stringLiterals.idColumns = "Region";

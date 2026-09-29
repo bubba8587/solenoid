@@ -50,7 +50,7 @@ import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readF
 import { bindColumns } from "../frameVerbs";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
-  emptyFrameOf, type Shape, type ShapeColumn,
+  emptyFrameOf, totalLabelledKeys, type Shape, type ShapeColumn,
 } from "../frameShape";
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import type { ColumnPickerSpec } from "./columnPickerHook";
@@ -759,7 +759,9 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     const keys = csvList(this.stringLiterals.keys);
     const col = (this.stringLiterals.column ?? "").trim();
     if (!keys.length || !col) return input;
-    return shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }, input);
+    const shape = shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }, input);
+    const labelled = totalLabelledKeys(this.totalDepth, keys.length);
+    return { ...shape, columns: shape.columns.map((c, k) => (k < labelled ? { ...c, type: "string" } : c)) };
   }
 
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
@@ -859,7 +861,7 @@ export class PivotNode extends ClassicPreset.Node {
     const values = csvList(this.stringLiterals.values).filter((f) => valid.has(f));
     if (!values.length) return input;
     const funcs = values.map((name) => this.funcs[name] ?? this.agg);
-    return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs }, input);
+    return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs, rowTotalDepth: this.rowTotalDepth }, input);
   }
 
   data(inputs: {

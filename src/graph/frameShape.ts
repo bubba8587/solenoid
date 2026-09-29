@@ -29,6 +29,11 @@ function requireCol(s: Shape, name: string): ShapeColumn {
   return col;
 }
 
+/** How many leading key columns a totals row writes "Grand Total" / "Total" into, so they run as text. */
+export function totalLabelledKeys(depth: number, nKeys: number): number {
+  return depth === 0 || nKeys === 0 ? 0 : 1 + Math.min(Math.abs(depth) - 1, nKeys - 1);
+}
+
 export function shapeOf(op: FrameOp, input: Shape): Shape {
   switch (op.kind) {
     case "select": {
@@ -91,7 +96,8 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       if (valueNames.length === 0) throw solError("#VALUE!", "PIVOTBY needs at least one value field");
       const rowCols = rowFields.map((n) => requireCol(input, n));
       const keyNames = makeHeaders(rowFields, rowFields.length);
-      return { columns: rowCols.map((c, k) => ({ name: keyNames[k], type: c.type })), dynamic: true };
+      const labelled = totalLabelledKeys(op.rowTotalDepth ?? 0, rowCols.length);
+      return { columns: rowCols.map((c, k) => ({ name: keyNames[k], type: k < labelled ? "string" : c.type })), dynamic: true };
     }
     case "window": {
       for (const k of op.partitionBy) requireCol(input, k);
