@@ -20,6 +20,7 @@ const ISOLATED = [
   "tests/graph/flow/flowHistory.test.ts",
   "tests/graph/importNoteRepick.test.ts",
   "tests/graph/lazyChain.test.ts",
+  "tests/graph/localFileRace.test.ts",
   "tests/graph/nodes/sink.test.ts",
   "tests/graph/obsidianWriteBatch.test.ts",
   "tests/graph/polarsBackend.test.ts",
