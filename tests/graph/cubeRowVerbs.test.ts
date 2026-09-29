@@ -167,6 +167,22 @@ describe("Computed Column over a cube", () => {
     expect(c.columns.map((k) => k.name)).toEqual(["title", "timeEstimate", "tags", "hours"]);
   });
 
+  it("a \"Name (unit)\" header splits as on a frame: it replaces the named column, keeps its format and tags the cells", () => {
+    const fmt = { format: "number", unit: "" } as never;
+    const src = cubeFromColumns([
+      { name: "title", cells: ["A", "B"], type: "string" },
+      { name: "hours", cells: [1, 2], type: "number", format: fmt },
+      { name: "timeEstimate", cells: [60, 120], type: "number" },
+    ]);
+    const n = new ComputedColumnNode({ expr: "@timeEstimate / 60" });
+    n.stringLiterals.name = "hours (kg)";
+    const c = n.data({ frame: [src] as never }).frame as CubeValue;
+    expect(c.columns.map((k) => k.name)).toEqual(["title", "hours", "timeEstimate"]);
+    const hours = c.columns.find((k) => k.name === "hours")!;
+    expect(hours.format).toBe(fmt);
+    expect(hours.cells.map((v) => (v as { dim?: unknown }).dim)).toEqual([{ mass: 1 }, { mass: 1 }]);
+  });
+
   it("the list column rides through by reference", () => {
     const src = tasks();
     const n = new ComputedColumnNode({ expr: "@timeEstimate / 60" });

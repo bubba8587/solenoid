@@ -56,7 +56,7 @@ import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
 import { type UnitCell, type ColumnUnit, isUnitCell, isAffineDisplay } from "../unitValue";
-import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
+import { tagFrameCellUnit, columnUnitFromSpec, parseColumnUnitFromHeader } from "../unitColumn";
 
 function runVerb<T>(fn: () => T): T | SolError {
   try {
@@ -137,10 +137,18 @@ function bareLambdaCall(lam: LambdaValue): Ast {
   return { t: "call", name: "λ", args: lam.params.map((name): Ast => ({ t: "atcol", name })) };
 }
 
+/** The cube twin of `addColumn`: a "Name (unit)" header tags the cells, and a replaced column keeps its place and format. */
 function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string): CubeValue {
-  const col: CubeColumn = { name, cells, ...(type ? { type } : {}) };
-  const at = cube.columns.findIndex((c) => c.name === name);
-  if (at >= 0) { const cols = cube.columns.slice(); cols[at] = col; return cubeFromColumns(cols); }
+  const { clean, unit } = parseColumnUnitFromHeader(name);
+  const tagged = unit && type === "number" ? cells.map((v) => tagFrameCellUnit(v, unit) as CubeCell) : cells;
+  const col: CubeColumn = { name: clean, cells: tagged, ...(type ? { type } : {}) };
+  const at = cube.columns.findIndex((c) => c.name === clean);
+  if (at >= 0) {
+    const cols = cube.columns.slice();
+    const format = cols[at].format;
+    cols[at] = format ? { ...col, format } : col;
+    return cubeFromColumns(cols);
+  }
   const cols = [...cube.columns, col];
   if (after) {
     const a = cols.findIndex((c) => c.name === after);
