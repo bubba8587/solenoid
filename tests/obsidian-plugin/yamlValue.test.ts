@@ -1,6 +1,6 @@
 // [[C17]] shareImpl, [[C107]] obsidianPlugin
 import { describe, it, expect } from "vitest";
-import { cellToYaml, frameSourceFromYaml } from "../../obsidian-plugin/src/yamlValue";
+import { cellToYaml, frameSourceFromYaml, listToYaml } from "../../obsidian-plugin/src/yamlValue";
 import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
 
 describe("the plugin reads and writes note dates as the app does", () => {
@@ -32,5 +32,17 @@ describe("the plugin reads and writes note dates as the app does", () => {
   it("keeps a date's time when it writes a cell", () => {
     expect(cellToYaml("2024-03-05", "date")).toBe("2024-03-05");
     expect(cellToYaml("2024-03-05T10:30", "date")).toBe("2024-03-05T10:30:00");
+  });
+});
+
+describe("the plugin writes a real Complex value as a number", () => {
+  it("a Complex property typed 5 is written as the number 5 and a list keeps its family", () => {
+    expect(cellToYaml("5", "complex")).toBe(5);
+    expect(cellToYaml("3+4i", "complex")).toBe("3+4i");
+    expect(cellToYaml("nope", "complex")).toBe(null);
+    const list = listToYaml([["3+4i"], ["5"]], [], "complex");
+    expect(list).toEqual(["3+4i", 5]);
+    const yaml = `---\nk:\n${list.map((v) => `  - ${v}`).join("\n")}\n---\n`;
+    expect(parseNoteFrontmatter(yaml).fields[0].guessed).toBe("complexlist");
   });
 });

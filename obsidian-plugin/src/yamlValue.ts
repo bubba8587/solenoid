@@ -132,7 +132,11 @@ export function cellToYaml(raw: string, family: Family): Scalar {
       const serial = Number.isFinite(n) ? n : parseDateToSerial(t);
       return Number.isFinite(serial) ? noteDateText(serial) : null;
     }
-    case "complex": return parseCx(t) === null ? null : t;
+    case "complex": {
+      if (parseCx(t) === null) return null;
+      const n = parseCellText(t);
+      return typeof n === "number" ? n : t;
+    }
   }
 }
 
