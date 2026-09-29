@@ -30,7 +30,7 @@ describe("open drafts flush before a capture", () => {
     expect(persistence).toContain('window.addEventListener("pagehide", flushOnExit);');
     const session = readFileSync("src/graph/fileSession.ts", "utf8");
     expect(session.match(/flushDrafts\(\);/g)?.length).toBe(2);
-    for (const f of ["components/inlineInput.tsx", "components/NoteNode.tsx", "components/ReportOverlay.tsx"]) {
+    for (const f of ["components/inlineInput.tsx", "components/NoteNode.tsx", "components/ReportOverlay.tsx", "components/RecordLayoutField.tsx"]) {
       expect(readFileSync(`src/graph/${f}`, "utf8")).toContain("usePendingDraft(");
     }
   });
