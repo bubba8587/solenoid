@@ -221,7 +221,9 @@ function FlowCanvasInner() {
         const seedId = new URLSearchParams(window.location.search).get("seed");
         if (seedId && SEEDS[seedId]) {
           await documentStore.newFromTemplate(seedId);
-          window.history.replaceState({}, "", window.location.pathname);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("seed");
+          window.history.replaceState(window.history.state, "", url);
         } else if (!restored) {
           await ensureFirstDocument();
         }
