@@ -83,6 +83,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   cachedCube: CubeValue | SolError | null = null;
   cachedPlan: FrameValue | SolError | null = null;
   private planRows: PlanRow[] = [];
+  private plannedKeys = "";
   private _mdbaseCache = new Map<string, MdbaseCollection | null>();
   status: ObsidianWriteStatus = "idle";
   statusMessage = "";
@@ -121,11 +122,13 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     this.cachedDoc = inputs.in?.[0] ?? null;
     this.resolvedPath = (readInput(inputs.path, this.stringLiterals?.path ?? "") ?? "").trim();
     const raw = inputs.rows?.[0] ?? null;
-    if (raw !== this.cachedCube) { // re-plan only on a new cube, because Preview mutates planRows
+    const keys = this.stringLiterals.keys ?? "";
+    if (raw !== this.cachedCube || keys !== this.plannedKeys) { // re-plan only on new rows or keys, because Preview mutates planRows
       this.cachedCube = raw;
+      this.plannedKeys = keys;
       if (isSolError(raw)) { this.cachedPlan = raw; this.planRows = []; }
       else if (!isCubeValue(raw)) { this.cachedPlan = null; this.planRows = []; }
-      else { this.planRows = planPropertyWrites(raw, this.stringLiterals.keys ?? "", noteNamesOf(raw)); this.cachedPlan = propertyPlanFrame(this.planRows); }
+      else { this.planRows = planPropertyWrites(raw, keys, noteNamesOf(raw)); this.cachedPlan = propertyPlanFrame(this.planRows); }
     }
     return { plan: this.cachedPlan };
   }

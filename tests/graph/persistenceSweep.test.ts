@@ -194,6 +194,7 @@ describe("[[B12]] losslessSaves — every own field is persisted or deliberately
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
     lastWritten: "Write to Obsidian's last written note path, for Open in Obsidian; a load has written nothing",
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
+    plannedKeys: "Write to Obsidian's Keys text as of its last plan, so a Keys edit re-plans; re-read from the literal on every compute",
     planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
     droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──

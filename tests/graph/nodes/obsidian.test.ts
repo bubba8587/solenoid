@@ -83,6 +83,21 @@ describe("the type a new property registers in types.json", () => {
   });
 });
 
+describe("WriteObsidianNode re-plans the Properties target", () => {
+  it("when Keys change, not only when the rows do", () => {
+    const cube = { __cube: true as const, depth: 1, columns: [
+      { name: "path", cells: ["a.md"], type: "string" as const },
+      { name: "x", cells: [1], type: "number" as const },
+      { name: "y", cells: [2], type: "number" as const },
+    ] } as never;
+    const n = new WriteObsidianNode({ target: "properties" });
+    const keysOf = () => (n.data({ rows: [cube] }).plan as { columns: { name: string; values: unknown[] }[] }).columns.find((c) => c.name === "key")!.values;
+    expect(keysOf()).toEqual(["x", "y"]);
+    n.stringLiterals.keys = "y";
+    expect(keysOf()).toEqual(["y"]);
+  });
+});
+
 describe("ImportObsidianNode", () => {
   it("is a Note (inherits the frontmatter-socket + document machinery)", async () => {
     const n = new ImportObsidianNode({ body: "---\ntitle: Weekly\ncount: 5\n---\n# Body" });
