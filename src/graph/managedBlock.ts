@@ -54,14 +54,15 @@ export function spliceBlock(text: string, name: string, content: string): Splice
   const bad = contentLines.findIndex((l, i) => l.includes("%%") && !fenced[i]);
   if (bad >= 0) return { text, refused: `the content has "%%" on line ${bad + 1}, which Obsidian would hide` };
 
+  const nl = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const found = findBlock(lines, name);
   const block = [beginMarker(name), ...contentLines, END_MARKER];
   if (found) {
-    return { text: [...lines.slice(0, found[0]), ...block, ...lines.slice(found[1] + 1)].join("\n") };
+    return { text: [...lines.slice(0, found[0]), ...block, ...lines.slice(found[1] + 1)].join(nl) };
   }
-  const body = lines.join("\n").replace(/\s+$/, "");
-  return { text: (body ? body + "\n\n" : "") + block.join("\n") + "\n" };
+  const body = lines.join(nl).replace(/\s+$/, "");
+  return { text: (body ? body + nl + nl : "") + block.join(nl) + nl };
 }
 
 export function readBlock(text: string, name: string): string | null {

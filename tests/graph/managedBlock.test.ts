@@ -59,9 +59,10 @@ describe("spliceBlock", () => {
     const ok = spliceBlock("body\n", "Weekly", "```\n%% in code %%\n```");
     expect(ok.refused).toBeUndefined();
   });
-  it("CRLF input is normalized", () => {
-    const r = spliceBlock("a\r\nb\r\n", "Weekly", "x");
-    expect(r.text).toBe(`a\nb\n\n${B}\nx\n${END_MARKER}\n`);
+  it("a CRLF note keeps its line endings, new block included", () => {
+    const r = spliceBlock("a\r\nb\r\n", "Weekly", "x\ny");
+    expect(r.text).toBe(`a\r\nb\r\n\r\n${B}\r\nx\r\ny\r\n${END_MARKER}\r\n`);
+    expect(spliceBlock(r.text, "Weekly", "z").text).toBe(`a\r\nb\r\n\r\n${B}\r\nz\r\n${END_MARKER}\r\n`);
   });
 });
 
