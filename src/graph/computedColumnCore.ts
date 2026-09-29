@@ -174,6 +174,11 @@ function runColumn<C>(
     const target = opts.alias?.[key];
     return target === undefined ? undefined : colByName.get(target);
   };
+  const wholes = new Map<RowColumn, unknown>();
+  const wholeCol = (c: RowColumn): unknown => {
+    if (!wholes.has(c)) wholes.set(c, wholeOf(c));
+    return wholes.get(c);
+  };
   const rowFrame: RowFrame = {
     strong: (key) => {
       const c = aliased(key) ?? colByName.get(key);
@@ -187,14 +192,14 @@ function runColumn<C>(
     at,
     whole: (key) => {
       const c = aliased(key) ?? colByName.get(key);
-      if (c) return wholeOf(c);
+      if (c) return wholeCol(c);
       if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name. Rename the variable or the column`);
       if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
       return aligned(sideCache.get(key));
     },
     column: (key) => {
       const c = aliased(key) ?? colByName.get(key);
-      return c ? { hit: true, v: wholeOf(c) } : { hit: false };
+      return c ? { hit: true, v: wholeCol(c) } : { hit: false };
     },
     index: () => cursor + 1,
   };
@@ -204,7 +209,7 @@ function runColumn<C>(
     cursor = i;
     const rowCells = bindings.map((b) =>
       b.kind === "col" ? (b.col.values[i] ?? null)
-      : b.kind === "wholecol" ? wholeOf(b.col)
+      : b.kind === "wholecol" ? wholeCol(b.col)
       : b.value);
     const errIdx = bindings.findIndex((b, k) => b.kind === "col" && isSolError(rowCells[k]));
     if (errIdx >= 0) { cells.push(rowCells[errIdx] as C); continue; }
