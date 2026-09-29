@@ -105,4 +105,11 @@ describe("sameIgnoringDims", () => {
     const g = (w: number) => graph([node("g1", "Group", { type: "GroupNode", init: { width: w, height: 200 } })]);
     expect(sameIgnoringDims(g(300), g(420))).toBe(false);
   });
+
+  it("a user resize of a Note, Import Note, Image or SVG Picker is an edit", () => {
+    for (const type of ["NoteNode", "ImportObsidianNode", "ImageNode", "SvgPickerNode"]) {
+      const n = (h: number) => graph([node("n1", "card", { type, init: { width: 300, height: h } })]);
+      expect(sameIgnoringDims(n(160), n(240))).toBe(false);
+    }
+  });
 });

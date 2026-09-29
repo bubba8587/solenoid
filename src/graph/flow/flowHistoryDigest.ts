@@ -12,13 +12,15 @@ function editBody(n: SavedNode): string {
   return JSON.stringify({ ...rest, init: initRest });
 }
 
+// These store the user's chosen size (a grip or a height field); every other card's size is a measure re-stamped after each restore.
+const USER_SIZED = new Set(["GroupNode", "NoteNode", "ImportObsidianNode", "ImageNode", "SvgPickerNode"]);
+
 export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
   if (prev.nodes.length !== next.nodes.length) return false;
   const strip = (g: SavedGraph) => JSON.stringify({
     ...g,
     nodes: g.nodes.map((n) => {
-      // A group's size is the user's (grip, autofit); a card's is a measure re-stamped after every restore.
-      if (n.type === "GroupNode") return n;
+      if (USER_SIZED.has(n.type)) return n;
       const { init, ...rest } = n;
       const { width: _w, height: _h, ...initRest } = (init ?? {}) as Record<string, unknown>;
       return { ...rest, init: initRest };
