@@ -67,7 +67,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           cellType: popupCellType(family),
           list: false,
           fixedCols: true,
-          onSaveRaw: (cells) => commit(listToYaml(cells, yaml)),
+          onSaveRaw: (cells) => commit(listToYaml(cells, yaml, family)),
         }}
       />
     );
@@ -89,7 +89,7 @@ export function PropertyChip({ kind, label, initial, onChange, columnTypes, onCo
           data: raw.length ? raw : [[""]],
           cellType: popupCellType(family),
           list: false,
-          onSaveRaw: (cells) => commit(matrixToYaml(cells, yaml)),
+          onSaveRaw: (cells) => commit(matrixToYaml(cells, yaml, family)),
         }}
       />
     );

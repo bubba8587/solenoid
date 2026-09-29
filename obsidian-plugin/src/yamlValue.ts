@@ -142,15 +142,15 @@ function dropTrailingBlank<T>(rows: T[], isBlank: (row: T) => boolean): T[] {
   return rows.slice(0, end);
 }
 
-export function matrixToYaml(cells: string[][], original: unknown = []): Scalar[][] {
+export function matrixToYaml(cells: string[][], original: unknown = [], family?: Family): Scalar[][] {
   const was = Array.isArray(original) ? original : [];
-  const rows = cells.map((row, i) => row.map((text, j) => sourceScalar(Array.isArray(was[i]) ? (was[i] as unknown[])[j] : undefined, text)));
+  const rows = cells.map((row, i) => row.map((text, j) => sourceScalar(Array.isArray(was[i]) ? (was[i] as unknown[])[j] : undefined, text, family === "string")));
   return dropTrailingBlank(rows, (row) => row.every((v) => v === null));
 }
 
-export function listToYaml(cells: string[][], original: unknown = []): Scalar[] {
+export function listToYaml(cells: string[][], original: unknown = [], family?: Family): Scalar[] {
   const was = Array.isArray(original) ? original : [];
-  return dropTrailingBlank(cells.map((row, i) => sourceScalar(was[i], row[0] ?? "")), (v) => v === null);
+  return dropTrailingBlank(cells.map((row, i) => sourceScalar(was[i], row[0] ?? "", family === "string")), (v) => v === null);
 }
 
 export function rawCell(v: unknown): string {
@@ -216,10 +216,12 @@ export function columnTypesOf(columns: FrameSourceColumn[]): ColumnTypes {
   return types;
 }
 
-export const scalarFromText = (text: string): Scalar => parseCellText(text) as Scalar;
+/** A Text cell writes what was typed ([[D72]] pluginSaveWritesSourceText); any other reads numbers and booleans. */
+export const scalarFromText = (text: string, asText = false): Scalar =>
+  asText ? (text.trim() === "" ? null : text) : parseCellText(text) as Scalar;
 
-const sourceScalar = (before: unknown, text: string): Scalar =>
-  before !== undefined && isScalar(before) && rawCell(before) === text ? before : scalarFromText(text);
+const sourceScalar = (before: unknown, text: string, asText = false): Scalar =>
+  before !== undefined && isScalar(before) && rawCell(before) === text ? before : scalarFromText(text, asText);
 
 export function frameSourceToYaml(columns: FrameSourceColumn[], original: unknown = []): YamlRecord[] {
   const data = columns.filter((c) => !c.expr);
@@ -229,7 +231,7 @@ export function frameSourceToYaml(columns: FrameSourceColumn[], original: unknow
   const records = Array.from({ length: rows }, (_, r) => {
     const rec: YamlRecord = {};
     data.forEach((col, j) => {
-      rec[names[j]] = sourceScalar(was[r]?.[names[j]], col.cells[r] ?? "");
+      rec[names[j]] = sourceScalar(was[r]?.[names[j]], col.cells[r] ?? "", col.type === "string");
     });
     return rec;
   });
