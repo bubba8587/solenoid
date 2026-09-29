@@ -41,8 +41,10 @@ specific item.
   chips draw `TypeIcon` (`#`, `Aa`, calendar, checkbox, double-struck C) instead of words or `T`/`D`/`B`.
 - **Card sections and the input card's Open** (DESIGN.md § Card sections, § Buttons): `CardSection` captions a run of
   rows and can fold them (Cast's Separators, Frame Input's Advanced holding Add LAMBDA and Form Layout; Decision
-  Matrix's captions moved onto it). Frame Input and Table Input open with a full-accent Edit Frame / Edit Table button (`NodeCard` now publishes
-  `--node-accent-ink`).
+  Matrix's captions moved onto it). A sweep added folds to XLOOKUP (Options) and Schedule, Gantt and Earned Value
+  (Calendar; Schedule's Rules) and plain captions to Join, Reconcile and Chart Builder's unused options; a folded
+  section with a wired socket tucks it onto the caption behind a pill, and a hand fold saves (`sections`). Frame Input and Table Input open with a full-accent Edit Frame / Edit Table
+  button (`NodeCard` now publishes `--node-accent-ink`).
 - **The Table popup asks before dropping edits** (`tree/specs/documents/table-popup.md` § Closing): a close with
   unsaved edits raises Save your changes? (Discard / Keep Editing / Save) inside the popup. `shot-graph` gained
   `--click-edge` to press a popup's overlay outside the card.

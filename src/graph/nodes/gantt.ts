@@ -9,6 +9,8 @@ import { ganttPayloadFromSchedule } from "../ganttPayload";
 import { todaySerial } from "./schedule";
 
 
+export const GANTT_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
+
 export class GanttNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     schedule: "A scheduled project, the rows a Schedule node worked out. A Project column becomes the section bands.",
@@ -21,7 +23,7 @@ export class GanttNode extends ClassicPreset.Node {
   };
 
   label: string;
-  literals: Record<string, number> = { weekend_code: 1 };
+  literals: Record<string, number> = { ...GANTT_DEFAULT_LITERALS };
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | SolError | null = null;

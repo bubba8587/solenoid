@@ -88,7 +88,7 @@ import { readChipPopupStyle } from "./chipStyle";
 import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
-import { CardSection } from "./CardSection";
+import { CardSection, useRowsInUse } from "./CardSection";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
 import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
@@ -147,7 +147,6 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     scheduleAutosave();
   }
   const hasLayout = !!data.stringLiterals.layout;
-  const connected = useConnectedInputs(data.id);
 
   return (
     <NodeShell node={data} emit={emit}>
@@ -163,7 +162,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
         label="Advanced"
         collapsible
         defaultOpen={data.lambdaKeys.length > 0 || (hasLayout && !layoutHidden)}
-        pinnedOpen={data.lambdaKeys.some((k) => connected.has(k))}
+        sockets={{ node: data, emit, keys: data.lambdaKeys }}
       >
         {/* A column formula in the grid editor reaches each λ input by its socket name. */}
         <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
@@ -446,7 +445,10 @@ export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   const [asofDirection, setAsofDirection] = useNodeField(data, "asofDirection");
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} keys={["left", "right"]} />
+      <CardSection label="Keys">
+        <InlineInputs node={data} emit={emit} keys={["leftKey", "rightKey", "tolerance"]} />
+      </CardSection>
       <ArgSelect value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
       {how === "asof" && <SegToggle value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
       <FrameOrCubeDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
@@ -837,7 +839,10 @@ export function ReconcileComponent({ data, emit }: NodeProps<ReconcileNodeType>)
   const summaryOut = data.outputs.summary;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["left", "right", "key", "priceColumn", "qtyColumn"]} />
+      <InlineInputs node={data} emit={emit} keys={["left", "right"]} />
+      <CardSection label="Columns">
+        <InlineInputs node={data} emit={emit} keys={["key", "priceColumn", "qtyColumn"]} />
+      </CardSection>
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>
@@ -1031,14 +1036,26 @@ const LOOKUP_SEARCH_OPTIONS: { value: LookupSearchMode; label: string; title: st
   { value: "last", label: "Last", title: "On duplicate keys, return the last match, scanning bottom to top" },
 ];
 
+const XLOOKUP_MAIN_KEYS = ["frame", "lookup", "inColumn", "returnColumn"];
+const XLOOKUP_OPTION_KEYS = ["ifNotFound"];
+
 export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
   const [matchMode, setMatchMode] = useNodeField(data, "matchMode");
   const [searchMode, setSearchMode] = useNodeField(data, "searchMode");
+  const fallback = useRowsInUse(data, XLOOKUP_OPTION_KEYS);
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
-      <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
+      <InlineInputs node={data} emit={emit} keys={XLOOKUP_MAIN_KEYS} />
+      <CardSection
+        label="Options"
+        collapsible
+        defaultOpen={fallback || matchMode !== "exact" || searchMode !== "first"}
+        sockets={{ node: data, emit, keys: XLOOKUP_OPTION_KEYS }}
+      >
+        <InlineInputs node={data} emit={emit} keys={XLOOKUP_OPTION_KEYS} />
+        <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
+        <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
+      </CardSection>
       {/* ResultDisplay routes a whole-row or nested-cell return to its display. */}
       <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>

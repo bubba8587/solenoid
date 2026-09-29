@@ -40,7 +40,8 @@ type Props = {
   className?: string;
 };
 
-function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
+/** A socket top centered on `ref`'s row, re-measured after every render. */
+export function useRowSocketTop(ref: React.RefObject<HTMLElement | null>): number | undefined {
   const prev = useRef<number | undefined>(undefined);
   const [top, setTop] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {

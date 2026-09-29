@@ -33,6 +33,8 @@ function unitOf(col: CubeColumn | undefined): ColumnUnit | undefined {
 const SUMMARY_COLS = ["BCWS", "BCWP", "ACWP", "SV", "CV", "SPI", "CPI", "EAC", "VAC", "TCPI"] as const;
 const RATIO_COLS = new Set(["SPI", "CPI", "TCPI"]);
 
+export const EARNED_VALUE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1 };
+
 export class EarnedValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     schedule: "A scheduled project with a Cost column and Complete from 0 to 100. An Actual cost column is the real spend; without one it equals the earned value.",
@@ -50,7 +52,7 @@ export class EarnedValueNode extends ClassicPreset.Node {
   label: string;
   // Keep the per-input unit strip off, or the Cost column's currency is gone before data() runs.
   unitAware = true;
-  literals: Record<string, number> = { weekend_code: 1 };
+  literals: Record<string, number> = { ...EARNED_VALUE_DEFAULT_LITERALS };
   stringLiterals: Record<string, string> = { cost: "" };
   cachedResult: FrameValue | SolError | null = null;
   cachedSpi: FrameCell | SolError | null = null;

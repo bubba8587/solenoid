@@ -11,15 +11,18 @@ type PillNode = {
   inputs: Record<string, { socket: ClassicPreset.Socket } | undefined>;
 };
 
-/** The sockets stay functional but hidden, stacked behind one pill; their dot flashes are suppressed in CSS, so the pill draws the highlight. */
+/** The sockets stay functional but hidden, stacked behind one pill; their dot flashes are suppressed in CSS, so the pill draws the highlight.
+ *  `top` pins the stack to a row (a folded CardSection's caption); without it, it centers on the value box. */
 export function CollapsedInputPill({
   node,
   emit,
   keys,
+  top,
 }: {
   node: PillNode;
   emit: Emit;
   keys: string[];
+  top?: number;
 }) {
   const hlVersion = useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
   void hlVersion;
@@ -38,12 +41,13 @@ export function CollapsedInputPill({
             nodeId={node.id}
             emit={emit}
             payload={input.socket}
+            top={top}
             className="solenoid-node__pill-socket"
           />
         ) : null;
       })}
       {/* Inset ring fully inside the fill, so it doesn't straddle the edge. */}
-      <svg className="solenoid-node__input-pill" viewBox="0 0 12 28" aria-hidden>
+      <svg className="solenoid-node__input-pill" viewBox="0 0 12 28" aria-hidden style={top === undefined ? undefined : { top: top - 8 }}>
         <rect x="0" y="0" width="12" height="28" rx="6" fill={pillColor} />
         <rect x="1" y="1" width="10" height="26" rx="5" fill="none" stroke="var(--socket-ring)" strokeWidth="2" />
         {lit && (

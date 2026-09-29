@@ -7,6 +7,8 @@ import { nodeDisplayName } from "../catalogUtils";
 import { isSolError } from "../errorValue";
 import { isUnitCell } from "../unitValue";
 import { displayMagnitudeOf } from "../unitBridge";
+import { CardSection, useRowsInUse } from "./CardSection";
+import { EARNED_VALUE_DEFAULT_LITERALS } from "../nodes/earnedValue";
 
 // A ratio reads to two places; an index of 1.0 is on plan. Blank when undefined (a 0 denominator).
 function ratioText(v: OutputRowValue): OutputRowValue {
@@ -19,11 +21,17 @@ function moneyText(v: OutputRowValue): OutputRowValue {
   return typeof n === "number" ? Math.round(n).toLocaleString() : v;
 }
 
+const CALENDAR_KEYS = ["holidays", "weekend_code"];
+
 export function EarnedValueComponent({ data, emit }: NodeProps<EarnedValueNodeType>) {
   const frameOut = data.outputs.frame;
+  const calendar = useRowsInUse(data, CALENDAR_KEYS, EARNED_VALUE_DEFAULT_LITERALS);
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} keys={["schedule", "baseline", "status", "cost"]} />
+      <CardSection label="Calendar" collapsible defaultOpen={calendar} sockets={{ node: data, emit, keys: CALENDAR_KEYS }}>
+        <InlineInputs node={data} emit={emit} keys={CALENDAR_KEYS} />
+      </CardSection>
       {frameOut && (
         <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
           <div style={{ width: "100%" }}>

@@ -6,8 +6,8 @@ import { dropInputCables } from "./cablePrune";
 import { processGraph } from "../process";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
-import { InlineInputs, useConnectedInputs } from "./inlineInput";
-import { CardSection } from "./CardSection";
+import { InlineInputs } from "./inlineInput";
+import { CardSection, useRowsInUse } from "./CardSection";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { TypeIcon } from "./TypeIcon";
@@ -38,15 +38,13 @@ export async function applyCastTarget(node: CastNodeType, target: CastTarget): P
 export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {
   const [target, setTarget] = useState<CastTarget>(data.target);
   useEffect(() => { setTarget(data.target); }, [data.target]);
-  const connected = useConnectedInputs(data.id);
-  const sepWired = SEPARATOR_KEYS.some((k) => connected.has(k));
-  const sepSet = SEPARATOR_KEYS.some((k) => (data.stringLiterals[k] ?? "") !== "");
+  const seps = useRowsInUse(data, SEPARATOR_KEYS);
 
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} keys={Object.keys(data.inputs).filter((k) => !SEPARATOR_KEYS.includes(k))} />
       {target === "number" && (
-        <CardSection label="Separators" className="solenoid-node__cast-seps" collapsible defaultOpen={sepSet || sepWired} pinnedOpen={sepWired}>
+        <CardSection label="Separators" className="solenoid-node__cast-seps" collapsible defaultOpen={seps} sockets={{ node: data, emit, keys: SEPARATOR_KEYS }}>
           <InlineInputs node={data} emit={emit} keys={SEPARATOR_KEYS} />
         </CardSection>
       )}

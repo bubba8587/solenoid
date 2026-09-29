@@ -40,6 +40,8 @@ export function todaySerial(): number {
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86400000 + 25569;
 }
 
+export const SCHEDULE_DEFAULT_LITERALS: Readonly<Record<string, number>> = { weekend_code: 1, hours: 8 };
+
 export class ScheduleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     tasks: "One row per task: Task, Duration in days (blank or 0 is a milestone) and Predecessors, the tasks it waits on. A Tasks cell holding a table makes the row a summary. Start, Finish, Deadline, Complete, Manual, Project and the calendar columns are optional; Help lists them under Plans.",
@@ -61,7 +63,7 @@ export class ScheduleNode extends ClassicPreset.Node {
   precision: SchedulePrecision;
   criticalPaths: ScheduleCriticalPaths;
   progress: ScheduleProgress;
-  literals: Record<string, number> = { weekend_code: 1, hours: 8 };
+  literals: Record<string, number> = { ...SCHEDULE_DEFAULT_LITERALS };
   stringLiterals: Record<string, string> = {};
   cachedResult: CubeValue | SolError | null = null;
   cachedFinish: number | SolError | null = null;

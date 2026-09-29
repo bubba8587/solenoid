@@ -1,5 +1,5 @@
 import type { ScheduleNode as ScheduleNodeType } from "../rete-nodes";
-import { SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS, SCHEDULE_PROGRESS_OPTIONS } from "../nodes/schedule";
+import { SCHEDULE_DEFAULT_LITERALS, SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS, SCHEDULE_PROGRESS_OPTIONS } from "../nodes/schedule";
 import { NodeShell, InlineOutputRows, useNodeField, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { SegToggle } from "./SegToggle";
@@ -8,6 +8,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { dateFormatDisplay } from "./valueDisplayFormat";
 import { nodeDisplayName } from "../catalogUtils";
 import { isCubeValue, isFrameValue } from "../frame";
+import { CardSection, useRowsInUse } from "./CardSection";
 
 function ganttSummary(data: ScheduleNodeType): OutputRowValue {
   const g = data.cachedGantt;
@@ -27,19 +28,32 @@ function diagnosticsSummary(data: ScheduleNodeType): OutputRowValue {
 }
 
 // The last three outputs are labeled rows, so each keeps its own socket dot.
+const CALENDAR_KEYS = ["holidays", "weekend_code", "hours"];
+
 export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
   const [precision, setPrecision] = useNodeField(data, "precision");
   const [progress, setProgress] = useNodeField(data, "progress");
   const [criticalPaths, setCriticalPaths] = useNodeField(data, "criticalPaths");
   const cubeOut = data.outputs.cube;
+  const calendar = useRowsInUse(data, CALENDAR_KEYS, SCHEDULE_DEFAULT_LITERALS);
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} />
-      <SegToggle value={mode} options={SCHEDULE_MODE_OPTIONS} onChange={setMode} />
-      <SegToggle value={precision} options={SCHEDULE_PRECISION_OPTIONS} onChange={setPrecision} />
-      <SegToggle value={criticalPaths} options={SCHEDULE_CRITICAL_OPTIONS} onChange={setCriticalPaths} />
-      <SegToggle value={progress} options={SCHEDULE_PROGRESS_OPTIONS} onChange={setProgress} />
+      <InlineInputs node={data} emit={emit} keys={["tasks", "links", "start", "status"]} />
+      <CardSection
+        label="Calendar"
+        collapsible
+        defaultOpen={calendar || mode !== "working" || precision !== "days"}
+        sockets={{ node: data, emit, keys: CALENDAR_KEYS }}
+      >
+        <SegToggle value={mode} options={SCHEDULE_MODE_OPTIONS} onChange={setMode} />
+        <InlineInputs node={data} emit={emit} keys={CALENDAR_KEYS} />
+        <SegToggle value={precision} options={SCHEDULE_PRECISION_OPTIONS} onChange={setPrecision} />
+      </CardSection>
+      <CardSection label="Rules" collapsible defaultOpen={criticalPaths !== "one" || progress !== "split"}>
+        <SegToggle value={criticalPaths} options={SCHEDULE_CRITICAL_OPTIONS} onChange={setCriticalPaths} />
+        <SegToggle value={progress} options={SCHEDULE_PROGRESS_OPTIONS} onChange={setProgress} />
+      </CardSection>
       {cubeOut && (
         <MeasuredSocketRow hero side="output" socketKey="cube" nodeId={data.id} emit={emit} payload={cubeOut.socket}>
           <div style={{ width: "100%" }}>

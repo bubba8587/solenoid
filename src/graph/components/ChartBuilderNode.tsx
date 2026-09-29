@@ -6,6 +6,7 @@ import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineIn
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
+import { CardSection } from "./CardSection";
 
 const isOnValue = (s: string | undefined) => {
   const v = (s ?? "").trim().toLowerCase();
@@ -214,16 +215,18 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
       ))}
       <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
       {anyInert && (
-        <div style={{ opacity: 0.45 }} title={`Not read by ${inertLabel}`}>
-          <InlineInputs node={data} emit={emit} keys={inertStr as string[]} />
-          {inertToggles.map(({ key, label }) => (
-            <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
-          ))}
-          {inertSelects.map(({ key, label, options, clearValue }) => (
-            <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
-          ))}
-          <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
-        </div>
+        <CardSection label={`Not used by ${inertLabel}`}>
+          <div style={{ opacity: 0.45 }}>
+            <InlineInputs node={data} emit={emit} keys={inertStr as string[]} />
+            {inertToggles.map(({ key, label }) => (
+              <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
+            ))}
+            {inertSelects.map(({ key, label, options, clearValue }) => (
+              <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
+            ))}
+            <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
+          </div>
+        </CardSection>
       )}
       <div className="solenoid-node__section-divider" />
       {out && (

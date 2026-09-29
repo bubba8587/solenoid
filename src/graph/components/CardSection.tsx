@@ -4,17 +4,42 @@ import { bumpConnectionVersion } from "../graphSignals";
 import { sectionFoldStore } from "../sectionFoldStore";
 import { scheduleAutosave } from "../persistence";
 import { useHostNodeId } from "./nodeContext";
+import { useConnectedInputs } from "./inlineInput";
+import type { ClassicPreset } from "rete";
+import type { Emit } from "./nodeKit";
+import { collapseStore } from "../collapseStore";
+import { CollapsedInputPill } from "./CollapsedInputPill";
+import { NodeSocket, useRowSocketTop } from "./NodeSocket";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import "./nodeCard.css";
 
-/** A small caption over a run of card rows; `collapsible` folds the rows away behind it. */
-export function CardSection({ label, title, collapsible, defaultOpen = true, pinnedOpen, className, children }: {
+/** Whether any of a section's socket rows is wired or holds a typed value other than the node's seeded default: what opens a section by default. */
+export function useRowsInUse(
+  node: { id: string; literals?: Record<string, number>; stringLiterals?: Record<string, string> },
+  keys: readonly string[],
+  defaults: Readonly<Record<string, number>> = {},
+): boolean {
+  const connected = useConnectedInputs(node.id);
+  return keys.some((k) => {
+    const n = node.literals?.[k];
+    return connected.has(k) || (n !== undefined && n !== defaults[k]) || (node.stringLiterals?.[k] ?? "") !== "";
+  });
+}
+
+type SectionSockets = {
+  node: { id: string; inputs: Record<string, { socket: ClassicPreset.Socket } | undefined> };
+  emit: Emit;
+  keys: readonly string[];
+};
+
+/** A small caption over a run of card rows; `collapsible` folds the rows away behind it.
+ *  Folded, a wired socket among `sockets` stays live on the caption row: one socket as its own dot, several behind a pill, as a collapsed card does. */
+export function CardSection({ label, title, collapsible, defaultOpen = true, sockets, className, children }: {
   label: string;
   title?: string;
   collapsible?: boolean;
   defaultOpen?: boolean;
-  // A wired socket inside keeps the section open, so no cable ends on an undrawn dot.
-  pinnedOpen?: boolean;
+  sockets?: SectionSockets;
   className?: string;
   children: ReactNode;
 }) {
@@ -22,13 +47,12 @@ export function CardSection({ label, title, collapsible, defaultOpen = true, pin
   const nodeId = useHostNodeId();
   const saved = useSyncExternalStore(sectionFoldStore.subscribe, () => (nodeId ? sectionFoldStore.get(nodeId, label) : undefined));
   const [local, setLocal] = useState<boolean | undefined>(undefined);
-  const open = (nodeId ? saved : local) ?? defaultOpen;
+  const open = !collapsible || ((nodeId ? saved : local) ?? defaultOpen);
   const setOpen = (next: boolean) => {
     if (!nodeId) { setLocal(next); return; }
     sectionFoldStore.set(nodeId, label, next);
     scheduleAutosave();
   };
-  const foldable = !!collapsible && !pinnedOpen;
   const mounted = useRef(false);
   useEffect(() => {
     // The rows below the section moved, so their cables re-route once the fold has laid out.
@@ -37,7 +61,7 @@ export function CardSection({ label, title, collapsible, defaultOpen = true, pin
   }, [open]);
   const cls = `solenoid-node__section${className ? ` ${className}` : ""}`;
 
-  if (!foldable) {
+  if (!collapsible) {
     return (
       <div className={cls}>
         <div className="solenoid-node__section-caption" title={title}>{label}</div>
@@ -47,20 +71,50 @@ export function CardSection({ label, title, collapsible, defaultOpen = true, pin
   }
   return (
     <div className={cls}>
+      <FoldCaption label={label} title={title} open={open} onToggle={() => setOpen(!open)} sockets={open ? undefined : sockets} />
+      {open && children}
+    </div>
+  );
+}
+
+function FoldCaption({ label, title, open, onToggle, sockets }: {
+  label: string;
+  title?: string;
+  open: boolean;
+  onToggle: () => void;
+  sockets?: SectionSockets;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const top = useRowSocketTop(ref);
+  const connected = useConnectedInputs(sockets?.node.id ?? "");
+  // A collapsed card hides the caption, so the tucked sockets fall back to the card's own pill spot.
+  const cardCollapsed = useSyncExternalStore(collapseStore.subscribe, () => (sockets ? collapseStore.get(sockets.node.id) : false));
+  const tucked = sockets && sockets.keys.some((k) => connected.has(k))
+    ? sockets.keys.filter((k) => sockets.node.inputs[k])
+    : [];
+  const at = cardCollapsed ? undefined : top;
+  return (
+    <>
       <button
+        ref={ref}
         type="button"
         className="solenoid-node__section-caption solenoid-node__section-caption--toggle"
         title={title ?? (open ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`)}
         aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
-          setOpen(!open);
+          onToggle();
         }}
       >
         {open ? <ChevronDownIcon size={8} strokeWidth={3} /> : <ChevronRightIcon size={8} strokeWidth={3} />}
         {label}
       </button>
-      {open && children}
-    </div>
+      {sockets && tucked.length >= 2 && (cardCollapsed || top !== undefined) && (
+        <CollapsedInputPill node={sockets.node} emit={sockets.emit} keys={tucked} top={at} />
+      )}
+      {sockets && tucked.length === 1 && (cardCollapsed || top !== undefined) && (
+        <NodeSocket side="input" socketKey={tucked[0]} nodeId={sockets.node.id} emit={sockets.emit} payload={sockets.node.inputs[tucked[0]]!.socket} top={at} />
+      )}
+    </>
   );
 }
