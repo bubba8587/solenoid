@@ -12,6 +12,7 @@ import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { prefersReducedMotion } from "../coarse";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { NodeSocket, useRowSocketTop } from "./NodeSocket";
+import { SocketGoo, type GooDrop } from "./SocketGoo";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import "./nodeCard.css";
 
@@ -79,21 +80,18 @@ export function CardSection({ label, title, collapsible, defaultOpen = true, soc
   );
 }
 
-type FoldGhost = { key: string; top: number; color: string; square: boolean };
-
-const MERGE_MS = 300;
-const POP_MS = 260;
-const SPLIT_MS = 320;
-
 /** The socket at `key` in a card's content, and the element just after `caption` that stands for the tucked stack (the pill, or a lone socket). */
 const socketEl = (content: HTMLElement, key: string) =>
   content.querySelector<HTMLElement>(`[data-socket-side="input"][data-socket-key="${CSS.escape(key)}"]`);
-function tuckTarget(caption: HTMLElement): Element | null {
+function tuckTarget(caption: HTMLElement): HTMLElement | SVGElement | null {
   for (let el = caption.nextElementSibling; el; el = el.nextElementSibling) {
-    if (el.matches(".solenoid-node__input-pill, [data-socket-side]:not(.solenoid-node__pill-socket)")) return el;
+    if (el.matches(".solenoid-node__input-pill, [data-socket-side]:not(.solenoid-node__pill-socket)")) return el as HTMLElement | SVGElement;
   }
   return null;
 }
+const socketColor = (sock: ClassicPreset.Socket) => (sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888");
+
+type Goo = { mode: "merge" | "split"; drops: GooDrop[]; pillTop: number; pillColor: string; pillHeight: number; hidden: (HTMLElement | SVGElement)[] };
 
 function FoldCaption({ label, title, open, onToggle, sockets }: {
   label: string;
@@ -116,20 +114,20 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
   const pill = !!sockets && tucked.length >= 2 && (cardCollapsed || top !== undefined);
   const openTitle = `Show ${label.toLowerCase()}`;
 
-  // The fold animates: wired sockets fly up and merge into the pill, and the pill splits back out to the rows.
-  const [ghosts, setGhosts] = useState<FoldGhost[] | null>(null);
-  const ghostRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // The fold is liquid: wired sockets run together into the pill, and bud back off it to their rows (SocketGoo).
+  const [goo, setGoo] = useState<Goo | null>(null);
   const splitFrom = useRef<number | null>(null);
+  const firstColor = sockets ? socketColor(sockets.node.inputs[sockets.keys.find((k) => sockets.node.inputs[k]) ?? ""]?.socket as ClassicPreset.Socket) : "#888";
+  const tuckHeight = sockets && sockets.keys.filter((k) => sockets.node.inputs[k]).length >= 2 ? 28 : 12;
   function toggle() {
     const content = ref.current?.closest<HTMLElement>(".solenoid-node__content");
     if (content && sockets && wired.length > 0 && !cardCollapsed && top !== undefined && !prefersReducedMotion()) {
       if (open) {
-        setGhosts(wired.flatMap((k) => {
+        const drops = wired.flatMap((k) => {
           const el = socketEl(content, k);
-          const sock = sockets.node.inputs[k]!.socket;
-          if (!el) return [];
-          return [{ key: k, top: el.offsetTop, color: sock instanceof SolenoidSocket ? SOCKET_COLORS[sock.dataType] : "#888", square: el.dataset.socketShape === "square" }];
-        }));
+          return el ? [{ top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) }] : [];
+        });
+        if (drops.length > 0) setGoo({ mode: "merge", drops, pillTop: top, pillColor: firstColor, pillHeight: tuckHeight, hidden: [] });
       } else {
         splitFrom.current = top;
       }
@@ -137,28 +135,14 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
     onToggle();
   }
 
+  // Merge: the real pill (or lone socket) stays hidden under the goo until the liquid has settled into it.
   useLayoutEffect(() => {
-    if (!ghosts || open || top === undefined || !ref.current) return;
-    const anims = ghosts.map((g, i) => ghostRefs.current[i]?.animate(
-      [
-        { transform: "translateY(0) scale(1)", opacity: 1 },
-        { transform: `translateY(${top - g.top}px) scale(0.8)`, opacity: 1, offset: 0.75 },
-        { transform: `translateY(${top - g.top}px) scale(0.4)`, opacity: 0 },
-      ],
-      { duration: MERGE_MS, delay: i * 25, easing: "cubic-bezier(0.55, 0, 0.25, 1)", fill: "both" },
-    ));
+    if (!goo || goo.mode !== "merge" || goo.hidden.length > 0 || !ref.current) return;
     const target = tuckTarget(ref.current);
-    target?.animate(
-      [
-        { transform: "scale(0.2, 0.2)", opacity: 0 },
-        { transform: "scale(1.25, 1.1)", opacity: 1, offset: 0.65 },
-        { transform: "scale(1, 1)", opacity: 1 },
-      ],
-      { duration: POP_MS, delay: MERGE_MS - 90, easing: "ease-out", fill: "backwards" },
-    );
-    const done = window.setTimeout(() => setGhosts(null), MERGE_MS + ghosts.length * 25 + 40);
-    return () => { window.clearTimeout(done); anims.forEach((a) => a?.cancel()); };
-  }, [ghosts, open, top]);
+    if (!target) return;
+    target.style.opacity = "0";
+    goo.hidden.push(target);
+  }, [goo]);
 
   useEffect(() => {
     if (!open || splitFrom.current === null || !sockets) return;
@@ -166,22 +150,24 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
     splitFrom.current = null;
     const content = ref.current?.closest<HTMLElement>(".solenoid-node__content");
     if (!content) return;
-    // The rows' sockets mount a render after the rows (they measure first), so the split starts next frame.
-    // Not cancelled on cleanup: this effect re-runs on the very next render, which would drop the split.
+    // The rows' sockets mount a render after the rows (they measure first), so the split starts next frame, before
+    // that frame paints. Not cancelled on cleanup: this effect re-runs on the very next render, which would drop it.
     requestAnimationFrame(() => {
-      wired.forEach((k, i) => {
-        const el = socketEl(content, k);
-        el?.animate(
-          [
-            { transform: `translateY(${from - el.offsetTop}px) scale(0.5)`, opacity: 0 },
-            { transform: "translateY(0) scale(1.2)", opacity: 1, offset: 0.7 },
-            { transform: "translateY(0) scale(1)", opacity: 1 },
-          ],
-          { duration: SPLIT_MS, delay: i * 30, easing: "cubic-bezier(0.3, 0.7, 0.3, 1)", fill: "backwards" },
-        );
+      const els = wired.flatMap((k) => { const el = socketEl(content, k); return el ? [{ el, k }] : []; });
+      if (els.length === 0) return;
+      els.forEach(({ el }) => { el.style.opacity = "0"; });
+      setGoo({
+        mode: "split",
+        drops: els.map(({ el, k }) => ({ top: el.offsetTop, color: socketColor(sockets.node.inputs[k]!.socket) })),
+        pillTop: from, pillColor: firstColor, pillHeight: tuckHeight, hidden: els.map(({ el }) => el),
       });
     });
   });
+
+  function gooDone() {
+    goo?.hidden.forEach((el) => { el.style.opacity = ""; });
+    setGoo(null);
+  }
 
   return (
     <>
@@ -205,15 +191,9 @@ function FoldCaption({ label, title, open, onToggle, sockets }: {
       {sockets && tucked.length === 1 && (cardCollapsed || top !== undefined) && (
         <NodeSocket side="input" socketKey={tucked[0]} nodeId={sockets.node.id} emit={sockets.emit} payload={sockets.node.inputs[tucked[0]]!.socket} top={at} />
       )}
-      {ghosts?.map((g, i) => (
-        <div
-          key={g.key}
-          ref={(el) => { ghostRefs.current[i] = el; }}
-          className={`solenoid-node__fold-ghost${g.square ? " solenoid-node__fold-ghost--square" : ""}`}
-          style={{ top: g.top, background: g.color }}
-          aria-hidden
-        />
-      ))}
+      {goo && (
+        <SocketGoo key={goo.mode} mode={goo.mode} drops={goo.drops} pillTop={goo.pillTop} pillColor={goo.pillColor} pillHeight={goo.pillHeight} onDone={gooDone} />
+      )}
     </>
   );
 }
