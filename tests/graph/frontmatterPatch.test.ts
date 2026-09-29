@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags } from "../../src/graph/frontmatterPatch";
+import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody, frontmatterTags, keepDateTime } from "../../src/graph/frontmatterPatch";
 import { notesToCube } from "../../src/graph/vaultCube";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
@@ -254,5 +254,20 @@ describe("a frontmatter block indented as a whole", () => {
     expect(patchFrontmatter("---\n  k: 1\n---\n", { k: 42 }).text).toBe("---\n  k: 42\n---\n");
     expect(patchFrontmatter("---\n  k: 1\n---\n", { j: 2 }).text).toBe("---\n  k: 1\n  j: 2\n---\n");
     expect(resolveKey("---\n  k: 1\n---\n", "k", 42)).toEqual({ action: "update", before: "1" });
+  });
+});
+
+describe("a Date & time property at midnight is written back as a date and time", () => {
+  it("keeps the note's own text for the same moment, and a time on a new day", () => {
+    const note = "---\ndue: 2026-09-02T00:00\nwhen:\n  - 2026-09-01T00:00:00\n  - 2026-09-03\n---\n";
+    const cube = notesToCube([{ path: "a.md", text: note }], { mdbaseFor: () => ({}), obsidian: {} });
+    const rows = planPropertyWrites(cube, "due, when", NO_NAMES);
+    const due = rows.find((r) => r.key === "due")!;
+    const kept = keepDateTime(note, "due", due.value);
+    expect(kept).toBe("2026-09-02T00:00");
+    expect(resolveKey(note, "due", kept).action).toBe("unchanged");
+    expect(keepDateTime(note, "due", "2026-09-05")).toBe("2026-09-05T00:00:00");
+    expect(keepDateTime(note, "when", ["2026-09-01", "2026-09-03"])).toEqual(["2026-09-01T00:00:00", "2026-09-03"]);
+    expect(keepDateTime("---\ndue: 2026-09-02\n---\n", "due", "2026-09-05")).toBe("2026-09-05");
   });
 });

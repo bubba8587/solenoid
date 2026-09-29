@@ -1,7 +1,7 @@
 // [[C101]] onePatchPath
 import { yamlKey, yamlScalar } from "./obsidianMarkdown";
 import { isFrameValue, isCubeValue, type CubeCell, type CubeValue, type FrameColType, type FrameValue } from "./frame";
-import { noteDateText } from "./nodes/dateSerial";
+import { noteDateText, noteDateSerial } from "./nodes/dateSerial";
 import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { extractInlineTags } from "./vaultCube";
 
@@ -297,6 +297,25 @@ export function resolveKey(text: string, key: string, value: YamlValue): { actio
   const rendered = renderKey(key, value, span.head);
   const same = existing.length === rendered.length && existing.every((l, i) => l.trimEnd() === rendered[i]);
   return { action: same ? "unchanged" : "update", before };
+}
+
+/** A day written over a note's date-and-time text keeps the time: the note's own text when it is the same moment, else midnight. */
+export function keepDateTime(text: string, key: string, value: YamlValue): YamlValue {
+  const { lines } = splitLines(text);
+  const close = fenceClose(lines);
+  if (close === -1) return value;
+  const interior = dedent(lines.slice(1, close)).lines;
+  const span = scanKeys(interior).get(key);
+  if (!span) return value;
+  const unquote = (t: string) => t.trim().replace(/^(["'])(.*)\1$/, "$2");
+  const keep = (v: YamlScalarV, was: string | undefined): YamlScalarV => {
+    if (typeof v !== "string" || !ISO_DATE.test(v) || was === undefined || !ISO_DT.test(was)) return v;
+    return noteDateSerial(was) === noteDateSerial(v) ? was : `${v}T00:00:00`;
+  };
+  if (span.scalar) return Array.isArray(value) ? value : keep(value as YamlScalarV, unquote(span.rest));
+  if (!Array.isArray(value) || value.some((x) => typeof x === "object" && x !== null)) return value;
+  const items = interior.slice(span.start + 1, span.end + 1).filter((l) => /^\s*-\s/.test(l)).map((l) => unquote(l.replace(/^\s*-\s/, "")));
+  return (value as YamlScalarV[]).map((v, i) => keep(v, items[i]));
 }
 
 /** Vault Folder's `tags` column is Bases' `file.tags`, which folds in the body's inline tags. Writing it back leaves
