@@ -296,7 +296,7 @@ function cellFor(value: FrontmatterValueLoose | undefined, shape: TypeHint, pick
   if (textShape && guessed !== undefined && guessed.startsWith("date")) value = datesToText(value);
   if (value === undefined || value === null) return null;
   if (shape.kind === "frame") {
-    if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null) {
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === "object" && value[0] !== null && !Array.isArray(value[0])) {
       return recordsToCube(value as FrontmatterRow[], picks, nested);
     }
     return null;

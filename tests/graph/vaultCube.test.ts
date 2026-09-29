@@ -34,6 +34,11 @@ describe("a matrix property", () => {
     expect(col(cube, "grid").type).toBe("number");
   });
 
+  it("is no cell under a key typed frame, never a cube of its rows", () => {
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { grid: "solenoid-frame" } }));
+    expect(cellAt(notesToCube(notes, { ...NO_TYPES, obsidian }), "grid", 0)).toBe(null);
+  });
+
   it("follows a types.json matrix hint", () => {
     const obsidian = parseObsidianTypes(JSON.stringify({ types: { grid: "solenoid-strtable" } }));
     expect(obsidian.grid).toEqual({ kind: "matrix", elem: "string" });
