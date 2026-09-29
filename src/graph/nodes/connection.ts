@@ -13,6 +13,8 @@ import { parsePluginColumnTypes, parsePluginNestedTables, PLUGIN_DATA_PATH, type
 import { parseDailyNotesConfig } from "../dailyNotesConfig";
 import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
+import { isUnitCell, magnitudeOf, unitError } from "../unitValue";
+import { dimEqual, isDimensionless } from "../dimension";
 import { type Shape } from "../frameShape";
 import { connectionStore, requestNetwork, fetchInBackground } from "../connectionStore";
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile, isInsideVault } from "../fileBridge";
@@ -627,6 +629,19 @@ function isoDaysFromNow(days: number): string {
   return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
 }
 
+/** The amount in the To currency, #UNIT! when it carries another currency than From ([[D47]] noMixCurrencies), an error passed on ([[D35]] errorInErrorOut); null waits for the rate. */
+function convertAmount(amount: unknown, from: string, to: string, rate: number | null): unknown {
+  if (amount == null || amount === "") return null;
+  if (isSolError(amount)) return amount;
+  if (isUnitCell(amount) && !isDimensionless(amount.dim)) {
+    if (!dimEqual(amount.dim, { currency: 1 })) return unitError("The amount must be money or a plain number.");
+    if (amount.display && amount.display !== from) return unitError(`The amount is in ${amount.display.toUpperCase()}, but From is ${from.toUpperCase() || "blank"}.`);
+  }
+  const n = magnitudeOf(amount);
+  if (!Number.isFinite(n)) return null;
+  return rate == null ? null : applyFcUnit(n * rate, to);
+}
+
 export class FxNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     amount: "How much, in the From currency.",
@@ -639,6 +654,8 @@ export class FxNode extends ClassicPreset.Node {
     asof: "The date these ECB reference rates are from.",
     frame: "One row per business day in the range: the date and the rate.",
   };
+  /** Receives the amount's currency tag so a mismatch with From is caught. */
+  unitAware = true;
   label: string;
   mode: FxMode;
   literals: Record<string, number> = { amount: 1 };
@@ -710,7 +727,7 @@ export class FxNode extends ClassicPreset.Node {
   }
 
   private dataSpot(inputs: Record<string, unknown[] | undefined>): { converted: unknown; rate: number | null; asof: number | null } {
-    const amount = readInput(inputs.amount as (number | number[])[] | undefined, this.literals.amount ?? 1);
+    const amount = readInput<unknown>(inputs.amount, this.literals.amount ?? 1);
     const fromRaw = readInput(inputs.from as (string | string[])[] | undefined, this.stringLiterals.from ?? "");
     const toRaw = readInput(inputs.to as (string | string[])[] | undefined, this.stringLiterals.to ?? "");
     const from = (typeof fromRaw === "string" ? fromRaw : "").trim().toUpperCase();
@@ -728,10 +745,9 @@ export class FxNode extends ClassicPreset.Node {
       }
     }
     const rate = this.cached?.rate ?? null;
-    const converted = rate != null && typeof amount === "number" ? amount * rate : null;
-    const tagged = converted != null ? applyFcUnit(converted, to.toLowerCase()) : null;
+    const converted = convertAmount(amount, from.toLowerCase(), to.toLowerCase(), rate);
     const asof = this.cached && Number.isFinite(this.cached.serial) ? this.cached.serial : null;
-    return { converted: tagged, rate, asof };
+    return { converted, rate, asof };
   }
 
   private dataHistory(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue } {
