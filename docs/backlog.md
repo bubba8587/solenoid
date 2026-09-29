@@ -339,3 +339,5 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Section folds** inside a card (`CardSection.setOpen`) autosave but record no undo step, unlike a card collapse.
 - [ ] **LOGEST with a Y at or below 0** answers an empty list while the Fit card answers #DOMAIN!; a test pins the difference against [[C17]] shareImpl. Pick one.
 - [ ] **`tree/specs/values/value-semantics.md`** says only the value selectors use `autoLiterals`; Cube, Script, XMATCH and Set Cell do too.
+- [ ] **REGEXREPLACE negative occurrence** now counts from the end (-1 is the last match), per Excel's docs; confirm.
+- [ ] **XNPV node** runs through Formula.js with no check for a date before the first date (XIRR now refuses it); **LARGE/SMALL** round a fractional k (`nthExtreme`), unchecked against Excel.
