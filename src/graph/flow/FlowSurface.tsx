@@ -38,7 +38,7 @@ import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cab
 import { toFlowNodes, toFlowEdges, mergeFlowNodes, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowModel";
 import type { FlowView } from "./flowView";
-import { processGraph } from "../process";
+import { notifyGraphChanged, processGraph } from "../process";
 import { cableDragStore, setCableDragging } from "../graphSignals";
 import { installCanvasKeyboard } from "../canvasKeyboard";
 import { firstCompatibleSocketKey, quickWireCompatibleTypes } from "../catalogSearch";
@@ -908,6 +908,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onToggleFlip={(id) => {
             socketFlipStore.toggle(id);
             void (s.view as unknown as View).rerenderNode(id);
+            notifyGraphChanged();
           }}
           onClose={() => setNodeCtx(null)}
         />
