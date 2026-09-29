@@ -1469,7 +1469,8 @@ export class RunningNode extends ClassicPreset.Node {
 
   formatCarry(): FormatCarrySpec[] {
     const probe: Dim = { length: 1 };
-    return dimEqual(aggregateResultDim(this.agg, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];
+    if (!dimEqual(aggregateResultDim(this.agg, probe, 2), probe)) return [];
+    return [{ output: "result", inputs: ["list"], ...(DATE_READING_OPS.has(this.agg) ? {} : { notDate: true as const }) }];
   }
 
   data(inputs: { list?: ListCell[][]; window?: number[] }) {
@@ -1863,6 +1864,9 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   }
 }
 
+/** The ops whose answer over dates is itself a date; a sum or a spread of dates is not. */
+const DATE_READING_OPS: ReadonlySet<ReduceOp | RunningOp> = new Set(["avg", "min", "max", "median"]);
+
 /** The dimension-preserving ops whose answer is a spread, not a reading. */
 const AFFINE_SPREAD_OPS: ReadonlySet<ReduceOp> = new Set(["stdev", "stdev_p", "avedev", "ptp", "iqr", "mad", "sem"]);
 
@@ -1889,7 +1893,8 @@ export class AggregateNode extends ClassicPreset.Node {
 
   formatCarry(): FormatCarrySpec[] {
     const probe: Dim = { length: 1 };
-    return dimEqual(aggregateResultDim(this.op, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];
+    if (!dimEqual(aggregateResultDim(this.op, probe, 2), probe)) return [];
+    return [{ output: "result", inputs: ["list"], ...(DATE_READING_OPS.has(this.op) ? {} : { notDate: true as const }) }];
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {

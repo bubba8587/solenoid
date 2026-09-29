@@ -120,6 +120,7 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
       eligible.push(ann);
     }
     if (eligible.length === 0) return undefined;
+    if (spec.notDate && isDateStyle(eligible[0].format)) return undefined;
     if (eligible.filter((a) => isDateStyle(a.format)).length >= 2) return undefined;
     return { ...eligible[0], unit: "none", customUnit: "" };
   }

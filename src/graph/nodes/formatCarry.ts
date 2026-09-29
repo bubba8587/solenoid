@@ -5,6 +5,8 @@ export interface FormatCarrySpec {
   output: string;
   /** Priority order: the first wired, annotated input of the same element family wins. */
   inputs: string[];
+  /** The output is a total or a spread of its inputs: a number or percent style carries, a date style does not. */
+  notDate?: true;
 }
 
 interface HasFormatCarry { formatCarry(): FormatCarrySpec[]; }
