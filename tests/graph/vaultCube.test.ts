@@ -262,3 +262,17 @@ describe("extractInlineTags", () => {
     expect(extractInlineTags("#a\n```\n#b\n```\nsee `#c` and #d")).toEqual(["a", "d"]);
   });
 });
+
+// [[D93]] oneTextReading
+describe("a typed property reads its text as a Frame cell of that type does", () => {
+  it("text the type can't read is NaN, never a blank; a typed list's items read the same way", () => {
+    const notes: VaultNote[] = [
+      { path: "a.md", text: "---\nn: abc\nd: 2024\nok: yes\nxs:\n  - 1\n  - x\n---\n" } as VaultNote,
+    ];
+    const obsidian = parseObsidianTypes(JSON.stringify({ types: { n: "number", d: "date", ok: "checkbox" } }));
+    const cube = notesToCube(notes, { ...NO_TYPES, obsidian });
+    expect(Number.isNaN(cellAt(cube, "n", 0))).toBe(true);
+    expect(cellAt(cube, "d", 0)).toBe(2024);
+    expect(cellAt(cube, "ok", 0)).toBe(null);
+  });
+});

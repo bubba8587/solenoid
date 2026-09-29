@@ -1,10 +1,10 @@
 // [[C67]]
 import {
-  cubeFromColumns, recordsToCube,
+  coerceFrameCell, cubeFromColumns, recordsToCube,
   type CubeValue, type CubeCell, type FrameColType,
 } from "./frame";
 import { parseNoteFrontmatter, type FrontmatterScalar, type FrontmatterRow } from "./noteFrontmatter";
-import { parseDate, noteDateText } from "./nodes/dateSerial";
+import { noteDateText } from "./nodes/dateSerial";
 import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 import type { PluginColumnTypes, PluginNestedTables, ColumnPicks } from "./pluginColumnTypes";
 import type { NestedTables } from "./cubeTypes";
@@ -122,27 +122,13 @@ export function dateFromName(name: string, format: string): number | null {
 
 function coerceScalar(value: FrontmatterScalar, kind: ScalarKind): FrontmatterScalar {
   if (value === null) return null;
+  if (kind === "string") return typeof value === "string" ? value : String(value);
+  // Text reads as a Frame cell of the kind does ([[D93]] oneTextReading).
+  if (typeof value === "string") return coerceFrameCell(kind, value) as FrontmatterScalar;
   switch (kind) {
-    case "number": {
-      if (typeof value === "number") return value;
-      if (typeof value === "boolean") return value ? 1 : 0;
-      const n = Number(value);
-      return Number.isFinite(n) ? n : null;
-    }
-    case "logical": {
-      if (typeof value === "boolean") return value;
-      if (typeof value === "number") return value !== 0;
-      const t = String(value).trim().toLowerCase();
-      return t === "true" ? true : t === "false" ? false : null;
-    }
-    case "date": {
-      if (typeof value === "number") return value;
-      const r = parseDate(String(value));
-      return typeof r === "number" && Number.isFinite(r) ? r : null;
-    }
-    case "string":
-    default:
-      return typeof value === "string" ? value : String(value);
+    case "number": return typeof value === "boolean" ? (value ? 1 : 0) : value;
+    case "logical": return typeof value === "boolean" ? value : value !== 0;
+    case "date": return typeof value === "number" ? value : NaN;
   }
 }
 

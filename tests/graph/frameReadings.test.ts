@@ -328,3 +328,17 @@ describe("a native pivot keeps its value columns' unit", () => {
     expect(out.map((c) => (c as FrameColumn).unit?.display ?? null)).toEqual([null, km.display, km.display]);
   });
 });
+
+// [[D93]] oneTextReading
+describe("Get Column reads a text cell as a Frame cell of the read type does", () => {
+  it("a date read takes a bare number as a serial and unreadable text as NaN", () => {
+    const g = new GetColumnNode({ readAs: "date" } as never);
+    g.stringLiterals.name = "s";
+    (g as unknown as { readAs: string }).readAs = "date";
+    const f = frame({ name: "s", type: "string", values: ["2024", "abc", "01-Jan-2026"] });
+    const out = g.data({ frame: [f] }).values as unknown as number[];
+    expect(out[0]).toBe(2024);
+    expect(Number.isNaN(out[1])).toBe(true);
+    expect(out[2]).toBe(46023);
+  });
+});

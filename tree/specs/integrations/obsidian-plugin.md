@@ -454,7 +454,8 @@ Write to Obsidian writes for a serial with a time, is a date that keeps its time
 Vault Folder. The Vault Folder reader holds a matrix in
 a cube cell as its rows, and `obsidianTypes.ts` maps every plugin type id to a `TypeHint`
 (a cube takes the frame hint: rows of records either way). Complex cells are text in a cube,
-as Excel's complex numbers are.
+as Excel's complex numbers are. Text under a Number, Date or Boolean type or guess reads as a
+Frame cell of that type does, so what it can't read is NaN, never a blank ([[D93]] oneTextReading).
 
 ## The app reads the picks
 

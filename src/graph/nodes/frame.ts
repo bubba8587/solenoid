@@ -2,7 +2,7 @@
 import { ClassicPreset } from "rete";
 import { readInput, readRole, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { setting, required, LEFT_OUT } from "../inputRoles";
-import { flatCubeToFrame } from "../frame";
+import { flatCubeToFrame, coerceFrameCell } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, calledNames, exprYieldsDate, compileEvaluator, rowRefNames, parseFormula, type ExprEvaluator, type Ast } from "../excelFormula";
 import { affineWeight, type Lam } from "../unitDimExpr";
@@ -16,9 +16,8 @@ import { readFilterValue, readConditionValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
-import { parseDate } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
-import { coerceLogical, decimalFromText } from "../valueKinds";
+import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
 import {
   buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
@@ -2311,12 +2310,9 @@ export class GetColumnNode extends ClassicPreset.Node {
       if (typeof v === "boolean") return v ? 1 : 0;
       if (isSolError(v)) return v;
       if (typeof v === "string") {
-        if (this.readAs === "date") {
-          const d = parseDate(v);
-          if (isSolError(d)) return d;
-          return colUnit ? (tagFrameCellUnit(d, colUnit) as number | UnitCell) : d;
-        }
-        const n = decimalFromText(v);
+        // Text reads as a Frame cell of the read type does ([[D93]] oneTextReading).
+        const n = coerceFrameCell(this.readAs === "date" ? "date" : "number", v) as number | SolError | null;
+        if (n === null || isSolError(n)) return n;
         return colUnit ? (tagFrameCellUnit(n, colUnit) as number | UnitCell) : n;
       }
       return NaN;

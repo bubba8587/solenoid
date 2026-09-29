@@ -15,7 +15,7 @@ specific item.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's root also offers Fx and has no legend yet.
 - **One text reading** ([[D93]] oneTextReading): every place text becomes a typed value (List Input typed or
-  wired, every inline list field via `parseListLiteral`, typed Cube list items via `coerceListItem`) reads it with
+  wired, every inline list field via `parseListLiteral`, typed Cube list items via `coerceListItem`, Get Column's Number/Date read, the vault reader's typed properties) reads it with
   `coerceFrameCell`, so unreadable text is NaN, never blank, and `dateFormatDisplay` shows a NaN date as `NaN`.
   `parseBoolText` (yes/no in list fields) is gone. List Input keeps its typed text (`cachedSource`) for the
   popup's Source view and sets `ownsListLiterals` so `coerceInputs` doesn't pre-parse its rows.
@@ -155,8 +155,8 @@ specific item.
   sparklineCell). A text cell holding a `data:image` picture shows as the picture in Frame and Cube cards and popups
   ([[D83]] imageTextCells).
 - **Typed Cube columns** ([[D90]] cubeTypesAtDepth): Cube Input's root header has the type button (None, Number, Text,
-  Date, Boolean, Formula). A type overrides every kind in its column: scalars read as Frame cells (NaN when
-  unreadable), list items as List Input's (blank when unreadable). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
+  Date, Boolean, Formula). A type overrides every kind in its column: scalars and list items read as Frame cells
+  (NaN when unreadable, [[D93]] oneTextReading). Nested tables: see the 2026-09-28 Cube digest. `cubeText` stays
   plain records until a column is typed or computed, then `{ columns, rows }`. The plugin's cube editor has the button
   without Formula and saves the picks as a Frame's.
 - **Cube formulas read lists** ([[D81]] cubeRowLists): in Cube Input's Fx columns and the Computed Column node over a
