@@ -1,5 +1,6 @@
 import { useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
+import { stepListSel } from "./gridKeyboard";
 import { useHangUnder } from "./columnHeadControls";
 
 /** What the host input's keydown asks first: true = the list took the key. */
@@ -58,7 +59,7 @@ export function CellSuggest({ options, draft, onPick, handle, detail, opener = {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         const n = items.length;
-        setSel((s) => (e.key === "ArrowDown" ? (s + 1) % n : (s - 1 + n) % n));
+        setSel((s) => stepListSel(s, n, e.key === "ArrowDown" ? 1 : -1));
         return true;
       }
       if ((e.key === "Enter" || e.key === "Tab") && sel >= 0) { e.preventDefault(); pick(items[sel]); return true; }

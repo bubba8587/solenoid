@@ -60,3 +60,9 @@ export function nextCell(
     }
   }
 }
+
+/** The next highlighted row of an `n`-row suggestion list; -1 is none highlighted, and the arrows wrap. */
+export function stepListSel(sel: number, n: number, dir: 1 | -1): number {
+  if (dir === 1) return (sel + 1) % n;
+  return sel <= 0 ? n - 1 : sel - 1;
+}

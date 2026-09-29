@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { stepListSel } from "./gridKeyboard";
 import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
@@ -214,7 +215,7 @@ export function ColumnExprField({ value, lambdaOptions, onDraft, onCommit, onRev
           if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
             e.preventDefault();
             const n = lambdaOptions.length;
-            setSel((s) => (e.key === "ArrowDown" ? (s + 1) % n : (s - 1 + n) % n));
+            setSel((s) => stepListSel(s, n, e.key === "ArrowDown" ? 1 : -1));
           } else if (open && sel >= 0 && (e.key === "Enter" || e.key === "Tab")) {
             e.preventDefault();
             accept(lambdaOptions[sel]);

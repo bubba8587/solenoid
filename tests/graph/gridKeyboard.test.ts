@@ -1,6 +1,6 @@
 // [[C43]] oneFlowSurface
 import { describe, it, expect } from "vitest";
-import { gridKeyOf, nextCell, type GridKey } from "../../src/graph/components/gridKeyboard";
+import { gridKeyOf, nextCell, stepListSel, type GridKey } from "../../src/graph/components/gridKeyboard";
 
 const ev = (key: string, mods: Partial<{ shiftKey: boolean; ctrlKey: boolean; metaKey: boolean; altKey: boolean }> = {}) =>
   ({ key, shiftKey: false, ctrlKey: false, metaKey: false, altKey: false, ...mods });
@@ -94,5 +94,19 @@ describe("nextCell — degenerate grids", () => {
   it("zero rows or columns → null for any key", () => {
     expect(nextCell("ArrowDown", { vi: 0, c: 0 }, { rows: 0, cols: 3 }, noSkip)).toBeNull();
     expect(nextCell("Tab", { vi: 0, c: 0 }, { rows: 3, cols: 0 }, noSkip)).toBeNull();
+  });
+});
+
+describe("stepListSel — arrowing a suggestion list", () => {
+  it("first ArrowUp from none highlighted lands on the last row", () => {
+    expect(stepListSel(-1, 4, -1)).toBe(3);
+  });
+  it("first ArrowDown lands on the first row", () => {
+    expect(stepListSel(-1, 4, 1)).toBe(0);
+  });
+  it("wraps at both ends", () => {
+    expect(stepListSel(0, 4, -1)).toBe(3);
+    expect(stepListSel(3, 4, 1)).toBe(0);
+    expect(stepListSel(2, 4, -1)).toBe(1);
   });
 });
