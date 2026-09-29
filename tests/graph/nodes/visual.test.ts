@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
-  boxplotStats, quantileSorted,
+  boxplotStats, quantileSorted, HistogramNode, type Histogram2d,
   RecordNode, recordRows, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
@@ -228,7 +228,7 @@ describe("histogramBins", () => {
   it("a value on a bin's lower edge lands in that bin, however the division rounds", () => {
     const w = 0.3 / 7;
     expect(histogramBins([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
-    expect(histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1)!.counts.map((c) => c[0])).toEqual([1, 0, 0, 1, 0, 0, 1]);
+    expect((histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1) as Histogram2d).counts.map((c) => c[0])).toEqual([1, 0, 0, 1, 0, 0, 1]);
   });
 
   it("a large series doesn't RangeError (iterMin/iterMax, not Math.min/max spread)", () => {
@@ -245,22 +245,36 @@ describe("histogramBins", () => {
 describe("histogram2d (numpy histogram2d)", () => {
   it("tallies paired samples into an x-bin × y-bin grid; last edge inclusive", () => {
     // A 2×2 grid over [0,2]×[0,2]: (0,0) low-low, (1,1)+(2,2) hit the closed upper bin.
-    const h = histogram2d([0, 1, 2, 0], [0, 1, 2, 2], 2, 2)!;
+    const h = histogram2d([0, 1, 2, 0], [0, 1, 2, 2], 2, 2) as Histogram2d;
     expect(h.counts).toEqual([[1, 1], [0, 2]]); // counts[xBin][yBin]
     expect(h.xEdges).toEqual([0, 1]);
     expect(h.yEdges).toEqual([0, 1]);
   });
 
   it("skips a pair when either coordinate is non-finite (numpy drops NaN pairs)", () => {
-    const h = histogram2d([0, null, 2], [0, 5, 2], 2, 2)!;
+    const h = histogram2d([0, null, 2], [0, 5, 2], 2, 2) as Histogram2d;
     // Only (0,0) and (2,2) survive → one in each diagonal corner.
     expect(h.counts).toEqual([[1, 0], [0, 1]]);
   });
 
   it("an axis whose values are all equal collapses to one bin (single-spike rule)", () => {
-    const h = histogram2d([5, 5, 5], [0, 1, 2], 4, 2)!;
+    const h = histogram2d([5, 5, 5], [0, 1, 2], 4, 2) as Histogram2d;
     expect(h.xEdges).toHaveLength(1); // x collapsed
     expect(h.counts).toEqual([[1, 2]]); // one x row; y=0 → bin 0, y=1 and y=2 → the closed bin 1
+  });
+
+  it("0, negative or non-numeric bins are #DOMAIN!, as in 1-D mode", async () => {
+    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    for (const [kx, ky] of [[0, 2], [2, -1], [NaN, 2]]) {
+      const h = histogram2d([0, 1], [0, 1], kx, ky);
+      expect(isSolError(h) && h.code).toBe("#DOMAIN!");
+    }
+    const f = resolveExcelFunction("HISTOGRAM2D")!([0, 1], [0, 1], 0, 2);
+    expect(isSolError(f) && f.code).toBe("#DOMAIN!");
+    const n = new HistogramNode();
+    n.setMode("2d");
+    const chart = n.data({ values: [[0, 1]], y: [[0, 1]], bins: [0], ybins: [2] }).chart;
+    expect(isSolError(chart) && chart.code).toBe("#DOMAIN!");
   });
 
   it("no finite pair → null", () => {

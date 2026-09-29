@@ -4,8 +4,8 @@ import { readInput, readRole, keepInputLast, numIn, numListIn, tableIn, tableOut
 import { setting, picks } from "../inputRoles";
 import { parseChartOptions, serializeChartOptions, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
-import { histogram2d, equalWidthBins } from "./visualOps";
-export { histogram2d } from "./visualOps";
+import { histogram2d, equalWidthBins, binCountError } from "./visualOps";
+export { histogram2d, type Histogram2d } from "./visualOps";
 import { isChartValue } from "../chartValue";
 import { buildXY, sourceAsXY, XY_CHART_OPS, type XYOp } from "./xyPlot";
 import type {
@@ -328,7 +328,8 @@ function mergeXY(sources: { cv: ChartValue; plotNo: number }[]): XYPayload | Sol
 
 export function histogramBins(vals: (number | null)[], k: number): number[] | SolError {
   const nums = vals.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
-  if (!Number.isFinite(k) || Math.floor(k) < 1) return solError("#DOMAIN!", "Bins must be 1 or more");
+  const bad = binCountError(k);
+  if (bad) return bad;
   const bins = clamp(Math.floor(k), 1, 100);
   if (nums.length === 0) return [];
   const min = iterMin(nums);
@@ -409,6 +410,7 @@ export class HistogramNode extends ClassicPreset.Node {
       if (inputs.ybins?.[0] === undefined) this.literals.ybins = ky;
       const h = histogram2d(xs, ys, kx, ky);
       this.cachedResult = null;
+      if (isSolError(h)) { this.cachedChart = null; return { chart: h }; }
       const z = h ? h.yEdges.map((_, j) => h.counts.map((col) => col[j])) : [];
       const payload: ContourPayload = { kind: "contour", xs: h?.xEdges ?? [], ys: h?.yEdges ?? [], z, levels: 10 };
       const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: this.chartOptions, title };

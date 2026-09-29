@@ -1,6 +1,7 @@
 // [[C17]] shareImpl
 import { clamp, iterMin, iterMax } from "./mathUtils";
 import { PALETTE } from "../palette";
+import { solError, type SolError } from "../errorValue";
 
 /** Equal-width bins over `[min, max]` (min < max): the lower edges, and each value's bin by those same edges, the last bin closed. */
 export function equalWidthBins(min: number, max: number, bins: number): { edges: number[]; idx: (v: number) => number } {
@@ -15,9 +16,16 @@ export function equalWidthBins(min: number, max: number, bins: number): { edges:
   return { edges, idx };
 }
 
-export function histogram2d(
-  xs: readonly unknown[], ys: readonly unknown[], kx: number, ky: number,
-): { counts: number[][]; xEdges: number[]; yEdges: number[] } | null {
+/** A bin count below 1, or not a number, has no histogram. */
+export function binCountError(k: number): SolError | null {
+  return !Number.isFinite(k) || Math.floor(k) < 1 ? solError("#DOMAIN!", "Bins must be 1 or more") : null;
+}
+
+export type Histogram2d = { counts: number[][]; xEdges: number[]; yEdges: number[] };
+
+export function histogram2d(xs: readonly unknown[], ys: readonly unknown[], kx: number, ky: number): Histogram2d | SolError | null {
+  const bad = binCountError(kx) ?? binCountError(ky);
+  if (bad) return bad;
   const px: number[] = [], py: number[] = [];
   const n = Math.min(xs.length, ys.length);
   for (let i = 0; i < n; i++) {
@@ -27,7 +35,7 @@ export function histogram2d(
   if (px.length === 0) return null;
   const axis = (nums: number[], k: number) => {
     const min = iterMin(nums), max = iterMax(nums);
-    return min === max ? { edges: [min], idx: () => 0 } : equalWidthBins(min, max, clamp(Math.floor(k) || 1, 1, 100));
+    return min === max ? { edges: [min], idx: () => 0 } : equalWidthBins(min, max, clamp(Math.floor(k), 1, 100));
   };
   const ax = axis(px, kx), ay = axis(py, ky);
   const counts = Array.from({ length: ax.edges.length }, () => new Array<number>(ay.edges.length).fill(0));

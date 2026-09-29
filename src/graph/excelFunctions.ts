@@ -1805,7 +1805,10 @@ registerInternal("SPARKLINE", (range, type) => {
   if (!SPARKLINE_OPS.includes(op)) return solError("#VALUE!", "SPARKLINE type is \"line\", \"column\" or \"winloss\"");
   return sparklineImage(items, op);
 });
-registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => histogram2d(numList(xs), numList(ys), toNum(kx), toNum(ky))?.counts ?? null);
+registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => {
+  const h = histogram2d(numList(xs), numList(ys), toNum(kx), toNum(ky));
+  return isSolError(h) ? h : h?.counts ?? null;
+});
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);
   if (m === null || isSolError(m)) return m;
