@@ -1,6 +1,6 @@
 // [[C22]], [[C80]], [[B16]] oneFormulaSurface (RANGE_* policies), [[C14]] currentExcelParity
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, blockedNameMessage, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite, powerOf } from "./valueKinds";
 import { applyArgRoles } from "./inputRoles";
 import { compareStrings } from "./stringOrder";
@@ -800,8 +800,8 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         };
         return { __lambda: true, params, fn, expr: "" } satisfies LambdaValue;
       }
-      const redirect = LEGACY_ALIASES[name];
-      if (redirect) return solError("#NAME?", `Use ${redirect}`);
+      const blocked = blockedNameMessage(name);
+      if (blocked) return solError("#NAME?", blocked);
       const frameNode = FRAME_SURFACE_NAMES[name];
       if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas. Use the ${frameNode} node, or a Computed Column for row math`);
       const nodeVerb = NODE_SURFACE_NAMES[name];

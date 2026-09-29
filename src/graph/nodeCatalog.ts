@@ -899,7 +899,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date.", create: () => new GetColumnNode(), parity: false },
           { type: "get-row",     label: "Get Row",     description: "Pulls one row out of a Frame by 1-based number, as a one-row Frame, since a row can mix types.", create: () => new GetRowNode(), parity: false },
           { type: "add-column",  label: "Add Column",  description: "Appends a list to a Frame or Cube as a named column, or replaces the column of that name. Shorter lists pad with blanks.", create: () => new AddColumnNode(), parity: false },
-          { type: "computed-column", label: "Computed Column", description: "Adds a column calculated once per row. `@Price` reads this row's Price and a bare `Price` is the whole column, so `@Price / SUM(Price)` is each row's share. Bracket a name with spaces: `@[Unit Price]`. Power Query: Custom Column.", keywords: "custom column calculated field formula derive mutate row-wise index this-row @", create: () => new ComputedColumnNode(), parity: false },
+          { type: "computed-column", label: "Computed Column", description: "Adds a column calculated once per row. `@Price` reads this row's Price and a bare `Price` is the whole column, so `@Price / SUM(Price)` is each row's share. Bracket a name with spaces: `@[Unit Price]`. `row` is this row's number and `rows` is the row count. Power Query: Custom Column.", keywords: "custom column calculated field formula derive mutate row-wise index this-row @ row number rownum", create: () => new ComputedColumnNode(), parity: false },
         ],
       },
       {

@@ -6,7 +6,7 @@ import {
 } from "./dimension";
 import { unitError, READINGS_ADD, READINGS_SCALE, READINGS_FOLD } from "./unitValue";
 import { isSolError, type SolError } from "./errorValue";
-import { resolveExcelFunction, LEGACY_ALIASES } from "./excelFunctions";
+import { resolveExcelFunction, ELIMINATED_FUNCTIONS } from "./excelFunctions";
 
 export type DimResult = Dim | SolError | null;
 
@@ -101,8 +101,8 @@ function multiplyAll(args: DimResult[]): DimResult {
 
 function callDim(name: string, argDims: DimResult[]): DimResult {
   const fn = name.toUpperCase();
-  // A retired spelling answers #NAME? with its replacement's name, united input or not.
-  if (fn in LEGACY_ALIASES) return null;
+  // A blocked name answers its #NAME?, united input or not.
+  if (ELIMINATED_FUNCTIONS.has(fn)) return null;
 
   if (RESULT_DIMLESS_FNS.has(fn)) {
     for (const a of argDims) if (isSolError(a)) return a;

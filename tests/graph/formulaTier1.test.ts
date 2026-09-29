@@ -1,6 +1,6 @@
 // [[C17]], [[C14]] currentExcelParity
 import { describe, it, expect } from "vitest";
-import { resolveExcelFunction, LEGACY_ALIASES } from "../../src/graph/excelFunctions";
+import { resolveExcelFunction, LEGACY_ALIASES, POSITION_NAMES, ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
 import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "../../src/graph/nodes/text";
@@ -206,14 +206,26 @@ describe("the [[C14]] currentExcelParity gate covers the WHOLE blocklist, on eve
     }
   });
 
+  it("ROW points at the computed column's row builtin, COLUMN says columns go by name", () => {
+    for (const [name, message] of Object.entries(POSITION_NAMES)) {
+      for (const expr of [`${name}()`, `${name}(x)`]) {
+        const r = ev(expr, { x: [1, 2, 3] });
+        expect(isSolError(r) && r.code, expr).toBe("#NAME?");
+        expect(isSolError(r) && r.message, expr).toBe(message);
+        expect(isSolError(resolveExcelFunction(name)!()), name).toBe(true);
+      }
+    }
+    expect(POSITION_NAMES.ROW).toMatch(/\brow\b.*\brows\b/);
+  });
+
   it("no blocked spelling is advertised (autocomplete/highlighting)", () => {
     const advertised = new Set(formulaFunctionNames());
-    const leaked = Object.keys(LEGACY_ALIASES).filter((n) => advertised.has(n));
+    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => advertised.has(n));
     expect(leaked, `blocked names still advertised: ${leaked.join(", ")}`).toEqual([]);
   });
 
   it("no blocked spelling gets range routing", () => {
-    const leaked = Object.keys(LEGACY_ALIASES).filter((n) => RANGE_FUNCTIONS.has(n));
+    const leaked = [...ELIMINATED_FUNCTIONS].filter((n) => RANGE_FUNCTIONS.has(n));
     expect(leaked, `blocked names still range-routed: ${leaked.join(", ")}`).toEqual([]);
   });
 });

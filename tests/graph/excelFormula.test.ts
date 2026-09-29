@@ -617,16 +617,6 @@ describe("classic lookups redirect to their current-Excel replacements ([[C14]] 
     expect(ev("INDEX(x, 1, 0)", { x: [1, 2] })).toEqual([1, 2]);
   });
 
-  it("COLUMN / ROW → #NAME? 'Use INDEX'", () => {
-    // Excel's answer a cell reference's position; this graph has no cell
-    // references, and INDEX's whole-axis form is the accessor that replaces them.
-    for (const expr of ["COLUMN(x, 1)", "ROW(x, 1)"]) {
-      const r = ev(expr, { x: [1, 2, 3] });
-      expect(isSolError(r) && r.code, expr).toBe("#NAME?");
-      expect(isSolError(r) && r.message, expr).toBe("Use INDEX");
-    }
-  });
-
   it("XLOOKUP / XMATCH text matching is case-insensitive (Excel default)", () => {
     expect(ev('XLOOKUP("Apple", k, v)', { k: ["apple", "pear"], v: [1, 2] })).toBe(1);
     expect(ev('XMATCH("PEAR", k)', { k: ["apple", "pear"] })).toBe(2);

@@ -289,12 +289,22 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   "BINOMDIST.RANGE": "BINOM.DIST.RANGE",
   "ISO.CEILING.MATH": "CEILING.MATH", "ISO.CEILING.PRECISE": "CEILING.MATH",
 
-  COLUMN: "INDEX", ROW: "INDEX",
-
   SUMIF: "SUMIFS",
 };
 
-export const ELIMINATED_FUNCTIONS: ReadonlySet<string> = new Set(Object.keys(LEGACY_ALIASES));
+/** Cell-position functions: not superseded, so no replacement function, only a message. */
+export const POSITION_NAMES: Readonly<Record<string, string>> = {
+  ROW: "In a computed column, row is this row's number and rows is the row count",
+  COLUMN: "Columns are read by name, so there is no column number",
+};
+
+export const ELIMINATED_FUNCTIONS: ReadonlySet<string> = new Set([...Object.keys(LEGACY_ALIASES), ...Object.keys(POSITION_NAMES)]);
+
+/** The `#NAME?` message a blocked name answers, or undefined for a name that isn't blocked. */
+export function blockedNameMessage(name: string): string | undefined {
+  if (name in POSITION_NAMES) return POSITION_NAMES[name];
+  return name in LEGACY_ALIASES ? `Use ${LEGACY_ALIASES[name]}` : undefined;
+}
 
 /** A function, not a constant, so the list includes registrations made after this module loads. */
 export function internalFunctionNames(): string[] {
@@ -1173,8 +1183,9 @@ registerInternal("IFS", (...args) => {
   }
   return solError("#N/A", "No IFS condition matched");
 });
-for (const [name, use] of Object.entries(LEGACY_ALIASES)) {
-  registerInternal(name, () => solError("#NAME?", `Use ${use}`));
+for (const name of ELIMINATED_FUNCTIONS) {
+  const message = blockedNameMessage(name)!;
+  registerInternal(name, () => solError("#NAME?", message));
 }
 registerInternal("INDEX", (list, row, col) => {
   const axis = (v: unknown): IndexAxis | SolError => {
