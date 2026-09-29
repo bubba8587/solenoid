@@ -1,7 +1,7 @@
 // [[B1]] obsidianBet
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "./frame";
-import { parseDateToSerial, jsDateToSerial } from "./nodes/dateSerial";
+import { parseDateToSerial, wallClockSerial } from "./nodes/dateSerial";
 
 export const TASKNOTES_DEFAULT_URL = "http://localhost:8080";
 export const TASKNOTES_KEY_ID = "tasknotes";
@@ -39,13 +39,24 @@ export function authHeaders(token: string): Record<string, string> {
 }
 
 
+const ZONE_SUFFIX = /(?:Z|[+-]\d{2}:?\d{2})$/i;
+const WALL_TIME = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/;
+
+/** Reads a TaskNotes date or timestamp as a local wall-clock serial ([[C44]] dateSerials): a zone-less time as written, a zoned one as this machine's clock at that instant. */
 export function isoToSerial(s: unknown): number | null {
   if (typeof s !== "string" || !s.trim()) return null;
   const t = s.trim();
-  if (/T/.test(t)) {
-    if (!Number.isFinite(parseDateToSerial(t.slice(0, t.indexOf("T"))))) return null;
-    const ms = Date.parse(t);
-    return Number.isFinite(ms) ? jsDateToSerial(new Date(ms)) : null;
+  const tAt = t.indexOf("T");
+  if (tAt >= 0) {
+    const day = parseDateToSerial(t.slice(0, tAt));
+    if (!Number.isFinite(day)) return null;
+    if (ZONE_SUFFIX.test(t)) {
+      const ms = Date.parse(t);
+      return Number.isFinite(ms) ? wallClockSerial(new Date(ms)) : null;
+    }
+    const m = WALL_TIME.exec(t.slice(tAt + 1));
+    if (!m || +m[1] > 23 || +m[2] > 59 || +(m[3] ?? 0) > 59) return null;
+    return day + (+m[1] * 3600 + +m[2] * 60 + +(m[3] ?? 0)) / 86400;
   }
   const n = parseDateToSerial(t);
   return Number.isFinite(n) ? n : null;
@@ -54,6 +65,14 @@ export function isoToSerial(s: unknown): number | null {
 function serialToIsoDate(serial: number): string {
   const d = new Date(Math.round((serial - 25569) * 86400000));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** The date alone for a whole-day serial, else the date and the wall-clock minute. */
+function serialToTaskDate(serial: number): string {
+  const d = new Date(Math.round((serial - 25569) * 1440) * 60000);
+  const date = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  const h = d.getUTCHours(), m = d.getUTCMinutes();
+  return h === 0 && m === 0 ? date : `${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
 export function linkName(s: unknown): string {
@@ -271,16 +290,12 @@ const WRITABLE = new Set<string>(WRITABLE_TASK_KEYS);
 const DATE_KEYS = new Set(["due", "scheduled"]);
 const LIST_KEYS = new Set(["tags", "contexts", "projects"]);
 
-function serialToIsoDateOnly(serial: number): string {
-  return serialToIsoDate(serial);
-}
-
 export function cellToTaskField(key: string, cell: unknown): unknown {
   if (cell == null || cell === "") return undefined;
   if (DATE_KEYS.has(key)) {
-    if (typeof cell === "number") return serialToIsoDateOnly(cell);
+    if (typeof cell === "number") return serialToTaskDate(cell);
     const n = isoToSerial(String(cell));
-    return n == null ? undefined : serialToIsoDateOnly(n);
+    return n == null ? undefined : serialToTaskDate(n);
   }
   const asList = (v: unknown): string[] =>
     Array.isArray(v) ? v.map((x) => String(x ?? "").trim()).filter(Boolean)
