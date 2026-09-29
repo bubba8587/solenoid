@@ -64,6 +64,12 @@ describe("renderNoteMarkdown — Obsidian inline forms", () => {
     expect(renderNoteMarkdown("x^2 stays")).toContain("x^2 stays");
   });
 
+  it("a comment that opens a line hides only itself, never the text after it", () => {
+    expect(renderNoteMarkdown("%%a%% visible %%b%%")).toBe("<p> visible </p>\n");
+    expect(renderNoteMarkdown("%%todo%% Buy milk\n\nSome text %%x%%")).toBe("<p> Buy milk</p>\n<p>Some text </p>\n");
+    expect(renderNoteMarkdown("a\n%%\nhidden\nlines\n%%\nb")).toBe("<p>a<br>b</p>\n");
+  });
+
   it("math renders through KaTeX once loaded, and shows its source before that", async () => {
     const before = renderNoteMarkdown("Euler: $e^{i\\pi}+1=0$ and\n\n$$\n\\int_0^1 x\\,dx\n$$\n\nafter");
     expect(before).toContain("sol-md__math");

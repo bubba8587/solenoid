@@ -167,7 +167,8 @@ function outsideFences(md: string, fn: (chunk: string) => string): string {
   return out.join("\n");
 }
 
-const COMMENT_LINE = /^[ \t]*%%[\s\S]*?%%[ \t]*(?:\n|$)/gm;
+// A line (or run of lines) that is one comment and nothing else goes whole; the body never crosses a `%%`.
+const COMMENT_LINE = /^[ \t]*%%(?:(?!%%)[\s\S])*%%[ \t]*(?:\n|$)/gm;
 const COMMENT = /%%[\s\S]*?%%/g;
 const BLOCK_ID = /[ \t]+\^[A-Za-z0-9-]+[ \t]*$/gm;
 
