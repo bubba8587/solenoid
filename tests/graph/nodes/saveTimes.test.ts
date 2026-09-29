@@ -11,7 +11,20 @@ const NULLS: SaveClock = { autosavedAt: null, fileSavedAt: null };
 const provide = (clock: SaveClock) => saveTimeStore.setProvider(() => clock);
 
 describe("SaveTimesNode", () => {
-  afterEach(() => provide(NULLS));
+  const originalTz = process.env.TZ;
+  afterEach(() => {
+    provide(NULLS);
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
+  });
+
+  it("reads each clock on the local wall clock, as NOW does", () => {
+    process.env.TZ = "America/New_York";
+    provide({ autosavedAt: Date.UTC(2026, 7, 16, 14, 32, 0), fileSavedAt: null });
+    const { autosave } = new SaveTimesNode().data();
+    const wall = serialToJsDate(autosave!);
+    expect([wall.getUTCHours(), wall.getUTCMinutes()]).toEqual([10, 32]);
+  });
 
   it("emits each clock reading as a date serial carrying its time of day", () => {
     const at = Date.UTC(2026, 7, 16, 14, 32, 0);
@@ -29,8 +42,7 @@ describe("SaveTimesNode", () => {
     provide({ autosavedAt: auto, fileSavedAt: file });
     const n = new SaveTimesNode();
     const out = n.data();
-    expect(serialToJsDate(out.autosave!).getTime()).toBeCloseTo(auto, -1);
-    expect(serialToJsDate(out.filesave!).getTime()).toBeCloseTo(file, -1);
+    expect(out.filesave! - out.autosave!).toBeCloseTo(5 / 1440, 9);
   });
 
   it("caches both readings for the card, and re-reads on the next data()", () => {

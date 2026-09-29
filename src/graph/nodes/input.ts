@@ -8,7 +8,7 @@ extend([namesPlugin]);
 import { numberSocket } from "../sockets";
 import { numIn, strIn, strOut, logicalOut, dateOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { jsDateToSerial } from "./dateSerial";
+import { wallClockSerial } from "./dateSerial";
 import { saveTimeStore } from "../saveTimeStore";
 
 export class NumberInputNode extends ClassicPreset.Node {
@@ -267,8 +267,8 @@ export class SaveTimesNode extends ClassicPreset.Node {
   data(): { autosave: number | null; filesave: number | null } {
     const auto = saveTimeStore.lastAutosaveAt();
     const file = saveTimeStore.lastFileSaveAt();
-    this.cachedAutosave = auto === null ? null : jsDateToSerial(new Date(auto));
-    this.cachedFileSave = file === null ? null : jsDateToSerial(new Date(file));
+    this.cachedAutosave = auto === null ? null : wallClockSerial(new Date(auto));
+    this.cachedFileSave = file === null ? null : wallClockSerial(new Date(file));
     return { autosave: this.cachedAutosave, filesave: this.cachedFileSave };
   }
 }

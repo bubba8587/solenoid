@@ -343,7 +343,7 @@ Node kind `table`, with the gold accent the table socket shares (`NODE_KIND_SLOT
 - **ColorBlend** (kind `string`): two CSS color-string inputs, typeable or wired, and a blend-mode dropdown (mix, multiply, screen, overlay, soft and hard light, darken, lighten, difference, exclusion, dodge, burn).
   - It uses the W3C separable formulas per RGB channel, with A as the backdrop. Hex comes out on a ColorPicker-style swatch row.
   - Unparseable input gives `#VALUE!`. `colord` loads the `names` plugin globally, so "tomato" parses.
-- **Save Times**: the last autosave and the last write-to-file as two date serials, per document, read through the leaf `saveTimeStore` seam. Refresh and Save buttons sit on the rows.
+- **Save Times**: the last autosave and the last write-to-file as two date serials on the local wall clock (as NOW reads), per document, read through the leaf `saveTimeStore` seam. Refresh and Save buttons sit on the rows.
 - **Input Switch** (`CableSwitchNode`), not the logical SWITCH: extensible adoptive slots, each with an editable title (else "Input N"). One mode routes the active input through unchanged, keeping its type and unit. Many mode collects the checked inputs, in slot order, into a Cube of name and value rows. Removing a slot keeps the chosen input chosen.
 - **Draw-your-data inputs:**
   - **Point Plotter**: click points on a pad (axis ranges default 0 to 10); stored as `x, y` text lines trimmed to 4 decimals; out comes an X · Y Frame.
