@@ -39,6 +39,16 @@ describe("allocateBudget (water-filling)", () => {
     expect(allocateBudget([0, 0, 0], [10, 10, 100], [1, 1, 1], 60)).toEqual([10, 10, 40]);
   });
 
+  it("frees a category that an earlier pass would have pinned at its cap", () => {
+    // A [0,10], B [60,100], budget 100: B's floor is above the even split, but λ = 90 fits.
+    expect(allocateBudget([0, 60], [10, 100], [1, 1], 100)).toEqual([10, 90]);
+    expect(allocate("budget", [0, 60], [10, 100], [1, 1], 100)).toEqual([10, 90]);
+  });
+
+  it("zero-weight categories absorb what the weighted ones can't hold", () => {
+    expect(allocateBudget([0, 0, 0], [10, 50, 50], [1, 0, 0], 50)).toEqual([10, 20, 20]);
+  });
+
   it("all-zero weights fall back to an equal split", () => {
     expect(allocateBudget([0, 0], [100, 100], [0, 0], 50)).toEqual([25, 25]);
   });
@@ -56,6 +66,10 @@ describe("allocateMinTarget (greedy to a value floor)", () => {
   it("spills to the next category once the first caps out", () => {
     // weight-3 maxes at 100 (value 300); need 400 → 100 more value from the weight-1 one → +100.
     expect(allocateMinTarget([0, 0], [100, 100], [3, 1], 400)).toEqual([100, 100]);
+  });
+
+  it("a target beyond every cap is an error naming the most reachable", () => {
+    expect(() => allocateMinTarget([0, 0], [100, 100], [3, 1], 500)).toThrow(/out of reach: the most is 400/);
   });
 
   it("floors already meeting the target spend nothing extra", () => {

@@ -1,4 +1,5 @@
 // [[C17]] shareImpl
+import { solError } from "../errorValue";
 
 export type AllocateMode = "budget" | "minTarget" | "minProportional";
 
@@ -17,26 +18,26 @@ export function allocateBudget(
   if (budget <= sum(mins)) return mins.slice();
   if (budget >= sum(maxs)) return maxs.slice();
   const w = readWeights(weights);
-  const alloc = mins.slice();
-  const fixed = new Array<boolean>(n).fill(false);
-  let fixedSum = 0;
-  // Each pass fixes at least one category or finishes, so n + 1 passes always suffice.
-  for (let pass = 0; pass <= n; pass++) {
-    const free: number[] = [];
-    for (let i = 0; i < n; i++) if (!fixed[i]) free.push(i);
-    if (free.length === 0) break;
-    const remaining = budget - fixedSum;
-    const wFree = sum(free.map((i) => w[i]));
-    const share = (i: number) => (wFree > 0 ? (remaining * w[i]) / wFree : remaining / free.length);
-    let clamped = false;
-    for (const i of free) {
-      const t = share(i);
-      if (t <= mins[i]) { alloc[i] = mins[i]; fixed[i] = true; fixedSum += mins[i]; clamped = true; }
-      else if (t >= maxs[i]) { alloc[i] = maxs[i]; fixed[i] = true; fixedSum += maxs[i]; clamped = true; }
-    }
-    if (!clamped) { for (const i of free) alloc[i] = share(i); break; }
+  const at = (lambda: number) => mins.map((m, i) => (w[i] > 0 ? clampRange(lambda * w[i], m, maxs[i]) : m));
+  const breaks = [...new Set(mins.flatMap((m, i) => (w[i] > 0 ? [m / w[i], maxs[i] / w[i]] : [])))].sort((a, b) => a - b);
+  const k = breaks.findIndex((b) => sum(at(b)) >= budget);
+  if (k < 0) {
+    const zero = [...Array(n).keys()].filter((i) => w[i] === 0);
+    const rest = allocateBudget(zero.map((i) => mins[i]), zero.map((i) => maxs[i]), zero.map(() => 1), budget - sum(at(Infinity)));
+    const alloc = at(Infinity);
+    zero.forEach((i, j) => { alloc[i] = rest[j]; });
+    return alloc;
   }
-  return alloc;
+  // S(λ) = Σ clamp(λ·w, min, max) is linear between breakpoints, so λ solves exactly on the bracketing segment.
+  const mid = (breaks[k - 1] + breaks[k]) / 2;
+  let fixedSum = 0, freeW = 0;
+  for (let i = 0; i < n; i++) {
+    const t = w[i] * mid;
+    if (w[i] === 0 || t <= mins[i]) fixedSum += mins[i];
+    else if (t >= maxs[i]) fixedSum += maxs[i];
+    else freeW += w[i];
+  }
+  return at((budget - fixedSum) / freeW);
 }
 
 export function allocateMinTarget(
@@ -53,10 +54,11 @@ export function allocateMinTarget(
     const headroom = maxs[i] - alloc[i];
     if (headroom <= 0) continue;
     const vFull = w[i] * headroom;
-    if (vFull <= need) { alloc[i] = maxs[i]; need -= vFull; }
-    else { alloc[i] += need / w[i]; need = 0; break; }
+    if (vFull < need) { alloc[i] = maxs[i]; need -= vFull; }
+    else { alloc[i] += need / w[i]; return alloc; }
   }
-  return alloc;
+  const most = sum(maxs.map((m, i) => w[i] * m));
+  throw solError("#VALUE!", `The target is out of reach: the most is ${+most.toPrecision(12)}`);
 }
 
 export function allocateProportional(
