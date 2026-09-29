@@ -2,6 +2,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { DateAddNode, DateTimeValueNode, DateConstructNode, WorkdaysNode, DatePartNode, WeekInfoNode, DateDiffNode, TimeConstructNode, parseDateToSerial, parseDate, serialToJsDate, jsDateToSerial, type DateDiffOp } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
+import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 
 // 2023-01-02 is a Monday; the working week Mon 2 … Fri 6 has no weekend inside it.
@@ -26,6 +27,24 @@ describe("WORKDAY / NETWORKDAYS — optional holidays list (Excel [holidays] par
     const tue = new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [1] }).result as number;
     const wed = new WorkdaysNode({ op: "workday" }).data({ start: [MON], days: [1], holidays: [[tue]] }).result as number;
     expect(wed).toBe(tue + 1);
+  });
+
+  it("NETWORKDAYS counts whole days whatever the times of day, as the formula does", () => {
+    const n = new WorkdaysNode({ op: "networkdays" });
+    expect(n.data({ start: [MON + 0.5], end: [WED + 0.25] }).result).toBe(3);
+    expect(n.data({ start: [WED + 0.25], end: [MON + 0.5] }).result).toBe(-3);
+    expect(compileEvaluator("NETWORKDAYS(s, f)")!({ s: MON + 0.5, f: WED + 0.25 })).toBe(3);
+  });
+
+  it("an unknown weekend code is #VALUE! on the card, as in WORKDAY.INTL and NETWORKDAYS.INTL", () => {
+    for (const op of ["networkdays", "workday"] as const) {
+      const n = new WorkdaysNode({ op });
+      n.literals.weekend_code = 99;
+      const r = n.data({ start: [MON], end: [FRI], days: [1] }).result;
+      expect(isSolError(r) && r.code, op).toBe("#VALUE!");
+    }
+    expect(isSolError(compileEvaluator("NETWORKDAYS.INTL(s, f, 99)")!({ s: MON, f: FRI }))).toBe(true);
+    expect(isSolError(compileEvaluator("WORKDAY.INTL(s, 1, 99)")!({ s: MON }))).toBe(true);
   });
 
   it("empty / unwired holidays behaves exactly as before", () => {

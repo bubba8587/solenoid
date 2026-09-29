@@ -73,7 +73,7 @@ RANK, TRIMMEAN and PERCENTRANK are the functions the Rank & Percentile and Trim 
 - **YEAR, MONTH, DAY, HOUR, MINUTE, SECOND** read Solenoid's serial through `serialToJsDate` and the UTC getters, the one serial model the Date Part node uses, not Formula.js's Date and 1900 conventions.
 - **EDATE** wraps Formula.js and converts its result, a local-midnight `Date`, to a serial with `toSerialIfDate`. `jsDateToSerial` reads UTC, so the raw serial is off by the machine's time-zone offset; rounding recovers the day because the result is date-only.
 - **WORKDAY, WORKDAY.INTL** never reach Formula.js, which walks one day at a time (a count of 1e9 hangs) and takes only the numeric weekend codes. Both run `addWorkdays` (`nodes/dateOps.ts`), shared with the Workdays node: it jumps whole weeks, then walks the remainder, and an answer outside the years 1 to 9999 is `#DOMAIN!` (Excel: `#NUM!`). WORKDAY.INTL also takes Excel's seven-character mask of `0` and `1`, Monday first, where 1 is a day off; an all-ones mask, any other string or an undefined code is `#VALUE!`.
-- **NETWORKDAYS, NETWORKDAYS.INTL**: Formula.js miscounts a reversed span (start after end). Excel defines it as exactly the negation of the forward count, so the override swaps the dates and negates, and never reaches Formula.js's reversed path.
+- **NETWORKDAYS, NETWORKDAYS.INTL** never reach Formula.js, which miscounts a reversed span and a date carrying a time of day. Both run `networkDays` (`nodes/dateOps.ts`), shared with the Workdays node: it counts calendar days, whatever the times, and a reversed span is the negation of the forward count. The weekend argument reads as WORKDAY.INTL's does, so an undefined code is `#VALUE!` on the card and in the formula.
 
 ## Finance
 

@@ -245,3 +245,14 @@ export function addWorkdays(start: number, days: number, off: ReadonlySet<number
   }
   return d < FIRST_DAY || d > LAST_DAY ? outside : d;
 }
+
+/** Working days from `start` to `end` counting both ends, by calendar day whatever the time; negative when `end` is earlier. */
+export function networkDays(start: number, end: number, off: ReadonlySet<number>, holidays: ReadonlySet<number>): number {
+  const a = Math.floor(Math.min(start, end)), b = Math.floor(Math.max(start, end));
+  const weekday = (s: number) => serialToJsDate(s).getUTCDay();
+  const weeks = Math.floor((b - a + 1) / 7);
+  let count = weeks * (7 - off.size);
+  for (let d = a + 7 * weeks; d <= b; d++) if (!off.has(weekday(d))) count++;
+  for (const h of holidays) if (h >= a && h <= b && !off.has(weekday(h))) count--;
+  return start > end ? -count : count;
+}

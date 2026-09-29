@@ -2,14 +2,14 @@
 import { ClassicPreset } from "rete";
 import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, readRole, BASIS_DOC, readAsRole, type BroadcastResult } from "./shared";
 import { setting, argRole } from "../inputRoles";
-import { isSolError, type SolError } from "../errorValue";
+import { isSolError, solError, type SolError } from "../errorValue";
 import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
 import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 import { serialToJsDate, jsDateToSerial, wallClockSerial } from "./dateSerial";
 import type { FormatCarrySpec } from "./formatCarry";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, addWorkdays, weekendDays, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, addWorkdays, networkDays, weekendDays, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
@@ -415,23 +415,15 @@ export class WorkdaysNode extends ClassicPreset.Node {
 
   data(inputs: { start?: (number | number[])[]; days?: (number | number[])[]; end?: (number | number[])[]; weekend_code?: number[]; holidays?: (number | null)[][] }): { result: BroadcastResult } {
     const codeRaw = readRole<number>(this, "weekend_code", inputs.weekend_code);
-    const code = Math.floor(codeRaw);
-    const off  = weekendDays(code) ?? weekendDays(1)!;
+    const off  = weekendDays(Math.floor(codeRaw));
+    if (!off) {
+      this.cachedResult = solError("#VALUE!", "Weekend must be a code: 1 to 7, or 11 to 17");
+      return { result: this.cachedResult };
+    }
     const hol  = holidaySet(inputs.holidays?.[0]);
     const result = this.op === "workday"
       ? broadcastErr((s, n) => addWorkdays(s, n, off, hol), inputs.start?.[0] ?? null, readInput(inputs.days, this.literals.days ?? 5))
-      : broadcast((s, e) => {
-          const sign = e >= s ? 1 : -1;
-          const lo   = serialToJsDate(Math.min(s, e));
-          const hi   = serialToJsDate(Math.max(s, e));
-          let count  = 0;
-          const cur  = new Date(lo);
-          while (cur <= hi) {
-            if (!off.has(cur.getUTCDay()) && !hol.has(dayKey(jsDateToSerial(cur)))) count++;
-            cur.setUTCDate(cur.getUTCDate() + 1);
-          }
-          return count * sign;
-        }, inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
+      : broadcast((s, e) => networkDays(s, e, off, hol), inputs.start?.[0] ?? null, inputs.end?.[0] ?? null);
     this.cachedResult = result;
     return { result };
   }

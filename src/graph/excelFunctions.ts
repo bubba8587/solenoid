@@ -10,7 +10,7 @@ import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spear
 import { DIST_SPECS, sampleQuantiles, type DistKey, type DistForm } from "./nodes/distributionOps";
 import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecastOps";
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
-import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, addWorkdays, weekendDays, type EpochUnit } from "./nodes/dateOps";
+import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, addWorkdays, networkDays, weekendDays, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
@@ -1261,25 +1261,25 @@ registerInternal("DATEDIF",  (start, end, unit) => {
     const code = toNum(weekend);
     return Number.isNaN(code) ? null : weekendDays(code);
   };
+  const holidaySet = (holidays: unknown) =>
+    new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
+  const badWeekend = (name: string) => solError("#VALUE!", `${name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day`);
   const workday = (name: string) => (start: unknown, days: unknown, weekend: unknown, holidays: unknown) => {
     const s = toNum(start), n = toNum(days), off = weekendOf(weekend);
     if (badNum(s, n)) return VALUE(name);
-    if (!off) return solError("#VALUE!", `${name} weekend must be a code (1 to 7, 11 to 17) or seven 0/1 characters with a working day`);
-    const hol = new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
-    return addWorkdays(s, n, off, hol);
+    if (!off) return badWeekend(name);
+    return addWorkdays(s, n, off, holidaySet(holidays));
+  };
+  const networkdays = (name: string) => (start: unknown, end: unknown, weekend: unknown, holidays: unknown) => {
+    const s = toNum(start), e = toNum(end), off = weekendOf(weekend);
+    if (badNum(s, e)) return VALUE(name);
+    if (!off) return badWeekend(name);
+    return networkDays(s, e, off, holidaySet(holidays));
   };
   registerInternal("WORKDAY", (start, days, holidays) => workday("WORKDAY")(start, days, undefined, holidays));
   registerInternal("WORKDAY.INTL", workday("WORKDAY.INTL"));
-}
-{
-  const flat = (FX as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>).NETWORKDAYS;
-  const intl = (FX as unknown as { NETWORKDAYS?: { INTL?: (...a: unknown[]) => unknown } }).NETWORKDAYS?.INTL;
-  const swapNeg = (f: (...a: unknown[]) => unknown) => (start: unknown, end: unknown, ...rest: unknown[]) => {
-    const s = toNum(start), e = toNum(end);
-    return !Number.isNaN(s) && !Number.isNaN(e) && s > e ? -(f(end, start, ...rest) as number) : f(start, end, ...rest);
-  };
-  if (typeof flat === "function") registerInternal("NETWORKDAYS", swapNeg(flat));
-  if (typeof intl === "function") registerInternal("NETWORKDAYS.INTL", swapNeg(intl));
+  registerInternal("NETWORKDAYS", (start, end, holidays) => networkdays("NETWORKDAYS")(start, end, undefined, holidays));
+  registerInternal("NETWORKDAYS.INTL", networkdays("NETWORKDAYS.INTL"));
 }
 registerInternal("TODAY", () => wallClockSerial(new Date(), true));
 registerInternal("NOW", () => wallClockSerial(new Date()));
