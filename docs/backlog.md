@@ -307,7 +307,7 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
   DECOMPOSE, FUZZYMATCH, RANDDIST, SHARPE/SORTINO and REGEX case options unchecked against their cards; Antoine
   has no per-substance range check.
 
-## From the 2026-09-29 commit-walk review (09-25 to 09-29; open leads, each verified against HEAD unless marked)
+## From the 2026-09-29 commit-walk review (08-24 to 09-29; open leads, each verified against HEAD unless marked)
 - [ ] **TEXTSPLIT rows only** (author's call, `settings-audit.md` col_delimiter): `TEXTSPLIT(A1,,";")` is `#SYNTAX!`; relaxing the role alone would split each row into letters (`splitText` on "").
 - [ ] **Logical text reads blank, not NaN** ([[D93]] oneTextReading says NaN): `coerceLogical` gives null for "maybe", and yes/no now blank too. Author: NaN, or narrow D93 to number and date.
 - [ ] **Cast "Group (default ,)"** label: with Decimal `,` the default group is none, so the label misleads; a string for the author.
@@ -324,3 +324,12 @@ A few families still read awkwardly as `nodeTypeName` output. Fix = rename the c
 - [ ] **Desktop HTTP scope** (`src-tauri/capabilities/default.json`, plausible): a URL with a non-default port on a host other than localhost (a LAN TaskNotes server, `https://host:8443`) may be refused; check in the desktop build.
 - [ ] **Vendored DTE**: `tools/dte.py` `COVERAGE_TEMPLATE` writes a literal `100%%` into a new `.dtecoverage` on `dte init`; `excluded_from_coverage` doesn't count `covers:` citations (the numbers only). Upstream fixes.
 - [ ] **VARP / STDEVP** still listed in `unitDimExpr.ts` SQUARE sets and `FUNCTION_FAMILY` though both are legacy aliases; delete if nothing reads them by the old name.
+- [ ] **World Clock** updates only on a recompute, at midnight or on F9; a per-minute ticker is a design choice (a live tick recomputes its downstream every minute).
+- [ ] **Currency over a list**: the Amount socket is single-value, so a list of amounts is refused; broadcast, or keep one amount per card.
+- [ ] **Hours per day**: the Schedule engine divides work by the task calendar's hours, but `scheduleCpm.ts` still reads Work and hour Durations with the project's hours per day even when a task has its own Hours column.
+- [ ] **CUMIPMT/CUMPRINC with End past the loan** return a number (formula and card); Excel is believed to give #NUM! (unconfirmed).
+- [ ] **GROUPBY with totals**: the shape types a min/max of a date column as date while the pivot run outputs number.
+- [ ] **Frame popup formats**: a format picked on a brand-new column, then Cancel, leaves a stray entry under that column's would-be name (`frameFormatStore.rekey`).
+- [ ] **Matrix format precedence**: the matrix popup's own pick now wins over an FC wired to the same card (as a Frame column's own pick does); the reverse is defensible.
+- [ ] **Gantt font scale** keeps the dragged grid width, so wider columns can run off the right instead of truncating with "…".
+- [ ] **Vault Folder mdbase**: it finds collections only at or below the folder it reads, while Write Properties walks up to the vault root; one rule for both.
