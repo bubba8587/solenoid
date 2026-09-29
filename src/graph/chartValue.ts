@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue
 import type { CardColType, CardPlan } from "./cardLayout";
-import type { FormatAnnotation } from "./formatAnnotationStore";
+import { formatNumberWithAnnotation, isDateStyle, type FormatAnnotation } from "./formatAnnotationStore";
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions, LineStyle } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";
@@ -78,6 +78,8 @@ export interface QuiverPayload {
 export interface RecordField {
   label: string;
   value: number | string | null;
+  /** A number's column format, read by `recordNumberText` when drawn. */
+  format?: FormatAnnotation;
   image?: string;
   hint?: string;
   isTitle?: boolean;
@@ -94,6 +96,16 @@ export function titleIndexFor(fields: RecordField[]): number {
 }
 
 /** The Cards view's rows: every column's name, type and format, the plan, and each drawn row's cells (numbers raw, everything else as shown) and row number. */
+/** A Record number's text: its column's number format, else Auto; never its unit, which the label carries. */
+export function recordNumberText(v: number, fmt: FormatAnnotation | null | undefined): string {
+  return formatNumberWithAnnotation(v, fmt && !isDateStyle(fmt.format) ? { ...fmt, unit: "none" } : { format: "auto", unit: "none" });
+}
+
+export function recordFieldText(f: RecordField): string {
+  if (f.value === null) return f.hint ?? "—";
+  return typeof f.value === "number" ? recordNumberText(f.value, f.format) : f.value;
+}
+
 export interface RecordDeck {
   names: string[];
   types: CardColType[];

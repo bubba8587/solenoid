@@ -6,7 +6,7 @@ import { parseChartOptions, serializeChartOptions, type ChartOptions, type Chart
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d, equalWidthBins, binCountError } from "./visualOps";
 export { histogram2d, type Histogram2d } from "./visualOps";
-import { isChartValue } from "../chartValue";
+import { isChartValue, recordNumberText } from "../chartValue";
 import { buildXY, sourceAsXY, XY_CHART_OPS, type XYOp } from "./xyPlot";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
@@ -22,7 +22,7 @@ import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type Frame
 import { isSolError } from "../errorValue";
 import { parseRecordLayout, recordImageSrc, type RecordPlacement } from "../recordLayout";
 import { planCards, PROFILE_ROWS } from "../cardLayout";
-import { formatNumberWithAnnotation, isDateStyle } from "../formatAnnotationStore";
+import { isDateStyle } from "../formatAnnotationStore";
 
 import type { SparklineOp } from "./visualOps";
 export type { SparklineOp };
@@ -1132,6 +1132,20 @@ function readClamp(optStr: string | null): boolean {
 
 export const RECORD_CARD_CAP = 60;
 
+/** A cell as every Record view shows it: a number column's number stays raw for `recordNumberText`, anything else is its formatted text. */
+function recordCell(col: FrameColumn, r: number): number | string | null {
+  const v = col.values[r] ?? null;
+  if (v === null) return null;
+  if (typeof v === "number" && col.type === "number") return v;
+  const f = formatFrameCell(col.type, v, col.format);
+  return f === null ? null : String(f);
+}
+
+function recordShownText(col: FrameColumn, r: number): string {
+  const v = recordCell(col, r);
+  return v === null ? "" : typeof v === "number" ? (col.format && !isDateStyle(col.format.format) ? recordNumberText(v, col.format) : String(v)) : v;
+}
+
 // [[C114]] cardsView: the plan reads every row up to PROFILE_ROWS, so the figure's cards match the Table popup's.
 function recordDeck(cols: FrameColumn[], drawn: readonly number[]): RecordDeck {
   const total = cols[0]?.values.length ?? 0;
@@ -1143,29 +1157,16 @@ function recordDeck(cols: FrameColumn[], drawn: readonly number[]): RecordDeck {
     if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
     return String(v);
   };
-  const shownText = (col: FrameColumn, r: number): string => {
-    const v = col.values[r] ?? null;
-    if (typeof v === "number" && col.type === "number" && col.format && !isDateStyle(col.format.format)) {
-      return formatNumberWithAnnotation(v, { ...col.format, unit: "none" });
-    }
-    const f = v === null ? null : formatFrameCell(col.type, v, col.format);
-    return f === null ? "" : String(f);
-  };
   const names = cols.map((c) => (c.unit ? `${c.name} (${columnUnitLabel(c.unit)})` : c.name));
   const chipCols = cols.flatMap((c, i) => (c.type === "string" && c.format?.chip ? [i] : []));
   const plan = planCards(cols.map((c, i) => ({
     name: names[i],
     type: c.type,
     cells: Array.from({ length: profiled }, (_, r) => rawText(c, r)),
-    shown: Array.from({ length: profiled }, (_, r) => shownText(c, r)),
+    shown: Array.from({ length: profiled }, (_, r) => recordShownText(c, r)),
     chip: chipCols.includes(i),
   })));
-  const rows = drawn.map((r) => cols.map((c) => {
-    const v = c.values[r] ?? null;
-    if (v === null) return null;
-    if (typeof v === "number" && c.type === "number") return v;
-    return shownText(c, r);
-  }));
+  const rows = drawn.map((r) => cols.map((c) => recordCell(c, r)));
   return { names, types: cols.map((c) => c.type), formats: cols.map((c) => c.format ?? null), chipCols, plan, rows, rowNumbers: drawn.map((r) => r + 1) };
 }
 
@@ -1256,10 +1257,10 @@ export class RecordNode extends ClassicPreset.Node {
       const label = col
         ? (col.unit ? `${col.name} (${columnUnitLabel(col.unit)})` : col.name)
         : name;
-      const raw = col && rowIdx !== null ? col.values[rowIdx] ?? null : null;
-      const shown = raw === null ? null : formatFrameCell(col!.type, raw);
+      const shown = col && rowIdx !== null ? recordCell(col, rowIdx) : null;
       const image = typeof shown === "string" ? recordImageSrc(shown) : null;
-      const f: RecordField = { label, value: shown, ...(image ? { image } : {}), ...(at.title ? { isTitle: true } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
+      const format = typeof shown === "number" && col?.format ? col.format : null;
+      const f: RecordField = { label, value: shown, ...(format ? { format } : {}), ...(image ? { image } : {}), ...(at.title ? { isTitle: true } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
       if (shown === null && at.hint) f.hint = at.hint;
       return f;
     };
@@ -1288,9 +1289,8 @@ export class RecordNode extends ClassicPreset.Node {
       const laneList: NonNullable<RecordPayload["lanes"]> = [];
       const laneOf = new Map<string, number>();
       for (const r of drawn) {
-        const cell = byCol.values[r] ?? null;
-        const shown = cell === null ? null : formatFrameCell(byCol.type, cell);
-        const label = shown === null ? "—" : String(shown);
+        const cell = recordCell(byCol, r);
+        const label = cell === null ? "—" : typeof cell === "number" ? recordNumberText(cell, byCol.format) : cell;
         let li = laneOf.get(label);
         if (li === undefined) { li = laneList.length; laneOf.set(label, li); laneList.push({ label, cards: [] }); }
         laneList[li].cards.push(cards.length);

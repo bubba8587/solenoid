@@ -2,11 +2,10 @@
 import { CellImage } from "./cubeCell";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
-import { titleIndexFor } from "../chartValue";
+import { recordFieldText, recordNumberText, titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
 import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
-import { formatNumberWithAnnotation, isDateStyle } from "../formatAnnotationStore";
 import { AutoCard, cardChipColors } from "./AutoCard";
 import "./chartCards.css";
 
@@ -56,7 +55,7 @@ export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][nu
             <CellImage className="sol-record__img" src={f.image} alt={f.label} />
           ) : (
             <div className={`sol-record__value${f.value === null ? (f.hint ? " sol-record__value--hint" : " sol-record__value--empty") : ""}`}>
-              {f.value === null ? (f.hint ?? "—") : typeof f.value === "number" ? formatScalar(f.value) : f.value}
+              {recordFieldText(f)}
             </div>
           )}
         </div>
@@ -162,9 +161,7 @@ function RecordCards({ payload }: { payload: RecordPayload }) {
   const [open, setOpen] = useState<ReadonlySet<number>>(() => new Set());
   const texts = useMemo(() => (deck?.rows ?? []).map((row) => row.map((v, c) => {
     if (v === null) return "";
-    if (typeof v !== "number") return v;
-    const fmt = deck!.formats[c];
-    return formatNumberWithAnnotation(v, fmt && !isDateStyle(fmt.format) ? { ...fmt, unit: "none" } : { format: "auto", unit: "none" });
+    return typeof v === "number" ? recordNumberText(v, deck!.formats[c]) : v;
   })), [deck]);
   const chipColors = useMemo(() => (deck
     ? cardChipColors(deck.plan, new Set(deck.chipCols), deck.rows.length, (r, c) => String(deck.rows[r]?.[c] ?? ""))
@@ -211,11 +208,6 @@ function NavChevron({ back }: { back?: boolean }) {
   );
 }
 
-function cellText(f: RecordPayload["cards"][number][number]): string {
-  if (f.value === null) return f.hint ?? "—";
-  return typeof f.value === "number" ? formatScalar(f.value) : f.value;
-}
-
 function RecordList({ payload }: { payload: RecordPayload }) {
   return (
     <div className="sol-record-list">
@@ -223,11 +215,11 @@ function RecordList({ payload }: { payload: RecordPayload }) {
         const ti = titleIndexFor(fields);
         return (
           <div key={i} className="sol-record-list__item">
-            <div className="sol-record-list__title">{ti >= 0 ? cellText(fields[ti]) : "—"}</div>
+            <div className="sol-record-list__title">{ti >= 0 ? recordFieldText(fields[ti]) : "—"}</div>
             {fields.map((f, j) => j === ti ? null : (
               <div key={j} className="sol-record-list__field">
                 <span className="sol-record-list__flabel">{f.label}</span>
-                <span className="sol-record-list__fvalue">{cellText(f)}</span>
+                <span className="sol-record-list__fvalue">{recordFieldText(f)}</span>
               </div>
             ))}
           </div>

@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
 import { RecordNode, parseRecordLayout } from "../../src/graph/nodes/visual";
-import { titleIndexFor, type RecordPayload } from "../../src/graph/chartValue";
+import { recordFieldText, titleIndexFor, type RecordPayload } from "../../src/graph/chartValue";
 import type { FrameValue } from "../../src/graph/frame";
 
 // Record 1.4 B1 (trimmed): the List op + the `cardsize` gallery preset.
@@ -91,4 +91,28 @@ describe("Record gallery — cardsize preset", () => {
     const p = (await rec.data({ frame: [frame] })).chart.payload as RecordPayload;
     expect(p.size).toBeUndefined();
   });
+});
+
+describe("Record views read a cell as the Cards view does", () => {
+  const formatted: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "Due", type: "date", values: [45000], format: { format: "date_custom", customPattern: "YYYY-MM-DD", unit: "none" } },
+      { name: "Share", type: "number", values: [0.256], format: { format: "percent", decimalDigits: 1, unit: "none" } },
+      { name: "Lane", type: "number", values: [0.5], format: { format: "percent", decimalDigits: 0, unit: "none" } },
+    ],
+  };
+  const text = (f: RecordPayload["cards"][number][number]) => recordFieldText(f);
+
+  for (const op of ["detail", "gallery", "list", "board"] as const) {
+    it(`${op} honors the column formats`, async () => {
+      const rec = new RecordNode({ op });
+      if (op === "board") rec.stringLiterals.by = "Lane";
+      const p = (await rec.data({ frame: [formatted] })).chart.payload as RecordPayload;
+      const fields = p.cards[0];
+      expect(text(fields.find((f) => f.label === "Due")!)).toBe("2023-03-15");
+      expect(text(fields.find((f) => f.label === "Share")!)).toBe("25.6%");
+      if (op === "board") expect(p.lanes?.[0].label).toBe("50%");
+    });
+  }
 });
