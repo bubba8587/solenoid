@@ -450,6 +450,16 @@ export function solveDiscountRate(values: readonly number[], exponents: readonly
   return newton !== null ? newton : bracketDiscountRate(values, exponents);
 }
 
+/** XIRR over the prepared lists, truncated to the shorter; null under two flows. */
+export function xirr(values: readonly number[], dates: readonly number[]): number | SolError | null {
+  const n = Math.min(values.length, dates.length);
+  if (n < 2) return null;
+  const d0 = dates[0];
+  if (dates.slice(1, n).some((d) => d < d0)) return solError("#DOMAIN!", "A cash-flow date comes before the first date");
+  return solveDiscountRate(values.slice(0, n), dates.slice(0, n).map((d) => (d - d0) / 365))
+    ?? solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, for example they never change sign.");
+}
+
 export function mirr(cashflows: readonly number[], finrate: number, reinrate: number): number | SolError {
   const n = cashflows.length;
   let pvNeg = 0, fvPos = 0;

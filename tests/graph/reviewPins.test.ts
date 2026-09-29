@@ -72,6 +72,12 @@ describe("review pins: analytics batch", () => {
     const r = resolveExcelFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]);
     expect(isSolError(r) && r.message).toMatch(/before the first/);
   });
+  it("the XIRR node refuses a date before the first date, as =XIRR does", async () => {
+    const { IRRNode } = await import("../../src/graph/nodes/finance");
+    const r = new IRRNode({ op: "dates" }).data({ list: [[-100, 60, 60]], dates: [[45444, 45292, 45658]] }).result;
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+    expect(r).toEqual(resolveExcelFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]));
+  });
   it("DIAGONAL of a matrix is its diagonal", () => {
     expect(resolveExcelFunction("DIAGONAL")!([[1, 2], [3, 4]])).toEqual([1, 4]);
   });

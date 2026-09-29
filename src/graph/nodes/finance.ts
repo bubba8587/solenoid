@@ -10,7 +10,7 @@ import { resolveExcelFunction } from "../excelFunctions";
 import { EquationNode } from "./equation";
 import {
   couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
-  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule, fvSchedule,
+  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xirr, mirr, amortizationSchedule, fvSchedule,
   returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
@@ -375,16 +375,7 @@ export class IRRNode extends ClassicPreset.Node {
     const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     if (prep.blank) { this.cachedResult = null; return { result: null }; }
-    const { values, dates } = prep;
-    const n = Math.min(values.length, dates.length);
-    if (n < 2) { this.cachedResult = null; return { result: null }; }
-    const d0 = dates[0];
-    const r = solveDiscountRate(values.slice(0, n), dates.slice(0, n).map((d) => (d - d0) / 365));
-    if (r === null) {
-      const err = solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, for example they never change sign.");
-      this.cachedResult = err;
-      return { result: err };
-    }
+    const r = xirr(prep.values, prep.dates);
     this.cachedResult = r;
     return { result: r };
   }

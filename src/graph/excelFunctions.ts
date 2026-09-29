@@ -34,7 +34,7 @@ import {
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
   couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
-  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
+  durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, xirr, mirr, returnsOp, fvSchedule } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, ifTest, powerOf, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
   cx, isCx, parseCx, type Cx,
@@ -1375,11 +1375,7 @@ registerInternal("XIRR", (values, dates) => {
   const prep = datedPrep(numList(values) as (number | null | SolError)[], numList(dates) as (number | null | SolError)[]);
   if (prep.error) return prep.error;
   if (prep.blank) return null;
-  const n = Math.min(prep.values.length, prep.dates.length);
-  if (n < 2) return null;
-  const d0 = prep.dates[0];
-  if (prep.dates.slice(1, n).some((d) => d < d0)) return solError("#DOMAIN!", "A cash-flow date comes before the first date");
-  return solveDiscountRate(prep.values.slice(0, n), prep.dates.slice(0, n).map((d) => (d - d0) / 365)) ?? IRR_CONV("XIRR");
+  return xirr(prep.values, prep.dates);
 });
 registerInternal("FVSCHEDULE", (pv, schedule) => {
   if (pv == null) return null;
