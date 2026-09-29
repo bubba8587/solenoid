@@ -392,7 +392,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "regex": [
     { excel: "REGEXTEST", syntax: "=REGEXTEST(text, pattern)", parity: false, note: "Returns 1 or 0, where Excel returns TRUE or FALSE." },
     { excel: "REGEXEXTRACT", syntax: "=REGEXEXTRACT(text, pattern, [return_mode])", parity: false, note: "The Regex node's three extract ops match Excel's return_mode 0, 1 and 2." },
-    { excel: "REGEXREPLACE", syntax: "=REGEXREPLACE(text, pattern, replacement, [occurrence])", parity: false, note: "A blank or 0 Occurrence replaces every match; n replaces only the nth." },
+    { excel: "REGEXREPLACE", syntax: "=REGEXREPLACE(text, pattern, replacement, [occurrence])", parity: false, note: "A blank or 0 Occurrence replaces every match; n replaces only the nth, and -n the nth from the end." },
   ],
   "regression-steyx": [
     { excel: "STEYX", syntax: "=STEYX(ys, xs)", parity: true },

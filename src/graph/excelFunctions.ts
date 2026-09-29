@@ -14,7 +14,7 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { parseValueText, numberValue, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { parseValueText, numberValue, splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, regexOccurrence, spellNumber, ordinalText, reverseText, properCase, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d, sparklineImage, SPARKLINE_OPS, type SparklineOp } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -1479,8 +1479,8 @@ registerInternal("REGEXTEST", (text, pat, cs) => {
 registerInternal("REGEXREPLACE", (text, pat, repl, occurrence, cs) => {
   const f = caseFlag("REGEXREPLACE", cs);
   if (isSolError(f)) return f;
-  const occ = occurrence == null ? 0 : Math.round(Number(occurrence));
-  if (!Number.isFinite(occ) || occ < 0) return solError("#VALUE!", "REGEXREPLACE: occurrence must be 0 or a positive count");
+  const occ = regexOccurrence(occurrence);
+  if (occ === null) return solError("#VALUE!", "REGEXREPLACE: occurrence must be a number");
   return occ === 0
     ? regexApply("replace", toStr(text), toStr(pat), toStr(repl), f)
     : replaceNth(toStr(text), toStr(pat), toStr(repl), occ, f);

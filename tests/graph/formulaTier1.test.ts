@@ -132,6 +132,36 @@ describe("text functions: formula matches node", () => {
   });
 });
 
+describe("REGEXREPLACE occurrence", () => {
+  const repl = new RegexNode({ op: "replace" });
+  const node = (text: string, pattern: string, replacement: string, occurrence: number) =>
+    repl.data({ text: [text], pattern: [pattern], replacement: [replacement], occurrence: [occurrence] }).result;
+
+  it("keeps the match's surrounding context when replacing only the nth", () => {
+    expect(ev('REGEXREPLACE("xaxa", "(?<=x)a", "#", 2)')).toBe("xax#");
+    expect(ev('REGEXREPLACE("ab ab", "a(?=b)", "#", 2)')).toBe("ab #b");
+    expect(ev('REGEXREPLACE("cat cat", "^cat|\\bcat", "dog", 2)')).toBe("cat dog");
+    expect(ev('REGEXREPLACE("cat cat", "^cat", "dog", 2)')).toBe("cat cat");
+  });
+
+  it("expands $n, $<name>, $&, $$ and the context tokens from the nth match", () => {
+    expect(ev('REGEXREPLACE("a1 b2", "(\\w)(\\d)", "$2$1", 2)')).toBe("a1 2b");
+    expect(ev('REGEXREPLACE("a1 b2", "(?<l>\\w)(?<d>\\d)", "$<d>$<l>", 2)')).toBe("a1 2b");
+    expect(ev('REGEXREPLACE("a1 b2", "\\d", "[$&$$]", 2)')).toBe("a1 b[2$]");
+    expect(ev('REGEXREPLACE("ab", "b", "<$`|$\'>", 1)')).toBe("a<a|>");
+  });
+
+  it("truncates a fractional occurrence and counts a negative one from the end, node and formula alike", () => {
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", 2.6)')).toBe("a1b#c3");
+    expect(node("a1b2c3", "\\d", "#", 2.6)).toBe("a1b#c3");
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", -1)')).toBe("a1b2c#");
+    expect(node("a1b2c3", "\\d", "#", -1)).toBe("a1b2c#");
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", -3)')).toBe("a#b2c3");
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", -9)')).toBe("a1b2c3");
+    expect(node("a1b2c3", "\\d", "#", -9)).toBe("a1b2c3");
+  });
+});
+
 describe("finance functions: formula matches node", () => {
   // 15-Mar-2026 settlement, 15-Nov-2030 maturity as date serials.
   const settle = 46096, maturity = 47787;

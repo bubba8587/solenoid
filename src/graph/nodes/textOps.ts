@@ -135,18 +135,47 @@ export function regexGroups(text: string, pattern: string, flags = ""): string[]
   return m ? m.slice(1).map((g) => g ?? "") : [];
 }
 
+/** REGEXREPLACE's occurrence: blank is 0 (every match), a fraction truncates, a negative counts from the end; null when non-finite. */
+export function regexOccurrence(raw: unknown): number | null {
+  if (raw == null || raw === "") return 0;
+  const n = Math.trunc(Number(raw));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** JavaScript's replacement-pattern tokens, expanded from one match's own groups. */
+function expandReplacement(
+  replacement: string, match: string, groups: (string | undefined)[], named: Record<string, string | undefined> | undefined,
+  offset: number, text: string,
+): string {
+  return replacement.replace(/\$(\$|&|`|'|<([^>]*)>|(\d\d?))/g, (token, kind: string, name: string | undefined, digits: string | undefined) => {
+    if (kind === "$") return "$";
+    if (kind === "&") return match;
+    if (kind === "`") return text.slice(0, offset);
+    if (kind === "'") return text.slice(offset + match.length);
+    if (name !== undefined) return named ? (named[name] ?? "") : token;
+    const two = Number(digits);
+    if (two >= 1 && two <= groups.length) return groups[two - 1] ?? "";
+    const one = Number(digits![0]);
+    if (digits!.length === 2 && one >= 1 && one <= groups.length) return (groups[one - 1] ?? "") + digits![1];
+    return token;
+  });
+}
+
+/** Replaces only the nth match (1-based; negative counts from the end); fewer matches leave the text unchanged. */
 export function replaceNth(text: string, pattern: string, replacement: string, n: number, flags = ""): string | null {
   if (!pattern) return null;
   const re = safeRegex(pattern, flags);
   if (!re) return null;
   const g = new RegExp(re.source, re.flags.includes("g") ? re.flags : re.flags + "g");
+  const target = n < 0 ? [...text.matchAll(g)].length + n + 1 : n;
+  if (target < 1) return text;
   let i = 0;
-  return text.replace(g, (match, ...rest) => {
+  return text.replace(g, (match: string, ...rest: unknown[]) => {
     i++;
-    if (i !== n) return match;
-    // Replacing within the matched slice honors $1-style backreferences.
+    if (i !== target) return match;
+    const named = typeof rest[rest.length - 1] === "object" ? rest.pop() as Record<string, string | undefined> : undefined;
     const offset = rest[rest.length - 2] as number;
-    return text.slice(offset, offset + match.length).replace(re, replacement);
+    return expandReplacement(replacement, match, rest.slice(0, -2) as (string | undefined)[], named, offset, text);
   });
 }
 

@@ -11,7 +11,7 @@ export { HASH_ALGORITHM_META } from "./hashOps";
 export type { HashAlgorithm } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, regexOccurrence, safeRegex, reverseText, properCase, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, charFromCode, codeOfText, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { rolesFrom, setting } from "../inputRoles";
 import { dropInputCables } from "../components/cablePrune";
@@ -999,7 +999,7 @@ export class RegexNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     pattern: "Patterns follow JavaScript regular expression syntax. An invalid pattern gives a blank result.",
     replacement: "Only the replace operation reads this input. $1 inserts the first capture group.",
-    occurrence: "Only REGEXREPLACE reads this. Blank or 0 replaces every match; n replaces only the nth.",
+    occurrence: "Only REGEXREPLACE reads this. Blank or 0 replaces every match; n replaces only the nth, and -n the nth from the end.",
   };
 
   label: string;
@@ -1034,15 +1034,15 @@ export class RegexNode extends ClassicPreset.Node {
     const occurrenceRaw = this.op === "replace" ? readRole<number>(this, "occurrence", inputs.occurrence) : 0;
     if (pattern === null || replacement === null || occurrenceRaw === null) { this.cachedResult = null; return { result: null }; }
     const flags       = this.stringLiterals.flags ?? "";
-    const occ = Math.max(0, Math.floor(Number(occurrenceRaw) || 0));
+    const occ = regexOccurrence(occurrenceRaw);
 
-    if (!pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }
+    if (occ === null || !pattern || !safeRegex(pattern, flags)) { this.cachedResult = null; return { result: null }; }
 
     const rawText = inputs.text === undefined ? "" : (inputs.text[0] ?? null);
     const applyCell = (c: unknown): number | string | string[] | SolError | null =>
       c == null ? null
       : isSolError(c) ? c
-      : this.op === "replace" && occ >= 1
+      : this.op === "replace" && occ !== 0
         ? replaceNth(String(c), pattern, replacement, occ, flags)
         : (regexApply(this.op, String(c), pattern, replacement, flags) as number | string | string[]);
 

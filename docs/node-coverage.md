@@ -128,7 +128,7 @@ The governing principle: keep types separate (a Cast crosses element families, a
 - **CONCAT** skips a blank row rather than propagating it; **TEXTJOIN** ignores empties by default, matching the formula's fallback ([[D51]] oneAnswerOneDivergence).
 - **LEFT / RIGHT / MID**: MID with a length of 0 is `""`, as in Excel.
 - **FIND / SEARCH**: an absent substring is `#VALUE!` "Find text not found within the text", per cell.
-- **SUBSTITUTE**: an instance of 1 or more replaces only that occurrence; blank or 0 replaces every one. Regex REPLACE's occurrence works the same way, like the REGEXREPLACE formula.
+- **SUBSTITUTE**: an instance of 1 or more replaces only that occurrence; blank or 0 replaces every one. Regex REPLACE's occurrence works the same way, like the REGEXREPLACE formula, and also takes -n for the nth match from the end.
 - **TEXTAFTER / TEXTBEFORE**: an empty delimiter is a per-cell blank. **CHAR**: an out-of-range code point is a per-cell blank. **EXACT** emits a logical.
 - **Cast** ([[B11]] maximalMerge): to Number it reads text as VALUE does (`$`, `(5)` for negatives, trailing `%`) with Decimal sep and Group sep rows, defaulting to `.` and `,`, so it also covers NUMBERVALUE, which is formula only; to Text it takes a Format pattern, as TEXT does. Each target's rows exist only on that target, and switching drops their cables first. The parse is strict: `12x` is `#VALUE!`, and an empty cell is blank.
 - **FIXED / DOLLAR**: decimals truncate toward zero, default 2, and a negative count rounds left of the point: FIXED(12345.678, −2) = "12,300", DOLLAR gives "$12,300".
