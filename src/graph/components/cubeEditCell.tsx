@@ -1,6 +1,6 @@
 // [[C28]] literalsIffEditable, [[C95]] commitOnEnter, [[D90]] cubeTypesAtDepth, [[E16]] cubeCellKinds
 import { useEffect, useState, type ReactNode } from "react";
-import { cubePopup, type CubeEditBinding, type DrillView } from "../cubePopupStore";
+import { cubePopup, type CubeEditBinding, type DrillView, type CellRef } from "../cubePopupStore";
 import { recordsToCube, frameCellFromRecords, cubeRowCount, cubeDepth, typedCubeCell, coerceListItem, type CubeCell } from "../frame";
 import {
   getAtPath, setAtPath, parseCellText, cellTextOf, recordKeys, cellKindOf, convertCellKind, newColumnKey,
@@ -116,7 +116,7 @@ const chipClass = (mod: "cube" | "frame" | "array") => `solenoid-array-chip sole
 
 /** A list, table, Frame or Cube held in a cell, as the chip that drills into it. */
 function NestedChip({ edit, cellPath, value, kind, crumb, from, type }: {
-  edit: CubeEditBinding; cellPath: CubePath; value: unknown; kind: CellKind; crumb: string; from: { r: number; c?: number }; type?: ColType;
+  edit: CubeEditBinding; cellPath: CubePath; value: unknown; kind: CellKind; crumb: string; from: CellRef; type?: ColType;
 }): ReactNode {
   const src = edit.source();
   const records = src.rows;
@@ -178,7 +178,7 @@ function redeclare(n: NestedTables, cellPath: CubePath, from: CellKind, to: Cell
 
 /** One editing cell: a value types in place, anything else is a chip to drill into, and the edge menu switches between them ([[E16]] cubeCellKinds). */
 function EditCell({ edit, cellPath, crumb, from, type, item, source, kinds = true }: {
-  edit: CubeEditBinding; cellPath: CubePath; crumb: string; from: { r: number; c?: number }; type?: ColType; item: boolean; source: boolean;
+  edit: CubeEditBinding; cellPath: CubePath; crumb: string; from: CellRef; type?: ColType; item: boolean; source: boolean;
   /** A table's or a Frame's cell stays a value: no menu. */
   kinds?: boolean;
 }): ReactNode {
@@ -216,7 +216,7 @@ export function CubeEditCell({ edit, path, row, column, source = false }: {
 }
 
 export function ListEditCell({ edit, path, row, source = false }: { edit: CubeEditBinding; path: CubePath; row: number; source?: boolean }): ReactNode {
-  return <EditCell edit={edit} cellPath={[...path, row]} crumb="item" from={{ r: row }} type={declaredTypeAt(edit, path)} item source={source} />;
+  return <EditCell edit={edit} cellPath={[...path, row]} crumb="item" from={{ item: row }} type={declaredTypeAt(edit, path)} item source={source} />;
 }
 
 export function GridEditCell({ edit, path, row, col, source = false }: { edit: CubeEditBinding; path: CubePath; row: number; col: number; source?: boolean }): ReactNode {

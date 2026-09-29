@@ -1,6 +1,6 @@
 // [[C10]] socketLattice
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { cubePopup, type DrillView } from "../cubePopupStore";
+import { cubePopup, gridPosOf, type DrillView, type CellRef } from "../cubePopupStore";
 import { CubeEditCell, ListEditCell, GridEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
@@ -16,7 +16,7 @@ import { APP_LOCALE } from "../locale";
 import "./TablePopup.css";
 
 /** What was typed, for the Source switch: a value as its text, a nested container still a chip. */
-function sourceItem(v: unknown, crumb: string, at: { r: number; c: number }): ReactNode {
+function sourceItem(v: unknown, crumb: string, at: CellRef): ReactNode {
   if (v !== null && typeof v === "object") return <CubeCellChip cell={v as CubeCell} crumb={crumb} size="sm" at={at} />;
   return v == null ? "" : typeof v === "boolean" ? (v ? "TRUE" : "FALSE") : String(v);
 }
@@ -53,16 +53,16 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
   }
   if (view.kind === "list") {
     const items = view.items;
-    const item = (i: number, at: { r: number; c: number }) => (source
-      ? sourceItem(items[i] ?? null, "item", at)
-      : <CubeCellChip cell={(items[i] ?? null) as CubeCell} crumb="item" size="sm" type={view.type} at={at} />);
+    const item = (i: number) => (source
+      ? sourceItem(items[i] ?? null, "item", { item: i })
+      : <CubeCellChip cell={(items[i] ?? null) as CubeCell} crumb="item" size="sm" type={view.type} at={{ item: i }} />);
     if (!listVertical) {
       return {
         headers: null,
         rows: 1,
         cols: items.length,
         depth: null,
-        cell: (_r, c) => item(c, { r: 0, c }),
+        cell: (_r, c) => item(c),
         sortKey: (_r, c) => sortKeyOf(items[c] ?? null),
       };
     }
@@ -71,7 +71,7 @@ function describe(view: DrillView, listVertical: boolean, source: boolean): {
       rows: items.length,
       cols: 1,
       depth: null,
-      cell: (r) => item(r, { r, c: 0 }),
+      cell: (r) => item(r),
       sortKey: (r) => sortKeyOf(items[r] ?? null),
     };
   }
@@ -126,10 +126,13 @@ export function CubePopup() {
   const [sourceMode, setSourceMode] = useState(false);
 
   const gridRef = useRef<HTMLDivElement>(null);
+  const listVerticalRef = useRef(listVertical);
+  listVerticalRef.current = listVertical;
   const focus = state?.stack[state.stack.length - 1]?.focus;
   useEffect(() => {
     if (!focus || !gridRef.current) return;
-    const sel = focus.c === undefined ? `[data-r="${focus.r}"]` : `[data-r="${focus.r}"][data-c="${focus.c}"]`;
+    const at = gridPosOf(focus, listVerticalRef.current);
+    const sel = at.c === undefined ? `[data-r="${at.r}"]` : `[data-r="${at.r}"][data-c="${at.c}"]`;
     const el = gridRef.current.querySelector<HTMLElement>(sel);
     if (!el) return;
     el.scrollIntoView({ block: "center", inline: "center" });

@@ -24,7 +24,14 @@ export function editLevelCube(edit: CubeEditBinding, path: CubePath, rows: CubeR
   return recordsToCube(rows, typesAt(nested, path), nested, path);
 }
 
-export interface CellRef { r: number; c?: number }
+/** A cell drilled from: a grid position, or a list item by index, since its row and column depend on the layout. */
+export type CellRef = { r: number; c?: number } | { item: number };
+
+/** Where a cell sits in the shown grid: a list item lies across row 0 in Row layout and down column 0 in Column. */
+export function gridPosOf(ref: CellRef, listVertical: boolean): { r: number; c?: number } {
+  if ("item" in ref) return listVertical ? { r: ref.item, c: 0 } : { r: 0, c: ref.item };
+  return ref;
+}
 
 export type DrillView = (
   | { kind: "cube"; label: string; cube: CubeValue; /** Records path when the popup is an editor. */ path?: CubePath }
