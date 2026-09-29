@@ -47,17 +47,23 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
       }
     }),
   );
-  // A crossed repeat shrinks the later name to the cell it first appeared in, so no box hides another.
+  // A crossed repeat shrinks the later name to its first cell clear of every earlier box, else to a row of its own below, so no box hides another.
   const placed: Array<{ r0: number; c0: number; r1: number; c1: number }> = [];
-  const firstCell = new Map<string, { r: number; c: number }>();
+  const cellsOf = new Map<string, Array<{ r: number; c: number }>>();
   rows.forEach((cells, r) => cells.forEach(({ name }, c) => {
+    if (name === "" || name === ".") return;
     const key = name.toLowerCase();
-    if (name !== "" && name !== "." && !firstCell.has(key)) firstCell.set(key, { r, c });
+    (cellsOf.get(key) ?? cellsOf.set(key, []).get(key)!).push({ r, c });
   }));
+  let spareRow = rows.length;
   for (const key of order) {
     const t = rects.get(key)!;
     const hits = (a: typeof t) => placed.some((p) => a.r0 <= p.r1 && p.r0 <= a.r1 && a.c0 <= p.c1 && p.c0 <= a.c1);
-    if (hits(t)) { const f = firstCell.get(key)!; t.r0 = t.r1 = f.r; t.c0 = t.c1 = f.c; }
+    if (hits(t)) {
+      const free = cellsOf.get(key)!.find(({ r, c }) => !hits({ ...t, r0: r, r1: r, c0: c, c1: c }));
+      const at = free ?? { r: spareRow++, c: 0 };
+      t.r0 = t.r1 = at.r; t.c0 = t.c1 = at.c;
+    }
     placed.push({ r0: t.r0, c0: t.c0, r1: t.r1, c1: t.c1 });
   }
   return order.map((key) => {

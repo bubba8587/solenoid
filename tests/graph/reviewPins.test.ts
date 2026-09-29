@@ -91,7 +91,12 @@ describe("review pins: Record layout", () => {
     const p = parseRecordLayout("A | B\nB | A");
     const a = p.find((x) => x.name === "A")!, b = p.find((x) => x.name === "B")!;
     expect([a.row, a.col, a.rowSpan, a.colSpan]).toEqual([1, 1, 2, 2]);
-    expect([b.row, b.col, b.rowSpan, b.colSpan]).toEqual([1, 2, 1, 1]);
+    expect([b.row, b.col, b.rowSpan, b.colSpan]).toEqual([3, 1, 1, 1]);
+    const c = parseRecordLayout("A | B\nB | A\n. | B");
+    const bc = c.find((x) => x.name === "B")!;
+    expect([bc.row, bc.col, bc.rowSpan, bc.colSpan]).toEqual([3, 2, 1, 1]);
+    const d = parseRecordLayout("A | B\nC | A\nB | .");
+    expect(d.map((x) => [x.name, x.row, x.col, x.rowSpan, x.colSpan])).toEqual([["A", 1, 1, 2, 2], ["B", 3, 1, 1, 1], ["C", 4, 1, 1, 1]]);
     const ok = parseRecordLayout("A*2\nB | C");
     expect(ok.map((x) => [x.name, x.row, x.col, x.colSpan])).toEqual([["A", 1, 1, 2], ["B", 2, 1, 1], ["C", 2, 2, 1]]);
   });
