@@ -138,6 +138,14 @@ describe("Triangle Solver", () => {
     expect((out3.c as number[]).map((x) => Math.round(x))).toEqual([5, 10]);
   });
 
+  it("a degree-tagged angle reads as its whole degrees, with no float residue", () => {
+    const n = new TriangleSolverNode();
+    for (let deg = 1; deg < 179; deg++) {
+      const out = n.data({ a: [1], A: [tagDim((deg * Math.PI) / 180, { angle: 1 }, "deg")], B: [(180 - deg) / 2] });
+      expect(out.A).toBe(deg);
+    }
+  });
+
   it("[[C25]] sides solve in one unit: a km side and a m side convert, answers come back in the first side's unit", () => {
     const n = new TriangleSolverNode();
     const km3 = tagDim(3000, { length: 1 }, "km");

@@ -5,7 +5,7 @@ import { numListIn, numListOut, logicalComboOut, readInput } from "./shared";
 import { isSolError, type SolError } from "../errorValue";
 import { R2D, PART_KEYS, solveGivenParts, type PartKey, type TriangleGiven, type TriangleResult } from "./triangleOps";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { isUnitCell, tagDim, unitError, fromUnit, type UnitCell } from "../unitValue";
+import { isUnitCell, tagDim, unitError, fromUnit, roundAtLargerTerm, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
 import { type Unit, dimEqual, dimPow, isDimensionless } from "../dimension";
 
@@ -43,7 +43,7 @@ function sideUnit(inputs: Record<string, unknown>): SideUnit | SolError | null {
 function readPart(k: PartKey, cell: unknown, su: SideUnit | null): unknown {
   if (!isUnitCell(cell)) return cell;
   if (isDimensionless(cell.dim)) return cell.value;
-  if (isAngleKey(k)) return cell.value * R2D;
+  if (isAngleKey(k)) return roundAtLargerTerm(cell.value * R2D, cell.value * R2D);
   return su ? cell.value / su.unit.scale : cell.value;
 }
 
