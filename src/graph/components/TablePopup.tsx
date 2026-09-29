@@ -27,7 +27,7 @@ import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortButton } from "./columnSort";
-import { ColumnFormatButton, ColumnExprField, COLTYPE_ORDER, COLTYPE_GLYPH, COLTYPE_NAME } from "./columnHeadControls";
+import { ColumnFormatButton, ColumnExprField, HeaderHelpButton, COLTYPE_ORDER, COLTYPE_GLYPH, COLTYPE_NAME } from "./columnHeadControls";
 import { CellEditAffix } from "./CellEditAffix";
 import { CsvEditor } from "./CsvEditor";
 import { TableCards } from "./TableCards";
@@ -787,7 +787,9 @@ export function TablePopup() {
           <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
               <tr>
-                <th className="table-popup__corner" />
+                <th className="table-popup__corner">
+                  {editableHeaders && !vertical && <HeaderHelpButton formulas={fxColumns} lambdas={(state.lambdaOptions ?? []).length > 0} />}
+                </th>
                 {Array.from({ length: viewCols }, (_, c) => (
                   <th
                     key={c}

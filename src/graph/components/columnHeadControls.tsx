@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { tokenAtCaret } from "../formulaSyntax";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { PaintbrushIcon } from "./PaintbrushIcon";
+import { InfoIcon } from "./Icons";
 import { closeParens } from "../closeParens";
 
 type ColType = "number" | "string" | "date" | "logical";
@@ -87,6 +88,62 @@ export function ColumnFormatButton({ picked, children }: { picked: boolean; chil
       {open && createPortal(
         <div ref={panelRef} className="table-popup__fmtpanel" style={style} {...stopAll}>
           {children}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+/** The header legend: what a column's type button cycles, and the names an Fx formula reads ([[C22]] rowFormulaRefs). */
+const FX_LEGEND: [string, string][] = [
+  ["@price", "this row's price"],
+  ["price", "the whole price column"],
+  ["@[Unit Price]", "a name with spaces"],
+  ["row", "this row's number"],
+  ["rows", "the row count"],
+  ["@price / SUM(price)", "this row's share of the total"],
+];
+
+export function HeaderHelpButton({ formulas, lambdas }: { formulas: boolean; lambdas: boolean }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDismissOnOutside(open, () => setOpen(false), [btnRef, panelRef]);
+  const style = useHangUnder(open, btnRef, panelRef, "left");
+
+  return (
+    <>
+      <button
+        type="button"
+        ref={btnRef}
+        className="table-popup__helpbtn"
+        title="Column headers"
+        aria-label="Column headers"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+      >
+        <InfoIcon size={14} />
+      </button>
+      {open && createPortal(
+        <div ref={panelRef} className="table-popup__helppanel" style={style} {...stopAll}>
+          <div className="table-popup__helphead">Column Type</div>
+          <dl className="table-popup__helplist">
+            {COLTYPE_ORDER.map((t) => <div key={t}><dt>{COLTYPE_GLYPH[t]}</dt><dd>{COLTYPE_NAME[t]}</dd></div>)}
+            {formulas && <div><dt>Fx</dt><dd>a formula, run once per row</dd></div>}
+          </dl>
+          {formulas && (
+            <>
+              <div className="table-popup__helphead">In an Fx Formula</div>
+              <dl className="table-popup__helplist">
+                {FX_LEGEND.map(([code, meaning]) => (
+                  <div key={code}><dt>{code}</dt><dd>{meaning}</dd></div>
+                ))}
+                {lambdas && <div><dt>λ1</dt><dd>runs that LAMBDA, each parameter reading the column of its name</dd></div>}
+              </dl>
+            </>
+          )}
         </div>,
         document.body,
       )}

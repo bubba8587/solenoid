@@ -10,7 +10,7 @@ Serves [[C22]] rowFormulaRefs and [[C54]] noPerCellFormulas; a wired LAMBDA bind
 
 A computed column is a Frame column defined by one formula, or one LAMBDA, evaluated once per row. It is the only way to put per-row math on a Frame, since a Frame never enters a formula whole ([[C15]] matricesInFormulas). There are two surfaces, and both run the same engine, `computeColumnCells` in `computedColumnCore.ts`, so they can't disagree:
 
-- **An Fx column in Frame Input**, typed into the table popup's column header.
+- **An Fx column in Frame Input**, typed into the table popup's column header. The popup's (i) legend lists the names below ([[table-popup#The grid]]).
 - **The Computed Column node**, which adds one column to a Frame or Cube that arrives on a cable.
 - **An Fx column in Cube Input**, typed into the Cube popup's root header ([[#Fx columns in Cube Input]]).
 

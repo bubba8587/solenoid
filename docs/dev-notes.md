@@ -6,6 +6,15 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-29b: ROW() hint, Frame Input header legend; cloud session)
+
+- **ROW and COLUMN leave `LEGACY_ALIASES`** for their own `POSITION_NAMES` table ([[C14]] currentExcelParity,
+  contested, keep won; the ROW/COLUMN consequence amended): still `#NAME?`, but ROW's message names the
+  computed column's `row` and `rows`, COLUMN's says columns are read by name. `blockedNameMessage` is the one
+  source of a blocked name's message. Spec: [[formula-language]] § Blocked and wrong-surface names.
+- **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
+  The Cube popup's root also offers Fx and has no legend yet.
+
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 
 - **Frame headers suggest column names** ([[D92]] columnNameSuggest): the plugin hands the Frame editor a
