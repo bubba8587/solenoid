@@ -269,10 +269,23 @@ export class MergePlotsNode extends ClassicPreset.Node {
   }
 }
 
+/** Labelled series move onto the union of every source's labels (a label repeated within one source keeps a slot per repeat); an unlabelled one stays by position. */
 function mergeOverlay(sources: { cv: ChartValue }[]): OverlayPayload {
+  const labels: (string | number)[] = [];
+  const slots = new Map<string | number, number[]>();
+  const slotMaps = sources.map(({ cv }) => {
+    if (!cv.labels || cv.labels.length === 0) return null;
+    const seen = new Map<string | number, number>();
+    return cv.labels.map((l) => {
+      const k = seen.get(l) ?? 0;
+      seen.set(l, k + 1);
+      const at = slots.get(l) ?? [];
+      if (at.length <= k) { at.push(labels.length); labels.push(l); slots.set(l, at); }
+      return at[k];
+    });
+  });
   const series: OverlaySeries[] = [];
-  let labels: (string | number)[] | undefined;
-  for (const { cv } of sources) {
+  sources.forEach(({ cv }, i) => {
     const kind = cv.op as OverlaySeries["kind"];
     const style = {
       color: cv.options?.color || undefined,
@@ -281,16 +294,22 @@ function mergeOverlay(sources: { cv: ChartValue }[]): OverlayPayload {
       alpha: cv.options?.alpha,
       marker: cv.options?.marker,
     };
+    const to = slotMaps[i];
+    const place = (values: (number | null)[]) => {
+      if (!to) return values;
+      const out: (number | null)[] = new Array(labels.length).fill(null);
+      values.forEach((v, j) => { if (j < to.length) out[to[j]] = v; });
+      return out;
+    };
     if (cv.series && cv.series.length > 0) {
-      for (const s of cv.series) series.push({ name: s.name, kind, values: s.values, ...style });
+      for (const s of cv.series) series.push({ name: s.name, kind, values: place(s.values), ...style });
     } else if (Array.isArray(cv.values)) {
-      series.push({ name: cv.title ?? "", kind, values: cv.values, ...style });
+      series.push({ name: cv.title ?? "", kind, values: place(cv.values), ...style });
     } else if (typeof cv.values === "number") {
-      series.push({ name: cv.title ?? "", kind, values: [cv.values], ...style });
+      series.push({ name: cv.title ?? "", kind, values: place([cv.values]), ...style });
     }
-    if (!labels && cv.labels && cv.labels.length > 0) labels = cv.labels;
-  }
-  return { kind: "overlay", series, labels };
+  });
+  return { kind: "overlay", series, labels: labels.length > 0 ? labels : undefined };
 }
 
 /** Text x values are indices into their own plot's categories, so they move onto one shared list; text beside numbers has no one axis. */

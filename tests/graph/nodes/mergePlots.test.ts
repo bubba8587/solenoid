@@ -60,13 +60,26 @@ describe("Merge Plots node", () => {
     expect(p.labels).toEqual(["Jan", "Feb"]);
   });
 
-  it("takes labels from the FIRST labelled source only", () => {
+  it("aligns labelled series on the union of their labels, blank where a series has no value", () => {
     const n = new MergePlotsNode();
     const p = payloadOf(n.data({
-      p0: [chart("line", [1, 2], { labels: ["a", "b"] })],
-      p1: [chart("line", [3, 4], { labels: ["x", "y"] })],
+      p0: [chart("column", [1, 2, 3, 4], { labels: ["Q1", "Q2", "Q3", "Q4"] })],
+      p1: [chart("line", [20, 30, 40, 50], { labels: ["Q2", "Q3", "Q4", "Q5"] })],
     }));
-    expect(p.labels).toEqual(["a", "b"]);
+    expect(p.labels).toEqual(["Q1", "Q2", "Q3", "Q4", "Q5"]);
+    expect(p.series.map((s) => s.values)).toEqual([[1, 2, 3, 4, null], [null, 20, 30, 40, 50]]);
+  });
+
+  it("keeps a repeated label in one source as its own slot, and an unlabelled series by position", () => {
+    const n = new MergePlotsNode();
+    n.addValueInput();
+    const p = payloadOf(n.data({
+      p0: [chart("line", [1, 2, 3], { labels: ["a", "a", "b"] })],
+      p1: [chart("line", [7, 8], { labels: ["b", "a"] })],
+      p2: [chart("line", [5, 6])],
+    }));
+    expect(p.labels).toEqual(["a", "a", "b"]);
+    expect(p.series.map((s) => s.values)).toEqual([[1, 2, 3], [8, null, 7], [5, 6]]);
   });
 
   it("wraps a single scalar value into a one-point series", () => {
