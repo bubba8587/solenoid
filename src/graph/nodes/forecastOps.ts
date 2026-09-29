@@ -10,7 +10,7 @@ export interface EtsFit {
   sigma: number;
 }
 
-function runHW(y: readonly number[], m: number, alpha: number, beta: number, gamma: number): { sse: number; fit: EtsFit } {
+export function runHW(y: readonly number[], m: number, alpha: number, beta: number, gamma: number): { sse: number; fit: EtsFit } {
   const n = y.length;
   let level: number, trend: number;
   const seasonal: number[] = [];
@@ -34,11 +34,11 @@ function runHW(y: readonly number[], m: number, alpha: number, beta: number, gam
     fitted.push(pred);
     const err = y[t] - pred;
     if (t >= (m > 1 ? m : 1)) { sse += err * err; count++; }
-    const prevLevel = level;
+    const prevLevel = level, prevTrend = trend;
     if (m > 1) {
       level = alpha * (y[t] - s) + (1 - alpha) * (level + trend);
       trend = beta * (level - prevLevel) + (1 - beta) * trend;
-      seasonal[t % m] = gamma * (y[t] - prevLevel - trend) + (1 - gamma) * s;
+      seasonal[t % m] = gamma * (y[t] - prevLevel - prevTrend) + (1 - gamma) * s;
     } else {
       level = alpha * y[t] + (1 - alpha) * (level + trend);
       trend = beta * (level - prevLevel) + (1 - beta) * trend;
