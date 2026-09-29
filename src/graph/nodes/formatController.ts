@@ -254,6 +254,14 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this._written = targets;
   }
 
+  /** Chip, inherit and the letter cases share one style dropdown, so a pick clears the others. */
+  pickTextStyle(pick: TextCase | "" | "chip"): void {
+    this.chip = pick === "chip";
+    this.inheritFormat = pick === "";
+    if (pick === "chip") this.textCase = "none";
+    else if (pick !== "") this.textCase = pick;
+  }
+
   annotation(): FormatAnnotation {
     return {
       format:        this.effectiveFormat(),

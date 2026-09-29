@@ -145,14 +145,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   }
 
   function onCaseChange(cs: TextCase | "" | "chip") {
-    // Chip, inherit and the letter cases share one style dropdown, so picking one clears the others.
-    const isChip = cs === "chip";
-    const inherit = cs === "";
-    node.chip = isChip;
-    setChipLocal(isChip);
-    node.inheritFormat = inherit;
-    setInheritLocal(inherit);
-    if (!isChip && !inherit) { node.textCase = cs; setTextCaseLocal(cs); }
+    node.pickTextStyle(cs);
+    setChipLocal(node.chip);
+    setInheritLocal(node.inheritFormat);
+    setTextCaseLocal(node.textCase);
     syncNode();
     // Changes the card height, so a docked FC re-centers after layout.
     if (node.hostNodeId) {
