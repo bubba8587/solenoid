@@ -827,6 +827,8 @@ export class PivotNode extends ClassicPreset.Node {
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   sourceColumns: { name: string; type: FrameColType; distinct: string[] }[] = [];
   stringLiterals: Record<string, string> = { rowFields: "", colFields: "", values: "" };
+  _gen?: number;
+  _ref?: FrameRef | null;
   width = 220; height = 300;
 
   constructor(init?: {
@@ -877,8 +879,10 @@ export class PivotNode extends ClassicPreset.Node {
       // A value never takes the async branch, so this result is sync.
       return this.computePivot(f, f, inputs) as { frame: FrameValue | SolError | null };
     }
+    const gen = beginPass(this);
     return (async () => {
       const schema = await collectPreview(f, 0);
+      if (gen !== this._gen) return { frame: null };
       if (schema == null || isSolError(schema)) { this.cachedResult = schema; this.sourceColumns = []; return { frame: schema }; }
       const have = new Set(schema.columns.map((c) => c.name));
       const wanted = new Set<string>();
@@ -886,6 +890,7 @@ export class PivotNode extends ClassicPreset.Node {
       for (const key of ["rowFields", "colFields", "values"] as const) for (const n of (this.stringLiterals[key] ?? "").split(",")) if (have.has(n.trim())) wanted.add(n.trim());
       for (const n of Object.keys(this.filterExclude)) if (have.has(n)) wanted.add(n);
       const cols = await materialize(Promise.all([...wanted].map((n) => readRefColumn(f, n))));
+      if (gen !== this._gen) return { frame: null };
       if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
       const byName = new Map(cols.filter((c): c is FrameColumn => c != null).map((c) => [c.name, c]));
       this.sourceColumns = schema.columns.map((c) => ({ name: c.name, type: c.type, distinct: byName.has(c.name) ? distinctKeys(byName.get(c.name)!.values) : [] }));
