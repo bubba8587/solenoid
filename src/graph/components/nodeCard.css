@@ -1004,6 +1004,24 @@ body.solenoid-scrubbing * {
   -webkit-box-orient: vertical;
 }
 
+/* A small muted word naming the rows under it (Cast's Separators). */
+.solenoid-node__row-caption {
+  margin: 3px 0 1px;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--text-muted);
+}
+/* A separator is one character, so its field is sized for one. */
+.solenoid-node__cast-seps .solenoid-node__quoted--inline,
+.solenoid-node__cast-seps .solenoid-node__quoted-field {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+.solenoid-node__cast-seps .solenoid-node__quoted-input {
+  width: 3ch;
+  text-align: center;
+}
+
 .solenoid-node__dm-caption {
   margin-top: 4px;
   font-size: 10px;

@@ -10,6 +10,8 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 
+const SEPARATOR_KEYS = ["decimal_sep", "group_sep"];
+
 const CAST_TARGET_OPTIONS = (Object.keys(CAST_TARGET_META) as CastTarget[]).map((value) => ({
   value,
   label: CAST_TARGET_META[value].label,
@@ -37,7 +39,13 @@ export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit} className="solenoid-node--cast">
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} keys={Object.keys(data.inputs).filter((k) => !SEPARATOR_KEYS.includes(k))} />
+      {target === "number" && (
+        <div className="solenoid-node__cast-seps">
+          <div className="solenoid-node__row-caption">Separators</div>
+          <InlineInputs node={data} emit={emit} keys={SEPARATOR_KEYS} />
+        </div>
+      )}
       <SegToggle
         value={target}
         options={CAST_TARGET_OPTIONS}
