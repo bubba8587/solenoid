@@ -30,6 +30,7 @@ describe("File Link: which paths run rather than open", () => {
   it("isExecutablePath names the program extensions, case-insensitively, and nothing else", async () => {
     const { isExecutablePath } = await import("../../src/graph/fileBridge");
     for (const p of ["C:\\\\tools\\\\run.EXE", "/tmp/x.bat", "a.lnk", "setup.msi", "s.ps1"]) expect(isExecutablePath(p)).toBe(true);
+    for (const p of ["/home/me/go.sh", "app.desktop", "Tool-x86_64.AppImage", "t.appimage", "Go.command", "setup.run", "fw.bin", "/Applications/X.app", "tool.jar"]) expect(isExecutablePath(p)).toBe(true);
     for (const p of ["notes.md", "C:\\\\data\\\\plan.xlsx", "photo.jpg", "readme"]) expect(isExecutablePath(p)).toBe(false);
   });
 });

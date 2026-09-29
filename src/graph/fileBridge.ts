@@ -341,7 +341,10 @@ export async function pickFileLinkDialog(): Promise<string | null> {
   return typeof res === "string" ? res : null;
 }
 
-const EXECUTABLE_EXT = new Set(["exe", "bat", "cmd", "com", "msi", "ps1", "vbs", "js", "jse", "wsf", "scr", "lnk", "hta", "reg"]);
+const EXECUTABLE_EXT = new Set([
+  "exe", "bat", "cmd", "com", "msi", "ps1", "vbs", "js", "jse", "wsf", "scr", "lnk", "hta", "reg",
+  "sh", "bash", "zsh", "desktop", "appimage", "run", "bin", "command", "app", "jar",
+]);
 
 export function isExecutablePath(path: string): boolean {
   const ext = baseNameOf(path).split(".").pop()?.toLowerCase() ?? "";

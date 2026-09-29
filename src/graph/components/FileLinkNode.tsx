@@ -30,6 +30,8 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
   useEffect(() => { setPath(data.path); }, [data.path]);
   useEffect(() => { setFileName(data.fileName); }, [data.fileName]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
+  const webUrl = useRef<string | null>(null);
+  useEffect(() => () => { if (webUrl.current) URL.revokeObjectURL(webUrl.current); webUrl.current = null; }, [webFile]);
 
   // `p` is "" on web. Writes data.label directly; the title hook resyncs its display off it when not editing.
   function setLink(name: string, p: string) {
@@ -61,7 +63,7 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
 
   function open() {
     if (desktop) { if (path) void openFilePath(path); return; }
-    if (webFile) window.open(URL.createObjectURL(webFile), "_blank", "noopener,noreferrer");
+    if (webFile) window.open((webUrl.current ??= URL.createObjectURL(webFile)), "_blank", "noopener,noreferrer");
   }
 
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
