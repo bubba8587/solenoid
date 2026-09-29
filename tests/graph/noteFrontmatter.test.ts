@@ -229,3 +229,14 @@ describe("a hand-typed number spelling reads as Obsidian types it", () => {
     expect(val("'0b1'")).toBe("0b1");
   });
 });
+
+describe("a bare imaginary unit is text", () => {
+  const field = (y: string) => parseNoteFrontmatter(`---\nk: ${y}\n---\n`).fields[0];
+  it("i, j and -i stay text; a written coefficient is Complex", () => {
+    expect(field("i")).toEqual({ key: "k", value: "i", guessed: "string" });
+    expect(field("j")).toEqual({ key: "k", value: "j", guessed: "string" });
+    expect(field("-i")).toEqual({ key: "k", value: "-i", guessed: "string" });
+    expect(field("3+4i").guessed).toBe("complex");
+    expect(field("2j").guessed).toBe("complex");
+  });
+});

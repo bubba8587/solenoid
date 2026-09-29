@@ -7,7 +7,7 @@ const NUMERIC = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
 export type ScalarKind = "number" | "string" | "logical" | "date" | "complex";
 
-export const isComplexText = (t: string): boolean => /[ij]$/.test(t) && parseCx(t) !== null;
+export const isComplexText = (t: string): boolean => /[ij]$/.test(t) && /\d/.test(t) && parseCx(t) !== null;
 
 export function guessScalarText(text: string): { value: FrontmatterScalar; kind: ScalarKind } {
   const t = text.trim();
