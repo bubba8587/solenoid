@@ -227,11 +227,6 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   return init;
 }
 
-/** A copy of one node as the clipboard would paste it. */
-export function cloneNode(src: ClassicPreset.Node): ClassicPreset.Node | null {
-  return cloneEntry(snapshotEntry(src, 0, 0));
-}
-
 function cloneEntry(e: ClipboardEntry): ClassicPreset.Node | null {
   if (e.sockets) return placeholderFor({ ...e.body, init: structuredClone(e.body.init) }, e.sockets);
   try {

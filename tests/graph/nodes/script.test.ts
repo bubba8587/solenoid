@@ -5,7 +5,8 @@ import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "../../
 import { coerceScriptResult } from "../../../src/graph/nodes/scriptCoerce";
 import { wrapNodeData } from "../../../src/graph/coerceInputs";
 import { isSolError, solError } from "../../../src/graph/errorValue";
-import { extractInit, cloneNode } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/copyPaste";
+import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial } from "../../../src/graph/nodes/dateSerial";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
@@ -249,11 +250,11 @@ describe("persistence", () => {
     expect(Object.keys(back.inputs)).toEqual(["a", "b"]);
   });
 
-  it("a parameter named like an init field keeps both through the clone path", () => {
+  it("a parameter named like an init field keeps both through the paste path", async () => {
     const n = new ScriptNode({ expr: "(label) => label", literals: { label: 7 } });
     n.label = "Mine";
     expect(extractInit(n).label).toBe("Mine");
-    const back = cloneNode(n) as ScriptNode;
+    const back = await pasteCopy(n);
     expect(back.label).toBe("Mine");
     expect(back.literals.label).toBe(7);
   });

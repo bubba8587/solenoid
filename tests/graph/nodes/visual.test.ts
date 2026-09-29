@@ -12,7 +12,8 @@ import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "../../../src/graph/nod
 import type { XYPayload, BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../../../src/graph/chartValue";
 import type { FrameValue, FrameColumn } from "../../../src/graph/frame";
 import { DateInputNode, XYPadNode } from "../../../src/graph/nodes/control";
-import { extractInit, cloneNode } from "../../../src/graph/copyPaste";
+import { extractInit } from "../../../src/graph/copyPaste";
+import { pasteCopy } from "../fixtures/pasteCopy";
 import { jsDateToSerial, parseDate } from "../../../src/graph/nodes/date";
 import type { ChartValue } from "../../../src/graph/chartValue";
 const draw = (n: ChartNode, inputs: Parameters<ChartNode["data"]>[0]) => n.data(inputs) as { chart: ChartValue };
@@ -157,11 +158,11 @@ describe("Surface (3-D plot)", () => {
     expect(new SurfaceNode().data({}).chart).toMatchObject({ op: "surface", payload: { kind: "surface", xs: [], ys: [], z: [] } });
   });
 
-  it("the view angles round-trip through the clone path (rotate buttons persist)", () => {
+  it("the view angles round-trip through the paste path (rotate buttons persist)", async () => {
     const s = new SurfaceNode();
     s.literals.yaw = 135;
     s.literals.pitch = 60;
-    const s2 = cloneNode(s) as SurfaceNode;
+    const s2 = await pasteCopy(s);
     expect(s2.data({}).chart.payload).toMatchObject({ yaw: 135, pitch: 60 });
   });
 });
@@ -299,10 +300,10 @@ describe("control nodes", () => {
     expect(isSolError(amb) && amb.code).toBe("#AMBIGUOUS!");
   });
 
-  it("XY Pad outputs its two fractions and round-trips", () => {
+  it("XY Pad outputs its two fractions and round-trips", async () => {
     const p = new XYPadNode({ fx: 0.25, fy: 0.75 });
     expect(p.data()).toEqual({ x: 0.25, y: 0.75 });
-    const p2 = cloneNode(p) as XYPadNode;
+    const p2 = await pasteCopy(p);
     expect(p2.literals.fx).toBe(0.25);
     expect(p2.literals.fy).toBe(0.75);
   });
@@ -452,9 +453,9 @@ describe("Surface — the 3-D / Flat view toggle (old Contour)", () => {
     expect(n.data({ z: [z] }).chart).toMatchObject({ op: "surface", payload: { kind: "surface", yaw: 45 } });
   });
 
-  it("op round-trips through the clone path with the view's literals", () => {
+  it("op round-trips through the paste path with the view's literals", async () => {
     const n = new SurfaceNode({ op: "contour", levels: 12 });
-    const clone = cloneNode(n) as SurfaceNode;
+    const clone = await pasteCopy(n);
     expect(clone.op).toBe("contour");
     expect(clone.literals.levels).toBe(12);
   });

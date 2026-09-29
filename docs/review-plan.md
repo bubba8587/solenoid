@@ -270,7 +270,7 @@ BOTH parents, i.e. someone typed the resolution:
 | 5ca9413a | `nodes/annotation.ts` | 13 |
 Agent recipe per row: `git show --cc <merge> -- <file>`; then `git log <merge>^1..<merge>^2 -- <file>`
 and the reverse, list each side's INTENT from its commit bodies, and confirm each intent is in HEAD.
-- [x] `copyPaste.ts` (f34bc6a0): checked 2026-09-28, `copySelected` takes `copySet` and snapshots through `snapshotEntry`, and `cloneNode` / placeholder sockets go through both. Was: one side added `copySet` (group members + docked FCs, never a
+- [x] `copyPaste.ts` (f34bc6a0): checked 2026-09-28, `copySelected` takes `copySet` and snapshots through `snapshotEntry`, and placeholder sockets go through both. Was: one side added `copySet` (group members + docked FCs, never a
       boundary marker), the other extracted `snapshotEntry`. Check the merged `copy()` uses
       `copySet` AND `snapshotEntry`, and that 49f8f572 (paste via savedNodeBody) and 88c95dc6
       (placeholder sockets) that came AFTER still go through both. `copyPasteSnapshot.test.ts`.

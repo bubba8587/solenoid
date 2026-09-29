@@ -5,7 +5,7 @@ import {
   parsePoints, pointsToText, curvePoints, monotoneCubic,
   parsePaintGrid, paintGridToText,
 } from "../../../src/graph/nodes/control";
-import { cloneNode } from "../../../src/graph/copyPaste";
+import { pasteCopy } from "../fixtures/pasteCopy";
 
 // The 2026-07-16 draw-your-data controls: Point Plotter / Curve / Grid Painter.
 // Their stored truth is TEXT (pointsText / tableText), so the codecs and the
@@ -70,11 +70,11 @@ describe("PointPlotterNode", () => {
     expect(empty.columns[0].values).toEqual([]);
   });
 
-  it("points + ranges round-trip through the clone path", () => {
+  it("points + ranges round-trip through the paste path", async () => {
     const n = new PointPlotterNode();
     n.pointsText = "1, 2\n3, 4";
     n.literals.xmax = 20;
-    const n2 = cloneNode(n) as PointPlotterNode;
+    const n2 = await pasteCopy(n);
     expect(n2.pointsText).toBe("1, 2\n3, 4");
     expect(n2.literals.xmax).toBe(20);
   });
@@ -101,11 +101,11 @@ describe("CurveNode", () => {
     expect(n.literals.samples).toBe(2); // clamped
   });
 
-  it("round-trips through the clone path", () => {
+  it("round-trips through the paste path", async () => {
     const n = new CurveNode();
     n.pointsText = "0, 1\n0.5, 0\n1, 1";
     n.literals.samples = 8;
-    const n2 = cloneNode(n) as CurveNode;
+    const n2 = await pasteCopy(n);
     expect(n2.pointsText).toBe(n.pointsText);
     expect(n2.literals.samples).toBe(8);
   });
@@ -123,10 +123,10 @@ describe("GridPainterNode", () => {
     expect(parsePaintGrid(text, 1, 1)).toEqual([[1]]);
   });
 
-  it("emits its matrix at the literals' dimensions and round-trips", () => {
+  it("emits its matrix at the literals' dimensions and round-trips", async () => {
     const n = new GridPainterNode({ tableText: "1,,\n,2,", rows: 2, cols: 3 });
     expect(n.data()).toEqual({ result: [[1, null, null], [null, 2, null]] });
-    const n2 = cloneNode(n) as GridPainterNode;
+    const n2 = await pasteCopy(n);
     expect(n2.literals.rows).toBe(2);
     expect(n2.data()).toEqual(n.data());
   });

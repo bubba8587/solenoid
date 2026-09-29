@@ -19,8 +19,7 @@ type AnyNode = Record<string, unknown>;
 function rebuild(n1: ClassicPreset.Node): ClassicPreset.Node {
   const Ctor = n1.constructor as new (init?: Record<string, unknown>) => ClassicPreset.Node;
   const n2 = new Ctor(extractInit(n1));
-  // The load/paste path restores the literal maps after construction
-  // (copyPaste.cloneNode / persistence) — mirror that.
+  // The load and paste paths restore the literal maps after construction; mirror that.
   const a = n1 as unknown as AnyNode, b = n2 as unknown as AnyNode;
   if (a.literals && typeof a.literals === "object") b.literals = { ...(a.literals as object) };
   if (a.stringLiterals && typeof a.stringLiterals === "object") b.stringLiterals = { ...(a.stringLiterals as object) };
