@@ -95,8 +95,8 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     return () => nodeSizeStore.setMin(data.id, undefined);
   }, [data.id, minSize.w, minSize.h]);
 
-  // Only a table, frame or cube scrolls, so only those need the sized-body wheel trap.
-  const scrolls = isTable || isFrame || isCube;
+  // A sized body scrolls whatever overflows it (lists, text, lambda views), so only a figure that scales skips the wheel trap.
+  const figure = isChart || isSvg || isMermaid;
 
   const popKind = popOutKindFor(v);
   const expandBadge = full && popKind !== null
@@ -104,7 +104,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     : undefined;
 
   return (
-    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={!scrolls} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
+    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={figure} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (
