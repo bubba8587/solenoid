@@ -72,6 +72,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 | `size` | `{ w, h }`? | Manual resize from `nodeSizeStore` (the Display resize grip, [[resizable-content-nodes]]), rounded. |
 | `collapsed` | `true`? | The card body is collapsed (`collapseStore`). Distinct from `init.collapsed`, which is a Group's own field. |
 | `flipped` | `true`? | Sockets mirrored left and right (`socketFlipStore`). |
+| `sections` | `{ [label]: boolean }`? | The card's `CardSection`s the user folded (`false`) or opened (`true`) by hand, keyed by section label (`sectionFoldStore`). A section with no entry follows its own default. |
 
 ### `SavedConnection`
 
@@ -85,7 +86,7 @@ Seed files in `src/graph/seedGraphs/*.json` are `SavedGraph` objects plus menu-o
 
 Groups are not a side table. A Group is an ordinary node (`GroupNode`) whose `init.members` lists member node ids; group membership in the live model is rebuilt from those lists on load.
 
-A Composite's subgraph is not a side table either. It rides inside the Composite's `init.internal` as `{ nodes: [{ id, type, init, literals?, stringLiterals?, size?, collapsed?, flipped?, x?, y? }], connections: [...], standoffs?, pins?, comments?, frameFormats? }` (a main-canvas node without `name`, and the four node-keyed side tables holding its inner cards' entries), alongside `init.inputPorts` and `init.outputPorts` (each port names the internal boundary marker it feeds by `internalNodeId`). Internal ids are saved ids that survive a round trip ([[composite-nodes]]); the text form does not translate them. The top-level `standoffs`, `pins`, `comments` and `frameFormats` hold only main-canvas cards' entries, so each entry lives in exactly one place: the graph that holds its node (`SideTables`, `savedNodeBody.ts`).
+A Composite's subgraph is not a side table either. It rides inside the Composite's `init.internal` as `{ nodes: [{ id, type, init, literals?, stringLiterals?, size?, collapsed?, flipped?, sections?, x?, y? }], connections: [...], standoffs?, pins?, comments?, frameFormats? }` (a main-canvas node without `name`, and the four node-keyed side tables holding its inner cards' entries), alongside `init.inputPorts` and `init.outputPorts` (each port names the internal boundary marker it feeds by `internalNodeId`). Internal ids are saved ids that survive a round trip ([[composite-nodes]]); the text form does not translate them. The top-level `standoffs`, `pins`, `comments` and `frameFormats` hold only main-canvas cards' entries, so each entry lives in exactly one place: the graph that holds its node (`SideTables`, `savedNodeBody.ts`).
 
 ## Capturing a node's `init`
 
@@ -131,7 +132,7 @@ Table Input and the paint grid store the raw typed text (`tableText`) as the sav
 
 `serializeGraph()` always reads the main graph through `getEditor()` and `getView()`, never the surface a Composite drill-in has made active ([[#Saving binds the main graph]]). It returns `null` when no editor exists. Otherwise it returns `readTextForm(writeTextForm(raw))` ([[#Every save passes through the text form]]), where `raw` is built by `buildRawSavedGraph`:
 
-- One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed` and `flipped` come from their stores.
+- One `SavedNode` per editor node, in editor order. `name` comes from `nodeNameStore.ensure`, which assigns a default name if the node has none. `x` and `y` are the view position, rounded. `literals` and `stringLiterals` are copied when the node declares them (even when empty). `size`, `collapsed`, `flipped` and `sections` come from their stores.
 - A `PlaceholderNode` is written as the node it stands for: `type` is its `missingType`, `init` is a copy of its `savedInit`, and its saved literal maps are copied back ([[C35]] unknownViaPlaceholder).
 - `connections` from the editor, then `standoffs`, `pins`, `comments`, `frameFormats` from their stores, keeping the entries whose nodes are all in the main editor (`savedSideTables`, which a composite's `snapshotInternal` also runs over its internal editor), `drawnCables` from its store, `palette`, `reportPalette`, `meta` from their stores, and `packs` from the active pack set. Empty lists are omitted.
 
@@ -197,7 +198,7 @@ The text form carries no `id`: on read, each node's `id` is its name.
 | Key | Content |
 |---|---|
 | `v` | The version. Read back as `CURRENT_SAVE_VERSION` when absent. |
-| `positions` | Object keyed by name, in line order: `{ x, y, size?, collapsed?, flipped? }`. A node missing here reads at `(0, 0)`. |
+| `positions` | Object keyed by name, in line order: `{ x, y, size?, collapsed?, flipped?, sections? }`. A node missing here reads at `(0, 0)`. |
 | `standoffs` | As saved, with both `nodeId`s as names. |
 | `drawnCables` | As saved (no node references). |
 | `pins` | `{ nodeId, outputKey }` with `nodeId` as a name. |
@@ -292,7 +293,7 @@ There is no migration in either direction ([[B7]] preAlphaBreakFreely). A change
    - Unknown type: `new PlaceholderNode({ missingType, savedInit, savedLiterals, savedStringLiterals, inputKeys, outputKeys, label })`, where `label` is `init.label` when it is a string, else the type.
    - Record `savedId → freshId`. rete mints a fresh random id for every node, so saved ids never survive a load.
    - `nodeNameStore.claim(freshId, name, type)`: a valid, unclaimed saved name is kept (and bumps that prefix's counter past it); otherwise a default name is assigned.
-   - Restore `size`, `collapsed` and `flipped` into their stores.
+   - Restore `size`, `collapsed`, `flipped` and `sections` into their stores.
 6. **Add and position** the nodes to the editor in concurrent batches of 24.
 7. **Remap references** (`remapNodeRefs`) on every constructed node through the id map: `hostNodeId`; `members`, dropping any id that does not resolve to a live node; each Presentation step's `nodeIds`, likewise filtered. A Placeholder's `savedInit` (a copy of the saved `init`) is remapped the same way, so its references follow a rename of the node they name to the next save. The remap never writes into the `SavedGraph` it loads from, which may be a library document or a seed that loads again.
 8. **Reconnect**, in save order. A connection whose source or target does not resolve is skipped. A connection the editor refuses (incompatible sockets, duplicate) is skipped silently. Each successful connection fires `connectioncreated`.

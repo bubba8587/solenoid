@@ -4,6 +4,7 @@ import { extractInit } from "./copyPaste";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { collapseStore } from "./collapseStore";
 import { socketFlipStore } from "./socketFlipStore";
+import { sectionFoldStore } from "./sectionFoldStore";
 import { PlaceholderNode } from "./nodes/placeholder";
 import { standoffStore, type StandoffEnd } from "./standoffs";
 import { pinStore, type Pin } from "./pinStore";
@@ -19,6 +20,8 @@ export interface SavedNodeBody {
   size?: { w: number; h: number };
   collapsed?: boolean;
   flipped?: boolean;
+  // CardSections folded or opened by hand, by label; true is open.
+  sections?: Record<string, boolean>;
 }
 
 export function savedNodeBody(n: ClassicPreset.Node): SavedNodeBody {
@@ -33,14 +36,17 @@ export function savedNodeBody(n: ClassicPreset.Node): SavedNodeBody {
   if (sz) body.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
   if (collapseStore.get(n.id)) body.collapsed = true;
   if (socketFlipStore.get(n.id)) body.flipped = true;
+  const sections = sectionFoldStore.all(n.id);
+  if (sections && Object.keys(sections).length > 0) body.sections = { ...sections };
   return body;
 }
 
 /** The load half: the card state a saved body carries, written back onto the live node's stores. */
-export function restoreNodeState(liveId: string, sn: Pick<SavedNodeBody, "size" | "collapsed" | "flipped">): void {
+export function restoreNodeState(liveId: string, sn: Pick<SavedNodeBody, "size" | "collapsed" | "flipped" | "sections">): void {
   if (sn.size) nodeSizeStore.set(liveId, { ...sn.size });
   if (sn.collapsed) collapseStore.set(liveId, true);
   if (sn.flipped) socketFlipStore.set(liveId, true);
+  if (sn.sections) sectionFoldStore.setAll(liveId, sn.sections);
 }
 
 /** An arrangement constraint between two nodes of one canvas ([[standoffs]]). */

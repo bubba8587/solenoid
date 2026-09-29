@@ -389,3 +389,20 @@ describe("per-node flipped state (socketFlipStore)", () => {
     expect(text2).toBe(text1);
   });
 });
+
+describe("per-node section folds (sectionFoldStore)", () => {
+  const g: SavedGraph = {
+    v: 2,
+    nodes: [
+      { id: "c", type: "CastNode", name: "C", x: 0, y: 0, init: {}, sections: { Separators: false } },
+      { id: "e", type: "DisplayNode", name: "E", x: 40, y: 0, init: {} },
+    ],
+    connections: [],
+  };
+
+  it("round-trips a hand fold through the text form, and a node never touched carries none", () => {
+    const reloaded = readTextForm(writeTextForm(g));
+    expect(reloaded.nodes.find((n) => n.name === "C")?.sections).toEqual({ Separators: false });
+    expect(reloaded.nodes.find((n) => n.name === "E")?.sections).toBeUndefined();
+  });
+});

@@ -1,6 +1,9 @@
 // [[B14]] oneDesignSystem (DESIGN.md § Card sections)
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { bumpConnectionVersion } from "../graphSignals";
+import { sectionFoldStore } from "../sectionFoldStore";
+import { scheduleAutosave } from "../persistence";
+import { useHostNodeId } from "./nodeContext";
 import { ChevronDownIcon, ChevronRightIcon } from "./Icons";
 import "./nodeCard.css";
 
@@ -15,7 +18,16 @@ export function CardSection({ label, title, collapsible, defaultOpen = true, pin
   className?: string;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  // A hand fold or open is saved with the document; until then the section follows defaultOpen.
+  const nodeId = useHostNodeId();
+  const saved = useSyncExternalStore(sectionFoldStore.subscribe, () => (nodeId ? sectionFoldStore.get(nodeId, label) : undefined));
+  const [local, setLocal] = useState<boolean | undefined>(undefined);
+  const open = (nodeId ? saved : local) ?? defaultOpen;
+  const setOpen = (next: boolean) => {
+    if (!nodeId) { setLocal(next); return; }
+    sectionFoldStore.set(nodeId, label, next);
+    scheduleAutosave();
+  };
   const foldable = !!collapsible && !pinnedOpen;
   const mounted = useRef(false);
   useEffect(() => {

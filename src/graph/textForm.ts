@@ -199,14 +199,15 @@ export function writeTextForm(g: SavedGraph): string {
   }
 
   // No prototype, so a node named `__proto__` is an ordinary key.
-  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean }> = Object.create(null);
+  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean; sections?: Record<string, boolean> }> = Object.create(null);
   for (const id of order) {
     const sn = byId.get(id);
     if (!sn) continue;
-    const p: { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean } = { x: sn.x, y: sn.y };
+    const p: { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean; sections?: Record<string, boolean> } = { x: sn.x, y: sn.y };
     if (sn.size) p.size = { w: sn.size.w, h: sn.size.h };
     if (sn.collapsed) p.collapsed = true;
     if (sn.flipped) p.flipped = true;
+    if (sn.sections) p.sections = { ...sn.sections };
     positions[nameOf(id)] = p;
   }
 
@@ -268,7 +269,7 @@ export function readTextForm(text: string): SavedGraph {
 
   const nodes: SavedNode[] = parsed.map((p) => {
     const own = sidecar.positions && typeof sidecar.positions === "object" && Object.prototype.hasOwnProperty.call(sidecar.positions, p.name);
-    const pos = (own ? sidecar.positions[p.name] : { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean };
+    const pos = (own ? sidecar.positions[p.name] : { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean; sections?: Record<string, boolean> };
     const sn: SavedNode = {
       id: p.name,
       type: p.type,
@@ -282,6 +283,7 @@ export function readTextForm(text: string): SavedGraph {
     if (pos.size) sn.size = pos.size;
     if (pos.collapsed) sn.collapsed = true;
     if (pos.flipped) sn.flipped = true;
+    if (pos.sections && typeof pos.sections === "object") sn.sections = { ...pos.sections };
     return sn;
   });
 
