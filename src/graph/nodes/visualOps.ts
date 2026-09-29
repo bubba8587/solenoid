@@ -21,6 +21,7 @@ export function binCountError(k: number): SolError | null {
   return !Number.isFinite(k) || Math.floor(k) < 1 ? solError("#DOMAIN!", "Bins must be 1 or more") : null;
 }
 
+/** `counts[yBin][xBin]`: a row per y bin, the app's grid convention. */
 export type Histogram2d = { counts: number[][]; xEdges: number[]; yEdges: number[] };
 
 export function histogram2d(xs: readonly unknown[], ys: readonly unknown[], kx: number, ky: number): Histogram2d | SolError | null {
@@ -38,8 +39,8 @@ export function histogram2d(xs: readonly unknown[], ys: readonly unknown[], kx: 
     return min === max ? { edges: [min], idx: () => 0 } : equalWidthBins(min, max, clamp(Math.floor(k), 1, 100));
   };
   const ax = axis(px, kx), ay = axis(py, ky);
-  const counts = Array.from({ length: ax.edges.length }, () => new Array<number>(ay.edges.length).fill(0));
-  for (let i = 0; i < px.length; i++) counts[ax.idx(px[i])][ay.idx(py[i])]++;
+  const counts = Array.from({ length: ay.edges.length }, () => new Array<number>(ax.edges.length).fill(0));
+  for (let i = 0; i < px.length; i++) counts[ay.idx(py[i])][ax.idx(px[i])]++;
   return { counts, xEdges: ax.edges, yEdges: ay.edges };
 }
 

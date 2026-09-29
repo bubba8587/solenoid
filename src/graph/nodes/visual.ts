@@ -418,8 +418,7 @@ export class HistogramNode extends ClassicPreset.Node {
       const h = histogram2d(xs, ys, kx, ky);
       this.cachedResult = null;
       if (isSolError(h)) { this.cachedChart = null; return { chart: h }; }
-      const z = h ? h.yEdges.map((_, j) => h.counts.map((col) => col[j])) : [];
-      const payload: ContourPayload = { kind: "contour", xs: h?.xEdges ?? [], ys: h?.yEdges ?? [], z, levels: 10 };
+      const payload: ContourPayload = { kind: "contour", xs: h?.xEdges ?? [], ys: h?.yEdges ?? [], z: h?.counts ?? [], levels: 10 };
       const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: this.chartOptions, title };
       this.cachedChart = h ? chart : null;
       return { chart };

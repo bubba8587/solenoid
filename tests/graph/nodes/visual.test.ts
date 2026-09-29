@@ -229,7 +229,7 @@ describe("histogramBins", () => {
   it("a value on a bin's lower edge lands in that bin, however the division rounds", () => {
     const w = 0.3 / 7;
     expect(histogramBins([0, 3 * w, 6 * w, 0.3], 7)).toEqual([1, 0, 0, 1, 0, 0, 2]);
-    expect((histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1) as Histogram2d).counts.map((c) => c[0])).toEqual([1, 0, 0, 1, 0, 0, 1]);
+    expect((histogram2d([0, 3 * w, 0.3], [0, 0, 0.3], 7, 1) as Histogram2d).counts[0]).toEqual([1, 0, 0, 1, 0, 0, 1]);
   });
 
   it("a large series doesn't RangeError (iterMin/iterMax, not Math.min/max spread)", () => {
@@ -244,10 +244,10 @@ describe("histogramBins", () => {
 });
 
 describe("histogram2d (numpy histogram2d)", () => {
-  it("tallies paired samples into an x-bin × y-bin grid; last edge inclusive", () => {
+  it("tallies paired samples into a y-bin × x-bin grid; last edge inclusive", () => {
     // A 2×2 grid over [0,2]×[0,2]: (0,0) low-low, (1,1)+(2,2) hit the closed upper bin.
     const h = histogram2d([0, 1, 2, 0], [0, 1, 2, 2], 2, 2) as Histogram2d;
-    expect(h.counts).toEqual([[1, 1], [0, 2]]); // counts[xBin][yBin]
+    expect(h.counts).toEqual([[1, 0], [1, 2]]); // counts[yBin][xBin]
     expect(h.xEdges).toEqual([0, 1]);
     expect(h.yEdges).toEqual([0, 1]);
   });
@@ -261,7 +261,7 @@ describe("histogram2d (numpy histogram2d)", () => {
   it("an axis whose values are all equal collapses to one bin (single-spike rule)", () => {
     const h = histogram2d([5, 5, 5], [0, 1, 2], 4, 2) as Histogram2d;
     expect(h.xEdges).toHaveLength(1); // x collapsed
-    expect(h.counts).toEqual([[1, 2]]); // one x row; y=0 → bin 0, y=1 and y=2 → the closed bin 1
+    expect(h.counts).toEqual([[1], [2]]); // one x column; y=0 → bin 0, y=1 and y=2 → the closed bin 1
   });
 
   it("0, negative or non-numeric bins are #DOMAIN!, as in 1-D mode", async () => {
@@ -285,6 +285,17 @@ describe("histogram2d (numpy histogram2d)", () => {
     expect([n.inputs.values?.label, n.inputs.bins?.label]).toEqual([fresh.inputs.values?.label, fresh.inputs.bins?.label]);
     n.setMode("1d");
     expect([n.inputs.values?.label, n.inputs.bins?.label]).toEqual(["Values", "Bins"]);
+  });
+
+  it("HISTOGRAM2D answers the grid the node draws: a row per y bin", async () => {
+    const { resolveExcelFunction } = await import("../../../src/graph/excelFunctions");
+    const xs = [0, 1, 2, 0, 2], ys = [0, 0, 0, 3, 3];
+    const f = resolveExcelFunction("HISTOGRAM2D")!(xs, ys, 3, 2);
+    expect(f).toEqual([[1, 1, 1], [1, 0, 1]]);
+    const n = new HistogramNode();
+    n.setMode("2d");
+    const chart = n.data({ values: [xs], y: [ys], bins: [3], ybins: [2] }).chart as ChartValue;
+    expect((chart.payload as { z: number[][] }).z).toEqual(f);
   });
 
   it("no finite pair → null", () => {
