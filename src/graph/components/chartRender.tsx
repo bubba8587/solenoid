@@ -1,9 +1,9 @@
 // [[C100]] chartIsAValue
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
-import { useState, type SyntheticEvent, type ComponentProps } from "react";
+import { type SyntheticEvent, type ComponentProps } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
-import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, niceTicks, partSlices, type ChartShape } from "./chartCore";
+import { useChartColors, useSeriesColors, axisTick, compactTick, valueAxisWidth, niceTicks, partSlices, useSeriesSpotlight, type ChartShape } from "./chartCore";
 import type { ChartOptions, LineStyle } from "../nodes/chartOptions";
 import type { OverlayPayload, XYPayload, XYPoint } from "../chartValue";
 import { heightRampColor } from "../palette";
@@ -325,8 +325,7 @@ export function MultiSeriesView({
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
   const paint = (j: number) => colors[j % colors.length];
-  const [focus, setFocus] = useState<number | null>(null);
-  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
+  const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   const xLabel = axes && opts?.xlabel
@@ -367,7 +366,7 @@ export function MultiSeriesView({
       series={series} paint={paint} dim={dim} fs={fs} color={axis}
       insetLeft={legendInsetLeft} insetRight={op === "radar" ? 0 : margin.right}
       isLine={() => op === "line"}
-      onPick={(j) => setFocus((f) => (f === j ? null : j))}
+      onPick={pick}
     />
   );
   const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
@@ -450,8 +449,7 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
   const series = payload.series;
   const labels = payload.labels;
   const paint = (j: number) => series[j]?.color || colors[j % colors.length];
-  const [focus, setFocus] = useState<number | null>(null);
-  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
+  const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -483,7 +481,7 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
       series={series} paint={paint} dim={dim} fs={fs} color={axis}
       insetLeft={yAxisW} insetRight={margin.right}
       isLine={(j) => series[j]?.kind === "line"}
-      onPick={(j) => setFocus((f) => (f === j ? null : j))}
+      onPick={pick}
     />
   );
   const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
@@ -671,11 +669,10 @@ export function XYView({ payload, width, height, opts, fontScale }: {
 }) {
   const { grid, axis, viz } = useChartColors();
   const colors = useSeriesColors();
-  const [focus, setFocus] = useState<number | null>(null);
-  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   const { series, xcats, names } = payload;
+  const { dim, pick } = useSeriesSpotlight(series.map((s) => s.name));
   const multi = series.length > 1;
   const paint = (j: number) => series[j]?.color || (multi ? colors[j % colors.length] : opts?.color || viz);
   const pts = series.flatMap((s) => s.points.filter((p): p is XYPoint => p !== null));
@@ -798,7 +795,7 @@ export function XYView({ payload, width, height, opts, fontScale }: {
         <SeriesLegend
           series={series} paint={paint} dim={dim} fs={fs} color={axis}
           insetLeft={yAxisW} insetRight={margin.right} isLine={() => series.some((s) => s.line !== "none")}
-          onPick={(j) => setFocus((f) => (f === j ? null : j))}
+          onPick={pick}
         />
       )}
       {catLegend && (

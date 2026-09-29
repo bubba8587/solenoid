@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull
 // Must stay recharts-free: a helper imported from here must not drag recharts into the main bundle.
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, type PaletteSlot } from "../palette";
 
@@ -30,6 +30,27 @@ export function useChartColors() {
 export function useSeriesColors(): string[] {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   return SERIES_SLOTS.map((slot) => resolveColor(slot));
+}
+
+export type SeriesSpotlight = { index: number; name: string } | null;
+
+/** The series a legend spotlight picks out now: the picked slot while it still holds the picked name, else the one
+ *  series still wearing that name, else none. */
+export function spotlightIndex(focus: SeriesSpotlight, names: readonly string[]): number | null {
+  if (!focus) return null;
+  if (names[focus.index] === focus.name) return focus.index;
+  const at = names.indexOf(focus.name);
+  return at >= 0 && names.lastIndexOf(focus.name) === at ? at : null;
+}
+
+/** A legend click spotlights a series (a second click clears it); `dim(j)` is series j's opacity. */
+export function useSeriesSpotlight(names: readonly string[]) {
+  const [focus, setFocus] = useState<SeriesSpotlight>(null);
+  const on = spotlightIndex(focus, names);
+  return {
+    dim: (j: number) => (on !== null && on !== j ? 0.18 : 1),
+    pick: (j: number) => setFocus(on === j ? null : { index: j, name: names[j] ?? "" }),
+  };
 }
 
 export function axisTick(n: number): string {

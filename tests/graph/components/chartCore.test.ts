@@ -1,6 +1,6 @@
 // [[C100]] chartIsAValue, [[B2]] webTryDesktopFull, [[C24]]
 import { describe, it, expect } from "vitest";
-import { axisTick, compactTick, valueAxisWidth, toSeries, partSlices } from "../../../src/graph/components/chartCore";
+import { axisTick, compactTick, valueAxisWidth, toSeries, partSlices, spotlightIndex } from "../../../src/graph/components/chartCore";
 import { solError } from "../../../src/graph/errorValue";
 
 describe("axisTick", () => {
@@ -82,5 +82,20 @@ describe("partSlices", () => {
 
   it("leaves an axis figure's series whole", () => {
     expect(partSlices("column", toSeries([10, -5]))).toEqual([{ i: 0, v: 10 }, { i: 1, v: -5 }]);
+  });
+});
+
+describe("spotlightIndex", () => {
+  it("keeps the picked series while it holds its slot", () => {
+    expect(spotlightIndex({ index: 1, name: "b" }, ["a", "b", "c"])).toBe(1);
+  });
+  it("follows the picked name when the series reorder", () => {
+    expect(spotlightIndex({ index: 2, name: "c" }, ["c", "a", "b"])).toBe(0);
+  });
+  it("drops a spotlight whose series is gone, so nothing dims", () => {
+    expect(spotlightIndex({ index: 2, name: "c" }, ["a", "b"])).toBeNull();
+  });
+  it("drops a moved spotlight whose name is ambiguous", () => {
+    expect(spotlightIndex({ index: 2, name: "" }, ["", ""])).toBeNull();
   });
 });
