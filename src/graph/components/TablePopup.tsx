@@ -105,6 +105,11 @@ function dateCellToISO(raw: string): string {
   return Number.isFinite(serial) && serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
 }
 
+/** The cells a text edit suggests from: a list's items (its grid is one row), else column c. */
+export function suggestionCells(grid: string[][], c: number, list: boolean): string[] {
+  return list ? (grid[0] ?? []) : grid.map((r) => r[c]);
+}
+
 function colLabel(i: number): string {
   let s = "";
   for (let n = i; n >= 0; n = Math.floor(n / 26) - 1) s = String.fromCharCode(65 + (n % 26)) + s;
@@ -440,7 +445,7 @@ export function TablePopup() {
   const ec = editCell?.c;
   if (ec !== undefined && ec >= 0 && ec < viewCols && (vertical ? cellType : colTypeAt(ec)) === "string") {
     const hit = distinctMemo.current;
-    const values = hit && hit.grid === grid && hit.c === ec ? hit.values : distinctColumnValues(grid.map((r) => r[ec]), isErrCode);
+    const values = hit && hit.grid === grid && hit.c === ec ? hit.values : distinctColumnValues(suggestionCells(grid, ec, !!state.list), isErrCode);
     distinctMemo.current = { grid, c: ec, values };
     textColDistinct.set(ec, values);
   }
