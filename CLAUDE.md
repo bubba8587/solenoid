@@ -20,6 +20,8 @@ push included (author 2026-09-22); from a cloud session the tag push fails, so t
 merges, bumps and stops. Installers build path-stripped via `npm run release:desktop`.
 
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
+**Standing until ~2026-10-21 (author 2026-09-29): it is the Vercel preview of `develop`. Don't ask.**
+After that date, ask again and delete this line.
 - **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — the author
   verifies via HMR; hold pushes until told otherwise.
 - **Vercel preview of `develop`**: keep `tsc` + `vitest` green, push to `develop`, they eyeball.
