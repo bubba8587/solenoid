@@ -244,6 +244,11 @@ describe("mdbase validation (Write Properties, item B)", () => {
     expect(validateAgainst(3, sch.constraints.priority)).toBeNull();
     expect(validateAgainst("x", sch.constraints.priority)).toMatch(/must be a number/);
   });
+
+  it("an integer property refuses a fraction; a plain number property takes one", () => {
+    expect(validateAgainst(2.5, sch.constraints.priority)).toBe("must be a whole number");
+    expect(validateAgainst(1850.5, sch.constraints.budget)).toBeNull();
+  });
 })
 
 describe("review pins: path_glob `?`", () => {

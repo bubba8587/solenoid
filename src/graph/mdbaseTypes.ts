@@ -4,6 +4,7 @@ import { type TypeHint, type TypeMap, type ScalarKind } from "./vaultTypes";
 
 export interface PropConstraint {
   kind: ScalarKind | "list" | "frame";
+  integer?: boolean;
   enum?: (string | number)[];
   min?: number;
   max?: number;
@@ -54,6 +55,7 @@ function propConstraint(schema: unknown): PropConstraint | null {
   if (!hint || hint.kind === "matrix" || !isRecord(schema)) return null;
   const kind = hint.kind;
   const c: PropConstraint = { kind };
+  if (schema.type === "integer") c.integer = true;
   if (Array.isArray(schema.enum)) {
     c.enum = schema.enum.filter((v): v is string | number => typeof v === "string" || typeof v === "number");
   }
@@ -143,6 +145,7 @@ export function validateAgainst(value: unknown, c: PropConstraint): string | nul
   if (value === null || value === undefined) return null;
   if (c.kind === "number") {
     if (typeof value !== "number") return "must be a number";
+    if (c.integer && !Number.isInteger(value)) return "must be a whole number";
     if (c.min !== undefined && value < c.min) return `must be at least ${c.min}`;
     if (c.max !== undefined && value > c.max) return `must be at most ${c.max}`;
   }
