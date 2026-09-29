@@ -135,7 +135,7 @@ describe("run-graph --vault", () => {
     expect(after).toContain("dateModified: 2020-01-02T03:04:05");
   }, 30_000);
 
-  it("--run a Write Properties over the vault writes current scalar values back with no byte change", async () => {
+  it("--run a Write Properties over the vault leaves current values byte-identical and writes a new key", async () => {
     tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
     cpSync(DEMO, tmp, { recursive: true });
     const noteRel = path.join("Projects", "Kitchen remodel.md");
@@ -152,5 +152,15 @@ describe("run-graph --vault", () => {
     expect(readFileSync(path.join(tmp, noteRel), "utf8")).toBe(before); // wiring never writes
     await runGraph(graph, { vault: tmp, run: "Sync status" });
     expect(readFileSync(path.join(tmp, noteRel), "utf8")).toBe(before); // current value → unchanged
+
+    // A key the notes lack is a real change, so Run must write it.
+    const adding = {
+      nodes: [graph.nodes[0], { id: "w", type: "WriteObsidianNode", init: { label: "Add folder", target: "properties", addMissing: true }, stringLiterals: { keys: "folder" } }],
+      connections: graph.connections,
+    };
+    await runGraph(adding, { vault: tmp, run: "Add folder" });
+    const after = readFileSync(path.join(tmp, noteRel), "utf8");
+    expect(after).toContain("folder: Projects\n");
+    expect(after.replace("folder: Projects\n", "")).toBe(before);
   }, 30_000);
 });
