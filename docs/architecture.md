@@ -270,6 +270,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `drawnCables.ts`, `drawnCablePath.ts` (+`.test.ts`), `components/DrawnCableLayer.tsx` + `DrawnCableCapture.tsx` + `DrawnCableInspector.tsx` | Free-drawn annotation curves: the store + draw-mode store, the pure span-chaining geometry over `getCablePath`, the world-space layer ABOVE the graph, the armed tool's capture sheet, and the selected cable's shape / ends / width / head / color panel |
 | `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateOverlaps` and `separateAll`, a `computeExpandPush` NaN fuzz, `distributeDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule. `alignDeltas` is pinned per arm in `selectionOps.test.ts`; ELK Tidy integration lives in `tidyArrangeGroups.test.ts` |
 | `lasso.ts`, `canvasLock.ts`, `nodeSizeStore.ts`, `collapseStore.ts`, `dockedNodeStore.ts` | Box-select, lock, per-node size/collapse, FC docking |
+| `sectionFoldStore.ts`, `cableEndMotion.ts` | A card section's saved hand fold (per node and label, the save's `sections`); the transient cable ends a fold's liquid carries |
 | `selectionOps.ts` + `components/SelectionActionsBar.tsx`/`selectionActions.css` | Align/distribute deltas (pure) + the bottom-center overlay pill (≥2 nodes selected) that surfaces them outside the Command Palette |
 | `calcModeStore.ts` | Manual/automatic calculation mode + the dirty flag (`processGraph` short-circuits in manual; F9/Calculate Now forces) — persisted like Excel's per-workbook flag |
 | `computeOverlayStore.ts` + `components/ComputeOverlay.tsx` | Deferred "Computing…" curtain over an irreducibly heavy pass (150 ms reveal / 350 ms min) |
@@ -396,7 +397,8 @@ OpSelect, InlineOutputRows), `NodeCard.tsx`, `NodeSocket.tsx`
 (MeasuredSocketRow), `SocketComponent.tsx`, `inlineInput.tsx`,
 `ExtensibleInputs.tsx` (flat variadic value rows, optional fixed `leadingKeys`),
 `PairedExtensibleInputs.tsx` (variadic input PAIRS — IFS/SWITCH — with optional
-fixed leading/trailing rows), `ArrayChip` / `TablePopup` (+ `TableCards`, its Cards view,
+fixed leading/trailing rows), `CardSection.tsx` (a captioned, optionally folding run of rows; its liquid fold is
+`SocketGoo.tsx`), `CardOpenButton.tsx` (an input card's Edit Frame / Edit Table), `ArrayChip` / `TablePopup` (+ `TableCards`, its Cards view,
 planned by `cardLayout.ts`) / `FormulaPopup` (+ `popupChrome.css`), `FrameChip` / `FrameDisplay`, `SegToggle`, `SwatchGrid`, `PaletteEditor`
 (F-1 app custom-palette editor, Settings-only), `DocumentProperties` (F-2
 doc metadata + per-doc palette base modal), `ResizeHandle`, `RecalcButton`.

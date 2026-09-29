@@ -6,7 +6,7 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-09-29b: ROW(), the shape model, one text reading and number display, Cast, palette follow-ups, type icons; cloud session)
+### SESSION DIGEST (2026-09-29b: ROW(), the shape model, one text reading and number display, Cast, palette follow-ups, type icons, card sections and the liquid fold; cloud session)
 
 - **`ROW()` replaces the bare `row`/`rows` names; a computed column's whole column is a one-column table**
   ([[C22]] rowFormulaRefs, [[C14]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
@@ -39,12 +39,23 @@ specific item.
   palette; the Sparkline node's line and columns paint gold.
 - **Type icons** (DESIGN.md § Type icons): every type segment, column type button, the (i) legend and the Pivot
   chips draw `TypeIcon` (`#`, `Aa`, calendar, checkbox, double-struck C) instead of words or `T`/`D`/`B`.
-- **Card sections and the input card's Open** (DESIGN.md § Card sections, § Buttons): `CardSection` captions a run of
-  rows and can fold them (Cast's Separators, Frame Input's Advanced holding Add LAMBDA and Form Layout; Decision
-  Matrix's captions moved onto it). A sweep added folds to XLOOKUP (Options) and Schedule, Gantt and Earned Value
-  (Calendar; Schedule's Rules) and plain captions to Join, Reconcile and Chart Builder's unused options; a folded
-  section with a wired socket tucks it onto the caption behind a pill, and a hand fold saves (`sections`). Frame Input and Table Input open with a full-accent Edit Frame / Edit Table
-  button (`NodeCard` now publishes `--node-accent-ink`).
+- **Card sections** (DESIGN.md § Card sections; `CardSection.tsx`, `sectionFoldStore`): a caption over
+  a run of rows, folding when the rows are secondary: Cast's Separators, Frame Input's Advanced (λ inputs, Form
+  Layout), XLOOKUP's Options, the Calendar of Schedule, Gantt and Earned Value, Schedule's Rules. Plain captions on
+  Join (Keys), Reconcile (Columns), Decision Matrix and Chart Builder's "Not used by …". A section opens by default
+  when anything inside is set away from the node's seeded literals or wired; a hand fold saves (a node's `sections`,
+  text form included). Folded, wired sockets tuck onto the caption behind a pill that replaces the chevron and
+  reopens the section; the chevron hangs in the body's left margin so caption text stays aligned.
+- **The fold is liquid** (`SocketGoo.tsx`): a gooey SVG filter fuses the dots into the pill and buds them back off,
+  with each type's ring traced on every neck (a ring-shade layer under the fill layer cut 2px in on the same
+  field), and each wired cable rides its drop (`cableEndMotion.ts`, the second frame-rate store). The click pins
+  the cable ends so no frame shows them at a moved socket. Reduced motion skips it.
+- **Ring shades:** the collapsed input pill and a collapsed group's pills took the translucent global
+  `--socket-ring`; they now use the fill's own ring shade (`socketRingVar`), like socket dots.
+- **Input cards open first-class:** Frame Input and Table Input carry an Edit Frame / Edit Table button, two thirds
+  wide in the card's full accent and its ink (`NodeCard` now publishes `--node-accent-ink`), sharing the chip's
+  opener (`openFrameChipPopup`).
+- **A collapsed table card centers its chip:** the chip row's inline spacing beat the collapsed rule; it moved to CSS.
 - **The Table popup asks before dropping edits** (`tree/specs/documents/table-popup.md` § Closing): a close with
   unsaved edits raises Save your changes? (Discard / Keep Editing / Save) inside the popup. `shot-graph` gained
   `--click-edge` to press a popup's overlay outside the card.
@@ -59,7 +70,8 @@ specific item.
 - **CI:** four pack formulas lacked `orient`; `vectorOrient.test.ts` now loads the packs itself, so the check no
   longer depends on test order.
 - **Left for the author:** ratify D85, D93, D94, D95 and the amended C14, C22, D81, D82, D90; re-film the demo
-  video; decide whether `Aa` meaning both Text and Filter's match case is a problem.
+  video; decide whether `Aa` meaning both Text and Filter's match case is a problem; eyeball the liquid fold at
+  real speed (light theme, a card inside a group, mixed socket types).
 
 ### SESSION DIGEST (2026-09-29: column name suggestions for the Decision Matrix flow; cloud session)
 

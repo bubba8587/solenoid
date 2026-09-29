@@ -181,6 +181,10 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   author the accents in `color(display-p3 …)` with sRGB fallbacks so managed engines on P3 panels get the vivid
   version too (DESIGN.md § 2; `palette.ts` derives siblings in HSV from hex, so this is not a token swap).
 
+- [ ] **Card sections: open calls** (DESIGN.md § Card sections). Write to Obsidian was left without sections (its
+  panel lays itself out; author call). Untested: a ribbon (bundled) cable into a folded section's pill, and the
+  liquid fold on a card inside a group's sub-flow (`flowYOf` reads the viewport transform, so it should hold).
+
 ## Landing pages
 
 The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
@@ -199,7 +203,8 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 ## Demo video (`assets/video/`, the `demo-video` skill)
 
 - [ ] **Re-film after 2026-09-29's UI changes:** type icons on every type toggle and column header, the narrower
-  Cast card with its Separators, the 4-decimal number display, palette-following Add menu tints and neutral accents.
+  Cast card with its Separators, the 4-decimal number display, palette-following Add menu tints and neutral accents,
+  card sections and the liquid fold, the Edit Frame / Edit Table buttons.
 - [ ] **Author review before publishing:** listen to the synthesized soundtracks (the agent checked them by numbers
   only) and pick where each cut goes: the app tour (landing page, README, release notes), the one-minute Obsidian
   cut (the plugin's README and community listing, the `/obsidian` page).
