@@ -1,6 +1,7 @@
 // [[C42]], [[B11]]
 import { describe, it, expect } from "vitest";
-import { nodeDomWeight, nodeAccent, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
+import { nodeDomWeight, nodeAccent, nodeAccentSlot, nodeKindOf, explicitKindOf } from "../../../src/graph/nodes/kind";
+import { majorityColor } from "../../../src/graph/groupLogic";
 import { NumberInputNode, BooleanInputNode } from "../../../src/graph/nodes/input";
 import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode, KpiNode, RecordNode } from "../../../src/graph/nodes/visual";
 import { GanttNode } from "../../../src/graph/nodes/gantt";
@@ -15,7 +16,7 @@ import { ListInputNode } from "../../../src/graph/nodes/list";
 import { TableInputNode } from "../../../src/graph/nodes/matrix";
 import { NODE_KIND_ACCENTS } from "../../../src/graph/nodes/shared";
 import { SOCKET_COLORS } from "../../../src/graph/sockets";
-import { themeAccent, socketVarHex } from "../../../src/graph/palette";
+import { themeAccent, socketVarHex, resolveColor } from "../../../src/graph/palette";
 
 // nodeDomWeight feeds the HTML-in-Canvas engage gate: a chart / inlined-SVG /
 // frame-grid card weighs more than a scalar card because it is far more DOM. The
@@ -123,5 +124,17 @@ describe("[[C111]] unfiledCardTakesOutputColor", () => {
     expect(nodeAccent(math, "dark")).toBe(themeAccent(NODE_KIND_ACCENTS.math, "dark"));
     const sankey = new SankeyNode();
     expect(nodeAccent(sankey, "dark")).toBe(themeAccent(NODE_KIND_ACCENTS.chart, "dark"));
+  });
+});
+
+describe("nodeAccentSlot", () => {
+  it("is the slot behind the accent the card paints", () => {
+    for (const n of [new UrlEncodeNode(), new EpochNode(), new CombinatoricsNode(), new SankeyNode()]) {
+      expect(themeAccent(resolveColor(nodeAccentSlot(n)), "dark"), n.constructor.name).toBe(nodeAccent(n, "dark"));
+    }
+  });
+  it("a group of unfiled text cards takes their lime, not math blue", () => {
+    expect(majorityColor([new UrlEncodeNode(), new UrlEncodeNode(), new CombinatoricsNode()])).toBe(nodeAccentSlot(new UrlEncodeNode()));
+    expect(nodeAccentSlot(new UrlEncodeNode())).toBe("lime");
   });
 });

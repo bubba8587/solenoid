@@ -1,8 +1,8 @@
 // [[C42]], [[C111]] unfiledCardTakesOutputColor
 import { ClassicPreset } from "rete";
-import { type NodeKind, NODE_KIND_ACCENTS } from "./shared";
+import { type NodeKind, NODE_KIND_ACCENTS, NODE_KIND_SLOTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
-import { themeAccent, socketVarHex } from "../palette";
+import { themeAccent, socketVarHex, socketVarSlot, type PaletteSlot } from "../palette";
 import { NumberInputNode, ConstantNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, SaveTimesNode } from "./input";
 import { PhysicsConstantNode } from "./physicsConstants";
 import { ElementNode } from "./chemistry";
@@ -263,6 +263,19 @@ export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): st
     if (socket instanceof SolenoidSocket) return socketVarHex(SOCKET_COLORS[socket.dataType], mode);
   }
   return kindAccent;
+}
+
+/** The palette slot of the color `nodeAccent` paints, for a surface that stores a slot (a group's color). */
+export function nodeAccentSlot(node: ClassicPreset.Node): PaletteSlot {
+  const kindSlot = NODE_KIND_SLOTS[nodeKindOf(node)];
+  const unfiled = unfiledOutput(node);
+  if (unfiled) return socketVarSlot(SOCKET_COLORS[unfiled.dataType]) ?? kindSlot;
+  if (!SOCKET_DRIVEN_ACCENT(node)) return kindSlot;
+  for (const port of Object.values(node.outputs ?? {})) {
+    const socket = (port as { socket?: unknown } | undefined)?.socket;
+    if (socket instanceof SolenoidSocket) return socketVarSlot(SOCKET_COLORS[socket.dataType]) ?? kindSlot;
+  }
+  return kindSlot;
 }
 
 export function nodeDomWeight(node: ClassicPreset.Node): number {

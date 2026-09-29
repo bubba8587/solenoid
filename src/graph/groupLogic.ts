@@ -3,7 +3,7 @@ import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
 import type { Schemes } from "./schemes";
-import { GroupNode, nodeKindOf, NODE_KIND_SLOTS } from "./rete-nodes";
+import { GroupNode, nodeAccentSlot } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
@@ -17,11 +17,11 @@ import { settleOverlaps } from "./groupPush";
 
 export const GROUP_DEFAULT_COLOR = "gray";
 
-function majorityColor(nodes: ClassicPreset.Node[]): string {
+export function majorityColor(nodes: ClassicPreset.Node[]): string {
   const tally = new Map<string, number>();
   for (const n of nodes) {
-    const c = NODE_KIND_SLOTS[nodeKindOf(n)];
-    if (c) tally.set(c, (tally.get(c) ?? 0) + 1);
+    const c = nodeAccentSlot(n);
+    tally.set(c, (tally.get(c) ?? 0) + 1);
   }
   let best = GROUP_DEFAULT_COLOR, bestN = 0, tie = false;
   for (const [c, k] of tally) {

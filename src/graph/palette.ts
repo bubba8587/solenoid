@@ -196,6 +196,12 @@ function isPaletteSlot(s: string): s is PaletteSlot {
 
 const SOCKET_VAR_BY_NAME = new Map(SOCKET_VARS.map((s) => [s.var, s]));
 
+/** The palette slot behind a socket color expression, or null when it names no socket var. */
+export function socketVarSlot(expr: string): PaletteSlot | null {
+  const m = /--[a-z0-9-]+/i.exec(expr);
+  return (m && SOCKET_VAR_BY_NAME.get(m[0])?.slot) || null;
+}
+
 export function socketVarHex(expr: string, mode: "dark" | "light"): string {
   if (expr.startsWith("#")) return expr;
   const m = /--[a-z0-9-]+/i.exec(expr);
