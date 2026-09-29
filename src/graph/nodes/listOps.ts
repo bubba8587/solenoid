@@ -451,6 +451,7 @@ export function arrayCount(n: number, fn: string): number | SolError {
 
 /** RANDARRAY's bounds check, shared by the formula and the card. */
 export function randArrayRange(lo: number, hi: number, whole: boolean): SolError | null {
+  if (Number.isNaN(lo) || Number.isNaN(hi)) return solError("#VALUE!", "RANDARRAY's Min and Max must be numbers");
   if (lo > hi) return solError("#VALUE!", "RANDARRAY's Min is above its Max");
   if (whole && Math.ceil(lo) > Math.floor(hi)) return solError("#VALUE!", "RANDARRAY's Min and Max hold no whole number");
   return null;

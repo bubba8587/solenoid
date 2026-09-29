@@ -122,6 +122,12 @@ describe("review pins: formula surface parity", () => {
       expect(resolveExcelFunction(fn)!(3, [1, 3, 5], 1)).toBe(2);
     }
   });
+  it("RANDARRAY with a text Min or Max is #VALUE!, not NaN cells", () => {
+    for (const [lo, hi] of [["a", 5], [0, "b"]]) {
+      const r = resolveExcelFunction("RANDARRAY")!(2, 1, lo, hi);
+      expect(isSolError(r) && r.code).toBe("#VALUE!");
+    }
+  });
   it("SUBSTITUTE truncates its instance like Excel", () => {
     expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b", 1.5)).toBe("baa");
     expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b")).toBe("bbb");
