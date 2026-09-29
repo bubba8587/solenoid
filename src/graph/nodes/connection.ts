@@ -84,7 +84,7 @@ export class WebSourceNode extends ClassicPreset.Node {
     connectionStore.autoRefresh(this.id, this.refreshMinutes);
     const ref = this.url.trim();
     const key = connectionStore.key(this.id, ref);
-    if (key === this.lastKey) return { frame: this.cachedResult };
+    if (key === this.lastKey) { this.inflightKey = key; return { frame: this.cachedResult }; }
     if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
       this.inflightKey = key;

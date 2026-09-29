@@ -113,6 +113,30 @@ describe("a reply for a URL the card has moved past lands nowhere", () => {
     const frame = run(card) as { frame: { columns: { values: unknown[] }[] } };
     expect(frame.frame.columns[0].values).toEqual([2]);
   });
+
+  it("Web Source moved to a new URL and back keeps the first URL's data when the new reply lands", async () => {
+    const resolvers = new Map<string, (body: string) => void>();
+    globalThis.fetch = vi.fn((url: string) => new Promise((res) => {
+      resolvers.set(String(url), (body) => res({
+        ok: true, status: 200, statusText: "OK",
+        headers: { get: () => "text/csv" }, text: async () => body,
+      }));
+    })) as unknown as typeof fetch;
+    const card = new WebSourceNode({ url: "https://a.example/a.csv" });
+    run(card);
+    await vi.waitFor(() => expect(resolvers.size).toBe(1));
+    resolvers.get("https://a.example/a.csv")!("v\n1");
+    await vi.waitFor(() => expect(connectionStore.getState(card.id).status).toBe("ok"));
+    card.url = "https://b.example/b.csv";
+    run(card);
+    card.url = "https://a.example/a.csv";
+    run(card);
+    await vi.waitFor(() => expect(resolvers.size).toBe(2));
+    resolvers.get("https://b.example/b.csv")!("v\n2");
+    await new Promise((r) => setTimeout(r, 0));
+    const frame = run(card) as { frame: { columns: { values: unknown[] }[] } };
+    expect(frame.frame.columns[0].values).toEqual([1]);
+  });
 });
 
 describe("auto-refresh runs from the card's data(), not its component", () => {

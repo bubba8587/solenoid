@@ -65,7 +65,7 @@ export class DataFeedNode extends ClassicPreset.Node {
     const url = p.buildUrl(input, key, { start, end, freq: this.stringLiterals.freq?.trim() || undefined });
     if (!requestNetwork(this.id)) return { frame: this.cachedResult };
     const cacheKey = connectionStore.key(this.id, `${this.provider}:${url}`);
-    if (cacheKey === this.lastKey) return { frame: this.cachedResult };
+    if (cacheKey === this.lastKey) { this.inflightKey = cacheKey; return { frame: this.cachedResult }; }
     if (this.inflightKey !== cacheKey) {
       this.inflightKey = cacheKey;
       fetchInBackground(this.id, this.fetchFrame(url, cacheKey));
