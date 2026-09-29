@@ -117,6 +117,10 @@ function runColumn<C>(
   const reserved = opts.reserved ?? [];
 
   const colKind = spec.kind === "lambda" ? ("col" as const) : ("wholecol" as const);
+  const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
+  // A wired list with one value per row is per-row data, so it reads as a column beside the table's ([[E17]] vectorOrient).
+  const aligned = (v: unknown): unknown =>
+    Array.isArray(v) && v.length === rows && rows > 1 && !v.some(Array.isArray) ? v.map((x) => [x]) : v;
   const bindings: Binding[] = [];
   const sideVars: string[] = [];
   for (const p of params) {
@@ -133,7 +137,7 @@ function runColumn<C>(
       return solError("#REF!", `"${p}" is a reserved input name. Rename the variable or the column`);
     }
     sideVars.push(p);
-    bindings.push({ kind: "side", value: opts.sideValue?.(p, "var") });
+    bindings.push({ kind: "side", value: aligned(opts.sideValue?.(p, "var")) });
   }
   for (const p of opts.rowRefs ?? []) {
     if (reserved.includes(p)) continue;
@@ -146,7 +150,6 @@ function runColumn<C>(
     if (!sideVars.includes(p)) sideVars.push(p);
   }
 
-  const rows = f.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
   let cursor = 0;
   const colByName = new Map(f.columns.map((c) => [c.name, c] as const));
   const sideCache = new Map<string, unknown>();
@@ -187,7 +190,7 @@ function runColumn<C>(
       if (c) return wholeOf(c);
       if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name. Rename the variable or the column`);
       if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
-      return sideCache.get(key);
+      return aligned(sideCache.get(key));
     },
     column: (key) => {
       const c = aliased(key) ?? colByName.get(key);

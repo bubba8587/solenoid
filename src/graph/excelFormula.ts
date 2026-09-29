@@ -469,6 +469,36 @@ const NULLABLE_SCALARS_OK = new Set([
   "SUMIFS", "COUNTIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIF", "AVERAGEIF",
 ]);
 
+/** A `free` function's vector arguments ([[E17]] vectorOrient): a one-column or one-row table reads as its items; `column` when the first vector was a column. */
+function readVectors(argv: unknown[]): { argv: unknown[]; column: boolean } | null {
+  let first: boolean | undefined;
+  let changed = false;
+  const out = argv.map((a) => {
+    if (!isMatrix(a)) {
+      if (first === undefined && Array.isArray(a)) first = false;
+      return a;
+    }
+    const rows = a as unknown[][];
+    if (rows.length > 1 && rows.every((r) => Array.isArray(r) && r.length === 1)) {
+      first ??= true;
+      changed = true;
+      return rows.map((r) => r[0]);
+    }
+    if (rows.length === 1) {
+      first ??= false;
+      changed = true;
+      return rows[0];
+    }
+    return a;
+  });
+  return changed ? { argv: out, column: first === true } : null;
+}
+
+/** A list answer turned back into the column its input came in as. */
+function asColumn(r: unknown): unknown {
+  return Array.isArray(r) && !r.some(Array.isArray) ? r.map((x) => [x]) : r;
+}
+
 const ETA_HOSTS = new Set(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"]);
 
 for (const blocked of ELIMINATED_FUNCTIONS) {
@@ -815,6 +845,8 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
       const sol = argv.find(isSolError);
       if (sol) return sol;
+      const vectors = EXCEL_IMPL_META[name]?.orient === "free" ? readVectors(argv) : null;
+      if (vectors) argv = vectors.argv;
       if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
         if (RANGE_POSITIONAL.has(name)) {
           return solError("#SHAPE!", `${name} over a matrix isn't supported yet. Wire the matrix through its node`);
@@ -831,7 +863,8 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       }
       if (takesWholeArgs(name)) {
         if (!NULLABLE_SCALARS_OK.has(name) && argv.some((a, i) => !isArr(a) && isMissing(a) && !blanks.settled[i])) return null;
-        return dispatch(name, ...argv);
+        const r = dispatch(name, ...argv);
+        return vectors?.column ? asColumn(r) : r;
       }
       if (RANGE_FUNCTIONS.has(name)) {
         // Clone: some Formula.js functions (CHISQ.TEST) mutate their arguments, which would corrupt the upstream cached value.

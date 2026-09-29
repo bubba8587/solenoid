@@ -11,8 +11,13 @@ specific item.
 - **`ROW()` replaces the bare `row`/`rows` names; a computed column's whole column is a one-column table**
   ([[C22]] rowFormulaRefs, [[C14]] currentExcelParity): `ROW()` reads the row context (`currentRowNumber`),
   `ROWS(price)` is the row count, and a column may be named `row`. COLUMN stays blocked (`POSITION_NAMES`,
-  `blockedNameMessage`). Open: ~80 list functions answer `#SHAPE!` on a one-column table; each gets an
-  orientation declaration next.
+  `blockedNameMessage`).
+- **Every list-taking function declares `orient`** ([[E17]] vectorOrient): `free` (direction means nothing; a
+  one-column or one-row table reads as its items and a list answer comes back the way it went in) or `axis`
+  (the Excel shapers read rows and columns themselves). `readVectors` / `asColumn` in `excelFormula.ts` apply it;
+  `vectorOrient.test.ts` runs every `free` function on a list and a column. A computed column's row-aligned wired
+  list reads as a column. INTERPOLATE and DIAGONAL are `free` for their vector mode and keep their grid mode.
+  A Cube column of list cells stays `#SHAPE!` read whole, `ROWS(prices)` included; it could answer the row count.
 - **The Frame editor's corner (i)** (`HeaderHelpButton`): type glyphs plus the Fx names. [[table-popup]] § The grid.
   The Cube popup's editable levels carry it too (None type, `COUNTA(@tags)`; Fx rows on the root only).
 - **A list popup's CSV view followed the Source switch backwards**: the list path of `buildText` ignored the mode
